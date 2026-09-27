@@ -690,8 +690,8 @@ class MainWindowStateTests : public QObject {
         QTimer::singleShot(0, &window, [&temp] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<QDialog *>(widget); dialog && dialog->isVisible()) {
-                    if (auto *destination = dialog->findChild<QLineEdit *>("extractDestination")) {
-                        destination->setText(temp.filePath("out"));
+                    if (auto *destination = dialog->findChild<QComboBox *>("extractDestination")) {
+                        destination->setCurrentText(temp.filePath("out"));
                         dialog->accept();
                     }
                 }
@@ -1269,9 +1269,9 @@ class MainWindowStateTests : public QObject {
         QTimer::singleShot(0, &window, [] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
-            auto *destination = dialog->findChild<QLineEdit *>("extractDestination");
+            auto *destination = dialog->findChild<QComboBox *>("extractDestination");
             QVERIFY(destination);
-            destination->setText("/temporary/selected output");
+            destination->setCurrentText("/temporary/selected output");
             dialog->reject();
         });
         action(window, "extractArchiveAction")->trigger();
@@ -1280,13 +1280,17 @@ class MainWindowStateTests : public QObject {
         QTimer::singleShot(0, &window, [] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
-            auto *destination = dialog->findChild<QLineEdit *>("extractDestination");
+            auto *destination = dialog->findChild<QComboBox *>("extractDestination");
             QVERIFY(destination);
-            destination->setText("/temporary/selected output");
+            destination->setCurrentText("/temporary/selected output");
+            auto *password = dialog->findChild<QLineEdit *>("extractPassword");
+            QVERIFY(password);
+            password->setText("temporary secret");
             dialog->accept();
         });
         action(window, "extractArchiveAction")->trigger();
         QCOMPARE(backend.extractCalls, 1);
+        QCOMPARE(backend.lastExtractPassword, QString("temporary secret"));
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         backend.cancel();
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());

@@ -8,12 +8,15 @@
 #include <QImage>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListView>
 #include <QMenu>
 #include <QPixmap>
 #include <QPushButton>
+#include <QStackedWidget>
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
@@ -42,6 +45,34 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(dialog.destination(), QString("/changed"));
         CopyDialog moveDialog(true, "/initial", {}, {});
         QCOMPARE(moveDialog.windowTitle(), QString("Переместить"));
+    }
+
+    void extractDialogMatches7zfmControls() {
+        ExtractDialog dialog("/initial", {"/previous", "/older"}, true);
+        QCOMPARE(dialog.objectName(), QString("extractDialog"));
+        QCOMPARE(dialog.windowTitle(), QString("Извлечь выбранное"));
+        auto *destination = dialog.findChild<QComboBox *>("extractDestination");
+        QVERIFY(destination);
+        QVERIFY(destination->isEditable());
+        QCOMPARE(destination->currentText(), QString("/initial"));
+        QCOMPARE(destination->itemText(0), QString("/previous"));
+        QVERIFY(dialog.findChild<QPushButton *>("extractBrowseButton"));
+        auto *pathMode = dialog.findChild<QComboBox *>("extractPathMode");
+        auto *overwriteMode = dialog.findChild<QComboBox *>("extractOverwriteMode");
+        QVERIFY(pathMode && overwriteMode);
+        QCOMPARE(pathMode->currentText(), QString("Полные пути"));
+        QVERIFY(!pathMode->isEnabled());
+        QVERIFY(!overwriteMode->isEnabled());
+        auto *password = dialog.findChild<QLineEdit *>("extractPassword");
+        auto *showPassword = dialog.findChild<QCheckBox *>("extractShowPassword");
+        QVERIFY(password && showPassword);
+        QCOMPARE(password->echoMode(), QLineEdit::Password);
+        password->setText("secret");
+        QCOMPARE(dialog.password(), QString("secret"));
+        showPassword->setChecked(true);
+        QCOMPARE(password->echoMode(), QLineEdit::Normal);
+        destination->setCurrentText("/changed");
+        QCOMPARE(dialog.destination(), QString("/changed"));
     }
 
     void layoutAtSizes_data() {
@@ -98,8 +129,10 @@ class MainWindowLayoutTests : public QObject {
 
         const QRect content = window.centralWidget()->contentsRect();
         QVERIFY2(content.contains(pathCombo->geometry()), "Archive path escaped the content area");
-        QVERIFY2(content.contains(table->geometry()), "File table escaped the content area");
-        QVERIFY2(pathCombo->geometry().bottom() < table->geometry().top(),
+        const QRect tableInContent(table->mapTo(window.centralWidget(), QPoint(0, 0)),
+                                   table->size());
+        QVERIFY2(content.contains(tableInContent), "File table escaped the content area");
+        QVERIFY2(pathCombo->geometry().bottom() < tableInContent.top(),
                  "Archive path overlaps the file table");
         QVERIFY2(table->height() >= 120, "File table is too short to inspect archives");
         QVERIFY2(table->horizontalHeader()->sectionSize(0) > 0, "Name column is hidden");
@@ -166,6 +199,56 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(table->isColumnHidden(2));
         MainWindow reopened;
         QVERIFY(reopened.findChild<QTableWidget *>("archiveTable")->isColumnHidden(2));
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
+
+    void viewModesShareSelectionAndPersist() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString original = QDir::currentPath();
+        QVERIFY(QDir::setCurrent(temporary.path()));
+        QFile file(temporary.filePath(QStringLiteral("имя с пробелом.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+
+        MainWindow window;
+        window.show();
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *list = window.findChild<QListView *>("iconList");
+        auto *stack = window.findChild<QStackedWidget *>("fileViewStack");
+        QVERIFY(table && list && stack);
+        QCOMPARE(stack->currentWidget(), static_cast<QWidget *>(table));
+        QCOMPARE(list->model(), table->model());
+        QCOMPARE(list->selectionModel(), table->selectionModel());
+
+        for (int mode = 0; mode < 3; ++mode) {
+            auto *action =
+                window.findChild<QAction *>(QStringLiteral("viewMode%1Action").arg(mode));
+            QVERIFY(action);
+            action->trigger();
+            QCOMPARE(stack->currentWidget(), static_cast<QWidget *>(list));
+            QVERIFY(action->isChecked());
+            QCOMPARE(list->viewMode(), mode == 2 ? QListView::ListMode : QListView::IconMode);
+            QCOMPARE(list->iconSize(), mode == 0 ? QSize(48, 48) : QSize(16, 16));
+        }
+        QVERIFY(table->rowCount() > 0);
+        list->selectionModel()->select(list->model()->index(0, 0),
+                                       QItemSelectionModel::ClearAndSelect |
+                                           QItemSelectionModel::Rows);
+        QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
+        list->setFocus();
+        const QKeyCombination selectAll = QKeySequence(QKeySequence::SelectAll)[0];
+        QTest::keyClick(list, selectAll.key(), selectAll.keyboardModifiers());
+        QCOMPARE(table->selectionModel()->selectedRows().size(), table->rowCount());
+        window.findChild<QAction *>("viewMode3Action")->trigger();
+        QCOMPARE(stack->currentWidget(), static_cast<QWidget *>(table));
+        QCOMPARE(table->selectionModel()->selectedRows().size(), table->rowCount());
+
+        window.findChild<QAction *>("viewMode1Action")->trigger();
+        MainWindow reopened;
+        QCOMPARE(reopened.findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
+        QVERIFY(reopened.findChild<QAction *>("viewMode1Action")->isChecked());
+        QVERIFY(QDir::setCurrent(original));
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 };

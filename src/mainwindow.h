@@ -4,6 +4,7 @@
 #include "combodialog.h"
 #include "copydialog.h"
 #include "createarchivedialog.h"
+#include "extractdialog.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -26,6 +27,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListView>
 #include <QListWidget>
 #include <QMainWindow>
 #include <QMap>
@@ -41,6 +43,7 @@
 #include <QRegularExpression>
 #include <QSettings>
 #include <QSizePolicy>
+#include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStatusBar>
 #include <QStringView>
@@ -212,6 +215,18 @@ class MainWindow : public QMainWindow {
         open_ = open;
         auto *editMenu = menuBar()->addMenu("Правка");
         auto *viewMenu = menuBar()->addMenu("Вид");
+        auto *viewGroup = new QActionGroup(this);
+        const QStringList viewLabels = {"Крупные значки", "Мелкие значки", "Список", "Подробности"};
+        for (int index = 0; index < viewLabels.size(); ++index) {
+            QAction *action = viewMenu->addAction(viewLabels[index]);
+            action->setObjectName(QStringLiteral("viewMode%1Action").arg(index));
+            action->setCheckable(true);
+            action->setActionGroup(viewGroup);
+            action->setShortcut(QKeySequence(Qt::CTRL | (Qt::Key_1 + index)));
+            viewActions_[index] = action;
+            connect(action, &QAction::triggered, this, [this, index] { setViewMode(index); });
+        }
+        viewMenu->addSeparator();
         auto *favoritesMenu = menuBar()->addMenu("Избранное");
         auto *addFavoriteMenu = favoritesMenu->addMenu("Добавить папку в избранное как");
         QSettings favoritesSettings(toolbarSettingsPath(), QSettings::IniFormat);
@@ -359,30 +374,7 @@ class MainWindow : public QMainWindow {
             const int row = table_->rowAt(pos.y());
             if (row >= 0 && !table_->selectionModel()->isRowSelected(row, QModelIndex()))
                 table_->selectRow(row);
-            QMenu menu(this);
-            const bool hasSelection = !table_->selectionModel()->selectedRows().isEmpty();
-            if (hasSelection) {
-                for (QAction *action : {openItem_, rename_, copy_, move_, remove_})
-                    menu.addAction(action);
-                menu.addSeparator();
-                menu.addAction(properties_);
-                menu.addSeparator();
-            }
-            if (state_ == State::Filesystem) {
-                menu.addAction(create_);
-                menu.addAction(createFolder_);
-                menu.addAction(createFile_);
-            } else {
-                menu.addAction(add_);
-                if (hasSelection)
-                    menu.addAction(selected_);
-                menu.addAction(extract_);
-                menu.addAction(test_);
-                menu.addAction(infoAction_);
-            }
-            menu.addSeparator();
-            menu.addAction(refresh_);
-            menu.exec(table_->viewport()->mapToGlobal(pos));
+            showItemContextMenu(table_->viewport()->mapToGlobal(pos));
         });
         openItem_ = new QAction(table_);
         openItem_->setObjectName("openItemAction");
@@ -422,7 +414,43 @@ class MainWindow : public QMainWindow {
         deselectType_ =
             editMenu->addAction("Снять выделение по типу", this, [this] { selectByType(false); });
         deselectType_->setObjectName("deselectTypeAction");
-        layout->addWidget(table_);
+        iconList_ = new QListView(central);
+        iconList_->setObjectName("iconList");
+        iconList_->setModel(table_->model());
+        iconList_->setModelColumn(0);
+        iconList_->setSelectionModel(table_->selectionModel());
+        iconList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        iconList_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        iconList_->setUniformItemSizes(true);
+        iconList_->setWordWrap(false);
+        iconList_->setDragEnabled(true);
+        iconList_->setAcceptDrops(true);
+        iconList_->viewport()->setAcceptDrops(true);
+        iconList_->setContextMenuPolicy(Qt::CustomContextMenu);
+        iconList_->installEventFilter(this);
+        iconList_->viewport()->installEventFilter(this);
+        iconList_->addAction(selectAll_);
+        iconList_->addAction(openItem_);
+        iconList_->addAction(parent_);
+        connect(iconList_, &QListView::doubleClicked, this,
+                [this](const QModelIndex &index) { activateRow(index.row()); });
+        connect(iconList_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+            const QModelIndex index = iconList_->indexAt(pos);
+            if (index.isValid() &&
+                !iconList_->selectionModel()->isRowSelected(index.row(), QModelIndex()))
+                iconList_->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect |
+                                                               QItemSelectionModel::Rows);
+            showItemContextMenu(iconList_->viewport()->mapToGlobal(pos));
+        });
+        viewStack_ = new QStackedWidget(central);
+        viewStack_->setObjectName("fileViewStack");
+        viewStack_->addWidget(table_);
+        viewStack_->addWidget(iconList_);
+        layout->addWidget(viewStack_);
+        int initialView = settings.value("view/mode", 3).toInt();
+        if (initialView < 0 || initialView > 3)
+            initialView = 3;
+        setViewMode(initialView);
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
         connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });
@@ -556,7 +584,8 @@ class MainWindow : public QMainWindow {
         backend_->list(archive_);
     }
 
-    void extractTo(const QString &destination, bool onlySelected = false) {
+    void extractTo(const QString &destination, bool onlySelected = false,
+                   const QString &password = {}) {
         if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
             return;
         QStringList names;
@@ -568,7 +597,8 @@ class MainWindow : public QMainWindow {
         previousState_ = state_;
         setState(State::Operating);
         begin("Извлечение", destination);
-        backend_->extract(archive_, destination, names, archivePassword_);
+        backend_->extract(archive_, destination, names,
+                          password.isEmpty() ? archivePassword_ : password);
     }
 
     void testArchive() {
@@ -583,6 +613,51 @@ class MainWindow : public QMainWindow {
   private:
     enum class State { Filesystem, Loading, Viewing, Operating };
     enum class SortMode { Name, Type, Date, Size, Unsorted };
+    void setViewMode(int mode) {
+        if (mode < 0 || mode > 3 || !viewStack_)
+            return;
+        viewMode_ = mode;
+        viewActions_[mode]->setChecked(true);
+        if (mode != 3) {
+            iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
+            iconList_->setIconSize(mode == 0 ? QSize(48, 48) : QSize(16, 16));
+            iconList_->setGridSize(mode == 0   ? QSize(140, 82)
+                                   : mode == 1 ? QSize(180, 26)
+                                               : QSize());
+            iconList_->setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
+            iconList_->setWrapping(true);
+            iconList_->setMovement(QListView::Static);
+        }
+        viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        settings.setValue("view/mode", mode);
+    }
+    void showItemContextMenu(const QPoint &globalPos) {
+        QMenu menu(this);
+        const bool hasSelection = !table_->selectionModel()->selectedRows().isEmpty();
+        if (hasSelection) {
+            for (QAction *action : {openItem_, rename_, copy_, move_, remove_})
+                menu.addAction(action);
+            menu.addSeparator();
+            menu.addAction(properties_);
+            menu.addSeparator();
+        }
+        if (state_ == State::Filesystem) {
+            menu.addAction(create_);
+            menu.addAction(createFolder_);
+            menu.addAction(createFile_);
+        } else {
+            menu.addAction(add_);
+            if (hasSelection)
+                menu.addAction(selected_);
+            menu.addAction(extract_);
+            menu.addAction(test_);
+            menu.addAction(infoAction_);
+        }
+        menu.addSeparator();
+        menu.addAction(refresh_);
+        menu.exec(globalPos);
+    }
     void setSortMode(SortMode mode) {
         sortMode_ = mode;
         sortActions_[static_cast<int>(mode)]->setChecked(true);
@@ -806,7 +881,7 @@ class MainWindow : public QMainWindow {
         settings.setValue("toolbar/text", buttonTextOption_->isChecked());
     }
     bool eventFilter(QObject *watched, QEvent *event) override {
-        if (watched == table_->viewport() &&
+        if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
             (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
             auto *drag = static_cast<QDragMoveEvent *>(event);
             if ((state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)) &&
@@ -816,7 +891,8 @@ class MainWindow : public QMainWindow {
                 return true;
             }
         }
-        if (watched == table_->viewport() && event->type() == QEvent::Drop) {
+        if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
+            event->type() == QEvent::Drop) {
             auto *drop = static_cast<QDropEvent *>(event);
             QStringList paths;
             for (const QUrl &url : drop->mimeData()->urls()) {
@@ -834,7 +910,8 @@ class MainWindow : public QMainWindow {
             drop->accept();
             return true;
         }
-        if ((watched == table_ || watched == table_->viewport()) &&
+        if ((watched == table_ || watched == table_->viewport() || watched == iconList_ ||
+             (iconList_ && watched == iconList_->viewport())) &&
             event->type() == QEvent::KeyPress) {
             auto *key = static_cast<QKeyEvent *>(event);
             if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
@@ -1178,6 +1255,8 @@ class MainWindow : public QMainWindow {
         const bool idle = state_ != State::Loading && state_ != State::Operating;
         for (QAction *action : sortActions_)
             action->setEnabled(idle);
+        for (QAction *action : viewActions_)
+            action->setEnabled(idle);
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
         add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted);
@@ -1233,7 +1312,9 @@ class MainWindow : public QMainWindow {
                    .toBool())));
         properties_->setEnabled(idle && one);
         table_->setEnabled(idle);
+        iconList_->setEnabled(idle);
         table_->setDragEnabled(idle && state_ == State::Filesystem);
+        iconList_->setDragEnabled(idle && state_ == State::Filesystem);
         path_->setReadOnly(!idle);
     }
     void appendJournal(const QString &line) {
@@ -1345,31 +1426,21 @@ class MainWindow : public QMainWindow {
             return;
         if (onlySelected && table_->selectionModel()->selectedRows().isEmpty())
             return;
-        QDialog dialog(this);
-        dialog.setWindowTitle(onlySelected ? "Извлечь выбранное" : "Извлечь архив");
-        auto *layout = new QVBoxLayout(&dialog);
-        layout->addWidget(new QLabel("Папка назначения:", &dialog));
-        auto *destination = new QLineEdit(returnDirectory_, &dialog);
-        destination->setObjectName("extractDestination");
-        layout->addWidget(destination);
-        auto *browse = new QPushButton("Обзор…", &dialog);
-        layout->addWidget(browse);
-        connect(browse, &QPushButton::clicked, &dialog, [this, destination] {
-            const QString path = QFileDialog::getExistingDirectory(this, "Папка для извлечения",
-                                                                   destination->text());
-            if (!path.isEmpty())
-                destination->setText(path);
-        });
-        layout->addWidget(new QLabel("Пути внутри архива сохраняются. Существующие файлы не "
-                                     "перезаписываются.",
-                                     &dialog));
-        auto *buttons =
-            new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-        connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-        layout->addWidget(buttons);
-        if (dialog.exec() == QDialog::Accepted)
-            extractTo(destination->text(), onlySelected);
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        ExtractDialog dialog(returnDirectory_, settings.value("history/extract").toStringList(),
+                             onlySelected, this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QString destination = dialog.destination();
+        if (destination.isEmpty())
+            return;
+        QStringList history = settings.value("history/extract").toStringList();
+        history.removeAll(destination);
+        history.prepend(destination);
+        while (history.size() > 16)
+            history.removeLast();
+        settings.setValue("history/extract", history);
+        extractTo(destination, onlySelected, dialog.password());
     }
     void createDialog() {
         if (state_ != State::Filesystem)
@@ -1641,6 +1712,8 @@ class MainWindow : public QMainWindow {
     State state_ = State::Filesystem;
     SortMode sortMode_ = SortMode::Name;
     QAction *sortActions_[5]{};
+    QAction *viewActions_[4]{};
+    int viewMode_ = 3;
     State previousState_ = State::Filesystem;
     bool creating_ = false;
     bool updatingArchive_ = false;
@@ -1655,6 +1728,8 @@ class MainWindow : public QMainWindow {
     QString refreshFolder_;
     QStringList refreshSelection_;
     QTableWidget *table_ = nullptr;
+    QListView *iconList_ = nullptr;
+    QStackedWidget *viewStack_ = nullptr;
     QProgressDialog *progress_ = nullptr;
     QDialog *journalDialog_ = nullptr;
     QPointer<QDialog> infoDialog_;
