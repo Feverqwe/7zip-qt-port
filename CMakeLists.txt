@@ -37,7 +37,9 @@ if(BUILD_TESTING)
     target_include_directories(ui_state_tests PRIVATE src)
     target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME ui_state COMMAND ui_state_tests)
-    set_tests_properties(ui_state PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(ui_state PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots"
+    )
     add_test(NAME ui_layout COMMAND ui_layout_tests)
     set_tests_properties(ui_layout PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots"

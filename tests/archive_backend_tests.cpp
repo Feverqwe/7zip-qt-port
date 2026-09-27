@@ -6,7 +6,16 @@
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QThread>
+#include <QTimer>
 #include <QtTest>
+
+#include <cstdio>
+
+static void writeOutput(const QByteArray &text) {
+    std::fwrite(text.constData(), 1, size_t(text.size()), stdout);
+    std::fflush(stdout);
+}
 
 class ArchiveBackendTests : public QObject {
     Q_OBJECT
@@ -133,7 +142,78 @@ class ArchiveBackendTests : public QObject {
         QVERIFY(result.at(1).toString().contains("отменена"));
         QVERIFY(!backend.busy());
     }
+    void fragmentedOutputAndError() {
+        qputenv("SEVENZIP_TEST_HELPER", "fragment");
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy progress(&backend, &ArchiveBackend::progress);
+        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.list("fake.7z");
+        QVERIFY(finished.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!finished.takeFirst().at(0).toBool());
+        QVERIFY(!backend.busy());
+        QCOMPARE(progress.size(), 1);
+        QCOMPARE(progress.at(0).at(0).toInt(), 42);
+        QCOMPARE(progress.at(0).at(1).toString(), QStringLiteral("папка/имя с пробелом.txt"));
+        QCOMPARE(output.size(), 2);
+        QCOMPARE(output.at(1).at(0).toString(), QStringLiteral("ERROR: incomplete tail"));
+    }
+    void largeListingStaysResponsive() {
+        qputenv("SEVENZIP_TEST_HELPER", "large");
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy entries(&backend, &ArchiveBackend::entriesReady);
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        bool timerRan = false;
+        backend.list("large.7z");
+        QTimer::singleShot(10, &backend, [&] { timerRan = true; });
+        QVERIFY(finished.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(timerRan);
+        QVERIFY(finished.takeFirst().at(0).toBool());
+        QCOMPARE(entries.size(), 1);
+        QCOMPARE(qvariant_cast<QList<ArchiveEntry>>(entries.at(0).at(0)).size(), 3000);
+    }
+    void cancelledPartialOutput() {
+        qputenv("SEVENZIP_TEST_HELPER", "cancel");
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.list("cancel.7z");
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        backend.cancel();
+        QVERIFY(finished.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!finished.takeFirst().at(0).toBool());
+        QVERIFY(!backend.busy());
+        QVERIFY(output.at(0).at(0).toString().contains("started"));
+    }
 };
 
-QTEST_GUILESS_MAIN(ArchiveBackendTests)
+int main(int argc, char **argv) {
+    QCoreApplication app(argc, argv);
+    const QByteArray mode = qgetenv("SEVENZIP_TEST_HELPER");
+    if (!mode.isEmpty()) {
+        if (mode == "fragment") {
+            writeOutput("  4");
+            QThread::msleep(20);
+            writeOutput("2%\b\b    \b\b+ папка/имя с пробелом.txt\r");
+            writeOutput("ERROR: incomplete tail");
+            return 2;
+        }
+        if (mode == "large") {
+            for (int i = 0; i < 3000; ++i) {
+                writeOutput("Path = file" + QByteArray::number(i) + ".txt\nSize = 1\n\n");
+                if (i == 999)
+                    QThread::msleep(100);
+            }
+            return 0;
+        }
+        writeOutput("started\npartial");
+        QThread::msleep(30000);
+        return 0;
+    }
+    ArchiveBackendTests tests;
+    return QTest::qExec(&tests, argc, argv);
+}
 #include "archive_backend_tests.moc"

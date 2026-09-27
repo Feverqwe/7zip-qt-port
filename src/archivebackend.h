@@ -28,18 +28,22 @@ class ArchiveBackend : public QObject {
   signals:
     void entriesReady(const QList<ArchiveEntry> &entries);
     void progress(int percent, const QString &detail);
+    void outputReceived(const QString &text);
     void finished(bool success, const QString &message);
 
   private:
     enum class Job { None, List, Extract, Create };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
+    void consumeOutput(const QByteArray &chunk, bool flush = false);
+    void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
     static bool safePath(const QString &path);
 
     QProcess process_;
     Job job_ = Job::None;
     QString output_;
+    QByteArray pendingOutput_;
     QString archive_;
     QList<ArchiveEntry> entries_;
     bool listed_ = false;

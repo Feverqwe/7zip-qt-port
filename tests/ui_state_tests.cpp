@@ -2,11 +2,15 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QDir>
+#include <QImage>
 #include <QLabel>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QStatusBar>
+#include <QSysInfo>
 #include <QTableWidget>
 #include <QTimer>
 #include <QtTest>
@@ -37,6 +41,14 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = false;
         emit entriesReady(entries);
         emit finished(true, QStringLiteral("Архив открыт."));
+    }
+    void fail(const QString &message) {
+        busy_ = false;
+        emit finished(false, message);
+    }
+    void report(int percent, const QString &detail, const QString &line) {
+        emit outputReceived(line);
+        emit progress(percent, detail);
     }
     int listCalls = 0;
     int extractCalls = 0;
@@ -132,6 +144,10 @@ class MainWindowStateTests : public QObject {
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
+        action(window, "operationJournalAction")->trigger();
+        auto *log = window.findChild<QPlainTextEdit *>("operationJournalText");
+        QVERIFY(log);
+        QVERIFY(log->toPlainText().contains(QStringLiteral("Операция отменена.")));
         window.openArchive("after-cancel.zip");
         QCOMPARE(backend.listCalls, 2);
         backend.completeList({});
@@ -164,6 +180,48 @@ class MainWindowStateTests : public QObject {
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
+    }
+
+    void progressAndLastJournal() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *journal = action(window, "operationJournalAction");
+        QVERIFY(!journal->isEnabled());
+        window.openArchive("first.7z");
+        QVERIFY(journal->isEnabled());
+        auto *progress = window.findChildren<QProgressDialog *>().last();
+        QCOMPARE(progress->windowModality(), Qt::NonModal);
+        backend.report(42, QStringLiteral("папка/имя с пробелом.txt"),
+                       QStringLiteral("42% + папка/имя с пробелом.txt"));
+        QCOMPARE(progress->value(), 42);
+        QVERIFY(progress->labelText().contains(QStringLiteral("папка/имя с пробелом.txt")));
+        backend.completeList({});
+        journal->trigger();
+        QCoreApplication::processEvents();
+        auto *text = window.findChild<QPlainTextEdit *>("operationJournalText");
+        QVERIFY(text);
+        QVERIFY(text->toPlainText().contains(QStringLiteral("Открытие архива: ")));
+        QVERIFY(text->toPlainText().contains(QStringLiteral("42% + папка/имя с пробелом.txt")));
+        QVERIFY(text->toPlainText().contains(QStringLiteral("Результат: Архив открыт.")));
+        auto *dialog = window.findChild<QDialog *>("operationJournalDialog");
+        QVERIFY(dialog);
+        const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
+        if (!screenshotDir.isEmpty()) {
+            QVERIFY(QDir().mkpath(screenshotDir));
+            const QString screenshot =
+                screenshotDir + "/" + QSysInfo::productType() + "-journal.png";
+            QVERIFY(dialog->grab().save(screenshot));
+        }
+
+        window.openArchive("second.zip");
+        backend.report(-1, {}, QStringLiteral("ERROR: повреждённый архив"));
+        QTimer::singleShot(0, &window, [] { dismissWarnings(); });
+        backend.fail(QStringLiteral("7zz завершился с кодом 2."));
+        QVERIFY(text->toPlainText().contains(QStringLiteral("ERROR: повреждённый архив")));
+        QVERIFY(text->toPlainText().contains(QStringLiteral("Ошибка: 7zz завершился с кодом 2.")));
+        QVERIFY(!text->toPlainText().contains(QStringLiteral("42% +")));
+        QVERIFY(journal->isEnabled());
     }
 };
 

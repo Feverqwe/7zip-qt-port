@@ -21,17 +21,7 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
     }
     process_.setProgram(executable);
     process_.setProcessChannelMode(QProcess::MergedChannels);
-    connect(&process_, &QProcess::readyRead, this, [this] {
-        const QString chunk = QString::fromLocal8Bit(process_.readAll());
-        output_ += chunk;
-        static const QRegularExpression percent(R"((?:^|[\r\n ])\s*(\d{1,3})%)");
-        auto match = percent.globalMatch(chunk);
-        int value = -1;
-        while (match.hasNext())
-            value = match.next().captured(1).toInt();
-        if (value >= 0 && value <= 100)
-            emit progress(value, QString());
-    });
+    connect(&process_, &QProcess::readyRead, this, [this] { consumeOutput(process_.readAll()); });
     connect(&process_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
             &ArchiveBackend::complete);
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
@@ -54,10 +44,58 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
     }
     job_ = job;
     output_.clear();
+    pendingOutput_.clear();
     cancelled_ = false;
     process_.setWorkingDirectory(workingDirectory);
     process_.setArguments(arguments);
     process_.start();
+}
+
+void ArchiveBackend::consumeLine(const QByteArray &line) {
+    QString text = QString::fromLocal8Bit(line);
+    text.remove(QLatin1Char('\b'));
+    text = text.trimmed();
+    if (text.isEmpty())
+        return;
+    output_ += text + '\n';
+    emit outputReceived(text);
+    static const QRegularExpression percent(R"((?:^|\s)(\d{1,3})%)");
+    auto match = percent.globalMatch(text);
+    int value = -1;
+    QString detail;
+    while (match.hasNext()) {
+        const auto found = match.next();
+        value = found.captured(1).toInt();
+        detail = text.mid(found.capturedEnd()).trimmed();
+    }
+    if (value >= 0 && value <= 100) {
+        if (detail.startsWith('+') || detail.startsWith('-'))
+            detail = detail.mid(1).trimmed();
+        emit progress(value, detail);
+    } else if (text.startsWith("+ ") || text.startsWith("- ")) {
+        emit progress(-1, text.mid(2).trimmed());
+    }
+}
+
+void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
+    pendingOutput_ += chunk;
+    qsizetype start = 0;
+    while (true) {
+        const qsizetype cr = pendingOutput_.indexOf('\r', start);
+        const qsizetype lf = pendingOutput_.indexOf('\n', start);
+        const qsizetype end = cr < 0 ? lf : (lf < 0 ? cr : qMin(cr, lf));
+        if (end < 0)
+            break;
+        if (end > start)
+            consumeLine(pendingOutput_.mid(start, end - start));
+        start = end + 1;
+    }
+    if (start > 0)
+        pendingOutput_.remove(0, start);
+    if (flush && !pendingOutput_.isEmpty()) {
+        consumeLine(pendingOutput_);
+        pendingOutput_.clear();
+    }
 }
 
 void ArchiveBackend::list(const QString &archive) {
@@ -214,6 +252,7 @@ QList<ArchiveEntry> ArchiveBackend::parseListing(const QString &output) {
 void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (job_ == Job::None)
         return;
+    consumeOutput(process_.readAll(), true);
     const Job completed = job_;
     job_ = Job::None;
     if (cancelled_) {

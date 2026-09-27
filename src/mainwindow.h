@@ -3,6 +3,7 @@
 #include "archivebackend.h"
 
 #include <QAction>
+#include <QDialog>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
@@ -12,6 +13,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QProgressDialog>
 #include <QSizePolicy>
 #include <QStatusBar>
@@ -44,6 +46,10 @@ class MainWindow : public QMainWindow {
         extract_->setObjectName("extractArchiveAction");
         selected_ = menu->addAction("Извлечь выбранное…", this, [this] { extract(true); });
         selected_->setObjectName("extractSelectedAction");
+        journalAction_ =
+            menu->addAction("Журнал последней операции…", this, [this] { showJournal(); });
+        journalAction_->setObjectName("operationJournalAction");
+        journalAction_->setEnabled(false);
         toolbar->addSeparator();
         for (const QString &title : {"Тест", "Копировать", "Переместить", "Удалить", "Информация"})
             toolbar->addAction(title)->setEnabled(false);
@@ -93,11 +99,23 @@ class MainWindow : public QMainWindow {
                     setState(State::Viewing);
                     statusBar()->showMessage(QStringLiteral("%1 объектов").arg(entries.size()));
                 });
-        connect(backend_, &ArchiveBackend::progress, this, [this](int percent, const QString &) {
-            if (progress_)
-                progress_->setValue(percent);
-        });
+        connect(backend_, &ArchiveBackend::outputReceived, this,
+                [this](const QString &line) { appendJournal(line); });
+        connect(backend_, &ArchiveBackend::progress, this,
+                [this](int percent, const QString &detail) {
+                    if (!progress_)
+                        return;
+                    if (percent >= 0)
+                        progress_->setValue(percent);
+                    if (!detail.isEmpty()) {
+                        currentDetail_ = detail;
+                        progress_->setLabelText(operationName_ + "\n" + currentDetail_);
+                        statusBar()->showMessage(operationName_ + ": " + currentDetail_);
+                    }
+                });
         connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+            appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
+                          message);
             if (progress_) {
                 QProgressDialog *completed = progress_;
                 progress_ = nullptr;
@@ -130,7 +148,7 @@ class MainWindow : public QMainWindow {
         table_->setRowCount(0);
         path_->setText(archive_);
         setState(State::Loading);
-        begin("Открытие архива");
+        begin("Открытие архива", archive_);
         backend_->list(archive_);
     }
 
@@ -146,7 +164,7 @@ class MainWindow : public QMainWindow {
         }
         previousState_ = state_;
         setState(State::Operating);
-        begin("Извлечение");
+        begin("Извлечение", destination);
         backend_->extract(archive_, destination, names);
     }
 
@@ -164,9 +182,38 @@ class MainWindow : public QMainWindow {
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
     }
-    void begin(const QString &label) {
-        progress_ = new QProgressDialog(label, "Отмена", 0, 100, this);
-        progress_->setWindowModality(Qt::WindowModal);
+    void appendJournal(const QString &line) {
+        journalText_ += line + '\n';
+        if (journalView_)
+            journalView_->appendPlainText(line);
+    }
+    void showJournal() {
+        if (!journalDialog_) {
+            journalDialog_ = new QDialog(this);
+            journalDialog_->setObjectName("operationJournalDialog");
+            journalDialog_->setWindowTitle("Журнал последней операции");
+            journalDialog_->resize(700, 440);
+            auto *layout = new QVBoxLayout(journalDialog_);
+            journalView_ = new QPlainTextEdit(journalDialog_);
+            journalView_->setObjectName("operationJournalText");
+            journalView_->setReadOnly(true);
+            journalView_->setPlainText(journalText_);
+            layout->addWidget(journalView_);
+        }
+        journalDialog_->show();
+        journalDialog_->raise();
+        journalDialog_->activateWindow();
+    }
+    void begin(const QString &label, const QString &detail) {
+        operationName_ = label;
+        currentDetail_ = detail;
+        journalText_.clear();
+        if (journalView_)
+            journalView_->clear();
+        appendJournal(label + ": " + detail);
+        journalAction_->setEnabled(true);
+        progress_ = new QProgressDialog(label + "\n" + detail, "Отмена", 0, 100, this);
+        progress_->setWindowModality(Qt::NonModal);
         progress_->setMinimumDuration(0);
         progress_->setValue(0);
         connect(progress_, &QProgressDialog::canceled, backend_, &ArchiveBackend::cancel);
@@ -194,7 +241,7 @@ class MainWindow : public QMainWindow {
             return;
         previousState_ = state_;
         setState(State::Operating);
-        begin("Создание архива");
+        begin("Создание архива", target);
         backend_->create(target, sources);
     }
     void addFiles() { createArchive(QFileDialog::getOpenFileNames(this, "Добавить файлы")); }
@@ -212,6 +259,12 @@ class MainWindow : public QMainWindow {
     QLabel *path_ = nullptr;
     QTableWidget *table_ = nullptr;
     QProgressDialog *progress_ = nullptr;
+    QDialog *journalDialog_ = nullptr;
+    QPlainTextEdit *journalView_ = nullptr;
+    QAction *journalAction_ = nullptr;
+    QString journalText_;
+    QString operationName_;
+    QString currentDetail_;
     QAction *open_ = nullptr;
     QAction *add_ = nullptr;
     QAction *extract_ = nullptr;
