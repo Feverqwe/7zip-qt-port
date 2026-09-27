@@ -112,7 +112,7 @@ void ArchiveBackend::list(const QString &archive) {
     archive_ = QFileInfo(archive).absoluteFilePath();
     entries_.clear();
     listed_ = false;
-    start(Job::List, {"l", "-slt", "-ba", "--", archive_});
+    start(Job::List, {"l", "-slt", "--", archive_});
 }
 
 bool ArchiveBackend::safePath(const QString &path) {
@@ -133,7 +133,8 @@ bool ArchiveBackend::safePath(const QString &path) {
     return true;
 }
 
-bool ArchiveBackend::validateExtraction(const QString &destination, QString *error) const {
+bool ArchiveBackend::validateExtraction(const QString &destination, const QStringList &selected,
+                                        QString *error) const {
     QFileInfo target(destination);
     if (!target.exists() || !target.isDir() || target.isSymLink()) {
         *error = QStringLiteral("Папка назначения должна существовать и не быть ссылкой: %1")
@@ -155,6 +156,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, QString *err
     QSet<QString> names;
     QSet<QString> files;
     for (const ArchiveEntry &entry : entries_) {
+        if (!selected.isEmpty() && !selected.contains(entry.path))
+            continue;
         if (!safePath(entry.path) || entry.link) {
             *error =
                 QStringLiteral("Архив содержит небезопасный путь или ссылку: %1").arg(entry.path);
@@ -180,7 +183,7 @@ bool ArchiveBackend::validateExtraction(const QString &destination, QString *err
                 return false;
             }
         }
-        if (QFileInfo(candidate).exists()) {
+        if (QFileInfo(candidate).exists() && !entry.directory) {
             *error = QStringLiteral("В папке назначения уже существует: %1").arg(entry.path);
             return false;
         }
@@ -208,11 +211,6 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
         return;
     }
-    QString validationError;
-    if (!validateExtraction(destination, &validationError)) {
-        emit finished(false, validationError);
-        return;
-    }
     for (const QString &name : selected) {
         bool found = false;
         for (const ArchiveEntry &entry : entries_)
@@ -223,12 +221,29 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
             return;
         }
     }
+    QString validationError;
+    if (!validateExtraction(destination, selected, &validationError)) {
+        emit finished(false, validationError);
+        return;
+    }
     QStringList arguments = {"x",     "-y",
                              "-bsp1", "-bb1",
                              "-spd",  "-o" + QFileInfo(destination).absoluteFilePath(),
                              "--",    QFileInfo(archive).absoluteFilePath()};
     arguments += selected;
     start(Job::Extract, arguments);
+}
+
+void ArchiveBackend::test(const QString &archive) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    if (!listed_ || QFileInfo(archive).absoluteFilePath() != archive_) {
+        emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
+        return;
+    }
+    start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
 }
 
 void ArchiveBackend::create(const QString &archive, const QStringList &sources) {
@@ -417,8 +432,15 @@ QList<ArchiveEntry> ArchiveBackend::parseListing(const QString &output) {
         current = ArchiveEntry{};
         havePath = false;
     };
+    const bool hasHeader = output.contains(QStringLiteral("----------\n"));
+    bool inEntries = !hasHeader;
     for (const QString &line : output.split('\n')) {
         const QString trimmed = line.trimmed();
+        if (!inEntries) {
+            if (trimmed == "----------")
+                inEntries = true;
+            continue;
+        }
         if (trimmed.isEmpty()) {
             flush();
             continue;
@@ -499,11 +521,33 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (completed == Job::List) {
         entries_ = parseListing(output_);
         listed_ = true;
+        ArchiveInfo info;
+        const QString header = output_.section(QStringLiteral("----------\n"), 0, 0);
+        for (const QString &line : header.split('\n')) {
+            if (line.startsWith(QStringLiteral("Type = ")))
+                info.format = line.mid(7);
+            else if (line.startsWith(QStringLiteral("Physical Size = "))) {
+                bool valid = false;
+                const qint64 size = line.mid(16).toLongLong(&valid);
+                if (valid)
+                    info.physicalSize = size;
+            }
+        }
+        for (const ArchiveEntry &entry : entries_) {
+            if (entry.directory)
+                ++info.folders;
+            else {
+                ++info.files;
+                info.unpackedSize += entry.size;
+            }
+        }
+        emit infoReady(info);
         emit entriesReady(entries_);
     }
     emit progress(100, QString());
     emit finished(true, completed == Job::List      ? QStringLiteral("Архив открыт.")
                         : completed == Job::Extract ? QStringLiteral("Извлечение завершено.")
-                        : completed == Job::Create  ? QStringLiteral("Архив создан.")
-                                                    : QStringLiteral("Файлы добавлены."));
+                        : completed == Job::Test ? QStringLiteral("Ошибок при проверке не найдено.")
+                        : completed == Job::Create ? QStringLiteral("Архив создан.")
+                                                   : QStringLiteral("Файлы добавлены."));
 }

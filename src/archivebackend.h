@@ -13,6 +13,14 @@ struct ArchiveEntry {
     bool link = false;
 };
 
+struct ArchiveInfo {
+    QString format;
+    qint64 physicalSize = -1;
+    qint64 unpackedSize = 0;
+    int files = 0;
+    int folders = 0;
+};
+
 class ArchiveBackend : public QObject {
     Q_OBJECT
 
@@ -22,25 +30,28 @@ class ArchiveBackend : public QObject {
     virtual void list(const QString &archive);
     virtual void extract(const QString &archive, const QString &destination,
                          const QStringList &selected = {});
+    virtual void test(const QString &archive);
     virtual void create(const QString &archive, const QStringList &sources);
     virtual void add(const QString &archive, const QStringList &sources);
     virtual void cancel();
 
   signals:
     void entriesReady(const QList<ArchiveEntry> &entries);
+    void infoReady(const ArchiveInfo &info);
     void progress(int percent, const QString &detail);
     void outputReceived(const QString &text);
     void finished(bool success, const QString &message);
 
   private:
-    enum class Job { None, List, Extract, Create, Add };
+    enum class Job { None, List, Extract, Test, Create, Add };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
     static bool safePath(const QString &path);
-    bool validateExtraction(const QString &destination, QString *error) const;
+    bool validateExtraction(const QString &destination, const QStringList &selected,
+                            QString *error) const;
 
     QProcess process_;
     Job job_ = Job::None;

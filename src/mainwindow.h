@@ -6,6 +6,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
@@ -13,6 +14,7 @@
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
 #include <QMap>
@@ -20,7 +22,9 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QProgressDialog>
+#include <QPushButton>
 #include <QSizePolicy>
 #include <QStatusBar>
 #include <QStyle>
@@ -75,8 +79,12 @@ class MainWindow : public QMainWindow {
         journalAction_->setObjectName("operationJournalAction");
         journalAction_->setEnabled(false);
         toolbar->addSeparator();
-        for (const QString &title : {"Тест", "Копировать", "Переместить", "Удалить", "Информация"})
+        test_ = toolbar->addAction("Тест", this, [this] { testArchive(); });
+        test_->setObjectName("testArchiveAction");
+        for (const QString &title : {"Копировать", "Переместить", "Удалить"})
             toolbar->addAction(title)->setEnabled(false);
+        infoAction_ = toolbar->addAction("Информация", this, [this] { showInfo(); });
+        infoAction_->setObjectName("archiveInfoAction");
         for (const QString &title :
              {"Пароль", "Изменить архив", "Интеграция с файловым менеджером"})
             menu->addAction(title)->setEnabled(false);
@@ -137,6 +145,8 @@ class MainWindow : public QMainWindow {
                     showArchiveFolder({});
                     setState(State::Viewing);
                 });
+        connect(backend_, &ArchiveBackend::infoReady, this,
+                [this](const ArchiveInfo &info) { info_ = info; });
         connect(backend_, &ArchiveBackend::outputReceived, this,
                 [this](const QString &line) { appendJournal(line); });
         connect(backend_, &ArchiveBackend::progress, this,
@@ -194,11 +204,14 @@ class MainWindow : public QMainWindow {
             return;
         }
         archive_ = QFileInfo(path).absoluteFilePath();
+        if (infoDialog_)
+            infoDialog_->close();
         if (state_ == State::Filesystem)
             returnDirectory_ = directory_;
         else if (returnDirectory_.isEmpty())
             returnDirectory_ = QFileInfo(archive_).absolutePath();
         entries_.clear();
+        info_ = ArchiveInfo{};
         archiveFolder_.clear();
         table_->setRowCount(0);
         path_->setText(archive_);
@@ -234,6 +247,15 @@ class MainWindow : public QMainWindow {
         setState(State::Operating);
         begin("Извлечение", destination);
         backend_->extract(archive_, destination, names);
+    }
+
+    void testArchive() {
+        if (state_ != State::Viewing)
+            return;
+        previousState_ = state_;
+        setState(State::Operating);
+        begin("Проверка архива", archive_);
+        backend_->test(archive_);
     }
 
   private:
@@ -425,6 +447,8 @@ class MainWindow : public QMainWindow {
         create_->setEnabled(idle && state_ == State::Filesystem);
         add_->setEnabled(idle && state_ == State::Viewing);
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
+        test_->setEnabled(idle && state_ == State::Viewing);
+        infoAction_->setEnabled(idle && state_ == State::Viewing);
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
         back_->setEnabled(idle && (state_ == State::Viewing || !history_.isEmpty()));
@@ -471,6 +495,32 @@ class MainWindow : public QMainWindow {
         journalDialog_->raise();
         journalDialog_->activateWindow();
     }
+    void showInfo() {
+        if (state_ != State::Viewing)
+            return;
+        if (infoDialog_)
+            infoDialog_->close();
+        auto *dialog = new QDialog(this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        infoDialog_ = dialog;
+        dialog->setObjectName("archiveInfoDialog");
+        dialog->setWindowTitle("Информация об архиве");
+        auto *layout = new QVBoxLayout(dialog);
+        auto *label = new QLabel(dialog);
+        label->setObjectName("archiveInfoText");
+        label->setText(
+            QStringLiteral(
+                "Формат: %1\nРазмер архива: %2\nФайлов: %3\nПапок: %4\nРазмер файлов: %5 байт")
+                .arg(info_.format.isEmpty() ? QStringLiteral("не указан 7zz") : info_.format)
+                .arg(info_.physicalSize < 0
+                         ? QStringLiteral("не указан 7zz")
+                         : QString::number(info_.physicalSize) + QStringLiteral(" байт"))
+                .arg(info_.files)
+                .arg(info_.folders)
+                .arg(info_.unpackedSize));
+        layout->addWidget(label);
+        dialog->show();
+    }
     void begin(const QString &label, const QString &detail) {
         operationName_ = label;
         currentDetail_ = detail;
@@ -496,8 +546,31 @@ class MainWindow : public QMainWindow {
             return;
         if (onlySelected && table_->selectionModel()->selectedRows().isEmpty())
             return;
-        const QString destination = QFileDialog::getExistingDirectory(this, "Папка для извлечения");
-        extractTo(destination, onlySelected);
+        QDialog dialog(this);
+        dialog.setWindowTitle(onlySelected ? "Извлечь выбранное" : "Извлечь архив");
+        auto *layout = new QVBoxLayout(&dialog);
+        layout->addWidget(new QLabel("Папка назначения:", &dialog));
+        auto *destination = new QLineEdit(returnDirectory_, &dialog);
+        destination->setObjectName("extractDestination");
+        layout->addWidget(destination);
+        auto *browse = new QPushButton("Обзор…", &dialog);
+        layout->addWidget(browse);
+        connect(browse, &QPushButton::clicked, &dialog, [this, destination] {
+            const QString path = QFileDialog::getExistingDirectory(this, "Папка для извлечения",
+                                                                   destination->text());
+            if (!path.isEmpty())
+                destination->setText(path);
+        });
+        layout->addWidget(new QLabel("Пути внутри архива сохраняются. Существующие файлы не "
+                                     "перезаписываются.",
+                                     &dialog));
+        auto *buttons =
+            new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+        connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        layout->addWidget(buttons);
+        if (dialog.exec() == QDialog::Accepted)
+            extractTo(destination->text(), onlySelected);
     }
     void createDialog() {
         if (state_ != State::Filesystem)
@@ -542,6 +615,7 @@ class MainWindow : public QMainWindow {
     bool creating_ = false;
     bool adding_ = false;
     QList<ArchiveEntry> entries_;
+    ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
     QString directory_;
     QString returnDirectory_;
@@ -549,6 +623,7 @@ class MainWindow : public QMainWindow {
     QTableWidget *table_ = nullptr;
     QProgressDialog *progress_ = nullptr;
     QDialog *journalDialog_ = nullptr;
+    QPointer<QDialog> infoDialog_;
     QPlainTextEdit *journalView_ = nullptr;
     QAction *journalAction_ = nullptr;
     QString journalText_;
@@ -558,6 +633,8 @@ class MainWindow : public QMainWindow {
     QAction *create_ = nullptr;
     QAction *add_ = nullptr;
     QAction *extract_ = nullptr;
+    QAction *test_ = nullptr;
+    QAction *infoAction_ = nullptr;
     QAction *selected_ = nullptr;
     QAction *back_ = nullptr;
     QAction *up_ = nullptr;

@@ -85,6 +85,90 @@ class ArchiveBackendTests : public QObject {
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("hello"));
     }
+    void testAndArchiveInfo_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+    void testAndArchiveInfo() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.path() + QStringLiteral("/δ space.txt");
+        const QString archive = temp.path() + "/archive." + format;
+        writeFile(source, "verified");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        QSignalSpy info(&backend, &ArchiveBackend::infoReady);
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(info.size(), 1);
+        const ArchiveInfo details = qvariant_cast<ArchiveInfo>(info.takeFirst().at(0));
+        QCOMPARE(details.format.toLower(), format);
+        QCOMPARE(details.physicalSize, QFileInfo(archive).size());
+        QCOMPARE(details.files, 1);
+        QCOMPARE(details.unpackedSize, qint64(8));
+        QSignalSpy result(&backend, &ArchiveBackend::finished);
+        backend.test(archive);
+        QVERIFY(result.wait(30000));
+        QVERIFY(result.takeFirst().at(0).toBool());
+        QCOMPARE(QDir(temp.path()).entryList(QDir::Files | QDir::NoDotAndDotDot).size(), 2);
+        QFile corrupt(archive);
+        QVERIFY(corrupt.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        corrupt.write("broken");
+        corrupt.close();
+        backend.test(archive);
+        QVERIFY(result.wait(30000));
+        QVERIFY(!result.takeFirst().at(0).toBool());
+    }
+    void selectedExtractionIgnoresUnselectedCollision() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString archive = temp.path() + "/fixture.zip";
+        const QString destination = temp.path() + "/out";
+        QVERIFY(QDir().mkpath(destination));
+        writeFile(destination + "/occupied.txt", "keep");
+        const QString source = temp.path() + "/source";
+        QVERIFY(QDir().mkpath(source));
+        writeFile(source + "/occupied.txt", "old");
+        writeFile(source + "/chosen.txt", "yes");
+        ArchiveBackend backend;
+        backend.create(archive, {source + "/occupied.txt", source + "/chosen.txt"});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QSignalSpy result(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, destination, {"chosen.txt"});
+        QVERIFY(result.wait(30000));
+        QVERIFY(result.takeFirst().at(0).toBool());
+        QFile existing(destination + "/occupied.txt");
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("keep"));
+        QFile chosen(destination + "/chosen.txt");
+        QVERIFY(chosen.open(QIODevice::ReadOnly));
+        QCOMPARE(chosen.readAll(), QByteArray("yes"));
+    }
+    void testCancellation() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", "Path = δ space.txt\nSize = 1\n\n");
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        backend.list(temp.path() + "/archive.7z");
+        await(backend, true);
+        qunsetenv("SEVENZIP_TEST_LISTING");
+        qputenv("SEVENZIP_TEST_HELPER", "cancel");
+        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
+        QSignalSpy result(&backend, &ArchiveBackend::finished);
+        backend.test(temp.path() + "/archive.7z");
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        backend.cancel();
+        QVERIFY(result.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!result.takeFirst().at(0).toBool());
+        QVERIFY(!backend.busy());
+    }
     void invalidArchive() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

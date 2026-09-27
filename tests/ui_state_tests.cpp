@@ -3,8 +3,10 @@
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QImage>
+#include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
@@ -30,6 +32,10 @@ class ControlledBackend : public ArchiveBackend {
     void extract(const QString &, const QString &, const QStringList &selected) override {
         ++extractCalls;
         lastSelected = selected;
+        busy_ = true;
+    }
+    void test(const QString &) override {
+        ++testCalls;
         busy_ = true;
     }
     void create(const QString &target, const QStringList &sources) override {
@@ -72,6 +78,7 @@ class ControlledBackend : public ArchiveBackend {
     }
     int listCalls = 0;
     int extractCalls = 0;
+    int testCalls = 0;
     int createCalls = 0;
     int addCalls = 0;
     int cancelCalls = 0;
@@ -499,6 +506,8 @@ class MainWindowStateTests : public QObject {
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "archiveInfoAction")->isEnabled());
 
         window.openArchive("first.7z");
         QCOMPARE(backend.listCalls, 1);
@@ -512,6 +521,8 @@ class MainWindowStateTests : public QObject {
         backend.completeList({ArchiveEntry{QStringLiteral("имя с пробелом.txt"), 4, 4}});
         QCOMPARE(table(window)->rowCount(), 1);
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(action(window, "archiveInfoAction")->isEnabled());
         QVERIFY(action(window, "selectAllAction")->isEnabled());
         QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
         table(window)->selectRow(0);
@@ -533,7 +544,79 @@ class MainWindowStateTests : public QObject {
         QVERIFY(!action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(action(window, "archiveInfoAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Архив открыт."));
+    }
+
+    void testAndInfoStates() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("first.7z");
+        emit backend.infoReady(ArchiveInfo{QStringLiteral("7z"), 120, 3, 1, 0});
+        backend.completeList({ArchiveEntry{QStringLiteral("δ space.txt"), 3, 7}});
+        action(window, "archiveInfoAction")->trigger();
+        auto *info = window.findChild<QLabel *>("archiveInfoText");
+        QVERIFY(info);
+        QVERIFY(info->text().contains(QStringLiteral("Формат: 7z")));
+        QVERIFY(info->text().contains(QStringLiteral("Размер архива: 120 байт")));
+        action(window, "testArchiveAction")->trigger();
+        QCOMPARE(backend.testCalls, 1);
+        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "archiveInfoAction")->isEnabled());
+        window.testArchive();
+        QCOMPARE(backend.testCalls, 1);
+        backend.cancel();
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        window.openArchive("empty.zip");
+        QVERIFY(!info->isVisible());
+        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+        backend.completeList({});
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        action(window, "archiveInfoAction")->trigger();
+        QLabel *emptyInfo = nullptr;
+        for (QDialog *dialog : window.findChildren<QDialog *>("archiveInfoDialog")) {
+            if (dialog->isVisible())
+                emptyInfo = dialog->findChild<QLabel *>("archiveInfoText");
+        }
+        QVERIFY(emptyInfo);
+        QVERIFY(emptyInfo->text().contains(QStringLiteral("Формат: не указан 7zz")));
+        action(window, "testArchiveAction")->trigger();
+        QCOMPARE(backend.testCalls, 2);
+        backend.fail(QStringLiteral("Операция отменена."));
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+    }
+
+    void extractionDestinationAndCancellation() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("archive.zip");
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/δ space.txt"), 3, 3}});
+        QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            auto *destination = dialog->findChild<QLineEdit *>("extractDestination");
+            QVERIFY(destination);
+            destination->setText("/temporary/selected output");
+            dialog->reject();
+        });
+        action(window, "extractArchiveAction")->trigger();
+        QCOMPARE(backend.extractCalls, 0);
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            auto *destination = dialog->findChild<QLineEdit *>("extractDestination");
+            QVERIFY(destination);
+            destination->setText("/temporary/selected output");
+            dialog->accept();
+        });
+        action(window, "extractArchiveAction")->trigger();
+        QCOMPARE(backend.extractCalls, 1);
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        backend.cancel();
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
     }
 
     void launchFailure() {
@@ -553,6 +636,8 @@ class MainWindowStateTests : public QObject {
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "archiveInfoAction")->isEnabled());
         QVERIFY(!backend.busy());
     }
 
