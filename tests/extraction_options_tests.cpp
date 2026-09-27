@@ -95,6 +95,58 @@ class ExtractionOptionsTests : public QObject {
                  QByteArray("archive version"));
     }
 
+    void renameConflicts_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+
+    void renameConflicts() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("источник");
+        QVERIFY(QDir().mkpath(source));
+        writeFile(source + "/δ file.txt", "archive version");
+        const QString archive = temp.filePath("fixture." + format);
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+
+        const QString relative = QStringLiteral("источник/δ file.txt");
+        for (const auto mode : {ExtractionOptions::OverwriteMode::RenameExtracted,
+                                ExtractionOptions::OverwriteMode::RenameExisting}) {
+            const QString destination = temp.filePath(
+                mode == ExtractionOptions::OverwriteMode::RenameExtracted ? "renamed extracted"
+                                                                          : "renamed existing");
+            QVERIFY(QDir().mkpath(destination + "/источник"));
+            writeFile(destination + "/" + relative, "existing version");
+            ExtractionOptions options;
+            options.overwriteMode = mode;
+            backend.extract(archive, destination, {}, {}, options);
+            await(backend, true);
+
+            const QByteArray expectedOriginal =
+                mode == ExtractionOptions::OverwriteMode::RenameExtracted
+                    ? QByteArray("existing version")
+                    : QByteArray("archive version");
+            QCOMPARE(readFile(destination + "/" + relative), expectedOriginal);
+            const QStringList names =
+                QDir(destination + "/источник").entryList(QDir::Files | QDir::NoDotAndDotDot);
+            QCOMPARE(names.size(), 2);
+            for (const QString &name : names) {
+                if (name == QStringLiteral("δ file.txt"))
+                    continue;
+                QCOMPARE(readFile(destination + "/источник/" + name),
+                         mode == ExtractionOptions::OverwriteMode::RenameExtracted
+                             ? QByteArray("archive version")
+                             : QByteArray("existing version"));
+            }
+        }
+    }
+
     void flatNameCollision() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

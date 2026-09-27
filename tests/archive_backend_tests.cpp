@@ -314,12 +314,12 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         backend.list(archive);
         await(backend, true);
 
-        const QString missing = temp.path() + "/missing";
-        QSignalSpy missingSpy(&backend, &ArchiveBackend::finished);
-        backend.extract(archive, missing);
-        QCOMPARE(missingSpy.size(), 1);
-        QVERIFY(!missingSpy.takeFirst().at(0).toBool());
-        QVERIFY(!QFileInfo::exists(missing));
+        const QString created = temp.path() + "/новая папка/ещё одна";
+        backend.extract(archive, created);
+        await(backend, true);
+        QFile createdFile(created + "/имя с пробелом.txt");
+        QVERIFY(createdFile.open(QIODevice::ReadOnly));
+        QCOMPARE(createdFile.readAll(), QByteArray("original"));
 
         const QString occupied = temp.path() + "/occupied";
         QVERIFY(QDir().mkpath(occupied));
@@ -335,9 +335,10 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         const QString linked = temp.path() + "/linked";
         if (QFile::link(occupied, linked)) {
             QSignalSpy linkedSpy(&backend, &ArchiveBackend::finished);
-            backend.extract(archive, linked);
+            backend.extract(archive, linked + "/новая папка");
             QCOMPARE(linkedSpy.size(), 1);
             QVERIFY(!linkedSpy.takeFirst().at(0).toBool());
+            QVERIFY(!QFileInfo::exists(occupied + "/новая папка"));
         }
     }
     void cancellation() {

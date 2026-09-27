@@ -28,18 +28,33 @@ bool ArchiveBackend::safePath(const QString &path) {
 
 bool ArchiveBackend::validateExtraction(const QString &destination, const QStringList &selected,
                                         const ExtractionOptions &options, QString *error) const {
-    QFileInfo target(destination);
-    if (!target.exists() || !target.isDir() || target.isSymLink()) {
-        *error = QStringLiteral("Папка назначения должна существовать и не быть ссылкой: %1")
-                     .arg(destination);
+    if (destination.trimmed().isEmpty()) {
+        *error = QStringLiteral("Укажите папку назначения.");
         return false;
     }
-    QString ancestor = target.canonicalFilePath();
+    QFileInfo target(destination);
+    QString ancestor = QDir::cleanPath(target.absoluteFilePath());
     while (true) {
-        if (QFileInfo(ancestor).isSymLink()) {
+        const QFileInfo part(ancestor);
+        // macOS exposes temporary directories through /var or /tmp, which are system aliases
+        // for /private/var and /private/tmp. Archive previews use QTemporaryDir beneath them.
+#ifdef Q_OS_MACOS
+        const bool systemAlias = ancestor == QStringLiteral("/var") ||
+                                 ancestor == QStringLiteral("/tmp") ||
+                                 ancestor == QStringLiteral("/etc");
+#else
+        const bool systemAlias = false;
+#endif
+        if (part.isSymLink() && !systemAlias) {
             *error = QStringLiteral("Путь назначения содержит ссылку: %1").arg(ancestor);
             return false;
         }
+        if (part.exists() && !part.isDir()) {
+            *error = QStringLiteral("Путь назначения занят файлом: %1").arg(ancestor);
+            return false;
+        }
+        if (ancestor == QDir::rootPath())
+            break;
         const QString parent = QFileInfo(ancestor).absolutePath();
         if (parent == ancestor)
             break;

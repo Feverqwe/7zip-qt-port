@@ -55,6 +55,8 @@ class ExtractDialog : public QDialog {
         overwriteMode_->addItem("Не перезаписывать существующие файлы");
         overwriteMode_->addItem("Пропускать существующие файлы");
         overwriteMode_->addItem("Перезаписывать существующие файлы");
+        overwriteMode_->addItem("Переименовывать извлекаемые файлы");
+        overwriteMode_->addItem("Переименовывать существующие файлы");
         modeColumn->addWidget(overwriteMode_);
         options->addLayout(modeColumn, 1);
 
@@ -69,8 +71,9 @@ class ExtractDialog : public QDialog {
         passwordLayout->addWidget(showPassword);
         options->addWidget(passwordGroup, 1);
         layout->addLayout(options);
-        auto *hint = new QLabel("Папка назначения должна существовать. При выборе «Без путей» "
-                                "файлы с одинаковыми именами из разных папок не извлекаются.",
+        auto *hint = new QLabel("Папка назначения будет создана при необходимости. При выборе "
+                                "«Без путей» файлы с одинаковыми именами из разных папок не "
+                                "извлекаются.",
                                 this);
         hint->setWordWrap(true);
         layout->addWidget(hint);
@@ -100,6 +103,10 @@ class ExtractDialog : public QDialog {
             result.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
         else if (overwriteMode_->currentIndex() == 2)
             result.overwriteMode = ExtractionOptions::OverwriteMode::OverwriteExisting;
+        else if (overwriteMode_->currentIndex() == 3)
+            result.overwriteMode = ExtractionOptions::OverwriteMode::RenameExtracted;
+        else if (overwriteMode_->currentIndex() == 4)
+            result.overwriteMode = ExtractionOptions::OverwriteMode::RenameExisting;
         return result;
     }
 

@@ -31,7 +31,13 @@ struct CompressionOptions {
 
 struct ExtractionOptions {
     enum class PathMode { FullPaths, NoPaths };
-    enum class OverwriteMode { RejectExisting, SkipExisting, OverwriteExisting };
+    enum class OverwriteMode {
+        RejectExisting,
+        SkipExisting,
+        OverwriteExisting,
+        RenameExtracted,
+        RenameExisting
+    };
     PathMode pathMode = PathMode::FullPaths;
     OverwriteMode overwriteMode = OverwriteMode::RejectExisting;
 };

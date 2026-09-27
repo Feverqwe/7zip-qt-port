@@ -102,12 +102,16 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(pathMode->isEnabled());
         QVERIFY(overwriteMode->isEnabled());
         QCOMPARE(pathMode->count(), 2);
-        QCOMPARE(overwriteMode->count(), 3);
+        QCOMPARE(overwriteMode->count(), 5);
         pathMode->setCurrentIndex(1);
         overwriteMode->setCurrentIndex(2);
         QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::NoPaths);
         QCOMPARE(dialog.options().overwriteMode,
                  ExtractionOptions::OverwriteMode::OverwriteExisting);
+        overwriteMode->setCurrentIndex(3);
+        QCOMPARE(dialog.options().overwriteMode, ExtractionOptions::OverwriteMode::RenameExtracted);
+        overwriteMode->setCurrentIndex(4);
+        QCOMPARE(dialog.options().overwriteMode, ExtractionOptions::OverwriteMode::RenameExisting);
         auto *password = dialog.findChild<QLineEdit *>("extractPassword");
         auto *showPassword = dialog.findChild<QCheckBox *>("extractShowPassword");
         QVERIFY(password && showPassword);

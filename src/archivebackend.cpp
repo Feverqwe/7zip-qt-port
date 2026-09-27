@@ -167,18 +167,31 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         emit finished(false, validationError);
         return;
     }
+    const QString outputDirectory = QFileInfo(destination).absoluteFilePath();
+    if (!QDir().mkpath(outputDirectory) ||
+        !validateExtraction(destination, selected, options, &validationError)) {
+        emit finished(
+            false, validationError.isEmpty()
+                       ? QStringLiteral("Не удалось создать папку назначения: %1").arg(destination)
+                       : validationError);
+        return;
+    }
     QStringList arguments = {options.pathMode == ExtractionOptions::PathMode::NoPaths ? "e" : "x",
                              "-y",
                              "-bsp1",
                              "-bb1",
                              "-spd",
-                             "-o" + QFileInfo(destination).absoluteFilePath(),
+                             "-o" + outputDirectory,
                              "--",
                              QFileInfo(archive).absoluteFilePath()};
     if (options.overwriteMode == ExtractionOptions::OverwriteMode::SkipExisting)
         arguments.insert(2, "-aos");
     else if (options.overwriteMode == ExtractionOptions::OverwriteMode::OverwriteExisting)
         arguments.insert(2, "-aoa");
+    else if (options.overwriteMode == ExtractionOptions::OverwriteMode::RenameExtracted)
+        arguments.insert(2, "-aou");
+    else if (options.overwriteMode == ExtractionOptions::OverwriteMode::RenameExisting)
+        arguments.insert(2, "-aot");
     arguments += selected;
     pendingPassword_ = password;
     if (encrypted_) {
