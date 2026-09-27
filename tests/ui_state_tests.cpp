@@ -24,21 +24,25 @@ class ControlledBackend : public ArchiveBackend {
   public:
     ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
     bool busy() const override { return busy_; }
-    void list(const QString &archive) override {
+    void list(const QString &archive, const QString & = {}) override {
         ++listCalls;
         lastArchive = archive;
         busy_ = true;
     }
-    void extract(const QString &, const QString &, const QStringList &selected) override {
+    void extract(const QString &, const QString &, const QStringList &selected,
+                 const QString &password = {}) override {
         ++extractCalls;
         lastSelected = selected;
+        lastExtractPassword = password;
         busy_ = true;
     }
-    void test(const QString &) override {
+    void test(const QString &, const QString &password = {}) override {
         ++testCalls;
+        lastTestPassword = password;
         busy_ = true;
     }
-    void create(const QString &target, const QStringList &sources) override {
+    void create(const QString &target, const QStringList &sources, const QString & = {},
+                bool = false) override {
         ++createCalls;
         lastCreateTarget = target;
         lastCreateSources = sources;
@@ -84,6 +88,8 @@ class ControlledBackend : public ArchiveBackend {
     int cancelCalls = 0;
     QString lastArchive;
     QStringList lastSelected;
+    QString lastExtractPassword;
+    QString lastTestPassword;
     QString lastCreateTarget;
     QStringList lastCreateSources;
     QString lastAddTarget;
@@ -749,6 +755,82 @@ class MainWindowStateTests : public QObject {
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(action(window, "selectAllAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
+    }
+
+    void passwordPromptCancellationAndReopen() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("protected.7z");
+        QTimer::singleShot(0, &window, [] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            dialog->reject();
+        });
+        emit backend.passwordRequired();
+        QCOMPARE(backend.cancelCalls, 1);
+        QVERIFY(action(window, "openArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        window.openArchive("empty.zip");
+        QCOMPARE(backend.listCalls, 2);
+        backend.completeList({});
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+    }
+
+    void passwordReuseAndResetOnReopen() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("protected.7z");
+        const QString password = QStringLiteral("disposable-δ-password");
+        QTimer::singleShot(0, &window, [&password] {
+            auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            dialog->setTextValue(password);
+            dialog->accept();
+        });
+        emit backend.passwordRequired();
+        emit backend.infoReady(ArchiveInfo{QStringLiteral("7z"), 120, 3, 1, 0, true});
+        backend.completeList({ArchiveEntry{QStringLiteral("δ file.txt"), 3, 3}});
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        window.testArchive();
+        QCOMPARE(backend.lastTestPassword, password);
+        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
+        backend.fail(QStringLiteral("Операция отменена."));
+        QVERIFY(action(window, "openArchiveAction")->isEnabled());
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        window.openArchive("empty.zip");
+        backend.completeList({});
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        window.testArchive();
+        QVERIFY(backend.lastTestPassword.isEmpty());
+    }
+
+    void createDialogEncryptionChoices() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("δ file.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        CreateArchiveDialog dialog(temp.path(), {source});
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        auto *encryption = dialog.findChild<QComboBox *>("archiveEncryption");
+        auto *password = dialog.findChild<QLineEdit *>("archivePassword");
+        QVERIFY(format);
+        QVERIFY(encryption);
+        QVERIFY(password);
+        QCOMPARE(password->echoMode(), QLineEdit::Password);
+        QCOMPARE(encryption->count(), 3);
+        encryption->setCurrentIndex(2);
+        password->setText(QStringLiteral("disposable-test-password"));
+        QCOMPARE(dialog.password(), QStringLiteral("disposable-test-password"));
+        QVERIFY(dialog.encryptHeaders());
+        format->setCurrentText("zip");
+        QCOMPARE(encryption->count(), 2);
+        encryption->setCurrentIndex(1);
+        QCOMPARE(dialog.password(), QStringLiteral("disposable-test-password"));
+        QVERIFY(!dialog.encryptHeaders());
     }
 
     void progressAndLastJournal() {

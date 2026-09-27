@@ -33,6 +33,8 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             if (job_ == Job::Create || job_ == Job::Add)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
+            pendingPassword_.clear();
+            extractPassword_.clear();
             emit finished(
                 false,
                 QStringLiteral(
@@ -52,15 +54,31 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
     output_.clear();
     pendingOutput_.clear();
     cancelled_ = false;
+    passwordPrompted_ = false;
     process_.setWorkingDirectory(workingDirectory);
-    process_.setArguments(arguments);
+    QStringList processArguments = arguments;
+    processArguments.insert(1, "-sccUTF-8");
+    process_.setArguments(processArguments);
     process_.start();
+    if (!pendingPassword_.isEmpty())
+        providePassword(pendingPassword_);
+}
+
+void ArchiveBackend::providePassword(const QString &password) {
+    if (!busy() || password.isEmpty())
+        return;
+    pendingPassword_ = password;
+    if (job_ == Job::ExtractCheck)
+        extractPassword_ = password;
+    process_.write(password.toUtf8() + '\n');
 }
 
 void ArchiveBackend::consumeLine(const QByteArray &line) {
-    QString text = QString::fromLocal8Bit(line);
+    QString text = QString::fromUtf8(line);
     text.remove(QLatin1Char('\b'));
     text = text.trimmed();
+    if (!pendingPassword_.isEmpty())
+        text.replace(pendingPassword_, QStringLiteral("[скрыто]"));
     if (text.isEmpty())
         return;
     output_ += text + '\n';
@@ -85,6 +103,11 @@ void ArchiveBackend::consumeLine(const QByteArray &line) {
 
 void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
     pendingOutput_ += chunk;
+    if (!passwordPrompted_ && pendingPassword_.isEmpty() &&
+        pendingOutput_.contains("Enter password:")) {
+        passwordPrompted_ = true;
+        emit passwordRequired();
+    }
     qsizetype start = 0;
     while (true) {
         const qsizetype cr = pendingOutput_.indexOf('\r', start);
@@ -104,7 +127,7 @@ void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
     }
 }
 
-void ArchiveBackend::list(const QString &archive) {
+void ArchiveBackend::list(const QString &archive, const QString &password) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -112,6 +135,8 @@ void ArchiveBackend::list(const QString &archive) {
     archive_ = QFileInfo(archive).absoluteFilePath();
     entries_.clear();
     listed_ = false;
+    encrypted_ = false;
+    pendingPassword_ = password;
     start(Job::List, {"l", "-slt", "--", archive_});
 }
 
@@ -202,7 +227,7 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
 }
 
 void ArchiveBackend::extract(const QString &archive, const QString &destination,
-                             const QStringList &selected) {
+                             const QStringList &selected, const QString &password) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -231,10 +256,16 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                              "-spd",  "-o" + QFileInfo(destination).absoluteFilePath(),
                              "--",    QFileInfo(archive).absoluteFilePath()};
     arguments += selected;
-    start(Job::Extract, arguments);
+    pendingPassword_ = password;
+    if (encrypted_) {
+        extractArguments_ = arguments;
+        extractPassword_ = password;
+        start(Job::ExtractCheck, {"t", "-bsp1", "-bb1", "--", archive_});
+    } else
+        start(Job::Extract, arguments);
 }
 
-void ArchiveBackend::test(const QString &archive) {
+void ArchiveBackend::test(const QString &archive, const QString &password) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -243,10 +274,12 @@ void ArchiveBackend::test(const QString &archive) {
         emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
         return;
     }
+    pendingPassword_ = password;
     start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
 }
 
-void ArchiveBackend::create(const QString &archive, const QStringList &sources) {
+void ArchiveBackend::create(const QString &archive, const QStringList &sources,
+                            const QString &password, bool encryptHeaders) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -255,6 +288,15 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
     if ((suffix != "7z" && suffix != "zip") || sources.isEmpty()) {
         emit finished(false, QStringLiteral("Выберите файлы или папку и имя архива .7z или .zip."));
         return;
+    }
+    if (suffix == "zip") {
+        for (const QChar character : password) {
+            if (character.unicode() > 127) {
+                emit finished(false, QStringLiteral("Для ZIP AES используйте пароль из ASCII: "
+                                                    "эта версия 7zz не принимает Unicode пароль."));
+                return;
+            }
+        }
     }
     const QFileInfo target(archive);
     if (!QFileInfo(target.absolutePath()).isDir() || target.exists() || target.isSymLink()) {
@@ -282,6 +324,11 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
         root = parent;
     }
     QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--"};
+    if (!password.isEmpty()) {
+        arguments.insert(5, "-p");
+        arguments.insert(6, suffix == "7z" ? (encryptHeaders ? "-mhe=on" : "-mhe=off")
+                                           : "-mem=AES256");
+    }
     for (const QString &source : sources) {
         if (!QFileInfo::exists(source)) {
             emit finished(false, QStringLiteral("Файл или папка не найдены: %1").arg(source));
@@ -310,13 +357,18 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
     createTarget_ = target.absoluteFilePath();
     createTemporary_ = target.absolutePath() + "/.sevenzip-" +
                        QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
-    arguments.insert(6, createTemporary_);
+    arguments.insert(arguments.indexOf("--") + 1, createTemporary_);
+    pendingPassword_ = password;
     start(Job::Create, arguments, root);
 }
 
 void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    if (encrypted_) {
+        emit finished(false, QStringLiteral("Добавление в защищённый архив пока недоступно."));
         return;
     }
     const QFileInfo target(archive);
@@ -419,6 +471,7 @@ void ArchiveBackend::cancel() {
     if (!busy())
         return;
     cancelled_ = true;
+    pendingPassword_.clear();
     process_.kill();
 }
 
@@ -474,20 +527,34 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (job_ == Job::None)
         return;
     consumeOutput(process_.readAll(), true);
+    pendingPassword_.clear();
     const Job completed = job_;
     job_ = Job::None;
     if (cancelled_) {
+        extractPassword_.clear();
         if (completed == Job::Create || completed == Job::Add)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
+        extractPassword_.clear();
         if (completed == Job::Create || completed == Job::Add)
             QFile::remove(createTemporary_);
+        const bool wrongPassword =
+            output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
         const QString detail = output_.trimmed().right(600);
-        emit finished(false,
-                      QStringLiteral("7zz завершился с кодом %1. %2").arg(exitCode).arg(detail));
+        emit finished(
+            false, wrongPassword
+                       ? QStringLiteral("Неверный пароль или повреждённый защищённый архив.")
+                       : QStringLiteral("7zz завершился с кодом %1. %2").arg(exitCode).arg(detail));
+        return;
+    }
+    if (completed == Job::ExtractCheck) {
+        pendingPassword_ = extractPassword_;
+        extractPassword_.clear();
+        start(Job::Extract, extractArguments_);
+        extractArguments_.clear();
         return;
     }
     if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
@@ -541,6 +608,9 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                 info.unpackedSize += entry.size;
             }
         }
+        info.encrypted = output_.contains(QStringLiteral("Encrypted = +")) ||
+                         header.contains(QStringLiteral("7zAES"));
+        encrypted_ = info.encrypted;
         emit infoReady(info);
         emit entriesReady(entries_);
     }

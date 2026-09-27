@@ -58,6 +58,27 @@ class CreateArchiveDialog : public QDialog {
         format_->setObjectName("archiveFormat");
         format_->addItems({"7z", "zip"});
         form->addRow("Формат:", format_);
+        if (existingTarget_.isEmpty()) {
+            encryption_ = new QComboBox(this);
+            encryption_->setObjectName("archiveEncryption");
+            form->addRow("Шифрование:", encryption_);
+            password_ = new QLineEdit(this);
+            password_->setObjectName("archivePassword");
+            password_->setEchoMode(QLineEdit::Password);
+            form->addRow("Пароль:", password_);
+            const auto updateEncryption = [this] {
+                encryption_->clear();
+                encryption_->addItem("Без шифрования");
+                encryption_->addItem("AES-256");
+                if (format_->currentText() == "7z")
+                    encryption_->addItem("AES-256 и шифрование имён файлов");
+            };
+            connect(format_, &QComboBox::currentTextChanged, this, updateEncryption);
+            connect(encryption_, &QComboBox::currentIndexChanged, this,
+                    [this] { password_->setEnabled(encryption_->currentIndex() != 0); });
+            updateEncryption();
+            password_->setEnabled(false);
+        }
         auto *destinationRow = new QHBoxLayout;
         destination_ = new QLineEdit(currentDirectory_, this);
         destination_->setObjectName("archiveDestination");
@@ -127,6 +148,10 @@ class CreateArchiveDialog : public QDialog {
         connect(format_, &QComboBox::currentTextChanged, this, updatePreview);
         connect(buttons_, &QDialogButtonBox::rejected, this, &QDialog::reject);
         connect(buttons_, &QDialogButtonBox::accepted, this, [this] {
+            if (encryption_ && encryption_->currentIndex() != 0 && password_->text().isEmpty()) {
+                QMessageBox::warning(this, "Создать архив", "Введите пароль для шифрования.");
+                return;
+            }
             const QString base = name_->text().trimmed();
             const QFileInfo destination(destination_->text());
             if (selected_.isEmpty() ||
@@ -161,6 +186,10 @@ class CreateArchiveDialog : public QDialog {
 
     QString target() const { return target_; }
     QStringList sources() const { return selected_; }
+    QString password() const {
+        return encryption_ && encryption_->currentIndex() != 0 ? password_->text() : QString();
+    }
+    bool encryptHeaders() const { return encryption_ && encryption_->currentIndex() == 2; }
 
   private:
     void addSource(const QString &path) {
@@ -200,6 +229,8 @@ class CreateArchiveDialog : public QDialog {
     QLineEdit *destination_ = nullptr;
     QLabel *preview_ = nullptr;
     QComboBox *format_ = nullptr;
+    QComboBox *encryption_ = nullptr;
+    QLineEdit *password_ = nullptr;
     QListWidget *available_ = nullptr;
     QListWidget *sources_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;

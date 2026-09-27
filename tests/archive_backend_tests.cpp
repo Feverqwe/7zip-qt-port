@@ -85,6 +85,91 @@ class ArchiveBackendTests : public QObject {
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("hello"));
     }
+    void encryptedRoundTrip_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z-hidden-names") << QStringLiteral("7z");
+        QTest::newRow("zip-aes256") << QStringLiteral("zip");
+    }
+    void encryptedRoundTrip() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString fixturePassword = format == "7z" ? QStringLiteral("test-only-δ-пароль")
+                                                       : QStringLiteral("test-only-password");
+        const QString source = temp.filePath(QStringLiteral("δ file with spaces.txt"));
+        const QString archive = temp.filePath(QStringLiteral("encrypted.") + format);
+        const QString destination = temp.filePath(QStringLiteral("extracted files"));
+        writeFile(source, "protected content");
+        QVERIFY(QDir().mkpath(destination));
+        ArchiveBackend backend;
+        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
+        if (format == "zip") {
+            QSignalSpy rejected(&backend, &ArchiveBackend::finished);
+            backend.create(archive, {source}, QStringLiteral("test-only-δ-пароль"));
+            QCOMPARE(rejected.size(), 1);
+            QVERIFY(!rejected.takeFirst().at(0).toBool());
+            QVERIFY(!QFileInfo::exists(archive));
+        }
+        backend.create(archive, {source}, fixturePassword, format == "7z");
+        await(backend, true);
+        QVERIFY(QFileInfo::exists(archive));
+        QSignalSpy info(&backend, &ArchiveBackend::infoReady);
+        if (format == "7z") {
+            QSignalSpy wrong(&backend, &ArchiveBackend::finished);
+            backend.list(archive, QStringLiteral("incorrect-test-password"));
+            QVERIFY(wrong.wait(30000));
+            QVERIFY(!wrong.takeFirst().at(0).toBool());
+            QVERIFY(info.isEmpty());
+        }
+        QSignalSpy prompt(&backend, &ArchiveBackend::passwordRequired);
+        connect(&backend, &ArchiveBackend::passwordRequired, &backend,
+                [&backend, &fixturePassword] { backend.providePassword(fixturePassword); });
+        backend.list(archive);
+        await(backend, true);
+        if (format == "7z")
+            QCOMPARE(prompt.size(), 1);
+        QCOMPARE(info.size(), 1);
+        QVERIFY(qvariant_cast<ArchiveInfo>(info.takeFirst().at(0)).encrypted);
+        QSignalSpy wrong(&backend, &ArchiveBackend::finished);
+        backend.test(archive, QStringLiteral("incorrect-test-password"));
+        QVERIFY(wrong.wait(30000));
+        const auto failure = wrong.takeFirst();
+        QVERIFY(!failure.at(0).toBool());
+        QVERIFY(failure.at(1).toString().contains(QStringLiteral("Неверный пароль")));
+        QVERIFY(!failure.at(1).toString().contains(fixturePassword));
+        backend.test(archive, fixturePassword);
+        await(backend, true);
+        QSignalSpy extractFailure(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, destination, {}, QStringLiteral("incorrect-test-password"));
+        QVERIFY(extractFailure.wait(30000));
+        QVERIFY(!extractFailure.takeFirst().at(0).toBool());
+        QCOMPARE(QDir(destination).entryList(QDir::Files | QDir::NoDotAndDotDot).size(), 0);
+        backend.extract(archive, destination, {}, fixturePassword);
+        await(backend, true);
+        QFile extracted(destination + "/δ file with spaces.txt");
+        QVERIFY(extracted.open(QIODevice::ReadOnly));
+        QCOMPARE(extracted.readAll(), QByteArray("protected content"));
+        for (const auto &line : output)
+            QVERIFY(!line.at(0).toString().contains(fixturePassword));
+    }
+    void encryptedCreationLaunchFailure() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("δ source.txt"));
+        const QString archive = temp.filePath("encrypted.7z");
+        const QString password = QStringLiteral("disposable-δ-password");
+        writeFile(source, "content");
+        ArchiveBackend missing(nullptr, "/definitely/missing/7zz");
+        QSignalSpy result(&missing, &ArchiveBackend::finished);
+        missing.create(archive, {source}, password, true);
+        QTRY_VERIFY_WITH_TIMEOUT(!result.isEmpty(), 3000);
+        const auto failure = result.takeFirst();
+        QVERIFY(!failure.at(0).toBool());
+        QVERIFY(!failure.at(1).toString().contains(password));
+        QVERIFY(!missing.busy());
+        QVERIFY(!QFileInfo::exists(archive));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
     void testAndArchiveInfo_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QStringLiteral("7z");

@@ -12,6 +12,7 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
+#include <QInputDialog>
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <QLabel>
@@ -147,6 +148,17 @@ class MainWindow : public QMainWindow {
                 });
         connect(backend_, &ArchiveBackend::infoReady, this,
                 [this](const ArchiveInfo &info) { info_ = info; });
+        connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
+            bool accepted = false;
+            const QString password = QInputDialog::getText(
+                this, "Пароль архива", "Введите пароль:", QLineEdit::Password, {}, &accepted);
+            if (!accepted || password.isEmpty()) {
+                backend_->cancel();
+                return;
+            }
+            archivePassword_ = password;
+            backend_->providePassword(password);
+        });
         connect(backend_, &ArchiveBackend::outputReceived, this,
                 [this](const QString &line) { appendJournal(line); });
         connect(backend_, &ArchiveBackend::progress, this,
@@ -162,6 +174,8 @@ class MainWindow : public QMainWindow {
                     }
                 });
         connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+            if (!ok)
+                archivePassword_.clear();
             appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
                           message);
             if (progress_) {
@@ -204,6 +218,7 @@ class MainWindow : public QMainWindow {
             return;
         }
         archive_ = QFileInfo(path).absoluteFilePath();
+        archivePassword_.clear();
         if (infoDialog_)
             infoDialog_->close();
         if (state_ == State::Filesystem)
@@ -246,7 +261,7 @@ class MainWindow : public QMainWindow {
         previousState_ = state_;
         setState(State::Operating);
         begin("Извлечение", destination);
-        backend_->extract(archive_, destination, names);
+        backend_->extract(archive_, destination, names, archivePassword_);
     }
 
     void testArchive() {
@@ -255,7 +270,7 @@ class MainWindow : public QMainWindow {
         previousState_ = state_;
         setState(State::Operating);
         begin("Проверка архива", archive_);
-        backend_->test(archive_);
+        backend_->test(archive_, archivePassword_);
     }
 
   private:
@@ -291,6 +306,7 @@ class MainWindow : public QMainWindow {
             history_.append(directory_);
         directory_ = next;
         archive_.clear();
+        archivePassword_.clear();
         archiveFolder_.clear();
         entries_.clear();
         table_->clearSelection();
@@ -445,7 +461,7 @@ class MainWindow : public QMainWindow {
         const bool idle = state_ != State::Loading && state_ != State::Operating;
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
-        add_->setEnabled(idle && state_ == State::Viewing);
+        add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted);
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
         test_->setEnabled(idle && state_ == State::Viewing);
         infoAction_->setEnabled(idle && state_ == State::Viewing);
@@ -581,16 +597,18 @@ class MainWindow : public QMainWindow {
         CreateArchiveDialog dialog(directory_, selectedPaths, this);
         if (dialog.exec() != QDialog::Accepted)
             return;
-        createArchive(dialog.target(), dialog.sources());
+        createArchive(dialog.target(), dialog.sources(), dialog.password(),
+                      dialog.encryptHeaders());
     }
-    void createArchive(const QString &target, const QStringList &sources) {
+    void createArchive(const QString &target, const QStringList &sources,
+                       const QString &password = {}, bool encryptHeaders = false) {
         if (state_ != State::Filesystem || sources.isEmpty() || target.isEmpty())
             return;
         previousState_ = state_;
         creating_ = true;
         setState(State::Operating);
         begin("Создание архива", target);
-        backend_->create(target, sources);
+        backend_->create(target, sources, password, encryptHeaders);
     }
     void addDialog() {
         if (state_ != State::Viewing)
@@ -609,6 +627,7 @@ class MainWindow : public QMainWindow {
 
     ArchiveBackend *backend_ = nullptr;
     QString archive_;
+    QString archivePassword_;
     QString archiveFolder_;
     State state_ = State::Filesystem;
     State previousState_ = State::Filesystem;

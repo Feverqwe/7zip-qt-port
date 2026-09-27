@@ -19,6 +19,7 @@ struct ArchiveInfo {
     qint64 unpackedSize = 0;
     int files = 0;
     int folders = 0;
+    bool encrypted = false;
 };
 
 class ArchiveBackend : public QObject {
@@ -27,13 +28,15 @@ class ArchiveBackend : public QObject {
   public:
     explicit ArchiveBackend(QObject *parent = nullptr, QString executable = QString());
     virtual bool busy() const;
-    virtual void list(const QString &archive);
+    virtual void list(const QString &archive, const QString &password = {});
     virtual void extract(const QString &archive, const QString &destination,
-                         const QStringList &selected = {});
-    virtual void test(const QString &archive);
-    virtual void create(const QString &archive, const QStringList &sources);
+                         const QStringList &selected = {}, const QString &password = {});
+    virtual void test(const QString &archive, const QString &password = {});
+    virtual void create(const QString &archive, const QStringList &sources,
+                        const QString &password = {}, bool encryptHeaders = false);
     virtual void add(const QString &archive, const QStringList &sources);
     virtual void cancel();
+    void providePassword(const QString &password);
 
   signals:
     void entriesReady(const QList<ArchiveEntry> &entries);
@@ -41,9 +44,10 @@ class ArchiveBackend : public QObject {
     void progress(int percent, const QString &detail);
     void outputReceived(const QString &text);
     void finished(bool success, const QString &message);
+    void passwordRequired();
 
   private:
-    enum class Job { None, List, Extract, Test, Create, Add };
+    enum class Job { None, List, ExtractCheck, Extract, Test, Create, Add };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
@@ -64,4 +68,9 @@ class ArchiveBackend : public QObject {
     QList<ArchiveEntry> entries_;
     bool listed_ = false;
     bool cancelled_ = false;
+    QString pendingPassword_;
+    bool passwordPrompted_ = false;
+    bool encrypted_ = false;
+    QStringList extractArguments_;
+    QString extractPassword_;
 };
