@@ -6,6 +6,7 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
 #include "filesystemscanner.h"
+#include "fileviewerdialog.h"
 #include "propertiesdialog.h"
 #include "settingsdialog.h"
 
@@ -54,11 +55,14 @@
 #include <QStringView>
 #include <QStyle>
 #include <QTableWidget>
+#include <QTemporaryDir>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QUuid>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <memory>
 
 class FileTable : public QTableWidget {
   public:
@@ -190,6 +194,12 @@ class MainWindow : public QMainWindow {
         remove_->setObjectName("deleteAction");
         rename_ = menu->addAction("Переименовать…", this, [this] { renameSelected(); });
         rename_->setObjectName("renameAction");
+        viewFile_ = menu->addAction("Просмотреть", this, [this] { viewSelectedFile(false); });
+        viewFile_->setObjectName("viewFileAction");
+        viewFile_->setShortcut(QKeySequence(Qt::Key_F3));
+        editFile_ = menu->addAction("Редактировать", this, [this] { viewSelectedFile(true); });
+        editFile_->setObjectName("editFileAction");
+        editFile_->setShortcut(QKeySequence(Qt::Key_F4));
         properties_ = menu->addAction("Свойства…", this, [this] { showSelectedProperties(); });
         properties_->setObjectName("selectedPropertiesAction");
         properties_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Return));
@@ -616,6 +626,15 @@ class MainWindow : public QMainWindow {
                 creating_ = false;
                 updatingArchive_ = false;
             }
+            if (pendingView_) {
+                const QString file = pendingViewPath_;
+                pendingView_ = false;
+                pendingViewPath_.clear();
+                if (ok && QFileInfo(file).isFile())
+                    QTimer::singleShot(0, this, [this, file] { openFileViewer(file, false); });
+                else
+                    viewTemporary_.reset();
+            }
             statusBar()->showMessage(message);
             if (!ok && message != "Операция отменена.")
                 QMessageBox::warning(this, "Sevenzip Desktop", message);
@@ -707,7 +726,8 @@ class MainWindow : public QMainWindow {
         QMenu menu(this);
         const bool hasSelection = !table_->selectionModel()->selectedRows().isEmpty();
         if (hasSelection) {
-            for (QAction *action : {openItem_, rename_, copy_, move_, remove_})
+            for (QAction *action :
+                 {openItem_, viewFile_, editFile_, rename_, copy_, move_, remove_})
                 menu.addAction(action);
             menu.addSeparator();
             menu.addAction(properties_);
@@ -1443,6 +1463,12 @@ class MainWindow : public QMainWindow {
             idle && selected &&
             (state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)));
         const bool one = table_->selectionModel()->selectedRows().size() == 1;
+        const bool oneFile =
+            one && !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
+                        ->data(Qt::UserRole + 1)
+                        .toBool();
+        viewFile_->setEnabled(idle && oneFile);
+        editFile_->setEnabled(idle && oneFile && state_ == State::Filesystem);
         rename_->setEnabled(
             idle && one &&
             (state_ == State::Filesystem ||
@@ -1551,6 +1577,51 @@ class MainWindow : public QMainWindow {
             QFileDialog::getOpenFileName(this, "Открыть архив", {}, "Архивы (*.7z *.zip)");
         if (!file.isEmpty())
             openArchive(file);
+    }
+    void openFileViewer(const QString &path, bool editable) {
+        FileViewerDialog dialog(path, editable, this);
+        dialog.exec();
+        viewTemporary_.reset();
+        if (editable && state_ == State::Filesystem)
+            showDirectory(directory_, false);
+    }
+    void viewSelectedFile(bool editable) {
+        if (state_ != State::Filesystem && state_ != State::Viewing)
+            return;
+        const auto rows = table_->selectionModel()->selectedRows();
+        if (rows.size() != 1)
+            return;
+        const int row = rows.first().row();
+        if (table_->item(row, 0)->data(Qt::UserRole + 1).toBool())
+            return;
+        if (state_ == State::Filesystem) {
+            const QString path = table_->item(row, 1)->text();
+            if (QFileInfo(path).isFile() && !QFileInfo(path).isSymLink())
+                openFileViewer(path, editable);
+            return;
+        }
+        if (editable)
+            return;
+        const QString entry = table_->item(row, 0)->data(Qt::UserRole).toString();
+        for (const ArchiveEntry &item : entries_) {
+            if (item.path == entry && item.size > 16 * 1024 * 1024) {
+                QMessageBox::information(this, "Просмотр",
+                                         "Файл больше 16 МиБ. Просмотр текста недоступен.");
+                return;
+            }
+        }
+        viewTemporary_ = std::make_unique<QTemporaryDir>();
+        if (!viewTemporary_->isValid()) {
+            viewTemporary_.reset();
+            QMessageBox::warning(this, "Просмотр", "Не удалось создать временную папку.");
+            return;
+        }
+        pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
+        pendingView_ = true;
+        previousState_ = state_;
+        setState(State::Operating);
+        begin("Просмотр файла", entry);
+        backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
     }
     void extract(bool onlySelected) {
         if (state_ != State::Viewing || entries_.isEmpty())
@@ -1893,6 +1964,8 @@ class MainWindow : public QMainWindow {
     QAction *move_ = nullptr;
     QAction *remove_ = nullptr;
     QAction *rename_ = nullptr;
+    QAction *viewFile_ = nullptr;
+    QAction *editFile_ = nullptr;
     QAction *properties_ = nullptr;
     QAction *createFolder_ = nullptr;
     QAction *createFile_ = nullptr;
@@ -1911,4 +1984,7 @@ class MainWindow : public QMainWindow {
     QAction *largeButtonsOption_ = nullptr;
     QAction *buttonTextOption_ = nullptr;
     QAction *toolbarGroupSeparator_ = nullptr;
+    std::unique_ptr<QTemporaryDir> viewTemporary_;
+    QString pendingViewPath_;
+    bool pendingView_ = false;
 };
