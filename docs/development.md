@@ -2,43 +2,34 @@
 
 ## Dependencies
 
-- C++17 compiler (Apple Clang, GCC, or MSVC)
-- CMake 3.21 or newer and Ninja
-- Qt 6 with Widgets
-- Official `7zz` executable for archive operations when the backend is implemented
-- Git
-- clang-format for C++ formatting
+- C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, Git, clang-format
+- Official `7zz` executable for archive functionality once implemented
 
-On macOS with Homebrew, install the local development dependencies with:
+On macOS with Homebrew:
 
 ```sh
 brew install cmake ninja qtbase sevenzip clang-format
 ```
 
-Qt installed through another distribution may need `CMAKE_PREFIX_PATH` set to its CMake package directory. For Windows, use a Qt 6 Widgets kit plus CMake, Ninja, and MSVC; for Linux, install the equivalent distribution packages and `7zz` from an official 7-Zip build or package.
+On Linux, install CMake, Ninja, Qt 6 base development files, and clang-format from the distribution. On Windows, use a Qt 6 Widgets kit plus CMake, Ninja, and a C++17 compiler; CI uses MSYS2 UCRT64. Point `CMAKE_PREFIX_PATH` to Qt when CMake cannot locate it.
 
-## Commands
-
-From the repository root:
+## Local commands
 
 ```sh
+sh .agents/skills/sevenzip-setup/scripts/setup.sh
 ./scripts/doctor.sh
-./scripts/build.sh dev
-ctest --preset dev --output-on-failure
-clang-format --dry-run --Werror src/main.cpp
+./scripts/check.sh
 ```
 
-The build script uses Homebrew's Qt path when available. On systems with Qt installed elsewhere, set `CMAKE_PREFIX_PATH` first. For a direct macOS configure, use:
+`check.sh` checks formatting, builds with the development CMake preset, and runs CTest. For a release build, run `./scripts/build.sh release` and `ctest --preset release --output-on-failure`.
 
-```sh
-cmake --preset dev -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
-```
+Run the built app on macOS from `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
 
-Run the built app on macOS from `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`.
+Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process; it does not alter system files.
 
-`build/` is ignored. `CMAKE_EXPORT_COMPILE_COMMANDS` is enabled in the development preset for editor tooling. CTest currently checks that the Qt application starts in offscreen mode. Add focused tests alongside functional archive code.
+## Automation
 
-Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process. It does not alter system files.
+The setup script enables the tracked `.githooks/pre-commit` hook in this repository's local Git config. It runs `scripts/check.sh` before a commit. `.github/workflows/ci.yml` runs the same gate on each push and pull request once this repository has a GitHub remote. Local tests run on the current machine; CI is needed to establish cross-platform results.
 
 ## Upstream checkout
 

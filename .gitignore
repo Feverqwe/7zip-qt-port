@@ -2,4 +2,5 @@
 /cmake-build-*/
 /.idea/
 /.vscode/
+/.codex/
 .DS_Store

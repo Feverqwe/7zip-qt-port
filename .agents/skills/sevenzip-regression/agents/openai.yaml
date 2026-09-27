@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Sevenzip regression checks'
+  short_description: 'Add tests and verify archive behavior'
+  default_prompt: 'Use $sevenzip-regression to add meaningful coverage and run the project regression gate.'
