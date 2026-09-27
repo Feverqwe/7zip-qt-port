@@ -188,6 +188,8 @@ void MainWindow::refreshActions() {
                                ->data(Qt::UserRole + 1)
                                .toBool())));
     properties_->setEnabled(idle && selected);
+    for (QAction *action : hashActions_)
+        action->setEnabled(idle && selected);
     table_->setEnabled(idle);
     iconList_->setEnabled(idle);
     table_->setDragEnabled(idle && state_ == State::Filesystem);

@@ -1,5 +1,40 @@
 #include "mainwindow.h"
 
+void MainWindow::calculateHash(const QString &method) {
+    if ((state_ != State::Filesystem && state_ != State::Viewing) ||
+        table_->selectionModel()->selectedRows().isEmpty())
+        return;
+    hashMethod_ = method;
+    previousState_ = state_;
+    if (state_ == State::Filesystem) {
+        const QStringList paths = selectedFilesystemPaths();
+        if (paths.isEmpty())
+            return;
+        hashing_ = true;
+        setState(State::Operating);
+        begin(QStringLiteral("Расчёт контрольных сумм"), method);
+        backend_->hash(paths, method);
+        return;
+    }
+    hashSelection_.clear();
+    for (const QModelIndex &index : table_->selectionModel()->selectedRows())
+        hashSelection_ << table_->item(index.row(), 0)->data(Qt::UserRole).toString();
+    const QStringList entries = selectedArchivePaths();
+    if (entries.isEmpty())
+        return;
+    hashTemporary_ = std::make_unique<QTemporaryDir>();
+    if (!hashTemporary_->isValid()) {
+        hashTemporary_.reset();
+        QMessageBox::warning(this, QStringLiteral("Контрольные суммы"),
+                             QStringLiteral("Не удалось создать временную папку."));
+        return;
+    }
+    pendingHashExtraction_ = true;
+    setState(State::Operating);
+    begin(QStringLiteral("Извлечение для расчёта контрольных сумм"), archive_);
+    backend_->extract(archive_, hashTemporary_->path(), entries, archivePassword_);
+}
+
 void MainWindow::openArchiveFile(const QString &entry) {
     viewTemporary_ = std::make_unique<QTemporaryDir>();
     if (!viewTemporary_->isValid()) {

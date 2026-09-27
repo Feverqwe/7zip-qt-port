@@ -69,6 +69,19 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     properties_ = menu->addAction("Свойства…", this, [this] { showSelectedProperties(); });
     properties_->setObjectName("selectedPropertiesAction");
     properties_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Return));
+    auto *hashMenu = menu->addMenu("CRC");
+    const QStringList hashLabels = {"CRC-32",   "CRC-64",   "XXH64",   "MD5",
+                                    "SHA-1",    "SHA-256",  "SHA-384", "SHA-512",
+                                    "SHA3-256", "BLAKE2sp", "*"};
+    const QStringList hashMethods = {"CRC32",  "CRC64",  "XXH64",    "MD5",      "SHA1", "SHA256",
+                                     "SHA384", "SHA512", "SHA3-256", "BLAKE2sp", "*"};
+    for (int index = 0; index < hashLabels.size(); ++index) {
+        auto *action =
+            hashMenu->addAction(hashLabels[index], this,
+                                [this, method = hashMethods[index]] { calculateHash(method); });
+        action->setObjectName(QStringLiteral("hash%1Action").arg(hashMethods[index]));
+        hashActions_[index] = action;
+    }
     createFolder_ = menu->addAction("Создать папку…", this, [this] { createFolder(); });
     createFolder_->setObjectName("createFolderAction");
     createFolder_->setShortcut(QKeySequence(Qt::Key_F7));
@@ -457,6 +470,34 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         }
     });
     connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+        if (pendingHashExtraction_ && ok) {
+            pendingHashExtraction_ = false;
+            QStringList files;
+            for (const QString &entry : hashSelection_)
+                files << QDir(hashTemporary_->path()).filePath(entry);
+            hashSelection_.clear();
+            if (progress_) {
+                QProgressDialog *completed = progress_;
+                progress_ = nullptr;
+                completed->disconnect(backend_);
+                completed->close();
+                completed->deleteLater();
+            }
+            begin(QStringLiteral("Расчёт контрольных сумм"), hashMethod_, true);
+            hashing_ = true;
+            backend_->hash(files, hashMethod_);
+            return;
+        }
+        if (pendingHashExtraction_) {
+            pendingHashExtraction_ = false;
+            hashSelection_.clear();
+            hashTemporary_.reset();
+        }
+        const bool hashFinished = hashing_;
+        if (hashing_) {
+            hashing_ = false;
+            hashTemporary_.reset();
+        }
         if (archiveMoveStage_ == ArchiveMoveStage::Extracting && ok) {
             appendJournal(QStringLiteral("Извлечение завершено. Удаление исходных записей."));
             archiveMoveStage_ = ArchiveMoveStage::Removing;
@@ -487,6 +528,8 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
             archivePassword_.clear();
         appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
                       resultMessage);
+        if (hashFinished && ok)
+            QTimer::singleShot(0, this, [this] { showJournal(); });
         if (progress_) {
             QProgressDialog *completed = progress_;
             progress_ = nullptr;

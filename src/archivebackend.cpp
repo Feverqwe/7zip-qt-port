@@ -202,6 +202,32 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
     start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
 }
 
+void ArchiveBackend::hash(const QStringList &paths, const QString &method) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    static const QStringList methods = {"CRC32",    "CRC64",    "XXH64",  "MD5",
+                                        "SHA1",     "SHA256",   "SHA384", "SHA512",
+                                        "SHA3-256", "BLAKE2sp", "*"};
+    if (!methods.contains(method) || paths.isEmpty()) {
+        emit finished(false, QStringLiteral("Не выбраны файлы или метод хеширования."));
+        return;
+    }
+    for (const QString &path : paths) {
+        const QFileInfo info(path);
+        if (!info.exists() || info.isSymLink()) {
+            emit finished(false,
+                          QStringLiteral("Файл отсутствует или является ссылкой: %1").arg(path));
+            return;
+        }
+    }
+    QStringList arguments = {"h", "-bsp1", "-bb1", "-spd", "-scrc" + method, "--"};
+    arguments += paths;
+    pendingPassword_.clear();
+    start(Job::Hash, arguments);
+}
+
 void ArchiveBackend::cancel() {
     if (!busy())
         return;
@@ -316,6 +342,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     emit finished(true, completed == Job::List      ? QStringLiteral("Архив открыт.")
                         : completed == Job::Extract ? QStringLiteral("Извлечение завершено.")
                         : completed == Job::Test ? QStringLiteral("Ошибок при проверке не найдено.")
+                        : completed == Job::Hash ? QStringLiteral("Контрольные суммы рассчитаны.")
                         : completed == Job::Create ? QStringLiteral("Архив создан.")
                         : completed == Job::Delete ? QStringLiteral("Объекты удалены из архива.")
                         : completed == Job::Rename ? QStringLiteral("Объект переименован.")

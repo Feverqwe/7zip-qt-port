@@ -9,6 +9,8 @@ The regression gate is `./scripts/check.sh`. It checks C++ formatting, builds th
 
 ## What to test
 
+`checksum` verifies a real SHA-256 digest for a Unicode filename with spaces, invalid-method rejection, cancellation of a controlled process, menu availability, and the same selected file hashed from a disposable archive through temporary extraction. The focused test runs locally on macOS; Windows and Linux menu layout and process output require platform checks.
+
 - UI wiring: command availability, selected files, dialog inputs, and user-visible error handling.
 - Backend: construct arguments without a shell, parse output and errors, handle progress and cancellation.
 - Archive integration: make tiny disposable archives with `7zz`, then verify listing, extraction, creation, wrong passwords, corrupted data, Unicode filenames, spaces, and unsafe paths as each feature is implemented.

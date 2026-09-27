@@ -319,6 +319,7 @@ class MainWindow : public QMainWindow {
     void showJournal();
     void showInfo();
     void showSelectedProperties();
+    void calculateHash(const QString &method);
     void begin(const QString &label, const QString &detail, bool preserveJournal = false);
     void openDialog();
     void openFileViewer(const QString &path, bool editable);
@@ -463,6 +464,12 @@ class MainWindow : public QMainWindow {
     QAction *viewFile_ = nullptr;
     QAction *editFile_ = nullptr;
     QAction *properties_ = nullptr;
+    QAction *hashActions_[11]{};
+    bool pendingHashExtraction_ = false;
+    bool hashing_ = false;
+    QString hashMethod_;
+    QStringList hashSelection_;
+    std::unique_ptr<QTemporaryDir> hashTemporary_;
     QAction *createFolder_ = nullptr;
     QAction *createFile_ = nullptr;
     QAction *refresh_ = nullptr;

@@ -47,6 +47,7 @@ class ArchiveBackend : public QObject {
                          const QStringList &selected = {}, const QString &password = {},
                          const ExtractionOptions &options = {});
     virtual void test(const QString &archive, const QString &password = {});
+    virtual void hash(const QStringList &paths, const QString &method);
     virtual void create(const QString &archive, const QStringList &sources,
                         const QString &password = {}, bool encryptHeaders = false,
                         const CompressionOptions &options = {});
@@ -74,6 +75,7 @@ class ArchiveBackend : public QObject {
         ExtractCheck,
         Extract,
         Test,
+        Hash,
         Create,
         Add,
         Delete,
