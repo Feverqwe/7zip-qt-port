@@ -7,7 +7,7 @@
 - [Architecture](docs/architecture.md)
 - [Development](docs/development.md)
 - [Testing](docs/testing.md)
-- [Roadmap](docs/roadmap.md)
+- [7zFM parity](docs/7zfm-parity.md)
 - [Context map](context/README.md)
 
 ## Local workspace

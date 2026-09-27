@@ -167,6 +167,79 @@ class MainWindowStateTests : public QObject {
     }
 
   private slots:
+    void numericNameSortMatchesFileManager() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        for (const QString &name : {"10.txt", "2.txt", "1.txt"}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *view = table(window);
+        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("1.txt"));
+        QCOMPARE(view->item(1, 0)->text(), QStringLiteral("2.txt"));
+        QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
+
+        window.openArchive(temp.filePath("test.7z"));
+        backend.completeList({ArchiveEntry{"10.txt", 10, 10}, ArchiveEntry{"2.txt", 2, 2},
+                              ArchiveEntry{"1.txt", 1, 1}});
+        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("1.txt"));
+        QCOMPARE(view->item(1, 0)->text(), QStringLiteral("2.txt"));
+        QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
+    }
+
+    void favoritesFollowFoldersAndArchivePaths() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString first = temp.filePath(QStringLiteral("папка с пробелом"));
+        const QString second = temp.filePath("other");
+        QVERIFY(QDir().mkpath(first));
+        QVERIFY(QDir().mkpath(second));
+        const QString archive = temp.filePath(QStringLiteral("архив с пробелом.7z"));
+        QFile file(archive);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        auto *view = table(window);
+        address->setText(first);
+        QTest::keyClick(address, Qt::Key_Return);
+        QTest::keyClick(view, Qt::Key_1, Qt::AltModifier | Qt::ShiftModifier);
+        QCOMPARE(action(window, "openBookmark1Action")->isEnabled(), true);
+        address->setText(second);
+        QTest::keyClick(address, Qt::Key_Return);
+        QTest::keyClick(view, Qt::Key_1, Qt::AltModifier);
+        QCOMPARE(address->text(), QFileInfo(first).canonicalFilePath());
+
+        window.openArchive(archive);
+        QVERIFY(!action(window, "openBookmark1Action")->isEnabled());
+        backend.completeList({ArchiveEntry{QStringLiteral("внутри/файл.txt"), 1, 1}});
+        openRow(window, rowWithPath(window, QStringLiteral("внутри")));
+        action(window, "saveBookmark2Action")->trigger();
+        action(window, "openBookmark1Action")->trigger();
+        QCOMPARE(address->text(), QFileInfo(first).canonicalFilePath());
+        action(window, "openBookmark2Action")->trigger();
+        QCOMPARE(backend.listCalls, 2);
+        backend.completeList({ArchiveEntry{QStringLiteral("внутри/файл.txt"), 1, 1}});
+        QVERIFY(address->text().endsWith(QStringLiteral(" / внутри")));
+        QCOMPARE(view->rowCount(), 1);
+
+        MainWindow reopened;
+        QVERIFY(action(reopened, "openBookmark1Action")->isEnabled());
+        QVERIFY(action(reopened, "openBookmark2Action")->isEnabled());
+        QFile::remove(archive);
+        action(reopened, "openBookmark2Action")->trigger();
+        QCOMPARE(reopened.findChild<QLineEdit *>("archivePath")->text(),
+                 QFileInfo(QDir::currentPath()).canonicalFilePath());
+    }
+
     void mainWindowFolderAndSelectionCommands() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

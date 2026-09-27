@@ -5,7 +5,7 @@
 - `docs/architecture.md`: UI/backend boundary and upstream 7-Zip relationship.
 - `docs/development.md`: installation, build, run, and verification.
 - `docs/testing.md`: regression strategy.
-- `docs/roadmap.md`: milestones.
+- `docs/7zfm-parity.md`: implemented and remaining 7zFM behavior.
 - `.agents/skills/`: reusable project workflows.
 - `.agents/skills/sevenzip-navigation/`: map Qt, backend, and upstream C++ behavior.
 - `.codex/notes/`: local investigations and handoffs; not source of truth.

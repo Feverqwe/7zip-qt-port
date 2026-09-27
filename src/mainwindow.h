@@ -39,6 +39,7 @@
 #include <QSizePolicy>
 #include <QStandardPaths>
 #include <QStatusBar>
+#include <QStringView>
 #include <QStyle>
 #include <QTableWidget>
 #include <QToolBar>
@@ -70,6 +71,46 @@ class FileTable : public QTableWidget {
 class ArchiveTableItem : public QTableWidgetItem {
   public:
     using QTableWidgetItem::QTableWidgetItem;
+    static int compareNames(const QString &left, const QString &right) {
+        const auto digit = [](QChar value) {
+            return value >= QLatin1Char('0') && value <= QLatin1Char('9');
+        };
+        int leftIndex = 0;
+        int rightIndex = 0;
+        while (leftIndex < left.size() && rightIndex < right.size()) {
+            if (digit(left[leftIndex]) && digit(right[rightIndex])) {
+                while (leftIndex < left.size() && left[leftIndex] == QLatin1Char('0'))
+                    ++leftIndex;
+                while (rightIndex < right.size() && right[rightIndex] == QLatin1Char('0'))
+                    ++rightIndex;
+                int leftEnd = leftIndex;
+                int rightEnd = rightIndex;
+                while (leftEnd < left.size() && digit(left[leftEnd]))
+                    ++leftEnd;
+                while (rightEnd < right.size() && digit(right[rightEnd]))
+                    ++rightEnd;
+                const int leftLength = leftEnd - leftIndex;
+                const int rightLength = rightEnd - rightIndex;
+                if (leftLength != rightLength)
+                    return leftLength < rightLength ? -1 : 1;
+                const int numeric = QStringView(left)
+                                        .mid(leftIndex, leftLength)
+                                        .compare(QStringView(right).mid(rightIndex, rightLength));
+                if (numeric != 0)
+                    return numeric;
+                leftIndex = leftEnd;
+                rightIndex = rightEnd;
+                continue;
+            }
+            const QChar leftChar = left[leftIndex++].toUpper();
+            const QChar rightChar = right[rightIndex++].toUpper();
+            if (leftChar != rightChar)
+                return leftChar < rightChar ? -1 : 1;
+        }
+        if (leftIndex == left.size() && rightIndex == right.size())
+            return 0;
+        return leftIndex == left.size() ? -1 : 1;
+    }
     bool operator<(const QTableWidgetItem &other) const override {
         if (data(Qt::UserRole + 1).toBool() != other.data(Qt::UserRole + 1).toBool())
             return data(Qt::UserRole + 1).toBool();
@@ -79,7 +120,7 @@ class ArchiveTableItem : public QTableWidgetItem {
             if (left != right)
                 return left < right;
         }
-        return QString::localeAwareCompare(text(), other.text()) < 0;
+        return compareNames(text(), other.text()) < 0;
     }
 };
 
@@ -160,6 +201,23 @@ class MainWindow : public QMainWindow {
         open_ = open;
         auto *editMenu = menuBar()->addMenu("Правка");
         auto *viewMenu = menuBar()->addMenu("Вид");
+        auto *favoritesMenu = menuBar()->addMenu("Избранное");
+        auto *addFavoriteMenu = favoritesMenu->addMenu("Добавить папку в избранное как");
+        QSettings favoritesSettings(toolbarSettingsPath(), QSettings::IniFormat);
+        for (int index = 0; index < 10; ++index) {
+            const QString key = QStringLiteral("favorites/%1/").arg(index);
+            bookmarks_[index].path = favoritesSettings.value(key + "path").toString();
+            bookmarks_[index].folder = favoritesSettings.value(key + "folder").toString();
+            auto *save = addFavoriteMenu->addAction(QString::number(index), this,
+                                                    [this, index] { saveBookmark(index); });
+            save->setObjectName(QStringLiteral("saveBookmark%1Action").arg(index));
+            auto *open = favoritesMenu->addAction(QString::number(index), this,
+                                                  [this, index] { openBookmark(index); });
+            open->setObjectName(QStringLiteral("openBookmark%1Action").arg(index));
+            saveBookmarks_[index] = save;
+            openBookmarks_[index] = open;
+        }
+        refreshBookmarks();
         auto *toolbarsMenu = viewMenu->addMenu("Панели инструментов");
         auto addToolbarOption = [this, toolbarsMenu](const QString &title, const char *name,
                                                      bool checked) {
@@ -323,7 +381,7 @@ class MainWindow : public QMainWindow {
                     if (state_ != State::Loading)
                         return;
                     entries_ = entries;
-                    QString folder = refreshing_ ? refreshFolder_ : QString();
+                    QString folder = refreshing_ ? refreshFolder_ : pendingBookmarkFolder_;
                     while (!folder.isEmpty()) {
                         bool present = false;
                         for (const ArchiveEntry &entry : entries_) {
@@ -338,6 +396,7 @@ class MainWindow : public QMainWindow {
                         folder = separator < 0 ? QString() : folder.left(separator);
                     }
                     showArchiveFolder(folder);
+                    pendingBookmarkFolder_.clear();
                     if (refreshing_)
                         selectPaths(refreshSelection_);
                     refreshing_ = false;
@@ -537,6 +596,75 @@ class MainWindow : public QMainWindow {
         while (pathCombo_->count() > 20)
             pathCombo_->removeItem(pathCombo_->count() - 1);
     }
+    struct Bookmark {
+        QString path;
+        QString folder;
+    };
+    void refreshBookmarks() {
+        for (int index = 0; index < 10; ++index) {
+            const Bookmark &bookmark = bookmarks_[index];
+            const QString label =
+                bookmark.path.isEmpty()
+                    ? QString::number(index) + QStringLiteral(" — пусто")
+                    : QString::number(index) + QStringLiteral(" — ") + bookmark.path +
+                          (bookmark.folder.isEmpty() ? QString()
+                                                     : QStringLiteral(" / ") + bookmark.folder);
+            openBookmarks_[index]->setText(label);
+            openBookmarks_[index]->setToolTip(label);
+            openBookmarks_[index]->setEnabled(
+                !bookmark.path.isEmpty() && state_ != State::Loading && state_ != State::Operating);
+            saveBookmarks_[index]->setEnabled(state_ != State::Loading &&
+                                              state_ != State::Operating);
+        }
+    }
+    void saveBookmark(int index) {
+        if (state_ != State::Filesystem && state_ != State::Viewing)
+            return;
+        Bookmark &bookmark = bookmarks_[index];
+        bookmark.path = state_ == State::Filesystem ? directory_ : archive_;
+        bookmark.folder = state_ == State::Viewing ? archiveFolder_ : QString();
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        const QString key = QStringLiteral("favorites/%1/").arg(index);
+        settings.setValue(key + "path", bookmark.path);
+        settings.setValue(key + "folder", bookmark.folder);
+        refreshBookmarks();
+    }
+    void openBookmark(int index) {
+        if (state_ == State::Loading || state_ == State::Operating)
+            return;
+        const Bookmark bookmark = bookmarks_[index];
+        if (bookmark.path.isEmpty())
+            return;
+        const QFileInfo info(bookmark.path);
+        if (bookmark.folder.isEmpty() && info.isDir()) {
+            showDirectory(bookmark.path, true);
+            return;
+        }
+        if (!info.isFile() || (info.suffix().compare("7z", Qt::CaseInsensitive) != 0 &&
+                               info.suffix().compare("zip", Qt::CaseInsensitive) != 0)) {
+            statusBar()->showMessage("Путь закладки недоступен: " + bookmark.path);
+            return;
+        }
+        if (state_ == State::Viewing && archive_ == info.absoluteFilePath()) {
+            if (bookmark.folder.isEmpty() || archiveFolderExists(bookmark.folder))
+                showArchiveFolder(bookmark.folder);
+            else
+                statusBar()->showMessage("Папка закладки отсутствует: " + bookmark.folder);
+            return;
+        }
+        pendingBookmarkFolder_ = bookmark.folder;
+        openArchive(bookmark.path);
+    }
+    bool archiveFolderExists(const QString &folder) const {
+        for (const ArchiveEntry &entry : entries_) {
+            QString path = entry.path;
+            if (path.endsWith('/'))
+                path.chop(1);
+            if ((path == folder && entry.directory) || path.startsWith(folder + '/'))
+                return true;
+        }
+        return false;
+    }
     void updateToolbar() {
         auto *toolbar = findChild<QToolBar *>("archiveToolbar");
         const bool archive = archiveToolbarOption_->isChecked();
@@ -588,6 +716,16 @@ class MainWindow : public QMainWindow {
         if ((watched == table_ || watched == table_->viewport()) &&
             event->type() == QEvent::KeyPress) {
             auto *key = static_cast<QKeyEvent *>(event);
+            if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
+                key->modifiers() == Qt::AltModifier) {
+                openBookmark(key->key() - Qt::Key_0);
+                return true;
+            }
+            if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
+                key->modifiers() == (Qt::AltModifier | Qt::ShiftModifier)) {
+                saveBookmark(key->key() - Qt::Key_0);
+                return true;
+            }
             if (!(key->modifiers() &
                   (Qt::ControlModifier | Qt::MetaModifier | Qt::AltModifier | Qt::ShiftModifier))) {
                 if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
@@ -618,6 +756,7 @@ class MainWindow : public QMainWindow {
         archive_.clear();
         archivePassword_.clear();
         archiveFolder_.clear();
+        pendingBookmarkFolder_.clear();
         refreshing_ = false;
         refreshFolder_.clear();
         refreshSelection_.clear();
@@ -862,6 +1001,7 @@ class MainWindow : public QMainWindow {
         deselectAll_->setEnabled(idle && selected);
         invertSelection_->setEnabled(idle && table_->rowCount() > 0);
         refresh_->setEnabled(idle);
+        refreshBookmarks();
         createFolder_->setEnabled(idle && state_ == State::Filesystem);
         copy_->setEnabled(idle && selected);
         move_->setEnabled(idle && state_ == State::Filesystem && selected);
@@ -1267,6 +1407,10 @@ class MainWindow : public QMainWindow {
     QString archive_;
     QString archivePassword_;
     QString archiveFolder_;
+    QString pendingBookmarkFolder_;
+    Bookmark bookmarks_[10];
+    QAction *saveBookmarks_[10]{};
+    QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;
     State previousState_ = State::Filesystem;
     bool creating_ = false;
