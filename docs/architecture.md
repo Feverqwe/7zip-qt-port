@@ -26,4 +26,4 @@ The Windows 7-Zip File Manager (`7zFM`) is the UI and interaction reference. New
 
 ## Data and safety
 
-Archive paths and filenames are runtime input. `QProcess` receives structured arguments, not a shell string. Before extraction the backend rejects absolute paths, `..` segments and link entries reported by `7zz`. Extraction only starts after a successful listing of the same archive. Passwords are not accepted or persisted in this MVP.
+Archive paths and filenames are runtime input. `QProcess` receives structured arguments, not a shell string. Before extraction the backend checks every listed entry and rejects absolute or parent paths, links reported by `7zz`, nonportable names, case or Unicode equivalent duplicates, and file/directory conflicts. It also requires an existing destination directory, rejects a final symlink, and rejects existing target paths and symlink ancestors inside the destination. Extraction only starts after a successful listing of the same archive. This is a preflight check; concurrent external changes to the archive or destination can invalidate it before `7zz` writes. Passwords are not accepted or persisted in this MVP.

@@ -13,6 +13,8 @@ Use CTest for tests and keep fixtures under `tests/`. Use temporary directories 
 
 For stage 1.2, `archive_backend` also runs a disposable helper process that fragments percent and filename output across writes, ends with an unterminated error, supports cancellation, and emits a 3000-entry listing while a timer checks event-loop responsiveness. `ui_state` checks the visible progress label, nonmodal dialog, accessible last-operation log, failure text, and replacement of the previous log. These tests do not establish performance for archives larger than the fixture or verify Windows and Linux.
 
+For stage 1.3, `archive_backend` feeds disposable listings with parent and drive paths, link metadata, duplicate names, file/directory collisions, and Windows reserved names. It also verifies refusal of missing, linked, and occupied destinations while preserving an existing Unicode filename. The earlier round trips cover successful Unicode paths and spaces. These tests run locally on macOS; Windows and Linux path semantics and filesystem behavior still need their own checks. Concurrent changes between validation and extraction are not covered.
+
 When a bug is found, first capture it with a focused regression test when practical, then fix it. Keep tests deterministic and independent of network access. Report the exact check command and result in the change summary. If a test cannot run on the current host, say why and rely on CI only after its result is available.
 
 ## Проверка компоновки Qt

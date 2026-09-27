@@ -39,6 +39,7 @@ class ArchiveBackend : public QObject {
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
     static bool safePath(const QString &path);
+    bool validateExtraction(const QString &destination, QString *error) const;
 
     QProcess process_;
     Job job_ = Job::None;

@@ -126,6 +126,81 @@ class ArchiveBackendTests : public QObject {
         QVERIFY(!spy.takeFirst().at(0).toBool());
         QVERIFY(QDir(destination).entryList(QDir::Files | QDir::NoDotAndDotDot).isEmpty());
     }
+    void unsafeListing_data() {
+        QTest::addColumn<QByteArray>("listing");
+        QTest::newRow("parent") << QByteArray("Path = ../escape.txt\nSize = 1\n\n");
+        QTest::newRow("backslash parent")
+            << QByteArray("Path = folder\\..\\escape.txt\nSize = 1\n\n");
+        QTest::newRow("drive") << QByteArray("Path = C:\\escape.txt\nSize = 1\n\n");
+        QTest::newRow("link") << QByteArray(
+            "Path = link\nAttributes = A\nSymbolic Link = ../outside\n\n");
+        QTest::newRow("link before attributes")
+            << QByteArray("Path = link\nSymbolic Link = ../outside\nAttributes = A\n\n");
+        QTest::newRow("hard link") << QByteArray("Path = link\nHard Link = target\n\n");
+        QTest::newRow("duplicate")
+            << QByteArray("Path = same.txt\nSize = 1\n\nPath = SAME.TXT\nSize = 1\n\n");
+        QTest::newRow("unicode normalization")
+            << (QStringLiteral("Path = café.txt\n\nPath = cafe\u0301.txt\n\n").toLocal8Bit());
+        QTest::newRow("file parent")
+            << QByteArray("Path = parent\nSize = 1\n\nPath = parent/child\nSize = 1\n\n");
+        QTest::newRow("reserved") << QByteArray("Path = CON.txt\nSize = 1\n\n");
+    }
+    void unsafeListing() {
+        QFETCH(QByteArray, listing);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", listing);
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        const QString archive = temp.path() + "/fixture.zip";
+        backend.list(archive);
+        await(backend, true);
+        QSignalSpy spy(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, temp.path());
+        QCOMPARE(spy.size(), 1);
+        QVERIFY(!spy.takeFirst().at(0).toBool());
+        QVERIFY(!backend.busy());
+        qunsetenv("SEVENZIP_TEST_LISTING");
+        qunsetenv("SEVENZIP_TEST_HELPER");
+    }
+    void unsafeDestination() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.path() + "/имя с пробелом.txt";
+        const QString archive = temp.path() + "/safe.zip";
+        writeFile(source, "original");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+
+        const QString missing = temp.path() + "/missing";
+        QSignalSpy missingSpy(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, missing);
+        QCOMPARE(missingSpy.size(), 1);
+        QVERIFY(!missingSpy.takeFirst().at(0).toBool());
+        QVERIFY(!QFileInfo::exists(missing));
+
+        const QString occupied = temp.path() + "/occupied";
+        QVERIFY(QDir().mkpath(occupied));
+        writeFile(occupied + "/имя с пробелом.txt", "keep");
+        QSignalSpy occupiedSpy(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, occupied);
+        QCOMPARE(occupiedSpy.size(), 1);
+        QVERIFY(!occupiedSpy.takeFirst().at(0).toBool());
+        QFile existing(occupied + "/имя с пробелом.txt");
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("keep"));
+
+        const QString linked = temp.path() + "/linked";
+        if (QFile::link(occupied, linked)) {
+            QSignalSpy linkedSpy(&backend, &ArchiveBackend::finished);
+            backend.extract(archive, linked);
+            QCOMPARE(linkedSpy.size(), 1);
+            QVERIFY(!linkedSpy.takeFirst().at(0).toBool());
+        }
+    }
     void cancellation() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -207,6 +282,10 @@ int main(int argc, char **argv) {
                 if (i == 999)
                     QThread::msleep(100);
             }
+            return 0;
+        }
+        if (mode == "listing") {
+            writeOutput(qgetenv("SEVENZIP_TEST_LISTING"));
             return 0;
         }
         writeOutput("started\npartial");
