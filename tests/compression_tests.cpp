@@ -33,16 +33,37 @@ class CompressionTests : public QObject {
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         auto *solid = dialog.findChild<QCheckBox *>("solidArchiveOption");
         auto *threads = dialog.findChild<QSpinBox *>("compressionThreads");
+        auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
+        auto *wordSize = dialog.findChild<QComboBox *>("compressionWordSize");
+        auto *solidBlock = dialog.findChild<QComboBox *>("compressionSolidBlock");
         auto *encryption = dialog.findChild<QComboBox *>("archiveEncryption");
         auto *password = dialog.findChild<QLineEdit *>("archivePassword");
         auto *confirmation = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
         auto *showPassword = dialog.findChild<QCheckBox *>("archiveShowPassword");
-        QVERIFY(format && level && method && solid && threads && encryption && password &&
-                confirmation && showPassword);
+        QVERIFY(format && level && method && solid && threads && dictionary && wordSize &&
+                solidBlock && encryption && password && confirmation && showPassword);
         QCOMPARE(level->count(), 6);
         QCOMPARE(method->currentText(), QStringLiteral("LZMA2"));
+        QVERIFY(dictionary->isEnabled());
+        QVERIFY(wordSize->isEnabled());
+        QVERIFY(solidBlock->isEnabled());
+        level->setCurrentIndex(5);
+        dictionary->setCurrentIndex(2);
+        wordSize->setCurrentIndex(3);
+        solidBlock->setCurrentIndex(1);
+        QCOMPARE(dialog.compressionOptions().dictionaryMiB, 4);
+        QCOMPARE(dialog.compressionOptions().wordSize, 64);
+        QCOMPARE(dialog.compressionOptions().solidBlockMiB, 16);
+        level->setCurrentIndex(0);
+        QVERIFY(!dictionary->isEnabled());
+        QVERIFY(!wordSize->isEnabled());
+        QVERIFY(!solidBlock->isEnabled());
+        QCOMPARE(dialog.compressionOptions().dictionaryMiB, 0);
+        QCOMPARE(dialog.compressionOptions().solidBlockMiB, 0);
         level->setCurrentIndex(5);
         method->setCurrentText("BZip2");
+        QVERIFY(!dictionary->isEnabled());
+        QVERIFY(!wordSize->isEnabled());
         solid->setChecked(false);
         threads->setValue(2);
         const CompressionOptions options = dialog.compressionOptions();
@@ -50,10 +71,14 @@ class CompressionTests : public QObject {
         QCOMPARE(options.method, QStringLiteral("BZip2"));
         QCOMPARE(options.threads, 2);
         QVERIFY(!options.solid);
+        QCOMPARE(options.dictionaryMiB, 0);
+        QCOMPARE(options.wordSize, 0);
+        QCOMPARE(options.solidBlockMiB, 0);
 
         format->setCurrentText("zip");
         QCOMPARE(method->currentText(), QStringLiteral("Deflate"));
         QVERIFY(!solid->isEnabled());
+        QVERIFY(!solidBlock->isEnabled());
         encryption->setCurrentIndex(1);
         QVERIFY(password->isEnabled());
         QVERIFY(confirmation->isEnabled());
@@ -140,6 +165,55 @@ class CompressionTests : public QObject {
         QVERIFY(inspect.waitForFinished(15000));
         QCOMPARE(inspect.exitCode(), 0);
         QVERIFY(inspect.readAllStandardOutput().contains("Method = " + method.toUtf8()));
+    }
+
+    void createsArchiveWithDictionaryWordAndSolidBlock() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("данные с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(QByteArray(8192, 'a'));
+        file.close();
+
+        CompressionOptions options;
+        options.method = "LZMA2";
+        options.dictionaryMiB = 1;
+        options.wordSize = 64;
+        options.solidBlockMiB = 16;
+        const QString target = temp.filePath("archive.7z");
+        ArchiveBackend backend;
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        backend.create(target, {source}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first().at(0).toBool(), qPrintable(done.first().at(1).toString()));
+
+        QProcess inspect;
+        inspect.start("7zz", {"l", "-slt", "--", target});
+        QVERIFY(inspect.waitForFinished(15000));
+        QCOMPARE(inspect.exitCode(), 0);
+        const QByteArray listing = inspect.readAllStandardOutput();
+        QVERIFY(listing.contains("Method = LZMA2"));
+        QVERIFY(listing.contains("Path = " + QFileInfo(source).fileName().toUtf8()));
+    }
+
+    void rejectsIncompatibleDictionaryBeforeCreatingTarget() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source.txt");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        CompressionOptions options;
+        options.method = "BZip2";
+        options.dictionaryMiB = 4;
+        ArchiveBackend backend;
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        const QString target = temp.filePath("invalid.7z");
+        backend.create(target, {source}, {}, false, options);
+        QCOMPARE(done.size(), 1);
+        QVERIFY(!done.first().at(0).toBool());
+        QVERIFY(!QFile::exists(target));
     }
 
     void rejectsInvalidOptionsWithoutCreatingTarget() {

@@ -27,6 +27,9 @@ struct CompressionOptions {
     QString method;
     int threads = 0; // 0 lets 7-Zip choose.
     bool solid = true;
+    int dictionaryMiB = 0; // 0 lets 7-Zip choose.
+    int wordSize = 0;      // 0 lets 7-Zip choose.
+    int solidBlockMiB = 0; // 0 lets 7-Zip choose when solid is enabled.
 };
 
 struct ExtractionOptions {

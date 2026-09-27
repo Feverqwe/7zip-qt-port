@@ -29,6 +29,24 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                       QStringLiteral("Недопустимые параметры сжатия для выбранного формата."));
         return;
     }
+    const QString method = options.method.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
+                                                                      : QStringLiteral("Deflate"))
+                                                    : options.method;
+    const bool lzma = method == "LZMA" || method == "LZMA2";
+    if ((options.dictionaryMiB != 0 &&
+         (!lzma || !QList<int>{1, 4, 16, 64}.contains(options.dictionaryMiB))) ||
+        (options.wordSize != 0 &&
+         (!lzma || !QList<int>{16, 32, 64, 128, 273}.contains(options.wordSize))) ||
+        (options.solidBlockMiB != 0 &&
+         (suffix != "7z" || !options.solid ||
+          !QList<int>{16, 64, 256}.contains(options.solidBlockMiB))) ||
+        (options.level == 0 &&
+         (options.dictionaryMiB || options.wordSize || options.solidBlockMiB))) {
+        emit finished(false,
+                      QStringLiteral("Размер словаря, слова или непрерывного блока не подходит "
+                                     "для выбранного метода сжатия."));
+        return;
+    }
     if (suffix == "zip") {
         for (const QChar character : password) {
             if (character.unicode() > 127) {
@@ -65,12 +83,20 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     }
     QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--"};
     arguments.insert(5, "-mx=" + QString::number(options.level));
-    if (options.level != 0 && !options.method.isEmpty())
-        arguments.insert(5, "-m0=" + options.method);
+    if (options.level != 0) {
+        QString methodArgument = "-m0=" + method;
+        if (options.dictionaryMiB)
+            methodArgument += ":d=" + QString::number(options.dictionaryMiB) + "m";
+        if (options.wordSize)
+            methodArgument += ":fb=" + QString::number(options.wordSize);
+        arguments.insert(5, methodArgument);
+    }
     if (options.threads > 0)
         arguments.insert(5, "-mmt=" + QString::number(options.threads));
     if (suffix == "7z" && !options.solid)
         arguments.insert(5, "-ms=off");
+    else if (suffix == "7z" && options.solidBlockMiB)
+        arguments.insert(5, "-ms=" + QString::number(options.solidBlockMiB) + "m");
     if (!password.isEmpty()) {
         arguments.insert(5, "-p");
         arguments.insert(5, suffix == "7z" ? (encryptHeaders ? "-mhe=on" : "-mhe=off")

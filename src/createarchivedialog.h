@@ -77,10 +77,28 @@ class CreateArchiveDialog : public QDialog {
             method_ = new QComboBox(compression);
             method_->setObjectName("compressionMethod");
             compressionForm->addRow("Метод сжатия:", method_);
+            dictionary_ = new QComboBox(compression);
+            dictionary_->setObjectName("compressionDictionary");
+            dictionary_->addItem("Автоматически", 0);
+            for (int size : {1, 4, 16, 64})
+                dictionary_->addItem(QString::number(size) + " МиБ", size);
+            compressionForm->addRow("Размер словаря:", dictionary_);
+            wordSize_ = new QComboBox(compression);
+            wordSize_->setObjectName("compressionWordSize");
+            wordSize_->addItem("Автоматически", 0);
+            for (int size : {16, 32, 64, 128, 273})
+                wordSize_->addItem(QString::number(size), size);
+            compressionForm->addRow("Размер слова:", wordSize_);
             solid_ = new QCheckBox("Непрерывный архив", compression);
             solid_->setObjectName("solidArchiveOption");
             solid_->setChecked(true);
             compressionForm->addRow(solid_);
+            solidBlock_ = new QComboBox(compression);
+            solidBlock_->setObjectName("compressionSolidBlock");
+            solidBlock_->addItem("Автоматически", 0);
+            for (int size : {16, 64, 256})
+                solidBlock_->addItem(QString::number(size) + " МиБ", size);
+            compressionForm->addRow("Размер непрерывного блока:", solidBlock_);
             threads_ = new QSpinBox(compression);
             threads_->setObjectName("compressionThreads");
             threads_->setRange(0, 256);
@@ -93,9 +111,25 @@ class CreateArchiveDialog : public QDialog {
                                       ? QStringList{"LZMA2", "LZMA", "PPMd", "BZip2"}
                                       : QStringList{"Deflate", "Deflate64", "BZip2", "LZMA"});
                 solid_->setEnabled(format_->currentText() == "7z");
+                solidBlock_->setEnabled(format_->currentText() == "7z" && solid_->isChecked() &&
+                                        level_->currentData().toInt() != 0);
             });
-            connect(level_, &QComboBox::currentIndexChanged, this,
-                    [this] { method_->setEnabled(level_->currentData().toInt() != 0); });
+            const auto updateMethodOptions = [this] {
+                const bool lzma =
+                    method_->currentText() == "LZMA" || method_->currentText() == "LZMA2";
+                const bool compressed = level_->currentData().toInt() != 0;
+                method_->setEnabled(compressed);
+                dictionary_->setEnabled(compressed && lzma);
+                wordSize_->setEnabled(compressed && lzma);
+                solidBlock_->setEnabled(compressed && format_->currentText() == "7z" &&
+                                        solid_->isChecked());
+            };
+            connect(level_, &QComboBox::currentIndexChanged, this, updateMethodOptions);
+            connect(method_, &QComboBox::currentTextChanged, this, updateMethodOptions);
+            connect(solid_, &QCheckBox::toggled, this, [this](bool enabled) {
+                solidBlock_->setEnabled(format_->currentText() == "7z" && enabled &&
+                                        level_->currentData().toInt() != 0);
+            });
             method_->addItems({"LZMA2", "LZMA", "PPMd", "BZip2"});
             auto *encryptionGroup = new QGroupBox("Шифрование", this);
             auto *encryptionForm = new QFormLayout(encryptionGroup);
@@ -258,6 +292,11 @@ class CreateArchiveDialog : public QDialog {
             options.method = method_->currentText();
             options.threads = threads_->value();
             options.solid = solid_->isChecked();
+            options.dictionaryMiB =
+                dictionary_->isEnabled() ? dictionary_->currentData().toInt() : 0;
+            options.wordSize = wordSize_->isEnabled() ? wordSize_->currentData().toInt() : 0;
+            options.solidBlockMiB =
+                solidBlock_->isEnabled() ? solidBlock_->currentData().toInt() : 0;
         }
         return options;
     }
@@ -303,6 +342,9 @@ class CreateArchiveDialog : public QDialog {
     QComboBox *encryption_ = nullptr;
     QComboBox *level_ = nullptr;
     QComboBox *method_ = nullptr;
+    QComboBox *dictionary_ = nullptr;
+    QComboBox *wordSize_ = nullptr;
+    QComboBox *solidBlock_ = nullptr;
     QCheckBox *solid_ = nullptr;
     QSpinBox *threads_ = nullptr;
     QLineEdit *password_ = nullptr;
