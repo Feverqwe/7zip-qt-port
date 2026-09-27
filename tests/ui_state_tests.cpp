@@ -166,6 +166,122 @@ class MainWindowStateTests : public QObject {
     }
 
   private slots:
+    void mainWindowFolderAndSelectionCommands() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString first = temp.filePath(QStringLiteral("файл с пробелом.txt"));
+        QFile file(first);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(table(window)->rowCount(), 1);
+        auto *createFolder = action(window, "createFolderAction");
+        auto *refresh = action(window, "refreshAction");
+        QVERIFY(createFolder->isEnabled());
+        QVERIFY(refresh->isEnabled());
+
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget))
+                    dialog->reject();
+            }
+        });
+        createFolder->trigger();
+        QCOMPARE(table(window)->rowCount(), 1);
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
+                    dialog->setTextValue(QStringLiteral("папка с пробелом"));
+                    dialog->accept();
+                }
+            }
+        });
+        createFolder->trigger();
+        const QString folder = temp.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(QFileInfo(folder).isDir());
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table(window)
+                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     ->text(),
+                 QStringLiteral("папка с пробелом"));
+
+        action(window, "invertSelectionAction")->trigger();
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table(window)
+                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     ->text(),
+                 QStringLiteral("файл с пробелом.txt"));
+        action(window, "deselectAllAction")->trigger();
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("файл с пробелом.txt")));
+        const QString later = temp.filePath("later.txt");
+        QFile newFile(later);
+        QVERIFY(newFile.open(QIODevice::WriteOnly));
+        newFile.close();
+        refresh->trigger();
+        QCOMPARE(table(window)->rowCount(), 3);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table(window)
+                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     ->text(),
+                 QStringLiteral("файл с пробелом.txt"));
+        QCOMPARE(backend.listCalls, 0);
+    }
+
+    void refreshArchiveKeepsFolderAndSelection() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("example.7z");
+        ArchiveEntry first;
+        first.path = QStringLiteral("папка с пробелом/первый.txt");
+        backend.completeList({first});
+        openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом")));
+        QCOMPARE(table(window)->rowCount(), 1);
+        table(window)->selectRow(0);
+        action(window, "refreshAction")->trigger();
+        QCOMPARE(backend.listCalls, 2);
+        QVERIFY(!action(window, "refreshAction")->isEnabled());
+        QVERIFY(!action(window, "createFolderAction")->isEnabled());
+        action(window, "refreshAction")->trigger();
+        QCOMPARE(backend.listCalls, 2);
+        ArchiveEntry second;
+        second.path = QStringLiteral("папка с пробелом/второй.txt");
+        backend.completeList({first, second});
+        QCOMPARE(table(window)->rowCount(), 2);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table(window)
+                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     ->text(),
+                 QStringLiteral("первый.txt"));
+        QVERIFY(window.findChild<QLineEdit *>("archivePath")
+                    ->text()
+                    .endsWith(QStringLiteral(" / папка с пробелом")));
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+        action(window, "refreshAction")->trigger();
+        backend.completeList({});
+        QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(!window.findChild<QLineEdit *>("archivePath")
+                     ->text()
+                     .endsWith(QStringLiteral(" / папка с пробелом")));
+        action(window, "refreshAction")->trigger();
+        backend.cancel();
+        QVERIFY(action(window, "createFolderAction")->isEnabled());
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+
+        window.openArchive("example.7z");
+        backend.completeList({first});
+        action(window, "refreshAction")->trigger();
+        QTimer::singleShot(0, &window, [] { dismissWarnings(); });
+        backend.fail(QStringLiteral("Не удалось перечитать архив."));
+        QVERIFY(action(window, "createFolderAction")->isEnabled());
+        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+    }
+
     void stage7FilesystemCommands() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

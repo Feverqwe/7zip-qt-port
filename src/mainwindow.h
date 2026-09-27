@@ -30,6 +30,7 @@
 #include <QPointer>
 #include <QProgressDialog>
 #include <QPushButton>
+#include <QRegularExpression>
 #include <QSizePolicy>
 #include <QStatusBar>
 #include <QStyle>
@@ -115,6 +116,9 @@ class MainWindow : public QMainWindow {
         remove_->setObjectName("deleteAction");
         rename_ = menu->addAction("Переименовать…", this, [this] { renameSelected(); });
         rename_->setObjectName("renameAction");
+        createFolder_ = menu->addAction("Создать папку…", this, [this] { createFolder(); });
+        createFolder_->setObjectName("createFolderAction");
+        createFolder_->setShortcut(QKeySequence(Qt::Key_F7));
         copy_->setShortcut(QKeySequence(Qt::Key_F5));
         move_->setShortcut(QKeySequence(Qt::Key_F6));
         remove_->setShortcut(QKeySequence::Delete);
@@ -127,6 +131,11 @@ class MainWindow : public QMainWindow {
         toolbar->addSeparator();
         toolbar->addAction(open);
         open_ = open;
+        auto *editMenu = menuBar()->addMenu("Правка");
+        auto *viewMenu = menuBar()->addMenu("Вид");
+        refresh_ = viewMenu->addAction("Обновить", this, [this] { refreshCurrent(); });
+        refresh_->setObjectName("refreshAction");
+        refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
 
         auto *central = new QWidget(this);
         auto *layout = new QVBoxLayout(central);
@@ -186,6 +195,18 @@ class MainWindow : public QMainWindow {
         selectAll_->setShortcutContext(Qt::WidgetShortcut);
         table_->addAction(selectAll_);
         connect(selectAll_, &QAction::triggered, table_, &QTableWidget::selectAll);
+        selectAll_->setText("Выделить всё");
+        editMenu->addAction(selectAll_);
+        deselectAll_ =
+            editMenu->addAction("Снять выделение", table_, [this] { table_->clearSelection(); });
+        deselectAll_->setObjectName("deselectAllAction");
+        invertSelection_ = editMenu->addAction("Инвертировать выделение", table_, [this] {
+            for (int row = 0; row < table_->rowCount(); ++row)
+                table_->selectionModel()->select(table_->model()->index(row, 0),
+                                                 QItemSelectionModel::Toggle |
+                                                     QItemSelectionModel::Rows);
+        });
+        invertSelection_->setObjectName("invertSelectionAction");
         layout->addWidget(table_);
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
@@ -203,7 +224,26 @@ class MainWindow : public QMainWindow {
                     if (state_ != State::Loading)
                         return;
                     entries_ = entries;
-                    showArchiveFolder({});
+                    QString folder = refreshing_ ? refreshFolder_ : QString();
+                    while (!folder.isEmpty()) {
+                        bool present = false;
+                        for (const ArchiveEntry &entry : entries_) {
+                            present = entry.path == folder || entry.path == folder + '/' ||
+                                      entry.path.startsWith(folder + '/');
+                            if (present)
+                                break;
+                        }
+                        if (present)
+                            break;
+                        const int separator = folder.lastIndexOf('/');
+                        folder = separator < 0 ? QString() : folder.left(separator);
+                    }
+                    showArchiveFolder(folder);
+                    if (refreshing_)
+                        selectPaths(refreshSelection_);
+                    refreshing_ = false;
+                    refreshFolder_.clear();
+                    refreshSelection_.clear();
                     setState(State::Viewing);
                 });
         connect(backend_, &ArchiveBackend::infoReady, this,
@@ -288,6 +328,9 @@ class MainWindow : public QMainWindow {
         entries_.clear();
         info_ = ArchiveInfo{};
         archiveFolder_.clear();
+        refreshing_ = false;
+        refreshFolder_.clear();
+        refreshSelection_.clear();
         table_->setRowCount(0);
         path_->setText(archive_);
         setState(State::Loading);
@@ -382,6 +425,9 @@ class MainWindow : public QMainWindow {
         archive_.clear();
         archivePassword_.clear();
         archiveFolder_.clear();
+        refreshing_ = false;
+        refreshFolder_.clear();
+        refreshSelection_.clear();
         entries_.clear();
         table_->clearSelection();
         table_->setSortingEnabled(false);
@@ -413,6 +459,54 @@ class MainWindow : public QMainWindow {
         static_cast<FileTable *>(table_)->filesystem = true;
         setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
+    }
+    QStringList selectedPaths() const {
+        QStringList paths;
+        for (const QModelIndex &index : table_->selectionModel()->selectedRows())
+            paths << table_->item(index.row(), 1)->text();
+        return paths;
+    }
+    void selectPaths(const QStringList &paths) {
+        table_->clearSelection();
+        for (int row = 0; row < table_->rowCount(); ++row) {
+            if (paths.contains(table_->item(row, 1)->text()))
+                table_->selectionModel()->select(table_->model()->index(row, 0),
+                                                 QItemSelectionModel::Select |
+                                                     QItemSelectionModel::Rows);
+        }
+    }
+    void refreshCurrent() {
+        if (state_ == State::Filesystem) {
+            const QStringList selection = selectedPaths();
+            showDirectory(directory_, false);
+            selectPaths(selection);
+        } else if (state_ == State::Viewing) {
+            refreshing_ = true;
+            refreshFolder_ = archiveFolder_;
+            refreshSelection_ = selectedPaths();
+            setState(State::Loading);
+            begin("Обновление архива", archive_);
+            backend_->list(archive_);
+        }
+    }
+    void createFolder() {
+        if (state_ != State::Filesystem)
+            return;
+        bool accepted = false;
+        const QString name = QInputDialog::getText(this, "Создать папку",
+                                                   "Имя папки:", QLineEdit::Normal, {}, &accepted);
+        if (!accepted)
+            return;
+        const QString target = QDir(directory_).filePath(name);
+        if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
+            name.contains('\\') || name.contains(QRegularExpression("[<>:\"|?*]")) ||
+            name.endsWith(' ') || name.endsWith('.') || QFileInfo::exists(target) ||
+            QFileInfo(target).isSymLink() || !QDir(directory_).mkdir(name)) {
+            QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку.");
+            return;
+        }
+        showDirectory(directory_, false);
+        selectPaths({target});
     }
     void navigateTo(const QString &path) {
         if (state_ == State::Loading || state_ == State::Operating)
@@ -563,6 +657,10 @@ class MainWindow : public QMainWindow {
                                      (state_ == State::Filesystem && QDir(directory_).cdUp())));
         selectAll_->setEnabled(idle && table_->rowCount() > 0);
         const bool selected = !table_->selectionModel()->selectedRows().isEmpty();
+        deselectAll_->setEnabled(idle && selected);
+        invertSelection_->setEnabled(idle && table_->rowCount() > 0);
+        refresh_->setEnabled(idle);
+        createFolder_->setEnabled(idle && state_ == State::Filesystem);
         copy_->setEnabled(idle && selected);
         move_->setEnabled(idle && state_ == State::Filesystem && selected);
         remove_->setEnabled(
@@ -940,6 +1038,9 @@ class MainWindow : public QMainWindow {
     QString directory_;
     QString returnDirectory_;
     QStringList history_;
+    bool refreshing_ = false;
+    QString refreshFolder_;
+    QStringList refreshSelection_;
     QTableWidget *table_ = nullptr;
     QProgressDialog *progress_ = nullptr;
     QDialog *journalDialog_ = nullptr;
@@ -965,4 +1066,8 @@ class MainWindow : public QMainWindow {
     QAction *move_ = nullptr;
     QAction *remove_ = nullptr;
     QAction *rename_ = nullptr;
+    QAction *createFolder_ = nullptr;
+    QAction *refresh_ = nullptr;
+    QAction *deselectAll_ = nullptr;
+    QAction *invertSelection_ = nullptr;
 };
