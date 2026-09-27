@@ -119,6 +119,81 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         QTest::newRow("7z") << QStringLiteral("7z");
         QTest::newRow("zip") << QStringLiteral("zip");
     }
+    void renameArchiveFolder_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+    void renameArchiveFolder() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString folder = temp.filePath(QStringLiteral("старая папка"));
+        QVERIFY(QDir().mkpath(folder + "/nested"));
+        writeFile(folder + QStringLiteral("/nested/файл.txt"), "content");
+        const QString archive = temp.filePath("folders." + format);
+        ArchiveBackend backend;
+        backend.create(archive, {folder});
+        await(backend, true);
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        const QString oldName = QStringLiteral("старая папка");
+        const QString newName = QStringLiteral("новая папка");
+        backend.renameEntry(archive, oldName, newName);
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QStringList paths;
+        for (const ArchiveEntry &entry : entries)
+            paths << entry.path.normalized(QString::NormalizationForm_C);
+        QVERIFY(paths.contains(newName + QStringLiteral("/nested/файл.txt")));
+        QVERIFY(!paths.contains(oldName + QStringLiteral("/nested/файл.txt")));
+        QTemporaryDir extracted;
+        QVERIFY(extracted.isValid());
+        backend.extract(archive, extracted.path());
+        await(backend, true);
+        QFile restored(extracted.filePath(newName + QStringLiteral("/nested/файл.txt")));
+        QVERIFY(restored.open(QIODevice::ReadOnly));
+        QCOMPARE(restored.readAll(), QByteArray("content"));
+    }
+    void renameImplicitZipFolderAndRejectCollision() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString oldFolder = QStringLiteral("старая папка");
+        QVERIFY(QDir().mkpath(temp.filePath(oldFolder + "/sub")));
+        writeFile(temp.filePath(oldFolder + QStringLiteral("/sub/файл.txt")), "implicit");
+        writeFile(temp.filePath(QStringLiteral("занято.txt")), "keep");
+        const QString archive = temp.filePath("implicit.zip");
+        QProcess process;
+        process.setWorkingDirectory(temp.path());
+        process.start("7zz", {"a", "-tzip", archive, oldFolder + QStringLiteral("/sub/файл.txt"),
+                              QStringLiteral("занято.txt")});
+        QVERIFY(process.waitForFinished(30000));
+        QCOMPARE(process.exitCode(), 0);
+        ArchiveBackend backend;
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(entries.size(), 2);
+        QSignalSpy conflict(&backend, &ArchiveBackend::finished);
+        backend.renameEntry(archive, oldFolder, QStringLiteral("занято.txt"));
+        QCOMPARE(conflict.size(), 1);
+        QVERIFY(!conflict.takeFirst().at(0).toBool());
+        backend.renameEntry(archive, oldFolder, QStringLiteral("новая папка"));
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QStringList paths;
+        for (const ArchiveEntry &entry : entries)
+            paths << entry.path.normalized(QString::NormalizationForm_C);
+        QVERIFY(paths.contains(QStringLiteral("новая папка/sub/файл.txt")));
+        QVERIFY(paths.contains(QStringLiteral("занято.txt")));
+    }
     void archiveMutation() {
         QFETCH(QString, format);
         QTemporaryDir temp;

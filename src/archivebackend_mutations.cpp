@@ -288,21 +288,52 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
 void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
                                  const QString &newPath) {
     bool found = false;
-    const QString key = newPath.normalized(QString::NormalizationForm_C).toCaseFolded();
+    bool directory = false;
     for (const ArchiveEntry &entry : entries_) {
-        if (entry.path == oldPath && !entry.directory)
+        if (entry.path == oldPath) {
             found = true;
-        const QString existing = entry.path.normalized(QString::NormalizationForm_C).toCaseFolded();
-        if (existing == key || existing.startsWith(key + '/')) {
-            emit finished(false, QStringLiteral("Имя уже есть в архиве."));
-            return;
+            directory = entry.directory;
+        } else if (entry.path.startsWith(oldPath + '/')) {
+            found = true;
+            directory = true;
         }
+    }
+    const QString oldPrefix = oldPath + '/';
+    QSet<QString> existing;
+    QSet<QString> renamed;
+    for (const ArchiveEntry &entry : entries_) {
+        const bool member =
+            entry.path == oldPath || (directory && entry.path.startsWith(oldPrefix));
+        const QString path = member ? newPath + entry.path.mid(oldPath.size()) : entry.path;
+        const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
+        if (member) {
+            if (!safePath(entry.path) || entry.link) {
+                emit finished(false,
+                              QStringLiteral("Небезопасный объект архива: %1").arg(entry.path));
+                return;
+            }
+            if (renamed.contains(key)) {
+                emit finished(false, QStringLiteral("Имя уже есть в архиве."));
+                return;
+            }
+            renamed.insert(key);
+        } else
+            existing.insert(key);
     }
     if (!found || !safePath(newPath) || oldPath.contains('*') || oldPath.contains('?') ||
         oldPath.startsWith('@') || newPath.contains('*') || newPath.contains('?') ||
-        newPath.startsWith('@') || oldPath.section('/', 0, -2) != newPath.section('/', 0, -2)) {
+        newPath.startsWith('@') || oldPath == newPath ||
+        oldPath.section('/', 0, -2) != newPath.section('/', 0, -2)) {
         emit finished(false, QStringLiteral("Переименование этого объекта недоступно."));
         return;
+    }
+    const QString targetKey = newPath.normalized(QString::NormalizationForm_C).toCaseFolded();
+    for (const QString &key : existing) {
+        if (renamed.contains(key) ||
+            (directory && (key == targetKey || key.startsWith(targetKey + '/')))) {
+            emit finished(false, QStringLiteral("Имя уже есть в архиве."));
+            return;
+        }
     }
     if (!prepareMutation(archive))
         return;

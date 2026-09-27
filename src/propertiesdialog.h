@@ -11,6 +11,8 @@ struct PropertyItem {
     bool directory = false;
     qint64 size = 0;
     qint64 packedSize = 0;
+    int nestedFiles = 0;
+    int nestedFolders = 0;
 };
 
 class PropertiesDialog : public QDialog {

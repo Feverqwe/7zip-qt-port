@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "window_state_support.h"
 
 #include <QDir>
 #include <QFile>
@@ -63,6 +64,45 @@ class PropertiesTests : public QObject {
         QVERIFY(labels.contains("Сжатый размер выбранных файлов:"));
         QVERIFY(labels.contains("6"));
         QVERIFY(labels.contains("15"));
+    }
+    void archiveFolderPropertiesIncludeNestedFiles() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("folder.7z");
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/внутри.txt"), 13, 5},
+                              ArchiveEntry{QStringLiteral("папка/sub/ещё.txt"), 7, 3}});
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *action = window.findChild<QAction *>("selectedPropertiesAction");
+        QVERIFY(table && action);
+        QCOMPARE(table->rowCount(), 1);
+        table->selectRow(0);
+        QStringList labels;
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
+            QVERIFY(dialog);
+            for (QLabel *label : dialog->findChildren<QLabel *>())
+                labels << label->text();
+            dialog->reject();
+        });
+        action->trigger();
+        QVERIFY(labels.contains("Файлов внутри:"));
+        QVERIFY(labels.contains("2"));
+        QVERIFY(labels.contains("Размер содержимого:"));
+        QVERIFY(labels.contains("20"));
+        QVERIFY(labels.contains("8"));
+    }
+    void archiveSummaryDoesNotDoubleCountSelectedChild() {
+        PropertiesDialog dialog(
+            {{QStringLiteral("папка"), QStringLiteral("папка"), {}, true, 20, 8, 2, 0},
+             {QStringLiteral("файл.txt"), QStringLiteral("папка/файл.txt"), {}, false, 13, 5},
+             {QStringLiteral("другой.txt"), QStringLiteral("другой.txt"), {}, false, 4, 2}},
+            true, "archive.7z");
+        QStringList labels;
+        for (QLabel *label : dialog.findChildren<QLabel *>())
+            labels << label->text();
+        QVERIFY(labels.contains("Размер файлов и содержимого папок:"));
+        QVERIFY(labels.contains("24"));
+        QVERIFY(labels.contains("10"));
     }
 };
 

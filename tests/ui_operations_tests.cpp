@@ -348,7 +348,20 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         backend.completeList({ArchiveEntry{QStringLiteral("папка/file.txt"), 4, 4}});
         table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
         QVERIFY(action(window, "deleteAction")->isEnabled());
-        QVERIFY(!action(window, "renameAction")->isEnabled());
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->setTextValue(QStringLiteral("новая папка"));
+                    dialog->accept();
+                }
+            }
+        });
+        action(window, "renameAction")->trigger();
+        QCOMPARE(backend.lastRenameOld, QStringLiteral("папка"));
+        QCOMPARE(backend.lastRenameNew, QStringLiteral("новая папка"));
+        backend.cancel();
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
@@ -383,7 +396,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "renameAction")->trigger();
-        QCOMPARE(backend.renameCalls, 1);
+        QCOMPARE(backend.renameCalls, 2);
         QCOMPARE(backend.lastRenameOld, QStringLiteral("папка/file.txt"));
         QCOMPARE(backend.lastRenameNew, QStringLiteral("папка/новый.txt"));
         backend.completeAdd();

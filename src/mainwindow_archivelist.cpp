@@ -174,12 +174,7 @@ void MainWindow::refreshActions() {
                          QRegularExpression(R"(\.0{2,}1$)")
                              .match(QFileInfo(selectedFilesystemPaths().value(0)).fileName())
                              .hasMatch());
-    rename_->setEnabled(idle && one &&
-                        (state_ == State::Filesystem ||
-                         (writableArchive &&
-                          !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
-                               ->data(Qt::UserRole + 1)
-                               .toBool())));
+    rename_->setEnabled(idle && one && (state_ == State::Filesystem || writableArchive));
     properties_->setEnabled(idle && selected);
     for (QAction *action : hashActions_)
         action->setEnabled(idle && selected);

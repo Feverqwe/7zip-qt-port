@@ -70,6 +70,19 @@ void MainWindow::showSelectedProperties() {
         } else if (!item.directory) {
             item.size = table_->item(row, 2)->text().toLongLong();
             item.packedSize = table_->item(row, 3)->text().toLongLong();
+        } else {
+            const QString prefix = item.path + '/';
+            for (const ArchiveEntry &entry : entries_) {
+                if (!entry.path.startsWith(prefix))
+                    continue;
+                if (entry.directory)
+                    ++item.nestedFolders;
+                else {
+                    ++item.nestedFiles;
+                    item.size += entry.size;
+                    item.packedSize += entry.packedSize;
+                }
+            }
         }
         items.append(item);
     }
