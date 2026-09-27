@@ -92,7 +92,9 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(table->isVisible());
         QVERIFY(toolbar->isVisible());
         QVERIFY(window.statusBar()->isVisible());
-        QCOMPARE(table->columnCount(), 5);
+        QCOMPARE(table->columnCount(), 7);
+        QVERIFY(table->isColumnHidden(5));
+        QVERIFY(table->isColumnHidden(6));
 
         const QRect content = window.centralWidget()->contentsRect();
         QVERIFY2(content.contains(pathCombo->geometry()), "Archive path escaped the content area");

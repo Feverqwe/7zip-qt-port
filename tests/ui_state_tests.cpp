@@ -193,6 +193,37 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
     }
 
+    void viewSortCommandsReorderArchiveAndSurviveRefresh() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive(temp.filePath("sort.7z"));
+        const QList<ArchiveEntry> entries = {ArchiveEntry{"z.bin", 30, 1, "2024-01-01"},
+                                             ArchiveEntry{"a.txt", 10, 1, "2023-01-01"},
+                                             ArchiveEntry{"c.bin", 20, 1, "2022-01-01"}};
+        backend.completeList(entries);
+        auto names = [&] {
+            QStringList result;
+            for (int row = 0; row < table(window)->rowCount(); ++row)
+                result << table(window)->item(row, 0)->text();
+            return result;
+        };
+        QCOMPARE(names(), (QStringList{"a.txt", "c.bin", "z.bin"}));
+        action(window, "sort1Action")->trigger();
+        QCOMPARE(names(), (QStringList{"c.bin", "z.bin", "a.txt"}));
+        action(window, "sort2Action")->trigger();
+        QCOMPARE(names(), (QStringList{"c.bin", "a.txt", "z.bin"}));
+        action(window, "sort3Action")->trigger();
+        QCOMPARE(names(), (QStringList{"a.txt", "c.bin", "z.bin"}));
+        action(window, "sort4Action")->trigger();
+        QCOMPARE(names(), (QStringList{"z.bin", "a.txt", "c.bin"}));
+        action(window, "refreshAction")->trigger();
+        backend.completeList(entries);
+        QCOMPARE(names(), (QStringList{"z.bin", "a.txt", "c.bin"}));
+        QVERIFY(action(window, "sort4Action")->isChecked());
+    }
+
     void createFileDialogCreatesUnicodeFileAndCancelLeavesDirectoryUntouched() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

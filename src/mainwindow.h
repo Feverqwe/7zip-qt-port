@@ -6,6 +6,7 @@
 #include "createarchivedialog.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QComboBox>
 #include <QDialog>
@@ -123,7 +124,11 @@ class ArchiveTableItem : public QTableWidgetItem {
             if (left != right)
                 return left < right;
         }
-        return compareNames(text(), other.text()) < 0;
+        const int value = compareNames(text(), other.text());
+        if (value != 0)
+            return value < 0;
+        return compareNames(data(Qt::UserRole + 3).toString(),
+                            other.data(Qt::UserRole + 3).toString()) < 0;
     }
 };
 
@@ -224,6 +229,21 @@ class MainWindow : public QMainWindow {
             openBookmarks_[index] = open;
         }
         refreshBookmarks();
+        auto *sortGroup = new QActionGroup(this);
+        const QStringList sortLabels = {"По имени", "По типу", "По дате", "По размеру",
+                                        "Без сортировки"};
+        for (int index = 0; index < sortLabels.size(); ++index) {
+            QAction *action = viewMenu->addAction(sortLabels[index]);
+            action->setObjectName(QStringLiteral("sort%1Action").arg(index));
+            action->setCheckable(true);
+            action->setActionGroup(sortGroup);
+            action->setShortcut(QKeySequence(Qt::CTRL | (Qt::Key_F3 + index)));
+            sortActions_[index] = action;
+            connect(action, &QAction::triggered, this,
+                    [this, index] { setSortMode(static_cast<SortMode>(index)); });
+        }
+        sortActions_[0]->setChecked(true);
+        viewMenu->addSeparator();
         auto *toolbarsMenu = viewMenu->addMenu("Панели инструментов");
         auto addToolbarOption = [this, toolbarsMenu](const QString &title, const char *name,
                                                      bool checked) {
@@ -277,11 +297,14 @@ class MainWindow : public QMainWindow {
         }
         navigation->addWidget(pathCombo_);
         layout->addLayout(navigation);
-        table_ = new FileTable(0, 5, central);
+        table_ = new FileTable(0, 7, central);
         table_->setObjectName("archiveTable");
         table_->verticalHeader()->hide();
-        table_->setHorizontalHeaderLabels({"Имя", "Путь", "Размер", "Сжатый", "Изменён"});
+        table_->setHorizontalHeaderLabels(
+            {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"});
         table_->setColumnHidden(1, true);
+        table_->setColumnHidden(5, true);
+        table_->setColumnHidden(6, true);
         table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
         table_->setColumnWidth(2, 100);
         table_->setColumnWidth(3, 100);
@@ -319,6 +342,16 @@ class MainWindow : public QMainWindow {
         table_->setAcceptDrops(true);
         table_->viewport()->setAcceptDrops(true);
         table_->sortItems(0, Qt::AscendingOrder);
+        connect(table_->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this,
+                [this](int column, Qt::SortOrder) {
+                    const int mode = column == 5   ? 1
+                                     : column == 4 ? 2
+                                     : column == 2 ? 3
+                                     : column == 6 ? 4
+                                                   : 0;
+                    sortMode_ = static_cast<SortMode>(mode);
+                    sortActions_[mode]->setChecked(true);
+                });
         table_->installEventFilter(this);
         table_->viewport()->installEventFilter(this);
         table_->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -549,6 +582,18 @@ class MainWindow : public QMainWindow {
 
   private:
     enum class State { Filesystem, Loading, Viewing, Operating };
+    enum class SortMode { Name, Type, Date, Size, Unsorted };
+    void setSortMode(SortMode mode) {
+        sortMode_ = mode;
+        sortActions_[static_cast<int>(mode)]->setChecked(true);
+        applySortMode();
+    }
+    void applySortMode() {
+        if (!table_)
+            return;
+        const int columns[] = {0, 5, 4, 2, 6};
+        table_->sortItems(columns[static_cast<int>(sortMode_)], Qt::AscendingOrder);
+    }
     static QIcon toolbarIcon(int kind) {
         QPixmap pixmap(24, 24);
         pixmap.fill(Qt::transparent);
@@ -841,31 +886,38 @@ class MainWindow : public QMainWindow {
         table_->setSortingEnabled(false);
         table_->setRowCount(0);
         path_->setText(directory_);
-        const QFileInfoList files =
-            QDir(directory_)
-                .entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden |
-                                   QDir::System,
-                               QDir::DirsFirst | QDir::Name | QDir::IgnoreCase);
+        const QFileInfoList files = QDir(directory_)
+                                        .entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot |
+                                                           QDir::Hidden | QDir::System,
+                                                       QDir::NoSort);
         for (const QFileInfo &file : files) {
             const int row = table_->rowCount();
             table_->insertRow(row);
-            const QStringList values = {file.fileName(), file.absoluteFilePath(),
+            const QStringList values = {file.fileName(),
+                                        file.absoluteFilePath(),
                                         file.isDir() ? QString() : QString::number(file.size()),
-                                        QString(), file.lastModified().toString(Qt::ISODate)};
+                                        QString(),
+                                        file.lastModified().toString(Qt::ISODate),
+                                        file.isDir() ? QString() : file.suffix().toCaseFolded(),
+                                        QString::number(row)};
             for (int col = 0; col < values.size(); ++col) {
                 auto *item = new ArchiveTableItem(values[col]);
                 item->setData(Qt::UserRole + 1, file.isDir());
+                item->setData(Qt::UserRole + 3, file.fileName());
                 if (col == 0)
                     item->setIcon(QApplication::style()->standardIcon(
                         file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
                 if (col == 2 && !file.isDir())
                     item->setData(Qt::UserRole + 2, file.size());
+                if (col == 6)
+                    item->setData(Qt::UserRole + 2, row);
                 if (col == 2 || col == 3)
                     item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 table_->setItem(row, col, item);
             }
         }
         table_->setSortingEnabled(true);
+        applySortMode();
         static_cast<FileTable *>(table_)->filesystem = true;
         table_->setColumnHidden(3, true);
         setState(State::Filesystem);
@@ -1050,6 +1102,7 @@ class MainWindow : public QMainWindow {
         QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
         table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
         QMap<QString, ArchiveEntry> children;
+        QMap<QString, int> sourceOrder;
         const QString prefix = folder.isEmpty() ? QString() : folder + '/';
         for (const ArchiveEntry &entry : entries_) {
             QString path = entry.path;
@@ -1062,6 +1115,8 @@ class MainWindow : public QMainWindow {
             const QString name = slash < 0 ? relative : relative.left(slash);
             if (name.isEmpty())
                 continue;
+            if (!sourceOrder.contains(name))
+                sourceOrder.insert(name, sourceOrder.size());
             const QString childPath = prefix + name;
             if (slash >= 0) {
                 if (!children.contains(name)) {
@@ -1084,24 +1139,33 @@ class MainWindow : public QMainWindow {
             const int row = table_->rowCount();
             table_->insertRow(row);
             const QStringList values = {
-                it.key(), entry.path, entry.directory ? QString() : QString::number(entry.size),
-                entry.directory ? QString() : QString::number(entry.packedSize), entry.modified};
+                it.key(),
+                entry.path,
+                entry.directory ? QString() : QString::number(entry.size),
+                entry.directory ? QString() : QString::number(entry.packedSize),
+                entry.modified,
+                entry.directory ? QString() : QFileInfo(it.key()).suffix().toCaseFolded(),
+                QString::number(sourceOrder.value(it.key()))};
             for (int col = 0; col < values.size(); ++col) {
                 auto *item = new ArchiveTableItem(values[col]);
                 item->setData(Qt::UserRole, entry.path);
                 item->setData(Qt::UserRole + 1, entry.directory);
+                item->setData(Qt::UserRole + 3, it.key());
                 item->setToolTip(entry.path);
                 if (col == 0)
                     item->setIcon(QApplication::style()->standardIcon(
                         entry.directory ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
                 if (!entry.directory && (col == 2 || col == 3))
                     item->setData(Qt::UserRole + 2, col == 2 ? entry.size : entry.packedSize);
+                if (col == 6)
+                    item->setData(Qt::UserRole + 2, sourceOrder.value(it.key()));
                 if (col == 2 || col == 3)
                     item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 table_->setItem(row, col, item);
             }
         }
         table_->setSortingEnabled(true);
+        applySortMode();
         path_->setText(archiveDisplayPath());
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(children.size()));
         refreshActions();
@@ -1112,6 +1176,8 @@ class MainWindow : public QMainWindow {
     }
     void refreshActions() {
         const bool idle = state_ != State::Loading && state_ != State::Operating;
+        for (QAction *action : sortActions_)
+            action->setEnabled(idle);
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
         add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted);
@@ -1573,6 +1639,8 @@ class MainWindow : public QMainWindow {
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;
+    SortMode sortMode_ = SortMode::Name;
+    QAction *sortActions_[5]{};
     State previousState_ = State::Filesystem;
     bool creating_ = false;
     bool updatingArchive_ = false;
