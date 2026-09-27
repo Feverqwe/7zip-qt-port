@@ -2,6 +2,9 @@
 
 The regression gate is `./scripts/check.sh`. It checks C++ formatting, builds the development preset, and runs CTest. A tracked Git pre-commit hook runs the same gate after `.agents/skills/sevenzip-setup/scripts/setup.sh` configures the local checkout. GitHub Actions will run it on macOS, Linux, and Windows after the repository has a GitHub remote.
 
+`settings` checks that cancelling Options leaves the file list unchanged, accepting its list options persists them, and a click opens a Unicode folder when single-click mode is enabled. System icon appearance still needs manual checks on each platform.
+`properties` checks the summary from a mixed filesystem selection with Unicode filenames and the packed-size summary displayed for archive items.
+
 ## What to test
 
 - UI wiring: command availability, selected files, dialog inputs, and user-visible error handling.

@@ -20,6 +20,10 @@ qt_add_executable(sevenzip_desktop
     src/archivebackend.h
     src/filesystemscanner.cpp
     src/filesystemscanner.h
+    src/settingsdialog.cpp
+    src/settingsdialog.h
+    src/propertiesdialog.cpp
+    src/propertiesdialog.h
 )
 
 target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
@@ -36,13 +40,23 @@ if(BUILD_TESTING)
     qt_add_executable(archive_backend_tests tests/archive_backend_tests.cpp src/archivebackend.cpp src/archivebackend.h)
     target_include_directories(archive_backend_tests PRIVATE src)
     target_link_libraries(archive_backend_tests PRIVATE Qt6::Test)
-    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
+    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.cpp src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h)
     target_include_directories(ui_layout_tests PRIVATE src)
     target_link_libraries(ui_layout_tests PRIVATE Qt6::Widgets Qt6::Test)
-    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
+    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.cpp src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h)
     target_include_directories(ui_state_tests PRIVATE src)
     target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
-    qt_add_executable(flat_view_tests tests/flat_view_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
+    qt_add_executable(flat_view_tests tests/flat_view_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.cpp src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h)
+    qt_add_executable(settings_tests tests/settings_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.cpp src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h)
+    target_include_directories(settings_tests PRIVATE src)
+    target_link_libraries(settings_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME settings COMMAND settings_tests)
+    set_tests_properties(settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/settings-tests.ini")
+    qt_add_executable(properties_tests tests/properties_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.cpp src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h)
+    target_include_directories(properties_tests PRIVATE src)
+    target_link_libraries(properties_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME properties COMMAND properties_tests)
+    set_tests_properties(properties PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/properties-tests.ini")
     target_include_directories(flat_view_tests PRIVATE src)
     target_link_libraries(flat_view_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME flat_view COMMAND flat_view_tests)

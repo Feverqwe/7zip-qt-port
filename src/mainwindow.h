@@ -6,6 +6,8 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
 #include "filesystemscanner.h"
+#include "propertiesdialog.h"
+#include "settingsdialog.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -19,6 +21,7 @@
 #include <QEvent>
 #include <QFile>
 #include <QFileDialog>
+#include <QFileIconProvider>
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -230,6 +233,9 @@ class MainWindow : public QMainWindow {
         }
         viewMenu->addSeparator();
         auto *favoritesMenu = menuBar()->addMenu("Избранное");
+        auto *toolsMenu = menuBar()->addMenu("Сервис");
+        settingsAction_ = toolsMenu->addAction("Настройки…", this, [this] { showSettings(); });
+        settingsAction_->setObjectName("settingsAction");
         auto *addFavoriteMenu = favoritesMenu->addMenu("Добавить папку в избранное как");
         QSettings favoritesSettings(toolbarSettingsPath(), QSettings::IniFormat);
         for (int index = 0; index < 10; ++index) {
@@ -262,6 +268,9 @@ class MainWindow : public QMainWindow {
         sortActions_[0]->setChecked(true);
         viewMenu->addSeparator();
         QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        fileListSettings_ = {settings.value("list/realFileIcons", false).toBool(),
+                             settings.value("list/grid", false).toBool(),
+                             settings.value("list/singleClick", false).toBool()};
         flatDisk_ = settings.value("view/flatDisk", false).toBool();
         flatArchive_ = settings.value("view/flatArchive", false).toBool();
         flatView_ = viewMenu->addAction("Плоский вид");
@@ -350,7 +359,7 @@ class MainWindow : public QMainWindow {
         table_->setColumnWidth(2, 100);
         table_->setColumnWidth(3, 100);
         table_->setColumnWidth(4, 150);
-        table_->setShowGrid(false);
+        table_->setShowGrid(fileListSettings_.grid);
         table_->setWordWrap(false);
         table_->setTextElideMode(Qt::ElideMiddle);
         for (int column : {2, 3, 4})
@@ -458,8 +467,14 @@ class MainWindow : public QMainWindow {
         iconList_->addAction(selectAll_);
         iconList_->addAction(openItem_);
         iconList_->addAction(parent_);
-        connect(iconList_, &QListView::doubleClicked, this,
-                [this](const QModelIndex &index) { activateRow(index.row()); });
+        connect(iconList_, &QListView::doubleClicked, this, [this](const QModelIndex &index) {
+            if (!fileListSettings_.singleClick)
+                activateRow(index.row());
+        });
+        connect(iconList_, &QListView::clicked, this, [this](const QModelIndex &index) {
+            if (fileListSettings_.singleClick)
+                activateRow(index.row());
+        });
         connect(iconList_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
             const QModelIndex index = iconList_->indexAt(pos);
             if (index.isValid() &&
@@ -482,8 +497,14 @@ class MainWindow : public QMainWindow {
         connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });
         connect(pathCombo_, &QComboBox::activated, this,
                 [this](int index) { navigateTo(pathCombo_->itemText(index)); });
-        connect(table_, &QTableWidget::cellDoubleClicked, this,
-                [this](int row, int) { activateRow(row); });
+        connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
+            if (!fileListSettings_.singleClick)
+                activateRow(row);
+        });
+        connect(table_, &QTableWidget::cellClicked, this, [this](int row, int) {
+            if (fileListSettings_.singleClick)
+                activateRow(row);
+        });
         filesystemScanner_ = new FilesystemScanner(this);
         connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
                 [this](const QFileInfoList &files) {
@@ -930,6 +951,30 @@ class MainWindow : public QMainWindow {
         settings.setValue("toolbar/large", largeButtonsOption_->isChecked());
         settings.setValue("toolbar/text", buttonTextOption_->isChecked());
     }
+    void showSettings() {
+        SettingsDialog dialog(fileListSettings_, this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        fileListSettings_ = dialog.settings();
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        settings.setValue("list/realFileIcons", fileListSettings_.realFileIcons);
+        settings.setValue("list/grid", fileListSettings_.grid);
+        settings.setValue("list/singleClick", fileListSettings_.singleClick);
+        table_->setShowGrid(fileListSettings_.grid);
+        if (state_ == State::Filesystem)
+            updateFilesystemIcons();
+    }
+    void updateFilesystemIcons() {
+        QFileIconProvider icons;
+        for (int row = 0; row < table_->rowCount(); ++row) {
+            const QFileInfo file(table_->item(row, 1)->text());
+            table_->item(row, 0)->setIcon(
+                fileListSettings_.realFileIcons
+                    ? icons.icon(file)
+                    : QApplication::style()->standardIcon(file.isDir() ? QStyle::SP_DirIcon
+                                                                       : QStyle::SP_FileIcon));
+        }
+    }
     bool eventFilter(QObject *watched, QEvent *event) override {
         if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
             (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
@@ -1056,9 +1101,14 @@ class MainWindow : public QMainWindow {
             auto *item = new ArchiveTableItem(values[col]);
             item->setData(Qt::UserRole + 1, file.isDir());
             item->setData(Qt::UserRole + 3, file.fileName());
-            if (col == 0)
-                item->setIcon(QApplication::style()->standardIcon(
-                    file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+            if (col == 0) {
+                if (fileListSettings_.realFileIcons) {
+                    QFileIconProvider icons;
+                    item->setIcon(icons.icon(file));
+                } else
+                    item->setIcon(QApplication::style()->standardIcon(
+                        file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+            }
             if (col == 2 && !file.isDir())
                 item->setData(Qt::UserRole + 2, file.size());
             if (col == 6)
@@ -1378,6 +1428,7 @@ class MainWindow : public QMainWindow {
         deselectAll_->setEnabled(idle && selected);
         invertSelection_->setEnabled(idle && table_->rowCount() > 0);
         refresh_->setEnabled(idle);
+        settingsAction_->setEnabled(idle);
         foldersHistory_->setEnabled(idle && pathCombo_->count() > 0);
         refreshBookmarks();
         createFolder_->setEnabled(idle && state_ == State::Filesystem);
@@ -1399,7 +1450,7 @@ class MainWindow : public QMainWindow {
               !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
                    ->data(Qt::UserRole + 1)
                    .toBool())));
-        properties_->setEnabled(idle && one);
+        properties_->setEnabled(idle && selected);
         table_->setEnabled(idle);
         iconList_->setEnabled(idle);
         table_->setDragEnabled(idle && state_ == State::Filesystem);
@@ -1457,37 +1508,28 @@ class MainWindow : public QMainWindow {
     void showSelectedProperties() {
         if (!properties_->isEnabled())
             return;
-        const int row = table_->selectionModel()->selectedRows().first().row();
-        const QTableWidgetItem *nameItem = table_->item(row, 0);
-        const bool directory = nameItem->data(Qt::UserRole + 1).toBool();
-        const QString path = state_ == State::Filesystem ? table_->item(row, 1)->text()
-                                                         : nameItem->data(Qt::UserRole).toString();
-        QDialog dialog(this);
-        dialog.setObjectName("selectedPropertiesDialog");
-        dialog.setWindowTitle("Свойства: " + nameItem->text());
-        auto *layout = new QVBoxLayout(&dialog);
-        auto *fields = new QFormLayout;
-        fields->addRow("Имя:", new QLabel(nameItem->text(), &dialog));
-        fields->addRow("Путь:", new QLabel(path, &dialog));
-        fields->addRow("Тип:", new QLabel(directory ? "Папка" : "Файл", &dialog));
-        if (state_ == State::Filesystem) {
-            const QFileInfo info(path);
-            if (!directory)
-                fields->addRow("Размер:", new QLabel(QString::number(info.size()), &dialog));
-            fields->addRow("Изменён:",
-                           new QLabel(info.lastModified().toString(Qt::ISODate), &dialog));
-        } else {
-            if (!directory) {
-                fields->addRow("Размер:", new QLabel(table_->item(row, 2)->text(), &dialog));
-                fields->addRow("Сжатый:", new QLabel(table_->item(row, 3)->text(), &dialog));
+        QVector<PropertyItem> items;
+        for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
+            const int row = index.row();
+            const QTableWidgetItem *name = table_->item(row, 0);
+            PropertyItem item;
+            item.name = name->text();
+            item.directory = name->data(Qt::UserRole + 1).toBool();
+            item.path = state_ == State::Filesystem ? table_->item(row, 1)->text()
+                                                    : name->data(Qt::UserRole).toString();
+            item.modified = table_->item(row, 4)->text();
+            if (state_ == State::Filesystem) {
+                const QFileInfo file(item.path);
+                item.size = item.directory ? 0 : file.size();
+            } else if (!item.directory) {
+                item.size = table_->item(row, 2)->text().toLongLong();
+                item.packedSize = table_->item(row, 3)->text().toLongLong();
             }
-            if (!table_->item(row, 4)->text().isEmpty())
-                fields->addRow("Изменён:", new QLabel(table_->item(row, 4)->text(), &dialog));
+            items.append(item);
         }
-        layout->addLayout(fields);
-        auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
-        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-        layout->addWidget(buttons);
+        PropertiesDialog dialog(items, state_ == State::Viewing,
+                                state_ == State::Filesystem ? directory_ : archiveDisplayPath(),
+                                this);
         dialog.exec();
     }
     void begin(const QString &label, const QString &detail) {
@@ -1854,6 +1896,8 @@ class MainWindow : public QMainWindow {
     QAction *createFolder_ = nullptr;
     QAction *createFile_ = nullptr;
     QAction *refresh_ = nullptr;
+    QAction *settingsAction_ = nullptr;
+    FileListSettings fileListSettings_;
     QAction *foldersHistory_ = nullptr;
     QAction *deselectAll_ = nullptr;
     QAction *invertSelection_ = nullptr;
