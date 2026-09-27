@@ -18,12 +18,12 @@ class ArchiveBackend : public QObject {
 
   public:
     explicit ArchiveBackend(QObject *parent = nullptr, QString executable = QString());
-    bool busy() const;
-    void list(const QString &archive);
-    void extract(const QString &archive, const QString &destination,
-                 const QStringList &selected = {});
-    void create(const QString &archive, const QStringList &sources);
-    void cancel();
+    virtual bool busy() const;
+    virtual void list(const QString &archive);
+    virtual void extract(const QString &archive, const QString &destination,
+                         const QStringList &selected = {});
+    virtual void create(const QString &archive, const QStringList &sources);
+    virtual void cancel();
 
   signals:
     void entriesReady(const QList<ArchiveEntry> &entries);

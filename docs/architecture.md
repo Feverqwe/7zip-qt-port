@@ -16,11 +16,11 @@ SevenZipProcessBackend (official 7zz executable)
 7-Zip original compression and format code
 ```
 
-`src/archivebackend.h` defines archive entries and asynchronous operations. `src/archivebackend.cpp` owns command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `src/main.cpp` owns dialogs, table presentation and command availability. A direct 7-Zip API adapter can replace this backend later.
+`src/archivebackend.h` defines archive entries and asynchronous operations. `src/archivebackend.cpp` owns command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `src/mainwindow.h` owns dialogs, table presentation and the explicit no archive / loading / viewing / operating / error states. All command availability is updated from these states and the table selection. A direct 7-Zip API adapter can replace this backend later.
 
 ## Functional target
 
-The Windows 7-Zip File Manager is the interaction reference. The MVP implements listing, add and extract. Test, copy/move, delete, properties, passwords and system integration remain disabled.
+The Windows 7-Zip File Manager (`7zFM`) is the UI and interaction reference. New Qt Widgets features should follow its window structure, commands, dialogs, and workflow; necessary platform deviations must be documented. The MVP implements listing, add and extract. Test, copy/move, delete, properties, passwords and system integration remain disabled.
 
 ## Data and safety
 

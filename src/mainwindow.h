@@ -22,7 +22,8 @@
 
 class MainWindow : public QMainWindow {
   public:
-    MainWindow() {
+    explicit MainWindow(ArchiveBackend *backend = nullptr) {
+        backend_ = backend ? backend : new ArchiveBackend(this);
         setWindowTitle("Sevenzip Desktop");
         resize(980, 620);
         auto *menu = menuBar()->addMenu("Файл");
@@ -30,15 +31,19 @@ class MainWindow : public QMainWindow {
         toolbar->setObjectName("archiveToolbar");
         toolbar->setMovable(false);
         auto *open = menu->addAction("Открыть…", this, [this] { openDialog(); });
+        open->setObjectName("openArchiveAction");
         open->setShortcut(QKeySequence::Open);
         add_ = toolbar->addAction("Добавить");
+        add_->setObjectName("addArchiveAction");
         auto *addMenu = new QMenu(this);
         addMenu->addAction("Файлы…", this, [this] { addFiles(); });
         addMenu->addAction("Папку…", this, [this] { addFolder(); });
         add_->setMenu(addMenu);
         connect(add_, &QAction::triggered, this, [this] { addFiles(); });
         extract_ = toolbar->addAction("Извлечь", this, [this] { extract(false); });
+        extract_->setObjectName("extractArchiveAction");
         selected_ = menu->addAction("Извлечь выбранное…", this, [this] { extract(true); });
+        selected_->setObjectName("extractSelectedAction");
         toolbar->addSeparator();
         for (const QString &title : {"Тест", "Копировать", "Переместить", "Удалить", "Информация"})
             toolbar->addAction(title)->setEnabled(false);
@@ -67,10 +72,13 @@ class MainWindow : public QMainWindow {
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
         refreshActions();
+        connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+                [this] { refreshActions(); });
 
-        connect(&backend_, &ArchiveBackend::entriesReady, this,
+        connect(backend_, &ArchiveBackend::entriesReady, this,
                 [this](const QList<ArchiveEntry> &entries) {
-                    loaded_ = true;
+                    if (state_ != State::Loading)
+                        return;
                     entries_ = entries;
                     table_->setRowCount(entries.size());
                     for (int row = 0; row < entries.size(); ++row) {
@@ -82,28 +90,34 @@ class MainWindow : public QMainWindow {
                         for (int col = 0; col < values.size(); ++col)
                             table_->setItem(row, col, new QTableWidgetItem(values[col]));
                     }
+                    setState(State::Viewing);
                     statusBar()->showMessage(QStringLiteral("%1 объектов").arg(entries.size()));
                 });
-        connect(&backend_, &ArchiveBackend::progress, this, [this](int percent, const QString &) {
+        connect(backend_, &ArchiveBackend::progress, this, [this](int percent, const QString &) {
             if (progress_)
                 progress_->setValue(percent);
         });
-        connect(&backend_, &ArchiveBackend::finished, this,
-                [this](bool ok, const QString &message) {
-                    if (progress_) {
-                        progress_->close();
-                        progress_->deleteLater();
-                        progress_ = nullptr;
-                    }
-                    refreshActions();
-                    statusBar()->showMessage(message);
-                    if (!ok && message != "Операция отменена.")
-                        QMessageBox::warning(this, "Sevenzip Desktop", message);
-                });
+        connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+            if (progress_) {
+                QProgressDialog *completed = progress_;
+                progress_ = nullptr;
+                completed->disconnect(backend_);
+                completed->close();
+                completed->deleteLater();
+            }
+            if (state_ == State::Loading && !ok)
+                setState(State::Error);
+            else if (state_ == State::Operating)
+                setState(previousState_ == State::Viewing ? State::Viewing
+                                                          : (ok ? State::NoArchive : State::Error));
+            statusBar()->showMessage(message);
+            if (!ok && message != "Операция отменена.")
+                QMessageBox::warning(this, "Sevenzip Desktop", message);
+        });
     }
 
     void openArchive(const QString &path) {
-        if (backend_.busy())
+        if (state_ == State::Loading || state_ == State::Operating)
             return;
         const QString suffix = QFileInfo(path).suffix().toLower();
         if (suffix != "7z" && suffix != "zip") {
@@ -112,29 +126,50 @@ class MainWindow : public QMainWindow {
             return;
         }
         archive_ = QFileInfo(path).absoluteFilePath();
-        loaded_ = false;
         entries_.clear();
         table_->setRowCount(0);
         path_->setText(archive_);
+        setState(State::Loading);
         begin("Открытие архива");
-        backend_.list(archive_);
-        refreshActions();
+        backend_->list(archive_);
+    }
+
+    void extractTo(const QString &destination, bool onlySelected = false) {
+        if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
+            return;
+        QStringList names;
+        if (onlySelected) {
+            for (const QModelIndex &index : table_->selectionModel()->selectedRows())
+                names << entries_[index.row()].path;
+            if (names.isEmpty())
+                return;
+        }
+        previousState_ = state_;
+        setState(State::Operating);
+        begin("Извлечение");
+        backend_->extract(archive_, destination, names);
     }
 
   private:
+    enum class State { NoArchive, Loading, Viewing, Operating, Error };
+    void setState(State state) {
+        state_ = state;
+        refreshActions();
+    }
     void refreshActions() {
-        const bool idle = !backend_.busy();
+        const bool idle = state_ != State::Loading && state_ != State::Operating;
         open_->setEnabled(idle);
         add_->setEnabled(idle);
-        extract_->setEnabled(idle && loaded_);
-        selected_->setEnabled(idle && loaded_ && !entries_.isEmpty());
+        extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
+        selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
+                              !table_->selectionModel()->selectedRows().isEmpty());
     }
     void begin(const QString &label) {
         progress_ = new QProgressDialog(label, "Отмена", 0, 100, this);
         progress_->setWindowModality(Qt::WindowModal);
         progress_->setMinimumDuration(0);
         progress_->setValue(0);
-        connect(progress_, &QProgressDialog::canceled, &backend_, &ArchiveBackend::cancel);
+        connect(progress_, &QProgressDialog::canceled, backend_, &ArchiveBackend::cancel);
     }
     void openDialog() {
         const QString file =
@@ -143,33 +178,24 @@ class MainWindow : public QMainWindow {
             openArchive(file);
     }
     void extract(bool onlySelected) {
-        QStringList names;
-        if (onlySelected) {
-            for (const QModelIndex &index : table_->selectionModel()->selectedRows())
-                names << entries_[index.row()].path;
-            if (names.isEmpty()) {
-                QMessageBox::information(this, "Sevenzip Desktop",
-                                         "Выберите файлы или папки в списке.");
-                return;
-            }
-        }
-        const QString destination = QFileDialog::getExistingDirectory(this, "Папка для извлечения");
-        if (destination.isEmpty())
+        if (state_ != State::Viewing || entries_.isEmpty())
             return;
-        begin("Извлечение");
-        backend_.extract(archive_, destination, names);
-        refreshActions();
+        if (onlySelected && table_->selectionModel()->selectedRows().isEmpty())
+            return;
+        const QString destination = QFileDialog::getExistingDirectory(this, "Папка для извлечения");
+        extractTo(destination, onlySelected);
     }
     void createArchive(const QStringList &sources) {
-        if (sources.isEmpty())
+        if (state_ == State::Loading || state_ == State::Operating || sources.isEmpty())
             return;
         const QString target =
             QFileDialog::getSaveFileName(this, "Создать архив", {}, "7z (*.7z);;ZIP (*.zip)");
         if (target.isEmpty())
             return;
+        previousState_ = state_;
+        setState(State::Operating);
         begin("Создание архива");
-        backend_.create(target, sources);
-        refreshActions();
+        backend_->create(target, sources);
     }
     void addFiles() { createArchive(QFileDialog::getOpenFileNames(this, "Добавить файлы")); }
     void addFolder() {
@@ -178,9 +204,10 @@ class MainWindow : public QMainWindow {
             createArchive({folder});
     }
 
-    ArchiveBackend backend_;
+    ArchiveBackend *backend_ = nullptr;
     QString archive_;
-    bool loaded_ = false;
+    State state_ = State::NoArchive;
+    State previousState_ = State::NoArchive;
     QList<ArchiveEntry> entries_;
     QLabel *path_ = nullptr;
     QTableWidget *table_ = nullptr;

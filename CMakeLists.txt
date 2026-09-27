@@ -33,6 +33,11 @@ if(BUILD_TESTING)
     qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h)
     target_include_directories(ui_layout_tests PRIVATE src)
     target_link_libraries(ui_layout_tests PRIVATE Qt6::Widgets Qt6::Test)
+    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h)
+    target_include_directories(ui_state_tests PRIVATE src)
+    target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME ui_state COMMAND ui_state_tests)
+    set_tests_properties(ui_state PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_test(NAME ui_layout COMMAND ui_layout_tests)
     set_tests_properties(ui_layout PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots"
