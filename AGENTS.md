@@ -17,4 +17,4 @@ This repository owns a C++17 / Qt 6 Widgets desktop UI for Windows, macOS, and L
 - Keep the Windows 7-Zip workflow recognizable. Disable unfinished commands. Update README, architecture, testing guidance, and roadmap when their claims change.
 - Do not claim cross-platform verification from a single local OS. CI checks all three platforms after the repository is published to GitHub.
 
-Project workflows are in `.agents/skills/`: `sevenzip-setup`, `sevenzip-context`, `sevenzip-navigation`, and `sevenzip-regression`. Use them when their descriptions match the task. Do not publish or update upstream unless the user's task calls for it.
+Project workflows are in `.agents/skills/`: `sevenzip-setup`, `sevenzip-context`, `sevenzip-navigation`, `sevenzip-cpp-qt`, and `sevenzip-regression`. Use them when their descriptions match the task. Do not publish or update upstream unless the user's task calls for it.

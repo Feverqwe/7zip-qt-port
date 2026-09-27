@@ -4,7 +4,7 @@
 
 `sevenzip-desktop` owns the graphical application, platform integration, archive backend adapter, tests, and build configuration. `../7zip-upstream` is the unmodified official source checkout for reference and later integration work. The application must not depend on a fixed absolute path to that checkout.
 
-## Planned components
+## Components
 
 ```text
 Qt Widgets (window, file list, dialogs)
@@ -16,12 +16,12 @@ SevenZipProcessBackend (official 7zz executable)
 7-Zip original compression and format code
 ```
 
-The process backend is a first integration step, not a permanent restriction. Keep command construction, output parsing, cancellation, and error mapping in the backend. Keep widgets unaware of command-line syntax. A direct 7-Zip API adapter can replace it if needed after the initial workflows are working.
+`src/archivebackend.h` defines archive entries and asynchronous operations. `src/archivebackend.cpp` owns command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `src/main.cpp` owns dialogs, table presentation and command availability. A direct 7-Zip API adapter can replace this backend later.
 
 ## Functional target
 
-The Windows 7-Zip File Manager is the interaction reference: file navigation, archive listing, add, extract, test, copy/move, delete, properties, progress, and keyboard shortcuts. Implement vertical slices. The current window is only a visual scaffold; every toolbar action is disabled until wired to a real operation.
+The Windows 7-Zip File Manager is the interaction reference. The MVP implements listing, add and extract. Test, copy/move, delete, properties, passwords and system integration remain disabled.
 
 ## Data and safety
 
-Archive paths, passwords, and filenames are runtime input. Pass process arguments as structured arguments, not through a shell string. Never persist passwords in logs or project files. For extraction, account for paths outside the chosen destination and symlinks when designing validation and tests.
+Archive paths and filenames are runtime input. `QProcess` receives structured arguments, not a shell string. Before extraction the backend rejects absolute paths, `..` segments and link entries reported by `7zz`. Extraction only starts after a successful listing of the same archive. Passwords are not accepted or persisted in this MVP.
