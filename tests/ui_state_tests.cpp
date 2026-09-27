@@ -94,8 +94,87 @@ class MainWindowStateTests : public QObject {
                 box->accept();
         }
     }
+    static void pressSelectAll(QTableWidget *view) {
+        const QKeyCombination key = QKeySequence(QKeySequence::SelectAll)[0];
+        QTest::keyClick(view, key.key(), key.keyboardModifiers());
+    }
 
   private slots:
+    void keyboardNavigationAndCommandState() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir(QStringLiteral("папка с пробелом")));
+        QFile archive(temp.filePath(QStringLiteral("архив с пробелом.zip")));
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        archive.close();
+        QFile plain(temp.filePath("plain.txt"));
+        QVERIFY(plain.open(QIODevice::WriteOnly));
+        plain.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *view = table(window);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        view->setFocus();
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        QCOMPARE(action(window, "openArchiveAction")->shortcut(), QKeySequence::Open);
+        QVERIFY(action(window, "selectAllAction")->isEnabled());
+        pressSelectAll(view);
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 3);
+
+        for (int row = 0; row < view->rowCount(); ++row) {
+            if (view->item(row, 0)->text() == "plain.txt")
+                view->setCurrentCell(row, 0);
+        }
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QTest::keyClick(view, Qt::Key_Return);
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+        for (int row = 0; row < view->rowCount(); ++row) {
+            if (view->item(row, 0)->text() == QStringLiteral("папка с пробелом"))
+                view->setCurrentCell(row, 0);
+        }
+        QVERIFY(action(window, "openItemAction")->isEnabled());
+        QTest::keyClick(view, Qt::Key_Return);
+        QCOMPARE(address->text(),
+                 QFileInfo(temp.filePath(QStringLiteral("папка с пробелом"))).canonicalFilePath());
+        QTest::keyClick(view, Qt::Key_Backspace);
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+
+        for (int row = 0; row < view->rowCount(); ++row) {
+            if (view->item(row, 0)->text() == QStringLiteral("архив с пробелом.zip"))
+                view->setCurrentCell(row, 0);
+        }
+        QTest::keyClick(view, Qt::Key_Return);
+        QCOMPARE(backend.listCalls, 1);
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QVERIFY(!action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(!action(window, "selectAllAction")->isEnabled());
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/файл.txt"), 1, 1},
+                              ArchiveEntry{QStringLiteral("другой.txt"), 2, 2}});
+        pressSelectAll(view);
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(action(window, "extractSelectedAction")->isEnabled(), true);
+        view->setCurrentCell(rowWithPath(window, QStringLiteral("папка")), 0);
+        QTest::keyClick(view, Qt::Key_Return);
+        QVERIFY(address->text().endsWith(QStringLiteral(" / папка")));
+        QCOMPARE(view->rowCount(), 1);
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QTest::keyClick(view, Qt::Key_Backspace);
+        QCOMPARE(view->rowCount(), 2);
+        QTest::keyClick(view, Qt::Key_Backspace);
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+
+        window.openArchive(archive.fileName());
+        backend.completeList({});
+        QVERIFY(!action(window, "selectAllAction")->isEnabled());
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        QTest::keyClick(view, Qt::Key_Backspace);
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+    }
+
     void archiveTreeSortSelectionAndEmptyFolders() {
         ControlledBackend backend;
         MainWindow window(&backend);
@@ -210,11 +289,15 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(backend.listCalls, 1);
         QVERIFY(!action(window, "openArchiveAction")->isEnabled());
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QVERIFY(!action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(!action(window, "selectAllAction")->isEnabled());
         window.openArchive("ignored.zip");
         QCOMPARE(backend.listCalls, 1);
         backend.completeList({ArchiveEntry{QStringLiteral("имя с пробелом.txt"), 4, 4}});
         QCOMPARE(table(window)->rowCount(), 1);
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "selectAllAction")->isEnabled());
         QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
         table(window)->selectRow(0);
         QVERIFY(action(window, "extractSelectedAction")->isEnabled());
@@ -228,6 +311,9 @@ class MainWindowStateTests : public QObject {
                  QFileInfo("second.zip").absoluteFilePath());
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "backAction")->isEnabled());
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QVERIFY(!action(window, "selectAllAction")->isEnabled());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
@@ -246,9 +332,12 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
         QVERIFY(!action(window, "backAction")->isEnabled());
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!backend.busy());
     }
 
@@ -311,11 +400,14 @@ class MainWindowStateTests : public QObject {
         QVERIFY(button);
         button->click();
         QCOMPARE(backend.cancelCalls, 1);
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(!action(window, "openItemAction")->isEnabled());
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
         action(window, "operationJournalAction")->trigger();
         auto *log = window.findChild<QPlainTextEdit *>("operationJournalText");
@@ -338,6 +430,8 @@ class MainWindowStateTests : public QObject {
         QVERIFY(!action(window, "openArchiveAction")->isEnabled());
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(!action(window, "selectAllAction")->isEnabled());
         window.openArchive("ignored.zip");
         window.extractTo("/temporary/destination");
         QCOMPARE(backend.listCalls, 1);
@@ -352,6 +446,8 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(table(window)->rowCount(), 1);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        QVERIFY(action(window, "selectAllAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
     }
 

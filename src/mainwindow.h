@@ -6,9 +6,11 @@
 #include <QApplication>
 #include <QDialog>
 #include <QDir>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
+#include <QKeyEvent>
 #include <QKeySequence>
 #include <QLineEdit>
 #include <QMainWindow>
@@ -100,6 +102,23 @@ class MainWindow : public QMainWindow {
         table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table_->setSortingEnabled(true);
         table_->sortItems(0, Qt::AscendingOrder);
+        table_->installEventFilter(this);
+        table_->viewport()->installEventFilter(this);
+        openItem_ = new QAction(table_);
+        openItem_->setObjectName("openItemAction");
+        table_->addAction(openItem_);
+        connect(openItem_, &QAction::triggered, this,
+                [this] { activateRow(table_->currentRow()); });
+        parent_ = new QAction(table_);
+        parent_->setObjectName("parentFolderAction");
+        table_->addAction(parent_);
+        connect(parent_, &QAction::triggered, this, [this] { goParent(); });
+        selectAll_ = new QAction(table_);
+        selectAll_->setObjectName("selectAllAction");
+        selectAll_->setShortcut(QKeySequence::SelectAll);
+        selectAll_->setShortcutContext(Qt::WidgetShortcut);
+        table_->addAction(selectAll_);
+        connect(selectAll_, &QAction::triggered, table_, &QTableWidget::selectAll);
         layout->addWidget(table_);
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
@@ -110,6 +129,7 @@ class MainWindow : public QMainWindow {
         refreshActions();
         connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                 [this] { refreshActions(); });
+        connect(table_, &QTableWidget::currentCellChanged, this, [this] { refreshActions(); });
 
         connect(backend_, &ArchiveBackend::entriesReady, this,
                 [this](const QList<ArchiveEntry> &entries) {
@@ -207,6 +227,25 @@ class MainWindow : public QMainWindow {
 
   private:
     enum class State { Filesystem, Loading, Viewing, Operating };
+    bool eventFilter(QObject *watched, QEvent *event) override {
+        if ((watched == table_ || watched == table_->viewport()) &&
+            event->type() == QEvent::KeyPress) {
+            auto *key = static_cast<QKeyEvent *>(event);
+            if (!(key->modifiers() &
+                  (Qt::ControlModifier | Qt::MetaModifier | Qt::AltModifier | Qt::ShiftModifier))) {
+                if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
+                    openItem_->isEnabled()) {
+                    openItem_->trigger();
+                    return true;
+                }
+                if (key->key() == Qt::Key_Backspace && parent_->isEnabled()) {
+                    parent_->trigger();
+                    return true;
+                }
+            }
+        }
+        return QMainWindow::eventFilter(watched, event);
+    }
     void showDirectory(const QString &path, bool remember) {
         const QFileInfo info(path);
         if (!info.isDir()) {
@@ -268,6 +307,8 @@ class MainWindow : public QMainWindow {
         }
     }
     void activateRow(int row) {
+        if (state_ == State::Loading || state_ == State::Operating)
+            return;
         if (row < 0 || row >= table_->rowCount())
             return;
         if (state_ == State::Filesystem)
@@ -292,6 +333,15 @@ class MainWindow : public QMainWindow {
             return;
         const int separator = archiveFolder_.lastIndexOf('/');
         showArchiveFolder(separator < 0 ? QString() : archiveFolder_.left(separator));
+    }
+    void goParent() {
+        if (state_ == State::Viewing) {
+            goBack();
+        } else if (state_ == State::Filesystem) {
+            QDir parent(directory_);
+            if (parent.cdUp())
+                showDirectory(parent.absolutePath(), true);
+        }
     }
     QString archiveDisplayPath() const {
         return archive_ +
@@ -367,6 +417,24 @@ class MainWindow : public QMainWindow {
                               !table_->selectionModel()->selectedRows().isEmpty());
         back_->setEnabled(idle && (state_ == State::Viewing || !history_.isEmpty()));
         up_->setEnabled(idle && state_ == State::Viewing && !archiveFolder_.isEmpty());
+        bool canOpenItem = false;
+        const int row = table_->currentRow();
+        if (idle && row >= 0 && row < table_->rowCount()) {
+            if (state_ == State::Viewing)
+                canOpenItem = table_->item(row, 0)->data(Qt::UserRole + 1).toBool();
+            else {
+                const QFileInfo info(table_->item(row, 1)->text());
+                canOpenItem =
+                    info.isDir() ||
+                    (info.isFile() && (info.suffix().compare("7z", Qt::CaseInsensitive) == 0 ||
+                                       info.suffix().compare("zip", Qt::CaseInsensitive) == 0));
+            }
+        }
+        openItem_->setEnabled(canOpenItem);
+        parent_->setEnabled(idle && (state_ == State::Viewing ||
+                                     (state_ == State::Filesystem && QDir(directory_).cdUp())));
+        selectAll_->setEnabled(idle && table_->rowCount() > 0);
+        table_->setEnabled(idle);
         path_->setReadOnly(!idle);
     }
     void appendJournal(const QString &line) {
@@ -462,4 +530,7 @@ class MainWindow : public QMainWindow {
     QAction *selected_ = nullptr;
     QAction *back_ = nullptr;
     QAction *up_ = nullptr;
+    QAction *openItem_ = nullptr;
+    QAction *parent_ = nullptr;
+    QAction *selectAll_ = nullptr;
 };
