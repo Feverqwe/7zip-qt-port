@@ -72,6 +72,11 @@ if(BUILD_TESTING)
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-layout-settings.ini"
     )
     add_test(NAME archive_backend COMMAND archive_backend_tests)
+    qt_add_executable(compression_tests tests/compression_tests.cpp src/archivebackend.cpp src/archivebackend.h src/createarchivedialog.h)
+    target_include_directories(compression_tests PRIVATE src)
+    target_link_libraries(compression_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME compression COMMAND compression_tests)
+    set_tests_properties(compression PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)
     set_tests_properties(application_starts PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"

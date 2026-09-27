@@ -1,5 +1,8 @@
 #pragma once
 
+#include "archivebackend.h"
+
+#include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -7,12 +10,14 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSpinBox>
 #include <QVBoxLayout>
 
 class CreateArchiveDialog : public QDialog {
@@ -24,7 +29,7 @@ class CreateArchiveDialog : public QDialog {
         : QDialog(parent), currentDirectory_(directory), existingTarget_(existingTarget) {
         setObjectName("createArchiveDialog");
         setWindowTitle(existingTarget_.isEmpty() ? "Создать архив" : "Добавить в архив");
-        resize(680, 580);
+        resize(760, 720);
         auto *layout = new QVBoxLayout(this);
         layout->addWidget(new QLabel(existingTarget_.isEmpty()
                                          ? "Выберите файлы и папки для нового архива"
@@ -59,13 +64,61 @@ class CreateArchiveDialog : public QDialog {
         format_->addItems({"7z", "zip"});
         form->addRow("Формат:", format_);
         if (existingTarget_.isEmpty()) {
+            auto *compression = new QGroupBox("Параметры сжатия", this);
+            auto *compressionForm = new QFormLayout(compression);
+            level_ = new QComboBox(compression);
+            level_->setObjectName("compressionLevel");
+            for (const auto &choice :
+                 {qMakePair("Без сжатия", 0), qMakePair("Быстрое", 1), qMakePair("Быстро", 3),
+                  qMakePair("Обычное", 5), qMakePair("Максимальное", 7), qMakePair("Ультра", 9)})
+                level_->addItem(choice.first, choice.second);
+            level_->setCurrentIndex(3);
+            compressionForm->addRow("Уровень сжатия:", level_);
+            method_ = new QComboBox(compression);
+            method_->setObjectName("compressionMethod");
+            compressionForm->addRow("Метод сжатия:", method_);
+            solid_ = new QCheckBox("Непрерывный архив", compression);
+            solid_->setObjectName("solidArchiveOption");
+            solid_->setChecked(true);
+            compressionForm->addRow(solid_);
+            threads_ = new QSpinBox(compression);
+            threads_->setObjectName("compressionThreads");
+            threads_->setRange(0, 256);
+            threads_->setSpecialValueText("Автоматически");
+            compressionForm->addRow("Потоки CPU:", threads_);
+            form->addRow(compression);
+            connect(format_, &QComboBox::currentTextChanged, this, [this] {
+                method_->clear();
+                method_->addItems(format_->currentText() == "7z"
+                                      ? QStringList{"LZMA2", "LZMA", "PPMd", "BZip2"}
+                                      : QStringList{"Deflate", "Deflate64", "BZip2", "LZMA"});
+                solid_->setEnabled(format_->currentText() == "7z");
+            });
+            connect(level_, &QComboBox::currentIndexChanged, this,
+                    [this] { method_->setEnabled(level_->currentData().toInt() != 0); });
+            method_->addItems({"LZMA2", "LZMA", "PPMd", "BZip2"});
+            auto *encryptionGroup = new QGroupBox("Шифрование", this);
+            auto *encryptionForm = new QFormLayout(encryptionGroup);
             encryption_ = new QComboBox(this);
             encryption_->setObjectName("archiveEncryption");
-            form->addRow("Шифрование:", encryption_);
+            encryptionForm->addRow("Метод:", encryption_);
             password_ = new QLineEdit(this);
             password_->setObjectName("archivePassword");
             password_->setEchoMode(QLineEdit::Password);
-            form->addRow("Пароль:", password_);
+            encryptionForm->addRow("Пароль:", password_);
+            passwordConfirmation_ = new QLineEdit(this);
+            passwordConfirmation_->setObjectName("archivePasswordConfirmation");
+            passwordConfirmation_->setEchoMode(QLineEdit::Password);
+            encryptionForm->addRow("Повторите пароль:", passwordConfirmation_);
+            auto *showPassword = new QCheckBox("Показать пароль", encryptionGroup);
+            showPassword->setObjectName("archiveShowPassword");
+            encryptionForm->addRow(showPassword);
+            form->addRow(encryptionGroup);
+            connect(showPassword, &QCheckBox::toggled, this, [this](bool visible) {
+                const auto mode = visible ? QLineEdit::Normal : QLineEdit::Password;
+                password_->setEchoMode(mode);
+                passwordConfirmation_->setEchoMode(mode);
+            });
             const auto updateEncryption = [this] {
                 encryption_->clear();
                 encryption_->addItem("Без шифрования");
@@ -74,10 +127,13 @@ class CreateArchiveDialog : public QDialog {
                     encryption_->addItem("AES-256 и шифрование имён файлов");
             };
             connect(format_, &QComboBox::currentTextChanged, this, updateEncryption);
-            connect(encryption_, &QComboBox::currentIndexChanged, this,
-                    [this] { password_->setEnabled(encryption_->currentIndex() != 0); });
+            connect(encryption_, &QComboBox::currentIndexChanged, this, [this] {
+                password_->setEnabled(encryption_->currentIndex() != 0);
+                passwordConfirmation_->setEnabled(encryption_->currentIndex() != 0);
+            });
             updateEncryption();
             password_->setEnabled(false);
+            passwordConfirmation_->setEnabled(false);
         }
         auto *destinationRow = new QHBoxLayout;
         destination_ = new QLineEdit(currentDirectory_, this);
@@ -152,6 +208,11 @@ class CreateArchiveDialog : public QDialog {
                 QMessageBox::warning(this, "Создать архив", "Введите пароль для шифрования.");
                 return;
             }
+            if (encryption_ && encryption_->currentIndex() != 0 &&
+                password_->text() != passwordConfirmation_->text()) {
+                QMessageBox::warning(this, "Создать архив", "Введённые пароли не совпадают.");
+                return;
+            }
             const QString base = name_->text().trimmed();
             const QFileInfo destination(destination_->text());
             if (selected_.isEmpty() ||
@@ -190,6 +251,16 @@ class CreateArchiveDialog : public QDialog {
         return encryption_ && encryption_->currentIndex() != 0 ? password_->text() : QString();
     }
     bool encryptHeaders() const { return encryption_ && encryption_->currentIndex() == 2; }
+    CompressionOptions compressionOptions() const {
+        CompressionOptions options;
+        if (level_) {
+            options.level = level_->currentData().toInt();
+            options.method = method_->currentText();
+            options.threads = threads_->value();
+            options.solid = solid_->isChecked();
+        }
+        return options;
+    }
 
   private:
     void addSource(const QString &path) {
@@ -230,7 +301,12 @@ class CreateArchiveDialog : public QDialog {
     QLabel *preview_ = nullptr;
     QComboBox *format_ = nullptr;
     QComboBox *encryption_ = nullptr;
+    QComboBox *level_ = nullptr;
+    QComboBox *method_ = nullptr;
+    QCheckBox *solid_ = nullptr;
+    QSpinBox *threads_ = nullptr;
     QLineEdit *password_ = nullptr;
+    QLineEdit *passwordConfirmation_ = nullptr;
     QListWidget *available_ = nullptr;
     QListWidget *sources_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;

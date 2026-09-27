@@ -280,7 +280,8 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
 }
 
 void ArchiveBackend::create(const QString &archive, const QStringList &sources,
-                            const QString &password, bool encryptHeaders) {
+                            const QString &password, bool encryptHeaders,
+                            const CompressionOptions &options) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -288,6 +289,15 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const QString suffix = QFileInfo(archive).suffix().toLower();
     if ((suffix != "7z" && suffix != "zip") || sources.isEmpty()) {
         emit finished(false, QStringLiteral("Выберите файлы или папку и имя архива .7z или .zip."));
+        return;
+    }
+    const QStringList methods = suffix == "7z"
+                                    ? QStringList{"LZMA2", "LZMA", "PPMd", "BZip2"}
+                                    : QStringList{"Deflate", "Deflate64", "BZip2", "LZMA"};
+    if (!QList<int>{0, 1, 3, 5, 7, 9}.contains(options.level) || options.threads < 0 ||
+        options.threads > 256 || (!options.method.isEmpty() && !methods.contains(options.method))) {
+        emit finished(false,
+                      QStringLiteral("Недопустимые параметры сжатия для выбранного формата."));
         return;
     }
     if (suffix == "zip") {
@@ -325,9 +335,16 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         root = parent;
     }
     QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--"};
+    arguments.insert(5, "-mx=" + QString::number(options.level));
+    if (options.level != 0 && !options.method.isEmpty())
+        arguments.insert(5, "-m0=" + options.method);
+    if (options.threads > 0)
+        arguments.insert(5, "-mmt=" + QString::number(options.threads));
+    if (suffix == "7z" && !options.solid)
+        arguments.insert(5, "-ms=off");
     if (!password.isEmpty()) {
         arguments.insert(5, "-p");
-        arguments.insert(6, suffix == "7z" ? (encryptHeaders ? "-mhe=on" : "-mhe=off")
+        arguments.insert(5, suffix == "7z" ? (encryptHeaders ? "-mhe=on" : "-mhe=off")
                                            : "-mem=AES256");
     }
     for (const QString &source : sources) {

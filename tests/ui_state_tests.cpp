@@ -21,6 +21,7 @@
 #include <QPushButton>
 #include <QScopedPointer>
 #include <QSettings>
+#include <QSpinBox>
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
@@ -51,10 +52,11 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = true;
     }
     void create(const QString &target, const QStringList &sources, const QString & = {},
-                bool = false) override {
+                bool = false, const CompressionOptions &options = {}) override {
         ++createCalls;
         lastCreateTarget = target;
         lastCreateSources = sources;
+        lastCompressionOptions = options;
         busy_ = true;
     }
     void add(const QString &target, const QStringList &sources) override {
@@ -108,6 +110,7 @@ class ControlledBackend : public ArchiveBackend {
     int removeCalls = 0;
     int renameCalls = 0;
     int cancelCalls = 0;
+    CompressionOptions lastCompressionOptions;
     QString lastArchive;
     QStringList lastSelected;
     QString lastExtractPassword;
@@ -937,6 +940,9 @@ class MainWindowStateTests : public QObject {
                 }
                 dialog->findChild<QLineEdit *>("archiveName")->setText("new archive");
                 dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
+                dialog->findChild<QComboBox *>("compressionLevel")->setCurrentIndex(5);
+                dialog->findChild<QComboBox *>("compressionMethod")->setCurrentText("BZip2");
+                dialog->findChild<QSpinBox *>("compressionThreads")->setValue(2);
                 if (!dialog->findChild<QLabel *>("archiveTargetPreview")
                          ->text()
                          .endsWith("new archive.zip")) {
@@ -955,6 +961,9 @@ class MainWindowStateTests : public QObject {
         };
         chooseSources();
         QCOMPARE(backend.createCalls, 1);
+        QCOMPARE(backend.lastCompressionOptions.level, 9);
+        QCOMPARE(backend.lastCompressionOptions.method, QStringLiteral("BZip2"));
+        QCOMPARE(backend.lastCompressionOptions.threads, 2);
         QCOMPARE(backend.lastCreateTarget,
                  QDir(QFileInfo(temp.path()).canonicalFilePath()).filePath("new archive.zip"));
         QCOMPARE(backend.lastCreateSources.size(), 2);

@@ -1,0 +1,165 @@
+#include "archivebackend.h"
+#include "createarchivedialog.h"
+
+#include <QCheckBox>
+#include <QComboBox>
+#include <QDialogButtonBox>
+#include <QFile>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QProcess>
+#include <QSignalSpy>
+#include <QSpinBox>
+#include <QTemporaryDir>
+#include <QTimer>
+#include <QtTest>
+
+class CompressionTests : public QObject {
+    Q_OBJECT
+
+  private slots:
+    void formatOptionsAndPasswordConfirmation() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("файл с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("content");
+        file.close();
+
+        CreateArchiveDialog dialog(temp.path(), {source});
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        auto *method = dialog.findChild<QComboBox *>("compressionMethod");
+        auto *solid = dialog.findChild<QCheckBox *>("solidArchiveOption");
+        auto *threads = dialog.findChild<QSpinBox *>("compressionThreads");
+        auto *encryption = dialog.findChild<QComboBox *>("archiveEncryption");
+        auto *password = dialog.findChild<QLineEdit *>("archivePassword");
+        auto *confirmation = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
+        auto *showPassword = dialog.findChild<QCheckBox *>("archiveShowPassword");
+        QVERIFY(format && level && method && solid && threads && encryption && password &&
+                confirmation && showPassword);
+        QCOMPARE(level->count(), 6);
+        QCOMPARE(method->currentText(), QStringLiteral("LZMA2"));
+        level->setCurrentIndex(5);
+        method->setCurrentText("BZip2");
+        solid->setChecked(false);
+        threads->setValue(2);
+        const CompressionOptions options = dialog.compressionOptions();
+        QCOMPARE(options.level, 9);
+        QCOMPARE(options.method, QStringLiteral("BZip2"));
+        QCOMPARE(options.threads, 2);
+        QVERIFY(!options.solid);
+
+        format->setCurrentText("zip");
+        QCOMPARE(method->currentText(), QStringLiteral("Deflate"));
+        QVERIFY(!solid->isEnabled());
+        encryption->setCurrentIndex(1);
+        QVERIFY(password->isEnabled());
+        QVERIFY(confirmation->isEnabled());
+        QCOMPARE(confirmation->echoMode(), QLineEdit::Password);
+        showPassword->setChecked(true);
+        QCOMPARE(password->echoMode(), QLineEdit::Normal);
+        QCOMPARE(confirmation->echoMode(), QLineEdit::Normal);
+    }
+
+    void mismatchedPasswordBlocksSubmission() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source.txt");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        CreateArchiveDialog dialog(temp.path(), {source});
+        dialog.findChild<QComboBox *>("archiveEncryption")->setCurrentIndex(1);
+        dialog.findChild<QLineEdit *>("archivePassword")->setText("first");
+        auto *confirmation = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
+        confirmation->setText("second");
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        QVERIFY(buttons);
+        QTimer::singleShot(0, &dialog, [&dialog] {
+            QTimer::singleShot(0, &dialog, [] {
+                for (QWidget *widget : QApplication::topLevelWidgets()) {
+                    if (auto *warning = qobject_cast<QMessageBox *>(widget))
+                        warning->accept();
+                }
+            });
+            dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            QTimer::singleShot(0, &dialog, &QDialog::reject);
+        });
+        QCOMPARE(dialog.exec(), QDialog::Rejected);
+        QVERIFY(dialog.target().isEmpty());
+
+        confirmation->setText("first");
+        QTimer::singleShot(0, buttons->button(QDialogButtonBox::Ok), &QAbstractButton::click);
+        QCOMPARE(dialog.exec(), QDialog::Accepted);
+        QCOMPARE(dialog.password(), QStringLiteral("first"));
+    }
+
+    void createWithCompressionOptions_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<QString>("method");
+        QTest::newRow("7z-solid-off") << "7z" << "LZMA2";
+        QTest::newRow("zip-bzip2") << "zip" << "BZip2";
+    }
+
+    void createWithCompressionOptions() {
+        QFETCH(QString, format);
+        QFETCH(QString, method);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("данные с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write(QByteArray(8192, 'a'));
+        file.close();
+
+        const QString target = temp.filePath("archive." + format);
+        CompressionOptions options;
+        options.level = 9;
+        options.method = method;
+        options.threads = 2;
+        options.solid = false;
+        ArchiveBackend backend;
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        backend.create(target, {source}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.takeFirst().at(0).toBool(), "7zz rejected compression options");
+        QVERIFY(QFile::exists(target));
+
+        QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
+        backend.list(target);
+        QTRY_COMPARE_WITH_TIMEOUT(listed.size(), 1, 15000);
+        const QList<ArchiveEntry> entries =
+            qvariant_cast<QList<ArchiveEntry>>(listed.takeFirst().at(0));
+        QCOMPARE(entries.size(), 1);
+        QCOMPARE(entries.first().path, QStringLiteral("данные с пробелом.txt"));
+
+        QProcess inspect;
+        inspect.start("7zz", {"l", "-slt", "--", target});
+        QVERIFY(inspect.waitForFinished(15000));
+        QCOMPARE(inspect.exitCode(), 0);
+        QVERIFY(inspect.readAllStandardOutput().contains("Method = " + method.toUtf8()));
+    }
+
+    void rejectsInvalidOptionsWithoutCreatingTarget() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("file.txt");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        CompressionOptions options;
+        options.method = "invalid";
+        ArchiveBackend backend;
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        const QString target = temp.filePath("invalid.7z");
+        backend.create(target, {source}, {}, false, options);
+        QCOMPARE(done.size(), 1);
+        QVERIFY(!done.first().at(0).toBool());
+        QVERIFY(!QFile::exists(target));
+    }
+};
+
+QTEST_MAIN(CompressionTests)
+#include "compression_tests.moc"

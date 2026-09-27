@@ -1582,18 +1582,19 @@ class MainWindow : public QMainWindow {
         CreateArchiveDialog dialog(directory_, selectedPaths, this);
         if (dialog.exec() != QDialog::Accepted)
             return;
-        createArchive(dialog.target(), dialog.sources(), dialog.password(),
-                      dialog.encryptHeaders());
+        createArchive(dialog.target(), dialog.sources(), dialog.password(), dialog.encryptHeaders(),
+                      dialog.compressionOptions());
     }
     void createArchive(const QString &target, const QStringList &sources,
-                       const QString &password = {}, bool encryptHeaders = false) {
+                       const QString &password = {}, bool encryptHeaders = false,
+                       const CompressionOptions &options = {}) {
         if (state_ != State::Filesystem || sources.isEmpty() || target.isEmpty())
             return;
         previousState_ = state_;
         creating_ = true;
         setState(State::Operating);
         begin("Создание архива", target);
-        backend_->create(target, sources, password, encryptHeaders);
+        backend_->create(target, sources, password, encryptHeaders, options);
     }
     void addDialog() {
         if (state_ != State::Viewing)

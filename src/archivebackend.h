@@ -22,6 +22,13 @@ struct ArchiveInfo {
     bool encrypted = false;
 };
 
+struct CompressionOptions {
+    int level = 5;
+    QString method;
+    int threads = 0; // 0 lets 7-Zip choose.
+    bool solid = true;
+};
+
 class ArchiveBackend : public QObject {
     Q_OBJECT
 
@@ -33,7 +40,8 @@ class ArchiveBackend : public QObject {
                          const QStringList &selected = {}, const QString &password = {});
     virtual void test(const QString &archive, const QString &password = {});
     virtual void create(const QString &archive, const QStringList &sources,
-                        const QString &password = {}, bool encryptHeaders = false);
+                        const QString &password = {}, bool encryptHeaders = false,
+                        const CompressionOptions &options = {});
     virtual void add(const QString &archive, const QStringList &sources);
     virtual void remove(const QString &archive, const QStringList &paths);
     virtual void renameEntry(const QString &archive, const QString &oldPath,
