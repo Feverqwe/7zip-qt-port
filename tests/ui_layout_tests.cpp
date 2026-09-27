@@ -61,8 +61,15 @@ class MainWindowLayoutTests : public QObject {
         auto *overwriteMode = dialog.findChild<QComboBox *>("extractOverwriteMode");
         QVERIFY(pathMode && overwriteMode);
         QCOMPARE(pathMode->currentText(), QString("Полные пути"));
-        QVERIFY(!pathMode->isEnabled());
-        QVERIFY(!overwriteMode->isEnabled());
+        QVERIFY(pathMode->isEnabled());
+        QVERIFY(overwriteMode->isEnabled());
+        QCOMPARE(pathMode->count(), 2);
+        QCOMPARE(overwriteMode->count(), 3);
+        pathMode->setCurrentIndex(1);
+        overwriteMode->setCurrentIndex(2);
+        QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::NoPaths);
+        QCOMPARE(dialog.options().overwriteMode,
+                 ExtractionOptions::OverwriteMode::OverwriteExisting);
         auto *password = dialog.findChild<QLineEdit *>("extractPassword");
         auto *showPassword = dialog.findChild<QCheckBox *>("extractShowPassword");
         QVERIFY(password && showPassword);

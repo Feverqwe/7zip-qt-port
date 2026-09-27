@@ -18,7 +18,7 @@ class ControlledBackend : public ArchiveBackend {
     bool busy() const override { return busy_; }
     void list(const QString &, const QString & = {}) override { busy_ = true; }
     void extract(const QString &, const QString &, const QStringList &selected,
-                 const QString & = {}) override {
+                 const QString & = {}, const ExtractionOptions & = {}) override {
         lastSelected = selected;
         busy_ = true;
     }

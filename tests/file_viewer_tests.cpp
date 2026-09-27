@@ -23,7 +23,7 @@ class ViewerBackend : public ArchiveBackend {
         });
     }
     void extract(const QString &, const QString &destination, const QStringList &selected,
-                 const QString & = {}) override {
+                 const QString & = {}, const ExtractionOptions & = {}) override {
         extracted = selected;
         temporary = destination;
         if (cancelExtraction) {

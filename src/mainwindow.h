@@ -691,7 +691,7 @@ class MainWindow : public QMainWindow {
     }
 
     void extractTo(const QString &destination, bool onlySelected = false,
-                   const QString &password = {}) {
+                   const QString &password = {}, const ExtractionOptions &options = {}) {
         if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
             return;
         QStringList names;
@@ -704,7 +704,7 @@ class MainWindow : public QMainWindow {
         setState(State::Operating);
         begin("Извлечение", destination);
         backend_->extract(archive_, destination, names,
-                          password.isEmpty() ? archivePassword_ : password);
+                          password.isEmpty() ? archivePassword_ : password, options);
     }
 
     void testArchive() {
@@ -1691,7 +1691,7 @@ class MainWindow : public QMainWindow {
         while (history.size() > 16)
             history.removeLast();
         settings.setValue("history/extract", history);
-        extractTo(destination, onlySelected, dialog.password());
+        extractTo(destination, onlySelected, dialog.password(), dialog.options());
     }
     void createDialog() {
         if (state_ != State::Filesystem)

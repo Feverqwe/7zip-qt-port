@@ -29,6 +29,13 @@ struct CompressionOptions {
     bool solid = true;
 };
 
+struct ExtractionOptions {
+    enum class PathMode { FullPaths, NoPaths };
+    enum class OverwriteMode { RejectExisting, SkipExisting, OverwriteExisting };
+    PathMode pathMode = PathMode::FullPaths;
+    OverwriteMode overwriteMode = OverwriteMode::RejectExisting;
+};
+
 class ArchiveBackend : public QObject {
     Q_OBJECT
 
@@ -37,7 +44,8 @@ class ArchiveBackend : public QObject {
     virtual bool busy() const;
     virtual void list(const QString &archive, const QString &password = {});
     virtual void extract(const QString &archive, const QString &destination,
-                         const QStringList &selected = {}, const QString &password = {});
+                         const QStringList &selected = {}, const QString &password = {},
+                         const ExtractionOptions &options = {});
     virtual void test(const QString &archive, const QString &password = {});
     virtual void create(const QString &archive, const QStringList &sources,
                         const QString &password = {}, bool encryptHeaders = false,
@@ -66,7 +74,7 @@ class ArchiveBackend : public QObject {
     static QList<ArchiveEntry> parseListing(const QString &output);
     static bool safePath(const QString &path);
     bool validateExtraction(const QString &destination, const QStringList &selected,
-                            QString *error) const;
+                            const ExtractionOptions &options, QString *error) const;
     bool prepareMutation(const QString &archive);
 
     QProcess process_;

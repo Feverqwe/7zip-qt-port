@@ -40,10 +40,11 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = true;
     }
     void extract(const QString &, const QString &, const QStringList &selected,
-                 const QString &password = {}) override {
+                 const QString &password = {}, const ExtractionOptions &options = {}) override {
         ++extractCalls;
         lastSelected = selected;
         lastExtractPassword = password;
+        lastExtractionOptions = options;
         busy_ = true;
     }
     void test(const QString &, const QString &password = {}) override {
@@ -114,6 +115,7 @@ class ControlledBackend : public ArchiveBackend {
     QString lastArchive;
     QStringList lastSelected;
     QString lastExtractPassword;
+    ExtractionOptions lastExtractionOptions;
     QString lastTestPassword;
     QString lastCreateTarget;
     QStringList lastCreateSources;
@@ -1305,11 +1307,16 @@ class MainWindowStateTests : public QObject {
             auto *password = dialog->findChild<QLineEdit *>("extractPassword");
             QVERIFY(password);
             password->setText("temporary secret");
+            dialog->findChild<QComboBox *>("extractPathMode")->setCurrentIndex(1);
+            dialog->findChild<QComboBox *>("extractOverwriteMode")->setCurrentIndex(1);
             dialog->accept();
         });
         action(window, "extractArchiveAction")->trigger();
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastExtractPassword, QString("temporary secret"));
+        QCOMPARE(backend.lastExtractionOptions.pathMode, ExtractionOptions::PathMode::NoPaths);
+        QCOMPARE(backend.lastExtractionOptions.overwriteMode,
+                 ExtractionOptions::OverwriteMode::SkipExisting);
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         backend.cancel();
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());

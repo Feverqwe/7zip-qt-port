@@ -1,5 +1,7 @@
 #pragma once
 
+#include "archivebackend.h"
+
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -13,8 +15,7 @@
 #include <QStringList>
 #include <QVBoxLayout>
 
-// The controls follow ExtractDialog.rc. Unsupported path and overwrite modes are
-// displayed as fixed values so the UI cannot request a backend mode it lacks.
+// The controls follow the path and overwrite choices in GUI/ExtractDialog.cpp.
 class ExtractDialog : public QDialog {
     Q_OBJECT
 
@@ -43,17 +44,18 @@ class ExtractDialog : public QDialog {
         auto *options = new QHBoxLayout;
         auto *modeColumn = new QVBoxLayout;
         modeColumn->addWidget(new QLabel("Пути:", this));
-        auto *pathMode = new QComboBox(this);
-        pathMode->setObjectName("extractPathMode");
-        pathMode->addItem("Полные пути");
-        pathMode->setEnabled(false);
-        modeColumn->addWidget(pathMode);
+        pathMode_ = new QComboBox(this);
+        pathMode_->setObjectName("extractPathMode");
+        pathMode_->addItem("Полные пути");
+        pathMode_->addItem("Без путей");
+        modeColumn->addWidget(pathMode_);
         modeColumn->addWidget(new QLabel("Перезапись:", this));
-        auto *overwriteMode = new QComboBox(this);
-        overwriteMode->setObjectName("extractOverwriteMode");
-        overwriteMode->addItem("Не перезаписывать существующие файлы");
-        overwriteMode->setEnabled(false);
-        modeColumn->addWidget(overwriteMode);
+        overwriteMode_ = new QComboBox(this);
+        overwriteMode_->setObjectName("extractOverwriteMode");
+        overwriteMode_->addItem("Не перезаписывать существующие файлы");
+        overwriteMode_->addItem("Пропускать существующие файлы");
+        overwriteMode_->addItem("Перезаписывать существующие файлы");
+        modeColumn->addWidget(overwriteMode_);
         options->addLayout(modeColumn, 1);
 
         auto *passwordGroup = new QGroupBox("Пароль", this);
@@ -67,8 +69,8 @@ class ExtractDialog : public QDialog {
         passwordLayout->addWidget(showPassword);
         options->addWidget(passwordGroup, 1);
         layout->addLayout(options);
-        auto *hint = new QLabel("Папка назначения должна существовать. Пути внутри архива "
-                                "сохраняются; существующие файлы не перезаписываются.",
+        auto *hint = new QLabel("Папка назначения должна существовать. При выборе «Без путей» "
+                                "файлы с одинаковыми именами из разных папок не извлекаются.",
                                 this);
         hint->setWordWrap(true);
         layout->addWidget(hint);
@@ -90,8 +92,20 @@ class ExtractDialog : public QDialog {
 
     QString destination() const { return destination_->currentText().trimmed(); }
     QString password() const { return password_->text(); }
+    ExtractionOptions options() const {
+        ExtractionOptions result;
+        if (pathMode_->currentIndex() == 1)
+            result.pathMode = ExtractionOptions::PathMode::NoPaths;
+        if (overwriteMode_->currentIndex() == 1)
+            result.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
+        else if (overwriteMode_->currentIndex() == 2)
+            result.overwriteMode = ExtractionOptions::OverwriteMode::OverwriteExisting;
+        return result;
+    }
 
   private:
     QComboBox *destination_ = nullptr;
+    QComboBox *pathMode_ = nullptr;
+    QComboBox *overwriteMode_ = nullptr;
     QLineEdit *password_ = nullptr;
 };

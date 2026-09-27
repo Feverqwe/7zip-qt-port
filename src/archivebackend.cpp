@@ -160,7 +160,7 @@ bool ArchiveBackend::safePath(const QString &path) {
 }
 
 bool ArchiveBackend::validateExtraction(const QString &destination, const QStringList &selected,
-                                        QString *error) const {
+                                        const ExtractionOptions &options, QString *error) const {
     QFileInfo target(destination);
     if (!target.exists() || !target.isDir() || target.isSymLink()) {
         *error = QStringLiteral("Папка назначения должна существовать и не быть ссылкой: %1")
@@ -191,6 +191,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         }
         QString relative = entry.path;
         relative.replace('\\', '/');
+        if (options.pathMode == ExtractionOptions::PathMode::NoPaths)
+            relative = relative.section('/', -1);
         const QString key = relative.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (names.contains(key)) {
             *error = QStringLiteral("Архив содержит конфликт имён: %1").arg(entry.path);
@@ -200,16 +202,21 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         if (!entry.directory)
             files.insert(key);
         QString candidate = target.absoluteFilePath();
-        for (const QString &part : relative.split('/')) {
+        const QStringList parts = relative.split('/');
+        for (int index = 0; index < parts.size(); ++index) {
+            const QString &part = parts.at(index);
             candidate = QDir(candidate).filePath(part);
             const QFileInfo existing(candidate);
-            if (existing.isSymLink() || (existing.exists() && !existing.isDir())) {
+            const bool finalFile = index == parts.size() - 1 && !entry.directory;
+            if (existing.isSymLink() ||
+                (existing.exists() && (finalFile ? !existing.isFile() : !existing.isDir()))) {
                 *error =
                     QStringLiteral("Путь назначения занят файлом или ссылкой: %1").arg(candidate);
                 return false;
             }
         }
-        if (QFileInfo(candidate).exists() && !entry.directory) {
+        if (QFileInfo(candidate).exists() && !entry.directory &&
+            options.overwriteMode == ExtractionOptions::OverwriteMode::RejectExisting) {
             *error = QStringLiteral("В папке назначения уже существует: %1").arg(entry.path);
             return false;
         }
@@ -228,7 +235,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
 }
 
 void ArchiveBackend::extract(const QString &archive, const QString &destination,
-                             const QStringList &selected, const QString &password) {
+                             const QStringList &selected, const QString &password,
+                             const ExtractionOptions &options) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -248,14 +256,22 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         }
     }
     QString validationError;
-    if (!validateExtraction(destination, selected, &validationError)) {
+    if (!validateExtraction(destination, selected, options, &validationError)) {
         emit finished(false, validationError);
         return;
     }
-    QStringList arguments = {"x",     "-y",
-                             "-bsp1", "-bb1",
-                             "-spd",  "-o" + QFileInfo(destination).absoluteFilePath(),
-                             "--",    QFileInfo(archive).absoluteFilePath()};
+    QStringList arguments = {options.pathMode == ExtractionOptions::PathMode::NoPaths ? "e" : "x",
+                             "-y",
+                             "-bsp1",
+                             "-bb1",
+                             "-spd",
+                             "-o" + QFileInfo(destination).absoluteFilePath(),
+                             "--",
+                             QFileInfo(archive).absoluteFilePath()};
+    if (options.overwriteMode == ExtractionOptions::OverwriteMode::SkipExisting)
+        arguments.insert(2, "-aos");
+    else if (options.overwriteMode == ExtractionOptions::OverwriteMode::OverwriteExisting)
+        arguments.insert(2, "-aoa");
     arguments += selected;
     pendingPassword_ = password;
     if (encrypted_) {
