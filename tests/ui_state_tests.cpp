@@ -193,6 +193,134 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
     }
 
+    void createFileDialogCreatesUnicodeFileAndCancelLeavesDirectoryUntouched() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        const QString name = QStringLiteral("новый файл.txt");
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("comboDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("comboValue")->setEditText(name);
+            dialog->accept();
+        });
+        action(window, "createFileAction")->trigger();
+        QVERIFY(QFileInfo::exists(temp.filePath(name)));
+        QCOMPARE(filesystemRow(window, name) >= 0, true);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        {
+            QFile existing(temp.filePath(name));
+            QVERIFY(existing.open(QIODevice::WriteOnly));
+            QCOMPARE(existing.write("protected"), 9);
+        }
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("comboDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("comboValue")->setEditText("cancelled.txt");
+            dialog->reject();
+        });
+        action(window, "createFileAction")->trigger();
+        QVERIFY(!QFileInfo::exists(temp.filePath("cancelled.txt")));
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("comboDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("comboValue")->setEditText(name);
+            dialog->accept();
+            QTimer::singleShot(0, [] {
+                for (QWidget *widget : QApplication::topLevelWidgets()) {
+                    if (auto *box = qobject_cast<QMessageBox *>(widget))
+                        box->accept();
+                }
+            });
+        });
+        action(window, "createFileAction")->trigger();
+        QFile existing(temp.filePath(name));
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("protected"));
+    }
+
+    void maskAndTypeSelectionFollowFileManager() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        for (const QString &name : {QStringLiteral("Alpha.txt"), QStringLiteral("beta.TXT"),
+                                    QStringLiteral("image.png")}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto applyMask = [&](const char *actionName, const QString &mask) {
+            QTimer::singleShot(0, [&] {
+                auto *dialog = window.findChild<QDialog *>("comboDialog");
+                QVERIFY(dialog);
+                dialog->findChild<QComboBox *>("comboValue")->setEditText(mask);
+                dialog->accept();
+            });
+            action(window, actionName)->trigger();
+        };
+        applyMask("selectMaskAction", "*.txt");
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        applyMask("deselectMaskAction", "alpha.*");
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        table(window)->selectionModel()->setCurrentIndex(
+            table(window)->model()->index(filesystemRow(window, "image.png"), 0),
+            QItemSelectionModel::NoUpdate);
+        action(window, "selectTypeAction")->trigger();
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        action(window, "deselectTypeAction")->trigger();
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+
+        window.openArchive(temp.filePath("test.7z"));
+        backend.completeList({ArchiveEntry{"first.txt", 1, 1}, ArchiveEntry{"second.TXT", 1, 1},
+                              ArchiveEntry{"other.bin", 1, 1}});
+        applyMask("selectMaskAction", "*.txt");
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        QVERIFY(!action(window, "createFileAction")->isEnabled());
+    }
+
+    void foldersHistoryDialogPersistsAndDeletesEntries() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString first = temp.filePath("first folder");
+        const QString second = temp.filePath(QStringLiteral("вторая папка"));
+        QVERIFY(QDir().mkpath(first));
+        QVERIFY(QDir().mkpath(second));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(first);
+        QTest::keyClick(address, Qt::Key_Return);
+        address->setText(second);
+        QTest::keyClick(address, Qt::Key_Return);
+        const QString canonicalFirst = QFileInfo(first).canonicalFilePath();
+        const QString canonicalSecond = QFileInfo(second).canonicalFilePath();
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("foldersHistoryDialog");
+            QVERIFY(dialog);
+            auto *list = dialog->findChild<QListWidget *>("foldersHistoryList");
+            QCOMPARE(list->item(0)->text(), canonicalSecond);
+            QCOMPARE(list->item(1)->text(), canonicalFirst);
+            list->setCurrentRow(0);
+            dialog->findChild<QPushButton *>("removeHistoryEntryButton")->click();
+            list->setCurrentRow(0);
+            dialog->accept();
+        });
+        action(window, "foldersHistoryAction")->trigger();
+        QCOMPARE(address->text(), canonicalFirst);
+        MainWindow reopened(&backend);
+        auto *combo = reopened.findChild<QComboBox *>("pathCombo");
+        QVERIFY(combo->findText(canonicalFirst) >= 0);
+        QCOMPARE(combo->findText(canonicalSecond), -1);
+    }
+
     void favoritesFollowFoldersAndArchivePaths() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QTemporaryDir temp;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "archivebackend.h"
+#include "combodialog.h"
 #include "copydialog.h"
 #include "createarchivedialog.h"
 
@@ -24,6 +25,7 @@
 #include <QKeySequence>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMainWindow>
 #include <QMap>
 #include <QMenu>
@@ -181,6 +183,9 @@ class MainWindow : public QMainWindow {
         createFolder_ = menu->addAction("Создать папку…", this, [this] { createFolder(); });
         createFolder_->setObjectName("createFolderAction");
         createFolder_->setShortcut(QKeySequence(Qt::Key_F7));
+        createFile_ = menu->addAction("Создать файл…", this, [this] { createFile(); });
+        createFile_->setObjectName("createFileAction");
+        createFile_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_N));
         copy_->setShortcut(QKeySequence(Qt::Key_F5));
         move_->setShortcut(QKeySequence(Qt::Key_F6));
         remove_->setShortcut(QKeySequence::Delete);
@@ -243,6 +248,10 @@ class MainWindow : public QMainWindow {
         refresh_ = viewMenu->addAction("Обновить", this, [this] { refreshCurrent(); });
         refresh_->setObjectName("refreshAction");
         refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
+        foldersHistory_ =
+            viewMenu->addAction("История папок…", this, [this] { showFoldersHistory(); });
+        foldersHistory_->setObjectName("foldersHistoryAction");
+        foldersHistory_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_F12));
 
         auto *central = new QWidget(this);
         auto *layout = new QVBoxLayout(central);
@@ -261,6 +270,11 @@ class MainWindow : public QMainWindow {
         path_ = pathCombo_->lineEdit();
         path_->setObjectName("archivePath");
         path_->setPlaceholderText("Путь к папке или архиву");
+        for (const QString &visited : settings.value("history/paths").toStringList()) {
+            if (pathCombo_->count() >= 20)
+                break;
+            pathCombo_->addItem(visited);
+        }
         navigation->addWidget(pathCombo_);
         layout->addLayout(navigation);
         table_ = new FileTable(0, 5, central);
@@ -324,6 +338,7 @@ class MainWindow : public QMainWindow {
             if (state_ == State::Filesystem) {
                 menu.addAction(create_);
                 menu.addAction(createFolder_);
+                menu.addAction(createFile_);
             } else {
                 menu.addAction(add_);
                 if (hasSelection)
@@ -363,6 +378,17 @@ class MainWindow : public QMainWindow {
                                                      QItemSelectionModel::Rows);
         });
         invertSelection_->setObjectName("invertSelectionAction");
+        selectMask_ =
+            editMenu->addAction("Выделить по маске…", this, [this] { selectByMask(true); });
+        selectMask_->setObjectName("selectMaskAction");
+        deselectMask_ =
+            editMenu->addAction("Снять выделение по маске…", this, [this] { selectByMask(false); });
+        deselectMask_->setObjectName("deselectMaskAction");
+        selectType_ = editMenu->addAction("Выделить по типу", this, [this] { selectByType(true); });
+        selectType_->setObjectName("selectTypeAction");
+        deselectType_ =
+            editMenu->addAction("Снять выделение по типу", this, [this] { selectByType(false); });
+        deselectType_->setObjectName("deselectTypeAction");
         layout->addWidget(table_);
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
@@ -596,6 +622,55 @@ class MainWindow : public QMainWindow {
         pathCombo_->insertItem(0, path);
         while (pathCombo_->count() > 20)
             pathCombo_->removeItem(pathCombo_->count() - 1);
+        QStringList paths;
+        for (int index = 0; index < pathCombo_->count(); ++index)
+            paths << pathCombo_->itemText(index);
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        settings.setValue("history/paths", paths);
+    }
+    void showFoldersHistory() {
+        if (state_ == State::Loading || state_ == State::Operating)
+            return;
+        QDialog dialog(this);
+        dialog.setObjectName("foldersHistoryDialog");
+        dialog.setWindowTitle("История папок");
+        dialog.resize(540, 360);
+        auto *layout = new QVBoxLayout(&dialog);
+        auto *list = new QListWidget(&dialog);
+        list->setObjectName("foldersHistoryList");
+        for (int index = 0; index < pathCombo_->count(); ++index)
+            list->addItem(pathCombo_->itemText(index));
+        if (list->count() > 0)
+            list->setCurrentRow(0);
+        layout->addWidget(list);
+        auto *remove = new QPushButton("Удалить", &dialog);
+        remove->setObjectName("removeHistoryEntryButton");
+        layout->addWidget(remove);
+        connect(remove, &QPushButton::clicked, &dialog,
+                [list] { delete list->takeItem(list->currentRow()); });
+        auto *buttons =
+            new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+        layout->addWidget(buttons);
+        connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        connect(list, &QListWidget::itemDoubleClicked, &dialog, &QDialog::accept);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QString selected = list->currentItem() ? list->currentItem()->text() : QString();
+        const QString current = path_->text();
+        pathCombo_->clear();
+        for (int index = 0; index < list->count(); ++index)
+            pathCombo_->addItem(list->item(index)->text());
+        path_->setText(current);
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        QStringList paths;
+        for (int index = 0; index < pathCombo_->count(); ++index)
+            paths << pathCombo_->itemText(index);
+        settings.setValue("history/paths", paths);
+        if (!selected.isEmpty())
+            navigateTo(selected);
+        else
+            refreshActions();
     }
     struct Bookmark {
         QString path;
@@ -844,6 +919,73 @@ class MainWindow : public QMainWindow {
         showDirectory(directory_, false);
         selectPaths({target});
     }
+    void createFile() {
+        if (state_ != State::Filesystem)
+            return;
+        ComboDialog dialog("Создать файл", "Имя файла:", "Новый файл", this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QString name = dialog.value();
+        const QString target = QDir(directory_).filePath(name);
+        if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
+            name.contains('\\') || name.contains(QRegularExpression("[<>:\"|?*]")) ||
+            name.endsWith(' ') || name.endsWith('.') || QFileInfo::exists(target) ||
+            QFileInfo(target).isSymLink()) {
+            QMessageBox::warning(this, "Создать файл", "Недопустимое имя или файл уже существует.");
+            return;
+        }
+        QFile file(target);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+            QMessageBox::warning(this, "Создать файл", "Не удалось создать файл.");
+            return;
+        }
+        file.close();
+        showDirectory(directory_, false);
+        selectPaths({target});
+    }
+    void selectByMask(bool select) {
+        if (state_ != State::Filesystem && state_ != State::Viewing)
+            return;
+        ComboDialog dialog(select ? "Выделить" : "Снять выделение", "Маска:", "*", this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QRegularExpression pattern(
+            QRegularExpression::wildcardToRegularExpression(dialog.value()),
+            QRegularExpression::CaseInsensitiveOption);
+        for (int row = 0; row < table_->rowCount(); ++row) {
+            if (pattern.match(table_->item(row, 0)->text()).hasMatch())
+                table_->selectionModel()->select(
+                    table_->model()->index(row, 0),
+                    (select ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
+                        QItemSelectionModel::Rows);
+        }
+    }
+    void selectByType(bool select) {
+        if (state_ != State::Filesystem && state_ != State::Viewing)
+            return;
+        const int current = table_->currentRow();
+        if (current < 0)
+            return;
+        const auto *focused = table_->item(current, 0);
+        const bool folder = focused->data(Qt::UserRole + 1).toBool();
+        const QString name = focused->text();
+        const int dot = name.lastIndexOf('.');
+        const QString extension = dot < 0 ? QString() : name.mid(dot);
+        for (int row = 0; row < table_->rowCount(); ++row) {
+            const auto *item = table_->item(row, 0);
+            const bool sameType =
+                folder ? item->data(Qt::UserRole + 1).toBool()
+                       : !item->data(Qt::UserRole + 1).toBool() &&
+                             (extension.isEmpty()
+                                  ? !item->text().contains('.')
+                                  : item->text().endsWith(extension, Qt::CaseInsensitive));
+            if (sameType)
+                table_->selectionModel()->select(
+                    table_->model()->index(row, 0),
+                    (select ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
+                        QItemSelectionModel::Rows);
+        }
+    }
     void navigateTo(const QString &path) {
         if (state_ == State::Loading || state_ == State::Operating)
             return;
@@ -1002,8 +1144,14 @@ class MainWindow : public QMainWindow {
         deselectAll_->setEnabled(idle && selected);
         invertSelection_->setEnabled(idle && table_->rowCount() > 0);
         refresh_->setEnabled(idle);
+        foldersHistory_->setEnabled(idle && pathCombo_->count() > 0);
         refreshBookmarks();
         createFolder_->setEnabled(idle && state_ == State::Filesystem);
+        createFile_->setEnabled(idle && state_ == State::Filesystem);
+        selectMask_->setEnabled(idle && table_->rowCount() > 0);
+        deselectMask_->setEnabled(idle && table_->rowCount() > 0);
+        selectType_->setEnabled(idle && table_->currentRow() >= 0);
+        deselectType_->setEnabled(idle && table_->currentRow() >= 0);
         copy_->setEnabled(idle && selected);
         move_->setEnabled(idle && state_ == State::Filesystem && selected);
         remove_->setEnabled(
@@ -1466,9 +1614,15 @@ class MainWindow : public QMainWindow {
     QAction *rename_ = nullptr;
     QAction *properties_ = nullptr;
     QAction *createFolder_ = nullptr;
+    QAction *createFile_ = nullptr;
     QAction *refresh_ = nullptr;
+    QAction *foldersHistory_ = nullptr;
     QAction *deselectAll_ = nullptr;
     QAction *invertSelection_ = nullptr;
+    QAction *selectMask_ = nullptr;
+    QAction *deselectMask_ = nullptr;
+    QAction *selectType_ = nullptr;
+    QAction *deselectType_ = nullptr;
     QAction *archiveToolbarOption_ = nullptr;
     QAction *standardToolbarOption_ = nullptr;
     QAction *largeButtonsOption_ = nullptr;
