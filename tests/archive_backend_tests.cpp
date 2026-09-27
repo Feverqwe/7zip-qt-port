@@ -441,6 +441,146 @@ class ArchiveBackendTests : public QObject {
         QTest::newRow("7z") << QString("7z");
         QTest::newRow("zip") << QString("zip");
     }
+    void archiveMutation_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+    void archiveMutation() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString first = temp.filePath(QStringLiteral("старое имя.txt"));
+        const QString second = temp.filePath(QStringLiteral("другой файл.txt"));
+        const QString archive = temp.filePath("mutate." + format);
+        writeFile(first, "one");
+        writeFile(second, "two");
+        ArchiveBackend backend;
+        backend.create(archive, {first, second});
+        await(backend, true);
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(entries.size(), 2);
+        const QString before = QStringLiteral("старое имя.txt");
+        const QString after = QStringLiteral("новое имя.txt");
+        backend.renameEntry(archive, before, after);
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QStringList paths;
+        for (const ArchiveEntry &entry : entries)
+            paths << entry.path;
+        QVERIFY(paths.contains(after));
+        QVERIFY(!paths.contains(before));
+        QSignalSpy collision(&backend, &ArchiveBackend::finished);
+        backend.renameEntry(archive, after, QStringLiteral("другой файл.txt"));
+        QCOMPARE(collision.size(), 1);
+        QVERIFY(!collision.takeFirst().at(0).toBool());
+        backend.remove(archive, {after});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(entries.size(), 1);
+        QCOMPARE(entries.first().path.normalized(QString::NormalizationForm_C),
+                 QStringLiteral("другой файл.txt"));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void archiveMutationFailureAndCancellation() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("original.txt");
+        const QString archive = temp.filePath("existing.zip");
+        writeFile(source, "original");
+        ArchiveBackend real;
+        real.create(archive, {source});
+        await(real, true);
+        QFile saved(archive);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        const QByteArray before = saved.readAll();
+        saved.close();
+
+        const QString vanishing = temp.filePath("vanishing-7zz");
+        QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), vanishing));
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", "Path = original.txt\nSize = 8\n\n");
+        ArchiveBackend missing(nullptr, vanishing);
+        missing.list(archive);
+        await(missing, true);
+        QVERIFY(QFile::remove(vanishing));
+        QSignalSpy launch(&missing, &ArchiveBackend::finished);
+        missing.remove(archive, {"original.txt"});
+        QTRY_VERIFY_WITH_TIMEOUT(!launch.isEmpty(), 3000);
+        QVERIFY(!launch.takeFirst().at(0).toBool());
+        QVERIFY(!missing.busy());
+
+        ArchiveBackend helper(nullptr, QCoreApplication::applicationFilePath());
+        helper.list(archive);
+        await(helper, true);
+        qunsetenv("SEVENZIP_TEST_LISTING");
+        qputenv("SEVENZIP_TEST_HELPER", "createpartial");
+        QSignalSpy output(&helper, &ArchiveBackend::outputReceived);
+        QSignalSpy result(&helper, &ArchiveBackend::finished);
+        helper.renameEntry(archive, "original.txt", "renamed.txt");
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        helper.cancel();
+        QVERIFY(result.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!result.takeFirst().at(0).toBool());
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QCOMPARE(saved.readAll(), before);
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void archiveFolderDeletion_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+    void archiveFolderDeletion() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString folder = temp.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(QDir().mkpath(folder));
+        writeFile(folder + QStringLiteral("/внутри.txt"), "data");
+        const QString archive = temp.filePath("folder." + format);
+        ArchiveBackend backend;
+        backend.create(archive, {folder});
+        await(backend, true);
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        QStringList paths;
+        for (const ArchiveEntry &entry : entries)
+            paths << entry.path;
+        QVERIFY(paths.size() >= 2);
+        QString oldFile;
+        for (const QString &path : paths) {
+            if (path.endsWith(QStringLiteral("/внутри.txt")))
+                oldFile = path;
+        }
+        QVERIFY(!oldFile.isEmpty());
+        backend.renameEntry(archive, oldFile,
+                            oldFile.left(oldFile.lastIndexOf('/') + 1) +
+                                QStringLiteral("новое имя.txt"));
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        paths.clear();
+        for (const ArchiveEntry &entry : entries)
+            paths << entry.path;
+        QVERIFY(paths.contains(oldFile.left(oldFile.lastIndexOf('/') + 1) +
+                               QStringLiteral("новое имя.txt")));
+        backend.remove(archive, paths);
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QVERIFY(entries.isEmpty());
+    }
     void addToExisting() {
         QFETCH(QString, format);
         QTemporaryDir temp;

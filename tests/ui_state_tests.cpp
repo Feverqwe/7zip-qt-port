@@ -1,23 +1,30 @@
 #include "mainwindow.h"
 
+#include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QImage>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QProgressDialog>
 #include <QPushButton>
+#include <QScopedPointer>
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QUrl>
 #include <QtTest>
 
 class ControlledBackend : public ArchiveBackend {
@@ -54,6 +61,17 @@ class ControlledBackend : public ArchiveBackend {
         lastAddSources = sources;
         busy_ = true;
     }
+    void remove(const QString &, const QStringList &paths) override {
+        ++removeCalls;
+        lastRemoved = paths;
+        busy_ = true;
+    }
+    void renameEntry(const QString &, const QString &oldPath, const QString &newPath) override {
+        ++renameCalls;
+        lastRenameOld = oldPath;
+        lastRenameNew = newPath;
+        busy_ = true;
+    }
     void cancel() override {
         ++cancelCalls;
         busy_ = false;
@@ -85,6 +103,8 @@ class ControlledBackend : public ArchiveBackend {
     int testCalls = 0;
     int createCalls = 0;
     int addCalls = 0;
+    int removeCalls = 0;
+    int renameCalls = 0;
     int cancelCalls = 0;
     QString lastArchive;
     QStringList lastSelected;
@@ -94,6 +114,9 @@ class ControlledBackend : public ArchiveBackend {
     QStringList lastCreateSources;
     QString lastAddTarget;
     QStringList lastAddSources;
+    QStringList lastRemoved;
+    QString lastRenameOld;
+    QString lastRenameNew;
 
   private:
     bool busy_ = false;
@@ -134,8 +157,290 @@ class MainWindowStateTests : public QObject {
         const QKeyCombination key = QKeySequence(QKeySequence::SelectAll)[0];
         QTest::keyClick(view, key.key(), key.keyboardModifiers());
     }
+    static int filesystemRow(MainWindow &window, const QString &name) {
+        for (int row = 0; row < table(window)->rowCount(); ++row) {
+            if (table(window)->item(row, 0)->text() == name)
+                return row;
+        }
+        return -1;
+    }
 
   private slots:
+    void stage7FilesystemCommands() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        const QString source = temp.filePath(QStringLiteral("имя с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("original"), 8);
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        const int row = filesystemRow(window, QStringLiteral("имя с пробелом.txt"));
+        QVERIFY(row >= 0);
+        table(window)->selectRow(row);
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "moveAction")->isEnabled());
+        QVERIFY(action(window, "deleteAction")->isEnabled());
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        const QScopedPointer<QMimeData> outbound(
+            table(window)->model()->mimeData(table(window)->selectionModel()->selectedIndexes()));
+        QVERIFY(outbound->hasUrls());
+        QCOMPARE(QFileInfo(outbound->urls().first().toLocalFile()).canonicalFilePath(),
+                 QFileInfo(source).canonicalFilePath());
+
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget))
+                    dialog->reject();
+            }
+        });
+        action(window, "moveAction")->trigger();
+        QVERIFY(QFileInfo::exists(source));
+
+        const QString destination = temp.filePath("destination");
+        QTimer::singleShot(0, &window, [destination] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
+                    dialog->setTextValue(destination);
+                    dialog->accept();
+                }
+            }
+        });
+        action(window, "copyAction")->trigger();
+        const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
+        QFile copiedFile(copied);
+        QVERIFY(copiedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(copiedFile.readAll(), QByteArray("original"));
+        copiedFile.close();
+        QTimer warningTimer;
+        connect(&warningTimer, &QTimer::timeout, &window, [destination] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->setTextValue(destination);
+                    dialog->accept();
+                }
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+            }
+        });
+        warningTimer.start(1);
+        action(window, "copyAction")->trigger();
+        warningTimer.stop();
+        QVERIFY(QFileInfo::exists(source));
+        QVERIFY(QFileInfo::exists(copied));
+        QTimer moveErrorTimer;
+        connect(&moveErrorTimer, &QTimer::timeout, &window, [destination] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->setTextValue(destination);
+                    dialog->accept();
+                }
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+            }
+        });
+        moveErrorTimer.start(1);
+        action(window, "moveAction")->trigger();
+        moveErrorTimer.stop();
+        QVERIFY(QFileInfo::exists(source));
+        QVERIFY(QFileInfo::exists(copied));
+
+        const int copiedRow = filesystemRow(window, QStringLiteral("имя с пробелом.txt"));
+        table(window)->selectRow(copiedRow);
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
+                    dialog->setTextValue(QStringLiteral("новое имя.txt"));
+                    dialog->accept();
+                }
+            }
+        });
+        action(window, "renameAction")->trigger();
+        const QString renamed = temp.filePath(QStringLiteral("новое имя.txt"));
+        QVERIFY(QFileInfo::exists(renamed));
+        QVERIFY(!QFileInfo::exists(source));
+
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("новое имя.txt")));
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->button(QMessageBox::No)->click();
+            }
+        });
+        action(window, "deleteAction")->trigger();
+        QVERIFY(QFileInfo::exists(renamed));
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->button(QMessageBox::Yes)->click();
+            }
+        });
+        action(window, "deleteAction")->trigger();
+        QVERIFY(!QFileInfo::exists(renamed));
+        QVERIFY(QFileInfo::exists(copied));
+
+        QFile movable(temp.filePath("move me.txt"));
+        QVERIFY(movable.open(QIODevice::WriteOnly));
+        movable.write("move");
+        movable.close();
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        table(window)->selectRow(filesystemRow(window, "move me.txt"));
+        QTimer::singleShot(0, &window, [destination] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->setTextValue(destination);
+                    dialog->accept();
+                }
+            }
+        });
+        action(window, "moveAction")->trigger();
+        QVERIFY(!QFileInfo::exists(movable.fileName()));
+        QVERIFY(QFileInfo::exists(QDir(destination).filePath("move me.txt")));
+    }
+
+    void stage7FilesystemDropAndArchiveCopy() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("in"));
+        QVERIFY(QDir(temp.path()).mkdir("out"));
+        const QString source = temp.filePath(QStringLiteral("drop ü.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("dropped");
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.filePath("in"));
+        QTest::keyClick(address, Qt::Key_Return);
+        QMimeData mime;
+        mime.setUrls({QUrl::fromLocalFile(source)});
+        QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(table(window)->viewport(), &enter);
+        QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(table(window)->viewport(), &drop);
+        QVERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
+
+        window.openArchive("items.zip");
+        backend.completeList({ArchiveEntry{QStringLiteral("nested/file.txt"), 4, 4}});
+        const int row = filesystemRow(window, "nested");
+        QVERIFY(row >= 0);
+        table(window)->selectRow(row);
+        QTimer::singleShot(0, &window, [&temp] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QDialog *>(widget); dialog && dialog->isVisible()) {
+                    if (auto *destination = dialog->findChild<QLineEdit *>("extractDestination")) {
+                        destination->setText(temp.filePath("out"));
+                        dialog->accept();
+                    }
+                }
+            }
+        });
+        action(window, "copyAction")->trigger();
+        QCOMPARE(backend.extractCalls, 1);
+        QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("nested/file.txt")}));
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        backend.cancel();
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QDragEnterEvent archiveEnter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton,
+                                     Qt::NoModifier);
+        QCoreApplication::sendEvent(table(window)->viewport(), &archiveEnter);
+        QDropEvent archiveDrop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton,
+                               Qt::NoModifier);
+        QCoreApplication::sendEvent(table(window)->viewport(), &archiveDrop);
+        QCOMPARE(backend.addCalls, 1);
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        backend.cancel();
+    }
+
+    void stage7ArchiveCommandStates() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("first.7z");
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+        backend.completeList({ArchiveEntry{QStringLiteral("file.txt"), 4, 4}});
+        table(window)->selectRow(0);
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(action(window, "deleteAction")->isEnabled());
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        window.openArchive("second.zip");
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        backend.completeList({});
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(!action(window, "deleteAction")->isEnabled());
+        QVERIFY(!action(window, "renameAction")->isEnabled());
+        QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        window.openArchive("cancel.7z");
+        backend.cancel();
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "openArchiveAction")->isEnabled());
+    }
+    void stage7ArchiveMutations() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("mutate.7z");
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/file.txt"), 4, 4}});
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
+        QVERIFY(action(window, "deleteAction")->isEnabled());
+        QVERIFY(!action(window, "renameAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->button(QMessageBox::No)->click();
+            }
+        });
+        action(window, "deleteAction")->trigger();
+        QCOMPARE(backend.removeCalls, 0);
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->button(QMessageBox::Yes)->click();
+            }
+        });
+        action(window, "deleteAction")->trigger();
+        QCOMPARE(backend.removeCalls, 1);
+        QCOMPARE(backend.lastRemoved, QStringList({QStringLiteral("папка/file.txt")}));
+        QVERIFY(!action(window, "deleteAction")->isEnabled());
+        backend.cancel();
+        QVERIFY(action(window, "deleteAction")->isEnabled());
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
+        openRow(window, filesystemRow(window, QStringLiteral("папка")));
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("file.txt")));
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->setTextValue(QStringLiteral("новый.txt"));
+                    dialog->accept();
+                }
+            }
+        });
+        action(window, "renameAction")->trigger();
+        QCOMPARE(backend.renameCalls, 1);
+        QCOMPARE(backend.lastRenameOld, QStringLiteral("папка/file.txt"));
+        QCOMPARE(backend.lastRenameNew, QStringLiteral("папка/новый.txt"));
+        backend.completeAdd();
+        QCOMPARE(backend.listCalls, 2);
+        QVERIFY(!action(window, "renameAction")->isEnabled());
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/новый.txt"), 4, 4}});
+        QVERIFY(!action(window, "renameAction")->isEnabled());
+        openRow(window, filesystemRow(window, QStringLiteral("папка")));
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("новый.txt")));
+        QVERIFY(action(window, "renameAction")->isEnabled());
+    }
     void addToOpenArchiveState() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -514,6 +819,10 @@ class MainWindowStateTests : public QObject {
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
         QVERIFY(!action(window, "archiveInfoAction")->isEnabled());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(!action(window, "deleteAction")->isEnabled());
+        QVERIFY(!action(window, "renameAction")->isEnabled());
 
         window.openArchive("first.7z");
         QCOMPARE(backend.listCalls, 1);
@@ -538,6 +847,8 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(backend.listCalls, 2);
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(!action(window, "moveAction")->isEnabled());
         backend.completeList({});
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo("second.zip").absoluteFilePath());

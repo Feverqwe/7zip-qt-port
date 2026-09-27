@@ -30,7 +30,8 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             &ArchiveBackend::complete);
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart && job_ != Job::None) {
-            if (job_ == Job::Create || job_ == Job::Add)
+            if (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete ||
+                job_ == Job::Rename)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
             pendingPassword_.clear();
@@ -467,6 +468,75 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
     start(Job::Add, arguments, root);
 }
 
+bool ArchiveBackend::prepareMutation(const QString &archive) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return false;
+    }
+    const QFileInfo target(archive);
+    const QString suffix = target.suffix().toLower();
+    if (!listed_ || archive_ != target.absoluteFilePath() || !target.isFile() ||
+        target.isSymLink() || encrypted_ || (suffix != "7z" && suffix != "zip")) {
+        emit finished(false, QStringLiteral("Откройте незашифрованный архив .7z или .zip."));
+        return false;
+    }
+    createTarget_ = target.absoluteFilePath();
+    createTemporary_ = target.absolutePath() + "/.sevenzip-" +
+                       QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
+    addBackup_ = target.absolutePath() + "/.sevenzip-backup-" +
+                 QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
+    if (!QFile::copy(createTarget_, createTemporary_)) {
+        QFile::remove(createTemporary_);
+        emit finished(false, QStringLiteral("Не удалось подготовить копию архива для записи."));
+        return false;
+    }
+    return true;
+}
+
+void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
+    if (paths.isEmpty())
+        return;
+    QSet<QString> known;
+    for (const ArchiveEntry &entry : entries_)
+        known.insert(entry.path);
+    for (const QString &path : paths) {
+        if (!known.contains(path) || !safePath(path) || path.contains('*') || path.contains('?') ||
+            path.startsWith('@')) {
+            emit finished(false, QStringLiteral("Объект архива не найден: %1").arg(path));
+            return;
+        }
+    }
+    if (!prepareMutation(archive))
+        return;
+    QStringList arguments = {"d", "-y", "-bsp1", "-bb1", "--", createTemporary_};
+    arguments += paths;
+    start(Job::Delete, arguments);
+}
+
+void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
+                                 const QString &newPath) {
+    bool found = false;
+    const QString key = newPath.normalized(QString::NormalizationForm_C).toCaseFolded();
+    for (const ArchiveEntry &entry : entries_) {
+        if (entry.path == oldPath && !entry.directory)
+            found = true;
+        const QString existing = entry.path.normalized(QString::NormalizationForm_C).toCaseFolded();
+        if (existing == key || existing.startsWith(key + '/')) {
+            emit finished(false, QStringLiteral("Имя уже есть в архиве."));
+            return;
+        }
+    }
+    if (!found || !safePath(newPath) || oldPath.contains('*') || oldPath.contains('?') ||
+        oldPath.startsWith('@') || newPath.contains('*') || newPath.contains('?') ||
+        newPath.startsWith('@') || oldPath.section('/', 0, -2) != newPath.section('/', 0, -2)) {
+        emit finished(false, QStringLiteral("Переименование этого объекта недоступно."));
+        return;
+    }
+    if (!prepareMutation(archive))
+        return;
+    start(Job::Rename, {"rn", "-y", "-bsp1", "-bb1", "--", createTemporary_, oldPath, newPath});
+}
+
 void ArchiveBackend::cancel() {
     if (!busy())
         return;
@@ -532,14 +602,16 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     job_ = Job::None;
     if (cancelled_) {
         extractPassword_.clear();
-        if (completed == Job::Create || completed == Job::Add)
+        if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
+            completed == Job::Rename)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
         extractPassword_.clear();
-        if (completed == Job::Create || completed == Job::Add)
+        if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
+            completed == Job::Rename)
             QFile::remove(createTemporary_);
         const bool wrongPassword =
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
@@ -563,7 +635,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                       QStringLiteral("Не удалось сохранить новый архив: %1").arg(createTarget_));
         return;
     }
-    if (completed == Job::Add) {
+    if (completed == Job::Add || completed == Job::Delete || completed == Job::Rename) {
         if (!QFile::rename(createTarget_, addBackup_)) {
             QFile::remove(createTemporary_);
             emit finished(false,
@@ -619,5 +691,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                         : completed == Job::Extract ? QStringLiteral("Извлечение завершено.")
                         : completed == Job::Test ? QStringLiteral("Ошибок при проверке не найдено.")
                         : completed == Job::Create ? QStringLiteral("Архив создан.")
+                        : completed == Job::Delete ? QStringLiteral("Объекты удалены из архива.")
+                        : completed == Job::Rename ? QStringLiteral("Объект переименован.")
                                                    : QStringLiteral("Файлы добавлены."));
 }

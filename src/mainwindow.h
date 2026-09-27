@@ -8,7 +8,10 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 #include <QEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
@@ -22,6 +25,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QProgressDialog>
@@ -31,8 +35,29 @@
 #include <QStyle>
 #include <QTableWidget>
 #include <QToolBar>
+#include <QUuid>
 #include <QVBoxLayout>
 #include <QWidget>
+
+class FileTable : public QTableWidget {
+  public:
+    using QTableWidget::QTableWidget;
+    bool filesystem = true;
+
+  protected:
+    QMimeData *mimeData(const QList<QTableWidgetItem *> &items) const override {
+        auto *data = new QMimeData;
+        if (!filesystem)
+            return data;
+        QList<QUrl> urls;
+        for (QTableWidgetItem *item : items) {
+            if (item->column() == 1)
+                urls << QUrl::fromLocalFile(item->text());
+        }
+        data->setUrls(urls);
+        return data;
+    }
+};
 
 class ArchiveTableItem : public QTableWidgetItem {
   public:
@@ -82,8 +107,18 @@ class MainWindow : public QMainWindow {
         toolbar->addSeparator();
         test_ = toolbar->addAction("Тест", this, [this] { testArchive(); });
         test_->setObjectName("testArchiveAction");
-        for (const QString &title : {"Копировать", "Переместить", "Удалить"})
-            toolbar->addAction(title)->setEnabled(false);
+        copy_ = toolbar->addAction("Копировать", this, [this] { copySelected(); });
+        copy_->setObjectName("copyAction");
+        move_ = toolbar->addAction("Переместить", this, [this] { moveSelected(); });
+        move_->setObjectName("moveAction");
+        remove_ = toolbar->addAction("Удалить", this, [this] { deleteSelected(); });
+        remove_->setObjectName("deleteAction");
+        rename_ = menu->addAction("Переименовать…", this, [this] { renameSelected(); });
+        rename_->setObjectName("renameAction");
+        copy_->setShortcut(QKeySequence(Qt::Key_F5));
+        move_->setShortcut(QKeySequence(Qt::Key_F6));
+        remove_->setShortcut(QKeySequence::Delete);
+        rename_->setShortcut(QKeySequence(Qt::Key_F2));
         infoAction_ = toolbar->addAction("Информация", this, [this] { showInfo(); });
         infoAction_->setObjectName("archiveInfoAction");
         for (const QString &title :
@@ -100,7 +135,7 @@ class MainWindow : public QMainWindow {
         path_->setObjectName("archivePath");
         path_->setPlaceholderText("Путь к папке или архиву");
         layout->addWidget(path_);
-        table_ = new QTableWidget(0, 5, central);
+        table_ = new FileTable(0, 5, central);
         table_->setObjectName("archiveTable");
         table_->setHorizontalHeaderLabels({"Имя", "Путь", "Размер", "Сжатый", "Изменён"});
         table_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
@@ -108,9 +143,34 @@ class MainWindow : public QMainWindow {
         table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
         table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
         table_->setSortingEnabled(true);
+        table_->setDragEnabled(true);
+        table_->setAcceptDrops(true);
+        table_->viewport()->setAcceptDrops(true);
         table_->sortItems(0, Qt::AscendingOrder);
         table_->installEventFilter(this);
         table_->viewport()->installEventFilter(this);
+        table_->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(table_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
+            const int row = table_->rowAt(pos.y());
+            if (row >= 0 && !table_->selectionModel()->isRowSelected(row, QModelIndex()))
+                table_->selectRow(row);
+            QMenu menu(this);
+            for (QAction *action : {openItem_, copy_, move_, rename_, remove_}) {
+                if (action)
+                    menu.addAction(action);
+            }
+            menu.addSeparator();
+            if (state_ == State::Filesystem)
+                menu.addAction(create_);
+            else {
+                menu.addAction(add_);
+                menu.addAction(selected_);
+                menu.addAction(extract_);
+                menu.addAction(test_);
+                menu.addAction(infoAction_);
+            }
+            menu.exec(table_->viewport()->mapToGlobal(pos));
+        });
         openItem_ = new QAction(table_);
         openItem_->setObjectName("openItemAction");
         table_->addAction(openItem_);
@@ -190,8 +250,8 @@ class MainWindow : public QMainWindow {
             else if (state_ == State::Operating) {
                 if (creating_)
                     showDirectory(directory_, false);
-                else if (adding_ && ok) {
-                    adding_ = false;
+                else if (updatingArchive_ && ok) {
+                    updatingArchive_ = false;
                     entries_.clear();
                     table_->setRowCount(0);
                     setState(State::Loading);
@@ -200,7 +260,7 @@ class MainWindow : public QMainWindow {
                 } else
                     setState(previousState_ == State::Viewing ? State::Viewing : State::Filesystem);
                 creating_ = false;
-                adding_ = false;
+                updatingArchive_ = false;
             }
             statusBar()->showMessage(message);
             if (!ok && message != "Операция отменена.")
@@ -240,21 +300,7 @@ class MainWindow : public QMainWindow {
             return;
         QStringList names;
         if (onlySelected) {
-            for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
-                const auto *item = table_->item(index.row(), 0);
-                const QString path = item->data(Qt::UserRole).toString();
-                if (item->data(Qt::UserRole + 1).toBool()) {
-                    for (const ArchiveEntry &entry : entries_) {
-                        QString normalized = entry.path;
-                        if (normalized.endsWith('/'))
-                            normalized.chop(1);
-                        if (normalized == path || normalized.startsWith(path + '/'))
-                            names << entry.path;
-                    }
-                } else
-                    names << path;
-            }
-            names.removeDuplicates();
+            names = selectedArchivePaths();
             if (names.isEmpty())
                 return;
         }
@@ -276,6 +322,34 @@ class MainWindow : public QMainWindow {
   private:
     enum class State { Filesystem, Loading, Viewing, Operating };
     bool eventFilter(QObject *watched, QEvent *event) override {
+        if (watched == table_->viewport() &&
+            (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
+            auto *drag = static_cast<QDragMoveEvent *>(event);
+            if ((state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)) &&
+                !drag->mimeData()->urls().isEmpty() && !backend_->busy()) {
+                drag->setDropAction(Qt::CopyAction);
+                drag->accept();
+                return true;
+            }
+        }
+        if (watched == table_->viewport() && event->type() == QEvent::Drop) {
+            auto *drop = static_cast<QDropEvent *>(event);
+            QStringList paths;
+            for (const QUrl &url : drop->mimeData()->urls()) {
+                if (!url.isLocalFile())
+                    return true;
+                paths << url.toLocalFile();
+            }
+            if (paths.isEmpty())
+                return true;
+            if (state_ == State::Filesystem)
+                transferFiles(paths, directory_, false);
+            else if (state_ == State::Viewing && !info_.encrypted)
+                addSources(paths);
+            drop->setDropAction(Qt::CopyAction);
+            drop->accept();
+            return true;
+        }
         if ((watched == table_ || watched == table_->viewport()) &&
             event->type() == QEvent::KeyPress) {
             auto *key = static_cast<QKeyEvent *>(event);
@@ -336,6 +410,7 @@ class MainWindow : public QMainWindow {
             }
         }
         table_->setSortingEnabled(true);
+        static_cast<FileTable *>(table_)->filesystem = true;
         setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
     }
@@ -398,6 +473,7 @@ class MainWindow : public QMainWindow {
     }
     void showArchiveFolder(const QString &folder) {
         archiveFolder_ = folder;
+        static_cast<FileTable *>(table_)->filesystem = false;
         QMap<QString, ArchiveEntry> children;
         const QString prefix = folder.isEmpty() ? QString() : folder + '/';
         for (const ArchiveEntry &entry : entries_) {
@@ -486,7 +562,22 @@ class MainWindow : public QMainWindow {
         parent_->setEnabled(idle && (state_ == State::Viewing ||
                                      (state_ == State::Filesystem && QDir(directory_).cdUp())));
         selectAll_->setEnabled(idle && table_->rowCount() > 0);
+        const bool selected = !table_->selectionModel()->selectedRows().isEmpty();
+        copy_->setEnabled(idle && selected);
+        move_->setEnabled(idle && state_ == State::Filesystem && selected);
+        remove_->setEnabled(
+            idle && selected &&
+            (state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)));
+        const bool one = table_->selectionModel()->selectedRows().size() == 1;
+        rename_->setEnabled(
+            idle && one &&
+            (state_ == State::Filesystem ||
+             (state_ == State::Viewing && !info_.encrypted &&
+              !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
+                   ->data(Qt::UserRole + 1)
+                   .toBool())));
         table_->setEnabled(idle);
+        table_->setDragEnabled(idle && state_ == State::Filesystem);
         path_->setReadOnly(!idle);
     }
     void appendJournal(const QString &line) {
@@ -618,11 +709,221 @@ class MainWindow : public QMainWindow {
             return;
         if (state_ != State::Viewing || dialog.sources().isEmpty())
             return;
+        addSources(dialog.sources());
+    }
+
+    QStringList selectedFilesystemPaths() const {
+        QStringList paths;
+        if (state_ != State::Filesystem)
+            return paths;
+        for (const QModelIndex &index : table_->selectionModel()->selectedRows())
+            paths << table_->item(index.row(), 1)->text();
+        return paths;
+    }
+    static bool copyTree(const QString &source, const QString &target) {
+        const QFileInfo info(source);
+        if (info.isSymLink() || !info.exists())
+            return false;
+        if (!info.isDir())
+            return QFile::copy(source, target);
+        if (!QDir().mkdir(target))
+            return false;
+        const QFileInfoList children = QDir(source).entryInfoList(
+            QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
+        for (const QFileInfo &child : children) {
+            if (!copyTree(child.absoluteFilePath(), QDir(target).filePath(child.fileName())))
+                return false;
+        }
+        return true;
+    }
+    static void removeTree(const QString &path) {
+        if (QFileInfo(path).isDir())
+            QDir(path).removeRecursively();
+        else
+            QFile::remove(path);
+    }
+    void transferFiles(const QStringList &sources, const QString &destination, bool move) {
+        if (state_ != State::Filesystem || !QFileInfo(destination).isDir() ||
+            QFileInfo(destination).isSymLink() || sources.isEmpty()) {
+            QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
+            return;
+        }
+        QStringList targets;
+        const QString canonicalDestination = QFileInfo(destination).canonicalFilePath();
+        for (const QString &source : sources) {
+            const QFileInfo info(source);
+            const QString target = QDir(destination).filePath(info.fileName());
+            if (!info.exists() || info.isSymLink() || QFileInfo::exists(target) ||
+                QFileInfo(target).isSymLink() || targets.contains(target) ||
+                (info.isDir() &&
+                 (canonicalDestination == info.canonicalFilePath() ||
+                  canonicalDestination.startsWith(info.canonicalFilePath() + '/')))) {
+                QMessageBox::warning(this, "Sevenzip Desktop",
+                                     "Источник или назначение недоступны либо имя уже занято.");
+                return;
+            }
+            targets << target;
+        }
+        QStringList completed;
+        for (qsizetype i = 0; i < sources.size(); ++i) {
+            const QString stage =
+                targets[i] +
+                QStringLiteral(".sevenzip-%1").arg(QUuid::createUuid().toString(QUuid::Id128));
+            bool ok = move ? QDir().rename(sources[i], stage) : copyTree(sources[i], stage);
+            if (ok)
+                ok = QDir().rename(stage, targets[i]);
+            if (!ok) {
+                if (move && QFileInfo::exists(stage))
+                    QDir().rename(stage, sources[i]);
+                else
+                    removeTree(stage);
+                for (qsizetype j = completed.size(); j > 0; --j) {
+                    if (move)
+                        QDir().rename(completed[j - 1], sources[j - 1]);
+                    else
+                        removeTree(completed[j - 1]);
+                }
+                QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось выполнить операцию.");
+                showDirectory(directory_, false);
+                return;
+            }
+            completed << targets[i];
+        }
+        showDirectory(directory_, false);
+        statusBar()->showMessage(move ? "Объекты перемещены." : "Объекты скопированы.");
+    }
+    void copySelected() {
+        if (state_ == State::Viewing) {
+            extract(true);
+            return;
+        }
+        if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
+            return;
+        bool accepted = false;
+        const QString destination = QInputDialog::getText(
+            this, "Копировать", "Папка назначения:", QLineEdit::Normal, directory_, &accepted);
+        if (accepted)
+            transferFiles(selectedFilesystemPaths(), destination, false);
+    }
+    void moveSelected() {
+        if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
+            return;
+        bool accepted = false;
+        const QString destination = QInputDialog::getText(
+            this, "Переместить", "Папка назначения:", QLineEdit::Normal, directory_, &accepted);
+        if (accepted)
+            transferFiles(selectedFilesystemPaths(), destination, true);
+    }
+    void deleteSelected() {
+        if (state_ == State::Viewing) {
+            const QStringList paths = selectedArchivePaths();
+            if (info_.encrypted || paths.isEmpty() ||
+                QMessageBox::question(this, "Удалить",
+                                      "Удалить выбранные объекты из открытого архива?") !=
+                    QMessageBox::Yes)
+                return;
+            previousState_ = state_;
+            updatingArchive_ = true;
+            setState(State::Operating);
+            begin("Удаление из архива", archive_);
+            backend_->remove(archive_, paths);
+            return;
+        }
+        const QStringList paths = selectedFilesystemPaths();
+        if (paths.isEmpty())
+            return;
+        if (QMessageBox::question(this, "Удалить",
+                                  "Удалить выбранные объекты из файловой системы?") !=
+            QMessageBox::Yes)
+            return;
+        for (const QString &path : paths) {
+            if (QFileInfo(path).isSymLink() || !QFileInfo(path).exists()) {
+                QMessageBox::warning(this, "Sevenzip Desktop", "Объект недоступен.");
+                break;
+            }
+            bool ok =
+                QFileInfo(path).isDir() ? QDir(path).removeRecursively() : QFile::remove(path);
+            if (!ok) {
+                QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось удалить объект.");
+                break;
+            }
+        }
+        showDirectory(directory_, false);
+    }
+    void renameSelected() {
+        if (state_ == State::Viewing) {
+            if (!rename_->isEnabled())
+                return;
+            const QString oldPath =
+                table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
+                    ->data(Qt::UserRole)
+                    .toString();
+            bool accepted = false;
+            const QString name =
+                QInputDialog::getText(this, "Переименовать", "Новое имя:", QLineEdit::Normal,
+                                      oldPath.section('/', -1), &accepted);
+            if (!accepted)
+                return;
+            if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
+                name.contains('\\')) {
+                QMessageBox::warning(this, "Sevenzip Desktop", "Недопустимое имя файла.");
+                return;
+            }
+            const int slash = oldPath.lastIndexOf('/');
+            const QString newPath = (slash < 0 ? QString() : oldPath.left(slash + 1)) + name;
+            previousState_ = state_;
+            updatingArchive_ = true;
+            setState(State::Operating);
+            begin("Переименование в архиве", archive_);
+            backend_->renameEntry(archive_, oldPath, newPath);
+            return;
+        }
+        const QStringList paths = selectedFilesystemPaths();
+        if (paths.size() != 1)
+            return;
+        const QFileInfo source(paths.first());
+        bool accepted = false;
+        const QString name = QInputDialog::getText(
+            this, "Переименовать", "Новое имя:", QLineEdit::Normal, source.fileName(), &accepted);
+        if (!accepted)
+            return;
+        if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
+            name.contains('\\') || source.isSymLink() ||
+            QFileInfo::exists(QDir(directory_).filePath(name)) ||
+            !QDir().rename(paths.first(), QDir(directory_).filePath(name)))
+            QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось переименовать объект.");
+        showDirectory(directory_, false);
+    }
+    void addSources(const QStringList &sources) {
+        if (state_ != State::Viewing || info_.encrypted || sources.isEmpty())
+            return;
         previousState_ = state_;
-        adding_ = true;
+        updatingArchive_ = true;
         setState(State::Operating);
         begin("Добавление в архив", archive_);
-        backend_->add(archive_, dialog.sources());
+        backend_->add(archive_, sources);
+    }
+    QStringList selectedArchivePaths() const {
+        QStringList paths;
+        if (state_ != State::Viewing)
+            return paths;
+        for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
+            const auto *item = table_->item(index.row(), 0);
+            const QString path = item->data(Qt::UserRole).toString();
+            if (!item->data(Qt::UserRole + 1).toBool()) {
+                paths << path;
+                continue;
+            }
+            for (const ArchiveEntry &entry : entries_) {
+                QString normalized = entry.path;
+                if (normalized.endsWith('/'))
+                    normalized.chop(1);
+                if (normalized == path || normalized.startsWith(path + '/'))
+                    paths << entry.path;
+            }
+        }
+        paths.removeDuplicates();
+        return paths;
     }
 
     ArchiveBackend *backend_ = nullptr;
@@ -632,7 +933,7 @@ class MainWindow : public QMainWindow {
     State state_ = State::Filesystem;
     State previousState_ = State::Filesystem;
     bool creating_ = false;
-    bool adding_ = false;
+    bool updatingArchive_ = false;
     QList<ArchiveEntry> entries_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
@@ -660,4 +961,8 @@ class MainWindow : public QMainWindow {
     QAction *openItem_ = nullptr;
     QAction *parent_ = nullptr;
     QAction *selectAll_ = nullptr;
+    QAction *copy_ = nullptr;
+    QAction *move_ = nullptr;
+    QAction *remove_ = nullptr;
+    QAction *rename_ = nullptr;
 };
