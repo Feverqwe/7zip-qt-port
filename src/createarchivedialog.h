@@ -20,13 +20,15 @@ class CreateArchiveDialog : public QDialog {
 
   public:
     explicit CreateArchiveDialog(const QString &directory, const QStringList &initialSources = {},
-                                 QWidget *parent = nullptr)
-        : QDialog(parent), currentDirectory_(directory) {
+                                 QWidget *parent = nullptr, const QString &existingTarget = {})
+        : QDialog(parent), currentDirectory_(directory), existingTarget_(existingTarget) {
         setObjectName("createArchiveDialog");
-        setWindowTitle("Создать архив");
+        setWindowTitle(existingTarget_.isEmpty() ? "Создать архив" : "Добавить в архив");
         resize(680, 580);
         auto *layout = new QVBoxLayout(this);
-        layout->addWidget(new QLabel("Выберите файлы и папки для нового архива"));
+        layout->addWidget(new QLabel(existingTarget_.isEmpty()
+                                         ? "Выберите файлы и папки для нового архива"
+                                         : "Выберите файлы и папки для открытого архива"));
         auto *navigation = new QHBoxLayout;
         auto *up = new QPushButton("Вверх", this);
         up->setObjectName("sourceUpButton");
@@ -64,12 +66,23 @@ class CreateArchiveDialog : public QDialog {
         destinationRow->addWidget(browse);
         form->addRow("Место сохранения:", destinationRow);
         layout->addLayout(form);
+        if (!existingTarget_.isEmpty()) {
+            const QFileInfo target(existingTarget_);
+            name_->setText(target.completeBaseName());
+            format_->setCurrentText(target.suffix().toLower());
+            destination_->setText(target.absolutePath());
+            name_->setEnabled(false);
+            format_->setEnabled(false);
+            destination_->setEnabled(false);
+            browse->setEnabled(false);
+        }
         preview_ = new QLabel(this);
         preview_->setObjectName("archiveTargetPreview");
         preview_->setWordWrap(true);
         layout->addWidget(preview_);
         buttons_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-        buttons_->button(QDialogButtonBox::Ok)->setText("Создать");
+        buttons_->button(QDialogButtonBox::Ok)
+            ->setText(existingTarget_.isEmpty() ? "Создать" : "Добавить");
         buttons_->button(QDialogButtonBox::Cancel)->setText("Отмена");
         layout->addWidget(buttons_);
 
@@ -103,9 +116,11 @@ class CreateArchiveDialog : public QDialog {
                 destination_->setText(path);
         });
         const auto updatePreview = [this] {
-            preview_->setText("Новый архив: " + QDir(destination_->text())
-                                                    .filePath(name_->text().trimmed() + "." +
-                                                              format_->currentText()));
+            preview_->setText(existingTarget_.isEmpty()
+                                  ? "Новый архив: " + QDir(destination_->text())
+                                                          .filePath(name_->text().trimmed() + "." +
+                                                                    format_->currentText())
+                                  : "Добавить в открытый архив: " + existingTarget_);
         };
         connect(name_, &QLineEdit::textChanged, this, updatePreview);
         connect(destination_, &QLineEdit::textChanged, this, updatePreview);
@@ -114,8 +129,10 @@ class CreateArchiveDialog : public QDialog {
         connect(buttons_, &QDialogButtonBox::accepted, this, [this] {
             const QString base = name_->text().trimmed();
             const QFileInfo destination(destination_->text());
-            if (selected_.isEmpty() || base.isEmpty() || base == "." || base == ".." ||
-                base.contains('/') || base.contains('\\') || !destination.isDir()) {
+            if (selected_.isEmpty() ||
+                (existingTarget_.isEmpty() &&
+                 (base.isEmpty() || base == "." || base == ".." || base.contains('/') ||
+                  base.contains('\\') || !destination.isDir()))) {
                 QMessageBox::warning(this, "Создать архив",
                                      "Выберите источники, имя и существующую папку сохранения.");
                 return;
@@ -126,9 +143,11 @@ class CreateArchiveDialog : public QDialog {
                     return;
                 }
             }
-            target_ =
-                QDir(destination.absoluteFilePath()).filePath(base + "." + format_->currentText());
-            if (QFileInfo(target_).exists() || QFileInfo(target_).isSymLink()) {
+            target_ = existingTarget_.isEmpty() ? QDir(destination.absoluteFilePath())
+                                                      .filePath(base + "." + format_->currentText())
+                                                : existingTarget_;
+            if (existingTarget_.isEmpty() &&
+                (QFileInfo(target_).exists() || QFileInfo(target_).isSymLink())) {
                 QMessageBox::warning(this, "Создать архив", "Архив уже существует: " + target_);
                 return;
             }
@@ -174,6 +193,7 @@ class CreateArchiveDialog : public QDialog {
 
     QString currentDirectory_;
     QString target_;
+    QString existingTarget_;
     QStringList selected_;
     QLineEdit *sourcePath_ = nullptr;
     QLineEdit *name_ = nullptr;

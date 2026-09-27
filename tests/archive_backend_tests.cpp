@@ -267,6 +267,152 @@ class ArchiveBackendTests : public QObject {
         QVERIFY(names.contains(QStringLiteral("папка Unicode/nested.txt")));
         QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }
+    void addToExisting_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QString("7z");
+        QTest::newRow("zip") << QString("zip");
+    }
+    void addToExisting() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString original = temp.filePath(QStringLiteral("исходный.txt"));
+        writeFile(original, "keep");
+        const QString archive = temp.filePath("existing." + format);
+        ArchiveBackend backend;
+        backend.create(archive, {original});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+
+        const QString folder = temp.filePath(QStringLiteral("папка Unicode"));
+        QVERIFY(QDir().mkpath(folder + "/nested"));
+        const QString large = folder + QStringLiteral("/nested/большой файл.bin");
+        const QByteArray content(5 * 1024 * 1024, 'q');
+        writeFile(large, content);
+        backend.add(archive, {folder});
+        await(backend, true);
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        QStringList names;
+        for (const ArchiveEntry &entry : entries)
+            names << entry.path.normalized(QString::NormalizationForm_C);
+        QVERIFY(names.contains(QStringLiteral("исходный.txt")));
+        QVERIFY(names.contains(QStringLiteral("папка Unicode/nested/большой файл.bin")));
+        const QString output = temp.filePath("out");
+        QVERIFY(QDir().mkpath(output));
+        backend.extract(archive, output);
+        await(backend, true);
+        QFile restored(output + QStringLiteral("/папка Unicode/nested/большой файл.bin"));
+        QVERIFY(restored.open(QIODevice::ReadOnly));
+        QCOMPARE(restored.readAll(), content);
+
+        const QByteArray before = [&] {
+            QFile file(archive);
+            if (!file.open(QIODevice::ReadOnly))
+                return QByteArray();
+            return file.readAll();
+        }();
+        QSignalSpy conflict(&backend, &ArchiveBackend::finished);
+        backend.add(archive, {original});
+        QCOMPARE(conflict.size(), 1);
+        QVERIFY(!conflict.takeFirst().at(0).toBool());
+        QFile unchanged(archive);
+        QVERIFY(unchanged.open(QIODevice::ReadOnly));
+        QCOMPARE(unchanged.readAll(), before);
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void addFailureAndCancellation() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString original = temp.filePath("original.txt");
+        const QString next = temp.filePath("next.txt");
+        writeFile(original, "original");
+        writeFile(next, "next");
+        const QString archive = temp.filePath("existing.zip");
+        ArchiveBackend backend;
+        backend.create(archive, {original});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QFile saved(archive);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        const QByteArray before = saved.readAll();
+        saved.close();
+
+        ArchiveBackend missing(nullptr, "/definitely/missing/7zz");
+        QSignalSpy missingList(&missing, &ArchiveBackend::finished);
+        missing.list(archive);
+        QTRY_VERIFY_WITH_TIMEOUT(!missingList.isEmpty(), 3000);
+        QSignalSpy noListing(&missing, &ArchiveBackend::finished);
+        missing.add(archive, {next});
+        QCOMPARE(noListing.size(), 1);
+        QVERIFY(!noListing.takeFirst().at(0).toBool());
+
+        const QString vanishingProgram = temp.filePath("vanishing-7zz");
+        QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), vanishingProgram));
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", "Path = original.txt\nSize = 8\n\n");
+        ArchiveBackend launchFailure(nullptr, vanishingProgram);
+        launchFailure.list(archive);
+        await(launchFailure, true);
+        QVERIFY(QFile::remove(vanishingProgram));
+        QSignalSpy launchResult(&launchFailure, &ArchiveBackend::finished);
+        launchFailure.add(archive, {next});
+        QTRY_VERIFY_WITH_TIMEOUT(!launchResult.isEmpty(), 3000);
+        QVERIFY(!launchResult.takeFirst().at(0).toBool());
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+
+        ArchiveBackend helper(nullptr, QCoreApplication::applicationFilePath());
+        helper.list(archive);
+        await(helper, true);
+        qunsetenv("SEVENZIP_TEST_LISTING");
+        qputenv("SEVENZIP_TEST_HELPER", "createfail");
+        helper.add(archive, {next});
+        await(helper, false);
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QCOMPARE(saved.readAll(), before);
+        saved.close();
+
+        qputenv("SEVENZIP_TEST_HELPER", "createpartial");
+        QSignalSpy output(&helper, &ArchiveBackend::outputReceived);
+        QSignalSpy result(&helper, &ArchiveBackend::finished);
+        helper.add(archive, {next});
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        helper.cancel();
+        QVERIFY(result.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!result.takeFirst().at(0).toBool());
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QCOMPARE(saved.readAll(), before);
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void addToEmptyArchive() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString archive = temp.filePath("empty.zip");
+        writeFile(archive, QByteArray::fromHex("504b0506000000000000000000000000000000000000"));
+        const QString source = temp.filePath(QStringLiteral("после пустоты.txt"));
+        writeFile(source, "added");
+        ArchiveBackend backend;
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        QVERIFY(entries.isEmpty());
+        backend.add(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(entries.size(), 1);
+        QCOMPARE(entries.first().path.normalized(QString::NormalizationForm_C),
+                 QStringLiteral("после пустоты.txt"));
+    }
     void cancelledPartialCreation() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

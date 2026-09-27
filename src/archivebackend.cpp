@@ -1,6 +1,7 @@
 #include "archivebackend.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -29,7 +30,7 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             &ArchiveBackend::complete);
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart && job_ != Job::None) {
-            if (job_ == Job::Create)
+            if (job_ == Job::Create || job_ == Job::Add)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
             emit finished(
@@ -298,6 +299,107 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
     start(Job::Create, arguments, root);
 }
 
+void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    const QFileInfo target(archive);
+    if (!listed_ || target.absoluteFilePath() != archive_ || !target.isFile() ||
+        target.isSymLink() || sources.isEmpty()) {
+        emit finished(false, QStringLiteral("Откройте существующий архив и выберите источники."));
+        return;
+    }
+    const QString suffix = target.suffix().toLower();
+    if (suffix != "7z" && suffix != "zip") {
+        emit finished(false, QStringLiteral("Поддерживаются только архивы .7z и .zip."));
+        return;
+    }
+    QString root = QFileInfo(sources.first()).absolutePath();
+    while (!root.isEmpty()) {
+        bool containsAll = true;
+        for (const QString &source : sources) {
+            const QString relative =
+                QDir(root).relativeFilePath(QFileInfo(source).absoluteFilePath());
+            if (relative == ".." || relative.startsWith("../") || QDir::isAbsolutePath(relative)) {
+                containsAll = false;
+                break;
+            }
+        }
+        if (containsAll)
+            break;
+        const QString parent = QFileInfo(root).absolutePath();
+        if (parent == root)
+            break;
+        root = parent;
+    }
+    QSet<QString> existing;
+    for (const ArchiveEntry &entry : entries_)
+        existing.insert(entry.path.normalized(QString::NormalizationForm_C).toCaseFolded());
+    QSet<QString> incoming;
+    QStringList sourceNames;
+    for (const QString &source : sources) {
+        const QFileInfo info(source);
+        const QString relative = QDir(root).relativeFilePath(info.absoluteFilePath());
+        if (!info.exists() || info.isSymLink() || relative == ".." || relative.startsWith("../") ||
+            QDir::isAbsolutePath(relative) ||
+            info.absoluteFilePath() == target.absoluteFilePath()) {
+            emit finished(false, QStringLiteral("Недоступный источник: %1").arg(source));
+            return;
+        }
+        QStringList paths = {relative};
+        if (info.isDir()) {
+            const QString destination =
+                QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
+            if (destination == "." || (destination != ".." && !destination.startsWith("../") &&
+                                       !QDir::isAbsolutePath(destination))) {
+                emit finished(false, QStringLiteral("Архив находится внутри выбранной папки."));
+                return;
+            }
+            QDirIterator iterator(info.absoluteFilePath(),
+                                  QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden |
+                                      QDir::System,
+                                  QDirIterator::Subdirectories);
+            while (iterator.hasNext()) {
+                iterator.next();
+                if (iterator.fileInfo().isSymLink()) {
+                    emit finished(false, QStringLiteral("Источники не должны содержать ссылки: %1")
+                                             .arg(iterator.filePath()));
+                    return;
+                }
+                paths << QDir(root).relativeFilePath(iterator.filePath());
+            }
+        }
+        for (const QString &path : paths) {
+            if (!safePath(path)) {
+                emit finished(false, QStringLiteral("Небезопасное имя источника: %1").arg(path));
+                return;
+            }
+            const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
+            if (existing.contains(key) || incoming.contains(key)) {
+                emit finished(false,
+                              QStringLiteral("Имя уже есть в архиве или выборе: %1").arg(path));
+                return;
+            }
+            incoming.insert(key);
+        }
+        sourceNames << relative;
+    }
+    createTarget_ = target.absoluteFilePath();
+    createTemporary_ = target.absolutePath() + "/.sevenzip-" +
+                       QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
+    addBackup_ = target.absolutePath() + "/.sevenzip-backup-" +
+                 QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
+    if (!QFile::copy(createTarget_, createTemporary_)) {
+        QFile::remove(createTemporary_);
+        emit finished(false, QStringLiteral("Не удалось подготовить копию архива для записи."));
+        return;
+    }
+    QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--", createTemporary_};
+    arguments += sourceNames;
+    start(Job::Add, arguments, root);
+}
+
 void ArchiveBackend::cancel() {
     if (!busy())
         return;
@@ -353,13 +455,13 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     const Job completed = job_;
     job_ = Job::None;
     if (cancelled_) {
-        if (completed == Job::Create)
+        if (completed == Job::Create || completed == Job::Add)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
-        if (completed == Job::Create)
+        if (completed == Job::Create || completed == Job::Add)
             QFile::remove(createTemporary_);
         const QString detail = output_.trimmed().right(600);
         emit finished(false,
@@ -372,6 +474,28 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                       QStringLiteral("Не удалось сохранить новый архив: %1").arg(createTarget_));
         return;
     }
+    if (completed == Job::Add) {
+        if (!QFile::rename(createTarget_, addBackup_)) {
+            QFile::remove(createTemporary_);
+            emit finished(false,
+                          QStringLiteral("Не удалось заменить архив: %1").arg(createTarget_));
+            return;
+        }
+        if (!QFile::rename(createTemporary_, createTarget_)) {
+            const bool restored = QFile::rename(addBackup_, createTarget_);
+            QFile::remove(createTemporary_);
+            emit finished(
+                false,
+                restored
+                    ? QStringLiteral("Не удалось сохранить обновлённый архив: %1")
+                          .arg(createTarget_)
+                    : QStringLiteral("Не удалось восстановить архив. Копия: %1").arg(addBackup_));
+            return;
+        }
+        QFile::remove(addBackup_);
+        listed_ = false;
+        entries_.clear();
+    }
     if (completed == Job::List) {
         entries_ = parseListing(output_);
         listed_ = true;
@@ -380,5 +504,6 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     emit progress(100, QString());
     emit finished(true, completed == Job::List      ? QStringLiteral("Архив открыт.")
                         : completed == Job::Extract ? QStringLiteral("Извлечение завершено.")
-                                                    : QStringLiteral("Архив создан."));
+                        : completed == Job::Create  ? QStringLiteral("Архив создан.")
+                                                    : QStringLiteral("Файлы добавлены."));
 }

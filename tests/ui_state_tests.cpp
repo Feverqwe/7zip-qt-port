@@ -38,6 +38,12 @@ class ControlledBackend : public ArchiveBackend {
         lastCreateSources = sources;
         busy_ = true;
     }
+    void add(const QString &target, const QStringList &sources) override {
+        ++addCalls;
+        lastAddTarget = target;
+        lastAddSources = sources;
+        busy_ = true;
+    }
     void cancel() override {
         ++cancelCalls;
         busy_ = false;
@@ -56,6 +62,10 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = false;
         emit finished(true, QStringLiteral("Архив создан."));
     }
+    void completeAdd() {
+        busy_ = false;
+        emit finished(true, QStringLiteral("Файлы добавлены."));
+    }
     void report(int percent, const QString &detail, const QString &line) {
         emit outputReceived(line);
         emit progress(percent, detail);
@@ -63,11 +73,14 @@ class ControlledBackend : public ArchiveBackend {
     int listCalls = 0;
     int extractCalls = 0;
     int createCalls = 0;
+    int addCalls = 0;
     int cancelCalls = 0;
     QString lastArchive;
     QStringList lastSelected;
     QString lastCreateTarget;
     QStringList lastCreateSources;
+    QString lastAddTarget;
+    QStringList lastAddSources;
 
   private:
     bool busy_ = false;
@@ -110,6 +123,83 @@ class MainWindowStateTests : public QObject {
     }
 
   private slots:
+    void addToOpenArchiveState() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("новый файл.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("data");
+        file.close();
+        const QString canonicalSource = QFileInfo(source).canonicalFilePath();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        const QString archive = temp.filePath("existing.zip");
+        window.openArchive(archive);
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        backend.completeList({});
+        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
+
+        auto choose = [&] {
+            QTimer::singleShot(0, &window, [&] {
+                auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+                QVERIFY(dialog);
+                QVERIFY(
+                    dialog->findChild<QLabel *>("archiveTargetPreview")->text().contains(archive));
+                auto *available = dialog->findChild<QListWidget *>("availableSources");
+                for (int row = 0; row < available->count(); ++row)
+                    if (available->item(row)
+                            ->data(Qt::UserRole)
+                            .toString()
+                            .normalized(QString::NormalizationForm_C) ==
+                        canonicalSource.normalized(QString::NormalizationForm_C))
+                        available->item(row)->setSelected(true);
+                dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+                if (dialog->findChild<QListWidget *>("selectedSources")->count() != 1) {
+                    dialog->reject();
+                    return;
+                }
+                const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
+                if (!screenshotDir.isEmpty()) {
+                    QDir().mkpath(screenshotDir);
+                    dialog->grab().save(screenshotDir + "/" + QSysInfo::productType() + "-add.png");
+                }
+                dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            });
+            action(window, "addArchiveAction")->trigger();
+        };
+        choose();
+        QCOMPARE(backend.addCalls, 1);
+        QCOMPARE(backend.lastAddTarget, archive);
+        QCOMPARE(backend.lastAddSources.first().normalized(QString::NormalizationForm_C),
+                 canonicalSource.normalized(QString::NormalizationForm_C));
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
+        QVERIFY(!table(window)->isEnabled());
+        backend.cancel();
+        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        choose();
+        QCOMPARE(backend.addCalls, 2);
+        backend.fail(QStringLiteral("Операция отменена."));
+        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        choose();
+        QCOMPARE(backend.addCalls, 3);
+        backend.completeAdd();
+        QCOMPARE(backend.listCalls, 2);
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        backend.completeList({{QStringLiteral("новый файл.txt"), 4, 4, {}, false, false}});
+        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QCOMPARE(table(window)->rowCount(), 1);
+        window.openArchive(archive);
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        backend.completeList({});
+        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+    }
     void createDialogAndStateTransitions() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

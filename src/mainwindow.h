@@ -64,9 +64,8 @@ class MainWindow : public QMainWindow {
         open->setShortcut(QKeySequence::Open);
         create_ = toolbar->addAction("Создать…", this, [this] { createDialog(); });
         create_->setObjectName("createArchiveAction");
-        auto *addExisting = menu->addAction("Добавить в открытый архив…");
-        addExisting->setObjectName("addArchiveAction");
-        addExisting->setEnabled(false);
+        add_ = menu->addAction("Добавить в открытый архив…", this, [this] { addDialog(); });
+        add_->setObjectName("addArchiveAction");
         extract_ = toolbar->addAction("Извлечь", this, [this] { extract(false); });
         extract_->setObjectName("extractArchiveAction");
         selected_ = menu->addAction("Извлечь выбранное…", this, [this] { extract(true); });
@@ -167,9 +166,17 @@ class MainWindow : public QMainWindow {
             else if (state_ == State::Operating) {
                 if (creating_)
                     showDirectory(directory_, false);
-                else
+                else if (adding_ && ok) {
+                    adding_ = false;
+                    entries_.clear();
+                    table_->setRowCount(0);
+                    setState(State::Loading);
+                    backend_->list(archive_);
+                    return;
+                } else
                     setState(previousState_ == State::Viewing ? State::Viewing : State::Filesystem);
                 creating_ = false;
+                adding_ = false;
             }
             statusBar()->showMessage(message);
             if (!ok && message != "Операция отменена.")
@@ -416,6 +423,7 @@ class MainWindow : public QMainWindow {
         const bool idle = state_ != State::Loading && state_ != State::Operating;
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
+        add_->setEnabled(idle && state_ == State::Viewing);
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
@@ -511,6 +519,20 @@ class MainWindow : public QMainWindow {
         begin("Создание архива", target);
         backend_->create(target, sources);
     }
+    void addDialog() {
+        if (state_ != State::Viewing)
+            return;
+        CreateArchiveDialog dialog(returnDirectory_, {}, this, archive_);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        if (state_ != State::Viewing || dialog.sources().isEmpty())
+            return;
+        previousState_ = state_;
+        adding_ = true;
+        setState(State::Operating);
+        begin("Добавление в архив", archive_);
+        backend_->add(archive_, dialog.sources());
+    }
 
     ArchiveBackend *backend_ = nullptr;
     QString archive_;
@@ -518,6 +540,7 @@ class MainWindow : public QMainWindow {
     State state_ = State::Filesystem;
     State previousState_ = State::Filesystem;
     bool creating_ = false;
+    bool adding_ = false;
     QList<ArchiveEntry> entries_;
     QLineEdit *path_ = nullptr;
     QString directory_;
@@ -533,6 +556,7 @@ class MainWindow : public QMainWindow {
     QString currentDetail_;
     QAction *open_ = nullptr;
     QAction *create_ = nullptr;
+    QAction *add_ = nullptr;
     QAction *extract_ = nullptr;
     QAction *selected_ = nullptr;
     QAction *back_ = nullptr;

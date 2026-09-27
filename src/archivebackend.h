@@ -23,6 +23,7 @@ class ArchiveBackend : public QObject {
     virtual void extract(const QString &archive, const QString &destination,
                          const QStringList &selected = {});
     virtual void create(const QString &archive, const QStringList &sources);
+    virtual void add(const QString &archive, const QStringList &sources);
     virtual void cancel();
 
   signals:
@@ -32,7 +33,7 @@ class ArchiveBackend : public QObject {
     void finished(bool success, const QString &message);
 
   private:
-    enum class Job { None, List, Extract, Create };
+    enum class Job { None, List, Extract, Create, Add };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
@@ -48,6 +49,7 @@ class ArchiveBackend : public QObject {
     QString archive_;
     QString createTarget_;
     QString createTemporary_;
+    QString addBackup_;
     QList<ArchiveEntry> entries_;
     bool listed_ = false;
     bool cancelled_ = false;
