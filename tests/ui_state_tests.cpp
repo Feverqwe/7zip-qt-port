@@ -1009,7 +1009,11 @@ class MainWindowStateTests : public QObject {
         QVERIFY(plain.open(QIODevice::WriteOnly));
         plain.close();
         ControlledBackend backend;
-        MainWindow window(&backend);
+        QUrl opened;
+        MainWindow window(&backend, [&](const QUrl &url) {
+            opened = url;
+            return true;
+        });
         window.show();
         auto *view = table(window);
         auto *address = window.findChild<QLineEdit *>("archivePath");
@@ -1026,8 +1030,10 @@ class MainWindowStateTests : public QObject {
             if (view->item(row, 0)->text() == "plain.txt")
                 view->setCurrentCell(row, 0);
         }
-        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        QVERIFY(action(window, "openItemAction")->isEnabled());
         QTest::keyClick(view, Qt::Key_Return);
+        QCOMPARE(QFileInfo(opened.toLocalFile()).canonicalFilePath(),
+                 QFileInfo(plain.fileName()).canonicalFilePath());
         QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
         for (int row = 0; row < view->rowCount(); ++row) {
             if (view->item(row, 0)->text() == QStringLiteral("папка с пробелом"))
@@ -1058,7 +1064,8 @@ class MainWindowStateTests : public QObject {
         QTest::keyClick(view, Qt::Key_Return);
         QVERIFY(address->text().endsWith(QStringLiteral(" / папка")));
         QCOMPARE(view->rowCount(), 1);
-        QVERIFY(!action(window, "openItemAction")->isEnabled());
+        view->setCurrentCell(0, 0);
+        QVERIFY(action(window, "openItemAction")->isEnabled());
         QTest::keyClick(view, Qt::Key_Backspace);
         QCOMPARE(view->rowCount(), 2);
         QTest::keyClick(view, Qt::Key_Backspace);
@@ -1126,6 +1133,9 @@ class MainWindowStateTests : public QObject {
         const int file = rowWithPath(window, QStringLiteral("папка с пробелом/") + longName);
         QVERIFY(file >= 0);
         openRow(window, file);
+        QCOMPARE(backend.lastSelected,
+                 QStringList({QStringLiteral("папка с пробелом/") + longName}));
+        backend.cancel();
         QCOMPARE(table(window)->rowCount(), 2);
         QCOMPARE(rowWithPath(window, QStringLiteral("папка с пробелом/") + longName), file);
         openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом/глубже")));

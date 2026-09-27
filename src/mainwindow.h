@@ -14,6 +14,7 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QComboBox>
+#include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -59,10 +60,13 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
+#include <QUrl>
 #include <QUuid>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <functional>
 #include <memory>
+#include <vector>
 
 class FileTable : public QTableWidget {
   public:
@@ -146,7 +150,9 @@ class ArchiveTableItem : public QTableWidgetItem {
 
 class MainWindow : public QMainWindow {
   public:
-    explicit MainWindow(ArchiveBackend *backend = nullptr) {
+    explicit MainWindow(ArchiveBackend *backend = nullptr,
+                        std::function<bool(const QUrl &)> fileOpener = {})
+        : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
         backend_ = backend ? backend : new ArchiveBackend(this);
         setWindowTitle("Sevenzip Desktop");
         resize(980, 620);
@@ -628,11 +634,21 @@ class MainWindow : public QMainWindow {
             }
             if (pendingView_) {
                 const QString file = pendingViewPath_;
+                const bool external = pendingExternalOpen_;
                 pendingView_ = false;
+                pendingExternalOpen_ = false;
                 pendingViewPath_.clear();
-                if (ok && QFileInfo(file).isFile())
-                    QTimer::singleShot(0, this, [this, file] { openFileViewer(file, false); });
-                else
+                if (ok && QFileInfo(file).isFile()) {
+                    QTimer::singleShot(0, this, [this, file, external] {
+                        if (external) {
+                            if (openLocalFile(file))
+                                openedTemporaries_.push_back(std::move(viewTemporary_));
+                            else
+                                viewTemporary_.reset();
+                        } else
+                            openFileViewer(file, false);
+                    });
+                } else
                     viewTemporary_.reset();
             }
             statusBar()->showMessage(message);
@@ -1277,10 +1293,22 @@ class MainWindow : public QMainWindow {
             return;
         if (row < 0 || row >= table_->rowCount())
             return;
-        if (state_ == State::Filesystem)
-            navigateTo(table_->item(row, 1)->text());
-        else if (state_ == State::Viewing && table_->item(row, 0)->data(Qt::UserRole + 1).toBool())
-            showArchiveFolder(table_->item(row, 0)->data(Qt::UserRole).toString());
+        if (state_ == State::Filesystem) {
+            const QString path = table_->item(row, 1)->text();
+            const QFileInfo info(path);
+            if (info.isDir() ||
+                (info.isFile() && (info.suffix().compare("7z", Qt::CaseInsensitive) == 0 ||
+                                   info.suffix().compare("zip", Qt::CaseInsensitive) == 0)))
+                navigateTo(path);
+            else if (info.isFile() && !info.isSymLink())
+                openLocalFile(path);
+        } else if (state_ == State::Viewing) {
+            const QTableWidgetItem *item = table_->item(row, 0);
+            if (item->data(Qt::UserRole + 1).toBool())
+                showArchiveFolder(item->data(Qt::UserRole).toString());
+            else
+                openArchiveFile(item->data(Qt::UserRole).toString());
+        }
     }
     void goBack() {
         if (state_ == State::Loading || state_ == State::Operating)
@@ -1430,13 +1458,10 @@ class MainWindow : public QMainWindow {
         const int row = table_->currentRow();
         if (idle && row >= 0 && row < table_->rowCount()) {
             if (state_ == State::Viewing)
-                canOpenItem = table_->item(row, 0)->data(Qt::UserRole + 1).toBool();
+                canOpenItem = true;
             else {
                 const QFileInfo info(table_->item(row, 1)->text());
-                canOpenItem =
-                    info.isDir() ||
-                    (info.isFile() && (info.suffix().compare("7z", Qt::CaseInsensitive) == 0 ||
-                                       info.suffix().compare("zip", Qt::CaseInsensitive) == 0));
+                canOpenItem = info.isDir() || (info.isFile() && !info.isSymLink());
             }
         }
         openItem_->setEnabled(canOpenItem);
@@ -1585,6 +1610,29 @@ class MainWindow : public QMainWindow {
         if (editable && state_ == State::Filesystem)
             showDirectory(directory_, false);
     }
+    bool openLocalFile(const QString &path) {
+        if (fileOpener_(QUrl::fromLocalFile(path)))
+            return true;
+        QMessageBox::warning(this, QStringLiteral("Открыть файл"),
+                             QStringLiteral("Не удалось открыть файл: %1").arg(path));
+        return false;
+    }
+    void openArchiveFile(const QString &entry) {
+        viewTemporary_ = std::make_unique<QTemporaryDir>();
+        if (!viewTemporary_->isValid()) {
+            viewTemporary_.reset();
+            QMessageBox::warning(this, QStringLiteral("Открыть файл"),
+                                 QStringLiteral("Не удалось создать временную папку."));
+            return;
+        }
+        pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
+        pendingView_ = true;
+        pendingExternalOpen_ = true;
+        previousState_ = state_;
+        setState(State::Operating);
+        begin(QStringLiteral("Открытие файла"), entry);
+        backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
+    }
     void viewSelectedFile(bool editable) {
         if (state_ != State::Filesystem && state_ != State::Viewing)
             return;
@@ -1618,6 +1666,7 @@ class MainWindow : public QMainWindow {
         }
         pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
         pendingView_ = true;
+        pendingExternalOpen_ = false;
         previousState_ = state_;
         setState(State::Operating);
         begin("Просмотр файла", entry);
@@ -1905,6 +1954,7 @@ class MainWindow : public QMainWindow {
     }
 
     ArchiveBackend *backend_ = nullptr;
+    std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;
     QString archivePassword_;
     QString archiveFolder_;
@@ -1985,6 +2035,8 @@ class MainWindow : public QMainWindow {
     QAction *buttonTextOption_ = nullptr;
     QAction *toolbarGroupSeparator_ = nullptr;
     std::unique_ptr<QTemporaryDir> viewTemporary_;
+    std::vector<std::unique_ptr<QTemporaryDir>> openedTemporaries_;
     QString pendingViewPath_;
     bool pendingView_ = false;
+    bool pendingExternalOpen_ = false;
 };

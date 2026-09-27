@@ -26,6 +26,11 @@ class ViewerBackend : public ArchiveBackend {
                  const QString & = {}) override {
         extracted = selected;
         temporary = destination;
+        if (cancelExtraction) {
+            QTimer::singleShot(
+                0, this, [this] { emit finished(false, QStringLiteral("Операция отменена.")); });
+            return;
+        }
         QDir(destination).mkpath("folder");
         QFile output(QDir(destination).filePath(selected.first()));
         if (!output.open(QIODevice::WriteOnly))
@@ -36,6 +41,7 @@ class ViewerBackend : public ArchiveBackend {
     }
     QStringList extracted;
     QString temporary;
+    bool cancelExtraction = false;
 };
 
 class FileViewerTests : public QObject {
@@ -106,6 +112,78 @@ class FileViewerTests : public QObject {
         QTRY_VERIFY(displayed);
         QCOMPARE(backend.extracted, QStringList({"folder/имя с пробелом.txt"}));
         QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
+    }
+
+    void openFileFromFilesystemAndArchive() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString diskFile = dir.filePath(QStringLiteral("обычный файл.txt"));
+        QFile disk(diskFile);
+        QVERIFY(disk.open(QIODevice::WriteOnly));
+        disk.write("disk");
+        disk.close();
+        QUrl opened;
+        QString extractedDirectory;
+        {
+            ViewerBackend backend;
+            MainWindow window(&backend, [&](const QUrl &url) {
+                opened = url;
+                return true;
+            });
+            window.show();
+            auto *address = window.findChild<QLineEdit *>("archivePath");
+            auto *table = window.findChild<QTableWidget *>("archiveTable");
+            auto *open = window.findChild<QAction *>("openItemAction");
+            QVERIFY(address && table && open);
+            address->setText(dir.path());
+            emit address->returnPressed();
+            QTRY_COMPARE(table->rowCount(), 1);
+            table->selectRow(0);
+            QTRY_VERIFY(open->isEnabled());
+            open->trigger();
+            QCOMPARE(QFileInfo(opened.toLocalFile()).canonicalFilePath(),
+                     QFileInfo(diskFile).canonicalFilePath());
+
+            opened = QUrl();
+            window.openArchive(dir.filePath("test.7z"));
+            QTRY_COMPARE(table->rowCount(), 1);
+            emit table->cellDoubleClicked(0, 0);
+            QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+            table->selectRow(0);
+            QTRY_VERIFY(open->isEnabled());
+            open->trigger();
+            QTRY_VERIFY(!opened.isEmpty());
+            QCOMPARE(backend.extracted, QStringList({"folder/имя с пробелом.txt"}));
+            extractedDirectory = backend.temporary;
+            QVERIFY(QFileInfo::exists(opened.toLocalFile()));
+            QVERIFY(QFileInfo::exists(extractedDirectory));
+        }
+        QVERIFY(!QFileInfo::exists(extractedDirectory));
+    }
+
+    void cancelledArchiveOpenDoesNotLaunchFile() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        ViewerBackend backend;
+        backend.cancelExtraction = true;
+        int launches = 0;
+        MainWindow window(&backend, [&](const QUrl &) {
+            ++launches;
+            return true;
+        });
+        window.openArchive(dir.filePath("test.7z"));
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *open = window.findChild<QAction *>("openItemAction");
+        QVERIFY(table && open);
+        QTRY_COMPARE(table->rowCount(), 1);
+        emit table->cellDoubleClicked(0, 0);
+        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+        table->selectRow(0);
+        QTRY_VERIFY(open->isEnabled());
+        open->trigger();
+        QTRY_VERIFY(!backend.temporary.isEmpty());
+        QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
+        QCOMPARE(launches, 0);
     }
 
     void filesystemEditUsesFileMenuAction() {

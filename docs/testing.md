@@ -5,6 +5,7 @@ The regression gate is `./scripts/check.sh`. It checks C++ formatting, builds th
 `settings` checks that cancelling Options leaves the file list unchanged, accepting its list options persists them, and a click opens a Unicode folder when single-click mode is enabled. System icon appearance still needs manual checks on each platform.
 `compression` checks that changing the 7z/ZIP format updates available methods, password visibility and confirmation controls, and that mismatched passwords prevent submission. It creates disposable 7z and ZIP archives with selected compression settings, lists their Unicode filenames and checks the reported method from `7zz l -slt`. Invalid options must fail before creating a target. These checks run locally on macOS; the options and dialog layout still need Windows and Linux verification.
 `properties` checks the summary from a mixed filesystem selection with Unicode filenames and the packed-size summary displayed for archive items.
+`file_viewer` checks that Enter or Open sends a Unicode filesystem path to the system file handler, extracts one archive entry before opening it, keeps that temporary copy until window destruction, and does not launch a handler after extraction cancellation. Its file-handler dependency is injected so the test never launches a desktop application.
 
 ## What to test
 
