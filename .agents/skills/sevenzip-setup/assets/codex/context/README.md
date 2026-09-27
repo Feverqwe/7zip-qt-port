@@ -7,6 +7,7 @@
 - `docs/testing.md`: regression strategy.
 - `docs/roadmap.md`: milestones.
 - `.agents/skills/`: reusable project workflows.
+- `.agents/skills/sevenzip-navigation/`: map Qt, backend, and upstream C++ behavior.
 - `.codex/notes/`: local investigations and handoffs; not source of truth.
 
 Search narrowly. Confirm important facts in code and tests.

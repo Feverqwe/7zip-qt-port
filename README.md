@@ -30,6 +30,7 @@ sh .agents/skills/sevenzip-setup/scripts/setup.sh
 
 - `$sevenzip-setup` — создаёт или обновляет локальную среду, Obsidian vault и Git-хук;
 - `$sevenzip-context` — находит и поддерживает знания о проекте;
+- `$sevenzip-navigation` — прослеживает код UI, адаптера и оригинального 7-Zip;
 - `$sevenzip-regression` — добавляет тесты и проверяет изменения.
 
 Скрипт настройки создаёт игнорируемую Git папку `.codex/`. Откройте **`<repo>/.codex` как vault** в Obsidian: «Open folder as vault», затем выберите скрытую папку через `Command-Shift-G` на macOS. В vault ссылки на актуальные `README.md`, `AGENTS.md` и `docs/`; локальные заметки и вложения сохраняются в `.codex/notes/` и `.codex/attachments/`. Повторный запуск настройки их не удаляет. В самой Obsidian можно открыть стартовую страницу командой:

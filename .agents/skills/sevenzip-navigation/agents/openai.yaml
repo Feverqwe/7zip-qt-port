@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Sevenzip code navigation'
+  short_description: 'Trace Qt, backend, and upstream C++'
+  default_prompt: 'Use $sevenzip-navigation to trace this behavior through the UI, backend, and upstream source.'
