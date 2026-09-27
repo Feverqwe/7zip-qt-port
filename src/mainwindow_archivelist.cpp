@@ -158,7 +158,9 @@ void MainWindow::refreshActions() {
     selectType_->setEnabled(idle && table_->currentRow() >= 0);
     deselectType_->setEnabled(idle && table_->currentRow() >= 0);
     copy_->setEnabled(idle && selected);
-    move_->setEnabled(idle && state_ == State::Filesystem && selected);
+    move_->setEnabled(idle && selected &&
+                      (state_ == State::Filesystem ||
+                       (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty())));
     remove_->setEnabled(
         idle && selected &&
         (state_ == State::Filesystem ||

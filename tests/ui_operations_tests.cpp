@@ -211,7 +211,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         backend.completeList({ArchiveEntry{QStringLiteral("file.txt"), 4, 4}});
         table(window)->selectRow(0);
         QVERIFY(action(window, "copyAction")->isEnabled());
-        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(action(window, "moveAction")->isEnabled());
         QVERIFY(action(window, "deleteAction")->isEnabled());
         QVERIFY(action(window, "renameAction")->isEnabled());
         window.openArchive("second.zip");
@@ -226,6 +226,115 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         backend.cancel();
         QVERIFY(!action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
+    }
+    void moveSelectedOutOfArchive() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        const QString destination = temp.filePath("destination");
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive(temp.filePath("items.7z"));
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/файл с пробелом.txt"), 4, 4}});
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
+        const auto submit = [&window, &destination] {
+            QTimer::singleShot(0, &window, [&destination] {
+                for (QWidget *widget : QApplication::topLevelWidgets()) {
+                    if (auto *dialog = qobject_cast<CopyDialog *>(widget);
+                        dialog && dialog->isVisible()) {
+                        dialog->findChild<QComboBox *>("copyDestination")
+                            ->setCurrentText(destination);
+                        dialog->accept();
+                    }
+                }
+            });
+            action(window, "moveAction")->trigger();
+        };
+        submit();
+        QCOMPARE(backend.extractCalls, 1);
+        QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("папка/файл с пробелом.txt")}));
+        QCOMPARE(backend.removeCalls, 0);
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+            }
+        });
+        backend.fail("Извлечение не удалось.");
+        QCOMPARE(backend.removeCalls, 0);
+        QVERIFY(action(window, "moveAction")->isEnabled());
+
+        submit();
+        QCOMPARE(backend.extractCalls, 2);
+        backend.cancel();
+        QCOMPARE(backend.removeCalls, 0);
+        QVERIFY(action(window, "moveAction")->isEnabled());
+
+        submit();
+        QCOMPARE(backend.extractCalls, 3);
+        backend.completeAdd();
+        QCOMPARE(backend.removeCalls, 1);
+        QCOMPARE(backend.lastRemoved, backend.lastSelected);
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                    QVERIFY(box->text().contains("Файлы извлечены, но не удалены"));
+                    box->accept();
+                }
+            }
+        });
+        backend.fail("Удаление не удалось.");
+        QCOMPARE(backend.listCalls, 1);
+        QVERIFY(action(window, "moveAction")->isEnabled());
+
+        submit();
+        QCOMPARE(backend.extractCalls, 4);
+        backend.completeAdd();
+        QCOMPARE(backend.removeCalls, 2);
+        backend.completeAdd();
+        QCOMPARE(backend.listCalls, 2);
+        backend.completeList({});
+        QVERIFY(!action(window, "moveAction")->isEnabled());
+    }
+    void movesRealArchiveEntryToDirectory() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        const QString source = temp.filePath(QStringLiteral("файл с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("archive move"), 12);
+        file.close();
+        const QString archive = temp.filePath("move.7z");
+        const QString destination = temp.filePath("destination");
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        table(window)->selectRow(0);
+        QTRY_VERIFY(action(window, "moveAction")->isEnabled());
+        QTimer::singleShot(0, &window, [&destination] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = qobject_cast<CopyDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
+                    dialog->accept();
+                }
+            }
+        });
+        action(window, "moveAction")->trigger();
+        const QString extracted = QDir(destination).filePath(QFileInfo(source).fileName());
+        QTRY_VERIFY(QFileInfo::exists(extracted));
+        QTRY_COMPARE(table(window)->rowCount(), 0);
+        QFile extractedFile(extracted);
+        QVERIFY(extractedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(extractedFile.readAll(), QByteArray("archive move"));
     }
     void stage7ArchiveMutations() {
         ControlledBackend backend;

@@ -457,11 +457,36 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         }
     });
     connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+        if (archiveMoveStage_ == ArchiveMoveStage::Extracting && ok) {
+            appendJournal(QStringLiteral("Извлечение завершено. Удаление исходных записей."));
+            archiveMoveStage_ = ArchiveMoveStage::Removing;
+            updatingArchive_ = true;
+            if (progress_) {
+                QProgressDialog *completed = progress_;
+                progress_ = nullptr;
+                completed->disconnect(backend_);
+                completed->close();
+                completed->deleteLater();
+            }
+            begin("Удаление перемещённых записей", archive_, true);
+            backend_->remove(archive_, archiveMovePaths_);
+            return;
+        }
+        QString resultMessage = message;
+        if (archiveMoveStage_ == ArchiveMoveStage::Removing)
+            resultMessage =
+                ok ? QStringLiteral("Объекты перемещены из архива.")
+                   : QStringLiteral("Файлы извлечены, но не удалены из архива. ") + message;
+        if (archiveMoveStage_ != ArchiveMoveStage::None) {
+            archiveMoveStage_ = ArchiveMoveStage::None;
+            archiveMovePaths_.clear();
+        }
         if (nestedListing_ && ok)
             nestedListing_ = false;
         if (!ok)
             archivePassword_.clear();
-        appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) + message);
+        appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
+                      resultMessage);
         if (progress_) {
             QProgressDialog *completed = progress_;
             progress_ = nullptr;
@@ -526,8 +551,8 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
             if (finishNestedExtraction(ok))
                 return;
         }
-        statusBar()->showMessage(message);
-        if (!ok && message != "Операция отменена.")
-            QMessageBox::warning(this, "Sevenzip Desktop", message);
+        statusBar()->showMessage(resultMessage);
+        if (!ok && resultMessage != "Операция отменена.")
+            QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
     });
 }

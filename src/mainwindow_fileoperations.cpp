@@ -85,6 +85,36 @@ void MainWindow::copySelected() {
 }
 
 void MainWindow::moveSelected() {
+    if (state_ == State::Viewing) {
+        if (!move_->isEnabled())
+            return;
+        const QStringList paths = selectedArchivePaths();
+        if (paths.isEmpty())
+            return;
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        CopyDialog dialog(true, returnDirectory_, paths,
+                          settings.value("copy/history").toStringList(), this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QString destination = dialog.destination();
+        if (!QFileInfo(destination).isDir() || QFileInfo(destination).isSymLink()) {
+            QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
+            return;
+        }
+        QStringList history = settings.value("copy/history").toStringList();
+        history.removeAll(destination);
+        history.prepend(destination);
+        while (history.size() > 20)
+            history.removeLast();
+        settings.setValue("copy/history", history);
+        archiveMovePaths_ = paths;
+        archiveMoveStage_ = ArchiveMoveStage::Extracting;
+        previousState_ = state_;
+        setState(State::Operating);
+        begin("Перемещение из архива", destination);
+        backend_->extract(archive_, destination, paths, archivePassword_);
+        return;
+    }
     if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
         return;
     transferSelected(true);

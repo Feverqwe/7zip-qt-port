@@ -78,12 +78,14 @@ void MainWindow::showSelectedProperties() {
     dialog.exec();
 }
 
-void MainWindow::begin(const QString &label, const QString &detail) {
+void MainWindow::begin(const QString &label, const QString &detail, bool preserveJournal) {
     operationName_ = label;
     currentDetail_ = detail;
-    journalText_.clear();
-    if (journalView_)
-        journalView_->clear();
+    if (!preserveJournal) {
+        journalText_.clear();
+        if (journalView_)
+            journalView_->clear();
+    }
     appendJournal(label + ": " + detail);
     journalAction_->setEnabled(true);
     progress_ = new QProgressDialog(label + "\n" + detail, "Отмена", 0, 100, this);

@@ -319,7 +319,7 @@ class MainWindow : public QMainWindow {
     void showJournal();
     void showInfo();
     void showSelectedProperties();
-    void begin(const QString &label, const QString &detail);
+    void begin(const QString &label, const QString &detail, bool preserveJournal = false);
     void openDialog();
     void openFileViewer(const QString &path, bool editable);
     bool openLocalFile(const QString &path);
@@ -413,6 +413,9 @@ class MainWindow : public QMainWindow {
     State previousState_ = State::Filesystem;
     bool creating_ = false;
     bool updatingArchive_ = false;
+    enum class ArchiveMoveStage { None, Extracting, Removing };
+    ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
+    QStringList archiveMovePaths_;
     QList<ArchiveEntry> entries_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
