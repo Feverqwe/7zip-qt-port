@@ -1,77 +1,46 @@
 #include "mainwindow.h"
 
-bool MainWindow::copyTree(const QString &source, const QString &target) {
-    const QFileInfo info(source);
-    if (info.isSymLink() || !info.exists())
-        return false;
-    if (!info.isDir())
-        return QFile::copy(source, target);
-    if (!QDir().mkdir(target))
-        return false;
-    const QFileInfoList children = QDir(source).entryInfoList(
-        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
-    for (const QFileInfo &child : children) {
-        if (!copyTree(child.absoluteFilePath(), QDir(target).filePath(child.fileName())))
-            return false;
-    }
-    return true;
-}
-
-void MainWindow::removeTree(const QString &path) {
-    if (QFileInfo(path).isDir())
-        QDir(path).removeRecursively();
-    else
-        QFile::remove(path);
-}
-
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
     if (state_ != State::Filesystem || !QFileInfo(destination).isDir() ||
         QFileInfo(destination).isSymLink() || sources.isEmpty()) {
         QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
         return;
     }
-    QStringList targets;
-    const QString canonicalDestination = QFileInfo(destination).canonicalFilePath();
-    for (const QString &source : sources) {
-        const QFileInfo info(source);
-        const QString target = QDir(destination).filePath(info.fileName());
-        if (!info.exists() || info.isSymLink() || QFileInfo::exists(target) ||
-            QFileInfo(target).isSymLink() || targets.contains(target) ||
-            (info.isDir() && (canonicalDestination == info.canonicalFilePath() ||
-                              canonicalDestination.startsWith(info.canonicalFilePath() + '/')))) {
-            QMessageBox::warning(this, "Sevenzip Desktop",
-                                 "Источник или назначение недоступны либо имя уже занято.");
-            return;
-        }
-        targets << target;
-    }
-    QStringList completed;
-    for (qsizetype i = 0; i < sources.size(); ++i) {
-        const QString stage =
-            targets[i] +
-            QStringLiteral(".sevenzip-%1").arg(QUuid::createUuid().toString(QUuid::Id128));
-        bool ok = move ? QDir().rename(sources[i], stage) : copyTree(sources[i], stage);
-        if (ok)
-            ok = QDir().rename(stage, targets[i]);
-        if (!ok) {
-            if (move && QFileInfo::exists(stage))
-                QDir().rename(stage, sources[i]);
-            else
-                removeTree(stage);
-            for (qsizetype j = completed.size(); j > 0; --j) {
-                if (move)
-                    QDir().rename(completed[j - 1], sources[j - 1]);
-                else
-                    removeTree(completed[j - 1]);
-            }
-            QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось выполнить операцию.");
-            showDirectory(directory_, false);
-            return;
-        }
-        completed << targets[i];
-    }
-    showDirectory(directory_, false);
-    statusBar()->showMessage(move ? "Объекты перемещены." : "Объекты скопированы.");
+    fileTransfer_ = new FileTransferOperation(sources, destination, move, this);
+    fileTransferProgress_ = new QProgressDialog(
+        move ? "Перемещение файлов…" : "Копирование файлов…", "Отмена", 0, 0, this);
+    fileTransferProgress_->setObjectName("fileTransferProgress");
+    fileTransferProgress_->setWindowModality(Qt::NonModal);
+    fileTransferProgress_->setMinimumDuration(0);
+    connect(fileTransferProgress_, &QProgressDialog::canceled, fileTransfer_,
+            &FileTransferOperation::cancel);
+    connect(fileTransfer_, &FileTransferOperation::currentFile, this, [this](const QString &path) {
+        if (fileTransferProgress_)
+            fileTransferProgress_->setLabelText(QFileInfo(path).fileName());
+    });
+    connect(fileTransfer_, &FileTransferOperation::result, this,
+            [this](bool success, const QString &message) {
+                if (fileTransferProgress_) {
+                    fileTransferProgress_->close();
+                    fileTransferProgress_->deleteLater();
+                    fileTransferProgress_ = nullptr;
+                }
+                if (success)
+                    statusBar()->showMessage(message);
+                else if (message != "Операция отменена.")
+                    QMessageBox::warning(this, "Sevenzip Desktop", message);
+            });
+    auto *operation = fileTransfer_;
+    connect(operation, &QThread::finished, this, [this, operation, sources] {
+        operation->deleteLater();
+        if (fileTransfer_ == operation)
+            fileTransfer_ = nullptr;
+        showDirectory(directory_, false);
+        selectPaths(sources);
+    });
+    setState(State::Operating);
+    fileTransferProgress_->show();
+    fileTransfer_->start();
 }
 
 void MainWindow::copySelected() {

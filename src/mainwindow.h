@@ -7,6 +7,7 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
 #include "filesystemscanner.h"
+#include "filetransferoperation.h"
 #include "fileviewerdialog.h"
 #include "propertiesdialog.h"
 #include "settingsdialog.h"
@@ -301,8 +302,6 @@ class MainWindow : public QMainWindow {
                        const CompressionOptions &options = {});
     void addDialog();
     QStringList selectedFilesystemPaths() const;
-    static bool copyTree(const QString &source, const QString &target);
-    static void removeTree(const QString &path);
     void transferFiles(const QStringList &sources, const QString &destination, bool move);
     void copySelected();
     void moveSelected();
@@ -428,6 +427,8 @@ class MainWindow : public QMainWindow {
     QAction *combine_ = nullptr;
     VolumeOperation *volumeOperation_ = nullptr;
     QProgressDialog *volumeProgress_ = nullptr;
+    FileTransferOperation *fileTransfer_ = nullptr;
+    QProgressDialog *fileTransferProgress_ = nullptr;
     QAction *viewFile_ = nullptr;
     QAction *editFile_ = nullptr;
     QAction *properties_ = nullptr;

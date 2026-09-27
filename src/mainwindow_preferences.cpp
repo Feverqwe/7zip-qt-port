@@ -207,7 +207,7 @@ void MainWindow::openBookmark(int index) {
         showDirectory(bookmark.path, true);
         return;
     }
-    if (!info.isFile() || !ArchiveFormats::canOpen(bookmark.path)) {
+    if (!info.isFile() || info.isSymLink()) {
         statusBar()->showMessage("Путь закладки недоступен: " + bookmark.path);
         return;
     }

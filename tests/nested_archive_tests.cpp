@@ -60,6 +60,74 @@ class NestedArchiveTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void opensArchiveWithoutRecognizedExtension() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString source = dir.filePath(QStringLiteral("данные с пробелом.txt"));
+        QFile payload(source);
+        QVERIFY(payload.open(QIODevice::WriteOnly));
+        QCOMPARE(payload.write("payload"), 7);
+        payload.close();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        const QString zip = dir.filePath("inner.zip");
+        const QString unknown = dir.filePath("inner.bin");
+        backend.create(zip, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        QVERIFY(QFile::rename(zip, unknown));
+        const QString outer = dir.filePath("outer.7z");
+        backend.create(outer, {unknown});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+
+        MainWindow window(&backend);
+        window.show();
+        const QString initialDirectory = window.findChild<QLineEdit *>("archivePath")->text();
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *inside = window.findChild<QAction *>("openInsideAction");
+        auto *back = window.findChild<QAction *>("backAction");
+        QVERIFY(table && inside && back);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(unknown);
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(table->rowCount(), 1);
+        QCOMPARE(table->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+                 QStringLiteral("данные с пробелом.txt"));
+
+        window.openArchive(outer);
+        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
+                    table->item(0, 0)->text() == QStringLiteral("inner.bin"));
+        table->selectRow(0);
+        QVERIFY(inside->isEnabled());
+        inside->trigger();
+        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
+                    table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
+                        QStringLiteral("данные с пробелом.txt"));
+        back->trigger();
+        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
+                    table->item(0, 0)->text() == QStringLiteral("inner.bin"));
+
+        QFile plain(dir.filePath("plain.bin"));
+        QVERIFY(plain.open(QIODevice::WriteOnly));
+        plain.write("ordinary data");
+        plain.close();
+        finished.clear();
+        QTimer dismissWarning;
+        connect(&dismissWarning, &QTimer::timeout, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+            }
+        });
+        dismissWarning.start(1);
+        window.openArchive(plain.fileName());
+        QTRY_COMPARE(finished.size(), 1);
+        dismissWarning.stop();
+        QVERIFY(!finished.first().first().toBool());
+        QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(), initialDirectory);
+    }
+
     void opensAndExtractsTarArchiveReadOnly() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());

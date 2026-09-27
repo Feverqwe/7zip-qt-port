@@ -220,7 +220,7 @@ void MainWindow::navigateTo(const QString &path) {
     const QFileInfo info(path);
     if (info.isDir())
         showDirectory(path, true);
-    else if (info.isFile() && ArchiveFormats::canOpen(path))
+    else if (info.isFile() && !info.isSymLink())
         openArchive(path);
     else {
         statusBar()->showMessage("Путь не найден или тип файла не поддерживается: " + path);

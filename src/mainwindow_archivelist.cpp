@@ -135,7 +135,7 @@ void MainWindow::refreshActions() {
         const QString path = state_ == State::Filesystem
                                  ? table_->item(row, 1)->text()
                                  : table_->item(row, 0)->data(Qt::UserRole).toString();
-        inside = folder || ArchiveFormats::canOpen(path);
+        inside = folder || (state_ == State::Viewing || !QFileInfo(path).isSymLink());
         outside = !folder;
     }
     openInside_->setEnabled(inside);

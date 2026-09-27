@@ -3,7 +3,8 @@
 void MainWindow::openArchive(const QString &path, bool nested, const QString &label) {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
-    if (!ArchiveFormats::canOpen(path)) {
+    const QFileInfo file(path);
+    if (!ArchiveFormats::canOpen(path) && (!file.isFile() || file.isSymLink())) {
         QMessageBox::warning(this, "Sevenzip Desktop",
                              "Формат архива не поддерживается для открытия.");
         return;

@@ -51,6 +51,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         action(window, "copyAction")->trigger();
         const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         QCOMPARE(settings.value("copy/history").toStringList().first(), destination);
         QFile copiedFile(copied);
@@ -71,6 +73,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         warningTimer.start(1);
         action(window, "copyAction")->trigger();
+        QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         warningTimer.stop();
         QVERIFY(QFileInfo::exists(source));
         QVERIFY(QFileInfo::exists(copied));
@@ -88,6 +91,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         moveErrorTimer.start(1);
         action(window, "moveAction")->trigger();
+        QTRY_VERIFY(action(window, "moveAction")->isEnabled());
         moveErrorTimer.stop();
         QVERIFY(QFileInfo::exists(source));
         QVERIFY(QFileInfo::exists(copied));
@@ -143,8 +147,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "moveAction")->trigger();
+        QTRY_VERIFY(QFileInfo::exists(QDir(destination).filePath("move me.txt")));
         QVERIFY(!QFileInfo::exists(movable.fileName()));
-        QVERIFY(QFileInfo::exists(QDir(destination).filePath("move me.txt")));
     }
 
     void stage7FilesystemDropAndArchiveCopy() {
@@ -168,7 +172,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCoreApplication::sendEvent(table(window)->viewport(), &enter);
         QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table(window)->viewport(), &drop);
-        QVERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
+        QTRY_VERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
+        QTRY_VERIFY(table(window)->isEnabled());
 
         window.openArchive("items.zip");
         backend.completeList({ArchiveEntry{QStringLiteral("nested/file.txt"), 4, 4}});

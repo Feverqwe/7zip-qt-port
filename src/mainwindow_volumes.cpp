@@ -1,6 +1,10 @@
 #include "mainwindow.h"
 
 MainWindow::~MainWindow() {
+    if (fileTransfer_) {
+        fileTransfer_->cancel();
+        fileTransfer_->wait();
+    }
     if (volumeOperation_) {
         volumeOperation_->cancel();
         volumeOperation_->wait();
