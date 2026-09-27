@@ -1,0 +1,70 @@
+#include "mainwindow.h"
+
+MainWindow::~MainWindow() {
+    if (volumeOperation_) {
+        volumeOperation_->cancel();
+        volumeOperation_->wait();
+    }
+}
+
+void MainWindow::startVolume(VolumeOperation::Mode mode) {
+    if (state_ != State::Filesystem || volumeOperation_ ||
+        !(mode == VolumeOperation::Mode::Split ? split_ : combine_)->isEnabled())
+        return;
+    const QStringList paths = selectedFilesystemPaths();
+    if (paths.size() != 1)
+        return;
+    const QFileInfo source(paths.first());
+    if (!source.isFile() || source.isSymLink())
+        return;
+    if (mode == VolumeOperation::Mode::Combine) {
+        QString error;
+        if (VolumeOperation::discoverParts(paths.first(), &error).isEmpty()) {
+            QMessageBox::warning(this, "Sevenzip Desktop", error);
+            return;
+        }
+    }
+    VolumeDialog dialog(mode, paths.first(), this);
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+    const QString destination =
+        mode == VolumeOperation::Mode::Split
+            ? dialog.destination()
+            : QDir(dialog.destination())
+                  .filePath(source.fileName().left(source.fileName().lastIndexOf('.')));
+    volumeOperation_ =
+        new VolumeOperation(mode, paths.first(), destination, dialog.volumeSize(), this);
+    volumeProgress_ = new QProgressDialog(
+        mode == VolumeOperation::Mode::Split ? "Разделение файла…" : "Объединение файлов…",
+        "Отмена", 0, 0, this);
+    volumeProgress_->setObjectName("volumeProgress");
+    volumeProgress_->setWindowModality(Qt::NonModal);
+    volumeProgress_->setMinimumDuration(0);
+    connect(volumeProgress_, &QProgressDialog::canceled, volumeOperation_,
+            &VolumeOperation::cancel);
+    connect(volumeOperation_, &VolumeOperation::result, this,
+            [this](bool success, const QString &message) {
+                if (volumeProgress_) {
+                    volumeProgress_->close();
+                    volumeProgress_->deleteLater();
+                    volumeProgress_ = nullptr;
+                }
+                if (success) {
+                    showDirectory(directory_, false);
+                    statusBar()->showMessage(message);
+                } else {
+                    setState(State::Filesystem);
+                    if (message != "Операция отменена.")
+                        QMessageBox::warning(this, "Sevenzip Desktop", message);
+                }
+            });
+    auto *operation = volumeOperation_;
+    connect(operation, &QThread::finished, this, [this, operation] {
+        operation->deleteLater();
+        if (volumeOperation_ == operation)
+            volumeOperation_ = nullptr;
+    });
+    setState(State::Operating);
+    volumeProgress_->show();
+    volumeOperation_->start();
+}

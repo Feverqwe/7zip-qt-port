@@ -1,0 +1,220 @@
+#include "volumeoperations.h"
+
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QRegularExpression>
+#include <QUuid>
+#include <limits>
+
+VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination, qint64 volumeSize,
+                                 QObject *parent)
+    : QThread(parent), mode_(mode), source_(std::move(source)),
+      destination_(std::move(destination)), volumeSize_(volumeSize) {}
+
+void VolumeOperation::cancel() { canceled_ = true; }
+
+qint64 VolumeOperation::parseSize(const QString &text) {
+    const QRegularExpression pattern(R"(^\s*(\d+)\s*([bBkKmMgGtT]?)\s*$)");
+    const auto match = pattern.match(text);
+    if (!match.hasMatch())
+        return 0;
+    bool ok = false;
+    const qulonglong value = match.captured(1).toULongLong(&ok);
+    const QString unit = match.captured(2).toLower();
+    const int shift = unit == "k" ? 10 : unit == "m" ? 20 : unit == "g" ? 30 : unit == "t" ? 40 : 0;
+    if (!ok || value == 0 || value > (qulonglong(std::numeric_limits<qint64>::max()) >> shift))
+        return 0;
+    return qint64(value << shift);
+}
+
+QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *error) {
+    const QFileInfo first(firstPart);
+    const QRegularExpression suffix(R"(^(.*)\.0{2,}1$)");
+    const auto match = suffix.match(first.fileName());
+    if (!match.hasMatch() || match.captured(1).isEmpty()) {
+        *error = QStringLiteral("Выберите первую часть с именем .001.");
+        return {};
+    }
+    const QString base = match.captured(1);
+    const int width = first.fileName().size() - base.size() - 1;
+    QStringList parts;
+    for (int number = 1; number <= 10000; ++number) {
+        const QString path = first.dir().filePath(
+            base + '.' + QStringLiteral("%1").arg(number, width, 10, QLatin1Char('0')));
+        const QFileInfo info(path);
+        if (!info.exists())
+            break;
+        if (!info.isFile() || info.isSymLink() || info.size() == 0) {
+            *error = QStringLiteral("Часть недоступна или пуста: %1").arg(path);
+            return {};
+        }
+        parts << path;
+    }
+    if (parts.size() < 2) {
+        *error = QStringLiteral("Нужны как минимум две последовательные части.");
+        return {};
+    }
+    const QRegularExpression other(
+        QStringLiteral("^%1\\.(\\d{%2,})$").arg(QRegularExpression::escape(base)).arg(width));
+    for (const QString &name : first.dir().entryList(QDir::Files | QDir::Hidden | QDir::System)) {
+        const auto candidate = other.match(name);
+        if (candidate.hasMatch() && candidate.captured(1).toInt() > parts.size()) {
+            *error = QStringLiteral("В последовательности частей есть пропуск.");
+            return {};
+        }
+    }
+    return parts;
+}
+
+bool VolumeOperation::copyBytes(QFile &input, QFile &output, qint64 count, qint64 *progress,
+                                QString *error) {
+    while (count > 0) {
+        if (canceled_) {
+            *error = QStringLiteral("Операция отменена.");
+            return false;
+        }
+        const QByteArray data = input.read(qMin(count, qint64(1 << 20)));
+        if (data.isEmpty() || output.write(data) != data.size()) {
+            *error = QStringLiteral("Ошибка чтения или записи файла.");
+            return false;
+        }
+        count -= data.size();
+        *progress += data.size();
+        emit advanced(*progress);
+    }
+    return true;
+}
+
+bool VolumeOperation::split(QString *error) {
+    const QFileInfo sourceInfo(source_);
+    const QFileInfo destinationInfo(destination_);
+    if (!sourceInfo.isFile() || sourceInfo.isSymLink() || !destinationInfo.isDir() ||
+        destinationInfo.isSymLink() || volumeSize_ <= 0 || sourceInfo.size() <= volumeSize_) {
+        *error = QStringLiteral("Файл или размер тома недоступен для разделения.");
+        return false;
+    }
+    const qint64 total = sourceInfo.size();
+    const qint64 count = total / volumeSize_ + (total % volumeSize_ != 0);
+    if (count > 10000) {
+        *error = QStringLiteral("Слишком много частей (более 10000).");
+        return false;
+    }
+    const int width = qMax(3, QString::number(count).size());
+    QStringList targets;
+    for (qint64 n = 1; n <= count; ++n) {
+        const QString target =
+            QDir(destination_)
+                .filePath(sourceInfo.fileName() + '.' +
+                          QStringLiteral("%1").arg(n, width, 10, QLatin1Char('0')));
+        if (QFileInfo::exists(target) || QFileInfo(target).isSymLink()) {
+            *error = QStringLiteral("Файл уже существует: %1").arg(target);
+            return false;
+        }
+        targets << target;
+    }
+    QFile input(source_);
+    if (!input.open(QIODevice::ReadOnly)) {
+        *error = input.errorString();
+        return false;
+    }
+    QStringList staged;
+    QStringList published;
+    qint64 progress = 0;
+    bool ok = true;
+    for (qsizetype i = 0; i < targets.size() && ok; ++i) {
+        const QString stage =
+            targets[i] + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
+        staged << stage;
+        QFile output(stage);
+        if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly) ||
+            !copyBytes(input, output, qMin(volumeSize_, total - progress), &progress, error) ||
+            !output.flush()) {
+            if (error->isEmpty())
+                *error = QStringLiteral("Не удалось записать часть файла.");
+            ok = false;
+        }
+        output.close();
+    }
+    if (ok && input.size() != total) {
+        *error = QStringLiteral("Исходный файл изменился во время разделения.");
+        ok = false;
+    }
+    if (ok && canceled_) {
+        *error = QStringLiteral("Операция отменена.");
+        ok = false;
+    }
+    for (qsizetype i = 0; i < targets.size() && ok; ++i) {
+        if (QFileInfo::exists(targets[i]) || QFileInfo(targets[i]).isSymLink() ||
+            !QFile::rename(staged[i], targets[i])) {
+            *error = QStringLiteral("Не удалось сохранить часть: %1").arg(targets[i]);
+            ok = false;
+        } else {
+            published << targets[i];
+        }
+    }
+    if (!ok) {
+        for (const QString &path : staged)
+            QFile::remove(path);
+        for (const QString &path : published)
+            QFile::remove(path);
+    }
+    return ok;
+}
+
+bool VolumeOperation::combine(QString *error) {
+    const QStringList parts = discoverParts(source_, error);
+    if (parts.isEmpty())
+        return false;
+    const QFileInfo targetInfo(destination_);
+    if (!QFileInfo(targetInfo.absolutePath()).isDir() || QFileInfo::exists(destination_) ||
+        targetInfo.isSymLink()) {
+        *error = QStringLiteral("Папка назначения недоступна или файл уже существует.");
+        return false;
+    }
+    const QString stage = destination_ + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
+    QFile output(stage);
+    if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+        *error = output.errorString();
+        return false;
+    }
+    qint64 progress = 0;
+    bool ok = true;
+    for (const QString &part : parts) {
+        QFile input(part);
+        const QFileInfo info(part);
+        if (!info.isFile() || info.isSymLink() || !input.open(QIODevice::ReadOnly) ||
+            !copyBytes(input, output, info.size(), &progress, error) ||
+            input.size() != info.size()) {
+            if (error->isEmpty())
+                *error = QStringLiteral("Часть файла изменилась или недоступна: %1").arg(part);
+            ok = false;
+            break;
+        }
+    }
+    if (ok && !output.flush()) {
+        *error = QStringLiteral("Не удалось записать объединённый файл.");
+        ok = false;
+    }
+    output.close();
+    if (ok && canceled_) {
+        *error = QStringLiteral("Операция отменена.");
+        ok = false;
+    }
+    if (ok && (QFileInfo::exists(destination_) || QFileInfo(destination_).isSymLink() ||
+               !QFile::rename(stage, destination_))) {
+        *error = QStringLiteral("Не удалось сохранить объединённый файл.");
+        ok = false;
+    }
+    if (!ok)
+        QFile::remove(stage);
+    return ok;
+}
+
+void VolumeOperation::run() {
+    QString error;
+    const bool ok = mode_ == Mode::Split ? split(&error) : combine(&error);
+    emit result(ok, ok ? (mode_ == Mode::Split ? QStringLiteral("Файл разделён.")
+                                               : QStringLiteral("Файлы объединены."))
+                       : error);
+}

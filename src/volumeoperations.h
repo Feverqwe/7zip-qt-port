@@ -1,0 +1,36 @@
+#pragma once
+
+#include <QStringList>
+#include <QThread>
+#include <atomic>
+
+class QFile;
+
+class VolumeOperation : public QThread {
+    Q_OBJECT
+
+  public:
+    enum class Mode { Split, Combine };
+    VolumeOperation(Mode mode, QString source, QString destination, qint64 volumeSize = 0,
+                    QObject *parent = nullptr);
+    void cancel();
+    static qint64 parseSize(const QString &text);
+    static QStringList discoverParts(const QString &firstPart, QString *error);
+
+  signals:
+    void advanced(qint64 bytes);
+    void result(bool success, const QString &message);
+
+  protected:
+    void run() override;
+
+  private:
+    bool split(QString *error);
+    bool combine(QString *error);
+    bool copyBytes(QFile &input, QFile &output, qint64 count, qint64 *progress, QString *error);
+    Mode mode_;
+    QString source_;
+    QString destination_;
+    qint64 volumeSize_;
+    std::atomic_bool canceled_{false};
+};
