@@ -4,7 +4,9 @@
 #include <QFile>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QProcess>
 #include <QSignalSpy>
+#include <QStandardPaths>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -58,6 +60,76 @@ class NestedArchiveTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void opensAndExtractsTarArchiveReadOnly() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString sourceName = QStringLiteral("данные с пробелом.txt");
+        QFile source(dir.filePath(sourceName));
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        source.write("tar payload");
+        source.close();
+        const QString archive = dir.filePath("sample.tar");
+        QString executable = QStandardPaths::findExecutable("7zz");
+        if (executable.isEmpty())
+            executable = "/opt/homebrew/bin/7zz";
+        QProcess creator;
+        creator.setWorkingDirectory(dir.path());
+        creator.start(executable, {"a", "-ttar", "--", archive, sourceName});
+        QVERIFY(creator.waitForFinished(30000));
+        QCOMPARE(creator.exitCode(), 0);
+
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.openArchive(archive);
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *add = window.findChild<QAction *>("addArchiveAction");
+        auto *remove = window.findChild<QAction *>("deleteAction");
+        auto *rename = window.findChild<QAction *>("renameAction");
+        auto *move = window.findChild<QAction *>("moveAction");
+        auto *edit = window.findChild<QAction *>("editFileAction");
+        QVERIFY(table && add && remove && rename && move && edit);
+        QTRY_COMPARE(table->rowCount(), 1);
+        QCOMPARE(table->item(0, 0)->text().normalized(QString::NormalizationForm_C), sourceName);
+        table->selectRow(0);
+        QVERIFY(!add->isEnabled());
+        QVERIFY(!remove->isEnabled());
+        QVERIFY(!rename->isEnabled());
+        QVERIFY(!move->isEnabled());
+        QVERIFY(!edit->isEnabled());
+
+        const QString destination = dir.filePath("output");
+        QVERIFY(QDir().mkdir(destination));
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        window.extractTo(destination);
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        QFile extracted(QDir(destination).filePath(sourceName));
+        QVERIFY(extracted.open(QIODevice::ReadOnly));
+        QCOMPARE(extracted.readAll(), QByteArray("tar payload"));
+
+        const QString compressed = dir.filePath("sample.tar.gz");
+        QProcess compressor;
+        compressor.setWorkingDirectory(dir.path());
+        compressor.start(executable, {"a", "-tgzip", "--", compressed, "sample.tar"});
+        QVERIFY(compressor.waitForFinished(30000));
+        QCOMPARE(compressor.exitCode(), 0);
+        window.openArchive(compressed);
+        QTRY_COMPARE(table->rowCount(), 1);
+        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("sample.tar"));
+        table->selectRow(0);
+        auto *inside = window.findChild<QAction *>("openInsideAction");
+        auto *back = window.findChild<QAction *>("backAction");
+        QVERIFY(inside && back);
+        QVERIFY(inside->isEnabled());
+        inside->trigger();
+        QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
+                    table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
+                        sourceName);
+        back->trigger();
+        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("sample.tar"));
+    }
+
     void opensRealNestedArchive() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());

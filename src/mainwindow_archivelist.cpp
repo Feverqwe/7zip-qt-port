@@ -107,8 +107,8 @@ void MainWindow::refreshActions() {
     flatView_->setEnabled(navigating);
     open_->setEnabled(idle);
     create_->setEnabled(idle && state_ == State::Filesystem);
-    add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted &&
-                     archiveParents_.empty());
+    add_->setEnabled(idle && state_ == State::Viewing && ArchiveFormats::canModify(archive_) &&
+                     !info_.encrypted && archiveParents_.empty());
     toolbarAdd_->setEnabled(create_->isEnabled() || add_->isEnabled());
     extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
     test_->setEnabled(idle && state_ == State::Viewing);
@@ -135,8 +135,7 @@ void MainWindow::refreshActions() {
         const QString path = state_ == State::Filesystem
                                  ? table_->item(row, 1)->text()
                                  : table_->item(row, 0)->data(Qt::UserRole).toString();
-        const QString suffix = QFileInfo(path).suffix().toLower();
-        inside = folder || suffix == "7z" || suffix == "zip";
+        inside = folder || ArchiveFormats::canOpen(path);
         outside = !folder;
     }
     openInside_->setEnabled(inside);
@@ -158,23 +157,17 @@ void MainWindow::refreshActions() {
     selectType_->setEnabled(idle && table_->currentRow() >= 0);
     deselectType_->setEnabled(idle && table_->currentRow() >= 0);
     copy_->setEnabled(idle && selected);
-    move_->setEnabled(idle && selected &&
-                      (state_ == State::Filesystem ||
-                       (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty())));
-    remove_->setEnabled(
-        idle && selected &&
-        (state_ == State::Filesystem ||
-         (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty())));
+    const bool writableArchive = state_ == State::Viewing && ArchiveFormats::canModify(archive_) &&
+                                 !info_.encrypted && archiveParents_.empty();
+    move_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
+    remove_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
     const bool one = table_->selectionModel()->selectedRows().size() == 1;
     const bool oneFile =
         one && !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
                     ->data(Qt::UserRole + 1)
                     .toBool();
     viewFile_->setEnabled(idle && oneFile);
-    editFile_->setEnabled(
-        idle && oneFile &&
-        (state_ == State::Filesystem ||
-         (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty())));
+    editFile_->setEnabled(idle && oneFile && (state_ == State::Filesystem || writableArchive));
     split_->setEnabled(idle && state_ == State::Filesystem && oneFile &&
                        !QFileInfo(selectedFilesystemPaths().value(0)).isSymLink());
     combine_->setEnabled(split_->isEnabled() &&
@@ -183,7 +176,7 @@ void MainWindow::refreshActions() {
                              .hasMatch());
     rename_->setEnabled(idle && one &&
                         (state_ == State::Filesystem ||
-                         (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty() &&
+                         (writableArchive &&
                           !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
                                ->data(Qt::UserRole + 1)
                                .toBool())));

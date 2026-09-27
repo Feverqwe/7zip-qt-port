@@ -1,5 +1,41 @@
 #include "mainwindow.h"
 
+void MainWindow::openArchive(const QString &path, bool nested, const QString &label) {
+    if (state_ == State::Loading || state_ == State::Operating)
+        return;
+    if (!ArchiveFormats::canOpen(path)) {
+        QMessageBox::warning(this, "Sevenzip Desktop",
+                             "Формат архива не поддерживается для открытия.");
+        return;
+    }
+    filesystemScanner_->cancel();
+    if (!nested)
+        archiveParents_.clear();
+    scanningDisk_ = false;
+    scanSelection_.clear();
+    archive_ = QFileInfo(path).absoluteFilePath();
+    displayArchive_ = nested ? label : archive_;
+    archivePassword_.clear();
+    if (infoDialog_)
+        infoDialog_->close();
+    if (state_ == State::Filesystem)
+        returnDirectory_ = directory_;
+    else if (returnDirectory_.isEmpty())
+        returnDirectory_ = QFileInfo(archive_).absolutePath();
+    entries_.clear();
+    info_ = ArchiveInfo{};
+    archiveFolder_.clear();
+    refreshing_ = false;
+    refreshFolder_.clear();
+    refreshSelection_.clear();
+    table_->setRowCount(0);
+    path_->setText(archive_);
+    setState(State::Loading);
+    begin("Открытие архива", archive_);
+    nestedListing_ = nested;
+    backend_->list(archive_);
+}
+
 void MainWindow::openSelectedInside() {
     if (!openInside_->isEnabled())
         return;

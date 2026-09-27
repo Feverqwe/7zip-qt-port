@@ -97,7 +97,7 @@ void MainWindow::begin(const QString &label, const QString &detail, bool preserv
 
 void MainWindow::openDialog() {
     const QString file =
-        QFileDialog::getOpenFileName(this, "Открыть архив", {}, "Архивы (*.7z *.zip)");
+        QFileDialog::getOpenFileName(this, "Открыть архив", {}, ArchiveFormats::openDialogFilter());
     if (!file.isEmpty())
         openArchive(file);
 }

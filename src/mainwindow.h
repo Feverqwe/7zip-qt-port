@@ -1,6 +1,7 @@
 #pragma once
 
 #include "archivebackend.h"
+#include "archiveformats.h"
 #include "combodialog.h"
 #include "copydialog.h"
 #include "createarchivedialog.h"
@@ -154,42 +155,7 @@ class MainWindow : public QMainWindow {
     explicit MainWindow(ArchiveBackend *backend = nullptr,
                         std::function<bool(const QUrl &)> fileOpener = {});
 
-    void openArchive(const QString &path, bool nested = false, const QString &label = {}) {
-        if (state_ == State::Loading || state_ == State::Operating)
-            return;
-        const QString suffix = QFileInfo(path).suffix().toLower();
-        if (suffix != "7z" && suffix != "zip") {
-            QMessageBox::warning(this, "Sevenzip Desktop",
-                                 "Поддерживаются только архивы .7z и .zip.");
-            return;
-        }
-        filesystemScanner_->cancel();
-        if (!nested)
-            archiveParents_.clear();
-        scanningDisk_ = false;
-        scanSelection_.clear();
-        archive_ = QFileInfo(path).absoluteFilePath();
-        displayArchive_ = nested ? label : archive_;
-        archivePassword_.clear();
-        if (infoDialog_)
-            infoDialog_->close();
-        if (state_ == State::Filesystem)
-            returnDirectory_ = directory_;
-        else if (returnDirectory_.isEmpty())
-            returnDirectory_ = QFileInfo(archive_).absolutePath();
-        entries_.clear();
-        info_ = ArchiveInfo{};
-        archiveFolder_.clear();
-        refreshing_ = false;
-        refreshFolder_.clear();
-        refreshSelection_.clear();
-        table_->setRowCount(0);
-        path_->setText(archive_);
-        setState(State::Loading);
-        begin("Открытие архива", archive_);
-        nestedListing_ = nested;
-        backend_->list(archive_);
-    }
+    void openArchive(const QString &path, bool nested = false, const QString &label = {});
 
     void extractTo(const QString &destination, bool onlySelected = false,
                    const QString &password = {}, const ExtractionOptions &options = {}) {
@@ -344,7 +310,8 @@ class MainWindow : public QMainWindow {
     void deleteSelected();
     void renameSelected();
     void addSources(const QStringList &sources) {
-        if (state_ != State::Viewing || info_.encrypted || sources.isEmpty())
+        if (state_ != State::Viewing || !ArchiveFormats::canModify(archive_) || info_.encrypted ||
+            sources.isEmpty())
             return;
         previousState_ = state_;
         updatingArchive_ = true;

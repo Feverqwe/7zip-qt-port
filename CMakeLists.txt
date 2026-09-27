@@ -17,7 +17,7 @@ qt_add_executable(sevenzip_desktop
     src/copydialog.h
     src/extractdialog.h
     src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp
-    src/archivebackend.h
+    src/archivebackend.h src/archiveformats.h
     src/filesystemscanner.cpp
     src/filesystemscanner.h
     src/fileviewerdialog.cpp

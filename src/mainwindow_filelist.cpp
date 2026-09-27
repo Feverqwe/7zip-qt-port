@@ -220,8 +220,7 @@ void MainWindow::navigateTo(const QString &path) {
     const QFileInfo info(path);
     if (info.isDir())
         showDirectory(path, true);
-    else if (info.isFile() && (info.suffix().compare("7z", Qt::CaseInsensitive) == 0 ||
-                               info.suffix().compare("zip", Qt::CaseInsensitive) == 0))
+    else if (info.isFile() && ArchiveFormats::canOpen(path))
         openArchive(path);
     else {
         statusBar()->showMessage("Путь не найден или тип файла не поддерживается: " + path);
@@ -237,9 +236,7 @@ void MainWindow::activateRow(int row) {
     if (state_ == State::Filesystem) {
         const QString path = table_->item(row, 1)->text();
         const QFileInfo info(path);
-        if (info.isDir() ||
-            (info.isFile() && (info.suffix().compare("7z", Qt::CaseInsensitive) == 0 ||
-                               info.suffix().compare("zip", Qt::CaseInsensitive) == 0)))
+        if (info.isDir() || (info.isFile() && ArchiveFormats::canOpen(path)))
             navigateTo(path);
         else if (info.isFile() && !info.isSymLink())
             openLocalFile(path);

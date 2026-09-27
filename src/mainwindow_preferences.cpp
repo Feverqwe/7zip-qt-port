@@ -207,8 +207,7 @@ void MainWindow::openBookmark(int index) {
         showDirectory(bookmark.path, true);
         return;
     }
-    if (!info.isFile() || (info.suffix().compare("7z", Qt::CaseInsensitive) != 0 &&
-                           info.suffix().compare("zip", Qt::CaseInsensitive) != 0)) {
+    if (!info.isFile() || !ArchiveFormats::canOpen(bookmark.path)) {
         statusBar()->showMessage("Путь закладки недоступен: " + bookmark.path);
         return;
     }
