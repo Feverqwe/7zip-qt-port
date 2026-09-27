@@ -4,7 +4,7 @@
 #include <QApplication>
 #include <QDir>
 #include <QImage>
-#include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QProgressDialog>
@@ -12,6 +12,7 @@
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
 
@@ -106,7 +107,10 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         backend.completeList({});
+        QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
+                 QFileInfo("second.zip").absoluteFilePath());
         QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(action(window, "backAction")->isEnabled());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
@@ -122,11 +126,61 @@ class MainWindowStateTests : public QObject {
         timer.start(10);
         window.openArchive("missing.7z");
         QTRY_VERIFY_WITH_TIMEOUT(window.statusBar()->currentMessage().contains("7zz"), 3000);
-        QCOMPARE(table(window)->rowCount(), 0);
+        QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
+                 QFileInfo(QDir::currentPath()).canonicalFilePath());
+        QVERIFY(!action(window, "backAction")->isEnabled());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!backend.busy());
+    }
+
+    void filesystemNavigationAndArchiveReturn() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir(QStringLiteral("папка с пробелом")));
+        QFile archive(temp.filePath(QStringLiteral("тест архив.zip")));
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        archive.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        QVERIFY(address);
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+        QCOMPARE(table(window)->rowCount(), 2);
+        QVERIFY(action(window, "backAction")->isEnabled());
+        int folderRow = -1;
+        int archiveRow = -1;
+        for (int row = 0; row < table(window)->rowCount(); ++row) {
+            const QString name = table(window)->item(row, 0)->text();
+            if (name == QStringLiteral("папка с пробелом"))
+                folderRow = row;
+            if (name == QStringLiteral("тест архив.zip"))
+                archiveRow = row;
+        }
+        QVERIFY(folderRow >= 0);
+        QVERIFY(archiveRow >= 0);
+        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
+                                          Q_ARG(int, folderRow), Q_ARG(int, 0)));
+        QCOMPARE(address->text(),
+                 QFileInfo(temp.filePath(QStringLiteral("папка с пробелом"))).canonicalFilePath());
+        QCOMPARE(table(window)->rowCount(), 0);
+        action(window, "backAction")->trigger();
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
+                                          Q_ARG(int, archiveRow), Q_ARG(int, 0)));
+        QCOMPARE(backend.listCalls, 1);
+        QCOMPARE(backend.lastArchive, QFileInfo(archive.fileName()).canonicalFilePath());
+        QVERIFY(!action(window, "backAction")->isEnabled());
+        backend.completeList({});
+        QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(action(window, "backAction")->isEnabled());
+        action(window, "backAction")->trigger();
+        QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+        QCOMPARE(table(window)->rowCount(), 2);
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
     }
 
     void cancellation() {
@@ -140,6 +194,8 @@ class MainWindowStateTests : public QObject {
         QVERIFY(button);
         button->click();
         QCOMPARE(backend.cancelCalls, 1);
+        QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
+                 QFileInfo(QDir::currentPath()).canonicalFilePath());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());

@@ -4,11 +4,12 @@
 
 #include <QAction>
 #include <QDialog>
+#include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QKeySequence>
-#include <QLabel>
+#include <QLineEdit>
 #include <QMainWindow>
 #include <QMenu>
 #include <QMenuBar>
@@ -32,6 +33,8 @@ class MainWindow : public QMainWindow {
         auto *toolbar = addToolBar("Архив");
         toolbar->setObjectName("archiveToolbar");
         toolbar->setMovable(false);
+        back_ = toolbar->addAction("Назад", this, [this] { goBack(); });
+        back_->setObjectName("backAction");
         auto *open = menu->addAction("Открыть…", this, [this] { openDialog(); });
         open->setObjectName("openArchiveAction");
         open->setShortcut(QKeySequence::Open);
@@ -63,9 +66,9 @@ class MainWindow : public QMainWindow {
         auto *central = new QWidget(this);
         auto *layout = new QVBoxLayout(central);
         layout->setContentsMargins(4, 4, 4, 4);
-        path_ = new QLabel("Откройте архив .7z или .zip");
+        path_ = new QLineEdit;
         path_->setObjectName("archivePath");
-        path_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        path_->setPlaceholderText("Путь к папке или архиву");
         layout->addWidget(path_);
         table_ = new QTableWidget(0, 5, central);
         table_->setObjectName("archiveTable");
@@ -77,6 +80,10 @@ class MainWindow : public QMainWindow {
         layout->addWidget(table_);
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
+        connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });
+        connect(table_, &QTableWidget::cellDoubleClicked, this,
+                [this](int row, int) { activateRow(row); });
+        showDirectory(QDir::currentPath(), false);
         refreshActions();
         connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
                 [this] { refreshActions(); });
@@ -124,10 +131,9 @@ class MainWindow : public QMainWindow {
                 completed->deleteLater();
             }
             if (state_ == State::Loading && !ok)
-                setState(State::Error);
+                showDirectory(returnDirectory_, false);
             else if (state_ == State::Operating)
-                setState(previousState_ == State::Viewing ? State::Viewing
-                                                          : (ok ? State::NoArchive : State::Error));
+                setState(previousState_ == State::Viewing ? State::Viewing : State::Filesystem);
             statusBar()->showMessage(message);
             if (!ok && message != "Операция отменена.")
                 QMessageBox::warning(this, "Sevenzip Desktop", message);
@@ -144,6 +150,10 @@ class MainWindow : public QMainWindow {
             return;
         }
         archive_ = QFileInfo(path).absoluteFilePath();
+        if (state_ == State::Filesystem)
+            returnDirectory_ = directory_;
+        else if (returnDirectory_.isEmpty())
+            returnDirectory_ = QFileInfo(archive_).absolutePath();
         entries_.clear();
         table_->setRowCount(0);
         path_->setText(archive_);
@@ -169,7 +179,68 @@ class MainWindow : public QMainWindow {
     }
 
   private:
-    enum class State { NoArchive, Loading, Viewing, Operating, Error };
+    enum class State { Filesystem, Loading, Viewing, Operating };
+    void showDirectory(const QString &path, bool remember) {
+        const QFileInfo info(path);
+        if (!info.isDir()) {
+            statusBar()->showMessage("Папка не найдена: " + path);
+            path_->setText(state_ == State::Viewing ? archive_ : directory_);
+            return;
+        }
+        const QString next = info.canonicalFilePath();
+        if (remember && !directory_.isEmpty() && directory_ != next)
+            history_.append(directory_);
+        directory_ = next;
+        archive_.clear();
+        entries_.clear();
+        table_->clearSelection();
+        table_->setRowCount(0);
+        path_->setText(directory_);
+        const QFileInfoList files =
+            QDir(directory_)
+                .entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden |
+                                   QDir::System,
+                               QDir::DirsFirst | QDir::Name | QDir::IgnoreCase);
+        for (const QFileInfo &file : files) {
+            const int row = table_->rowCount();
+            table_->insertRow(row);
+            const QStringList values = {file.fileName(), file.absoluteFilePath(),
+                                        file.isDir() ? QString() : QString::number(file.size()),
+                                        QString(), file.lastModified().toString(Qt::ISODate)};
+            for (int col = 0; col < values.size(); ++col)
+                table_->setItem(row, col, new QTableWidgetItem(values[col]));
+        }
+        setState(State::Filesystem);
+        statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
+    }
+    void navigateTo(const QString &path) {
+        if (state_ == State::Loading || state_ == State::Operating)
+            return;
+        const QFileInfo info(path);
+        if (info.isDir())
+            showDirectory(path, true);
+        else if (info.isFile() && (info.suffix().compare("7z", Qt::CaseInsensitive) == 0 ||
+                                   info.suffix().compare("zip", Qt::CaseInsensitive) == 0))
+            openArchive(path);
+        else {
+            statusBar()->showMessage("Путь не найден или тип файла не поддерживается: " + path);
+            path_->setText(state_ == State::Viewing ? archive_ : directory_);
+        }
+    }
+    void activateRow(int row) {
+        if (state_ != State::Filesystem || row < 0 || row >= table_->rowCount())
+            return;
+        navigateTo(table_->item(row, 1)->text());
+    }
+    void goBack() {
+        if (state_ == State::Loading || state_ == State::Operating)
+            return;
+        if (state_ == State::Viewing) {
+            showDirectory(returnDirectory_, false);
+        } else if (!history_.isEmpty()) {
+            showDirectory(history_.takeLast(), false);
+        }
+    }
     void setState(State state) {
         state_ = state;
         refreshActions();
@@ -181,6 +252,8 @@ class MainWindow : public QMainWindow {
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
+        back_->setEnabled(idle && (state_ == State::Viewing || !history_.isEmpty()));
+        path_->setReadOnly(!idle);
     }
     void appendJournal(const QString &line) {
         journalText_ += line + '\n';
@@ -253,10 +326,13 @@ class MainWindow : public QMainWindow {
 
     ArchiveBackend *backend_ = nullptr;
     QString archive_;
-    State state_ = State::NoArchive;
-    State previousState_ = State::NoArchive;
+    State state_ = State::Filesystem;
+    State previousState_ = State::Filesystem;
     QList<ArchiveEntry> entries_;
-    QLabel *path_ = nullptr;
+    QLineEdit *path_ = nullptr;
+    QString directory_;
+    QString returnDirectory_;
+    QStringList history_;
     QTableWidget *table_ = nullptr;
     QProgressDialog *progress_ = nullptr;
     QDialog *journalDialog_ = nullptr;
@@ -269,4 +345,5 @@ class MainWindow : public QMainWindow {
     QAction *add_ = nullptr;
     QAction *extract_ = nullptr;
     QAction *selected_ = nullptr;
+    QAction *back_ = nullptr;
 };

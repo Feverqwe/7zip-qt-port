@@ -5,7 +5,7 @@
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QImage>
-#include <QLabel>
+#include <QLineEdit>
 #include <QPixmap>
 #include <QStatusBar>
 #include <QSysInfo>
@@ -28,7 +28,7 @@ class MainWindowLayoutTests : public QObject {
         QFETCH(QSize, windowSize);
 
         MainWindow window;
-        auto *path = window.findChild<QLabel *>("archivePath");
+        auto *path = window.findChild<QLineEdit *>("archivePath");
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
         QVERIFY(path);

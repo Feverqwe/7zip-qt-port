@@ -16,13 +16,13 @@ SevenZipProcessBackend (official 7zz executable)
 7-Zip original compression and format code
 ```
 
-`src/archivebackend.h` defines archive entries and asynchronous operations. `src/archivebackend.cpp` owns command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `src/mainwindow.h` owns dialogs, table presentation and the explicit no archive / loading / viewing / operating / error states. All command availability is updated from these states and the table selection. A direct 7-Zip API adapter can replace this backend later.
+`src/archivebackend.h` defines archive entries and asynchronous operations. `src/archivebackend.cpp` owns command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `src/mainwindow.h` owns dialogs, table presentation and the explicit filesystem / loading / viewing / operating states. The address bar and table show the current directory until an archive is opened. Directory history and the source directory for an opened archive are kept in the window; a failed or cancelled listing restores the directory. All command availability is updated from these states and the table selection. A direct 7-Zip API adapter can replace this backend later.
 
 The backend separates `7zz` output into complete lines across process reads, emits progress and current-file detail, and forwards each line to the UI. The window keeps the complete log of the current or last operation, including the final result. Its nonmodal progress dialog leaves the main window and log available while commands remain disabled by the window state. The Windows `7zFM` progress dialog shows the operation and current filename and has a messages view; the Qt menu command exposes the same information without changing the file-list layout.
 
 ## Functional target
 
-The Windows 7-Zip File Manager (`7zFM`) is the UI and interaction reference. New Qt Widgets features should follow its window structure, commands, dialogs, and workflow; necessary platform deviations must be documented. The MVP implements listing, add and extract. Test, copy/move, delete, properties, passwords and system integration remain disabled.
+The Windows 7-Zip File Manager (`7zFM`) is the UI and interaction reference. New Qt Widgets features should follow its window structure, commands, dialogs, and workflow; necessary platform deviations must be documented. The MVP implements filesystem listing and folder navigation, archive listing, add and extract. The Qt line edit replaces the Windows path combo box for stage 3.1; archive-internal folder navigation remains for stage 3.2. Test, copy/move, delete, properties, passwords and system integration remain disabled.
 
 ## Data and safety
 
