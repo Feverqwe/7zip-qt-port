@@ -6,6 +6,8 @@
 
 The port reproduces 7zFM workflows, command rules, and archive-operation semantics from upstream. Its cross-platform presentation is implemented here with Qt Widgets rather than by compiling or translating Win32 UI classes. Archive formats and compression remain the responsibility of the official 7-Zip engine, currently reached through `7zz` and `ArchiveBackend`; a future direct engine adapter would preserve that boundary. Record meaningful platform adaptations and remaining gaps in `docs/7zfm-parity.md`.
 
+`ArchiveBackend` remains the archive-operation boundary while functional 7zFM behavior is ported. Keep a traceable correspondence between upstream functional modules and our implementation: preserve the original grouping and recognizable names where Qt and the component boundaries allow it, and document the mapping in `docs/7zfm-parity.md`. For example, navigation from `PanelFolderChange.cpp` and sorting from `PanelSort.cpp` should remain distinct functional areas, even when their Win32 presentation code is replaced with Qt. The current process adapter contains no copy of the 7-Zip engine source; mirroring the engine's `Archive/`, `Compress/`, or `Crypto/` tree is not needed for these application-level ports.
+
 ## Components
 
 ```text
