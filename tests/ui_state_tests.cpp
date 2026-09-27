@@ -25,8 +25,9 @@ class ControlledBackend : public ArchiveBackend {
         lastArchive = archive;
         busy_ = true;
     }
-    void extract(const QString &, const QString &, const QStringList &) override {
+    void extract(const QString &, const QString &, const QStringList &selected) override {
         ++extractCalls;
+        lastSelected = selected;
         busy_ = true;
     }
     void create(const QString &, const QStringList &) override {
@@ -56,6 +57,7 @@ class ControlledBackend : public ArchiveBackend {
     int createCalls = 0;
     int cancelCalls = 0;
     QString lastArchive;
+    QStringList lastSelected;
 
   private:
     bool busy_ = false;
@@ -74,6 +76,18 @@ class MainWindowStateTests : public QObject {
         Q_ASSERT(result);
         return result;
     }
+    static int rowWithPath(MainWindow &window, const QString &path) {
+        for (int row = 0; row < table(window)->rowCount(); ++row) {
+            if (table(window)->item(row, 0)->data(Qt::UserRole).toString() == path)
+                return row;
+        }
+        return -1;
+    }
+    static void openRow(MainWindow &window, int row) {
+        QVERIFY(row >= 0);
+        QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
+                                          Q_ARG(int, row), Q_ARG(int, 0)));
+    }
     static void dismissWarnings() {
         for (QWidget *widget : QApplication::topLevelWidgets()) {
             if (auto *box = qobject_cast<QMessageBox *>(widget))
@@ -82,6 +96,109 @@ class MainWindowStateTests : public QObject {
     }
 
   private slots:
+    void archiveTreeSortSelectionAndEmptyFolders() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        const QString longName = QString(150, QLatin1Char('x')) + QStringLiteral(" δ.txt");
+        window.openArchive("tree.7z");
+        backend.completeList({ArchiveEntry{QStringLiteral("пустая папка"), 0, 0, {}, true},
+                              ArchiveEntry{QStringLiteral("папка с пробелом/глубже/10.txt"), 10, 8},
+                              ArchiveEntry{QStringLiteral("папка с пробелом/глубже/2.txt"), 2, 2},
+                              ArchiveEntry{QStringLiteral("папка с пробелом/") + longName, 20, 5},
+                              ArchiveEntry{QStringLiteral("root.txt"), 1, 1}});
+        QCOMPARE(table(window)->rowCount(), 3);
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "upAction")->isEnabled());
+        const int empty = rowWithPath(window, QStringLiteral("пустая папка"));
+        const int rootFile = rowWithPath(window, QStringLiteral("root.txt"));
+        QVERIFY(empty >= 0);
+        QVERIFY(rootFile >= 0);
+        table(window)->selectionModel()->select(table(window)->model()->index(empty, 0),
+                                                QItemSelectionModel::Select |
+                                                    QItemSelectionModel::Rows);
+        table(window)->selectionModel()->select(table(window)->model()->index(rootFile, 0),
+                                                QItemSelectionModel::Select |
+                                                    QItemSelectionModel::Rows);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        window.extractTo("/temporary/destination", true);
+        QVERIFY(backend.lastSelected.contains(QStringLiteral("пустая папка")));
+        QVERIFY(backend.lastSelected.contains(QStringLiteral("root.txt")));
+        backend.cancel();
+        const int folder = rowWithPath(window, QStringLiteral("папка с пробелом"));
+        QVERIFY(folder >= 0);
+        QVERIFY(table(window)->item(folder, 0)->data(Qt::UserRole + 1).toBool());
+        openRow(window, folder);
+        QCOMPARE(table(window)->rowCount(), 2);
+        QVERIFY(action(window, "upAction")->isEnabled());
+        QVERIFY(window.findChild<QLineEdit *>("archivePath")
+                    ->text()
+                    .endsWith(QStringLiteral(" / папка с пробелом")));
+        const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
+        if (!screenshotDir.isEmpty()) {
+            QVERIFY(QDir().mkpath(screenshotDir));
+            for (const QSize size : {QSize(980, 620), QSize(720, 480), QSize(640, 400)}) {
+                window.resize(size);
+                window.show();
+                QCoreApplication::processEvents();
+                const QString imagePath =
+                    screenshotDir + "/" + QSysInfo::productType() +
+                    QStringLiteral("-archive-%1x%2.png").arg(size.width()).arg(size.height());
+                QVERIFY(window.grab().save(imagePath));
+            }
+        }
+        const int file = rowWithPath(window, QStringLiteral("папка с пробелом/") + longName);
+        QVERIFY(file >= 0);
+        openRow(window, file);
+        QCOMPARE(table(window)->rowCount(), 2);
+        QCOMPARE(rowWithPath(window, QStringLiteral("папка с пробелом/") + longName), file);
+        openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом/глубже")));
+        QCOMPARE(table(window)->rowCount(), 2);
+        table(window)->sortItems(2, Qt::DescendingOrder);
+        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("10.txt"));
+        QCOMPARE(table(window)->item(1, 0)->text(), QStringLiteral("2.txt"));
+        table(window)->selectRow(1);
+        QVERIFY(action(window, "extractSelectedAction")->isEnabled());
+        window.extractTo("/temporary/destination", true);
+        QCOMPARE(backend.lastSelected,
+                 QStringList{QStringLiteral("папка с пробелом/глубже/2.txt")});
+        backend.cancel();
+        action(window, "upAction")->trigger();
+        QCOMPARE(table(window)->rowCount(), 2);
+        action(window, "backAction")->trigger();
+        QCOMPARE(table(window)->rowCount(), 3);
+        openRow(window, rowWithPath(window, QStringLiteral("пустая папка")));
+        QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        action(window, "upAction")->trigger();
+        QCOMPARE(table(window)->rowCount(), 3);
+    }
+
+    void reopenFailureAndCancellationAfterFolderNavigation() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("one.zip");
+        backend.completeList({ArchiveEntry{QStringLiteral("nested/file.txt"), 1, 1}});
+        openRow(window, rowWithPath(window, QStringLiteral("nested")));
+        window.openArchive("two.7z");
+        QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(!action(window, "upAction")->isEnabled());
+        backend.cancel();
+        QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
+                 QFileInfo(QDir::currentPath()).canonicalFilePath());
+        window.openArchive("three.zip");
+        backend.completeList({});
+        QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(!action(window, "upAction")->isEnabled());
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        window.openArchive("failed.7z");
+        QTimer::singleShot(0, &window, [] { dismissWarnings(); });
+        backend.fail(QStringLiteral("7zz не запустился."));
+        QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
+                 QFileInfo(QDir::currentPath()).canonicalFilePath());
+        QVERIFY(!action(window, "upAction")->isEnabled());
+    }
+
     void reopeningAndEmptyArchive() {
         ControlledBackend backend;
         MainWindow window(&backend);

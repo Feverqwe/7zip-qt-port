@@ -3,6 +3,7 @@
 #include "archivebackend.h"
 
 #include <QAction>
+#include <QApplication>
 #include <QDialog>
 #include <QDir>
 #include <QFileDialog>
@@ -11,6 +12,7 @@
 #include <QKeySequence>
 #include <QLineEdit>
 #include <QMainWindow>
+#include <QMap>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -18,10 +20,27 @@
 #include <QProgressDialog>
 #include <QSizePolicy>
 #include <QStatusBar>
+#include <QStyle>
 #include <QTableWidget>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QWidget>
+
+class ArchiveTableItem : public QTableWidgetItem {
+  public:
+    using QTableWidgetItem::QTableWidgetItem;
+    bool operator<(const QTableWidgetItem &other) const override {
+        if (data(Qt::UserRole + 1).toBool() != other.data(Qt::UserRole + 1).toBool())
+            return data(Qt::UserRole + 1).toBool();
+        if (data(Qt::UserRole + 2).isValid() && other.data(Qt::UserRole + 2).isValid()) {
+            const qint64 left = data(Qt::UserRole + 2).toLongLong();
+            const qint64 right = other.data(Qt::UserRole + 2).toLongLong();
+            if (left != right)
+                return left < right;
+        }
+        return QString::localeAwareCompare(text(), other.text()) < 0;
+    }
+};
 
 class MainWindow : public QMainWindow {
   public:
@@ -35,6 +54,8 @@ class MainWindow : public QMainWindow {
         toolbar->setMovable(false);
         back_ = toolbar->addAction("Назад", this, [this] { goBack(); });
         back_->setObjectName("backAction");
+        up_ = toolbar->addAction("Вверх", this, [this] { goUp(); });
+        up_->setObjectName("upAction");
         auto *open = menu->addAction("Открыть…", this, [this] { openDialog(); });
         open->setObjectName("openArchiveAction");
         open->setShortcut(QKeySequence::Open);
@@ -77,6 +98,8 @@ class MainWindow : public QMainWindow {
         table_->setSelectionBehavior(QAbstractItemView::SelectRows);
         table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
         table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+        table_->setSortingEnabled(true);
+        table_->sortItems(0, Qt::AscendingOrder);
         layout->addWidget(table_);
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
@@ -93,18 +116,8 @@ class MainWindow : public QMainWindow {
                     if (state_ != State::Loading)
                         return;
                     entries_ = entries;
-                    table_->setRowCount(entries.size());
-                    for (int row = 0; row < entries.size(); ++row) {
-                        const auto &entry = entries[row];
-                        const QStringList values = {QFileInfo(entry.path).fileName(), entry.path,
-                                                    QString::number(entry.size),
-                                                    QString::number(entry.packedSize),
-                                                    entry.modified};
-                        for (int col = 0; col < values.size(); ++col)
-                            table_->setItem(row, col, new QTableWidgetItem(values[col]));
-                    }
+                    showArchiveFolder({});
                     setState(State::Viewing);
-                    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(entries.size()));
                 });
         connect(backend_, &ArchiveBackend::outputReceived, this,
                 [this](const QString &line) { appendJournal(line); });
@@ -155,6 +168,7 @@ class MainWindow : public QMainWindow {
         else if (returnDirectory_.isEmpty())
             returnDirectory_ = QFileInfo(archive_).absolutePath();
         entries_.clear();
+        archiveFolder_.clear();
         table_->setRowCount(0);
         path_->setText(archive_);
         setState(State::Loading);
@@ -167,8 +181,21 @@ class MainWindow : public QMainWindow {
             return;
         QStringList names;
         if (onlySelected) {
-            for (const QModelIndex &index : table_->selectionModel()->selectedRows())
-                names << entries_[index.row()].path;
+            for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
+                const auto *item = table_->item(index.row(), 0);
+                const QString path = item->data(Qt::UserRole).toString();
+                if (item->data(Qt::UserRole + 1).toBool()) {
+                    for (const ArchiveEntry &entry : entries_) {
+                        QString normalized = entry.path;
+                        if (normalized.endsWith('/'))
+                            normalized.chop(1);
+                        if (normalized == path || normalized.startsWith(path + '/'))
+                            names << entry.path;
+                    }
+                } else
+                    names << path;
+            }
+            names.removeDuplicates();
             if (names.isEmpty())
                 return;
         }
@@ -184,7 +211,7 @@ class MainWindow : public QMainWindow {
         const QFileInfo info(path);
         if (!info.isDir()) {
             statusBar()->showMessage("Папка не найдена: " + path);
-            path_->setText(state_ == State::Viewing ? archive_ : directory_);
+            path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
             return;
         }
         const QString next = info.canonicalFilePath();
@@ -192,8 +219,10 @@ class MainWindow : public QMainWindow {
             history_.append(directory_);
         directory_ = next;
         archive_.clear();
+        archiveFolder_.clear();
         entries_.clear();
         table_->clearSelection();
+        table_->setSortingEnabled(false);
         table_->setRowCount(0);
         path_->setText(directory_);
         const QFileInfoList files =
@@ -207,14 +236,25 @@ class MainWindow : public QMainWindow {
             const QStringList values = {file.fileName(), file.absoluteFilePath(),
                                         file.isDir() ? QString() : QString::number(file.size()),
                                         QString(), file.lastModified().toString(Qt::ISODate)};
-            for (int col = 0; col < values.size(); ++col)
-                table_->setItem(row, col, new QTableWidgetItem(values[col]));
+            for (int col = 0; col < values.size(); ++col) {
+                auto *item = new ArchiveTableItem(values[col]);
+                item->setData(Qt::UserRole + 1, file.isDir());
+                if (col == 0)
+                    item->setIcon(QApplication::style()->standardIcon(
+                        file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+                if (col == 2 && !file.isDir())
+                    item->setData(Qt::UserRole + 2, file.size());
+                table_->setItem(row, col, item);
+            }
         }
+        table_->setSortingEnabled(true);
         setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
     }
     void navigateTo(const QString &path) {
         if (state_ == State::Loading || state_ == State::Operating)
+            return;
+        if (state_ == State::Viewing && path == archiveDisplayPath())
             return;
         const QFileInfo info(path);
         if (info.isDir())
@@ -224,22 +264,95 @@ class MainWindow : public QMainWindow {
             openArchive(path);
         else {
             statusBar()->showMessage("Путь не найден или тип файла не поддерживается: " + path);
-            path_->setText(state_ == State::Viewing ? archive_ : directory_);
+            path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
         }
     }
     void activateRow(int row) {
-        if (state_ != State::Filesystem || row < 0 || row >= table_->rowCount())
+        if (row < 0 || row >= table_->rowCount())
             return;
-        navigateTo(table_->item(row, 1)->text());
+        if (state_ == State::Filesystem)
+            navigateTo(table_->item(row, 1)->text());
+        else if (state_ == State::Viewing && table_->item(row, 0)->data(Qt::UserRole + 1).toBool())
+            showArchiveFolder(table_->item(row, 0)->data(Qt::UserRole).toString());
     }
     void goBack() {
         if (state_ == State::Loading || state_ == State::Operating)
             return;
         if (state_ == State::Viewing) {
-            showDirectory(returnDirectory_, false);
+            if (archiveFolder_.isEmpty())
+                showDirectory(returnDirectory_, false);
+            else
+                goUp();
         } else if (!history_.isEmpty()) {
             showDirectory(history_.takeLast(), false);
         }
+    }
+    void goUp() {
+        if (state_ != State::Viewing || archiveFolder_.isEmpty())
+            return;
+        const int separator = archiveFolder_.lastIndexOf('/');
+        showArchiveFolder(separator < 0 ? QString() : archiveFolder_.left(separator));
+    }
+    QString archiveDisplayPath() const {
+        return archive_ +
+               (archiveFolder_.isEmpty() ? QString() : QStringLiteral(" / ") + archiveFolder_);
+    }
+    void showArchiveFolder(const QString &folder) {
+        archiveFolder_ = folder;
+        QMap<QString, ArchiveEntry> children;
+        const QString prefix = folder.isEmpty() ? QString() : folder + '/';
+        for (const ArchiveEntry &entry : entries_) {
+            QString path = entry.path;
+            if (path.endsWith('/'))
+                path.chop(1);
+            if (!path.startsWith(prefix) || path == folder)
+                continue;
+            const QString relative = path.mid(prefix.size());
+            const int slash = relative.indexOf('/');
+            const QString name = slash < 0 ? relative : relative.left(slash);
+            if (name.isEmpty())
+                continue;
+            const QString childPath = prefix + name;
+            if (slash >= 0) {
+                if (!children.contains(name)) {
+                    ArchiveEntry implicit;
+                    implicit.path = childPath;
+                    implicit.directory = true;
+                    children.insert(name, implicit);
+                }
+            } else {
+                ArchiveEntry visible = entry;
+                visible.path = childPath;
+                children.insert(name, visible);
+            }
+        }
+        table_->setSortingEnabled(false);
+        table_->clearSelection();
+        table_->setRowCount(0);
+        for (auto it = children.cbegin(); it != children.cend(); ++it) {
+            const ArchiveEntry &entry = it.value();
+            const int row = table_->rowCount();
+            table_->insertRow(row);
+            const QStringList values = {
+                it.key(), entry.path, entry.directory ? QString() : QString::number(entry.size),
+                entry.directory ? QString() : QString::number(entry.packedSize), entry.modified};
+            for (int col = 0; col < values.size(); ++col) {
+                auto *item = new ArchiveTableItem(values[col]);
+                item->setData(Qt::UserRole, entry.path);
+                item->setData(Qt::UserRole + 1, entry.directory);
+                item->setToolTip(entry.path);
+                if (col == 0)
+                    item->setIcon(QApplication::style()->standardIcon(
+                        entry.directory ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+                if (!entry.directory && (col == 2 || col == 3))
+                    item->setData(Qt::UserRole + 2, col == 2 ? entry.size : entry.packedSize);
+                table_->setItem(row, col, item);
+            }
+        }
+        table_->setSortingEnabled(true);
+        path_->setText(archiveDisplayPath());
+        statusBar()->showMessage(QStringLiteral("%1 объектов").arg(children.size()));
+        refreshActions();
     }
     void setState(State state) {
         state_ = state;
@@ -253,6 +366,7 @@ class MainWindow : public QMainWindow {
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
         back_->setEnabled(idle && (state_ == State::Viewing || !history_.isEmpty()));
+        up_->setEnabled(idle && state_ == State::Viewing && !archiveFolder_.isEmpty());
         path_->setReadOnly(!idle);
     }
     void appendJournal(const QString &line) {
@@ -326,6 +440,7 @@ class MainWindow : public QMainWindow {
 
     ArchiveBackend *backend_ = nullptr;
     QString archive_;
+    QString archiveFolder_;
     State state_ = State::Filesystem;
     State previousState_ = State::Filesystem;
     QList<ArchiveEntry> entries_;
@@ -346,4 +461,5 @@ class MainWindow : public QMainWindow {
     QAction *extract_ = nullptr;
     QAction *selected_ = nullptr;
     QAction *back_ = nullptr;
+    QAction *up_ = nullptr;
 };
