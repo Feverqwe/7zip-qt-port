@@ -5,6 +5,7 @@
 #include <QMainWindow>
 #include <QStatusBar>
 #include <QTableWidget>
+#include <QTimer>
 #include <QToolBar>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -19,7 +20,8 @@ int main(int argc, char *argv[]) {
 
     auto *toolbar = window.addToolBar("Архив");
     toolbar->setMovable(false);
-    for (const QString &title : {"Добавить", "Извлечь", "Тест", "Копировать", "Переместить", "Удалить", "Информация"}) {
+    for (const QString &title :
+         {"Добавить", "Извлечь", "Тест", "Копировать", "Переместить", "Удалить", "Информация"}) {
         auto *action = toolbar->addAction(title);
         action->setEnabled(false);
     }
@@ -39,5 +41,8 @@ int main(int argc, char *argv[]) {
     window.setCentralWidget(central);
     window.statusBar()->showMessage("Каркас интерфейса — операции с архивами ещё не подключены");
     window.show();
+    if (app.arguments().contains("--smoke-test")) {
+        QTimer::singleShot(0, &app, &QCoreApplication::quit);
+    }
     return app.exec();
 }

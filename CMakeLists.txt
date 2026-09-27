@@ -19,3 +19,12 @@ set_target_properties(sevenzip_desktop PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+
+include(CTest)
+
+if(BUILD_TESTING)
+    add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)
+    set_tests_properties(application_starts PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    )
+endif()
