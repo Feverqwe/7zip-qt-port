@@ -20,6 +20,7 @@
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QScopedPointer>
+#include <QSettings>
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
@@ -385,7 +386,7 @@ class MainWindowStateTests : public QObject {
 
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget))
+                if (auto *dialog = qobject_cast<CopyDialog *>(widget))
                     dialog->reject();
             }
         });
@@ -395,14 +396,16 @@ class MainWindowStateTests : public QObject {
         const QString destination = temp.filePath("destination");
         QTimer::singleShot(0, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
-                    dialog->setTextValue(destination);
+                if (auto *dialog = qobject_cast<CopyDialog *>(widget)) {
+                    dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
                     dialog->accept();
                 }
             }
         });
         action(window, "copyAction")->trigger();
         const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        QCOMPARE(settings.value("copy/history").toStringList().first(), destination);
         QFile copiedFile(copied);
         QVERIFY(copiedFile.open(QIODevice::ReadOnly));
         QCOMPARE(copiedFile.readAll(), QByteArray("original"));
@@ -410,9 +413,9 @@ class MainWindowStateTests : public QObject {
         QTimer warningTimer;
         connect(&warningTimer, &QTimer::timeout, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                if (auto *dialog = qobject_cast<CopyDialog *>(widget);
                     dialog && dialog->isVisible()) {
-                    dialog->setTextValue(destination);
+                    dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
                     dialog->accept();
                 }
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
@@ -427,9 +430,9 @@ class MainWindowStateTests : public QObject {
         QTimer moveErrorTimer;
         connect(&moveErrorTimer, &QTimer::timeout, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                if (auto *dialog = qobject_cast<CopyDialog *>(widget);
                     dialog && dialog->isVisible()) {
-                    dialog->setTextValue(destination);
+                    dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
                     dialog->accept();
                 }
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
@@ -485,9 +488,9 @@ class MainWindowStateTests : public QObject {
         table(window)->selectRow(filesystemRow(window, "move me.txt"));
         QTimer::singleShot(0, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
+                if (auto *dialog = qobject_cast<CopyDialog *>(widget);
                     dialog && dialog->isVisible()) {
-                    dialog->setTextValue(destination);
+                    dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
                     dialog->accept();
                 }
             }

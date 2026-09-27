@@ -1,6 +1,7 @@
 #pragma once
 
 #include "archivebackend.h"
+#include "copydialog.h"
 #include "createarchivedialog.h"
 
 #include <QAction>
@@ -1276,20 +1277,32 @@ class MainWindow : public QMainWindow {
         }
         if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
             return;
-        bool accepted = false;
-        const QString destination = QInputDialog::getText(
-            this, "Копировать", "Папка назначения:", QLineEdit::Normal, directory_, &accepted);
-        if (accepted)
-            transferFiles(selectedFilesystemPaths(), destination, false);
+        transferSelected(false);
     }
     void moveSelected() {
         if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
             return;
-        bool accepted = false;
-        const QString destination = QInputDialog::getText(
-            this, "Переместить", "Папка назначения:", QLineEdit::Normal, directory_, &accepted);
-        if (accepted)
-            transferFiles(selectedFilesystemPaths(), destination, true);
+        transferSelected(true);
+    }
+    void transferSelected(bool move) {
+        const QStringList sources = selectedFilesystemPaths();
+        if (state_ != State::Filesystem || sources.isEmpty())
+            return;
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        CopyDialog dialog(move, directory_, sources, settings.value("copy/history").toStringList(),
+                          this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QString destination = dialog.destination();
+        transferFiles(sources, destination, move);
+        if (!QFileInfo(destination).isDir())
+            return;
+        QStringList history = settings.value("copy/history").toStringList();
+        history.removeAll(destination);
+        history.prepend(destination);
+        while (history.size() > 20)
+            history.removeLast();
+        settings.setValue("copy/history", history);
     }
     void deleteSelected() {
         if (state_ == State::Viewing) {

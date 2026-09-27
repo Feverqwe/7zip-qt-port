@@ -6,9 +6,11 @@
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QImage>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QPixmap>
+#include <QPushButton>
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
@@ -22,6 +24,25 @@ class MainWindowLayoutTests : public QObject {
 
   private slots:
     void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+
+    void copyDialogMatches7zfmControls() {
+        CopyDialog dialog(false, "/initial", {"/tmp/имя с пробелом.txt"}, {"/previous", "/older"});
+        QCOMPARE(dialog.objectName(), QString("copyDialog"));
+        QCOMPARE(dialog.windowTitle(), QString("Копировать"));
+        auto *destination = dialog.findChild<QComboBox *>("copyDestination");
+        QVERIFY(destination);
+        QVERIFY(destination->isEditable());
+        QCOMPARE(destination->currentText(), QString("/initial"));
+        QCOMPARE(destination->itemText(0), QString("/previous"));
+        QVERIFY(dialog.findChild<QPushButton *>("copyBrowseButton"));
+        QVERIFY(dialog.findChild<QLabel *>("copySelectionInfo")
+                    ->text()
+                    .contains(QStringLiteral("имя с пробелом.txt")));
+        destination->setCurrentText("/changed");
+        QCOMPARE(dialog.destination(), QString("/changed"));
+        CopyDialog moveDialog(true, "/initial", {}, {});
+        QCOMPARE(moveDialog.windowTitle(), QString("Переместить"));
+    }
 
     void layoutAtSizes_data() {
         QTest::addColumn<QSize>("windowSize");
