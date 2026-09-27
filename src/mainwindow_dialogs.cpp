@@ -103,6 +103,21 @@ void MainWindow::openDialog() {
 void MainWindow::openFileViewer(const QString &path, bool editable) {
     FileViewerDialog dialog(path, editable, this);
     dialog.exec();
+    if (editable && state_ == State::Viewing && dialog.wasSaved() && viewTemporary_ &&
+        !pendingEditEntry_.isEmpty()) {
+        if (QMessageBox::question(this, QStringLiteral("Редактор"),
+                                  QStringLiteral("Обновить изменённый файл в архиве?")) ==
+            QMessageBox::Yes) {
+            previousState_ = state_;
+            updatingArchive_ = true;
+            replacingArchiveEntry_ = true;
+            setState(State::Operating);
+            begin(QStringLiteral("Обновление файла в архиве"), pendingEditEntry_);
+            backend_->replaceEntry(archive_, pendingEditEntry_, viewTemporary_->path());
+            return;
+        }
+    }
+    pendingEditEntry_.clear();
     viewTemporary_.reset();
     if (editable && state_ == State::Filesystem)
         showDirectory(directory_, false);

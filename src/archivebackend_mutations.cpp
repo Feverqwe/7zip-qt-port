@@ -282,3 +282,35 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
         return;
     start(Job::Rename, {"rn", "-y", "-bsp1", "-bb1", "--", createTemporary_, oldPath, newPath});
 }
+
+void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
+                                  const QString &sourceRoot) {
+    bool found = false;
+    for (const ArchiveEntry &item : entries_)
+        found |= item.path == entry && !item.directory && !item.link;
+    if (!found || !safePath(entry) || entry.contains('*') || entry.contains('?') ||
+        entry.startsWith('@')) {
+        emit finished(false, QStringLiteral("Этот файл архива нельзя заменить."));
+        return;
+    }
+    const QDir root(sourceRoot);
+    const QFileInfo source(root.filePath(entry));
+    if (!root.exists() || !source.isFile() || source.isSymLink() ||
+        !source.canonicalFilePath().startsWith(root.canonicalPath() + '/')) {
+        emit finished(false, QStringLiteral("Изменённый файл не найден."));
+        return;
+    }
+    QString part = root.absolutePath();
+    for (const QString &component : entry.split('/')) {
+        part = QDir(part).filePath(component);
+        if (QFileInfo(part).isSymLink()) {
+            emit finished(false, QStringLiteral("Ссылки во временном файле запрещены."));
+            return;
+        }
+    }
+    if (!prepareMutation(archive))
+        return;
+    replacementEntry_ = entry;
+    replacementRoot_ = root.absolutePath();
+    start(Job::ReplaceDelete, {"d", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, entry});
+}

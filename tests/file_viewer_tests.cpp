@@ -6,6 +6,7 @@
 #include <QDialogButtonBox>
 #include <QFile>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTableWidget>
@@ -39,8 +40,17 @@ class ViewerBackend : public ArchiveBackend {
         output.close();
         QTimer::singleShot(0, this, [this] { emit finished(true, "Извлечено."); });
     }
+    void replaceEntry(const QString &, const QString &entry, const QString &root) override {
+        replaced = entry;
+        QFile file(QDir(root).filePath(entry));
+        if (file.open(QIODevice::ReadOnly))
+            replacement = file.readAll();
+        QTimer::singleShot(0, this, [this] { emit finished(true, "Обновлено."); });
+    }
     QStringList extracted;
     QString temporary;
+    QString replaced;
+    QByteArray replacement;
     bool cancelExtraction = false;
 };
 
@@ -94,7 +104,7 @@ class FileViewerTests : public QObject {
         QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
         table->selectRow(0);
         QTRY_VERIFY(view->isEnabled());
-        QVERIFY(!edit->isEnabled());
+        QVERIFY(edit->isEnabled());
 
         bool displayed = false;
         QTimer::singleShot(0, &window, [&] {
@@ -112,6 +122,48 @@ class FileViewerTests : public QObject {
         QTRY_VERIFY(displayed);
         QCOMPARE(backend.extracted, QStringList({"folder/имя с пробелом.txt"}));
         QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
+    }
+
+    void archiveEditWritesBackSavedText() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        ViewerBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.openArchive(dir.filePath("test.7z"));
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *edit = window.findChild<QAction *>("editFileAction");
+        QVERIFY(table && edit);
+        QTRY_COMPARE(table->rowCount(), 1);
+        emit table->cellDoubleClicked(0, 0);
+        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+        table->selectRow(0);
+        QTRY_VERIFY(edit->isEnabled());
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            if (auto *question = window.findChild<QMessageBox *>()) {
+                if (question->isVisible())
+                    question->button(QMessageBox::Yes)->click();
+            }
+        });
+        answer.start(10);
+        QTimer::singleShot(30, &window, [&] {
+            auto *dialog = window.findChild<FileViewerDialog *>("fileViewerDialog");
+            QVERIFY(dialog);
+            auto *text = dialog->findChild<QPlainTextEdit *>("fileViewerText");
+            text->selectAll();
+            text->insertPlainText(QStringLiteral("новый текст\n"));
+            dialog->findChild<QPushButton *>("fileViewerSave")->click();
+            dialog->accept();
+        });
+        edit->trigger();
+        QTRY_COMPARE(backend.replaced, QStringLiteral("folder/имя с пробелом.txt"));
+        answer.stop();
+        QCOMPARE(backend.replacement, QStringLiteral("новый текст\n").toUtf8());
+        QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
+        QTRY_COMPARE(table->rowCount(), 1);
+        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+        QTRY_COMPARE(table->selectionModel()->selectedRows().size(), 1);
     }
 
     void openFileFromFilesystemAndArchive() {

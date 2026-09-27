@@ -169,7 +169,10 @@ void MainWindow::refreshActions() {
                     ->data(Qt::UserRole + 1)
                     .toBool();
     viewFile_->setEnabled(idle && oneFile);
-    editFile_->setEnabled(idle && oneFile && state_ == State::Filesystem);
+    editFile_->setEnabled(
+        idle && oneFile &&
+        (state_ == State::Filesystem ||
+         (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty())));
     split_->setEnabled(idle && state_ == State::Filesystem && oneFile &&
                        !QFileInfo(selectedFilesystemPaths().value(0)).isSymLink());
     combine_->setEnabled(split_->isEnabled() &&

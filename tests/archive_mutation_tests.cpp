@@ -4,6 +4,111 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
     Q_OBJECT
 
   private slots:
+    void replaceEditedEntry_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+    void replaceEditedEntry() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("папка с пробелом/файл.txt"));
+        QVERIFY(QDir().mkpath(QFileInfo(source).absolutePath()));
+        writeFile(source, "before");
+        const QString archive = temp.filePath("edited." + format);
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(entries.size(), 1);
+        const QString entry = entries.first().path;
+        QCOMPARE(entry.normalized(QString::NormalizationForm_C), QStringLiteral("файл.txt"));
+        QTemporaryDir edit;
+        QVERIFY(edit.isValid());
+        writeFile(edit.filePath(entry), "after");
+        QSignalSpy replaced(&backend, &ArchiveBackend::finished);
+        backend.replaceEntry(archive, entry, edit.path());
+        if (replaced.isEmpty())
+            QVERIFY(replaced.wait(30000));
+        const QList<QVariant> outcome = replaced.takeFirst();
+        QVERIFY2(outcome.at(0).toBool(), qPrintable(outcome.at(1).toString()));
+        backend.list(archive);
+        await(backend, true);
+        QTemporaryDir extracted;
+        QVERIFY(extracted.isValid());
+        backend.extract(archive, extracted.path(), {entry});
+        await(backend, true);
+        QFile result(extracted.filePath(entry));
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(result.readAll(), QByteArray("after"));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void rejectedReplacementPreservesArchive() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("original.txt");
+        const QString archive = temp.filePath("original.7z");
+        writeFile(source, "original");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QFile saved(archive);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        const QByteArray before = saved.readAll();
+        saved.close();
+        QTemporaryDir edit;
+        QVERIFY(edit.isValid());
+        writeFile(edit.filePath("original.txt"), "changed");
+        QSignalSpy failure(&backend, &ArchiveBackend::finished);
+        backend.replaceEntry(archive, "../original.txt", edit.path());
+        QCOMPARE(failure.size(), 1);
+        QVERIFY(!failure.takeFirst().at(0).toBool());
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QCOMPARE(saved.readAll(), before);
+    }
+    void cancelledReplacementPreservesArchive() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("original.txt");
+        const QString archive = temp.filePath("original.zip");
+        writeFile(source, "original");
+        ArchiveBackend real;
+        real.create(archive, {source});
+        await(real, true);
+        QFile saved(archive);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        const QByteArray before = saved.readAll();
+        saved.close();
+        QTemporaryDir edit;
+        QVERIFY(edit.isValid());
+        writeFile(edit.filePath("original.txt"), "changed");
+
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", "Path = original.txt\nSize = 8\n\n");
+        ArchiveBackend helper(nullptr, QCoreApplication::applicationFilePath());
+        helper.list(archive);
+        await(helper, true);
+        qunsetenv("SEVENZIP_TEST_LISTING");
+        qputenv("SEVENZIP_TEST_HELPER", "createpartial");
+        QSignalSpy output(&helper, &ArchiveBackend::outputReceived);
+        QSignalSpy result(&helper, &ArchiveBackend::finished);
+        helper.replaceEntry(archive, "original.txt", edit.path());
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        helper.cancel();
+        QVERIFY(result.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!result.takeFirst().at(0).toBool());
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QCOMPARE(saved.readAll(), before);
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
     void addToExisting_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QString("7z");

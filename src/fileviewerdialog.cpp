@@ -87,6 +87,7 @@ void FileViewerDialog::save() {
         return;
     }
     original_ = bytes;
+    wasSaved_ = true;
     text_->document()->setModified(false);
 }
 

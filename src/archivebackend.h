@@ -54,6 +54,8 @@ class ArchiveBackend : public QObject {
     virtual void remove(const QString &archive, const QStringList &paths);
     virtual void renameEntry(const QString &archive, const QString &oldPath,
                              const QString &newPath);
+    virtual void replaceEntry(const QString &archive, const QString &entry,
+                              const QString &sourceRoot);
     virtual void cancel();
     void providePassword(const QString &password);
 
@@ -66,7 +68,19 @@ class ArchiveBackend : public QObject {
     void passwordRequired();
 
   private:
-    enum class Job { None, List, ExtractCheck, Extract, Test, Create, Add, Delete, Rename };
+    enum class Job {
+        None,
+        List,
+        ExtractCheck,
+        Extract,
+        Test,
+        Create,
+        Add,
+        Delete,
+        Rename,
+        ReplaceDelete,
+        ReplaceAdd
+    };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
@@ -85,6 +99,8 @@ class ArchiveBackend : public QObject {
     QString createTarget_;
     QString createTemporary_;
     QString addBackup_;
+    QString replacementEntry_;
+    QString replacementRoot_;
     QList<ArchiveEntry> entries_;
     bool listed_ = false;
     bool cancelled_ = false;

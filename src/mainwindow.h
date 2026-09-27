@@ -482,4 +482,7 @@ class MainWindow : public QMainWindow {
     QString pendingViewPath_;
     bool pendingView_ = false;
     bool pendingExternalOpen_ = false;
+    bool pendingViewEditable_ = false;
+    QString pendingEditEntry_;
+    bool replacingArchiveEntry_ = false;
 };

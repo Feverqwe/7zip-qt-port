@@ -31,7 +31,7 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart && job_ != Job::None) {
             if (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete ||
-                job_ == Job::Rename)
+                job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
             pendingPassword_.clear();
@@ -220,7 +220,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (cancelled_) {
         extractPassword_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
-            completed == Job::Rename)
+            completed == Job::Rename || completed == Job::ReplaceDelete ||
+            completed == Job::ReplaceAdd)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
@@ -228,7 +229,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (status != QProcess::NormalExit || exitCode != 0) {
         extractPassword_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
-            completed == Job::Rename)
+            completed == Job::Rename || completed == Job::ReplaceDelete ||
+            completed == Job::ReplaceAdd)
             QFile::remove(createTemporary_);
         const bool wrongPassword =
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
@@ -246,13 +248,20 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         extractArguments_.clear();
         return;
     }
+    if (completed == Job::ReplaceDelete) {
+        start(Job::ReplaceAdd,
+              {"a", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, replacementEntry_},
+              replacementRoot_);
+        return;
+    }
     if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
         QFile::remove(createTemporary_);
         emit finished(false,
                       QStringLiteral("Не удалось сохранить новый архив: %1").arg(createTarget_));
         return;
     }
-    if (completed == Job::Add || completed == Job::Delete || completed == Job::Rename) {
+    if (completed == Job::Add || completed == Job::Delete || completed == Job::Rename ||
+        completed == Job::ReplaceAdd) {
         if (!QFile::rename(createTarget_, addBackup_)) {
             QFile::remove(createTemporary_);
             emit finished(false,
@@ -310,5 +319,6 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                         : completed == Job::Create ? QStringLiteral("Архив создан.")
                         : completed == Job::Delete ? QStringLiteral("Объекты удалены из архива.")
                         : completed == Job::Rename ? QStringLiteral("Объект переименован.")
-                                                   : QStringLiteral("Файлы добавлены."));
+                        : completed == Job::ReplaceAdd ? QStringLiteral("Файл обновлён в архиве.")
+                                                       : QStringLiteral("Файлы добавлены."));
 }

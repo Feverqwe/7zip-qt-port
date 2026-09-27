@@ -475,6 +475,16 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
             else
                 showDirectory(returnDirectory_, false);
         } else if (state_ == State::Operating) {
+            if (replacingArchiveEntry_) {
+                replacingArchiveEntry_ = false;
+                viewTemporary_.reset();
+                if (ok) {
+                    refreshing_ = true;
+                    refreshFolder_ = archiveFolder_;
+                    refreshSelection_ = {pendingEditEntry_};
+                }
+                pendingEditEntry_.clear();
+            }
             if (creating_)
                 showDirectory(directory_, false);
             else if (updatingArchive_ && ok) {
@@ -492,21 +502,25 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         if (pendingView_) {
             const QString file = pendingViewPath_;
             const bool external = pendingExternalOpen_;
+            const bool editable = pendingViewEditable_;
             pendingView_ = false;
             pendingExternalOpen_ = false;
+            pendingViewEditable_ = false;
             pendingViewPath_.clear();
             if (ok && QFileInfo(file).isFile()) {
-                QTimer::singleShot(0, this, [this, file, external] {
+                QTimer::singleShot(0, this, [this, file, external, editable] {
                     if (external) {
                         if (openLocalFile(file))
                             openedTemporaries_.push_back(std::move(viewTemporary_));
                         else
                             viewTemporary_.reset();
                     } else
-                        openFileViewer(file, false);
+                        openFileViewer(file, editable);
                 });
-            } else
+            } else {
+                pendingEditEntry_.clear();
                 viewTemporary_.reset();
+            }
         }
         if (pendingNested_) {
             if (finishNestedExtraction(ok))

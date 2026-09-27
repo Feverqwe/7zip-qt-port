@@ -32,7 +32,7 @@ void MainWindow::viewSelectedFile(bool editable) {
             openFileViewer(path, editable);
         return;
     }
-    if (editable)
+    if (editable && (info_.encrypted || !archiveParents_.empty()))
         return;
     const QString entry = table_->item(row, 0)->data(Qt::UserRole).toString();
     for (const ArchiveEntry &item : entries_) {
@@ -51,9 +51,11 @@ void MainWindow::viewSelectedFile(bool editable) {
     pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
     pendingView_ = true;
     pendingExternalOpen_ = false;
+    pendingViewEditable_ = editable;
+    pendingEditEntry_ = editable ? entry : QString();
     previousState_ = state_;
     setState(State::Operating);
-    begin("Просмотр файла", entry);
+    begin(editable ? "Редактирование файла" : "Просмотр файла", entry);
     backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
 }
 

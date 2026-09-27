@@ -9,6 +9,7 @@ class FileViewerDialog : public QDialog {
 
   public:
     FileViewerDialog(const QString &path, bool editable, QWidget *parent = nullptr);
+    bool wasSaved() const { return wasSaved_; }
 
   private:
     void save();
@@ -17,6 +18,6 @@ class FileViewerDialog : public QDialog {
     QString path_;
     QPlainTextEdit *text_ = nullptr;
     bool editable_ = false;
-    bool changedOnDisk_ = false;
+    bool wasSaved_ = false;
     QByteArray original_;
 };
