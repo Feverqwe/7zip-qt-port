@@ -5,6 +5,7 @@
 #include "copydialog.h"
 #include "createarchivedialog.h"
 #include "extractdialog.h"
+#include "filesystemscanner.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -42,6 +43,7 @@
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
+#include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QStackedWidget>
 #include <QStandardPaths>
@@ -259,6 +261,31 @@ class MainWindow : public QMainWindow {
         }
         sortActions_[0]->setChecked(true);
         viewMenu->addSeparator();
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        flatDisk_ = settings.value("view/flatDisk", false).toBool();
+        flatArchive_ = settings.value("view/flatArchive", false).toBool();
+        flatView_ = viewMenu->addAction("Плоский вид");
+        flatView_->setObjectName("flatViewAction");
+        flatView_->setCheckable(true);
+        flatView_->setChecked(flatDisk_);
+        connect(flatView_, &QAction::toggled, this, [this](bool enabled) {
+            QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+            const QStringList selection = selectedPaths();
+            if (state_ == State::Viewing) {
+                flatArchive_ = enabled;
+                settings.setValue("view/flatArchive", enabled);
+                showArchiveFolder(archiveFolder_);
+            } else if (state_ == State::Filesystem) {
+                flatDisk_ = enabled;
+                settings.setValue("view/flatDisk", enabled);
+                showDirectory(directory_, false);
+                if (scanningDisk_)
+                    scanSelection_ = selection;
+            }
+            if (!scanningDisk_)
+                selectPaths(selection);
+        });
+        viewMenu->addSeparator();
         auto *toolbarsMenu = viewMenu->addMenu("Панели инструментов");
         auto addToolbarOption = [this, toolbarsMenu](const QString &title, const char *name,
                                                      bool checked) {
@@ -269,7 +296,6 @@ class MainWindow : public QMainWindow {
             connect(option, &QAction::toggled, this, [this] { updateToolbar(); });
             return option;
         };
-        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
         archiveToolbarOption_ = addToolbarOption("Архивная панель", "archiveToolbarOption",
                                                  settings.value("toolbar/archive", true).toBool());
         standardToolbarOption_ =
@@ -458,6 +484,23 @@ class MainWindow : public QMainWindow {
                 [this](int index) { navigateTo(pathCombo_->itemText(index)); });
         connect(table_, &QTableWidget::cellDoubleClicked, this,
                 [this](int row, int) { activateRow(row); });
+        filesystemScanner_ = new FilesystemScanner(this);
+        connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
+                [this](const QFileInfoList &files) {
+                    for (const QFileInfo &file : files)
+                        appendFilesystemEntry(file);
+                    statusBar()->showMessage(
+                        QStringLiteral("Сканирование: %1 объектов…").arg(table_->rowCount()));
+                });
+        connect(filesystemScanner_, &FilesystemScanner::completed, this, [this] {
+            scanningDisk_ = false;
+            table_->setSortingEnabled(true);
+            applySortMode();
+            selectPaths(scanSelection_);
+            scanSelection_.clear();
+            refreshActions();
+            statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
+        });
         showDirectory(QDir::currentPath(), false);
         refreshActions();
         connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
@@ -482,6 +525,10 @@ class MainWindow : public QMainWindow {
                             break;
                         const int separator = folder.lastIndexOf('/');
                         folder = separator < 0 ? QString() : folder.left(separator);
+                    }
+                    {
+                        const QSignalBlocker blocked(flatView_);
+                        flatView_->setChecked(flatArchive_);
                     }
                     showArchiveFolder(folder);
                     pendingBookmarkFolder_.clear();
@@ -563,6 +610,9 @@ class MainWindow : public QMainWindow {
                                  "Поддерживаются только архивы .7z и .zip.");
             return;
         }
+        filesystemScanner_->cancel();
+        scanningDisk_ = false;
+        scanSelection_.clear();
         archive_ = QFileInfo(path).absoluteFilePath();
         archivePassword_.clear();
         if (infoDialog_)
@@ -949,11 +999,18 @@ class MainWindow : public QMainWindow {
         const QString next = info.canonicalFilePath();
         if (remember && !directory_.isEmpty() && directory_ != next)
             history_.append(directory_);
+        filesystemScanner_->cancel();
+        scanningDisk_ = false;
+        scanSelection_.clear();
         directory_ = next;
         recordVisitedPath(directory_);
         archive_.clear();
         archivePassword_.clear();
         archiveFolder_.clear();
+        {
+            const QSignalBlocker blocked(flatView_);
+            flatView_->setChecked(flatDisk_);
+        }
         pendingBookmarkFolder_.clear();
         refreshing_ = false;
         refreshFolder_.clear();
@@ -963,42 +1020,53 @@ class MainWindow : public QMainWindow {
         table_->setSortingEnabled(false);
         table_->setRowCount(0);
         path_->setText(directory_);
-        const QFileInfoList files = QDir(directory_)
-                                        .entryInfoList(QDir::AllEntries | QDir::NoDotAndDotDot |
-                                                           QDir::Hidden | QDir::System,
-                                                       QDir::NoSort);
-        for (const QFileInfo &file : files) {
-            const int row = table_->rowCount();
-            table_->insertRow(row);
-            const QStringList values = {file.fileName(),
-                                        file.absoluteFilePath(),
-                                        file.isDir() ? QString() : QString::number(file.size()),
-                                        QString(),
-                                        file.lastModified().toString(Qt::ISODate),
-                                        file.isDir() ? QString() : file.suffix().toCaseFolded(),
-                                        QString::number(row)};
-            for (int col = 0; col < values.size(); ++col) {
-                auto *item = new ArchiveTableItem(values[col]);
-                item->setData(Qt::UserRole + 1, file.isDir());
-                item->setData(Qt::UserRole + 3, file.fileName());
-                if (col == 0)
-                    item->setIcon(QApplication::style()->standardIcon(
-                        file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
-                if (col == 2 && !file.isDir())
-                    item->setData(Qt::UserRole + 2, file.size());
-                if (col == 6)
-                    item->setData(Qt::UserRole + 2, row);
-                if (col == 2 || col == 3)
-                    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-                table_->setItem(row, col, item);
-            }
-        }
-        table_->setSortingEnabled(true);
-        applySortMode();
+        const QDir::Filters filter =
+            QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System;
         static_cast<FileTable *>(table_)->filesystem = true;
         table_->setColumnHidden(3, true);
-        setState(State::Filesystem);
-        statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
+        if (flatDisk_) {
+            scanningDisk_ = true;
+            setState(State::Filesystem);
+            statusBar()->showMessage("Сканирование вложенных папок…");
+            filesystemScanner_->start(directory_, filter);
+        } else {
+            const QFileInfoList files = QDir(directory_).entryInfoList(filter, QDir::NoSort);
+            for (const QFileInfo &file : files)
+                appendFilesystemEntry(file);
+            table_->setSortingEnabled(true);
+            applySortMode();
+            setState(State::Filesystem);
+            statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
+        }
+    }
+    void appendFilesystemEntry(const QFileInfo &file) {
+        const int row = table_->rowCount();
+        table_->insertRow(row);
+        const QString displayName = flatDisk_
+                                        ? QDir(directory_).relativeFilePath(file.absoluteFilePath())
+                                        : file.fileName();
+        const QStringList values = {displayName,
+                                    file.absoluteFilePath(),
+                                    file.isDir() ? QString() : QString::number(file.size()),
+                                    QString(),
+                                    file.lastModified().toString(Qt::ISODate),
+                                    file.isDir() ? QString() : file.suffix().toCaseFolded(),
+                                    QString::number(row)};
+        for (int col = 0; col < values.size(); ++col) {
+            auto *item = new ArchiveTableItem(values[col]);
+            item->setData(Qt::UserRole + 1, file.isDir());
+            item->setData(Qt::UserRole + 3, file.fileName());
+            if (col == 0)
+                item->setIcon(QApplication::style()->standardIcon(
+                    file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+            if (col == 2 && !file.isDir())
+                item->setData(Qt::UserRole + 2, file.size());
+            if (col == 6)
+                item->setData(Qt::UserRole + 2, row);
+            if (col == 2 || col == 3)
+                item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            table_->setItem(row, col, item);
+        }
     }
     QStringList selectedPaths() const {
         QStringList paths;
@@ -1019,7 +1087,10 @@ class MainWindow : public QMainWindow {
         if (state_ == State::Filesystem) {
             const QStringList selection = selectedPaths();
             showDirectory(directory_, false);
-            selectPaths(selection);
+            if (scanningDisk_)
+                scanSelection_ = selection;
+            else
+                selectPaths(selection);
         } else if (state_ == State::Viewing) {
             refreshing_ = true;
             refreshFolder_ = archiveFolder_;
@@ -1181,6 +1252,7 @@ class MainWindow : public QMainWindow {
         QMap<QString, ArchiveEntry> children;
         QMap<QString, int> sourceOrder;
         const QString prefix = folder.isEmpty() ? QString() : folder + '/';
+        const bool flat = flatView_->isChecked();
         for (const ArchiveEntry &entry : entries_) {
             QString path = entry.path;
             if (path.endsWith('/'))
@@ -1189,13 +1261,13 @@ class MainWindow : public QMainWindow {
                 continue;
             const QString relative = path.mid(prefix.size());
             const int slash = relative.indexOf('/');
-            const QString name = slash < 0 ? relative : relative.left(slash);
+            const QString name = flat || slash < 0 ? relative : relative.left(slash);
             if (name.isEmpty())
                 continue;
             if (!sourceOrder.contains(name))
                 sourceOrder.insert(name, sourceOrder.size());
             const QString childPath = prefix + name;
-            if (slash >= 0) {
+            if (!flat && slash >= 0) {
                 if (!children.contains(name)) {
                     ArchiveEntry implicit;
                     implicit.path = childPath;
@@ -1206,6 +1278,20 @@ class MainWindow : public QMainWindow {
                 ArchiveEntry visible = entry;
                 visible.path = childPath;
                 children.insert(name, visible);
+            }
+            if (flat) {
+                int separator = relative.indexOf('/');
+                while (separator >= 0) {
+                    const QString parent = relative.left(separator);
+                    if (!children.contains(parent)) {
+                        ArchiveEntry implicit;
+                        implicit.path = prefix + parent;
+                        implicit.directory = true;
+                        children.insert(parent, implicit);
+                        sourceOrder.insert(parent, sourceOrder.size());
+                    }
+                    separator = relative.indexOf('/', separator + 1);
+                }
             }
         }
         table_->setSortingEnabled(false);
@@ -1252,11 +1338,13 @@ class MainWindow : public QMainWindow {
         refreshActions();
     }
     void refreshActions() {
-        const bool idle = state_ != State::Loading && state_ != State::Operating;
+        const bool navigating = state_ != State::Loading && state_ != State::Operating;
+        const bool idle = navigating && !scanningDisk_;
         for (QAction *action : sortActions_)
             action->setEnabled(idle);
         for (QAction *action : viewActions_)
             action->setEnabled(idle);
+        flatView_->setEnabled(navigating);
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
         add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted);
@@ -1266,8 +1354,8 @@ class MainWindow : public QMainWindow {
         infoAction_->setEnabled(idle && state_ == State::Viewing);
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
-        back_->setEnabled(idle && (state_ == State::Viewing || !history_.isEmpty()));
-        up_->setEnabled(idle && state_ == State::Viewing && !archiveFolder_.isEmpty());
+        back_->setEnabled(navigating && (state_ == State::Viewing || !history_.isEmpty()));
+        up_->setEnabled(navigating && state_ == State::Viewing && !archiveFolder_.isEmpty());
         bool canOpenItem = false;
         const int row = table_->currentRow();
         if (idle && row >= 0 && row < table_->rowCount()) {
@@ -1282,8 +1370,9 @@ class MainWindow : public QMainWindow {
             }
         }
         openItem_->setEnabled(canOpenItem);
-        parent_->setEnabled(idle && (state_ == State::Viewing ||
-                                     (state_ == State::Filesystem && QDir(directory_).cdUp())));
+        parent_->setEnabled(
+            navigating &&
+            (state_ == State::Viewing || (state_ == State::Filesystem && QDir(directory_).cdUp())));
         selectAll_->setEnabled(idle && table_->rowCount() > 0);
         const bool selected = !table_->selectionModel()->selectedRows().isEmpty();
         deselectAll_->setEnabled(idle && selected);
@@ -1315,7 +1404,7 @@ class MainWindow : public QMainWindow {
         iconList_->setEnabled(idle);
         table_->setDragEnabled(idle && state_ == State::Filesystem);
         iconList_->setDragEnabled(idle && state_ == State::Filesystem);
-        path_->setReadOnly(!idle);
+        path_->setReadOnly(!navigating);
     }
     void appendJournal(const QString &line) {
         journalText_ += line + '\n';
@@ -1662,10 +1751,10 @@ class MainWindow : public QMainWindow {
             this, "Переименовать", "Новое имя:", QLineEdit::Normal, source.fileName(), &accepted);
         if (!accepted)
             return;
+        const QString target = QDir(source.absolutePath()).filePath(name);
         if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-            name.contains('\\') || source.isSymLink() ||
-            QFileInfo::exists(QDir(directory_).filePath(name)) ||
-            !QDir().rename(paths.first(), QDir(directory_).filePath(name)))
+            name.contains('\\') || source.isSymLink() || QFileInfo::exists(target) ||
+            !QDir().rename(paths.first(), target))
             QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось переименовать объект.");
         showDirectory(directory_, false);
     }
@@ -1713,6 +1802,12 @@ class MainWindow : public QMainWindow {
     SortMode sortMode_ = SortMode::Name;
     QAction *sortActions_[5]{};
     QAction *viewActions_[4]{};
+    QAction *flatView_ = nullptr;
+    bool flatDisk_ = false;
+    bool flatArchive_ = false;
+    bool scanningDisk_ = false;
+    FilesystemScanner *filesystemScanner_ = nullptr;
+    QStringList scanSelection_;
     int viewMode_ = 3;
     State previousState_ = State::Filesystem;
     bool creating_ = false;

@@ -18,6 +18,8 @@ qt_add_executable(sevenzip_desktop
     src/extractdialog.h
     src/archivebackend.cpp
     src/archivebackend.h
+    src/filesystemscanner.cpp
+    src/filesystemscanner.h
 )
 
 target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
@@ -34,12 +36,19 @@ if(BUILD_TESTING)
     qt_add_executable(archive_backend_tests tests/archive_backend_tests.cpp src/archivebackend.cpp src/archivebackend.h)
     target_include_directories(archive_backend_tests PRIVATE src)
     target_link_libraries(archive_backend_tests PRIVATE Qt6::Test)
-    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
+    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
     target_include_directories(ui_layout_tests PRIVATE src)
     target_link_libraries(ui_layout_tests PRIVATE Qt6::Widgets Qt6::Test)
-    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
+    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
     target_include_directories(ui_state_tests PRIVATE src)
     target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
+    qt_add_executable(flat_view_tests tests/flat_view_tests.cpp src/archivebackend.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h src/mainwindow.h src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h)
+    target_include_directories(flat_view_tests PRIVATE src)
+    target_link_libraries(flat_view_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME flat_view COMMAND flat_view_tests)
+    set_tests_properties(flat_view PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/flat-view-settings.ini"
+    )
     add_test(NAME ui_state COMMAND ui_state_tests)
     set_tests_properties(ui_state PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-state-settings.ini"
