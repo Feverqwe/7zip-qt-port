@@ -171,6 +171,12 @@ class MainWindow : public QMainWindow {
         auto *open = menu->addAction("Открыть…", this, [this] { openDialog(); });
         open->setObjectName("openArchiveAction");
         open->setShortcut(QKeySequence::Open);
+        openInside_ = menu->addAction("Открыть внутри", this, [this] { openSelectedInside(); });
+        openInside_->setObjectName("openInsideAction");
+        openInside_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
+        openOutside_ = menu->addAction("Открыть снаружи", this, [this] { openSelectedOutside(); });
+        openOutside_->setObjectName("openOutsideAction");
+        openOutside_->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Return));
         create_ = menu->addAction("Создать архив…", this, [this] { createDialog(); });
         create_->setObjectName("createArchiveAction");
         add_ = menu->addAction("Добавить в открытый архив…", this, [this] { addDialog(); });
@@ -604,6 +610,8 @@ class MainWindow : public QMainWindow {
                     }
                 });
         connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+            if (nestedListing_ && ok)
+                nestedListing_ = false;
             if (!ok)
                 archivePassword_.clear();
             appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
@@ -615,9 +623,12 @@ class MainWindow : public QMainWindow {
                 completed->close();
                 completed->deleteLater();
             }
-            if (state_ == State::Loading && !ok)
-                showDirectory(returnDirectory_, false);
-            else if (state_ == State::Operating) {
+            if (state_ == State::Loading && !ok) {
+                if (nestedListing_ && !archiveParents_.empty())
+                    restoreParentArchive();
+                else
+                    showDirectory(returnDirectory_, false);
+            } else if (state_ == State::Operating) {
                 if (creating_)
                     showDirectory(directory_, false);
                 else if (updatingArchive_ && ok) {
@@ -651,13 +662,17 @@ class MainWindow : public QMainWindow {
                 } else
                     viewTemporary_.reset();
             }
+            if (pendingNested_) {
+                if (finishNestedExtraction(ok))
+                    return;
+            }
             statusBar()->showMessage(message);
             if (!ok && message != "Операция отменена.")
                 QMessageBox::warning(this, "Sevenzip Desktop", message);
         });
     }
 
-    void openArchive(const QString &path) {
+    void openArchive(const QString &path, bool nested = false, const QString &label = {}) {
         if (state_ == State::Loading || state_ == State::Operating)
             return;
         const QString suffix = QFileInfo(path).suffix().toLower();
@@ -667,9 +682,12 @@ class MainWindow : public QMainWindow {
             return;
         }
         filesystemScanner_->cancel();
+        if (!nested)
+            archiveParents_.clear();
         scanningDisk_ = false;
         scanSelection_.clear();
         archive_ = QFileInfo(path).absoluteFilePath();
+        displayArchive_ = nested ? label : archive_;
         archivePassword_.clear();
         if (infoDialog_)
             infoDialog_->close();
@@ -687,6 +705,7 @@ class MainWindow : public QMainWindow {
         path_->setText(archive_);
         setState(State::Loading);
         begin("Открытие архива", archive_);
+        nestedListing_ = nested;
         backend_->list(archive_);
     }
 
@@ -742,8 +761,8 @@ class MainWindow : public QMainWindow {
         QMenu menu(this);
         const bool hasSelection = !table_->selectionModel()->selectedRows().isEmpty();
         if (hasSelection) {
-            for (QAction *action :
-                 {openItem_, viewFile_, editFile_, rename_, copy_, move_, remove_})
+            for (QAction *action : {openItem_, openInside_, openOutside_, viewFile_, editFile_,
+                                    rename_, copy_, move_, remove_})
                 menu.addAction(action);
             menu.addSeparator();
             menu.addAction(properties_);
@@ -916,12 +935,12 @@ class MainWindow : public QMainWindow {
             openBookmarks_[index]->setToolTip(label);
             openBookmarks_[index]->setEnabled(
                 !bookmark.path.isEmpty() && state_ != State::Loading && state_ != State::Operating);
-            saveBookmarks_[index]->setEnabled(state_ != State::Loading &&
-                                              state_ != State::Operating);
+            saveBookmarks_[index]->setEnabled(
+                state_ != State::Loading && state_ != State::Operating && archiveParents_.empty());
         }
     }
     void saveBookmark(int index) {
-        if (state_ != State::Filesystem && state_ != State::Viewing)
+        if ((state_ != State::Filesystem && state_ != State::Viewing) || !archiveParents_.empty())
             return;
         Bookmark &bookmark = bookmarks_[index];
         bookmark.path = state_ == State::Filesystem ? directory_ : archive_;
@@ -1086,6 +1105,8 @@ class MainWindow : public QMainWindow {
         directory_ = next;
         recordVisitedPath(directory_);
         archive_.clear();
+        displayArchive_.clear();
+        archiveParents_.clear();
         archivePassword_.clear();
         archiveFolder_.clear();
         {
@@ -1310,13 +1331,18 @@ class MainWindow : public QMainWindow {
                 openArchiveFile(item->data(Qt::UserRole).toString());
         }
     }
+    void openSelectedInside();
+    void openSelectedOutside();
     void goBack() {
         if (state_ == State::Loading || state_ == State::Operating)
             return;
         if (state_ == State::Viewing) {
-            if (archiveFolder_.isEmpty())
-                showDirectory(returnDirectory_, false);
-            else
+            if (archiveFolder_.isEmpty()) {
+                if (archiveParents_.empty())
+                    showDirectory(returnDirectory_, false);
+                else
+                    restoreParentArchive();
+            } else
                 goUp();
         } else if (!history_.isEmpty()) {
             showDirectory(history_.takeLast(), false);
@@ -1338,12 +1364,14 @@ class MainWindow : public QMainWindow {
         }
     }
     QString archiveDisplayPath() const {
-        return archive_ +
+        return displayArchive_ +
                (archiveFolder_.isEmpty() ? QString() : QStringLiteral(" / ") + archiveFolder_);
     }
+    void restoreParentArchive();
     void showArchiveFolder(const QString &folder) {
         archiveFolder_ = folder;
-        recordVisitedPath(archive_);
+        if (archiveParents_.empty())
+            recordVisitedPath(archive_);
         static_cast<FileTable *>(table_)->filesystem = false;
         QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
         table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
@@ -1445,7 +1473,8 @@ class MainWindow : public QMainWindow {
         flatView_->setEnabled(navigating);
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
-        add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted);
+        add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted &&
+                         archiveParents_.empty());
         toolbarAdd_->setEnabled(create_->isEnabled() || add_->isEnabled());
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
         test_->setEnabled(idle && state_ == State::Viewing);
@@ -1465,6 +1494,19 @@ class MainWindow : public QMainWindow {
             }
         }
         openItem_->setEnabled(canOpenItem);
+        bool inside = false;
+        bool outside = false;
+        if (canOpenItem) {
+            const bool folder = table_->item(row, 0)->data(Qt::UserRole + 1).toBool();
+            const QString path = state_ == State::Filesystem
+                                     ? table_->item(row, 1)->text()
+                                     : table_->item(row, 0)->data(Qt::UserRole).toString();
+            const QString suffix = QFileInfo(path).suffix().toLower();
+            inside = folder || suffix == "7z" || suffix == "zip";
+            outside = !folder;
+        }
+        openInside_->setEnabled(inside);
+        openOutside_->setEnabled(outside);
         parent_->setEnabled(
             navigating &&
             (state_ == State::Viewing || (state_ == State::Filesystem && QDir(directory_).cdUp())));
@@ -1486,7 +1528,8 @@ class MainWindow : public QMainWindow {
         move_->setEnabled(idle && state_ == State::Filesystem && selected);
         remove_->setEnabled(
             idle && selected &&
-            (state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)));
+            (state_ == State::Filesystem ||
+             (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty())));
         const bool one = table_->selectionModel()->selectedRows().size() == 1;
         const bool oneFile =
             one && !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
@@ -1497,7 +1540,7 @@ class MainWindow : public QMainWindow {
         rename_->setEnabled(
             idle && one &&
             (state_ == State::Filesystem ||
-             (state_ == State::Viewing && !info_.encrypted &&
+             (state_ == State::Viewing && !info_.encrypted && archiveParents_.empty() &&
               !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
                    ->data(Qt::UserRole + 1)
                    .toBool())));
@@ -1617,6 +1660,8 @@ class MainWindow : public QMainWindow {
                              QStringLiteral("Не удалось открыть файл: %1").arg(path));
         return false;
     }
+    void openNestedArchive(const QString &entry);
+    bool finishNestedExtraction(bool ok);
     void openArchiveFile(const QString &entry) {
         viewTemporary_ = std::make_unique<QTemporaryDir>();
         if (!viewTemporary_->isValid()) {
@@ -1954,8 +1999,24 @@ class MainWindow : public QMainWindow {
     }
 
     ArchiveBackend *backend_ = nullptr;
+    struct ArchiveParent {
+        QString path;
+        QString display;
+        QString password;
+        QString folder;
+        QString entry;
+        QList<ArchiveEntry> entries;
+        ArchiveInfo info;
+        std::unique_ptr<QTemporaryDir> temporary;
+    };
     std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;
+    QString displayArchive_;
+    std::vector<ArchiveParent> archiveParents_;
+    std::unique_ptr<QTemporaryDir> nestedTemporary_;
+    QString pendingNestedEntry_;
+    bool pendingNested_ = false;
+    bool nestedListing_ = false;
     QString archivePassword_;
     QString archiveFolder_;
     QString pendingBookmarkFolder_;
@@ -2008,6 +2069,8 @@ class MainWindow : public QMainWindow {
     QAction *back_ = nullptr;
     QAction *up_ = nullptr;
     QAction *openItem_ = nullptr;
+    QAction *openInside_ = nullptr;
+    QAction *openOutside_ = nullptr;
     QAction *parent_ = nullptr;
     QAction *selectAll_ = nullptr;
     QAction *copy_ = nullptr;
