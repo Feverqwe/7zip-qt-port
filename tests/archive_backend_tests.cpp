@@ -216,6 +216,83 @@ class ArchiveBackendTests : public QObject {
         QVERIFY(!result.at(0).toBool());
         QVERIFY(result.at(1).toString().contains("отменена"));
         QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(temp.path() + "/cancel.7z"));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void createFailureAndRetry() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("источник с пробелом.txt"));
+        writeFile(source, "hello");
+        const QString target = temp.filePath("new.zip");
+        ArchiveBackend missing(nullptr, "/definitely/missing/7zz");
+        QSignalSpy missingResult(&missing, &ArchiveBackend::finished);
+        missing.create(target, {source});
+        QTRY_VERIFY_WITH_TIMEOUT(!missingResult.isEmpty(), 3000);
+        QVERIFY(!missingResult.takeFirst().at(0).toBool());
+        QVERIFY(!QFileInfo::exists(target));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+
+        ArchiveBackend backend;
+        backend.create(target, {source});
+        await(backend, true);
+        QVERIFY(QFileInfo::exists(target));
+        QSignalSpy occupied(&backend, &ArchiveBackend::finished);
+        backend.create(target, {source});
+        QCOMPARE(occupied.size(), 1);
+        QVERIFY(!occupied.takeFirst().at(0).toBool());
+        QVERIFY(QFileInfo::exists(target));
+    }
+    void mixedSources() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("файл с пробелом.txt"));
+        const QString folder = temp.filePath(QStringLiteral("папка Unicode"));
+        QVERIFY(QDir().mkpath(folder));
+        writeFile(source, "file");
+        writeFile(folder + "/nested.txt", "nested");
+        ArchiveBackend backend;
+        const QString target = temp.filePath("mixed.7z");
+        backend.create(target, {source, folder});
+        await(backend, true);
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &value) { entries = value; });
+        backend.list(target);
+        await(backend, true);
+        QStringList names;
+        for (const ArchiveEntry &entry : entries)
+            names << entry.path.normalized(QString::NormalizationForm_C);
+        QVERIFY(names.contains(QStringLiteral("файл с пробелом.txt")));
+        QVERIFY(names.contains(QStringLiteral("папка Unicode/nested.txt")));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+    void cancelledPartialCreation() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source.txt");
+        writeFile(source, "data");
+        const QString target = temp.filePath("cancel.zip");
+        qputenv("SEVENZIP_TEST_HELPER", "createpartial");
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(target, {source});
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        backend.cancel();
+        QVERIFY(finished.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!finished.takeFirst().at(0).toBool());
+        QVERIFY(!QFileInfo::exists(target));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+        qputenv("SEVENZIP_TEST_HELPER", "createfail");
+        QSignalSpy failed(&backend, &ArchiveBackend::finished);
+        backend.create(target, {source});
+        QVERIFY(failed.wait(30000));
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(!failed.takeFirst().at(0).toBool());
+        QVERIFY(!QFileInfo::exists(target));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }
     void fragmentedOutputAndError() {
         qputenv("SEVENZIP_TEST_HELPER", "fragment");
@@ -286,6 +363,22 @@ int main(int argc, char **argv) {
         }
         if (mode == "listing") {
             writeOutput(qgetenv("SEVENZIP_TEST_LISTING"));
+            return 0;
+        }
+        if (mode == "createpartial" || mode == "createfail") {
+            const QStringList arguments = QCoreApplication::arguments();
+            const int separator = arguments.indexOf("--");
+            if (separator < 0 || separator + 1 >= arguments.size())
+                return 3;
+            QFile partial(arguments.at(separator + 1));
+            if (!partial.open(QIODevice::WriteOnly))
+                return 4;
+            partial.write("incomplete archive");
+            partial.close();
+            writeOutput("started\n");
+            if (mode == "createfail")
+                return 2;
+            QThread::msleep(30000);
             return 0;
         }
         writeOutput("started\npartial");

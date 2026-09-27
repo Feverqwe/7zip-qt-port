@@ -1,10 +1,12 @@
 #include "archivebackend.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSet>
 #include <QStandardPaths>
+#include <QUuid>
 
 ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(parent) {
     if (executable.isEmpty()) {
@@ -27,6 +29,8 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             &ArchiveBackend::complete);
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart && job_ != Job::None) {
+            if (job_ == Job::Create)
+                QFile::remove(createTemporary_);
             job_ = Job::None;
             emit finished(
                 false,
@@ -236,6 +240,13 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
         emit finished(false, QStringLiteral("Выберите файлы или папку и имя архива .7z или .zip."));
         return;
     }
+    const QFileInfo target(archive);
+    if (!QFileInfo(target.absolutePath()).isDir() || target.exists() || target.isSymLink()) {
+        emit finished(false,
+                      QStringLiteral("Папка назначения не найдена или архив уже существует: %1")
+                          .arg(target.absoluteFilePath()));
+        return;
+    }
     QString root = QFileInfo(sources.first()).absolutePath();
     while (!root.isEmpty()) {
         bool containsAll = true;
@@ -254,8 +265,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
             break;
         root = parent;
     }
-    QStringList arguments = {
-        "a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--", QFileInfo(archive).absoluteFilePath()};
+    QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--"};
     for (const QString &source : sources) {
         if (!QFileInfo::exists(source)) {
             emit finished(false, QStringLiteral("Файл или папка не найдены: %1").arg(source));
@@ -268,6 +278,23 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources) 
         }
         arguments << relative;
     }
+    for (const QString &source : sources) {
+        const QFileInfo info(source);
+        if (info.isDir()) {
+            const QString relative =
+                QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
+            if (relative == "." || (relative != ".." && !relative.startsWith("../") &&
+                                    !QDir::isAbsolutePath(relative))) {
+                emit finished(false,
+                              QStringLiteral("Нельзя сохранять архив внутри выбранной папки."));
+                return;
+            }
+        }
+    }
+    createTarget_ = target.absoluteFilePath();
+    createTemporary_ = target.absolutePath() + "/.sevenzip-" +
+                       QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
+    arguments.insert(6, createTemporary_);
     start(Job::Create, arguments, root);
 }
 
@@ -326,13 +353,23 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     const Job completed = job_;
     job_ = Job::None;
     if (cancelled_) {
+        if (completed == Job::Create)
+            QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
+        if (completed == Job::Create)
+            QFile::remove(createTemporary_);
         const QString detail = output_.trimmed().right(600);
         emit finished(false,
                       QStringLiteral("7zz завершился с кодом %1. %2").arg(exitCode).arg(detail));
+        return;
+    }
+    if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
+        QFile::remove(createTemporary_);
+        emit finished(false,
+                      QStringLiteral("Не удалось сохранить новый архив: %1").arg(createTarget_));
         return;
     }
     if (completed == Job::List) {

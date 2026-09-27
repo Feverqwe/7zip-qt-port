@@ -2,9 +2,11 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QComboBox>
 #include <QDir>
 #include <QImage>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QProgressDialog>
@@ -30,8 +32,10 @@ class ControlledBackend : public ArchiveBackend {
         lastSelected = selected;
         busy_ = true;
     }
-    void create(const QString &, const QStringList &) override {
+    void create(const QString &target, const QStringList &sources) override {
         ++createCalls;
+        lastCreateTarget = target;
+        lastCreateSources = sources;
         busy_ = true;
     }
     void cancel() override {
@@ -48,6 +52,10 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = false;
         emit finished(false, message);
     }
+    void completeCreate() {
+        busy_ = false;
+        emit finished(true, QStringLiteral("Архив создан."));
+    }
     void report(int percent, const QString &detail, const QString &line) {
         emit outputReceived(line);
         emit progress(percent, detail);
@@ -58,6 +66,8 @@ class ControlledBackend : public ArchiveBackend {
     int cancelCalls = 0;
     QString lastArchive;
     QStringList lastSelected;
+    QString lastCreateTarget;
+    QStringList lastCreateSources;
 
   private:
     bool busy_ = false;
@@ -100,6 +110,121 @@ class MainWindowStateTests : public QObject {
     }
 
   private slots:
+    void createDialogAndStateTransitions() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString file =
+            QFileInfo(temp.filePath(QStringLiteral("файл с пробелом.txt"))).absoluteFilePath();
+        QFile source(file);
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        source.write("data");
+        source.close();
+        const QString folder = temp.filePath(QStringLiteral("другой каталог/папка Unicode"));
+        QVERIFY(QDir().mkpath(folder));
+        const QString canonicalFile = QFileInfo(file).canonicalFilePath();
+        const QString canonicalFolder = QFileInfo(folder).canonicalFilePath();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        for (int row = 0; row < table(window)->rowCount(); ++row) {
+            if (table(window)->item(row, 1)->text() == canonicalFile)
+                table(window)->selectRow(row);
+        }
+
+        int initialSelectionCount = -1;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            QVERIFY(dialog);
+            initialSelectionCount = dialog->findChild<QListWidget *>("selectedSources")->count();
+            dialog->reject();
+        });
+        action(window, "createArchiveAction")->trigger();
+        QCOMPARE(backend.createCalls, 0);
+        QCOMPARE(initialSelectionCount, 1);
+
+        auto chooseSources = [&] {
+            QTimer::singleShot(0, &window, [&] {
+                auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+                QVERIFY(dialog);
+                auto *available = dialog->findChild<QListWidget *>("availableSources");
+                for (int row = 0; row < available->count(); ++row) {
+                    const QString path = available->item(row)->data(Qt::UserRole).toString();
+                    if (path == canonicalFile)
+                        available->item(row)->setSelected(true);
+                }
+                auto *add = dialog->findChild<QPushButton *>("selectSourcesButton");
+                add->click();
+                auto *sourceDirectory = dialog->findChild<QLineEdit *>("sourceDirectory");
+                sourceDirectory->setText(QFileInfo(canonicalFolder).absolutePath());
+                QTest::keyClick(sourceDirectory, Qt::Key_Return);
+                available = dialog->findChild<QListWidget *>("availableSources");
+                for (int row = 0; row < available->count(); ++row) {
+                    if (available->item(row)->data(Qt::UserRole).toString() == canonicalFolder)
+                        available->item(row)->setSelected(true);
+                }
+                add->click();
+                if (dialog->findChild<QListWidget *>("selectedSources")->count() != 2) {
+                    dialog->reject();
+                    return;
+                }
+                dialog->findChild<QLineEdit *>("archiveName")->setText("new archive");
+                dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
+                if (!dialog->findChild<QLabel *>("archiveTargetPreview")
+                         ->text()
+                         .endsWith("new archive.zip")) {
+                    dialog->reject();
+                    return;
+                }
+                const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
+                if (!screenshotDir.isEmpty()) {
+                    QDir().mkpath(screenshotDir);
+                    dialog->grab().save(screenshotDir + "/" + QSysInfo::productType() +
+                                        "-create.png");
+                }
+                dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            });
+            action(window, "createArchiveAction")->trigger();
+        };
+        chooseSources();
+        QCOMPARE(backend.createCalls, 1);
+        QCOMPARE(backend.lastCreateTarget,
+                 QDir(QFileInfo(temp.path()).canonicalFilePath()).filePath("new archive.zip"));
+        QCOMPARE(backend.lastCreateSources.size(), 2);
+        QVERIFY(backend.lastCreateSources.contains(canonicalFile));
+        QVERIFY(backend.lastCreateSources.contains(canonicalFolder));
+        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
+        QVERIFY(!table(window)->isEnabled());
+        backend.cancel();
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+
+        chooseSources();
+        QCOMPARE(backend.createCalls, 2);
+        backend.fail(QStringLiteral("Операция отменена."));
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        window.openArchive("empty.7z");
+        backend.completeList({});
+        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        action(window, "backAction")->trigger();
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        chooseSources();
+        QCOMPARE(backend.createCalls, 3);
+        backend.fail(QStringLiteral("Операция отменена."));
+        chooseSources();
+        QCOMPARE(backend.createCalls, 4);
+        QFile created(backend.lastCreateTarget);
+        QVERIFY(created.open(QIODevice::WriteOnly));
+        created.close();
+        backend.completeCreate();
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QCOMPARE(table(window)->rowCount(), 3);
+        QVERIFY(table(window)->findItems("new archive.zip", Qt::MatchExactly).size() > 0);
+    }
     void keyboardNavigationAndCommandState() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -282,13 +407,13 @@ class MainWindowStateTests : public QObject {
         ControlledBackend backend;
         MainWindow window(&backend);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
 
         window.openArchive("first.7z");
         QCOMPARE(backend.listCalls, 1);
         QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QVERIFY(!action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());
@@ -315,7 +440,7 @@ class MainWindowStateTests : public QObject {
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Архив открыт."));
@@ -335,7 +460,7 @@ class MainWindowStateTests : public QObject {
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!backend.busy());
@@ -405,7 +530,7 @@ class MainWindowStateTests : public QObject {
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
@@ -428,7 +553,7 @@ class MainWindowStateTests : public QObject {
         window.extractTo("/temporary/destination");
         QCOMPARE(backend.extractCalls, 1);
         QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());

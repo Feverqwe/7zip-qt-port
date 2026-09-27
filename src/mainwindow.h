@@ -1,6 +1,7 @@
 #pragma once
 
 #include "archivebackend.h"
+#include "createarchivedialog.h"
 
 #include <QAction>
 #include <QApplication>
@@ -61,13 +62,11 @@ class MainWindow : public QMainWindow {
         auto *open = menu->addAction("Открыть…", this, [this] { openDialog(); });
         open->setObjectName("openArchiveAction");
         open->setShortcut(QKeySequence::Open);
-        add_ = toolbar->addAction("Добавить");
-        add_->setObjectName("addArchiveAction");
-        auto *addMenu = new QMenu(this);
-        addMenu->addAction("Файлы…", this, [this] { addFiles(); });
-        addMenu->addAction("Папку…", this, [this] { addFolder(); });
-        add_->setMenu(addMenu);
-        connect(add_, &QAction::triggered, this, [this] { addFiles(); });
+        create_ = toolbar->addAction("Создать…", this, [this] { createDialog(); });
+        create_->setObjectName("createArchiveAction");
+        auto *addExisting = menu->addAction("Добавить в открытый архив…");
+        addExisting->setObjectName("addArchiveAction");
+        addExisting->setEnabled(false);
         extract_ = toolbar->addAction("Извлечь", this, [this] { extract(false); });
         extract_->setObjectName("extractArchiveAction");
         selected_ = menu->addAction("Извлечь выбранное…", this, [this] { extract(true); });
@@ -165,8 +164,13 @@ class MainWindow : public QMainWindow {
             }
             if (state_ == State::Loading && !ok)
                 showDirectory(returnDirectory_, false);
-            else if (state_ == State::Operating)
-                setState(previousState_ == State::Viewing ? State::Viewing : State::Filesystem);
+            else if (state_ == State::Operating) {
+                if (creating_)
+                    showDirectory(directory_, false);
+                else
+                    setState(previousState_ == State::Viewing ? State::Viewing : State::Filesystem);
+                creating_ = false;
+            }
             statusBar()->showMessage(message);
             if (!ok && message != "Операция отменена.")
                 QMessageBox::warning(this, "Sevenzip Desktop", message);
@@ -411,7 +415,7 @@ class MainWindow : public QMainWindow {
     void refreshActions() {
         const bool idle = state_ != State::Loading && state_ != State::Operating;
         open_->setEnabled(idle);
-        add_->setEnabled(idle);
+        create_->setEnabled(idle && state_ == State::Filesystem);
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
         selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
                               !table_->selectionModel()->selectedRows().isEmpty());
@@ -487,23 +491,25 @@ class MainWindow : public QMainWindow {
         const QString destination = QFileDialog::getExistingDirectory(this, "Папка для извлечения");
         extractTo(destination, onlySelected);
     }
-    void createArchive(const QStringList &sources) {
-        if (state_ == State::Loading || state_ == State::Operating || sources.isEmpty())
+    void createDialog() {
+        if (state_ != State::Filesystem)
             return;
-        const QString target =
-            QFileDialog::getSaveFileName(this, "Создать архив", {}, "7z (*.7z);;ZIP (*.zip)");
-        if (target.isEmpty())
+        QStringList selectedPaths;
+        for (const QModelIndex &index : table_->selectionModel()->selectedRows())
+            selectedPaths << table_->item(index.row(), 1)->text();
+        CreateArchiveDialog dialog(directory_, selectedPaths, this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        createArchive(dialog.target(), dialog.sources());
+    }
+    void createArchive(const QString &target, const QStringList &sources) {
+        if (state_ != State::Filesystem || sources.isEmpty() || target.isEmpty())
             return;
         previousState_ = state_;
+        creating_ = true;
         setState(State::Operating);
         begin("Создание архива", target);
         backend_->create(target, sources);
-    }
-    void addFiles() { createArchive(QFileDialog::getOpenFileNames(this, "Добавить файлы")); }
-    void addFolder() {
-        const QString folder = QFileDialog::getExistingDirectory(this, "Добавить папку");
-        if (!folder.isEmpty())
-            createArchive({folder});
     }
 
     ArchiveBackend *backend_ = nullptr;
@@ -511,6 +517,7 @@ class MainWindow : public QMainWindow {
     QString archiveFolder_;
     State state_ = State::Filesystem;
     State previousState_ = State::Filesystem;
+    bool creating_ = false;
     QList<ArchiveEntry> entries_;
     QLineEdit *path_ = nullptr;
     QString directory_;
@@ -525,7 +532,7 @@ class MainWindow : public QMainWindow {
     QString operationName_;
     QString currentDetail_;
     QAction *open_ = nullptr;
-    QAction *add_ = nullptr;
+    QAction *create_ = nullptr;
     QAction *extract_ = nullptr;
     QAction *selected_ = nullptr;
     QAction *back_ = nullptr;

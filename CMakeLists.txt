@@ -12,6 +12,7 @@ qt_standard_project_setup()
 qt_add_executable(sevenzip_desktop
     src/main.cpp
     src/mainwindow.h
+    src/createarchivedialog.h
     src/archivebackend.cpp
     src/archivebackend.h
 )
@@ -30,10 +31,10 @@ if(BUILD_TESTING)
     qt_add_executable(archive_backend_tests tests/archive_backend_tests.cpp src/archivebackend.cpp src/archivebackend.h)
     target_include_directories(archive_backend_tests PRIVATE src)
     target_link_libraries(archive_backend_tests PRIVATE Qt6::Test)
-    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h)
+    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h src/createarchivedialog.h)
     target_include_directories(ui_layout_tests PRIVATE src)
     target_link_libraries(ui_layout_tests PRIVATE Qt6::Widgets Qt6::Test)
-    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h)
+    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/archivebackend.cpp src/archivebackend.h src/mainwindow.h src/createarchivedialog.h)
     target_include_directories(ui_state_tests PRIVATE src)
     target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME ui_state COMMAND ui_state_tests)

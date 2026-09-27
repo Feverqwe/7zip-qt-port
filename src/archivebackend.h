@@ -46,6 +46,8 @@ class ArchiveBackend : public QObject {
     QString output_;
     QByteArray pendingOutput_;
     QString archive_;
+    QString createTarget_;
+    QString createTemporary_;
     QList<ArchiveEntry> entries_;
     bool listed_ = false;
     bool cancelled_ = false;
