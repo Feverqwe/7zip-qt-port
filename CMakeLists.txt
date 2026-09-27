@@ -39,11 +39,11 @@ if(BUILD_TESTING)
     target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME ui_state COMMAND ui_state_tests)
     set_tests_properties(ui_state PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-state-settings.ini"
     )
     add_test(NAME ui_layout COMMAND ui_layout_tests)
     set_tests_properties(ui_layout PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-layout-settings.ini"
     )
     add_test(NAME archive_backend COMMAND archive_backend_tests)
     add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)

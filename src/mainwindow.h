@@ -5,6 +5,7 @@
 
 #include <QAction>
 #include <QApplication>
+#include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -14,6 +15,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QFormLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
@@ -27,12 +29,15 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QPainter>
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QProgressDialog>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QSettings>
 #include <QSizePolicy>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QStyle>
 #include <QTableWidget>
@@ -88,6 +93,8 @@ class MainWindow : public QMainWindow {
         auto *toolbar = addToolBar("Архив");
         toolbar->setObjectName("archiveToolbar");
         toolbar->setMovable(false);
+        toolbar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+        toolbar->setIconSize(QSize(24, 24));
         back_ = new QAction("Назад", this);
         back_->setObjectName("backAction");
         connect(back_, &QAction::triggered, this, [this] { goBack(); });
@@ -126,6 +133,9 @@ class MainWindow : public QMainWindow {
         remove_->setObjectName("deleteAction");
         rename_ = menu->addAction("Переименовать…", this, [this] { renameSelected(); });
         rename_->setObjectName("renameAction");
+        properties_ = menu->addAction("Свойства…", this, [this] { showSelectedProperties(); });
+        properties_->setObjectName("selectedPropertiesAction");
+        properties_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Return));
         createFolder_ = menu->addAction("Создать папку…", this, [this] { createFolder(); });
         createFolder_->setObjectName("createFolderAction");
         createFolder_->setShortcut(QKeySequence(Qt::Key_F7));
@@ -135,12 +145,42 @@ class MainWindow : public QMainWindow {
         rename_->setShortcut(QKeySequence(Qt::Key_F2));
         infoAction_ = toolbar->addAction("Информация", this, [this] { showInfo(); });
         infoAction_->setObjectName("archiveInfoAction");
+        toolbarAdd_->setIcon(toolbarIcon(0));
+        extract_->setIcon(toolbarIcon(1));
+        test_->setIcon(toolbarIcon(2));
+        copy_->setIcon(toolbarIcon(3));
+        move_->setIcon(toolbarIcon(4));
+        remove_->setIcon(toolbarIcon(5));
+        infoAction_->setIcon(toolbarIcon(6));
+        toolbarGroupSeparator_ = toolbar->insertSeparator(copy_);
+        toolbarGroupSeparator_->setObjectName("toolbarGroupSeparator");
         for (const QString &title :
              {"Пароль", "Изменить архив", "Интеграция с файловым менеджером"})
             menu->addAction(title)->setEnabled(false);
         open_ = open;
         auto *editMenu = menuBar()->addMenu("Правка");
         auto *viewMenu = menuBar()->addMenu("Вид");
+        auto *toolbarsMenu = viewMenu->addMenu("Панели инструментов");
+        auto addToolbarOption = [this, toolbarsMenu](const QString &title, const char *name,
+                                                     bool checked) {
+            auto *option = toolbarsMenu->addAction(title);
+            option->setObjectName(name);
+            option->setCheckable(true);
+            option->setChecked(checked);
+            connect(option, &QAction::toggled, this, [this] { updateToolbar(); });
+            return option;
+        };
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        archiveToolbarOption_ = addToolbarOption("Архивная панель", "archiveToolbarOption",
+                                                 settings.value("toolbar/archive", true).toBool());
+        standardToolbarOption_ =
+            addToolbarOption("Стандартная панель", "standardToolbarOption",
+                             settings.value("toolbar/standard", true).toBool());
+        largeButtonsOption_ = addToolbarOption("Крупные значки", "largeButtonsOption",
+                                               settings.value("toolbar/large", false).toBool());
+        buttonTextOption_ = addToolbarOption("Подписи кнопок", "buttonTextOption",
+                                             settings.value("toolbar/text", true).toBool());
+        updateToolbar();
         refresh_ = viewMenu->addAction("Обновить", this, [this] { refreshCurrent(); });
         refresh_->setObjectName("refreshAction");
         refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
@@ -155,15 +195,49 @@ class MainWindow : public QMainWindow {
             button->setDefaultAction(action);
             navigation->addWidget(button);
         }
-        path_ = new QLineEdit;
+        pathCombo_ = new QComboBox(central);
+        pathCombo_->setObjectName("pathCombo");
+        pathCombo_->setEditable(true);
+        pathCombo_->setInsertPolicy(QComboBox::NoInsert);
+        path_ = pathCombo_->lineEdit();
         path_->setObjectName("archivePath");
         path_->setPlaceholderText("Путь к папке или архиву");
-        navigation->addWidget(path_);
+        navigation->addWidget(pathCombo_);
         layout->addLayout(navigation);
         table_ = new FileTable(0, 5, central);
         table_->setObjectName("archiveTable");
+        table_->verticalHeader()->hide();
         table_->setHorizontalHeaderLabels({"Имя", "Путь", "Размер", "Сжатый", "Изменён"});
-        table_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+        table_->setColumnHidden(1, true);
+        table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+        table_->setColumnWidth(2, 100);
+        table_->setColumnWidth(3, 100);
+        table_->setColumnWidth(4, 150);
+        table_->setShowGrid(false);
+        table_->setWordWrap(false);
+        table_->setTextElideMode(Qt::ElideMiddle);
+        for (int column : {2, 3, 4})
+            table_->setColumnHidden(
+                column, !settings.value(QStringLiteral("columns/%1").arg(column), true).toBool());
+        table_->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(table_->horizontalHeader(), &QWidget::customContextMenuRequested, this,
+                [this](const QPoint &pos) {
+                    QMenu menu(this);
+                    for (int column : {2, 3, 4}) {
+                        if (column == 3 && state_ == State::Filesystem)
+                            continue;
+                        QAction *option =
+                            menu.addAction(table_->horizontalHeaderItem(column)->text());
+                        option->setCheckable(true);
+                        option->setChecked(!table_->isColumnHidden(column));
+                        connect(option, &QAction::toggled, this, [this, column](bool visible) {
+                            table_->setColumnHidden(column, !visible);
+                            QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+                            settings.setValue(QStringLiteral("columns/%1").arg(column), visible);
+                        });
+                    }
+                    menu.exec(table_->horizontalHeader()->mapToGlobal(pos));
+                });
         table_->setSelectionBehavior(QAbstractItemView::SelectRows);
         table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
         table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -180,20 +254,27 @@ class MainWindow : public QMainWindow {
             if (row >= 0 && !table_->selectionModel()->isRowSelected(row, QModelIndex()))
                 table_->selectRow(row);
             QMenu menu(this);
-            for (QAction *action : {openItem_, copy_, move_, rename_, remove_}) {
-                if (action)
+            const bool hasSelection = !table_->selectionModel()->selectedRows().isEmpty();
+            if (hasSelection) {
+                for (QAction *action : {openItem_, rename_, copy_, move_, remove_})
                     menu.addAction(action);
+                menu.addSeparator();
+                menu.addAction(properties_);
+                menu.addSeparator();
             }
-            menu.addSeparator();
-            if (state_ == State::Filesystem)
+            if (state_ == State::Filesystem) {
                 menu.addAction(create_);
-            else {
+                menu.addAction(createFolder_);
+            } else {
                 menu.addAction(add_);
-                menu.addAction(selected_);
+                if (hasSelection)
+                    menu.addAction(selected_);
                 menu.addAction(extract_);
                 menu.addAction(test_);
                 menu.addAction(infoAction_);
             }
+            menu.addSeparator();
+            menu.addAction(refresh_);
             menu.exec(table_->viewport()->mapToGlobal(pos));
         });
         openItem_ = new QAction(table_);
@@ -227,6 +308,8 @@ class MainWindow : public QMainWindow {
         setCentralWidget(central);
         statusBar()->showMessage("Готово");
         connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });
+        connect(pathCombo_, &QComboBox::activated, this,
+                [this](int index) { navigateTo(pathCombo_->itemText(index)); });
         connect(table_, &QTableWidget::cellDoubleClicked, this,
                 [this](int row, int) { activateRow(row); });
         showDirectory(QDir::currentPath(), false);
@@ -380,6 +463,99 @@ class MainWindow : public QMainWindow {
 
   private:
     enum class State { Filesystem, Loading, Viewing, Operating };
+    static QIcon toolbarIcon(int kind) {
+        QPixmap pixmap(24, 24);
+        pixmap.fill(Qt::transparent);
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(Qt::black, 1));
+        if (kind == 0) {
+            painter.setBrush(QColor("#28dc11"));
+            painter.drawPolygon(QPolygonF{{10, 3},
+                                          {14, 3},
+                                          {14, 10},
+                                          {21, 10},
+                                          {21, 14},
+                                          {14, 14},
+                                          {14, 21},
+                                          {10, 21},
+                                          {10, 14},
+                                          {3, 14},
+                                          {3, 10},
+                                          {10, 10}});
+        } else if (kind == 1) {
+            painter.setBrush(QColor("#0099ff"));
+            painter.drawRect(3, 10, 18, 5);
+        } else if (kind == 2) {
+            painter.setBrush(QColor("#22e5ce"));
+            painter.drawPolygon(QPolygonF{{2, 11}, {7, 8}, {11, 13}, {19, 4}, {22, 7}, {11, 20}});
+        } else if (kind == 3 || kind == 4) {
+            painter.setBrush(kind == 3 ? QColor("#21d426") : QColor("#2367e6"));
+            painter.drawPolygon(
+                QPolygonF{{5, 9}, {13, 9}, {13, 4}, {22, 12}, {13, 20}, {13, 15}, {5, 15}});
+            if (kind == 3) {
+                painter.setBrush(QColor("#ae42df"));
+                painter.drawRect(2, 10, 3, 4);
+            }
+        } else if (kind == 5) {
+            painter.setBrush(QColor("#ef2834"));
+            painter.drawPolygon(QPolygonF{{5, 3},
+                                          {12, 9},
+                                          {19, 3},
+                                          {22, 6},
+                                          {15, 12},
+                                          {22, 18},
+                                          {19, 21},
+                                          {12, 15},
+                                          {5, 21},
+                                          {2, 18},
+                                          {9, 12},
+                                          {2, 6}});
+        } else {
+            painter.setBrush(QColor("#f7e51e"));
+            painter.drawEllipse(QRectF(10, 2, 4, 4));
+            painter.drawRect(QRectF(10, 9, 4, 12));
+        }
+        return QIcon(pixmap);
+    }
+    static QString toolbarSettingsPath() {
+        const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        if (!overridden.isEmpty())
+            return overridden;
+        const QString directory =
+            QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+        QDir().mkpath(directory);
+        return QDir(directory).filePath("toolbar.ini");
+    }
+    void recordVisitedPath(const QString &path) {
+        if (path.isEmpty())
+            return;
+        const int existing = pathCombo_->findText(path, Qt::MatchExactly);
+        if (existing >= 0)
+            pathCombo_->removeItem(existing);
+        pathCombo_->insertItem(0, path);
+        while (pathCombo_->count() > 20)
+            pathCombo_->removeItem(pathCombo_->count() - 1);
+    }
+    void updateToolbar() {
+        auto *toolbar = findChild<QToolBar *>("archiveToolbar");
+        const bool archive = archiveToolbarOption_->isChecked();
+        const bool standard = standardToolbarOption_->isChecked();
+        for (QAction *action : {toolbarAdd_, extract_, test_})
+            toolbar->widgetForAction(action)->setVisible(archive);
+        for (QAction *action : {copy_, move_, remove_, infoAction_})
+            toolbar->widgetForAction(action)->setVisible(standard);
+        toolbar->widgetForAction(toolbarGroupSeparator_)->setVisible(archive && standard);
+        toolbar->setVisible(archive || standard);
+        toolbar->setIconSize(largeButtonsOption_->isChecked() ? QSize(48, 36) : QSize(24, 24));
+        toolbar->setToolButtonStyle(buttonTextOption_->isChecked() ? Qt::ToolButtonTextUnderIcon
+                                                                   : Qt::ToolButtonIconOnly);
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        settings.setValue("toolbar/archive", archive);
+        settings.setValue("toolbar/standard", standard);
+        settings.setValue("toolbar/large", largeButtonsOption_->isChecked());
+        settings.setValue("toolbar/text", buttonTextOption_->isChecked());
+    }
     bool eventFilter(QObject *watched, QEvent *event) override {
         if (watched == table_->viewport() &&
             (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
@@ -438,6 +614,7 @@ class MainWindow : public QMainWindow {
         if (remember && !directory_.isEmpty() && directory_ != next)
             history_.append(directory_);
         directory_ = next;
+        recordVisitedPath(directory_);
         archive_.clear();
         archivePassword_.clear();
         archiveFolder_.clear();
@@ -468,11 +645,14 @@ class MainWindow : public QMainWindow {
                         file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
                 if (col == 2 && !file.isDir())
                     item->setData(Qt::UserRole + 2, file.size());
+                if (col == 2 || col == 3)
+                    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 table_->setItem(row, col, item);
             }
         }
         table_->setSortingEnabled(true);
         static_cast<FileTable *>(table_)->filesystem = true;
+        table_->setColumnHidden(3, true);
         setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
     }
@@ -583,7 +763,10 @@ class MainWindow : public QMainWindow {
     }
     void showArchiveFolder(const QString &folder) {
         archiveFolder_ = folder;
+        recordVisitedPath(archive_);
         static_cast<FileTable *>(table_)->filesystem = false;
+        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+        table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
         QMap<QString, ArchiveEntry> children;
         const QString prefix = folder.isEmpty() ? QString() : folder + '/';
         for (const ArchiveEntry &entry : entries_) {
@@ -631,6 +814,8 @@ class MainWindow : public QMainWindow {
                         entry.directory ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
                 if (!entry.directory && (col == 2 || col == 3))
                     item->setData(Qt::UserRole + 2, col == 2 ? entry.size : entry.packedSize);
+                if (col == 2 || col == 3)
+                    item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
                 table_->setItem(row, col, item);
             }
         }
@@ -691,6 +876,7 @@ class MainWindow : public QMainWindow {
               !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
                    ->data(Qt::UserRole + 1)
                    .toBool())));
+        properties_->setEnabled(idle && one);
         table_->setEnabled(idle);
         table_->setDragEnabled(idle && state_ == State::Filesystem);
         path_->setReadOnly(!idle);
@@ -742,6 +928,42 @@ class MainWindow : public QMainWindow {
                 .arg(info_.unpackedSize));
         layout->addWidget(label);
         dialog->show();
+    }
+    void showSelectedProperties() {
+        if (!properties_->isEnabled())
+            return;
+        const int row = table_->selectionModel()->selectedRows().first().row();
+        const QTableWidgetItem *nameItem = table_->item(row, 0);
+        const bool directory = nameItem->data(Qt::UserRole + 1).toBool();
+        const QString path = state_ == State::Filesystem ? table_->item(row, 1)->text()
+                                                         : nameItem->data(Qt::UserRole).toString();
+        QDialog dialog(this);
+        dialog.setObjectName("selectedPropertiesDialog");
+        dialog.setWindowTitle("Свойства: " + nameItem->text());
+        auto *layout = new QVBoxLayout(&dialog);
+        auto *fields = new QFormLayout;
+        fields->addRow("Имя:", new QLabel(nameItem->text(), &dialog));
+        fields->addRow("Путь:", new QLabel(path, &dialog));
+        fields->addRow("Тип:", new QLabel(directory ? "Папка" : "Файл", &dialog));
+        if (state_ == State::Filesystem) {
+            const QFileInfo info(path);
+            if (!directory)
+                fields->addRow("Размер:", new QLabel(QString::number(info.size()), &dialog));
+            fields->addRow("Изменён:",
+                           new QLabel(info.lastModified().toString(Qt::ISODate), &dialog));
+        } else {
+            if (!directory) {
+                fields->addRow("Размер:", new QLabel(table_->item(row, 2)->text(), &dialog));
+                fields->addRow("Сжатый:", new QLabel(table_->item(row, 3)->text(), &dialog));
+            }
+            if (!table_->item(row, 4)->text().isEmpty())
+                fields->addRow("Изменён:", new QLabel(table_->item(row, 4)->text(), &dialog));
+        }
+        layout->addLayout(fields);
+        auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+        connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        layout->addWidget(buttons);
+        dialog.exec();
     }
     void begin(const QString &label, const QString &detail) {
         operationName_ = label;
@@ -1052,6 +1274,7 @@ class MainWindow : public QMainWindow {
     QList<ArchiveEntry> entries_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
+    QComboBox *pathCombo_ = nullptr;
     QString directory_;
     QString returnDirectory_;
     QStringList history_;
@@ -1084,8 +1307,14 @@ class MainWindow : public QMainWindow {
     QAction *move_ = nullptr;
     QAction *remove_ = nullptr;
     QAction *rename_ = nullptr;
+    QAction *properties_ = nullptr;
     QAction *createFolder_ = nullptr;
     QAction *refresh_ = nullptr;
     QAction *deselectAll_ = nullptr;
     QAction *invertSelection_ = nullptr;
+    QAction *archiveToolbarOption_ = nullptr;
+    QAction *standardToolbarOption_ = nullptr;
+    QAction *largeButtonsOption_ = nullptr;
+    QAction *buttonTextOption_ = nullptr;
+    QAction *toolbarGroupSeparator_ = nullptr;
 };

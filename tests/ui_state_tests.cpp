@@ -13,6 +13,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPlainTextEdit>
@@ -1304,6 +1305,93 @@ class MainWindowStateTests : public QObject {
         QVERIFY(text->toPlainText().contains(QStringLiteral("Ошибка: 7zz завершился с кодом 2.")));
         QVERIFY(!text->toPlainText().contains(QStringLiteral("42% +")));
         QVERIFY(journal->isEnabled());
+    }
+
+    void contextMenuFollowsSelectionAndLocation() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QFile file(temp.filePath(QStringLiteral("имя с пробелом.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.findChild<QLineEdit *>("archivePath")->setText(temp.path());
+        QTest::keyClick(window.findChild<QLineEdit *>("archivePath"), Qt::Key_Return);
+        auto *view = table(window);
+        QStringList commands;
+        auto capture = [&] {
+            QTimer::singleShot(0, [&] {
+                auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+                QVERIFY(menu);
+                for (QAction *item : menu->actions())
+                    commands << item->text();
+                menu->close();
+            });
+        };
+        capture();
+        QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
+                                          Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
+        QVERIFY(commands.contains("Переименовать…"));
+        QVERIFY(commands.contains("Копировать"));
+        QVERIFY(commands.contains("Создать папку…"));
+        QVERIFY(commands.contains("Обновить"));
+        QStringList properties;
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
+            QVERIFY(dialog);
+            for (QLabel *label : dialog->findChildren<QLabel *>())
+                properties << label->text();
+            dialog->reject();
+        });
+        action(window, "selectedPropertiesAction")->trigger();
+        QVERIFY(properties.contains(QStringLiteral("имя с пробелом.txt")));
+        QVERIFY(properties.contains(QFileInfo(file.fileName()).canonicalFilePath()));
+        commands.clear();
+        view->clearSelection();
+        capture();
+        QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
+                                          Q_ARG(QPoint, QPoint(5, view->height() - 5))));
+        QVERIFY(!commands.contains("Переименовать…"));
+        QVERIFY(commands.contains("Создать папку…"));
+        QVERIFY(commands.contains("Обновить"));
+
+        window.openArchive("menu.7z");
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/файл.txt"), 1, 1}});
+        commands.clear();
+        capture();
+        QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
+                                          Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
+        QVERIFY(commands.contains("Извлечь выбранное…"));
+        QVERIFY(commands.contains("Добавить в открытый архив…"));
+        QVERIFY(!commands.contains("Создать папку…"));
+        QVERIFY(commands.contains("Свойства…"));
+    }
+
+    void addressComboKeepsVisitedPaths() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString folder = temp.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(QDir().mkdir(folder));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        auto *combo = window.findChild<QComboBox *>("pathCombo");
+        QVERIFY(address && combo);
+        address->setText(folder);
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(address->text(), QFileInfo(folder).canonicalFilePath());
+        QVERIFY(combo->findText(QFileInfo(QDir::currentPath()).canonicalFilePath()) >= 0);
+        const QString archive = temp.filePath("archive.7z");
+        window.openArchive(archive);
+        backend.completeList({});
+        QVERIFY(combo->findText(QFileInfo(archive).absoluteFilePath()) >= 0);
+        const int folderIndex = combo->findText(QFileInfo(folder).canonicalFilePath());
+        QVERIFY(folderIndex >= 0);
+        QVERIFY(QMetaObject::invokeMethod(combo, "activated", Qt::DirectConnection,
+                                          Q_ARG(int, folderIndex)));
+        QCOMPARE(address->text(), QFileInfo(folder).canonicalFilePath());
     }
 };
 

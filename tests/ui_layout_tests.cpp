@@ -2,14 +2,17 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QImage>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPixmap>
 #include <QStatusBar>
 #include <QSysInfo>
 #include <QTableWidget>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QtTest>
@@ -18,6 +21,8 @@ class MainWindowLayoutTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+
     void layoutAtSizes_data() {
         QTest::addColumn<QSize>("windowSize");
         QTest::newRow("default") << QSize(980, 620);
@@ -30,9 +35,13 @@ class MainWindowLayoutTests : public QObject {
 
         MainWindow window;
         auto *path = window.findChild<QLineEdit *>("archivePath");
+        auto *pathCombo = window.findChild<QComboBox *>("pathCombo");
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
         QVERIFY(path);
+        QVERIFY(pathCombo);
+        QVERIFY(pathCombo->isEditable());
+        QCOMPARE(pathCombo->lineEdit(), path);
         QVERIFY(table);
         QVERIFY(toolbar);
         QStringList toolbarActions;
@@ -40,7 +49,10 @@ class MainWindowLayoutTests : public QObject {
             toolbarActions << action->objectName();
         QCOMPARE(toolbarActions,
                  QStringList({"toolbarAddAction", "extractArchiveAction", "testArchiveAction",
-                              "copyAction", "moveAction", "deleteAction", "archiveInfoAction"}));
+                              "toolbarGroupSeparator", "copyAction", "moveAction", "deleteAction",
+                              "archiveInfoAction"}));
+        QCOMPARE(toolbar->toolButtonStyle(), Qt::ToolButtonTextUnderIcon);
+        QVERIFY(!toolbar->actions().first()->icon().isNull());
         int navigationButtons = 0;
         for (QToolButton *button : window.centralWidget()->findChildren<QToolButton *>())
             if (button->defaultAction() == window.findChild<QAction *>("backAction") ||
@@ -62,13 +74,14 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(table->columnCount(), 5);
 
         const QRect content = window.centralWidget()->contentsRect();
-        QVERIFY2(content.contains(path->geometry()), "Archive path escaped the content area");
+        QVERIFY2(content.contains(pathCombo->geometry()), "Archive path escaped the content area");
         QVERIFY2(content.contains(table->geometry()), "File table escaped the content area");
-        QVERIFY2(path->geometry().bottom() < table->geometry().top(),
+        QVERIFY2(pathCombo->geometry().bottom() < table->geometry().top(),
                  "Archive path overlaps the file table");
         QVERIFY2(table->height() >= 120, "File table is too short to inspect archives");
         QVERIFY2(table->horizontalHeader()->sectionSize(0) > 0, "Name column is hidden");
-        QVERIFY2(table->horizontalHeader()->sectionSize(1) > 0, "Path column is hidden");
+        QVERIFY(table->isColumnHidden(1));
+        QVERIFY(table->verticalHeader()->isHidden());
 
         const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR",
                                                            QDir::currentPath() + "/ui-screenshots");
@@ -79,6 +92,58 @@ class MainWindowLayoutTests : public QObject {
         const QImage image = window.grab().toImage();
         QVERIFY2(image.save(screenshot), qPrintable(screenshot));
         QVERIFY(QFileInfo(screenshot).size() > 0);
+    }
+
+    void toolbarCustomizationPersists() {
+        MainWindow window;
+        auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
+        auto *archive = window.findChild<QAction *>("archiveToolbarOption");
+        auto *standard = window.findChild<QAction *>("standardToolbarOption");
+        auto *large = window.findChild<QAction *>("largeButtonsOption");
+        auto *text = window.findChild<QAction *>("buttonTextOption");
+        QVERIFY(toolbar && archive && standard && large && text);
+        window.show();
+        archive->setChecked(false);
+        QVERIFY(!toolbar->widgetForAction(toolbar->actions().first())->isVisible());
+        QVERIFY(toolbar->widgetForAction(window.findChild<QAction *>("copyAction"))->isVisible());
+        large->setChecked(true);
+        text->setChecked(false);
+        QCOMPARE(toolbar->iconSize(), QSize(48, 36));
+        QCOMPARE(toolbar->toolButtonStyle(), Qt::ToolButtonIconOnly);
+        standard->setChecked(false);
+        QVERIFY(!toolbar->isVisible());
+
+        MainWindow reopened;
+        QVERIFY(!reopened.findChild<QAction *>("archiveToolbarOption")->isChecked());
+        QVERIFY(!reopened.findChild<QAction *>("standardToolbarOption")->isChecked());
+        QVERIFY(reopened.findChild<QAction *>("largeButtonsOption")->isChecked());
+        QVERIFY(!reopened.findChild<QAction *>("buttonTextOption")->isChecked());
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
+
+    void columnCustomizationPersists() {
+        MainWindow window;
+        window.show();
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *header = table->horizontalHeader();
+        QVERIFY(!table->isColumnHidden(2));
+        QTimer::singleShot(0, [&] {
+            auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+            QVERIFY(menu);
+            for (QAction *option : menu->actions()) {
+                if (option->text() == "Размер") {
+                    option->trigger();
+                    break;
+                }
+            }
+            menu->close();
+        });
+        QVERIFY(QMetaObject::invokeMethod(header, "customContextMenuRequested",
+                                          Qt::DirectConnection, Q_ARG(QPoint, QPoint(30, 5))));
+        QVERIFY(table->isColumnHidden(2));
+        MainWindow reopened;
+        QVERIFY(reopened.findChild<QTableWidget *>("archiveTable")->isColumnHidden(2));
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 };
 
