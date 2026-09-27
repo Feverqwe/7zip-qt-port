@@ -572,11 +572,14 @@ class MainWindowStateTests : public QObject {
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         const QString archive = temp.filePath("existing.zip");
         window.openArchive(archive);
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         backend.completeList({});
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "createArchiveAction")->isEnabled());
 
         auto choose = [&] {
@@ -605,7 +608,7 @@ class MainWindowStateTests : public QObject {
                 }
                 dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             });
-            action(window, "addArchiveAction")->trigger();
+            action(window, "toolbarAddAction")->trigger();
         };
         choose();
         QCOMPARE(backend.addCalls, 1);
@@ -653,6 +656,7 @@ class MainWindowStateTests : public QObject {
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         for (int row = 0; row < table(window)->rowCount(); ++row) {
             if (table(window)->item(row, 1)->text() == canonicalFile)
@@ -666,7 +670,7 @@ class MainWindowStateTests : public QObject {
             initialSelectionCount = dialog->findChild<QListWidget *>("selectedSources")->count();
             dialog->reject();
         });
-        action(window, "createArchiveAction")->trigger();
+        action(window, "toolbarAddAction")->trigger();
         QCOMPARE(backend.createCalls, 0);
         QCOMPARE(initialSelectionCount, 1);
 
@@ -711,7 +715,7 @@ class MainWindowStateTests : public QObject {
                 }
                 dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             });
-            action(window, "createArchiveAction")->trigger();
+            action(window, "toolbarAddAction")->trigger();
         };
         chooseSources();
         QCOMPARE(backend.createCalls, 1);

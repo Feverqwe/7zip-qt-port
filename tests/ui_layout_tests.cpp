@@ -11,6 +11,7 @@
 #include <QSysInfo>
 #include <QTableWidget>
 #include <QToolBar>
+#include <QToolButton>
 #include <QtTest>
 
 class MainWindowLayoutTests : public QObject {
@@ -34,6 +35,18 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(path);
         QVERIFY(table);
         QVERIFY(toolbar);
+        QStringList toolbarActions;
+        for (QAction *action : toolbar->actions())
+            toolbarActions << action->objectName();
+        QCOMPARE(toolbarActions,
+                 QStringList({"toolbarAddAction", "extractArchiveAction", "testArchiveAction",
+                              "copyAction", "moveAction", "deleteAction", "archiveInfoAction"}));
+        int navigationButtons = 0;
+        for (QToolButton *button : window.centralWidget()->findChildren<QToolButton *>())
+            if (button->defaultAction() == window.findChild<QAction *>("backAction") ||
+                button->defaultAction() == window.findChild<QAction *>("upAction"))
+                ++navigationButtons;
+        QCOMPARE(navigationButtons, 2);
 
         path->setText(QString(180, QLatin1Char('a')) +
                       QStringLiteral("/имя с пробелом/archive.7z"));

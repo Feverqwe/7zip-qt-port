@@ -14,6 +14,7 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -36,6 +37,7 @@
 #include <QStyle>
 #include <QTableWidget>
 #include <QToolBar>
+#include <QToolButton>
 #include <QUuid>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -86,17 +88,26 @@ class MainWindow : public QMainWindow {
         auto *toolbar = addToolBar("Архив");
         toolbar->setObjectName("archiveToolbar");
         toolbar->setMovable(false);
-        back_ = toolbar->addAction("Назад", this, [this] { goBack(); });
+        back_ = new QAction("Назад", this);
         back_->setObjectName("backAction");
-        up_ = toolbar->addAction("Вверх", this, [this] { goUp(); });
+        connect(back_, &QAction::triggered, this, [this] { goBack(); });
+        up_ = new QAction("Вверх", this);
         up_->setObjectName("upAction");
+        connect(up_, &QAction::triggered, this, [this] { goUp(); });
         auto *open = menu->addAction("Открыть…", this, [this] { openDialog(); });
         open->setObjectName("openArchiveAction");
         open->setShortcut(QKeySequence::Open);
-        create_ = toolbar->addAction("Создать…", this, [this] { createDialog(); });
+        create_ = menu->addAction("Создать архив…", this, [this] { createDialog(); });
         create_->setObjectName("createArchiveAction");
         add_ = menu->addAction("Добавить в открытый архив…", this, [this] { addDialog(); });
         add_->setObjectName("addArchiveAction");
+        toolbarAdd_ = toolbar->addAction("Добавить", this, [this] {
+            if (state_ == State::Filesystem)
+                createDialog();
+            else if (state_ == State::Viewing)
+                addDialog();
+        });
+        toolbarAdd_->setObjectName("toolbarAddAction");
         extract_ = toolbar->addAction("Извлечь", this, [this] { extract(false); });
         extract_->setObjectName("extractArchiveAction");
         selected_ = menu->addAction("Извлечь выбранное…", this, [this] { extract(true); });
@@ -105,7 +116,6 @@ class MainWindow : public QMainWindow {
             menu->addAction("Журнал последней операции…", this, [this] { showJournal(); });
         journalAction_->setObjectName("operationJournalAction");
         journalAction_->setEnabled(false);
-        toolbar->addSeparator();
         test_ = toolbar->addAction("Тест", this, [this] { testArchive(); });
         test_->setObjectName("testArchiveAction");
         copy_ = toolbar->addAction("Копировать", this, [this] { copySelected(); });
@@ -128,8 +138,6 @@ class MainWindow : public QMainWindow {
         for (const QString &title :
              {"Пароль", "Изменить архив", "Интеграция с файловым менеджером"})
             menu->addAction(title)->setEnabled(false);
-        toolbar->addSeparator();
-        toolbar->addAction(open);
         open_ = open;
         auto *editMenu = menuBar()->addMenu("Правка");
         auto *viewMenu = menuBar()->addMenu("Вид");
@@ -140,10 +148,18 @@ class MainWindow : public QMainWindow {
         auto *central = new QWidget(this);
         auto *layout = new QVBoxLayout(central);
         layout->setContentsMargins(4, 4, 4, 4);
+        auto *navigation = new QHBoxLayout;
+        navigation->setContentsMargins(0, 0, 0, 0);
+        for (QAction *action : {back_, up_}) {
+            auto *button = new QToolButton(central);
+            button->setDefaultAction(action);
+            navigation->addWidget(button);
+        }
         path_ = new QLineEdit;
         path_->setObjectName("archivePath");
         path_->setPlaceholderText("Путь к папке или архиву");
-        layout->addWidget(path_);
+        navigation->addWidget(path_);
+        layout->addLayout(navigation);
         table_ = new FileTable(0, 5, central);
         table_->setObjectName("archiveTable");
         table_->setHorizontalHeaderLabels({"Имя", "Путь", "Размер", "Сжатый", "Изменён"});
@@ -632,6 +648,7 @@ class MainWindow : public QMainWindow {
         open_->setEnabled(idle);
         create_->setEnabled(idle && state_ == State::Filesystem);
         add_->setEnabled(idle && state_ == State::Viewing && !info_.encrypted);
+        toolbarAdd_->setEnabled(create_->isEnabled() || add_->isEnabled());
         extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
         test_->setEnabled(idle && state_ == State::Viewing);
         infoAction_->setEnabled(idle && state_ == State::Viewing);
@@ -1053,6 +1070,7 @@ class MainWindow : public QMainWindow {
     QAction *open_ = nullptr;
     QAction *create_ = nullptr;
     QAction *add_ = nullptr;
+    QAction *toolbarAdd_ = nullptr;
     QAction *extract_ = nullptr;
     QAction *test_ = nullptr;
     QAction *infoAction_ = nullptr;
