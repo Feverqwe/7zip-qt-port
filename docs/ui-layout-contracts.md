@@ -60,14 +60,14 @@ usability; rendered Windows parity remains unverified.
 
 ## Full text detail
 
-Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
-`CPP/7zip/UI/FileManager/EditDialog.cpp/.h/.rc` and
-`ListViewDialog.cpp::ShowItemInfo`. CEditDialog has one read-only multiline
+Reference: EditDialog.rc; source scope and baseline are recorded in the
+[properties audit](upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
+CEditDialog has one read-only multiline
 edit above Close, with both scroll directions and no automatic wrapping.
 Text/Title are copied without truncation. Enter remains in the edit
-(ES_WANTRETURN); Tab moves focus to the footer. `edit_dialog` checks 480×320
-and 320×240, visibility/separation, raw text and scroll ranges, and writes
-JSON. These checks do not establish pixel parity with Windows.
+(ES_WANTRETURN); Tab moves focus to the footer. Geometry: 480×320 and 320×240,
+visible, separate text area and footer. Coverage is described in
+[testing](testing.md). Rendered Windows parity remains unverified.
 
 ## Selected properties
 

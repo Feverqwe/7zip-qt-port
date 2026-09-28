@@ -10,20 +10,12 @@
 
 ## Свойства и двухколоночный список (2026-09-28)
 
-`CPP/7zip/UI/FileManager/EditDialog.cpp/.h/.rc` также перенесены из baseline
-ниже: CEditDialog сохраняет UString Title/Text и OnInit, а QPlainTextEdit/layout
-заменяют Win32 attachment/OnSize. Сохранены read-only/multiline/no-wrap,
-обе прокрутки и ES_WANTRETURN (Qt event filter удерживает Enter в тексте).
-Close не меняет Text; Tab переключает focus. ListViewDialog::ShowItemInfo
-теперь использует CEditDialog, сохраняя one/two-column branches и Windows-only
-LF→CRLF при отсутствии CR. LangSetDlgItems заменён локализацией Qt Close;
-полный presentation module адаптирован, форматирование — clang-format.
-
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 Пути ниже относительно `CPP/7zip/UI/FileManager/`; адаптированные файлы — в `src/`.
 
 | Исходник и символы | Заимствование и адаптация |
 | --- | --- |
+| `EditDialog.cpp/.h/.rc::CEditDialog` | Перенесён весь модуль: UString Title/Text и OnInit; QPlainTextEdit/layout заменяют Win32 attachment/OnSize, Qt-локализация — LangSetDlgItems, event filter — ES_WANTRETURN. ShowItemInfo сохраняет обе ветки и Windows-only LF→CRLF при отсутствии CR. |
 | `PanelMenu.cpp::{AddListAscii,AddSeparator,AddPropertyPair,CPanel::Properties}` | Перенесены перечисление свойств и сводка single/multiple selection с UStringVector и UInt64 totals. CPanelItem/CPanelProperty заменяют COM metadata снимком доступных полей, Qt — LangString и создание modal. Числа форматируют ConvertSizeToString/ConvertUInt64ToString. |
 | `PanelItems.cpp::{GetItem_UInt64Prop,GetItemSize}` | Сохранены parent-index, пустое свойство, ошибка 2723400 и делегирование GetItemSize; snapshot заменяет COM/variant. |
 | `ListViewDialog.cpp/.h::{OnInit,CopyToClipboard,ShowItemInfo,DeleteItems,OnEnter}` | Перенесены NumColumns/Values, усечение display copy, raw copy/detail и параллельное удаление Strings/Values. `qtlistview.h` адаптирует CListView к QTreeWidget; полный текст показывает перенесённый CEditDialog. Лимит 1024 wchar_t зависит от ширины wchar_t платформы. |
