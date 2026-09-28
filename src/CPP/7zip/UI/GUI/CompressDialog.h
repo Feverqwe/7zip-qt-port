@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
 
+#include "../Common/ZipRegistry.h"
 #include "Common/MyTypes.h"
 #include <QStringList>
 #include <QStringView>
@@ -74,6 +75,7 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 struct CInfo {
     bool SolidIsSpecified = false;
     UInt64 SolidBlockSize = 0;
+    NCompression::CMemUse MemUsage;
 };
 struct CSolidOptions {
     UInt64 AutoSolid = 1 << 20;
@@ -89,6 +91,7 @@ struct CSystemInfo {
     bool RamSizeDefined = false;
     UInt64 RamSize = 0;
     UInt64 RamUsageAuto = 0;
+    UInt64 RamSizeReduced = 1 << 26;
 };
 struct CThreadOptions {
     UInt32 AutoNumThreads = 1;
@@ -96,11 +99,18 @@ struct CThreadOptions {
 };
 CSystemInfo GetSystemInfo();
 CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 level, UInt64 dict64,
-                              UInt32 blockSizeLog, const CSystemInfo &system);
+                              UInt32 blockSizeLog, const CSystemInfo &system,
+                              const NCompression::CMemUse &memUse = {});
 UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, EMethodID methodId, UInt32 level,
                                              UInt32 numThreads, UInt64 dict64, UInt32 blockSizeLog,
                                              UInt64 &decompressMemory);
 QString AddMemUsage(UInt64 v);
+struct CMemComboItem {
+    QString User;
+    QString Spec;
+};
+QList<CMemComboItem> SetMemUseCombo(const QString &spec = {});
+UInt64 Get_MemUse_Bytes(const NCompression::CMemUse &mu, const CSystemInfo &system);
 
 const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);

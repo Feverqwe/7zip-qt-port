@@ -289,3 +289,37 @@ CMemUse использует ранее перенесённый Calc_From_Val_P
 остаётся долгом; не добавлены платформенные Registry зависимости.
 Форматирование — обязательный clang-format. Подключение пользовательского
 предела к диалогу и backend выполняется следующей итерацией.
+
+### Итерация: пользовательский лимит памяти от диалога до движка
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::AddMemSize`, `AddMemComboItem`,
+`SetMemUseCombo`, `Get_MemUse_Bytes`, RAM-блок `OnInit`, память в `OnOK`,
+`SetNumThreads2`; `CompressDialog.h::CInfo::MemUsage`;
+`UpdateGUI.cpp::SetOutProperties` (ветка memuse).
+Скопированы форматирование размеров, Auto/процентные/байтовые элементы,
+оба цикла выбора и вставка нестандартного текущего значения, GetBytes
+и fallback Auto. Алгоритмы, типы, пределы и порядок ветвей сохранены.
+Вместо UString и Win32 combo функции возвращают Qt-строки/данные;
+Registry CFormatOptions заменён параметром spec, операции SetCurSel
+удалены из ядра — текущий выбор принадлежит Qt. Show/Enable по MemUse_
+не нужен: оба экспонируемых формата имеют этот flag. Для байтов mu.Val
+эквивалентен исходному GetBytes(_ramSize_Reduced). CSystemInfo получил
+исходное _ramSize_Reduced после минимального размера 64 МиБ.
+
+SetNumThreads2 теперь вызывает перенесённый Get_MemUse_Bytes вместо
+фиксированного RamUsageAuto. При смене solid-блока Qt пересчитывает
+Auto-потоки; backend восстанавливает log из проверяемого CInfo, чтобы
+оценка соответствовала выбранному solid. Это адаптер байтовой process
+границы, не новая формула оценки памяти. OnOK сохраняет проверку
+memUsage!=UInt64(-1), затем memUsage>limit; Qt заменяет MessageBoxError.
+Проверка применяется лишь к созданию: диалог добавления не экспонирует
+сжатие и backend сохраняет существующие параметры.
+
+CInfo передаёт исходную CMemUse, backend повторяет проверку и переносит
+ветку SetOutProperties: проценты в memuse=<value>%, байты в memuse=<value>b,
+Qt QProcess добавляет префикс -m. Неизвестная RAM сохраняет ранее описанную
+адаптацию Auto без отказа; явный предел проверяется. Оценка/RAM в подсказке
+вместо исходной длинной строки со slash — адаптация ширины Qt-формы.
+Windows Registry, сохранение по формату и остальные поля CInfo остаются
+долгом. Форматирование — обязательный clang-format.

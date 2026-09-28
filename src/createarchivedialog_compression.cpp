@@ -34,7 +34,16 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     compressionForm->addRow("Потоки CPU:", cpuRow);
     memoryUsage_ = new QLabel(compression);
     memoryUsage_->setObjectName("compressionMemoryUsage");
-    compressionForm->addRow("Память для сжатия:", memoryUsage_);
+    auto *memoryRow = new QWidget(compression);
+    auto *memoryLayout = new QHBoxLayout(memoryRow);
+    memoryLayout->setContentsMargins(0, 0, 0, 0);
+    memUse_ = new QComboBox(memoryRow);
+    memUse_->setObjectName("compressionMemoryLimit");
+    for (const auto &item : NCompressDialog::SetMemUseCombo())
+        memUse_->addItem(item.User, item.Spec);
+    memoryLayout->addWidget(memoryUsage_);
+    memoryLayout->addWidget(memUse_, 1);
+    compressionForm->addRow("Память для сжатия:", memoryRow);
     decompressionMemory_ = new QLabel(compression);
     decompressionMemory_->setObjectName("compressionDecompressionMemory");
     compressionForm->addRow("Память для распаковки:", decompressionMemory_);
@@ -64,7 +73,8 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         SetNumThreads2();
     });
     connect(threads_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
-    connect(solidBlock_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
+    connect(solidBlock_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
+    connect(memUse_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
     SetLevel2();
     method_->addItems(NCompressDialog::GetMethodNames(format_->currentText()));
 }

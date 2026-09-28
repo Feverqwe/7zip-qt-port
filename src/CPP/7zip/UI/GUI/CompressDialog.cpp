@@ -641,12 +641,14 @@ CSystemInfo GetSystemInfo() {
     const size_t kMinUseSize = 1 << 26;
     if (size < kMinUseSize)
         size = kMinUseSize;
+    info.RamSizeReduced = size;
     info.RamUsageAuto = Calc_From_Val_Percents(size, 80);
     return info;
 }
 
 CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 level, UInt64 dict64,
-                              UInt32 blockSizeLog, const CSystemInfo &system) {
+                              UInt32 blockSizeLog, const CSystemInfo &system,
+                              const NCompression::CMemUse &memUse) {
     CThreadOptions options;
     const CFormatInfo &fi = GetFormatInfo(format);
     if (!fi.MultiThread_())
@@ -686,7 +688,7 @@ CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 lev
     if (autoThreads > numAlgoThreadsMax)
         autoThreads = numAlgoThreadsMax;
 
-    const UInt64 memUse_Limit = system.RamUsageAuto;
+    const UInt64 memUse_Limit = Get_MemUse_Bytes(memUse, system);
 
     if (system.RamSizeDefined)
         if (autoThreads > 1
@@ -756,6 +758,122 @@ QString AddMemUsage(UInt64 v) {
         post = "TB";
     }
     return QString::number(v) + QLatin1Char(' ') + QString::fromLatin1(post);
+}
+
+static void AddMemSize(QString &res, UInt64 size) {
+    char c;
+    unsigned moveBits = 0;
+    if (size >= ((UInt64)1 << 31) && (size & 0x3FFFFFFF) == 0) {
+        moveBits = 30;
+        c = 'G';
+    } else // if (size >= ((UInt32)1 << 21) && (size & 0xFFFFF) == 0)
+    {
+        moveBits = 20;
+        c = 'M';
+    }
+    // else { moveBits = 10; c = 'K'; }
+    res += QString::number(size >> moveBits);
+    res += ' ';
+    if (moveBits != 0)
+        res += QLatin1Char(c);
+    res += 'B';
+}
+
+static int AddMemComboItem(QList<CMemComboItem> &items, UInt64 val, bool isPercent = false,
+                           bool isDefault = false) {
+    QString sUser;
+    QString sRegistry;
+    if (isPercent) {
+        QString s;
+        s += QString::number(val);
+        s += '%';
+        if (isDefault)
+            sUser = QStringLiteral("Автоматически: ");
+        else
+            sRegistry = s;
+        sUser += s;
+    } else {
+        AddMemSize(sUser, val);
+        sRegistry = sUser;
+        for (;;) {
+            const int pos = sRegistry.indexOf(' ');
+            if (pos < 0)
+                break;
+            sRegistry.remove(pos, 1);
+        }
+        if (!sRegistry.isEmpty())
+            if (sRegistry.back() == 'B')
+                sRegistry.chop(1);
+    }
+    const int dataIndex = items.size();
+    items.append({sUser, sRegistry});
+    return dataIndex;
+}
+
+QList<CMemComboItem> SetMemUseCombo(const QString &spec) {
+    QList<CMemComboItem> items;
+    UInt64 curMem_Bytes = 0;
+    UInt64 curMem_Percents = 0;
+    bool needSetCur_Bytes = false;
+    bool needSetCur_Percents = false;
+    {
+        if (!spec.isEmpty()) {
+            NCompression::CMemUse mu;
+            mu.Parse(spec);
+            if (mu.IsDefined) {
+                if (mu.IsPercent) {
+                    curMem_Percents = mu.Val;
+                    needSetCur_Percents = true;
+                } else {
+                    curMem_Bytes = mu.Val;
+                    needSetCur_Bytes = true;
+                }
+            }
+        }
+    }
+
+    // 80% - is auto usage limit in handlers
+    AddMemComboItem(items, 80, true, true);
+
+    {
+        for (unsigned i = 10;; i += 10) {
+            UInt64 size = i;
+            if (i > 100)
+                size = (UInt64)(Int64)-1;
+            if (needSetCur_Percents && size >= curMem_Percents) {
+                AddMemComboItem(items, curMem_Percents, true);
+                needSetCur_Percents = false;
+                if (size == curMem_Percents)
+                    continue;
+            }
+            if (size == (UInt64)(Int64)-1)
+                break;
+            AddMemComboItem(items, size, true);
+        }
+    }
+    {
+        for (unsigned i = (27) * 2;; i++) {
+            UInt64 size = (UInt64)(2 + (i & 1)) << (i / 2);
+            if (i > (20 + sizeof(size_t) * 3 - 1) * 2)
+                size = (UInt64)(Int64)-1;
+            if (needSetCur_Bytes && size >= curMem_Bytes) {
+                AddMemComboItem(items, curMem_Bytes);
+                needSetCur_Bytes = false;
+                if (size == curMem_Bytes)
+                    continue;
+            }
+            if (size == (UInt64)(Int64)-1)
+                break;
+            AddMemComboItem(items, size);
+        }
+    }
+    return items;
+}
+
+UInt64 Get_MemUse_Bytes(const NCompression::CMemUse &mu, const CSystemInfo &system) {
+    if (mu.IsDefined)
+        return mu.GetBytes(system.RamSizeReduced);
+    return system.RamUsageAuto;
 }
 
 } // namespace NCompressDialog

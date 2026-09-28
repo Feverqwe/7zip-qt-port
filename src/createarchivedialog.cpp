@@ -195,6 +195,8 @@ void CreateArchiveDialog::validateAndAccept() {
         QMessageBox::warning(this, "Создать архив", "Введённые пароли не совпадают.");
         return;
     }
+    if (existingTarget_.isEmpty() && !checkMemoryUsage())
+        return;
     const QString base = name_->text().trimmed();
     const QFileInfo destination(destination_->text());
     if (selected_.isEmpty() ||
@@ -229,6 +231,7 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
         options.level = level_->currentData().toInt();
         options.method = method_->currentText();
         options.threads = threads_->currentData().toInt();
+        options.MemUsage = Get_MemUse_Spec();
         options.dictionaryBytes =
             dictionary_->isEnabled() ? dictionary_->currentData().toULongLong() : 0;
         options.wordSize = wordSize_->isEnabled() ? wordSize_->currentData().toInt() : 0;

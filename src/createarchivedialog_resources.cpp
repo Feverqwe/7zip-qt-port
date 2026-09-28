@@ -18,7 +18,7 @@ void CreateArchiveDialog::SetNumThreads2() {
             : NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
-        solidBlock_->currentData().toUInt(), system_);
+        solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
     threads_->blockSignals(true);
     threads_->clear();
     threads_->addItem(QStringLiteral("Автоматически (%1)").arg(options.AutoNumThreads), 0u);
@@ -42,7 +42,7 @@ void CreateArchiveDialog::SetMemoryUsage() {
             : NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
-        solidBlock_->currentData().toUInt(), system_);
+        solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
     const UInt32 numThreads = threads_->currentData().toUInt() ? threads_->currentData().toUInt()
                                                                : options.AutoNumThreads;
     UInt64 decompressMemory;
@@ -54,8 +54,44 @@ void CreateArchiveDialog::SetMemoryUsage() {
     decompressionMemory_->setText(decompressMemory == UInt64(-1)
                                       ? QStringLiteral("Неизвестно")
                                       : NCompressDialog::AddMemUsage(decompressMemory));
-    memoryUsage_->setToolTip(system_.RamSizeDefined
-                                 ? QStringLiteral("Автоматический лимит: %1 (80%)")
-                                       .arg(NCompressDialog::AddMemUsage(system_.RamUsageAuto))
-                                 : QStringLiteral("Размер RAM не определён"));
+    const auto mu = Get_MemUse_Spec();
+    memoryUsage_->setToolTip(
+        mu.IsDefined || system_.RamSizeDefined
+            ? QStringLiteral("Лимит: %1 / RAM: %2")
+                  .arg(NCompressDialog::AddMemUsage(NCompressDialog::Get_MemUse_Bytes(mu, system_)),
+                       system_.RamSizeDefined ? NCompressDialog::AddMemUsage(system_.RamSize)
+                                              : QStringLiteral("не определена"))
+            : QStringLiteral("Размер RAM не определён"));
+}
+
+NCompression::CMemUse CreateArchiveDialog::Get_MemUse_Spec() const {
+    NCompression::CMemUse mu;
+    mu.Parse(memUse_->currentData().toString());
+    return mu;
+}
+
+bool CreateArchiveDialog::checkMemoryUsage() {
+    const auto options = compressionOptions();
+    const auto method = options.level == 0
+                            ? NCompressDialog::kCopy
+                            : NCompressDialog::GetMethodID(options.method, format_->currentText());
+    const auto threads = NCompressDialog::SetNumThreads2(
+        format_->currentText(), method, UInt32(options.level), GetDict2(),
+        solidBlock_->currentData().toUInt(), system_, options.MemUsage);
+    UInt64 decompressMem;
+    const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
+        format_->currentText(), method, UInt32(options.level),
+        options.threads ? UInt32(options.threads) : threads.AutoNumThreads, GetDict2(),
+        solidBlock_->currentData().toUInt(), decompressMem);
+    if (memUsage != UInt64(-1) && (options.MemUsage.IsDefined || system_.RamSizeDefined)) {
+        const UInt64 limit = NCompressDialog::Get_MemUse_Bytes(options.MemUsage, system_);
+        if (memUsage > limit) {
+            QMessageBox::warning(this, "Создать архив",
+                                 QStringLiteral("Для сжатия требуется %1 памяти, лимит — %2.")
+                                     .arg(NCompressDialog::AddMemUsage(memUsage),
+                                          NCompressDialog::AddMemUsage(limit)));
+            return false;
+        }
+    }
+    return true;
 }

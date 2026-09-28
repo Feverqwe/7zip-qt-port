@@ -10,9 +10,10 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
 add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
-    third_party/7zip/CPP/Windows/System.cpp src/CPP/7zip/Common/MethodProps.cpp)
+    third_party/7zip/CPP/Windows/System.cpp src/CPP/7zip/Common/MethodProps.cpp src/CPP/7zip/UI/Common/ZipRegistry.cpp)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
+target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 
 qt_add_executable(sevenzip_desktop
     src/main.cpp
@@ -130,10 +131,15 @@ if(BUILD_TESTING)
     target_link_libraries(compression_memory_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_memory COMMAND compression_memory_tests)
     set_tests_properties(compression_memory PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    qt_add_executable(memory_limit_tests tests/memory_limit_tests.cpp src/CPP/7zip/UI/Common/ZipRegistry.cpp)
+    qt_add_executable(memory_limit_tests tests/memory_limit_tests.cpp)
     target_include_directories(memory_limit_tests PRIVATE src)
     target_link_libraries(memory_limit_tests PRIVATE Qt6::Test sevenzip_common)
     add_test(NAME memory_limit COMMAND memory_limit_tests)
+    qt_add_executable(compression_limit_tests tests/compression_limit_tests.cpp ${compression_order_sources})
+    target_include_directories(compression_limit_tests PRIVATE src)
+    target_link_libraries(compression_limit_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    add_test(NAME compression_limit COMMAND compression_limit_tests)
+    set_tests_properties(compression_limit PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(compression_resource_tests tests/compression_resource_tests.cpp ${compression_order_sources})
     target_include_directories(compression_resource_tests PRIVATE src)
     target_link_libraries(compression_resource_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)

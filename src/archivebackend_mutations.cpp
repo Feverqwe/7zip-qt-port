@@ -40,8 +40,21 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                         : dictionary.AutoDict   ? UInt64(dictionary.AutoDict)
                                                 : UInt64(-1);
     const auto system = NCompressDialog::GetSystemInfo();
+    UInt32 blockSizeLog = UInt32(-1);
+    if (options.SolidIsSpecified) {
+        if (options.SolidBlockSize == UInt64(-1))
+            blockSizeLog = 64;
+        else if (options.SolidBlockSize == 0)
+            blockSizeLog = 0;
+        else
+            for (UInt32 i = 20; i <= 36; i++)
+                if (options.SolidBlockSize == (UInt64(1) << i)) {
+                    blockSizeLog = i;
+                    break;
+                }
+    }
     const auto threadOptions = NCompressDialog::SetNumThreads2(
-        suffix, methodID, UInt32(options.level), dict, UInt32(-1), system);
+        suffix, methodID, UInt32(options.level), dict, blockSizeLog, system, options.MemUsage);
     if (options.threads != 0 && !threadOptions.Values.contains(UInt32(options.threads))) {
         emit finished(false,
                       QStringLiteral("Число потоков не подходит для выбранного метода сжатия."));
@@ -78,14 +91,14 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     UInt64 decompressMemory;
     const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
         suffix, methodID, UInt32(options.level),
-        options.threads ? UInt32(options.threads) : threadOptions.AutoNumThreads, dict, UInt32(-1),
-        decompressMemory);
-    if (system.RamSizeDefined && memUsage != UInt64(-1) && memUsage > system.RamUsageAuto) {
-        emit finished(
-            false,
-            QStringLiteral("Для сжатия требуется %1 памяти, автоматический лимит — %2 (80% RAM).")
-                .arg(NCompressDialog::AddMemUsage(memUsage),
-                     NCompressDialog::AddMemUsage(system.RamUsageAuto)));
+        options.threads ? UInt32(options.threads) : threadOptions.AutoNumThreads, dict,
+        blockSizeLog, decompressMemory);
+    const UInt64 memLimit = NCompressDialog::Get_MemUse_Bytes(options.MemUsage, system);
+    if ((options.MemUsage.IsDefined || system.RamSizeDefined) && memUsage != UInt64(-1) &&
+        memUsage > memLimit) {
+        emit finished(false, QStringLiteral("Для сжатия требуется %1 памяти, лимит — %2.")
+                                 .arg(NCompressDialog::AddMemUsage(memUsage),
+                                      NCompressDialog::AddMemUsage(memLimit)));
         return;
     }
     if (suffix == "zip") {
@@ -142,6 +155,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     }
     if (options.threads > 0)
         arguments.insert(5, "-mmt=" + QString::number(options.threads));
+    if (options.MemUsage.IsDefined)
+        arguments.insert(5, "-mmemuse=" + QString::number(options.MemUsage.Val) +
+                                (options.MemUsage.IsPercent ? "%" : "b"));
     if (options.SolidIsSpecified)
         arguments.insert(5, "-ms=" + QString::number(options.SolidBlockSize) + "b");
     if (!password.isEmpty()) {

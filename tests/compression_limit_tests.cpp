@@ -1,0 +1,172 @@
+#include "archivebackend.h"
+#include "createarchivedialog.h"
+#include <QScrollArea>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QTimer>
+#include <QtTest>
+
+class CompressionLimitTests final : public QObject {
+    Q_OBJECT
+  private slots:
+    void originalChoices() {
+        const auto choices = NCompressDialog::SetMemUseCombo();
+        QCOMPARE(choices.first().Spec, QString());
+        QCOMPARE(choices.first().User, QStringLiteral("Автоматически: 80%"));
+        for (int i = 1; i <= 10; i++)
+            QCOMPARE(choices[i].Spec, QString::number(i * 10) + "%");
+        QCOMPARE(choices[11].Spec, QString("256M"));
+        QCOMPARE(choices[12].Spec, QString("384M"));
+        QCOMPARE(choices.last().Spec, sizeof(size_t) == 8 ? QString("16384G") : QString("4G"));
+        QCOMPARE(choices.size(), sizeof(size_t) == 8 ? 44 : 20);
+        for (QString custom : {QString("37%"), QString("110%"), QString("320M"), QString("128M")}) {
+            const auto restored = NCompressDialog::SetMemUseCombo(custom);
+            int occurrences = 0;
+            for (const auto &item : restored)
+                occurrences += item.Spec == custom;
+            QCOMPARE(occurrences, 1);
+            QCOMPARE(restored.size(), choices.size() + 1);
+        }
+        QCOMPARE(NCompressDialog::SetMemUseCombo("256M").size(), choices.size());
+    }
+    void automaticThreadsRespectLimit() {
+        NCompressDialog::CSystemInfo system;
+        system.NumCPUs = system.NumHardwareThreads = 16;
+        system.RamSizeDefined = true;
+        system.RamSize = system.RamSizeReduced = 1 << 30;
+        system.RamUsageAuto = Calc_From_Val_Percents(system.RamSizeReduced, 80);
+        NCompression::CMemUse limit;
+        limit.Parse("64M");
+        QCOMPARE(NCompressDialog::Get_MemUse_Bytes(limit, system), UInt64(64 << 20));
+        auto threads = NCompressDialog::SetNumThreads2(
+            QStringLiteral("7z"), NCompressDialog::kLZMA2, 5, 1 << 20, UInt32(-1), system, limit);
+        QCOMPARE(threads.AutoNumThreads, 4u);
+        limit.Parse("50%");
+        QCOMPARE(NCompressDialog::Get_MemUse_Bytes(limit, system), UInt64(512 << 20));
+        threads = NCompressDialog::SetNumThreads2(QStringLiteral("zip"), NCompressDialog::kPPMdZip,
+                                                  5, 16 << 20, UInt32(-1), system, limit);
+        QCOMPARE(threads.AutoNumThreads, sizeof(size_t) == 8 ? 6u : 10u);
+        limit.Clear();
+        QCOMPARE(NCompressDialog::Get_MemUse_Bytes(limit, system), system.RamUsageAuto);
+        system.RamSizeDefined = false;
+        limit.Parse("64M");
+        threads = NCompressDialog::SetNumThreads2(QStringLiteral("7z"), NCompressDialog::kLZMA2, 5,
+                                                  1 << 20, UInt32(-1), system, limit);
+        QCOMPARE(threads.AutoNumThreads, 16u);
+    }
+    void dialogValidationAndLayout() {
+        QTemporaryDir dir;
+        const QString source = dir.filePath(QStringLiteral("данные с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("contents"), qint64(8));
+        file.close();
+        CreateArchiveDialog dialog(dir.path(), {source});
+        auto *limit = dialog.findChild<QComboBox *>("compressionMemoryLimit");
+        auto *method = dialog.findChild<QComboBox *>("compressionMethod");
+        QVERIFY(limit && method);
+        QVERIFY(!limit->isEditable());
+        method->setCurrentText("PPMd");
+        limit->setCurrentIndex(limit->findData("256M"));
+        QCOMPARE(dialog.compressionOptions().MemUsage.GetBytes(0), UInt64(256 << 20));
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        format->setCurrentText("zip");
+        QCOMPARE(limit->currentData().toString(), QString("256M"));
+        limit->setCurrentIndex(limit->findData("50%"));
+        QVERIFY(dialog.compressionOptions().MemUsage.IsPercent);
+        QCOMPARE(dialog.compressionOptions().MemUsage.Val, UInt64(50));
+        limit->setCurrentIndex(0);
+        QVERIFY(!dialog.compressionOptions().MemUsage.IsDefined);
+        // Inject a parsed zero-byte choice to exercise OnOK independent of physical RAM.
+        limit->addItem("0 B", "0b");
+        limit->setCurrentIndex(limit->count() - 1);
+        dialog.show();
+        bool rejectedForMemory = false;
+        QTimer::singleShot(0, &dialog, [&] {
+            auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            if (message) {
+                rejectedForMemory = message->text().contains(QStringLiteral("лимит"));
+                message->accept();
+            }
+        });
+        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+        QVERIFY(rejectedForMemory);
+        QCOMPARE(dialog.result(), 0);
+        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+        QVERIFY(QDir().mkpath(screenshots));
+        limit->setCurrentIndex(limit->findData("256M"));
+        for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
+            dialog.resize(size);
+            QApplication::processEvents();
+            dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
+                ->ensureWidgetVisible(limit, 0, 80);
+            QApplication::processEvents();
+            QVERIFY(dialog.grab().save(screenshots +
+                                       QString("/memory-limit-%1.png").arg(size.width())));
+        }
+        limit->setCurrentIndex(0);
+        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+    }
+    void operations_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<QString>("spec");
+        QTest::newRow("7z-bytes") << QString("7z") << QString("256M");
+        QTest::newRow("7z-percent") << QString("7z") << QString("80%");
+        QTest::newRow("zip-bytes") << QString("zip") << QString("256M");
+        QTest::newRow("zip-percent") << QString("zip") << QString("80%");
+    }
+    void operations() {
+        QFETCH(QString, format);
+        QFETCH(QString, spec);
+        QTemporaryDir dir;
+        const QString source = dir.filePath(QStringLiteral("данные с пробелом.txt"));
+        QFile file(source);
+        const QByteArray bytes(65536, 'x');
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write(bytes), qint64(bytes.size()));
+        file.close();
+        ArchiveBackend backend;
+        CompressionOptions options;
+        options.method = "PPMd";
+        options.dictionaryBytes = 1 << 20;
+        options.MemUsage.Parse(spec);
+        const QString target = dir.filePath("limit." + format);
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        backend.create(target, {source}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        done.clear();
+        QProcess process;
+        process.start("7zz", {"t", "--", target});
+        QVERIFY(process.waitForFinished(15000));
+        QCOMPARE(process.exitCode(), 0);
+        process.start("7zz", {"x", "-o" + dir.filePath("out"), "--", target});
+        QVERIFY(process.waitForFinished(15000));
+        QCOMPARE(process.exitCode(), 0);
+        QFile restored(dir.filePath("out/" + QFileInfo(source).fileName()));
+        QVERIFY(restored.open(QIODevice::ReadOnly));
+        QCOMPARE(restored.readAll(), bytes);
+        options.MemUsage.Parse("1M");
+        backend.create(dir.filePath("rejected." + format), {source}, {}, false, options);
+        QCOMPARE(done.size(), 1);
+        QVERIFY(!done.first()[0].toBool());
+        QVERIFY(done.first()[1].toString().contains(QStringLiteral("лимит")));
+        QVERIFY(!QFileInfo::exists(dir.filePath("rejected." + format)));
+        done.clear();
+        options.MemUsage.Parse(spec);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QVERIFY(file.resize(8 << 20));
+        file.close();
+        const QString cancelled = dir.filePath("cancelled." + format);
+        backend.create(cancelled, {source}, {}, false, options);
+        backend.cancel();
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY(!done.first()[0].toBool());
+        QVERIFY(!QFileInfo::exists(cancelled));
+        QVERIFY(QFileInfo::exists(target));
+        QVERIFY(QDir(dir.path()).entryList({"*.stage*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+};
+QTEST_MAIN(CompressionLimitTests)
+#include "compression_limit_tests.moc"
