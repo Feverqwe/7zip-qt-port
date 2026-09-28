@@ -130,8 +130,8 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 | --- | --- | --- | --- | --- |
 | [x] | P0-01.1 | 16 mirrored `.cpp`: App/state, Panel navigation/items/menu/keys/selection/sort/summary, ViewSettings, FS operations, Split workers/utils, Agent/Proxy, Wildcard/FileDir. Реестр copied/adapted/omitted symbols и immediate dependencies, review bodies | — | done — audit § P0-01.1; 2026-09-28 macOS docs-only, diff/check paths; runtime других ОС не проверен |
 | [x] | P0-01.2 | Остальные 14 mirrored `.cpp`: dialogs/preferences/Compress/Extract/ZipRegistry/MethodProps, включая BrowseDialog/PanelListNotify; их headers, resources, vendored dependencies и Qt/std migration debt | P0-01.1 | done — audit § P0-01.2; 2026-09-28 macOS docs-only; 33 vendored byte matches, 30 paths coverage, diff check; runtime других ОС не проверен |
-| [ ] | P0-01.3 | Все 82 отсутствующих `.cpp`: inspect source scope/callers/build dependencies, назначить decision/owner без механического N/A | P0-01.2 | active |
-| [ ] | P0-01.4 | Проверить полное покрытие 109 UI + 3 supporting `.cpp`, согласовать audit/plan/owners/counts, записать checks и handoff | P0-01.3 | todo |
+| [x] | P0-01.3 | Все 82 отсутствующих `.cpp`: inspect source scope/callers/build dependencies, назначить decision/owner без механического N/A | P0-01.2 | done — .3a–d; 2026-09-28 macOS docs-only diff/coverage, 112 unique paths |
+| [ ] | P0-01.4 | Проверить полное покрытие 109 UI + 3 supporting `.cpp`, согласовать audit/plan/owners/counts, записать checks и handoff | P0-01.3 | active |
 
 Коммиты: P0-01.1 — `cfd02a5` (16 modules audit), P0-01.2 — `d03de90`
 (14 modules и vendor baseline). Подшаг P0-01.3 разделён до начала правок:
@@ -141,7 +141,7 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 | P0-01.3a | Текущий чат: отсутствующие FM App/Panel/navigation/commands/progress/overwrite/callback modules; source bodies/callers, decision/owner/dependencies | P0-01.2 | done — audit § P0-01.3a; 2026-09-28 macOS docs-only, diff check, 12 missing / 42 unique paths; SFX legacy decision открыт |
 | P0-01.3b | Текущий чат: остальные отсутствующие FM modules; source bodies/callers, platform/build scope, decision/owner/dependencies | P0-01.3a | done — b1–b3, 33 modules; полный FM inventory |
 | P0-01.3c | Текущий чат: отсутствующие Agent/GUI modules; source bodies/callers и process adapters, decision/owner/dependencies | P0-01.3b | done — c1/c2, 13 modules, полный Agent/GUI inventory |
-| P0-01.3d | Текущий чат: отсутствующие Common modules; source bodies/callers и dependency closure, decision/owner/dependencies, coverage всех 82 | P0-01.3c | active |
+| P0-01.3d | Текущий чат: отсутствующие Common modules; source bodies/callers и dependency closure, decision/owner/dependencies, coverage всех 82 | P0-01.3c | done — d1–d4, 24 modules; полный Common inventory |
 
 Каждый подшаг проверяется docs-only (`git diff --check`, unique-path coverage)
 и коммитится отдельно. Родитель P0-01.3 закрывается только после 3d.
@@ -175,7 +175,7 @@ P0-01.3d разделён перед audit на самостоятельные s
 | P0-01.3d1 | Текущий чат: ArchiveName/DefaultName/ExtractingFilePath/SetProperties/SortUtils/TempFiles/UpdateAction/UpdatePair/UpdateProduce/WorkDir; bodies/callers, owners, dependencies | P0-01.3c2 | done — audit § P0-01.3d1; 2026-09-28 macOS docs-only, diff check, 98 unique paths |
 | P0-01.3d2 | Текущий чат: ArchiveCommandLine/LoadCodecs/OpenArchive/ArchiveOpenCallback/PropIDUtils; parser/open/capability source scope и adapters | P0-01.3d1 | done — d2a/b/c, пять modules; 103 unique paths |
 | P0-01.3d3 | Текущий чат: EnumDirItems/Extract/ArchiveExtractCallback/Update/UpdateCallback; operations и callback policy versus engine boundary | P0-01.3d2 | done — d3a–d, 108 unique paths |
-| P0-01.3d4 | Текущий чат: Bench/HashCalc/CompressCall/CompressCall2; engine integration/dependency scope и полный inventory coverage | P0-01.3d3 | active |
+| P0-01.3d4 | Текущий чат: Bench/HashCalc/CompressCall/CompressCall2; engine integration/dependency scope и полный inventory coverage | P0-01.3d3 | done — d4a–c, 112 unique paths |
 
 Все 24 missing Common modules обязательны к audit. Каждый подшаг требует
 diff/unique-path checks и отдельного commit; d закрывается после d4.
@@ -226,14 +226,16 @@ P0-01.3d4 разделён перед review engine integration:
 | --- | --- | --- | --- |
 | P0-01.3d4a | Текущий чат: Bench, benchmark orchestration versus official engine primitives, dependencies/adapters | P0-01.3d3d | done — audit § P0-01.3d4a; 2026-09-28 macOS docs-only, diff check, 109 unique paths |
 | P0-01.3d4b | Текущий чат: HashCalc, hash orchestration/format/parser versus engine, dependencies/adapters | P0-01.3d4a | done — audit § P0-01.3d4b; 2026-09-28 macOS docs-only, diff check, 110 unique paths |
-| P0-01.3d4c | Текущий чат: CompressCall/CompressCall2, engine calls и final unique-path coverage | P0-01.3d4b | active |
+| P0-01.3d4c | Текущий чат: CompressCall/CompressCall2, engine calls и final unique-path coverage | P0-01.3d4b | done — audit § P0-01.3d4c; 2026-09-28 macOS docs-only diff/coverage, 112 unique paths |
 
 Каждый substep требует source-body review, docs-only checks и отдельный commit.
 P0-01.3d3d commit: `153e222`.
 P0-01.3d4a commit: `8a1f3e2`.
+P0-01.3d4b commit: `b35a90a`.
 
-Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
-подшагов; наличие карты filenames в плане не заменяет review реализации.
+Следующий текущий scope: **P0-01.4**. Source inventory .3 завершён;
+parent P0-01 остаётся открытым до reconciliation .4. Inventory не закрывает
+обязательные функциональные порты P0–P3.
 
 При первом разделении добавить здесь, сохраняя остальных:
 

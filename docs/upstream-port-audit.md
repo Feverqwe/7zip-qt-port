@@ -576,6 +576,43 @@ build/CTest/layout not run. Known digests, sums/names/ADS, escaped Unicode,
 malicious checksum paths, errors/cancel and handler lifecycle remain mandatory
 functional tests; native parity across three platforms remains unverified.
 
+## P0-01.3d4c — Common command entrypoints and inventory coverage (2026-09-28)
+
+Project baseline `b35a90a`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны оба полных .cpp и общий CompressCall.h (CompressCall2.h отсутствует);
+FM Panel/MyLoadMenu/PanelDrag и Explorer ContextMenu callers, FM/Explorer makefile.
+Copied scope пуст; это альтернативные реализации одного интерфейса, не два
+владельца одного алгоритма в проекте. FM/Explorer makefiles выбирают CompressCall;
+Compile scope второго варианта отдельно подтверждается при его functional port.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/CompressCall.cpp — P0-03/10/12, P1-04/05/16, P2-03/04/09, P3-05 | GetQuotedString/error helpers, Call7zGui, AddLagePagesSwitch, CRandNameGenerator/CreateMap, CompressFiles, ExtractGroupCommand/ExtractArchives/TestArchives/CalcChecksum/Benchmark. | CompressCall.h, Random/strings/MyCom, Windows DLL/ErrorMsg/FileDir/FileMapping/MemoryLock/ProcessUtils/Synchronization, FM RegistryUtils. Preserve add/exact naming, format/email/show-dialog options, grouped archive/hash inputs, ElimDup/zone, hash-file versus digest command, total benchmark dispatch and process/event wait semantics. Adapt Windows mapping/event handshake and 7zG.exe module discovery to typed backend operation/lifetime transport; command syntax remains ArchiveBackend-owned. |
+| Common/CompressCall2.cpp — P0-03/10/12, P1-04/05, P2-03/04, P3-05 | GetQuotedString/error helpers, ThrowException_if_Error, CREATE_CODECS/LOAD_EXTERNAL_CODECS, CompressFiles, ExtractGroupCommand/ExtractArchives/TestArchives/CalcChecksum/Benchmark. | Shared CompressCall.h; MyException/EnumDirItems/LangUtils, GUI BenchmarkDialog/ExtractGUI/UpdateGUI/HashGUI/ExtractRes, CCodecs/hash handler/censor/update/extract options. Preserve InitFormatIndex/SetArcPath validation, no-wildcard input censor, archive enumeration/sort/full paths, MultiArcMode, callback failed-file/IsOK checks, already-displayed errors and silent E_ABORT. Replace HWND/messagebox with Qt parent/error presenter and backend execution; preserve option/control flow bodies. |
+
+CreateMap writes initial zero plus nul-terminated UTF-16 names and adds map size/
+event to include switch. Non-waiting caller still waits for either process exit
+or reader event before releasing mapping; portable listfile/IPC must retain
+equivalent input lifetime and filename semantics. Call7zGui returns launch/wait
+success without inspecting child exit status; backend must separately report
+operation failures rather than claim completed archive from process creation.
+Large-page registry/risk decision is platform policy; no unconditional enable.
+CompressCall2 outer !Z7_EXTERNAL_CODECS guard makes its inner external-codecs
+macro branch inactive in this baseline. waitFinish is unused in direct GUI
+variant; do not fabricate asynchronous completion equivalence. Both variants
+route checksum-file creation through hash Update workflow; digest-only path is
+HashCalcGUI/command h. Benchmark total mode sets method wildcard. Read/source
+audit does not authorize sending email or installing shell integration.
+Choose one authoritative adapted entrypoint per workflow; retain relevant policy
+from both variants locally behind process/platform adapters. No active mandatory
+command is N/A merely because Windows 7zG/IPC is unavailable on macOS/Linux.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`; 112 unique exact-source
+paths = all 109 UI modules + 3 supporting modules, all 30 local paths covered,
+82 missing UI modules assigned audit decisions. No runtime/UI changes or
+build/CTest/layout runs. Parent P0-01 awaits .4 reconciliation; functional ports
+and native three-platform checks remain open.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
