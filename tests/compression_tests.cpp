@@ -52,7 +52,7 @@ class CompressionTests : public QObject {
         level->setCurrentIndex(level->findData(9u));
         dictionary->setCurrentIndex(2);
         wordSize->setCurrentIndex(wordSize->findData(64));
-        solidBlock->setCurrentIndex(1);
+        solidBlock->setCurrentIndex(solidBlock->findData(16));
         QCOMPARE(dialog.compressionOptions().dictionaryMiB, 4);
         QCOMPARE(dialog.compressionOptions().wordSize, 64);
         QCOMPARE(dialog.compressionOptions().solidBlockMiB, 16);

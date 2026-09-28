@@ -171,4 +171,19 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
     }
     return options;
 }
+// Numeric choices from CCompressDialog::SetSolidBlockSize2 (0766b73).
+// UI data uses MiB instead of upstream logarithms; Auto/non-solid stay in Qt.
+QList<int> SetSolidBlockSize2(QStringView format, UInt32 level) {
+    QList<int> values;
+    const CFormatInfo &fi = GetFormatInfo(format);
+    if (!fi.Solid_())
+        return values;
+    if (level == 0)
+        return values;
+    for (unsigned i = 20; i <= 36; i++) {
+        const UInt64 size = (UInt64)1 << i;
+        values.append(int(size >> 20));
+    }
+    return values;
+}
 } // namespace NCompressDialog

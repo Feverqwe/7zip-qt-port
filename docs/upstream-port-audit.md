@@ -29,7 +29,7 @@
 | `third_party/7zip/CPP/Common/StringToInt.cpp`, `.h` и их заголовки `Common*.h`, `My*.h`, `NewHandler.h`, `StdAfx.h`, `C/7zTypes.h`, `7zWindows.h`, `Compiler.h`, `Precomp.h` | Те же относительные пути upstream | Побайтовые копии без изменения алгоритмов и форматирования. Собирается `sevenzip_common`; Qt-код использует оригинальный `ConvertStringToUInt64`. |
 | `src/CPP/7zip/UI/FileManager/SplitUtils.cpp`, `.h` | `CPP/7zip/UI/FileManager/SplitUtils.cpp` | Перенесены `ParseVolumeSizes`, `GetNumberOfVolumes`, список `k_Sizes` и `AddVolumeItems`. Алгоритмы сохранены; `UString` / `CRecordVector` заменены стандартными контейнерами, Win32 combo — `QComboBox`. Worker применяет последовательность размеров и повторяет последний; диапазон ограничен `qint64`. |
 | `src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp`, `.h` | `CPP/7zip/UI/FileManager/PanelSplitFile.cpp::CVolSeqName`, `CThreadCombine::ProcessVirt`, `CThreadSplit::ProcessVirt` | Алгоритм нумерации и циклы Combine/Split перенесены с сохранением имён; `QString` / `QFile` / callback заменяют строки, NIO и progress sync. Проверки изменений входа и flush — платформенная адаптация. |
-| `src/CPP/7zip/UI/GUI/CompressDialog.cpp`, `.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp::CFormatInfo`, `g_Formats`, `g_*Methods`, `GetStaticFormatIndex`, `SetMethod2`, `SetOrder2` | Таблицы форматов, методов, уровней и флагов взяты из upstream. Qt-преобразование возвращает имена методов с исходным фильтром 7z. Один источник используется UI и backend; SFX и внешние кодеки не представлены в текущем UI. |
+| `src/CPP/7zip/UI/GUI/CompressDialog.cpp`, `.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp::CFormatInfo`, `g_Formats`, `g_*Methods`, `GetStaticFormatIndex`, `SetMethod2`, `SetOrder2`, `SetSolidBlockSize2` | Таблицы форматов, методов, уровней и флагов взяты из upstream. Qt-преобразование возвращает имена методов с исходным фильтром 7z. Один источник используется UI и backend; SFX и внешние кодеки не представлены в текущем UI. |
 | `src/CPP/7zip/UI/Agent/AgentProxy.cpp`, `.h`, `Agent.cpp`, `Agent.h` | `CPP/7zip/UI/Agent/AgentProxy.cpp::CProxyArc`, `CProxyDir`, `Agent.cpp::CAgentFolder::LoadFolder`, `LoadItems`, `GetNumberOfItems` | Перенесены бинарный поиск и отложенное слияние подпапок, дерево явных/неявных папок, итеративный подсчёт размеров, раскрытие выбора в реальные индексы и плоский обход. Qt-строки и стандартные контейнеры заменяют upstream-контейнеры; данные `ArchiveBackend` — COM-свойства. CRC, сырые свойства, `CProxyArc2` и alternate streams не представлены процессным листингом. |
 | `src/main.cpp`, `mainwindow.cpp`, `mainwindow.h`, `mainwindow_menus.cpp`, `mainwindow_panel.cpp` | `FM.cpp`, `App.cpp`, `App.h`, `Panel.cpp`, `Panel.h`, `PanelItems.cpp`, `resource.rc` | Qt-оболочка одной панели. Конструктор, сборка меню и сборка панели разделены; перенос правил меню и компонентов панели ещё не завершён. |
 | `src/mainwindow_backendevents.cpp` | `PanelCopy.cpp`, `PanelCrc.cpp`, `PanelItemOpen.cpp`, `OpenCallback.cpp`, `ExtractCallback.cpp` | Адаптер асинхронных сигналов `ArchiveBackend`: переходы между этапами хеширования/перемещения, просмотр извлечённого файла и восстановление состояния. Он необходим для процессного backend; функциональные сценарии ещё требуют сверки с исходными callback и panel-модулями. |
@@ -47,7 +47,7 @@
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
-| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветка размера слова LZMA/LZMA2 перенесена в `SetOrder2`; словарь, solid, шифрование и выбор источников ещё требуют переноса. |
+| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветка размера слова LZMA/LZMA2 перенесена в `SetOrder2`; Числовой ряд solid перенесён; словарь, расчёт Auto solid, шифрование и выбор источников ещё требуют переноса. |
 | `src/extractdialog.cpp`, `extractdialog.h` | `CPP/7zip/UI/GUI/ExtractDialog.cpp`, `ExtractDialog.rc` | Собственная Qt-форма с соответствующими вариантами путей и перезаписи; код не перенесён. |
 | `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
@@ -95,3 +95,17 @@ Qt-адаптер передаёт список временных путей в
 Qt-часть формы сжатия выделена в `createarchivedialog_compression.cpp`;
 явный выбор сохраняется при смене уровня, автоматический не передаёт `fb`
 движку. Ветки порядка Deflate/PPMd пока не подключены.
+
+Числовой ряд `CCompressDialog::SetSolidBlockSize2` перенесён из `0766b73`
+в исходный `GUI/CompressDialog.cpp`: степени 2^20–2^36. Qt хранит размеры
+в МиБ вместо логарифмов; UI и backend используют один источник. Сохраняется
+явное значение при смене уровня, для ZIP/Store блок отключён. Подписи
+показывают МиБ/ГиБ. Расчёт автоматического размера и отдельный Full Solid
+из upstream пока не перенесены; Auto оставляет выбор движку.
+
+Скопированы проверки `fi.Solid_()`/нулевого уровня и числовой цикл `i = 20..36`.
+Вместо вставки значений в Win32 `m_Solid` функция возвращает данные для Qt combo
+и проверки `ArchiveBackend`; преобразование логарифмов в МиБ требуется текущим
+полем `CompressionOptions::solidBlockMiB`. Registry, Add_Size, расчёт Auto,
+Non Solid и Full Solid из этой функции не включены в данный перенос.
+Форматирование изменено только по обязательному clang-format gate.

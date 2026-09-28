@@ -1,6 +1,20 @@
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "createarchivedialog.h"
 
+namespace {
+void SetSolidBlockSize2(QComboBox &combo, QStringView format, UInt32 level) {
+    const int previous = combo.currentData().toInt();
+    combo.clear();
+    combo.addItem(QStringLiteral("Автоматически"), 0);
+    for (int size : NCompressDialog::SetSolidBlockSize2(format, level))
+        combo.addItem(size < 1024 ? QStringLiteral("%1 МиБ").arg(size)
+                                  : QStringLiteral("%1 ГиБ").arg(size / 1024),
+                      size);
+    const int index = combo.findData(previous);
+    combo.setCurrentIndex(index >= 0 ? index : 0);
+}
+} // namespace
+
 void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     auto *compression = new QGroupBox("Параметры сжатия", this);
     auto *compressionForm = new QFormLayout(compression);
@@ -27,8 +41,6 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     solidBlock_ = new QComboBox(compression);
     solidBlock_->setObjectName("compressionSolidBlock");
     solidBlock_->addItem("Автоматически", 0);
-    for (int size : {16, 64, 256})
-        solidBlock_->addItem(QString::number(size) + " МиБ", size);
     compressionForm->addRow("Размер непрерывного блока:", solidBlock_);
     threads_ = new QSpinBox(compression);
     threads_->setObjectName("compressionThreads");
@@ -46,6 +58,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     });
     const auto updateMethodOptions = [this] {
         SetOrder2();
+        SetSolidBlockSize2(*solidBlock_, format_->currentText(), level_->currentData().toUInt());
         const bool lzma = method_->currentText() == "LZMA" || method_->currentText() == "LZMA2";
         const bool compressed = level_->currentData().toInt() != 0;
         method_->setEnabled(compressed);

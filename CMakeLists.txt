@@ -119,6 +119,12 @@ if(BUILD_TESTING)
     target_include_directories(compression_order_tests PRIVATE src)
     target_link_libraries(compression_order_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_order COMMAND compression_order_tests)
+    qt_add_executable(compression_solid_tests tests/compression_solid_tests.cpp ${compression_order_sources})
+    target_include_directories(compression_solid_tests PRIVATE src)
+    target_link_libraries(compression_solid_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    add_test(NAME compression_solid COMMAND compression_solid_tests)
+    set_tests_properties(compression_solid PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
     set_tests_properties(compression_order PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     set_tests_properties(compression PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

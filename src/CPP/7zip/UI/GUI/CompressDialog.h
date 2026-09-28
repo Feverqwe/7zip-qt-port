@@ -62,6 +62,7 @@ struct COrderOptions {
     QList<int> Values;
 };
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
+QList<int> SetSolidBlockSize2(QStringView format, UInt32 level);
 
 const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);

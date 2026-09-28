@@ -43,7 +43,8 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                         .Values.contains(options.wordSize))) ||
         (options.solidBlockMiB != 0 &&
          (suffix != "7z" || !options.solid ||
-          !QList<int>{16, 64, 256}.contains(options.solidBlockMiB))) ||
+          !NCompressDialog::SetSolidBlockSize2(suffix, UInt32(options.level))
+               .contains(options.solidBlockMiB))) ||
         (options.level == 0 &&
          (options.dictionaryMiB || options.wordSize || options.solidBlockMiB))) {
         emit finished(false,
