@@ -27,8 +27,6 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     dictionary_ = new QComboBox(compression);
     dictionary_->setObjectName("compressionDictionary");
     dictionary_->addItem("Автоматически", 0);
-    for (int size : {1, 4, 16, 64})
-        dictionary_->addItem(QString::number(size) + " МиБ", size);
     compressionForm->addRow("Размер словаря:", dictionary_);
     wordSize_ = new QComboBox(compression);
     wordSize_->setObjectName("compressionWordSize");
@@ -58,6 +56,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     });
     const auto updateMethodOptions = [this] {
         SetOrder2();
+        SetDictionary2();
         SetSolidBlockSize2(*solidBlock_, format_->currentText(), level_->currentData().toUInt());
         const bool lzma = method_->currentText() == "LZMA" || method_->currentText() == "LZMA2";
         const bool compressed = level_->currentData().toInt() != 0;
@@ -117,4 +116,21 @@ void CreateArchiveDialog::SetOrder2() {
         wordSize_->addItem(QString::number(order), order);
     const int index = wordSize_->findData(previous);
     wordSize_->setCurrentIndex(index >= 0 ? index : 0);
+}
+
+void CreateArchiveDialog::SetDictionary2() {
+    const quint64 previous = dictionary_->currentData().toULongLong();
+    const auto method =
+        NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
+    dictionary_->clear();
+    dictionary_->addItem(options.Values.isEmpty()
+                             ? QStringLiteral("Автоматически")
+                             : QStringLiteral("Автоматически (%1)")
+                                   .arg(NCompressDialog::Combo_AddDict2(options.AutoDict)),
+                         QVariant::fromValue(quint64(0)));
+    for (quint64 size : options.Values)
+        dictionary_->addItem(NCompressDialog::Combo_AddDict2(size), QVariant::fromValue(size));
+    const int index = dictionary_->findData(QVariant::fromValue(previous));
+    dictionary_->setCurrentIndex(index >= 0 ? index : 0);
 }

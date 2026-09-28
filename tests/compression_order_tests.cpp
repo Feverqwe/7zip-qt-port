@@ -166,7 +166,7 @@ class CompressionOrderTests final : public QObject {
         ArchiveBackend backend;
         CompressionOptions options;
         options.method = methodName;
-        options.dictionaryMiB = methodName == "LZMA2" ? 1 : 0;
+        options.dictionaryBytes = methodName == "LZMA2" ? 1 << 20 : 0;
         options.wordSize = word;
         const QString target = dir.filePath("word." + suffix);
         QSignalSpy done(&backend, &ArchiveBackend::finished);

@@ -157,6 +157,60 @@ EMethodID GetMethodID(QStringView name, QStringView format) {
             return fi.MethodIDs[i];
     return kCopy;
 }
+// LZMA/LZMA2 numeric branch from CCompressDialog::SetDictionary2 (0766b73).
+// Registry and Win32 insertion are handled by the Qt adapter.
+CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
+    static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;
+    CDictionaryOptions options;
+    switch (methodID) {
+    case kLZMA:
+    case kLZMA2: {
+        {
+            options.AutoDict = level <= 4 ? (UInt32)1 << (level * 2 + 16)
+                               : level <= sizeof(size_t) / 2 + 4
+                                   ? (UInt32)1 << (level + 20)
+                                   : (UInt32)1 << (sizeof(size_t) / 2 + 24);
+        }
+
+        const size_t kLzmaMaxDictSize_Up = (size_t)1 << (20 + sizeof(size_t) / 4 * 6);
+
+        for (unsigned i = (16 - 1) * 2; i <= (32 - 1) * 2; i++) {
+            if (i < (20 - 1) * 2 && i != (16 - 1) * 2 && i != (18 - 1) * 2)
+                continue;
+            if (i == (20 - 1) * 2 + 1)
+                continue;
+            const size_t dict_up = (size_t)(2 + (i & 1)) << (i / 2);
+            size_t dict = dict_up;
+            if (dict_up >= kLzmaMaxDictSize)
+                dict = kLzmaMaxDictSize; // we reduce dictionary
+
+            options.Values.append(quint64(dict));
+            if (dict_up >= kLzmaMaxDictSize_Up)
+                break;
+        }
+
+        break;
+    }
+
+    default:
+        break;
+    }
+    return options;
+}
+// Unit selection from Combo_AddDict2; Qt formats the visible text.
+QString Combo_AddDict2(quint64 sizeShow) {
+    unsigned moveBits = 0;
+    QString unit = QStringLiteral("Б");
+    if ((sizeShow & 0xFFFFF) == 0) {
+        moveBits = 20;
+        unit = QStringLiteral("МиБ");
+    } else if ((sizeShow & 0x3FF) == 0) {
+        moveBits = 10;
+        unit = QStringLiteral("КиБ");
+    }
+    return QString::number(sizeShow >> moveBits) + QLatin1Char(' ') + unit;
+}
+
 // LZMA, Deflate and PPMd branches copied from CCompressDialog::SetOrder2 (0766b73).
 // The caller replaces registry selection and ComboBox insertion with Qt data.
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {

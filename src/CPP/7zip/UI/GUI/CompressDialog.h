@@ -57,6 +57,13 @@ struct CFormatInfo {
     bool SFX_() const { return (Flags & kFF_SFX) != 0; }
 };
 
+struct CDictionaryOptions {
+    UInt32 AutoDict = 0;
+    QList<quint64> Values;
+};
+CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level);
+QString Combo_AddDict2(quint64 sizeShow);
+
 struct COrderOptions {
     UInt32 AutoOrder = 1;
     QList<int> Values;

@@ -50,17 +50,17 @@ class CompressionTests : public QObject {
         QVERIFY(wordSize->isEnabled());
         QVERIFY(solidBlock->isEnabled());
         level->setCurrentIndex(level->findData(9u));
-        dictionary->setCurrentIndex(2);
+        dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(4 << 20))));
         wordSize->setCurrentIndex(wordSize->findData(64));
         solidBlock->setCurrentIndex(solidBlock->findData(16));
-        QCOMPARE(dialog.compressionOptions().dictionaryMiB, 4);
+        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(4 << 20));
         QCOMPARE(dialog.compressionOptions().wordSize, 64);
         QCOMPARE(dialog.compressionOptions().solidBlockMiB, 16);
         level->setCurrentIndex(0);
         QVERIFY(!dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
         QVERIFY(!solidBlock->isEnabled());
-        QCOMPARE(dialog.compressionOptions().dictionaryMiB, 0);
+        QCOMPARE(dialog.compressionOptions().dictionaryBytes, 0);
         QCOMPARE(dialog.compressionOptions().solidBlockMiB, 0);
         level->setCurrentIndex(level->findData(9u));
         method->setCurrentText("BZip2");
@@ -73,7 +73,7 @@ class CompressionTests : public QObject {
         QCOMPARE(options.method, QStringLiteral("BZip2"));
         QCOMPARE(options.threads, 2);
         QVERIFY(!options.solid);
-        QCOMPARE(options.dictionaryMiB, 0);
+        QCOMPARE(options.dictionaryBytes, 0);
         QCOMPARE(options.wordSize, 0);
         QCOMPARE(options.solidBlockMiB, 0);
 
@@ -209,7 +209,7 @@ class CompressionTests : public QObject {
 
         CompressionOptions options;
         options.method = "LZMA2";
-        options.dictionaryMiB = 1;
+        options.dictionaryBytes = 1 << 20;
         options.wordSize = 64;
         options.solidBlockMiB = 16;
         const QString target = temp.filePath("archive.7z");
@@ -237,7 +237,7 @@ class CompressionTests : public QObject {
         file.close();
         CompressionOptions options;
         options.method = "BZip2";
-        options.dictionaryMiB = 4;
+        options.dictionaryBytes = 4 << 20;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = temp.filePath("invalid.7z");

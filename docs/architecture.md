@@ -147,3 +147,9 @@ Qt-форма и backend используют общий `SetOrder2` для LZMA
 `SetOrder2` также выдаёт исходные ряды PPMd и PPMdZip; format-specific
 GetMethodID различает одинаковую подпись PPMd. Перенесённый GetOrderMode
 указывает backend, когда порядок кодируется через `o` вместо `fb`.
+
+Словарь LZMA/LZMA2 выдаёт перенесённая ветка SetDictionary2. Поле
+CompressionOptions::dictionaryBytes хранит байты в quint64; это позволяет
+представить исходные размеры меньше МиБ и предел 3840 МиБ. Qt хранит
+значения combo как quint64, backend валидирует по тому же ряду и передаёт
+размер через d=<bytes>b. Auto оставляет выбор движку.

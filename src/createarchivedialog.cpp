@@ -230,7 +230,8 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
         options.method = method_->currentText();
         options.threads = threads_->value();
         options.solid = solid_->isChecked();
-        options.dictionaryMiB = dictionary_->isEnabled() ? dictionary_->currentData().toInt() : 0;
+        options.dictionaryBytes =
+            dictionary_->isEnabled() ? dictionary_->currentData().toULongLong() : 0;
         options.wordSize = wordSize_->isEnabled() ? wordSize_->currentData().toInt() : 0;
         options.solidBlockMiB = solidBlock_->isEnabled() ? solidBlock_->currentData().toInt() : 0;
     }

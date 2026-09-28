@@ -55,7 +55,7 @@ class CompressionSolidTests final : public QObject {
         ArchiveBackend backend;
         CompressionOptions options;
         options.method = "LZMA2";
-        options.dictionaryMiB = 1;
+        options.dictionaryBytes = 1 << 20;
         options.solidBlockMiB = 1;
         const QString target = dir.filePath("block.7z");
         QSignalSpy done(&backend, &ArchiveBackend::finished);

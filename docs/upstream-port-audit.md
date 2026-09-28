@@ -47,7 +47,7 @@
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
-| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Числовой ряд solid перенесён; словарь, расчёт Auto solid, шифрование и выбор источников ещё требуют переноса. |
+| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Числовой ряд solid и словарь LZMA/LZMA2 перенесены; другие словари, расчёт Auto solid, шифрование и выбор источников ещё требуют переноса. |
 | `src/extractdialog.cpp`, `extractdialog.h` | `CPP/7zip/UI/GUI/ExtractDialog.cpp`, `ExtractDialog.rc` | Собственная Qt-форма с соответствующими вариантами путей и перезаписи; код не перенесён. |
 | `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
@@ -139,3 +139,21 @@ vector не используется при процессной границе 
 не перенесена. Размер памяти PPMd и его dictionary branch остаются долгом:
 UI отключает словарь, движок использует свой Auto. Подпись «Размер слова»
 сохранена как в ресурсе upstream. Только clang-format меняет оформление.
+
+### Итерация: словарь LZMA / LZMA2
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::CCompressDialog::SetDictionary2`,
+`Combo_AddDict2`. Скопированы формула Auto, цикл i=30..62, пропуски малых
+значений, ограничение kLzmaMaxDictSize (15<<28) и архитектурный предел
+kLzmaMaxDictSize_Up. Сохранены типы UInt32/size_t, условия и порядок
+вычислений. Qt получает список вместо Win32 combo; Registry и выбор
+ближайшего сохранённого значения заменены сохранением доступного текущего
+выбора (как в остальных опциях). Пересчёт сохранённого Registry dictionary
+>=3.75 GiB не нужен: отсутствуют Registry и произвольные размеры в Qt combo.
+Перенесены проверки кратности и выбор единиц из Combo_AddDict2; форматирование
+строки выполняет QString, подписи локализованы в КиБ/МиБ. UI и backend
+используют один исходный ряд. CompressionOptions хранит байты (quint64)
+вместо МиБ, чтобы не терять 64/256 КиБ; адаптер 7zz добавляет суффикс b.
+Auto=0 не передаёт словарь движку. Другие dictionary branches, RAM limits,
+расчёт памяти и Registry остаются долгом. clang-format меняет оформление.

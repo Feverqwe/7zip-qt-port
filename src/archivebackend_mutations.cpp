@@ -34,8 +34,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                                                                       : QStringLiteral("Deflate"))
                                                     : options.method;
     const bool lzma = method == "LZMA" || method == "LZMA2";
-    if ((options.dictionaryMiB != 0 &&
-         (!lzma || !QList<int>{1, 4, 16, 64}.contains(options.dictionaryMiB))) ||
+    if ((options.dictionaryBytes != 0 &&
+         (!lzma || !NCompressDialog::SetDictionary2(NCompressDialog::GetMethodID(method, suffix),
+                                                    UInt32(options.level))
+                        .Values.contains(options.dictionaryBytes))) ||
         (options.wordSize != 0 &&
          !NCompressDialog::SetOrder2(NCompressDialog::GetMethodID(method, suffix),
                                      UInt32(options.level))
@@ -45,7 +47,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
           !NCompressDialog::SetSolidBlockSize2(suffix, UInt32(options.level))
                .contains(options.solidBlockMiB))) ||
         (options.level == 0 &&
-         (options.dictionaryMiB || options.wordSize || options.solidBlockMiB))) {
+         (options.dictionaryBytes || options.wordSize || options.solidBlockMiB))) {
         emit finished(false,
                       QStringLiteral("Размер словаря, слова или непрерывного блока не подходит "
                                      "для выбранного метода сжатия."));
@@ -89,8 +91,8 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     arguments.insert(5, "-mx=" + QString::number(options.level));
     if (options.level != 0) {
         QString methodArgument = "-m0=" + method;
-        if (options.dictionaryMiB)
-            methodArgument += ":d=" + QString::number(options.dictionaryMiB) + "m";
+        if (options.dictionaryBytes)
+            methodArgument += ":d=" + QString::number(options.dictionaryBytes) + "b";
         if (options.wordSize)
             methodArgument +=
                 (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
