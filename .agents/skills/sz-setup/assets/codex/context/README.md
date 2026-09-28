@@ -8,7 +8,7 @@
 - `docs/7zfm-parity.md`: implemented and remaining 7zFM behavior.
 - `docs/upstream-port-audit.md`: copied/adapted sources, provenance, and custom logic awaiting migration.
 - `.agents/skills/`: reusable project workflows.
-- `.agents/skills/sevenzip-navigation/`: map Qt, backend, and upstream C++ behavior.
+- `.agents/skills/sz-navigation/`: map Qt, backend, and upstream C++ behavior.
 - `.codex/notes/`: local investigations and handoffs; not source of truth.
 - `.codex/memory/README.md`: short index of relevant local task notes; read first.
 - `docs/agent-memory.md`: memory protocol and checkout/platform verification.

@@ -1,5 +1,5 @@
 ---
-name: sevenzip-navigation
+name: sz-navigation
 description: Trace Sevenzip Desktop C++ code, Qt UI behavior, 7zz integration, and corresponding upstream 7-Zip implementation when locating symbols or planning a refactor.
 ---
 

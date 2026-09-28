@@ -1,0 +1,4 @@
+interface:
+  display_name: 'Sevenzip UI parity'
+  short_description: 'Compare Qt UI with upstream resources and states'
+  default_prompt: 'Use $sz-ui-parity to compare the affected Qt view with upstream 7zFM resources and reviewed C++ behavior.'

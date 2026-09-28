@@ -1,7 +1,7 @@
 # Text specifications and geometry checks
 
 For resource-derived comparison and reviewed C++ states, see
-[upstream UI references](ui-reference.md) and `$sevenzip-ui-parity`.
+[upstream UI references](ui-reference.md) and `$sz-ui-parity`.
 `ui_parity_copy` checks fresh Copy/Move reports against a pinned resource baseline.
 
 For layout work, read the affected view's specification below, run its focused

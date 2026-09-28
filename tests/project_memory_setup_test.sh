@@ -5,12 +5,12 @@ repo_root=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 fixture=$(mktemp -d "${TMPDIR:-/tmp}/sevenzip-memory.XXXXXX")
 trap 'rm -rf "$fixture"' EXIT HUP INT TERM
 
-mkdir -p "$fixture/.agents/skills/sevenzip-setup/scripts" "$fixture/.agents/skills/sevenzip-setup/assets" "$fixture/docs"
-cp "$repo_root/.agents/skills/sevenzip-setup/scripts/setup.sh" "$fixture/.agents/skills/sevenzip-setup/scripts/"
-cp -R "$repo_root/.agents/skills/sevenzip-setup/assets/codex" "$fixture/.agents/skills/sevenzip-setup/assets/"
+mkdir -p "$fixture/.agents/skills/sz-setup/scripts" "$fixture/.agents/skills/sz-setup/assets" "$fixture/docs"
+cp "$repo_root/.agents/skills/sz-setup/scripts/setup.sh" "$fixture/.agents/skills/sz-setup/scripts/"
+cp -R "$repo_root/.agents/skills/sz-setup/assets/codex" "$fixture/.agents/skills/sz-setup/assets/"
 touch "$fixture/AGENTS.md" "$fixture/CMakeLists.txt" "$fixture/README.md"
 git -C "$fixture" init --quiet
-setup_script="$fixture/.agents/skills/sevenzip-setup/scripts/setup.sh"
+setup_script="$fixture/.agents/skills/sz-setup/scripts/setup.sh"
 
 sh "$setup_script"
 test -s "$fixture/.codex/memory/README.md"

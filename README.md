@@ -70,7 +70,7 @@ brew install cmake ninja qtbase sevenzip clang-format
 Из корня репозитория:
 
 ```sh
-sh .agents/skills/sevenzip-setup/scripts/setup.sh
+sh .agents/skills/sz-setup/scripts/setup.sh
 ./scripts/doctor.sh
 ./scripts/check.sh
 ```
@@ -91,12 +91,12 @@ Qt-отчёты по контрактам структуры и состояни
 
 `AGENTS.md` задаёт правила для агента: менять код и документацию, добавлять регрессионные тесты для поведения и доводить задачи до проверенного результата. Повторяемые проектные навыки лежат в `.agents/skills/`:
 
-- `$sevenzip-setup` — создаёт или обновляет локальную среду, Obsidian vault и память задач;
-- `$sevenzip-context` — находит и поддерживает знания о проекте;
-- `$sevenzip-navigation` — прослеживает код UI, адаптера и оригинального 7-Zip;
-- `$sevenzip-cpp-qt` — помогает писать C++17 и Qt Widgets, подключать `7zz` и соблюдать границы компонентов;
-- `$sevenzip-regression` — добавляет тесты и проверяет изменения.
-- `$sevenzip-ui-parity` — сверяет ресурсы 7zFM и проверенные состояния с Qt-отчётами.
+- `$sz-setup` — создаёт или обновляет локальную среду, Obsidian vault и память задач;
+- `$sz-context` — находит и поддерживает знания о проекте;
+- `$sz-navigation` — прослеживает код UI, адаптера и оригинального 7-Zip;
+- `$sz-cpp-qt` — помогает писать C++17 и Qt Widgets, подключать `7zz` и соблюдать границы компонентов;
+- `$sz-regression` — добавляет тесты и проверяет изменения.
+- `$sz-ui-parity` — сверяет ресурсы 7zFM и проверенные состояния с Qt-отчётами.
 
 Скрипт настройки создаёт игнорируемую Git папку `.codex/`. Откройте **`<repo>/.codex` как vault** в Obsidian: «Open folder as vault», затем выберите скрытую папку через `Command-Shift-G` на macOS. В vault ссылки на актуальные `README.md`, `AGENTS.md` и `docs/`; локальные заметки и вложения сохраняются в `.codex/notes/` и `.codex/attachments/`. Повторный запуск настройки их не удаляет. В самой Obsidian можно открыть стартовую страницу командой:
 

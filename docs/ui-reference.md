@@ -113,7 +113,7 @@ Use the maintained Copy contract as the executable example:
 `behaviorCandidates` lists selected state/layout calls with source lines.
 These are search hints, not semantic C++ parsing: branches, cross-function
 dependencies, focus, initial editable values and transition results must be
-reviewed and tested. The skill `$sevenzip-ui-parity` defines that workflow.
+reviewed and tested. The skill `$sz-ui-parity` defines that workflow.
 
 Copy's shared prompt/init and resize requirements cite OnInit/OnSize. Existing
 `copiesFieldsAndCommitsOnlyOnOK` and

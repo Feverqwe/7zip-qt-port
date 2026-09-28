@@ -1,4 +1,4 @@
 interface:
   display_name: 'Sevenzip project context'
   short_description: 'Find and maintain project knowledge'
-  default_prompt: 'Use $sevenzip-context to find the relevant project context and update durable knowledge.'
+  default_prompt: 'Use $sz-context to find the relevant project context and update durable knowledge.'

@@ -1,5 +1,5 @@
 ---
-name: sevenzip-ui-parity
+name: sz-ui-parity
 description: Compare Sevenzip Desktop Qt dialogs with upstream 7zFM resources and reviewed C++ state behavior. Use for UI parity audits, layout ports and extending resource-to-widget contracts; excludes pixel parity without a Windows runtime reference.
 ---
 

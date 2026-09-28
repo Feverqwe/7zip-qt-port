@@ -1,5 +1,5 @@
 ---
-name: sevenzip-cpp-qt
+name: sz-cpp-qt
 description: Implement or review Sevenzip Desktop C++17 and Qt 6 Widgets code, including UI state, asynchronous archive operations, and CMake integration.
 ---
 
@@ -17,8 +17,8 @@ Record source commit, paths/symbols, copied and adapted portions, and reasons fo
 - Keep long archive operations off the UI event loop. Use asynchronous process signals or a worker when appropriate. Keep object lifetime and cancellation explicit; update widgets only on the GUI thread.
 - Pass executable and arguments separately to `QProcess`. Do not run archive paths through a shell or build a single command string. Do not log passwords; assess process-argument exposure before implementing password support.
 - Handle paths and names as Unicode. Use Qt path APIs rather than splitting archive paths on platform separators. Treat archive metadata as untrusted input, especially during extraction.
-- Add new sources and tests to CMake. For behavior changes, use focused Qt/CTest tests with temporary directories and disposable archives. Use `$sevenzip-regression` when designing regression coverage or investigating a test failure.
+- Add new sources and tests to CMake. For behavior changes, use focused Qt/CTest tests with temporary directories and disposable archives. Use `$sz-regression` when designing regression coverage or investigating a test failure.
 - Follow the appearance-validation rules in `AGENTS.md`: use the view specification, geometry tests, and current-build widget JSON first (see `docs/ui-layout-contracts.md`). Screenshots are a fallback for rendering details these cannot resolve. Identify the concrete upstream resource/source or Windows screenshot used as a reference; distinguish structural comparison and Qt usability from verified visual parity.
 - Preserve copied upstream structure and avoid unrelated style rewrites. Apply repository formatting to changed files covered by its formatting gate; keep required formatting changes distinct from functional adaptations in the port record. Follow the staged validation rules in `AGENTS.md`: focused builds/tests during implementation, one full `./scripts/check.sh` before completion, and no repeated full gate on unchanged code.
 
-Use `build/dev/compile_commands.json` with clangd for definitions and diagnostics. See `$sevenzip-navigation` when tracing behavior into upstream 7-Zip.
+Use `build/dev/compile_commands.json` with clangd for definitions and diagnostics. See `$sz-navigation` when tracing behavior into upstream 7-Zip.

@@ -18,7 +18,7 @@ On Linux, install CMake, Ninja, Qt 6 base development files, and clang-format fr
 ## Local commands
 
 ```sh
-sh .agents/skills/sevenzip-setup/scripts/setup.sh
+sh .agents/skills/sz-setup/scripts/setup.sh
 ./scripts/doctor.sh
 ./scripts/check.sh
 ```

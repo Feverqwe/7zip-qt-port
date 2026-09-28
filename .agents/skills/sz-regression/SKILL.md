@@ -1,5 +1,5 @@
 ---
-name: sevenzip-regression
+name: sz-regression
 description: Design or review regression tests for Sevenzip Desktop bug fixes, archive edge cases, and platform-specific failures.
 ---
 
