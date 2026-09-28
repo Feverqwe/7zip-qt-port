@@ -54,8 +54,16 @@ They are not formatted with the Qt application's rules.
 - `CPP/7zip/UI/Common/ExtractMode.h`
 - `License.txt`
 
-All 44 source/header files and `License.txt` (from upstream `DOC/License.txt`)
-were compared byte for byte with the exact commit above on 2026-09-28.
+Additional portable filesystem dependencies:
+
+- `CPP/Common/MyLinux.h`
+- `CPP/Windows/FileFind.cpp` and `FileFind.h`
+- `CPP/Windows/FileIO.cpp` and `FileIO.h` (implementation built on Windows)
+- `CPP/Windows/FileName.h` (adapted implementation under `src/CPP/Windows`)
+- `CPP/Windows/TimeUtils.cpp` and `TimeUtils.h`
+
+All 52 source/header files and `License.txt` (from upstream `DOC/License.txt`)
+are retained byte for byte from the exact commit above.
 This provenance check does not establish runtime verification on all platforms.
 `.gitattributes` excludes unchanged vendored source from Git whitespace errors
 so upstream trailing spaces remain byte-for-byte intact. Local documentation,

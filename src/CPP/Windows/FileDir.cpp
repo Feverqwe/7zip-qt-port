@@ -1,12 +1,84 @@
 // Adapted from 7-Zip CPP/Windows/FileDir.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Qt replaces Win32 attributes, enumeration and file/directory removal.
+// Qt adapts deletion services; GetCurrentDir retains upstream native bodies.
+#include "Windows/StdAfx.h"
+
 #include "FileDir.h"
+#ifndef _WIN32
+#include <limits.h>
+#include <unistd.h>
+#else
+#ifndef _UNICODE
+extern bool g_IsNT;
+#endif
+#endif
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 
 namespace NWindows::NFile::NDir {
+bool GetCurrentDir(FString &path) {
+#ifdef _WIN32
+    const unsigned kBufSize = MAX_PATH + 16;
+    path.Empty();
+#ifndef _UNICODE
+    if (!g_IsNT) {
+        TCHAR s[kBufSize + 1];
+        s[0] = 0;
+        const DWORD len = ::GetCurrentDirectory(kBufSize, s);
+        if (len == 0 || len >= kBufSize)
+            return false;
+        s[kBufSize] = 0;
+        path = fas2fs(s);
+        return true;
+    } else
+#endif
+    {
+        DWORD len;
+        {
+            WCHAR s[kBufSize + 1];
+            s[0] = 0;
+            len = ::GetCurrentDirectoryW(kBufSize, s);
+            if (len == 0)
+                return false;
+            if (len < kBufSize) {
+                s[kBufSize] = 0;
+                path = us2fs(s);
+                return true;
+            }
+        }
+        UString temp;
+        const DWORD len2 = ::GetCurrentDirectoryW(len, temp.GetBuf(len));
+        if (len2 == 0)
+            return false;
+        temp.ReleaseBuf_CalcLen(len);
+        if (temp.Len() != len2 || len - 1 != len2)
+            return false;
+        path = us2fs(temp);
+        return true;
+    }
+#else
+    path.Empty();
+    char s[PATH_MAX + 1];
+    char *res = getcwd(s, PATH_MAX);
+    if (res) {
+        path = fas2fs(s);
+        return true;
+    }
+    {
+#if defined(__GLIBC__) || defined(__APPLE__)
+        res = getcwd(NULL, 0);
+        if (res) {
+            path = fas2fs(res);
+            ::free(res);
+            return true;
+        }
+#endif
+        return false;
+    }
+#endif
+}
+
 bool DeleteFileAlways(const QString &path) {
 #ifdef Q_OS_WIN
     const QFileInfo fi(path);

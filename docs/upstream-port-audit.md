@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b2b1 — portable filesystem services (2026-09-29)
+
+Project baseline `49f7975`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+FileFind.cpp/.h, FileIO.cpp/.h, FileName.h, TimeUtils.cpp/.h and MyLinux.h
+are copied unchanged. FileFind/TimeUtils compile on all targets; FileIO.cpp
+compiles on Windows for FileFind's native handle information dependency.
+POSIX FileIO.cpp is not built: its file writes require additional FileDir
+umask/time services, outside this read-only enumeration prerequisite.
+No device-file feature is enabled; its allocator/engine integration remains
+required when that owning scope is ported. Windows native bodies remain in
+the vendored modules; their runtime acceptance is unverified locally.
+
+FileName.cpp is copied in full to its original adapted path. Only include
+locations and required formatting change; full path resolution, dot handling,
+Windows long/super/UNC path bodies and symbol boundaries remain upstream.
+It includes our authoritative FileDir.h rather than duplicating FileDir.
+FileDir.cpp GetCurrentDir copies both source platform bodies, retaining the
+Windows dynamic buffer/race checks and POSIX PATH_MAX then dynamic getcwd
+fallback. The local MY_PATH_MAX alias is expanded to PATH_MAX and source
+comments/formatting differ; existing Qt deletion services remain untouched.
+Other FileDir functions and platform branches remain mandatory in their
+owning scopes; this prerequisite does not complete CFSFolder or FileDir.
+
+New file_find fixtures verify Unicode/non-BMP names and metadata, omission of
+dots, distinction between EOF and a missing directory, source full-path dot
+resolution/current directory and POSIX no-follow versus follow-link metadata.
+Windows reparse fixtures remain required; the POSIX-specific test is skipped
+there explicitly. No visible UI/workflow change: runtime panel integration
+remains P0-02.2b3b3. Focused file_find/filesystem_operations/file_transfer 3/3
+passed macOS 2026-09-29. Full `./scripts/check.sh` with staged files passed
+formatting, both diff checks, app build and 60/60 CTest. Vendor bytes: 53/53
+(52 source/header files plus license).
+An initial direct CMake build lacked macOS SDK C++ headers; the documented
+scripts/build.sh toolchain workaround built affected targets successfully.
+
+Inventory supplement (the P0-01 112-path table remains its dated snapshot):
+`CPP/Windows/FileName.cpp` now has P0-02/P0-03/P1-03/P2-05 ownership. All source
+functions and active platform branches are copied; include locations/formatting
+are adapted as above. Dependency boundary: adapted FileDir GetCurrentDir and
+unchanged MyString/StringConvert/FileName.h; Windows long-path bodies remain
+present and require platform acceptance. The adapted FileDir inventory row's
+current-directory omission is superseded by this source port; its other listed
+omissions remain open.
+
 ## P0-02.2b3b2a — Agent _proxy folder binding subset (2026-09-29)
 
 Project baseline `07b7326`; exact upstream [ip7z/7zip

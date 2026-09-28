@@ -1,5 +1,11 @@
 # Regression strategy
 
+`file_find` checks the upstream portable enumeration/path services with local
+Unicode/non-BMP files and folders, metadata, excluded dots, missing-directory
+error versus EOF, source dot resolution and current directory. POSIX symlink
+no-follow/follow metadata is covered locally; Windows reparse acceptance remains
+required. `filesystem_operations` and `file_transfer` cover existing consumers.
+
 `folder_contract` validates the unchanged upstream IFolderFolder ABI against a
 local mock: interface identity/rejection, reference ownership/destruction,
 Unicode property copy/clear/attach/detach, caller-owned property-info BSTR and

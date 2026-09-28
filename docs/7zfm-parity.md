@@ -9,6 +9,12 @@
 
 ## Аудит диалогов (2026-09-28)
 
+P0-02.2b3b2b1 (2026-09-29) добавляет source filesystem services, без изменения
+видимого workflow. Upstream FileFind сохраняет native enumeration и POSIX
+no-follow metadata; FileName — dot/absolute/Windows path bodies. Детерминированные
+проверки выполнены на macOS; Windows reparse/drive/UNC runtime acceptance
+обязательна и не считается подтверждённой этой проверкой.
+
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
 Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный

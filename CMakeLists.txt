@@ -47,7 +47,13 @@ target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
 add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
+    src/CPP/Windows/FileName.cpp
+    third_party/7zip/CPP/Windows/FileFind.cpp
+    third_party/7zip/CPP/Windows/TimeUtils.cpp
     src/filedeleteoperation.cpp src/filedeleteoperation.h)
+if(WIN32)
+    target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileIO.cpp)
+endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
 
@@ -153,6 +159,9 @@ if(BUILD_TESTING)
     qt_add_executable(filesystem_operations_tests tests/filesystem_operations_tests.cpp)
     target_link_libraries(filesystem_operations_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME filesystem_operations COMMAND filesystem_operations_tests)
+    qt_add_executable(file_find_tests tests/file_find_tests.cpp)
+    target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME file_find COMMAND file_find_tests)
     qt_add_executable(panel_copy_info_tests tests/panel_copy_info_tests.cpp)
     target_link_libraries(panel_copy_info_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME panel_copy_info COMMAND panel_copy_info_tests)

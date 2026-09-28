@@ -8,6 +8,12 @@ are defined in [AGENTS.md](../AGENTS.md).
 
 ## Repository boundary
 
+Portable filesystem enumeration and times use unchanged upstream FileFind and
+TimeUtils. Adapted FileName retains the source path bodies and uses the single
+FileDir owner, whose GetCurrentDir has source Windows/POSIX bodies. These services
+are prerequisites for CFSFolder binding; the window still uses its current
+filesystem loader until the runtime-owner iteration.
+
 `sevenzip-desktop` contains application sources, Qt presentation, platform
 integration, tests and build tooling. Application modules live under
 `src/CPP/`; reusable dependencies live under `third_party/7zip/`.
