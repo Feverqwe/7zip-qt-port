@@ -327,6 +327,28 @@ functional modules, включая code внутри platform/crypto/SFX conditi
 Runtime/UX не менялись; build/CTest/layout не запускались. Volume transport,
 property/security behavior и Windows/Linux проверки остаются functional work.
 
+## P0-01.3d2b — Common command parser (2026-09-28)
+
+Project baseline `6d0d8a9`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полный `.cpp`, options/parser header и GUI/Console consumers.
+Copied scope пуст. GUI/GUI.cpp и Console/Main.cpp вызывают Parse1/Parse2;
+локального CArcCmdLineParser пока нет. Standalone CLI scope нужно согласовать
+с acceptance P3-05; общая archive command policy обязательна независимо от него.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/ArchiveCommandLine.cpp — P0-04/12, P1-01/03/04/05/09/14, P2-01/02/06/07, P3-05 | CArcCommand group/path helpers, switch tables/ParseArchiveCommand, CNameOption/AddNameToCensor/listfile/non-switch/rename/switch wildcard helpers, Windows ParseMapWithPaths/CEventSetEnd, ParseUpdateCommandString/2/SetAddCommandOptions/SetMethodOptions, FindCharset/SetBoolPair/ParseSizeString, CArcCmdLineParser Parse1/Parse2, non-Windows module prefix helpers. | CommandLineParser/Wildcard/ListFileUtils/StringToInt/StringConvert/IntToString/MyException, EnumDirItems/UpdateAction/Update/Extract/Hash options, FileDir/Name/System/ErrorMsg/PropVariantConv, Windows mapping/events/privileges, Alloc large pages. Preserve recursive/matching/mark rules, default mask and `--` boundary, rename-pair validation, action-state restrictions/multiple archives, volume last-zero rejection, method properties, charset and overflow checks. Preserve extraction forced overwrite/path precedence, separate archive censor, absolute-mask rejection, ADS/link/security/owner/zone/time/shared flags, stdout/data-channel conflicts and update/delete/SFX/email guards. Adapt OS process/terminal/mapping/module services narrowly; settings/widgets pass typed options through ArchiveBackend, engine serialization belongs there. Global case/trail/time/large-page state needs scoped integration review without changing parser algorithms. Commented hashgen/GetUpdatePairActionType/Linux huge-page branch are inactive, not proof of omitted active feature completion. |
+
+Parse1 содержит реальные process side effects (affinity/privileges/large pages),
+а не только parsing: их нельзя без review выполнять в GUI-потоке при каждом
+построении команды. Backend process adapter должен сохранять необходимые engine
+options и отделять process startup services. Windows mapping transport имеет
+size/marker/termination checks и event RAII; portable transport требуется review.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 101 unique paths
+(30 mirrored + 71 missing), exact source path существует. Runtime/UX не менялись;
+build/CTest/layout не запускались. Parser integration и platform behavior открыты.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
