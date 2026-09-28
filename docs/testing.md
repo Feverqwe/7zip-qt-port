@@ -284,3 +284,12 @@ Focused CTest `compression_preferences` проверяет независимы�
 Тест использует временный Unicode-файл и отдельный settings path;
 compression-наборы также получили отдельные SEVENZIP_SETTINGS_PATH,
 чтобы не читать и не менять настоящие пользовательские настройки.
+
+Focused CTest `extract_dialog` проверяет исходный порядок overwrite,
+OnOK через кнопку и accept(), восстановление режимов/видимости без сохранения
+пароля, Cancel, cap истории 16, выбранный и введённый пути, Unicode/пробелы,
+Trim и сравнение истории без учёта регистра, legacy history и неверные enum,
+сохранность других групп INI. Реальный ZIP проверяет Skip и Overwrite
+через результат диалога с точным сравнением байтов. Набор сохраняет снимки
+extract-port-640.png и -470.png в build/dev/ui-screenshots. Существующие
+extraction_options и ui_archive_states покрывают ошибки/отмену и backend.

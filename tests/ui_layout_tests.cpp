@@ -104,7 +104,7 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(pathMode->count(), 2);
         QCOMPARE(overwriteMode->count(), 5);
         pathMode->setCurrentIndex(1);
-        overwriteMode->setCurrentIndex(2);
+        overwriteMode->setCurrentIndex(1);
         QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::NoPaths);
         QCOMPARE(dialog.options().overwriteMode,
                  ExtractionOptions::OverwriteMode::OverwriteExisting);

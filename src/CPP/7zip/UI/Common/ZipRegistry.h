@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
 #include "../../Common/MethodProps.h"
+#include "7zip/UI/Common/ExtractMode.h"
 #include "Common/MyVector.h"
 #include <QString>
 namespace NCompression {
@@ -39,3 +40,16 @@ struct CInfo {
     void Load(const QString &path);
 };
 } // namespace NCompression
+
+namespace NExtract {
+struct CInfo {
+    NPathMode::EEnum PathMode;
+    NOverwriteMode::EEnum OverwriteMode;
+    bool PathMode_Force;
+    bool OverwriteMode_Force;
+    CBoolPair ShowPassword;
+    CObjectVector<QString> Paths;
+    void Save(const QString &path) const;
+    void Load(const QString &path);
+};
+} // namespace NExtract

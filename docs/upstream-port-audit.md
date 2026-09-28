@@ -48,7 +48,7 @@
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
-| `src/extractdialog.cpp`, `extractdialog.h` | `CPP/7zip/UI/GUI/ExtractDialog.cpp`, `ExtractDialog.rc` | Собственная Qt-форма с соответствующими вариантами путей и перезаписи; код не перенесён. |
+| `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest, ElimDup и NtSecurity пока не перенесены. |
 | `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
 | `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
@@ -356,3 +356,41 @@ Load/Save переносят только память/FormatID; остальн�
 и CFormatOptions остаются долгом. Save вызывается после всех проверок OK;
 Cancel и неуспешная валидация не записывают изменения. Форматирование —
 обязательный clang-format.
+
+### Итерация: исходные режимы и история диалога извлечения
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/ExtractDialog.cpp::{kPathModeButtonsVals,kOverwriteButtonsVals,
+AddComboItems,AddUniqueString,CExtractDialog::OnInit,OnOK}`, `.h`;
+`CPP/7zip/UI/Common/ZipRegistry.*::NExtract::CInfo::{Load,Save}`;
+`CPP/Windows/FileName.cpp::NormalizeDirPathPrefix`.
+`UI/Common/ExtractMode.h` скопирован побайтово в third_party/7zip.
+
+Класс CExtractDialog и адаптированные тела находятся в зеркальных GUI путях.
+Исходные таблицы, исходный порядок overwrite Ask/Overwrite/Skip/Rename/
+RenameExisting, циклы AddComboItems и AddUniqueString, предел 16,
+обработка выбранного/введённого пути, исключение выбранного или последнего
+элемента, Trim, NormalizeDirPathPrefix, порядок ветвей смены режимов и
+показа пароля, очистка/пересборка истории и сохранение в OnOK скопированы.
+Сохраняются CObjectVector, enum и CBoolPair upstream. Win32 controls,
+строки локализации и сообщения заменены Qt; UI constructor — presentation
+адаптация существующей формы по ExtractDialog.rc. Исходная нормализация
+пути перенесена локальным QString helper: пустой путь, проверка последнего
+разделителя, добавление разделителя. Qt принимает оба разделителя на Windows.
+
+Qt editable combo может удерживать индекс при редактировании текста:
+узкий адаптер переводит этот случай в CB_ERR до исходной ветки OnOK.
+После addItem восстанавливается typed text, поскольку Qt автоматически
+выбирает первый элемент. Backend API переводит исходные enum в свои
+ExtractionOptions; параметры 7zz остаются за ArchiveBackend. Absolute
+paths не добавляются в combo (граница backend их не поддерживает); kAsk
+адаптирован к прежнему отказу при конфликте вместо интерактивного callback.
+
+Load/Save переносят только пути, режимы/Force и ShowPassword из NExtract
+CInfo; QSettings заменяет Registry, GUI-thread вызовы не требуют CS_LOCK.
+Сохраняются оригинальные имена ключей в Extraction; старый history/extract
+читается только как миграционный fallback. Пароль не записывается.
+MainWindow лишился самостоятельного алгоритма истории, старый cpp удалён,
+header содержит только alias ExtractDialog=CExtractDialog. Неиспользуемые
+SFX, Lang, Help, NtSecurity, ElimDup, SplitDest пока остаются долгом.
+Обязательный clang-format изменяет оформление скопированного тела.

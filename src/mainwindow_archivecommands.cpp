@@ -99,20 +99,12 @@ void MainWindow::extract(bool onlySelected) {
         return;
     if (onlySelected && table_->selectionModel()->selectedRows().isEmpty())
         return;
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    ExtractDialog dialog(returnDirectory_, settings.value("history/extract").toStringList(),
-                         onlySelected, this);
+    ExtractDialog dialog(returnDirectory_, {}, onlySelected, this);
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();
     if (destination.isEmpty())
         return;
-    QStringList history = settings.value("history/extract").toStringList();
-    history.removeAll(destination);
-    history.prepend(destination);
-    while (history.size() > 16)
-        history.removeLast();
-    settings.setValue("history/extract", history);
     extractTo(destination, onlySelected, dialog.password(), dialog.options());
 }
 

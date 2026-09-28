@@ -31,7 +31,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             QVERIFY(password);
             password->setText("temporary secret");
             dialog->findChild<QComboBox *>("extractPathMode")->setCurrentIndex(1);
-            dialog->findChild<QComboBox *>("extractOverwriteMode")->setCurrentIndex(1);
+            dialog->findChild<QComboBox *>("extractOverwriteMode")->setCurrentIndex(2);
             dialog->accept();
         });
         action(window, "extractArchiveAction")->trigger();

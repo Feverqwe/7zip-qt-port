@@ -1,0 +1,190 @@
+#include "extractdialog.h"
+#include <QDialogButtonBox>
+#include <QDir>
+#include <QFile>
+#include <QProcess>
+#include <QPushButton>
+#include <QSettings>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QtTest>
+
+class ExtractDialogTests final : public QObject {
+    Q_OBJECT
+    QTemporaryDir dir_;
+    QByteArray oldSettings_;
+    QString settings_;
+    QComboBox *path(CExtractDialog &dialog) {
+        return dialog.findChild<QComboBox *>("extractDestination");
+    }
+    QComboBox *pathMode(CExtractDialog &dialog) {
+        return dialog.findChild<QComboBox *>("extractPathMode");
+    }
+    QComboBox *overwrite(CExtractDialog &dialog) {
+        return dialog.findChild<QComboBox *>("extractOverwriteMode");
+    }
+  private slots:
+    void initTestCase() {
+        QVERIFY(dir_.isValid());
+        oldSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
+        settings_ = dir_.filePath("extract.ini");
+        qputenv("SEVENZIP_SETTINGS_PATH", settings_.toUtf8());
+    }
+    void init() { QFile::remove(settings_); }
+    void cleanupTestCase() {
+        if (oldSettings_.isNull())
+            qunsetenv("SEVENZIP_SETTINGS_PATH");
+        else
+            qputenv("SEVENZIP_SETTINGS_PATH", oldSettings_);
+    }
+    void originalModesAndPersistence() {
+        {
+            CExtractDialog dialog(dir_.path(), {}, false);
+            QCOMPARE(overwrite(dialog)->itemText(1),
+                     QStringLiteral("Перезаписывать существующие файлы"));
+            QCOMPARE(overwrite(dialog)->itemText(2),
+                     QStringLiteral("Пропускать существующие файлы"));
+            pathMode(dialog)->setCurrentIndex(1);
+            overwrite(dialog)->setCurrentIndex(4);
+            dialog.findChild<QCheckBox *>("extractShowPassword")->setChecked(true);
+            dialog.findChild<QLineEdit *>("extractPassword")
+                ->setText(QStringLiteral("секрет с пробелом"));
+            dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            QCOMPARE(dialog.result(), int(QDialog::Accepted));
+            QCOMPARE(dialog.PathMode, NExtract::NPathMode::kNoPaths);
+            QCOMPARE(dialog.OverwriteMode, NExtract::NOverwriteMode::kRenameExisting);
+            QCOMPARE(dialog.Password, QStringLiteral("секрет с пробелом"));
+            QVERIFY(dialog.destination().endsWith('/'));
+        }
+        CExtractDialog restarted(dir_.path(), {}, true);
+        QCOMPARE(pathMode(restarted)->currentIndex(), 1);
+        QCOMPARE(overwrite(restarted)->currentIndex(), 4);
+        QCOMPARE(restarted.findChild<QLineEdit *>("extractPassword")->echoMode(),
+                 QLineEdit::Normal);
+        QVERIFY(restarted.password().isEmpty());
+        QFile saved(settings_);
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        QVERIFY(!saved.readAll().contains(QStringLiteral("секрет").toUtf8()));
+        pathMode(restarted)->setCurrentIndex(0);
+        overwrite(restarted)->setCurrentIndex(0);
+        restarted.reject();
+        CExtractDialog afterCancel(dir_.path(), {}, false);
+        QCOMPARE(pathMode(afterCancel)->currentIndex(), 1);
+        QCOMPARE(overwrite(afterCancel)->currentIndex(), 4);
+    }
+    void originalHistoryRules() {
+        QStringList history;
+        for (int i = 0; i < 20; i++)
+            history.append(QString("/history/%1/").arg(i));
+        {
+            CExtractDialog dialog("/initial", history, false);
+            QCOMPARE(path(dialog)->count(), 16);
+            QCOMPARE(path(dialog)->currentText(), QString("/initial"));
+            path(dialog)->setCurrentIndex(5);
+            dialog.accept();
+        }
+        NExtract::CInfo saved;
+        saved.Load(settings_);
+        QCOMPARE(saved.Paths.Size(), 16u);
+        QCOMPARE(saved.Paths[0], history[5]);
+        QCOMPARE(saved.Paths[1], history[0]);
+        {
+            CExtractDialog dialog("/initial", {}, false);
+            path(dialog)->setCurrentIndex(2);
+            path(dialog)->setEditText(QStringLiteral("  /новая папка/δ space  "));
+            dialog.accept();
+            QCOMPARE(dialog.destination(), QStringLiteral("/новая папка/δ space/"));
+        }
+        saved.Load(settings_);
+        QCOMPARE(saved.Paths.Size(), 16u);
+        QCOMPARE(saved.Paths[0], QStringLiteral("/новая папка/δ space/"));
+        QVERIFY(saved.Paths[15] != history[15]);
+        {
+            CExtractDialog dialog("/initial", {" /DATA/ ", "/data/", " /different/ "}, false);
+            path(dialog)->setCurrentIndex(0);
+            dialog.accept();
+        }
+        saved.Load(settings_);
+        QCOMPARE(saved.Paths.Size(), 2u);
+        QCOMPARE(saved.Paths[0], QString("/DATA/"));
+        QCOMPARE(saved.Paths[1], QString("/different/"));
+    }
+    void legacyAndInvalidSettings() {
+        {
+            QSettings settings(settings_, QSettings::IniFormat);
+            settings.setValue("history/extract", QStringList{"/legacy/"});
+            settings.setValue("Extraction/ExtractMode", 99u);
+            settings.setValue("Extraction/OverwriteMode", "invalid");
+            settings.setValue("Toolbar/labels", false);
+        }
+        CExtractDialog dialog("/initial", {}, false);
+        QCOMPARE(path(dialog)->itemText(0), QString("/legacy/"));
+        QCOMPARE(pathMode(dialog)->currentIndex(), 0);
+        QCOMPARE(overwrite(dialog)->currentIndex(), 0);
+        dialog.accept();
+        QSettings settings(settings_, QSettings::IniFormat);
+        QCOMPARE(settings.value("Toolbar/labels").toBool(), false);
+        settings.setValue("Extraction/ExtractMode", UInt32(NExtract::NPathMode::kAbsPaths));
+        settings.sync();
+        CExtractDialog absolute("/initial", {}, false);
+        // Absolute paths remain unavailable at the backend boundary.
+        QCOMPARE(pathMode(absolute)->count(), 2);
+        QCOMPARE(absolute.options().pathMode, ExtractionOptions::PathMode::FullPaths);
+    }
+    void renderedLayout() {
+        CExtractDialog dialog(QStringLiteral("/данные с пробелом/"), {"/previous/"}, false);
+        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+        QVERIFY(QDir().mkpath(screenshots));
+        dialog.show();
+        for (QSize size : {QSize(640, 360), QSize(470, 330)}) {
+            dialog.resize(size);
+            QApplication::processEvents();
+            QVERIFY(dialog.grab().save(screenshots +
+                                       QString("/extract-port-%1.png").arg(size.width())));
+        }
+        dialog.reject();
+    }
+    void realExtractionUsesDialogModes() {
+        const QString source = dir_.filePath(QStringLiteral("файл с пробелом.txt"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("archive content"), qint64(15));
+        file.close();
+        ArchiveBackend backend;
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        const QString archive = dir_.filePath("fixture.zip");
+        backend.create(archive, {source});
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        done.clear();
+        backend.list(archive);
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        done.clear();
+        const QString output = dir_.filePath(QStringLiteral("папка извлечения"));
+        QVERIFY(QDir().mkpath(output));
+        QFile existing(QDir(output).filePath(QFileInfo(source).fileName()));
+        QVERIFY(existing.open(QIODevice::WriteOnly));
+        QCOMPARE(existing.write("existing"), qint64(8));
+        existing.close();
+        CExtractDialog dialog(output, {}, false);
+        pathMode(dialog)->setCurrentIndex(1);
+        overwrite(dialog)->setCurrentIndex(2);
+        dialog.accept();
+        backend.extract(archive, dialog.destination(), {}, {}, dialog.options());
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("existing"));
+        existing.close();
+        done.clear();
+        overwrite(dialog)->setCurrentIndex(1);
+        backend.extract(archive, dialog.destination(), {}, {}, dialog.options());
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("archive content"));
+    }
+};
+QTEST_MAIN(ExtractDialogTests)
+#include "extract_dialog_tests.moc"

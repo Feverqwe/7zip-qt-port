@@ -121,3 +121,51 @@ void CInfo::Load(const QString &path) {
     }
 }
 } // namespace NCompression
+
+namespace NExtract {
+void CInfo::Save(const QString &path) const {
+    QSettings key(path, QSettings::IniFormat);
+    key.beginGroup("Extraction");
+    if (PathMode_Force)
+        key.setValue("ExtractMode", UInt32(PathMode));
+    if (OverwriteMode_Force)
+        key.setValue("OverwriteMode", UInt32(OverwriteMode));
+    if (ShowPassword.Def)
+        key.setValue("ShowPassword", ShowPassword.Val);
+    QStringList paths;
+    FOR_VECTOR(i, Paths)
+    paths.append(Paths[i]);
+    key.setValue("PathHistory", paths);
+}
+
+void CInfo::Load(const QString &path) {
+    PathMode = NPathMode::kCurPaths;
+    PathMode_Force = false;
+    OverwriteMode = NOverwriteMode::kAsk;
+    OverwriteMode_Force = false;
+    ShowPassword.Init();
+    Paths.Clear();
+    QSettings key(path, QSettings::IniFormat);
+    // Migration of the former Qt history; all further writes use the upstream group.
+    const QStringList legacyPaths = key.value("history/extract").toStringList();
+    key.beginGroup("Extraction");
+    const QStringList paths = key.value("PathHistory", legacyPaths).toStringList();
+    for (const QString &s : paths)
+        Paths.Add(s);
+    bool ok;
+    UInt32 v = key.value("ExtractMode").toUInt(&ok);
+    if (ok && v <= NPathMode::kAbsPaths) {
+        PathMode = (NPathMode::EEnum)v;
+        PathMode_Force = true;
+    }
+    v = key.value("OverwriteMode").toUInt(&ok);
+    if (ok && v <= NOverwriteMode::kRenameExisting) {
+        OverwriteMode = (NOverwriteMode::EEnum)v;
+        OverwriteMode_Force = true;
+    }
+    if (key.contains("ShowPassword")) {
+        ShowPassword.Def = true;
+        ShowPassword.Val = key.value("ShowPassword").toBool();
+    }
+}
+} // namespace NExtract
