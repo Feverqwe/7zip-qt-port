@@ -25,14 +25,16 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
     const QFileInfo source(paths.first());
     if (!source.isFile() || source.isSymLink())
         return;
+    VolumeParts parts;
     if (mode == VolumeOperation::Mode::Combine) {
         QString error;
-        if (VolumeOperation::discoverParts(paths.first(), &error).isEmpty()) {
+        parts = VolumeOperation::inspectParts(paths.first(), &error);
+        if (parts.paths.isEmpty()) {
             QMessageBox::warning(this, "Sevenzip Desktop", error);
             return;
         }
     }
-    VolumeDialog dialog(mode, paths.first(), this);
+    VolumeDialog dialog(mode, paths.first(), this, parts);
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination =

@@ -6,6 +6,11 @@
 
 class QFile;
 
+struct VolumeParts {
+    QStringList paths;
+    qint64 totalSize = 0;
+};
+
 class VolumeOperation : public QThread {
     Q_OBJECT
 
@@ -15,6 +20,7 @@ class VolumeOperation : public QThread {
                     QObject *parent = nullptr);
     void cancel();
     static qint64 parseSize(const QString &text);
+    static VolumeParts inspectParts(const QString &firstPart, QString *error);
     static QStringList discoverParts(const QString &firstPart, QString *error);
 
   signals:

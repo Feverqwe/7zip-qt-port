@@ -4,13 +4,16 @@
 #include <QFileInfo>
 #include <QHBoxLayout>
 
-VolumeDialog::VolumeDialog(VolumeOperation::Mode mode, const QString &source, QWidget *parent)
+VolumeDialog::VolumeDialog(VolumeOperation::Mode mode, const QString &source, QWidget *parent,
+                           const VolumeParts &parts)
     : QDialog(parent), mode_(mode) {
     setObjectName(mode == VolumeOperation::Mode::Split ? "splitDialog" : "combineDialog");
     setWindowTitle(mode == VolumeOperation::Mode::Split ? "Разбить файл" : "Объединить файлы");
     resize(480, 190);
     auto *layout = new QVBoxLayout(this);
     auto *sourceLabel = new QLabel(QFileInfo(source).fileName(), this);
+    sourceLabel->setTextFormat(Qt::PlainText);
+    sourceLabel->setWordWrap(true);
     sourceLabel->setObjectName("volumeSource");
     layout->addWidget(sourceLabel);
     auto *form = new QFormLayout;
@@ -31,6 +34,25 @@ VolumeDialog::VolumeDialog(VolumeOperation::Mode mode, const QString &source, QW
         form->addRow("Размер тома, байт:", size_);
     }
     layout->addLayout(form);
+    if (mode == VolumeOperation::Mode::Combine && !parts.paths.isEmpty()) {
+        QStringList names;
+        for (qsizetype i = 0; i < qMin(qsizetype(2), parts.paths.size()); ++i)
+            names << QFileInfo(parts.paths[i]).fileName();
+        if (parts.paths.size() > 3)
+            names << QStringLiteral("…");
+        if (parts.paths.size() > 2)
+            names << QFileInfo(parts.paths.last()).fileName();
+        auto *info = new QLabel(QStringLiteral("Файлов: %1\nРазмер: %2 байт\n\n%3\n%4")
+                                    .arg(parts.paths.size())
+                                    .arg(parts.totalSize)
+                                    .arg(QFileInfo(source).absolutePath(), names.join('\n')),
+                                this);
+        info->setObjectName("volumePartsInfo");
+        info->setWordWrap(true);
+        info->setTextFormat(Qt::PlainText);
+        info->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        layout->addWidget(info, 1);
+    }
     error_ = new QLabel(this);
     error_->setObjectName("volumeError");
     layout->addWidget(error_);

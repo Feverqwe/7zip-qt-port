@@ -16,7 +16,8 @@ class VolumeDialog : public QDialog {
     Q_OBJECT
 
   public:
-    VolumeDialog(VolumeOperation::Mode mode, const QString &source, QWidget *parent = nullptr);
+    VolumeDialog(VolumeOperation::Mode mode, const QString &source, QWidget *parent = nullptr,
+                 const VolumeParts &parts = {});
 
     QString destination() const { return destination_->text(); }
     qint64 volumeSize() const {

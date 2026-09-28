@@ -126,3 +126,8 @@ focus teardown can trigger navigation into a partially destroyed window.
 Сортировка по расширению включает dotfiles, имена без точки, конечную точку,
 многосоставное расширение и папки с точкой. Снимки плоского списка:
 `flat-sort-980.png` и `flat-sort-640.png` в том же каталоге снимков.
+
+`volume_operations` также проверяет сводку Combine для пяти частей с Unicode и
+пробелами: число, размер в байтах, первые две и последнюю часть, отказ при
+пропуске и отмену диалога без создания результата. Снимки `combine-540.png`
+и `combine-360.png` сохраняются в `build/dev/ui-screenshots/`.

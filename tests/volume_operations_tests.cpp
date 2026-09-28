@@ -107,6 +107,44 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(!QFileInfo::exists(source + ".001"));
         QCOMPARE(QDir(dir.path()).entryList({"*.sevenzip-*"}, QDir::Files).size(), 0);
     }
+    void combineSummary() {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString base = dir.filePath(QStringLiteral("части с пробелами.bin"));
+        for (int i = 1; i <= 5; ++i) {
+            QFile file(base + QStringLiteral(".%1").arg(i, 3, 10, QLatin1Char('0')));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(QByteArray(i, 'x')), qint64(i));
+        }
+        QString error;
+        const auto parts = VolumeOperation::inspectParts(base + ".001", &error);
+        QCOMPARE(parts.paths.size(), 5);
+        QCOMPARE(parts.totalSize, qint64(15));
+        VolumeDialog dialog(VolumeOperation::Mode::Combine, base + ".001", nullptr, parts);
+        auto *info = dialog.findChild<QLabel *>("volumePartsInfo");
+        QVERIFY(info);
+        QVERIFY(info->text().contains("Файлов: 5"));
+        QVERIFY(info->text().contains("Размер: 15 байт"));
+        QVERIFY(info->text().contains("части с пробелами.bin.001"));
+        QVERIFY(info->text().contains("части с пробелами.bin.002"));
+        QVERIFY(info->text().contains("части с пробелами.bin.005"));
+        QVERIFY(!info->text().contains("части с пробелами.bin.003"));
+        QVERIFY(info->text().contains("…"));
+        dialog.show();
+        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+        QVERIFY(QDir().mkpath(screenshots));
+        for (int width : {540, 360}) {
+            dialog.resize(width, 340);
+            QApplication::processEvents();
+            QVERIFY(dialog.grab().save(screenshots + QStringLiteral("/combine-%1.png").arg(width)));
+        }
+        dialog.reject();
+        QVERIFY(!QFileInfo::exists(base));
+        QVERIFY(QFile::remove(base + ".003"));
+        QVERIFY(VolumeOperation::inspectParts(base + ".001", &error).paths.isEmpty());
+        QVERIFY(error.contains("пропуск"));
+    }
+
     void splitDialogHasDestinationAndSize() {
         QTemporaryDir dir;
         VolumeDialog dialog(VolumeOperation::Mode::Split, dir.filePath("source.bin"));

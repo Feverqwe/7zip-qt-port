@@ -69,6 +69,20 @@ QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *er
     return parts;
 }
 
+VolumeParts VolumeOperation::inspectParts(const QString &firstPart, QString *error) {
+    VolumeParts result;
+    result.paths = discoverParts(firstPart, error);
+    for (const QString &path : result.paths) {
+        const qint64 size = QFileInfo(path).size();
+        if (size <= 0 || size > std::numeric_limits<qint64>::max() - result.totalSize) {
+            *error = QStringLiteral("Размер частей недоступен или слишком велик.");
+            return {};
+        }
+        result.totalSize += size;
+    }
+    return result;
+}
+
 bool VolumeOperation::copyBytes(QFile &input, QFile &output, qint64 count, qint64 *progress,
                                 QString *error) {
     while (count > 0) {
