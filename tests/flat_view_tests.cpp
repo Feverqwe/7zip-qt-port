@@ -1,3 +1,4 @@
+#include "layout_inspection.h"
 #include "mainwindow.h"
 
 #include <QAction>
@@ -7,6 +8,7 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QSettings>
+#include <QStatusBar>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -194,7 +196,13 @@ class FlatViewTests : public QObject {
         flat->trigger();
     }
 
+    void flatFilesystemScanCanBeCancelledWhileListIsGrowing_data() {
+        QTest::addColumn<QSize>("size");
+        QTest::newRow("normal") << QSize(980, 620);
+        QTest::newRow("compact") << QSize(640, 480);
+    }
     void flatFilesystemScanCanBeCancelledWhileListIsGrowing() {
+        QFETCH(QSize, size);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         QTemporaryDir other;
@@ -210,6 +218,18 @@ class FlatViewTests : public QObject {
         }
         ControlledBackend backend;
         MainWindow window(&backend);
+        action(window, "viewMode3Action")->trigger();
+        action(window, "flatViewAction")->setChecked(false);
+        window.resize(size);
+        window.show();
+        QCoreApplication::processEvents();
+        bool nativeReportWritten = false;
+        connect(window.statusBar(), &QStatusBar::messageChanged, &window,
+                [&](const QString &message) {
+                    if (!nativeReportWritten && message.startsWith(QStringLiteral("Сканирование:")))
+                        nativeReportWritten = UiInspection::writeReport(
+                            window, QString("filesystem-native-scan-%1").arg(size.width()));
+                });
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
@@ -223,12 +243,16 @@ class FlatViewTests : public QObject {
             if (table(window)->rowCount() <= 0)
                 return;
             partial = table(window)->rowCount() < 1501 && !table(window)->isEnabled();
+            QVERIFY(UiInspection::fullyVisible(*table(window), window));
+            QVERIFY(UiInspection::writeReport(
+                window, QString("filesystem-presentation-%1").arg(size.width())));
             flat->trigger();
             cancelled = true;
             cancelTimer.stop();
         });
         cancelTimer.start();
         QTRY_VERIFY(cancelled);
+        QVERIFY(nativeReportWritten);
         QVERIFY(partial);
         QVERIFY(!flat->isChecked());
         QCOMPARE(table(window)->rowCount(), 1);
@@ -253,6 +277,7 @@ class FlatViewTests : public QObject {
         QTRY_VERIFY(table(window)->isEnabled());
         QCoreApplication::processEvents();
         QCOMPARE(table(window)->rowCount(), 1);
+        flat->setChecked(false);
     }
 
     void flatArchiveViewKeepsFolderNavigationAndRefresh() {

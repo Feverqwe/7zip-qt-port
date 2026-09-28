@@ -47,7 +47,7 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
         scanningDisk_ = true;
         setState(State::Filesystem);
         statusBar()->showMessage("Сканирование вложенных папок…");
-        filesystemScanner_->start(directory_, filter);
+        filesystemScanner_->start(directory_);
     } else {
         const QFileInfoList files = QDir(directory_).entryInfoList(filter, QDir::NoSort);
         for (const QFileInfo &file : files)

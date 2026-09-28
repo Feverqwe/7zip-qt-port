@@ -62,6 +62,13 @@ control order and clipping in those current-build reports. These establish Qt
 usability/typed value behavior, not rendered Windows pixel parity; full source
 column formatting and property catalogs remain mandatory P0-03/04 scope.
 
+For recursive filesystem loading, `flat_view` also writes normal/compact
+`filesystem-native-scan-*` and `filesystem-presentation-*` reports. Navigation
+remains above the disabled list while loading/presenting, and both stay visible
+without clipping. Status distinguishes scan progress from shown row count; list
+commands return after completion or failure. This Qt responsiveness adaptation
+keeps source enumeration in CFSFolder, not a presentation-layer walker.
+
 ## File list settings
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

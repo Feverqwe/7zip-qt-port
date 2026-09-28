@@ -59,7 +59,7 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 `CPP/Common/Wildcard.cpp`, `CPP/Windows/FileDir.cpp`,
 `CPP/Windows/FileName.cpp`, `CPP/7zip/Common/MethodProps.cpp`.
 Всего в `src/CPP` — 34 `.cpp`.
-В корне `src/` — 35 `.cpp` Qt/integration; это не 35 неперенесённых компонента:
+В корне `src/` — 36 `.cpp` Qt/integration; это не 36 неперенесённых компонента:
 часть является необходимой обвязкой, часть содержит миграционный долг.
 В `third_party/7zip` — 56 файлов, побайтово совпадающих с теми же путями baseline,
 плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.

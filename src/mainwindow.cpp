@@ -28,8 +28,11 @@ void MainWindow::connectFilesystemScanner() {
                 for (const QFileInfo &file : files)
                     appendFilesystemEntry(file);
                 statusBar()->showMessage(
-                    QStringLiteral("Сканирование: %1 объектов…").arg(table_->rowCount()));
+                    QStringLiteral("Показано: %1 объектов…").arg(table_->rowCount()));
             });
+    connect(filesystemScanner_, &FilesystemScanner::advanced, this, [this](quint64 count) {
+        statusBar()->showMessage(QStringLiteral("Сканирование: %1 объектов…").arg(count));
+    });
     connect(filesystemScanner_, &FilesystemScanner::completed, this, [this] {
         scanningDisk_ = false;
         table_->setSortingEnabled(true);
@@ -39,5 +42,12 @@ void MainWindow::connectFilesystemScanner() {
         scanSelectedState_.reset();
         refreshActions();
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
+    });
+    connect(filesystemScanner_, &FilesystemScanner::failed, this, [this](qint32) {
+        scanningDisk_ = false;
+        scanSelectedState_.reset();
+        table_->setSortingEnabled(true);
+        refreshActions();
+        statusBar()->showMessage(QStringLiteral("Не удалось прочитать папку."));
     });
 }

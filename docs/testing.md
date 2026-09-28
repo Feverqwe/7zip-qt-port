@@ -1,5 +1,12 @@
 # Regression strategy
 
+`filesystem_scanner` checks native worker ownership and Qt delivery: ordered
+source-index batches, progress, retained folder metadata after scanner cancellation,
+restarts during native load/presentation rejecting old generations, pre-start
+cancel, active teardown, deletion from callbacks and invalid-directory failure.
+`flat_view` exercises live navigation/cancellation at normal/compact sizes and
+writes `filesystem-native-scan-*`/`filesystem-presentation-*` widget reports.
+
 `file_find` checks the upstream portable enumeration/path services with local
 Unicode/non-BMP files and folders, metadata, excluded dots, missing-directory
 error versus EOF, source dot resolution and current directory. POSIX symlink

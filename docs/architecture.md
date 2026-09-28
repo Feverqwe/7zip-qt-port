@@ -11,8 +11,8 @@ are defined in [AGENTS.md](../AGENTS.md).
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single
 FileDir owner, whose GetCurrentDir has source Windows/POSIX bodies. These services
-are prerequisites for CFSFolder binding; the window still uses its current
-filesystem loader until the runtime-owner iteration.
+are prerequisites for CFSFolder binding. Recursive scanning now uses the source
+folder in a Qt worker; normal window listing/binding remains migration work.
 `CFSFolder` owns FString/CFileInfo metadata and exposes the source read-only
 enumeration/property subset with flat mode. Mutations convert to Qt at their
 service boundary. Source folder binding and parent navigation use native services;
@@ -124,10 +124,16 @@ totals. `CAgentFolder` supplies normal and flat traversal. `MainWindow` converts
 these items into Qt rows and expands selected folders through the same tree.
 Full entry paths remain in item data independently of display order.
 
-`FilesystemScanner` enumerates disk entries in bounded timer batches without
-following directory symlinks. A generation counter discards stale batches
-after navigation or mode changes. Enumeration and final sorting run on the GUI
-thread. Table and icon/list views share a model and selection model.
+`FilesystemFolderLoader` runs the original CFSFolder recursive enumeration in a
+worker without following POSIX directory symlinks. `FilesystemScanner` waits for
+completion before taking its COM owner, then presents source-index batches on
+GUI timers. Count progress and atomic cancel remain available during native
+loading; cancelled workers are joined before destruction. A generation counter
+discards stale results/batches after navigation or mode changes. Final sorting
+runs on the GUI thread. Table and icon/list views share a model/selection model.
+QFile::decodeName supplies native POSIX-to-Qt path conversion (macOS NFC); the
+source folder retains native bytes. Normal window loading and CPanel filesystem
+binding remain the next mandatory runtime integration.
 
 `CPanelSelection` consumes a snapshot of names, folder flags and selection
 states; `mainwindow_selection.cpp` publishes the result to Qt in one update.

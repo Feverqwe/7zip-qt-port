@@ -514,3 +514,16 @@ inspection passed (16 reports); focused 9/9 and full gate 62/62 passed macOS
 2026-09-29. Full filesystem runtime, BindToPath/LoadFullPath,
 CFolderLink and operation/interface/catalog branches remain mandatory; this
 partial owner binding does not establish full module or Windows visual parity.
+
+P0-02.2b3b3b2b replaces the independent recursive Qt iterator with source
+CFSFolder loading in a worker. Unlike synchronous source RefreshListCtrl loading,
+Qt remains responsive, reports scan counts, then shows rows in bounded batches
+after ownership transfer. Cancel/navigation can interrupt either phase. The list
+remains disabled until complete; stale results never replace the new location.
+Native POSIX names use QFile::decodeName at the Qt boundary, preserving macOS
+path/selection behavior without changing source metadata. Progress status now
+distinguishes scanned/shown counts; unreadable-folder failure reenables the list.
+Four normal/compact progress reports inspected; focused 5/5, ASan 1/1 and full
+gate 63/63 passed macOS 2026-09-29. Full CPanel
+filesystem binding/normal loading remain mandatory P0-02.2b3b3b2c; Windows/Linux
+runtime and Windows rendered parity remain unverified.

@@ -8,6 +8,59 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3b2b — native worker and GUI ownership handoff (2026-09-29)
+
+Project baseline `52ed631`; pinned upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Calls existing source CFSFolder Init/SetFlatMode/LoadItems/LoadSubItems/GetRelPath
+and the previous exact Clear/cancel adaptation. Native enumeration remains in
+that single authoritative module; FilesystemScanner's independent QDirIterator
+walker is removed. Root normal QDir listing remains explicit migration scope
+P0-02.2b3b3b2c, not completed here.
+
+PanelItems.cpp RefreshListCtrl calls LoadItems synchronously. Inspected
+PanelOperations.cpp CThreadFolderOperations ProcessVirt covers create/delete/
+rename, not an asynchronous listing handoff. New filesystemfolderloader.cpp/.h
+is a narrow Qt thread service for that missing cross-platform integration:
+creates the folder via the existing factory in run(), installs atomic cancel/
+count callbacks, calls the original loading body, removes callbacks and releases
+failed results. Progress signals are throttled to first/every 128 source records.
+The caller waits for QThread completion before reading/detaching its result;
+default upstream non-atomic COM references are never concurrently used by GUI
+and the loading worker. An unfinished source folder is never published.
+
+FilesystemScanner keeps cancelled workers until completion, suppresses obsolete
+generations, and cancels/joins them before destruction. GUI receives a completed
+source folder and source-index batches (max 128/8ms scheduling), with QPointer
+guards for reentrant destruction from callbacks. QFileInfo is presentation input
+created from source GetRelPath, not a second enumeration. POSIX filename conversion
+uses QFile::decodeName; local Qt qfile.h explicitly maps macOS NFD to NFC. Windows
+converts native wide paths without an ANSI round trip. Native source bytes and
+metadata remain unchanged; bypassing Qt decoding initially failed existing
+Unicode navigation/focus regressions and was corrected at this boundary.
+
+Observable adaptation: native scanning now runs off the GUI thread with count
+progress; rows appear in bounded GUI batches after immutable-owner handoff,
+instead of while an independent walker was still enumerating. Both stages remain
+responsive/cancellable. Status distinguishes scanning from shown rows; failure
+reenables the list and reports unreadable folder. Widgets/7zz operations remain
+outside native enumeration. CPanel filesystem binding and normal listing remain
+mandatory P0-02.2b3b3b2c; no full source RefreshListCtrl/BindToPath claim is made.
+
+New filesystem_scanner tests check GUI batches/source-index order/retained COM
+metadata, native progress restart rejecting old owners, presentation restart,
+cancel before start, active teardown, callback-driven deletion and invalid path.
+flat_view verifies cancellation/navigation while rows grow and normal/compact
+progress JSON; panel_selected_state covers focus/selection in four views.
+Affected scanner/flat_view/selected_state/ui_navigation built; final focused 5/5
+passed (4.05s), macOS 2026-09-29. ASan filesystem_scanner passed 1/1 (0.72s,
+leak detection disabled). Four current-build progress reports reviewed at
+980×620/640×480: pathCombo, active table/view stack and status bar fully visible;
+normal/compact navigation grouping retained. ./scripts/check.sh passed formatting,
+app build and all 63 CTest (28.39s). No screenshot/pixel parity claim.
+New source thread service adds one root Qt cpp (36 total); src/CPP cpp remains
+34 (30 UI), vendor remains 57 unchanged files. Windows/Linux runtime unverified.
+
 ## P0-02.2b3b3b2a — cancellable source filesystem loading (2026-09-29)
 
 Project baseline `9014788`; exact source [ip7z/7zip

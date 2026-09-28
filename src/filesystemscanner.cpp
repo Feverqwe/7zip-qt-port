@@ -1,45 +1,117 @@
 #include "filesystemscanner.h"
-
-#include <QDirIterator>
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
+#include "CPP/7zip/UI/FileManager/Panel.h"
+#include "Common/StringConvert.h"
+#include "filesystemfolderloader.h"
+#include <QDir>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QPointer>
 #include <QTimer>
+
+namespace {
+QString QtFilesystemPath(const FString &path) {
+#ifdef _WIN32
+    return QDir::fromNativeSeparators(QString::fromWCharArray(path));
+#else
+    // Qt decodes native POSIX filenames (including macOS NFD → NFC) at this
+    // presentation boundary; the source folder retains the original bytes.
+    return QFile::decodeName(path.Ptr());
+#endif
+}
+} // namespace
 
 FilesystemScanner::FilesystemScanner(QObject *parent) : QObject(parent) {}
 
-FilesystemScanner::~FilesystemScanner() = default;
-
-void FilesystemScanner::start(const QString &directory, QDir::Filters filters) {
+FilesystemScanner::~FilesystemScanner() {
     cancel();
-    iterator_ = std::make_unique<QDirIterator>(directory, filters, QDirIterator::Subdirectories);
+    for (auto *loader : loaders_) {
+        disconnect(loader, nullptr, this, nullptr);
+        loader->cancel();
+        loader->wait();
+        delete loader;
+    }
+}
+
+void FilesystemScanner::start(const QString &directory) {
+    cancel();
+    loader_ = new FilesystemFolderLoader(directory, this);
+    loaders_.append(loader_);
     const quint64 generation = generation_;
-    QTimer::singleShot(0, this, [this, generation] { scanBatch(generation); });
+    auto *loader = loader_;
+    connect(loader, &FilesystemFolderLoader::advanced, this,
+            [this, loader, generation](quint64 count) {
+                if (generation == generation_ && loader == loader_)
+                    emit advanced(count);
+            });
+    connect(loader, &QThread::finished, this,
+            [this, loader, generation] { loaderFinished(loader, generation); });
+    loader->start();
+}
+
+void FilesystemScanner::loaderFinished(FilesystemFolderLoader *loader, quint64 generation) {
+    loader->wait();
+    loaders_.removeOne(loader);
+    const bool current = generation == generation_ && loader == loader_;
+    if (current)
+        loader_ = nullptr;
+    const HRESULT result = loader->result();
+    CMyComPtr<IFolderFolder> loaded;
+    loaded.Attach(loader->takeFolder());
+    loader->deleteLater();
+    if (!current)
+        return;
+    if (result != S_OK) {
+        emit failed(qint32(result));
+        return;
+    }
+    folder_ = loaded;
+    directory_ = QtFilesystemPath(us2fs(GetFolderPath(folder_)));
+    presenting_ = true;
+    const QPointer<FilesystemScanner> guard(this);
+    emit folderReady(folder_);
+    if (!guard)
+        return;
+    if (generation == generation_ && presenting_)
+        QTimer::singleShot(0, this, [this, generation] { scanBatch(generation); });
 }
 
 void FilesystemScanner::cancel() {
     ++generation_;
-    iterator_.reset();
+    if (loader_)
+        loader_->cancel();
+    loader_ = nullptr;
+    folder_.Release();
+    nextIndex_ = 0;
+    presenting_ = false;
 }
 
-bool FilesystemScanner::isRunning() const { return iterator_ != nullptr; }
+bool FilesystemScanner::isRunning() const { return loader_ || presenting_; }
 
 void FilesystemScanner::scanBatch(quint64 generation) {
-    if (generation != generation_ || !iterator_)
+    if (generation != generation_ || !presenting_ || !folder_)
         return;
     QElapsedTimer elapsed;
     elapsed.start();
     QFileInfoList files;
-    while (files.size() < 128 && elapsed.elapsed() < 8 && iterator_->hasNext()) {
-        iterator_->next();
-        files.append(iterator_->fileInfo());
+    const quint32 firstIndex = nextIndex_;
+    auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder_);
+    while (files.size() < 128 && elapsed.elapsed() < 8 && nextIndex_ < spec->Files.Size()) {
+        const FString relPath = spec->GetRelPath(spec->Files[nextIndex_++]);
+        const QString name = QtFilesystemPath(relPath);
+        files.append(QFileInfo(QDir(directory_).filePath(name)));
     }
+    const QPointer<FilesystemScanner> guard(this);
     if (!files.isEmpty())
-        emit batchReady(files);
-    if (generation != generation_ || !iterator_)
+        emit batchReady(files, firstIndex);
+    if (!guard)
         return;
-    if (iterator_->hasNext()) {
+    if (generation != generation_ || !presenting_ || !folder_)
+        return;
+    if (nextIndex_ < spec->Files.Size()) {
         QTimer::singleShot(0, this, [this, generation] { scanBatch(generation); });
         return;
     }
-    iterator_.reset();
+    presenting_ = false;
     emit completed();
 }
