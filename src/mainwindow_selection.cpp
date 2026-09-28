@@ -7,7 +7,8 @@ CPanelSelection readSelection(const QTableWidget &table) {
     selection.Items.reserve(size_t(table.rowCount()));
     for (int row = 0; row < table.rowCount(); ++row) {
         const auto *item = table.item(row, 0);
-        selection.Items.push_back({item->text(), item->data(Qt::UserRole + 1).toBool(),
+        selection.Items.push_back({item->data(Qt::UserRole + 3).toString(),
+                                   item->data(Qt::UserRole + 1).toBool(),
                                    table.selectionModel()->isRowSelected(row, QModelIndex())});
     }
     return selection;

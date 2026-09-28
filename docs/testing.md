@@ -91,6 +91,11 @@ retaining unmatched selected items, deselection, inversion and missing focus.
 Existing `ui_state` mask/type and all/invert/clear scenarios check the Qt adapter
 in filesystem and archive views; the shared model retains the current index.
 
+`flat_view` additionally checks selection by an exact filename mask and by type
+for extensionless files below dotted parent folders. The Qt selection adapter
+passes the base name, as `PanelSelect.cpp::GetItemName()` does, rather than the
+relative path displayed in flat mode.
+
 `panel_sort` проверяет правила `PanelSort.cpp` (`0766b73`) через Qt-таблицу:
 папки перед файлами в обоих направлениях, повторный выбор свойства,
 размер и дата по убыванию при первом выборе, щелчок заголовка размера,

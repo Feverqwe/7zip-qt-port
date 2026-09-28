@@ -71,6 +71,41 @@ class FlatViewTests : public QObject {
     }
 
   private slots:
+    void flatSelectionUsesNamesInsteadOfParentPaths() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("selection.zip");
+        backend.completeList({ArchiveEntry{"parent.txt/README", 1, 1},
+                              ArchiveEntry{QStringLiteral("другая папка/README"), 2, 2},
+                              ArchiveEntry{"parent.txt/note.txt", 3, 3},
+                              ArchiveEntry{"parent.txt/child", 0, 0, {}, true}});
+        auto *flat = action(window, "flatViewAction");
+        if (!flat->isChecked())
+            flat->trigger();
+        auto *list = table(window);
+        list->setCurrentCell(rowWithPath(window, "parent.txt/README"), 0);
+        action(window, "selectTypeAction")->trigger();
+        QCOMPARE(list->selectionModel()->selectedRows().size(), 2);
+        QVERIFY(
+            list->selectionModel()->isRowSelected(rowWithPath(window, "parent.txt/README"), {}));
+        QVERIFY(list->selectionModel()->isRowSelected(
+            rowWithPath(window, QStringLiteral("другая папка/README")), {}));
+        action(window, "deselectAllAction")->trigger();
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *dialog = dynamic_cast<ComboDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    dialog->findChild<QLineEdit *>()->setText("README");
+                    dialog->accept();
+                }
+        });
+        action(window, "selectMaskAction")->trigger();
+        QCOMPARE(list->selectionModel()->selectedRows().size(), 2);
+        QVERIFY(
+            !list->selectionModel()->isRowSelected(rowWithPath(window, "parent.txt/note.txt"), {}));
+        flat->trigger();
+    }
+
     void initTestCase() {
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove("view/flatDisk");
