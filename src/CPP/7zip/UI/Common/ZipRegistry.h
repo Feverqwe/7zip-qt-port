@@ -29,10 +29,23 @@ struct CMemUse {
     void Parse(const QString &s);
 };
 
-// Only the format identity and memory-limit fields are ported in this iteration.
+// Compression controls ported from upstream; time/options/encryption remain pending.
 struct CFormatOptions {
+    UInt32 Level;
+    UInt32 Dictionary;
+    UInt32 Order;
+    UInt32 BlockLogSize;
+    UInt32 NumThreads;
     QString FormatID;
+    QString Method;
     QString MemUse;
+
+    void Reset_BlockLogSize() { BlockLogSize = (UInt32)(Int32)-1; }
+    void ResetForLevelChange() {
+        BlockLogSize = NumThreads = Level = Dictionary = Order = (UInt32)(Int32)-1;
+        Method.clear();
+    }
+    CFormatOptions() { ResetForLevelChange(); }
 };
 struct CInfo {
     CObjectVector<CFormatOptions> Formats;

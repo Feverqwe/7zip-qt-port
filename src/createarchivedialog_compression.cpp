@@ -51,12 +51,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         SaveOptionsInMem();
         registryFormat_ = format_->currentText();
-        SetMemUseCombo();
-        method_->clear();
-        SetLevel2();
-        method_->addItems(NCompressDialog::GetMethodNames(format_->currentText()));
-        solidBlock_->setEnabled(format_->currentText() == "7z" &&
-                                level_->currentData().toInt() != 0);
+        FormatChanged();
     });
     const auto updateMethodOptions = [this] {
         SetOrder2();
@@ -78,14 +73,23 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     connect(threads_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
     connect(solidBlock_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
     connect(memUse_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
-    SetLevel2();
-    method_->addItems(NCompressDialog::GetMethodNames(format_->currentText()));
+    FormatChanged();
 }
 
 // Adapted from CCompressDialog::SetLevel2 / SetNearestSelectComboBox (0766b73).
-// Registry format defaults are replaced by the current Qt selection (initially 5).
+// Registry defaults and nearest-selection control flow follow upstream.
 void CreateArchiveDialog::SetLevel2() {
-    const UInt32 level = level_->currentIndex() < 0 ? 5 : level_->currentData().toUInt();
+    UInt32 level = 5;
+    const int index = FindRegistryFormat(registryFormat_);
+    if (index >= 0) {
+        const NCompression::CFormatOptions &fo = m_RegistryInfo.Formats[index];
+        if (fo.Level <= 9)
+            level = fo.Level;
+        else if (fo.Level == (UInt32)(Int32)-1)
+            level = 5;
+        else
+            level = 9;
+    }
     level_->clear();
     const auto &fi = NCompressDialog::GetFormatInfo(format_->currentText());
     const QString labels[] = {"Без сжатия", "Быстрое",      {}, "Быстро", {}, "Обычное",

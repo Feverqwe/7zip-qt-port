@@ -161,3 +161,9 @@ FindRegistryFormat/SaveOptionsInMem, сохраняет предыдущий ф�
 ошибка валидации не записывают настройки. Остальные поля Registry
 остаются долгом. Подробные источники и отклонения записаны
 в upstream-port-audit.md.
+
+Профили доступных параметров сжатия принадлежат перенесённому
+`NCompression::CFormatOptions` в `CPP/7zip/UI/Common/ZipRegistry.*`.
+`createarchivedialog_preferences.cpp` адаптирует исходные сохранение и
+восстановление к Qt-контролам; запись выполняется только после валидации OK.
+Значения профиля проходят обычную валидацию ArchiveBackend при создании.

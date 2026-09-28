@@ -427,3 +427,33 @@ Qt presentation повторяет checkbox/Edit перед Path mode слева
 Параметры движка не меняются: backend проверяет составное назначение
 существующей защитой путей/ссылок и создаёт его. NtSecurity, ElimDup,
 интерактивный Ask остаются долгом. Форматирование — clang-format.
+
+## Полный профиль доступных параметров сжатия (2026-09-28)
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/Common/ZipRegistry.h::NCompression::CFormatOptions`,
+`ZipRegistry.cpp::CInfo::Save/Load`, `Key_Set_UInt32/Key_Get_UInt32`;
+`CPP/7zip/UI/GUI/CompressDialog.cpp::SaveOptionsInMem`, `FormatChanged`,
+`SetLevel2`, registry branches `SetMethod2`, `SetDictionary2`, `SetOrder2`,
+`SetSolidBlockSize2`, `SetNumThreads2`.
+
+Скопированы поля Level/Dictionary/Order/BlockLogSize/NumThreads/Method,
+инициализация и ResetForLevelChange/Reset_BlockLogSize. Save/Load сохраняют
+исходный порядок полей и DWORD sentinel `UInt32(-1)` (отсутствующее значение).
+Win32 Registry заменён узким QSettings INI адаптером; UString Method заменён
+QString на границе Qt. У SaveOptionsInMem сохранены ветви преобразования
+UInt64 dictionary в DWORD, включая `UInt32(-2)` для 4 GiB. Нулевые Qt Auto
+словаря/слова/потоков преобразуются в исходный sentinel. Solid хранит исходный
+логарифм, в том числе 0/64/Auto. Пока параметры времени, произвольные options
+и encryption method CFormatOptions не подключены.
+
+В существующем Qt presentation adapter createarchivedialog_preferences.cpp
+FormatChanged восстанавливает level → method → dictionary/order → solid →
+threads, с исходной проверкой совпадения метода перед восстановлением его
+параметров. QSignalBlocker заменяет отсутствие Win32 CBN_SELCHANGE при
+программном заполнении. Недоступные значения возвращаются к Auto; выбор
+большого словаря ограничивается текущим исходным рядом. SetLevel2 теперь
+использует исходные ветви persisted level (default 5, invalid >9 →9) и
+nearest-selection цикл. Внутри текущего формата пока остаётся прежняя Qt
+политика удержания допустимых значений при смене уровня/метода; это отдельный
+долг обработчиков IDC_COMPRESS_LEVEL/METHOD. Пароли в профиль не входят.

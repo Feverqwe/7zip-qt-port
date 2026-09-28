@@ -93,6 +93,21 @@ void CMemUse::Parse(const QString &s) { IsDefined = ParseMemUse(s.toStdWString()
 static const char *const kOptionsKeyName = "Compression/Options";
 static const char *const kMemUse = sizeof(size_t) == 4 ? "MemUse32" : "MemUse64";
 
+// Registry DWORD adapters preserve upstream's absent-value sentinel.
+static void Key_Set_UInt32(QSettings &key, const char *name, UInt32 value) {
+    if (value == (UInt32)(Int32)-1)
+        key.remove(QLatin1String(name));
+    else
+        key.setValue(QLatin1String(name), value);
+}
+static void Key_Get_UInt32(QSettings &key, const char *name, UInt32 &value) {
+    value = (UInt32)(Int32)-1;
+    bool ok;
+    const UInt32 v = key.value(QLatin1String(name)).toUInt(&ok);
+    if (ok)
+        value = v;
+}
+
 void CInfo::Save(const QString &path) const {
     QSettings optionsKey(path, QSettings::IniFormat);
     optionsKey.beginGroup(QLatin1String(kOptionsKeyName));
@@ -101,7 +116,13 @@ void CInfo::Save(const QString &path) const {
     FOR_VECTOR(i, Formats) {
         const CFormatOptions &fo = Formats[i];
         optionsKey.beginGroup(fo.FormatID);
+        optionsKey.setValue("Method", fo.Method);
         optionsKey.setValue(QLatin1String(kMemUse), fo.MemUse);
+        Key_Set_UInt32(optionsKey, "Level", fo.Level);
+        Key_Set_UInt32(optionsKey, "Dictionary", fo.Dictionary);
+        Key_Set_UInt32(optionsKey, "Order", fo.Order);
+        Key_Set_UInt32(optionsKey, "BlockSize", fo.BlockLogSize);
+        Key_Set_UInt32(optionsKey, "NumThreads", fo.NumThreads);
         optionsKey.endGroup();
     }
 }
@@ -115,7 +136,13 @@ void CInfo::Load(const QString &path) {
         CFormatOptions fo;
         fo.FormatID = formatIDs[i];
         optionsKey.beginGroup(fo.FormatID);
+        fo.Method = optionsKey.value("Method").toString();
         fo.MemUse = optionsKey.value(QLatin1String(kMemUse)).toString();
+        Key_Get_UInt32(optionsKey, "Level", fo.Level);
+        Key_Get_UInt32(optionsKey, "Dictionary", fo.Dictionary);
+        Key_Get_UInt32(optionsKey, "Order", fo.Order);
+        Key_Get_UInt32(optionsKey, "BlockSize", fo.BlockLogSize);
+        Key_Get_UInt32(optionsKey, "NumThreads", fo.NumThreads);
         Formats.Add(fo);
         optionsKey.endGroup();
     }

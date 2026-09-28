@@ -1,5 +1,7 @@
 #include "createarchivedialog.h"
+#include <QScrollArea>
 #include <QSettings>
+#include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
@@ -135,6 +137,113 @@ class CompressionPreferencesTests final : public QObject {
         QCOMPARE(reloaded.Formats.Size(), 2u);
         reloaded.Load(dir_.filePath("missing.ini"));
         QVERIFY(reloaded.Formats.IsEmpty());
+    }
+    void completeFormatPreferences() {
+        auto combo = [](CreateArchiveDialog &dialog, const char *name) {
+            return dialog.findChild<QComboBox *>(name);
+        };
+        auto set = [&](CreateArchiveDialog &dialog, const char *name, UInt32 value) {
+            auto *c = combo(dialog, name);
+            const int index = c->findData(value);
+            QVERIFY2(index >= 0, name);
+            c->setCurrentIndex(index);
+        };
+        {
+            CreateArchiveDialog dialog(dir_.path(), {source_});
+            set(dialog, "compressionLevel", 7);
+            combo(dialog, "compressionMethod")->setCurrentText("PPMd");
+            set(dialog, "compressionDictionary", 1 << 20);
+            set(dialog, "compressionWordSize", 16);
+            set(dialog, "compressionSolidBlock", 64);
+            choose(dialog, "256M");
+            format(dialog)->setCurrentText("zip");
+            QCOMPARE(dialog.compressionOptions().level, 5);
+            QCOMPARE(dialog.compressionOptions().method, QString("Deflate"));
+            set(dialog, "compressionLevel", 9);
+            set(dialog, "compressionWordSize", 258);
+            set(dialog, "compressionThreads", 1);
+            choose(dialog, "384M");
+            format(dialog)->setCurrentText("7z");
+            const auto options = dialog.compressionOptions();
+            QCOMPARE(options.level, 7);
+            QCOMPARE(options.method, QString("PPMd"));
+            QCOMPARE(options.dictionaryBytes, quint64(1 << 20));
+            QCOMPARE(options.wordSize, 16);
+            QCOMPARE(options.threads, 0);
+            QCOMPARE(options.SolidBlockSize, UInt64(-1));
+            dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        }
+        CreateArchiveDialog restored(dir_.path(), {source_});
+        QCOMPARE(restored.compressionOptions().method, QString("PPMd"));
+        QCOMPARE(restored.compressionOptions().dictionaryBytes, quint64(1 << 20));
+        format(restored)->setCurrentText("zip");
+        const auto zip = restored.compressionOptions();
+        QCOMPARE(zip.level, 9);
+        QCOMPARE(zip.method, QString("Deflate"));
+        QCOMPARE(zip.wordSize, 258);
+        QCOMPARE(zip.threads, 1);
+        QCOMPARE(limit(restored)->currentData().toString(), QString("384M"));
+        restored.show();
+        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+        QVERIFY(QDir().mkpath(screenshots));
+        for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
+            restored.resize(size);
+            QApplication::processEvents();
+            restored.findChild<QScrollArea *>()->ensureWidgetVisible(limit(restored), 0, 80);
+            QApplication::processEvents();
+            QVERIFY(restored.grab().save(
+                screenshots + QString("/compression-preferences-%1.png").arg(size.width())));
+        }
+        // Feed the restored public options through the real backend.
+        ArchiveBackend backend;
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        const QString target = dir_.filePath("restored.zip");
+        backend.create(target, {source_}, {}, false, zip);
+        QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
+        QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
+        QProcess process;
+        process.start("7zz", {"t", "--", target});
+        QVERIFY(process.waitForFinished(15000));
+        QCOMPARE(process.exitCode(), 0);
+        process.start("7zz", {"x", "-o" + dir_.filePath("restored-out"), "--", target});
+        QVERIFY(process.waitForFinished(15000));
+        QCOMPARE(process.exitCode(), 0);
+        QFile output(dir_.filePath("restored-out/" + QFileInfo(source_).fileName()));
+        QVERIFY(output.open(QIODevice::ReadOnly));
+        QCOMPARE(output.readAll(), QByteArray("source"));
+        restored.reject();
+        QFile::remove(target);
+    }
+    void invalidStoredControlsAndAutoSentinels() {
+        QSettings saved(settingsPath_, QSettings::IniFormat);
+        saved.setValue("Compression/Options/7z/Level", "broken");
+        saved.setValue("Compression/Options/7z/Method", "removed codec");
+        saved.setValue("Compression/Options/7z/Dictionary", "18446744073709551615");
+        saved.setValue("Compression/Options/7z/Order", 999);
+        saved.setValue("Compression/Options/7z/BlockSize", 63);
+        saved.setValue("Compression/Options/7z/NumThreads", 999999);
+        saved.sync();
+        CreateArchiveDialog dialog(dir_.path(), {source_});
+        auto options = dialog.compressionOptions();
+        QCOMPARE(options.level, 5);
+        QCOMPARE(options.method, QString("LZMA2"));
+        QCOMPARE(options.dictionaryBytes, quint64(0));
+        QCOMPARE(options.wordSize, 0);
+        QCOMPARE(options.threads, 0);
+        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        NCompression::CInfo loaded;
+        loaded.Load(settingsPath_);
+        QCOMPARE(loaded.Formats[0].Dictionary, UInt32(-1));
+        QCOMPARE(loaded.Formats[0].Order, UInt32(-1));
+        QCOMPARE(loaded.Formats[0].NumThreads, UInt32(-1));
+        QCOMPARE(loaded.Formats[0].BlockLogSize, UInt32(-1));
+        CreateArchiveDialog cancelled(dir_.path(), {source_});
+        cancelled.findChild<QComboBox *>("compressionLevel")->setCurrentIndex(0);
+        cancelled.reject();
+        CreateArchiveDialog restarted(dir_.path());
+        QCOMPARE(restarted.compressionOptions().level, 5);
     }
     void autoClearsSavedLimit() {
         {
