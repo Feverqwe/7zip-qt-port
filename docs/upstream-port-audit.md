@@ -397,6 +397,28 @@ Commented old Set_ErrorsText/IsHashType/path reconstruction не активны�
 build/CTest/layout не запускались. Open/reopen/parser transport и platform parity
 остаются открытыми до functional implementation и regression checks.
 
+## P0-01.3d3a — Common scan/extract orchestration (2026-09-28)
+
+Project baseline `682128d`. Exact source обоих Common paths — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полные bodies, headers и consumers; copied scope пуст. Файловые
+services адаптируются отдельно от upstream censor/scan/operation policy.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/EnumDirItems.cpp — P0-05/10/12, P1-04/05/11/14/16, P2-01/06/07/10 | FindFile_KeepDots; CDirItems AddDirFileInfo/AddError/ScanProgress/GetPrefixesPath/GetPhyPath/GetLogPath/ReserveDown/AddPrefix/DeleteLastPrefix/constructor/AddSecurityItem/EnumerateOneDir/EnumerateDir/EnumerateItems2/SetLinkInfo/FillFixedReparse/FillDeviceSizes; EnumerateDirItems/_Spec/EnumerateForItem/EnumerateAltStreams/CanUseFsDirect/IsVirtualFsFolder/EnumerateItems/EnumerateDirItemsAndSort; ConvertToLongName/s and CMessagePathException constructors. | DirItem/EnumDirItems headers, Wildcard/SortUtils/upstream strings/vectors, FileDir/IO/Name/Find/SecurityUtils/UTFConvert, POSIX owner APIs and Windows reparse/ADS; AgentOut/Update/HashCalc/GUI/CompressCall2. Preserve physical/logical prefixes, include/exclude recursion/direct-name optimization, dot names, folder/file/ADS stats, scan error callback propagation and periodic progress. Retain link traversal/stream suppression, security buffer/dedup policy, Windows link target reduction, POSIX device-size/owner mapping, long-name censor merge and duplicate sorted full-path errors. Narrow platform metadata/enumeration adapter, worker execution for expensive scans; no independent QDirIterator policy rewrite. |
+| Common/Extract.cpp — P0-12, P1-01/03/14, P2-01/02/07/08/10 | SetErrorMessage/DecompressArchive/Find_FileName_InSortedVector/Extract: archive sizes and batch loop, Open_Strict/OpenResult, hash-handler guard, volume skip/total correction, output-dir substitution/PE basename/ElimDup, indices/censor/ADS filtering, hard-link prepare, extraction callback close/result precedence and statistics. | Extract options/IExtractCallbackUI, OpenArchive/ArchiveExtractCallback/ExtractingFilePath/HashCalc/LoadCodecs, Wildcard/FileFind/Dir/Name/PropVariantConv; GUI ExtractGUI/CompressCall2. Preserve E_ABORT early exit versus continue-on-open-error, no-files success callback, test+CRC mode, reset progress after Open, close failure only replaces S_OK, multivolume duplicate avoidance and Win zone inheritance. ArchiveBackend official-engine process replaces Extract/Open stream dispatch; copied orchestration/path/callback policy stays. Output containment validation supplements this code and belongs backend. |
+
+Extract uses `CompareFileNames` both for sorting and binary volume-path search;
+its documented past case-sensitivity fix is relevant regression evidence.
+EnumDirItems distinguishes SymLinks mode from following links, and its recursion
+decisions depend on explicit censor subnodes. Preserve these cases before any
+platform service adaptation; identical root/folder display alone proves nothing.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 105 unique paths
+(30 mirrored + 75 missing), оба exact-source files существуют. Runtime/UI не
+менялись; build/CTest/layout не запускались. Scan/extract adapters и platform
+behavior остаются открытыми до functional ports и regression checks.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

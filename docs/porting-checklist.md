@@ -205,6 +205,18 @@ Parent c/d2 закрываются после c2. Каждый substep пров�
 P0-01.3d2c1 commit: `4546ae9`. D2 закрыт после c2; следующие обязательные
 modules — d3 operations/callbacks, затем d4 bench/hash/calls.
 
+P0-01.3d3 разделён до review operations bodies:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3d3a | Текущий чат: EnumDirItems/Extract, scan/censor/output-dir/operation orchestration scope | P0-01.3d2c2 | done — audit § P0-01.3d3a; 2026-09-28 macOS docs-only, diff check, 105 unique paths |
+| P0-01.3d3b | Текущий чат: ArchiveExtractCallback, filesystem/overwrite/link/security/progress source scope | P0-01.3d3a | active |
+| P0-01.3d3c | Текущий чат: Update, transaction/rename/scan/volume/SFX/delete source scope | P0-01.3d3b | todo |
+| P0-01.3d3d | Текущий чат: UpdateCallback, streams/properties/update/error/cancel source scope | P0-01.3d3c | todo |
+
+Каждый substep — docs-only diff/unique-path checks и отдельный commit.
+P0-01.3d2c2 commit: `682128d`.
+
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
 
