@@ -4,6 +4,7 @@
 #include "mainwindow.h"
 
 MainWindow::~MainWindow() {
+    removeEventFilter(this);
     // QComboBox can emit activated from editingFinished while QWidget tears
     // down focus. Navigation must stop before MainWindow members are destroyed.
     disconnect(pathCombo_, nullptr, this, nullptr);

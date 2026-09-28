@@ -258,6 +258,23 @@ revision и copied/adapted scope в audit. Checks: `./scripts/build.sh dev`,
 прошёл. Visual contracts unchanged, geometry inspection не требуется.
 Windows/Linux не проверены; parent P0-02 остаётся open.
 
+P0-02.1 commit: `eedf926`. P0-02.2 разделён перед изменением owners:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2a | CApp owns CAppState и два independent CPanel instances; focused-panel/list-versus-address state, source focus restoration и Qt event adapters; одна видимая панель, все четыре modes и независимость focus проверены | P0-02.1 | done — audit § P0-02.2a; macOS focused 3/3, check.sh 55/55 |
+| P0-02.2b | CPanel location/parent stack и selected-state bodies через narrow folder/list/backend adapters; navigation/refresh selection consumers, без duplicate state | P0-02.2a | todo |
+| P0-02.2c | Create/CreateOnePanel и lifecycle/teardown ordering source scope, all-panel disable-before-release; current single-panel integration и checks | P0-02.2b | todo |
+
+P0-02.2 parent закрывается только после a–c. Source baseline остаётся exact
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17; audit фиксируется с каждой частью.
+
+P0-02.2a checks 2026-09-28 macOS: affected targets build dev;
+`ctest --preset dev -R '^(panel_focus|panel_key|bookmarks)$' --output-on-failure`
+3/3; `./scripts/check.sh` format/build/55 CTest; `git diff --check`.
+Construction-order и editable-combo focus failures исправлены до passing runs.
+Layout/text unchanged; Windows/Linux runtime не проверены.
+
 При следующем разделении добавить здесь, сохраняя остальных:
 
 ```text

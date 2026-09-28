@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CPP/7zip/UI/Agent/Agent.h"
-#include "CPP/7zip/UI/FileManager/AppState.h"
+#include "CPP/7zip/UI/FileManager/App.h"
 #include "archivebackend.h"
 #include "archiveformats.h"
 #include "combodialog.h"
@@ -212,7 +212,7 @@ class MainWindow : public QMainWindow {
     QString archivePassword_;
     QString archiveFolder_;
     QString pendingArchiveFolder_;
-    CAppState appState_;
+    CApp app_;
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;

@@ -415,3 +415,12 @@ persistence remain the platform adaptation. GUI-thread ownership replaces
 upstream critical sections; no global shared instance. Visible controls, keyboard,
 confirmation and cancellation flows are unchanged. This does not close CApp/
 CPanel lifecycle or two-panel workflow; Windows/Linux runtime parity unverified.
+
+## P0-02.2a remembered panel focus (2026-09-28)
+
+Source FM.cpp WM_SETFOCUS returns focus through CApp to the last list/address
+control remembered by CPanel. Qt uses FocusIn events and current table/icon/list
+presentation handles; address Tab routes through the same owner. One visible
+panel remains; no layout/control changes. Reference is Panel.cpp focus methods,
+CMyListView focus notification and PanelFolderChange combo edit notification.
+Windows/Linux native focus behavior and rendered pixel parity remain unverified.

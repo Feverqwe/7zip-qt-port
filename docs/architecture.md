@@ -44,6 +44,12 @@ The implementation is divided by responsibility:
 | `mainwindow_fileoperations.cpp`, `mainwindow_filedelete.cpp`, `mainwindow_volumes.cpp` | Filesystem and volume operation coordination |
 | `mainwindow_selection.cpp`, `mainwindow_preferences.cpp`, `mainwindow_dialogs.cpp` | Selection adapter, settings and dialog integration |
 
+`CApp` now owns `CAppState` and two independent `CPanel` instances. The window
+binds the visible panel's list/address widgets through QPointer presentation
+handles; `CPanel` owns remembered focus and `CApp` delegates focus restoration.
+Current UI uses one panel; location/selection and full lifecycle ownership remain
+in migration below. Top-level focus filtering begins after panel construction
+and stops before window member teardown.
 Source-ported `CAppState` groups `CFolderHistory` and `CFastFolders` and reads
 both before the window builds menus or the address combo. Each window owns an
 independent instance on the GUI thread; QSettings paths are explicit adapters.

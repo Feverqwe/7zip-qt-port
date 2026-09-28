@@ -19,7 +19,7 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
     if (address) {
         if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
             pathCombo_->hidePopup();
-            viewStack_->currentWidget()->setFocus(Qt::TabFocusReason);
+            app_.GetFocusedPanel().SetFocusToList();
             return true;
         }
         return false;

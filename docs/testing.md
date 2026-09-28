@@ -4,6 +4,9 @@
 Save/Read with Unicode and sparse slots, switching settings paths, normalization,
 empty state and preservation of unrelated settings. `folder_history`, `bookmarks`,
 `ui_navigation` and `ui_state` cover its window consumers.
+`panel_focus` checks independent application/panel focus state, top-level focus
+restoration to list/address in all four window view modes, and destroyed/rebound
+presentation handles. `panel_key` covers address Tab and Alt+F1/F2 consumers.
 
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,

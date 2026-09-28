@@ -8,6 +8,45 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2a — application/panel owners and remembered focus (2026-09-28)
+
+Project baseline `eedf926`. Exact upstream — [ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied App.h kNumPanelsMax, CApp NumPanels/LastFocusedPanel/AppState/Panels,
+GetFocusedPanelIndex/IsPanelVisible/GetFocusedPanel/SetFocusToLastItem bodies;
+initial defaults moved from constructor to field initialization. Qt integration
+sets NumPanels=1 for current single visible panel; two independent CPanel owners
+exist without global g_App. AutoRefresh/settings/toolbar/drag and all other CApp
+bodies remain open. This does not close two-panel UX or Create/Release lifecycle.
+
+Copied Panel.cpp SetFocusToList/SetFocusToLastRememberedItem branch bodies;
+Win32 control SetFocus replaced with QWidget::setFocus and null guards for
+unbound/destroyed presentation. Panel.h _lastFocusedIsList retains source name;
+OnCreate default true initialized on construction pending full Create port.
+AttachPresentation and QObject eventFilter are Qt glue for two control handles,
+CMyListView WM_SETFOCUS and PanelFolderChange OnNotifyComboBox CBEN_BEGINEDIT.
+QPointer handles widget destruction; binding current list when mode switches
+keeps focus memory. Existing snapshot constructor/property functions unchanged.
+
+MainWindow owns CApp; history/favorites consume AppState. FM.cpp WM_SETFOCUS
+delegation becomes top-level FocusIn event; this is not WindowActivate handling
+(WM_ACTIVATE reference branch is commented). Filter installs only after panel
+construction and removes before member teardown. Address Tab delegates to
+focused CPanel::SetFocusToList; Alt+F1/F2 popup behavior unchanged. Qt events set
+panel list/address memory; full CPanelCallbackImp title/drag/focus-index dispatch
+and SetFocusedPanel remain for subsequent lifecycle/two-panel scopes.
+
+App.h/Panel.h/Panel.cpp use original paths/names/license. New module is partial:
+Panel.cpp remaining creation/notifications/operations services and omissions in
+P0-01 table stay open. Header CApp owner adds no second functional implementation.
+Inventory now has 28 mirrored UI/81 missing UI (31 local cpp incl3 supporting);
+P0-01 tables record their earlier snapshot, not current completion counts.
+Checks 2026-09-28 macOS: affected targets built; focused panel_focus/panel_key/
+bookmarks 3/3 passed; ./scripts/check.sh formatting/build/55 CTest passed.
+Initial construction-order and editable-combo focus failures were fixed before
+the passing runs. No layout,
+caption/control visibility/resizing changes; Windows/Linux runtime unverified.
+
 ## P0-02.1 — application history/favorites owner (2026-09-28)
 
 Project baseline `36fad59`. Original — [CPP/7zip/UI/FileManager/AppState.h at

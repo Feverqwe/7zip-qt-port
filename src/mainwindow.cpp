@@ -5,9 +5,11 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     backend_ = backend ? backend : new ArchiveBackend(this);
     setWindowTitle("Sevenzip Desktop");
     resize(980, 620);
-    appState_.Read(toolbarSettingsPath());
+    app_.NumPanels = 1;
+    app_.AppState.Read(toolbarSettingsPath());
     QMenu *editMenu = createMenusAndToolbar();
     createFilePanel(editMenu);
+    installEventFilter(this);
     connectFilesystemScanner();
     showDirectory(QDir::currentPath(), false);
     refreshActions();

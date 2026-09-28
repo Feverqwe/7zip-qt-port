@@ -109,15 +109,15 @@ QString MainWindow::toolbarSettingsPath() { return FmSettingsPath(); }
 void MainWindow::recordVisitedPath(const QString &path) {
     if (path.isEmpty())
         return;
-    appState_.FolderHistory.AddString(ToUString(path));
-    appState_.FolderHistory.Save(toolbarSettingsPath());
+    app_.AppState.FolderHistory.AddString(ToUString(path));
+    app_.AppState.FolderHistory.Save(toolbarSettingsPath());
     refreshPathHistory();
 }
 
 void MainWindow::refreshPathHistory() {
     const QString current = path_->text();
     UStringVector paths;
-    appState_.FolderHistory.GetList(paths);
+    app_.AppState.FolderHistory.GetList(paths);
     const QSignalBlocker blocker(pathCombo_);
     pathCombo_->clear();
     FOR_VECTOR(i, paths)
@@ -129,7 +129,7 @@ void MainWindow::showFoldersHistory() {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
     const QString selected =
-        CPanel::FoldersHistory(appState_.FolderHistory, toolbarSettingsPath(), this);
+        CPanel::FoldersHistory(app_.AppState.FolderHistory, toolbarSettingsPath(), this);
     refreshPathHistory();
     if (!selected.isNull())
         navigateTo(selected);
@@ -138,7 +138,7 @@ void MainWindow::showFoldersHistory() {
 }
 void MainWindow::refreshBookmarks() {
     for (int index = 0; index < 10; ++index) {
-        const QString path = ToQString(appState_.FastFolders.GetString((unsigned)index));
+        const QString path = ToQString(app_.AppState.FastFolders.GetString((unsigned)index));
         const QString label = path.isEmpty()
                                   ? QString::number(index) + QStringLiteral(" — пусто")
                                   : QString::number(index) + QStringLiteral(" — ") + path;
@@ -155,16 +155,17 @@ void MainWindow::saveBookmark(int index) {
     if (index < 0 || index >= 10 || (state_ != State::Filesystem && state_ != State::Viewing) ||
         !archiveParents_.empty())
         return;
-    CPanel::SetBookmark(appState_.FastFolders, (unsigned)index,
+    CPanel::SetBookmark(app_.AppState.FastFolders, (unsigned)index,
                         ToUString(state_ == State::Filesystem ? directory_ : archiveDisplayPath()));
-    appState_.FastFolders.Save(toolbarSettingsPath());
+    app_.AppState.FastFolders.Save(toolbarSettingsPath());
     refreshBookmarks();
 }
 
 void MainWindow::openBookmark(int index) {
     if (index < 0 || index >= 10 || state_ == State::Loading || state_ == State::Operating)
         return;
-    const QString path = ToQString(CPanel::OpenBookmark(appState_.FastFolders, (unsigned)index));
+    const QString path =
+        ToQString(CPanel::OpenBookmark(app_.AppState.FastFolders, (unsigned)index));
     if (path.isEmpty())
         return;
     navigateTo(path);
@@ -217,6 +218,11 @@ void MainWindow::updateFilesystemIcons() {
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    // FM.cpp WM_SETFOCUS delegates to the application owner.
+    if (watched == this && event->type() == QEvent::FocusIn) {
+        app_.SetFocusToLastItem();
+        return true;
+    }
     if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
         (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
         auto *drag = static_cast<QDragMoveEvent *>(event);
@@ -266,6 +272,7 @@ void MainWindow::setViewMode(int mode) {
         iconList_->setMovement(QListView::Static);
     }
     viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
+    app_.GetFocusedPanel().AttachPresentation(viewStack_->currentWidget(), pathCombo_);
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     settings.setValue("view/mode", mode);
 }

@@ -7,6 +7,8 @@
 #include "Common/MyString.h"
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
+#include <QObject>
+#include <QPointer>
 #include <QString>
 
 class CFolderHistory;
@@ -30,9 +32,14 @@ struct CPanelItem {
     CObjectVector<CPanelProperty> Properties;
 };
 
-class CPanel {
+class CPanel : public QObject {
   public:
+    CPanel() = default;
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
+    void AttachPresentation(QWidget *list, QWidget *address);
+    void SetFocusToList();
+    void SetFocusToLastRememberedItem();
+    bool _lastFocusedIsList = true;
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
     void Properties(const CRecordVector<UInt32> &operatedIndices, bool archive,
                     CListViewDialog &message) const;
@@ -43,6 +50,9 @@ class CPanel {
     static UString OpenBookmark(CFastFolders &fastFolders, unsigned index);
 
   private:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+    QPointer<QWidget> _listView;
+    QPointer<QWidget> _headerComboBox;
     CObjectVector<CPanelItem> _folder;
     QString _currentFolderPrefix;
     bool IsItem_Folder(UInt32 index) const { return _folder[index].IsFolder; }
