@@ -546,3 +546,11 @@ Focused checks passed 11/11 and full gate 63/63 on macOS 2026-09-29. Four fresh
 normal/compact filesystem runtime JSON reports show the path controls, active list
 and status bar fully visible. Windows/Linux runtime and Windows rendered parity
 remain unverified.
+
+P0-02.2b3b3b3 confirms readonly runtime integration across filesystem/archive
+transitions in normal/flat and all four views: source indices survive sorting,
+selection does not leak across owners, loaded metadata stays immutable until
+reload, and retired workers cannot overwrite an opened archive. No layout or
+text changes. Focused 10/10 and full gate 64/64 passed on macOS 2026-09-29;
+Windows/Linux runtime remains unverified. Full consumer migration and source
+parent/path/interface/operation branches remain mandatory.

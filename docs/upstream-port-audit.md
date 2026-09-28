@@ -8,6 +8,40 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3b3 — readonly runtime integration acceptance (2026-09-29)
+
+Project baseline `72ce34b`; unchanged source baseline [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Reviewed PanelFolderChange.cpp SetNewFolder/ReleaseFolder, PanelItems.cpp
+RefreshListCtrl LoadItems/name restoration and FSFolder/Agent read-only item
+owners against the integrated scopes recorded above. No new functional body or
+source revision is introduced by this test-only acceptance iteration.
+
+The focused panel_runtime suite exercises filesystem → archive → filesystem in
+normal/flat and all four views, Unicode names/duplicate basenames, selection
+clearing across owners, source-index-to-property mapping after presentation sort,
+retained immutable archive input and distinct native/archive/unknown/zero sizes.
+It mutates a filesystem file after folderReady but before GUI presentation: the
+display must retain the loaded source size until the next source reload, proving
+that QFileInfo is not a second metadata owner. Another case opens an archive
+before native filesystem handoff and waits for retired workers' deletion; stale
+folderReady/completed signals must never overwrite the archive.
+
+Completion covers the readonly source runtime scope P0-02.2b3b3b only. Full source
+RefreshListCtrl columns/formatting/icons/notification/timer branches, source full
+path/parent stack, optional interfaces and operations remain mandatory in their
+explicit P0-02/P0-03/P0-04/feature owners. Copy/Properties still rebuild Qt metadata
+snapshots; removing those duplicate consumers is the next P0-02.2b3b3c prerequisite,
+not claimed as completed here. No visible layout/text change or screenshot is
+required for this regression-only scope; Windows/Linux runtime remains unverified.
+
+Validation on macOS 2026-09-29: panel_runtime built and passed 1/1 (1.45s);
+focused runtime/selection/focus/flat/navigation/archive states/scanner/nested
+archive/Properties/Copy summary passed 10/10 (7.37s). ./scripts/check.sh passed
+formatting, app build and all 64 CTest (26.13s). No production sources, source
+revision or module/file counts changed. The parent plan remains 1/44 complete;
+this closes only the runtime-loading child and continues to consumer migration.
+
 ## P0-02.2b3b3b2c — bound filesystem runtime (2026-09-29)
 
 Project baseline `cf83093`; source baseline [ip7z/7zip

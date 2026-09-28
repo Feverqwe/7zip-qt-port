@@ -1,5 +1,12 @@
 # Regression strategy
 
+`panel_runtime` covers source-folder integration across filesystem/archive
+transitions in normal/flat and four views: independent source indices after
+sorting, duplicate Unicode basenames, clearing cross-owner selection, immutable
+metadata until reload, absent/zero sizes, and retired filesystem workers that
+must not publish after archive navigation. It observes public scanner signals and
+Qt model values without exposing window internals.
+
 `filesystem_scanner` checks native worker ownership and Qt delivery: ordered
 source-index batches, progress, retained folder metadata after scanner cancellation,
 restarts during native load/presentation rejecting old generations, pre-start
