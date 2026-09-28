@@ -475,6 +475,36 @@ backend safety adaptation требует отдельного regression и docu
 build/CTest/layout не запускались. Transaction success/failure/cancel, prefix,
 volumes/SFX и delete-after regression остаются обязательными functional checks.
 
+## P0-01.3d3d — Common update callback (2026-09-28)
+
+Project baseline `5063a41`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полные UpdateCallback.cpp/.h; consumer Update.cpp проверен в d3c.
+Copied scope пуст; все активные callback paths остаются обязательными.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/UpdateCallback.cpp — P0-10/12, P1-04/05/09, P2-01/02/06/07/10, P3-05 | CArchiveUpdateCallback constructor, progress/ratio, GetUpdateItemInfo/GetRootProp/GetParent/raw props, GetProperty, UpdateProcessedItemStatus/GetStream2/GetStream, operation/extract reporting, volume streams, password callbacks, InFileStream_On_Error/On_Destroy; Windows GetRelativePath. | UpdatePair/Produce, DirItems/OpenArchive, MyCom/ComTry/strings/vectors/UTF/Wildcard, FileStreams/StreamObjects/ItemNameUtils, FileDir/Name/PropVariant/SecurityUtils/Synchronization. Preserve arc-vs-disk property precedence, renamed names/comments, anti item properties and empty file streams, root/security/reparse/owner/device metadata, hardlink identity map, per-mode stdin and preserve-atime handling. Backend owns typed operation events/streams and engine transport; Qt handles callback presentation only. |
+
+GetStream2 checks cancellation before opening and reports open errors through UI;
+retry without preserve-atime precedes final failure. StopAfterOpenError and resource
+exhaustion (Windows ERROR_NO_SYSTEM_RESOURCES / POSIX EMFILE) must terminate even
+when UI accepts continuing. Reparse data uses memory streams; processed status
+is set for supplied file/reparse streams, not as proof of transaction success.
+Update.cpp additionally gates deletion on successful completion and metadata.
+Open-file index/path registration precedes callback attachment for exception
+safety; destruction removes registration without throwing and accumulates latest
+mtime under lock. Preserve lifetime and thread safety across engine integration.
+Reporting uses archive server indices through CArc, not ArcItems indices (v26.03);
+out-archive extract-result reporting returns E_FAIL. Volumes repeat the last size
+and create new numbered files; password defined-state remains distinct from empty
+password. Commented arc-property/report-finished interfaces and debug branches
+are inactive baseline code, not missing mandatory features.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 108 unique paths
+(30 mirrored + 78 missing); exact source path exists. Runtime/UI unchanged,
+build/CTest/layout не запускались. Stream failure/cancel/lifetime, metadata,
+password and update deletion regressions remain required during functional port.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

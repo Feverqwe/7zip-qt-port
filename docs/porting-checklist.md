@@ -174,8 +174,8 @@ P0-01.3d разделён перед audit на самостоятельные s
 | --- | --- | --- | --- |
 | P0-01.3d1 | Текущий чат: ArchiveName/DefaultName/ExtractingFilePath/SetProperties/SortUtils/TempFiles/UpdateAction/UpdatePair/UpdateProduce/WorkDir; bodies/callers, owners, dependencies | P0-01.3c2 | done — audit § P0-01.3d1; 2026-09-28 macOS docs-only, diff check, 98 unique paths |
 | P0-01.3d2 | Текущий чат: ArchiveCommandLine/LoadCodecs/OpenArchive/ArchiveOpenCallback/PropIDUtils; parser/open/capability source scope и adapters | P0-01.3d1 | done — d2a/b/c, пять modules; 103 unique paths |
-| P0-01.3d3 | Текущий чат: EnumDirItems/Extract/ArchiveExtractCallback/Update/UpdateCallback; operations и callback policy versus engine boundary | P0-01.3d2 | active |
-| P0-01.3d4 | Текущий чат: Bench/HashCalc/CompressCall/CompressCall2; engine integration/dependency scope и полный inventory coverage | P0-01.3d3 | todo |
+| P0-01.3d3 | Текущий чат: EnumDirItems/Extract/ArchiveExtractCallback/Update/UpdateCallback; operations и callback policy versus engine boundary | P0-01.3d2 | done — d3a–d, 108 unique paths |
+| P0-01.3d4 | Текущий чат: Bench/HashCalc/CompressCall/CompressCall2; engine integration/dependency scope и полный inventory coverage | P0-01.3d3 | active |
 
 Все 24 missing Common modules обязательны к audit. Каждый подшаг требует
 diff/unique-path checks и отдельного commit; d закрывается после d4.
@@ -212,12 +212,23 @@ P0-01.3d3 разделён до review operations bodies:
 | P0-01.3d3a | Текущий чат: EnumDirItems/Extract, scan/censor/output-dir/operation orchestration scope | P0-01.3d2c2 | done — audit § P0-01.3d3a; 2026-09-28 macOS docs-only, diff check, 105 unique paths |
 | P0-01.3d3b | Текущий чат: ArchiveExtractCallback, filesystem/overwrite/link/security/progress source scope | P0-01.3d3a | done — audit § P0-01.3d3b; 2026-09-28 macOS docs-only, diff check, 106 unique paths |
 | P0-01.3d3c | Текущий чат: Update, transaction/rename/scan/volume/SFX/delete source scope | P0-01.3d3b | done — audit § P0-01.3d3c; 2026-09-28 macOS docs-only, diff check, 107 unique paths |
-| P0-01.3d3d | Текущий чат: UpdateCallback, streams/properties/update/error/cancel source scope | P0-01.3d3c | active |
+| P0-01.3d3d | Текущий чат: UpdateCallback, streams/properties/update/error/cancel source scope | P0-01.3d3c | done — audit § P0-01.3d3d; 2026-09-28 macOS docs-only, diff check, 108 unique paths |
 
 Каждый substep — docs-only diff/unique-path checks и отдельный commit.
 P0-01.3d2c2 commit: `682128d`.
 P0-01.3d3a commit: `9289748`.
 P0-01.3d3b commit: `1a5f850`.
+P0-01.3d3c commit: `5063a41`.
+
+P0-01.3d4 разделён перед review engine integration:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3d4a | Текущий чат: Bench, benchmark orchestration versus official engine primitives, dependencies/adapters | P0-01.3d3d | active |
+| P0-01.3d4b | Текущий чат: HashCalc, hash orchestration/format/parser versus engine, dependencies/adapters | P0-01.3d4a | todo |
+| P0-01.3d4c | Текущий чат: CompressCall/CompressCall2, engine calls и final unique-path coverage | P0-01.3d4b | todo |
+
+Каждый substep требует source-body review, docs-only checks и отдельный commit.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
