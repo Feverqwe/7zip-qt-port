@@ -251,6 +251,11 @@ if(BUILD_TESTING)
     foreach(target IN ITEMS ui_layout_tests extract_dialog_tests compression_preferences_tests)
         target_sources(${target} PRIVATE tests/layout_inspection.cpp)
     endforeach()
+    find_program(SEVENZIP_TEST_SH NAMES sh)
+    if(SEVENZIP_TEST_SH)
+        add_test(NAME project_memory_setup COMMAND ${SEVENZIP_TEST_SH}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/project_memory_setup_test.sh)
+    endif()
     add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)
     set_tests_properties(application_starts PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
