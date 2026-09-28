@@ -2,7 +2,8 @@
 
 For resource-derived comparison and reviewed C++ states, see
 [upstream UI references](ui-reference.md) and `$sz-ui-parity`.
-`ui_parity_copy` checks fresh Copy/Move reports against a pinned resource baseline.
+`ui_parity_copy` and `ui_parity_password` check fresh reports against pinned
+resource baselines.
 
 For layout work, read the affected view's specification below, run its focused
 test, and inspect the generated JSON. Screenshots are a fallback for fonts,
@@ -178,28 +179,50 @@ pixel coordinates or native button ordering.
 Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 `IDD_COMPRESS`. Implemented view: `src/createarchivedialog*.cpp`.
 
-- Source navigation and selection precede the editable archive-path combo and format.
+- The editable archive-path combo and format precede the options and source picker.
   The combo retains the extension and offers the last twenty destinations;
   its text and the format row do not overlap at either tested size.
 - Compression controls retain level, method, dictionary, word size, solid block,
   CPU threads, and memory controls. Encryption retains the upstream order:
   password, confirmation, Show Password, method, Encrypt file names.
   Show Password hides confirmation and its label; headers are disabled for ZIP.
-  Destination follows the options. Long archive history does not widen the form.
+  Compression stays in the left column and encryption in the right at both sizes.
+  Password and confirmation labels sit above their fields, as in the resource.
+  Destination and the source picker follow the options. Long archive history
+  does not widen the form.
 - Options are scrollable. At 760×720 and 640×480, format, compression controls,
   password fields, and destination must each be fully reachable by scrolling.
 - Target preview and the Create/Cancel footer remain outside the scrolling
   area. Footer buttons remain visible and do not overlap in both 7z and ZIP.
 
 Adaptations: source picker and destination fields integrate the Qt file-manager
-workflow. Upstream has a two-column compression/options form; the current Qt
-view stacks groups in a scroll area. This specification records existing layout
-and does not claim that it matches the original two-column appearance.
-`ui_geometry` covers reachability and the footer; existing compression tests
+workflow. The source picker follows the archive form so it does not displace the
+primary upstream controls. The two columns remain in a scroll area; compression
+rows wrap at compact widths rather than removing the second column. Unsupported
+upstream options are still absent; this is a partial resource adaptation.
+`ui_geometry` covers column ordering, archive-before-source ordering, reachability
+and the footer; existing compression tests
 cover method/format-dependent enabled states and persistence.
 `compression_encryption` checks the complete encryption group, control separation
 and shown/hidden confirmation at both sizes, with a 400-character history path;
 reports are `encryption-{760,640}-{0,1}.json`.
+
+## Archive password prompt
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/PasswordDialog.cpp/.h/.rc` (`IDD_PASSWORD`).
+`CPasswordDialog` shows a prompt, password edit, Show Password, then OK/Cancel.
+Initial Password/ShowPassword are applied before display. Toggling copies the
+current edit into public state, then changes echo mode without changing its text,
+as in ReadControls/SetTextSpec. OK/Enter commit raw text; the caller discards a
+rejected dialog and keeps the existing backend cancellation policy.
+
+`password_dialog` checks masked/shown states at 360×170 and 260×170, control
+order, label fitting, footer visibility and separation. `ui_parity_password`
+maps all five resource controls to these current-build reports. Behavioral tests
+cover initial values, Unicode/spaces, show/hide, OK/Enter and Cancel. Editable
+password values stay out of reports. Russian captions and Qt button ordering
+are documented adaptations. Windows rendering remains unverified.
 
 When extending a view, update its specification and add the relevant geometric
 relationship or conditional state to its focused test. Add contracts for other

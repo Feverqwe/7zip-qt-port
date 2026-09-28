@@ -3,7 +3,9 @@
 
 void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     auto *compression = new QGroupBox("Параметры сжатия", this);
+    compression->setObjectName("archiveCompressionGroup");
     auto *compressionForm = new QFormLayout(compression);
+    compressionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
     level_ = new QComboBox(compression);
     level_->setObjectName("compressionLevel");
     compressionForm->addRow("Уровень сжатия:", level_);

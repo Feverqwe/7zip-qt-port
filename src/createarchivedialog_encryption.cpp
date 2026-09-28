@@ -6,6 +6,7 @@ void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
     auto *group = new QGroupBox("Шифрование", this);
     group->setObjectName("archiveEncryptionGroup");
     encryptionForm_ = new QFormLayout(group);
+    encryptionForm_->setRowWrapPolicy(QFormLayout::WrapAllRows);
     password_ = new QLineEdit(group);
     password_->setObjectName("archivePassword");
     encryptionForm_->addRow("Пароль:", password_);

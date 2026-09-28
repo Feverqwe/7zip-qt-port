@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "mainwindow.h"
 
 void MainWindow::connectBackend() {
@@ -37,15 +38,14 @@ void MainWindow::connectBackend() {
     connect(backend_, &ArchiveBackend::infoReady, this,
             [this](const ArchiveInfo &info) { info_ = info; });
     connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
-        bool accepted = false;
-        const QString password = QInputDialog::getText(
-            this, "Пароль архива", "Введите пароль:", QLineEdit::Password, {}, &accepted);
-        if (!accepted || password.isEmpty()) {
+        CPasswordDialog dialog(this);
+        dialog.OnInit();
+        if (dialog.exec() != QDialog::Accepted || dialog.Password.isEmpty()) {
             backend_->cancel();
             return;
         }
-        archivePassword_ = password;
-        backend_->providePassword(password);
+        archivePassword_ = dialog.Password;
+        backend_->providePassword(dialog.Password);
     });
     connect(backend_, &ArchiveBackend::outputReceived, this,
             [this](const QString &line) { appendJournal(line); });

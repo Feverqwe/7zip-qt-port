@@ -8,6 +8,44 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## Запрос пароля и группировка Compress после сверки диалогов (2026-09-28)
+
+Baseline: официальный [ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+
+`CPP/7zip/UI/FileManager/PasswordDialog.cpp/.h/.rc`: перенесены
+`CPasswordDialog::{ReadControls,SetTextSpec,OnInit,OnButtonClicked,OnOK}`
+в исходные относительные пути `src/CPP/7zip/UI/FileManager/PasswordDialog.*`.
+Сохранён порядок чтения Password/ShowPassword, обновления password char/text,
+инициализации checkbox и чтения при OK. Win32 controls, resource attachment,
+Create/parent HWND и routing buttonID заменены Qt controls/layouts, OnInit/exec
+и отдельным соединением clicked. UString заменён QString на границе формы.
+Lang/иконки/Win32 базовые обработчики не перенесены; подписи русские, кнопки
+стандартные Qt. Модуль принадлежит sevenzip_panel, не backend.
+
+QInputDialog в `mainwindow_backendevents.cpp` заменён этим диалогом. Прежние
+правила cancel/empty request и lifetime пароля сохраняются; пароль/ShowPassword
+не сохраняются в INI. Отмена после переключения ShowPassword отбрасывает
+весь результат формы, хотя upstream ReadControls обновляет её публичные поля.
+Generated reference содержит полный commit и хеши resource/shared include/source;
+password contract сопоставляет все пять controls. Это структурная проверка,
+не проверка Windows rendering. LGPL notice сохранён; лицензия —
+`third_party/7zip/License.txt`.
+
+`CPP/7zip/UI/GUI/CompressDialog.rc::IDD_COMPRESS`: исправлено Qt presentation
+расположение поддерживаемых controls — compression слева, encryption справа.
+Ресурс размещает password labels над edit; Qt encryption form теперь делает то же.
+Дополнительный source picker следует за основной формой, чтобы не вытеснять
+archive/options при открытии. Qt scroll area, wrapping длинных compression rows,
+отдельное destination field, группировка и отсутствие неподдерживаемых controls
+остаются явно ограниченным представлением исходного ресурса. Новые функциональные
+алгоритмы Compress не добавлены, provenance уже перенесённых методов не меняется.
+
+Проверки: password_dialog, ui_parity_password, ui_archive_states,
+compression_encryption, ui_geometry; последний проверяет оба столбца на двух
+размерах и в 7z/ZIP. Полная сверка и оставшийся долг —
+[аудит диалогов](7zfm-parity.md#аудит-диалогов-2026-09-28).
+
 ## Шифрование и пароль Add to Archive (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

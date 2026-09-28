@@ -31,6 +31,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/ListViewDialog.cpp src/CPP/7zip/UI/FileManager/ListViewDialog.h
     src/CPP/7zip/UI/FileManager/EditDialog.cpp src/CPP/7zip/UI/FileManager/EditDialog.h
     src/CPP/7zip/UI/FileManager/ComboDialog.cpp src/CPP/7zip/UI/FileManager/ComboDialog.h
+    src/CPP/7zip/UI/FileManager/PasswordDialog.cpp src/CPP/7zip/UI/FileManager/PasswordDialog.h
     src/CPP/7zip/UI/FileManager/BrowseDialog.cpp src/CPP/7zip/UI/FileManager/BrowseDialog.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
@@ -76,6 +77,12 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(password_dialog_tests tests/password_dialog_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(password_dialog_tests PRIVATE tests)
+    target_link_libraries(password_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME password_dialog COMMAND password_dialog_tests)
+    set_tests_properties(password_dialog PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(edit_dialog_tests tests/edit_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(edit_dialog_tests PRIVATE tests)
     target_link_libraries(edit_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -102,6 +109,14 @@ if(BUILD_TESTING)
         --reports ${CMAKE_BINARY_DIR}/ui-reports
         --output ${CMAKE_BINARY_DIR}/ui-reports/copy-parity.json)
     set_tests_properties(ui_parity_copy PROPERTIES FIXTURES_REQUIRED ui_reference_copy)
+    add_test(NAME ui_parity_password COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_ui_parity.py compare
+        --reference ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/password-dialog.reference.json
+        --contract ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/password-dialog.contract.json
+        --reports ${CMAKE_BINARY_DIR}/ui-reports
+        --output ${CMAKE_BINARY_DIR}/ui-reports/password-parity.json)
+    set_tests_properties(password_dialog PROPERTIES FIXTURES_SETUP ui_reference_password)
+    set_tests_properties(ui_parity_password PROPERTIES FIXTURES_REQUIRED ui_reference_password)
     qt_add_executable(combo_dialog_tests tests/combo_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(combo_dialog_tests PRIVATE tests)
     target_link_libraries(combo_dialog_tests PRIVATE sevenzip_panel Qt6::Test)

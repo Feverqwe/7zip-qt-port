@@ -206,9 +206,16 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.openArchive("protected.7z");
         const QString password = QStringLiteral("disposable-δ-password");
         QTimer::singleShot(0, &window, [&password] {
-            auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
-            dialog->setTextValue(password);
+            QCOMPARE(dialog->objectName(), QString("passwordDialog"));
+            auto *edit = dialog->findChild<QLineEdit *>("passwordEdit");
+            QVERIFY(edit);
+            edit->setText(password);
+            auto *show = dialog->findChild<QCheckBox *>("passwordShow");
+            QVERIFY(show);
+            show->click();
+            QCOMPARE(edit->echoMode(), QLineEdit::Normal);
             dialog->accept();
         });
         emit backend.passwordRequired();

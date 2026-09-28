@@ -104,6 +104,18 @@ class UiGeometryTests final : public QObject {
         if (create) {
             auto *scroll = dialog->findChild<QScrollArea *>("archiveOptionsScrollArea");
             QVERIFY(scroll);
+            auto *compression = dialog->findChild<QGroupBox *>("archiveCompressionGroup");
+            auto *encryption = dialog->findChild<QGroupBox *>("archiveEncryptionGroup");
+            QVERIFY(compression && encryption);
+            auto *archivePath = dialog->findChild<QComboBox *>("archivePath");
+            auto *sources = dialog->findChild<QListWidget *>("availableSources");
+            QVERIFY(archivePath && sources);
+            QVERIFY(UiInspection::bounds(*archivePath, *dialog).bottom() <
+                    UiInspection::bounds(*sources, *dialog).top());
+            // CompressDialog.rc: encryption stays to the right of compression
+            // at both sizes. Reachability alone passed the previous stacked UI.
+            QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
+                    UiInspection::bounds(*encryption, *dialog).left());
             for (const char *name : {"archiveFormat", "compressionLevel", "compressionMethod",
                                      "compressionMemoryLimit", "archivePassword",
                                      "archivePasswordConfirmation", "archiveDestination"}) {
@@ -122,6 +134,8 @@ class UiGeometryTests final : public QObject {
                 dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
                 QApplication::processEvents();
                 QVERIFY2(footerFits(*dialog), qPrintable(UiInspection::dump(*dialog)));
+                QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
+                        UiInspection::bounds(*encryption, *dialog).left());
                 QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + format));
             }
         } else {

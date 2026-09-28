@@ -7,6 +7,41 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+## Аудит диалогов (2026-09-28)
+
+Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
+Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный
+`check_ui_parity.py extract` извлёк Copy, Combo, Split, ListView, Edit, Extract
+и Compress вместе с shared include/хешами в `build/dev/ui-reports/audit-*.reference.json`.
+Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот дополнительный
+диалог пока не перенесён. Перед исправлениями все 28 выбранных CTest прошли:
+успех локальных тестов не означает полного соответствия upstream.
+
+| Диалог / эталон | Проверенный результат и оставшееся расхождение |
+| --- | --- |
+| Copy/Move, CopyDialog.rc/.cpp | Ресурсный контракт проходит: шесть controls, Copy/Move, 440×250 и 340×220. Адаптации: scrolling summary вместо static, Qt footer и Unicode ellipsis. |
+| Имя/маска/создание папки, ComboDialog.rc/.cpp | Prompt → editable combo → OK/Cancel; начальное Value, raw OK, Cancel и геометрия 360×150/260×150 проверены. Пока нет отдельного ресурсного контракта. |
+| Split/Combine, SplitDialog.rc/.cpp и PanelSplitFile.cpp | Destination/Browse → volume size → footer; error/normal и 2/3/5 частей, normal/compact проверены. Inline error заменяет MessageBox, папка выбирается native Qt dialog. |
+| История/свойства, ListViewDialog.rc/.cpp | Один/два столбца, header, footer, Copy/Delete/Enter/detail и 540×360/360×240 проверены. Settings-driven one-click/hover общего списка пока не перенесён; набор свойств ограничен snapshot. |
+| Полное значение, EditDialog.rc/.cpp | Read-only multiline, без wrap, обе прокрутки, Enter в edit, Close; 480×320/320×240 проверены. |
+| Extract, GUI/ExtractDialog.rc/.cpp | Destination, optional folder name, modes слева и password справа; name shown/hidden, 640×360/470×330, история/сохранение/отмена проверены. Отсутствуют абсолютные пути, ElimDup, NtSecurity и Help; Ask адаптирован к отказу при конфликте, а не callback. |
+| Create/Add, GUI/CompressDialog.rc/.cpp | Исправлены stacked layout и порядок основной формы: compression слева, encryption справа, source picker после archive/options. 760×720/640×480, 7z/ZIP, show/hide confirmation и reachability проверены. Это частичный порт: нет update/path modes, volumes, SFX, shared/delete options, parameters, CompressOptionsDialog и Help; Add не меняет compression options. |
+| Запрос пароля, PasswordDialog.rc/.cpp | QInputDialog заменён source port CPasswordDialog: восстановлен Show Password и исходный ReadControls/SetTextSpec/OnOK. Контракт проверяет все пять controls в masked/shown при 360×170/260×170; Qt integration проверяет reuse/reset/cancel. |
+| Настройки, OptionsDialog.cpp и SettingsPage2.rc | Qt показывает только real icons/grid/single-click. Upstream имеет шесть страниц и дополнительные flags/memory controls; полный порт отсутствует. Проверен текущий settings behavior, отдельного geometry/resource контракта нет. |
+| Прогресс/сообщения, ProgressDialog2.rc/2a.rc/.cpp, MessagesDialog.rc/.cpp | Qt показывает label, percent и Cancel, сообщения — в журнале. Нет upstream statistics, pause/background, embedded list и подтверждения отмены; journal не имеет Close footer исходного MessagesDialog. Это сохраняющийся долг переноса, не результат ресурсного comparator. |
+| Информация об архиве / F3/F4 | Archive Info остаётся отдельной QLabel-формой; F3/F4 — локальный UTF-8 viewer/editor, а upstream запускает настроенное внешнее приложение. Эти окна не подтверждены как порты upstream dialogs. |
+
+Copy и Password проверяются ресурсными контрактами с current-build fixture.
+После исправлений `./scripts/check.sh` прошёл на macOS: formatting, сборка
+приложения и все 51 CTest. Свежая extraction Copy полностью совпала с сохранённым
+reference; оба resource comparator завершились без ошибок, по четыре отчёта.
+Для остальных сопоставлены resources/source и свежие geometry JSON существующих
+тестов; это не автоматическая проверка каждого RC control/state. Pixel parity,
+tab order, Windows/Linux runtime и полный набор ветвей не проверены. Backend
+недостающих режимов, прогресс и полные настройки требуют отдельных source ports;
+декоративные неподключённые controls не добавлялись.
+
 Избранное хранит исходный CFastFolders (FolderShortcuts): десять UI-слотов,
 пустые промежуточные записи и полный путь панели. CPanel::SetBookmark и
 OpenBookmark подключены к общему Qt navigateTo. Исчезнувшая папка внутри

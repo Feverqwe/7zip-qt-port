@@ -30,6 +30,14 @@ persistence, ignored MVP keys, complete archive paths, missing internal
 folders and unavailable archives. `ui_state` retains the keyboard/persistence
 workflow checks for favorites.
 
+`password_dialog` checks the source-ported password prompt: initial value/show
+state, Unicode and spaces, show/hide without text loss, OK/Enter and Cancel,
+normal/compact geometry and report redaction. `ui_parity_password` regenerates
+its reports via a fixture and compares all five controls against PasswordDialog.rc.
+`ui_archive_states` checks the prompt's backend integration and password lifetime.
+`ui_geometry` also rejects a stacked Compress layout and checks that the archive
+form precedes the source picker; encryption remains to the right at both sizes.
+
 `ui_parity_tool` tests resource extraction and rejects broken/ambiguous widget
 reports, stale baselines and invented evidence symbols. `ui_parity_copy` uses a
 CTest fixture to regenerate Copy/Move reports with `copy_dialog`, then checks

@@ -81,6 +81,11 @@ metadata snapshot to `CPanel::Properties`, which owns enumeration and totals.
 the dialog never reads the file table or backend itself.
 `CEditDialog` presents full list values; `FileViewerDialog` owns file viewing/editing.
 
+`CPasswordDialog` owns the archive password prompt and show/hide state, preserving
+upstream ReadControls/SetTextSpec/OnOK. `MainWindow` submits accepted passwords
+to ArchiveBackend and cancels a rejected or empty request. It does not persist
+the prompt's password or show state.
+
 `sevenzip_panel` owns shared `CComboDialog`, `CCopyDialog`, `CSplitDialog` and
 panel summary functions. Callers validate operation input; dialogs commit
 values only after confirmation. Folder snapshots supply summary metadata;

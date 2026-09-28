@@ -20,8 +20,8 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     m_RegistryInfo.Load(compressionSettingsPath());
-    createSourcePicker(contentLayout);
     createArchiveForm(contentLayout);
+    createSourcePicker(contentLayout);
     scroll->setWidget(content);
     layout->addWidget(scroll);
     createFooter(layout);
@@ -105,8 +105,23 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     name_->setText(path.m_ArchivePath);
     form->addRow("Формат:", format_);
     if (existingTarget_.isEmpty()) {
-        createCompressionOptions(form);
-        createEncryptionOptions(form);
+        // CompressDialog.rc places compression on the left and encryption on
+        // the right. Keep both columns at compact sizes; scrolling is a Qt
+        // adaptation for the additional source picker below the options.
+        auto *columns = new QHBoxLayout;
+        auto *compressionColumn = new QWidget(this);
+        compressionColumn->setObjectName("archiveCompressionColumn");
+        auto *compressionForm = new QFormLayout(compressionColumn);
+        compressionForm->setContentsMargins(0, 0, 0, 0);
+        auto *encryptionColumn = new QWidget(this);
+        encryptionColumn->setObjectName("archiveEncryptionColumn");
+        auto *encryptionForm = new QFormLayout(encryptionColumn);
+        encryptionForm->setContentsMargins(0, 0, 0, 0);
+        createCompressionOptions(compressionForm);
+        createEncryptionOptions(encryptionForm);
+        columns->addWidget(compressionColumn, 1, Qt::AlignTop);
+        columns->addWidget(encryptionColumn, 1, Qt::AlignTop);
+        form->addRow(columns);
     }
     auto *destinationRow = new QHBoxLayout;
     destination_ = new QLineEdit(currentDirectory_, this);

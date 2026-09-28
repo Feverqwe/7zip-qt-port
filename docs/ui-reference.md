@@ -6,8 +6,9 @@ It runs without Windows. Python 3.9+ and the standard library are sufficient
 for comparison; extraction additionally needs clang or GCC on PATH (or
 `--compiler /path/to/compiler`). MSVC's preprocessor is not supported yet.
 
-The first maintained contract covers Copy/Move, six upstream controls,
-normal/compact reports and selected spatial/state properties. Other dialogs
+Maintained contracts cover Copy/Move (six upstream controls) and the archive
+password prompt (all five controls), normal/compact reports and selected
+spatial/state properties. Other dialogs
 can be extracted, but require their own reviewed mappings and state coverage.
 Main-window menus/toolbars built dynamically in C++ need separate contracts;
 this is a dialog-resource reader, not a universal Win32 UI converter.
@@ -17,6 +18,9 @@ this is a dialog-resource reader, not a universal Win32 UI converter.
 ```sh
 ./scripts/build.sh dev copy_dialog_tests
 ctest --preset dev -R '^ui_parity_(tool|copy)$' --output-on-failure
+
+./scripts/build.sh dev password_dialog_tests
+ctest --preset dev -R '^ui_parity_password$' --output-on-failure
 ```
 
 CTest's `ui_reference_copy` fixture runs `copy_dialog` first, even with this
@@ -120,6 +124,12 @@ Copy's shared prompt/init and resize requirements cite OnInit/OnSize. Existing
 `browseNormalizesDirectoryAndCancelPreservesText` cover OK/button/Cancel and
 Browse cancellation/success/normalization. JSON omits editable values and cannot
 prove these transitions, read-only state or actual selection contents.
+
+Password uses the `ui_reference_password` producer fixture and writes
+`build/dev/ui-reports/password-parity.json`. Its resource extraction also includes
+PasswordDialog.cpp. OnInit, ReadControls, SetTextSpec and OnOK were reviewed;
+`password_dialog` covers masked/shown transitions, raw values and confirmation.
+`ui_archive_states` covers backend submission, cancellation and password lifetime.
 
 Passing means this reviewed subset matches with declared adaptations. It does
 not establish pixel parity, complete behavioral parity or Windows runtime
