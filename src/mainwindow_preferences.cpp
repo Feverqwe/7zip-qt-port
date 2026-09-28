@@ -144,16 +144,13 @@ void MainWindow::showFoldersHistory() {
 }
 void MainWindow::refreshBookmarks() {
     for (int index = 0; index < 10; ++index) {
-        const Bookmark &bookmark = bookmarks_[index];
-        const QString label =
-            bookmark.path.isEmpty()
-                ? QString::number(index) + QStringLiteral(" — пусто")
-                : QString::number(index) + QStringLiteral(" — ") + bookmark.path +
-                      (bookmark.folder.isEmpty() ? QString()
-                                                 : QStringLiteral(" / ") + bookmark.folder);
+        const QString path = ToQString(fastFolders_.GetString((unsigned)index));
+        const QString label = path.isEmpty()
+                                  ? QString::number(index) + QStringLiteral(" — пусто")
+                                  : QString::number(index) + QStringLiteral(" — ") + path;
         openBookmarks_[index]->setText(label);
         openBookmarks_[index]->setToolTip(label);
-        openBookmarks_[index]->setEnabled(!bookmark.path.isEmpty() && state_ != State::Loading &&
+        openBookmarks_[index]->setEnabled(!path.isEmpty() && state_ != State::Loading &&
                                           state_ != State::Operating);
         saveBookmarks_[index]->setEnabled(state_ != State::Loading && state_ != State::Operating &&
                                           archiveParents_.empty());
@@ -161,42 +158,22 @@ void MainWindow::refreshBookmarks() {
 }
 
 void MainWindow::saveBookmark(int index) {
-    if ((state_ != State::Filesystem && state_ != State::Viewing) || !archiveParents_.empty())
+    if (index < 0 || index >= 10 || (state_ != State::Filesystem && state_ != State::Viewing) ||
+        !archiveParents_.empty())
         return;
-    Bookmark &bookmark = bookmarks_[index];
-    bookmark.path = state_ == State::Filesystem ? directory_ : archive_;
-    bookmark.folder = state_ == State::Viewing ? archiveFolder_ : QString();
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    const QString key = QStringLiteral("favorites/%1/").arg(index);
-    settings.setValue(key + "path", bookmark.path);
-    settings.setValue(key + "folder", bookmark.folder);
+    CPanel::SetBookmark(fastFolders_, (unsigned)index,
+                        ToUString(state_ == State::Filesystem ? directory_ : archiveDisplayPath()));
+    fastFolders_.Save(toolbarSettingsPath());
     refreshBookmarks();
 }
 
 void MainWindow::openBookmark(int index) {
-    if (state_ == State::Loading || state_ == State::Operating)
+    if (index < 0 || index >= 10 || state_ == State::Loading || state_ == State::Operating)
         return;
-    const Bookmark bookmark = bookmarks_[index];
-    if (bookmark.path.isEmpty())
+    const QString path = ToQString(CPanel::OpenBookmark(fastFolders_, (unsigned)index));
+    if (path.isEmpty())
         return;
-    const QFileInfo info(bookmark.path);
-    if (bookmark.folder.isEmpty() && info.isDir()) {
-        showDirectory(bookmark.path, true);
-        return;
-    }
-    if (!info.isFile() || info.isSymLink()) {
-        statusBar()->showMessage("Путь закладки недоступен: " + bookmark.path);
-        return;
-    }
-    if (state_ == State::Viewing && archive_ == info.absoluteFilePath()) {
-        if (bookmark.folder.isEmpty() || archiveFolderExists(bookmark.folder))
-            showArchiveFolder(bookmark.folder);
-        else
-            statusBar()->showMessage("Папка закладки отсутствует: " + bookmark.folder);
-        return;
-    }
-    pendingArchiveFolder_ = bookmark.folder;
-    openArchive(bookmark.path);
+    navigateTo(path);
 }
 
 bool MainWindow::archiveFolderExists(const QString &folder) const {

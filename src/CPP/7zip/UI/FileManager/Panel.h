@@ -4,11 +4,13 @@
 // IFolder properties; panel controls and operations remain in their adapters.
 #pragma once
 
+#include "Common/MyString.h"
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
 #include <QString>
 
 class CFolderHistory;
+class CFastFolders;
 class QWidget;
 
 struct CPanelItem {
@@ -24,6 +26,9 @@ class CPanel {
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
     static QString FoldersHistory(CFolderHistory &history, const QString &settingsPath,
                                   QWidget *parent);
+    static void SetBookmark(CFastFolders &fastFolders, unsigned index,
+                            const UString &currentFolderPrefix);
+    static UString OpenBookmark(CFastFolders &fastFolders, unsigned index);
 
   private:
     CObjectVector<CPanelItem> _folder;

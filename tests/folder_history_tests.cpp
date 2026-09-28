@@ -38,7 +38,7 @@ class FolderHistoryTests : public QObject {
         QCOMPARE(ToQString(list[99]), QString("/folder/6"));
     }
 
-    void readsLegacyAndTrimsOversizedHistory() {
+    void trimsOversizedHistoryAndIgnoresMvpSettings() {
         QTemporaryDir temp;
         const QString path = temp.filePath("history.ini");
         QStringList legacy;
@@ -46,7 +46,8 @@ class FolderHistoryTests : public QObject {
             legacy << QString("/old/%1").arg(i);
         {
             QSettings settings(path, QSettings::IniFormat);
-            settings.setValue("history/paths", legacy);
+            settings.setValue("history/paths", QStringList{"MVP path"});
+            settings.setValue("FolderHistory", legacy);
         }
         CFolderHistory history;
         history.Read(path);
@@ -58,7 +59,7 @@ class FolderHistoryTests : public QObject {
         history.Save(path);
         history.Read(path);
         history.GetList(list);
-        QVERIFY(list.IsEmpty()); // Empty new key must not resurrect the legacy key.
+        QVERIFY(list.IsEmpty());
     }
 
     void selectionCopyDeleteAndConfirmation() {

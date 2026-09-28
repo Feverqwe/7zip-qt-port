@@ -7,6 +7,23 @@
 #include "Common/MyString.h"
 #include "ViewSettings.h"
 
+class CFastFolders {
+  public:
+    UStringVector Strings;
+    void SetString(unsigned index, const UString &s) {
+        while (Strings.Size() <= index)
+            Strings.AddNew();
+        Strings[index] = s;
+    }
+    UString GetString(unsigned index) {
+        if (index >= Strings.Size())
+            return UString();
+        return Strings[index];
+    }
+    void Save(const QString &settingsPath) { SaveFastFolders(Strings, settingsPath); }
+    void Read(const QString &settingsPath) { ReadFastFolders(Strings, settingsPath); }
+};
+
 class CFolderHistory {
     UStringVector Strings;
     void Normalize();

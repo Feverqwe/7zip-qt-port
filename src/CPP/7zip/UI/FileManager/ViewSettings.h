@@ -7,6 +7,8 @@
 
 void SaveFolderHistory(const UStringVector &folders, const QString &settingsPath);
 void ReadFolderHistory(UStringVector &folders, const QString &settingsPath);
+void SaveFastFolders(const UStringVector &folders, const QString &settingsPath);
+void ReadFastFolders(UStringVector &folders, const QString &settingsPath);
 
 // Conversion is confined to the Qt presentation/settings boundary.
 inline UString ToUString(const QString &s) { return UString(s.toStdWString().c_str()); }

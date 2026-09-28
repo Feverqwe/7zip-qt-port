@@ -5,13 +5,18 @@ with UString/UStringVector and a 100-entry bound. MainWindow's address combo
 is a projection of that state. `CPanel::FoldersHistory` in PanelFolderChange.cpp
 owns confirmation/rebuilding; `CListViewDialog` supplies Qt list interaction.
 Navigation remains in MainWindow. ViewSettings translates upstream string
-vectors at the QSettings boundary (FolderHistory, legacy history/paths fallback).
+vectors at the QSettings boundary (FolderHistory). MVP history keys are ignored.
+Favorites use `CFastFolders` and `CPanel::SetBookmark/OpenBookmark` from
+AppState.h/PanelFolderChange.cpp, with sparse UStringVector and FolderShortcuts.
+MainWindow adapts the complete folder prefix to existing navigation; it no
+longer stores a separate pair of archive path/internal folder. MVP favorites
+are ignored, without migration fallback.
 
 The Copy/Move view is the adapted upstream `CCopyDialog` under
 `src/CPP/7zip/UI/FileManager/CopyDialog.*`; `src/copydialog.h` is an alias.
 Qt layouts own resizing and a read-only scrolling view keeps long selections
 reachable. The copied `ViewSettings.*` history functions use QSettings with
-the upstream `CopyHistory` key and a fallback to legacy `copy/history`.
+the upstream `CopyHistory` key. MVP `copy/history` is ignored.
 `MainWindow` supplies a folder-property snapshot and validates the destination; it uses
 the upstream case-insensitive list update and 20-entry cap. Workers and archive
 operations keep their existing owners.

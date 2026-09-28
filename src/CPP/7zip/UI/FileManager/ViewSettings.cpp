@@ -1,13 +1,14 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ViewSettings.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // QSettings replaces Registry. Callers supply the INI path; GUI-thread access
-// needs no Win32 critical section. The old Qt key is a read-only fallback.
+// needs no Win32 critical section. Only upstream-named keys are read.
 #include "ViewSettings.h"
 
 #include <QSettings>
 
 static const char *const kCopyHistoryValueName = "CopyHistory";
 static const char *const kFolderHistoryValueName = "FolderHistory";
+static const char *const kFastFoldersValueName = "FolderShortcuts";
 
 static void SaveStringList(const char *valueName, const UStringVector &folders,
                            const QString &settingsPath) {
@@ -22,7 +23,7 @@ static void ReadStringList(const char *valueName, UStringVector &folders,
                            const QString &settingsPath) {
     folders.Clear();
     QSettings key(settingsPath, QSettings::IniFormat);
-    const QStringList strings = key.value(valueName, key.value("history/paths")).toStringList();
+    const QStringList strings = key.value(valueName).toStringList();
     for (const QString &s : strings)
         folders.Add(ToUString(s));
 }
@@ -35,6 +36,14 @@ void ReadFolderHistory(UStringVector &folders, const QString &settingsPath) {
     ReadStringList(kFolderHistoryValueName, folders, settingsPath);
 }
 
+void SaveFastFolders(const UStringVector &folders, const QString &settingsPath) {
+    SaveStringList(kFastFoldersValueName, folders, settingsPath);
+}
+
+void ReadFastFolders(UStringVector &folders, const QString &settingsPath) {
+    ReadStringList(kFastFoldersValueName, folders, settingsPath);
+}
+
 static void SaveStringList(const char *valueName, const QStringList &folders,
                            const QString &settingsPath) {
     QSettings key(settingsPath, QSettings::IniFormat);
@@ -45,10 +54,7 @@ static void ReadStringList(const char *valueName, QStringList &folders,
                            const QString &settingsPath) {
     folders.clear();
     QSettings key(settingsPath, QSettings::IniFormat);
-    if (key.contains(valueName))
-        folders = key.value(valueName).toStringList();
-    else
-        folders = key.value("copy/history").toStringList();
+    folders = key.value(valueName).toStringList();
 }
 
 void SaveCopyHistory(const QStringList &folders, const QString &settingsPath) {

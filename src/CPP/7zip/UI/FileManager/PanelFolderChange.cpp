@@ -6,6 +6,15 @@
 #include "ListViewDialog.h"
 #include "Panel.h"
 
+void CPanel::SetBookmark(CFastFolders &fastFolders, unsigned index,
+                         const UString &currentFolderPrefix) {
+    fastFolders.SetString(index, currentFolderPrefix);
+}
+
+UString CPanel::OpenBookmark(CFastFolders &fastFolders, unsigned index) {
+    return fastFolders.GetString(index);
+}
+
 QString CPanel::FoldersHistory(CFolderHistory &history, const QString &settingsPath,
                                QWidget *parent) {
     CListViewDialog listViewDialog(parent);

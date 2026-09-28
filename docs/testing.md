@@ -1,10 +1,14 @@
 # Regression strategy
 
 `folder_history` checks the upstream 100-path cap, case-insensitive duplicates,
-Unicode including supplementary characters, legacy settings, empty persisted
+Unicode including supplementary characters, ignored MVP settings, empty persisted
 history, multiselection deletion/copy, permission to delete, OK/Cancel and
 normal/compact list geometry. Reports are `folder-history-{540,360}.json`.
 `ui_navigation` covers persistent archive folders through this history adapter.
+`bookmarks` checks CFastFolders sparse slots/empty values, FolderShortcuts
+persistence, ignored MVP keys, complete archive paths, missing internal
+folders and unavailable archives. `ui_state` retains the keyboard/persistence
+workflow checks for favorites.
 
 `ui_parity_tool` tests resource extraction and rejects broken/ambiguous widget
 reports, stale baselines and invented evidence symbols. `ui_parity_copy` uses a

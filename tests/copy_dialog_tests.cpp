@@ -46,7 +46,7 @@ class CopyDialogTests : public QObject {
         QCOMPARE(move.result(), int(QDialog::Accepted));
     }
 
-    void historyRemovesAllCaseVariantsAndMigratesINI() {
+    void historyRemovesAllCaseVariantsAndIgnoresMvpINI() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString ini = temp.filePath(QStringLiteral("настройки с пробелом.ini"));
@@ -56,6 +56,9 @@ class CopyDialogTests : public QObject {
             settings.setValue("unrelated/value", 17);
         }
         QStringList history{"stale"};
+        ReadCopyHistory(history, ini);
+        QVERIFY(history.isEmpty());
+        SaveCopyHistory({"/old", "/OLDER"}, ini);
         ReadCopyHistory(history, ini);
         QCOMPARE(history, (QStringList{"/old", "/OLDER"}));
         history << "/NEW" << "/new" << "/NeW";

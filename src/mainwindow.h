@@ -126,10 +126,6 @@ class MainWindow : public QMainWindow {
     void recordVisitedPath(const QString &path);
     void refreshPathHistory();
     void showFoldersHistory();
-    struct Bookmark {
-        QString path;
-        QString folder;
-    };
     void refreshBookmarks();
     void saveBookmark(int index);
     void openBookmark(int index);
@@ -216,7 +212,7 @@ class MainWindow : public QMainWindow {
     QString archivePassword_;
     QString archiveFolder_;
     QString pendingArchiveFolder_;
-    Bookmark bookmarks_[10];
+    CFastFolders fastFolders_;
     CFolderHistory folderHistory_;
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};

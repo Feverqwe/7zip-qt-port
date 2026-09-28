@@ -2,6 +2,20 @@
 
 ## История папок и общий список (2026-09-28)
 
+Следующая итерация переносит `AppState.h::CFastFolders::{SetString,GetString,
+Save,Read}` и `PanelFolderChange.cpp::CPanel::{SetBookmark,OpenBookmark}`
+из того же полного baseline ниже. Сохранены sparse vector, заполнение пустыми
+строками до индекса и отсутствие изменения state при GetString вне списка.
+Qt adapter передаёт полный отображаемый prefix; OpenBookmark возвращает его
+для общего navigateTo вместо Win32 BindToPathAndRefresh. Save/Read используют
+`ViewSettings.cpp/.h::{SaveFastFolders,ReadFastFolders}`, ключ FolderShortcuts.
+Критическая секция исключена по той же причине GUI-thread ownership.
+Двухполевая структура Bookmark и самостоятельное ветвление открытия удалены.
+Исчезнувшая внутренняя папка открывает ближайший существующий parent через
+общую навигацию, включая уже открытый архив без повторного чтения.
+MVP-настройки history/paths и favorites/* больше не читаются по указанию
+пользователя; миграционного fallback нет. Остальной CAppState пока не перенесён.
+
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 Из `CPP/7zip/UI/FileManager/AppState.h` перенесён `CFolderHistory`;
 из `App.cpp` — `AddUniqueStringToHead`, `Normalize`, `AddString` с исходным
@@ -9,7 +23,7 @@ Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github
 порядок удаления дублей и вставки сохранены. State принадлежит GUI thread,
 поэтому Win32 critical section отсутствует; Save/Read принимают путь INI.
 `ViewSettings.cpp/.h::{SaveFolderHistory,ReadFolderHistory}` сохраняют исходный
-ключ FolderHistory; `history/paths` — read-only fallback прежнего Qt MVP.
+ключ FolderHistory; настройки прежнего Qt MVP игнорируются.
 
 Из `ListViewDialog.cpp/.h/.rc` перенесена одноколоночная ветка:
 OnInit, ListView_GetSelected, DeleteItems, CopyToClipboard, ShowItemInfo,
@@ -703,8 +717,8 @@ kCopyDialog_NumInfoLines сохранён для будущей сводки.
 
 Save/ReadStringList используют QSettings вместо Registry и explicit settings
 path вместо HKEY; вызовы идут в GUI-thread, lock не нужен. Имя CopyHistory
-сохранено; отсутствующий ключ читает прежний copy/history, явный пустой
-CopyHistory блокирует fallback. Старый ключ не изменяется. Исходный цикл
+сохранено; старый copy/history не читается и не изменяется (fallback удалён
+в итерации истории/избранного по указанию пользователя). Исходный цикл
 удаляет все совпадения без учёта регистра и вставляет новый путь в начало;
 App copy workflow ограничивает список 20 записями и сохраняет после принятого
 существующего назначения. Проверка/создание назначения и backend остались
