@@ -92,7 +92,11 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         if (options.dictionaryMiB)
             methodArgument += ":d=" + QString::number(options.dictionaryMiB) + "m";
         if (options.wordSize)
-            methodArgument += ":fb=" + QString::number(options.wordSize);
+            methodArgument +=
+                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
+                     ? ":o="
+                     : ":fb=") +
+                QString::number(options.wordSize);
         arguments.insert(5, methodArgument);
     }
     if (options.threads > 0)

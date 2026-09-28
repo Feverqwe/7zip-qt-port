@@ -130,7 +130,7 @@ Qt-адаптер передаёт список временных путей в
 32 для уровней ниже 7, иначе 64. UI и backend используют одну функцию.
 Qt-часть формы сжатия выделена в `createarchivedialog_compression.cpp`;
 явный выбор сохраняется при смене уровня, автоматический не передаёт `fb`
-движку. Ветки порядка Deflate/PPMd пока не подключены.
+движку. Ветки порядка Deflate/PPMd подключены последующими итерациями, описанными ниже.
 
 Числовой ряд `CCompressDialog::SetSolidBlockSize2` перенесён из `0766b73`
 в исходный `GUI/CompressDialog.cpp`: степени 2^20–2^36. Qt хранит размеры
@@ -143,3 +143,7 @@ Qt-часть формы сжатия выделена в `createarchivedialog_c
 адаптер `NCompressDialog::GetMethodID` по таблице выбранного формата.
 Qt-форма и backend используют общий `SetOrder2` для LZMA и ZIP Deflate;
 создание аргументов движка остаётся в ArchiveBackend.
+
+`SetOrder2` также выдаёт исходные ряды PPMd и PPMdZip; format-specific
+GetMethodID различает одинаковую подпись PPMd. Перенесённый GetOrderMode
+указывает backend, когда порядок кодируется через `o` вместо `fb`.

@@ -47,7 +47,7 @@
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
-| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветка размера слова LZMA/LZMA2 перенесена в `SetOrder2`; Числовой ряд solid перенесён; словарь, расчёт Auto solid, шифрование и выбор источников ещё требуют переноса. |
+| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Числовой ряд solid перенесён; словарь, расчёт Auto solid, шифрование и выбор источников ещё требуют переноса. |
 | `src/extractdialog.cpp`, `extractdialog.h` | `CPP/7zip/UI/GUI/ExtractDialog.cpp`, `ExtractDialog.rc` | Собственная Qt-форма с соответствующими вариантами путей и перезаписи; код не перенесён. |
 | `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
@@ -94,7 +94,7 @@ Qt-адаптер передаёт список временных путей в
 32 для уровней ниже 7, иначе 64. UI и backend используют одну функцию.
 Qt-часть формы сжатия выделена в `createarchivedialog_compression.cpp`;
 явный выбор сохраняется при смене уровня, автоматический не передаёт `fb`
-движку. Ветки порядка Deflate/PPMd пока не подключены.
+движку. Ветки порядка Deflate/PPMd подключены последующими итерациями, описанными ниже.
 
 Числовой ряд `CCompressDialog::SetSolidBlockSize2` перенесён из `0766b73`
 в исходный `GUI/CompressDialog.cpp`: степени 2^20–2^36. Qt хранит размеры
@@ -121,4 +121,21 @@ Registry заменены возвратом данных и текущим вы
 перенесённой ветке LZMA. `GetMethodID` — узкий адаптер между строковым
 `CompressionOptions` и исходными ID из таблицы форматов; upstream получает
 ID из item data Win32 combo. Backend использует тот же ряд для проверки и
-передаёт существующий параметр `fb` движку. Ветки PPMd остаются долгом.
+передаёт существующий параметр `fb` движку. Ветки порядка PPMd перенесены следующей итерацией.
+
+### Итерация: порядок PPMd / PPMdZip
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::CCompressDialog::SetOrder2`,
+`GetOrderMode`, `CPP/7zip/UI/GUI/UpdateGUI.cpp::SetOutProperties`.
+Скопированы ветки PPMd (ряд 2,3,4,5,6,7,8,10,12,14,16,20,24,28,32 и Auto
+4/6/16/32) и PPMdZip (2–16, Auto level+3), включая исходные циклы,
+условия и формулы. Как в остальных ветках, AddOrder/Registry заменены
+выдачей данных и текущим выбором Qt. `GetOrderMode` скопирован с передачей
+ID вместо чтения Win32 combo; добавлен пустой default для clang -Wswitch.
+Backend адаптирует исходный выбор `di.OrderMode ? "o" : "fb"` из
+SetOutProperties к существующей строке аргумента QProcess. COM property
+vector не используется при процессной границе с 7zz; функция целиком пока
+не перенесена. Размер памяти PPMd и его dictionary branch остаются долгом:
+UI отключает словарь, движок использует свой Auto. Подпись «Размер слова»
+сохранена как в ресурсе upstream. Только clang-format меняет оформление.

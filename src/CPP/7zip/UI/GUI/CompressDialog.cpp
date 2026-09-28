@@ -157,7 +157,7 @@ EMethodID GetMethodID(QStringView name, QStringView format) {
             return fi.MethodIDs[i];
     return kCopy;
 }
-// LZMA/LZMA2 and Deflate/Deflate64 branches copied from CCompressDialog::SetOrder2 (0766b73).
+// LZMA, Deflate and PPMd branches copied from CCompressDialog::SetOrder2 (0766b73).
 // The caller replaces registry selection and ComboBox insertion with Qt data.
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
     COrderOptions options;
@@ -193,11 +193,54 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
         break;
     }
 
+    case kPPMd: {
+        {
+            if (level >= 9)
+                options.AutoOrder = 32;
+            else if (level >= 7)
+                options.AutoOrder = 16;
+            else if (level >= 5)
+                options.AutoOrder = 6;
+            else
+                options.AutoOrder = 4;
+        }
+
+        for (unsigned i = 0;; i++) {
+            UInt32 order = i + 2;
+            if (i >= 2)
+                order = (4 + ((i - 2) & 3)) << ((i - 2) / 4);
+            options.Values.append(int(order));
+            if (order >= 32)
+                break;
+        }
+        break;
+    }
+
+    case kPPMdZip: {
+        options.AutoOrder = level + 3;
+        for (unsigned i = 2; i <= 16; i++) {
+            options.Values.append(int(i));
+        }
+        break;
+    }
+
+    // case kBZip2:
     default:
         break;
     }
     return options;
 }
+bool GetOrderMode(EMethodID methodID) {
+    switch (methodID) {
+    case kPPMd:
+    case kPPMdZip:
+        return true;
+    default:
+        break;
+    }
+    return false;
+}
+
 // Numeric choices from CCompressDialog::SetSolidBlockSize2 (0766b73).
 // UI data uses MiB instead of upstream logarithms; Auto/non-solid stay in Qt.
 QList<int> SetSolidBlockSize2(QStringView format, UInt32 level) {
