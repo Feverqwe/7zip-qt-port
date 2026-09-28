@@ -1,33 +1,43 @@
 // Adapted from 7-Zip UI/FileManager/FSFolder.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
+#include "7zip/UI/FileManager/IFolder.h"
+#include "Common/MyCom.h"
 #include "Common/MyVector.h"
+#include "Windows/FileFind.h"
 #include <QFileDevice>
 #include <QFileInfo>
 #include <QString>
 #include <functional>
 
 namespace NFsFolder {
-struct CDirItem {
-    QString Name;
+struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
+    UInt64 PackSize = 0;
+    bool PackSize_Defined = false;
+    bool FolderStat_Defined = false;
     int Parent = -1;
-    bool Directory = false;
-    bool IsDir() const { return Directory; }
+    UInt64 NumFolders = 0;
+    UInt64 NumFiles = 0;
 };
 
-// Snapshot adapter for the Qt panel. File enumeration remains with the panel;
-// the source methods retain upstream Files/Folders and relative-path semantics.
-class CFSFolder {
+// Partial source folder owner. Runtime panel loading is integrated separately;
+// mutations retain their Qt service boundary and existing callbacks.
+class CFSFolder final : public IFolderFolder, public IFolderSetFlatMode, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IFolderFolder, IFolderSetFlatMode)
   public:
+    CFSFolder() = default;
     explicit CFSFolder(QString path);
+    Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
+    HRESULT Init(const FString &path);
     CObjectVector<CDirItem> Files;
-    CObjectVector<QString> Folders;
+    FStringVector Folders;
     QString ErrorMessage;
     std::function<bool(quint64)> SetTotal;
     std::function<bool(quint64)> SetCompleted;
     std::function<bool(const QString &)> CheckBreak;
     void AddPath(const QString &path);
-    QString GetRelPath(const CDirItem &item) const;
+    FString GetRelPath(const CDirItem &item) const;
     void GetAbsPath(const QString &name, QString &absPath) const;
     bool CreateFolder(const QString &name);
     bool CreateFile(const QString &name);
@@ -35,7 +45,9 @@ class CFSFolder {
     bool Delete(const UInt32 *indices, UInt32 numItems);
 
   private:
-    QString _path;
+    HRESULT LoadSubItems(int dirItem, const FString &relPrefix);
+    FString _path;
+    bool _flatMode = false;
 };
 
 struct CCopyStateIO {

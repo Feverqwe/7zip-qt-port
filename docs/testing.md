@@ -5,6 +5,9 @@ Unicode/non-BMP files and folders, metadata, excluded dots, missing-directory
 error versus EOF, source dot resolution and current directory. POSIX symlink
 no-follow/follow metadata is covered locally; Windows reparse acceptance remains
 required. `filesystem_operations` and `file_transfer` cover existing consumers.
+`fs_folder` checks normal/flat reload, Unicode, base-relative prefixes, typed
+file size/time/attributes versus uncalculated directory size, source type/path/
+catalog descriptors, invalid indices and failure clearing stale rows.
 
 `folder_contract` validates the unchanged upstream IFolderFolder ABI against a
 local mock: interface identity/rejection, reference ownership/destruction,

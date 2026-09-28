@@ -1,31 +1,219 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/FSFolder.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Only the supported filesystem mutation methods are ported here. QString and
-// QFile/QDir replace filesystem strings/services, callbacks replace IProgress,
-// and bool/ErrorMessage replace HRESULT/GetLastError.
+// Source enumeration and properties use portable upstream filesystem services.
+// Qt mutation services/callbacks remain a narrow integration boundary.
 #include "FSFolder.h"
+#include "7zip/PropID.h"
 #include "CPP/Windows/FileDir.h"
+#include "Common/ComTry.h"
+#include "Common/Defs.h"
+#include "Common/StringConvert.h"
+#include "Windows/FileName.h"
+#include "Windows/PropVariant.h"
+#include "Windows/TimeUtils.h"
 #include <QDir>
 #include <QFile>
 
 namespace NFsFolder {
-CFSFolder::CFSFolder(QString path) : _path(QDir::cleanPath(std::move(path))) {
-    if (!_path.endsWith('/'))
-        _path += '/';
+namespace {
+FString FsPath(const QString &path) {
+    const auto wide = QDir::toNativeSeparators(path).toStdWString();
+    return us2fs(wide.c_str());
+}
+QString QtPath(const FString &path) {
+    return QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(path)));
+}
+} // namespace
+
+CFSFolder::CFSFolder(QString path) {
+    FString prefix = FsPath(QDir::cleanPath(std::move(path)));
+    NWindows::NFile::NName::NormalizeDirPathPrefix(prefix);
+    Init(prefix);
+}
+
+HRESULT CFSFolder::Init(const FString &path) {
+    _path = path;
+    return S_OK;
+}
+
+HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
+    const unsigned startIndex = Folders.Size();
+    {
+        NWindows::NFile::NFind::CEnumerator enumerator;
+        enumerator.SetDirPrefix(_path + relPrefix);
+        CDirItem fi;
+        fi.FolderStat_Defined = false;
+        fi.NumFolders = 0;
+        fi.NumFiles = 0;
+        fi.Parent = dirItem;
+        for (;;) {
+            bool found;
+#ifdef _WIN32
+            if (!enumerator.Next(fi, found))
+                return E_FAIL;
+#else
+            NWindows::NFile::NFind::CDirEntry entry;
+            if (!enumerator.Next(entry, found))
+                return E_FAIL;
+            if (found && !enumerator.Fill_FileInfo(entry, fi, false))
+                return E_FAIL;
+#endif
+            if (!found)
+                break;
+            if (fi.IsDir()) {
+                fi.Size = 0;
+                if (_flatMode)
+                    Folders.Add(relPrefix + fi.Name + FCHAR_PATH_SEPARATOR);
+            }
+            fi.PackSize_Defined = false;
+            fi.PackSize = fi.Size;
+            Files.Add(fi);
+        }
+    }
+    if (!_flatMode)
+        return S_OK;
+    const unsigned endIndex = Folders.Size();
+    for (unsigned i = startIndex; i < endIndex; i++)
+        RINOK(LoadSubItems((int)i, Folders[i]))
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::LoadItems()) {
+    COM_TRY_BEGIN
+    Files.Clear();
+    Folders.Clear();
+    const HRESULT result = LoadSubItems(-1, FString());
+    if (result != S_OK) {
+        Files.Clear();
+        Folders.Clear();
+    }
+    return result;
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CFSFolder::GetNumberOfItems(UInt32 *numItems)) {
+    *numItems = Files.Size();
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::SetFlatMode(Int32 flatMode)) {
+    _flatMode = IntToBool(flatMode);
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    if (index >= Files.Size())
+        return E_INVALIDARG;
+    NWindows::NCOM::CPropVariant prop;
+    CDirItem &fi = Files[index];
+    switch (propID) {
+    case kpidIsDir:
+        prop = fi.IsDir();
+        break;
+    case kpidIsAltStream:
+        prop = false;
+        break;
+    case kpidName:
+        prop = fs2us(fi.Name);
+        break;
+    case kpidSize:
+        if (!fi.IsDir() || fi.FolderStat_Defined)
+            prop = fi.Size;
+        break;
+    case kpidPackSize:
+        // Native compressed allocation/links/comments are a remaining source scope.
+        return E_NOTIMPL;
+    case kpidAttrib:
+        prop = (UInt32)fi.GetWinAttrib();
+        break;
+    case kpidCTime:
+        PropVariant_SetFrom_FiTime(prop, fi.CTime);
+        break;
+    case kpidATime:
+        PropVariant_SetFrom_FiTime(prop, fi.ATime);
+        break;
+    case kpidMTime:
+        PropVariant_SetFrom_FiTime(prop, fi.MTime);
+        break;
+    case kpidComment:
+    case kpidChangeTime:
+    case kpidINode:
+    case kpidLinks:
+        return E_NOTIMPL;
+    case kpidPrefix:
+        if (fi.Parent >= 0)
+            prop = fs2us(Folders[fi.Parent]);
+        break;
+    case kpidNumSubDirs:
+        if (fi.IsDir() && fi.FolderStat_Defined)
+            prop = fi.NumFolders;
+        break;
+    case kpidNumSubFiles:
+        if (fi.IsDir() && fi.FolderStat_Defined)
+            prop = fi.NumFiles;
+        break;
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+static const Byte kProps[] = {kpidName,       kpidSize,        kpidMTime,    kpidCTime,
+                              kpidATime,      kpidAttrib,      kpidPackSize, kpidComment,
+                              kpidNumSubDirs, kpidNumSubFiles, kpidPrefix};
+
+Z7_COM7F_IMF(CFSFolder::GetNumberOfProperties(UInt32 *numProperties)) {
+    *numProperties = Z7_ARRAY_SIZE(kProps);
+    if (!_flatMode)
+        (*numProperties)--;
+    return S_OK;
+}
+
+IMP_IFolderFolder_GetProp(CFSFolder::GetPropertyInfo, kProps)
+
+    Z7_COM7F_IMF(CFSFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NWindows::NCOM::CPropVariant prop;
+    switch (propID) {
+    case kpidType:
+        prop = "FSFolder";
+        break;
+    case kpidPath:
+        prop = fs2us(_path);
+        break;
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+// Binding is deliberately unavailable until the following source-root iteration.
+Z7_COM7F_IMF(CFSFolder::BindToFolder(UInt32, IFolderFolder **result)) {
+    *result = nullptr;
+    return E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFSFolder::BindToFolder(const wchar_t *, IFolderFolder **result)) {
+    *result = nullptr;
+    return E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFSFolder::BindToParentFolder(IFolderFolder **result)) {
+    *result = nullptr;
+    return E_NOTIMPL;
 }
 
 void CFSFolder::AddPath(const QString &path) {
     const QFileInfo info(path);
     CDirItem item;
-    item.Name = info.fileName();
-    item.Directory = info.isDir();
-    const QString relative = QDir(_path).relativeFilePath(info.absolutePath());
+    if (!item.Find(FsPath(path), false))
+        item.Name = FsPath(info.fileName());
+    const QString relative = QDir(QtPath(_path)).relativeFilePath(info.absolutePath());
     if (relative != ".")
-        item.Parent = Folders.Add(relative + '/');
+        item.Parent = Folders.Add(FsPath(relative + '/'));
     Files.Add(item);
 }
 
-QString CFSFolder::GetRelPath(const CDirItem &item) const {
+FString CFSFolder::GetRelPath(const CDirItem &item) const {
     if (item.Parent < 0)
         return item.Name;
     return Folders[item.Parent] + item.Name;
@@ -34,7 +222,7 @@ QString CFSFolder::GetRelPath(const CDirItem &item) const {
 void CFSFolder::GetAbsPath(const QString &name, QString &absPath) const {
     absPath.clear();
     if (!QDir::isAbsolutePath(name))
-        absPath += _path;
+        absPath += QtPath(_path);
     absPath += name;
 }
 
@@ -66,12 +254,12 @@ bool CFSFolder::Rename(UInt32 index, const QString &newName) {
     if (index >= Files.Size())
         return false;
     const CDirItem &fi = Files[index];
-    QString fullPrefix = _path;
+    QString fullPrefix = QtPath(_path);
     if (fi.Parent >= 0)
-        fullPrefix += Folders[fi.Parent];
+        fullPrefix += QtPath(Folders[fi.Parent]);
     // Qt rename never replaces a target, including a dangling symlink.
     const QString target = fullPrefix + newName;
-    if (QFileInfo(target).isSymLink() || !QDir().rename(fullPrefix + fi.Name, target)) {
+    if (QFileInfo(target).isSymLink() || !QDir().rename(fullPrefix + QtPath(fi.Name), target)) {
         ErrorMessage = QStringLiteral("Не удалось переименовать объект: %1").arg(target);
         return false;
     }
@@ -88,7 +276,7 @@ bool CFSFolder::Delete(const UInt32 *indices, UInt32 numItems) {
         bool result = true;
         {
             const CDirItem &fi = Files[index];
-            const QString fullPath = _path + GetRelPath(fi);
+            const QString fullPath = QtPath(_path + GetRelPath(fi));
             if (CheckBreak && !CheckBreak(fullPath))
                 return false;
             // Keep the existing panel policy for a directly selected link.

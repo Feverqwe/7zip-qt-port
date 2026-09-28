@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
+#include "Common/StringConvert.h"
 #include "filedeleteoperation.h"
 #include <QDir>
 #include <QFile>
@@ -33,7 +34,9 @@ class FilesystemOperationsTests : public QObject {
         const QString occupied = nested + "/occupied";
         QVERIFY(write(temp.filePath(occupied), "keep"));
         folder.AddPath(temp.filePath(name));
-        QCOMPARE(folder.GetRelPath(folder.Files[0]), name);
+        QCOMPARE(QDir::fromNativeSeparators(
+                     QString::fromWCharArray(fs2us(folder.GetRelPath(folder.Files[0])))),
+                 name);
         QVERIFY(!folder.Rename(0, "occupied"));
         QCOMPARE(read(temp.filePath(occupied)), QByteArray("keep"));
         QVERIFY(folder.Rename(0, QStringLiteral("другое имя.txt")));

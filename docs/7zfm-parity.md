@@ -15,6 +15,12 @@ no-follow metadata; FileName — dot/absolute/Windows path bodies. Детерм�
 проверки выполнены на macOS; Windows reparse/drive/UNC runtime acceptance
 обязательна и не считается подтверждённой этой проверкой.
 
+P0-02.2b3b2b2 переносит CFSFolder normal/flat enumeration и typed properties.
+Ошибка перечисления распространяется наружу и очищает partial/stale snapshot;
+исходный bool-only loop мог скрыть ошибку. Runtime окна и видимые controls пока
+не меняются. Binding, comments, compressed allocation, link/raw properties
+и optional interfaces остаются обязательными.
+
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
 Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный

@@ -352,7 +352,7 @@ P0-02.2b3b2a commit: `49f7975`. Filesystem scope разделён до пере�
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3b2b1 | Portable FileFind/TimeUtils dependencies, FileName source path bodies и FileDir GetCurrentDir; deterministic Unicode, dots, missing-path, symlink enumeration checks | P0-02.2b3b2a | done — audit § P0-02.2b3b2b1; focused 3/3, check.sh 60/60, vendor bytes 53/53; macOS 2026-09-29 |
-| P0-02.2b3b2b2 | CFSFolder source enumeration, identity и typed properties; preserve mutation consumers; normal/flat/Unicode/error checks | P0-02.2b3b2b1 | todo |
+| P0-02.2b3b2b2 | CFSFolder source enumeration, identity и typed properties; preserve mutation consumers; normal/flat/Unicode/error checks | P0-02.2b3b2b1 | done — audit § P0-02.2b3b2b2; focused 4/4, check.sh 61/61, vendor bytes 55/55; macOS 2026-09-29 |
 | P0-02.2b3b2b3 | Source folder binding/parent/root scope, portable root adaptation и b acceptance; Windows drive/network required scope explicit | P0-02.2b3b2b2 | todo |
 
 При следующем разделении добавить здесь, сохраняя остальных:

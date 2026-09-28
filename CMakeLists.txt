@@ -15,6 +15,7 @@ add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/CPP/Windows/System.cpp src/CPP/7zip/Common/MethodProps.cpp src/CPP/7zip/UI/Common/ZipRegistry.cpp
     third_party/7zip/CPP/Windows/PropVariant.cpp src/CPP/7zip/UI/FileManager/ClassDefs.cpp
+    third_party/7zip/CPP/7zip/Common/PropId.cpp
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
@@ -162,6 +163,9 @@ if(BUILD_TESTING)
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)
+    qt_add_executable(fs_folder_tests tests/fs_folder_tests.cpp)
+    target_link_libraries(fs_folder_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME fs_folder COMMAND fs_folder_tests)
     qt_add_executable(panel_copy_info_tests tests/panel_copy_info_tests.cpp)
     target_link_libraries(panel_copy_info_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME panel_copy_info COMMAND panel_copy_info_tests)

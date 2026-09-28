@@ -8,6 +8,57 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b2b2 — CFSFolder enumeration/property subset (2026-09-29)
+
+Project baseline `e77ee7f`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+FSFolder.h copies the IFolderFolder/IFolderSetFlatMode/CMyUnknownImp subset,
+_flatMode default false, FString _path/Folders and CDirItem CFileInfo base,
+parent/stat/pack fields. Source file/path types replace QString metadata debt.
+FSFolder.cpp copies Init assignment, GetNumberOfItems, SetFlatMode, LoadSubItems
+normal/flat recursion/grouping, GetRelPath, basic GetProperty switch,
+GetFolderProperty and property catalog/flat-prefix count bodies. PropId.cpp and
+its StdAfx.h are vendored unchanged for the authoritative property-type table;
+GetPropertyInfo uses the original IFolder macro, without a new type map.
+
+The Windows File Manager source expects enumerator CFileInfo output. POSIX uses
+source Next(CDirEntry) then Fill_FileInfo(false), retaining no-follow metadata.
+Found/EOF/error is explicit; recursive failures propagate instead of the source
+bool-only loop collapsing errors or ignoring recursive results. LoadItems clears
+partial/stale rows on error and catches COM exceptions. Source comment reset and
+WasChanged are omitted until those dependencies are ported. Time properties use
+upstream PropVariant_SetFrom_FiTime for timespec/FILETIME; attributes use source
+GetWinAttrib. Qt conversion remains at mutation/constructor boundaries. AddPath
+imports native source file metadata for the existing mutation snapshot, retaining
+the requested basename when metadata lookup fails so operation errors still
+identify a missing file;
+callbacks and no-overwrite/cancel policy remain. Formatting is applied separately.
+
+Partial scope: Init Windows notification/validation and binding/parent/root
+remain required in the next iteration; binding returns E_NOTIMPL here. Window
+integration remains P0-02.2b3b3. Compressed allocation, comments/TextPairs,
+ReadFileInfo/ReadChangeTime, link/raw/reparse, compare, folder-stat calculation,
+WasChanged/Clone/system icon and IFolderOperations COM bodies remain mandatory
+in P0-03/04 and their feature owners. Known unsupported properties return
+E_NOTIMPL; no dummy values claim completion. The source catalog without
+FS_SHOW_LINKS_INFO remains, including deferred properties; its additional link
+branch is not yet copied. Existing typed mutations do not complete COM operations.
+
+New fs_folder tests cover normal/flat reload, Unicode/non-BMP, base-relative
+prefixes, typed size/time/attributes versus uncalculated directory size, source
+type/path/catalog, invalid indices and failed reload clearing. The existing
+filesystem_operations assertion now converts source FString at its boundary.
+Focused fs_folder/file_find/filesystem_operations/file_transfer 4/4 passed
+macOS 2026-09-29. The first focused run caught the missing-file basename loss;
+fixed before passing checks. The Unicode fixture compares canonical-equivalent
+names because macOS can return decomposed filesystem names; production source
+names are preserved. Initial builds also exposed the PropId StdAfx dependency
+and the global FiTime adapter namespace, corrected before passing checks.
+Full `./scripts/check.sh` with staged files passed formatting, both diff checks,
+app build and 61/61 CTest. Exact vendor bytes: 55/55 (54 source/header files plus
+license). Windows/Linux runtime unverified.
+No visible UI/text/layout change.
+
 ## P0-02.2b3b2b1 — portable filesystem services (2026-09-29)
 
 Project baseline `49f7975`; exact upstream [ip7z/7zip
