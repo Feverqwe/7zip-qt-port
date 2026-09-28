@@ -5,6 +5,11 @@ local mock: interface identity/rejection, reference ownership/destruction,
 Unicode property copy/clear/attach/detach, caller-owned property-info BSTR and
 missing parent. It exercises portable MyCom/PropVariant dependencies without
 opening a real filesystem folder or archive.
+`panel_folder` checks the Qt metadata adapter and source panel consumers: typed
+Unicode/non-BMP names/prefix, snapshot ownership after caller mutation/release,
+missing versus zero size, original numeric-type rejection, missing metadata and
+list/selection clearing on release. `panel_copy_info`, `properties` and
+`panel_selected_state` validate direct consumers.
 
 `app_state` checks independent CAppState instances, combined history/favorites
 Save/Read with Unicode and sparse slots, switching settings paths, normalization,

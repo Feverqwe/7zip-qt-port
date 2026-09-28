@@ -453,3 +453,10 @@ P0-02.2b3a connects unchanged portable upstream folder/stream/progress interface
 and property ownership dependencies. It changes no visible workflow or layout;
 actual folder binding and navigation/parent-stack bodies remain open. Dependency
 tests on macOS do not establish Windows/Linux runtime or rendered parity.
+
+P0-02.2b3b1 replaces the panel property owner with upstream IFolderFolder and
+variant property helpers. Copy summary and Properties keep their current visible
+values through a read-only Qt metadata adapter; full raw/non-string/archive-level
+formatting and actual location binding remain open. Reference: App.cpp summary
+and PanelItems/PanelMenu/PanelFolderChange property bodies at the pinned revision.
+No text/layout changes; Windows/Linux runtime and rendered parity unverified.

@@ -1,13 +1,14 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelMenu.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Properties single-item enumeration and multi-item totals retain upstream
-// control flow. A snapshot replaces IFolder/COM. Raw/archive-level properties
-// and Windows shell invocation are outside this partial port.
+// control flow. IFolder exposes the Qt metadata snapshot. Raw/archive-level
+// properties and Windows shell invocation are outside this partial port.
 #include "7zip/PropID.h"
 #include "Common/IntToString.h"
 #include "ListViewDialog.h"
 #include "Panel.h"
 #include "ViewSettings.h"
+#include "Windows/PropVariant.h"
 
 static const char *const kSeparator = "------------------------";
 
@@ -59,10 +60,23 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices, bool archi
                         CListViewDialog &message) const {
     if (operatedIndices.Size() == 1) {
         UInt32 index = operatedIndices[0];
-        const auto &properties = _folder[index].Properties;
-        const UInt32 numProps = properties.Size();
-        for (UInt32 i = 0; i < numProps; i++)
-            AddPropertyString(properties[i], message);
+        UInt32 numProps;
+        if (_folder->GetNumberOfProperties(&numProps) == S_OK) {
+            for (UInt32 i = 0; i < numProps; i++) {
+                CMyComBSTR name;
+                PROPID propID;
+                VARTYPE varType;
+                if (_folder->GetPropertyInfo(i, &name, &propID, &varType) != S_OK)
+                    continue;
+                NWindows::NCOM::CPropVariant prop;
+                if (_folder->GetProperty(index, propID, &prop) != S_OK)
+                    continue;
+                // Qt snapshot provides localized, preformatted BSTR values.
+                // Full source formatting/raw/archive properties remain open.
+                if (prop.vt == VT_BSTR && prop.bstrVal)
+                    AddPropertyString({UString(name), UString(prop.bstrVal)}, message);
+            }
+        }
         AddSeparator(message);
     } else if (operatedIndices.Size() >= 1) {
         UInt64 packSize = 0;

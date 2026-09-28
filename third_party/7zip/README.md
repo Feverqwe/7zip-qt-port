@@ -5,7 +5,8 @@ Source: official 7-Zip sibling checkout, commit
 
 The following files are copied byte for byte, preserving upstream paths.
 Their dependency headers are included so the numeric parser and portable CPU/RAM discovery can compile on all
-three supported platforms. They are not formatted with the Qt application's rules.
+three supported platforms, alongside the portable folder/COM/property contract.
+They are not formatted with the Qt application's rules.
 
 - `C/7zTypes.h`
 - `C/7zWindows.h`
@@ -42,6 +43,8 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `CPP/Windows/System.h`
 - `CPP/Windows/PropVariant.cpp`
 - `CPP/Windows/PropVariant.h`
+- `CPP/Windows/PropVariantConv.h`
+- `CPP/Windows/WinDefs.h`
 - `CPP/7zip/PropID.h`
 - `CPP/7zip/IDecl.h`
 - `CPP/7zip/IProgress.h`
@@ -50,7 +53,7 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `CPP/7zip/UI/Common/ExtractMode.h`
 - `License.txt`
 
-All 41 source/header files and `License.txt` (from upstream `DOC/License.txt`)
+All 43 source/header files and `License.txt` (from upstream `DOC/License.txt`)
 were compared byte for byte with the exact commit above on 2026-09-28.
 This provenance check does not establish runtime verification on all platforms.
 `.gitattributes` excludes unchanged vendored source from Git whitespace errors

@@ -20,6 +20,11 @@ void QtPanelList::ClearSelection() {
     if (IsBound())
         view_->selectionModel()->clearSelection();
 }
+
+void QtPanelList::DeleteListItems() {
+    if (IsBound())
+        view_->model()->removeRows(0, GetItemCount());
+}
 void QtPanelList::SelectItem(int row) {
     view_->selectionModel()->select(view_->model()->index(row, 0),
                                     QItemSelectionModel::Select | QItemSelectionModel::Rows);

@@ -23,6 +23,13 @@ defines their GUIDs once; consumers use declarations. They currently establish
 the portable contract; runtime window folder binding is still migration work.
 Their default reference counting assumes GUI-thread ownership. Archive operations
 continue through ArchiveBackend.
+`CPanel::_folder` uses the unchanged upstream IFolderFolder/CMyComPtr contract.
+`QtPanelFolder` adapts existing read-only metadata snapshots used by Copy summaries
+and Properties; it exposes typed properties and owns the snapshot. It implements
+no filesystem/archive navigation. Source property/name/path helpers consume the
+interface; runtime filesystem/Agent binding and parent-stack ownership remain
+in migration. `ReleaseFolder` clears the bound list and caches before replacing
+the interface. Complete source notify/lifecycle guards remain open.
 
 ```text
 Qt Widgets (window, file list, dialogs)

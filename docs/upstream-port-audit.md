@@ -8,6 +8,56 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b1 — panel IFolder property owner (2026-09-29)
+
+Project baseline `dfee6fd`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied PanelItems.cpp GetItemName(returning UString), GetItemPrefix,
+GetItem_BoolProp, IsItem_Folder (including optional _isDirVector),
+GetItem_UInt64Prop and GetItemSize including IFolderGetItemName fast path.
+Original CPropVariant type checks/throw IDs, ConvertPropVariantToUInt64 and
+parent-item branches are retained. GetItemRelPath's name/prefix concatenation
+is retained with QString conversion; bound Qt selection rows still supply their
+presentation snapshot until the complete folder-load stage exists.
+
+Copied PanelFolderChange.cpp GetFolderPath body; ReleaseFolder/SetNewFolder
+release/assign/query sequence for IFolderFolder and IFolderGetItemName. COM smart
+pointers remain upstream CMyComPtr. Other optional compare/raw/alt-stream/
+operation interfaces and deleted-item state are omitted in this partial scope,
+remaining mandatory with their feature ports. DeleteListItems adapts to Qt model
+row removal; directory/selected caches are cleared here because the omitted
+RefreshListCtrl folder-load stage currently cannot clear them after replacement.
+Full lifecycle/notify guards and parent stack remain open.
+
+App.cpp AddPropValueToSum now copies original IFolder GetProperty/variant/numeric
+conversion body rather than reading a custom struct directly. Qt strings remain
+the presentation boundary. PanelMenu.cpp copies the GetNumberOfProperties/
+GetPropertyInfo/GetProperty enumeration with source failure/continue branches;
+the existing Qt formatted-BSTR helper still displays values. Source non-BSTR
+formatting, raw properties, archive levels and shell invocation remain open.
+This preserves current dialog names/values/order and Copy summary output.
+
+QtPanelFolder is a narrow adapter for existing CPanelItem metadata, not a source
+replacement for filesystem or Agent folder algorithms. It owns one copied
+snapshot, exposes typed source size/dir/name/prefix fields and VT_EMPTY for absent
+size, and describes existing localized/preformatted property pairs with private
+property IDs. The descriptor union avoids using another item's value when a
+property is missing. BindToFolder/BindToParentFolder explicitly return E_NOTIMPL:
+this metadata adapter is only for read-only summary/property presentation; real
+location adapters remain P0-02.2b3b2–b3. No mandatory binding is marked complete.
+CPanel's _folder is now the original interface owner; the old authoritative
+CObjectVector property implementation has been removed from CPanel.
+
+Unchanged additional dependencies: CPP/Windows/PropVariantConv.h (only its inline
+ConvertPropVariantToUInt64 is used) and WinDefs.h. PropVariantConv.cpp timestamp/
+format bodies are not added or claimed. Tests cover interface-backed panel after
+external owner release, owned Unicode/non-BMP metadata, numeric versus absent
+sizes, unsupported-type source error, missing per-item metadata and list/cache
+release; existing summary/property consumers remain required. Focused five CTest
+passed on macOS 2026-09-29; ./scripts/check.sh with staged files passed formatting,
+both diff-checks, build and 58/58 CTest; exact-source byte comparison 44/44 passed.
+No visible-text/layout changes; Windows/Linux runtime unverified.
+
 ## P0-02.2b3a — portable folder interfaces/ownership dependencies (2026-09-28)
 
 Project baseline `e7870e5`; exact source: [ip7z/7zip

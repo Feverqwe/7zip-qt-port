@@ -1,10 +1,13 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelItems.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Property snapshot access replaces COM/variant conversion. The optional
-// IFolderGetItemName fast path is absent; GetItemSize uses the original tail.
+// IFolder/variant property bodies retain upstream control flow. Qt list rows
+// remain a presentation snapshot pending the full folder-load port.
 #include "7zip/PropID.h"
 #include "Panel.h"
 #include "ViewSettings.h"
+#include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
+#include "Windows/WinDefs.h"
 
 static const UInt32 kParentIndex = (UInt32)-1;
 
@@ -121,24 +124,68 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
 UInt64 CPanel::GetItem_UInt64Prop(UInt32 itemIndex, UInt32 propID) const {
     if (itemIndex == kParentIndex)
         return 0;
-    if (itemIndex >= _folder.Size())
+    NWindows::NCOM::CPropVariant prop;
+    if (_folder->GetProperty(itemIndex, propID, &prop) != S_OK)
         throw 2723400;
-    const CPanelItem &item = _folder[itemIndex];
-    switch (propID) {
-    case kpidSize:
-        return item.SizeDefined ? item.Size : 0;
-    case kpidPackSize:
-        return item.PackSize;
-    case kpidNumSubDirs:
-        return item.NumSubDirs;
-    case kpidNumSubFiles:
-        return item.NumSubFiles;
-    }
+    UInt64 val = 0;
+    if (ConvertPropVariantToUInt64(prop, val))
+        return val;
     return 0;
 }
 
 UInt64 CPanel::GetItemSize(UInt32 itemIndex) const {
     if (itemIndex == kParentIndex)
         return 0;
+    if (_folderGetItemName)
+        return _folderGetItemName->GetItemSize(itemIndex);
     return GetItem_UInt64Prop(itemIndex, kpidSize);
+}
+
+bool CPanel::GetItem_BoolProp(UInt32 itemIndex, PROPID propID) const {
+    NWindows::NCOM::CPropVariant prop;
+    if (_folder->GetProperty(itemIndex, propID, &prop) != S_OK)
+        throw 2723400;
+    if (prop.vt == VT_BOOL)
+        return VARIANT_BOOLToBool(prop.boolVal);
+    if (prop.vt == VT_EMPTY)
+        return false;
+    throw 2723401;
+}
+
+bool CPanel::IsItem_Folder(UInt32 itemIndex) const {
+    if (itemIndex == kParentIndex)
+        return true;
+    if (itemIndex < _isDirVector.Size())
+        return _isDirVector[itemIndex];
+    return GetItem_BoolProp(itemIndex, kpidIsDir);
+}
+
+UString CPanel::GetItemName(unsigned itemIndex) const {
+    if (itemIndex == kParentIndex)
+        return L"..";
+    NWindows::NCOM::CPropVariant prop;
+    if (_folder->GetProperty(itemIndex, kpidName, &prop) != S_OK)
+        throw 2723400;
+    if (prop.vt != VT_BSTR)
+        throw 2723401;
+    return prop.bstrVal;
+}
+
+UString CPanel::GetItemPrefix(unsigned itemIndex) const {
+    UString prefix;
+    if (itemIndex != kParentIndex) {
+        NWindows::NCOM::CPropVariant prop;
+        if (_folder->GetProperty(itemIndex, kpidPrefix, &prop) != S_OK)
+            throw 2723400;
+        if (prop.vt == VT_BSTR)
+            prefix.SetFromBstr(prop.bstrVal);
+    }
+    return prefix;
+}
+
+QString CPanel::GetItemRelPath(UInt32 itemIndex) const {
+    // Shared Qt list is still a row snapshot pending full folder-load port.
+    if (_selectionList.IsBound())
+        return _selectionList.GetItemRelPath(itemIndex);
+    return ToQString(GetItemPrefix(itemIndex) + GetItemName(itemIndex));
 }

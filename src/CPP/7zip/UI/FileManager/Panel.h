@@ -4,6 +4,8 @@
 // property lists; panel controls and operations remain in their adapters.
 #pragma once
 
+#include "7zip/UI/FileManager/IFolder.h"
+#include "Common/MyCom.h"
 #include "Common/MyString.h"
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
@@ -50,6 +52,9 @@ class CPanel : public QObject {
   public:
     CPanel() = default;
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
+    explicit CPanel(IFolderFolder *folder);
+    void ReleaseFolder();
+    void SetNewFolder(IFolderFolder *folder);
     void AttachPresentation(QWidget *list, QWidget *address);
     void SetFocusToList();
     void SetFocusToLastRememberedItem();
@@ -75,13 +80,15 @@ class CPanel : public QObject {
     QPointer<QWidget> _headerComboBox;
     QtPanelList _selectionList;
     CRecordVector<bool> _selectedStatusVector;
-    CObjectVector<CPanelItem> _folder;
+    CMyComPtr<IFolderFolder> _folder;
+    CMyComPtr<IFolderGetItemName> _folderGetItemName;
+    CRecordVector<bool> _isDirVector;
     QString _currentFolderPrefix;
-    bool IsItem_Folder(UInt32 index) const { return _folder[index].IsFolder; }
-    QString GetItemRelPath(UInt32 index) const {
-        return _selectionList.IsBound() ? _selectionList.GetItemRelPath(index)
-                                        : _folder[index].RelPath;
-    }
+    bool IsItem_Folder(UInt32 index) const;
+    bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
+    UString GetItemName(unsigned index) const;
+    UString GetItemPrefix(unsigned index) const;
+    QString GetItemRelPath(UInt32 index) const;
     unsigned GetRealItemIndex(int row) const { return (unsigned)row; }
     void SetFocusedSelectedItem(int index, bool select);
     UInt64 GetItemSize(UInt32 index) const;
@@ -90,3 +97,4 @@ class CPanel : public QObject {
 
 QString ConvertSizeToString(UInt64 value);
 void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size);
+UString GetFolderPath(IFolderFolder *folder);

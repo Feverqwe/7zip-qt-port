@@ -14,6 +14,7 @@ class QtPanelList {
     UString GetItemName(unsigned row) const;
     QString GetItemRelPath(unsigned row) const;
     void ClearSelection();
+    void DeleteListItems();
     void SelectItem(int row);
     void SetFocusedItem(int row);
     void EnsureVisible(int row);

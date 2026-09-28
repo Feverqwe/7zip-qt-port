@@ -26,6 +26,7 @@ endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtpanellist.cpp src/qtpanellist.h
+    src/qtpanelfolder.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
     src/CPP/7zip/UI/FileManager/SettingsPage.cpp src/CPP/7zip/UI/FileManager/SettingsPage.h
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
@@ -114,6 +115,10 @@ if(BUILD_TESTING)
     qt_add_executable(folder_contract_tests tests/folder_contract_tests.cpp)
     target_link_libraries(folder_contract_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME folder_contract COMMAND folder_contract_tests)
+    qt_add_executable(panel_folder_tests tests/panel_folder_tests.cpp)
+    target_link_libraries(panel_folder_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME panel_folder COMMAND panel_folder_tests)
+    set_tests_properties(panel_folder PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     add_test(NAME ui_parity_tool COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_parity_tests.py)
     add_test(NAME ui_parity_copy COMMAND ${Python3_EXECUTABLE}

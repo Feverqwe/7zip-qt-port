@@ -1,10 +1,14 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/App.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // GetItemsInfoString and its helpers retain upstream control flow. Qt resource
-// strings and a folder-property snapshot replace Win32 language/COM access.
+// strings adapt language access; IFolder and variant ownership stay upstream.
+#include "7zip/PropID.h"
 #include "AppState.h"
 #include "CopyDialog.h"
 #include "Panel.h"
+#include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
+#include "qtpanelfolder.h"
 
 static void AddUniqueStringToHead(UStringVector &list, const UString &s) {
     for (unsigned i = 0; i < list.Size();)
@@ -27,7 +31,15 @@ void CFolderHistory::AddString(const UString &s) {
 }
 
 CPanel::CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items)
-    : _folder(items), _currentFolderPrefix(prefix) {}
+    : _currentFolderPrefix(prefix) {
+    SetNewFolder(new QtPanelFolder(prefix, items));
+}
+
+CPanel::CPanel(IFolderFolder *folder) {
+    SetNewFolder(folder);
+    if (_folder)
+        _currentFolderPrefix = ToQString(GetFolderPath(_folder));
+}
 
 static void AddSizeValue(QString &s, UInt64 size) {
     s += QStringLiteral("%1 байт").arg(ConvertSizeToString(size));
@@ -54,12 +66,14 @@ void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size) {
     s += '\n';
 }
 
-static void AddPropValueToSum(const CObjectVector<CPanelItem> &folder, UInt32 index, UInt64 &sum) {
+static void AddPropValueToSum(IFolderFolder *folder, UInt32 index, PROPID propID, UInt64 &sum) {
     if (sum == (UInt64)(Int64)-1)
         return;
-    const CPanelItem &prop = folder[index];
-    if (prop.SizeDefined)
-        sum += prop.Size;
+    NWindows::NCOM::CPropVariant prop;
+    folder->GetProperty(index, propID, &prop);
+    UInt64 val = 0;
+    if (ConvertPropVariantToUInt64(prop, val))
+        sum += val;
     else
         sum = (UInt64)(Int64)-1;
 }
@@ -72,10 +86,10 @@ QString CPanel::GetItemsInfoString(const CRecordVector<UInt32> &indices) const {
     for (i = 0; i < indices.Size(); i++) {
         const UInt32 index = indices[i];
         if (IsItem_Folder(index)) {
-            AddPropValueToSum(_folder, index, foldersSize);
+            AddPropValueToSum(_folder, index, kpidSize, foldersSize);
             numDirs++;
         } else {
-            AddPropValueToSum(_folder, index, filesSize);
+            AddPropValueToSum(_folder, index, kpidSize, filesSize);
             numFiles++;
         }
     }

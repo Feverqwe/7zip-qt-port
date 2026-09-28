@@ -305,7 +305,7 @@ Owner всех частей: текущий чат; exact upstream baseline не
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3a | Unchanged IFolder/IStream/IProgress declarations, MyCom/MyUnknown/MyInitGuid и PropVariant; partial ClassDefs GUID owner; compile/runtime checks interface identity, refcount lifetime и Unicode property ownership | P0-02.2b2 | done — audit § P0-02.2b3a; focused 2/2, check.sh 57/57, vendor bytes 42/42 |
-| P0-02.2b3b | Narrow folder adapters для Qt/backend snapshot, CPanel folder binding и path/property source bodies; filesystem/archive location ownership и regression consumers | P0-02.2b3a | todo |
+| P0-02.2b3b | Narrow folder adapters для Qt/backend snapshot, CPanel folder binding и path/property source bodies; filesystem/archive location ownership и regression consumers | P0-02.2b3a | active — b1–b3 ниже |
 | P0-02.2b3c | CTempFileInfo/CFolderLink и root/nested parent stack, source close/pop/cleanup ordering; cancellation/failure/temp-lifetime checks | P0-02.2b3b | todo |
 | P0-02.2b3d | BindToPath/LoadFullPath/parent navigation source scope и flat-mode owner, window integration без duplicate state, all location consumers; b3 acceptance | P0-02.2b3c | todo |
 
@@ -320,6 +320,20 @@ local commit отменён soft-reset без потери изменений. .
 tests/docs проверяются. Финальный full gate со staged files прошёл formatting,
 обе diff-check, build и 57/57 CTest на macOS 2026-09-29 (local date).
 Visual contracts unchanged; Windows/Linux runtime не проверены.
+
+P0-02.2b3a commit: `dfee6fd`. P0-02.2b3b разделён перед сменой folder owner:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2b3b1 | Qt metadata snapshot implements unchanged IFolderFolder; CPanel uses CMyComPtr folder, source SetNewFolder/ReleaseFolder/property/name/path helpers, existing summary/property consumers preserved | P0-02.2b3a | done — audit § P0-02.2b3b1; focused 5/5, check.sh 58/58, vendor bytes 44/44 |
+| P0-02.2b3b2 | Filesystem/Agent location adapters и source bind/path scope на portable folder contract; local deterministic binding/error checks | P0-02.2b3b1 | todo |
+| P0-02.2b3b3 | Window runtime location connects to panel folder owner, remove duplicate current filesystem/archive location fields; navigation/loading/failure/cancel consumers | P0-02.2b3b2 | todo |
+
+P0-02.2b3b1 checks 2026-09-29 macOS: affected targets/direct consumers build dev;
+`ctest --preset dev -R '^(folder_contract|panel_folder|panel_copy_info|properties|panel_selected_state)$' --output-on-failure`
+5/5; `./scripts/check.sh` со staged files — format, обе diff-check, build,
+58/58 CTest; exact-source bytes 44/44. Visual contracts unchanged;
+Windows/Linux runtime не проверены.
 
 При следующем разделении добавить здесь, сохраняя остальных:
 
