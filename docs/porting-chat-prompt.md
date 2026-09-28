@@ -1,0 +1,52 @@
+# Сообщение для каждого нового чата
+
+Скопируйте текст ниже целиком. Обычно ID менять не нужно: агент выбирает
+следующий доступный шаг по чеклисту. Для конкретного шага замените предложение
+о выборе на «Выполни шаг P0-02» с нужным ID.
+
+```text
+Продолжай портирование Sevenzip Desktop по docs/porting-plan.md и
+docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memory/README.md
+и только relevant notes; проверь git status, текущий код, upstream-port-audit
+и 7zfm-parity. Не сбрасывай и не присваивай себе чужие изменения.
+
+Выбери первый незавершённый шаг минимального приоритета, для которого выполнены
+зависимости. Назови его ID и конкретный результат, затем выполни его до конца.
+Если пакет слишком велик для одного чата, сначала запиши в чеклисте подшаги
+с owners, зависимостями и критериями готовности и выполни один законченный
+подшаг. Не запускай весь план сразу и не повторяй уже подтверждённые переносы.
+
+Нужен source port: сначала прочитай оригинальные bodies и dependencies из
+точного upstream commit, скопируй функциональную основу с исходными путями,
+именами, control flow и notice. Адаптируй только необходимые Qt/platform/7zz
+границы. Совпадение поведения или имени файла не считается переносом.
+../7zip-upstream остаётся read-only. ArchiveBackend остаётся границей операций;
+widgets не строят 7zz arguments и не реализуют форматы/сжатие.
+
+UX входит в этот же шаг: commands/menus/shortcuts, focus/selection, dialogs,
+errors/progress/cancel и persistence. Не оставляй его на последок. Сверяй
+исходные 7zFM resources и functional code. Для visual/text/resize changes
+проверь text spec, normal/compact geometry и current-build widget JSON;
+screenshots только по правилам AGENTS.md. Не заявляй Windows pixel parity
+или проверку всех ОС без соответствующих свидетельств.
+
+Добавь meaningful regressions, для операций success/failure/cancel и relevant
+Unicode/space/unsafe-path cases. Собери affected targets и проверь focused
+CTest/direct consumers. Перед завершением code/tests/build changes выполни
+./scripts/check.sh по AGENTS.md; для docs-only — git diff --check.
+Старые test results не подтверждают новый код.
+
+Обнови docs/upstream-port-audit.md (revision, paths, symbols, copied/adapted,
+omitted scope/dependencies и причины), docs/7zfm-parity.md и другие документы,
+чьи claims изменились. Запиши evidence/status своего шага в чеклист, обнови
+счётчик и useful local handoff, сохрани чужие записи. Закрой parent только
+после всех подшагов и интеграции. Недоступную обязательную ветку не объявляй
+done или N/A ради закрытия шага: укажи blocker и следующий prerequisite.
+
+В конце сообщи: ID и результат, что скопировано/адаптировано, точные checks
+и проверенную ОС, оставшиеся ограничения и следующий доступный ID. Если нет
+реального блокера, продолжай необходимую работу без промежуточных подтверждений.
+Каждую завершённую итерацию коммить отдельно после проверок; включай только
+свои файлы/hunks, сохраняй чужие изменения и указывай hash локального коммита.
+Публикация, push/PR, release и изменение upstream в это поручение не входят.
+```
