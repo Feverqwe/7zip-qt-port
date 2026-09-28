@@ -258,6 +258,32 @@ bodies и interfaces из Agent.h/IFolderArchive/UpdateCallbackAgent.h, FM calle
 Runtime/source implementation не менялись; build/CTest/layout не запускались,
 Windows/Linux и engine callback transport пока не проверены.
 
+## P0-01.3c2 — отсутствующие GUI modules (2026-09-28)
+
+Project baseline `f6e1411`. GUI = `CPP/7zip/UI/GUI`; exact source всех
+восьми строк — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Проверены source bodies, headers, BenchmarkDialog.rc и GUI/makefile.
+Copied scope пуст; функциональные bodies ниже остаются обязательными.
+GUI/makefile собирает отдельный 7zG entrypoint, а не FM: его process startup
+адаптируется к Qt executable, общие command/error/workflow semantics не N/A.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| GUI/BenchmarkDialog.cpp — P2-04, P0-10, P2-10 | Benchmark/ParseNumberString, CBenchmarkDialog initialization/memory limits/dictionary/thread/pass selection, Start/Restart/Stop/Cancel, result formatting/aggregation, UpdateGui, CThreadBenchmark::Process, CBenchCallback/2 и CFreqCallback. | Common Bench/COneMethodInfo/CTotalBenchRes, system RAM/CPU/affinity, locks/thread/timer/messages, Lang/Help. Сохранить pass loop, first-pass frequency, error/cancel/join/restart order, formulas и capped history; engine Bench через official 7zz adapter. Qt layout по BenchmarkDialog.rc: compress/decompress current/resulting, usage/speed/rating, totals и log; TotalMode отдельный text view. Windows resource не доказывает rendered parity. |
+| GUI/ExtractGUI.cpp — P0-12, P1-01/03, P2-02/06/07 | ExtractGUI и CThreadExtracting::ProcessVirt: output-path validation/normalization, dialog options transfer, callback initialization, Extract result/stats/hash report и messageWasDisplayed. | ExtractDialog/ExtractCallback/ArchiveExtractCallback/Extract/HashGUI, FileDir/Find/Name/Thread, ProgressDialog2. Сохранить forced/dialog option precedence, E_ABORT и distinction finished/messages; filesystem, Qt modal/progress и engine process adapters. Z7_SFX conditional scope требует отдельной P2-02/P3-05 сверки. |
+| GUI/HashGUI.cpp — P1-14, P0-10/12 | CHashCallbackGUI scan/open/process/error callbacks, ProcessVirt→HashCalc, AfterLastFile/AddHashBundleRes, HashCalcGUI и ShowHashResults. | HashCalc/CHashBundle, ProgressDialog2/Thread, ListViewDialog/Lang/FormatUtils. Сохранить digest/data/name/stream statistics, S_FALSE file errors и отсутствие final report при E_ABORT; backend hash engine и Qt two-column result/progress adapters. |
+| GUI/UpdateCallbackGUI.cpp — P0-10/12, P1-04/05/09 | CUpdateCallbackGUI totals/ratio/scan/archive/item/extract reports, OpenFileError/ReadingFileError, FailedFiles, crypto state/password prompt, deleting-after-compress, MoveArc и WriteSfx. | Common UpdateCallback/IUpdateCallbackUI, OpenResult_GUI/ErrorMsg/FormatUtils, ProgressDialog2/PasswordDialog. Сохранить S_FALSE open-error versus S_OK read-error reporting, counters, password-defined/asked state и cancellation; process callback/event adapter. Upstream no-op hooks не отменяют требования lifecycle. |
+| GUI/UpdateCallbackGUI2.cpp — P0-10, P1-04/09, P2-02 | Init/SetOperation_Base, ShowAskPasswordDialog, MoveArc_Start/Progress/Finish и wrappers. | Lang operation tables/FormatUtils, progress Sync/WaitCreating/CheckStop и PasswordDialog. Сохранить ожидание создания перед password prompt, E_ABORT, `< 1<<57` overflow branch процента, repeat-percent CheckStop и clearing status; Qt signals/sync/process adapters. |
+| GUI/UpdateGUI.cpp — P0-12, P1-04/05, P2-02/06 | ParseProp_Time_BoolPair/ParseProperties, SplitOptionsToStrings/IsThereMethodOverride/ParseAndAddPropertires, SetOutProperties, g_UpdateMode_Pairs, ShowDialog, UpdateGUI/CThreadUpdating::ProcessVirt. | CompressDialog/CCompressionInfo, UpdateArchive/UpdateOptions/UpdateAction/WorkDir, LoadCodecs, command properties/FileName/ModuleDir/Registry. Сохранить action-set mapping, one-command/one-file/capability guards, dialog round trip, method override/property replacement/time/security/link/password/volume/shared/delete/SFX decisions; Qt/platform adapters и official engine transport в backend. |
+| GUI/GUI.cpp — P0-04/12, P1-01/03/04/05/14, P2-04, P3-05 | Main2 command-line phases/codecs/formats/password, benchmark/extract/update/hash dispatch, archive enumeration, failed-file/error exit codes; WinMain exception boundaries. | ArchiveCommandLine/LoadCodecs/ExtractGUI/UpdateGUI/HashGUI/Benchmark, FM callbacks/Lang, Windows DLL security/common-controls/OLE. Preserve applicable command routing/options/errors with Qt startup adapter; standalone 7zG invocation/exit behavior needs explicit acceptance scope, cannot erase shared functional bodies as presentation. |
+| GUI/StdAfx.cpp — P0-02 | Only include StdAfx.h; no functional body. | Header delegates FM/StdAfx.h and MSVC warning pragma. Build/PCH adapter, no functional port claimed. |
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 88 unique paths
+(30 mirrored + 58 missing), полный Agent/GUI coverage в exact baseline.
+Runtime/UI не менялись; build/CTest/layout не запускались, rendered Windows
+reference и Windows/Linux runtime не проверены. Benchmark и остальные workflow
+остаются открытыми в своих functional packages.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

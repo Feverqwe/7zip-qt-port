@@ -140,8 +140,8 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 | --- | --- | --- | --- |
 | P0-01.3a | Текущий чат: отсутствующие FM App/Panel/navigation/commands/progress/overwrite/callback modules; source bodies/callers, decision/owner/dependencies | P0-01.2 | done — audit § P0-01.3a; 2026-09-28 macOS docs-only, diff check, 12 missing / 42 unique paths; SFX legacy decision открыт |
 | P0-01.3b | Текущий чат: остальные отсутствующие FM modules; source bodies/callers, platform/build scope, decision/owner/dependencies | P0-01.3a | done — b1–b3, 33 modules; полный FM inventory |
-| P0-01.3c | Текущий чат: отсутствующие Agent/GUI modules; source bodies/callers и process adapters, decision/owner/dependencies | P0-01.3b | active |
-| P0-01.3d | Текущий чат: отсутствующие Common modules; source bodies/callers и dependency closure, decision/owner/dependencies, coverage всех 82 | P0-01.3c | todo |
+| P0-01.3c | Текущий чат: отсутствующие Agent/GUI modules; source bodies/callers и process adapters, decision/owner/dependencies | P0-01.3b | done — c1/c2, 13 modules, полный Agent/GUI inventory |
+| P0-01.3d | Текущий чат: отсутствующие Common modules; source bodies/callers и dependency closure, decision/owner/dependencies, coverage всех 82 | P0-01.3c | active |
 
 Каждый подшаг проверяется docs-only (`git diff --check`, unique-path coverage)
 и коммитится отдельно. Родитель P0-01.3 закрывается только после 3d.
@@ -163,10 +163,22 @@ P0-01.3c разделён перед audit:
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-01.3c1 | Текущий чат: пять отсутствующих Agent modules, bodies/callers/interface closure, owners и backend adapters | P0-01.3b3 | done — audit § P0-01.3c1; 2026-09-28 macOS docs-only, diff check, 80 unique paths / полный Agent inventory |
-| P0-01.3c2 | Текущий чат: восемь отсутствующих GUI modules, bodies/resources/build entrypoints, owners и process adapters | P0-01.3c1 | active |
+| P0-01.3c2 | Текущий чат: восемь отсутствующих GUI modules, bodies/resources/build entrypoints, owners и process adapters | P0-01.3c1 | done — audit § P0-01.3c2; 2026-09-28 macOS docs-only, diff check, 88 unique paths / полный GUI inventory |
 
 Каждый — docs-only diff/unique-path checks и отдельный commit; parent c
-остаётся открытым до c2. P0-01.3b3 commit: `3e914ce`.
+закрыт после c2. P0-01.3b3 commit: `3e914ce`, c1: `f6e1411`.
+
+P0-01.3d разделён перед audit на самостоятельные source scopes:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3d1 | Текущий чат: ArchiveName/DefaultName/ExtractingFilePath/SetProperties/SortUtils/TempFiles/UpdateAction/UpdatePair/UpdateProduce/WorkDir; bodies/callers, owners, dependencies | P0-01.3c2 | active |
+| P0-01.3d2 | Текущий чат: ArchiveCommandLine/LoadCodecs/OpenArchive/ArchiveOpenCallback/PropIDUtils; parser/open/capability source scope и adapters | P0-01.3d1 | todo |
+| P0-01.3d3 | Текущий чат: EnumDirItems/Extract/ArchiveExtractCallback/Update/UpdateCallback; operations и callback policy versus engine boundary | P0-01.3d2 | todo |
+| P0-01.3d4 | Текущий чат: Bench/HashCalc/CompressCall/CompressCall2; engine integration/dependency scope и полный inventory coverage | P0-01.3d3 | todo |
+
+Все 24 missing Common modules обязательны к audit. Каждый подшаг требует
+diff/unique-path checks и отдельного commit; d закрывается после d4.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
