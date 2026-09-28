@@ -29,7 +29,7 @@
 | `third_party/7zip/CPP/Common/StringToInt.cpp`, `.h` и их заголовки `Common*.h`, `My*.h`, `NewHandler.h`, `StdAfx.h`, `C/7zTypes.h`, `7zWindows.h`, `Compiler.h`, `Precomp.h` | Те же относительные пути upstream | Побайтовые копии без изменения алгоритмов и форматирования. Собирается `sevenzip_common`; Qt-код использует оригинальный `ConvertStringToUInt64`. |
 | `src/CPP/7zip/UI/FileManager/SplitUtils.cpp`, `.h` | `CPP/7zip/UI/FileManager/SplitUtils.cpp` | Перенесены `ParseVolumeSizes`, `GetNumberOfVolumes`, список `k_Sizes` и `AddVolumeItems`. Алгоритмы сохранены; `UString` / `CRecordVector` заменены стандартными контейнерами, Win32 combo — `QComboBox`. Worker применяет последовательность размеров и повторяет последний; диапазон ограничен `qint64`. |
 | `src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp`, `.h` | `CPP/7zip/UI/FileManager/PanelSplitFile.cpp::CVolSeqName`, `CThreadCombine::ProcessVirt`, `CThreadSplit::ProcessVirt` | Алгоритм нумерации и циклы Combine/Split перенесены с сохранением имён; `QString` / `QFile` / callback заменяют строки, NIO и progress sync. Проверки изменений входа и flush — платформенная адаптация. |
-| `src/CPP/7zip/UI/GUI/CompressDialog.cpp`, `.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp::CFormatInfo`, `g_Formats`, `g_*Methods`, `GetStaticFormatIndex`, `SetMethod2`, `SetOrder2`, `SetSolidBlockSize2` | Таблицы форматов, методов, уровней и флагов взяты из upstream. Qt-преобразование возвращает имена методов с исходным фильтром 7z. Один источник используется UI и backend; SFX и внешние кодеки не представлены в текущем UI. |
+| `src/CPP/7zip/UI/GUI/CompressDialog.cpp`, `.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp::CFormatInfo`, `g_Formats`, `g_*Methods`, `GetStaticFormatIndex`, `SetMethod2`, `SetDictionary2`, `SetOrder2`, `SetSolidBlockSize2`, `SetNumThreads2`, `GetMemoryUsage_Threads_Dict_DecompMem`, `OnOK` | Таблицы форматов, методов, уровней и флагов взяты из upstream. Qt-преобразование возвращает имена методов с исходным фильтром 7z. Один источник используется UI и backend; SFX и внешние кодеки не представлены в текущем UI. |
 | `src/CPP/7zip/UI/Agent/AgentProxy.cpp`, `.h`, `Agent.cpp`, `Agent.h` | `CPP/7zip/UI/Agent/AgentProxy.cpp::CProxyArc`, `CProxyDir`, `Agent.cpp::CAgentFolder::LoadFolder`, `LoadItems`, `GetNumberOfItems` | Перенесены бинарный поиск и отложенное слияние подпапок, дерево явных/неявных папок, итеративный подсчёт размеров, раскрытие выбора в реальные индексы и плоский обход. Qt-строки и стандартные контейнеры заменяют upstream-контейнеры; данные `ArchiveBackend` — COM-свойства. CRC, сырые свойства, `CProxyArc2` и alternate streams не представлены процессным листингом. |
 | `src/main.cpp`, `mainwindow.cpp`, `mainwindow.h`, `mainwindow_menus.cpp`, `mainwindow_panel.cpp` | `FM.cpp`, `App.cpp`, `App.h`, `Panel.cpp`, `Panel.h`, `PanelItems.cpp`, `resource.rc` | Qt-оболочка одной панели. Конструктор, сборка меню и сборка панели разделены; перенос правил меню и компонентов панели ещё не завершён. |
 | `src/mainwindow_backendevents.cpp` | `PanelCopy.cpp`, `PanelCrc.cpp`, `PanelItemOpen.cpp`, `OpenCallback.cpp`, `ExtractCallback.cpp` | Адаптер асинхронных сигналов `ArchiveBackend`: переходы между этапами хеширования/перемещения, просмотр извлечённого файла и восстановление состояния. Он необходим для процессного backend; функциональные сценарии ещё требуют сверки с исходными callback и panel-модулями. |
@@ -47,7 +47,7 @@
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
-| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Числовой ряд solid и словарь LZMA/LZMA2 перенесены; другие словари, расчёт Auto solid, шифрование и выбор источников ещё требуют переноса. |
+| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
 | `src/extractdialog.cpp`, `extractdialog.h` | `CPP/7zip/UI/GUI/ExtractDialog.cpp`, `ExtractDialog.rc` | Собственная Qt-форма с соответствующими вариантами путей и перезаписи; код не перенесён. |
 | `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
@@ -228,3 +228,46 @@ SolidIsSpecified по доступности поля перед вызовом 
 Полный OnOK, Registry и XZ UI остаются долгом; исходная XZ ветка Auto
 сохранена, но формат создания остаётся ограничен 7z/ZIP.
 Форматирование — обязательный clang-format.
+
+### Итерация: потоки и расход памяти
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::CCompressDialog::SetNumThreads2`,
+`GetMemoryUsage_Threads_Dict_DecompMem`, `AddMemUsage`, RAM-блок `OnInit`
+и проверка памяти `OnOK`; `CompressDialog.h::GetDict2`;
+`CPP/7zip/Common/MethodProps.cpp::Calc_From_Val_Percents`;
+`CPP/Windows/System.cpp`, `.h`.
+
+System.cpp/.h, Windows/StdAfx.h, Common/Defs.h, Common/MyVector.h и C/Threads.h
+скопированы побайтово в third_party/7zip с исходными путями и notices.
+Переиспользованы CProcessAffinity и GetRamSize, включая Windows processor
+groups, POSIX affinity, sysctl/sysinfo: они уже переносимы, новые Qt/sysconf
+аналоги не написаны. POSIX CProcessAffinity не имеет Windows метода
+Get_and_return_NumProcessThreads_and_SysThreads; нормализация num1/num2
+скопирована из его тела в узкий адаптер GetSystemInfo. RAM-блок OnInit
+сохранён с 32-bit пределом 7<<28, минимумом 64 МиБ и исходными 80%.
+Calc_From_Val_Percents скопирован целиком в зеркальный Common/MethodProps.cpp;
+COM/строковые свойства остальных функций MethodProps пока не нужны
+процессной границе, поэтому адаптированный заголовок содержит только
+используемый интерфейс и исходные UInt64/UInt32, без новых вычислений.
+
+SetNumThreads2 сохраняет исходные пределы LZMA=2/LZMA2=512/BZip2=64,
+Auto-only для 7z PPMd/Copy, ZIP=32/128 по архитектуре, CPU*2 предел списка,
+а также циклы уменьшения Auto для ZIP и LZMA2 по памяти. Registry и
+Win32 вставка заменены текущим Qt выбором и возвратом данных. Скопирована
+полная активная функция оценки памяти со всеми доступными ветками и
+исходными арифметикой/условиями/порядком; вместо методов виджета её
+параметры содержат format, level, method, dictionary и blockSizeLog.
+AddMemUsage сохраняет единицы MB/GB/TB и округление, QString заменяет
+UString insertion. Пустой default устраняет enum -Wswitch без смены поведения.
+
+Qt-представление ресурсов вынесено в createarchivedialog_resources.cpp:
+GetDict2 адаптирует исходное переключение Spec/Auto к combo=0; системные
+данные читаются один раз на диалог. Spinbox 0..256 заменён combo Auto/ряд,
+показаны процессные/аппаратные CPU и оценки сжатия/распаковки по порядку
+CompressDialog.rc. Backend получает тот же набор через порт, проверяет
+явные потоки, применяет условие memUsage>limit из OnOK перед запуском
+и сохраняет -mmt только для явного выбора. При неизвестной RAM отказ
+не применяется (адаптация недоступного системного значения); Auto по
+памяти отключён, как в исходном SetNumThreads2. Пользовательский RAM
+selector, Registry, ZSTD и UI XZ остаются долгом. Форматирование — clang-format.

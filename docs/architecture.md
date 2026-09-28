@@ -124,53 +124,30 @@ Qt-адаптер передаёт список временных путей в
 `VolumeOperation::copyBytes` удалён; транзакционная публикация и откат остаются
 в `VolumeOperation`.
 
-Ветка LZMA/LZMA2 `CCompressDialog::SetOrder2()` перенесена из upstream
-`0766b73` в `src/CPP/7zip/UI/GUI/CompressDialog.cpp`. Сохранены генерация
-8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 273 и автоматическое значение
-32 для уровней ниже 7, иначе 64. UI и backend используют одну функцию.
-Qt-часть формы сжатия выделена в `createarchivedialog_compression.cpp`;
-явный выбор сохраняется при смене уровня, автоматический не передаёт `fb`
-движку. Ветки порядка Deflate/PPMd подключены последующими итерациями, описанными ниже.
+Параметры сжатия принадлежат перенесённому CPP/7zip/UI/GUI/CompressDialog.cpp:
+таблицы форматов/уровней/методов, SetOrder2 для LZMA/Deflate/PPMd,
+SetDictionary2 для LZMA/PPMd/BZip2 и фиксированных Deflate, SetSolidBlockSize2,
+SetNumThreads2 и GetMemoryUsage_Threads_Dict_DecompMem. Методы получаются
+через GetMethodID по исходной таблице выбранного формата. Qt-форма живёт
+в createarchivedialog_compression.cpp; ресурсы CPU/памяти и их отображение —
+в createarchivedialog_resources.cpp. GetSystemInfo адаптирует исходные
+CProcessAffinity/GetRamSize из побайтово скопированного Windows/System.cpp
+(он поддерживает POSIX). Расчёт 80% использует Calc_From_Val_Percents.
 
-Числовой ряд `CCompressDialog::SetSolidBlockSize2` перенесён из `0766b73`
-в исходный `GUI/CompressDialog.cpp`: степени 2^20–2^36. Qt хранит размеры
-в МиБ вместо логарифмов; UI и backend используют один источник. Сохраняется
-явное значение при смене уровня, для ZIP/Store блок отключён. Подписи
-показывают МиБ/ГиБ. Расчёт автоматического размера и отдельный Full Solid
-из upstream пока не перенесены; Auto оставляет выбор движку.
+CompressionOptions::dictionaryBytes хранит байты в quint64. UI и backend
+используют один исходный ряд; GetOrderMode определяет mem/o для PPMd,
+d/fb для остальных методов. Auto не передаёт явную настройку движку.
+Solid представлен исходными CInfo::SolidIsSpecified и SolidBlockSize;
+CompressionOptions наследует перенесённую solid-часть CInfo. Combo хранит
+логарифмы (Auto=UInt32(-1), Non-solid=0, Full=64), OnOK преобразует их в
+байты. SetSolidBlockSize2 вычисляет Auto от метода/словаря; backend проверяет
+явные байты тем же портом и передаёт -ms=<bytes>b.
 
-Преобразование строкового метода сжатия в upstream EMethodID выполняет
-адаптер `NCompressDialog::GetMethodID` по таблице выбранного формата.
-Qt-форма и backend используют общий `SetOrder2` для LZMA и ZIP Deflate;
-создание аргументов движка остаётся в ArchiveBackend.
-
-`SetOrder2` также выдаёт исходные ряды PPMd и PPMdZip; format-specific
-GetMethodID различает одинаковую подпись PPMd. Перенесённый GetOrderMode
-указывает backend, когда порядок кодируется через `o` вместо `fb`.
-
-Словарь LZMA/LZMA2 выдаёт перенесённая ветка SetDictionary2. Поле
-CompressionOptions::dictionaryBytes хранит байты в quint64; это позволяет
-представить исходные размеры меньше МиБ и предел 3840 МиБ. Qt хранит
-значения combo как quint64, backend валидирует по тому же ряду и передаёт
-размер через d=<bytes>b. Auto оставляет выбор движку.
-
-SetDictionary2 выдаёт также исходный ряд памяти PPMd в 7z. Словарные
-варианты и доступность в Qt / backend определяет одна функция. При
-GetOrderMode=true backend кодирует dictionaryBytes как mem, как в
-upstream SetOutProperties, иначе как d.
-
-SetDictionary2 теперь выдаёт отдельную ветку kPPMdZip; формат ZIP определяет
-ID через исходную таблицу, хотя текст метода совпадает с PPMd в 7z.
-Для обоих вариантов Backend передаёт память через mem, порядок через o.
-
-SetDictionary2 выдаёт исходный ряд BZip2 для обоих форматов. Общие
-адаптеры Qt и ArchiveBackend используют его без отдельной таблицы;
-параметр словаря передаётся движку через d в байтах.
-
-Solid-настройки теперь представлены исходными CInfo::SolidIsSpecified и
-SolidBlockSize (UInt64 байт); CompressionOptions наследует перенесённую
-solid-часть CInfo. Qt combo хранит логарифмы (Auto=UInt32(-1), Non-solid=0,
-Full=64); OnOK преобразует их по upstream. SetSolidBlockSize2 владеет
-числовым рядом и расчётом Auto от словаря и метода. ArchiveBackend
-проверяет явный размер через эти же функции и передаёт -ms=<bytes>b.
-Собственные solid bool и solidBlockMiB удалены.
+Потоки задаются combo с исходными пределами метода и числом CPU вместо
+произвольного spinbox. SetNumThreads2 уменьшает Auto по оценке памяти для
+ZIP/LZMA2. UI показывает оценки для сжатия/распаковки; backend применяет
+исходный автоматический лимит 80% RAM перед запуском и передаёт -mmt
+только при явном выборе. Отмена и публикация stage остаются за ArchiveBackend.
+Пользовательский лимит памяти и Registry пока не перенесены; при неизвестной
+RAM отказ по лимиту отключён. Подробные источники и отклонения записаны
+в upstream-port-audit.md.

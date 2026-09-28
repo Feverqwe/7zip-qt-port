@@ -44,6 +44,9 @@ class CreateArchiveDialog : public QDialog {
     void SetOrder2();
     void SetDictionary2();
     void SetSolidBlockSize2();
+    UInt64 GetDict2() const;
+    void SetNumThreads2();
+    void SetMemoryUsage();
     void createFooter(QVBoxLayout *layout);
     void updateTargetPreview();
     void validateAndAccept();
@@ -65,7 +68,11 @@ class CreateArchiveDialog : public QDialog {
     QComboBox *dictionary_ = nullptr;
     QComboBox *wordSize_ = nullptr;
     QComboBox *solidBlock_ = nullptr;
-    QSpinBox *threads_ = nullptr;
+    QComboBox *threads_ = nullptr;
+    QLabel *hardwareThreads_ = nullptr;
+    QLabel *memoryUsage_ = nullptr;
+    QLabel *decompressionMemory_ = nullptr;
+    const NCompressDialog::CSystemInfo system_ = NCompressDialog::GetSystemInfo();
     QLineEdit *password_ = nullptr;
     QLineEdit *passwordConfirmation_ = nullptr;
     QListWidget *available_ = nullptr;

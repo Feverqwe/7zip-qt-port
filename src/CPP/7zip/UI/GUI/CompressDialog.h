@@ -83,6 +83,25 @@ CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID met
 QString Add_Size(UInt64 val);
 void OnOK(UInt32 solidLogSize, CInfo &Info);
 
+struct CSystemInfo {
+    UInt32 NumCPUs = 1;
+    UInt32 NumHardwareThreads = 1;
+    bool RamSizeDefined = false;
+    UInt64 RamSize = 0;
+    UInt64 RamUsageAuto = 0;
+};
+struct CThreadOptions {
+    UInt32 AutoNumThreads = 1;
+    QList<UInt32> Values;
+};
+CSystemInfo GetSystemInfo();
+CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 level, UInt64 dict64,
+                              UInt32 blockSizeLog, const CSystemInfo &system);
+UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, EMethodID methodId, UInt32 level,
+                                             UInt32 numThreads, UInt64 dict64, UInt32 blockSizeLog,
+                                             UInt64 &decompressMemory);
+QString AddMemUsage(UInt64 v);
+
 const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);
 } // namespace NCompressDialog

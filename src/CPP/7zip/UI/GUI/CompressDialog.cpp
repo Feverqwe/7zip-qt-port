@@ -2,8 +2,13 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Qt names replace CArcInfoEx / UString. SFX and external codecs are not exposed.
 #include "CompressDialog.h"
+#include "../../Common/MethodProps.h"
+#include "Windows/System.h"
 
 namespace NCompressDialog {
+static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;
+static const UInt32 kSolidLog_NoSolid = 0;
+static const UInt32 kSolidLog_FullSolid = 64;
 static const char *const kMethodsNames[] = {"Copy",
                                             "LZMA",
                                             "LZMA2",
@@ -160,7 +165,6 @@ EMethodID GetMethodID(QStringView name, QStringView format) {
 // LZMA/LZMA2 numeric branch from CCompressDialog::SetDictionary2 (0766b73).
 // Registry and Win32 insertion are handled by the Qt adapter.
 CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
-    static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;
     CDictionaryOptions options;
     switch (methodID) {
     case kLZMA:
@@ -386,8 +390,6 @@ QString Add_Size(UInt64 val) {
 
 CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId,
                                  UInt64 dict) {
-    static const UInt32 kSolidLog_NoSolid = 0;
-    static const UInt32 kSolidLog_FullSolid = 64;
     CSolidOptions options;
     const CFormatInfo &fi = GetFormatInfo(format);
     if (!fi.Solid_())
@@ -448,4 +450,312 @@ void OnOK(UInt32 solidLogSize, CInfo &Info) {
         Info.SolidBlockSize =
             (solidLogSize >= 64) ? (UInt64)(Int64)-1 : ((UInt64)1 << solidLogSize);
 }
+UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, EMethodID methodId, UInt32 level,
+                                             UInt32 numThreads, UInt64 dict64, UInt32 blockSizeLog,
+                                             UInt64 &decompressMemory) {
+    decompressMemory = (UInt64)(Int64)-1;
+
+    if (level == 0 && format.compare(QLatin1StringView("zstd"), Qt::CaseInsensitive) != 0) {
+        decompressMemory = (1 << 20);
+        return decompressMemory;
+    }
+    UInt64 size = 0;
+
+    const CFormatInfo &fi = GetFormatInfo(format);
+    if (fi.Filter_() && level >= 9)
+        size += (12 << 20) * 2 + (5 << 20);
+    // UInt32 numThreads = GetNumThreads2();
+
+    UInt32 numMainZipThreads = 1;
+
+    if (format.compare(QLatin1StringView("zip"), Qt::CaseInsensitive) == 0) {
+        UInt32 numSubThreads = 1;
+        if (methodId == kLZMA && numThreads > 1 && level >= 5)
+            numSubThreads = 2;
+        numMainZipThreads = numThreads / numSubThreads;
+        if (numMainZipThreads > 1)
+            size += (UInt64)numMainZipThreads * ((size_t)sizeof(size_t) << 23);
+        else
+            numMainZipThreads = 1;
+    }
+
+    if (dict64 == (UInt64)(Int64)-1
+        // && methodId != kZSTD
+    )
+        return (UInt64)(Int64)-1;
+
+    switch (methodId) {
+    case kLZMA:
+    case kLZMA2: {
+        const UInt32 dict = (dict64 >= kLzmaMaxDictSize ? kLzmaMaxDictSize : (UInt32)dict64);
+        UInt32 hs = dict - 1;
+        hs |= (hs >> 1);
+        hs |= (hs >> 2);
+        hs |= (hs >> 4);
+        hs |= (hs >> 8);
+        hs >>= 1;
+        if (hs >= (1 << 24))
+            hs >>= 1;
+        hs |= (1 << 16) - 1;
+        // if (numHashBytes >= 5)
+        if (level < 5)
+            hs |= (256 << 10) - 1;
+        hs++;
+        UInt64 size1 = (UInt64)hs * 4;
+        size1 += (UInt64)dict * 4;
+        if (level >= 5)
+            size1 += (UInt64)dict * 4;
+        size1 += (2 << 20);
+
+        UInt32 numThreads1 = 1;
+        if (numThreads > 1 && level >= 5) {
+            size1 += (2 << 20) + (4 << 20);
+            numThreads1 = 2;
+        }
+
+        UInt32 numBlockThreads = numThreads / numThreads1;
+
+        UInt64 chunkSize = 0; // it's solid chunk
+
+        if (methodId != kLZMA && numBlockThreads != 1) {
+            chunkSize = Get_Lzma2_ChunkSize(dict);
+
+            if (format.compare(QLatin1StringView("xz"), Qt::CaseInsensitive) == 0) {
+                if (blockSizeLog != (UInt32)(Int32)-1) {
+                    if (blockSizeLog == kSolidLog_FullSolid) {
+                        numBlockThreads = 1;
+                        chunkSize = 0;
+                    } else if (blockSizeLog != kSolidLog_NoSolid)
+                        chunkSize = (UInt64)1 << blockSizeLog;
+                }
+            }
+        }
+
+        if (chunkSize == 0) {
+            const UInt32 kBlockSizeMax = (UInt32)0 - (UInt32)(1 << 16);
+            UInt64 blockSize = (UInt64)dict + (1 << 16) + (numThreads1 > 1 ? (1 << 20) : 0);
+            blockSize += (blockSize >> (blockSize < ((UInt32)1 << 30) ? 1 : 2));
+            if (blockSize >= kBlockSizeMax)
+                blockSize = kBlockSizeMax;
+            size += numBlockThreads * (size1 + blockSize);
+        } else {
+            size += numBlockThreads * (size1 + chunkSize);
+            const UInt32 numPackChunks = numBlockThreads + (numBlockThreads / 8) + 1;
+            if (chunkSize < ((UInt32)1 << 26))
+                numBlockThreads++;
+            if (chunkSize < ((UInt32)1 << 24))
+                numBlockThreads++;
+            if (chunkSize < ((UInt32)1 << 22))
+                numBlockThreads++;
+            size += numPackChunks * chunkSize;
+        }
+
+        decompressMemory = dict + (2 << 20);
+        return size;
+    }
+
+        /*
+        case kZSTD:
+        {
+          CZstdEncProps props;
+          ZstdEncProps_Init(&props);
+          // props.level_zstd = level;
+          props.level_7z = level;
+          props.nbWorkers = numThreads;
+          ZstdEncProps_SetDictProps_From_CompressDialog(&props, *this);
+          ZstdEncProps_NormalizeFull(&props);
+          size = ZstdEncProps_GetMemUsage(&props);
+          decompressMemory = (UInt64)1 << props.windowLog;
+          return size;
+        }
+        */
+
+    case kPPMd: {
+        decompressMemory = dict64 + (2 << 20);
+        return size + decompressMemory;
+    }
+
+    case kDeflate:
+    case kDeflate64: {
+        UInt64 size1 = 3 << 20;
+        // if (level >= 7)
+        size1 += (1 << 20);
+        size += size1 * numMainZipThreads;
+        decompressMemory = (2 << 20);
+        return size;
+    }
+
+    case kBZip2: {
+        decompressMemory = (7 << 20);
+        UInt64 memForOneThread = (10 << 20);
+        return size + memForOneThread * numThreads;
+    }
+
+    case kPPMdZip: {
+        decompressMemory = dict64 + (2 << 20);
+        return size + (UInt64)decompressMemory * numThreads;
+    }
+    default:
+        break;
+    }
+
+    return (UInt64)(Int64)-1;
+}
+
+CSystemInfo GetSystemInfo() {
+    CSystemInfo info;
+    NWindows::NSystem::CProcessAffinity threadsInfo;
+    threadsInfo.InitST();
+#ifndef Z7_ST
+#ifdef _WIN32
+    threadsInfo.Get_and_return_NumProcessThreads_and_SysThreads(info.NumCPUs,
+                                                                info.NumHardwareThreads);
+#else
+    // POSIX CProcessAffinity exposes the primitive getters; copy the Windows normalization.
+    UInt32 num1 = 0, num2 = 0;
+    if (threadsInfo.Get()) {
+        num1 = threadsInfo.GetNumProcessThreads();
+        num2 = threadsInfo.GetNumSystemThreads();
+    }
+    if (num1 == 0)
+        num1 = NWindows::NSystem::GetNumberOfProcessors();
+    if (num1 == 0)
+        num1 = 1;
+    if (num2 < num1)
+        num2 = num1;
+    info.NumCPUs = num1;
+    info.NumHardwareThreads = num2;
+#endif
+#endif
+    size_t size = (size_t)sizeof(size_t) << 29;
+    info.RamSizeDefined = NWindows::NSystem::GetRamSize(size);
+    {
+        unsigned bits = sizeof(size_t) * 8;
+        if (bits == 32) {
+            const UInt32 limit2 = (UInt32)7 << 28;
+            if (size > limit2)
+                size = limit2;
+        }
+    }
+    info.RamSize = size;
+    const size_t kMinUseSize = 1 << 26;
+    if (size < kMinUseSize)
+        size = kMinUseSize;
+    info.RamUsageAuto = Calc_From_Val_Percents(size, 80);
+    return info;
+}
+
+CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 level, UInt64 dict64,
+                              UInt32 blockSizeLog, const CSystemInfo &system) {
+    CThreadOptions options;
+    const CFormatInfo &fi = GetFormatInfo(format);
+    if (!fi.MultiThread_())
+        return options;
+    const UInt32 numCPUs = system.NumCPUs;
+    const UInt32 numHardwareThreads = system.NumHardwareThreads;
+    const bool isZip = format.compare(QLatin1StringView("zip"), Qt::CaseInsensitive) == 0;
+    UInt32 numAlgoThreadsMax = numHardwareThreads * 2; // for unknow methods
+    if (isZip)
+        numAlgoThreadsMax =
+            8 << (sizeof(size_t) / 2); // 32 threads for 32-bit : 128 threads for 64-bit
+    else if (format.compare(QLatin1StringView("xz"), Qt::CaseInsensitive) == 0)
+        numAlgoThreadsMax = 256 * 2; // MTCODER_THREADS_MAX * 2
+    else
+        switch (methodID) {
+        case kLZMA:
+            numAlgoThreadsMax = 2;
+            break;
+        case kLZMA2:
+            numAlgoThreadsMax = 256 * 2;
+            break; // MTCODER_THREADS_MAX * 2
+        case kBZip2:
+            numAlgoThreadsMax = 64;
+            break;
+        // case kZSTD: numAlgoThreadsMax = num_ZSTD_threads_MAX; break;
+        case kCopy:
+        case kPPMd:
+        case kDeflate:
+        case kDeflate64:
+        case kPPMdZip:
+            numAlgoThreadsMax = 1;
+            break;
+        default:
+            break;
+        }
+    UInt32 autoThreads = numCPUs;
+    if (autoThreads > numAlgoThreadsMax)
+        autoThreads = numAlgoThreadsMax;
+
+    const UInt64 memUse_Limit = system.RamUsageAuto;
+
+    if (system.RamSizeDefined)
+        if (autoThreads > 1
+            // || (autoThreads == 0 && methodID == kZSTD)
+        ) {
+            if (isZip) {
+                for (; autoThreads > 1; autoThreads--) {
+                    UInt64 decompressMemory;
+                    const UInt64 usage = GetMemoryUsage_Threads_Dict_DecompMem(
+                        format, methodID, level, autoThreads, dict64, blockSizeLog,
+                        decompressMemory);
+                    if (usage <= memUse_Limit)
+                        break;
+                }
+            } else if (methodID == kLZMA2) {
+                const UInt32 numThreads1 = (level >= 5 ? 2 : 1);
+                UInt32 numBlockThreads = autoThreads / numThreads1;
+                for (; numBlockThreads > 1; numBlockThreads--) {
+                    autoThreads = numBlockThreads * numThreads1;
+                    UInt64 decompressMemory;
+                    const UInt64 usage = GetMemoryUsage_Threads_Dict_DecompMem(
+                        format, methodID, level, autoThreads, dict64, blockSizeLog,
+                        decompressMemory);
+                    if (usage <= memUse_Limit)
+                        break;
+                }
+                autoThreads = numBlockThreads * numThreads1;
+            }
+            /*
+            else if (methodID == kZSTD)
+            {
+              if (num_ZSTD_threads_MAX != 0)
+              {
+                CZstdEncProps props;
+                ZstdEncProps_Init(&props);
+                // props.level_zstd = level;
+                props.level_7z = level;
+                ZstdEncProps_SetDictProps_From_CompressDialog(&props, *this);
+                autoThreads = ZstdEncProps_GetNumThreads_for_MemUsageLimit(&props, memUse_Limit,
+            autoThreads);
+              }
+            }
+            */
+        }
+
+    options.AutoNumThreads = autoThreads;
+
+    if (numAlgoThreadsMax != autoThreads || autoThreads != 1)
+        for (UInt32 i = 1; i <= numHardwareThreads * 2 && i <= numAlgoThreadsMax; i++)
+            options.Values.append(i);
+    return options;
+}
+
+QString AddMemUsage(UInt64 v) {
+    const char *post;
+    if (v <= ((UInt64)16 << 30)) {
+        v = (v + (1 << 20) - 1) >> 20;
+        post = "MB";
+    } else if (v <= ((UInt64)64 << 40)) {
+        v = (v + (1 << 30) - 1) >> 30;
+        post = "GB";
+    } else {
+        const UInt64 v2 = v + ((UInt64)1 << 40) - 1;
+        if (v <= v2)
+            v = v2;
+        v >>= 40;
+        post = "TB";
+    }
+    return QString::number(v) + QLatin1Char(' ') + QString::fromLatin1(post);
+}
+
 } // namespace NCompressDialog

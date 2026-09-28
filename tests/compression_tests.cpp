@@ -33,7 +33,7 @@ class CompressionTests : public QObject {
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
-        auto *threads = dialog.findChild<QSpinBox *>("compressionThreads");
+        auto *threads = dialog.findChild<QComboBox *>("compressionThreads");
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
         auto *wordSize = dialog.findChild<QComboBox *>("compressionWordSize");
         auto *solidBlock = dialog.findChild<QComboBox *>("compressionSolidBlock");
@@ -66,7 +66,7 @@ class CompressionTests : public QObject {
         QVERIFY(dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
         solidBlock->setCurrentIndex(solidBlock->findData(0u));
-        threads->setValue(2);
+        threads->setCurrentIndex(threads->findData(2u));
         const CompressionOptions options = dialog.compressionOptions();
         QCOMPARE(options.level, 9);
         QCOMPARE(options.method, QStringLiteral("BZip2"));
@@ -172,7 +172,7 @@ class CompressionTests : public QObject {
         CompressionOptions options;
         options.level = level;
         options.method = method;
-        options.threads = 2;
+        options.threads = method == "PPMd" && format == "7z" ? 0 : 2;
         options.SolidIsSpecified = format == "7z";
         options.SolidBlockSize = 0;
         ArchiveBackend backend;

@@ -25,7 +25,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const QStringList methods = NCompressDialog::GetMethodNames(suffix);
     if (options.level < 0 || options.level > 9 ||
         !(formatInfo.LevelsMask & (UInt32(1) << options.level)) || options.threads < 0 ||
-        options.threads > 256 || (!options.method.isEmpty() && !methods.contains(options.method))) {
+        (!options.method.isEmpty() && !methods.contains(options.method))) {
         emit finished(false,
                       QStringLiteral("Недопустимые параметры сжатия для выбранного формата."));
         return;
@@ -33,6 +33,20 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const QString method = options.method.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
                                                                       : QStringLiteral("Deflate"))
                                                     : options.method;
+    const auto methodID =
+        options.level == 0 ? NCompressDialog::kCopy : NCompressDialog::GetMethodID(method, suffix);
+    const auto dictionary = NCompressDialog::SetDictionary2(methodID, UInt32(options.level));
+    const UInt64 dict = options.dictionaryBytes ? options.dictionaryBytes
+                        : dictionary.AutoDict   ? UInt64(dictionary.AutoDict)
+                                                : UInt64(-1);
+    const auto system = NCompressDialog::GetSystemInfo();
+    const auto threadOptions = NCompressDialog::SetNumThreads2(
+        suffix, methodID, UInt32(options.level), dict, UInt32(-1), system);
+    if (options.threads != 0 && !threadOptions.Values.contains(UInt32(options.threads))) {
+        emit finished(false,
+                      QStringLiteral("Число потоков не подходит для выбранного метода сжатия."));
+        return;
+    }
     bool validSolid = !options.SolidIsSpecified;
     if (options.SolidIsSpecified) {
         const auto solid = NCompressDialog::SetSolidBlockSize2(
@@ -59,6 +73,19 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         emit finished(false,
                       QStringLiteral("Размер словаря, слова или непрерывного блока не подходит "
                                      "для выбранного метода сжатия."));
+        return;
+    }
+    UInt64 decompressMemory;
+    const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
+        suffix, methodID, UInt32(options.level),
+        options.threads ? UInt32(options.threads) : threadOptions.AutoNumThreads, dict, UInt32(-1),
+        decompressMemory);
+    if (system.RamSizeDefined && memUsage != UInt64(-1) && memUsage > system.RamUsageAuto) {
+        emit finished(
+            false,
+            QStringLiteral("Для сжатия требуется %1 памяти, автоматический лимит — %2 (80% RAM).")
+                .arg(NCompressDialog::AddMemUsage(memUsage),
+                     NCompressDialog::AddMemUsage(system.RamUsageAuto)));
         return;
     }
     if (suffix == "zip") {

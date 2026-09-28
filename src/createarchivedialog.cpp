@@ -228,7 +228,7 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
     if (level_) {
         options.level = level_->currentData().toInt();
         options.method = method_->currentText();
-        options.threads = threads_->value();
+        options.threads = threads_->currentData().toInt();
         options.dictionaryBytes =
             dictionary_->isEnabled() ? dictionary_->currentData().toULongLong() : 0;
         options.wordSize = wordSize_->isEnabled() ? wordSize_->currentData().toInt() : 0;

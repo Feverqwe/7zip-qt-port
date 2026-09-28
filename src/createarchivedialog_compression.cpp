@@ -22,11 +22,22 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     solidBlock_->setObjectName("compressionSolidBlock");
     solidBlock_->addItem("Автоматически", 0);
     compressionForm->addRow("Размер непрерывного блока:", solidBlock_);
-    threads_ = new QSpinBox(compression);
+    auto *cpuRow = new QWidget(compression);
+    auto *cpuLayout = new QHBoxLayout(cpuRow);
+    cpuLayout->setContentsMargins(0, 0, 0, 0);
+    threads_ = new QComboBox(cpuRow);
     threads_->setObjectName("compressionThreads");
-    threads_->setRange(0, 256);
-    threads_->setSpecialValueText("Автоматически");
-    compressionForm->addRow("Потоки CPU:", threads_);
+    hardwareThreads_ = new QLabel(cpuRow);
+    hardwareThreads_->setObjectName("compressionHardwareThreads");
+    cpuLayout->addWidget(threads_, 1);
+    cpuLayout->addWidget(hardwareThreads_);
+    compressionForm->addRow("Потоки CPU:", cpuRow);
+    memoryUsage_ = new QLabel(compression);
+    memoryUsage_->setObjectName("compressionMemoryUsage");
+    compressionForm->addRow("Память для сжатия:", memoryUsage_);
+    decompressionMemory_ = new QLabel(compression);
+    decompressionMemory_->setObjectName("compressionDecompressionMemory");
+    compressionForm->addRow("Память для распаковки:", decompressionMemory_);
     form->addRow(compression);
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         method_->clear();
@@ -39,6 +50,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         SetOrder2();
         SetDictionary2();
         SetSolidBlockSize2();
+        SetNumThreads2();
         const bool compressed = level_->currentData().toInt() != 0;
         method_->setEnabled(compressed);
         dictionary_->setEnabled(compressed && dictionary_->count() > 1);
@@ -47,7 +59,12 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     };
     connect(level_, &QComboBox::currentIndexChanged, this, updateMethodOptions);
     connect(method_, &QComboBox::currentTextChanged, this, updateMethodOptions);
-    connect(dictionary_, &QComboBox::currentIndexChanged, this, [this] { SetSolidBlockSize2(); });
+    connect(dictionary_, &QComboBox::currentIndexChanged, this, [this] {
+        SetSolidBlockSize2();
+        SetNumThreads2();
+    });
+    connect(threads_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
+    connect(solidBlock_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
     SetLevel2();
     method_->addItems(NCompressDialog::GetMethodNames(format_->currentText()));
 }
@@ -116,13 +133,8 @@ void CreateArchiveDialog::SetSolidBlockSize2() {
         solidBlock_->currentIndex() < 0 ? UInt32(-1) : solidBlock_->currentData().toUInt();
     const auto method =
         NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
-    const auto dictionary = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
-    const UInt64 dict = dictionary_->currentData().toULongLong()
-                            ? dictionary_->currentData().toULongLong()
-                        : dictionary.AutoDict ? UInt64(dictionary.AutoDict)
-                                              : UInt64(-1);
     const auto options = NCompressDialog::SetSolidBlockSize2(
-        format_->currentText(), level_->currentData().toUInt(), method, dict);
+        format_->currentText(), level_->currentData().toUInt(), method, GetDict2());
     solidBlock_->clear();
     solidBlock_->addItem(options.Values.isEmpty()
                              ? QStringLiteral("Автоматически")

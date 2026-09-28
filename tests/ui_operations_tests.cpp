@@ -554,7 +554,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
                 dialog->findChild<QComboBox *>("compressionLevel")->setCurrentIndex(5);
                 dialog->findChild<QComboBox *>("compressionMethod")->setCurrentText("BZip2");
-                dialog->findChild<QSpinBox *>("compressionThreads")->setValue(2);
+                auto *threads = dialog->findChild<QComboBox *>("compressionThreads");
+                threads->setCurrentIndex(threads->findData(2u));
                 if (!dialog->findChild<QLabel *>("archiveTargetPreview")
                          ->text()
                          .endsWith("new archive.zip")) {
