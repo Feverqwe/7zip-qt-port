@@ -28,7 +28,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
-    src/qtlistview.h
+    src/qtlistview.cpp src/qtlistview.h
     src/CPP/7zip/UI/FileManager/AppState.h
     src/CPP/7zip/UI/FileManager/ListViewDialog.cpp src/CPP/7zip/UI/FileManager/ListViewDialog.h
     src/CPP/7zip/UI/FileManager/EditDialog.cpp src/CPP/7zip/UI/FileManager/EditDialog.h
@@ -94,6 +94,10 @@ if(BUILD_TESTING)
     target_link_libraries(list_view_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME list_view_dialog COMMAND list_view_dialog_tests)
     set_tests_properties(list_view_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(list_activation_tests tests/list_activation_tests.cpp)
+    target_link_libraries(list_activation_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME list_activation COMMAND list_activation_tests)
+    set_tests_properties(list_activation PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(folder_history_tests tests/folder_history_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(folder_history_tests PRIVATE tests)
     target_link_libraries(folder_history_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -367,6 +371,10 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_property(TEST properties APPEND PROPERTY ENVIRONMENT
         "SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    foreach(suite IN ITEMS list_view_dialog folder_history)
+        set_property(TEST ${suite} APPEND PROPERTY ENVIRONMENT
+            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/${suite}-settings.ini")
+    endforeach()
     find_program(SEVENZIP_TEST_SH NAMES sh)
     if(SEVENZIP_TEST_SH)
         add_test(NAME project_memory_setup COMMAND ${SEVENZIP_TEST_SH}

@@ -82,6 +82,11 @@ filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies a
 metadata snapshot to `CPanel::Properties`, which owns enumeration and totals.
 `CListViewDialog` presents the result through the shared Qt list adapter;
 the dialog never reads the file table or backend itself.
+`CListViewDialog` reads CFmSettings for single-click activation and delegates
+hover selection to the Qt CListView adapter. Its persistent hover index and
+owned timer prevent access to deleted rows; hovering does not confirm a path.
+`FmSettingsPath` supplies the shared INI location outside MainWindow; callers
+may supply an explicit path to history dialogs.
 `CEditDialog` presents full list values; `FileViewerDialog` owns file viewing/editing.
 
 `CPasswordDialog` owns the archive password prompt and show/hide state, preserving

@@ -18,6 +18,7 @@ UString CPanel::OpenBookmark(CFastFolders &fastFolders, unsigned index) {
 QString CPanel::FoldersHistory(CFolderHistory &history, const QString &settingsPath,
                                QWidget *parent) {
     CListViewDialog listViewDialog(parent);
+    listViewDialog.SettingsPath = settingsPath;
     listViewDialog.DeleteIsAllowed = true;
     listViewDialog.SelectFirst = true;
     listViewDialog.Title = ToUString(QStringLiteral("История папок"));

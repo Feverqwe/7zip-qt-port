@@ -104,14 +104,7 @@ QIcon MainWindow::toolbarIcon(int kind) {
     return QIcon(pixmap);
 }
 
-QString MainWindow::toolbarSettingsPath() {
-    const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
-    if (!overridden.isEmpty())
-        return overridden;
-    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
-    QDir().mkpath(directory);
-    return QDir(directory).filePath("toolbar.ini");
-}
+QString MainWindow::toolbarSettingsPath() { return FmSettingsPath(); }
 
 void MainWindow::recordVisitedPath(const QString &path) {
     if (path.isEmpty())

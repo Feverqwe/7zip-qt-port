@@ -3,6 +3,9 @@
 #pragma once
 #include <QString>
 
+// Shared Qt configuration-path adapter for callers of registry-ported modules.
+QString FmSettingsPath();
+
 struct CFmSettings {
     bool ShowDots;
     bool ShowRealFileIcons;

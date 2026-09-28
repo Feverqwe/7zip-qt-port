@@ -23,7 +23,7 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 | Copy/Move, CopyDialog.rc/.cpp | Ресурсный контракт проходит: шесть controls, Copy/Move, 440×250 и 340×220. Адаптации: scrolling summary вместо static, Qt footer и Unicode ellipsis. |
 | Имя/маска/создание папки, ComboDialog.rc/.cpp | Prompt → editable combo → OK/Cancel; начальное Value, raw OK, Cancel и геометрия 360×150/260×150 проверены. Пока нет отдельного ресурсного контракта. |
 | Split/Combine, SplitDialog.rc/.cpp и PanelSplitFile.cpp | Destination/Browse → volume size → footer; error/normal и 2/3/5 частей, normal/compact проверены. Inline error заменяет MessageBox, папка выбирается native Qt dialog. |
-| История/свойства, ListViewDialog.rc/.cpp | Один/два столбца, header, footer, Copy/Delete/Enter/detail и 540×360/360×240 проверены. Settings-driven one-click/hover общего списка пока не перенесён; набор свойств ограничен snapshot. |
+| История/свойства, ListViewDialog.rc/.cpp | Один/два столбца, header, footer, Copy/Delete/Enter/detail и 540×360/360×240 проверены. Перенесена settings-driven one-click/hover ветка через Qt adapter; набор свойств ограничен snapshot. |
 | Полное значение, EditDialog.rc/.cpp | Read-only multiline, без wrap, обе прокрутки, Enter в edit, Close; 480×320/320×240 проверены. |
 | Extract, GUI/ExtractDialog.rc/.cpp | Destination, optional folder name, modes слева и password справа; name shown/hidden, 640×360/470×330, история/сохранение/отмена проверены. Отсутствуют абсолютные пути, ElimDup, NtSecurity и Help; Ask адаптирован к отказу при конфликте, а не callback. |
 | Create/Add, GUI/CompressDialog.rc/.cpp | Исправлены stacked layout и порядок основной формы: compression слева, encryption справа, source picker после archive/options. 760×720/640×480, 7z/ZIP, show/hide confirmation и reachability проверены. Это частичный порт: нет update/path modes, volumes, SFX, shared/delete options, parameters, CompressOptionsDialog и Help; Add не меняет compression options. |
@@ -59,7 +59,12 @@ Ctrl+A выделяет все, Ctrl+C/Ctrl+Insert копируют полные
 Удаление сохраняется только после OK, Cancel оставляет историю неизменной.
 Одноколоночный список проверяется при 540×360 и 360×240 по JSON/геометрии;
 Windows rendering недоступен, визуальная идентичность не подтверждена.
-Режим hover/one-click общего списка пока не перенесён.
+Настройка одного щелчка действует и в общем списке истории/свойств.
+Один щелчок подтверждает путь истории; Alt+щелчок и щелчок свойства показывают
+полный текст. Ctrl/Shift/Meta сохраняют выбор без открытия. Наведение в течение
+400ms выбирает всю строку без активации; leave/нажатие/модификаторы прекращают
+ожидание. Qt использует фиксированный interval вместо системного Win32 hover time.
+В основной файловой панели hover/track-select пока отсутствует.
 
 Полное значение свойства и Alt+Enter истории открывают просмотр текста;
 компоновка и взаимодействие описаны в [контракте](ui-layout-contracts.md#full-text-detail).

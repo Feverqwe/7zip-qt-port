@@ -1,9 +1,9 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ListViewDialog.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Qt replaces Win32 controls/clipboard/OnSize. Settings-driven hover
-// activation is not ported yet; the one/two-column functional bodies remain.
+// Qt replaces Win32 controls/clipboard/OnSize and activation notifications.
 #include "ListViewDialog.h"
 #include "EditDialog.h"
+#include "RegistryUtils.h"
 #include "ViewSettings.h"
 #include "qtlistview.h"
 #include <QApplication>
@@ -40,6 +40,10 @@ bool CListViewDialog::OnInit() {
     _listView->setColumnWidth(0, NumColumns > 1 ? 100 : 400);
     if (NumColumns > 1)
         _listView->setColumnWidth(1, 300);
+    CFmSettings st;
+    st.Load(SettingsPath.isEmpty() ? FmSettingsPath() : SettingsPath);
+    if (st.SingleClick)
+        _listView->SetSingleClickActivation(true);
     _listView->installEventFilter(this);
     UString s;
     FOR_VECTOR(i, Strings) {
@@ -67,7 +71,14 @@ bool CListViewDialog::OnInit() {
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CListViewDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
+    if (st.SingleClick)
+        connect(_listView, &QTreeWidget::itemClicked, this, [this] {
+            const auto modifiers = QApplication::keyboardModifiers();
+            if (!(modifiers & (Qt::ControlModifier | Qt::MetaModifier | Qt::ShiftModifier)))
+                OnEnter();
+        });
+    else
+        connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
     _listView->setFocus();
     return true;
 }

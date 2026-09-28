@@ -2,7 +2,18 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // QSettings replaces the current-user File Manager registry key.
 #include "RegistryUtils.h"
+#include <QDir>
 #include <QSettings>
+#include <QStandardPaths>
+
+QString FmSettingsPath() {
+    const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+    if (!overridden.isEmpty())
+        return overridden;
+    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QDir().mkpath(directory);
+    return QDir(directory).filePath("toolbar.ini");
+}
 
 static const char *const kShowDots = "ShowDots";
 static const char *const kShowRealFileIcons = "ShowRealFileIcons";

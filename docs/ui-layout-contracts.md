@@ -67,6 +67,9 @@ The single-column list fills the resizable body; OK/Cancel sit below it.
 There is no separate Delete button in the reference. Delete affects all
 selected rows, Ctrl+A/C copy/select, Enter confirms the focused path.
 Long paths remain reachable through scrolling, without eliding stored text.
+SingleClick changes activation to one click and enables hover selection without
+confirmation. Modified selection clicks do not activate. Interaction coverage
+is in `list_activation`; this adaptation does not change the geometry contract.
 `folder_history` verifies list/footer visibility and separation at 540×360
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
 usability; rendered Windows parity remains unverified.

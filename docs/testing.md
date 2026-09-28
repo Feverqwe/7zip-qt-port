@@ -4,6 +4,9 @@
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,
 and normal/compact geometry reports. `settings` exercises window consumers
 across disk/archive and all four view modes.
+`list_activation` covers settings-driven single/double-click in history,
+modified selection clicks, Alt/full-property detail, hover selection on/off,
+leaving the list and deleting a hovered row. Fixtures use a temporary INI.
 
 `compression_limit` now owns a fresh temporary settings file on each suite run;
 its default assertions do not depend on INI data left by previous runs.

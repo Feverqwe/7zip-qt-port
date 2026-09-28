@@ -21,6 +21,7 @@ class CListViewDialog : public QDialog {
     bool OnInit();
     void accept() override;
     UString Title;
+    QString SettingsPath;
     bool SelectFirst = false;
     bool DeleteIsAllowed = false;
     bool StringsWereChanged = false;

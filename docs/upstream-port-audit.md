@@ -8,6 +8,33 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## Активация общего списка и выбор при наведении (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+`CPP/7zip/UI/FileManager/ListViewDialog.cpp::{OnInit,OnNotify}`: перенесена
+оставшаяся ветка CFmSettings.Load/SingleClick → ONECLICKACTIVATE/TRACKSELECT,
+сохранён безусловный FULLROWSELECT. Активация делегирует существующему OnEnter:
+один столбец подтверждает focused path, Alt или два столбца показывают detail.
+Qt itemClicked/itemDoubleClicked заменяют LVN_ITEMACTIVATE/NM_DBLCLK и глобальный
+флаг версии common controls; Ctrl/Shift/Meta исключены из активации, поскольку
+Qt clicked приходит и для жестов выделения. Клавиатурная активация не изменена.
+
+`qtlistview.cpp/.h` — новая узкая presentation-адаптация TRACKSELECT, для которого
+Qt не имеет прямого аналога: dwell 400ms, выбор всей строки без открытия,
+остановка при leave/press/modifiers/drag, QPersistentModelIndex защищает от
+удаления hovered row, повторная проверка позиции — от scroll/reorder.
+Win32 default hover time не запрашивается: фиксированный Qt interval является
+явным платформенным отличием. Основная панель table/icon view пока не получила
+hover/track-select. Функциональные тела списка/clipboard/delete/detail сохранены.
+
+FmSettingsPath — общий Qt/INI path adapter, перенесён из MainWindow без изменения
+политики override/AppConfigLocation/toolbar.ini; такого пути нет в registry upstream.
+FoldersHistory передаёт explicit SettingsPath, остальные вызывающие используют
+общий adapter. Не добавлена повторная реализация config location в dialog.
+Проверки list_activation покрывают single/double, modifiers, Alt/properties detail,
+hover on/off, leave и удаление row; прямые consumers — list_view_dialog,
+folder_history, properties, settings, fm_settings. Layout не изменён.
+
 ## Настройки файловых списков (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
