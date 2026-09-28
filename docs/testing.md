@@ -3,9 +3,16 @@
 `copy_dialog` checks OK via both accept() and the button, Cancel, history order,
 case-insensitive deduplication, INI migration and explicit empty history,
 native-folder-dialog adaptation (normalization and canceled browsing), and
-Copy/Move geometry at 440×250 and 340×220. Forty Unicode filenames exercise
-selection scrolling. Current-build JSON is in `build/dev/ui-reports/`.
+Copy/Move geometry at 440×250 and 340×220. A forty-item Unicode selection
+exercises the upstream eleven-line summary and scrolling. Current-build JSON
+is in `build/dev/ui-reports/`.
 `ui_operations` also checks the persisted `CopyHistory` after actual F5 copying.
+
+`panel_copy_info` checks copied decimal formatting through UInt64 maximum,
+mixed file/folder size properties, undefined-size propagation, defined zero,
+selection order, relative Unicode names, five-name cutoff and full-selection
+totals. `ui_operations` checks the displayed F5 filesystem file and F6 archive
+folder summaries, including its proxy size and trailing folder separator.
 
 `project_memory_setup` runs setup in an isolated temporary Git repository,
 checks memory/template initialization, then verifies that a populated index,

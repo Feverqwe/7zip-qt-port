@@ -41,15 +41,21 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(QFileInfo::exists(source));
 
         const QString destination = temp.filePath("destination");
-        QTimer::singleShot(0, &window, [destination] {
+        QString copyInfo;
+        QTimer::singleShot(0, &window, [destination, &copyInfo] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<CopyDialog *>(widget)) {
+                    copyInfo =
+                        dialog->findChild<QPlainTextEdit *>("copySelectionInfo")->toPlainText();
                     dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
                     dialog->accept();
                 }
             }
         });
         action(window, "copyAction")->trigger();
+        QVERIFY(copyInfo.startsWith("Файлов: 1    ( 8 байт )\n\n"));
+        QVERIFY(copyInfo.contains(temp.path() + '/'));
+        QVERIFY(copyInfo.endsWith(QStringLiteral("  имя с пробелом.txt")));
         const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
         QVERIFY(!action(window, "copyAction")->isEnabled());
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
@@ -243,11 +249,14 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         window.openArchive(temp.filePath("items.7z"));
         backend.completeList({ArchiveEntry{QStringLiteral("папка/файл с пробелом.txt"), 4, 4}});
         table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
-        const auto submit = [&window, &destination] {
-            QTimer::singleShot(0, &window, [&destination] {
+        QString moveInfo;
+        const auto submit = [&window, &destination, &moveInfo] {
+            QTimer::singleShot(0, &window, [&destination, &moveInfo] {
                 for (QWidget *widget : QApplication::topLevelWidgets()) {
                     if (auto *dialog = qobject_cast<CopyDialog *>(widget);
                         dialog && dialog->isVisible()) {
+                        moveInfo =
+                            dialog->findChild<QPlainTextEdit *>("copySelectionInfo")->toPlainText();
                         dialog->findChild<QComboBox *>("copyDestination")
                             ->setCurrentText(destination);
                         dialog->accept();
@@ -257,6 +266,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             action(window, "moveAction")->trigger();
         };
         submit();
+        QVERIFY(moveInfo.startsWith("Папок: 1    ( 4 байт )\n\n"));
+        QVERIFY(moveInfo.endsWith(QStringLiteral("  папка/")));
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("папка/файл с пробелом.txt")}));
         QCOMPARE(backend.removeCalls, 0);

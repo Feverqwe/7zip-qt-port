@@ -62,7 +62,7 @@ Extract column ordering on disposable fixtures.
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
-| `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy` | Перенесены поля CCopyDialog, OnInit/OnOK/OnButtonSetPath, чтение/запись и исходная политика уникальной истории. Qt layouts заменяют OnSize, QSettings — Registry; старый header содержит только alias. Информация выделения остаётся адаптацией имён без полной GetItemsInfoString. |
+| `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `App.cpp`, `Panel.h`, `PanelListNotify.cpp`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy`, `CPanel::GetItemsInfoString`; `PanelListNotify.cpp::ConvertSizeToString` | Перенесены CCopyDialog, история, сводка выделения и форматирование чисел. Qt layouts заменяют OnSize, QSettings — Registry, snapshot свойств — COM; старый header содержит только alias. Остальные App/Panel/ListNotify функции пока не перенесены. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
 | `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
 | `src/archiveformats.h` | `FileManager/FilePlugins.cpp`, `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственный статический список расширений для эвристики двойного щелчка и фильтра диалога. В upstream расширения приходят от установленных обработчиков; движок сам определяет формат при явном открытии. |
@@ -555,3 +555,39 @@ App copy workflow ограничивает список 20 записями и �
 на прежних границах; произвольное переименование цели/новая папка из CApp::Copy
 пока не перенесены. Самостоятельный copydialog.cpp удалён; header — alias.
 Форматирование изменено обязательным clang-format.
+
+## Сводка выделения для Copy/Move (2026-09-28)
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/FileManager/App.cpp::CPanel::GetItemsInfoString`,
+`AddSizeValue`, `AddValuePair1`, `AddValuePair2`, `AddPropValueToSum`;
+`PanelListNotify.cpp::ConvertSizeToString` (обе перегрузки, INT_TO_STR_SPEC);
+`Panel.h::GetItemsInfoString`, `CopyDialog.h::kCopyDialog_NumInfoLines`.
+Скопированы исходные циклы и ветви: суммы папок/файлов раздельно, неизвестное
+значение UInt64(-1) распространяется без дальнейшего счёта, общий размер
+выводится только при двух ненулевых определённых суммах, затем путь и первые
+11−6 имён с разделителем для папок и многоточием для остатка. Сохраняются
+имена CPanel, методов и _currentFolderPrefix. Форматирование UInt32/UInt64
+скопировано целиком с промежуточным Byte[32], wchar_t[32] и группами по три
+цифры; QString::fromWCharArray заменяет UString только на выходе.
+
+В зеркальном Panel.h портирована только часть CPanel, владеющая сводкой.
+IFolderFolder заменён snapshot CObjectVector<CPanelItem> с RelPath/IsFolder/
+SizeDefined/Size; upstream CRecordVector<UInt32> используется без изменений.
+AddPropValueToSum получает тот же индекс и свойство Size без COM/PROPVARIANT;
+языковые resource строки заменены русскими Qt строками. QString заменяет
+UString для UI текста, noexcept — throw(). Конструктор snapshot и optional
+Info аргумент CCopyDialog — узкая интеграция: исходный App устанавливает Info
+до Create, а Qt создаёт виджеты в конструкторе.
+
+MainWindow::selectedCopyInfo только собирает свойства выбранных строк:
+относительное имя из представления, размеры файлов из UserRole, папок архива
+из CProxyArc. Для папок диска SizeDefined=false соответствует FSFolder.cpp
+kpidSize до FolderStat_Defined. Missing-size свойства архивных файлов уже
+нормализуются текущим backend в 0; различение отсутствующего Size остаётся
+долгом parser/metadata, без изменения границы ArchiveBackend в этой итерации.
+Сводка не устраняет пересечение выбранных папок/файлов: как upstream, суммы
+относятся к выбранным строкам. `sevenzip_panel` собирает эти UI модули один
+раз, не добавляя QWidget-зависимость к sevenzip_common. clang-format меняет
+оформление. Предыдущий конструктор имён оставлен как compatibility fallback;
+рабочие F5/F6 теперь всегда получают перенесённую сводку.

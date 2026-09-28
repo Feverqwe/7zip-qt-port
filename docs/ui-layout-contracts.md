@@ -48,16 +48,18 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
 
 - Destination label precedes the editable path; Browse stays to its right.
-- Selected names occupy the area below the path and above OK/Cancel.
-- Names preserve line boundaries. Read-only scrolling makes all selected
-  names and long filenames reachable without enlarging the footer.
+- Selection counts and known sizes precede the source path and first five
+  relative names; a larger selection ends with an ellipsis. Folder names end
+  in a separator. The summary stays below the destination and above OK/Cancel.
+- Names preserve line boundaries. Read-only scrolling makes the displayed
+  summary and long filenames reachable without enlarging the footer.
 - At 440×250 and 340×220 in Copy and Move states, the label fits, path and
   Browse do not overlap, the selection area and footer stay fully visible,
   and OK/Cancel remain separate. Qt may enforce its style minimum size.
 
 Adaptations: Qt layouts replace Win32 resize arithmetic; QPlainTextEdit with
-no wrapping replaces the static text, which upstream limits to a short summary.
-The current view lists names without upstream property totals. `copy_dialog`
+no wrapping replaces the static text. `CPanel::GetItemsInfoString` supplies
+the upstream summary and eleven-line limit from a Qt property snapshot. `copy_dialog`
 writes four JSON reports and checks these relationships with a large selection.
 These checks establish structure and usability on macOS, not pixel parity.
 

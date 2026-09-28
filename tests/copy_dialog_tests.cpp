@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/CopyDialog.h"
+#include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
 
@@ -131,9 +132,14 @@ class CopyDialogTests : public QObject {
         QFETCH(bool, move);
         QFETCH(QSize, size);
         QStringList sources;
-        for (int i = 0; i < 40; ++i)
+        CObjectVector<CPanelItem> items;
+        CRecordVector<UInt32> indices;
+        for (int i = 0; i < 40; ++i) {
             sources << QStringLiteral("/tmp/очень длинное имя с пробелами %1.txt").arg(i);
-        CCopyDialog dialog(move, "/initial", sources, {"/one"});
+            indices.Add(items.Add({QFileInfo(sources.last()).fileName(), i == 0, true, 1000}));
+        }
+        const QString summary = CPanel("/initial/", items).GetItemsInfoString(indices);
+        CCopyDialog dialog(move, "/initial", sources, {"/one"}, nullptr, summary);
         dialog.resize(size);
         dialog.show();
         QCoreApplication::processEvents();
@@ -155,9 +161,10 @@ class CopyDialogTests : public QObject {
                 UiInspection::bounds(*buttons, dialog).top());
         QVERIFY(UiInspection::separate(*buttons->button(QDialogButtonBox::Ok),
                                        *buttons->button(QDialogButtonBox::Cancel), dialog));
-        QCOMPARE(info->toPlainText().split('\n').size(), 40);
+        QCOMPARE(info->toPlainText(), summary);
+        QCOMPARE(info->toPlainText().split('\n').size(), kCopyDialog_NumInfoLines);
         info->moveCursor(QTextCursor::End);
-        QCOMPARE(info->textCursor().blockNumber(), 39);
+        QCOMPARE(info->textCursor().blockNumber(), kCopyDialog_NumInfoLines - 1);
         QVERIFY(UiInspection::writeReport(
             dialog, QString("copy-dialog-%1-%2").arg(move).arg(size.width())));
     }

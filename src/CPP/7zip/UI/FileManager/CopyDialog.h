@@ -14,7 +14,8 @@ class CCopyDialog : public QDialog {
 
   public:
     CCopyDialog(bool move, const QString &initialPath, const QStringList &sources,
-                const QStringList &history, QWidget *parent = nullptr);
+                const QStringList &history, QWidget *parent = nullptr,
+                const QString &info = QString());
     QString Title;
     QString Static;
     QString Value;

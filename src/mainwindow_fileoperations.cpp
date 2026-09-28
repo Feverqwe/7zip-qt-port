@@ -1,6 +1,31 @@
+#include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 
+QString MainWindow::selectedCopyInfo() const {
+    CObjectVector<CPanelItem> items;
+    CRecordVector<UInt32> indices;
+    for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
+        const int row = index.row();
+        const QTableWidgetItem *name = table_->item(row, 0);
+        CPanelItem item;
+        item.RelPath = name->text();
+        item.IsFolder = name->data(Qt::UserRole + 1).toBool();
+        if (state_ == State::Viewing && item.IsFolder) {
+            item.Size = proxyArchive_.Dirs[name->data(Qt::UserRole + 4).toUInt()].Size;
+            item.SizeDefined = true;
+        } else if (!item.IsFolder) {
+            const QVariant size = table_->item(row, 2)->data(Qt::UserRole + 2);
+            item.SizeDefined = size.isValid() && size.toLongLong() >= 0;
+            item.Size = size.toULongLong();
+        }
+        indices.Add(items.Add(item));
+    }
+    QString prefix = state_ == State::Viewing ? archiveDisplayPath() : directory_;
+    if (!prefix.endsWith('/'))
+        prefix += '/';
+    return CPanel(prefix, items).GetItemsInfoString(indices);
+}
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
     if (state_ != State::Filesystem || !QFileInfo(destination).isDir() ||
         QFileInfo(destination).isSymLink() || sources.isEmpty()) {
@@ -63,7 +88,7 @@ void MainWindow::moveSelected() {
             return;
         QStringList history;
         ReadCopyHistory(history, toolbarSettingsPath());
-        CopyDialog dialog(true, returnDirectory_, paths, history, this);
+        CopyDialog dialog(true, returnDirectory_, paths, history, this, selectedCopyInfo());
         if (dialog.exec() != QDialog::Accepted)
             return;
         const QString destination = dialog.destination();
@@ -94,7 +119,7 @@ void MainWindow::transferSelected(bool move) {
         return;
     QStringList history;
     ReadCopyHistory(history, toolbarSettingsPath());
-    CopyDialog dialog(move, directory_, sources, history, this);
+    CopyDialog dialog(move, directory_, sources, history, this, selectedCopyInfo());
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();

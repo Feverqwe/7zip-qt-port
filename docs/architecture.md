@@ -5,9 +5,16 @@ The Copy/Move view is the adapted upstream `CCopyDialog` under
 Qt layouts own resizing and a read-only scrolling view keeps long selections
 reachable. The copied `ViewSettings.*` history functions use QSettings with
 the upstream `CopyHistory` key and a fallback to legacy `copy/history`.
-`MainWindow` supplies selection names and validates the destination; it uses
+`MainWindow` supplies a folder-property snapshot and validates the destination; it uses
 the upstream case-insensitive list update and 20-entry cap. Workers and archive
 operations keep their existing owners.
+
+The `sevenzip_panel` library owns the copied `CPanel::GetItemsInfoString` in
+`App.cpp` and `ConvertSizeToString` in `PanelListNotify.cpp`. `CPanel` retains
+the summary API and upstream `CObjectVector`/`CRecordVector`; the snapshot
+adapter replaces `IFolderFolder` COM property access. The filesystem leaves
+directory sizes undefined; archives use the existing `CProxyArc` totals.
+The Qt constructor receives the completed summary before `CCopyDialog::OnInit`.
 
 Test-only layout diagnostics live in `tests/layout_inspection.h/.cpp`. They
 inspect public Qt widget geometry and write JSON without editable field values;

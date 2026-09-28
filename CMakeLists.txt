@@ -16,6 +16,12 @@ set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 
+add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
+set_target_properties(sevenzip_panel PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+target_include_directories(sevenzip_panel PUBLIC src)
+target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
+
 qt_add_executable(sevenzip_desktop
     src/main.cpp
     src/CPP/Common/Wildcard.cpp src/CPP/Common/Wildcard.h src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp src/CPP/7zip/UI/FileManager/PanelSort.cpp src/CPP/7zip/UI/FileManager/PanelSort.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp
@@ -48,10 +54,14 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(panel_copy_info_tests tests/panel_copy_info_tests.cpp)
+    target_link_libraries(panel_copy_info_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME panel_copy_info COMMAND panel_copy_info_tests)
+    set_tests_properties(panel_copy_info PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(copy_dialog_tests tests/copy_dialog_tests.cpp tests/layout_inspection.cpp
         src/CPP/7zip/UI/FileManager/CopyDialog.cpp src/CPP/7zip/UI/FileManager/CopyDialog.h)
     target_include_directories(copy_dialog_tests PRIVATE src tests)
-    target_link_libraries(copy_dialog_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    target_link_libraries(copy_dialog_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_panel)
     add_test(NAME copy_dialog COMMAND copy_dialog_tests)
     set_tests_properties(copy_dialog PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
@@ -250,5 +260,13 @@ endif()
 foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests file_viewer_tests nested_archive_tests volume_operations_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_common)
+    endif()
+endforeach()
+
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests
+    ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
+    checksum_tests file_viewer_tests nested_archive_tests panel_sort_tests combine_name_tests panel_key_tests)
+    if(TARGET ${target})
+        target_link_libraries(${target} PRIVATE sevenzip_panel)
     endif()
 endforeach()

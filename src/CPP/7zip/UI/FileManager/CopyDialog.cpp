@@ -17,15 +17,17 @@
 #include <QVBoxLayout>
 
 CCopyDialog::CCopyDialog(bool move, const QString &initialPath, const QStringList &sources,
-                         const QStringList &history, QWidget *parent)
+                         const QStringList &history, QWidget *parent, const QString &info)
     : QDialog(parent), Title(move ? "Переместить" : "Копировать"),
-      Static(move ? "Переместить в:" : "Копировать в:"), Value(initialPath), Strings(history) {
+      Static(move ? "Переместить в:" : "Копировать в:"), Value(initialPath), Info(info),
+      Strings(history) {
     // The Qt caller supplies filenames, rather than IFolder property indices.
-    for (const QString &source : sources) {
-        if (!Info.isEmpty())
-            Info += '\n';
-        Info += QFileInfo(source).fileName();
-    }
+    if (Info.isNull())
+        for (const QString &source : sources) {
+            if (!Info.isEmpty())
+                Info += '\n';
+            Info += QFileInfo(source).fileName();
+        }
     OnInit();
 }
 
