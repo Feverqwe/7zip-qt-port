@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
+#include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "mainwindow.h"
 
 void MainWindow::showArchiveFolder(const QString &folder) {
@@ -151,10 +152,10 @@ void MainWindow::refreshActions() {
     editFile_->setEnabled(idle && oneFile && (state_ == State::Filesystem || writableArchive));
     split_->setEnabled(idle && state_ == State::Filesystem && oneFile &&
                        !QFileInfo(selectedFilesystemPaths().value(0)).isSymLink());
-    combine_->setEnabled(split_->isEnabled() &&
-                         QRegularExpression(R"(\.0{2,}1$)")
-                             .match(QFileInfo(selectedFilesystemPaths().value(0)).fileName())
-                             .hasMatch());
+    CVolSeqName sequence;
+    combine_->setEnabled(
+        split_->isEnabled() &&
+        sequence.ParseName(QFileInfo(selectedFilesystemPaths().value(0)).fileName()));
     rename_->setEnabled(idle && one && (state_ == State::Filesystem || writableArchive));
     properties_->setEnabled(idle && selected);
     for (QAction *action : hashActions_)

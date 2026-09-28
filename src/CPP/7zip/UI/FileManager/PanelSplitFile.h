@@ -11,6 +11,7 @@ struct CVolSeqName {
     void SetNumDigits(quint64 numVolumes);
     bool ParseName(const QString &name);
     QString GetNextName();
+    QString GetCombinedName() const;
 };
 
 // Functional worker from PanelSplitFile.cpp; Qt replaces NIO and progress sync.

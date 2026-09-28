@@ -107,3 +107,8 @@ remain owned by Qt; the upstream alternate selection mode is not ported.
 добавляет проверку изменения размера, `flush` и отмену до первого чтения.
 `VolumeOperation` владеет проверкой путей, временным именем, публикацией
 и откатом; Split пока использует собственный цикл копирования.
+
+`CVolSeqName::ParseName` определяет допустимую первую часть как для меню,
+так и для worker. `GetCombinedName` содержит блок выбора имени результата
+из upstream `CApp::Combine` (удаление точек и fallback `file`). `MainWindow`
+выбирает папку назначения; правила имени принадлежат `PanelSplitFile.cpp`.

@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "mainwindow.h"
 
 MainWindow::~MainWindow() {
@@ -37,11 +38,13 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
     VolumeDialog dialog(mode, paths.first(), this, parts);
     if (dialog.exec() != QDialog::Accepted)
         return;
+    CVolSeqName sequence;
+    if (mode == VolumeOperation::Mode::Combine && !sequence.ParseName(source.fileName()))
+        return;
     const QString destination =
         mode == VolumeOperation::Mode::Split
             ? dialog.destination()
-            : QDir(dialog.destination())
-                  .filePath(source.fileName().left(source.fileName().lastIndexOf('.')));
+            : QDir(dialog.destination()).filePath(sequence.GetCombinedName());
     volumeOperation_ =
         new VolumeOperation(mode, paths.first(), destination, dialog.volumeSizes(), this);
     volumeProgress_ = new QProgressDialog(

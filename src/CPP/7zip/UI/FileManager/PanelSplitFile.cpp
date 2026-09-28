@@ -105,3 +105,16 @@ bool CThreadCombine::ProcessVirt(QString *error) {
     }
     return true;
 }
+
+// Output-name block from CApp::Combine in upstream PanelSplitFile.cpp.
+QString CVolSeqName::GetCombinedName() const {
+    QString outName = UnchangedPart;
+    while (!outName.isEmpty()) {
+        if (outName.back() != QLatin1Char('.'))
+            break;
+        outName.chop(1);
+    }
+    if (outName.isEmpty())
+        outName = QStringLiteral("file");
+    return outName;
+}

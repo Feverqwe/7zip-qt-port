@@ -41,19 +41,13 @@ qint64 VolumeOperation::parseSize(const QString &text) {
 
 QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *error) {
     const QFileInfo first(firstPart);
-    const QRegularExpression suffix(R"(^(.*)\.0{2,}1$)");
-    const auto match = suffix.match(first.fileName());
-    if (!match.hasMatch() || match.captured(1).isEmpty()) {
-        *error = QStringLiteral("Выберите первую часть с именем .001.");
-        return {};
-    }
-    const QString base = match.captured(1);
-    const int width = first.fileName().size() - base.size() - 1;
     CVolSeqName sequence;
     if (!sequence.ParseName(first.fileName())) {
-        *error = QStringLiteral("Выберите первую часть с именем .001.");
+        *error = QStringLiteral("Выберите первую часть с числовым суффиксом 01.");
         return {};
     }
+    const QString base = sequence.UnchangedPart;
+    const qsizetype width = sequence.ChangedPart.size();
     QStringList parts;
     QString name = first.fileName();
     for (int number = 1; number <= 10000; ++number) {
@@ -73,7 +67,7 @@ QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *er
         return {};
     }
     const QRegularExpression other(
-        QStringLiteral("^%1\\.(\\d{%2,})$").arg(QRegularExpression::escape(base)).arg(width));
+        QStringLiteral("^%1(\\d{%2,})$").arg(QRegularExpression::escape(base)).arg(width));
     for (const QString &name : first.dir().entryList(QDir::Files | QDir::Hidden | QDir::System)) {
         const auto candidate = other.match(name);
         if (candidate.hasMatch() && candidate.captured(1).toInt() > parts.size()) {
