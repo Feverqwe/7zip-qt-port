@@ -134,6 +134,7 @@ class MainWindow : public QMainWindow {
     void showSettings();
     void updateFilesystemIcons();
     bool eventFilter(QObject *watched, QEvent *event) override;
+    bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
     void showDirectory(const QString &path, bool remember);
     void appendFilesystemEntry(const QFileInfo &file);

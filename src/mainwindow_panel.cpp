@@ -16,8 +16,12 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
     pathCombo_->setObjectName("pathCombo");
     pathCombo_->setEditable(true);
     pathCombo_->setInsertPolicy(QComboBox::NoInsert);
+    pathCombo_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    pathCombo_->setMinimumContentsLength(16);
     path_ = pathCombo_->lineEdit();
     path_->setObjectName("archivePath");
+    path_->installEventFilter(this);
+    pathCombo_->installEventFilter(this);
     path_->setPlaceholderText("Путь к папке или архиву");
     for (const QString &visited : settings.value("history/paths").toStringList()) {
         if (pathCombo_->count() >= 20)

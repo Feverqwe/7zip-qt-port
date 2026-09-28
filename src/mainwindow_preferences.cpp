@@ -308,35 +308,9 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         drop->accept();
         return true;
     }
-    if ((watched == table_ || watched == table_->viewport() || watched == iconList_ ||
-         (iconList_ && watched == iconList_->viewport())) &&
-        event->type() == QEvent::KeyPress) {
-        auto *key = static_cast<QKeyEvent *>(event);
-        if (handleSelectionKey(key))
-            return true;
-        if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
-            key->modifiers() == Qt::AltModifier) {
-            openBookmark(key->key() - Qt::Key_0);
-            return true;
-        }
-        if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
-            key->modifiers() == (Qt::AltModifier | Qt::ShiftModifier)) {
-            saveBookmark(key->key() - Qt::Key_0);
-            return true;
-        }
-        if (!(key->modifiers() &
-              (Qt::ControlModifier | Qt::MetaModifier | Qt::AltModifier | Qt::ShiftModifier))) {
-            if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
-                openItem_->isEnabled()) {
-                openItem_->trigger();
-                return true;
-            }
-            if (key->key() == Qt::Key_Backspace && parent_->isEnabled()) {
-                parent_->trigger();
-                return true;
-            }
-        }
-    }
+    if (event->type() == QEvent::KeyPress &&
+        handlePanelKey(watched, static_cast<QKeyEvent *>(event)))
+        return true;
     return QMainWindow::eventFilter(watched, event);
 }
 
