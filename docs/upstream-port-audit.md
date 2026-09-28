@@ -8,6 +8,39 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## Путь архива, история и архиватор (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Источники: `CPP/7zip/UI/GUI/CompressDialog.cpp/.h` и
+`CPP/7zip/UI/Common/ZipRegistry.cpp/.h`; адаптированные владельцы сохраняют пути в `src/`.
+
+`CCompressDialog::{SetArchiveName,SetArchiveName2,GetFinalPath_Smart,
+SetArcPathFields,ArcPath_WasChanged}` и `GetExtDotPos` перенесены для 7z/ZIP:
+сохранены поиск точки после разделителя, исключение ведущей точки,
+удаление последнего расширения при смене формата, Trim, fallback StartDirPrefix,
+разбор выбранной истории и ветка `always`. Qt snapshot текста заменяет Win32
+ComboBox; QString — тексты этой границы, UString сохранён для исходных
+операций расширения; QDir/QFileInfo — адаптеры
+NName::GetFullPath/GetFullPathAndSplit. Проверка NUL необходима на границе native API.
+Метаданные двух доступных кодеков заменяют CArcInfoEx; оба имеют KeepName=false.
+SFX, KeepName=true, OriginalFileName, hash handlers, внешние кодеки и
+OnButtonSetArchive пока не перенесены.
+
+`CCompressDialog::OnOK` содержит только исходный блок истории/ArcType: сначала
+новый полный путь, затем прежние уникальные пути до 20. Чтение контролов и Save
+остаются в Qt-обвязке. Локальный AddUniqueString сохраняет алгоритм одноимённого
+helper из ExtractDialog.cpp без зависимости rules/backend от виджета извлечения.
+Полный OnOK ещё не перенесён. `NCompression::CInfo::{Save,Load}` получили исходные
+ArcPaths/ArcType, defaults и ключи ArcHistory/Archiver; QSettings INI заменяет
+Registry, остальные группы сохраняются.
+
+`createarchivedialog.cpp` остаётся presentation/integration glue с неперенесёнными
+частями формы. Combo показывает полное имя с расширением; activated заменяет
+CBN_SELCHANGE/PostMessage. Backend определяет формат по суффиксу, поэтому Qt
+подтверждает только совпадающие с выбранным форматом .7z/.zip, существующего
+родителя и незанятую цель; upstream допускает более общий путь.
+Форматирование — обязательный clang-format.
+
 ## Свойства и двухколоночный список (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

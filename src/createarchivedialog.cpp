@@ -6,7 +6,8 @@
 CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
                                          const QStringList &initialSources, QWidget *parent,
                                          const QString &existingTarget)
-    : QDialog(parent), currentDirectory_(directory), existingTarget_(existingTarget) {
+    : QDialog(parent), currentDirectory_(directory), StartDirPrefix(directory),
+      existingTarget_(existingTarget) {
     setObjectName("createArchiveDialog");
     setWindowTitle(existingTarget_.isEmpty() ? "Создать архив" : "Добавить в архив");
     resize(760, 720);
@@ -82,12 +83,24 @@ void CreateArchiveDialog::createSourcePicker(QVBoxLayout *layout) {
 
 void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     auto *form = new QFormLayout;
-    name_ = new QLineEdit("archive", this);
+    archivePath_ = new QComboBox(this);
+    archivePath_->setObjectName("archivePath");
+    archivePath_->setEditable(true);
+    archivePath_->setInsertPolicy(QComboBox::NoInsert);
+    for (unsigned i = 0; i < m_RegistryInfo.ArcPaths.Size() && i < 20; i++)
+        archivePath_->addItem(m_RegistryInfo.ArcPaths[i]);
+    name_ = archivePath_->lineEdit();
     name_->setObjectName("archiveName");
-    form->addRow("Имя:", name_);
+    form->addRow("Архив:", archivePath_);
     format_ = new QComboBox(this);
     format_->setObjectName("archiveFormat");
     format_->addItems({"7z", "zip"});
+    const int savedFormat = format_->findText(m_RegistryInfo.ArcType, Qt::MatchFixedString);
+    format_->setCurrentIndex(savedFormat >= 0 ? savedFormat : 0);
+    CCompressDialog path;
+    path.Format = format_->currentText();
+    path.SetArchiveName("archive");
+    name_->setText(path.m_ArchivePath);
     form->addRow("Формат:", format_);
     if (existingTarget_.isEmpty()) {
         createCompressionOptions(form);
@@ -103,10 +116,10 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     layout->addLayout(form);
     if (!existingTarget_.isEmpty()) {
         const QFileInfo target(existingTarget_);
-        name_->setText(target.completeBaseName());
+        name_->setText(target.fileName());
         format_->setCurrentText(target.suffix().toLower());
         destination_->setText(target.absolutePath());
-        name_->setEnabled(false);
+        archivePath_->setEnabled(false);
         format_->setEnabled(false);
         destination_->setEnabled(false);
         browse->setEnabled(false);
@@ -116,6 +129,23 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
             QFileDialog::getExistingDirectory(this, "Место сохранения", destination_->text());
         if (!path.isEmpty())
             destination_->setText(path);
+    });
+    connect(format_, &QComboBox::currentTextChanged, this, [this] {
+        CCompressDialog path;
+        path.Format = format_->currentText();
+        path.m_ArchivePath = name_->text();
+        path.SetArchiveName2();
+        name_->setText(path.m_ArchivePath);
+    });
+    connect(archivePath_, &QComboBox::activated, this, [this](int index) {
+        CCompressDialog path;
+        const QString selectedPath = archivePath_->itemText(index);
+        path.Format = format_->currentText();
+        path.ArcPath_WasChanged(selectedPath);
+        format_->setCurrentText(path.Format);
+        path.SetArcPathFields(selectedPath);
+        destination_->setText(path.DirPrefix);
+        name_->setText(path.m_ArchivePath);
     });
 }
 
@@ -179,11 +209,18 @@ void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
 }
 
 void CreateArchiveDialog::updateTargetPreview() {
-    preview_->setText(existingTarget_.isEmpty()
-                          ? "Новый архив: " + QDir(destination_->text())
-                                                  .filePath(name_->text().trimmed() + "." +
-                                                            format_->currentText())
-                          : "Добавить в открытый архив: " + existingTarget_);
+    preview_->setText(existingTarget_.isEmpty() ? "Новый архив: " + archivePath()
+                                                : "Добавить в открытый архив: " + existingTarget_);
+}
+
+QString CreateArchiveDialog::archivePath() const {
+    CCompressDialog path;
+    path.DirPrefix = destination_->text();
+    path.StartDirPrefix = StartDirPrefix;
+    path.m_ArchivePath = name_->text();
+    QString result;
+    path.GetFinalPath_Smart(result);
+    return result;
 }
 
 void CreateArchiveDialog::validateAndAccept() {
@@ -199,11 +236,12 @@ void CreateArchiveDialog::validateAndAccept() {
     if (existingTarget_.isEmpty() && !checkMemoryUsage())
         return;
     const QString base = name_->text().trimmed();
-    const QFileInfo destination(destination_->text());
+    const QFileInfo destination(QFileInfo(archivePath()).absolutePath());
     if (selected_.isEmpty() ||
         (existingTarget_.isEmpty() &&
-         (base.isEmpty() || base == "." || base == ".." || base.contains('/') ||
-          base.contains('\\') || !destination.isDir()))) {
+         (base.isEmpty() || archivePath().isEmpty() || !destination.isDir() ||
+          QFileInfo(archivePath()).suffix().compare(format_->currentText(), Qt::CaseInsensitive) !=
+              0))) {
         QMessageBox::warning(this, "Создать архив",
                              "Выберите источники, имя и существующую папку сохранения.");
         return;
@@ -214,10 +252,7 @@ void CreateArchiveDialog::validateAndAccept() {
             return;
         }
     }
-    target_ =
-        existingTarget_.isEmpty()
-            ? QDir(destination.absoluteFilePath()).filePath(base + "." + format_->currentText())
-            : existingTarget_;
+    target_ = existingTarget_.isEmpty() ? archivePath() : existingTarget_;
     if (existingTarget_.isEmpty() &&
         (QFileInfo(target_).exists() || QFileInfo(target_).isSymLink())) {
         QMessageBox::warning(this, "Создать архив", "Архив уже существует: " + target_);
@@ -225,6 +260,10 @@ void CreateArchiveDialog::validateAndAccept() {
     }
     if (existingTarget_.isEmpty()) {
         SaveOptionsInMem();
+        CCompressDialog path;
+        path.m_ArchivePath = target_;
+        path.Format = format_->currentText();
+        path.OnOK(m_RegistryInfo);
         m_RegistryInfo.Save(compressionSettingsPath());
     }
     accept();

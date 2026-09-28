@@ -67,6 +67,8 @@ class CompressionPreferencesTests final : public QObject {
         }
         {
             CreateArchiveDialog restarted(dir_.path(), {source_});
+            QCOMPARE(format(restarted)->currentText(), QString("zip"));
+            format(restarted)->setCurrentText("7z");
             QCOMPARE(limit(restarted)->currentData().toString(), QString("256M"));
             format(restarted)->setCurrentText("zip");
             QCOMPARE(limit(restarted)->currentData().toString(), QString("50%"));

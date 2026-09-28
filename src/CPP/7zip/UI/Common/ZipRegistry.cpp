@@ -110,6 +110,11 @@ static void Key_Get_UInt32(QSettings &key, const char *name, UInt32 &value) {
 
 void CInfo::Save(const QString &path) const {
     QSettings optionsKey(path, QSettings::IniFormat);
+    optionsKey.setValue("Compression/Archiver", ArcType);
+    QStringList arcPaths;
+    FOR_VECTOR(i, ArcPaths)
+    arcPaths.append(ArcPaths[i]);
+    optionsKey.setValue("Compression/ArcHistory", arcPaths);
     optionsKey.beginGroup(QLatin1String(kOptionsKeyName));
     // Only this ported options group is replaced. Other application settings survive.
     optionsKey.remove(QString());
@@ -128,8 +133,14 @@ void CInfo::Save(const QString &path) const {
 }
 
 void CInfo::Load(const QString &path) {
+    ArcPaths.Clear();
     Formats.Clear();
+    ArcType = QStringLiteral("7z");
     QSettings optionsKey(path, QSettings::IniFormat);
+    if (optionsKey.contains("Compression/Archiver"))
+        ArcType = optionsKey.value("Compression/Archiver").toString();
+    for (const QString &s : optionsKey.value("Compression/ArcHistory").toStringList())
+        ArcPaths.Add(s);
     optionsKey.beginGroup(QLatin1String(kOptionsKeyName));
     const QStringList formatIDs = optionsKey.childGroups();
     for (int i = 0; i < formatIDs.size(); i++) {

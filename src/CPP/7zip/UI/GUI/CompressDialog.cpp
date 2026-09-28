@@ -3,7 +3,119 @@
 // Qt names replace CArcInfoEx / UString. SFX and external codecs are not exposed.
 #include "CompressDialog.h"
 #include "../../Common/MethodProps.h"
+#include "Common/MyString.h"
 #include "Windows/System.h"
+#include <QDir>
+#include <QFileInfo>
+
+static const unsigned kHistorySize = 20;
+
+static int GetExtDotPos(const UString &s) {
+    const int dotPos = s.ReverseFind_Dot();
+    if (dotPos > s.ReverseFind_PathSepar() + 1)
+        return dotPos;
+    return -1;
+}
+
+void CCompressDialog::SetArchiveName2() {
+    QString fileName = m_ArchivePath;
+    // Neither supported codec has Flags_KeepName; Info.KeepName is false.
+    SetArchiveName(fileName);
+}
+
+void CCompressDialog::SetArchiveName(const QString &name) {
+    UString fileName(name.toStdWString().c_str());
+    const int dotPos = GetExtDotPos(fileName);
+    if (dotPos >= 0)
+        fileName.DeleteFrom(unsigned(dotPos));
+    fileName.Add_Dot();
+    fileName += Format.toStdWString().c_str();
+    m_ArchivePath = QString::fromWCharArray(fileName.Ptr());
+}
+
+void CCompressDialog::ArcPath_WasChanged(const QString &path) {
+    const UString name(path.toStdWString().c_str());
+    const int dotPos = GetExtDotPos(name);
+    if (dotPos < 0)
+        return;
+    const UString ext = name.Ptr(unsigned(dotPos + 1));
+    if (ext.IsEqualTo_NoCase(Format.toStdWString().c_str()))
+        return;
+    const QStringList formats = {QStringLiteral("7z"), QStringLiteral("zip")};
+    for (int i = 0; i < formats.size(); i++) {
+        if (ext.IsEqualTo_NoCase(formats[i].toStdWString().c_str())) {
+            Format = formats[i];
+            return;
+        }
+    }
+}
+
+bool CCompressDialog::GetFinalPath_Smart(QString &resPath) const {
+    resPath.clear();
+    QString name = m_ArchivePath;
+    name = name.trimmed();
+    QString fullPath;
+    QString dirPrefx = DirPrefix;
+    if (dirPrefx.isEmpty())
+        dirPrefx = StartDirPrefix;
+    // QDir is the narrow NName::GetFullPath adapter for native paths.
+    const bool res = !name.isEmpty() && !name.contains(QChar::Null);
+    if (res) {
+        fullPath = QDir::cleanPath(QDir(dirPrefx).absoluteFilePath(name));
+        resPath = fullPath;
+    }
+    return res;
+}
+
+bool CCompressDialog::SetArcPathFields(const QString &path) {
+    QString name;
+    return SetArcPathFields(path, name, true);
+}
+
+bool CCompressDialog::SetArcPathFields(const QString &path, QString &name, bool always) {
+    QString resDirPrefix;
+    QString resFileName;
+    const bool res = !path.isEmpty() && !path.contains(QChar::Null);
+    if (res) {
+        const QFileInfo info(QDir::cleanPath(QDir().absoluteFilePath(path)));
+        resDirPrefix = info.absolutePath();
+        if (!resDirPrefix.endsWith('/'))
+            resDirPrefix += '/';
+        resFileName = info.fileName();
+        DirPrefix = resDirPrefix;
+        name = resFileName;
+    } else {
+        if (!always)
+            return false;
+        DirPrefix.clear();
+        name = path;
+    }
+    m_ArchivePath = name;
+    return res;
+}
+
+void CCompressDialog::OnOK(NCompression::CInfo &registry) const {
+    CObjectVector<QString> arcPaths;
+    QString s;
+    if (!GetFinalPath_Smart(s))
+        return;
+    // AddUniqueString from ExtractDialog.cpp, with the same case-insensitive
+    // rule; the extraction widget is not a dependency of this rules module.
+    const auto AddUniqueString = [](CObjectVector<QString> &strings, const QString &value) {
+        FOR_VECTOR(i, strings)
+        if (value.compare(strings[i], Qt::CaseInsensitive) == 0)
+            return;
+        strings.Add(value);
+    };
+    AddUniqueString(arcPaths, s);
+    registry.ArcType = Format;
+    FOR_VECTOR(i, registry.ArcPaths) {
+        if (arcPaths.Size() >= kHistorySize)
+            break;
+        AddUniqueString(arcPaths, registry.ArcPaths[i]);
+    }
+    registry.ArcPaths = arcPaths;
+}
 
 namespace NCompressDialog {
 static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;

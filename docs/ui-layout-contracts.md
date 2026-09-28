@@ -178,7 +178,9 @@ pixel coordinates or native button ordering.
 Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 `IDD_COMPRESS`. Implemented view: `src/createarchivedialog*.cpp`.
 
-- Source navigation and selection precede archive name and format.
+- Source navigation and selection precede the editable archive-path combo and format.
+  The combo retains the extension and offers the last twenty destinations;
+  its text and the format row do not overlap at either tested size.
 - Compression controls retain level, method, dictionary, word size, solid block,
   CPU threads, and memory controls. Encryption contains method, password,
   confirmation, and Show Password; destination follows the options.

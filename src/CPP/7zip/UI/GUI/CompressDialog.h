@@ -115,3 +115,20 @@ UInt64 Get_MemUse_Bytes(const NCompression::CMemUse &mu, const CSystemInfo &syst
 const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);
 } // namespace NCompressDialog
+
+// Source-ported archive-path portion of CCompressDialog. Qt presentation
+// supplies the editable combo text and directory; codec/SFX branches are omitted.
+class CCompressDialog {
+  public:
+    QString DirPrefix;
+    QString StartDirPrefix;
+    QString m_ArchivePath;
+    QString Format = QStringLiteral("7z");
+    void SetArchiveName(const QString &name);
+    void SetArchiveName2();
+    void ArcPath_WasChanged(const QString &path);
+    bool SetArcPathFields(const QString &path);
+    bool SetArcPathFields(const QString &path, QString &name, bool always);
+    bool GetFinalPath_Smart(QString &resPath) const;
+    void OnOK(NCompression::CInfo &registry) const;
+};

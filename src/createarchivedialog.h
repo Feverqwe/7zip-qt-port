@@ -62,13 +62,16 @@ class CreateArchiveDialog : public QDialog {
     void validateAndAccept();
     void addSource(const QString &path);
     void showDirectory(const QString &path);
+    QString archivePath() const;
 
     QString currentDirectory_;
+    const QString StartDirPrefix;
     QString target_;
     QString existingTarget_;
     QStringList selected_;
     QLineEdit *sourcePath_ = nullptr;
     QLineEdit *name_ = nullptr;
+    QComboBox *archivePath_ = nullptr;
     QLineEdit *destination_ = nullptr;
     QLabel *preview_ = nullptr;
     QComboBox *format_ = nullptr;

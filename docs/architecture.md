@@ -93,7 +93,10 @@ stores destination history and mode preferences in the Extraction INI group.
 creates a missing destination and selects process arguments. Passwords are
 never persisted.
 
-Compression rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
+Compression and archive-path rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
+The partial `CCompressDialog` owns name/extension transitions, path resolution
+and archive history confirmation; `CreateArchiveDialog` supplies combo/directory
+snapshots. `NCompression::CInfo` persists ArcPaths and ArcType.
 `createarchivedialog_compression.cpp` binds them to Qt controls;
 `createarchivedialog_resources.cpp` supplies CPU/RAM information and display;
 `createarchivedialog_preferences.cpp` handles profile selection and persistence.

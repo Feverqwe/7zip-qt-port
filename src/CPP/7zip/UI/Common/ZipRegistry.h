@@ -48,6 +48,8 @@ struct CFormatOptions {
     CFormatOptions() { ResetForLevelChange(); }
 };
 struct CInfo {
+    QString ArcType = QStringLiteral("7z");
+    CObjectVector<QString> ArcPaths;
     CObjectVector<CFormatOptions> Formats;
     void Save(const QString &path) const;
     void Load(const QString &path);

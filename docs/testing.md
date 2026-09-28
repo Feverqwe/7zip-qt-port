@@ -1,5 +1,12 @@
 # Regression strategy
 
+`compression_path` covers extension replacement (hidden names, dotted directories),
+path prefix/fallback/Trim, NUL rejection, history selection, twenty-item cap and
+case-insensitive duplicates, settings reset, Cancel and validation failure.
+A real Unicode-named archive is created through dialog/backend, tested with 7zz
+and extracted for byte comparison. Combo geometry at 760×720 and 640×480 writes
+`archive-path-*.json` in `build/dev/ui-reports/`.
+
 `folder_history` checks the upstream 100-path cap, case-insensitive duplicates,
 Unicode including supplementary characters, ignored MVP settings, empty persisted
 history, multiselection deletion/copy, permission to delete, OK/Cancel and

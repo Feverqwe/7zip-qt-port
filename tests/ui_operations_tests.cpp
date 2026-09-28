@@ -563,7 +563,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                     dialog->reject();
                     return;
                 }
-                dialog->findChild<QLineEdit *>("archiveName")->setText("new archive");
+                dialog->findChild<QLineEdit *>("archiveName")->setText("new archive.zip");
                 dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
                 dialog->findChild<QComboBox *>("compressionLevel")->setCurrentIndex(5);
                 dialog->findChild<QComboBox *>("compressionMethod")->setCurrentText("BZip2");
