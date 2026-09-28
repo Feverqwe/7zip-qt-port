@@ -50,7 +50,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             QCOMPARE(combo->itemText(0), location);
             QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"),
                                QSettings::IniFormat);
-            QVERIFY(settings.value("history/paths").toStringList().contains(location));
+            QVERIFY(settings.value("FolderHistory").toStringList().contains(location));
         }
         ControlledBackend backend;
         MainWindow window(&backend);

@@ -1,5 +1,12 @@
 # Architecture
 
+Folder history is owned by upstream `CFolderHistory` (`AppState.h`/`App.cpp`),
+with UString/UStringVector and a 100-entry bound. MainWindow's address combo
+is a projection of that state. `CPanel::FoldersHistory` in PanelFolderChange.cpp
+owns confirmation/rebuilding; `CListViewDialog` supplies Qt list interaction.
+Navigation remains in MainWindow. ViewSettings translates upstream string
+vectors at the QSettings boundary (FolderHistory, legacy history/paths fallback).
+
 The Copy/Move view is the adapted upstream `CCopyDialog` under
 `src/CPP/7zip/UI/FileManager/CopyDialog.*`; `src/copydialog.h` is an alias.
 Qt layouts own resizing and a read-only scrolling view keeps long selections

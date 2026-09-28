@@ -45,6 +45,19 @@ SEVENZIP_CAPTURE_SCREENSHOTS=1 ctest --preset dev -R '^ui_geometry$' --output-on
 
 This writes optional PNGs next to the JSON. Open only the affected screenshot.
 
+## Folder history list
+
+Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/ListViewDialog.rc/.cpp` and
+`PanelFolderChange.cpp::CPanel::FoldersHistory`.
+The single-column list fills the resizable body; OK/Cancel sit below it.
+There is no separate Delete button in the reference. Delete affects all
+selected rows, Ctrl+A/C copy/select, Enter confirms the focused path.
+Long paths remain reachable through scrolling, without eliding stored text.
+`folder_history` verifies list/footer visibility and separation at 540×360
+and 360×240 and writes JSON reports. Qt geometry establishes structure and
+usability; rendered Windows parity remains unverified.
+
 ## Shared name/mask dialog
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

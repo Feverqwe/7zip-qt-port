@@ -8,6 +8,9 @@
 #include "Common/MyVector.h"
 #include <QString>
 
+class CFolderHistory;
+class QWidget;
+
 struct CPanelItem {
     QString RelPath;
     bool IsFolder = false;
@@ -19,6 +22,8 @@ class CPanel {
   public:
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
+    static QString FoldersHistory(CFolderHistory &history, const QString &settingsPath,
+                                  QWidget *parent);
 
   private:
     CObjectVector<CPanelItem> _folder;

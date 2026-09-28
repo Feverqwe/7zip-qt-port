@@ -2,8 +2,29 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // GetItemsInfoString and its helpers retain upstream control flow. Qt resource
 // strings and a folder-property snapshot replace Win32 language/COM access.
+#include "AppState.h"
 #include "CopyDialog.h"
 #include "Panel.h"
+
+static void AddUniqueStringToHead(UStringVector &list, const UString &s) {
+    for (unsigned i = 0; i < list.Size();)
+        if (s.IsEqualTo_NoCase(list[i]))
+            list.Delete(i);
+        else
+            i++;
+    list.Insert(0, s);
+}
+
+void CFolderHistory::Normalize() {
+    const unsigned kMaxSize = 100;
+    if (Strings.Size() > kMaxSize)
+        Strings.DeleteFrom(kMaxSize);
+}
+
+void CFolderHistory::AddString(const UString &s) {
+    AddUniqueStringToHead(Strings, s);
+    Normalize();
+}
 
 CPanel::CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items)
     : _folder(items), _currentFolderPrefix(prefix) {}

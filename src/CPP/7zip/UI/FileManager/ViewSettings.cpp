@@ -7,6 +7,33 @@
 #include <QSettings>
 
 static const char *const kCopyHistoryValueName = "CopyHistory";
+static const char *const kFolderHistoryValueName = "FolderHistory";
+
+static void SaveStringList(const char *valueName, const UStringVector &folders,
+                           const QString &settingsPath) {
+    QStringList strings;
+    FOR_VECTOR(i, folders)
+    strings.append(ToQString(folders[i]));
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.setValue(valueName, strings);
+}
+
+static void ReadStringList(const char *valueName, UStringVector &folders,
+                           const QString &settingsPath) {
+    folders.Clear();
+    QSettings key(settingsPath, QSettings::IniFormat);
+    const QStringList strings = key.value(valueName, key.value("history/paths")).toStringList();
+    for (const QString &s : strings)
+        folders.Add(ToUString(s));
+}
+
+void SaveFolderHistory(const UStringVector &folders, const QString &settingsPath) {
+    SaveStringList(kFolderHistoryValueName, folders, settingsPath);
+}
+
+void ReadFolderHistory(UStringVector &folders, const QString &settingsPath) {
+    ReadStringList(kFolderHistoryValueName, folders, settingsPath);
+}
 
 static void SaveStringList(const char *valueName, const QStringList &folders,
                            const QString &settingsPath) {

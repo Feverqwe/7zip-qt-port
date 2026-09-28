@@ -10,13 +10,22 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets)
 qt_standard_project_setup()
 
 add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
+    third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
+    third_party/7zip/CPP/Common/MyWindows.cpp
+    third_party/7zip/CPP/Common/StringConvert.cpp third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/CPP/Windows/System.cpp src/CPP/7zip/Common/MethodProps.cpp src/CPP/7zip/UI/Common/ZipRegistry.cpp
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
+if(WIN32)
+    target_link_libraries(sevenzip_common PUBLIC oleaut32)
+endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
+    src/CPP/7zip/UI/FileManager/AppState.h
+    src/CPP/7zip/UI/FileManager/ListViewDialog.cpp src/CPP/7zip/UI/FileManager/ListViewDialog.h
     src/CPP/7zip/UI/FileManager/ComboDialog.cpp src/CPP/7zip/UI/FileManager/ComboDialog.h
     src/CPP/7zip/UI/FileManager/BrowseDialog.cpp src/CPP/7zip/UI/FileManager/BrowseDialog.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
@@ -63,6 +72,12 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(folder_history_tests tests/folder_history_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(folder_history_tests PRIVATE tests)
+    target_link_libraries(folder_history_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME folder_history COMMAND folder_history_tests)
+    set_tests_properties(folder_history PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     add_test(NAME ui_parity_tool COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_parity_tests.py)

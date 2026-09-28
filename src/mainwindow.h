@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CPP/7zip/UI/Agent/Agent.h"
+#include "CPP/7zip/UI/FileManager/AppState.h"
 #include "archivebackend.h"
 #include "archiveformats.h"
 #include "combodialog.h"
@@ -123,6 +124,7 @@ class MainWindow : public QMainWindow {
     static QIcon toolbarIcon(int kind);
     static QString toolbarSettingsPath();
     void recordVisitedPath(const QString &path);
+    void refreshPathHistory();
     void showFoldersHistory();
     struct Bookmark {
         QString path;
@@ -215,6 +217,7 @@ class MainWindow : public QMainWindow {
     QString archiveFolder_;
     QString pendingArchiveFolder_;
     Bookmark bookmarks_[10];
+    CFolderHistory folderHistory_;
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;

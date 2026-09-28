@@ -1,5 +1,11 @@
 # Regression strategy
 
+`folder_history` checks the upstream 100-path cap, case-insensitive duplicates,
+Unicode including supplementary characters, legacy settings, empty persisted
+history, multiselection deletion/copy, permission to delete, OK/Cancel and
+normal/compact list geometry. Reports are `folder-history-{540,360}.json`.
+`ui_navigation` covers persistent archive folders through this history adapter.
+
 `ui_parity_tool` tests resource extraction and rejects broken/ambiguous widget
 reports, stale baselines and invented evidence symbols. `ui_parity_copy` uses a
 CTest fixture to regenerate Copy/Move reports with `copy_dialog`, then checks

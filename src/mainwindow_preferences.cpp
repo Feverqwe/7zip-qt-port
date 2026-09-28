@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/Panel.h"
 #include "mainwindow.h"
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
@@ -115,58 +116,28 @@ QString MainWindow::toolbarSettingsPath() {
 void MainWindow::recordVisitedPath(const QString &path) {
     if (path.isEmpty())
         return;
-    const int existing = pathCombo_->findText(path, Qt::MatchExactly);
-    if (existing >= 0)
-        pathCombo_->removeItem(existing);
-    pathCombo_->insertItem(0, path);
-    while (pathCombo_->count() > 20)
-        pathCombo_->removeItem(pathCombo_->count() - 1);
-    QStringList paths;
-    for (int index = 0; index < pathCombo_->count(); ++index)
-        paths << pathCombo_->itemText(index);
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    settings.setValue("history/paths", paths);
+    folderHistory_.AddString(ToUString(path));
+    folderHistory_.Save(toolbarSettingsPath());
+    refreshPathHistory();
+}
+
+void MainWindow::refreshPathHistory() {
+    const QString current = path_->text();
+    UStringVector paths;
+    folderHistory_.GetList(paths);
+    const QSignalBlocker blocker(pathCombo_);
+    pathCombo_->clear();
+    FOR_VECTOR(i, paths)
+    pathCombo_->addItem(ToQString(paths[i]));
+    path_->setText(current);
 }
 
 void MainWindow::showFoldersHistory() {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
-    QDialog dialog(this);
-    dialog.setObjectName("foldersHistoryDialog");
-    dialog.setWindowTitle("История папок");
-    dialog.resize(540, 360);
-    auto *layout = new QVBoxLayout(&dialog);
-    auto *list = new QListWidget(&dialog);
-    list->setObjectName("foldersHistoryList");
-    for (int index = 0; index < pathCombo_->count(); ++index)
-        list->addItem(pathCombo_->itemText(index));
-    if (list->count() > 0)
-        list->setCurrentRow(0);
-    layout->addWidget(list);
-    auto *remove = new QPushButton("Удалить", &dialog);
-    remove->setObjectName("removeHistoryEntryButton");
-    layout->addWidget(remove);
-    connect(remove, &QPushButton::clicked, &dialog,
-            [list] { delete list->takeItem(list->currentRow()); });
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-    layout->addWidget(buttons);
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    connect(list, &QListWidget::itemDoubleClicked, &dialog, &QDialog::accept);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const QString selected = list->currentItem() ? list->currentItem()->text() : QString();
-    const QString current = path_->text();
-    pathCombo_->clear();
-    for (int index = 0; index < list->count(); ++index)
-        pathCombo_->addItem(list->item(index)->text());
-    path_->setText(current);
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    QStringList paths;
-    for (int index = 0; index < pathCombo_->count(); ++index)
-        paths << pathCombo_->itemText(index);
-    settings.setValue("history/paths", paths);
-    if (!selected.isEmpty())
+    const QString selected = CPanel::FoldersHistory(folderHistory_, toolbarSettingsPath(), this);
+    refreshPathHistory();
+    if (!selected.isNull())
         navigateTo(selected);
     else
         refreshActions();

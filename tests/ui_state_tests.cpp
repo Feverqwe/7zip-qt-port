@@ -176,7 +176,7 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(list->item(0)->text(), canonicalSecond);
             QCOMPARE(list->item(1)->text(), canonicalFirst);
             list->setCurrentRow(0);
-            dialog->findChild<QPushButton *>("removeHistoryEntryButton")->click();
+            QTest::keyClick(list, Qt::Key_Delete);
             list->setCurrentRow(0);
             dialog->accept();
         });

@@ -1,5 +1,44 @@
 # Ревизия происхождения кода 7zFM
 
+## История папок и общий список (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Из `CPP/7zip/UI/FileManager/AppState.h` перенесён `CFolderHistory`;
+из `App.cpp` — `AddUniqueStringToHead`, `Normalize`, `AddString` с исходным
+пределом 100 и сравнением `UString::IsEqualTo_NoCase`. Имена, вектор,
+порядок удаления дублей и вставки сохранены. State принадлежит GUI thread,
+поэтому Win32 critical section отсутствует; Save/Read принимают путь INI.
+`ViewSettings.cpp/.h::{SaveFolderHistory,ReadFolderHistory}` сохраняют исходный
+ключ FolderHistory; `history/paths` — read-only fallback прежнего Qt MVP.
+
+Из `ListViewDialog.cpp/.h/.rc` перенесена одноколоночная ветка:
+OnInit, ListView_GetSelected, DeleteItems, CopyToClipboard, ShowItemInfo,
+OnEnter, OnOK и клавиши OnNotify. QListWidget/event filter/layout/clipboard
+заменяют Win32 controls/OnSize/notifications. Сохранены множественный выбор,
+удаление первого выбранного до исчерпания выбора, флаг изменений, индекс
+фокуса и платформенный перевод строки clipboard. Meta добавлен для macOS.
+ShowItemInfo использует read-only QTextEdit вместо ещё не перенесённого
+EditDialog. NumColumns/Values, усечение значений и Settings single-click/hover
+пока пропущены; этот модуль не является полным портом списка свойств.
+Qt выбирает surviving current row после удаления; Win32 focus восстановить
+буквально нельзя. Отдельная кнопка удаления MVP убрана по исходному rc.
+
+`PanelFolderChange.cpp::CPanel::FoldersHistory` сохраняет ветки OK/Cancel,
+обратную вставку отредактированного списка и выбор focused item. State/parent
+передаются аргументами вместо _appState/GetParent, путь возвращается Qt adapter
+вместо BindToPathAndRefresh. Остальные функции модуля пока не перенесены.
+MainWindow хранит history отдельно от combo; combo — только presentation.
+
+Неизменённые зависимости взяты из того же baseline в `third_party/7zip/`:
+`CPP/Common/{MyString.h,MyString.cpp,IntToString.h,IntToString.cpp,
+StringConvert.h,StringConvert.cpp,UTFConvert.h,UTFConvert.cpp,MyBuffer.h,
+MyWindows.cpp}` и `C/CpuArch.h`. Они сохраняют upstream notices; остальные
+зависимости MyVector/MyTypes/Common/7zTypes уже присутствовали.
+MyWindows обеспечивает BSTR на POSIX, Windows использует oleaut32.
+Преобразование QString↔UString ограничено Qt/settings boundary и учитывает
+разную ширину wchar_t. Форматирование адаптированных файлов — clang-format,
+vendored sources не переформатированы.
+
 Воспроизводимый baseline новых итераций FSFolder/FileDir, Split/Combine и
 Combo/Browse: официальный репозиторий
 [`ip7z/7zip` на commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

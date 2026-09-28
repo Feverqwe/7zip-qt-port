@@ -23,11 +23,8 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
     path_->installEventFilter(this);
     pathCombo_->installEventFilter(this);
     path_->setPlaceholderText("Путь к папке или архиву");
-    for (const QString &visited : settings.value("history/paths").toStringList()) {
-        if (pathCombo_->count() >= 20)
-            break;
-        pathCombo_->addItem(visited);
-    }
+    folderHistory_.Read(toolbarSettingsPath());
+    refreshPathHistory();
     navigation->addWidget(pathCombo_);
     layout->addLayout(navigation);
     createFileTable(central);
