@@ -28,3 +28,4 @@ class CPanel {
 };
 
 QString ConvertSizeToString(UInt64 value);
+void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size);

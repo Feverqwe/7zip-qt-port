@@ -13,6 +13,8 @@ class CCopyDialog : public QDialog {
     Q_OBJECT
 
   public:
+    CCopyDialog(const QString &title, const QString &label, const QString &path,
+                const QString &info, QWidget *parent = nullptr);
     CCopyDialog(bool move, const QString &initialPath, const QStringList &sources,
                 const QStringList &history, QWidget *parent = nullptr,
                 const QString &info = QString());

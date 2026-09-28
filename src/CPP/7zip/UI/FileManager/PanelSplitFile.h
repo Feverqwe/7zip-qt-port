@@ -20,6 +20,8 @@ class CThreadCombine {
     QString InputDirPrefix;
     QStringList Names;
     QString OutputPath;
+    quint64 TotalSize = 0;
+    QString GetInfo() const;
     std::function<bool(qint64)> Set_NumBytesCur;
     bool ProcessVirt(QString *error);
 };

@@ -1,7 +1,9 @@
-#include "volumedialog.h"
+#include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "volumeoperations.h"
 
+#include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QLineEdit>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -273,61 +275,23 @@ class VolumeOperationsTests : public QObject {
         const auto parts = VolumeOperation::inspectParts(base + ".001", &error);
         QCOMPARE(parts.paths.size(), 5);
         QCOMPARE(parts.totalSize, qint64(15));
-        VolumeDialog dialog(VolumeOperation::Mode::Combine, base + ".001", nullptr, parts);
-        auto *info = dialog.findChild<QLabel *>("volumePartsInfo");
-        QVERIFY(info);
-        QVERIFY(info->text().contains("Файлов: 5"));
-        QVERIFY(info->text().contains("Размер: 15 байт"));
-        QVERIFY(info->text().contains("части с пробелами.bin.001"));
-        QVERIFY(info->text().contains("части с пробелами.bin.002"));
-        QVERIFY(info->text().contains("части с пробелами.bin.005"));
-        QVERIFY(!info->text().contains("части с пробелами.bin.003"));
-        QVERIFY(info->text().contains("…"));
-        dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
-        for (int width : {540, 360}) {
-            dialog.resize(width, 340);
-            QApplication::processEvents();
-            QVERIFY(dialog.grab().save(screenshots + QStringLiteral("/combine-%1.png").arg(width)));
-        }
-        dialog.reject();
+        CThreadCombine combiner;
+        combiner.InputDirPrefix = dir.path() + '/';
+        combiner.TotalSize = quint64(parts.totalSize);
+        for (const QString &part : parts.paths)
+            combiner.Names << QFileInfo(part).fileName();
+        const QString info = combiner.GetInfo();
+        QVERIFY(info.contains("Файлов: 5"));
+        QVERIFY(info.contains("15 байт"));
+        QVERIFY(info.contains("части с пробелами.bin.001"));
+        QVERIFY(info.contains("части с пробелами.bin.002"));
+        QVERIFY(info.contains("части с пробелами.bin.005"));
+        QVERIFY(!info.contains("части с пробелами.bin.003"));
+        QVERIFY(info.contains("..."));
         QVERIFY(!QFileInfo::exists(base));
         QVERIFY(QFile::remove(base + ".003"));
         QVERIFY(VolumeOperation::inspectParts(base + ".001", &error).paths.isEmpty());
         QVERIFY(error.contains("пропуск"));
-    }
-
-    void splitDialogHasDestinationAndSize() {
-        QTemporaryDir dir;
-        VolumeDialog dialog(VolumeOperation::Mode::Split, dir.filePath("source.bin"));
-        QCOMPARE(dialog.destination(), dir.path());
-        QCOMPARE(dialog.volumeSize(), qint64(10) << 20);
-        QVERIFY(dialog.findChild<QLineEdit *>("volumeDestination"));
-        auto *size = dialog.findChild<QComboBox *>("volumeSize");
-        size->setCurrentText("10M 20M");
-        QCOMPARE(dialog.volumeSizes(), (QList<qint64>{qint64(10) << 20, qint64(20) << 20}));
-        dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
-        for (int width : {540, 360}) {
-            dialog.resize(width, 190);
-            QApplication::processEvents();
-            QVERIFY(dialog.grab().save(screenshots + QStringLiteral("/split-%1.png").arg(width)));
-        }
-        auto *buttons = dialog.findChild<QDialogButtonBox *>();
-        size->setCurrentText("10M 0M");
-        buttons->button(QDialogButtonBox::Ok)->click();
-        QVERIFY(dialog.isVisible());
-        QVERIFY(!dialog.findChild<QLabel *>("volumeError")->text().isEmpty());
-        dialog.resize(360, 240);
-        QApplication::processEvents();
-        QVERIFY(dialog.grab().save(screenshots + "/split-error-360.png"));
-        size->setCurrentText("10M 20M");
-        buttons->button(QDialogButtonBox::Ok)->click();
-        QCOMPARE(dialog.result(), int(QDialog::Accepted));
-        VolumeDialog combine(VolumeOperation::Mode::Combine, dir.filePath("source.bin.001"));
-        QVERIFY(!combine.findChild<QComboBox *>("volumeSize"));
     }
 };
 

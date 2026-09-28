@@ -41,6 +41,31 @@ SEVENZIP_CAPTURE_SCREENSHOTS=1 ctest --preset dev -R '^ui_geometry$' --output-on
 
 This writes optional PNGs next to the JSON. Open only the affected screenshot.
 
+## Split and Combine dialogs
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/SplitDialog.rc`, `SplitDialog.cpp::{OnInit, OnOK,
+OnButtonSetPath}`, and `PanelSplitFile.cpp::CApp::Combine` with `CopyDialog.rc`.
+Implemented views: `SplitDialog.cpp` and the existing `CopyDialog.cpp`.
+
+- Split puts the destination label above its editable combo, with Browse on
+  the right. The volume-size label and editable preset combo follow below.
+  The source filename is appended to the window title, as in OnInit.
+- OK/Cancel remain at the bottom. Invalid volume input shows a wrapping
+  inline error above the footer and keeps the dialog open, including accept().
+- Combine uses the original shared Copy dialog: destination, Browse,
+  read-only scrolling summary and footer. The summary lists the count and
+  size, source prefix, first two names, ellipsis when needed and final name.
+- `volume_dialog` checks normal/compact Split at 480×240 and 340×240 in
+  normal/error states, and Combine at 480×250 and 340×250 with 2/3/5 parts.
+  It writes JSON and verifies order, reachable controls, fitted labels,
+  separated path/Browse and separate OK/Cancel.
+
+Qt layouts replace OnSize arithmetic; Qt native folder browsing replaces
+MyBrowseForFolder. The inline error replaces the upstream modal MessageBox.
+Reports establish structure/usability on macOS; a rendered Windows reference
+was unavailable and pixel-level parity remains unverified.
+
 ## Copy/Move dialog
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

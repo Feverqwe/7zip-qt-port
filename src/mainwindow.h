@@ -14,7 +14,7 @@
 #include "fileviewerdialog.h"
 #include "propertiesdialog.h"
 #include "settingsdialog.h"
-#include "volumedialog.h"
+#include "volumeoperations.h"
 
 #include <QAction>
 #include <QActionGroup>

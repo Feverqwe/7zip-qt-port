@@ -1,4 +1,6 @@
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "CPP/7zip/UI/FileManager/SplitDialog.h"
+#include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "mainwindow.h"
 
 MainWindow::~MainWindow() {
@@ -27,7 +29,7 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
     const QStringList paths = selectedFilesystemPaths();
     if (paths.size() != 1)
         return;
-    const QFileInfo source(paths.first());
+    QFileInfo source(paths.first());
     if (!source.isFile() || source.isSymLink())
         return;
     VolumeParts parts;
@@ -39,18 +41,64 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             return;
         }
     }
-    VolumeDialog dialog(mode, paths.first(), this, parts);
-    if (dialog.exec() != QDialog::Accepted)
+    QString path = source.absolutePath();
+    const QString itemRelPath = QDir(directory_).relativeFilePath(source.absoluteFilePath());
+    QList<qint64> sizes;
+    if (mode == VolumeOperation::Mode::Split) {
+        CSplitDialog dialog(itemRelPath, path, this);
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        source.refresh();
+        if (!source.isFile() || source.isSymLink()) {
+            QMessageBox::warning(this, "Разбить файл", "Исходный файл недоступен.");
+            return;
+        }
+        if (quint64(source.size()) <= dialog.VolumeSizes.FrontItem()) {
+            QMessageBox::warning(this, "Разбить файл", "Размер тома должен быть меньше файла.");
+            return;
+        }
+        std::vector<UInt64> volumeSizes;
+        for (unsigned i = 0; i < dialog.VolumeSizes.Size(); ++i) {
+            const UInt64 size = dialog.VolumeSizes[i];
+            sizes.append(qint64(size));
+            volumeSizes.push_back(size);
+        }
+        const UInt64 numVolumes = GetNumberOfVolumes(quint64(source.size()), volumeSizes);
+        if (numVolumes >= 100 &&
+            QMessageBox::question(
+                this, "Разбить файл", QStringLiteral("Создать %1 частей?").arg(numVolumes),
+                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel) != QMessageBox::Yes)
+            return;
+        path = dialog.Path;
+    } else {
+        CThreadCombine combiner;
+        combiner.InputDirPrefix = source.absolutePath() + '/';
+        combiner.TotalSize = quint64(parts.totalSize);
+        for (const QString &part : parts.paths)
+            combiner.Names << QFileInfo(part).fileName();
+        CCopyDialog dialog("Объединить файлы " + itemRelPath, "Объединить в:", path,
+                           combiner.GetInfo(), this);
+        dialog.setObjectName("combineDialog");
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        path = dialog.Value;
+    }
+    path = QDir::fromNativeSeparators(path);
+    if (!path.isEmpty() && !path.endsWith('/'))
+        path += '/';
+    // Upstream creates a missing destination only after the dialog and the
+    // large-part-count confirmation. Keep the adapter's symlink prohibition.
+    if (QFileInfo(QDir::cleanPath(path)).isSymLink() || !QDir().mkpath(path)) {
+        QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку назначения.");
         return;
+    }
     CVolSeqName sequence;
     if (mode == VolumeOperation::Mode::Combine && !sequence.ParseName(source.fileName()))
         return;
-    const QString destination =
-        mode == VolumeOperation::Mode::Split
-            ? dialog.destination()
-            : QDir(dialog.destination()).filePath(sequence.GetCombinedName());
-    volumeOperation_ =
-        new VolumeOperation(mode, paths.first(), destination, dialog.volumeSizes(), this);
+    const QString destination = mode == VolumeOperation::Mode::Split
+                                    ? path
+                                    : QDir(path).filePath(sequence.GetCombinedName());
+    volumeOperation_ = new VolumeOperation(mode, paths.first(), destination, sizes, this);
     volumeProgress_ = new QProgressDialog(
         mode == VolumeOperation::Mode::Split ? "Разделение файла…" : "Объединение файлов…",
         "Отмена", 0, 0, this);

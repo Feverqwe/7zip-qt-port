@@ -16,6 +16,12 @@
 #include <QPushButton>
 #include <QVBoxLayout>
 
+CCopyDialog::CCopyDialog(const QString &title, const QString &label, const QString &path,
+                         const QString &info, QWidget *parent)
+    : QDialog(parent), Title(title), Static(label), Value(path), Info(info) {
+    OnInit();
+}
+
 CCopyDialog::CCopyDialog(bool move, const QString &initialPath, const QStringList &sources,
                          const QStringList &history, QWidget *parent, const QString &info)
     : QDialog(parent), Title(move ? "Переместить" : "Копировать"),

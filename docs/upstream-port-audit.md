@@ -1,5 +1,41 @@
 # Ревизия происхождения кода 7zFM
 
+## Split dialog и подготовка Combine (2026-09-28)
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/SplitDialog.cpp/.h/.rc`,
+`PanelSplitFile.cpp::{CApp::Split, CApp::Combine, AddInfoFileName}` и
+`App.cpp::AddValuePair2`. `CSplitDialog` сохранён в исходном относительном пути;
+самостоятельные volumedialog.cpp/.h удалены.
+
+Перенесены OnInit (имя в title, Path, AddVolumeItems, выбор первого размера),
+OnOK (Path, Trim, ParseVolumeSizes, отказ пустого/ошибочного ряда),
+OnButtonSetPath (browse, NormalizeDirPathPrefix, сброс индекса). VolumeSizes
+использует исходный CRecordVector<UInt64>; временный std::vector нужен для
+текущего адаптированного SplitUtils parser, Qt-worker принимает QList<qint64>.
+Предел qint64 сохраняет допустимые смещения QFile. QComboBox/QDialog/layouts
+заменяют CModalDialog/Win32 controls/OnSize; native QFileDialog заменяет
+MyBrowseForFolder. Inline label заменяет modal error, accept вызывает OnOK.
+Qt-конструктор передаёт публичные FilePath/Path перед OnInit.
+
+Блок сводки CApp::Combine скопирован в CThreadCombine::GetInfo в том же
+PanelSplitFile.cpp: сохранены AddInfoFileName, AddValuePair2, первые два имени,
+условие многоточия и последний файл. Извлечение метода необходимо для
+разделения Qt orchestration и исходной логики при отсутствии полной CApp.
+AddValuePair2 экспортирован из существующего App.cpp, как в upstream.
+CCopyDialog получил конструктор для Title/Static/Value/Info: Combine теперь
+использует исходный общий диалог вместо отдельного Qt dialog.
+
+mainwindow_volumes.cpp переносит подготовительные ветки CApp::Split:
+повторную проверку источника после dialog, сравнение размера первого тома,
+GetNumberOfVolumes и подтверждение >=100. Оба сценария нормализуют назначение
+и вызывают CreateComplexDir (QDir::mkpath) после подтверждения. Сохранены
+адаптерные ограничения на выбранные symlink, занятые имена, 10000 частей,
+транзакционную публикацию и откат. Проверка пропусков и пустых частей остаётся
+существующей integration adaptation; discovery loop не объявляется новым
+source port. Полный CApp, взаимодействие двух панелей и Win32 progress — долг.
+Форматирование — clang-format; notices/LGPL сохранены.
+
 ## Мутации файловой системы и рабочий поток удаления (2026-09-28)
 
 Источник: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
@@ -90,7 +126,7 @@ Extract column ordering on disposable fixtures.
 | `src/CPP/7zip/UI/FileManager/PanelKey.cpp` | `PanelKey.cpp::OnKeyDown`, `Panel.cpp::CMyComboBoxEdit::OnMessage`, `App.cpp::CPanelCallbackImp::SetFocusToPath` | Qt-диспетчер клавиш списка и адреса: Shift+F4, Alt+F1/F2, Tab, закладки и делегирование команд выделения. Однопанельный режим сохраняет upstream-правило общей цели Alt+F1/F2. |
 | `src/mainwindow_preferences.cpp` | `PanelMenu.cpp`, `PanelSort.cpp`, `PanelFolderChange.cpp`, `App.cpp`, `PanelKey.cpp` | Собственный код меню, сортировки, истории, закладок и событий. Это несколько upstream-модулей в одном файле. |
 | `src/mainwindow_dialogs.cpp`, `propertiesdialog.cpp`, `propertiesdialog.h` | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Размеры и количество вложенных объектов архивной папки берутся из перенесённого `CProxyArc`. Qt-форма и сводка нескольких выбранных объектов остаются адаптацией; форматные и сырые свойства пока отсутствуют. |
-| `src/mainwindow_volumes.cpp`, `volumeoperations.cpp`, `volumeoperations.h`, `volumedialog.cpp`, `volumedialog.h` | `PanelSplitFile.cpp`, `SplitDialog.cpp`, `SplitDialog.rc` | Qt-обвязка диалогов, рабочего потока, проверки путей и транзакционной публикации; нумерация делегирована `CVolSeqName`, разбор размера и расчёт числа томов — upstream `SplitUtils.cpp`. Цикл Combine делегирован перенесённому `CThreadCombine::ProcessVirt`; цикл Split делегирован `CThreadSplit::ProcessVirt`. Транзакционный откат принадлежит Qt-адаптеру. |
+| `src/mainwindow_volumes.cpp`, `volumeoperations.cpp/.h`, `src/CPP/7zip/UI/FileManager/SplitDialog.cpp/.h` | `PanelSplitFile.cpp`, `SplitDialog.cpp/.h/.rc`, `CopyDialog.cpp` | CSplitDialog OnInit/OnOK/browse перенесены, Combine использует общий CCopyDialog и исходную сводку. Нумерация, parser, число томов и worker-циклы перенесены ранее; транзакции, проверка путей и discovery остаются Qt-адаптацией. |
 | `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`, `FSFolder.h` | `CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile`, `CCopyState`, `CopyFolder`, `CopyFile_Ask`, `IsDestChild` | Цикл чтения/записи, накопленный прогресс, рекурсивная copy-ветка и проверка вложенного назначения перенесены с сохранением имён. `QFile`, `QDir` и callbacks заменяют платформенные операции; stage создаётся с `NewOnly`, ошибки записи проверяются `flush`, сохраняется дата. Транзакционная обвязка, move и интерактивный overwrite остаются адаптацией/долгом. |
 | `src/filetable.cpp`, `filetable.h` | `PanelItems.cpp`, `PanelSort.cpp`, `PanelDrag.cpp` | Qt-адаптер таблицы и drag-out. Функция сравнения вынесена в зеркальный `PanelSort.cpp`. |
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |

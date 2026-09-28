@@ -19,7 +19,7 @@ static void AddValuePair1(QString &s, const QString &label, UInt64 size) {
     s += '\n';
 }
 
-static void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size) {
+void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size) {
     if (num == 0)
         return;
     s += label;
