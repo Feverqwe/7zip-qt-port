@@ -8,6 +8,59 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3b2c — bound filesystem runtime (2026-09-29)
+
+Project baseline `cf83093`; source baseline [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+CPP/7zip/UI/FileManager/FSFolder.cpp LoadItems/LoadSubItems/GetRelPath/GetProperty,
+PanelItems.cpp RefreshListCtrl/GetItemName and PanelFolderChange.cpp SetNewFolder.
+No upstream revision is changed. Existing copied filesystem functional bodies,
+types, module paths and root-first traversal remain authoritative.
+
+The normal window replaces QDir::entryInfoList with factory/SetNewFolder/LoadItems
+and presentation of source Files/GetRelPath. Flat loading binds the completed
+worker-owned folder before publishing GUI batches. Both publish actual source
+indices and use the bound folder's typed IsDir/Size properties rather than
+QFileInfo target metadata. CPanel's borrowed GetFolder getter serves this production
+renderer; COM ownership remains with CPanel and the scanner. QString/QFileInfo,
+icons, display paths and remaining timestamp formatting are Qt presentation;
+they do not enumerate again. Native-to-Qt conversion is shared in qtlocationfolder,
+including QFile::decodeName macOS normalization and native Windows wide paths.
+
+RefreshListCtrl's bound-folder name branch now uses the original GetItemName
+property helper, matching the source name/prefix restoration loop. Its legacy
+unbound fixture branch retains QtPanelList lookup. Native macOS names and visible
+Qt names can have different normalization; comparisons must use one source owner,
+while path/display conversion stays at the Qt boundary. No independent Unicode
+comparison algorithm or extra raw-name role is introduced.
+
+Necessary traversal deviation: the original Windows LoadSubItems recurses every
+directory in flat mode, including reparse directories. A narrow native attribute
+guard preserves the existing Qt no-follow policy and avoids junction cycles.
+POSIX already uses unchanged Fill_FileInfo(false); links retain lstat size/type,
+so the runtime now displays link metadata rather than QFileInfo's followed target.
+Windows directory links retain native directory attributes. Qt QFile::link creates
+shortcuts on Windows, so local POSIX link fixtures do not validate that branch.
+
+Scope remains partial: full source RefreshListCtrl (columns, icon/timer/notify
+branches), BindToPath/LoadFullPath and outer/nested CFolderLink are mandatory later
+P0-02 owners. Complete property catalogs, raw/link/stream properties, formatting,
+operation interfaces and engine branches remain mandatory P0-03/P0-04/feature
+owners. This integration does not complete those modules or parent P0-02.
+
+Validation on macOS 2026-09-29: affected app/native/window targets built;
+focused fs_folder/location_folder/filesystem_scanner/panel_selected_state/flat_view/
+ui_navigation/ui_operations/filesystem_operations/file_transfer/properties/
+panel_copy_info passed 11/11 (5.82s). New normal/flat runtime regression checks
+link length/type, absent directory size, no cycle traversal and explicit directory
+link navigation; selected/current decomposable Unicode names survive refresh and
+mode changes in all four views. Four fresh 980×620/640×480 filesystem runtime JSON
+reports reviewed: pathCombo/address, active table/view stack and status bar fully
+visible, with the existing grouping/control order. ./scripts/check.sh passed
+formatting, app build and all 63 CTest (30.62s). Windows/Linux runtime and rendered
+Windows parity remain unverified; no screenshot/pixel-parity claim. Counts unchanged:
+34 src/CPP cpp (30 UI), 36 root Qt cpp, 57 vendor files.
+
 ## P0-02.2b3b3b2b — native worker and GUI ownership handoff (2026-09-29)
 
 Project baseline `52ed631`; pinned upstream [ip7z/7zip

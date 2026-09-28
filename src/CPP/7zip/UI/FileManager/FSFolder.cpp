@@ -85,7 +85,12 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
                 break;
             if (fi.IsDir()) {
                 fi.Size = 0;
-                if (_flatMode)
+                bool recurse = _flatMode;
+#ifdef _WIN32
+                // Preserve the Qt workflow's no-follow recursive listing policy.
+                recurse = recurse && !fi.Has_Attrib_ReparsePoint();
+#endif
+                if (recurse)
                     Folders.Add(relPrefix + fi.Name + FCHAR_PATH_SEPARATOR);
             }
             fi.PackSize_Defined = false;

@@ -1,7 +1,10 @@
+#include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
+#include "Windows/PropVariant.h"
 #include "mainwindow.h"
+#include "qtlocationfolder.h"
 
 void MainWindow::showDirectory(const QString &path, bool remember) {
     const QFileInfo info(path);
@@ -39,8 +42,6 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
     path_->setText(directory_);
-    const QDir::Filters filter =
-        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System;
     static_cast<FileTable *>(table_)->filesystem = true;
     table_->setColumnHidden(3, true);
     if (flatDisk_) {
@@ -49,47 +50,67 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
         statusBar()->showMessage("Сканирование вложенных папок…");
         filesystemScanner_->start(directory_);
     } else {
-        const QFileInfoList files = QDir(directory_).entryInfoList(filter, QDir::NoSort);
-        for (const QFileInfo &file : files)
-            appendFilesystemEntry(file);
+        CMyComPtr<IFolderFolder> folder;
+        HRESULT result = CreateFilesystemFolder(directory_, &folder);
+        if (result == S_OK) {
+            app_.GetFocusedPanel().SetNewFolder(folder);
+            result = folder->LoadItems();
+        }
+        if (result == S_OK) {
+            auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
+            for (UInt32 i = 0; i < spec->Files.Size(); ++i)
+                appendFilesystemEntry(
+                    QFileInfo(QDir(directory_)
+                                  .filePath(QtFilesystemPath(spec->GetRelPath(spec->Files[i])))),
+                    i);
+        }
         table_->setSortingEnabled(true);
         applySortMode();
         setState(State::Filesystem);
-        statusBar()->showMessage(QStringLiteral("%1 объектов").arg(files.size()));
+        statusBar()->showMessage(result == S_OK
+                                     ? QStringLiteral("%1 объектов").arg(table_->rowCount())
+                                     : QStringLiteral("Не удалось прочитать папку."));
     }
 }
 
-void MainWindow::appendFilesystemEntry(const QFileInfo &file) {
+void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {
+    IFolderFolder *folder = app_.GetFocusedPanel().GetFolder();
+    NWindows::NCOM::CPropVariant isDir, size;
+    folder->GetProperty(sourceIndex, kpidIsDir, &isDir);
+    folder->GetProperty(sourceIndex, kpidSize, &size);
+    const bool directory = isDir.vt == VT_BOOL && isDir.boolVal != VARIANT_FALSE;
+    const QVariant sizeValue =
+        size.vt == VT_UI8 ? QVariant::fromValue(quint64(size.uhVal.QuadPart)) : QVariant();
     const int row = table_->rowCount();
     table_->insertRow(row);
     const QString displayName =
         flatDisk_ ? QDir(directory_).relativeFilePath(file.absoluteFilePath()) : file.fileName();
     const QStringList values = {displayName,
                                 file.absoluteFilePath(),
-                                file.isDir() ? QString() : QString::number(file.size()),
+                                directory ? QString() : sizeValue.toString(),
                                 QString(),
                                 file.lastModified().toString(Qt::ISODate),
                                 GetExtensionPtr(QStringView(file.fileName())).toString(),
-                                QString::number(row)};
+                                QString::number(sourceIndex)};
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
-        item->setData(Qt::UserRole + 1, file.isDir());
+        item->setData(Qt::UserRole + 1, directory);
         item->setData(Qt::UserRole + 3, file.fileName());
         item->setData(Qt::UserRole + 5,
                       displayName.left(displayName.size() - file.fileName().size()));
-        item->setData(Qt::UserRole + 6, row);
+        item->setData(Qt::UserRole + 6, sourceIndex);
         if (col == 0) {
             if (fileListSettings_.ShowRealFileIcons) {
                 QFileIconProvider icons;
                 item->setIcon(icons.icon(file));
             } else
-                item->setIcon(QApplication::style()->standardIcon(
-                    file.isDir() ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+                item->setIcon(QApplication::style()->standardIcon(directory ? QStyle::SP_DirIcon
+                                                                            : QStyle::SP_FileIcon));
         }
-        if (col == 2 && !file.isDir())
-            item->setData(Qt::UserRole + 2, file.size());
+        if (col == 2 && !directory)
+            item->setData(Qt::UserRole + 2, sizeValue);
         if (col == 6)
-            item->setData(Qt::UserRole + 2, row);
+            item->setData(Qt::UserRole + 2, sourceIndex);
         if (col == 2 || col == 3)
             item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
         table_->setItem(row, col, item);

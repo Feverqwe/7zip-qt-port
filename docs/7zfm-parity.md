@@ -527,3 +527,22 @@ Four normal/compact progress reports inspected; focused 5/5, ASan 1/1 and full
 gate 63/63 passed macOS 2026-09-29. Full CPanel
 filesystem binding/normal loading remain mandatory P0-02.2b3b3b2c; Windows/Linux
 runtime and Windows rendered parity remain unverified.
+
+P0-02.2b3b3b2c binds normal and flat filesystem runtime to CFSFolder/CPanel and
+renders the source item indices and typed sizes; the remaining QDir normal
+enumeration is removed. Reference: source FSFolder LoadItems/LoadSubItems and
+PanelItems RefreshListCtrl/GetItemName at the pinned revision. Refresh selection
+compares source-owned names while Qt display/path conversion retains macOS NFC.
+Uncalculated directory size stays blank. POSIX symbolic links now show their own
+lstat size/type, whereas the previous QFileInfo view followed target metadata;
+explicit path navigation can still resolve a directory link. Flat loading never
+follows POSIX directory links. Windows source directory reparse entries keep
+their directory flag, but a narrow traversal guard preserves the Qt no-follow
+policy and prevents junction cycles. This is an intentional integration difference
+from unguarded upstream flat recursion, requiring Windows runtime acceptance.
+Columns, control order and layout are unchanged. Full property formatting,
+BindToPath/LoadFullPath, parent stack and operation branches remain mandatory.
+Focused checks passed 11/11 and full gate 63/63 on macOS 2026-09-29. Four fresh
+normal/compact filesystem runtime JSON reports show the path controls, active list
+and status bar fully visible. Windows/Linux runtime and Windows rendered parity
+remain unverified.

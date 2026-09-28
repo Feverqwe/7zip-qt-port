@@ -23,10 +23,13 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
 
 void MainWindow::connectFilesystemScanner() {
     filesystemScanner_ = new FilesystemScanner(this);
+    connect(filesystemScanner_, &FilesystemScanner::folderReady, this,
+            [this](IFolderFolder *folder) { app_.GetFocusedPanel().SetNewFolder(folder); });
     connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
-            [this](const QFileInfoList &files) {
+            [this](const QFileInfoList &files, quint32 firstSourceIndex) {
+                quint32 sourceIndex = firstSourceIndex;
                 for (const QFileInfo &file : files)
-                    appendFilesystemEntry(file);
+                    appendFilesystemEntry(file, sourceIndex++);
                 statusBar()->showMessage(
                     QStringLiteral("Показано: %1 объектов…").arg(table_->rowCount()));
             });
@@ -46,6 +49,7 @@ void MainWindow::connectFilesystemScanner() {
     connect(filesystemScanner_, &FilesystemScanner::failed, this, [this](qint32) {
         scanningDisk_ = false;
         scanSelectedState_.reset();
+        app_.GetFocusedPanel().ReleaseFolder();
         table_->setSortingEnabled(true);
         refreshActions();
         statusBar()->showMessage(QStringLiteral("Не удалось прочитать папку."));

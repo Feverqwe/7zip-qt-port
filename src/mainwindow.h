@@ -138,7 +138,7 @@ class MainWindow : public QMainWindow {
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
     void showDirectory(const QString &path, bool remember);
-    void appendFilesystemEntry(const QFileInfo &file);
+    void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     QStringList selectedPaths() const;
     void selectPaths(const QStringList &paths);
     void refreshCurrent();

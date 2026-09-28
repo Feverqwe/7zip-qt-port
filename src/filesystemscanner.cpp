@@ -3,23 +3,11 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "Common/StringConvert.h"
 #include "filesystemfolderloader.h"
+#include "qtlocationfolder.h"
 #include <QDir>
 #include <QElapsedTimer>
-#include <QFile>
 #include <QPointer>
 #include <QTimer>
-
-namespace {
-QString QtFilesystemPath(const FString &path) {
-#ifdef _WIN32
-    return QDir::fromNativeSeparators(QString::fromWCharArray(path));
-#else
-    // Qt decodes native POSIX filenames (including macOS NFD → NFC) at this
-    // presentation boundary; the source folder retains the original bytes.
-    return QFile::decodeName(path.Ptr());
-#endif
-}
-} // namespace
 
 FilesystemScanner::FilesystemScanner(QObject *parent) : QObject(parent) {}
 

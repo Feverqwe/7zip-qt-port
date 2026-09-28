@@ -56,6 +56,8 @@ class CPanel : public QObject {
     explicit CPanel(IFolderFolder *folder);
     void ReleaseFolder();
     void SetNewFolder(IFolderFolder *folder);
+    // Borrowed interface for Qt property rendering; ownership stays in CPanel.
+    IFolderFolder *GetFolder() const { return _folder; }
     void AttachPresentation(QWidget *list, QWidget *address);
     void SetFocusToList();
     void SetFocusToLastRememberedItem();

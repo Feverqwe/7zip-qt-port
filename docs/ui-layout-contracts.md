@@ -69,6 +69,12 @@ without clipping. Status distinguishes scan progress from shown row count; list
 commands return after completion or failure. This Qt responsiveness adaptation
 keeps source enumeration in CFSFolder, not a presentation-layer walker.
 
+`panel_selected_state` writes normal/flat `filesystem-runtime-*` reports at
+980×620 and 640×480. Filesystem size cells use native typed metadata: uncalculated
+directory size is absent, file zero is defined, and POSIX links display their own
+length. Source item indices are independent of sorted rows. Path controls, shared
+view stack and status bar keep the existing order and must remain fully visible.
+
 ## File list settings
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

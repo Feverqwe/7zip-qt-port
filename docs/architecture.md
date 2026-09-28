@@ -12,14 +12,14 @@ Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single
 FileDir owner, whose GetCurrentDir has source Windows/POSIX bodies. These services
 are prerequisites for CFSFolder binding. Recursive scanning now uses the source
-folder in a Qt worker; normal window listing/binding remains migration work.
+folder in a Qt worker; normal window listing calls that same folder synchronously.
 `CFSFolder` owns FString/CFileInfo metadata and exposes the source read-only
 enumeration/property subset with flat mode. Mutations convert to Qt at their
 service boundary. Source folder binding and parent navigation use native services;
 Windows drive roots return the read-only CFSDrives logical-drive owner, while
 POSIX `/` returns null parent. Native Windows notification uses IFolderWasChanged.
-Optional property/operations interfaces remain incomplete; normal window
-navigation is not yet bound to this owner.
+Optional property/operations interfaces remain incomplete. Both window modes bind
+their source folder to CPanel before publishing matching source item indices.
 
 `sevenzip-desktop` contains application sources, Qt presentation, platform
 integration, tests and build tooling. Application modules live under
@@ -36,15 +36,15 @@ process exit. Shutdown does not dispatch operation completion into a closing UI.
 The unchanged upstream IFolder/IStream/IProgress declarations, MyCom ownership
 and PropVariant implementation are available for folder adapters. ClassDefs
 defines their GUIDs once; consumers use declarations. The window binds the
-archive subset; filesystem runtime binding is still migration work.
+archive and filesystem subsets.
 Their default reference counting assumes GUI-thread ownership. Archive operations
 continue through ArchiveBackend.
 `CPanel::_folder` uses the unchanged upstream IFolderFolder/CMyComPtr contract.
 `QtPanelFolder` adapts existing read-only metadata snapshots used by Copy summaries
 and Properties; it exposes typed properties and owns the snapshot. It implements
 no filesystem/archive navigation. Source property/name/path helpers consume the
-interface; runtime filesystem binding and parent-stack ownership remain
-in migration. The active archive folder uses CAgentFolder. `ReleaseFolder` clears the bound list and caches before replacing
+interface; complete parent-stack ownership remains in migration. Active filesystem
+folders use CFSFolder and archive folders use CAgentFolder. `ReleaseFolder` clears the bound list and caches before replacing
 the interface. Complete source notify/lifecycle guards remain open.
 `CAgentFolder` exposes the _proxy read-only IFolderFolder binding subset and
 IFolderSetFlatMode. Child/parent folders share the typed metadata provider by
@@ -58,8 +58,8 @@ full engine catalog contracts remain open; unsupported interfaces are absent.
 `sevenzip_location` provides Qt input factories that use source CFSFolder path
 services or source CAgent ownership with an immutable typed metadata snapshot.
 Unknown metadata sentinels remain VT_EMPTY and do not wrap source directory
-totals. The window uses its archive factory; filesystem runtime and outer archive
-links remain following iterations. Archive size/packed columns consume typed
+totals. The window uses both factories; outer archive links remain following
+iterations. Archive size/packed and filesystem size columns consume typed
 variants; absent values remain empty and known zero remains visible.
 QtPanelList carries source item parameters separately from sorted row positions.
 CPanel selection bits and property indices use source parameters; focus uses a
@@ -125,15 +125,19 @@ these items into Qt rows and expands selected folders through the same tree.
 Full entry paths remain in item data independently of display order.
 
 `FilesystemFolderLoader` runs the original CFSFolder recursive enumeration in a
-worker without following POSIX directory symlinks. `FilesystemScanner` waits for
+worker without following POSIX directory symlinks or Windows directory reparse
+points. `FilesystemScanner` waits for
 completion before taking its COM owner, then presents source-index batches on
 GUI timers. Count progress and atomic cancel remain available during native
 loading; cancelled workers are joined before destruction. A generation counter
 discards stale results/batches after navigation or mode changes. Final sorting
 runs on the GUI thread. Table and icon/list views share a model/selection model.
 QFile::decodeName supplies native POSIX-to-Qt path conversion (macOS NFC); the
-source folder retains native bytes. Normal window loading and CPanel filesystem
-binding remain the next mandatory runtime integration.
+source folder retains native bytes. CPanel compares source names when restoring
+selection; Qt display names retain Qt normalization. Normal loading uses the same
+folder, source metadata and indices. Uncalculated directory sizes remain absent;
+POSIX links expose their own lstat metadata. Full property catalogs, source
+BindToPath/LoadFullPath and parent-stack ownership remain migration work.
 
 `CPanelSelection` consumes a snapshot of names, folder flags and selection
 states; `mainwindow_selection.cpp` publishes the result to Qt in one update.

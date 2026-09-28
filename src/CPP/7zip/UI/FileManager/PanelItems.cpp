@@ -126,7 +126,7 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
             continue;
         if (realIndex >= numFolderItems)
             throw 1;
-        const UString name = _selectionList.GetItemName(i);
+        const UString name = _folder ? GetItemName(realIndex) : _selectionList.GetItemName(i);
         bool selected = false;
         if (state.SelectedNames.Size() > 1 ||
             (state.SelectedNames.Size() == 1 && selectedName == name) ||

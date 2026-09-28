@@ -6,6 +6,17 @@
 #include "Windows/FileName.h"
 #include "qtpanelfolder.h"
 #include <QDir>
+#include <QFile>
+
+QString QtFilesystemPath(const FString &path) {
+#ifdef _WIN32
+    return QDir::fromNativeSeparators(QString::fromWCharArray(path));
+#else
+    // Native source bytes remain unchanged; Qt supplies its POSIX decoding
+    // (including macOS NFD → NFC) at the presentation boundary.
+    return QFile::decodeName(path.Ptr());
+#endif
+}
 
 HRESULT CreateFilesystemFolder(const QString &path, IFolderFolder **resultFolder) {
     COM_TRY_BEGIN

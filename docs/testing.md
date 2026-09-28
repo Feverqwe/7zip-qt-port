@@ -6,6 +6,11 @@ restarts during native load/presentation rejecting old generations, pre-start
 cancel, active teardown, deletion from callbacks and invalid-directory failure.
 `flat_view` exercises live navigation/cancellation at normal/compact sizes and
 writes `filesystem-native-scan-*`/`filesystem-presentation-*` widget reports.
+`panel_selected_state` checks native filesystem size/absent directory size in
+normal/flat runtime; POSIX directory cycles remain single link entries and file
+links show their own length rather than target size. It writes normal/compact
+`filesystem-runtime-*` reports. Refresh/mode changes preserve independently
+selected/current Unicode names (including decomposable characters) in four views.
 
 `file_find` checks the upstream portable enumeration/path services with local
 Unicode/non-BMP files and folders, metadata, excluded dots, missing-directory
@@ -21,6 +26,9 @@ catalog descriptors, invalid indices and failure clearing stale rows. It also
 checks name/index/flat binding, ancestor/root, child flat defaults, missing/file
 rejection and WasChanged identity. Windows root-to-FSDrives/rebind is conditional
 and still requires execution on Windows.
+The POSIX source-folder link regression verifies flat no-follow traversal and
+typed link metadata. Windows reparse traversal requires Windows runtime acceptance;
+QFile::link on Windows creates shortcuts and cannot validate directory junctions.
 
 `folder_contract` validates the unchanged upstream IFolderFolder ABI against a
 local mock: interface identity/rejection, reference ownership/destruction,

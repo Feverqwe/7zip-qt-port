@@ -22,6 +22,62 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
     }
 
   private slots:
+#ifndef _WIN32
+    void filesystemRuntimeUsesNativeLinkMetadata_data() {
+        QTest::addColumn<bool>("flat");
+        QTest::newRow("normal") << false;
+        QTest::newRow("flat") << true;
+    }
+    void filesystemRuntimeUsesNativeLinkMetadata() {
+        QFETCH(bool, flat);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QDir root(QFileInfo(temp.path()).canonicalFilePath());
+        QVERIFY(root.mkdir("nested"));
+        const QString target = root.filePath("nested/target");
+        createFile(target);
+        const QString link = root.filePath("file-link");
+        const QString cycle = root.filePath("cycle");
+        QVERIFY(QFile::link(target, link));
+        QVERIFY(QFile::link(root.path(), cycle));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "flatViewAction")->setChecked(false);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(root.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        action(window, "flatViewAction")->setChecked(flat);
+        auto *view = table(window);
+        QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        QTRY_COMPARE(view->rowCount(), flat ? 4 : 3);
+        for (const QString &path : {link, cycle}) {
+            const int row = fileRow(view, path);
+            QVERIFY(row >= 0);
+            QVERIFY(!view->item(row, 0)->data(Qt::UserRole + 1).toBool());
+            const QString linkTarget = path == link ? target : root.path();
+            const quint64 linkSize = QFile::encodeName(linkTarget).size();
+            QCOMPARE(view->item(row, 2)->text(), QString::number(linkSize));
+            QCOMPARE(view->item(row, 2)->data(Qt::UserRole + 2).toULongLong(), linkSize);
+        }
+        const int directoryRow = fileRow(view, root.filePath("nested"));
+        QVERIFY(directoryRow >= 0);
+        QVERIFY(view->item(directoryRow, 2)->text().isEmpty());
+        QVERIFY(!view->item(directoryRow, 2)->data(Qt::UserRole + 2).isValid());
+        for (const QSize &size : {QSize(980, 620), QSize(640, 480)}) {
+            window.resize(size);
+            QCoreApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*window.centralWidget(), window));
+            QVERIFY(UiInspection::writeReport(
+                window, QString("filesystem-runtime-flat%1-%2").arg(flat).arg(size.width())));
+        }
+        action(window, "flatViewAction")->setChecked(false);
+        address->setText(cycle);
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(address->text(), root.path());
+        QCOMPARE(view->rowCount(), 3);
+    }
+#endif
     void archiveRuntimeTypedSizes_data() { filesystemRefreshRetainsCurrentAndSelectedItems_data(); }
     void archiveRuntimeTypedSizes() {
         QFETCH(bool, flat);
@@ -198,7 +254,7 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         const QDir root(QFileInfo(temp.path()).canonicalFilePath());
         QVERIFY(root.mkdir(QStringLiteral("вложенная")));
         const QString prefix = flat ? QStringLiteral("вложенная/") : QString();
-        const QString selected = root.filePath(prefix + QStringLiteral("a пробел.txt"));
+        const QString selected = root.filePath(prefix + QStringLiteral("a пробел й.txt"));
         const QString focused = root.filePath(prefix + QStringLiteral("z текущий.txt"));
         createFile(selected);
         createFile(focused);

@@ -20,6 +20,45 @@ class FsFolderTests : public QObject {
         return QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal));
     }
   private slots:
+#ifndef _WIN32
+    void flatListingDoesNotFollowDirectoryLinks() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("nested"));
+        QFile file(temp.filePath("nested/payload"));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("fixture"), qint64(7));
+        file.close();
+        QVERIFY(QFile::link(temp.path(), temp.filePath("nested/cycle")));
+        const QString fileTarget = temp.filePath("nested/payload");
+        QVERIFY(QFile::link(fileTarget, temp.filePath("file-link")));
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(4));
+        bool foundCycle = false, foundFileLink = false;
+        for (UInt32 i = 0; i < count; ++i) {
+            const QString name = text(folder, i, kpidName);
+            if (name != "cycle" && name != "file-link")
+                continue;
+            CPropVariant value;
+            QCOMPARE(folder->GetProperty(i, kpidIsDir, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_BOOL));
+            QCOMPARE(value.boolVal, VARIANT_FALSE);
+            QCOMPARE(folder->GetProperty(i, kpidSize, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_UI8));
+            const QString target = name == "cycle" ? temp.path() : fileTarget;
+            QCOMPARE(value.uhVal.QuadPart, UInt64(QFile::encodeName(target).size()));
+            foundCycle |= name == "cycle";
+            foundFileLink |= name == "file-link";
+        }
+        QVERIFY(foundCycle && foundFileLink);
+    }
+#endif
     void cancelledOrFailedLoadClearsPartialState_data() {
         QTest::addColumn<int>("failure");
         QTest::newRow("before-enumeration") << 0;
