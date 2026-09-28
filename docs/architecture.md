@@ -55,7 +55,10 @@ selection and current-item snapshots. `QtPanelList` adapts the shared table/icon
 model and selection model; it supplies relative names and control operations.
 Normal refresh restores after loading/sorting; flat refresh holds a pending
 snapshot until scanner completion and discards it on navigation. Archive refresh,
-flat-mode changes and edit results still use legacy path lists pending migration.
+flat-mode changes and edit results use the same source state. Pending snapshots
+transport that state across asynchronous results; failed refresh clears it during
+navigation rollback, and a removed archive folder discards names belonging to
+the old location. Failed replacement retains the unchanged displayed state.
 Source-ported `CAppState` groups `CFolderHistory` and `CFastFolders` and reads
 both before the window builds menus or the address combo. Each window owns an
 independent instance on the GUI thread; QSettings paths are explicit adapters.

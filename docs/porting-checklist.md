@@ -280,7 +280,7 @@ P0-02.2a commit: `5bc96ad`. P0-02.2b разделён до изменения se
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b1 | CSelectedState, SaveSelectedState/GetSelectedNames/Get_ItemIndices_Selected и selection/focus portion RefreshListCtrl; Qt list binding, filesystem refresh normal/flat consumers, sorted names и deleted focus fallback | P0-02.2a | done — audit § P0-02.2b1; focused 5/5, check.sh 56/56 |
-| P0-02.2b2 | Archive refresh/flat-mode/edit result consumers используют тот же selected-state owner; failure/cancel checks | P0-02.2b1 | todo |
+| P0-02.2b2 | Archive refresh/flat-mode/edit result consumers используют тот же selected-state owner; failure/cancel checks | P0-02.2b1 | done — audit § P0-02.2b2; focused 5/5, check.sh 56/56 |
 | P0-02.2b3 | CPanel location/parent stack source bodies, nested archive/navigation adapters и checks; удалить дублирующее location state | P0-02.2b2 | todo |
 
 P0-02.2b1 checks 2026-09-28 macOS: affected targets/direct consumers build dev;
@@ -288,6 +288,16 @@ P0-02.2b1 checks 2026-09-28 macOS: affected targets/direct consumers build dev;
 5/5; `./scripts/check.sh` format/build/56 CTest; `git diff --check`.
 Первый новый fixture сравнивал /var с canonical /private/var; исправлен до
 passing runs. Layout/text unchanged; Windows/Linux runtime не проверены.
+
+P0-02.2b1 commit: `c412350`. P0-02.2b2 использует уже перенесённые source bodies;
+reference consumers: Panel.cpp ChangeFlatMode, PanelItemOpen.cpp
+OnOpenItemChanged SaveSelectedState/RefreshListCtrl bracket. Полные эти modules
+и flat/location ownership остаются обязательными за пределами этого consumer scope.
+
+P0-02.2b2 checks 2026-09-28 macOS: affected targets build dev;
+`ctest --preset dev -R '^(panel_selected_state|ui_state|ui_archive_states|flat_view|file_viewer)$' --output-on-failure`
+5/5; `./scripts/check.sh` format/build/56 CTest; `git diff --check`.
+Layout/text unchanged; Windows/Linux runtime не проверены.
 
 При следующем разделении добавить здесь, сохраняя остальных:
 

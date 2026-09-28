@@ -29,10 +29,11 @@ void MainWindow::connectBackend() {
                 showArchiveFolder(folder);
                 pendingArchiveFolder_.clear();
                 if (refreshing_)
-                    selectPaths(refreshSelection_);
+                    app_.GetFocusedPanel().RefreshListCtrl(
+                        folder == refreshFolder_ ? refreshSelectedState_ : CSelectedState());
                 refreshing_ = false;
                 refreshFolder_.clear();
-                refreshSelection_.clear();
+                refreshSelectedState_ = CSelectedState();
                 setState(State::Viewing);
             });
     connect(backend_, &ArchiveBackend::infoReady, this,
@@ -149,8 +150,8 @@ bool MainWindow::finishArchiveState(bool ok) {
             if (ok) {
                 refreshing_ = true;
                 refreshFolder_ = archiveFolder_;
-                refreshSelection_ = {pendingEditEntry_};
-            }
+            } else
+                refreshSelectedState_ = CSelectedState();
             pendingEditEntry_.clear();
         }
         if (creating_)

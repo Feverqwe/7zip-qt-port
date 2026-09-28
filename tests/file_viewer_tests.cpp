@@ -19,7 +19,10 @@ class ViewerBackend : public ArchiveBackend {
     ViewerBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
     void list(const QString &, const QString & = {}) override {
         QTimer::singleShot(0, this, [this] {
-            emit entriesReady({ArchiveEntry{"folder/имя с пробелом.txt", 6, 6, {}, false, false}});
+            QList<ArchiveEntry> entries = {
+                ArchiveEntry{"folder/имя с пробелом.txt", 6, 6, {}, false, false}};
+            entries.append(additionalEntries);
+            emit entriesReady(entries);
             emit finished(true, "Архив открыт.");
         });
     }
@@ -45,17 +48,31 @@ class ViewerBackend : public ArchiveBackend {
         QFile file(QDir(root).filePath(entry));
         if (file.open(QIODevice::ReadOnly))
             replacement = file.readAll();
-        QTimer::singleShot(0, this, [this] { emit finished(true, "Обновлено."); });
+        QTimer::singleShot(0, this, [this] {
+            emit finished(replacementOutcome == 0,
+                          replacementOutcome == 2   ? QStringLiteral("Операция отменена.")
+                          : replacementOutcome == 1 ? QStringLiteral("Fixture update failed.")
+                                                    : QStringLiteral("Обновлено."));
+        });
     }
     QStringList extracted;
     QString temporary;
     QString replaced;
     QByteArray replacement;
     bool cancelExtraction = false;
+    QList<ArchiveEntry> additionalEntries;
+    int replacementOutcome = 0;
 };
 
 class FileViewerTests : public QObject {
     Q_OBJECT
+
+    static int rowWithPath(QTableWidget *table, const QString &path) {
+        for (int row = 0; row < table->rowCount(); ++row)
+            if (table->item(row, 0)->data(Qt::UserRole).toString() == path)
+                return row;
+        return -1;
+    }
 
   private slots:
     void editorSavesUtf8AndRejectsBinary() {
@@ -124,10 +141,20 @@ class FileViewerTests : public QObject {
         QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
     }
 
+    void archiveEditWritesBackSavedText_data() {
+        QTest::addColumn<int>("outcome");
+        QTest::newRow("success") << 0;
+        QTest::newRow("failure") << 1;
+        QTest::newRow("cancel") << 2;
+    }
+
     void archiveEditWritesBackSavedText() {
+        QFETCH(int, outcome);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         ViewerBackend backend;
+        backend.additionalEntries = {{"folder/z current.txt", 1, 1}};
+        backend.replacementOutcome = outcome;
         MainWindow window(&backend);
         window.show();
         window.openArchive(dir.filePath("test.7z"));
@@ -136,14 +163,22 @@ class FileViewerTests : public QObject {
         QVERIFY(table && edit);
         QTRY_COMPARE(table->rowCount(), 1);
         emit table->cellDoubleClicked(0, 0);
-        QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
-        table->selectRow(0);
+        QTRY_COMPARE(table->rowCount(), 2);
+        const int editedRow = rowWithPath(table, QStringLiteral("folder/имя с пробелом.txt"));
+        const int focusedRow = rowWithPath(table, "folder/z current.txt");
+        QVERIFY(editedRow >= 0 && focusedRow >= 0);
+        table->selectRow(editedRow);
+        table->setCurrentCell(focusedRow, 0, QItemSelectionModel::NoUpdate);
         QTRY_VERIFY(edit->isEnabled());
         QTimer answer;
         connect(&answer, &QTimer::timeout, &window, [&] {
             if (auto *question = window.findChild<QMessageBox *>()) {
                 if (question->isVisible())
-                    question->button(QMessageBox::Yes)->click();
+                    question
+                        ->button(question->standardButtons().testFlag(QMessageBox::Yes)
+                                     ? QMessageBox::Yes
+                                     : QMessageBox::Ok)
+                        ->click();
             }
         });
         answer.start(10);
@@ -158,12 +193,19 @@ class FileViewerTests : public QObject {
         });
         edit->trigger();
         QTRY_COMPARE(backend.replaced, QStringLiteral("folder/имя с пробелом.txt"));
+        QTRY_VERIFY(edit->isEnabled());
         answer.stop();
         QCOMPARE(backend.replacement, QStringLiteral("новый текст\n").toUtf8());
         QTRY_VERIFY(!QFileInfo::exists(backend.temporary));
-        QTRY_COMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 0)->text(), QStringLiteral("имя с пробелом.txt"));
+        QTRY_COMPARE(table->rowCount(), 2);
         QTRY_COMPARE(table->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table->item(table->currentRow(), 0)->data(Qt::UserRole).toString(),
+                 QString("folder/z current.txt"));
+        QCOMPARE(table->item(table->selectionModel()->selectedRows()[0].row(), 0)
+                     ->data(Qt::UserRole)
+                     .toString(),
+                 QStringLiteral("folder/имя с пробелом.txt"));
+        QVERIFY(!table->selectionModel()->isRowSelected(table->currentRow(), {}));
     }
 
     void openFileFromFilesystemAndArchive() {

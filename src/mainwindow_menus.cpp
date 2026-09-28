@@ -177,7 +177,8 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     flatView_->setChecked(flatDisk_);
     connect(flatView_, &QAction::toggled, this, [this](bool enabled) {
         QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-        const QStringList selection = selectedPaths();
+        CSelectedState selection;
+        app_.GetFocusedPanel().SaveSelectedState(selection);
         if (state_ == State::Viewing) {
             flatArchive_ = enabled;
             settings.setValue("view/flatArchive", enabled);
@@ -187,10 +188,10 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
             settings.setValue("view/flatDisk", enabled);
             showDirectory(directory_, false);
             if (scanningDisk_)
-                scanSelection_ = selection;
+                scanSelectedState_ = selection;
         }
         if (!scanningDisk_)
-            selectPaths(selection);
+            app_.GetFocusedPanel().RefreshListCtrl(selection);
     });
     viewMenu->addSeparator();
     createToolbarOptions(viewMenu);

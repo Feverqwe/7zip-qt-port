@@ -435,3 +435,16 @@ surviving current item without selecting it. Sorting is already applied by Qt
 before this partial restoration; current presentation has a parent toolbar
 button and no dots row. Archive refresh and full source list loading remain open.
 No layout/text changes; Windows/Linux runtime and rendered parity unverified.
+
+## P0-02.2b2 archive and edit selection (2026-09-28)
+
+Archive refresh and flat-mode changes now preserve current separately from
+selected items through the source CSelectedState. Reference: Panel.cpp
+ChangeFlatMode and PanelItems.cpp selection bodies at 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+When the current folder disappears, names from it are not selected in the parent.
+Reference edit bracket: PanelItemOpen.cpp OnOpenItemChanged captures selection
+before updating and restores it afterward. Successful Qt/backend replacement
+does so after asynchronous relisting; failure/cancel retains displayed state
+because the backend updates a temporary archive. Local edit also uses the same
+refresh state. Full source module/lifecycle ports remain open; no layout/text
+changes. Windows/Linux runtime and rendered parity unverified.

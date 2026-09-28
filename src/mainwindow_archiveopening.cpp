@@ -13,7 +13,6 @@ void MainWindow::openArchive(const QString &path, bool nested, const QString &la
     if (!nested)
         archiveParents_.clear();
     scanningDisk_ = false;
-    scanSelection_.clear();
     scanSelectedState_.reset();
     archive_ = QFileInfo(path).absoluteFilePath();
     displayArchive_ = nested ? label : archive_;
@@ -29,7 +28,7 @@ void MainWindow::openArchive(const QString &path, bool nested, const QString &la
     archiveFolder_.clear();
     refreshing_ = false;
     refreshFolder_.clear();
-    refreshSelection_.clear();
+    refreshSelectedState_ = CSelectedState();
     table_->setRowCount(0);
     path_->setText(archive_);
     setState(State::Loading);

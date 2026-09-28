@@ -15,7 +15,6 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
         history_.append(directory_);
     filesystemScanner_->cancel();
     scanningDisk_ = false;
-    scanSelection_.clear();
     scanSelectedState_.reset();
     directory_ = next;
     recordVisitedPath(directory_);
@@ -31,7 +30,7 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     pendingArchiveFolder_.clear();
     refreshing_ = false;
     refreshFolder_.clear();
-    refreshSelection_.clear();
+    refreshSelectedState_ = CSelectedState();
     entries_.clear();
     table_->clearSelection();
     table_->setSortingEnabled(false);
@@ -123,7 +122,7 @@ void MainWindow::refreshCurrent() {
     } else if (state_ == State::Viewing) {
         refreshing_ = true;
         refreshFolder_ = archiveFolder_;
-        refreshSelection_ = selectedPaths();
+        app_.GetFocusedPanel().SaveSelectedState(refreshSelectedState_);
         setState(State::Loading);
         begin("Обновление архива", archive_);
         backend_->list(archive_);

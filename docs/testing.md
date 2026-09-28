@@ -10,7 +10,11 @@ presentation handles. `panel_key` covers address Tab and Alt+F1/F2 consumers.
 `panel_selected_state` checks source snapshot defaults, sorted Unicode relative
 names, independent current/selected items, normal/flat filesystem refresh across
 four view modes, changed row ordering and fallback when the current file is
-removed. These are nonvisual state checks; geometry contracts are unchanged.
+removed. Archive cases cover four modes, normal/flat relative paths, duplicate
+basenames, a removed folder and failure/cancel snapshot reset. Mode changes
+retain current separately from selected items. `file_viewer` checks those two
+items separately after successful, failed and cancelled replacement.
+These are nonvisual state checks; geometry contracts are unchanged.
 
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,

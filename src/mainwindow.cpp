@@ -36,10 +36,7 @@ void MainWindow::connectFilesystemScanner() {
         applySortMode();
         if (scanSelectedState_)
             app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
-        else
-            selectPaths(scanSelection_);
         scanSelectedState_.reset();
-        scanSelection_.clear();
         refreshActions();
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
     });

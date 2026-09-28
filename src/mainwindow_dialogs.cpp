@@ -120,6 +120,7 @@ void MainWindow::openFileViewer(const QString &path, bool editable) {
             previousState_ = state_;
             updatingArchive_ = true;
             replacingArchiveEntry_ = true;
+            app_.GetFocusedPanel().SaveSelectedState(refreshSelectedState_);
             setState(State::Operating);
             begin(QStringLiteral("Обновление файла в архиве"), pendingEditEntry_);
             backend_->replaceEntry(archive_, pendingEditEntry_, viewTemporary_->path());
@@ -129,7 +130,7 @@ void MainWindow::openFileViewer(const QString &path, bool editable) {
     pendingEditEntry_.clear();
     viewTemporary_.reset();
     if (editable && state_ == State::Filesystem)
-        showDirectory(directory_, false);
+        refreshCurrent();
 }
 
 bool MainWindow::openLocalFile(const QString &path) {

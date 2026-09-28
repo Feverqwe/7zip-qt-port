@@ -21,6 +21,85 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
     }
 
   private slots:
+    void archiveRefreshRetainsCurrentAndSelectedItems_data() {
+        filesystemRefreshRetainsCurrentAndSelectedItems_data();
+    }
+
+    void archiveRefreshRetainsCurrentAndSelectedItems() {
+        QFETCH(bool, flat);
+        QFETCH(int, mode);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "flatViewAction")->setChecked(false);
+        window.openArchive("selection-refresh.zip");
+        const QString folder = QStringLiteral("папка с пробелом");
+        const QString selected = folder + QStringLiteral("/имя.txt");
+        const QString focused = folder + QStringLiteral("/текущий.txt");
+        QList<ArchiveEntry> entries = {
+            {selected, 1, 1}, {focused, 2, 2}, {QStringLiteral("другая/имя.txt"), 3, 3}};
+        backend.completeList(entries);
+        if (!flat)
+            openRow(window, rowWithPath(window, folder));
+        action(window, "flatViewAction")->setChecked(flat);
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
+        auto *view = table(window);
+        view->clearSelection();
+        selectRow(view, rowWithPath(window, selected));
+        view->setCurrentCell(rowWithPath(window, focused), 0, QItemSelectionModel::NoUpdate);
+        entries.append({folder + "/0 new.txt", 4, 4});
+        action(window, "refreshAction")->trigger();
+        QCOMPARE(backend.listCalls, 2);
+        backend.completeList(entries);
+        QCOMPARE(view->currentRow(), rowWithPath(window, focused));
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
+        QVERIFY(view->selectionModel()->isRowSelected(rowWithPath(window, selected), {}));
+        QVERIFY(!view->selectionModel()->isRowSelected(rowWithPath(window, focused), {}));
+        if (!flat) {
+            // Changing flat mode must preserve current separately from selection.
+            action(window, "flatViewAction")->setChecked(true);
+            QCOMPARE(view->currentRow(), rowWithPath(window, focused));
+            action(window, "flatViewAction")->setChecked(false);
+            QCOMPARE(view->currentRow(), rowWithPath(window, focused));
+            QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
+            // Relative names from a removed folder must not select a namesake
+            // in its surviving parent after the folder fallback.
+            action(window, "refreshAction")->trigger();
+            backend.completeList({{QStringLiteral("имя.txt"), 5, 5}});
+            QCOMPARE(view->rowCount(), 1);
+            QVERIFY(view->selectionModel()->selectedRows().isEmpty());
+        }
+        action(window, "flatViewAction")->setChecked(false);
+    }
+
+    void failedArchiveRefreshDiscardsPendingSnapshot_data() {
+        QTest::addColumn<bool>("cancel");
+        QTest::newRow("cancel") << true;
+        QTest::newRow("failure") << false;
+    }
+
+    void failedArchiveRefreshDiscardsPendingSnapshot() {
+        QFETCH(bool, cancel);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.openArchive("first.zip");
+        backend.completeList({{QStringLiteral("имя.txt"), 1, 1}});
+        table(window)->selectRow(0);
+        action(window, "refreshAction")->trigger();
+        if (cancel)
+            backend.cancel();
+        else {
+            QTimer::singleShot(0, &window, [] { dismissWarnings(); });
+            backend.fail("fixture list failure");
+        }
+        QVERIFY(action(window, "createFolderAction")->isEnabled());
+        window.openArchive("second.zip");
+        backend.completeList({{QStringLiteral("имя.txt"), 2, 2}});
+        QCOMPARE(table(window)->rowCount(), 1);
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+    }
+
     void snapshotSeparatesFocusFromSelection() {
         QTableWidget view(3, 1);
         const QStringList names = {QStringLiteral("папка/z space.txt"), "a.txt", "focus.txt"};
@@ -103,6 +182,15 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(view->item(view->selectionModel()->selectedRows()[0].row(), 1)->text(), selected);
         QVERIFY(!view->selectionModel()->isRowSelected(view->currentRow(), QModelIndex()));
+
+        if (!flat) {
+            action(window, "flatViewAction")->setChecked(true);
+            QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+            QCOMPARE(view->item(view->currentRow(), 1)->text(), focused);
+            action(window, "flatViewAction")->setChecked(false);
+            QCOMPARE(view->item(view->currentRow(), 1)->text(), focused);
+            QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
+        }
 
         const int oldFocusedRow = view->currentRow();
         QVERIFY(QFile::remove(focused));

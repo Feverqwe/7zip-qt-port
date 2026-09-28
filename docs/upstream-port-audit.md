@@ -8,6 +8,42 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b2 — archive/flat/edit selected-state consumers (2026-09-28)
+
+Project baseline `c412350`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+This is integration of the already copied Panel.h/PanelItems.cpp selection bodies
+from P0-02.2b1, not a claim to port whole additional modules. Reference consumer
+sequence: Panel.cpp ChangeFlatMode → RefreshListCtrl_SaveFocused and
+PanelItemOpen.cpp OnOpenItemChanged path resolution → SaveSelectedState →
+OnOpenItemChanged update → RefreshListCtrl. The capture/update/restore bracket
+is retained across asynchronous ArchiveBackend signals rather than a synchronous
+COM call. Full ChangeFlatMode flags/parent-stack ownership and OnOpenItemChanged
+path/update/thread bodies remain mandatory migration work.
+
+Archive refresh captures/restores the same CSelectedState used for filesystem
+refresh. Flat-mode changes capture before replacing rows and restore after normal
+loading or scanner completion. Removed legacy scanSelection_/refreshSelection_
+QStringList owners; one pending scan snapshot and one archive snapshot remain as
+Qt asynchronous transport. If an archive folder disappears, the old relative-name
+snapshot is discarded when falling back to its parent; a same-named file in that
+different folder must not become selected. Failure/cancel clears pending refresh
+through existing navigation rollback. That rollback workflow remains unchanged.
+
+Archive edit captures before replacement and restores on successful relisting;
+it no longer forces selection of the edited entry independently of source state.
+Failed/cancelled replacement retains displayed selection/current item and drops
+the pending snapshot. Backend prepareMutation works on a temporary archive and
+commits on success; unlike upstream's direct IFolder update, failure does not
+require reloading a potentially partially changed original. Existing real
+archive_mutation tests verify mutation rollback/cancellation. Local edit uses
+the same filesystem refresh instead of discarding current/selected state.
+
+Checks 2026-09-28 macOS: affected targets built; focused current-build
+panel_selected_state/flat_view/ui_state/ui_archive_states/file_viewer passed 5/5;
+./scripts/check.sh formatting/build/56 CTest passed. No layout,
+visible-text or control changes; Windows/Linux runtime remains unverified.
+
 ## P0-02.2b1 — filesystem refresh selection/focus snapshot (2026-09-28)
 
 Project baseline `5bc96ad`. Exact source: [ip7z/7zip

@@ -227,7 +227,6 @@ class MainWindow : public QMainWindow {
     bool flatArchive_ = false;
     bool scanningDisk_ = false;
     FilesystemScanner *filesystemScanner_ = nullptr;
-    QStringList scanSelection_;
     std::optional<CSelectedState> scanSelectedState_;
     int viewMode_ = 3;
     State previousState_ = State::Filesystem;
@@ -246,7 +245,7 @@ class MainWindow : public QMainWindow {
     QStringList history_;
     bool refreshing_ = false;
     QString refreshFolder_;
-    QStringList refreshSelection_;
+    CSelectedState refreshSelectedState_;
     QTableWidget *table_ = nullptr;
     QListView *iconList_ = nullptr;
     QStackedWidget *viewStack_ = nullptr;
