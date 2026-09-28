@@ -50,6 +50,7 @@ class ArchiveBackend : public QObject {
 
   public:
     explicit ArchiveBackend(QObject *parent = nullptr, QString executable = QString());
+    ~ArchiveBackend() override;
     virtual bool busy() const;
     virtual void list(const QString &archive, const QString &password = {});
     virtual void extract(const QString &archive, const QString &destination,

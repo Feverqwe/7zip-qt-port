@@ -8,6 +8,63 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3a — source list item parameters (2026-09-29)
+
+Project baseline `57804df`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Panel.h GetRealItemIndex body is copied to PanelItems.cpp, retaining GetItemParam
+failure throw 1 and unsigned cast. QtPanelList replaces LPARAM/CListView retrieval
+with quintptr/QModelIndex and the existing Qt UserRole+6 source-order parameter.
+Rows without that role retain the legacy/fixture physical-row fallback. This
+replaces the independently written GetRealItemIndex(row)==row shortcut; source
+indices survive sorting. Parent UInt32(-1) remains excluded.
+
+GetItemRelPath uses source GetItemPrefix+GetItemName when an IFolder owner exists.
+Presentation-only legacy panels use a derived param-to-row map, rebuilt once at
+Save/Refresh and cleared on attach/delete, to avoid quadratic row lookup. This
+belongs to Qt control adaptation, not folder algorithms. GetFolderItemCount
+adapts source GetNumberOfItems at that boundary, with row count only for unbound
+legacy panels. Save's Qt status synchronization fills source-index bits, then
+assigns selected rows by their parameter. Source SaveSelectedState/GetSelectedNames
+and property bodies remain. Invalid parameter/range rejects before vector access;
+the parent parameter is skipped.
+
+The previously copied partial RefreshListCtrl still runs after Qt loading/sorting.
+Matching branches and independent cursor/selection semantics remain; the Qt row
+loop maps each row to its source index and writes source-index bits. Folder-item
+count controls reserve/size even with omitted rows. This does not port omitted
+full RefreshListCtrl loading/columns/icons/timer/redraw/sort or OnNotify tracking;
+those remain mandatory in P0-02 runtime/lifecycle and P0-03/04 feature owners.
+Existing four-view presentation remains; no dots row is added to the application.
+
+New panel_folder regression permutes source records versus displayed rows,
+selects one item with a different unselected current item, verifies saved names,
+real selected indices and correct source size/path summary, then restores after
+another permutation and with a hidden-row index gap. A fixture-only parent
+sentinel must not become a folder index or selected operation item. Existing
+panel_selected_state covers filesystem/archive/flat refresh in four views.
+Affected app/panel_folder/panel_selected_state/flat_view/file_viewer/ui_navigation
+targets built; focused 5/5 passed macOS 2026-09-29. Initial full gate failed
+ui_operations SIGTRAP after active listing teardown; all other 61 tests passed.
+Single rerun and 15 repetitions passed, as did 15 ASan ui_operations repetitions,
+so those repetitions alone did not establish safety. A new deterministic
+archive_mutation destroyedActiveBackend test fails before the fix (unexpected
+finished callback, followed by SIGTRAP), with a helper process still active.
+
+ArchiveBackend destructor now disconnects QProcess callbacks, kills/waits for its
+owned process while fields remain alive, and removes an unfinished mutation's
+temporary archive after process exit. This is necessary Qt/7zz integration glue:
+upstream Windows/ProcessUtils.h CProcess/CHandle has no Qt asynchronous signals
+or this backend buffer lifetime, and no corresponding upstream body can be
+copied. The previous implicit destructor destroyed QString/list state before
+QProcess emitted readyRead/finished. The regression covers active listing and
+partial create, no shutdown completion callback, original input preserved and
+temporary file cleanup. Full source operation/lifecycle scope P0-02.3 remains
+mandatory. Fixed focused 7/7 passed (6.43s), ASan ui_operations/archive_mutation
+2/2 passed (10.26s, leak detection disabled). Final ./scripts/check.sh passed
+formatting/build/all 62 CTest (29.49s), macOS 2026-09-29; layout/text unchanged;
+Windows/Linux runtime unverified.
+
 ## P0-02.2b3b2c2 — Qt location factory and unknown size boundary (2026-09-29)
 
 Project baseline `70fbcf3`; exact upstream [ip7z/7zip

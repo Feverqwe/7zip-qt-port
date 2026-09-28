@@ -16,12 +16,44 @@ UString QtPanelList::GetItemName(unsigned row) const {
 QString QtPanelList::GetItemRelPath(unsigned row) const {
     return view_->model()->index((int)row, 0).data().toString();
 }
+bool QtPanelList::GetItemParam(unsigned row, quintptr &param) const {
+    if (!IsBound())
+        return false;
+    const QModelIndex index = view_->model()->index(int(row), 0);
+    if (!index.isValid())
+        return false;
+    const QVariant value = index.data(Qt::UserRole + 6);
+    if (!value.isValid()) {
+        param = row; // Fixtures/legacy snapshots without an explicit source param.
+        return true;
+    }
+    bool ok;
+    param = value.toULongLong(&ok);
+    return ok;
+}
+
+void QtPanelList::PrepareItemIndices() {
+    itemRows_.clear();
+    for (int row = 0; row < GetItemCount(); ++row) {
+        quintptr param;
+        if (GetItemParam(unsigned(row), param))
+            itemRows_.insert(unsigned(param), row);
+    }
+}
+
+QString QtPanelList::GetItemRelPathForItem(unsigned itemIndex) const {
+    const int row = itemRows_.value(itemIndex, -1);
+    if (row < 0)
+        throw 1;
+    return GetItemRelPath(unsigned(row));
+}
 void QtPanelList::ClearSelection() {
     if (IsBound())
         view_->selectionModel()->clearSelection();
 }
 
 void QtPanelList::DeleteListItems() {
+    itemRows_.clear();
     if (IsBound())
         view_->model()->removeRows(0, GetItemCount());
 }

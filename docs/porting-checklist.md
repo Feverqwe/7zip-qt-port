@@ -327,7 +327,7 @@ P0-02.2b3a commit: `dfee6fd`. P0-02.2b3b разделён перед смено�
 | --- | --- | --- | --- |
 | P0-02.2b3b1 | Qt metadata snapshot implements unchanged IFolderFolder; CPanel uses CMyComPtr folder, source SetNewFolder/ReleaseFolder/property/name/path helpers, existing summary/property consumers preserved | P0-02.2b3a | done — audit § P0-02.2b3b1; focused 5/5, check.sh 58/58, vendor bytes 44/44 |
 | P0-02.2b3b2 | Filesystem/Agent location adapters и source bind/path scope на portable folder contract; local deterministic binding/error checks | P0-02.2b3b1 | done — a–c ниже; remaining engine/optional contracts retain mandatory owners |
-| P0-02.2b3b3 | Window runtime location connects to panel folder owner, remove duplicate current filesystem/archive location fields; navigation/loading/failure/cancel consumers | P0-02.2b3b2 | todo |
+| P0-02.2b3b3 | Window runtime connects folder owners and preserves source real indices/loading/failure/cancel; duplicate location fields removed by mandatory BindToPath/LoadFullPath P0-02.2b3d after parent stack | P0-02.2b3b2 | active — b3a–b3c ниже |
 
 P0-02.2b3b1 checks 2026-09-29 macOS: affected targets/direct consumers build dev;
 `ctest --preset dev -R '^(folder_contract|panel_folder|panel_copy_info|properties|panel_selected_state)$' --output-on-failure`
@@ -363,6 +363,23 @@ P0-02.2b3b2b3 commit: `0297571`. Owned archive scope разделён до из�
 | P0-02.2b3b2c2 | Filesystem/archive location factories use owned contract, typed provider snapshots и b2 acceptance; source GetSize/CalculateSizes unknown-metadata handling; required remaining engine/interface branches retain owning IDs | P0-02.2b3b2c1 | done — audit § P0-02.2b3b2c2; focused 6/6, check.sh 62/62; macOS 2026-09-29 |
 
 При следующем разделении добавить здесь, сохраняя остальных:
+
+P0-02.2b3b2c2 commit: `57804df`. Runtime scope разделён до изменения:
+outer archive/full path ownership требует следующего CFolderLink stack, поэтому
+удаление duplicate location fields остаётся обязательным P0-02.2b3d, не N/A.
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2b3b3a | Source CPanel GetRealItemIndex/GetItemParam mapping; selection vector uses source indices; sorted/flat rows retain independent focus/selection and correct property consumers | P0-02.2b3b2 | done — audit § P0-02.2b3b3a; focused 7/7, ASan 2/2, check.sh 62/62; macOS 2026-09-29; teardown gate failure fixed with before-fix regression |
+| P0-02.2b3b3b | Runtime folder loading/binding for filesystem/archive, source owner indices across timer/batch/flat loading; retain responsiveness and cancellation/error behavior | P0-02.2b3b3a | todo |
+| P0-02.2b3b3c | All location/navigation/mutation consumers and binding teardown acceptance; document temporary fields with mandatory removal in P0-02.2b3d | P0-02.2b3b3b | todo |
+
+P0-02.2b3b3a gate выявил SIGTRAP при teardown активного 7zz listing.
+До исправления scope дополнен узкой Qt integration prerequisite:
+ArchiveBackend останавливает callbacks/process до разрушения полей; regression
+удаляет backend при активном listing и незавершённом создании, проверяет отсутствие
+completion callbacks и очистку временного архива. Это не закрывает обязательный
+полный source operation/lifecycle scope P0-02.3.
 
 ```text
 Parent: P?-?? — partial

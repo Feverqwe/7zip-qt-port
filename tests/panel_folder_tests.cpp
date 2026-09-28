@@ -8,6 +8,84 @@
 class PanelFolderTests : public QObject {
     Q_OBJECT
   private slots:
+    void sortedRowsUseSourceIndicesForSelectionAndProperties() {
+        CObjectVector<CPanelItem> items;
+        for (const auto &entry :
+             QList<QPair<QString, UInt64>>{{"z.txt", 30}, {"a/dup.txt", 10}, {"b/dup.txt", 20}}) {
+            CPanelItem item;
+            item.RelPath = entry.first;
+            item.SizeDefined = true;
+            item.Size = entry.second;
+            items.Add(item);
+        }
+        CMyComPtr<IFolderFolder> folder = new QtPanelFolder("/root/", items);
+        CPanel panel(folder);
+        QTableWidget table(0, 1);
+        table.setSelectionBehavior(QAbstractItemView::SelectRows);
+        table.setSelectionMode(QAbstractItemView::ExtendedSelection);
+        panel.AttachSelectionView(&table);
+        auto rows = [&](const QList<unsigned> &indices) {
+            table.setRowCount(0);
+            for (unsigned index : indices) {
+                const int row = table.rowCount();
+                table.insertRow(row);
+                auto *item = new QTableWidgetItem(items[index].RelPath);
+                item->setData(Qt::UserRole + 3, items[index].RelPath.section('/', -1));
+                item->setData(Qt::UserRole + 6, index);
+                table.setItem(row, 0, item);
+            }
+        };
+        rows({2, 0, 1});
+        table.selectionModel()->select(table.model()->index(0, 0),
+                                       QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        table.setCurrentCell(1, 0, QItemSelectionModel::NoUpdate);
+        CSelectedState state;
+        panel.SaveSelectedState(state);
+        QCOMPARE(ToQString(state.FocusedName), QStringLiteral("z.txt"));
+        QVERIFY(!state.SelectFocused);
+        QCOMPARE(state.SelectedNames.Size(), 1u);
+        QCOMPARE(ToQString(state.SelectedNames[0]), QStringLiteral("b/dup.txt"));
+        CRecordVector<UInt32> selected;
+        panel.Get_ItemIndices_Selected(selected);
+        QCOMPARE(selected.Size(), 1u);
+        QCOMPARE(selected[0], UInt32(2));
+        const QString summary = panel.GetItemsInfoString(selected);
+        QVERIFY(summary.contains("20 байт"));
+        QVERIFY(summary.contains("b/dup.txt"));
+        rows({1, 2, 0});
+        panel.RefreshListCtrl(state);
+        QCOMPARE(table.currentRow(), 2);
+        QCOMPARE(table.selectionModel()->selectedRows().size(), 1);
+        QVERIFY(table.selectionModel()->isRowSelected(1, {}));
+        QVERIFY(!table.selectionModel()->isRowSelected(2, {}));
+        panel.Get_ItemIndices_Selected(selected);
+        QCOMPARE(selected[0], UInt32(2));
+        // Source indices can contain holes when presentation omits a row.
+        rows({0, 2});
+        panel.RefreshListCtrl(state);
+        QCOMPARE(table.currentRow(), 0);
+        QVERIFY(table.selectionModel()->isRowSelected(1, {}));
+        CSelectedState after;
+        panel.SaveSelectedState(after);
+        QCOMPARE(ToQString(after.SelectedNames[0]), QStringLiteral("b/dup.txt"));
+        // The source parent sentinel is presentation-only, never a folder index.
+        table.insertRow(0);
+        auto *parent = new QTableWidgetItem("..");
+        parent->setData(Qt::UserRole + 6, quint32(-1));
+        table.setItem(0, 0, parent);
+        table.selectionModel()->select(table.model()->index(0, 0),
+                                       QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        table.setCurrentCell(0, 0, QItemSelectionModel::NoUpdate);
+        panel.SaveSelectedState(after);
+        QVERIFY(!after.FocusedName_Defined);
+        panel.Get_ItemIndices_Selected(selected);
+        QCOMPARE(selected.Size(), 1u);
+        QCOMPARE(selected[0], UInt32(2));
+        panel.RefreshListCtrl(after);
+        QVERIFY(!table.selectionModel()->isRowSelected(0, {}));
+        QVERIFY(table.selectionModel()->isRowSelected(2, {}));
+    }
+
     void metadataSnapshotOwnsTypedProperties() {
         CObjectVector<CPanelItem> items;
         CPanelItem item;

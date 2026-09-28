@@ -22,6 +22,13 @@ Unicode/non-BMP names/prefix, snapshot ownership after caller mutation/release,
 missing versus zero size, original numeric-type rejection, missing metadata and
 list/selection clearing on release. `panel_copy_info`, `properties` and
 `panel_selected_state` validate direct consumers.
+Its source-index regression checks reordered Qt rows, a different unselected
+current item, typed size/path summary, refresh after another order, missing-row
+index gaps and a fixture parent sentinel excluded from operated indices.
+`archive_mutation` destroys an active backend during helper listing and partial
+creation: shutdown must not call completion handlers, leave a temporary archive,
+or alter the source file. This reproduces the implicit-destructor lifetime bug
+before the explicit QProcess shutdown fix.
 `agent_folder` validates the source _proxy folder contract: name/index/ancestor/
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings

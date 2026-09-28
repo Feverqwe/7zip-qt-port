@@ -90,7 +90,8 @@ class CPanel : public QObject {
     UString GetItemName(unsigned index) const;
     UString GetItemPrefix(unsigned index) const;
     QString GetItemRelPath(UInt32 index) const;
-    unsigned GetRealItemIndex(int row) const { return (unsigned)row; }
+    unsigned GetRealItemIndex(int indexInListView) const;
+    UInt32 GetFolderItemCount() const;
     void SetFocusedSelectedItem(int index, bool select);
     UInt64 GetItemSize(UInt32 index) const;
     UInt64 GetItem_UInt64Prop(UInt32 index, UInt32 propID) const;

@@ -29,6 +29,9 @@ integration, tests and build tooling. Application modules live under
 Archive operations go through `ArchiveBackend`, which launches the official
 `7zz` executable. Widgets do not construct process arguments or implement
 archive formats. A future direct engine adapter must preserve this boundary.
+Backend destruction disconnects its process callbacks and stops the owned 7zz
+before releasing buffers; an active mutation's temporary output is removed after
+process exit. Shutdown does not dispatch operation completion into a closing UI.
 
 The unchanged upstream IFolder/IStream/IProgress declarations, MyCom ownership
 and PropVariant implementation are available for folder adapters. ClassDefs
@@ -54,6 +57,10 @@ full engine catalog contracts remain open; unsupported interfaces are absent.
 services or source CAgent ownership with an immutable typed metadata snapshot.
 Unknown metadata sentinels remain VT_EMPTY and do not wrap source directory
 totals. Runtime window binding and outer archive links are following iterations.
+QtPanelList carries source item parameters separately from sorted row positions.
+CPanel selection bits and property indices use source parameters; focus uses a
+presentation row. Legacy snapshots build a derived param-to-row map at Save/
+Refresh, while bound folders supply source name/prefix.
 
 ```text
 Qt Widgets (window, file list, dialogs)

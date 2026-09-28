@@ -40,6 +40,12 @@ source GetSize не добавляет negative sentinel к unsigned directory t
 Parser presence/type/range и full Properties catalog ещё обязательны P0-03/04.
 Видимый workflow не меняется этой фабрикой.
 
+P0-02.2b3b3a переносит GetRealItemIndex через item parameter вместо предположения,
+что sorted row равен folder index. Selection/property consumers сохраняют
+правильный source item после сортировки, focus остаётся отдельным row cursor.
+Layout/text не меняется; fixture parent sentinel проверяется без добавления
+dots row в приложение. Full RefreshListCtrl/OnNotify scope ещё обязателен.
+
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
 Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный

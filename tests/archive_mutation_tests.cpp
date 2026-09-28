@@ -1,9 +1,42 @@
 #include "archive_backend_test_support.h"
+#include <memory>
 
 class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport {
     Q_OBJECT
 
   private slots:
+    void destroyedActiveBackend_data() {
+        QTest::addColumn<bool>("creating");
+        QTest::newRow("listing") << false;
+        QTest::newRow("partial-create") << true;
+    }
+    void destroyedActiveBackend() {
+        QFETCH(bool, creating);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("имя с пробелом.txt"));
+        writeFile(source, "original");
+        const QString archive = temp.filePath("unfinished.7z");
+        qputenv("SEVENZIP_TEST_HELPER", creating ? "createpartial" : "cancel");
+        auto backend =
+            std::make_unique<ArchiveBackend>(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy output(backend.get(), &ArchiveBackend::outputReceived);
+        QSignalSpy finished(backend.get(), &ArchiveBackend::finished);
+        if (creating)
+            backend->create(archive, {source});
+        else
+            backend->list(archive);
+        QTRY_VERIFY_WITH_TIMEOUT(!output.isEmpty(), 3000);
+        qunsetenv("SEVENZIP_TEST_HELPER");
+        QVERIFY(backend->busy());
+        backend.reset();
+        QVERIFY(finished.isEmpty());
+        QVERIFY(!QFileInfo::exists(archive));
+        QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+        QFile original(source);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), QByteArray("original"));
+    }
     void replaceEditedEntry_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QStringLiteral("7z");

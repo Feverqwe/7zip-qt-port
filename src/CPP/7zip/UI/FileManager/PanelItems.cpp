@@ -11,6 +11,22 @@
 
 static const UInt32 kParentIndex = (UInt32)-1;
 
+unsigned CPanel::GetRealItemIndex(int indexInListView) const {
+    quintptr param;
+    if (!_selectionList.GetItemParam((unsigned)indexInListView, param))
+        throw 1;
+    return (unsigned)param;
+}
+
+UInt32 CPanel::GetFolderItemCount() const {
+    if (!_folder)
+        return UInt32(_selectionList.GetItemCount());
+    UInt32 numItems;
+    if (_folder->GetNumberOfItems(&numItems) != S_OK)
+        throw 2723400;
+    return numItems;
+}
+
 void CPanel::Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const {
     indices.Clear();
     const bool *v = _selectedStatusVector.ConstData();
@@ -32,10 +48,19 @@ void CPanel::GetSelectedNames(UStringVector &selectedNames) {
 void CPanel::SaveSelectedState(CSelectedState &s) {
     // Qt selection notifications do not yet use the upstream OnNotify body.
     // Synchronize its status vector at this presentation boundary.
-    const unsigned numItems = (unsigned)_selectionList.GetItemCount();
+    _selectionList.PrepareItemIndices();
+    const unsigned numItems = GetFolderItemCount();
     _selectedStatusVector.ClearAndReserve(numItems);
     for (unsigned i = 0; i < numItems; i++)
-        _selectedStatusVector.AddInReserved(_selectionList.IsItemSelected((int)i));
+        _selectedStatusVector.AddInReserved(false);
+    for (int row = 0; row < _selectionList.GetItemCount(); ++row) {
+        const unsigned realIndex = GetRealItemIndex(row);
+        if (realIndex == kParentIndex)
+            continue;
+        if (realIndex >= numItems)
+            throw 1;
+        _selectedStatusVector[realIndex] = _selectionList.IsItemSelected(row);
+    }
 
     s.FocusedName_Defined = false;
     s.FocusedName.Empty();
@@ -66,12 +91,16 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
 }
 
 void CPanel::RefreshListCtrl(const CSelectedState &state) {
+    _selectionList.PrepareItemIndices();
     int focusedPos = state.FocusedItem;
     if (focusedPos < 0)
         focusedPos = 0;
     _selectionList.ClearSelection();
     const UInt32 numItems = (UInt32)_selectionList.GetItemCount();
-    _selectedStatusVector.ClearAndReserve(numItems);
+    const UInt32 numFolderItems = GetFolderItemCount();
+    _selectedStatusVector.ClearAndReserve(numFolderItems);
+    for (UInt32 i = 0; i < numFolderItems; ++i)
+        _selectedStatusVector.AddInReserved(false);
     int cursorIndex = -1;
     UString relPath, focusedNamePure, selectedName;
     bool needCheckSlash = false;
@@ -92,6 +121,11 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
         }
     }
     for (UInt32 i = 0; i < numItems; i++) {
+        const unsigned realIndex = GetRealItemIndex(int(i));
+        if (realIndex == kParentIndex)
+            continue;
+        if (realIndex >= numFolderItems)
+            throw 1;
         const UString name = _selectionList.GetItemName(i);
         bool selected = false;
         if (state.SelectedNames.Size() > 1 ||
@@ -99,19 +133,19 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
             (state.FocusedName_Defined && focusedNamePure == name) ||
             (needCheckSlash && (name.Find(L'/') >= 0 || name.Find(L'\\') >= 0))) {
             // IFolder prefix/name property access becomes one Qt row snapshot.
-            relPath = ToUString(GetItemRelPath(i));
+            relPath = ToUString(GetItemRelPath(realIndex));
             if (relPath == state.FocusedName)
                 cursorIndex = (int)i;
             if (state.SelectedNames.FindInSorted(relPath) != -1)
                 selected = true;
         }
-        _selectedStatusVector.AddInReserved(selected);
+        _selectedStatusVector[realIndex] = selected;
         if (selected)
             _selectionList.SelectItem((int)i);
     }
     if (_selectionList.GetItemCount() > 0 && cursorIndex >= 0)
         SetFocusedSelectedItem(cursorIndex, state.SelectFocused);
-    // Rows are already sorted; Qt indices refer to the displayed row snapshot.
+    // Qt rows are sorted separately; item params preserve source folder indices.
     if (cursorIndex < 0 && _selectionList.GetItemCount() > 0) {
         if (focusedPos >= _selectionList.GetItemCount())
             focusedPos = _selectionList.GetItemCount() - 1;
@@ -184,8 +218,8 @@ UString CPanel::GetItemPrefix(unsigned itemIndex) const {
 }
 
 QString CPanel::GetItemRelPath(UInt32 itemIndex) const {
-    // Shared Qt list is still a row snapshot pending full folder-load port.
-    if (_selectionList.IsBound())
-        return _selectionList.GetItemRelPath(itemIndex);
+    // Borrowed presentation-only panels still have no runtime folder owner.
+    if (!_folder && _selectionList.IsBound())
+        return _selectionList.GetItemRelPathForItem(itemIndex);
     return ToQString(GetItemPrefix(itemIndex) + GetItemName(itemIndex));
 }
