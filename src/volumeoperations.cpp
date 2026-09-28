@@ -11,17 +11,32 @@
 
 VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination, qint64 volumeSize,
                                  QObject *parent)
+    : VolumeOperation(mode, std::move(source), std::move(destination), QList<qint64>{volumeSize},
+                      parent) {}
+
+VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination,
+                                 QList<qint64> volumeSizes, QObject *parent)
     : QThread(parent), mode_(mode), source_(std::move(source)),
-      destination_(std::move(destination)), volumeSize_(volumeSize) {}
+      destination_(std::move(destination)), volumeSizes_(std::move(volumeSizes)) {}
 
 void VolumeOperation::cancel() { canceled_ = true; }
 
-qint64 VolumeOperation::parseSize(const QString &text) {
+QList<qint64> VolumeOperation::parseSizes(const QString &text) {
     std::vector<UInt64> values;
-    if (!ParseVolumeSizes(text.toStdWString(), values) || values.size() != 1 ||
-        values.front() > UInt64(std::numeric_limits<qint64>::max()))
-        return 0;
-    return qint64(values.front());
+    if (!ParseVolumeSizes(text.trimmed().toStdWString(), values) || values.empty())
+        return {};
+    QList<qint64> result;
+    for (UInt64 value : values) {
+        if (value == 0 || value > UInt64(std::numeric_limits<qint64>::max()))
+            return {};
+        result.append(qint64(value));
+    }
+    return result;
+}
+
+qint64 VolumeOperation::parseSize(const QString &text) {
+    const auto sizes = parseSizes(text);
+    return sizes.size() == 1 ? sizes.first() : 0;
 }
 
 QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *error) {
@@ -105,13 +120,22 @@ bool VolumeOperation::copyBytes(QFile &input, QFile &output, qint64 count, qint6
 bool VolumeOperation::split(QString *error) {
     const QFileInfo sourceInfo(source_);
     const QFileInfo destinationInfo(destination_);
+    std::vector<UInt64> sizes;
+    for (qint64 size : volumeSizes_) {
+        if (size <= 0) {
+            *error = QStringLiteral("Размер тома должен быть положительным.");
+            return false;
+        }
+        sizes.push_back(UInt64(size));
+    }
     if (!sourceInfo.isFile() || sourceInfo.isSymLink() || !destinationInfo.isDir() ||
-        destinationInfo.isSymLink() || volumeSize_ <= 0 || sourceInfo.size() <= volumeSize_) {
+        destinationInfo.isSymLink() || sizes.empty() ||
+        sourceInfo.size() <= qint64(sizes.front())) {
         *error = QStringLiteral("Файл или размер тома недоступен для разделения.");
         return false;
     }
     const qint64 total = sourceInfo.size();
-    const qint64 count = qint64(GetNumberOfVolumes(UInt64(total), {UInt64(volumeSize_)}));
+    const qint64 count = qint64(GetNumberOfVolumes(UInt64(total), sizes));
     if (count > 10000) {
         *error = QStringLiteral("Слишком много частей (более 10000).");
         return false;
@@ -143,7 +167,9 @@ bool VolumeOperation::split(QString *error) {
         staged << stage;
         QFile output(stage);
         if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly) ||
-            !copyBytes(input, output, qMin(volumeSize_, total - progress), &progress, error) ||
+            !copyBytes(input, output,
+                       qMin(volumeSizes_[qMin(i, volumeSizes_.size() - 1)], total - progress),
+                       &progress, error) ||
             !output.flush()) {
             if (error->isEmpty())
                 *error = QStringLiteral("Не удалось записать часть файла.");

@@ -43,7 +43,7 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             : QDir(dialog.destination())
                   .filePath(source.fileName().left(source.fileName().lastIndexOf('.')));
     volumeOperation_ =
-        new VolumeOperation(mode, paths.first(), destination, dialog.volumeSize(), this);
+        new VolumeOperation(mode, paths.first(), destination, dialog.volumeSizes(), this);
     volumeProgress_ = new QProgressDialog(
         mode == VolumeOperation::Mode::Split ? "Разделение файла…" : "Объединение файлов…",
         "Отмена", 0, 0, this);

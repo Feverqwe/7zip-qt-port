@@ -23,6 +23,62 @@ class VolumeOperationsTests : public QObject {
         QCOMPARE(VolumeOperation::parseSize("0M"), qint64(0));
         QCOMPARE(VolumeOperation::parseSize("999999999999T"), qint64(0));
     }
+    void parsesSizeSequences() {
+        QCOMPARE(VolumeOperation::parseSizes(" 10M 20M "),
+                 (QList<qint64>{qint64(10) << 20, qint64(20) << 20}));
+        QCOMPARE(VolumeOperation::parseSizes("10 20 30B"), (QList<qint64>{10, 20, 30}));
+        QVERIFY(VolumeOperation::parseSizes("10M 0M").isEmpty());
+        QVERIFY(VolumeOperation::parseSizes("10M 9223372036854775808").isEmpty());
+        QVERIFY(VolumeOperation::parseSizes(" ").isEmpty());
+        QVERIFY(VolumeOperation::parseSizes("wrong").isEmpty());
+    }
+    void splitsWithSizeSequence_data() {
+        QTest::addColumn<QList<qint64>>("sizes");
+        QTest::addColumn<QList<qint64>>("expected");
+        QTest::newRow("repeat-last") << QList<qint64>{10, 20} << QList<qint64>{10, 20, 20, 20, 5};
+        QTest::newRow("three-sizes") << QList<qint64>{10, 20, 30} << QList<qint64>{10, 20, 30, 15};
+        QTest::newRow("unused-tail") << QList<qint64>{10, 100, 30} << QList<qint64>{10, 65};
+    }
+    void splitsWithSizeSequence() {
+        QFETCH(QList<qint64>, sizes);
+        QFETCH(QList<qint64>, expected);
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString source = dir.filePath("последовательность space.bin");
+        QByteArray bytes;
+        for (int i = 0; i < 75; ++i)
+            bytes.append(char(i));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write(bytes), qint64(75));
+        file.close();
+        VolumeOperation split(VolumeOperation::Mode::Split, source, dir.path(), sizes);
+        QSignalSpy spy(&split, &VolumeOperation::result);
+        split.start();
+        QVERIFY(split.wait());
+        QCOMPARE(spy.size(), 1);
+        QVERIFY(spy.first().first().toBool());
+        QByteArray restored;
+        for (qsizetype i = 0; i < expected.size(); ++i) {
+            QFile part(source + QStringLiteral(".%1").arg(i + 1, 3, 10, QLatin1Char('0')));
+            QVERIFY(part.open(QIODevice::ReadOnly));
+            QCOMPARE(part.size(), expected[i]);
+            restored += part.readAll();
+        }
+        QCOMPARE(restored, bytes);
+        QVERIFY(!QFileInfo::exists(
+            source + QStringLiteral(".%1").arg(expected.size() + 1, 3, 10, QLatin1Char('0'))));
+        const QString invalidDestination = dir.filePath("invalid");
+        QVERIFY(QDir().mkpath(invalidDestination));
+        VolumeOperation invalid(VolumeOperation::Mode::Split, source, invalidDestination,
+                                QList<qint64>{10, -1});
+        QSignalSpy failed(&invalid, &VolumeOperation::result);
+        invalid.start();
+        QVERIFY(invalid.wait());
+        QVERIFY(!failed.first().first().toBool());
+        QVERIFY(QDir(invalidDestination).entryList(QDir::Files | QDir::Hidden).isEmpty());
+    }
+
     void splitsAndCombinesUnicodeFile() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
@@ -92,7 +148,8 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         QVERIFY(file.resize(8 << 20));
         file.close();
-        VolumeOperation split(VolumeOperation::Mode::Split, source, dir.path(), 1 << 20);
+        VolumeOperation split(VolumeOperation::Mode::Split, source, dir.path(),
+                              QList<qint64>{1 << 20, 2 << 20});
         connect(
             &split, &VolumeOperation::advanced, &split,
             [&split](qint64 bytes) {
@@ -151,6 +208,28 @@ class VolumeOperationsTests : public QObject {
         QCOMPARE(dialog.destination(), dir.path());
         QCOMPARE(dialog.volumeSize(), qint64(10) << 20);
         QVERIFY(dialog.findChild<QLineEdit *>("volumeDestination"));
+        auto *size = dialog.findChild<QComboBox *>("volumeSize");
+        size->setCurrentText("10M 20M");
+        QCOMPARE(dialog.volumeSizes(), (QList<qint64>{qint64(10) << 20, qint64(20) << 20}));
+        dialog.show();
+        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+        QVERIFY(QDir().mkpath(screenshots));
+        for (int width : {540, 360}) {
+            dialog.resize(width, 190);
+            QApplication::processEvents();
+            QVERIFY(dialog.grab().save(screenshots + QStringLiteral("/split-%1.png").arg(width)));
+        }
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        size->setCurrentText("10M 0M");
+        buttons->button(QDialogButtonBox::Ok)->click();
+        QVERIFY(dialog.isVisible());
+        QVERIFY(!dialog.findChild<QLabel *>("volumeError")->text().isEmpty());
+        dialog.resize(360, 240);
+        QApplication::processEvents();
+        QVERIFY(dialog.grab().save(screenshots + "/split-error-360.png"));
+        size->setCurrentText("10M 20M");
+        buttons->button(QDialogButtonBox::Ok)->click();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
         VolumeDialog combine(VolumeOperation::Mode::Combine, dir.filePath("source.bin.001"));
         QVERIFY(!combine.findChild<QComboBox *>("volumeSize"));
     }

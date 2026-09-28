@@ -55,6 +55,7 @@ VolumeDialog::VolumeDialog(VolumeOperation::Mode mode, const QString &source, QW
     }
     error_ = new QLabel(this);
     error_->setObjectName("volumeError");
+    error_->setWordWrap(true);
     layout->addWidget(error_);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     layout->addWidget(buttons);
@@ -65,8 +66,8 @@ VolumeDialog::VolumeDialog(VolumeOperation::Mode mode, const QString &source, QW
             error_->setText("Укажите существующую папку назначения.");
             return;
         }
-        if (mode_ == VolumeOperation::Mode::Split && volumeSize() == 0) {
-            error_->setText("Укажите положительный размер тома (например, 10M).");
+        if (mode_ == VolumeOperation::Mode::Split && volumeSizes().isEmpty()) {
+            error_->setText("Укажите положительные размеры томов (например, 10M или 10M 20M).");
             return;
         }
         accept();

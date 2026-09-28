@@ -18,7 +18,10 @@ class VolumeOperation : public QThread {
     enum class Mode { Split, Combine };
     VolumeOperation(Mode mode, QString source, QString destination, qint64 volumeSize = 0,
                     QObject *parent = nullptr);
+    VolumeOperation(Mode mode, QString source, QString destination, QList<qint64> volumeSizes,
+                    QObject *parent = nullptr);
     void cancel();
+    static QList<qint64> parseSizes(const QString &text);
     static qint64 parseSize(const QString &text);
     static VolumeParts inspectParts(const QString &firstPart, QString *error);
     static QStringList discoverParts(const QString &firstPart, QString *error);
@@ -37,6 +40,6 @@ class VolumeOperation : public QThread {
     Mode mode_;
     QString source_;
     QString destination_;
-    qint64 volumeSize_;
+    QList<qint64> volumeSizes_;
     std::atomic_bool canceled_{false};
 };

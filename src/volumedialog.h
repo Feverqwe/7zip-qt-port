@@ -20,6 +20,9 @@ class VolumeDialog : public QDialog {
                  const VolumeParts &parts = {});
 
     QString destination() const { return destination_->text(); }
+    QList<qint64> volumeSizes() const {
+        return size_ ? VolumeOperation::parseSizes(size_->currentText()) : QList<qint64>{};
+    }
     qint64 volumeSize() const {
         return size_ ? VolumeOperation::parseSize(size_->currentText()) : 0;
     }
