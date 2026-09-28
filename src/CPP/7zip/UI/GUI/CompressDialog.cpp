@@ -10,6 +10,84 @@
 
 static const unsigned kHistorySize = 20;
 
+static bool IsAsciiString(const UString &s) {
+    for (unsigned i = 0; i < s.Len(); i++) {
+        const wchar_t c = s[i];
+        if (c < 0x20 || c > 0x7F)
+            return false;
+    }
+    return true;
+}
+
+CCompressDialog::EPasswordError CCompressDialog::CheckPassword(const QString &password,
+                                                               const QString &confirmation,
+                                                               bool showPassword,
+                                                               QStringView format,
+                                                               const QString &encryptionMethod) {
+    const UString Password(password.toStdWString().c_str());
+    if (format == u"zip") {
+        if (!IsAsciiString(Password))
+            return kPasswordUseAscii;
+        UString method(encryptionMethod.toStdWString().c_str());
+        if (method.IsPrefixedBy_Ascii_NoCase("aes")) {
+            if (Password.Len() > 99)
+                return kPasswordTooLong;
+        }
+    }
+    if (!showPassword) {
+        UString password2(confirmation.toStdWString().c_str());
+        if (password2 != Password)
+            return kPasswordNotMatch;
+    }
+    return kPasswordOK;
+}
+
+void CCompressDialog::SetEncryptionMethod(const NCompression::CInfo &registry) {
+    _encryptionMethod.clear();
+    _default_encryptionMethod_Index = -1;
+    _encryptionMethod_Index = -1;
+    if (Format == "7z") {
+        _encryptionMethod.append("AES-256");
+        _encryptionMethod_Index = 0;
+        _default_encryptionMethod_Index = 0;
+    } else if (Format == "zip") {
+        const int index = FindRegistryFormat(registry, Format);
+        UString encryptionMethod;
+        if (index >= 0) {
+            const NCompression::CFormatOptions &fo = registry.Formats[unsigned(index)];
+            encryptionMethod = fo.EncryptionMethod.toStdWString().c_str();
+        }
+        int sel = 0;
+        {
+            _encryptionMethod.append("ZipCrypto");
+            sel = encryptionMethod.IsPrefixedBy_Ascii_NoCase("aes") ? 1 : 0;
+            _default_encryptionMethod_Index = 0;
+        }
+        _encryptionMethod.append("AES-256");
+        _encryptionMethod_Index = sel;
+    }
+}
+
+int CCompressDialog::FindRegistryFormat(const NCompression::CInfo &registry, const QString &name) {
+    FOR_VECTOR(i, registry.Formats) {
+        const NCompression::CFormatOptions &fo = registry.Formats[i];
+        if (name.compare(fo.FormatID, Qt::CaseInsensitive) == 0)
+            return (int)i;
+    }
+    return -1;
+}
+
+QString CCompressDialog::GetEncryptionMethodSpec() const {
+    UString s;
+    if (!_encryptionMethod.isEmpty() && _encryptionMethod_Index >= 0 &&
+        _encryptionMethod_Index < _encryptionMethod.size() &&
+        _encryptionMethod_Index != _default_encryptionMethod_Index) {
+        s = _encryptionMethod[_encryptionMethod_Index].toStdWString().c_str();
+        s.RemoveChar(L'-');
+    }
+    return QString::fromWCharArray(s.Ptr());
+}
+
 static int GetExtDotPos(const UString &s) {
     const int dotPos = s.ReverseFind_Dot();
     if (dotPos > s.ReverseFind_PathSepar() + 1)
@@ -108,7 +186,9 @@ void CCompressDialog::OnOK(NCompression::CInfo &registry) const {
         strings.Add(value);
     };
     AddUniqueString(arcPaths, s);
+    registry.EncryptHeaders = EncryptHeaders;
     registry.ArcType = Format;
+    registry.ShowPassword = ShowPassword;
     FOR_VECTOR(i, registry.ArcPaths) {
         if (arcPaths.Size() >= kHistorySize)
             break;

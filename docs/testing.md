@@ -1,5 +1,18 @@
 # Regression strategy
 
+`compression_limit` now owns a fresh temporary settings file on each suite run;
+its default assertions do not depend on INI data left by previous runs.
+
+`compression_encryption` checks source password boundaries, method defaults and
+format transitions, Show Password hide/restore, header availability, profile/flag
+restart, password absence in INI, failed confirmation and Cancel. Real 7z with
+Unicode password/hidden names, ZIP ZipCrypto, ZIP AES (99 characters) and an
+unencrypted ZIP are extracted for exact Unicode-file bytes; wrong password
+cannot list hidden 7z names. Backend rejects AES at 100 characters, ZIP Unicode,
+unknown methods and unsupported combinations before staging; cancellation removes
+output and temporary files. Geometry covers 760×720/640×480 and both show states,
+including long history. Reports: `encryption-*.json` in `build/dev/ui-reports/`.
+
 `compression_path` covers extension replacement (hidden names, dotted directories),
 path prefix/fallback/Trim, NUL rejection, history selection, twenty-item cap and
 case-insensitive duplicates, settings reset, Cancel and validation failure.

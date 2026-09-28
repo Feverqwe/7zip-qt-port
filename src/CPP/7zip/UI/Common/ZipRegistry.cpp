@@ -111,6 +111,8 @@ static void Key_Get_UInt32(QSettings &key, const char *name, UInt32 &value) {
 void CInfo::Save(const QString &path) const {
     QSettings optionsKey(path, QSettings::IniFormat);
     optionsKey.setValue("Compression/Archiver", ArcType);
+    optionsKey.setValue("Compression/ShowPassword", ShowPassword);
+    optionsKey.setValue("Compression/EncryptHeaders", EncryptHeaders);
     QStringList arcPaths;
     FOR_VECTOR(i, ArcPaths)
     arcPaths.append(ArcPaths[i]);
@@ -122,6 +124,7 @@ void CInfo::Save(const QString &path) const {
         const CFormatOptions &fo = Formats[i];
         optionsKey.beginGroup(fo.FormatID);
         optionsKey.setValue("Method", fo.Method);
+        optionsKey.setValue("EncryptionMethod", fo.EncryptionMethod);
         optionsKey.setValue(QLatin1String(kMemUse), fo.MemUse);
         Key_Set_UInt32(optionsKey, "Level", fo.Level);
         Key_Set_UInt32(optionsKey, "Dictionary", fo.Dictionary);
@@ -136,7 +139,11 @@ void CInfo::Load(const QString &path) {
     ArcPaths.Clear();
     Formats.Clear();
     ArcType = QStringLiteral("7z");
+    ShowPassword = false;
+    EncryptHeaders = false;
     QSettings optionsKey(path, QSettings::IniFormat);
+    ShowPassword = optionsKey.value("Compression/ShowPassword", false).toBool();
+    EncryptHeaders = optionsKey.value("Compression/EncryptHeaders", false).toBool();
     if (optionsKey.contains("Compression/Archiver"))
         ArcType = optionsKey.value("Compression/Archiver").toString();
     for (const QString &s : optionsKey.value("Compression/ArcHistory").toStringList())
@@ -148,6 +155,7 @@ void CInfo::Load(const QString &path) {
         fo.FormatID = formatIDs[i];
         optionsKey.beginGroup(fo.FormatID);
         fo.Method = optionsKey.value("Method").toString();
+        fo.EncryptionMethod = optionsKey.value("EncryptionMethod").toString();
         fo.MemUse = optionsKey.value(QLatin1String(kMemUse)).toString();
         Key_Get_UInt32(optionsKey, "Level", fo.Level);
         Key_Get_UInt32(optionsKey, "Dictionary", fo.Dictionary);

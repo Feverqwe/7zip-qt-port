@@ -29,7 +29,7 @@ struct CMemUse {
     void Parse(const QString &s);
 };
 
-// Compression controls ported from upstream; time/options/encryption remain pending.
+// Compression/encryption controls ported from upstream; time/options remain pending.
 struct CFormatOptions {
     UInt32 Level;
     UInt32 Dictionary;
@@ -39,6 +39,7 @@ struct CFormatOptions {
     QString FormatID;
     QString Method;
     QString MemUse;
+    QString EncryptionMethod;
 
     void Reset_BlockLogSize() { BlockLogSize = (UInt32)(Int32)-1; }
     void ResetForLevelChange() {
@@ -49,6 +50,8 @@ struct CFormatOptions {
 };
 struct CInfo {
     QString ArcType = QStringLiteral("7z");
+    bool ShowPassword = false;
+    bool EncryptHeaders = false;
     CObjectVector<QString> ArcPaths;
     CObjectVector<CFormatOptions> Formats;
     void Save(const QString &path) const;

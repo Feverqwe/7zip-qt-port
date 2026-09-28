@@ -86,6 +86,8 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     archivePath_ = new QComboBox(this);
     archivePath_->setObjectName("archivePath");
     archivePath_->setEditable(true);
+    archivePath_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    archivePath_->setMinimumContentsLength(20);
     archivePath_->setInsertPolicy(QComboBox::NoInsert);
     for (unsigned i = 0; i < m_RegistryInfo.ArcPaths.Size() && i < 20; i++)
         archivePath_->addItem(m_RegistryInfo.ArcPaths[i]);
@@ -149,46 +151,6 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     });
 }
 
-void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
-    auto *encryptionGroup = new QGroupBox("Шифрование", this);
-    auto *encryptionForm = new QFormLayout(encryptionGroup);
-    encryption_ = new QComboBox(this);
-    encryption_->setObjectName("archiveEncryption");
-    encryptionForm->addRow("Метод:", encryption_);
-    password_ = new QLineEdit(this);
-    password_->setObjectName("archivePassword");
-    password_->setEchoMode(QLineEdit::Password);
-    encryptionForm->addRow("Пароль:", password_);
-    passwordConfirmation_ = new QLineEdit(this);
-    passwordConfirmation_->setObjectName("archivePasswordConfirmation");
-    passwordConfirmation_->setEchoMode(QLineEdit::Password);
-    encryptionForm->addRow("Повторите пароль:", passwordConfirmation_);
-    auto *showPassword = new QCheckBox("Показать пароль", encryptionGroup);
-    showPassword->setObjectName("archiveShowPassword");
-    encryptionForm->addRow(showPassword);
-    form->addRow(encryptionGroup);
-    connect(showPassword, &QCheckBox::toggled, this, [this](bool visible) {
-        const auto mode = visible ? QLineEdit::Normal : QLineEdit::Password;
-        password_->setEchoMode(mode);
-        passwordConfirmation_->setEchoMode(mode);
-    });
-    const auto updateEncryption = [this] {
-        encryption_->clear();
-        encryption_->addItem("Без шифрования");
-        encryption_->addItem("AES-256");
-        if (format_->currentText() == "7z")
-            encryption_->addItem("AES-256 и шифрование имён файлов");
-    };
-    connect(format_, &QComboBox::currentTextChanged, this, updateEncryption);
-    connect(encryption_, &QComboBox::currentIndexChanged, this, [this] {
-        password_->setEnabled(encryption_->currentIndex() != 0);
-        passwordConfirmation_->setEnabled(encryption_->currentIndex() != 0);
-    });
-    updateEncryption();
-    password_->setEnabled(false);
-    passwordConfirmation_->setEnabled(false);
-}
-
 void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
     preview_ = new QLabel(this);
     preview_->setObjectName("archiveTargetPreview");
@@ -224,14 +186,20 @@ QString CreateArchiveDialog::archivePath() const {
 }
 
 void CreateArchiveDialog::validateAndAccept() {
-    if (encryption_ && encryption_->currentIndex() != 0 && password_->text().isEmpty()) {
-        QMessageBox::warning(this, "Создать архив", "Введите пароль для шифрования.");
-        return;
-    }
-    if (encryption_ && encryption_->currentIndex() != 0 &&
-        password_->text() != passwordConfirmation_->text()) {
-        QMessageBox::warning(this, "Создать архив", "Введённые пароли не совпадают.");
-        return;
+    if (password_) {
+        const auto error = CCompressDialog::CheckPassword(
+            password_->text(), passwordConfirmation_->text(), showPassword_->isChecked(),
+            format_->currentText(), GetEncryptionMethodSpec());
+        if (error != CCompressDialog::kPasswordOK) {
+            const QString message =
+                error == CCompressDialog::kPasswordUseAscii
+                    ? "Для ZIP используйте пароль из ASCII без управляющих символов."
+                : error == CCompressDialog::kPasswordTooLong
+                    ? "Пароль ZIP AES не должен превышать 99 символов."
+                    : "Введённые пароли не совпадают.";
+            QMessageBox::warning(this, "Создать архив", message);
+            return;
+        }
     }
     if (existingTarget_.isEmpty() && !checkMemoryUsage())
         return;
@@ -263,6 +231,8 @@ void CreateArchiveDialog::validateAndAccept() {
         CCompressDialog path;
         path.m_ArchivePath = target_;
         path.Format = format_->currentText();
+        path.ShowPassword = showPassword_->isChecked();
+        path.EncryptHeaders = encryptHeaders_->isChecked();
         path.OnOK(m_RegistryInfo);
         m_RegistryInfo.Save(compressionSettingsPath());
     }
@@ -272,6 +242,7 @@ void CreateArchiveDialog::validateAndAccept() {
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
     if (level_) {
+        options.EncryptionMethod = GetEncryptionMethodSpec();
         options.level = level_->currentData().toInt();
         options.method = method_->currentText();
         options.threads = threads_->currentData().toInt();

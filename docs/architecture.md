@@ -100,6 +100,9 @@ snapshots. `NCompression::CInfo` persists ArcPaths and ArcType.
 `createarchivedialog_compression.cpp` binds them to Qt controls;
 `createarchivedialog_resources.cpp` supplies CPU/RAM information and display;
 `createarchivedialog_preferences.cpp` handles profile selection and persistence.
+`createarchivedialog_encryption.cpp` binds source-ported method/password rules to
+Qt controls. `CCompressDialog::CheckPassword` is shared with ArchiveBackend;
+the backend validates encryption settings before staging and owns 7zz arguments.
 `NCompression::CFormatOptions` and `CInfo` hold per-format profiles through
 QSettings. `CMemUse` parses memory limits. `CompressionOptions` carries confirmed
 values to the backend, which repeats validation before starting the operation.

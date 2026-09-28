@@ -14,12 +14,7 @@ QString CreateArchiveDialog::compressionSettingsPath() {
 }
 
 int CreateArchiveDialog::FindRegistryFormat(const QString &name) const {
-    FOR_VECTOR(i, m_RegistryInfo.Formats) {
-        const NCompression::CFormatOptions &fo = m_RegistryInfo.Formats[i];
-        if (name.compare(fo.FormatID, Qt::CaseInsensitive) == 0)
-            return (int)i;
-    }
-    return -1;
+    return CCompressDialog::FindRegistryFormat(m_RegistryInfo, name);
 }
 
 unsigned CreateArchiveDialog::FindRegistryFormat_Always(const QString &name) {
@@ -63,6 +58,8 @@ void CreateArchiveDialog::SaveOptionsInMem() {
         fo.NumThreads = (UInt32)(Int32)-1;
     fo.BlockLogSize = solidBlock_->currentData().toUInt();
     fo.MemUse = memUse_->currentData().toString();
+    if (encryption_)
+        fo.EncryptionMethod = GetEncryptionMethodSpec();
 }
 
 void CreateArchiveDialog::SetMemUseCombo() {

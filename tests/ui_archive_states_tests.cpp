@@ -244,8 +244,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(encryption);
         QVERIFY(password);
         QCOMPARE(password->echoMode(), QLineEdit::Password);
-        QCOMPARE(encryption->count(), 3);
-        encryption->setCurrentIndex(2);
+        QCOMPARE(encryption->count(), 1);
+        dialog.findChild<QCheckBox *>("archiveEncryptHeaders")->setChecked(true);
         password->setText(QStringLiteral("disposable-test-password"));
         QCOMPARE(dialog.password(), QStringLiteral("disposable-test-password"));
         QVERIFY(dialog.encryptHeaders());

@@ -29,10 +29,10 @@ class CreateArchiveDialog : public QDialog {
 
     QString target() const { return target_; }
     QStringList sources() const { return selected_; }
-    QString password() const {
-        return encryption_ && encryption_->currentIndex() != 0 ? password_->text() : QString();
+    QString password() const { return password_ ? password_->text() : QString(); }
+    bool encryptHeaders() const {
+        return encryptHeaders_ && encryptHeaders_->isEnabled() && encryptHeaders_->isChecked();
     }
-    bool encryptHeaders() const { return encryption_ && encryption_->currentIndex() == 2; }
     CompressionOptions compressionOptions() const;
 
   private:
@@ -40,6 +40,9 @@ class CreateArchiveDialog : public QDialog {
     void createArchiveForm(QVBoxLayout *layout);
     void createCompressionOptions(QFormLayout *form);
     void createEncryptionOptions(QFormLayout *form);
+    void SetEncryptionMethod();
+    QString GetEncryptionMethodSpec() const;
+    void UpdatePasswordControl();
     void SetLevel2();
     void FormatChanged();
     void MethodChanged();
@@ -91,6 +94,9 @@ class CreateArchiveDialog : public QDialog {
     const NCompressDialog::CSystemInfo system_ = NCompressDialog::GetSystemInfo();
     QLineEdit *password_ = nullptr;
     QLineEdit *passwordConfirmation_ = nullptr;
+    QCheckBox *showPassword_ = nullptr;
+    QCheckBox *encryptHeaders_ = nullptr;
+    QFormLayout *encryptionForm_ = nullptr;
     QListWidget *available_ = nullptr;
     QListWidget *sources_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;

@@ -101,14 +101,23 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                                       NCompressDialog::AddMemUsage(memLimit)));
         return;
     }
-    if (suffix == "zip") {
-        for (const QChar character : password) {
-            if (character.unicode() > 127) {
-                emit finished(false, QStringLiteral("Для ZIP AES используйте пароль из ASCII: "
-                                                    "эта версия 7zz не принимает Unicode пароль."));
-                return;
-            }
-        }
+    if ((!options.EncryptionMethod.isEmpty() &&
+         options.EncryptionMethod.compare("AES256", Qt::CaseInsensitive) != 0) ||
+        (suffix == "7z" && !options.EncryptionMethod.isEmpty()) ||
+        (suffix == "zip" && encryptHeaders)) {
+        emit finished(false,
+                      QStringLiteral("Недопустимый метод шифрования для выбранного формата."));
+        return;
+    }
+    const auto passwordError =
+        CCompressDialog::CheckPassword(password, password, true, suffix, options.EncryptionMethod);
+    if (passwordError != CCompressDialog::kPasswordOK) {
+        emit finished(
+            false,
+            passwordError == CCompressDialog::kPasswordTooLong
+                ? QStringLiteral("Пароль ZIP AES не должен превышать 99 символов.")
+                : QStringLiteral("Для ZIP используйте пароль из ASCII без управляющих символов."));
+        return;
     }
     const QFileInfo target(archive);
     if (!QFileInfo(target.absolutePath()).isDir() || target.exists() || target.isSymLink()) {
@@ -162,8 +171,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         arguments.insert(5, "-ms=" + QString::number(options.SolidBlockSize) + "b");
     if (!password.isEmpty()) {
         arguments.insert(5, "-p");
-        arguments.insert(5, suffix == "7z" ? (encryptHeaders ? "-mhe=on" : "-mhe=off")
-                                           : "-mem=AES256");
+        if (suffix == "7z")
+            arguments.insert(5, encryptHeaders ? "-mhe=on" : "-mhe=off");
+        else if (!options.EncryptionMethod.isEmpty())
+            arguments.insert(5, "-mem=" + options.EncryptionMethod);
     }
     for (const QString &source : sources) {
         if (!QFileInfo::exists(source)) {

@@ -8,6 +8,45 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## Шифрование и пароль Add to Archive (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Источники: `CPP/7zip/UI/GUI/CompressDialog.cpp/.h/.rc`,
+`CPP/7zip/UI/Common/ZipRegistry.cpp/.h` и `GUI/UpdateGUI.cpp::SetOutProperties`.
+
+В `src/CPP/7zip/UI/GUI/CompressDialog.cpp/.h` перенесены
+`CCompressDialog::{SetEncryptionMethod,GetEncryptionMethodSpec,FindRegistryFormat}`
+и `IsAsciiString`. Qt preferences делегируют поиск тому же исходному helper.
+Исходный password-блок `OnOK` выделен в `CheckPassword`, чтобы UI и backend
+использовали один алгоритм. Сохранены UString, порядок проверок ZIP ASCII
+(0x20–0x7F), AES >99, сравнение повторного пароля только при скрытом пароле,
+7z AES-only, ZIP ZipCrypto/AES, восстановление aes-prefix из CFormatOptions,
+default-index и RemoveChar('-'). Qt QStringList/index заменяют ComboBox;
+FindRegistryFormat использует snapshot CInfo вместо контролов.
+
+`createarchivedialog_encryption.cpp` — Qt presentation/glue для
+`OnInit`, `UpdatePasswordControl`, соответствующих частей `FormatChanged` и
+`SaveOptionsInMem`: повторное поле и label скрываются при показе, значение
+сохраняется; отдельный флажок EncryptHeaders доступен только для 7z.
+Исходный порядок password/reenter/show/method/headers взят из CompressDialog.rc.
+QFormLayout заменяет Win32 controls. Формирование таблиц/валидация остаются в
+исходном GUI-модуле. CFormatOptions.EncryptionMethod и CInfo.ShowPassword/
+EncryptHeaders сохраняются через QSettings вместо Registry; пароль не хранится.
+
+Backend повторяет перенесённый password-блок до stage. `UpdateGUI::SetOutProperties`
+передаёт em только для непустого spec; адаптер 7zz делает то же через -mem,
+поэтому пустой ZIP spec даёт исходный ZipCrypto вместо прежнего принудительного
+AES. Header encryption передаётся существующим -mhe. Валидация доступных em и
+ZIP/header combinations — интеграционная проверка двух поддерживаемых форматов.
+Исходные UI error messages заменены локализованными Qt-сообщениями; возврат error
+enum заменяет ShowErrorMessageHwndRes, остальной OnOK остаётся частичным портом.
+Нет password initialization из существующего архива, SFX/внешних кодеков и
+других частей полного CompressDialog. Форматирование — clang-format.
+
+История длинных путей больше не увеличивает minimum width всей формы:
+AdjustToMinimumContentsLengthWithIcon сохраняет редактируемую строку и полный
+текст в dropdown. Это необходимая Qt-адаптация resize, обнаруженная геометрией.
+
 ## Путь архива, история и архиватор (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
@@ -290,7 +329,7 @@ Extract column ordering on disposable fixtures.
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование дерева/байтов и проверка вложенного назначения делегированы перенесённым `CopyFolder`, `CopyFile_Ask`, `CCopyStateIO` / `IsDestChild`. Перемещение, предварительная проверка дерева для rename и транзакционное завершение остаются адаптацией. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
-| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
+| `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; путь/история, шифрование, пользовательский лимит памяти и профили перенесены последующими итерациями выше; выбор источников и остальные поля полного OnOK остаются долгом. |
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
 | `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `App.cpp`, `Panel.h`, `PanelListNotify.cpp`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy`, `CPanel::GetItemsInfoString`; `PanelListNotify.cpp::ConvertSizeToString` | Перенесены CCopyDialog, история, сводка выделения и форматирование чисел. Qt layouts заменяют OnSize, QSettings — Registry, snapshot свойств — COM; старый header содержит только alias. Остальные App/Panel/ListNotify функции пока не перенесены. |
 | `src/CPP/7zip/UI/FileManager/ComboDialog.cpp/.h`, `BrowseDialog.cpp/.h`, `src/combodialog.h` | `FileManager/ComboDialog.cpp/.h/.rc`, `BrowseDialog.cpp::Dlg_CreateFolder` | Перенесены OnInit/OnOK и создание папки через общий dialog; Qt заменяет presentation, header alias сохраняет существующих потребителей. Остальная BrowseDialog не перенесена. |

@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "layout_inspection.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -109,6 +110,7 @@ class CompressionTests : public QObject {
         QVERIFY(scroll->verticalScrollBar()->maximum() > 0);
         scroll->ensureWidgetVisible(password);
         QCoreApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "encryption-compact-confirmation"));
         const QRect passwordRect(password->mapTo(scroll->viewport(), QPoint()), password->size());
         QVERIFY(scroll->viewport()->rect().contains(passwordRect));
     }
@@ -121,7 +123,7 @@ class CompressionTests : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
         CreateArchiveDialog dialog(temp.path(), {source});
-        dialog.findChild<QComboBox *>("archiveEncryption")->setCurrentIndex(1);
+        dialog.findChild<QComboBox *>("archiveEncryption")->setCurrentIndex(0);
         dialog.findChild<QLineEdit *>("archivePassword")->setText("first");
         auto *confirmation = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
         confirmation->setText("second");

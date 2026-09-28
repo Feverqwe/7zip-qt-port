@@ -8,7 +8,21 @@
 
 class CompressionLimitTests final : public QObject {
     Q_OBJECT
+    QTemporaryDir settingsDirectory_;
+    QByteArray previousSettings_;
+
   private slots:
+    void initTestCase() {
+        QVERIFY(settingsDirectory_.isValid());
+        previousSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
+        qputenv("SEVENZIP_SETTINGS_PATH", settingsDirectory_.filePath("limit.ini").toUtf8());
+    }
+    void cleanupTestCase() {
+        if (previousSettings_.isNull())
+            qunsetenv("SEVENZIP_SETTINGS_PATH");
+        else
+            qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_);
+    }
     void originalChoices() {
         const auto choices = NCompressDialog::SetMemUseCombo();
         QCOMPARE(choices.first().Spec, QString());

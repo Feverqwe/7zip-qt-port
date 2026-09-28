@@ -76,6 +76,7 @@ struct CInfo {
     bool SolidIsSpecified = false;
     UInt64 SolidBlockSize = 0;
     NCompression::CMemUse MemUsage;
+    QString EncryptionMethod;
 };
 struct CSolidOptions {
     UInt64 AutoSolid = 1 << 20;
@@ -116,7 +117,7 @@ const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);
 } // namespace NCompressDialog
 
-// Source-ported archive-path portion of CCompressDialog. Qt presentation
+// Source-ported archive-path and encryption portions of CCompressDialog. Qt presentation
 // supplies the editable combo text and directory; codec/SFX branches are omitted.
 class CCompressDialog {
   public:
@@ -124,6 +125,18 @@ class CCompressDialog {
     QString StartDirPrefix;
     QString m_ArchivePath;
     QString Format = QStringLiteral("7z");
+    bool ShowPassword = false;
+    bool EncryptHeaders = false;
+    QStringList _encryptionMethod;
+    int _encryptionMethod_Index = -1;
+    int _default_encryptionMethod_Index = -1;
+    static int FindRegistryFormat(const NCompression::CInfo &registry, const QString &name);
+    void SetEncryptionMethod(const NCompression::CInfo &registry);
+    QString GetEncryptionMethodSpec() const;
+    enum EPasswordError { kPasswordOK, kPasswordUseAscii, kPasswordTooLong, kPasswordNotMatch };
+    static EPasswordError CheckPassword(const QString &password, const QString &confirmation,
+                                        bool showPassword, QStringView format,
+                                        const QString &encryptionMethod);
     void SetArchiveName(const QString &name);
     void SetArchiveName2();
     void ArcPath_WasChanged(const QString &path);

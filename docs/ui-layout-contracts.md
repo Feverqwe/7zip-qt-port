@@ -182,8 +182,10 @@ Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
   The combo retains the extension and offers the last twenty destinations;
   its text and the format row do not overlap at either tested size.
 - Compression controls retain level, method, dictionary, word size, solid block,
-  CPU threads, and memory controls. Encryption contains method, password,
-  confirmation, and Show Password; destination follows the options.
+  CPU threads, and memory controls. Encryption retains the upstream order:
+  password, confirmation, Show Password, method, Encrypt file names.
+  Show Password hides confirmation and its label; headers are disabled for ZIP.
+  Destination follows the options. Long archive history does not widen the form.
 - Options are scrollable. At 760×720 and 640×480, format, compression controls,
   password fields, and destination must each be fully reachable by scrolling.
 - Target preview and the Create/Cancel footer remain outside the scrolling
@@ -195,6 +197,9 @@ view stacks groups in a scroll area. This specification records existing layout
 and does not claim that it matches the original two-column appearance.
 `ui_geometry` covers reachability and the footer; existing compression tests
 cover method/format-dependent enabled states and persistence.
+`compression_encryption` checks the complete encryption group, control separation
+and shown/hidden confirmation at both sizes, with a 400-character history path;
+reports are `encryption-{760,640}-{0,1}.json`.
 
 When extending a view, update its specification and add the relevant geometric
 relationship or conditional state to its focused test. Add contracts for other
