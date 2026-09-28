@@ -38,3 +38,17 @@ class CFolderHistory {
         Normalize();
     }
 };
+
+struct CAppState {
+    CFastFolders FastFolders;
+    CFolderHistory FolderHistory;
+
+    void Save(const QString &settingsPath) {
+        FastFolders.Save(settingsPath);
+        FolderHistory.Save(settingsPath);
+    }
+    void Read(const QString &settingsPath) {
+        FastFolders.Read(settingsPath);
+        FolderHistory.Read(settingsPath);
+    }
+};

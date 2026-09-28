@@ -1,5 +1,10 @@
 # Regression strategy
 
+`app_state` checks independent CAppState instances, combined history/favorites
+Save/Read with Unicode and sparse slots, switching settings paths, normalization,
+empty state and preservation of unrelated settings. `folder_history`, `bookmarks`,
+`ui_navigation` and `ui_state` cover its window consumers.
+
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,
 and normal/compact geometry reports. `settings` exercises window consumers

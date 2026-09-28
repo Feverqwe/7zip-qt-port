@@ -138,7 +138,6 @@ void MainWindow::createViewModes(QMenu *viewMenu) {
 
 void MainWindow::createFavoritesMenu(QMenu *favoritesMenu) {
     auto *addFavoriteMenu = favoritesMenu->addMenu("Добавить папку в избранное как");
-    fastFolders_.Read(toolbarSettingsPath());
     for (int index = 0; index < 10; ++index) {
         auto *save = addFavoriteMenu->addAction(QString::number(index), this,
                                                 [this, index] { saveBookmark(index); });

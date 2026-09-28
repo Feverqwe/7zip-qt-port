@@ -109,15 +109,15 @@ QString MainWindow::toolbarSettingsPath() { return FmSettingsPath(); }
 void MainWindow::recordVisitedPath(const QString &path) {
     if (path.isEmpty())
         return;
-    folderHistory_.AddString(ToUString(path));
-    folderHistory_.Save(toolbarSettingsPath());
+    appState_.FolderHistory.AddString(ToUString(path));
+    appState_.FolderHistory.Save(toolbarSettingsPath());
     refreshPathHistory();
 }
 
 void MainWindow::refreshPathHistory() {
     const QString current = path_->text();
     UStringVector paths;
-    folderHistory_.GetList(paths);
+    appState_.FolderHistory.GetList(paths);
     const QSignalBlocker blocker(pathCombo_);
     pathCombo_->clear();
     FOR_VECTOR(i, paths)
@@ -128,7 +128,8 @@ void MainWindow::refreshPathHistory() {
 void MainWindow::showFoldersHistory() {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
-    const QString selected = CPanel::FoldersHistory(folderHistory_, toolbarSettingsPath(), this);
+    const QString selected =
+        CPanel::FoldersHistory(appState_.FolderHistory, toolbarSettingsPath(), this);
     refreshPathHistory();
     if (!selected.isNull())
         navigateTo(selected);
@@ -137,7 +138,7 @@ void MainWindow::showFoldersHistory() {
 }
 void MainWindow::refreshBookmarks() {
     for (int index = 0; index < 10; ++index) {
-        const QString path = ToQString(fastFolders_.GetString((unsigned)index));
+        const QString path = ToQString(appState_.FastFolders.GetString((unsigned)index));
         const QString label = path.isEmpty()
                                   ? QString::number(index) + QStringLiteral(" — пусто")
                                   : QString::number(index) + QStringLiteral(" — ") + path;
@@ -154,16 +155,16 @@ void MainWindow::saveBookmark(int index) {
     if (index < 0 || index >= 10 || (state_ != State::Filesystem && state_ != State::Viewing) ||
         !archiveParents_.empty())
         return;
-    CPanel::SetBookmark(fastFolders_, (unsigned)index,
+    CPanel::SetBookmark(appState_.FastFolders, (unsigned)index,
                         ToUString(state_ == State::Filesystem ? directory_ : archiveDisplayPath()));
-    fastFolders_.Save(toolbarSettingsPath());
+    appState_.FastFolders.Save(toolbarSettingsPath());
     refreshBookmarks();
 }
 
 void MainWindow::openBookmark(int index) {
     if (index < 0 || index >= 10 || state_ == State::Loading || state_ == State::Operating)
         return;
-    const QString path = ToQString(CPanel::OpenBookmark(fastFolders_, (unsigned)index));
+    const QString path = ToQString(CPanel::OpenBookmark(appState_.FastFolders, (unsigned)index));
     if (path.isEmpty())
         return;
     navigateTo(path);

@@ -58,7 +58,7 @@ P0: 1/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory,
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | done — audit § P0-01.4; .1–.4 done; 2026-09-28 macOS docs-only diff/112 paths/33 vendor byte matches |
-| [ ] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | todo |
+| [ ] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | active — текущий чат, 2026-09-28; подшаги ниже |
 | [ ] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | todo |
 | [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | todo |
 | [ ] | P0-05 | FSFolder enumeration/model/flat view | P0-02, P0-04 | todo |
@@ -238,7 +238,27 @@ P0-01.3d4c commit: `415513c`.
 Следующий доступный пакет: **P0-02**. Source inventory .1–.4 завершён;
 P0-01 done. Inventory не закрывает обязательные функциональные порты P0–P3.
 
-При первом разделении добавить здесь, сохраняя остальных:
+### P0-02 — owners и panel state
+
+Owner: текущий чат, 2026-09-28. Upstream baseline как P0-01.
+Parent остаётся open до source bodies, интеграции и consumer checks всех частей.
+
+| Подшаг | Результат и критерии | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.1 | CAppState из AppState.h: общие history/favorites owner, Read/Save, window integration; независимость instances, persistence, history/bookmark consumer tests | P0-01 | done — audit § P0-02.1; 2026-09-28 macOS build dev, focused 5/5 и check.sh 54/54 |
+| P0-02.2 | CApp/CPanel lifecycle, location и panel focus/selected state; один panel через owners, separate instances для P0-08; source bodies + navigation/selection consumer checks | P0-02.1 | active |
+| P0-02.3 | Operation start/error/cancel/close state ownership через panel/application adapters; сквозные consumer checks, architecture/audit/parity, parent acceptance | P0-02.2 | todo |
+
+P0-01.4 commit: `36fad59`. P0-02.1 project baseline `36fad59`, exact source
+revision и copied/adapted scope в audit. Checks: `./scripts/build.sh dev`,
+`ctest --preset dev -R '^(app_state|folder_history|bookmarks|ui_navigation|ui_state)$' --output-on-failure`
+(5/5 после завершения build), `./scripts/check.sh` (format/build/54 CTest passed),
+`git diff --check`; 2026-09-28 macOS. Первый преждевременный focused запуск
+не нашёл ещё не слинкованный app_state executable; повторный запуск после build
+прошёл. Visual contracts unchanged, geometry inspection не требуется.
+Windows/Linux не проверены; parent P0-02 остаётся open.
+
+При следующем разделении добавить здесь, сохраняя остальных:
 
 ```text
 Parent: P?-?? — partial

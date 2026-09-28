@@ -212,8 +212,7 @@ class MainWindow : public QMainWindow {
     QString archivePassword_;
     QString archiveFolder_;
     QString pendingArchiveFolder_;
-    CFastFolders fastFolders_;
-    CFolderHistory folderHistory_;
+    CAppState appState_;
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;

@@ -44,6 +44,11 @@ The implementation is divided by responsibility:
 | `mainwindow_fileoperations.cpp`, `mainwindow_filedelete.cpp`, `mainwindow_volumes.cpp` | Filesystem and volume operation coordination |
 | `mainwindow_selection.cpp`, `mainwindow_preferences.cpp`, `mainwindow_dialogs.cpp` | Selection adapter, settings and dialog integration |
 
+Source-ported `CAppState` groups `CFolderHistory` and `CFastFolders` and reads
+both before the window builds menus or the address combo. Each window owns an
+independent instance on the GUI thread; QSettings paths are explicit adapters.
+Confirmed history/bookmark edits still persist their individual collection
+immediately. Full `CApp`/`CPanel` lifecycle ownership remains migration work.
 `CFolderHistory` and `CFastFolders` own persistent navigation data.
 `CPanel::FoldersHistory`, `SetBookmark` and `OpenBookmark` connect that data to
 navigation. The address combo is a projection of history. `ViewSettings`

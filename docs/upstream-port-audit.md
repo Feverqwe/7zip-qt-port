@@ -8,6 +8,32 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.1 — application history/favorites owner (2026-09-28)
+
+Project baseline `36fad59`. Original — [CPP/7zip/UI/FileManager/AppState.h at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/AppState.h).
+Copied CAppState fields FastFolders/FolderHistory and Save/Read bodies in original
+order into src/CPP/7zip/UI/FileManager/AppState.h. Only added explicit QString
+settings-path argument forwarded to existing QSettings adapters. Existing
+CFastFolders/CFolderHistory retain upstream UStringVector and GUI-thread ownership;
+no second algorithms or global singleton. Source notice/license retained.
+
+MainWindow replaces separate members with CAppState and calls Read before menus
+and panel construction; history/favorites adapters consume its members. Confirmed
+edits still save their individual collection immediately, preserving existing
+cancel/selection/history UX. No geometry/text/control changes. Application
+state Save is available for upstream lifecycle port; full CApp ownership,
+CPanel location/selection/focus and operation lifecycle remain P0-02.2/.3.
+The P0-01 snapshot statement that CAppState was absent is superseded here;
+all other omissions remain open. Header-only original struct needs no new .cpp.
+
+Checks 2026-09-28 macOS: build dev passed; focused app_state/folder_history/
+bookmarks/ui_navigation/ui_state 5/5 passed after completed build; check.sh
+format/build/54 CTest passed; diff check passed. Commit evidence in checklist.
+Initial premature focused run missed unlinked executable; superseded by rerun.
+No visual changes, geometry inspection not required. macOS only;
+Windows/Linux runtime and rendered Windows parity unverified.
+
 ## P0-01.4 — reconciliation и закрытие inventory (2026-09-28)
 
 Project baseline `415513c`; upstream — [ip7z/7zip exact commit

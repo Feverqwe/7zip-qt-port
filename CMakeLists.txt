@@ -105,6 +105,9 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    qt_add_executable(app_state_tests tests/app_state_tests.cpp)
+    target_link_libraries(app_state_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME app_state COMMAND app_state_tests)
     add_test(NAME ui_parity_tool COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_parity_tests.py)
     add_test(NAME ui_parity_copy COMMAND ${Python3_EXECUTABLE}

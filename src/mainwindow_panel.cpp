@@ -23,7 +23,6 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
     path_->installEventFilter(this);
     pathCombo_->installEventFilter(this);
     path_->setPlaceholderText("Путь к папке или архиву");
-    folderHistory_.Read(toolbarSettingsPath());
     refreshPathHistory();
     navigation->addWidget(pathCombo_);
     layout->addLayout(navigation);

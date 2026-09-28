@@ -406,3 +406,12 @@ IDC_COMPRESS_LEVEL оригинального 7zFM. Лимит памяти со
 level/method/dictionary/order/solid/threads/memory сопоставлен с
 `CPP/7zip/UI/GUI/CompressDialog.rc`. Отрисованный Windows-эталон недоступен:
 это проверка структуры и читаемости Qt, визуальная идентичность не подтверждена.
+
+## P0-02.1 application navigation data owner (2026-09-28)
+
+History and favorites now live together in upstream CAppState; both are loaded
+before menu/address construction. Qt INI storage and immediate confirmed-edit
+persistence remain the platform adaptation. GUI-thread ownership replaces
+upstream critical sections; no global shared instance. Visible controls, keyboard,
+confirmation and cancellation flows are unchanged. This does not close CApp/
+CPanel lifecycle or two-panel workflow; Windows/Linux runtime parity unverified.
