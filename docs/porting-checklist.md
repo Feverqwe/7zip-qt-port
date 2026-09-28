@@ -173,8 +173,8 @@ P0-01.3d разделён перед audit на самостоятельные s
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-01.3d1 | Текущий чат: ArchiveName/DefaultName/ExtractingFilePath/SetProperties/SortUtils/TempFiles/UpdateAction/UpdatePair/UpdateProduce/WorkDir; bodies/callers, owners, dependencies | P0-01.3c2 | done — audit § P0-01.3d1; 2026-09-28 macOS docs-only, diff check, 98 unique paths |
-| P0-01.3d2 | Текущий чат: ArchiveCommandLine/LoadCodecs/OpenArchive/ArchiveOpenCallback/PropIDUtils; parser/open/capability source scope и adapters | P0-01.3d1 | active |
-| P0-01.3d3 | Текущий чат: EnumDirItems/Extract/ArchiveExtractCallback/Update/UpdateCallback; operations и callback policy versus engine boundary | P0-01.3d2 | todo |
+| P0-01.3d2 | Текущий чат: ArchiveCommandLine/LoadCodecs/OpenArchive/ArchiveOpenCallback/PropIDUtils; parser/open/capability source scope и adapters | P0-01.3d1 | done — d2a/b/c, пять modules; 103 unique paths |
+| P0-01.3d3 | Текущий чат: EnumDirItems/Extract/ArchiveExtractCallback/Update/UpdateCallback; operations и callback policy versus engine boundary | P0-01.3d2 | active |
 | P0-01.3d4 | Текущий чат: Bench/HashCalc/CompressCall/CompressCall2; engine integration/dependency scope и полный inventory coverage | P0-01.3d3 | todo |
 
 Все 24 missing Common modules обязательны к audit. Каждый подшаг требует
@@ -187,7 +187,7 @@ P0-01.3d2 разделён до audit крупных modules:
 | --- | --- | --- | --- |
 | P0-01.3d2a | Текущий чат: ArchiveOpenCallback/PropIDUtils, callbacks/volume lifetime и property/security/reparse presentation bodies, owners/adapters | P0-01.3d1 | done — audit § P0-01.3d2a; 2026-09-28 macOS docs-only, diff check, 100 unique paths |
 | P0-01.3d2b | Текущий чат: ArchiveCommandLine, parser phases/options/censor/update command scope | P0-01.3d2a | done — audit § P0-01.3d2b; 2026-09-28 macOS docs-only, diff check, 101 unique paths |
-| P0-01.3d2c | Текущий чат: LoadCodecs/OpenArchive, capabilities/format selection/nesting/reopen source scope | P0-01.3d2b | active |
+| P0-01.3d2c | Текущий чат: LoadCodecs/OpenArchive, capabilities/format selection/nesting/reopen source scope | P0-01.3d2b | done — c1/c2, оба modules |
 
 Каждый подшаг — отдельный docs-only проверенный commit. Parent d2 остаётся
 active до d2c. P0-01.3d1 commit: `9aad76e`.
@@ -198,10 +198,12 @@ P0-01.3d2c разделён перед audit тела OpenArchive (3690 lines):
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-01.3d2c1 | Текущий чат: LoadCodecs bodies/capability interfaces/consumers и engine-library boundary | P0-01.3d2b | done — audit § P0-01.3d2c1; 2026-09-28 macOS docs-only, diff check, 102 unique paths |
-| P0-01.3d2c2 | Текущий чат: OpenArchive bodies/item paths/format selection/nesting/reopen и source-to-backend scope | P0-01.3d2c1 | active |
+| P0-01.3d2c2 | Текущий чат: OpenArchive bodies/item paths/format selection/nesting/reopen и source-to-backend scope | P0-01.3d2c1 | done — audit § P0-01.3d2c2; 2026-09-28 macOS docs-only, diff check, 103 unique paths |
 
-Parent c/d2 остаются active до c2. Каждый substep проверяется и коммитится
+Parent c/d2 закрываются после c2. Каждый substep проверяется и коммитится
 отдельно. P0-01.3d2b commit: `6ab0a55`.
+P0-01.3d2c1 commit: `4546ae9`. D2 закрыт после c2; следующие обязательные
+modules — d3 operations/callbacks, затем d4 bench/hash/calls.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.

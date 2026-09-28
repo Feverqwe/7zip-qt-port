@@ -371,6 +371,32 @@ baseline не означают автоматически подходящую p
 (30 mirrored + 72 missing), exact source path существует. Runtime/UI не менялись;
 build/CTest/layout не запускались. Capability adapters и platform loading открыты.
 
+## P0-01.3d2c2 — Common archive opening/nesting (2026-09-28)
+
+Project baseline `4546ae9`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полный source и COpenOptions/COpenType/CArc/CArchiveLink interfaces,
+проверены consumers. Copied scope пуст. Source включает функциональный parser
+handler внутри UI/Common: его расположение не делает algorithm Qt presentation.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/OpenArchive.cpp — P0-04/12, P1-01/03/06/11, P2-01/02/07/08, P3-05 | NArchive::NParser CParseItem/CHandler sorted regions/unknown gaps/properties/extract/streams; Archive_GetItemBoolProp/IsItem_* и typed archive helpers; CArc GetItem_PathToParent/Path/DefaultPath/Path2/GetItem/Size/MTime; signature/order helpers, offset/extract-to-open callbacks, CArcErrorInfo/ReadBasicProps/PrepareToOpen/CheckZerosTail/OpenArchiveSpec/OpenStream2/OpenStream/OpenStreamOrFile/ReOpen; CArchiveLink KeepMode/Close/Release/Open/2/3/ReOpen; ParseComplexSize/ParseTypeParams/ParseType/ParseOpenTypes. | LoadCodecs/DefaultName/SetProperties/ArchiveOpenCallback/DirItem/IArchive, MyCom/ComTry/strings/vectors/Wildcard/UTFConvert/StringToInt/CpuArch, FileDir/FileStreams/LimitedStreams/StreamUtils/ProgressUtils/CopyCoder. Preserve typed property failures/defaults, raw UTF16/path escape conversion, tree/ADS parent handling/deleted prefixes and time precision fallback. Preserve format exclusions/forced type/extension/signature/backward/UDF order, scan limits/callback offsets, SFX and tail/error distinctions, nested main-subfile order/depth bound, used-volume tracking and Open_Finished, reverse close and single-level reopen guard. Official engine handles archive streams/decoder/parser execution through narrow backend transport; copied application path/type/lifecycle policy remains required. Widgets must not recreate signature search or access in-process archive APIs. |
+
+OpenStream2 имеет отдельные main-extension, start-archive и sliding-buffer
+signature-scan phases; parser собирает sorted regions/unknown gaps и может
+вернуть parser archive вместо обычного archive. Engine-owned delegation этих
+тел требует точного scope/acceptance в P3-05; отсутствие Qt parser view не N/A.
+OpenArchiveSpec может test-extract для определения physical size. ReOpen
+preserves global offset и ограничивает вложенность; Open2 учитывает только
+использованные volumes. Source port должен сохранить эти distinctions, включая
+S_FALSE versus HRESULT failure, а не одинаковое сообщение «не архив».
+Commented old Set_ErrorsText/IsHashType/path reconstruction не активные bodies.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 103 unique paths
+(30 mirrored + 73 missing), exact source path существует. Runtime/UI не менялись;
+build/CTest/layout не запускались. Open/reopen/parser transport и platform parity
+остаются открытыми до functional implementation и regression checks.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
