@@ -419,6 +419,33 @@ platform service adaptation; identical root/folder display alone proves nothing.
 менялись; build/CTest/layout не запускались. Scan/extract adapters и platform
 behavior остаются открытыми до functional ports и regression checks.
 
+## P0-01.3d3b — Common extraction callback (2026-09-28)
+
+Project baseline `9289748`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитан полный source, проверены callback header/lifecycle helpers и связи с
+Extract/ArchiveOpenCallback/Agent. Copied scope пуст. Это обязательная functional
+policy, включая работу с filesystem; engine transport требует narrow adaptation.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/ArchiveExtractCallback.cpp — P0-10/12, P1-01/03/11/13/14, P2-01/02/07/10 | COutStreamWithHash, privileges/office-zone helpers, CHardLinkNode/PrepareHardLinks; CArchiveExtractCallback Init/progress/CreateComplexDirectory/time/error/property helpers; CLinkLevelsInfo/IsSafePath/CensorNode_CheckPath/2; ReadLink/owner/Read_fi_Props/CorrectPathParts/CreateFolders/CheckExistFile/GetExtractStream/GetItem/GetStream/PrepareOperation/CloseFile; link filesystem guards/CreateHardLink2/SetLink/SetLink2/DeleteLinkFileAlways_or_RemoveEmptyDir, CLinkInfo parsing/normalization; CloseReparseAndFile/attributes/security/SetOperationResult/ReportExtractResult/password/hash disk-stream/RequestMemoryUse; CDirPathSortPair/CFiTimesCAM/SetPostLinks/SetDirsTimes/CloseArc. | OpenArchive/ExtractingFilePath/PropIDUtils/HashCalc/FilePathAutoRename/ItemNameUtils, MyCom/ComTry/upstream strings/vectors/UTFConvert/Wildcard, Alloc/CpuArch, FileDir/Find/Name/IO/Time/PropVariantConv/SecurityUtils/streams. Preserve metadata types/defaults, inode+stream-id hard-link grouping, overwrite answers and mode changes, incoming/existing auto-rename and renamed-parent ADS mapping, path-prefix removal modes, split handling, link-data limit, preallocation/truncation and close HRESULT precedence. Preserve deferred links/empty placeholders, dangerous-level/path-through-link guards, archive-root-relative link normalization, Windows/WSL/POSIX translation, zone-before-timestamps, owner/ACL/attribute ordering, hash/stat reporting and memory limit callback flags. Backend engine/filesystem/event adapters own execution; Qt dialogs supply decisions, never duplicate algorithms. |
+
+CloseArc выполняет CloseReparseAndFile → SetPostLinks → SetDirsTimes, сохраняя
+первую ошибку и clearing arc; closer header отвечает за завершение даже при
+early return. CheckExistFile отличает skip/failed deletion return S_OK от
+cancel E_ABORT/rename E_FAIL; эти distinctions нельзя потерять в общем статусе.
+Link safety — не только lexical sanitization: SetLink2 проверяет виртуальный
+target и существующие filesystem links по dangerous-level policy. Обязательный
+backend containment слой нужно сверить с ней, а не заново написать вместо тела.
+Active GetStream отвергает split output как unsupported, хотя GetExtractStream
+содержит split branches; scope обоих фиксируется без заявления реализации.
+Commented MyCopyFile/copy-link и delayed-symlink legacy не активные requirements.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 106 unique paths
+(30 mirrored + 76 missing), exact source path существует. Runtime/UI не менялись;
+build/CTest/layout не запускались. Callback/process integration и filesystem
+success/failure/cancel/Unicode/malicious-path regression остаются обязательными.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
