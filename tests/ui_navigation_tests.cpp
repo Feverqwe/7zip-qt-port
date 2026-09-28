@@ -1,4 +1,5 @@
 #include "window_state_support.h"
+#include <QTreeWidget>
 
 class MainWindowNavigationTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -7,7 +8,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QTimer::singleShot(0, &window, [&window, location] {
             auto *dialog = window.findChild<QDialog *>("foldersHistoryDialog");
             QVERIFY(dialog);
-            auto *list = dialog->findChild<QListWidget *>("foldersHistoryList");
+            auto *list = dialog->findChild<QTreeWidget *>("foldersHistoryList");
             QVERIFY(list);
             const auto matches = list->findItems(location, Qt::MatchExactly);
             QCOMPARE(matches.size(), 1);

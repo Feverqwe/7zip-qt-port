@@ -1,4 +1,5 @@
 #include "window_state_support.h"
+#include <QTreeWidget>
 
 class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -172,12 +173,12 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("foldersHistoryDialog");
             QVERIFY(dialog);
-            auto *list = dialog->findChild<QListWidget *>("foldersHistoryList");
-            QCOMPARE(list->item(0)->text(), canonicalSecond);
-            QCOMPARE(list->item(1)->text(), canonicalFirst);
-            list->setCurrentRow(0);
+            auto *list = dialog->findChild<QTreeWidget *>("foldersHistoryList");
+            QCOMPARE(list->topLevelItem(0)->text(0), canonicalSecond);
+            QCOMPARE(list->topLevelItem(1)->text(0), canonicalFirst);
+            list->setCurrentItem(list->topLevelItem(0));
             QTest::keyClick(list, Qt::Key_Delete);
-            list->setCurrentRow(0);
+            list->setCurrentItem(list->topLevelItem(0));
             dialog->accept();
         });
         action(window, "foldersHistoryAction")->trigger();

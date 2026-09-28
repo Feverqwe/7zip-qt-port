@@ -1,22 +1,28 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ListViewDialog.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Single-column history use. Qt replaces Win32 controls/clipboard/OnSize;
-// two-column Values and Settings-driven hover activation are not ported yet.
+// Qt replaces Win32 controls/clipboard/OnSize. Settings-driven hover
+// activation is not ported yet; the one/two-column functional bodies remain.
 #include "ListViewDialog.h"
 #include "ViewSettings.h"
+#include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QDialogButtonBox>
 #include <QKeyEvent>
-#include <QListWidget>
 #include <QTextEdit>
 #include <QVBoxLayout>
 
-static void ListView_GetSelected(QListWidget &listView, CUIntVector &vector) {
+static const unsigned kOneStringMaxSize = 1024;
+
+static void ListView_GetSelected(CListView &listView, CUIntVector &vector) {
     vector.Clear();
-    for (int index = 0; index < listView.count(); ++index)
-        if (listView.item(index)->isSelected())
-            vector.Add((unsigned)index);
+    int index = -1;
+    for (;;) {
+        index = listView.GetNextSelectedItem(index);
+        if (index < 0)
+            break;
+        vector.Add((unsigned)index);
+    }
 }
 
 CListViewDialog::CListViewDialog(QWidget *parent) : QDialog(parent) {}
@@ -26,15 +32,34 @@ bool CListViewDialog::OnInit() {
     setWindowTitle(ToQString(Title));
     resize(540, 360);
     auto *layout = new QVBoxLayout(this);
-    _listView = new QListWidget(this);
-    _listView->setObjectName("foldersHistoryList");
-    _listView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    _listView->setTextElideMode(Qt::ElideNone);
+    _listView = new CListView(this);
+    _listView->setObjectName(NumColumns > 1 ? "propertiesList" : "foldersHistoryList");
+    _listView->setColumnCount((int)NumColumns);
+    _listView->setHeaderHidden(NumColumns <= 1);
+    _listView->setHeaderLabels(NumColumns > 1 ? QStringList{"", ""} : QStringList{""});
+    _listView->setColumnWidth(0, NumColumns > 1 ? 100 : 400);
+    if (NumColumns > 1)
+        _listView->setColumnWidth(1, 300);
     _listView->installEventFilter(this);
-    FOR_VECTOR(i, Strings)
-    _listView->addItem(ToQString(Strings[i]));
+    UString s;
+    FOR_VECTOR(i, Strings) {
+        _listView->InsertItem(i, Strings[i]);
+        if (NumColumns > 1 && i < Values.Size()) {
+            s = Values[i];
+            if (s.Len() > kOneStringMaxSize) {
+                s.DeleteFrom(kOneStringMaxSize);
+                s += " ...";
+            }
+            s.Replace(L"\r\n", L" ");
+            s.Replace(L"\n", L" ");
+            _listView->SetSubItem(i, 1, s);
+        }
+    }
     if (SelectFirst && Strings.Size() > 0)
-        _listView->setCurrentRow(0);
+        _listView->SetItemState_FocusedSelected(0);
+    _listView->SetColumnWidthAuto(0);
+    if (NumColumns > 1)
+        _listView->SetColumnWidthAuto(1);
     StringsWereChanged = false;
     layout->addWidget(_listView);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
@@ -42,7 +67,7 @@ bool CListViewDialog::OnInit() {
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CListViewDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    connect(_listView, &QListWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
+    connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
     _listView->setFocus();
     return true;
 }
@@ -54,6 +79,11 @@ void CListViewDialog::CopyToClipboard() {
     FOR_VECTOR(i, indexes) {
         unsigned index = indexes[i];
         s += Strings[index];
+        if (NumColumns > 1 && index < Values.Size()) {
+            const UString &v = Values[index];
+            s += ": ";
+            s += v;
+        }
 #ifdef _WIN32
         s += "\r\n";
 #else
@@ -75,7 +105,13 @@ void CListViewDialog::ShowItemInfo() {
     auto *layout = new QVBoxLayout(&dlg);
     auto *text = new QTextEdit(&dlg);
     text->setReadOnly(true);
-    text->setPlainText(ToQString(Strings[index]));
+    if (NumColumns == 1)
+        text->setPlainText(ToQString(Strings[index]));
+    else {
+        dlg.setWindowTitle(ToQString(Strings[index]));
+        if (index < Values.Size())
+            text->setPlainText(ToQString(Values[index]));
+    }
     layout->addWidget(text);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
     layout->addWidget(buttons);
@@ -85,23 +121,24 @@ void CListViewDialog::ShowItemInfo() {
 
 void CListViewDialog::DeleteItems() {
     for (;;) {
-        CUIntVector indexes;
-        ListView_GetSelected(*_listView, indexes);
-        if (indexes.IsEmpty())
+        const int index = _listView->GetNextSelectedItem(-1);
+        if (index < 0)
             break;
-        const unsigned index = indexes[0];
         StringsWereChanged = true;
-        delete _listView->takeItem((int)index);
-        if (index < Strings.Size())
-            Strings.Delete(index);
+        _listView->DeleteItem((unsigned)index);
+        if ((unsigned)index < Strings.Size())
+            Strings.Delete((unsigned)index);
+        if ((unsigned)index < Values.Size())
+            Values.Delete((unsigned)index);
     }
-    const int focusedIndex = _listView->currentRow();
+    const int focusedIndex = _listView->GetFocusedItem();
     if (focusedIndex >= 0)
-        _listView->setCurrentRow(focusedIndex, QItemSelectionModel::ClearAndSelect);
+        _listView->SetItemState_FocusedSelected(focusedIndex);
+    _listView->SetColumnWidthAuto(0);
 }
 
 void CListViewDialog::OnEnter() {
-    if (QApplication::keyboardModifiers().testFlag(Qt::AltModifier)) {
+    if (QApplication::keyboardModifiers().testFlag(Qt::AltModifier) || NumColumns > 1) {
         ShowItemInfo();
         return;
     }
@@ -141,7 +178,7 @@ bool CListViewDialog::eventFilter(QObject *watched, QEvent *event) {
 }
 
 void CListViewDialog::OnOK() {
-    FocusedItemIndex = _listView->currentRow();
+    FocusedItemIndex = _listView->GetFocusedItem();
     QDialog::accept();
 }
 

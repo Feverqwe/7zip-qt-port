@@ -1,6 +1,6 @@
 #pragma once
 
-#include <QDialog>
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include <QString>
 #include <QVector>
 
@@ -15,7 +15,8 @@ struct PropertyItem {
     int nestedFolders = 0;
 };
 
-class PropertiesDialog : public QDialog {
+// Qt snapshot adapter; property enumeration/totals live in upstream CPanel.
+class PropertiesDialog : public CListViewDialog {
   public:
     explicit PropertiesDialog(const QVector<PropertyItem> &items, bool archive,
                               const QString &location, QWidget *parent = nullptr);

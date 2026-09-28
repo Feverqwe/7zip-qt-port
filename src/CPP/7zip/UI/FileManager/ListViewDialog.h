@@ -5,10 +5,10 @@
 #include "Common/MyString.h"
 #include <QDialog>
 
-class QListWidget;
+class CListView;
 class CListViewDialog : public QDialog {
     Q_OBJECT
-    QListWidget *_listView = nullptr;
+    CListView *_listView = nullptr;
     void OnOK();
     void CopyToClipboard();
     void DeleteItems();
@@ -25,5 +25,7 @@ class CListViewDialog : public QDialog {
     bool DeleteIsAllowed = false;
     bool StringsWereChanged = false;
     UStringVector Strings;
+    UStringVector Values;
+    unsigned NumColumns = 1;
     int FocusedItemIndex = -1;
 };

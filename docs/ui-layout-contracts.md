@@ -58,6 +58,22 @@ Long paths remain reachable through scrolling, without eliding stored text.
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
 usability; rendered Windows parity remains unverified.
 
+## Selected properties
+
+Reference: the same ListViewDialog.rc, the two-column branches of
+ListViewDialog.cpp and PanelMenu.cpp::CPanel::Properties at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Two columns (property/value) fill the body with a visible empty header,
+followed by OK/Cancel. No label form or custom selection title remains.
+The value shown in the list is limited to 1024 upstream wchar_t units,
+then ` ...`; CRLF/LF become spaces. Copy and Enter/double-click detail
+use the full value. Delete is disabled for properties.
+`properties` checks list/header/footer at 540×360 and 360×240, with long
+Unicode paths and horizontal scrolling. `list_view_dialog` checks display
+truncation, raw clipboard/detail and parallel Strings/Values deletion.
+Only structural Qt usability is verified; a rendered Windows reference
+was unavailable.
+
 ## Shared name/mask dialog
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

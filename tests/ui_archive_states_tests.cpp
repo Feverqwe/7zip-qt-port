@@ -1,4 +1,5 @@
 #include "window_state_support.h"
+#include <QTreeWidget>
 
 class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -330,8 +331,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
-            for (QLabel *label : dialog->findChildren<QLabel *>())
-                properties << label->text();
+            auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
+            QVERIFY(list);
+            for (int row = 0; row < list->topLevelItemCount(); ++row)
+                properties << list->topLevelItem(row)->text(1);
             dialog->reject();
         });
         action(window, "selectedPropertiesAction")->trigger();

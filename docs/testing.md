@@ -78,7 +78,12 @@ For layout, visible-text, control-visibility, and resizing changes, start with [
 
 `settings` checks that cancelling Options leaves the file list unchanged, accepting its list options persists them, and a click opens a Unicode folder when single-click mode is enabled. System icon appearance still needs manual checks on each platform.
 `compression` checks the upstream level masks (0–9 for 7z; 0, 1, 3, 5, 7, 9 for ZIP), ZIP PPMd archive creation, and that changing the 7z/ZIP format updates available methods, password visibility and confirmation controls, and that mismatched passwords prevent submission. It checks method-dependent dictionary, word-size and solid-block controls, creates disposable archives with these options, lists their Unicode filenames and checks the reported method from `7zz l -slt`. Invalid or incompatible options must fail before creating a target. A compact creation dialog must keep confirmation buttons visible and allow scrolling to the password fields. These checks run locally on macOS; the options and dialog layout still need Windows and Linux verification.
-`properties` checks the summary from a mixed filesystem selection with Unicode filenames and the packed-size summary displayed for archive items, and nested file totals for an archive folder.
+`properties` checks mixed filesystem selection, archive packed sizes, recursive
+folder counts, the upstream sum of every selected row (including a selected
+descendant), grouped sizes and omitted dates. It writes normal/compact
+geometry reports. `list_view_dialog` checks two-column display normalization,
+truncation without loss of the stored value, full-value clipboard/detail and
+aligned deletion. History/navigation tests cover the shared QTreeWidget adapter.
 `file_viewer` checks that Enter or Open sends a Unicode filesystem path to the system file handler, extracts one archive entry before opening it, keeps that temporary copy until window destruction, and does not launch a handler after extraction cancellation. Its file-handler dependency is injected so the test never launches a desktop application.
 
 ## What to test

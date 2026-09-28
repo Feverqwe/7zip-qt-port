@@ -1,16 +1,18 @@
+#include "layout_inspection.h"
 #include "mainwindow.h"
 #include "window_state_support.h"
-
-#include <QDir>
-#include <QFile>
-#include <QLabel>
-#include <QTableWidget>
-#include <QTemporaryDir>
-#include <QTimer>
+#include <QTreeWidget>
 #include <QtTest>
 
 class PropertiesTests : public QObject {
     Q_OBJECT
+    static QString value(const QDialog &dialog, const QString &name) {
+        auto *list = dialog.findChild<QTreeWidget *>("propertiesList");
+        if (!list)
+            return QString();
+        const auto found = list->findItems(name, Qt::MatchExactly, 0);
+        return found.isEmpty() ? QString() : found.first()->text(1);
+    }
 
   private slots:
     void selectedFilesAndFolderShowSummary() {
@@ -26,31 +28,26 @@ class PropertiesTests : public QObject {
         }
         QVERIFY(QDir().mkdir(QStringLiteral("папка")));
         MainWindow window;
-        window.show();
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *action = window.findChild<QAction *>("selectedPropertiesAction");
         QVERIFY(table && action);
         QCOMPARE(table->rowCount(), 3);
         table->selectAll();
-        QVERIFY(action->isEnabled());
-        QStringList labels;
+        bool checked = false;
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
-            QCOMPARE(dialog->windowTitle(), QString("Свойства выделения"));
-            for (QLabel *label : dialog->findChildren<QLabel *>())
-                labels << label->text();
+            QCOMPARE(dialog->windowTitle(), QString("Свойства"));
+            QCOMPARE(value(*dialog, "Файлов"), QString("2"));
+            QCOMPARE(value(*dialog, "Папок"), QString("1"));
+            QCOMPARE(value(*dialog, "Размер"), QString("10"));
+            QVERIFY(value(*dialog, "Сжатый размер").isNull());
+            QCOMPARE(value(*dialog, "Путь"), QFileInfo(temporary.path()).canonicalFilePath());
+            checked = true;
             dialog->reject();
         });
         action->trigger();
-        QVERIFY(labels.contains("Выбрано:"));
-        QVERIFY(labels.contains("3"));
-        QVERIFY(labels.contains("Файлов:"));
-        QVERIFY(labels.contains("2"));
-        QVERIFY(labels.contains("Папок:"));
-        QVERIFY(labels.contains("1"));
-        QVERIFY(labels.contains("Размер выбранных файлов:"));
-        QVERIFY(labels.contains("10"));
+        QVERIFY(checked);
         QVERIFY(QDir::setCurrent(original));
     }
 
@@ -58,13 +55,11 @@ class PropertiesTests : public QObject {
         PropertiesDialog dialog(
             {{"a.txt", "a.txt", {}, false, 10, 4}, {"b.txt", "b.txt", {}, false, 5, 2}}, true,
             "archive.7z");
-        QStringList labels;
-        for (QLabel *label : dialog.findChildren<QLabel *>())
-            labels << label->text();
-        QVERIFY(labels.contains("Сжатый размер выбранных файлов:"));
-        QVERIFY(labels.contains("6"));
-        QVERIFY(labels.contains("15"));
+        QCOMPARE(value(dialog, "Сжатый размер"), QString("6"));
+        QCOMPARE(value(dialog, "Размер"), QString("15"));
+        QCOMPARE(value(dialog, "Файлов"), QString("2"));
     }
+
     void archiveFolderPropertiesIncludeNestedFiles() {
         ControlledBackend backend;
         MainWindow window(&backend);
@@ -73,38 +68,71 @@ class PropertiesTests : public QObject {
                               ArchiveEntry{QStringLiteral("папка/sub/ещё.txt"), 7, 3}});
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *action = window.findChild<QAction *>("selectedPropertiesAction");
-        QVERIFY(table && action);
         QCOMPARE(table->rowCount(), 1);
         table->selectRow(0);
-        QStringList labels;
+        bool checked = false;
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
-            for (QLabel *label : dialog->findChildren<QLabel *>())
-                labels << label->text();
+            QCOMPARE(value(*dialog, "Файлов"), QString("2"));
+            QCOMPARE(value(*dialog, "Папок"), QString("1"));
+            QCOMPARE(value(*dialog, "Размер"), QString("20"));
+            QCOMPARE(value(*dialog, "Сжатый размер"), QString("8"));
+            checked = true;
             dialog->reject();
         });
         action->trigger();
-        QVERIFY(labels.contains("Файлов внутри:"));
-        QVERIFY(labels.contains("2"));
-        QVERIFY(labels.contains("Размер содержимого:"));
-        QVERIFY(labels.contains("20"));
-        QVERIFY(labels.contains("8"));
+        QVERIFY(checked);
     }
-    void archiveSummaryDoesNotDoubleCountSelectedChild() {
+
+    void upstreamSummaryIncludesDescendantCountsAndEverySelectedRow() {
         PropertiesDialog dialog(
-            {{QStringLiteral("папка"), QStringLiteral("папка"), {}, true, 20, 8, 2, 0},
+            {{QStringLiteral("папка"), QStringLiteral("папка"), {}, true, 20, 8, 2, 1},
              {QStringLiteral("файл.txt"), QStringLiteral("папка/файл.txt"), {}, false, 13, 5},
              {QStringLiteral("другой.txt"), QStringLiteral("другой.txt"), {}, false, 4, 2}},
             true, "archive.7z");
-        QStringList labels;
-        for (QLabel *label : dialog.findChildren<QLabel *>())
-            labels << label->text();
-        QVERIFY(labels.contains("Размер файлов и содержимого папок:"));
-        QVERIFY(labels.contains("24"));
-        QVERIFY(labels.contains("10"));
+        QCOMPARE(value(dialog, "Размер"), QString("37"));
+        QCOMPARE(value(dialog, "Сжатый размер"), QString("15"));
+        QCOMPARE(value(dialog, "Файлов"), QString("4"));
+        QCOMPARE(value(dialog, "Папок"), QString("2"));
+    }
+
+    void singleFileFormatsSizeAndOmitsUnavailableDate() {
+        PropertiesDialog dialog(
+            {{QStringLiteral("файл 😀.txt"), "/tmp/file.txt", {}, false, 12345, 3}}, false, "/tmp");
+        QCOMPARE(value(dialog, "Имя"), QStringLiteral("файл 😀.txt"));
+        QCOMPARE(value(dialog, "Размер"), QString("12 345"));
+        QVERIFY(value(dialog, "Изменён").isNull());
+        QVERIFY(value(dialog, "Сжатый размер").isNull());
+        auto *list = dialog.findChild<QTreeWidget *>();
+        QVERIFY(!list->header()->isHidden());
+        QCOMPARE(list->columnCount(), 2);
+    }
+
+    void geometry_data() {
+        QTest::addColumn<QSize>("size");
+        QTest::newRow("normal") << QSize(540, 360);
+        QTest::newRow("compact") << QSize(360, 240);
+    }
+    void geometry() {
+        QFETCH(QSize, size);
+        PropertiesDialog dialog(
+            {{QStringLiteral("длинное имя 😀.txt"), QString("/long path/").repeated(150),
+              "2026-09-28 12:00:00", false, 12345, 5432}},
+            true, "archive.zip");
+        dialog.resize(size);
+        dialog.show();
+        QApplication::processEvents();
+        auto *list = dialog.findChild<QTreeWidget *>();
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        QVERIFY(UiInspection::fullyVisible(*list, dialog));
+        QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
+        QVERIFY(UiInspection::separate(*list, *buttons, dialog));
+        QVERIFY(UiInspection::fullyVisible(*list->header(), dialog));
+        for (auto *button : buttons->buttons())
+            QVERIFY(UiInspection::fullyVisible(*button, dialog));
+        QVERIFY(UiInspection::writeReport(dialog, QString("properties-%1").arg(size.width())));
     }
 };
-
 QTEST_MAIN(PropertiesTests)
 #include "properties_tests.moc"

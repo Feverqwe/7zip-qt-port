@@ -75,8 +75,12 @@ Address signals are disconnected before window teardown.
 ## Dialogs and preferences
 
 `SettingsDialog` presents list options; `MainWindow` applies them and supplies
-filesystem icons through `QFileIconProvider`. `PropertiesDialog` receives a
-metadata snapshot and never reads the file table or backend itself.
+filesystem icons through `QFileIconProvider`. `PropertiesDialog` only adapts
+the metadata snapshot to CPanelItem/CPanelProperty. Upstream
+PanelMenu.cpp::CPanel::Properties owns enumeration and selection totals;
+PanelItems.cpp supplies numeric properties. CListViewDialog owns the shared
+one/two-column presentation; qtlistview.h maps its Win32 list operations to
+QTreeWidget. The snapshot adapter never reads the file table/backend itself.
 
 `sevenzip_panel` owns shared `CComboDialog`, `CCopyDialog`, `CSplitDialog` and
 panel summary functions. Callers validate operation input; dialogs commit

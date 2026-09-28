@@ -5,11 +5,11 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QDialogButtonBox>
-#include <QListWidget>
 #include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QTreeWidget>
 #include <QtTest>
 
 class FolderHistoryTests : public QObject {
@@ -70,8 +70,8 @@ class FolderHistoryTests : public QObject {
         dialog.DeleteIsAllowed = true;
         dialog.OnInit();
         dialog.show();
-        auto *list = dialog.findChild<QListWidget *>();
-        list->item(2)->setSelected(true);
+        auto *list = dialog.findChild<QTreeWidget *>();
+        list->topLevelItem(2)->setSelected(true);
         QTest::keyClick(list, Qt::Key_C, Qt::ControlModifier);
 #ifdef _WIN32
         QCOMPARE(QApplication::clipboard()->text(), QString("first\r\nthird\r\n"));
@@ -83,7 +83,7 @@ class FolderHistoryTests : public QObject {
         QCOMPARE(dialog.Strings.Size(), 2u);
         QCOMPARE(ToQString(dialog.Strings[0]), QString("second"));
         QCOMPARE(ToQString(dialog.Strings[1]), QString("fourth"));
-        list->setCurrentRow(1);
+        list->setCurrentItem(list->topLevelItem(1));
         dialog.accept();
         QCOMPARE(dialog.FocusedItemIndex, 1);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
@@ -94,7 +94,7 @@ class FolderHistoryTests : public QObject {
         dialog.Strings.Add(UString("keep"));
         dialog.SelectFirst = true;
         dialog.OnInit();
-        auto *list = dialog.findChild<QListWidget *>();
+        auto *list = dialog.findChild<QTreeWidget *>();
         QTest::keyClick(list, Qt::Key_Delete);
         QVERIFY(!dialog.StringsWereChanged);
         QCOMPARE(dialog.Strings.Size(), 1u);
@@ -123,9 +123,9 @@ class FolderHistoryTests : public QObject {
         QTimer::singleShot(0, &parent, [&] {
             auto *dialog = parent.findChild<CListViewDialog *>();
             QVERIFY(dialog);
-            auto *list = dialog->findChild<QListWidget *>();
+            auto *list = dialog->findChild<QTreeWidget *>();
             QTest::keyClick(list, Qt::Key_Delete);
-            list->setCurrentRow(1);
+            list->setCurrentItem(list->topLevelItem(1));
             if (accept)
                 dialog->accept();
             else
@@ -156,7 +156,7 @@ class FolderHistoryTests : public QObject {
         dialog.resize(size);
         dialog.show();
         QApplication::processEvents();
-        auto *list = dialog.findChild<QListWidget *>();
+        auto *list = dialog.findChild<QTreeWidget *>();
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(UiInspection::fullyVisible(*list, dialog));
         QVERIFY(UiInspection::fullyVisible(*buttons, dialog));

@@ -24,6 +24,9 @@ endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
+    src/CPP/7zip/UI/FileManager/PanelMenu.cpp
+    src/CPP/7zip/UI/FileManager/PanelItems.cpp
+    src/qtlistview.h
     src/CPP/7zip/UI/FileManager/AppState.h
     src/CPP/7zip/UI/FileManager/ListViewDialog.cpp src/CPP/7zip/UI/FileManager/ListViewDialog.h
     src/CPP/7zip/UI/FileManager/ComboDialog.cpp src/CPP/7zip/UI/FileManager/ComboDialog.h
@@ -72,6 +75,10 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(list_view_dialog_tests tests/list_view_dialog_tests.cpp)
+    target_link_libraries(list_view_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME list_view_dialog COMMAND list_view_dialog_tests)
+    set_tests_properties(list_view_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(folder_history_tests tests/folder_history_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(folder_history_tests PRIVATE tests)
     target_link_libraries(folder_history_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -316,6 +323,9 @@ if(BUILD_TESTING)
     foreach(target IN ITEMS ui_layout_tests extract_dialog_tests compression_preferences_tests)
         target_sources(${target} PRIVATE tests/layout_inspection.cpp)
     endforeach()
+    target_sources(properties_tests PRIVATE tests/layout_inspection.cpp)
+    set_property(TEST properties APPEND PROPERTY ENVIRONMENT
+        "SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_program(SEVENZIP_TEST_SH NAMES sh)
     if(SEVENZIP_TEST_SH)
         add_test(NAME project_memory_setup COMMAND ${SEVENZIP_TEST_SH}

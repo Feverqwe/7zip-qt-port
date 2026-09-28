@@ -1,5 +1,49 @@
 # Ревизия происхождения кода 7zFM
 
+## Свойства и двухколоночный список (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+`CPP/7zip/UI/FileManager/PanelMenu.cpp::{AddListAscii,AddSeparator,
+AddPropertyPair,CPanel::Properties}`: сохранены ветки single/multiple selection,
+цикл перечисления свойств, UInt64 totals, порядок накопления размеров,
+numDirs++ плюс NumSubDirs, NumSubFiles для папок, пропуск нулевых counts,
+разделитель, путь папки и общий заголовок/NumColumns=2.
+Strings/Values остаются UStringVector. Независимая сводка PropertiesDialog
+с исключением выбранного потомка выбранной папки удалена; upstream суммирует
+каждую выбранную строку. Сводка теперь включает вложенные counts.
+
+Адаптации: CPanelProperty/CPanelItem — snapshot вместо IFolder/CPropVariant;
+`AddPropertyString` сохраняет непустую ветку, но получает display strings.
+Числовая перегрузка использует существующий upstream ConvertSizeToString для
+size/pack и неизменённый ConvertUInt64ToString для counts. Вместо LangString
+используются Qt строки. `PropertiesDialog` теперь только мост snapshot→CPanel,
+который выбирает доступные поля текущего backend; его алгоритмы не являются
+портом перечисления COM metadata. CPanel::Properties заполняет переданный
+диалог вместо создания Win32 modal. Для filesystem тот же Qt view заменяет
+InvokeSystemCommand("properties"); packed summary там не показывается.
+
+Область частичного порта: raw properties, security descriptors, flags/errors,
+полный ConvertPropertyToString2, IFolderProperties и IFolderArcProps levels,
+non-open level и остальные команды PanelMenu не перенесены. Набор полей
+ограничен доступным snapshot, расширение metadata остаётся долгом backend.
+`PanelItems.cpp::{GetItem_UInt64Prop,GetItemSize}` сохраняют возврат 0 для parent-index,
+ошибку 2723400, zero для пустого свойства и GetItemSize tail delegation;
+snapshot replaces COM/variant conversion, optional IFolderGetItemName fast
+path отсутствует. Остальные PanelItems функции не перенесены.
+`CPP/7zip/PropID.h` vendored без изменений из того же baseline.
+
+`ListViewDialog.cpp/.h`: перенесены NumColumns/Values branches OnInit,
+CopyToClipboard, ShowItemInfo, DeleteItems, OnEnter. Сохранены исходные
+1024 wchar_t limit плюс " ...", замена CRLF/LF только в display copy,
+параллельное удаление Strings/Values, raw copy/detail и Enter для свойств
+без закрытия основного диалога. `qtlistview.h` — узкий presentation adapter
+для CListView на QTreeWidget; методы сохраняют исходные list operation names.
+История использует тот же adapter с одной колонкой. На POSIX wchar_t имеет
+32 бита: предел относится к upstream units платформы; на Windows — UTF-16.
+Settings single-click/hover и Win32 notifications остаются неперенесёнными.
+ShowItemInfo пока Qt read-only QTextEdit, не полный порт EditDialog.
+Форматирование адаптированных исходников — clang-format, vendored неизменно.
+
 Здесь хранится реестр происхождения кода: upstream-ревизии и исходники,
 перенесённые символы, адаптации, пропущенные части и долг переноса.
 Правила работы заданы в [AGENTS.md](../AGENTS.md); наблюдаемое поведение
@@ -40,8 +84,8 @@ OnEnter, OnOK и клавиши OnNotify. QListWidget/event filter/layout/clipbo
 удаление первого выбранного до исчерпания выбора, флаг изменений, индекс
 фокуса и платформенный перевод строки clipboard. Meta добавлен для macOS.
 ShowItemInfo использует read-only QTextEdit вместо ещё не перенесённого
-EditDialog. NumColumns/Values, усечение значений и Settings single-click/hover
-пока пропущены; этот модуль не является полным портом списка свойств.
+EditDialog. NumColumns/Values и усечение значений перенесены следующей
+итерацией выше; Settings single-click/hover пока пропущен.
 Qt выбирает surviving current row после удаления; Win32 focus восстановить
 буквально нельзя. Отдельная кнопка удаления MVP убрана по исходному rc.
 
@@ -231,7 +275,7 @@ Extract column ordering on disposable fixtures.
 | `src/mainwindow_fileoperations.cpp`, `mainwindow_filedelete.cpp` | `PanelOperations.cpp`, `PanelCopy.cpp`, `FSFolder.cpp` | Qt-обвязка подтверждения, рабочего потока и команд. Создание, переименование и удаление делегированы перенесённым методам CFSFolder; остальные правила панели остаются долгом. |
 | `src/CPP/7zip/UI/FileManager/PanelKey.cpp` | `PanelKey.cpp::OnKeyDown`, `Panel.cpp::CMyComboBoxEdit::OnMessage`, `App.cpp::CPanelCallbackImp::SetFocusToPath` | Qt-диспетчер клавиш списка и адреса: Shift+F4, Alt+F1/F2, Tab, закладки и делегирование команд выделения. Однопанельный режим сохраняет upstream-правило общей цели Alt+F1/F2. |
 | `src/mainwindow_preferences.cpp` | `PanelMenu.cpp`, `PanelSort.cpp`, `PanelFolderChange.cpp`, `App.cpp`, `PanelKey.cpp` | Собственный код меню, сортировки, истории, закладок и событий. Это несколько upstream-модулей в одном файле. |
-| `src/mainwindow_dialogs.cpp`, `propertiesdialog.cpp`, `propertiesdialog.h` | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Размеры и количество вложенных объектов архивной папки берутся из перенесённого `CProxyArc`. Qt-форма и сводка нескольких выбранных объектов остаются адаптацией; форматные и сырые свойства пока отсутствуют. |
+| `src/CPP/7zip/UI/FileManager/PanelMenu.cpp`, `PanelItems.cpp`, `src/mainwindow_dialogs.cpp`, `propertiesdialog.cpp`, `propertiesdialog.h` | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `PanelItems.cpp::GetItemSize/GetItem_UInt64Prop`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Перенесены цикл перечисления доступных snapshot properties, сводка выбранных объектов и двухколоночный ListViewDialog. Qt-обвязка только собирает snapshot; размеры папок — CProxyArc. Форматные/сырые свойства и остальные PanelMenu/PanelItems branches отсутствуют. |
 | `src/mainwindow_volumes.cpp`, `volumeoperations.cpp/.h`, `src/CPP/7zip/UI/FileManager/SplitDialog.cpp/.h` | `PanelSplitFile.cpp`, `SplitDialog.cpp/.h/.rc`, `CopyDialog.cpp` | CSplitDialog OnInit/OnOK/browse перенесены, Combine использует общий CCopyDialog и исходную сводку. Нумерация, parser, число томов и worker-циклы перенесены ранее; транзакции, проверка путей и discovery остаются Qt-адаптацией. |
 | `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`, `FSFolder.h` | `CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile`, `CCopyState`, `CopyFolder`, `CopyFile_Ask`, `IsDestChild` | Цикл чтения/записи, накопленный прогресс, рекурсивная copy-ветка и проверка вложенного назначения перенесены с сохранением имён. `QFile`, `QDir` и callbacks заменяют платформенные операции; stage создаётся с `NewOnly`, ошибки записи проверяются `flush`, сохраняется дата. Транзакционная обвязка, move и интерактивный overwrite остаются адаптацией/долгом. |
 | `src/filetable.cpp`, `filetable.h` | `PanelItems.cpp`, `PanelSort.cpp`, `PanelDrag.cpp` | Qt-адаптер таблицы и drag-out. Функция сравнения вынесена в зеркальный `PanelSort.cpp`. |
