@@ -133,8 +133,18 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 | [ ] | P0-01.3 | Все 82 отсутствующих `.cpp`: inspect source scope/callers/build dependencies, назначить decision/owner без механического N/A | P0-01.2 | active |
 | [ ] | P0-01.4 | Проверить полное покрытие 109 UI + 3 supporting `.cpp`, согласовать audit/plan/owners/counts, записать checks и handoff | P0-01.3 | todo |
 
-Коммит P0-01.1: `cfd02a5` (16 modules audit). Коммит P0-01.2 определяется
-по сообщению `P0-01.2` в local Git log; hash будет добавлен следующей итерацией.
+Коммиты: P0-01.1 — `cfd02a5` (16 modules audit), P0-01.2 — `d03de90`
+(14 modules и vendor baseline). Подшаг P0-01.3 разделён до начала правок:
+
+| Подшаг | Owner/scope и критерий готовности | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3a | Текущий чат: отсутствующие FM App/Panel/navigation/commands/progress/overwrite/callback modules; source bodies/callers, decision/owner/dependencies | P0-01.2 | done — audit § P0-01.3a; 2026-09-28 macOS docs-only, diff check, 12 missing / 42 unique paths; SFX legacy decision открыт |
+| P0-01.3b | Текущий чат: остальные отсутствующие FM modules; source bodies/callers, platform/build scope, decision/owner/dependencies | P0-01.3a | active |
+| P0-01.3c | Текущий чат: отсутствующие Agent/GUI modules; source bodies/callers и process adapters, decision/owner/dependencies | P0-01.3b | todo |
+| P0-01.3d | Текущий чат: отсутствующие Common modules; source bodies/callers и dependency closure, decision/owner/dependencies, coverage всех 82 | P0-01.3c | todo |
+
+Каждый подшаг проверяется docs-only (`git diff --check`, unique-path coverage)
+и коммитится отдельно. Родитель P0-01.3 закрывается только после 3d.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
