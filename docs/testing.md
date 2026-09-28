@@ -84,6 +84,8 @@ descendant), grouped sizes and omitted dates. It writes normal/compact
 geometry reports. `list_view_dialog` checks two-column display normalization,
 truncation without loss of the stored value, full-value clipboard/detail and
 aligned deletion. History/navigation tests cover the shared QTreeWidget adapter.
+`edit_dialog` checks Unicode/literal markup, immutable text, Enter/Close and
+both scroll directions at normal/compact sizes, with JSON geometry reports.
 `file_viewer` checks that Enter or Open sends a Unicode filesystem path to the system file handler, extracts one archive entry before opening it, keeps that temporary copy until window destruction, and does not launch a handler after extraction cancellation. Its file-handler dependency is injected so the test never launches a desktop application.
 
 ## What to test

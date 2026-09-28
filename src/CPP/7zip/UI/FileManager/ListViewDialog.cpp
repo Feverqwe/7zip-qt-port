@@ -3,13 +3,13 @@
 // Qt replaces Win32 controls/clipboard/OnSize. Settings-driven hover
 // activation is not ported yet; the one/two-column functional bodies remain.
 #include "ListViewDialog.h"
+#include "EditDialog.h"
 #include "ViewSettings.h"
 #include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QDialogButtonBox>
 #include <QKeyEvent>
-#include <QTextEdit>
 #include <QVBoxLayout>
 
 static const unsigned kOneStringMaxSize = 1024;
@@ -99,23 +99,20 @@ void CListViewDialog::ShowItemInfo() {
     if (indexes.Size() != 1)
         return;
     unsigned index = indexes[0];
-    QDialog dlg(this);
-    dlg.setObjectName("listItemInfoDialog");
-    dlg.resize(480, 240);
-    auto *layout = new QVBoxLayout(&dlg);
-    auto *text = new QTextEdit(&dlg);
-    text->setReadOnly(true);
+    CEditDialog dlg(this);
     if (NumColumns == 1)
-        text->setPlainText(ToQString(Strings[index]));
+        dlg.Text = Strings[index];
     else {
-        dlg.setWindowTitle(ToQString(Strings[index]));
+        dlg.Title = Strings[index];
         if (index < Values.Size())
-            text->setPlainText(ToQString(Values[index]));
+            dlg.Text = Values[index];
     }
-    layout->addWidget(text);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, &dlg);
-    layout->addWidget(buttons);
-    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+#ifdef _WIN32
+    if (dlg.Text.Find(L'\r') < 0)
+        dlg.Text.Replace(L"\n", L"\r\n");
+#endif
+    dlg.OnInit();
+    dlg.setObjectName("listItemInfoDialog");
     dlg.exec();
 }
 

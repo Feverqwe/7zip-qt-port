@@ -2,7 +2,7 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include <QApplication>
 #include <QClipboard>
-#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QtTest>
@@ -50,7 +50,7 @@ class ListViewDialogTests : public QObject {
             auto *info = dialog.findChild<QDialog *>("listItemInfoDialog");
             QVERIFY(info);
             QCOMPARE(info->windowTitle(), QString("Name"));
-            auto *text = info->findChild<QTextEdit *>();
+            auto *text = info->findChild<QPlainTextEdit *>();
             QVERIFY(text && text->isReadOnly());
             QCOMPARE(text->toPlainText(), raw);
             checked = true;

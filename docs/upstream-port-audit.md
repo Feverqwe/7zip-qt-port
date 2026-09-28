@@ -10,6 +10,15 @@
 
 ## Свойства и двухколоночный список (2026-09-28)
 
+`CPP/7zip/UI/FileManager/EditDialog.cpp/.h/.rc` также перенесены из baseline
+ниже: CEditDialog сохраняет UString Title/Text и OnInit, а QPlainTextEdit/layout
+заменяют Win32 attachment/OnSize. Сохранены read-only/multiline/no-wrap,
+обе прокрутки и ES_WANTRETURN (Qt event filter удерживает Enter в тексте).
+Close не меняет Text; Tab переключает focus. ListViewDialog::ShowItemInfo
+теперь использует CEditDialog, сохраняя one/two-column branches и Windows-only
+LF→CRLF при отсутствии CR. LangSetDlgItems заменён локализацией Qt Close;
+полный presentation module адаптирован, форматирование — clang-format.
+
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 Пути ниже относительно `CPP/7zip/UI/FileManager/`; адаптированные файлы — в `src/`.
 
@@ -17,7 +26,7 @@ Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github
 | --- | --- |
 | `PanelMenu.cpp::{AddListAscii,AddSeparator,AddPropertyPair,CPanel::Properties}` | Перенесены перечисление свойств и сводка single/multiple selection с UStringVector и UInt64 totals. CPanelItem/CPanelProperty заменяют COM metadata снимком доступных полей, Qt — LangString и создание modal. Числа форматируют ConvertSizeToString/ConvertUInt64ToString. |
 | `PanelItems.cpp::{GetItem_UInt64Prop,GetItemSize}` | Сохранены parent-index, пустое свойство, ошибка 2723400 и делегирование GetItemSize; snapshot заменяет COM/variant. |
-| `ListViewDialog.cpp/.h::{OnInit,CopyToClipboard,ShowItemInfo,DeleteItems,OnEnter}` | Перенесены NumColumns/Values, усечение display copy, raw copy/detail и параллельное удаление Strings/Values. `qtlistview.h` адаптирует CListView к QTreeWidget; QTextEdit заменяет EditDialog. Лимит 1024 wchar_t зависит от ширины wchar_t платформы. |
+| `ListViewDialog.cpp/.h::{OnInit,CopyToClipboard,ShowItemInfo,DeleteItems,OnEnter}` | Перенесены NumColumns/Values, усечение display copy, raw copy/detail и параллельное удаление Strings/Values. `qtlistview.h` адаптирует CListView к QTreeWidget; полный текст показывает перенесённый CEditDialog. Лимит 1024 wchar_t зависит от ширины wchar_t платформы. |
 
 Не перенесены raw/security/flags/errors, полный ConvertPropertyToString2,
 IFolderProperties/IFolderArcProps levels, non-open level, IFolderGetItemName
@@ -57,8 +66,8 @@ OnEnter, OnOK и клавиши OnNotify. QListWidget/event filter/layout/clipbo
 заменяют Win32 controls/OnSize/notifications. Сохранены множественный выбор,
 удаление первого выбранного до исчерпания выбора, флаг изменений, индекс
 фокуса и платформенный перевод строки clipboard. Meta добавлен для macOS.
-ShowItemInfo использует read-only QTextEdit вместо ещё не перенесённого
-EditDialog. NumColumns/Values и усечение значений перенесены следующей
+ShowItemInfo использует перенесённый CEditDialog.
+NumColumns/Values и усечение значений перенесены следующей
 итерацией выше; Settings single-click/hover пока пропущен.
 Qt выбирает surviving current row после удаления; Win32 focus восстановить
 буквально нельзя. Отдельная кнопка удаления MVP убрана по исходному rc.

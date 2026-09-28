@@ -79,6 +79,8 @@ filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies a
 metadata snapshot to `CPanel::Properties`, which owns enumeration and totals.
 `CListViewDialog` presents the result through the shared Qt list adapter;
 the dialog never reads the file table or backend itself.
+`CEditDialog` supplies full-value detail for both list modes, with read-only
+scrolling text and Close. It is separate from the F3/F4 file viewer/editor.
 
 `sevenzip_panel` owns shared `CComboDialog`, `CCopyDialog`, `CSplitDialog` and
 panel summary functions. Callers validate operation input; dialogs commit

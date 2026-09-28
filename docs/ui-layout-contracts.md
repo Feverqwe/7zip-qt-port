@@ -58,6 +58,17 @@ Long paths remain reachable through scrolling, without eliding stored text.
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
 usability; rendered Windows parity remains unverified.
 
+## Full text detail
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/EditDialog.cpp/.h/.rc` and
+`ListViewDialog.cpp::ShowItemInfo`. CEditDialog has one read-only multiline
+edit above Close, with both scroll directions and no automatic wrapping.
+Text/Title are copied without truncation. Enter remains in the edit
+(ES_WANTRETURN); Tab moves focus to the footer. `edit_dialog` checks 480×320
+and 320×240, visibility/separation, raw text and scroll ranges, and writes
+JSON. These checks do not establish pixel parity with Windows.
+
 ## Selected properties
 
 Reference: ListViewDialog.rc; source scope and baseline are recorded in the

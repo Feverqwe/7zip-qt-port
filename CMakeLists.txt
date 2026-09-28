@@ -29,6 +29,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtlistview.h
     src/CPP/7zip/UI/FileManager/AppState.h
     src/CPP/7zip/UI/FileManager/ListViewDialog.cpp src/CPP/7zip/UI/FileManager/ListViewDialog.h
+    src/CPP/7zip/UI/FileManager/EditDialog.cpp src/CPP/7zip/UI/FileManager/EditDialog.h
     src/CPP/7zip/UI/FileManager/ComboDialog.cpp src/CPP/7zip/UI/FileManager/ComboDialog.h
     src/CPP/7zip/UI/FileManager/BrowseDialog.cpp src/CPP/7zip/UI/FileManager/BrowseDialog.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
@@ -75,6 +76,12 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(edit_dialog_tests tests/edit_dialog_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(edit_dialog_tests PRIVATE tests)
+    target_link_libraries(edit_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME edit_dialog COMMAND edit_dialog_tests)
+    set_tests_properties(edit_dialog PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(list_view_dialog_tests tests/list_view_dialog_tests.cpp)
     target_link_libraries(list_view_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME list_view_dialog COMMAND list_view_dialog_tests)
