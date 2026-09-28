@@ -134,18 +134,13 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
     selectAll_->setShortcut(QKeySequence::SelectAll);
     selectAll_->setShortcutContext(Qt::WidgetShortcut);
     table_->addAction(selectAll_);
-    connect(selectAll_, &QAction::triggered, table_, &QTableWidget::selectAll);
+    connect(selectAll_, &QAction::triggered, this, [this] { SelectAll(true); });
     selectAll_->setText("Выделить всё");
     editMenu->addAction(selectAll_);
-    deselectAll_ =
-        editMenu->addAction("Снять выделение", table_, [this] { table_->clearSelection(); });
+    deselectAll_ = editMenu->addAction("Снять выделение", this, [this] { SelectAll(false); });
     deselectAll_->setObjectName("deselectAllAction");
-    invertSelection_ = editMenu->addAction("Инвертировать выделение", table_, [this] {
-        for (int row = 0; row < table_->rowCount(); ++row)
-            table_->selectionModel()->select(table_->model()->index(row, 0),
-                                             QItemSelectionModel::Toggle |
-                                                 QItemSelectionModel::Rows);
-    });
+    invertSelection_ =
+        editMenu->addAction("Инвертировать выделение", this, [this] { InvertSelection(); });
     invertSelection_->setObjectName("invertSelectionAction");
     selectMask_ = editMenu->addAction("Выделить по маске…", this, [this] { SelectSpec(true); });
     selectMask_->setObjectName("selectMaskAction");

@@ -141,6 +141,8 @@ class MainWindow : public QMainWindow {
     void refreshCurrent();
     void createFolder();
     void createFile();
+    void SelectAll(bool select);
+    void InvertSelection();
     void SelectSpec(bool select);
     void SelectByType(bool select);
     void navigateTo(const QString &path);

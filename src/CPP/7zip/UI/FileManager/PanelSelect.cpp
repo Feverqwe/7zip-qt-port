@@ -1,55 +1,49 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelSelect.cpp at 0766b73.
 // Copyright (C) 1999-2026 Igor Pavlov. GNU LGPL 2.1 or later.
-// Qt selection model and ComboDialog replace the upstream Win32 controls.
+// CPanelSelection extracts CPanel's selection vector and rules. QString and
+// std::vector replace UString and the folder's indexed properties; dialog,
+// focus and UpdateSelection belong to the presentation adapter.
 
-#include "../../../../mainwindow.h"
+#include "PanelSelect.h"
 #include "../../../Common/Wildcard.h"
 
-void MainWindow::SelectSpec(bool selectMode) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
+void CPanelSelection::SelectSpec(QStringView mask, bool selectMode) {
+    for (auto &item : Items)
+        if (DoesWildcardMatchName(mask, QStringView(item.Name)))
+            item.Selected = selectMode;
+}
+
+void CPanelSelection::SelectByType(int focusedItem, bool selectMode) {
+    if (focusedItem < 0 || size_t(focusedItem) >= Items.size())
         return;
-    ComboDialog dialog(selectMode ? "Выделить" : "Снять выделение", "Маска:", "*", this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const QString mask = dialog.value();
-    for (int row = 0; row < table_->rowCount(); ++row) {
-        if (DoesWildcardMatchName(QStringView(mask), QStringView(table_->item(row, 0)->text())))
-            table_->selectionModel()->select(
-                table_->model()->index(row, 0),
-                (selectMode ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
-                    QItemSelectionModel::Rows);
+    const QString &name = Items[size_t(focusedItem)].Name;
+    const bool isItemFolder = Items[size_t(focusedItem)].IsFolder;
+    if (isItemFolder) {
+        for (auto &item : Items)
+            if (item.IsFolder == isItemFolder)
+                item.Selected = selectMode;
+    } else {
+        const qsizetype pos = name.lastIndexOf('.');
+        if (pos < 0) {
+            for (auto &item : Items)
+                if (item.IsFolder == isItemFolder && item.Name.lastIndexOf('.') < 0)
+                    item.Selected = selectMode;
+        } else {
+            const QString mask = QStringLiteral("*") + name.mid(pos);
+            for (auto &item : Items)
+                if (item.IsFolder == isItemFolder &&
+                    DoesWildcardMatchName(QStringView(mask), QStringView(item.Name)))
+                    item.Selected = selectMode;
+        }
     }
 }
 
-void MainWindow::SelectByType(bool selectMode) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
-        return;
-    const int focusedItem = table_->currentRow();
-    if (focusedItem < 0)
-        return;
-    const auto *focused = table_->item(focusedItem, 0);
-    const QString name = focused->text();
-    const bool isItemFolder = focused->data(Qt::UserRole + 1).toBool();
-    if (isItemFolder) {
-        for (int row = 0; row < table_->rowCount(); ++row) {
-            if (table_->item(row, 0)->data(Qt::UserRole + 1).toBool() == isItemFolder)
-                table_->selectionModel()->select(
-                    table_->model()->index(row, 0),
-                    (selectMode ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
-                        QItemSelectionModel::Rows);
-        }
-    } else {
-        const int pos = name.lastIndexOf('.');
-        const QString mask = pos < 0 ? QString() : QStringLiteral("*") + name.mid(pos);
-        for (int row = 0; row < table_->rowCount(); ++row) {
-            const auto *item = table_->item(row, 0);
-            if (!item->data(Qt::UserRole + 1).toBool() &&
-                (pos < 0 ? item->text().lastIndexOf('.') < 0
-                         : DoesWildcardMatchName(QStringView(mask), QStringView(item->text()))))
-                table_->selectionModel()->select(
-                    table_->model()->index(row, 0),
-                    (selectMode ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
-                        QItemSelectionModel::Rows);
-        }
-    }
+void CPanelSelection::SelectAll(bool selectMode) {
+    for (auto &item : Items)
+        item.Selected = selectMode;
+}
+
+void CPanelSelection::InvertSelection() {
+    for (auto &item : Items)
+        item.Selected = !item.Selected;
 }

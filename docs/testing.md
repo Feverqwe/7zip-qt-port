@@ -83,3 +83,10 @@ When a bug is found, first capture it with a focused regression test when practi
 Крупные наборы разделены по области: `ui_state`, `ui_operations`, `ui_navigation`, `ui_archive_states` используют общую управляемую подмену backend; `archive_backend` и `archive_mutation` используют общие локальные фикстуры. Упоминания `ui_state` и `archive_backend` выше описывают исходные сценарии; после разделения соответствующие случаи выполняются в этих тематических наборах.
 
 `archive_proxy` checks the adapted upstream directory tree with explicit and implicit folders, Unicode names, recursive size and packed-size totals, real index expansion, flat traversal and reload cleanup. Existing `flat_view`, `properties`, `ui_state` and nested archive tests verify the Qt integration.
+
+`panel_selection` checks the extracted upstream selection rules without widgets:
+case-insensitive masks with Unicode and spaces, matching folder names,
+last-dot extensions, names without extensions, dotfiles, folder-only selection,
+retaining unmatched selected items, deselection, inversion and missing focus.
+Existing `ui_state` mask/type and all/invert/clear scenarios check the Qt adapter
+in filesystem and archive views; the shared model retains the current index.

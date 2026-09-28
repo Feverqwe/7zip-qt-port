@@ -22,7 +22,7 @@ SevenZipProcessBackend (official 7zz executable)
 
 `src/archivebackend.h` defines archive entries, reported archive information and asynchronous operations. `src/archivebackend.cpp` and its companion source files own command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `MainWindow` owns dialogs, table presentation and the explicit filesystem / loading / viewing / operating states. The address bar and table show the current directory until an archive is opened. The window retains the complete archive listing. The adapted upstream `CProxyArc` builds the directory tree, including implicit intermediate folders and explicit empty folders; `CAgentFolder` supplies the normal and flat item traversal. Table items retain full entry paths so sorting cannot change extraction targets. Selecting a folder expands to its listed descendants before calling the backend. Directory history and the source directory for an opened archive are kept in the window; a failed or cancelled listing restores the directory. All command availability is updated from these states and the table selection. A direct 7-Zip API adapter can replace this backend later.
 
-Portable functions adapted from upstream live under `src/CPP/` with their source paths and names: `PanelSort.cpp` compares names, `PanelSelect.cpp` applies selection rules through Qt, `Common/Wildcard.cpp` matches masks, and `PanelSplitFile.cpp` names volume parts. `filetable.cpp` is the Qt table adapter for drag data and item ordering. The remaining source correspondence and migration gaps are recorded in `docs/upstream-port-audit.md`.
+Portable functions adapted from upstream live under `src/CPP/` with their source paths and names: `PanelSort.cpp` compares names, `PanelSelect.cpp` owns selection rules in `CPanelSelection`, `Common/Wildcard.cpp` matches masks, and `PanelSplitFile.cpp` names volume parts. `mainwindow_selection.cpp` adapts the selection dialog, focus and Qt selection model. `filetable.cpp` is the Qt table adapter for drag data and item ordering. The remaining source correspondence and migration gaps are recorded in `docs/upstream-port-audit.md`.
 
 `mainwindow.cpp` initializes the window and filesystem scanner. `mainwindow_menus.cpp` builds menus and toolbar actions, `mainwindow_panel.cpp` builds the address and shared file views, and `mainwindow_backendevents.cpp` handles asynchronous archive results. Operation completion delegates hashing, archive moves, viewer extraction and state restoration to separate methods; the backend continues to own process arguments and archive safety checks.
 
@@ -80,3 +80,11 @@ The extraction dialog follows the main controls in `../GUI/ExtractDialog.rc`: de
 The adapted upstream `CProxyArc` in `src/CPP/7zip/UI/Agent/AgentProxy.cpp` owns explicit and implicit directories, real item indices and recursive size totals. `CAgentFolder` in `Agent.cpp` supplies normal and flat traversal. `MainWindow` converts these items into Qt rows; folder properties and selection expansion use the same tree. `ArchiveBackend` metadata from `7zz` replaces COM property access through `IInArchive`.
 
 `FileTransferOperation` delegates byte copying to the adapted upstream `CCopyStateIO::MyCopyFile` in `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`. Its Qt adapter reports errors and progress to the worker; the existing transaction wrapper publishes the stage and handles rollback. Nested destination validation uses `IsDestChild` from the same upstream module.
+
+`CPanelSelection` is the extracted functional part of upstream `CPanel` from
+`PanelSelect.cpp` (0766b73). It receives a snapshot of displayed names, folder
+flags and selected states, and applies `SelectSpec`, `SelectByType`, `SelectAll`
+and `InvertSelection` without widgets or `MainWindow`. `mainwindow_selection.cpp`
+reads the Qt table in display order and publishes the resulting selection in
+one update, retaining the current index. Mouse and keyboard range selection
+remain owned by Qt; the upstream alternate selection mode is not ported.
