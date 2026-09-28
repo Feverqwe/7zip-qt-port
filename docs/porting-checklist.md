@@ -158,6 +158,16 @@ Local commits: P0-01.3a `9eced86`, b1 `ca5030a`, b2 `6ce4cac`.
 P0-01.3b завершён после b3; их docs-only diff/coverage проверки и коммиты
 выполняются отдельно. Следующий доступный scope — P0-01.3c.
 
+P0-01.3c разделён перед audit:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3c1 | Текущий чат: пять отсутствующих Agent modules, bodies/callers/interface closure, owners и backend adapters | P0-01.3b3 | done — audit § P0-01.3c1; 2026-09-28 macOS docs-only, diff check, 80 unique paths / полный Agent inventory |
+| P0-01.3c2 | Текущий чат: восемь отсутствующих GUI modules, bodies/resources/build entrypoints, owners и process adapters | P0-01.3c1 | active |
+
+Каждый — docs-only diff/unique-path checks и отдельный commit; parent c
+остаётся открытым до c2. P0-01.3b3 commit: `3e914ce`.
+
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
 

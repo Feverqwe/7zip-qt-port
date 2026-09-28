@@ -236,6 +236,28 @@ P0-01.3b1–b3 покрывают 33 оставшихся missing FM; P0-01.3a �
 Code/UX не менялись, build/CTest/layout не запускались. Runtime Windows/Linux,
 OLE drag/shell/device и rendered Windows parity не проверены.
 
+## P0-01.3c1 — отсутствующие Agent modules (2026-09-28)
+
+Project baseline `3e914ce`. Agent = `CPP/7zip/UI/Agent`; exact source для
+всех пяти строк — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied scope пуст; все активные bodies остаются обязательными. Проверены
+bodies и interfaces из Agent.h/IFolderArchive/UpdateCallbackAgent.h, FM callers
+и AGENT_OBJS. Portable functional policy должна сохраняться при замене COM
+и in-process engine transport на ArchiveBackend/официальный 7zz.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Agent/ArchiveFolder.cpp — P1-01, P0-12, P2-06/07 | CAgentFolder SetZoneIdMode/SetZoneIdFile/CopyTo: reject archive move-out, interface callback, cur/no paths/no paths alt-stream selection, Extract с Ask. | Agent/Proxy2, ArchiveExtractCallback, ExtractMode/IFolderArchive; PanelCopy caller. Сохранить path/zone/overwrite decisions, transport адаптировать в backend; filesystem extraction adapter не заменяет policy. Commented SetReplaceAltStreamCharsMode не активная функция. |
+| Agent/ArchiveFolderOpen.cpp — P0-04/12, P1-06/11, P2-01/02/08 | CCodecIcons LoadIcons/FindIconIndex, CArchiveFolderManager LoadFormats/OpenFolderFile/GetExtensions/GetIconPath: lazy formats, parsed icon pairs, non-open-error folder, progress refs и bind-to-root lifetime. | LoadGlobalCodecs/CCodecs libraries, Agent/OpenArchive, StringToInt/ResourceString/DLL, IFolderManager/BSTR. Resource/DLL icons и engine-open transport адаптировать; active external codecs metadata остаётся. Commented FindFormat/GetTypes/CreateFolderFile не активные bodies, не замена актуальной capability модели. |
+| Agent/AgentOut.cpp — P1-04/05/09, P2-02/06, P3-02 | CAgent SetFolder/SetFiles, EnumerateArchiveItems/2, DoOperation/2 action-set→directory/archive pairs→UpdateProduce, properties/SFX prefix, processed empty-file tracking; CommonUpdate/DeleteItems/CreateFolder/RenameItem/CommentItem/UpdateOneFile/SetProperties. | AgentProxy/2, EnumDirItems/UpdatePair/UpdateProduce/UpdateCallback/UpdateAction, Wildcard/FileName/TimeUtils/ItemNameUtils, FileStreams/CopyCoder/IFolderArchive. Functional pair/path/rename/comment policy переносить; compression/UpdateItems выполняет official engine. Backend должен выразить исходные capabilities и mutations, не исполнять engine API в widgets. Не заменять сохранение неизменных entries перебором заново написанного algorithm. |
+| Agent/ArchiveFolderOut.cpp — P1-04/09, P1-02, P2-06, P0-10 | CAgentFolder GetPathParts/CommonUpdateOperation и mutation wrappers: CanUpdate/hash guards, original prefix/tail stream, temp archive, KeepMode/Close, MoveToOriginal, MoveArc callbacks/Before_ArcReopen, processed source deletion only after success, ReOpen и restore Proxy/Proxy2/alt-folder path. | WorkDir/CWorkDirTempFile, FileStreams/LimitedStreams/CopyCoder, AgentOut/UpdateCallbackAgent/IFolderArchive_Update_MoveArc, FileDir/Find. Сохранить transaction/return/reopen order, cancellation during replace и error recovery; process/temp/filesystem/GUI services adapters. CreateFile E_NOTIMPL; SetProperty только BSTR comment ZIP; не объявлять unsupported generic mutations готовыми. |
+| Agent/UpdateCallbackAgent.cpp — P1-04/05/09, P0-10/12 | CUpdateCallbackAgent SetCallback, item/totals/ratio, OpenFileError S_FALSE versus ReadingFileError failure, GetStream/update/extract result/delete operation reports, lazy crypto interfaces/password. | IUpdateCallbackUI/Common UpdateCallback, IFolderArchive callback/2/crypto/compress-progress, ErrorMsg/IntToString. Сохранить result/callback distinctions и password-defined semantics, process progress/event/error adapter. WriteSfx/CheckBreak здесь upstream no-op; отмена приходит через вызываемые callbacks и не становится optional. |
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 80 unique paths
+(30 mirrored + 50 missing), полный coverage всех Agent `.cpp` в baseline.
+Runtime/source implementation не менялись; build/CTest/layout не запускались,
+Windows/Linux и engine callback transport пока не проверены.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
