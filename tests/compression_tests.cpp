@@ -64,7 +64,7 @@ class CompressionTests : public QObject {
         QCOMPARE(dialog.compressionOptions().solidBlockMiB, 0);
         level->setCurrentIndex(level->findData(9u));
         method->setCurrentText("BZip2");
-        QVERIFY(!dictionary->isEnabled());
+        QVERIFY(dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
         solid->setChecked(false);
         threads->setValue(2);

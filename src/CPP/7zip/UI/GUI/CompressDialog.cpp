@@ -224,6 +224,31 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
         break;
     }
 
+    case kBZip2: {
+        {
+            if (level >= 5)
+                options.AutoDict = (900 << 10);
+            else if (level >= 3)
+                options.AutoDict = (500 << 10);
+            else
+                options.AutoDict = (100 << 10);
+        }
+
+        for (unsigned i = 1; i <= 9; i++) {
+            const UInt32 dict = ((UInt32)i * 100) << 10;
+            options.Values.append(quint64(dict));
+        }
+        break;
+    }
+
+    case kDeflate:
+    case kDeflate64: {
+        const UInt32 dict = (methodID == kDeflate ? (UInt32)(1 << 15) : (UInt32)(1 << 16));
+        options.AutoDict = dict;
+        // EnableItem(IDC_COMPRESS_DICTIONARY, false);
+        break;
+    }
+
     default:
         break;
     }

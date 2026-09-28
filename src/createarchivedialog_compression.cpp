@@ -123,7 +123,7 @@ void CreateArchiveDialog::SetDictionary2() {
         NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
     const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
     dictionary_->clear();
-    dictionary_->addItem(options.Values.isEmpty()
+    dictionary_->addItem(options.AutoDict == 0
                              ? QStringLiteral("Автоматически")
                              : QStringLiteral("Автоматически (%1)")
                                    .arg(NCompressDialog::Combo_AddDict2(options.AutoDict)),

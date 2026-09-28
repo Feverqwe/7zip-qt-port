@@ -24,6 +24,10 @@ class CompressionMemoryTests final : public QObject {
                                   << QList<quint64>{0,         1 << 20,  2 << 20,  4 << 20,
                                                     8 << 20,   16 << 20, 32 << 20, 64 << 20,
                                                     128 << 20, 256 << 20};
+        const QList<quint64> bzip = {0,         100 << 10, 200 << 10, 300 << 10, 400 << 10,
+                                     500 << 10, 600 << 10, 700 << 10, 800 << 10, 900 << 10};
+        QTest::newRow("BZip2-7z") << QString("7z") << QString("BZip2") << bzip;
+        QTest::newRow("BZip2-zip") << QString("zip") << QString("BZip2") << bzip;
     }
     void choices() {
         QFETCH(QString, formatName);
@@ -40,10 +44,19 @@ class CompressionMemoryTests final : public QObject {
         for (int i = 0; i < dictionary->count(); ++i)
             actual.append(dictionary->itemData(i).toULongLong());
         QCOMPARE(actual, expected);
-        QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (16 МиБ)"));
+        const bool bzip = methodName == "BZip2";
+        QCOMPARE(dictionary->itemText(0), bzip ? QStringLiteral("Автоматически (900 КиБ)")
+                                               : QStringLiteral("Автоматически (16 МиБ)"));
         dictionary->setCurrentIndex(1);
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (256 МиБ)"));
+        QCOMPARE(dictionary->itemText(0), bzip ? QStringLiteral("Автоматически (900 КиБ)")
+                                               : QStringLiteral("Автоматически (256 МиБ)"));
+        if (bzip) {
+            level->setCurrentIndex(level->findData(1u));
+            QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (100 КиБ)"));
+            level->setCurrentIndex(level->findData(3u));
+            QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (500 КиБ)"));
+        }
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, expected[1]);
         dialog.show();
         const QString screenshots = QDir::currentPath() + "/ui-screenshots";
@@ -64,6 +77,42 @@ class CompressionMemoryTests final : public QObject {
         QVERIFY(!dictionary->isEnabled());
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
     }
+    void fixedDictionary_data() {
+        QTest::addColumn<QString>("methodName");
+        QTest::addColumn<QString>("sizeText");
+        QTest::newRow("Deflate") << QString("Deflate") << QString("32 КиБ");
+        QTest::newRow("Deflate64") << QString("Deflate64") << QString("64 КиБ");
+    }
+    void fixedDictionary() {
+        QFETCH(QString, methodName);
+        QFETCH(QString, sizeText);
+        QTemporaryDir dir;
+        CreateArchiveDialog dialog(dir.path());
+        dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
+        dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
+        auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
+        auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        QCOMPARE(dictionary->count(), 1);
+        QVERIFY(!dictionary->isEnabled());
+        QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (%1)").arg(sizeText));
+        for (int value : {1, 3, 5, 7, 9}) {
+            level->setCurrentIndex(level->findData(unsigned(value)));
+            QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (%1)").arg(sizeText));
+            QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        }
+        dialog.show();
+        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+        QVERIFY(QDir().mkpath(screenshots));
+        for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
+            dialog.resize(size);
+            QApplication::processEvents();
+            dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
+                ->ensureWidgetVisible(dictionary, 0, 80);
+            QApplication::processEvents();
+            QVERIFY(dialog.grab().save(
+                screenshots + QString("/memory-%1-zip-%2.png").arg(methodName).arg(size.width())));
+        }
+    }
     void operations_data() {
         QTest::addColumn<QString>("formatName");
         QTest::addColumn<QString>("methodName");
@@ -73,6 +122,14 @@ class CompressionMemoryTests final : public QObject {
                                  << quint64(5 << 20);
         QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd") << quint64(1 << 20)
                                   << quint64(3 << 20);
+        QTest::newRow("BZip2-7z-small")
+            << QString("7z") << QString("BZip2") << quint64(100 << 10) << quint64(150 << 10);
+        QTest::newRow("BZip2-zip-large")
+            << QString("zip") << QString("BZip2") << quint64(900 << 10) << quint64(150 << 10);
+        QTest::newRow("Deflate") << QString("zip") << QString("Deflate") << quint64(0)
+                                 << quint64(32 << 10);
+        QTest::newRow("Deflate64")
+            << QString("zip") << QString("Deflate64") << quint64(0) << quint64(64 << 10);
     }
     void operations() {
         QFETCH(QString, formatName);
