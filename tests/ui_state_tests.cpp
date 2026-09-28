@@ -256,7 +256,7 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
 
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget))
+                if (auto *dialog = qobject_cast<CComboDialog *>(widget))
                     dialog->reject();
             }
         });
@@ -264,8 +264,9 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(table(window)->rowCount(), 1);
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
-                    dialog->setTextValue(QStringLiteral("папка с пробелом"));
+                if (auto *dialog = qobject_cast<CComboDialog *>(widget)) {
+                    dialog->findChild<QComboBox *>("comboValue")
+                        ->setCurrentText(QStringLiteral("папка с пробелом"));
                     dialog->accept();
                 }
             }

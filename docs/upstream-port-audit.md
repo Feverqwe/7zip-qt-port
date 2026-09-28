@@ -1,5 +1,38 @@
 # Ревизия происхождения кода 7zFM
 
+Воспроизводимый baseline новых итераций FSFolder/FileDir, Split/Combine и
+Combo/Browse: официальный репозиторий
+[`ip7z/7zip` на commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Исходные пути, перенесённые symbols, пропущенные части и адаптации указаны
+в разделах ниже. Для обновления каждого частичного модуля сравнивать этот
+snapshot с новой ревизией, включая зависимые/пропущенные ветки; форматирование
+рассматривать отдельно от functional diff. Соседний checkout остаётся read-only.
+
+## Общий ввод имени/маски и создание папки (2026-09-28)
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/ComboDialog.cpp/.h/.rc::{CComboDialog, OnInit, OnOK,
+OnSize}` и `BrowseDialog.cpp/.h::Dlg_CreateFolder`.
+Адаптированные реализации сохраняют исходные пути и symbols. Прежний
+самостоятельный combodialog.cpp удалён; combodialog.h — compatibility alias.
+
+Перенесены Title/Static/Value/Strings, порядок заполнения и получение сырого
+Value в OnOK. Qt-конструктор задаёт поля до OnInit; QDialog, QComboBox,
+QLabel/layouts заменяют CModalDialog/Win32 controls/OnSize. Qt AddItem выбирает
+первую запись, тогда как исходный AddString не меняет введённый Value:
+после наполнения восстанавливается исходный edit text. accept проходит через
+OnOK; getters — Qt compatibility glue. QStringList используется только на
+presentation boundary; никакого нового functional parser не добавлено.
+
+Dlg_CreateFolder скопирован с очисткой destName перед dialog, исходными
+Title/Static/default Value, возвратом false при Cancel и Value при OK.
+QWidget заменяет HWND, русские строки — LangString. CreateFolder теперь
+использует эту функцию, как PanelOperations.cpp; создание файла и SelectSpec
+переходят на исходный CComboDialog через alias. Остальная BrowseDialog,
+CorrectFsPath, inline Rename и complex-name validation остаются долгом.
+Notices/LGPL сохранены; clang-format обязателен. sevenzip_panel компилирует
+общий dialog один раз и включает AUTOMOC для Qt meta-object.
+
 ## Split dialog и подготовка Combine (2026-09-28)
 
 Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
@@ -135,7 +168,7 @@ Extract column ordering on disposable fixtures.
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
 | `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `App.cpp`, `Panel.h`, `PanelListNotify.cpp`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy`, `CPanel::GetItemsInfoString`; `PanelListNotify.cpp::ConvertSizeToString` | Перенесены CCopyDialog, история, сводка выделения и форматирование чисел. Qt layouts заменяют OnSize, QSettings — Registry, snapshot свойств — COM; старый header содержит только alias. Остальные App/Panel/ListNotify функции пока не перенесены. |
-| `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
+| `src/CPP/7zip/UI/FileManager/ComboDialog.cpp/.h`, `BrowseDialog.cpp/.h`, `src/combodialog.h` | `FileManager/ComboDialog.cpp/.h/.rc`, `BrowseDialog.cpp::Dlg_CreateFolder` | Перенесены OnInit/OnOK и создание папки через общий dialog; Qt заменяет presentation, header alias сохраняет существующих потребителей. Остальная BrowseDialog не перенесена. |
 | `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
 | `src/archiveformats.h` | `FileManager/FilePlugins.cpp`, `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственный статический список расширений для эвристики двойного щелчка и фильтра диалога. В upstream расширения приходят от установленных обработчиков; движок сам определяет формат при явном открытии. |
 | `src/archivebackend.cpp`, `archivebackend.h`, `archivebackend_listing.cpp`, `archivebackend_mutations.cpp`, `archivebackend_validation.cpp` | `CPP/7zip/UI/Console/Main.cpp`, `CPP/7zip/UI/Common/OpenArchive.cpp`, `Update.cpp` и движок `CPP/7zip/Archive/` | Адаптер процесса `7zz`, парсер его вывода, проверка путей и транзакционное обновление. Не является копией движка; переносить код форматов сюда нельзя. |

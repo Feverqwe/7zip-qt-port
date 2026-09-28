@@ -41,6 +41,27 @@ SEVENZIP_CAPTURE_SCREENSHOTS=1 ctest --preset dev -R '^ui_geometry$' --output-on
 
 This writes optional PNGs next to the JSON. Open only the affected screenshot.
 
+## Shared name/mask dialog
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/ComboDialog.cpp/.rc` and
+`BrowseDialog.cpp::Dlg_CreateFolder`. Implemented view: `ComboDialog.cpp`.
+
+- The prompt precedes one editable combo, with OK/Cancel at the bottom.
+  Initial Value remains visible after populating ordered Strings.
+- Folder creation uses the shared dialog and default "Новая папка";
+  file creation and selection masks use the same view with their own prompts.
+- OnOK preserves raw text, including spaces and an empty value. Validation
+  belongs to the calling operation. Cancel leaves the public Value unchanged.
+- `combo_dialog` checks folder/file/mask views at 360×150 and 260×150:
+  fitted prompt, reachable combo/footer, control order and separate buttons.
+  JSON reports accompany the checks; screenshots remain optional.
+
+Qt layouts replace OnSize. Plain-text wrapping handles Qt label rendering;
+the native AddString behavior is adapted by restoring initial edit text after
+Qt populates the combo. Windows rendering was unavailable; geometry establishes
+structure/usability on the tested macOS Qt platform.
+
 ## Split and Combine dialogs
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

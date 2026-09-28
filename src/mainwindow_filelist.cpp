@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
@@ -130,10 +131,8 @@ void MainWindow::refreshCurrent() {
 void MainWindow::createFolder() {
     if (state_ != State::Filesystem)
         return;
-    bool accepted = false;
-    const QString name = QInputDialog::getText(this, "Создать папку",
-                                               "Имя папки:", QLineEdit::Normal, {}, &accepted);
-    if (!accepted)
+    QString name;
+    if (!Dlg_CreateFolder(this, name))
         return;
     const QString target = QDir(directory_).filePath(name);
     NFsFolder::CFSFolder folder(directory_);
