@@ -56,7 +56,7 @@ P0: 0/12; P1: 0/16; P2: 0/10; P3: 0/6.
 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
-| [ ] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | active — подшаги P0-01.1–.4 ниже |
+| [ ] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | partial — P0-01.1 done; P0-01.2–.4 открыты |
 | [ ] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | todo |
 | [ ] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | todo |
 | [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | todo |
@@ -128,12 +128,12 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 
 | Готов | Подшаг | Scope и критерий готовности | После | Статус |
 | --- | --- | --- | --- | --- |
-| [ ] | P0-01.1 | 16 mirrored `.cpp`: App/state, Panel navigation/items/menu/keys/selection/sort/summary, FS operations, Split workers/utils, Agent/Proxy, Wildcard/FileDir. Реестр copied/adapted/omitted symbols и immediate dependencies, review bodies | — | active |
-| [ ] | P0-01.2 | Остальные 14 mirrored `.cpp`: dialogs/preferences/Compress/Extract/ZipRegistry/MethodProps; их headers, resources, vendored dependencies и Qt/std migration debt | P0-01.1 | todo |
+| [x] | P0-01.1 | 16 mirrored `.cpp`: App/state, Panel navigation/items/menu/keys/selection/sort/summary, ViewSettings, FS operations, Split workers/utils, Agent/Proxy, Wildcard/FileDir. Реестр copied/adapted/omitted symbols и immediate dependencies, review bodies | — | done — audit § P0-01.1; 2026-09-28 macOS docs-only, diff/check paths; runtime других ОС не проверен |
+| [ ] | P0-01.2 | Остальные 14 mirrored `.cpp`: dialogs/preferences/Compress/Extract/ZipRegistry/MethodProps, включая BrowseDialog/PanelListNotify; их headers, resources, vendored dependencies и Qt/std migration debt | P0-01.1 | active |
 | [ ] | P0-01.3 | Все 82 отсутствующих `.cpp`: inspect source scope/callers/build dependencies, назначить decision/owner без механического N/A | P0-01.2 | todo |
 | [ ] | P0-01.4 | Проверить полное покрытие 109 UI + 3 supporting `.cpp`, согласовать audit/plan/owners/counts, записать checks и handoff | P0-01.3 | todo |
 
-Следующий текущий scope: **P0-01.1**. Parent остаётся открытым до всех четырёх
+Следующий текущий scope: **P0-01.2**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
 
 При первом разделении добавить здесь, сохраняя остальных:
