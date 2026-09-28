@@ -139,8 +139,8 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 | Подшаг | Owner/scope и критерий готовности | После | Статус |
 | --- | --- | --- | --- |
 | P0-01.3a | Текущий чат: отсутствующие FM App/Panel/navigation/commands/progress/overwrite/callback modules; source bodies/callers, decision/owner/dependencies | P0-01.2 | done — audit § P0-01.3a; 2026-09-28 macOS docs-only, diff check, 12 missing / 42 unique paths; SFX legacy decision открыт |
-| P0-01.3b | Текущий чат: остальные отсутствующие FM modules; source bodies/callers, platform/build scope, decision/owner/dependencies | P0-01.3a | active |
-| P0-01.3c | Текущий чат: отсутствующие Agent/GUI modules; source bodies/callers и process adapters, decision/owner/dependencies | P0-01.3b | todo |
+| P0-01.3b | Текущий чат: остальные отсутствующие FM modules; source bodies/callers, platform/build scope, decision/owner/dependencies | P0-01.3a | done — b1–b3, 33 modules; полный FM inventory |
+| P0-01.3c | Текущий чат: отсутствующие Agent/GUI modules; source bodies/callers и process adapters, decision/owner/dependencies | P0-01.3b | active |
 | P0-01.3d | Текущий чат: отсутствующие Common modules; source bodies/callers и dependency closure, decision/owner/dependencies, coverage всех 82 | P0-01.3c | todo |
 
 Каждый подшаг проверяется docs-only (`git diff --check`, unique-path coverage)
@@ -152,10 +152,11 @@ P0-01.3b разделён перед фиксацией audit:
 | --- | --- | --- | --- |
 | P0-01.3b1 | Текущий чат: 12 FM options/language/help/dialog/format modules; bodies/resources/callers, owners и adapter decisions | P0-01.3a | done — audit § P0-01.3b1; 2026-09-28 macOS docs-only, diff check, 54 unique paths |
 | P0-01.3b2 | Текущий чат: 12 FM provider/platform/support modules; bodies/build callers, owners и adapter decisions | P0-01.3b1 | done — audit § P0-01.3b2; 2026-09-28 macOS docs-only, diff check, 66 unique paths |
-| P0-01.3b3 | Текущий чат: 9 FM open/drag/hash/Browse/system modules; bodies/callers, owners и adapter decisions; coverage 33 оставшихся FM | P0-01.3b2 | active |
+| P0-01.3b3 | Текущий чат: 9 FM open/drag/hash/Browse/system modules; bodies/callers, owners и adapter decisions; coverage 33 оставшихся FM | P0-01.3b2 | done — audit § P0-01.3b3; 2026-09-28 macOS docs-only, diff check, 75 unique paths, полный FM inventory |
 
-P0-01.3a: local commit `9eced86`. P0-01.3b остаётся active до всех b1–b3;
-их docs-only diff/coverage проверки и коммиты выполняются отдельно.
+Local commits: P0-01.3a `9eced86`, b1 `ca5030a`, b2 `6ce4cac`.
+P0-01.3b завершён после b3; их docs-only diff/coverage проверки и коммиты
+выполняются отдельно. Следующий доступный scope — P0-01.3c.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
