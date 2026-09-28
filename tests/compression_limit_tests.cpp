@@ -71,7 +71,10 @@ class CompressionLimitTests final : public QObject {
         QCOMPARE(dialog.compressionOptions().MemUsage.GetBytes(0), UInt64(256 << 20));
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         format->setCurrentText("zip");
+        QCOMPARE(limit->currentData().toString(), QString());
+        format->setCurrentText("7z");
         QCOMPARE(limit->currentData().toString(), QString("256M"));
+        format->setCurrentText("zip");
         limit->setCurrentIndex(limit->findData("50%"));
         QVERIFY(dialog.compressionOptions().MemUsage.IsPercent);
         QCOMPARE(dialog.compressionOptions().MemUsage.Val, UInt64(50));

@@ -810,7 +810,8 @@ static int AddMemComboItem(QList<CMemComboItem> &items, UInt64 val, bool isPerce
     return dataIndex;
 }
 
-QList<CMemComboItem> SetMemUseCombo(const QString &spec) {
+QList<CMemComboItem> SetMemUseCombo(const QString &spec, int *selected) {
+    int curSel = 0;
     QList<CMemComboItem> items;
     UInt64 curMem_Bytes = 0;
     UInt64 curMem_Percents = 0;
@@ -841,7 +842,7 @@ QList<CMemComboItem> SetMemUseCombo(const QString &spec) {
             if (i > 100)
                 size = (UInt64)(Int64)-1;
             if (needSetCur_Percents && size >= curMem_Percents) {
-                AddMemComboItem(items, curMem_Percents, true);
+                curSel = AddMemComboItem(items, curMem_Percents, true);
                 needSetCur_Percents = false;
                 if (size == curMem_Percents)
                     continue;
@@ -857,7 +858,7 @@ QList<CMemComboItem> SetMemUseCombo(const QString &spec) {
             if (i > (20 + sizeof(size_t) * 3 - 1) * 2)
                 size = (UInt64)(Int64)-1;
             if (needSetCur_Bytes && size >= curMem_Bytes) {
-                AddMemComboItem(items, curMem_Bytes);
+                curSel = AddMemComboItem(items, curMem_Bytes);
                 needSetCur_Bytes = false;
                 if (size == curMem_Bytes)
                     continue;
@@ -867,6 +868,8 @@ QList<CMemComboItem> SetMemUseCombo(const QString &spec) {
             AddMemComboItem(items, size);
         }
     }
+    if (selected)
+        *selected = curSel;
     return items;
 }
 

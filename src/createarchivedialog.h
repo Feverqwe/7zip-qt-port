@@ -49,6 +49,12 @@ class CreateArchiveDialog : public QDialog {
     void SetMemoryUsage();
     NCompression::CMemUse Get_MemUse_Spec() const;
     bool checkMemoryUsage();
+    int FindRegistryFormat(const QString &name) const;
+    unsigned FindRegistryFormat_Always(const QString &name);
+    NCompression::CFormatOptions &Get_FormatOptions();
+    void SaveOptionsInMem();
+    void SetMemUseCombo();
+    static QString compressionSettingsPath();
     void createFooter(QVBoxLayout *layout);
     void updateTargetPreview();
     void validateAndAccept();
@@ -74,6 +80,8 @@ class CreateArchiveDialog : public QDialog {
     QLabel *hardwareThreads_ = nullptr;
     QLabel *memoryUsage_ = nullptr;
     QComboBox *memUse_ = nullptr;
+    NCompression::CInfo m_RegistryInfo;
+    QString registryFormat_;
     QLabel *decompressionMemory_ = nullptr;
     const NCompressDialog::CSystemInfo system_ = NCompressDialog::GetSystemInfo();
     QLineEdit *password_ = nullptr;

@@ -18,6 +18,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     auto *content = new QWidget(scroll);
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
+    m_RegistryInfo.Load(compressionSettingsPath());
     createSourcePicker(contentLayout);
     createArchiveForm(contentLayout);
     scroll->setWidget(content);
@@ -221,6 +222,10 @@ void CreateArchiveDialog::validateAndAccept() {
         (QFileInfo(target_).exists() || QFileInfo(target_).isSymLink())) {
         QMessageBox::warning(this, "Создать архив", "Архив уже существует: " + target_);
         return;
+    }
+    if (existingTarget_.isEmpty()) {
+        SaveOptionsInMem();
+        m_RegistryInfo.Save(compressionSettingsPath());
     }
     accept();
 }

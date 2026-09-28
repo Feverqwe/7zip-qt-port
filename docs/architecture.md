@@ -153,5 +153,11 @@ ZIP/LZMA2. UI показывает оценки для сжатия/распак
 Список лимитов перенесён из SetMemUseCombo; память проверяется в OnOK
 Qt-диалога и повторно в backend. При неизвестной RAM отказ по Auto отключён,
 явный предел применяется; Auto-потоки при неизвестной RAM следуют upstream
-без уменьшения. Выбор между запусками (Registry) остаётся долгом. Подробные источники и отклонения записаны
+без уменьшения. Лимит сохраняется отдельно по формату при OK: CFormatOptions/CInfo
+из UI/Common/ZipRegistry используют исходный CObjectVector и Qt INI
+вместо Windows Registry. createarchivedialog_preferences.cpp адаптирует
+FindRegistryFormat/SaveOptionsInMem, сохраняет предыдущий формат перед
+сменой и восстанавливает выбранный элемент SetMemUseCombo. Отмена и
+ошибка валидации не записывают настройки. Остальные поля Registry
+остаются долгом. Подробные источники и отклонения записаны
 в upstream-port-audit.md.

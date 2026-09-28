@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ZipRegistry.h"
 #include "Common/StringToInt.h"
+#include <QSettings>
 
 inline wchar_t MyCharLower_Ascii(wchar_t c) {
     if (c >= 'A' && c <= 'Z')
@@ -89,4 +90,34 @@ static bool ParseMemUse(const wchar_t *s, CMemUse &mu) {
 
 void CMemUse::Parse(const QString &s) { IsDefined = ParseMemUse(s.toStdWString().c_str(), *this); }
 
+static const char *const kOptionsKeyName = "Compression/Options";
+static const char *const kMemUse = sizeof(size_t) == 4 ? "MemUse32" : "MemUse64";
+
+void CInfo::Save(const QString &path) const {
+    QSettings optionsKey(path, QSettings::IniFormat);
+    optionsKey.beginGroup(QLatin1String(kOptionsKeyName));
+    // Only this ported options group is replaced. Other application settings survive.
+    optionsKey.remove(QString());
+    FOR_VECTOR(i, Formats) {
+        const CFormatOptions &fo = Formats[i];
+        optionsKey.beginGroup(fo.FormatID);
+        optionsKey.setValue(QLatin1String(kMemUse), fo.MemUse);
+        optionsKey.endGroup();
+    }
+}
+
+void CInfo::Load(const QString &path) {
+    Formats.Clear();
+    QSettings optionsKey(path, QSettings::IniFormat);
+    optionsKey.beginGroup(QLatin1String(kOptionsKeyName));
+    const QStringList formatIDs = optionsKey.childGroups();
+    for (int i = 0; i < formatIDs.size(); i++) {
+        CFormatOptions fo;
+        fo.FormatID = formatIDs[i];
+        optionsKey.beginGroup(fo.FormatID);
+        fo.MemUse = optionsKey.value(QLatin1String(kMemUse)).toString();
+        Formats.Add(fo);
+        optionsKey.endGroup();
+    }
+}
 } // namespace NCompression

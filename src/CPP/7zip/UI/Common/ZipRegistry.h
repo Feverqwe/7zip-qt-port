@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
 #include "../../Common/MethodProps.h"
+#include "Common/MyVector.h"
 #include <QString>
 namespace NCompression {
 struct CMemUse {
@@ -27,4 +28,14 @@ struct CMemUse {
     void Parse(const QString &s);
 };
 
+// Only the format identity and memory-limit fields are ported in this iteration.
+struct CFormatOptions {
+    QString FormatID;
+    QString MemUse;
+};
+struct CInfo {
+    CObjectVector<CFormatOptions> Formats;
+    void Save(const QString &path) const;
+    void Load(const QString &path);
+};
 } // namespace NCompression

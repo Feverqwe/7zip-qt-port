@@ -323,3 +323,36 @@ Qt QProcess добавляет префикс -m. Неизвестная RAM с�
 вместо исходной длинной строки со slash — адаптация ширины Qt-формы.
 Windows Registry, сохранение по формату и остальные поля CInfo остаются
 долгом. Форматирование — обязательный clang-format.
+
+### Итерация: сохранение лимита памяти по формату
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/Common/ZipRegistry.h::CFormatOptions::{FormatID,MemUse}`,
+`CInfo::Formats`, `ZipRegistry.cpp::CInfo::{Load,Save}` (пределы памяти);
+`CompressDialog.cpp::FindRegistryFormat`, `FindRegistryFormat_Always`,
+`Get_FormatOptions`, `SaveOptionsInMem`, `SetMemUseCombo`, FormatChanged
+и Save в OnOK. Поля остальных compression options не объявляются
+перенесёнными: эта итерация ограничена памятью.
+
+Скопированы поиск формата без учёта регистра, поиск-or-add, доступ по индексу,
+сохранение MemUse предыдущего формата до его смены и формирование исходного
+выбранного индекса при вставке нестандартного spec. Имена, порядок ветвей,
+возвращаемые индексы и CObjectVector сохранены; используется уже побайтово
+скопированный Common/MyVector.h. Qt presentation-зависимые UString/
+CSysString заменены QString, Get_ArcInfoEx/Info.FormatIndex — текущим
+и предыдущим именем Qt combo. Тела принадлежат одному Qt адаптеру
+createarchivedialog_preferences.cpp; нет второго алгоритма поиска форматов.
+
+В ZipRegistry.cpp скопированы Clear при Load, обход formatIDs,
+создание CFormatOptions, чтение MemUse и Formats.Add; Save сохраняет
+исходный обход FOR_VECTOR и заменяет только группу options. Win32
+Registry open/create/GetRegString/SetRegString заменены QSettings INI
+в выделенной группе Compression/Options существующего toolbar.ini.
+Имена MemUse32/MemUse64 сохраняют исходное разделение архитектур.
+Win32 CS_LOCK не нужен: загрузка/сохранение вызываются только в GUI thread.
+Методы принимают путь вместо глобального registry key, что обеспечивает
+детерминированные фикстуры. Другие группы настроек не затрагиваются.
+Load/Save переносят только память/FormatID; остальные поля исходного CInfo
+и CFormatOptions остаются долгом. Save вызывается после всех проверок OK;
+Cancel и неуспешная валидация не записывают изменения. Форматирование —
+обязательный clang-format.

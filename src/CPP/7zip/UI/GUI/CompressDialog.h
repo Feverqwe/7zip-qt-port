@@ -109,7 +109,7 @@ struct CMemComboItem {
     QString User;
     QString Spec;
 };
-QList<CMemComboItem> SetMemUseCombo(const QString &spec = {});
+QList<CMemComboItem> SetMemUseCombo(const QString &spec = {}, int *selected = nullptr);
 UInt64 Get_MemUse_Bytes(const NCompression::CMemUse &mu, const CSystemInfo &system);
 
 const CFormatInfo &GetFormatInfo(QStringView name);

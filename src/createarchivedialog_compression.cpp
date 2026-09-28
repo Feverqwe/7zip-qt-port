@@ -39,8 +39,8 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     memoryLayout->setContentsMargins(0, 0, 0, 0);
     memUse_ = new QComboBox(memoryRow);
     memUse_->setObjectName("compressionMemoryLimit");
-    for (const auto &item : NCompressDialog::SetMemUseCombo())
-        memUse_->addItem(item.User, item.Spec);
+    registryFormat_ = format_->currentText();
+    SetMemUseCombo();
     memoryLayout->addWidget(memoryUsage_);
     memoryLayout->addWidget(memUse_, 1);
     compressionForm->addRow("Память для сжатия:", memoryRow);
@@ -49,6 +49,9 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     compressionForm->addRow("Память для распаковки:", decompressionMemory_);
     form->addRow(compression);
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
+        SaveOptionsInMem();
+        registryFormat_ = format_->currentText();
+        SetMemUseCombo();
         method_->clear();
         SetLevel2();
         method_->addItems(NCompressDialog::GetMethodNames(format_->currentText()));
