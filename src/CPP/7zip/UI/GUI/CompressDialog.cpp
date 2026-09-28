@@ -150,4 +150,25 @@ QStringList GetMethodNames(QStringView name) {
     }
     return methods;
 }
+// LZMA/LZMA2 branch copied from CCompressDialog::SetOrder2 (0766b73).
+// The caller replaces registry selection and ComboBox insertion with Qt data.
+COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
+    COrderOptions options;
+    switch (methodID) {
+    case kLZMA:
+    case kLZMA2: {
+        options.AutoOrder = (level < 7 ? 32 : 64);
+        for (unsigned i = 2 * 2; i < 8 * 2; i++) {
+            UInt32 order = ((UInt32)(2 + (i & 1)) << (i / 2));
+            if (order > 256)
+                order = 273;
+            options.Values.append(int(order));
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    return options;
+}
 } // namespace NCompressDialog

@@ -57,6 +57,12 @@ struct CFormatInfo {
     bool SFX_() const { return (Flags & kFF_SFX) != 0; }
 };
 
+struct COrderOptions {
+    UInt32 AutoOrder = 1;
+    QList<int> Values;
+};
+COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
+
 const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);
 } // namespace NCompressDialog

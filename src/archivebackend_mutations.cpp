@@ -37,7 +37,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     if ((options.dictionaryMiB != 0 &&
          (!lzma || !QList<int>{1, 4, 16, 64}.contains(options.dictionaryMiB))) ||
         (options.wordSize != 0 &&
-         (!lzma || !QList<int>{16, 32, 64, 128, 273}.contains(options.wordSize))) ||
+         (!lzma || !NCompressDialog::SetOrder2(method == "LZMA" ? NCompressDialog::kLZMA
+                                                                : NCompressDialog::kLZMA2,
+                                               UInt32(options.level))
+                        .Values.contains(options.wordSize))) ||
         (options.solidBlockMiB != 0 &&
          (suffix != "7z" || !options.solid ||
           !QList<int>{16, 64, 256}.contains(options.solidBlockMiB))) ||

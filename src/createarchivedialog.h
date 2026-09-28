@@ -41,6 +41,7 @@ class CreateArchiveDialog : public QDialog {
     void createCompressionOptions(QFormLayout *form);
     void createEncryptionOptions(QFormLayout *form);
     void SetLevel2();
+    void SetOrder2();
     void createFooter(QVBoxLayout *layout);
     void updateTargetPreview();
     void validateAndAccept();
