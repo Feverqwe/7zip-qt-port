@@ -25,6 +25,7 @@ They are not formatted with the Qt application's rules.
 - `CPP/Common/MyCom.h`
 - `CPP/Common/MyUnknown.h`
 - `CPP/Common/MyInitGuid.h`
+- `CPP/Common/ComTry.h`
 - `CPP/Common/MyBuffer.h`
 - `CPP/Common/MyString.cpp`
 - `CPP/Common/MyString.h`
@@ -53,7 +54,7 @@ They are not formatted with the Qt application's rules.
 - `CPP/7zip/UI/Common/ExtractMode.h`
 - `License.txt`
 
-All 43 source/header files and `License.txt` (from upstream `DOC/License.txt`)
+All 44 source/header files and `License.txt` (from upstream `DOC/License.txt`)
 were compared byte for byte with the exact commit above on 2026-09-28.
 This provenance check does not establish runtime verification on all platforms.
 `.gitattributes` excludes unchanged vendored source from Git whitespace errors

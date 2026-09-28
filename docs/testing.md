@@ -10,6 +10,12 @@ Unicode/non-BMP names/prefix, snapshot ownership after caller mutation/release,
 missing versus zero size, original numeric-type rejection, missing metadata and
 list/selection clearing on release. `panel_copy_info`, `properties` and
 `panel_selected_state` validate direct consumers.
+`agent_folder` validates the source _proxy folder contract: name/index/ancestor/
+root binding, base-relative flat prefixes, duplicate names, Unicode, typed
+metadata delegation, folder totals/type, rejected file/missing/invalid bindings
+and unbound load failure. Proxy fixtures explicitly outlive their folders until
+the owned-context adapter is ported. `archive_proxy`, `flat_view` and
+`ui_navigation` validate existing enumeration/window consumers.
 
 `app_state` checks independent CAppState instances, combined history/favorites
 Save/Read with Unicode and sparse slots, switching settings paths, normalization,

@@ -30,6 +30,12 @@ no filesystem/archive navigation. Source property/name/path helpers consume the
 interface; runtime filesystem/Agent binding and parent-stack ownership remain
 in migration. `ReleaseFolder` clears the bound list and caches before replacing
 the interface. Complete source notify/lifecycle guards remain open.
+`CAgentFolder` exposes the _proxy read-only IFolderFolder binding subset and
+IFolderSetFlatMode. Child/parent folders share the typed metadata provider by
+COM ownership; the current proxy model is still borrowed. Window enumeration
+continues within its existing stack scope. Long-lived runtime binding requires
+the owned context migration in P0-02.2b3b2c. Raw/alternate-stream/operation and
+full engine catalog contracts remain open; unsupported interfaces are absent.
 
 ```text
 Qt Widgets (window, file list, dialogs)

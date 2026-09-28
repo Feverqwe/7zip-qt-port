@@ -460,3 +460,10 @@ values through a read-only Qt metadata adapter; full raw/non-string/archive-leve
 formatting and actual location binding remain open. Reference: App.cpp summary
 and PanelItems/PanelMenu/PanelFolderChange property bodies at the pinned revision.
 No text/layout changes; Windows/Linux runtime and rendered parity unverified.
+
+P0-02.2b3b2a ports Agent.cpp _proxy binding and path/property subset behind the
+upstream folder interface. Current window enumeration keeps its visible behavior;
+long-lived runtime binding waits for owned context. Reference: Agent.cpp folder
+bind/parent/prefix/property bodies at the pinned revision. _proxy2, raw/CRC/engine
+catalog and operations remain open. No text/layout changes; Windows/Linux runtime
+and rendered parity unverified.

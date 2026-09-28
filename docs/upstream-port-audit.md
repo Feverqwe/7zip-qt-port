@@ -8,6 +8,53 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b2a — Agent _proxy folder binding subset (2026-09-29)
+
+Project baseline `07b7326`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied Agent.h CAgentFolder IFolderFolder/IFolderSetFlatMode/CMyUnknownImp
+declarations and _items CRecordVector (replacing the old std::vector adaptation).
+Copied Agent.cpp _proxy branches of GetNumberOfItems, GetPrefix, GetProperty,
+BindToFolder_Internal, both BindToFolder overloads, BindToParentFolder,
+GetFolderProperty and SetFlatMode. Source constructor defaults remain; creating
+a child/parent starts with flat=false, as upstream Init/constructor does. Source
+ComTry.h is vendored unchanged; COM_TRY catches remain in binding/property bodies.
+Existing LoadFolder recursion/control flow remains and uses original Add/Clear/
+Size operations. The legacy count convenience now delegates to one authoritative
+source interface count body rather than retaining a duplicate algorithm.
+
+SET_realIndex_AND_dir becomes the existing Qt GetItem pair adapter, retaining
+normal/flat mapping. Current CProxyArc model still has Qt string/std-container
+adaptations from its earlier partial port; property/path access converts at the
+boundary. GetPrefix retains base-relative folder-path helper control flow.
+Source GetProperty's in-process _agentSpec->GetArchive property calls become an
+explicit IFolderFolder metadata provider, owned with CMyComPtr. Init passes that
+provider and archive type into children. Source metadata/path/count/type cases
+are retained; property catalog methods currently delegate to the provider and
+are not a port of the engine catalog logic. Missing provider returns E_NOTIMPL.
+IsBound/row guards adapt the source open-archive invariant to current proxy data.
+Initial builds exposed missing MyString/Defs includes; fixed before passing runs.
+
+This is a partial read-only _proxy folder contract, not whole Agent.cpp. _proxy2/
+alt streams, agent archive-link lifecycle, read-only/hash/raw/archive-level/
+CRC properties (including directory CRC aggregation), name/prefix fast interfaces,
+compare, streams, zone and operations bodies remain mandatory in their P0-03/04
+and later owning feature scopes from the P0-01 inventory. They are not marked
+done or N/A. No engine/format implementation is added. Proxy lifetime is still
+explicitly external: existing window stack enumeration is preserved; long-lived
+folder binding cannot replace it until P0-02.2b3b2c provides owned context.
+Only metadata provider lifetime is shared by COM ownership in this substep.
+
+New agent_folder fixtures verify source path binding by name/index, ancestor/root
+handling, flat prefixes relative to base, duplicate basenames, Unicode/non-BMP,
+metadata delegation after releasing the root folder, source folder totals/type,
+file/missing-folder/invalid-row rejection and unbound load failure. Current-build
+archive_proxy/flat_view/ui_navigation/agent_folder focused 4/4 passed macOS
+2026-09-29. Full `./scripts/check.sh` with staged files passed formatting, both
+diff checks, app build and 59/59 CTest. Exact-source vendor bytes: 45/45
+(44 source/header files plus license). No layout/text changes;
+Windows/Linux runtime unverified.
+
 ## P0-02.2b3b1 — panel IFolder property owner (2026-09-29)
 
 Project baseline `dfee6fd`; exact upstream [ip7z/7zip
