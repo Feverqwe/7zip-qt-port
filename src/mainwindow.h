@@ -186,7 +186,7 @@ class MainWindow : public QMainWindow {
     void copySelected();
     void moveSelected();
     void transferSelected(bool move);
-    QString selectedCopyInfo() const;
+    QString selectedCopyInfo();
     void deleteSelected();
     void startFileDelete(const QStringList &paths);
     void renameSelected();

@@ -65,6 +65,9 @@ class CPanel : public QObject {
     void SaveSelectedState(CSelectedState &state);
     void GetSelectedNames(UStringVector &selectedNames);
     void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;
+    void Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const;
+    // Qt supplies its display prefix until source LoadFullPath/parent-stack integration.
+    void SetCurrentFolderPrefix(const QString &prefix) { _currentFolderPrefix = prefix; }
     // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
     void RefreshListCtrl(const CSelectedState &state);
     bool _lastFocusedIsList = true;

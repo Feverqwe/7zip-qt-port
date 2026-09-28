@@ -372,7 +372,7 @@ outer archive/full path ownership требует следующего CFolderLin
 | --- | --- | --- | --- |
 | P0-02.2b3b3a | Source CPanel GetRealItemIndex/GetItemParam mapping; selection vector uses source indices; sorted/flat rows retain independent focus/selection and correct property consumers | P0-02.2b3b2 | done — audit § P0-02.2b3b3a; focused 7/7, ASan 2/2, check.sh 62/62; macOS 2026-09-29; teardown gate failure fixed with before-fix regression |
 | P0-02.2b3b3b | Runtime folder loading/binding for filesystem/archive, source owner indices across timer/batch/flat loading; retain responsiveness and cancellation/error behavior | P0-02.2b3b3a | done — b1–b3 below; complete source columns/notify/path/interface branches remain mandatory in their explicit owners |
-| P0-02.2b3b3c | All location/navigation/mutation consumers and binding teardown acceptance; document temporary fields with mandatory removal in P0-02.2b3d | P0-02.2b3b3b | todo |
+| P0-02.2b3b3c | All location/navigation/mutation consumers and binding teardown acceptance; document temporary fields with mandatory removal in P0-02.2b3d | P0-02.2b3b3b | active — c1–c3 below |
 
 P0-02.2b3b3a gate выявил SIGTRAP при teardown активного 7zz listing.
 До исправления scope дополнен узкой Qt integration prerequisite:
@@ -400,6 +400,16 @@ P0-02.2b3b3b1 commit: `9014788`. Filesystem loading разделён до изм
 | P0-02.2b3b3b2a | CFSFolder LoadItems/LoadSubItems preserves source enumeration order/body, narrow progress/cancel callbacks; deterministic cancellation before enumeration/during flat recursion, no partial stale records on failure/cancel, successful reload | P0-02.2b3b3b1 | done — audit § P0-02.2b3b3b2a; focused 4/4, check.sh 62/62; macOS 2026-09-29 |
 | P0-02.2b3b3b2b | FilesystemScanner loads source folder off GUI thread and transfers ownership after completion; native enumeration once, progress/cancel/generation/teardown regressions; no concurrent non-atomic COM ownership | P0-02.2b3b3b2a | done — audit § P0-02.2b3b3b2b; focused 5/5, ASan 1/1, check.sh 63/63; four normal/compact progress JSON reports inspected; macOS 2026-09-29 |
 | P0-02.2b3b3b2c | MainWindow normal/flat source folder binding and source-index batched presentation; eliminate QDir/QDirIterator enumeration, retain cancellation/navigation responsiveness and direct consumers | P0-02.2b3b3b2b | done — audit § P0-02.2b3b3b2c; focused 11/11, check.sh 63/63; four normal/compact runtime JSON reports inspected; macOS 2026-09-29; Windows reparse acceptance remains required |
+
+P0-02.2b3b3b runtime acceptance commit: `fa109fd`. Consumer migration split before
+implementation; engine/raw/archive-level property branches remain their mandatory
+P0-03/04/feature scopes, not N/A.
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3b3c1 | Copy/Move summary uses source CPanel operated indices and bound folder properties, no rebuilt row metadata snapshot; source paths/names/totals and missing/zero sizes in normal/flat/four views; Qt display prefix remains explicit until full source path stack | P0-02.2b3b3b | done — audit § P0-02.2b3b3c1; focused 8/8, check.sh 64/64, 16 normal/compact source summary JSON reports inspected; macOS 2026-09-29 |
+| P0-02.2b3b3c2 | Properties consumes source folder catalogs/typed values and operated indices; copy original formatting dependencies and preserve Qt dialog/geometry; remove window metadata reconstruction | P0-02.2b3b3c1 | todo |
+| P0-02.2b3b3c3 | Remaining location/navigation/mutation consumers and teardown acceptance; verify source index ownership and temporary context fields before source parent/path stack migration | P0-02.2b3b3c2 | todo |
 
 ```text
 Parent: P?-?? — partial

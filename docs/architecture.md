@@ -40,8 +40,8 @@ archive and filesystem subsets.
 Their default reference counting assumes GUI-thread ownership. Archive operations
 continue through ArchiveBackend.
 `CPanel::_folder` uses the unchanged upstream IFolderFolder/CMyComPtr contract.
-`QtPanelFolder` adapts existing read-only metadata snapshots used by Copy summaries
-and Properties; it exposes typed properties and owns the snapshot. It implements
+`QtPanelFolder` adapts the remaining read-only Properties snapshots and the 7zz
+input metadata provider; it exposes typed properties and owns the snapshot. It implements
 no filesystem/archive navigation. Source property/name/path helpers consume the
 interface; complete parent-stack ownership remains in migration. Active filesystem
 folders use CFSFolder and archive folders use CAgentFolder. `ReleaseFolder` clears the bound list and caches before replacing
@@ -65,6 +65,11 @@ QtPanelList carries source item parameters separately from sorted row positions.
 CPanel selection bits and property indices use source parameters; focus uses a
 presentation row. Legacy snapshots build a derived param-to-row map at Save/
 Refresh, while bound folders supply source name/prefix.
+Copy/Move summaries now use that active panel's bound folder and source operated
+indices. Qt selection is synchronized through SaveSelectedState until source
+OnNotify is connected; Get_ItemIndices_Operated retains the source selected-focus
+fallback and parent exclusion. The current display prefix is supplied explicitly
+by Qt until LoadFullPath/parent-stack migration. No row metadata copy is used.
 
 ```text
 Qt Widgets (window, file list, dialogs)

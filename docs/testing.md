@@ -6,6 +6,10 @@ sorting, duplicate Unicode basenames, clearing cross-owner selection, immutable
 metadata until reload, absent/zero sizes, and retired filesystem workers that
 must not publish after archive navigation. It observes public scanner signals and
 Qt model values without exposing window internals.
+Its archive Move cases verify normal/flat source directory totals versus absence,
+missing file sizes, source names and Cancel in four views, with normal/compact
+Copy dialog reports. `panel_folder` checks the original operated-index fallback
+for selected focus and excludes the parent sentinel; no selection yields no items.
 
 `filesystem_scanner` checks native worker ownership and Qt delivery: ordered
 source-index batches, progress, retained folder metadata after scanner cancellation,

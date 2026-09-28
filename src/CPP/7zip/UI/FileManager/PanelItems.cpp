@@ -45,6 +45,22 @@ void CPanel::GetSelectedNames(UStringVector &selectedNames) {
     selectedNames.Sort();
 }
 
+void CPanel::Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const {
+    Get_ItemIndices_Selected(indices);
+    if (!indices.IsEmpty())
+        return;
+    if (_selectionList.GetSelectedCount() == 0)
+        return;
+    const int focusedItem = _selectionList.GetFocusedItem();
+    if (focusedItem >= 0) {
+        if (_selectionList.IsItemSelected(focusedItem)) {
+            const unsigned realIndex = GetRealItemIndex(focusedItem);
+            if (realIndex != kParentIndex)
+                indices.Add(realIndex);
+        }
+    }
+}
+
 void CPanel::SaveSelectedState(CSelectedState &s) {
     // Qt selection notifications do not yet use the upstream OnNotify body.
     // Synchronize its status vector at this presentation boundary.

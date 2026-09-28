@@ -3,29 +3,18 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 
-QString MainWindow::selectedCopyInfo() const {
-    CObjectVector<CPanelItem> items;
+QString MainWindow::selectedCopyInfo() {
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selection;
+    // Synchronize Qt selection until the complete source OnNotify port is connected.
+    panel.SaveSelectedState(selection);
     CRecordVector<UInt32> indices;
-    for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
-        const int row = index.row();
-        const QTableWidgetItem *name = table_->item(row, 0);
-        CPanelItem item;
-        item.RelPath = name->text();
-        item.IsFolder = name->data(Qt::UserRole + 1).toBool();
-        if (state_ == State::Viewing && item.IsFolder) {
-            item.Size = archiveProxy().Dirs[name->data(Qt::UserRole + 4).toUInt()].Size;
-            item.SizeDefined = true;
-        } else if (!item.IsFolder) {
-            const QVariant size = table_->item(row, 2)->data(Qt::UserRole + 2);
-            item.SizeDefined = size.isValid() && size.toLongLong() >= 0;
-            item.Size = size.toULongLong();
-        }
-        indices.Add(items.Add(item));
-    }
+    panel.Get_ItemIndices_Operated(indices);
     QString prefix = state_ == State::Viewing ? archiveDisplayPath() : directory_;
     if (!prefix.endsWith('/'))
         prefix += '/';
-    return CPanel(prefix, items).GetItemsInfoString(indices);
+    panel.SetCurrentFolderPrefix(prefix);
+    return panel.GetItemsInfoString(indices);
 }
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
     if (state_ != State::Filesystem || !QFileInfo(destination).isDir() ||

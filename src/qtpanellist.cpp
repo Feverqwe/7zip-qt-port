@@ -2,6 +2,9 @@
 #include <QItemSelectionModel>
 
 int QtPanelList::GetItemCount() const { return IsBound() ? view_->model()->rowCount() : 0; }
+int QtPanelList::GetSelectedCount() const {
+    return IsBound() ? view_->selectionModel()->selectedRows().size() : 0;
+}
 int QtPanelList::GetFocusedItem() const {
     return IsBound() ? view_->selectionModel()->currentIndex().row() : -1;
 }

@@ -8,6 +8,37 @@
 class PanelFolderTests : public QObject {
     Q_OBJECT
   private slots:
+    void operatedIndicesUseFocusedSelectedSourceItemOnly() {
+        CObjectVector<CPanelItem> items;
+        items.Add({"source.txt", false, true, 9});
+        CPanel panel("/root/", items);
+        QTableWidget table(2, 1);
+        table.setSelectionBehavior(QAbstractItemView::SelectRows);
+        table.setSelectionMode(QAbstractItemView::ExtendedSelection);
+        auto *parent = new QTableWidgetItem("..");
+        parent->setData(Qt::UserRole + 6, quint32(-1));
+        table.setItem(0, 0, parent);
+        auto *file = new QTableWidgetItem("source.txt");
+        file->setData(Qt::UserRole + 6, 0);
+        table.setItem(1, 0, file);
+        panel.AttachSelectionView(&table);
+        table.setCurrentCell(1, 0);
+        CRecordVector<UInt32> indices;
+        // Before source notification synchronization, only a selected focus is operated.
+        panel.Get_ItemIndices_Operated(indices);
+        QCOMPARE(indices.Size(), 1u);
+        QCOMPARE(indices[0], UInt32(0));
+        table.clearSelection();
+        panel.Get_ItemIndices_Operated(indices);
+        QVERIFY(indices.IsEmpty());
+        table.setCurrentCell(0, 0);
+        panel.Get_ItemIndices_Operated(indices);
+        QVERIFY(indices.IsEmpty());
+        CSelectedState state;
+        panel.SaveSelectedState(state);
+        panel.Get_ItemIndices_Operated(indices);
+        QVERIFY(indices.IsEmpty());
+    }
     void sortedRowsUseSourceIndicesForSelectionAndProperties() {
         CObjectVector<CPanelItem> items;
         for (const auto &entry :

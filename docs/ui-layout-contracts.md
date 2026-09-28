@@ -192,9 +192,12 @@ Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
 
 Adaptations: Qt layouts replace Win32 resize arithmetic; QPlainTextEdit with
 no wrapping replaces the static text. `CPanel::GetItemsInfoString` supplies
-the upstream summary and eleven-line limit from a Qt property snapshot. `copy_dialog`
+the upstream summary and eleven-line limit from the active source folder. `copy_dialog`
 writes four JSON reports and checks these relationships with a large selection.
 These checks establish structure and usability on macOS, not pixel parity.
+`panel_runtime` additionally writes `copy-source-flat*-mode*-*.json` for normal/
+flat source summary values in all four views. Flat archive directory size is
+absent by the source folder contract and must not be replaced by a proxy total.
 
 ## Extract dialog
 

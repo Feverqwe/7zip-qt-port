@@ -2,6 +2,7 @@
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "filesystemscanner.h"
+#include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QSet>
 #include <QThread>
@@ -36,6 +37,64 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void archiveMoveSummaryUsesBoundSourceProperties_data() { filesystemArchiveTransitions_data(); }
+    void archiveMoveSummaryUsesBoundSourceProperties() {
+        QFETCH(bool, flat);
+        QFETCH(int, mode);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "flatViewAction")->setChecked(false);
+        window.openArchive("source-summary.zip");
+        const QString directory = QStringLiteral("папка й");
+        const QString file = QStringLiteral("отдельный й.txt");
+        backend.completeList({{directory + "/inside", 11, 3}, {file, 7, 2}, {"unknown", -1, -1}});
+        action(window, "flatViewAction")->setChecked(flat);
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
+        auto *view = table(window);
+        selectOnly(view, rowWithPath(window, directory));
+        view->selectionModel()->select(view->model()->index(rowWithPath(window, file), 0),
+                                       QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        QString summary;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<QDialog *>("copyDialog");
+            QVERIFY(dialog);
+            auto *info = dialog->findChild<QPlainTextEdit *>("copySelectionInfo");
+            QVERIFY(info);
+            summary = info->toPlainText().normalized(QString::NormalizationForm_C);
+            for (const QSize &size : {QSize(440, 250), QSize(340, 220)}) {
+                dialog->resize(size);
+                QCoreApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*info, *dialog));
+                QVERIFY(UiInspection::writeReport(
+                    *dialog,
+                    QString("copy-source-flat%1-mode%2-%3").arg(flat).arg(mode).arg(size.width())));
+            }
+            dialog->reject();
+        });
+        action(window, "moveAction")->trigger();
+        const QString expected = flat ? QStringLiteral("Папок: 1\nФайлов: 1    ( 7 байт )\n\n")
+                                      : QStringLiteral("Папок: 1    ( 11 байт )\n"
+                                                       "Файлов: 1    ( 7 байт )\n"
+                                                       "Размер: 18 байт\n\n");
+        QVERIFY2(summary.startsWith(expected), qPrintable(summary));
+        QVERIFY(summary.contains("source-summary.zip/"));
+        QVERIFY(summary.contains("  " + directory + '/'));
+        QVERIFY(summary.contains("  " + file));
+        QCOMPARE(backend.extractCalls, 0);
+        selectOnly(view, rowWithPath(window, "unknown"));
+        summary.clear();
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<QDialog *>("copyDialog");
+            QVERIFY(dialog);
+            summary = dialog->findChild<QPlainTextEdit *>("copySelectionInfo")->toPlainText();
+            dialog->reject();
+        });
+        action(window, "moveAction")->trigger();
+        QVERIFY2(summary.startsWith("Файлов: 1\n\n"), qPrintable(summary));
+        QCOMPARE(backend.extractCalls, 0);
+        action(window, "flatViewAction")->setChecked(false);
+    }
     void filesystemArchiveTransitions_data() {
         QTest::addColumn<bool>("flat");
         QTest::addColumn<int>("mode");

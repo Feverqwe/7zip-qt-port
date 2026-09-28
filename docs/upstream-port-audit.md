@@ -8,13 +8,54 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c1 — bound source Copy/Move summary (2026-09-29)
+
+Project baseline `fa109fd`; unchanged pinned source [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+CPP/7zip/UI/FileManager/PanelItems.cpp Get_ItemIndices_Operated, App.cpp
+GetItemsInfoString/AddPropValueToSum and Agent.cpp GetProperty size branches.
+Copies the complete operated-index body and declaration, preserving selected
+status lookup, nonempty early return, selected-count/focus checks and parent
+sentinel exclusion. Only _listView is adapted to the existing QtPanelList;
+GetSelectedCount maps native row selection to QItemSelectionModel.
+
+The window no longer builds CPanelItem metadata/indices or a second QtPanelFolder
+for Copy/Move info. It synchronizes current Qt selection through the existing
+SaveSelectedState boundary, gets source operated indices and invokes the unchanged
+summary body on the active bound CPanel. Full source OnNotify remains mandatory
+P0-02 lifecycle/selection scope; the synchronization call does not claim to port it.
+SetCurrentFolderPrefix is narrow temporary Qt display-path glue, preserving the
+current archive/physical address and separator until source LoadFullPath/CFolderLink
+are connected in P0-02.2b3d. No new path traversal algorithm is introduced.
+
+Observable correction: source CAgentFolder exposes directory size only in normal
+mode; flat directory size is VT_EMPTY. The removed row adapter supplied proxy
+totals in both modes. The existing copied AddPropValueToSum now propagates this
+absence into the summary instead of presenting an unsupported flat total.
+Unknown file size and defined zero retain source semantics; source names/order
+come from actual indices rather than visible row order. Copy/Move dialogs and
+archive/filesystem operation routing are unchanged. Properties still has its
+explicit snapshot migration scope P0-02.2b3b3c2; remaining consumers/teardown are
+P0-02.2b3b3c3. No parent module/plan step is completed by this substep.
+
+Validation on macOS 2026-09-29: affected app/selection/runtime/Copy/window targets
+built. Focused panel_folder/panel_runtime/panel_copy_info/copy_dialog/ui_operations/
+panel_selected_state/flat_view/ui_navigation passed 8/8 (6.63s). The runtime
+Move regression covers source flat-directory absence versus normal total, known
+file size, unknown file size, Unicode source names and Cancel in all four views;
+the previous proxy-total adapter would fail the flat expectation. Sixteen fresh
+440×250/340×220 reports reviewed: label, destination/Browse, summary and footer
+fully visible in the source order. Source modules/file counts are unchanged.
+./scripts/check.sh passed formatting, app build and all 64 CTest (32.12s).
+Windows/Linux runtime and Windows rendered parity remain unverified.
+
 ## P0-02.2b3b3b3 — readonly runtime integration acceptance (2026-09-29)
 
 Project baseline `72ce34b`; unchanged source baseline [ip7z/7zip
 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 Reviewed PanelFolderChange.cpp SetNewFolder/ReleaseFolder, PanelItems.cpp
 RefreshListCtrl LoadItems/name restoration and FSFolder/Agent read-only item
-owners against the integrated scopes recorded above. No new functional body or
+owners against the integrated scopes recorded below. No new functional body or
 source revision is introduced by this test-only acceptance iteration.
 
 The focused panel_runtime suite exercises filesystem → archive → filesystem in

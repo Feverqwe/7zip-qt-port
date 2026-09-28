@@ -110,8 +110,19 @@ F5/F6 показывает перенесённую `CPanel::GetItemsInfoString`
 папок/файлов, известные размеры, текущий путь и первые пять относительных
 имён с многоточием при большем выделении. Неизвестный размер не подменяется
 нулём: папки файловой системы до расчёта размера показывают только число.
-Папки архива получают размеры из CProxyArc. Числа группируются пробелами
+Папки архива получают размеры через CAgentFolder: в normal это CProxyArc,
+а в flat размер папки отсутствует по исходному GetProperty. Числа группируются пробелами
 по оригинальному ConvertSizeToString из `PanelListNotify.cpp`.
+
+P0-02.2b3b3c1 removes the Copy/Move row-property snapshot: the active source folder
+and original Get_ItemIndices_Operated/GetItemsInfoString provide names and totals.
+The prior Qt adapter incorrectly supplied directory totals in flat archive mode;
+source VT_EMPTY now leaves that size absent. Missing file sizes remain unknown,
+defined zero remains defined, and Cancel dispatches no operation. The Qt display
+prefix is temporary glue until source LoadFullPath/parent-stack integration.
+Focused 8/8 and full gate 64/64 passed on macOS 2026-09-29. Sixteen normal/compact
+source summary reports inspected; Windows/Linux runtime and Windows rendered
+parity remain unverified.
 
 Диалог F5/F6 перенесён из `CopyDialog.cpp/.h`: назначения выбираются из
 редактируемой истории, Browse нормализует конечный разделитель, Cancel
