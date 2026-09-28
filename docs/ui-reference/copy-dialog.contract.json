@@ -1,0 +1,84 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "dialog": "IDD_COPY",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/CopyDialog.rc": "172cd258939adaebabfd783b56ea0af44d1bfbced747dfb97c1bf35fad1cf51e",
+    "CPP/7zip/UI/FileManager/CopyDialogRes.h": "138fd4d4651b303ffca7064f9a76920bcc233275ff7d4c9073e7feb1fe7c5ea3",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/CopyDialog.cpp": "e1422d0bfb1a5bb68706ae0a128c1f64658e4ec7467feb84231812083c652b9a"
+  },
+  "controls": {
+    "IDT_COPY": {"selector": {"name": "copyDestinationLabel"}},
+    "IDC_COPY": {"selector": {"name": "copyDestination"}},
+    "IDB_COPY_SET_PATH": {
+      "selector": {"name": "copyBrowseButton"},
+      "textAdaptation": "Unicode ellipsis replaces three ASCII dots."
+    },
+    "IDT_COPY_INFO": {
+      "selector": {"name": "copySelectionInfo"},
+      "qtClass": "QPlainTextEdit",
+      "classAdaptation": "Read-only scrolling summary replaces static text; see docs/ui-layout-contracts.md."
+    },
+    "IDOK": {
+      "selector": {"within": "copyButtons", "class": "QPushButton", "text": ["OK", "&OK", "ОК", "&ОК"]},
+      "textAdaptation": "Qt standard button text follows platform/localization."
+    },
+    "IDCANCEL": {
+      "selector": {"within": "copyButtons", "class": "QPushButton", "text": ["Cancel", "&Cancel", "Отмена", "&Отмена"]},
+      "textAdaptation": "Qt standard button text follows platform/localization."
+    }
+  },
+  "relations": [
+    {"a": "IDT_COPY", "kind": "above", "b": "IDC_COPY"},
+    {"a": "IDC_COPY", "kind": "left_of", "b": "IDB_COPY_SET_PATH"},
+    {"a": "IDC_COPY", "kind": "above", "b": "IDT_COPY_INFO"},
+    {"a": "IDT_COPY_INFO", "kind": "above", "b": "IDOK"},
+    {"a": "IDT_COPY_INFO", "kind": "above", "b": "IDCANCEL"},
+    {"a": "IDOK", "kind": "separate", "b": "IDCANCEL", "adaptation": "Native Qt button ordering may differ; preserve two distinct footer buttons."}
+  ],
+  "states": [
+    {
+      "name": "copy-normal-and-compact",
+      "reports": ["copy-dialog-0-440.json", "copy-dialog-0-340.json"],
+      "evidence": [
+        {"source": "CPP/7zip/UI/FileManager/CopyDialog.cpp", "symbol": "CCopyDialog::OnInit", "requirement": "Static prompt, editable history and summary are initialized."},
+        {"source": "CPP/7zip/UI/FileManager/CopyDialog.cpp", "symbol": "CCopyDialog::OnSize", "requirement": "Path and summary resize; Browse and confirmation buttons remain reachable."}
+      ],
+      "assert": [
+        {"id": "IDT_COPY", "property": "text", "equals": "Копировать в:"},
+        {"id": "IDT_COPY", "property": "labelFits", "equals": true},
+        {"id": "IDC_COPY", "property": "enabled", "equals": true},
+        {"id": "IDC_COPY", "property": "fullyVisible", "equals": true},
+        {"id": "IDB_COPY_SET_PATH", "property": "fullyVisible", "equals": true},
+        {"id": "IDT_COPY_INFO", "property": "fullyVisible", "equals": true},
+        {"id": "IDOK", "property": "fullyVisible", "equals": true},
+        {"id": "IDCANCEL", "property": "fullyVisible", "equals": true}
+      ]
+    },
+    {
+      "name": "move-normal-and-compact",
+      "reports": ["copy-dialog-1-440.json", "copy-dialog-1-340.json"],
+      "evidence": [
+        {"source": "CPP/7zip/UI/FileManager/CopyDialog.cpp", "symbol": "CCopyDialog::OnInit", "requirement": "Shared dialog accepts the Move caller's prompt."},
+        {"source": "CPP/7zip/UI/FileManager/CopyDialog.cpp", "symbol": "CCopyDialog::OnSize", "requirement": "Same resizing constraints apply to Move."}
+      ],
+      "assert": [
+        {"id": "IDT_COPY", "property": "text", "equals": "Переместить в:"},
+        {"id": "IDT_COPY", "property": "labelFits", "equals": true},
+        {"id": "IDC_COPY", "property": "enabled", "equals": true},
+        {"id": "IDC_COPY", "property": "fullyVisible", "equals": true},
+        {"id": "IDB_COPY_SET_PATH", "property": "fullyVisible", "equals": true},
+        {"id": "IDT_COPY_INFO", "property": "fullyVisible", "equals": true},
+        {"id": "IDOK", "property": "fullyVisible", "equals": true},
+        {"id": "IDCANCEL", "property": "fullyVisible", "equals": true}
+      ]
+    }
+  ],
+  "behavioralTests": {
+    "ctest": "^copy_dialog$",
+    "CCopyDialog::OnOK": "copiesFieldsAndCommitsOnlyOnOK: accept/button commit; Cancel preserves Value",
+    "CCopyDialog::OnButtonSetPath": "browseNormalizesDirectoryAndCancelPreservesText: browse cancel/success and trailing separator",
+    "scope": "Static JSON does not verify editable values, transitions, read-only state, history contents or selection. These remain Qt behavioral tests."
+  }
+}

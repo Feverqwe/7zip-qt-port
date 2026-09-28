@@ -1,0 +1,215 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "resource": "CPP/7zip/UI/FileManager/CopyDialog.rc",
+  "profile": "desktop; RC_INVOKED; UNDER_CE undefined; SDK constants symbolic",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/CopyDialog.rc": "172cd258939adaebabfd783b56ea0af44d1bfbced747dfb97c1bf35fad1cf51e",
+    "CPP/7zip/UI/FileManager/CopyDialogRes.h": "138fd4d4651b303ffca7064f9a76920bcc233275ff7d4c9073e7feb1fe7c5ea3",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/CopyDialog.cpp": "e1422d0bfb1a5bb68706ae0a128c1f64658e4ec7467feb84231812083c652b9a"
+  },
+  "opaqueIncludes": [
+    "CommCtrl.h",
+    "windows.h"
+  ],
+  "dialogs": [
+    {
+      "id": "IDD_COPY",
+      "caption": "Copy",
+      "boundsDLU": [
+        0,
+        0,
+        336,
+        160
+      ],
+      "controls": [
+        {
+          "id": "IDT_COPY",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            8,
+            320,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDC_COPY",
+          "kind": "COMBOBOX",
+          "qtClass": "QComboBox",
+          "text": null,
+          "boundsDLU": [
+            8,
+            20,
+            292,
+            65
+          ],
+          "style": "CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP",
+          "editable": true
+        },
+        {
+          "id": "IDB_COPY_SET_PATH",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "...",
+          "boundsDLU": [
+            308,
+            18,
+            20,
+            16
+          ],
+          "style": "WS_GROUP"
+        },
+        {
+          "id": "IDT_COPY_INFO",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            40,
+            320,
+            95
+          ],
+          "style": "SS_NOPREFIX | SS_LEFTNOWORDWRAP"
+        },
+        {
+          "id": "IDOK",
+          "kind": "DEFPUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "OK",
+          "boundsDLU": [
+            192,
+            136,
+            64,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDCANCEL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "Cancel",
+          "boundsDLU": [
+            264,
+            136,
+            64,
+            16
+          ],
+          "style": ""
+        }
+      ]
+    }
+  ],
+  "behaviorSymbols": {
+    "CPP/7zip/UI/FileManager/CopyDialog.cpp": [
+      "CCopyDialog::OnButtonClicked",
+      "CCopyDialog::OnButtonSetPath",
+      "CCopyDialog::OnInit",
+      "CCopyDialog::OnOK",
+      "CCopyDialog::OnSize"
+    ]
+  },
+  "behaviorCandidates": [
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 15,
+      "code": "bool CCopyDialog::OnInit()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 21,
+      "code": "SetText(Title);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 25,
+      "code": "staticContol.SetText(Static);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 32,
+      "code": "_path.SetText(Value);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 33,
+      "code": "SetItemText(IDT_COPY_INFO, Info);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 35,
+      "code": "return CModalDialog::OnInit();"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 38,
+      "code": "bool CCopyDialog::OnSize(WPARAM /* wParam */, int xSize, int ySize)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 54,
+      "code": "MoveItem(IDB_COPY_SET_PATH, xSize - mx - bx, r.top, bx, RECT_SIZE_Y(r));"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 55,
+      "code": "ChangeSubWindowSizeX(_path, xSize - mx - mx - bx - mx);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 67,
+      "code": "MoveItem(IDCANCEL, x, y, bx1, by);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 68,
+      "code": "MoveItem(IDOK, x - mx - bx2, y, bx2, by);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 73,
+      "code": "bool CCopyDialog::OnButtonClicked(unsigned buttonID, HWND buttonHWND)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 81,
+      "code": "return CModalDialog::OnButtonClicked(buttonID, buttonHWND);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 84,
+      "code": "void CCopyDialog::OnButtonSetPath()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 95,
+      "code": "_path.SetCurSel(-1);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 96,
+      "code": "_path.SetText(resultPath);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 99,
+      "code": "void CCopyDialog::OnOK()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/CopyDialog.cpp",
+      "line": 102,
+      "code": "CModalDialog::OnOK();"
+    }
+  ],
+  "limitations": [
+    "DLU are not pixels; combo height includes dropdown extent",
+    "Behavior candidates are navigation hints, not a C++ semantic analysis",
+    "No Windows rendering, focus or tab-order verification"
+  ]
+}

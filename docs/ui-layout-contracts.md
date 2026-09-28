@@ -1,5 +1,9 @@
 # Text specifications and geometry checks
 
+For resource-derived comparison and reviewed C++ states, see
+[upstream UI references](ui-reference.md) and `$sevenzip-ui-parity`.
+`ui_parity_copy` checks fresh Copy/Move reports against a pinned resource baseline.
+
 For layout work, read the affected view's specification below, run its focused
 test, and inspect the generated JSON. Screenshots are a fallback for fonts,
 icons, styling, or defects that geometry cannot explain. These checks establish
@@ -125,8 +129,8 @@ Implemented view: `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`.
   distinct, and inside the window at requested sizes 640×360 and 470×330;
   Qt may expand to its style-dependent minimum size. Static labels fit.
 
-Adaptations: upstream uses radio-button groups for modes; Qt uses combos with
-the supported choices. Help and unsupported root-duplication/security controls
+Adaptations: the pinned desktop upstream resource uses combo boxes for modes,
+as does Qt. Help and unsupported root-duplication/security controls
 are omitted. The backend-specific hint is added. See `docs/7zfm-parity.md` for
 behavioral limitations. The tests check these relationships rather than hardcoded
 pixel coordinates or native button ordering.

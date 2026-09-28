@@ -63,6 +63,16 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME ui_parity_tool COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_parity_tests.py)
+    add_test(NAME ui_parity_copy COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_ui_parity.py compare
+        --reference ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/copy-dialog.reference.json
+        --contract ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/copy-dialog.contract.json
+        --reports ${CMAKE_BINARY_DIR}/ui-reports
+        --output ${CMAKE_BINARY_DIR}/ui-reports/copy-parity.json)
+    set_tests_properties(ui_parity_copy PROPERTIES FIXTURES_REQUIRED ui_reference_copy)
     qt_add_executable(combo_dialog_tests tests/combo_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(combo_dialog_tests PRIVATE tests)
     target_link_libraries(combo_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -89,6 +99,7 @@ if(BUILD_TESTING)
     target_include_directories(copy_dialog_tests PRIVATE src tests)
     target_link_libraries(copy_dialog_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_panel)
     add_test(NAME copy_dialog COMMAND copy_dialog_tests)
+    set_tests_properties(copy_dialog PROPERTIES FIXTURES_SETUP ui_reference_copy)
     set_tests_properties(copy_dialog PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     qt_add_executable(archive_backend_tests tests/archive_backend_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)

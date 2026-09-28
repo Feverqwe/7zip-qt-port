@@ -1,5 +1,11 @@
 # Regression strategy
 
+`ui_parity_tool` tests resource extraction and rejects broken/ambiguous widget
+reports, stale baselines and invented evidence symbols. `ui_parity_copy` uses a
+CTest fixture to regenerate Copy/Move reports with `copy_dialog`, then checks
+their types, selected state properties and resource-derived spatial relations.
+See [upstream UI comparison](ui-reference.md) for commands and coverage limits.
+
 `combo_dialog` checks initial Value with ordered Strings, literal prompt text,
 raw/empty text via accept/button, Cancel without committing Value,
 Dlg_CreateFolder default/Cancel/output, and geometry at 360/260 px for
