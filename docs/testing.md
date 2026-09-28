@@ -239,3 +239,11 @@ Store и создание ZIP с mem=1 МиБ. После 7zz t проверяю
 `compression_memory` также проверяет фиксированный Auto Deflate/Deflate64
 на уровнях 1/3/5/7/9, отключение ручного словаря, создание/извлечение ZIP,
 отказ для явного 32/64 КиБ и отмену. Снимки memory-Deflate/Deflate64-zip-760/640.
+
+`compression_solid` покрывает весь список: raw logarithms, Auto/Non/Full,
+сохранение Full при смене словаря, отключение для ZIP/Store, исходные
+формулы Auto для LZMA2/LZMA/PPMd/BZip2 и границы. Четыре реальные 7z
+(Auto, Non-solid, 1 МиБ, Full) содержат два Unicode-файла >1 МиБ:
+проверяются число Blocks=1/2/2/1, 7zz t и точные извлечённые байты.
+Неверный размер, solid для ZIP/Store и отмена Full не оставляют stage.
+Снимки solid-mode-{4294967295,0,64}-{760,640}.png находятся в ui-screenshots.

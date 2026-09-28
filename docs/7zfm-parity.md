@@ -176,3 +176,11 @@ Windows/Linux и RAM limits не проверены.
 Deflate/Deflate64 показывают фиксированный автоматический словарь 32/64 КиБ
 во всех уровнях ZIP; ручной выбор отключён, как в ветке upstream с одной
 строкой Auto. Снимки memory-Deflate/Deflate64-zip-760/640 проверены.
+
+Управление solid-блоком теперь использует один combo по CompressDialog.rc:
+Auto с вычисленным размером, Non-solid, 1 МиБ–64 ГиБ, Full solid.
+Отдельный Qt checkbox убран. Auto меняется при выборе метода/словаря/уровня;
+Full и Non-solid сохраняются при смене словаря. Данные и параметры
+операции следуют SetSolidBlockSize2/OnOK; Auto не задаёт -ms, Full передаёт
+UInt64(-1) байт. ZIP и Store отключают список. Снимки всех трёх режимов
+при 760×720 и 640×480 проверены на macOS offscreen; Windows/Linux не проверены.

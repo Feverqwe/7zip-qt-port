@@ -204,3 +204,27 @@ backend отклоняет его, поскольку исходный спис�
 Ветка kCopy не подключается: метод Copy не экспонируется нашей таблицей
 7z-методов, Store сохраняет отдельное отключение контролов. Остальные
 неподдерживаемые форматы и закомментированный ZSTD не включены.
+
+### Итерация: управление solid-блоками
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::Get_Lzma2_ChunkSize`, `Add_Size`,
+`CCompressDialog::SetSolidBlockSize2`, solid-блок `OnOK`,
+`CompressDialog.h::NCompressDialog::CInfo` и `UpdateGUI.cpp::SetOutProperties`.
+Скопированы Get_Lzma2_ChunkSize целиком, выбор единиц Add_Size, расчёт
+Auto solid (включая нормализацию BZip2 и пределы 16 МиБ/4 ГиБ/16 ГиБ),
+ряд логарифмов 20..36, Non Solid=0 и Full Solid=64, а также преобразование
+OnOK в байты с UInt64(-1) для Full. Win32 insertion/Registry заменены
+данными Qt combo и текущим выбором; названия, формулы, типы, условия
+и порядок вычислений сохранены. Add_Size использует QString для строки
+и локализованные единицы, без собственного алгоритма размеров.
+Только solid-поля CInfo скопированы: CompressionOptions наследует этот
+запись-адаптер, остальные поля CInfo ещё не перенесены. Qt задаёт
+SolidIsSpecified по доступности поля перед вызовом перенесённого OnOK,
+как FormatChanged upstream. Backend проверяет байты через тот же ряд
+и преобразование, переносит s=<bytes>b из SetOutProperties в 7zz -ms.
+Прежние bool solid / solidBlockMiB и отдельный checkbox удалены:
+единственный список теперь следует исходному порядку контролов.
+Полный OnOK, Registry и XZ UI остаются долгом; исходная XZ ветка Auto
+сохранена, но формат создания остаётся ограничен 7z/ZIP.
+Форматирование — обязательный clang-format.

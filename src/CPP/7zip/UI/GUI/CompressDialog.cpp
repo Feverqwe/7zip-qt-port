@@ -352,19 +352,100 @@ bool GetOrderMode(EMethodID methodID) {
     return false;
 }
 
-// Numeric choices from CCompressDialog::SetSolidBlockSize2 (0766b73).
-// UI data uses MiB instead of upstream logarithms; Auto/non-solid stay in Qt.
-QList<int> SetSolidBlockSize2(QStringView format, UInt32 level) {
-    QList<int> values;
+static UInt64 Get_Lzma2_ChunkSize(UInt64 dict) {
+    // we use same default chunk sizes as defined in 7z encoder and lzma2 encoder
+    UInt64 cs = (UInt64)dict << 2;
+    const UInt32 kMinSize = (UInt32)1 << 20;
+    const UInt32 kMaxSize = (UInt32)1 << 28;
+    if (cs < kMinSize)
+        cs = kMinSize;
+    if (cs > kMaxSize)
+        cs = kMaxSize;
+    if (cs < dict)
+        cs = dict;
+    cs += (kMinSize - 1);
+    cs &= ~(UInt64)(kMinSize - 1);
+    return cs;
+}
+
+QString Add_Size(UInt64 val) {
+    unsigned moveBits = 0;
+    QString unit = QStringLiteral("Б");
+    if ((val & 0x3FFFFFFF) == 0) {
+        moveBits = 30;
+        unit = QStringLiteral("ГиБ");
+    } else if ((val & 0xFFFFF) == 0) {
+        moveBits = 20;
+        unit = QStringLiteral("МиБ");
+    } else if ((val & 0x3FF) == 0) {
+        moveBits = 10;
+        unit = QStringLiteral("КиБ");
+    }
+    return QString::number(val >> moveBits) + QLatin1Char(' ') + unit;
+}
+
+CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId,
+                                 UInt64 dict) {
+    static const UInt32 kSolidLog_NoSolid = 0;
+    static const UInt32 kSolidLog_FullSolid = 64;
+    CSolidOptions options;
     const CFormatInfo &fi = GetFormatInfo(format);
     if (!fi.Solid_())
-        return values;
+        return options;
     if (level == 0)
-        return values;
-    for (unsigned i = 20; i <= 36; i++) {
-        const UInt64 size = (UInt64)1 << i;
-        values.append(int(size >> 20));
+        return options;
+    if (dict == (UInt64)(Int64)-1) {
+        dict = 1 << 25; // default dict for unknown methods
+                        // return;
     }
-    return values;
+
+    const bool is7z = format.compare(QLatin1StringView("7z"), Qt::CaseInsensitive) == 0;
+    const UInt64 cs = Get_Lzma2_ChunkSize(dict);
+
+    // Solid Block Size
+    UInt64 blockSize = cs; // for xz
+
+    if (is7z) {
+        // we use same default block sizes as defined in 7z encoder
+        UInt64 kMaxSize = (UInt64)1 << 32;
+        if (methodId == kLZMA2) {
+            blockSize = cs << 6;
+            kMaxSize = (UInt64)1 << 34;
+        } else {
+            UInt64 dict2 = dict;
+            if (methodId == kBZip2) {
+                dict2 /= 100000;
+                if (dict2 < 1)
+                    dict2 = 1;
+                dict2 *= 100000;
+            }
+            blockSize = dict2 << 7;
+        }
+
+        const UInt32 kMinSize = (UInt32)1 << 24;
+        if (blockSize < kMinSize)
+            blockSize = kMinSize;
+        if (blockSize > kMaxSize)
+            blockSize = kMaxSize;
+    }
+
+    options.AutoSolid = blockSize;
+
+    if (is7z)
+        options.Values.append(kSolidLog_NoSolid);
+    for (unsigned i = 20; i <= 36; i++)
+        options.Values.append(i);
+    options.Values.append(kSolidLog_FullSolid);
+    return options;
+}
+
+// Solid conversion block copied from CCompressDialog::OnOK.
+void OnOK(UInt32 solidLogSize, CInfo &Info) {
+    Info.SolidBlockSize = 0;
+    if (solidLogSize == (UInt32)(Int32)-1)
+        Info.SolidIsSpecified = false;
+    else if (solidLogSize > 0)
+        Info.SolidBlockSize =
+            (solidLogSize >= 64) ? (UInt64)(Int64)-1 : ((UInt64)1 << solidLogSize);
 }
 } // namespace NCompressDialog

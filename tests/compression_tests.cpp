@@ -33,7 +33,6 @@ class CompressionTests : public QObject {
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
-        auto *solid = dialog.findChild<QCheckBox *>("solidArchiveOption");
         auto *threads = dialog.findChild<QSpinBox *>("compressionThreads");
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
         auto *wordSize = dialog.findChild<QComboBox *>("compressionWordSize");
@@ -42,8 +41,8 @@ class CompressionTests : public QObject {
         auto *password = dialog.findChild<QLineEdit *>("archivePassword");
         auto *confirmation = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
         auto *showPassword = dialog.findChild<QCheckBox *>("archiveShowPassword");
-        QVERIFY(format && level && method && solid && threads && dictionary && wordSize &&
-                solidBlock && encryption && password && confirmation && showPassword);
+        QVERIFY(format && level && method && threads && dictionary && wordSize && solidBlock &&
+                encryption && password && confirmation && showPassword);
         QCOMPARE(level->count(), 10);
         QCOMPARE(method->currentText(), QStringLiteral("LZMA2"));
         QVERIFY(dictionary->isEnabled());
@@ -52,37 +51,36 @@ class CompressionTests : public QObject {
         level->setCurrentIndex(level->findData(9u));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(4 << 20))));
         wordSize->setCurrentIndex(wordSize->findData(64));
-        solidBlock->setCurrentIndex(solidBlock->findData(16));
+        solidBlock->setCurrentIndex(solidBlock->findData(24u));
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(4 << 20));
         QCOMPARE(dialog.compressionOptions().wordSize, 64);
-        QCOMPARE(dialog.compressionOptions().solidBlockMiB, 16);
+        QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(16 << 20));
         level->setCurrentIndex(0);
         QVERIFY(!dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
         QVERIFY(!solidBlock->isEnabled());
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, 0);
-        QCOMPARE(dialog.compressionOptions().solidBlockMiB, 0);
+        QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
         level->setCurrentIndex(level->findData(9u));
         method->setCurrentText("BZip2");
         QVERIFY(dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
-        solid->setChecked(false);
+        solidBlock->setCurrentIndex(solidBlock->findData(0u));
         threads->setValue(2);
         const CompressionOptions options = dialog.compressionOptions();
         QCOMPARE(options.level, 9);
         QCOMPARE(options.method, QStringLiteral("BZip2"));
         QCOMPARE(options.threads, 2);
-        QVERIFY(!options.solid);
+        QVERIFY(options.SolidIsSpecified);
         QCOMPARE(options.dictionaryBytes, 0);
         QCOMPARE(options.wordSize, 0);
-        QCOMPARE(options.solidBlockMiB, 0);
+        QCOMPARE(options.SolidBlockSize, quint64(0));
 
         format->setCurrentText("zip");
         QCOMPARE(level->count(), 6);
         QCOMPARE(level->findData(2u), -1);
         QVERIFY(method->findText("PPMd") >= 0);
         QCOMPARE(method->currentText(), QStringLiteral("Deflate"));
-        QVERIFY(!solid->isEnabled());
         QVERIFY(!solidBlock->isEnabled());
         encryption->setCurrentIndex(1);
         QVERIFY(password->isEnabled());
@@ -175,7 +173,8 @@ class CompressionTests : public QObject {
         options.level = level;
         options.method = method;
         options.threads = 2;
-        options.solid = false;
+        options.SolidIsSpecified = format == "7z";
+        options.SolidBlockSize = 0;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
@@ -211,7 +210,8 @@ class CompressionTests : public QObject {
         options.method = "LZMA2";
         options.dictionaryBytes = 1 << 20;
         options.wordSize = 64;
-        options.solidBlockMiB = 16;
+        options.SolidIsSpecified = true;
+        options.SolidBlockSize = 16 << 20;
         const QString target = temp.filePath("archive.7z");
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);

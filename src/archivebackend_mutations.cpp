@@ -33,6 +33,20 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const QString method = options.method.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
                                                                       : QStringLiteral("Deflate"))
                                                     : options.method;
+    bool validSolid = !options.SolidIsSpecified;
+    if (options.SolidIsSpecified) {
+        const auto solid = NCompressDialog::SetSolidBlockSize2(
+            suffix, UInt32(options.level), NCompressDialog::GetMethodID(method, suffix),
+            UInt64(-1));
+        for (UInt32 log : solid.Values) {
+            NCompressDialog::CInfo info;
+            NCompressDialog::OnOK(log, info);
+            if (info.SolidBlockSize == options.SolidBlockSize) {
+                validSolid = true;
+                break;
+            }
+        }
+    }
     if ((options.dictionaryBytes != 0 &&
          (!NCompressDialog::SetDictionary2(NCompressDialog::GetMethodID(method, suffix),
                                            UInt32(options.level))
@@ -41,12 +55,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
          !NCompressDialog::SetOrder2(NCompressDialog::GetMethodID(method, suffix),
                                      UInt32(options.level))
               .Values.contains(options.wordSize)) ||
-        (options.solidBlockMiB != 0 &&
-         (suffix != "7z" || !options.solid ||
-          !NCompressDialog::SetSolidBlockSize2(suffix, UInt32(options.level))
-               .contains(options.solidBlockMiB))) ||
-        (options.level == 0 &&
-         (options.dictionaryBytes || options.wordSize || options.solidBlockMiB))) {
+        !validSolid || (options.level == 0 && (options.dictionaryBytes || options.wordSize))) {
         emit finished(false,
                       QStringLiteral("Размер словаря, слова или непрерывного блока не подходит "
                                      "для выбранного метода сжатия."));
@@ -106,10 +115,8 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     }
     if (options.threads > 0)
         arguments.insert(5, "-mmt=" + QString::number(options.threads));
-    if (suffix == "7z" && !options.solid)
-        arguments.insert(5, "-ms=off");
-    else if (suffix == "7z" && options.solidBlockMiB)
-        arguments.insert(5, "-ms=" + QString::number(options.solidBlockMiB) + "m");
+    if (options.SolidIsSpecified)
+        arguments.insert(5, "-ms=" + QString::number(options.SolidBlockSize) + "b");
     if (!password.isEmpty()) {
         arguments.insert(5, "-p");
         arguments.insert(5, suffix == "7z" ? (encryptHeaders ? "-mhe=on" : "-mhe=off")

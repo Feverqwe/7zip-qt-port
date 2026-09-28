@@ -229,11 +229,12 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
         options.level = level_->currentData().toInt();
         options.method = method_->currentText();
         options.threads = threads_->value();
-        options.solid = solid_->isChecked();
         options.dictionaryBytes =
             dictionary_->isEnabled() ? dictionary_->currentData().toULongLong() : 0;
         options.wordSize = wordSize_->isEnabled() ? wordSize_->currentData().toInt() : 0;
-        options.solidBlockMiB = solidBlock_->isEnabled() ? solidBlock_->currentData().toInt() : 0;
+        options.SolidIsSpecified = solidBlock_->isEnabled();
+        NCompressDialog::OnOK(
+            solidBlock_->isEnabled() ? solidBlock_->currentData().toUInt() : UInt32(-1), options);
     }
     return options;
 }

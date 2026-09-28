@@ -1,5 +1,7 @@
 #pragma once
 
+#include "CPP/7zip/UI/GUI/CompressDialog.h"
+
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
@@ -22,14 +24,12 @@ struct ArchiveInfo {
     bool encrypted = false;
 };
 
-struct CompressionOptions {
+struct CompressionOptions : NCompressDialog::CInfo {
     int level = 5;
     QString method;
-    int threads = 0; // 0 lets 7-Zip choose.
-    bool solid = true;
+    int threads = 0;             // 0 lets 7-Zip choose.
     quint64 dictionaryBytes = 0; // 0 lets 7-Zip choose.
     int wordSize = 0;            // 0 lets 7-Zip choose.
-    int solidBlockMiB = 0;       // 0 lets 7-Zip choose when solid is enabled.
 };
 
 struct ExtractionOptions {

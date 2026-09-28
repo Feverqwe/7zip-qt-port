@@ -166,3 +166,11 @@ ID через исходную таблицу, хотя текст метода 
 SetDictionary2 выдаёт исходный ряд BZip2 для обоих форматов. Общие
 адаптеры Qt и ArchiveBackend используют его без отдельной таблицы;
 параметр словаря передаётся движку через d в байтах.
+
+Solid-настройки теперь представлены исходными CInfo::SolidIsSpecified и
+SolidBlockSize (UInt64 байт); CompressionOptions наследует перенесённую
+solid-часть CInfo. Qt combo хранит логарифмы (Auto=UInt32(-1), Non-solid=0,
+Full=64); OnOK преобразует их по upstream. SetSolidBlockSize2 владеет
+числовым рядом и расчётом Auto от словаря и метода. ArchiveBackend
+проверяет явный размер через эти же функции и передаёт -ms=<bytes>b.
+Собственные solid bool и solidBlockMiB удалены.

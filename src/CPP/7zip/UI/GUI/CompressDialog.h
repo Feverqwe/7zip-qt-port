@@ -71,7 +71,17 @@ struct COrderOptions {
 EMethodID GetMethodID(QStringView name, QStringView format);
 bool GetOrderMode(EMethodID methodID);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
-QList<int> SetSolidBlockSize2(QStringView format, UInt32 level);
+struct CInfo {
+    bool SolidIsSpecified = false;
+    UInt64 SolidBlockSize = 0;
+};
+struct CSolidOptions {
+    UInt64 AutoSolid = 1 << 20;
+    QList<UInt32> Values;
+};
+CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId, UInt64 dict);
+QString Add_Size(UInt64 val);
+void OnOK(UInt32 solidLogSize, CInfo &Info);
 
 const CFormatInfo &GetFormatInfo(QStringView name);
 QStringList GetMethodNames(QStringView name);

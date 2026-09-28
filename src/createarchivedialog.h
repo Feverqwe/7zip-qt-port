@@ -43,6 +43,7 @@ class CreateArchiveDialog : public QDialog {
     void SetLevel2();
     void SetOrder2();
     void SetDictionary2();
+    void SetSolidBlockSize2();
     void createFooter(QVBoxLayout *layout);
     void updateTargetPreview();
     void validateAndAccept();
@@ -64,7 +65,6 @@ class CreateArchiveDialog : public QDialog {
     QComboBox *dictionary_ = nullptr;
     QComboBox *wordSize_ = nullptr;
     QComboBox *solidBlock_ = nullptr;
-    QCheckBox *solid_ = nullptr;
     QSpinBox *threads_ = nullptr;
     QLineEdit *password_ = nullptr;
     QLineEdit *passwordConfirmation_ = nullptr;
