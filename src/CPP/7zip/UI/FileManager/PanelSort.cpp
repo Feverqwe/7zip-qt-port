@@ -57,6 +57,11 @@ int CompareFileNames_ForFolderList(QStringView s1, QStringView s2) {
     }
 }
 
+QStringView GetExtensionPtr(QStringView name) {
+    const qsizetype dotPos = name.lastIndexOf(QLatin1Char('.'));
+    return name.mid(dotPos < 0 ? name.size() : dotPos);
+}
+
 int CompareItems(const QTableWidgetItem &left, const QTableWidgetItem &right) {
     const bool isDir1 = left.data(Qt::UserRole + 1).toBool();
     const bool isDir2 = right.data(Qt::UserRole + 1).toBool();
@@ -69,9 +74,20 @@ int CompareItems(const QTableWidgetItem &left, const QTableWidgetItem &right) {
         if (first != second)
             return first < second ? -1 : 1;
     }
-    int res = CompareFileNames_ForFolderList(QStringView(left.text()), QStringView(right.text()));
+    int res = 0;
+    // Name is the base name, even when the Qt presentation shows a relative path.
+    if (left.column() != 0)
+        res = CompareFileNames_ForFolderList(QStringView(left.text()), QStringView(right.text()));
     if (res == 0)
         res = CompareFileNames_ForFolderList(QStringView(left.data(Qt::UserRole + 3).toString()),
                                              QStringView(right.data(Qt::UserRole + 3).toString()));
+    if (res == 0)
+        res = CompareFileNames_ForFolderList(QStringView(left.data(Qt::UserRole + 5).toString()),
+                                             QStringView(right.data(Qt::UserRole + 5).toString()));
+    if (res == 0) {
+        const int first = left.data(Qt::UserRole + 6).toInt();
+        const int second = right.data(Qt::UserRole + 6).toInt();
+        res = first < second ? -1 : first > second ? 1 : 0;
+    }
     return res;
 }

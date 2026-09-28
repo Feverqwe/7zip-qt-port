@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 
 void MainWindow::showDirectory(const QString &path, bool remember) {
@@ -63,12 +64,15 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file) {
                                 file.isDir() ? QString() : QString::number(file.size()),
                                 QString(),
                                 file.lastModified().toString(Qt::ISODate),
-                                file.isDir() ? QString() : file.suffix().toCaseFolded(),
+                                GetExtensionPtr(QStringView(file.fileName())).toString(),
                                 QString::number(row)};
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
         item->setData(Qt::UserRole + 1, file.isDir());
         item->setData(Qt::UserRole + 3, file.fileName());
+        item->setData(Qt::UserRole + 5,
+                      displayName.left(displayName.size() - file.fileName().size()));
+        item->setData(Qt::UserRole + 6, row);
         if (col == 0) {
             if (fileListSettings_.realFileIcons) {
                 QFileIconProvider icons;

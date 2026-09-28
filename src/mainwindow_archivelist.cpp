@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 
 void MainWindow::showArchiveFolder(const QString &folder) {
@@ -35,20 +36,21 @@ void MainWindow::showArchiveFolder(const QString &folder) {
         const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
         const int row = table_->rowCount();
         table_->insertRow(row);
-        const int sourceOrder = isDir ? int(childDir) : realIndex;
+        const int sourceOrder = int(index);
         const QStringList values = {displayName,
                                     entry.path,
                                     entry.directory ? QString() : QString::number(entry.size),
                                     entry.directory ? QString() : QString::number(entry.packedSize),
                                     entry.modified,
-                                    entry.directory ? QString()
-                                                    : QFileInfo(name).suffix().toCaseFolded(),
+                                    GetExtensionPtr(QStringView(name)).toString(),
                                     QString::number(sourceOrder)};
         for (int col = 0; col < values.size(); ++col) {
             auto *item = new ArchiveTableItem(values[col]);
             item->setData(Qt::UserRole, entry.path);
             item->setData(Qt::UserRole + 1, entry.directory);
-            item->setData(Qt::UserRole + 3, displayName);
+            item->setData(Qt::UserRole + 3, name);
+            item->setData(Qt::UserRole + 5, flat ? panelPrefix.mid(prefix.size()) : QString());
+            item->setData(Qt::UserRole + 6, sourceOrder);
             if (isDir)
                 item->setData(Qt::UserRole + 4, childDir);
             item->setToolTip(entry.path);

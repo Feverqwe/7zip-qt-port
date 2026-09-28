@@ -12,6 +12,98 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void init() {
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.remove("view/flatDisk");
+        settings.remove("view/flatArchive");
+    }
+
+    void flatArchiveSortsNamesBeforePrefixes() {
+        QTemporaryDir temp;
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive(temp.filePath("flat.7z"));
+        backend.completeList({{"a/file10.txt", 5, 1},
+                              {"z/file2.txt", 5, 1},
+                              {"dir10/common.txt", 5, 1},
+                              {"dir2/common.txt", 5, 1},
+                              {QStringLiteral("папка с пробелом/Альфа.txt"), 5, 1}});
+        action(window, "flatViewAction")->setChecked(true);
+        auto fileNames = [&] {
+            QStringList result;
+            for (int row = 0; row < table(window)->rowCount(); ++row)
+                if (!table(window)->item(row, 0)->data(Qt::UserRole + 1).toBool())
+                    result << table(window)->item(row, 0)->text();
+            return result;
+        };
+        const QStringList expected = {"dir2/common.txt", "dir10/common.txt", "z/file2.txt",
+                                      "a/file10.txt", QStringLiteral("папка с пробелом/Альфа.txt")};
+        QCOMPARE(fileNames(), expected);
+        action(window, "sort3Action")->trigger();
+        QStringList reversed = expected;
+        std::reverse(reversed.begin(), reversed.end());
+        QCOMPARE(fileNames(), reversed);
+        table(window)->selectRow(rowWithPath(window, "dir2/common.txt"));
+        action(window, "sort3Action")->trigger();
+        QCOMPARE(fileNames(), expected);
+        window.show();
+        const QString screenshots = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
+        if (!screenshots.isEmpty()) {
+            QDir().mkpath(screenshots);
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                window.resize(size);
+                QCoreApplication::processEvents();
+                QVERIFY(window.grab().save(screenshots +
+                                           QStringLiteral("/flat-sort-%1.png").arg(size.width())));
+            }
+        }
+        window.extractTo(temp.path(), true);
+        QCOMPARE(backend.lastSelected, QStringList{"dir2/common.txt"});
+        backend.cancel();
+    }
+
+    void extensionUsesLastDotIncludingDotfilesAndFolders() {
+        QTemporaryDir temp;
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive(temp.filePath("extensions.7z"));
+        backend.completeList({{".hidden", 1, 1},
+                              {"README", 1, 1},
+                              {"last.", 1, 1},
+                              {"a.tar.gz", 1, 1},
+                              {"b.TXT", 1, 1},
+                              {"z.aaa", 0, 0, {}, true},
+                              {"a.zzz", 0, 0, {}, true}});
+        action(window, "sort1Action")->trigger();
+        QCOMPARE(names(window), (QStringList{"z.aaa", "a.zzz", "README", "last.", "a.tar.gz",
+                                             ".hidden", "b.TXT"}));
+        action(window, "sort1Action")->trigger();
+        QCOMPARE(names(window), (QStringList{"a.zzz", "z.aaa", "b.TXT", ".hidden", "a.tar.gz",
+                                             "last.", "README"}));
+    }
+
+    void flatFilesystemUsesBaseNames() {
+        QTemporaryDir temp;
+        QVERIFY(QDir(temp.path()).mkdir("a"));
+        QVERIFY(QDir(temp.path()).mkdir("z"));
+        for (const QString &name : {"a/file10.txt", "z/file2.txt"}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write("same size");
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        action(window, "flatViewAction")->setChecked(true);
+        QTRY_VERIFY(action(window, "sort3Action")->isEnabled());
+        QCOMPARE(names(window).mid(2), (QStringList{"z/file2.txt", "a/file10.txt"}));
+        action(window, "sort3Action")->trigger();
+        QCOMPARE(names(window).mid(2), (QStringList{"a/file10.txt", "z/file2.txt"}));
+        action(window, "flatViewAction")->setChecked(false);
+    }
+
     void archiveDirectionGroupingAndRefresh() {
         QTemporaryDir temp;
         ControlledBackend backend;
