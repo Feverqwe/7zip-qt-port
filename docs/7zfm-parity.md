@@ -424,3 +424,14 @@ presentation handles; address Tab routes through the same owner. One visible
 panel remains; no layout/control changes. Reference is Panel.cpp focus methods,
 CMyListView focus notification and PanelFolderChange combo edit notification.
 Windows/Linux native focus behavior and rendered pixel parity remain unverified.
+
+## P0-02.2b1 filesystem refresh focus (2026-09-28)
+
+Reference: PanelItems.cpp SaveSelectedState and RefreshListCtrl selection/focus
+portion at 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Filesystem refresh retains
+the current item separately from selected files, including flat relative paths.
+If the current file disappears, the original row-position fallback chooses a
+surviving current item without selecting it. Sorting is already applied by Qt
+before this partial restoration; current presentation has a parent toolbar
+button and no dots row. Archive refresh and full source list loading remain open.
+No layout/text changes; Windows/Linux runtime and rendered parity unverified.

@@ -7,6 +7,10 @@ empty state and preservation of unrelated settings. `folder_history`, `bookmarks
 `panel_focus` checks independent application/panel focus state, top-level focus
 restoration to list/address in all four window view modes, and destroyed/rebound
 presentation handles. `panel_key` covers address Tab and Alt+F1/F2 consumers.
+`panel_selected_state` checks source snapshot defaults, sorted Unicode relative
+names, independent current/selected items, normal/flat filesystem refresh across
+four view modes, changed row ordering and fallback when the current file is
+removed. These are nonvisual state checks; geometry contracts are unchanged.
 
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,

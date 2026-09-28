@@ -9,6 +9,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     app_.AppState.Read(toolbarSettingsPath());
     QMenu *editMenu = createMenusAndToolbar();
     createFilePanel(editMenu);
+    app_.GetFocusedPanel().AttachSelectionView(table_);
     installEventFilter(this);
     connectFilesystemScanner();
     showDirectory(QDir::currentPath(), false);
@@ -33,7 +34,11 @@ void MainWindow::connectFilesystemScanner() {
         scanningDisk_ = false;
         table_->setSortingEnabled(true);
         applySortMode();
-        selectPaths(scanSelection_);
+        if (scanSelectedState_)
+            app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
+        else
+            selectPaths(scanSelection_);
+        scanSelectedState_.reset();
         scanSelection_.clear();
         refreshActions();
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));

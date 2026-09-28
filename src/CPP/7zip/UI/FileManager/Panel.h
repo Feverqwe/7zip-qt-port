@@ -7,6 +7,7 @@
 #include "Common/MyString.h"
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
+#include "qtpanellist.h"
 #include <QObject>
 #include <QPointer>
 #include <QString>
@@ -32,6 +33,19 @@ struct CPanelItem {
     CObjectVector<CPanelProperty> Properties;
 };
 
+struct CSelectedState {
+    int FocusedItem;
+    bool SelectFocused;
+    bool FocusedName_Defined;
+    bool CalledFromTimer;
+    UString FocusedName;
+    UStringVector SelectedNames;
+
+    CSelectedState()
+        : FocusedItem(-1), SelectFocused(true), FocusedName_Defined(false), CalledFromTimer(false) {
+    }
+};
+
 class CPanel : public QObject {
   public:
     CPanel() = default;
@@ -39,6 +53,12 @@ class CPanel : public QObject {
     void AttachPresentation(QWidget *list, QWidget *address);
     void SetFocusToList();
     void SetFocusToLastRememberedItem();
+    void AttachSelectionView(QAbstractItemView *view) { _selectionList.Attach(view); }
+    void SaveSelectedState(CSelectedState &state);
+    void GetSelectedNames(UStringVector &selectedNames);
+    void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;
+    // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
+    void RefreshListCtrl(const CSelectedState &state);
     bool _lastFocusedIsList = true;
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
     void Properties(const CRecordVector<UInt32> &operatedIndices, bool archive,
@@ -53,10 +73,17 @@ class CPanel : public QObject {
     bool eventFilter(QObject *watched, QEvent *event) override;
     QPointer<QWidget> _listView;
     QPointer<QWidget> _headerComboBox;
+    QtPanelList _selectionList;
+    CRecordVector<bool> _selectedStatusVector;
     CObjectVector<CPanelItem> _folder;
     QString _currentFolderPrefix;
     bool IsItem_Folder(UInt32 index) const { return _folder[index].IsFolder; }
-    QString GetItemRelPath(UInt32 index) const { return _folder[index].RelPath; }
+    QString GetItemRelPath(UInt32 index) const {
+        return _selectionList.IsBound() ? _selectionList.GetItemRelPath(index)
+                                        : _folder[index].RelPath;
+    }
+    unsigned GetRealItemIndex(int row) const { return (unsigned)row; }
+    void SetFocusedSelectedItem(int index, bool select);
     UInt64 GetItemSize(UInt32 index) const;
     UInt64 GetItem_UInt64Prop(UInt32 index, UInt32 propID) const;
 };

@@ -47,9 +47,15 @@ The implementation is divided by responsibility:
 `CApp` now owns `CAppState` and two independent `CPanel` instances. The window
 binds the visible panel's list/address widgets through QPointer presentation
 handles; `CPanel` owns remembered focus and `CApp` delegates focus restoration.
-Current UI uses one panel; location/selection and full lifecycle ownership remain
+Current UI uses one panel; location and full lifecycle ownership remain
 in migration below. Top-level focus filtering begins after panel construction
 and stops before window member teardown.
+`CSelectedState` and CPanel's selected-status vector own filesystem refresh
+selection and current-item snapshots. `QtPanelList` adapts the shared table/icon
+model and selection model; it supplies relative names and control operations.
+Normal refresh restores after loading/sorting; flat refresh holds a pending
+snapshot until scanner completion and discards it on navigation. Archive refresh,
+flat-mode changes and edit results still use legacy path lists pending migration.
 Source-ported `CAppState` groups `CFolderHistory` and `CFastFolders` and reads
 both before the window builds menus or the address combo. Each window owns an
 independent instance on the GUI thread; QSettings paths are explicit adapters.

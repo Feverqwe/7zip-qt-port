@@ -16,6 +16,7 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     filesystemScanner_->cancel();
     scanningDisk_ = false;
     scanSelection_.clear();
+    scanSelectedState_.reset();
     directory_ = next;
     recordVisitedPath(directory_);
     archive_.clear();
@@ -112,12 +113,13 @@ void MainWindow::selectPaths(const QStringList &paths) {
 
 void MainWindow::refreshCurrent() {
     if (state_ == State::Filesystem) {
-        const QStringList selection = selectedPaths();
+        CSelectedState selection;
+        app_.GetFocusedPanel().SaveSelectedState(selection);
         showDirectory(directory_, false);
         if (scanningDisk_)
-            scanSelection_ = selection;
+            scanSelectedState_ = selection;
         else
-            selectPaths(selection);
+            app_.GetFocusedPanel().RefreshListCtrl(selection);
     } else if (state_ == State::Viewing) {
         refreshing_ = true;
         refreshFolder_ = archiveFolder_;

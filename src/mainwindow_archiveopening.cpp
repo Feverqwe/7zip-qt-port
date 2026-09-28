@@ -14,6 +14,7 @@ void MainWindow::openArchive(const QString &path, bool nested, const QString &la
         archiveParents_.clear();
     scanningDisk_ = false;
     scanSelection_.clear();
+    scanSelectedState_.reset();
     archive_ = QFileInfo(path).absoluteFilePath();
     displayArchive_ = nested ? label : archive_;
     archivePassword_.clear();

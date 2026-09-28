@@ -8,6 +8,50 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b1 — filesystem refresh selection/focus snapshot (2026-09-28)
+
+Project baseline `5bc96ad`. Exact source: [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied Panel.h CSelectedState fields/defaults; PanelItems.cpp
+Get_ItemIndices_Selected, GetSelectedNames and SaveSelectedState active bodies.
+Commented alternative implementations are omitted. Original UStringVector sorting
+and selected-status-vector traversal remain authoritative. GetRealItemIndex is
+a Qt snapshot row adapter: current presentation already loaded/sorted the rows,
+so selection capture/restoration uses their displayed indices, rather than
+Win32 LVITEM lParam and pre-sort folder indices.
+
+RefreshListCtrl is a partial port of its selection/focus portion: focusedPos
+initialization, focusedNamePure/selectedName separator optimization, per-item
+full relative-path equality and FindInSorted selection matching, cursor selection,
+missing-cursor clamp and EnsureVisible. SetFocusedSelectedItem preserves focused
+versus selected distinction. QtPanelList replaces control calls, item-name and
+prefix/name property access; GetItemRelPath uses the displayed relative name.
+The table and icon/list views share this model/selection model. Qt's selection
+notifications are synchronized into _selectedStatusVector at SaveSelectedState;
+full OnNotify/_mySelectMode paths remain open. Current presentation has a parent
+toolbar button and no dots row, so showDots=false; the parent-item restoration
+branch remains required when dots rows are ported. _mySelectMode=false is the
+existing selection contract, not completion of that upstream mode.
+
+Rows have already been inserted/sorted by current filesystem presentation.
+RefreshListCtrl folder LoadItems, COM/interfaces, columns, icon loading,
+timer/notify guards, sorting and redraw bodies are not ported in this substep.
+Their existing independent implementation remains migration debt. The source
+GetItemName/IFolderGetItemName optimization is replaced by Qt UserRole+3 and
+displayed relative-path property access; separators use portable UString/Qt row
+data instead of Windows NName. Existing property snapshot consumers stay intact.
+
+MainWindow filesystem refresh captures CSelectedState before reloading and calls
+this panel portion after normal loading or scanner completion. The pending flat
+snapshot is cleared on navigation; other QStringList selection consumers remain
+for P0-02.2b2. Archive location/parent stack and full lifecycle are still open.
+Checks 2026-09-28 macOS: affected targets and direct consumers built;
+panel_selected_state/panel_focus/panel_copy_info/ui_navigation/panel_selection
+5/5 passed; ./scripts/check.sh formatting/build/56 CTest passed. Initial test
+fixture compared /var with canonical /private/var; corrected before passing
+runs. No layout/text changes;
+Windows/Linux runtime and rendered parity remain unverified.
+
 ## P0-02.2a — application/panel owners and remembered focus (2026-09-28)
 
 Project baseline `eedf926`. Exact upstream — [ip7z/7zip

@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/App.h"
@@ -227,6 +228,7 @@ class MainWindow : public QMainWindow {
     bool scanningDisk_ = false;
     FilesystemScanner *filesystemScanner_ = nullptr;
     QStringList scanSelection_;
+    std::optional<CSelectedState> scanSelectedState_;
     int viewMode_ = 3;
     State previousState_ = State::Filesystem;
     bool creating_ = false;

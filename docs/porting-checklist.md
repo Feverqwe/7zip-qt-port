@@ -263,7 +263,7 @@ P0-02.1 commit: `eedf926`. P0-02.2 разделён перед изменени�
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2a | CApp owns CAppState и два independent CPanel instances; focused-panel/list-versus-address state, source focus restoration и Qt event adapters; одна видимая панель, все четыре modes и независимость focus проверены | P0-02.1 | done — audit § P0-02.2a; macOS focused 3/3, check.sh 55/55 |
-| P0-02.2b | CPanel location/parent stack и selected-state bodies через narrow folder/list/backend adapters; navigation/refresh selection consumers, без duplicate state | P0-02.2a | todo |
+| P0-02.2b | CPanel location/parent stack и selected-state bodies через narrow folder/list/backend adapters; navigation/refresh selection consumers, без duplicate state | P0-02.2a | active — b1–b3 ниже |
 | P0-02.2c | Create/CreateOnePanel и lifecycle/teardown ordering source scope, all-panel disable-before-release; current single-panel integration и checks | P0-02.2b | todo |
 
 P0-02.2 parent закрывается только после a–c. Source baseline остаётся exact
@@ -274,6 +274,20 @@ P0-02.2a checks 2026-09-28 macOS: affected targets build dev;
 3/3; `./scripts/check.sh` format/build/55 CTest; `git diff --check`.
 Construction-order и editable-combo focus failures исправлены до passing runs.
 Layout/text unchanged; Windows/Linux runtime не проверены.
+
+P0-02.2a commit: `5bc96ad`. P0-02.2b разделён до изменения selection:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2b1 | CSelectedState, SaveSelectedState/GetSelectedNames/Get_ItemIndices_Selected и selection/focus portion RefreshListCtrl; Qt list binding, filesystem refresh normal/flat consumers, sorted names и deleted focus fallback | P0-02.2a | done — audit § P0-02.2b1; focused 5/5, check.sh 56/56 |
+| P0-02.2b2 | Archive refresh/flat-mode/edit result consumers используют тот же selected-state owner; failure/cancel checks | P0-02.2b1 | todo |
+| P0-02.2b3 | CPanel location/parent stack source bodies, nested archive/navigation adapters и checks; удалить дублирующее location state | P0-02.2b2 | todo |
+
+P0-02.2b1 checks 2026-09-28 macOS: affected targets/direct consumers build dev;
+`ctest --preset dev -R '^(panel_selected_state|panel_focus|panel_copy_info|ui_navigation|panel_selection)$' --output-on-failure`
+5/5; `./scripts/check.sh` format/build/56 CTest; `git diff --check`.
+Первый новый fixture сравнивал /var с canonical /private/var; исправлен до
+passing runs. Layout/text unchanged; Windows/Linux runtime не проверены.
 
 При следующем разделении добавить здесь, сохраняя остальных:
 

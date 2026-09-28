@@ -24,6 +24,7 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/qtpanellist.cpp src/qtpanellist.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
     src/CPP/7zip/UI/FileManager/SettingsPage.cpp src/CPP/7zip/UI/FileManager/SettingsPage.h
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
@@ -327,6 +328,13 @@ if(BUILD_TESTING)
     add_test(NAME panel_focus COMMAND panel_focus_tests)
     set_tests_properties(panel_focus PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-focus-settings.ini")
+    qt_add_executable(panel_selected_state_tests tests/panel_selected_state_tests.cpp ${panel_sort_sources})
+    target_include_directories(panel_selected_state_tests PRIVATE src tests)
+    target_link_libraries(panel_selected_state_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
+    target_sources(panel_selected_state_tests PRIVATE src/mainwindow_filedelete.cpp)
+    add_test(NAME panel_selected_state COMMAND panel_selected_state_tests)
+    set_tests_properties(panel_selected_state PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-selected-state-settings.ini")
     qt_add_executable(volume_workflow_tests tests/volume_workflow_tests.cpp ${panel_sort_sources})
     target_include_directories(volume_workflow_tests PRIVATE src tests)
     target_link_libraries(volume_workflow_tests PRIVATE sevenzip_panel Qt6::Test)
