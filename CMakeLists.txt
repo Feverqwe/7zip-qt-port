@@ -47,6 +47,7 @@ target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
 
 add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
+    src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
     src/CPP/Windows/FileName.cpp
     third_party/7zip/CPP/Windows/FileFind.cpp
@@ -54,6 +55,7 @@ add_library(sevenzip_filesystem STATIC
     src/filedeleteoperation.cpp src/filedeleteoperation.h)
 if(WIN32)
     target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileIO.cpp)
+    target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)

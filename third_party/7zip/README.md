@@ -64,7 +64,9 @@ Additional portable filesystem dependencies:
 
 - `CPP/7zip/Common/PropId.cpp` and `StdAfx.h` (source property type table)
 
-All 54 source/header files and `License.txt` (from upstream `DOC/License.txt`)
+- `CPP/Windows/FileSystem.cpp` and `FileSystem.h` (native Windows volume metadata)
+
+All 56 source/header files and `License.txt` (from upstream `DOC/License.txt`)
 are retained byte for byte from the exact commit above.
 This provenance check does not establish runtime verification on all platforms.
 `.gitattributes` excludes unchanged vendored source from Git whitespace errors

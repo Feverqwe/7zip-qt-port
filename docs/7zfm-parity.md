@@ -21,6 +21,13 @@ P0-02.2b3b2b2 переносит CFSFolder normal/flat enumeration и typed prop
 не меняются. Binding, comments, compressed allocation, link/raw properties
 и optional interfaces остаются обязательными.
 
+P0-02.2b3b2b3 переносит binding/parent/notification CFSFolder и read-only logical
+drive CFSDrives. POSIX root `/` возвращает null parent, missing/file bind сразу
+отклоняется native stat adapter. Windows drive-root возвращает CFSDrives по
+исходной ветке; проверка Windows/UNC/device workflows остаётся обязательной.
+Physical imaging, icons и COM operations этого модуля ещё не перенесены.
+Runtime окна не меняется до P0-02.2b3b3.
+
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
 Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный

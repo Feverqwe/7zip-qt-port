@@ -15,8 +15,11 @@ are prerequisites for CFSFolder binding; the window still uses its current
 filesystem loader until the runtime-owner iteration.
 `CFSFolder` owns FString/CFileInfo metadata and exposes the source read-only
 enumeration/property subset with flat mode. Mutations convert to Qt at their
-service boundary. Binding and optional interfaces remain unavailable until
-their source scopes are integrated; normal window navigation is not yet bound.
+service boundary. Source folder binding and parent navigation use native services;
+Windows drive roots return the read-only CFSDrives logical-drive owner, while
+POSIX `/` returns null parent. Native Windows notification uses IFolderWasChanged.
+Optional property/operations interfaces remain incomplete; normal window
+navigation is not yet bound to this owner.
 
 `sevenzip-desktop` contains application sources, Qt presentation, platform
 integration, tests and build tooling. Application modules live under

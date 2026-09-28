@@ -340,7 +340,7 @@ P0-02.2b3b1 commit: `07b7326`. P0-02.2b3b2 разделён до изменен�
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3b2a | CAgentFolder IFolderFolder identity, _proxy bind/name/prefix/folder-property source bodies и typed property delegation; normal/flat/root/parent/name/error tests, legacy enumeration preserved | P0-02.2b3b1 | done — audit § P0-02.2b3b2a; focused 4/4, check.sh 59/59, vendor bytes 45/45; macOS 2026-09-29 |
-| P0-02.2b3b2b | CFSFolder folder identity/path/bind/property source scope через portable filesystem services; root/Unicode/failure tests, existing mutations preserved | P0-02.2b3b2a | active — b1–b3 ниже |
+| P0-02.2b3b2b | CFSFolder folder identity/path/bind/property source scope через portable filesystem services; root/Unicode/failure tests, existing mutations preserved | P0-02.2b3b2a | done — b1–b3 ниже; optional property/operations scopes remain mandatory in their owners |
 | P0-02.2b3b2c | Owned archive metadata/provider context вместо borrowed proxy при долгом binding; location factory, source remaining required scope и b2 acceptance | P0-02.2b3b2b | todo |
 
 _proxy2/alt streams, raw/archive handler properties, COM lifecycle/operations
@@ -353,7 +353,7 @@ P0-02.2b3b2a commit: `49f7975`. Filesystem scope разделён до пере�
 | --- | --- | --- | --- |
 | P0-02.2b3b2b1 | Portable FileFind/TimeUtils dependencies, FileName source path bodies и FileDir GetCurrentDir; deterministic Unicode, dots, missing-path, symlink enumeration checks | P0-02.2b3b2a | done — audit § P0-02.2b3b2b1; focused 3/3, check.sh 60/60, vendor bytes 53/53; macOS 2026-09-29 |
 | P0-02.2b3b2b2 | CFSFolder source enumeration, identity и typed properties; preserve mutation consumers; normal/flat/Unicode/error checks | P0-02.2b3b2b1 | done — audit § P0-02.2b3b2b2; focused 4/4, check.sh 61/61, vendor bytes 55/55; macOS 2026-09-29 |
-| P0-02.2b3b2b3 | Source folder binding/parent/root scope, portable root adaptation и b acceptance; Windows drive/network required scope explicit | P0-02.2b3b2b2 | todo |
+| P0-02.2b3b2b3 | Source folder binding/parent/root scope, portable root adaptation и b acceptance; Windows drive/network required scope explicit | P0-02.2b3b2b2 | done — audit § P0-02.2b3b2b3; focused 4/4, check.sh 61/61, vendor bytes 57/57; macOS 2026-09-29; Windows/Linux runtime unverified |
 
 При следующем разделении добавить здесь, сохраняя остальных:
 

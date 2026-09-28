@@ -22,13 +22,17 @@ struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
 
 // Partial source folder owner. Runtime panel loading is integrated separately;
 // mutations retain their Qt service boundary and existing callbacks.
-class CFSFolder final : public IFolderFolder, public IFolderSetFlatMode, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_2(IFolderFolder, IFolderSetFlatMode)
+class CFSFolder final : public IFolderFolder,
+                        public IFolderSetFlatMode,
+                        public IFolderWasChanged,
+                        public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IFolderFolder, IFolderSetFlatMode, IFolderWasChanged)
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
+    Z7_IFACE_COM7_IMP(IFolderWasChanged)
     HRESULT Init(const FString &path);
     CObjectVector<CDirItem> Files;
     FStringVector Folders;
@@ -46,8 +50,12 @@ class CFSFolder final : public IFolderFolder, public IFolderSetFlatMode, public 
 
   private:
     HRESULT LoadSubItems(int dirItem, const FString &relPrefix);
+    HRESULT BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder);
     FString _path;
     bool _flatMode = false;
+#ifdef _WIN32
+    NWindows::NFile::NFind::CFindChangeNotification _findChangeNotification;
+#endif
 };
 
 struct CCopyStateIO {

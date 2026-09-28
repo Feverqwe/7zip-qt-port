@@ -8,6 +8,7 @@
 #include "Common/ComTry.h"
 #include "Common/Defs.h"
 #include "Common/StringConvert.h"
+#include "FSDrives.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
@@ -33,6 +34,26 @@ CFSFolder::CFSFolder(QString path) {
 
 HRESULT CFSFolder::Init(const FString &path) {
     _path = path;
+#ifdef _WIN32
+    _findChangeNotification.FindFirst(_path, false,
+                                      FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+                                          FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
+                                          FILE_NOTIFY_CHANGE_LAST_WRITE);
+    if (!_findChangeNotification.IsHandleAllocated()) {
+        const HRESULT lastError = GetLastError_noZero_HRESULT();
+        NWindows::NFile::NFind::CFindFile findFile;
+        NWindows::NFile::NFind::CFileInfo fi;
+        FString path2 = _path;
+        path2.Add_Char('*');
+        if (!findFile.FindFirst(path2, fi))
+            return lastError;
+    }
+#else
+    // The Windows source validates through notifications/FindFirst. POSIX has
+    // no equivalent notification handle, so use the unchanged native stat service.
+    if (!NWindows::NFile::NFind::DoesDirExist_FollowLink(_path))
+        return E_FAIL;
+#endif
     return S_OK;
 }
 
@@ -80,6 +101,8 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
 
 Z7_COM7F_IMF(CFSFolder::LoadItems()) {
     COM_TRY_BEGIN
+    Int32 dummy;
+    WasChanged(&dummy);
     Files.Clear();
     Folders.Clear();
     const HRESULT result = LoadSubItems(-1, FString());
@@ -188,18 +211,88 @@ IMP_IFolderFolder_GetProp(CFSFolder::GetPropertyInfo, kProps)
     COM_TRY_END
 }
 
-// Binding is deliberately unavailable until the following source-root iteration.
-Z7_COM7F_IMF(CFSFolder::BindToFolder(UInt32, IFolderFolder **result)) {
-    *result = nullptr;
-    return E_NOTIMPL;
+HRESULT CFSFolder::BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder) {
+    *resultFolder = NULL;
+    CFSFolder *folderSpec = new CFSFolder;
+    CMyComPtr<IFolderFolder> subFolder = folderSpec;
+    RINOK(folderSpec->Init(_path + name + FCHAR_PATH_SEPARATOR))
+    *resultFolder = subFolder.Detach();
+    return S_OK;
 }
-Z7_COM7F_IMF(CFSFolder::BindToFolder(const wchar_t *, IFolderFolder **result)) {
-    *result = nullptr;
-    return E_NOTIMPL;
+
+Z7_COM7F_IMF(CFSFolder::BindToFolder(UInt32 index, IFolderFolder **resultFolder)) {
+    COM_TRY_BEGIN
+    *resultFolder = NULL;
+    if (index >= Files.Size())
+        return E_INVALIDARG;
+    const CDirItem &fi = Files[index];
+    if (!fi.IsDir())
+        return E_INVALIDARG;
+    return BindToFolderSpec(GetRelPath(fi), resultFolder);
+    COM_TRY_END
 }
-Z7_COM7F_IMF(CFSFolder::BindToParentFolder(IFolderFolder **result)) {
-    *result = nullptr;
-    return E_NOTIMPL;
+
+Z7_COM7F_IMF(CFSFolder::BindToFolder(const wchar_t *name, IFolderFolder **resultFolder)) {
+    COM_TRY_BEGIN
+    return BindToFolderSpec(us2fs(name), resultFolder);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CFSFolder::BindToParentFolder(IFolderFolder **resultFolder)) {
+    COM_TRY_BEGIN
+    *resultFolder = NULL;
+    if (_path.IsEmpty())
+        return E_INVALIDARG;
+#ifdef _WIN32
+    if (NWindows::NFile::NName::IsDriveRootPath_SuperAllowed(_path)) {
+        CFSDrives *drivesFolderSpec = new CFSDrives;
+        CMyComPtr<IFolderFolder> drivesFolder = drivesFolderSpec;
+        drivesFolderSpec->Init(false, NWindows::NFile::NName::IsSuperPath(_path));
+        *resultFolder = drivesFolder.Detach();
+        return S_OK;
+    }
+#else
+    if (_path == FSTRING_PATH_SEPARATOR)
+        return S_OK;
+#endif
+    int pos = _path.ReverseFind_PathSepar();
+    if (pos < 0 || pos != (int)_path.Len() - 1)
+        return E_FAIL;
+    FString parentPath = _path.Left((unsigned)pos);
+    pos = parentPath.ReverseFind_PathSepar();
+    parentPath.DeleteFrom((unsigned)(pos + 1));
+#ifdef _WIN32
+    if (NWindows::NFile::NName::IsDrivePath_SuperAllowed(parentPath))
+#else
+    if (!parentPath.IsEmpty() && parentPath[0] == FCHAR_PATH_SEPARATOR)
+#endif
+    {
+        CFSFolder *parentFolderSpec = new CFSFolder;
+        CMyComPtr<IFolderFolder> parentFolder = parentFolderSpec;
+        if (parentFolderSpec->Init(parentPath) == S_OK) {
+            *resultFolder = parentFolder.Detach();
+            return S_OK;
+        }
+    }
+    return S_OK;
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CFSFolder::WasChanged(Int32 *wasChanged)) {
+    bool wasChangedMain = false;
+#ifdef _WIN32
+    for (;;) {
+        if (!_findChangeNotification.IsHandleAllocated())
+            break;
+        DWORD waitResult = ::WaitForSingleObject(_findChangeNotification, 0);
+        if (waitResult != WAIT_OBJECT_0)
+            break;
+        _findChangeNotification.FindNext();
+        wasChangedMain = true;
+    }
+#endif
+    *wasChanged = BoolToInt(wasChangedMain);
+    return S_OK;
 }
 
 void CFSFolder::AddPath(const QString &path) {

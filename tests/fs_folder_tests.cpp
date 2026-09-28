@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/FSDrives.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
@@ -106,8 +107,111 @@ class FsFolderTests : public QObject {
         QCOMPARE(folder->QueryInterface(IID_IFolderOperations, &unsupported), E_NOINTERFACE);
         QVERIFY(unsupported == nullptr);
         CMyComPtr<IFolderFolder> child;
-        QCOMPARE(folder->BindToFolder(L"missing", &child), E_NOTIMPL);
+        QVERIFY(folder->BindToFolder(L"missing", &child) != S_OK);
         QVERIFY(!child);
+    }
+
+    void bindingParentRootAndFailure() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString name = QString::fromUtf8("папка 📦");
+        QVERIFY(QDir(temp.path()).mkdir(name));
+        QFile file(temp.filePath("file"));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        auto *spec = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderFolder> folder = spec;
+        QCOMPARE(folder->LoadItems(), S_OK);
+        const auto wide = name.toStdWString();
+        CMyComPtr<IFolderFolder> child;
+        QCOMPARE(folder->BindToFolder(wide.c_str(), &child), S_OK);
+        QVERIFY(child);
+        QCOMPARE(child->LoadItems(), S_OK);
+        CPropVariant value;
+        QCOMPARE(child->GetFolderProperty(kpidPath, &value), S_OK);
+        QCOMPARE(
+            QDir::cleanPath(QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal))),
+            temp.filePath(name));
+        CMyComPtr<IFolderFolder> parent;
+        QCOMPARE(child->BindToParentFolder(&parent), S_OK);
+        QVERIFY(parent);
+        QCOMPARE(parent->GetFolderProperty(kpidPath, &value), S_OK);
+        QCOMPARE(
+            QDir::cleanPath(QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal))),
+            temp.path());
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        for (UInt32 i = 0; i < count; ++i) {
+            CMyComPtr<IFolderFolder> indexed;
+            if (text(folder, i, kpidName) == name) {
+                QCOMPARE(folder->BindToFolder(i, &indexed), S_OK);
+                QVERIFY(indexed);
+            } else {
+                QCOMPARE(folder->BindToFolder(i, &indexed), E_INVALIDARG);
+                QVERIFY(!indexed);
+            }
+        }
+        QCOMPARE(folder->BindToFolder(count, &child), E_INVALIDARG);
+        QVERIFY(!child);
+        QVERIFY(folder->BindToFolder(L"file", &child) != S_OK);
+        QVERIFY(!child);
+        QVERIFY(folder->BindToFolder(L"missing", &child) != S_OK);
+        QVERIFY(!child);
+        CMyComPtr<IFolderWasChanged> changed;
+        QCOMPARE(folder.QueryInterface(IID_IFolderWasChanged, &changed), S_OK);
+        Int32 wasChanged = 99;
+        QCOMPARE(changed->WasChanged(&wasChanged), S_OK);
+        QCOMPARE(wasChanged, Int32(0));
+#ifdef _WIN32
+        const QString rootPath = QDir::toNativeSeparators(temp.path()).left(3);
+#else
+        const QString rootPath = QStringLiteral("/");
+#endif
+        CMyComPtr<IFolderFolder> root = new NFsFolder::CFSFolder(rootPath);
+        CMyComPtr<IFolderFolder> above;
+        QCOMPARE(root->BindToParentFolder(&above), S_OK);
+#ifdef _WIN32
+        QVERIFY(above);
+        QCOMPARE(above->GetFolderProperty(kpidType, &value), S_OK);
+        QCOMPARE(QString::fromWCharArray(value.bstrVal), QStringLiteral("FSDrives"));
+        CMyComPtr<IFolderFolder> rebound;
+        const auto rootWide = rootPath.toStdWString();
+        QCOMPARE(above->BindToFolder(rootWide.c_str(), &rebound), S_OK);
+        QVERIFY(rebound);
+#else
+        QVERIFY(!above);
+#endif
+        CMyComPtr<IFolderFolder> unbound = new NFsFolder::CFSFolder;
+        QCOMPARE(unbound->BindToParentFolder(&above), E_INVALIDARG);
+        QVERIFY(!above);
+    }
+
+    void flatIndexBindingAndChildMode() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkpath("a/b/c"));
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(3));
+        bool found = false;
+        for (UInt32 i = 0; i < count; ++i) {
+            if (text(folder, i, kpidName) != "b")
+                continue;
+            found = true;
+            CMyComPtr<IFolderFolder> child;
+            QCOMPARE(folder->BindToFolder(i, &child), S_OK);
+            QCOMPARE(child->LoadItems(), S_OK);
+            UInt32 childCount = 0;
+            QCOMPARE(child->GetNumberOfItems(&childCount), S_OK);
+            QCOMPARE(childCount, UInt32(1));
+            QCOMPARE(text(child, 0, kpidName), QStringLiteral("c"));
+        }
+        QVERIFY(found);
     }
 };
 QTEST_GUILESS_MAIN(FsFolderTests)

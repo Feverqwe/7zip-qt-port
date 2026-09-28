@@ -7,7 +7,10 @@ no-follow/follow metadata is covered locally; Windows reparse acceptance remains
 required. `filesystem_operations` and `file_transfer` cover existing consumers.
 `fs_folder` checks normal/flat reload, Unicode, base-relative prefixes, typed
 file size/time/attributes versus uncalculated directory size, source type/path/
-catalog descriptors, invalid indices and failure clearing stale rows.
+catalog descriptors, invalid indices and failure clearing stale rows. It also
+checks name/index/flat binding, ancestor/root, child flat defaults, missing/file
+rejection and WasChanged identity. Windows root-to-FSDrives/rebind is conditional
+and still requires execution on Windows.
 
 `folder_contract` validates the unchanged upstream IFolderFolder ABI against a
 local mock: interface identity/rejection, reference ownership/destruction,

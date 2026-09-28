@@ -8,6 +8,60 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b2b3 — filesystem binding, parent and logical drives (2026-09-29)
+
+Project baseline `e931b09`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+FSFolder.cpp copies BindToFolderSpec, both BindToFolder bodies and active desktop
+BindToParentFolder branches, replacing the temporary unavailable binding methods.
+Init now copies Windows CFindChangeNotification and FindFirst fallback validation;
+WasChanged copies notification draining and bool result. IFolderWasChanged and
+its member are added from FSFolder.h. LoadItems again consumes WasChanged before
+clearing/loading. Index guards and COM exception guards adapt existing public
+entry points; source allocation/Init/Detach/failed-parent control flow remains.
+
+The source File Manager parent body is Windows-specific. POSIX substitutes an
+absolute slash-root check for IsDrivePath and returns S_OK/null above `/`; native
+source stat-follow-link validates Init because the Windows notification fallback
+does not exist there. This rejects missing/file paths during bind rather than
+deferring error until load. Other parent path splitting stays source FString.
+The source NetFolder block is commented out in this baseline; its inactive text
+is omitted, not implemented here. Required active network/root workflows remain
+owned by P1-11/P2-05. Windows UNC/super paths retain source path helpers and
+native services, but cannot be declared platform-verified from macOS tests.
+
+FSDrives.h/.cpp adds the source read-only logical-drive subset: CDriveInfo fields,
+Init, normal LoadItems, GetNumberOfItems/GetProperty/AddExt, folder binding,
+null parent, catalog and folder type/path. Native Windows FileSystem.cpp/.h are
+vendored unchanged and built on Windows. Source drive-type strings and removable
+read guard, known-size flags and native metadata calls remain. The copied AddExt
+uses DRIVE_CDROM, with its Win32 numeric value supplied only for POSIX compilation.
+LangString(IDS_COMPUTER) becomes the Qt Russian Computer label at the presentation
+boundary; volume/super prefixes remain source strings. COM guards added around
+load/bind. The read-only module is the dependency of Windows CFSFolder drive-root
+binding; POSIX normal root does not expose a Windows drives folder.
+
+Partial FSDrives scope: device/physical-volume enumeration, CDriveInfo device-name
+helper, CopyFileSpec/GetFileSize/CopyTo, full IFolderOperations and system-icon
+bodies remain mandatory under inventory P1-11/P2-01/05/P3-05. Volume-mode load
+returns E_NOTIMPL until that source scope is ported; it is not N/A or complete.
+Source unsupported mutations must stay disabled. POSIX CFSDrives LoadItems is
+unavailable because its native drive enumeration is Windows-specific; actual
+POSIX root is handled above. Filesystem comments/packed/link/raw/stat/compare/
+clone/icon/COM operations omissions from b2 remain required in owning steps.
+No runtime window integration or visible UI change is claimed by this subset.
+
+fs_folder regressions add Unicode name/index binding, child/ancestor ownership,
+file/missing/invalid binding failures, root parent (Windows FSDrives conditional
+branch), default child flat=false after flat-index bind, WasChanged identity and
+empty-root error. Focused fs_folder/file_find/filesystem_operations/file_transfer
+4/4 passed macOS 2026-09-29; exact vendor bytes 57/57 (56 source/header files
+plus license). Full `./scripts/check.sh` with staged files passed formatting,
+both diff checks, app build and 61/61 CTest. Windows/Linux runtime unverified.
+
+The dated P0-01 FSDrives inventory row is superseded only for these copied
+read-only symbols; its device imaging/system icon/operations scope remains open.
+
 ## P0-02.2b3b2b2 — CFSFolder enumeration/property subset (2026-09-29)
 
 Project baseline `e77ee7f`; exact upstream [ip7z/7zip
