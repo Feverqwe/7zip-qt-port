@@ -150,7 +150,14 @@ QStringList GetMethodNames(QStringView name) {
     }
     return methods;
 }
-// LZMA/LZMA2 branch copied from CCompressDialog::SetOrder2 (0766b73).
+EMethodID GetMethodID(QStringView name, QStringView format) {
+    const auto &fi = GetFormatInfo(format);
+    for (unsigned i = 0; i < fi.NumMethods; i++)
+        if (name == QLatin1StringView(kMethodsNames[fi.MethodIDs[i]]))
+            return fi.MethodIDs[i];
+    return kCopy;
+}
+// LZMA/LZMA2 and Deflate/Deflate64 branches copied from CCompressDialog::SetOrder2 (0766b73).
 // The caller replaces registry selection and ComboBox insertion with Qt data.
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
     COrderOptions options;
@@ -166,6 +173,26 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
         }
         break;
     }
+    case kDeflate:
+    case kDeflate64: {
+        {
+            if (level >= 9)
+                options.AutoOrder = 128;
+            else if (level >= 7)
+                options.AutoOrder = 64;
+            else
+                options.AutoOrder = 32;
+        }
+        for (unsigned i = 2 * 2; i < 8 * 2; i++) {
+            UInt32 order = ((UInt32)(2 + (i & 1)) << (i / 2));
+            if (order > 256)
+                order = (methodID == kDeflate64 ? 257 : 258);
+            options.Values.append(int(order));
+        }
+
+        break;
+    }
+
     default:
         break;
     }

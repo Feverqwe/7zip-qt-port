@@ -61,6 +61,7 @@ struct COrderOptions {
     UInt32 AutoOrder = 1;
     QList<int> Values;
 };
+EMethodID GetMethodID(QStringView name, QStringView format);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 QList<int> SetSolidBlockSize2(QStringView format, UInt32 level);
 

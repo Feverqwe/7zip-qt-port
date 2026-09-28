@@ -45,14 +45,63 @@ class CompressionOrderTests final : public QObject {
         QVERIFY(word->isEnabled());
         QCOMPARE(word->count(), expected.size());
     }
+    void upstreamDeflateWordChoices_data() {
+        QTest::addColumn<QString>("methodName");
+        QTest::addColumn<int>("maximum");
+        QTest::newRow("Deflate") << QString("Deflate") << 258;
+        QTest::newRow("Deflate64") << QString("Deflate64") << 257;
+    }
+    void upstreamDeflateWordChoices() {
+        QFETCH(QString, methodName);
+        QFETCH(int, maximum);
+        QTemporaryDir dir;
+        CreateArchiveDialog dialog(dir.path());
+        dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
+        dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
+        auto *word = dialog.findChild<QComboBox *>("compressionWordSize");
+        auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        QVERIFY(word->isEnabled());
+        QList<int> actual;
+        for (int i = 0; i < word->count(); ++i)
+            actual << word->itemData(i).toInt();
+        QCOMPARE(actual, (QList<int>{0, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, maximum}));
+        QVERIFY(word->itemText(0).contains("32"));
+        word->setCurrentIndex(word->findData(maximum));
+        level->setCurrentIndex(level->findData(7u));
+        QVERIFY(word->itemText(0).contains("64"));
+        level->setCurrentIndex(level->findData(9u));
+        QVERIFY(word->itemText(0).contains("128"));
+        QCOMPARE(dialog.compressionOptions().wordSize, maximum);
+        dialog.show();
+        for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
+            dialog.resize(size);
+            QApplication::processEvents();
+            dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
+                ->ensureWidgetVisible(word, 0, 80);
+            QApplication::processEvents();
+            QVERIFY(dialog.grab().save(QDir::currentPath() +
+                                       QString("/ui-screenshots/compression-%1-%2.png")
+                                           .arg(methodName)
+                                           .arg(size.width())));
+        }
+        level->setCurrentIndex(level->findData(0u));
+        QVERIFY(!word->isEnabled());
+        QCOMPARE(dialog.compressionOptions().wordSize, 0);
+    }
     void createsWithPortedWordSizes_data() {
         QTest::addColumn<int>("word");
-        QTest::newRow("8") << 8;
-        QTest::newRow("48") << 48;
-        QTest::newRow("192") << 192;
+        QTest::addColumn<QString>("methodName");
+        QTest::addColumn<QString>("suffix");
+        QTest::newRow("8") << 8 << QString("LZMA2") << QString("7z");
+        QTest::newRow("48") << 48 << QString("LZMA2") << QString("7z");
+        QTest::newRow("192") << 192 << QString("LZMA2") << QString("7z");
+        QTest::newRow("Deflate-max") << 258 << QString("Deflate") << QString("zip");
+        QTest::newRow("Deflate64-max") << 257 << QString("Deflate64") << QString("zip");
     }
     void createsWithPortedWordSizes() {
         QFETCH(int, word);
+        QFETCH(QString, methodName);
+        QFETCH(QString, suffix);
         QTemporaryDir dir;
         const QString source = dir.filePath(QStringLiteral("данные с пробелом.txt"));
         QFile file(source);
@@ -61,10 +110,10 @@ class CompressionOrderTests final : public QObject {
         file.close();
         ArchiveBackend backend;
         CompressionOptions options;
-        options.method = "LZMA2";
-        options.dictionaryMiB = 1;
+        options.method = methodName;
+        options.dictionaryMiB = suffix == "7z" ? 1 : 0;
         options.wordSize = word;
-        const QString target = dir.filePath("word.7z");
+        const QString target = dir.filePath("word." + suffix);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
@@ -83,9 +132,9 @@ class CompressionOrderTests final : public QObject {
         file.close();
         ArchiveBackend backend;
         CompressionOptions options;
-        options.method = "LZMA2";
-        options.wordSize = 11;
-        const QString target = dir.filePath("cancel.7z");
+        options.method = "Deflate64";
+        options.wordSize = 258;
+        const QString target = dir.filePath("cancel.zip");
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
         QCOMPARE(done.size(), 1);

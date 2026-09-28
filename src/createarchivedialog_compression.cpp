@@ -63,7 +63,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         const bool compressed = level_->currentData().toInt() != 0;
         method_->setEnabled(compressed);
         dictionary_->setEnabled(compressed && lzma);
-        wordSize_->setEnabled(compressed && lzma);
+        wordSize_->setEnabled(compressed && wordSize_->count() > 1);
         solidBlock_->setEnabled(compressed && format_->currentText() == "7z" &&
                                 solid_->isChecked());
     };
@@ -105,9 +105,8 @@ void CreateArchiveDialog::SetLevel2() {
 
 void CreateArchiveDialog::SetOrder2() {
     const int previous = wordSize_->currentData().toInt();
-    const auto method = method_->currentText() == "LZMA"    ? NCompressDialog::kLZMA
-                        : method_->currentText() == "LZMA2" ? NCompressDialog::kLZMA2
-                                                            : NCompressDialog::kCopy;
+    const auto method =
+        NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
     const auto options = NCompressDialog::SetOrder2(method, level_->currentData().toUInt());
     wordSize_->clear();
     wordSize_->addItem(options.Values.isEmpty()

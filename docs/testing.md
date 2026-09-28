@@ -197,3 +197,9 @@ CTest `compression_solid` проверяет границы и промежут�
 архив создаётся и тестируется с блоком 1 МиБ; 3 МиБ отклоняются, отмена
 с блоком 32 МиБ убирает временный файл. До переноса оба сценария падали.
 Снимки: `compression-solid-760.png` / `compression-solid-640.png`.
+
+`compression_order` также проверяет полные ряды Deflate/Deflate64, Auto на
+уровнях 5/7/9, сохранение выбора, Store, реальные ZIP с fb=258/257 и `7zz t`.
+Значение 258 для Deflate64 отклоняется до запуска; отмена ZIP не оставляет
+архив или stage. Снимки: `compression-Deflate-760.png`,
+`compression-Deflate-640.png` и соответствующие `Deflate64` в ui-screenshots.

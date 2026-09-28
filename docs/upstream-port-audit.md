@@ -109,3 +109,16 @@ Qt-часть формы сжатия выделена в `createarchivedialog_c
 полем `CompressionOptions::solidBlockMiB`. Registry, Add_Size, расчёт Auto,
 Non Solid и Full Solid из этой функции не включены в данный перенос.
 Форматирование изменено только по обязательному clang-format gate.
+
+### Итерация: порядок Deflate / Deflate64
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::CCompressDialog::SetOrder2`.
+Скопированы обе ветки Deflate: условия Auto 32/64/128, цикл и замена
+последнего значения на 258/257. Сохранены имена метода, порядок вычислений
+и границы; clang-format меняет только оформление. Win32 AddOrder и выбор
+Registry заменены возвратом данных и текущим выбором Qt, как в ранее
+перенесённой ветке LZMA. `GetMethodID` — узкий адаптер между строковым
+`CompressionOptions` и исходными ID из таблицы форматов; upstream получает
+ID из item data Win32 combo. Backend использует тот же ряд для проверки и
+передаёт существующий параметр `fb` движку. Ветки PPMd остаются долгом.
