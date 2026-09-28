@@ -169,9 +169,7 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     sortActions_[0]->setChecked(true);
     viewMenu->addSeparator();
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    fileListSettings_ = {settings.value("list/realFileIcons", false).toBool(),
-                         settings.value("list/grid", false).toBool(),
-                         settings.value("list/singleClick", false).toBool()};
+    fileListSettings_.Load(toolbarSettingsPath());
     flatDisk_ = settings.value("view/flatDisk", false).toBool();
     flatArchive_ = settings.value("view/flatArchive", false).toBool();
     flatView_ = viewMenu->addAction("Плоский вид");

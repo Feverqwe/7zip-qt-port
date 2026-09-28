@@ -17,7 +17,7 @@ class SettingsTests : public QObject {
 
     void cleanup() {
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        settings.setValue("list/singleClick", false);
+        settings.setValue("FM/SingleClick", false);
     }
     void singleClickSelection_data() {
         QTest::addColumn<int>("mode");
@@ -37,7 +37,7 @@ class SettingsTests : public QObject {
         QFETCH(bool, archive);
         QFETCH(bool, singleClick);
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        settings.setValue("list/singleClick", singleClick);
+        settings.setValue("FM/SingleClick", singleClick);
         settings.setValue("view/flatDisk", false);
         settings.setValue("view/flatArchive", false);
         settings.sync();
@@ -106,7 +106,7 @@ class SettingsTests : public QObject {
         }
         QVERIFY(address->text() != before);
         QCOMPARE(backend.extractCalls, 0);
-        settings.setValue("list/singleClick", false);
+        settings.setValue("FM/SingleClick", false);
         settings.sync();
     }
 
@@ -145,9 +145,9 @@ class SettingsTests : public QObject {
         action->trigger();
         QVERIFY(table->showGrid());
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QVERIFY(settings.value("list/realFileIcons").toBool());
-        QVERIFY(settings.value("list/grid").toBool());
-        QVERIFY(settings.value("list/singleClick").toBool());
+        QVERIFY(settings.value("FM/ShowRealFileIcons").toBool());
+        QVERIFY(settings.value("FM/ShowGrid").toBool());
+        QVERIFY(settings.value("FM/SingleClick").toBool());
 
         int folderRow = -1;
         for (int row = 0; row < table->rowCount(); ++row)

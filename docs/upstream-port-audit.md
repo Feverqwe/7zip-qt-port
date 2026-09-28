@@ -8,6 +8,35 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## Настройки файловых списков (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+`CPP/7zip/UI/FileManager/RegistryUtils.cpp/.h::CFmSettings::{Load,Save}`
+перенесены в исходные пути `src/`: семь полей, defaults=false, имена ключей,
+порядок чтения/записи и сохранение default при некорректном значении сохранены.
+QSettings INI group FM заменяет HKEY_CURRENT_USER FM; путь передаётся явно.
+ReadOption принимает bool/UInt32 и проверяет !=0 как UINT32ToBool вместо registry DWORD. Остальные функции
+RegistryUtils (editor/language/flat view/large pages) не перенесены.
+Старые самостоятельные ключи list/* не читаются и не мигрируются.
+
+`SettingsPage.cpp/.h::{OnInit,OnApply,OnButtonClicked}` перенесены частично:
+ShowRealFileIcons/ShowGrid/SingleClick, флаги init/changed, чтение при
+инициализации и запись только изменённой страницы при подтверждении.
+Qt QDialog/check boxes/signals заменяют CPropertyPage, CheckButton и notifications;
+OnApply сохраняет snapshot пропущенных полей вместо чтения отсутствующих controls.
+Cancel ничего не сохраняет. Отдельный Apply и OptionsDialog с шестью страницами
+отсутствуют. Не перенесены controls/ветки ShowDots, FullRow, AlternativeSelection,
+ShowSystemMenu, large pages, extraction RAM, help и Lang. Порядок трёх controls
+взят из SettingsPage2.rc; самостоятельная settingsdialog.cpp удалена,
+header оставлен как alias. MainWindow адаптирует поддерживаемые флаги к Qt.
+CFmSettings принадлежит sevenzip_common, CSettingsPage — sevenzip_panel.
+Notice/лицензия сохранены; форматирование адаптаций — clang-format.
+
+Проверки: fm_settings (defaults, invalid INI, round trip, cancel/confirm,
+сохранение пропущенных flags, отсутствие записи без изменений, геометрия),
+settings (применение и один щелчок в четырёх режимах disk/archive).
+Геометрия/JSON проверяют структуру Qt; Windows rendering не проверен.
+
 ## Запрос пароля и группировка Compress после сверки диалогов (2026-09-28)
 
 Baseline: официальный [ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
@@ -371,7 +400,7 @@ Extract column ordering on disposable fixtures.
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
 | `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `App.cpp`, `Panel.h`, `PanelListNotify.cpp`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy`, `CPanel::GetItemsInfoString`; `PanelListNotify.cpp::ConvertSizeToString` | Перенесены CCopyDialog, история, сводка выделения и форматирование чисел. Qt layouts заменяют OnSize, QSettings — Registry, snapshot свойств — COM; старый header содержит только alias. Остальные App/Panel/ListNotify функции пока не перенесены. |
 | `src/CPP/7zip/UI/FileManager/ComboDialog.cpp/.h`, `BrowseDialog.cpp/.h`, `src/combodialog.h` | `FileManager/ComboDialog.cpp/.h/.rc`, `BrowseDialog.cpp::Dlg_CreateFolder` | Перенесены OnInit/OnOK и создание папки через общий dialog; Qt заменяет presentation, header alias сохраняет существующих потребителей. Остальная BrowseDialog не перенесена. |
-| `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
+| `src/CPP/7zip/UI/FileManager/SettingsPage.*`, `RegistryUtils.*`, `settingsdialog.h` | `FileManager/SettingsPage.cpp/.h`, `RegistryUtils.cpp/.h`, `SettingsPage2.rc` | Частичный source port страницы и CFmSettings, подробно выше; OptionsDialog и остальные controls остаются долгом. |
 | `src/archiveformats.h` | `FileManager/FilePlugins.cpp`, `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственный статический список расширений для эвристики двойного щелчка и фильтра диалога. В upstream расширения приходят от установленных обработчиков; движок сам определяет формат при явном открытии. |
 | `src/archivebackend.cpp`, `archivebackend.h`, `archivebackend_listing.cpp`, `archivebackend_mutations.cpp`, `archivebackend_validation.cpp` | `CPP/7zip/UI/Console/Main.cpp`, `CPP/7zip/UI/Common/OpenArchive.cpp`, `Update.cpp` и движок `CPP/7zip/Archive/` | Адаптер процесса `7zz`, парсер его вывода, проверка путей и транзакционное обновление. Не является копией движка; переносить код форматов сюда нельзя. |
 

@@ -76,7 +76,7 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file) {
                       displayName.left(displayName.size() - file.fileName().size()));
         item->setData(Qt::UserRole + 6, row);
         if (col == 0) {
-            if (fileListSettings_.realFileIcons) {
+            if (fileListSettings_.ShowRealFileIcons) {
                 QFileIconProvider icons;
                 item->setIcon(icons.icon(file));
             } else

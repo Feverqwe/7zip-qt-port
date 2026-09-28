@@ -1,5 +1,10 @@
 # Regression strategy
 
+`fm_settings` covers CFmSettings defaults and INI keys, invalid values,
+unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,
+and normal/compact geometry reports. `settings` exercises window consumers
+across disk/archive and all four view modes.
+
 `compression_limit` now owns a fresh temporary settings file on each suite run;
 its default assertions do not depend on INI data left by previous runs.
 

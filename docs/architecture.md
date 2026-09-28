@@ -74,7 +74,10 @@ Address signals are disconnected before window teardown.
 
 ## Dialogs and preferences
 
-`SettingsDialog` presents list options; `MainWindow` applies them and supplies
+`CSettingsPage` presents supported list options and commits changed values
+through source-ported `CFmSettings` in the FM INI group. Omitted flags are
+preserved but do not affect Qt views yet. `settingsdialog.h` is a compatibility
+alias. `MainWindow` applies accepted values and supplies
 filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies a
 metadata snapshot to `CPanel::Properties`, which owns enumeration and totals.
 `CListViewDialog` presents the result through the shared Qt list adapter;

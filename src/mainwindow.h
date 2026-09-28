@@ -296,7 +296,7 @@ class MainWindow : public QMainWindow {
     QAction *createFile_ = nullptr;
     QAction *refresh_ = nullptr;
     QAction *settingsAction_ = nullptr;
-    FileListSettings fileListSettings_;
+    CFmSettings fileListSettings_;
     QAction *foldersHistory_ = nullptr;
     QAction *deselectAll_ = nullptr;
     QAction *invertSelection_ = nullptr;

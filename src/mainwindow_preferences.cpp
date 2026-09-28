@@ -201,15 +201,11 @@ void MainWindow::updateToolbar() {
 }
 
 void MainWindow::showSettings() {
-    SettingsDialog dialog(fileListSettings_, this);
+    SettingsDialog dialog(toolbarSettingsPath(), this);
     if (dialog.exec() != QDialog::Accepted)
         return;
     fileListSettings_ = dialog.settings();
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    settings.setValue("list/realFileIcons", fileListSettings_.realFileIcons);
-    settings.setValue("list/grid", fileListSettings_.grid);
-    settings.setValue("list/singleClick", fileListSettings_.singleClick);
-    table_->setShowGrid(fileListSettings_.grid);
+    table_->setShowGrid(fileListSettings_.ShowGrid);
     if (state_ == State::Filesystem)
         updateFilesystemIcons();
 }
@@ -219,7 +215,7 @@ void MainWindow::updateFilesystemIcons() {
     for (int row = 0; row < table_->rowCount(); ++row) {
         const QFileInfo file(table_->item(row, 1)->text());
         table_->item(row, 0)->setIcon(
-            fileListSettings_.realFileIcons
+            fileListSettings_.ShowRealFileIcons
                 ? icons.icon(file)
                 : QApplication::style()->standardIcon(file.isDir() ? QStyle::SP_DirIcon
                                                                    : QStyle::SP_FileIcon));

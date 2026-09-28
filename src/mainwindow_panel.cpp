@@ -45,7 +45,7 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
     connect(pathCombo_, &QComboBox::activated, this,
             [this](int index) { navigateTo(pathCombo_->itemText(index)); });
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
-        if (!fileListSettings_.singleClick)
+        if (!fileListSettings_.SingleClick)
             activateRow(row);
     });
     connect(table_, &QTableWidget::cellClicked, this,
@@ -69,7 +69,7 @@ void MainWindow::createFileTable(QWidget *central) {
     table_->setColumnWidth(2, 100);
     table_->setColumnWidth(3, 100);
     table_->setColumnWidth(4, 150);
-    table_->setShowGrid(fileListSettings_.grid);
+    table_->setShowGrid(fileListSettings_.ShowGrid);
     table_->setWordWrap(false);
     table_->setTextElideMode(Qt::ElideMiddle);
     for (int column : {2, 3, 4})
@@ -179,7 +179,7 @@ void MainWindow::createIconList(QWidget *central) {
     iconList_->addAction(openItem_);
     iconList_->addAction(parent_);
     connect(iconList_, &QListView::doubleClicked, this, [this](const QModelIndex &index) {
-        if (!fileListSettings_.singleClick)
+        if (!fileListSettings_.SingleClick)
             activateRow(index.row());
     });
     connect(iconList_, &QListView::clicked, this,
@@ -197,7 +197,7 @@ void MainWindow::createIconList(QWidget *central) {
 void MainWindow::activateSingleClickedRow(int row) {
     // Selection modifiers must keep the Qt multi-selection gesture intact.
     const auto modifiers = QApplication::keyboardModifiers();
-    if (fileListSettings_.singleClick &&
+    if (fileListSettings_.SingleClick &&
         !(modifiers & (Qt::ControlModifier | Qt::MetaModifier | Qt::ShiftModifier)))
         activateRow(row);
 }

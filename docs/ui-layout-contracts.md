@@ -46,6 +46,18 @@ SEVENZIP_CAPTURE_SCREENSHOTS=1 ctest --preset dev -R '^ui_geometry$' --output-on
 
 This writes optional PNGs next to the JSON. Open only the affected screenshot.
 
+## File list settings
+
+Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/SettingsPage2.rc` and `SettingsPage.cpp`.
+The partial page keeps the resource order of supported controls: real file
+icons, grid lines, single click. OK/Cancel sit below them. The Qt dialog has
+no heading absent from the resource. Other controls and the property sheet
+are omitted; this does not establish full OptionsDialog parity.
+`fm_settings` checks unclipped labels and separated controls/footer
+at 460×180 and 340×180, writing settings JSON reports. Rendered Windows
+parity remains unverified.
+
 ## Folder history list
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
