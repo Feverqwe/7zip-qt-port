@@ -537,6 +537,45 @@ Commented debug/alternative hash-update/CRC routines are inactive baseline paths
 build/CTest/layout runs. P2-04 still requires functional and geometry checks;
 Windows/macOS/Linux native benchmark parity remains unverified.
 
+## P0-01.3d4b — Common hash calculation and checksum handler (2026-09-28)
+
+Project baseline `8a1f3e2`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полные HashCalc.cpp/.h; GUI/HashGUI callbacks/worker и Extract IHashCalc
+integration установлены. Copied scope пуст, codec/hash primitives — official engine.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/HashCalc.cpp — P2-03, P2-01, P0-04/12, P1-04/05/09, P3-05 | CHashBundle methods/init/update/final, CHasherState digest sums/formatting, HashCalc scan/read/callback orchestration, HashHexToString, filename escape/tag/line helpers, NHash::CHashPair parsing, CHandler properties/Open/Close/Extract/UpdateItems/SetProperties, method inference and Codecs_AddHashArcHandler. | CreateCoder/MethodProps/DirItem/EnumDirItems/IFileExtractCallback/LoadCodecs, FileStreams/ProgressUtils/StreamObjects/StreamUtils/ItemNameUtils/IArchive, UTF/strings/DynLimBuf, C Alloc/CpuArch. Preserve sorted unique method IDs/default CRC32/wildcard expansion, digest limit, four digest groups/extra carry bytes, directory/file/ADS totals, name hashing/path separator normalization, scan policy/reparse streams/preserve-atime/share-for-write. Backend owns streams/codec transport/censor/callbacks; Qt owns progress and result presentation. |
+
+HashHexToString reverses uppercase byte order for <=8-byte digests, preserves
+lowercase order for longer digests; summed digests append extra bytes when group
+has multiple members. Final hashes 16-byte type prefix, digest and two-byte path
+units; preserve source algorithm rather than invent a cross-platform encoding.
+HashCalc opens skip only on callback S_FALSE, updates totals for file growth,
+propagates read/cancel errors and records scan errors in bundle. Its direct
+checksum-file generation branch is commented; active writer is CHandler::UpdateItems.
+Handler accepts GNU/BSD/tag/cksum/PGP and zero/CRLF lines, backslash escape policy,
+filename/size/method inference; PGP checksum metadata is not signature verification.
+CanUpdate disables opened PGP/cksum mutation; keep checks and output flags.
+Extract requires external input callback, validates digest and optional stored
+size, reports unsupported U/^ modes/methods separately from CRCError, and may copy
+external input to an output stream. Path resolution must reuse extraction safety
+boundary; checksum entries cannot authorize arbitrary filesystem reads/writes.
+Update preserves old FullLine or regenerates renamed properties, inherits flags
+unless explicitly set, bounds output and writes after complete generation.
+GetStream S_FALSE sets needWrite=false but the baseline still emits a digest line;
+do not silently change that flow during copying. Any corrective adaptation needs
+its own regression/deviation record. Handler registration is application checksum
+integration, not a new hash or compression format implementation. Qt adapters
+must retain this scope even when 7zz provides hash primitives. Commented report
+interfaces/debug/default-method alternatives are inactive, active branches open.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 110 unique paths
+(30 mirrored + 80 missing), exact source exists. Runtime/UI unchanged;
+build/CTest/layout not run. Known digests, sums/names/ADS, escaped Unicode,
+malicious checksum paths, errors/cancel and handler lifecycle remain mandatory
+functional tests; native parity across three platforms remains unverified.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
