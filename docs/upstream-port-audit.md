@@ -68,6 +68,58 @@ ownership — P0-01.4. P0-01.1 фиксирует ровно 16 уникальн
 рабочее дерево чистое. Build/CTest/layout не запускались: code/UX не менялись.
 Runtime Windows/Linux и pixel parity этим аудитом не подтверждены.
 
+## P0-01.2 — остальные 14 модулей и portable dependencies (2026-09-28)
+
+Project baseline: `cfd02a5` после P0-01.1, чистая рабочая копия.
+Для всех путей ниже exact source — [ip7z/7zip,
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+локально `src/<путь>`. FM/GUI/Common здесь означают соответствующие
+`CPP/7zip/UI/` каталоги. Scope omissions: все bodies кроме явно перечисленных
+перенесённых portions; имена ниже уточняют обязательные оставшиеся ветви.
+
+| Путь / owner оставшегося scope | Copied/adapted symbols | Omitted scope, dependencies и причины |
+| --- | --- | --- |
+| FM/BrowseDialog.cpp — P1-11 | Только `Dlg_CreateFolder`: clear → CComboDialog → Cancel/OK → raw Value. Qt HWND/dialog result и русские Lang captions. | Весь CBrowseDialog (Init/Reload/parent/path/events/sort/create/enter/FinishOnOK), CBrowseInfo::BrowseForFile, MyBrowseForFolder и CorrectFsPath/path cleanup. Dependencies: FileFind/Dir/Name, RootFolder/drives, ComboDialog, native browse wrappers/Lang, filters. Native QFileDialog сейчас заменяет presentation, но не доказывает перенос validation/navigation bodies. |
+| FM/PanelListNotify.cpp — P0-06, P0-07, P0-09 | Оба `ConvertSizeToString` и INT_TO_STR_SPEC: исходный integer/grouping алгоритм, внешний результат QString вместо UString. | IsSizeProp, SetItemText (все generic/raw/metadata formatting), OnItemChanged/OnNotifyActivateItems/OnNotifyList, OnCustomDraw, Refresh_StatusBar; GetCpuTicks diagnostic branch не включён. Dependencies: Panel, PropVariantConv, FormatUtils/PropertyName, FileLink/security, list notifications. Основной panel hover и status pipeline ещё не портированы. |
+| FM/ComboDialog.cpp — P1-03, P0-07, P1-14 | OnInit/OnOK функциональная последовательность; raw Value и Strings, Qt layout/focus/selected edit заменяют controls/NormalizeSize/OnSize. Constructor/accept/value — glue. | LangSetDlgItems отсутствует (P1-14); Win32 OnSize заменён layout, не отдельный algorithm debt. Sorted code в оригинале закомментирован. Dependencies: ComboDialog.h/.rc, Control/Static, LangUtils, upstream strings заменены QStringList только на dialog boundary. |
+| FM/CopyDialog.cpp — P1-01, P1-14 | OnInit, OnButtonSetPath, OnOK и browse-button dispatch: history/value/info, normalize separator и reset selection. Qt signals/layout/native browse заменяют Win32 OnButtonClicked/OnSize. | Lang, UNDER_CE initialization workaround не перенесены; CE branch отдельно не доказывает неприменимость остальных callers. Local sources-summary constructor — glue, основной summary уже в App.cpp. Dependencies: CopyDialog.h/.rc, BrowseDialog::MyBrowseForFolder, FileName::NormalizeDirPathPrefix, LangUtils. Full routing/overwrite не принадлежит dialog и остаётся P1-01/P0-11. |
+| FM/SplitDialog.cpp — P1-06, P1-14 | OnInit/OnButtonSetPath/OnOK: filename title, first preset, path, trim/parse/empty check; Qt signals/layout/native browse и inline error вместо Win32 message. Добавлен signed-qint64 bound. | Lang; original resize/control wrappers заменены presentation. Dependencies: SplitDialog.h/.rc, SplitUtils, BrowseDialog, FileName, CopyDialogRes, resourceGui. UString/CRecordVector result сохранён частично (VolumeSizes), QString/std conversion parser — debt SplitUtils, не оправдание новой parser реализации. |
+| FM/PasswordDialog.cpp — P0-12, P1-14 | Все functional handlers ReadControls/SetTextSpec/OnInit/OnButtonClicked/OnOK, включая read-before-echo-toggle. QString и Qt controls/result вместо Win32/Lang. | Lang отсутствует; generic CDialog fallback заменён signals. Dependencies: PasswordDialog.h/.rc, LangUtils, edit/control wrappers. Read password dialog не закрывает callback retry/Ask/encrypted mutation scopes. |
+| FM/ListViewDialog.cpp — P1-10, P1-14 | ListView_GetSelected, OnInit, CopyToClipboard/ShowItemInfo/DeleteItems/OnEnter/OnOK, активные keyboard/activation branches OnNotify. UString/CUIntVector сохранены; qtlistview, Qt clipboard/signals/filter/layout заменяют services/OnSize. | Lang; version-specific g_LVN_ITEMACTIVATE_Support заменён Qt click policy, Cmd keys/modifier guards и 400ms hover — local presentation. Dependencies: ListViewDialog.h/.rc, EditDialog, RegistryUtils/CFmSettings, CListView adapter. Generic/raw property provider относится к P1-10, не к этому списку. |
+| FM/EditDialog.cpp — P1-10, P1-14 | OnInit Title/Text; layout вместо OnSize. Resource styles read-only/multiline/no-wrap/scroll/Enter сохранены через Qt. eventFilter — ES_WANTRETURN adapter. | Lang отсутствует. Dependencies: EditDialog.h/.rc, GuiCommon.rc, ViewSettings ToQString. Это detail dialog; внешний editor/viewer из P1-08 — иной workflow. |
+| FM/RegistryUtils.cpp — P0-07, P0-08, P1-13/14, P2-07 | CFmSettings::Load/Save, 7 keys/default false и порядок; SaveOption/ReadOption services адаптированы QSettings bool/UInt32 preserving invalid default. FmSettingsPath — local config-location glue. | Save/ReadRegLang, editor/viewer/diff/version-control, Save/ReadLockMemoryEnable, Save/ReadFlatView, Save/Read_ShowDeleted, HKLM helpers и прочие registry functions. Dependencies: Registry, StringConvert, MyString, synchronization/services; persistence adapter необходим между ОС, portable fields/logic сохранять. |
+| FM/SettingsPage.cpp — P0-07, P1-12, P2-07 | Части OnInit/OnApply/OnButtonClicked для ShowRealFileIcons/ShowGrid/SingleClick, init/changed flags. Qt dialog вместо property page; snapshot omitted flags сохраняется при OK. | ShowDots/FullRow/AlternativeSelection/ShowSystemMenu, large-pages capability/privilege, extraction limit spin/range/validation/save, EnableSpin, OnCommand, OnNotifyHelp и Options Apply container. Dependencies: SettingsPage.h, SettingsPage.rc/SettingsPage2.rc, RegistryUtils, ZipRegistry, MemoryLock/System/ErrorMsg/StringToInt/HelpUtils. Controls не считать готовыми только потому, что есть CFmSettings поля. |
+| GUI/CompressDialog.cpp — P1-05, P1-07, P2-01/02 | Static format/method tables; GetStaticFormatIndex adapted by format name. Numeric portions SetDictionary2/SetOrder2/GetOrderMode/SetSolidBlockSize2/SetNumThreads2; Get_Lzma2_ChunkSize, GetMemoryUsage_Threads_Dict_DecompMem, Add_Size/AddMemUsage/AddMemSize/AddMemComboItem/SetMemUseCombo/Get_MemUse_Bytes. Path portions GetExtDotPos/SetArchiveName*/ArcPath_WasChanged/SetArcPathFields/GetFinalPath_Smart; FindRegistryFormat/SetEncryptionMethod/GetEncryptionMethodSpec. IsAsciiString and password block OnOK extracted as CheckPassword; history/encrypt persistence and solid conversion blocks OnOK extracted separately. | Full CCompressDialog::OnInit/OnOK/OnCommand/FormatChanged/SetMethods/SetLevel2/SetMethod2, registry selection within numeric setters, SaveOptionsInMem, GetMethodSpec*, SFX/KeepName/hash filename, volume/shared/delete/update/path modes, memory-blocking prompt, OnHelp, parameters; **all COptionsDialog** time/links/security/precision handlers. Dependencies: CArcInfoEx/LoadCodecs, ZipRegistry, MethodProps, System affinity/RAM, SplitUtils, BrowseDialog/FileName, Lang/Help, CompressDialog.rc/CompressOptionsDialog.rc. Qt preferences widgets live in compressiondialog*.cpp; pure functions moved out of original class are existing structure debt, not a model for new ports. Commented ZSTD portions in baseline are not active missing branches; external/user codecs remain mandatory capability review. |
+| GUI/ExtractDialog.cpp — P0-12, P2-07, P1-14/15 | AddComboItems/AddUniqueString; parts OnInit/OnOK for modes, force flags, password visibility, 16-entry history, SplitDest, trim/normalization; UpdatePasswordControl/OnButtonSetPath and signals replacing OnButtonClicked. QString/Qt layout/native browse/settings path services. | Absolute-path choice hidden, Ask transport absent (currently maps safe no-overwrite), GetBoolsVal/CheckButton_TwoBools/GetButton_Bools and ElimDup/NtSecurity, full initial Password/ArcPath title pipeline, OnHelp; SFX/no-registry conditional workflows not ported. Dependencies: ExtractDialog.h/.rc, ExtractMode, ZipRegistry, Wildcard::SplitPathToParts_Smart, FileName/Dir, Browse/Lang/Help. `options/destination/settingsPath` — integration helpers, not upstream bodies. |
+| Common/ZipRegistry.cpp — P1-07/12, P2-07/09 | ParseMemUse/CMemUse::Parse and inline GetBytes/Clear; partial NCompression::CInfo::Save/Load and NExtract::CInfo::Save/Load. Original key names, numeric absent sentinel, force flags and format iteration retained; QSettings replaces Registry/lock, Qt strings at persistence boundary. | Compression Level/global bool pairs/Options/time precision/MAC/link/security fields; Extract ElimDup/Security and Read/Save_ShowPassword/Read/Save_LimitGB; NWorkDir::CInfo::Save/Load; CContextMenuInfo::Save/Load; omitted Key_*bool pair helpers. MemLimit_Save/Load are commented in baseline, not active missing symbols. Dependencies: Registry/Synchronization, ExtractMode, MethodProps, StringToInt. Legacy history/extract fallback is local migration; QSettings bool conversion differs from strict registry reads and needs review when extending fields. |
+| CPP/7zip/Common/MethodProps.cpp — P1-07, P2-01 | Only Calc_From_Val_Percents: body copied including saturation/overflow; MyTypes interface. | StringToBool, parameter/dict/log-size parsing, CProps/CCoderProps/CMethodProps and coder property conversions/memory helpers, property-name lookup; dependencies: StringToInt/MyString/MyVector, PropVariant, ICoder/PropID. Process engine owns compression; advanced application property validation still requires source review. |
+
+### Vendored closure и UI references
+
+На 2026-09-28 проверены **33 файла** (32 source/header + License.txt): каждый
+побайтово совпал с `git show <full-baseline>:<path>`, License.txt — с
+`DOC/License.txt`. README.md — локальная документация, не copied source.
+Из них sevenzip_common собирает StringToInt, MyString, IntToString, MyWindows,
+StringConvert, UTFConvert и Windows/System; headers/defines входят через
+`third_party/7zip/CPP`. PropID/ExtractMode, CpuArch/MyBuffer и portable type
+closure не следует считать отдельными завершёнными UX-функциями.
+README vendor inventory обновлён до полного фактического набора; исходные notices
+и license не изменены. При будущем расширении closure проверять optional/platform
+includes и callers, не заменять portable bodies из-за Win32 имени каталога.
+
+Прочитаны reference `.rc` для Combo/Copy/Split/Password/ListView/Edit,
+SettingsPage2, Extract/Compress и include CompressOptionsDialog; соответствующие
+Qt handlers сверены с функциональным source. Это source/resource audit,
+без visual change: geometry/JSON/screenshot и runtime checks не повторялись.
+Русские captions вместо Lang, native Browse, inline Split errors и scrolling Copy
+summary — существующие adapters, указанные в parity. Отсутствие controls
+Options/Help/absolute/security и functional callers остаётся обязательной работой.
+Windows rendered reference не использован; pixel parity не подтверждена.
+
+Checks: 2026-09-28 macOS docs-only — byte comparison всех 33 vendored файлов,
+unique-path coverage 16 + 14 = 30 и `git diff --check`; build/CTest не нужны.
+P0-01 parent остаётся partial до absent-module review и полной coverage сверки.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

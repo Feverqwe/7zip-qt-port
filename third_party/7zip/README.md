@@ -12,6 +12,7 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `C/Compiler.h`
 - `C/Precomp.h`
 - `C/Threads.h`
+- `C/CpuArch.h`
 - `CPP/Common/Common.h`
 - `CPP/Common/Common0.h`
 - `CPP/Common/Defs.h`
@@ -19,6 +20,16 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `CPP/Common/MyGuidDef.h`
 - `CPP/Common/MyTypes.h`
 - `CPP/Common/MyWindows.h`
+- `CPP/Common/MyWindows.cpp`
+- `CPP/Common/MyBuffer.h`
+- `CPP/Common/MyString.cpp`
+- `CPP/Common/MyString.h`
+- `CPP/Common/IntToString.cpp`
+- `CPP/Common/IntToString.h`
+- `CPP/Common/StringConvert.cpp`
+- `CPP/Common/StringConvert.h`
+- `CPP/Common/UTFConvert.cpp`
+- `CPP/Common/UTFConvert.h`
 - `CPP/Common/NewHandler.h`
 - `CPP/Common/StdAfx.h`
 - `CPP/Common/StringToInt.cpp`
@@ -26,7 +37,13 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `CPP/Windows/StdAfx.h`
 - `CPP/Windows/System.cpp`
 - `CPP/Windows/System.h`
+- `CPP/7zip/PropID.h`
+- `CPP/7zip/UI/Common/ExtractMode.h`
 - `License.txt`
+
+All 32 source/header files and `License.txt` (from upstream `DOC/License.txt`)
+were compared byte for byte with the exact commit above on 2026-09-28.
+This provenance check does not establish runtime verification on all platforms.
 
 See `License.txt` for the upstream license and `docs/upstream-port-audit.md`
 for the adapted functions outside this directory.
