@@ -284,6 +284,32 @@ Runtime/UI не менялись; build/CTest/layout не запускались
 reference и Windows/Linux runtime не проверены. Benchmark и остальные workflow
 остаются открытыми в своих functional packages.
 
+## P0-01.3d1 — Common names, paths, update pairs и temp policy (2026-09-28)
+
+Project baseline `0c70e3b`. Common = `CPP/7zip/UI/Common`; exact source всех
+десяти строк — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полные bodies, связанные interfaces и callers в FM/Agent/GUI/Common.
+Copied scope пуст. Здесь есть portable policy, которую нельзя заменить
+самостоятельным Qt/std algorithm или считать перенесённой вместе с `7zz`.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/ArchiveName.cpp — P1-04/14, P1-08 | CreateArchiveName: file/parent-folder base name, hash keep-name, single-dot stripping, valid filesystem name, collision suffixes для 7z/zip/tar/wim/sha256 и baseName. | MyString/MyVector, Wildcard/StringToInt, C Sort HeapSort, FileDir/Find/Name, ExtractingFilePath; Panel/PanelDrag callers. Сохранить suffix scan/sort и `_2` gap selection; narrow file-info/parent/root adapters для платформ. Commented tar special-case не активная policy. |
+| Common/DefaultName.cpp — P0-04, P1-01 | GetDefaultName3/2: recognized extension/addSubExtension, fallback last dot, `~` при отсутствии extension, TrimRight. | UString, OpenArchive::DefaultName callers. Portable unchanged body candidate; не заменять QFileInfo completeBaseName. |
+| Common/ExtractingFilePath.cpp — P0-12, P1-01/06/11/13, P2-07 | ReplaceIncorrectChars/Correct_AltStream_Name/IsSupportedName/CorrectUnsupportedName/Correct_PathPart/Get_Correct_FsFile_Name/Correct_FsPath/MakePathFromParts; platform trail replacement defaults, Windows reserved names, ADS postfix/RLO, empty/dot parts и absolute prefixes. | UString/UStringVector, Wildcard/FileName; ArchiveExtractCallback, Extract, FM temp/drag/items и AltStreamsFolder callers. Retain platform branches and control flow; safety validation in backend supplements this correction policy. Correct_FsPath alone не доказывает containment или symlink safety. Header's obsolete `[]` comment не actual replacement: body uses `_`. |
+| Common/SetProperties.cpp — P0-12, P1-04/05, P2-06 | ParseNumberString, CPropPropetiesVector, SetProperties: empty/no-interface success, trailing +/- boolean when no value, uint32/uint64/string conversion, stable names/values lifetime. | MyCom/MyString/StringToInt/PropVariant/ISetProperties; Update/OpenArchive callers. Preserve property typing before process serialization; replace only in-process COM dispatch with backend official-engine adapter. |
+| Common/SortUtils.cpp — P0-05, P1-04/05/14 | CompareStrings/SortFileNames: upstream filename comparison, sorted index vector, empty-input return. | Wildcard CompareFileNames/CUIntVector; EnumDirItems/UpdatePair. Portable source candidate; no Qt locale comparator replacement. |
+| Common/TempFiles.cpp — P0-10, P1-04/05/09, P2-02/06 | CTempFiles::Clear and header destructor: reverse-order cleanup, NeedDeleteFiles controls deletion but paths always consumed. | FStringVector/FileDir::DeleteFileAlways; Update owns lifetime. Filesystem adapter only; retain success-path ownership transfer and error cleanup policy, inspect caller changes in d3. |
+| Common/UpdateAction.cpp — P1-04/05/09, P0-12 | Add/Update/Fresh/Sync/Delete seven-state action tables; header CActionSet::IsEqualTo/NeedScanning. | UpdateAction NPairState/NPairAction, AgentOut/UpdateGUI/Update/command parser. Portable source candidate; preserve exact tables and scan policy when building official-engine options. |
+| Common/UpdatePair.cpp — P1-04/05, P2-06/07, P0-12 | MyCompareTime, CompareArcItemsBase/CompareArcItems, ThrowError/GetUpdatePairInfoList: sorted merge, duplicate/censor collision checks, directory distinction, time/size states, ADS HostIndex. | DirItem/CDirItems/CArcItem/CFiTime/CArcTime, TimeUtils, IArchive, SortUtils/Wildcard/upstream vectors; AgentOut/Update callers. Preserve DOS/Unix saturation, precision clipping and sub-100ns comparisons. Engine boundary не повод переписать pair algorithm; timestamp/filesystem inputs use narrow adapters. |
+| Common/UpdateProduce.cpp — P1-04/05/09, P0-12 | UpdateProduce and CUpdatePair2 helpers: ignore/delete notification, copy/compress collision guards, orphan ADS rule, anti-item props, IsSameTime, ReserveDown. | UpdatePair/UpdateAction/IUpdateProduceCallback, AgentOut/Update callers. Retain NewData/NewProps/UseArcProps and action flow; engine executes resulting mutations. ShowDeleteFile return is not propagated by this body: do not invent an upstream failure contract. |
+| Common/WorkDir.cpp — P1-09, P2-06, P0-10/11 | GetWorkDir current/specified/system and Windows removable-only policy; CWorkDirTempFile::CreateTempFile/MoveToOriginal, release output before replace. | ZipRegistry CInfo, FileName/System/Dir, CTempFile/FileStreams; GUI UpdateGUI/Agent ArchiveFolderOut. Settings/filesystem/drive-type adapters; preserve basename/prefix normalization, original target and failure HRESULT. Non-Windows removable-only behavior requires explicit platform parity decision, not silent rewrite. |
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 98 unique paths
+(30 mirrored + 68 missing), все десять source files существуют в baseline.
+Runtime/UX не менялись; build/CTest/layout не запускались. Mandatory bodies и
+platform/engine adapters остаются открытыми до functional ports и regression checks.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
