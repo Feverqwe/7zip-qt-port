@@ -14,7 +14,8 @@ add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/CPP/Windows/System.cpp src/CPP/7zip/Common/MethodProps.cpp src/CPP/7zip/UI/Common/ZipRegistry.cpp
-    third_party/7zip/CPP/Windows/PropVariant.cpp src/CPP/7zip/UI/FileManager/ClassDefs.cpp
+    third_party/7zip/CPP/Windows/PropVariant.cpp third_party/7zip/CPP/Windows/PropVariantConv.cpp
+    src/CPP/7zip/UI/FileManager/ClassDefs.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
@@ -50,6 +51,8 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
     src/CPP/Windows/FileName.cpp
+    src/CPP/Windows/FileLink.cpp
+    third_party/7zip/CPP/7zip/UI/Common/PropIDUtils.cpp
     third_party/7zip/CPP/Windows/FileFind.cpp
     third_party/7zip/CPP/Windows/TimeUtils.cpp
     src/filedeleteoperation.cpp src/filedeleteoperation.h)
@@ -58,6 +61,7 @@ if(WIN32)
     target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
+target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
@@ -387,6 +391,9 @@ if(BUILD_TESTING)
     add_test(NAME panel_runtime COMMAND panel_runtime_tests)
     set_tests_properties(panel_runtime PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-runtime-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(property_formatting_tests tests/property_formatting_tests.cpp)
+    target_link_libraries(property_formatting_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME property_formatting COMMAND property_formatting_tests)
     qt_add_executable(volume_workflow_tests tests/volume_workflow_tests.cpp ${panel_sort_sources})
     target_include_directories(volume_workflow_tests PRIVATE src tests)
     target_link_libraries(volume_workflow_tests PRIVATE sevenzip_panel Qt6::Test)

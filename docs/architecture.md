@@ -18,6 +18,11 @@ enumeration/property subset with flat mode. Mutations convert to Qt at their
 service boundary. Source folder binding and parent navigation use native services;
 Windows drive roots return the read-only CFSDrives logical-drive owner, while
 POSIX `/` returns null parent. Native Windows notification uses IFolderWasChanged.
+Unchanged PropVariantConv and PropIDUtils provide the native variant/time/attribute
+and raw-data formatters. The adapted FileLink owner retains upstream parser
+bodies and POSIX link services. Windows native link operation branches remain
+disabled until their FileDir service prerequisites are ported; no UI operation
+interface is advertised by this formatter dependency.
 Optional property/operations interfaces remain incomplete. Both window modes bind
 their source folder to CPanel before publishing matching source item indices.
 

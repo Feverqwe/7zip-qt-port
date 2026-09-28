@@ -7,6 +7,16 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2a compiles the original typed property formatters and portable
+reparse parsers; it changes no current dialog text or layout. PropertyName/
+PanelMenu formatting and live Properties binding remain the next mandatory
+substeps. Portable binary fixtures do not establish Windows link/ACL workflow
+parity. Windows native link operations retained in FileLink require additional
+FileDir services and remain disabled/open; they are not N/A.
+Focused 10/10, ASan 1/1 and full gate 65/65 passed on macOS 2026-09-29.
+Windows/Linux runtime and Windows native reparse/ACL workflow acceptance remain
+unverified; no rendered parity is claimed.
+
 ## Аудит диалогов (2026-09-28)
 
 P0-02.2b3b2b1 (2026-09-29) добавляет source filesystem services, без изменения

@@ -1,5 +1,13 @@
 # Regression strategy
 
+`property_formatting` checks compiled upstream PropVariantConv/PropIDUtils with
+empty, unsigned maximum, signed, boolean and Unicode properties; CRC, attributes,
+inode/address formatting; UTC nanosecond precision and zero-time suppression.
+Wire-format reparse fixtures verify Unicode targets, every truncated prefix,
+reserved-field warnings, invalid offsets and unknown tags. Invalid security data
+checks source error/unsupported output. These test portable byte parsers, not
+Windows filesystem link/ACL workflows or rendered property dialogs.
+
 `panel_runtime` covers source-folder integration across filesystem/archive
 transitions in normal/flat and four views: independent source indices after
 sorting, duplicate Unicode basenames, clearing cross-owner selection, immutable

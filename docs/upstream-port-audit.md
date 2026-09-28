@@ -8,6 +8,65 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2a — original typed property formatters (2026-09-29)
+
+Project baseline `6bd328b`; exact source [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+New byte-exact third_party modules: CPP/Windows/PropVariantConv.cpp and
+CPP/7zip/UI/Common/PropIDUtils.cpp/.h/StdAfx.h. Entire files are retained and
+compiled, not rewritten into Qt/std formatting. Their existing byte-exact
+MyWindows/PropVariant/IntToString/StringConvert/UTFConvert/CpuArch/FileIO/FileName
+headers supply types and native dependencies. PropVariantConv joins sevenzip_common;
+PropIDUtils joins sevenzip_filesystem, which owns its native FileLink dependency.
+
+src/CPP/Windows/FileLink.cpp copies the entire original file and preserves its
+namespaces, functions, parser bodies and control flow: GetString, CReparseAttr
+Parse/IsOkNamePair/GetPath, CReparseShortInfo Parse, and POSIX NIO GetReparseData/
+SetSymLink/SetSymLink_UString are compiled. No new link or raw-data algorithm is
+written. Mandatory formatting and source notice are local differences. A private
+include search path resolves unchanged support headers beside the adapted FileDir
+header. This does not create a second FileDir/FileLink implementation.
+
+Partial compile scope: original Windows WriteString/FillLinkData_WslLink/
+FillLinkData_WinLink/Convert_WinPath_to_WslLinuxPath and NIO device/link
+read/write branches are retained in the same source file but also require
+SEVENZIP_FILE_LINK_NATIVE_OPERATIONS. It is not enabled: their native
+CreateComplexDir/platform path and creation dependencies are not yet ported in
+FileDir. FileLink's own CreatePrefixDirOfFile helper is retained inside that
+guard. Those Windows link creation/deletion/native I/O workflows remain mandatory
+P2-05 (links), P1-11 (native browse/read), P2-07 (security metadata) and P3-05
+(omitted dependency closure), not done or N/A; portable parser compilation
+does not validate them. This guard keeps the formatter dependency narrow and
+prevents unfinished native operations from being advertised. Win32 parser and
+CheckNtSecure source branches retain their original platform conditions.
+
+The new focused formatter suite covers typed numeric/bool/Unicode values,
+special CRC/POSIX/Windows attributes/inode/address conversions, deterministic UTC
+precision/zero time, valid Unicode reparse targets, all truncated prefixes, minor
+reserved-field warnings, invalid offsets falling back to opaque data and unknown
+tags, plus invalid/unsupported security data. It uses synthetic buffers, not user
+archives or live Windows link/ACL objects.
+The POSIX native link fixture also checks Unicode target bytes, existing-link
+failure without altering the source file, and failed-read clearing of stale data.
+Source SetSymLink_UString preserves the supplied Unicode target as UTF-8;
+QFile::encodeName applies macOS normalization and is not its byte-level oracle.
+No current UI text/layout changes. Source PropertyName/PanelMenu formatting and
+live Properties binding remain the
+next mandatory c2b/c2c scopes; full raw/catalog/engine coverage remains P0-03/04.
+
+Comparison with upstream using the repository's clang-format style shows only
+the added source notice and two Windows operation compile guards; parser/function
+bodies are unchanged. All 61 vendor files (60 source/header files plus license)
+match the pinned baseline byte-for-byte. Counts now: 35 src/CPP cpp (30 UI plus
+5 support), root Qt cpp unchanged at 36; original UI src-path inventory remains
+30 mirrored/79 absent, with portable PropIDUtils compiled from the vendor owner.
+Focused native/variant/panel/Properties/runtime consumers passed 10/10 (2.58s),
+macOS 2026-09-29. ASan property_formatting passed 1/1 (0.27s; leak detection
+disabled).
+./scripts/check.sh passed formatting, app build and all 65 CTest (36.60s).
+Windows/Linux runtime and Windows native reparse/ACL acceptance remain unverified;
+portable binary fixtures do not establish platform workflow or rendered parity.
+
 ## P0-02.2b3b3c1 — bound source Copy/Move summary (2026-09-29)
 
 Project baseline `fa109fd`; unchanged pinned source [ip7z/7zip
