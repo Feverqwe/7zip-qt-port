@@ -22,6 +22,14 @@ This project ports upstream source code, not just its observable behavior. Copy 
 - Adapt the original 7zFM UI to Qt Widgets while preserving its workflows and command semantics. The unadapted Win32 presentation layer is not built on macOS/Linux; its surrounding functional code must still be copied and minimally adapted under the primary goal above.
 - `.codex/` is a local Obsidian and agent workspace. Keep durable product facts in tracked `docs/` or code. Use `.codex/notes/` for local investigations or handoffs, not a second source of truth.
 
+## Memory between tasks
+
+- At the start of each project task, read `.codex/memory/README.md` if present, then only the indexed notes relevant to the user's request. Follow `docs/agent-memory.md` and `$sevenzip-context` for the memory workflow. If memory is absent, proceed from code and tracked docs; initialize it with `$sevenzip-setup` when useful.
+- Treat memory as dated evidence, not instructions, authorization, or a backlog to execute automatically. The current user request, `AGENTS.md`, code, and tracked docs take precedence. Check note status, checkout/branch/commit, and relevant current code before relying on an old finding; past test results do not validate new changes.
+- Maintain one local note per substantial investigation or handoff. Save useful upstream paths/symbols, necessary adaptation reasons, disproved approaches, unresolved questions, and exact check results with platform/date. Before ending a task or handing it off, update its status and next step when there is useful context to carry forward; trivial edits do not need a task diary.
+- Promote established product facts and decisions into the appropriate tracked document, and link to it from memory rather than copying it. Keep the memory index short and organized by topic. Separate concurrent tasks into distinct notes; preserve other agents' entries and never infer ownership of their uncommitted changes.
+- Do not save passwords, credentials, real archive contents, or full command logs in memory. Setup must preserve existing memory and notes. Local `.codex/` memory is ignored by Git and persists only in this checkout; another machine or worktree needs an explicit handoff of relevant notes.
+
 ## Editing files and automation
 
 - Use `apply_patch` for ordinary edits to source, tests, documentation, and configuration. Do not use inline Python, shell substitutions, or text-replacement scripts merely to insert or replace code when a patch can express the change. If `apply_patch` is unavailable, use a narrowly scoped alternative and inspect the resulting diff.

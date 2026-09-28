@@ -13,6 +13,8 @@
 
 ## Local workspace
 
+- [Memory between tasks](memory/README.md) — start here for relevant local handoffs.
+- [Memory protocol](docs/agent-memory.md) — what to read, save, and verify.
 - `notes/` — local investigations and handoffs.
 - `attachments/` — local note attachments.
 - `templates/` — note templates.

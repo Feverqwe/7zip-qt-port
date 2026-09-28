@@ -11,11 +11,16 @@ if [ ! -f "$repo_root/AGENTS.md" ] || [ ! -f "$repo_root/CMakeLists.txt" ]; then
   exit 1
 fi
 
-mkdir -p "$target_dir/.obsidian" "$target_dir/context" "$target_dir/notes" "$target_dir/templates" "$target_dir/attachments"
+mkdir -p "$target_dir/.obsidian" "$target_dir/context" "$target_dir/notes" "$target_dir/templates" "$target_dir/attachments" "$target_dir/memory"
+
+if [ ! -e "$target_dir/memory/README.md" ] && [ ! -L "$target_dir/memory/README.md" ]; then
+  cp "$assets_dir/memory/README.md" "$target_dir/memory/README.md"
+fi
 
 cp "$assets_dir/Home.md" "$target_dir/Home.md"
 cp "$assets_dir/context/README.md" "$target_dir/context/README.md"
 cp "$assets_dir/templates/investigation.md" "$target_dir/templates/investigation.md"
+cp "$assets_dir/templates/handoff.md" "$target_dir/templates/handoff.md"
 cp "$assets_dir/.obsidian/app.json" "$target_dir/.obsidian/app.json"
 cp "$assets_dir/.obsidian/appearance.json" "$target_dir/.obsidian/appearance.json"
 cp "$assets_dir/.obsidian/core-plugins.json" "$target_dir/.obsidian/core-plugins.json"

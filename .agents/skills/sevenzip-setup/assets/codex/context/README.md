@@ -10,5 +10,7 @@
 - `.agents/skills/`: reusable project workflows.
 - `.agents/skills/sevenzip-navigation/`: map Qt, backend, and upstream C++ behavior.
 - `.codex/notes/`: local investigations and handoffs; not source of truth.
+- `.codex/memory/README.md`: short index of relevant local task notes; read first.
+- `docs/agent-memory.md`: memory protocol and checkout/platform verification.
 
 Follow the source-port goal in `AGENTS.md`: copy upstream implementation with its paths and names, adapt UI to Qt and platform dependencies where needed. Search narrowly. Confirm source provenance against upstream and behavior in code and tests.

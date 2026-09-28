@@ -1,5 +1,12 @@
 # Regression strategy
 
+`project_memory_setup` runs setup in an isolated temporary Git repository,
+checks memory/template initialization, then verifies that a populated index,
+task note, and attachment survive a second setup unchanged. It requires `sh`
+and Git; CMake registers it where `sh` is available. It never touches the real
+vault or global Git settings. Run directly with
+`sh tests/project_memory_setup_test.sh` or through focused CTest.
+
 `file_transfer` exercises the upstream recursive copy branch with Unicode and
 space-containing names, hidden files, empty directories, cumulative byte
 progress and occupied destinations. Cancellation during a later source rolls

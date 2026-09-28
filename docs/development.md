@@ -31,6 +31,12 @@ Some Apple Command Line Tools installations contain C++ standard headers inside 
 
 ## Automation
 
+Local task memory is initialized by the setup script in `.codex/memory/` and
+`.codex/notes/`. Repeated setup preserves the populated index, notes, and
+attachments; it refreshes navigation pages and templates. See
+[the memory protocol](agent-memory.md) for reading, updating, and transferring
+memory between checkouts.
+
 The setup script enables the tracked `.githooks/pre-commit` hook in this repository's local Git config. It runs `scripts/check.sh` before a commit. `.github/workflows/ci.yml` runs the same gate on each push and pull request once this repository has a GitHub remote. Local tests run on the current machine; CI is needed to establish cross-platform results.
 
 ## Upstream checkout
