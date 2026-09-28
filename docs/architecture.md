@@ -94,3 +94,8 @@ remain owned by Qt; the upstream alternate selection mode is not ported.
 в теле алгоритма — `wchar_t` на `char16_t`, чтобы сохранить UTF-16 Windows
 на macOS/Linux. `MyCharUpper` использует Qt; отдельная перегрузка преобразует
 `QStringView` в строки с завершающим нулём, включая срезы без терминатора.
+
+`Common/Wildcard.cpp::EnhancedMaskTest` также использует исходный указательный
+алгоритм. Регистр для выбора фиксирован как в Windows 7zFM (`false`), без
+изменяемого глобального флага; UTF-16 и рекурсивный поиск сохранены. Qt-адаптер
+владеет строками с терминатором перед вызовом ядра.

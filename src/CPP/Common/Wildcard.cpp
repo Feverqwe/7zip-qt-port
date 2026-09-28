@@ -1,34 +1,51 @@
-// Adapted from 7-Zip CPP/Common/Wildcard.cpp at 0766b73.
+// Copied from 7-Zip CPP/Common/Wildcard.cpp at 0766b73.
 // Copyright (C) 1999-2026 Igor Pavlov. GNU LGPL 2.1 or later.
-// QStringView and QChar replace UString and wchar_t for the Qt UI.
+// char16_t preserves Windows wchar_t code units on all platforms.
+// Qt conversions and character case mapping are boundary adaptations.
 
 #include "Wildcard.h"
+#include <QString>
+#include <string>
+
+namespace {
+// Selection follows Windows 7zFM even on case-sensitive filesystems.
+constexpr bool g_CaseSensitive = false;
+char16_t MyCharUpper(char16_t c) { return QChar(c).toUpper().unicode(); }
 
 // ? - any char
 // * - any char or empty
-static bool EnhancedMaskTest(QStringView mask, QStringView name) {
+static bool EnhancedMaskTest(const char16_t *mask, const char16_t *name) {
     for (;;) {
-        const QChar m = mask.isEmpty() ? QChar() : mask.front();
-        const QChar c = name.isEmpty() ? QChar() : name.front();
-        if (m.isNull())
-            return c.isNull();
-        if (m == QLatin1Char('*')) {
-            if (EnhancedMaskTest(mask.mid(1), name))
+        const char16_t m = *mask;
+        const char16_t c = *name;
+        if (m == 0)
+            return (c == 0);
+        if (m == '*') {
+            if (EnhancedMaskTest(mask + 1, name))
                 return true;
-            if (c.isNull())
+            if (c == 0)
                 return false;
         } else {
-            if (m == QLatin1Char('?')) {
-                if (c.isNull())
+            if (m == '?') {
+                if (c == 0)
                     return false;
-            } else if (m != c && m.toUpper() != c.toUpper())
-                return false;
-            mask = mask.mid(1);
+            } else if (m != c)
+                if (g_CaseSensitive || MyCharUpper(m) != MyCharUpper(c))
+                    return false;
+            mask++;
         }
-        name = name.mid(1);
+        name++;
     }
 }
 
-bool DoesWildcardMatchName(QStringView mask, QStringView name) {
+} // namespace
+
+bool DoesWildcardMatchName(const char16_t *mask, const char16_t *name) {
     return EnhancedMaskTest(mask, name);
+}
+
+bool DoesWildcardMatchName(QStringView mask, QStringView name) {
+    const std::u16string maskString = mask.toString().toStdU16String();
+    const std::u16string nameString = name.toString().toStdU16String();
+    return DoesWildcardMatchName(maskString.c_str(), nameString.c_str());
 }

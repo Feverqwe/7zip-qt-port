@@ -2,4 +2,5 @@
 
 #include <QStringView>
 
+bool DoesWildcardMatchName(const char16_t *mask, const char16_t *name);
 bool DoesWildcardMatchName(QStringView mask, QStringView name);

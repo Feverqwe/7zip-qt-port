@@ -1,9 +1,29 @@
 #include "CPP/7zip/UI/FileManager/PanelSelect.h"
+#include "CPP/Common/Wildcard.h"
 #include <QtTest>
 
 class PanelSelectionTests final : public QObject {
     Q_OBJECT
   private slots:
+    void upstreamWildcardRules() {
+        QVERIFY(DoesWildcardMatchName(u"", u""));
+        QVERIFY(!DoesWildcardMatchName(u"", u"a"));
+        QVERIFY(DoesWildcardMatchName(u"***", u""));
+        QVERIFY(!DoesWildcardMatchName(u"?", u""));
+        QVERIFY(DoesWildcardMatchName(u"?", u"я"));
+        QVERIFY(!DoesWildcardMatchName(u"?", u"ab"));
+        QVERIFY(DoesWildcardMatchName(u"a*b?c", u"a one b two bxc"));
+        QVERIFY(!DoesWildcardMatchName(u"*.txt", u"file.txt.bak"));
+        QVERIFY(!DoesWildcardMatchName(u"*.*", u"README"));
+        QVERIFY(DoesWildcardMatchName(u"АЛЬФА *.TXT", u"альфа файл.txt"));
+        // Windows 7zFM treats a supplementary character as two UTF-16 units.
+        QVERIFY(!DoesWildcardMatchName(u"?", u"\U0001F600"));
+        QVERIFY(DoesWildcardMatchName(u"??", u"\U0001F600"));
+        const QString mask = QStringLiteral("--*.TXT suffix");
+        const QString name = QStringLiteral("--file.txt suffix");
+        QVERIFY(DoesWildcardMatchName(QStringView(mask).mid(2, 5), QStringView(name).mid(2, 8)));
+    }
+
     void maskPreservesUnmatchedSelection() {
         CPanelSelection panel;
         panel.Items = {{QStringLiteral("Альфа файл.txt"), false, false},
