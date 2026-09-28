@@ -167,51 +167,6 @@ void MainWindow::createFile() {
     selectPaths({target});
 }
 
-void MainWindow::selectByMask(bool select) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
-        return;
-    ComboDialog dialog(select ? "Выделить" : "Снять выделение", "Маска:", "*", this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const QRegularExpression pattern(
-        QRegularExpression::wildcardToRegularExpression(dialog.value()),
-        QRegularExpression::CaseInsensitiveOption);
-    for (int row = 0; row < table_->rowCount(); ++row) {
-        if (pattern.match(table_->item(row, 0)->text()).hasMatch())
-            table_->selectionModel()->select(
-                table_->model()->index(row, 0),
-                (select ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
-                    QItemSelectionModel::Rows);
-    }
-}
-
-void MainWindow::selectByType(bool select) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
-        return;
-    const int current = table_->currentRow();
-    if (current < 0)
-        return;
-    const auto *focused = table_->item(current, 0);
-    const bool folder = focused->data(Qt::UserRole + 1).toBool();
-    const QString name = focused->text();
-    const int dot = name.lastIndexOf('.');
-    const QString extension = dot < 0 ? QString() : name.mid(dot);
-    for (int row = 0; row < table_->rowCount(); ++row) {
-        const auto *item = table_->item(row, 0);
-        const bool sameType =
-            folder
-                ? item->data(Qt::UserRole + 1).toBool()
-                : !item->data(Qt::UserRole + 1).toBool() &&
-                      (extension.isEmpty() ? !item->text().contains('.')
-                                           : item->text().endsWith(extension, Qt::CaseInsensitive));
-        if (sameType)
-            table_->selectionModel()->select(
-                table_->model()->index(row, 0),
-                (select ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
-                    QItemSelectionModel::Rows);
-    }
-}
-
 void MainWindow::navigateTo(const QString &path) {
     if (state_ == State::Loading || state_ == State::Operating)
         return;

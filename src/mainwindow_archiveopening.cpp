@@ -107,9 +107,48 @@ void MainWindow::restoreParentArchive() {
     displayArchive_ = parent.display;
     archivePassword_ = parent.password;
     entries_ = std::move(parent.entries);
+    proxyArchive_.Load(entries_);
     info_ = parent.info;
     nestedListing_ = false;
     showArchiveFolder(parent.folder);
     setState(State::Viewing);
     selectPaths({parent.entry});
+}
+
+void MainWindow::goBack() {
+    if (state_ == State::Loading || state_ == State::Operating)
+        return;
+    if (state_ == State::Viewing) {
+        if (archiveFolder_.isEmpty()) {
+            if (archiveParents_.empty())
+                showDirectory(returnDirectory_, false);
+            else
+                restoreParentArchive();
+        } else
+            goUp();
+    } else if (!history_.isEmpty()) {
+        showDirectory(history_.takeLast(), false);
+    }
+}
+
+void MainWindow::goUp() {
+    if (state_ != State::Viewing || archiveFolder_.isEmpty())
+        return;
+    const int separator = archiveFolder_.lastIndexOf('/');
+    showArchiveFolder(separator < 0 ? QString() : archiveFolder_.left(separator));
+}
+
+void MainWindow::goParent() {
+    if (state_ == State::Viewing) {
+        goBack();
+    } else if (state_ == State::Filesystem) {
+        QDir parent(directory_);
+        if (parent.cdUp())
+            showDirectory(parent.absolutePath(), true);
+    }
+}
+
+QString MainWindow::archiveDisplayPath() const {
+    return displayArchive_ +
+           (archiveFolder_.isEmpty() ? QString() : QStringLiteral(" / ") + archiveFolder_);
 }

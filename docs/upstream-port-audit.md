@@ -1,0 +1,52 @@
+# Ревизия происхождения кода 7zFM
+
+Источник сравнения: `../7zip-upstream`, commit `0766b73`, прежде всего
+`CPP/7zip/UI/FileManager/`. Эта таблица охватывает все производственные файлы
+`src/` на 28 сентября 2026 года. «Собственный» означает, что реализация написана
+в этом репозитории по поведению 7zFM, а не перенесена из исходного файла.
+
+При дальнейшем переносе переносимые алгоритмы и правила следует брать из
+upstream с сохранением имени, относительного пути и имени функции, если
+зависимости позволяют. Код Win32, COM, ListView и ресурсы диалогов адаптируются
+к Qt в отдельных слоях; архивные операции остаются за `ArchiveBackend` и `7zz`.
+Каждое прямое заимствование должно указывать исходный commit и лицензию 7-Zip.
+Текст лицензии для уже перенесённых фрагментов сохранён в
+`third_party/7zip/License.txt` из того же checkout.
+
+| Наши файлы | Соответствующий исходник upstream | Текущее состояние |
+| --- | --- | --- |
+| `src/CPP/7zip/UI/FileManager/PanelSort.cpp`, `.h` | `CPP/7zip/UI/FileManager/PanelSort.cpp::CompareFileNames_ForFolderList`, `CompareItems` | Сравнение имён и порядок «папки перед файлами → свойство → имя» перенесены с сохранением имён; `QStringView` заменяет указатели `wchar_t`, Qt item data — свойства `IFolder`. Остальная сортировка по сырым и форматным свойствам пока не перенесена. |
+| `src/CPP/Common/Wildcard.cpp`, `.h` | `CPP/Common/Wildcard.cpp::DoesWildcardMatchName`, `EnhancedMaskTest` | Алгоритм маски перенесён с сохранением имён; вместо `UString` и `wchar_t` используется `QStringView` и `QChar`. Для выбора в панели применяется нечувствительное к регистру сравнение 7zFM. |
+| `src/CPP/7zip/UI/FileManager/PanelSelect.cpp` | `CPP/7zip/UI/FileManager/PanelSelect.cpp::SelectSpec`, `SelectByType` | Имена методов, порядок ветвей и правила выбора сохранены; доступ к Win32 ListView заменён Qt selection model и `ComboDialog`. |
+| `third_party/7zip/CPP/Common/StringToInt.cpp`, `.h` и их заголовки `Common*.h`, `My*.h`, `NewHandler.h`, `StdAfx.h`, `C/7zTypes.h`, `7zWindows.h`, `Compiler.h`, `Precomp.h` | Те же относительные пути upstream | Побайтовые копии без изменения алгоритмов и форматирования. Собирается `sevenzip_common`; Qt-код использует оригинальный `ConvertStringToUInt64`. |
+| `src/CPP/7zip/UI/FileManager/SplitUtils.cpp`, `.h` | `CPP/7zip/UI/FileManager/SplitUtils.cpp` | Перенесены `ParseVolumeSizes`, `GetNumberOfVolumes`, список `k_Sizes` и `AddVolumeItems`. Алгоритмы сохранены; `UString` / `CRecordVector` заменены стандартными контейнерами, Win32 combo — `QComboBox`. Ограничение нашего worker: один размер и диапазон `qint64`. |
+| `src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp`, `.h` | `CPP/7zip/UI/FileManager/PanelSplitFile.cpp::CVolSeqName` | Алгоритм нумерации томов перенесён с сохранением имени типа и методов; `QString` заменяет `UString`. |
+| `src/CPP/7zip/UI/GUI/CompressDialog.cpp`, `.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp::CFormatInfo`, `g_Formats`, `g_*Methods`, `GetStaticFormatIndex`, `SetMethod2` | Таблицы форматов, методов, уровней и флагов взяты из upstream. Qt-преобразование возвращает имена методов с исходным фильтром 7z. Один источник используется UI и backend; SFX и внешние кодеки не представлены в текущем UI. |
+| `src/CPP/7zip/UI/Agent/AgentProxy.cpp`, `.h`, `Agent.cpp`, `Agent.h` | `CPP/7zip/UI/Agent/AgentProxy.cpp::CProxyArc`, `CProxyDir`, `Agent.cpp::CAgentFolder::LoadFolder`, `LoadItems`, `GetNumberOfItems` | Перенесены бинарный поиск и отложенное слияние подпапок, дерево явных/неявных папок, итеративный подсчёт размеров, раскрытие выбора в реальные индексы и плоский обход. Qt-строки и стандартные контейнеры заменяют upstream-контейнеры; данные `ArchiveBackend` — COM-свойства. CRC, сырые свойства, `CProxyArc2` и alternate streams не представлены процессным листингом. |
+| `src/main.cpp`, `mainwindow.cpp`, `mainwindow.h`, `mainwindow_menus.cpp`, `mainwindow_panel.cpp` | `FM.cpp`, `App.cpp`, `App.h`, `Panel.cpp`, `Panel.h`, `PanelItems.cpp`, `resource.rc` | Qt-оболочка одной панели. Конструктор, сборка меню и сборка панели разделены; перенос правил меню и компонентов панели ещё не завершён. |
+| `src/mainwindow_backendevents.cpp` | `PanelCopy.cpp`, `PanelCrc.cpp`, `PanelItemOpen.cpp`, `OpenCallback.cpp`, `ExtractCallback.cpp` | Адаптер асинхронных сигналов `ArchiveBackend`: переходы между этапами хеширования/перемещения, просмотр извлечённого файла и восстановление состояния. Он необходим для процессного backend; функциональные сценарии ещё требуют сверки с исходными callback и panel-модулями. |
+| `src/mainwindow_filelist.cpp` | `PanelFolderChange.cpp`, `PanelItems.cpp`, `PanelOperations.cpp` | Собственные переходы по файловой системе, наполнение строк и создание. Нужен перенос по исходным функциональным модулям. Выбор по маске и типу вынесен в `PanelSelect.cpp`. |
+| `src/mainwindow_archivelist.cpp` | `PanelItems.cpp`, `PanelSort.cpp`, `PanelMenu.cpp` | Построение дерева, раскрытие выбранных папок и плоский обход делегированы перенесённым `CProxyArc` / `CAgentFolder`. Строки таблицы адаптируют их данные к Qt. Собственные правила доступности команд ещё требуют переноса. |
+| `src/mainwindow_archiveopening.cpp` | `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственная цепочка вложенных архивов с временными файлами и backend. Нужно сверить стек папок и открытие по содержимому. |
+| `src/mainwindow_archivecommands.cpp` | `PanelCrc.cpp`, `PanelOperations.cpp`, `PanelCopy.cpp`, `PanelItemOpen.cpp` | Собственная связка действий с `ArchiveBackend`; выбор и правила команд требуют сверки. |
+| `src/mainwindow_fileoperations.cpp` | `PanelOperations.cpp`, `PanelCopy.cpp`, `PanelSplitFile.cpp` | Собственная Qt-обвязка файловых операций, удаления и переименования. Функциональные правила нужно сверить отдельно от диалогов. |
+| `src/mainwindow_preferences.cpp` | `PanelMenu.cpp`, `PanelSort.cpp`, `PanelFolderChange.cpp`, `App.cpp`, `PanelKey.cpp` | Собственный код меню, сортировки, истории, закладок и событий. Это несколько upstream-модулей в одном файле. |
+| `src/mainwindow_dialogs.cpp`, `propertiesdialog.cpp`, `propertiesdialog.h` | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Размеры и количество вложенных объектов архивной папки берутся из перенесённого `CProxyArc`. Qt-форма и сводка нескольких выбранных объектов остаются адаптацией; форматные и сырые свойства пока отсутствуют. |
+| `src/mainwindow_volumes.cpp`, `volumeoperations.cpp`, `volumeoperations.h`, `volumedialog.cpp`, `volumedialog.h` | `PanelSplitFile.cpp`, `SplitDialog.cpp`, `SplitDialog.rc` | Собственная кроссплатформенная реализация ввода размера, разделения, сборки и диалогов; нумерация делегирована `CVolSeqName`, разбор размера и расчёт числа томов — upstream `SplitUtils.cpp`. Циклы ввода/вывода и транзакционный откат ещё требуют переноса из `CThreadSplit` / `CThreadCombine`. |
+| `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`, `FSFolder.h` | `CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile`, `IsDestChild`, `FSFolder.h::CCopyStateIO` | Цикл чтения/записи, учёт прогресса и проверка вложенного назначения перенесены с сохранением имён. `QFile` и callback заменяют `NIO` / `IProgress`; stage создаётся с `NewOnly`, ошибки буферизованной записи проверяются `flush`, сохраняется дата. Транзакционная обвязка и копирование дерева остаются отдельным долгом переноса. |
+| `src/filetable.cpp`, `filetable.h` | `PanelItems.cpp`, `PanelSort.cpp`, `PanelDrag.cpp` | Qt-адаптер таблицы и drag-out. Функция сравнения вынесена в зеркальный `PanelSort.cpp`. |
+| `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
+| `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
+| `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
+| `src/createarchivedialog.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; словарь, размер слова, solid, шифрование и выбор источников ещё требуют переноса. |
+| `src/extractdialog.cpp`, `extractdialog.h` | `CPP/7zip/UI/GUI/ExtractDialog.cpp`, `ExtractDialog.rc` | Собственная Qt-форма с соответствующими вариантами путей и перезаписи; код не перенесён. |
+| `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
+| `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
+| `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
+| `src/archiveformats.h` | `FileManager/FilePlugins.cpp`, `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственный статический список расширений для эвристики двойного щелчка и фильтра диалога. В upstream расширения приходят от установленных обработчиков; движок сам определяет формат при явном открытии. |
+| `src/archivebackend.cpp`, `archivebackend.h`, `archivebackend_listing.cpp`, `archivebackend_mutations.cpp`, `archivebackend_validation.cpp` | `CPP/7zip/UI/Console/Main.cpp`, `CPP/7zip/UI/Common/OpenArchive.cpp`, `Update.cpp` и движок `CPP/7zip/Archive/` | Адаптер процесса `7zz`, парсер его вывода, проверка путей и транзакционное обновление. Не является копией движка; переносить код форматов сюда нельзя. |
+
+Вывод ревизии: строки со статусом «собственный» обозначают долг переноса, а не
+принятую конечную архитектуру. Переименование файлов само по себе его не
+исправит. Каждый такой блок требует сверки исходных функций, зависимостей и
+тестов, переноса переносимой логики и Qt-адаптации платформенных вызовов.

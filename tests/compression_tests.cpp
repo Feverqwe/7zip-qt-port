@@ -8,6 +8,8 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QProcess>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSignalSpy>
 #include <QSpinBox>
 #include <QTemporaryDir>
@@ -42,12 +44,12 @@ class CompressionTests : public QObject {
         auto *showPassword = dialog.findChild<QCheckBox *>("archiveShowPassword");
         QVERIFY(format && level && method && solid && threads && dictionary && wordSize &&
                 solidBlock && encryption && password && confirmation && showPassword);
-        QCOMPARE(level->count(), 6);
+        QCOMPARE(level->count(), 10);
         QCOMPARE(method->currentText(), QStringLiteral("LZMA2"));
         QVERIFY(dictionary->isEnabled());
         QVERIFY(wordSize->isEnabled());
         QVERIFY(solidBlock->isEnabled());
-        level->setCurrentIndex(5);
+        level->setCurrentIndex(level->findData(9u));
         dictionary->setCurrentIndex(2);
         wordSize->setCurrentIndex(3);
         solidBlock->setCurrentIndex(1);
@@ -60,7 +62,7 @@ class CompressionTests : public QObject {
         QVERIFY(!solidBlock->isEnabled());
         QCOMPARE(dialog.compressionOptions().dictionaryMiB, 0);
         QCOMPARE(dialog.compressionOptions().solidBlockMiB, 0);
-        level->setCurrentIndex(5);
+        level->setCurrentIndex(level->findData(9u));
         method->setCurrentText("BZip2");
         QVERIFY(!dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
@@ -76,6 +78,9 @@ class CompressionTests : public QObject {
         QCOMPARE(options.solidBlockMiB, 0);
 
         format->setCurrentText("zip");
+        QCOMPARE(level->count(), 6);
+        QCOMPARE(level->findData(2u), -1);
+        QVERIFY(method->findText("PPMd") >= 0);
         QCOMPARE(method->currentText(), QStringLiteral("Deflate"));
         QVERIFY(!solid->isEnabled());
         QVERIFY(!solidBlock->isEnabled());
@@ -86,6 +91,28 @@ class CompressionTests : public QObject {
         showPassword->setChecked(true);
         QCOMPARE(password->echoMode(), QLineEdit::Normal);
         QCOMPARE(confirmation->echoMode(), QLineEdit::Normal);
+    }
+
+    void compactDialogKeepsConfirmationAndOptionsAccessible() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        CreateArchiveDialog dialog(temp.path());
+        dialog.resize(640, 480);
+        dialog.show();
+        QCoreApplication::processEvents();
+        QVERIFY(dialog.height() <= 480);
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        QVERIFY(buttons);
+        const QRect buttonRect(buttons->mapTo(&dialog, QPoint()), buttons->size());
+        QVERIFY(dialog.rect().contains(buttonRect));
+        auto *scroll = dialog.findChild<QScrollArea *>();
+        auto *password = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
+        QVERIFY(scroll && password);
+        QVERIFY(scroll->verticalScrollBar()->maximum() > 0);
+        scroll->ensureWidgetVisible(password);
+        QCoreApplication::processEvents();
+        const QRect passwordRect(password->mapTo(scroll->viewport(), QPoint()), password->size());
+        QVERIFY(scroll->viewport()->rect().contains(passwordRect));
     }
 
     void mismatchedPasswordBlocksSubmission() {
@@ -124,13 +151,17 @@ class CompressionTests : public QObject {
     void createWithCompressionOptions_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("method");
-        QTest::newRow("7z-solid-off") << "7z" << "LZMA2";
-        QTest::newRow("zip-bzip2") << "zip" << "BZip2";
+        QTest::addColumn<int>("level");
+        QTest::newRow("7z-solid-off") << "7z" << "LZMA2" << 9;
+        QTest::newRow("7z-level-two") << "7z" << "LZMA2" << 2;
+        QTest::newRow("zip-bzip2") << "zip" << "BZip2" << 9;
+        QTest::newRow("zip-ppmd") << "zip" << "PPMd" << 9;
     }
 
     void createWithCompressionOptions() {
         QFETCH(QString, format);
         QFETCH(QString, method);
+        QFETCH(int, level);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString source = temp.filePath(QStringLiteral("данные с пробелом.txt"));
@@ -141,7 +172,7 @@ class CompressionTests : public QObject {
 
         const QString target = temp.filePath("archive." + format);
         CompressionOptions options;
-        options.level = 9;
+        options.level = level;
         options.method = method;
         options.threads = 2;
         options.solid = false;

@@ -13,6 +13,12 @@ class VolumeOperationsTests : public QObject {
   private slots:
     void parsesSizes() {
         QCOMPARE(VolumeOperation::parseSize("10M"), qint64(10) << 20);
+        QCOMPARE(VolumeOperation::parseSize("650M - CD"), qint64(650) << 20);
+        QCOMPARE(VolumeOperation::parseSize("23040M - BD"), qint64(23040) << 20);
+        QCOMPARE(VolumeOperation::parseSize("1B"), qint64(1));
+        QCOMPARE(VolumeOperation::parseSize("10M 20M"), qint64(0));
+        QCOMPARE(VolumeOperation::parseSize("18446744073709551616"), qint64(0));
+        QCOMPARE(VolumeOperation::parseSize("9223372036854775808"), qint64(0));
         QCOMPARE(VolumeOperation::parseSize(" 2 k "), qint64(2048));
         QCOMPARE(VolumeOperation::parseSize("0M"), qint64(0));
         QCOMPARE(VolumeOperation::parseSize("999999999999T"), qint64(0));

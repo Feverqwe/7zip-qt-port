@@ -1,4 +1,5 @@
 #include "filetransferoperation.h"
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 
 #include <QDir>
 #include <QFile>
@@ -20,32 +21,23 @@ void FileTransferOperation::removeEntry(const QString &path) {
 }
 
 bool FileTransferOperation::copyFile(const QString &source, const QString &target, QString *error) {
-    QFile input(source);
-    QFile output(target);
-    if (!input.open(QIODevice::ReadOnly) ||
-        !output.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
-        *error = QStringLiteral("Не удалось открыть файл: %1").arg(source);
+    NFsFolder::CCopyStateIO copyState;
+    quint64 previous = 0;
+    copyState.Progress = [this, &previous](quint64 completed) {
+        emit advanced(qint64(completed - previous));
+        previous = completed;
+        return !canceled_;
+    };
+    const bool completed = copyState.MyCopyFile(source, target, QFileInfo(source).permissions());
+    if (!completed) {
+        *error = QStringLiteral("Операция отменена.");
         return false;
     }
-    while (!input.atEnd()) {
-        if (canceled_) {
-            *error = QStringLiteral("Операция отменена.");
-            return false;
-        }
-        const QByteArray block = input.read(1 << 20);
-        if (block.isEmpty() || output.write(block) != block.size()) {
-            *error = QStringLiteral("Ошибка чтения или записи файла: %1").arg(source);
-            return false;
-        }
-        emit advanced(block.size());
-    }
-    if (!output.flush()) {
-        *error = QStringLiteral("Не удалось записать файл: %1").arg(target);
+    if (copyState.ErrorFileIndex >= 0 || !copyState.ErrorMessage.isEmpty()) {
+        *error = QStringLiteral("Ошибка чтения или записи файла: %1")
+                     .arg(copyState.ErrorFileIndex == 1 ? target : source);
         return false;
     }
-    const QFileInfo info(source);
-    output.setFileTime(info.lastModified(), QFileDevice::FileModificationTime);
-    output.setPermissions(info.permissions());
     return true;
 }
 
@@ -112,8 +104,8 @@ void FileTransferOperation::run() {
         if (!info.exists() || info.isSymLink() || (!info.isFile() && !info.isDir()) ||
             QFileInfo::exists(target) || QFileInfo(target).isSymLink() ||
             targets.contains(target) ||
-            (info.isDir() && (canonicalDestination == info.canonicalFilePath() ||
-                              canonicalDestination.startsWith(info.canonicalFilePath() + '/'))))
+            (info.isDir() &&
+             NFsFolder::IsDestChild(info.canonicalFilePath(), canonicalDestination)))
             error = QStringLiteral("Источник или назначение недоступны либо имя уже занято.");
         targets << target;
     }

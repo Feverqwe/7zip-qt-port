@@ -1,4 +1,6 @@
 #include "volumeoperations.h"
+#include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "CPP/7zip/UI/FileManager/SplitUtils.h"
 
 #include <QDir>
 #include <QFile>
@@ -15,17 +17,11 @@ VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination,
 void VolumeOperation::cancel() { canceled_ = true; }
 
 qint64 VolumeOperation::parseSize(const QString &text) {
-    const QRegularExpression pattern(R"(^\s*(\d+)\s*([bBkKmMgGtT]?)\s*$)");
-    const auto match = pattern.match(text);
-    if (!match.hasMatch())
+    std::vector<UInt64> values;
+    if (!ParseVolumeSizes(text.toStdWString(), values) || values.size() != 1 ||
+        values.front() > UInt64(std::numeric_limits<qint64>::max()))
         return 0;
-    bool ok = false;
-    const qulonglong value = match.captured(1).toULongLong(&ok);
-    const QString unit = match.captured(2).toLower();
-    const int shift = unit == "k" ? 10 : unit == "m" ? 20 : unit == "g" ? 30 : unit == "t" ? 40 : 0;
-    if (!ok || value == 0 || value > (qulonglong(std::numeric_limits<qint64>::max()) >> shift))
-        return 0;
-    return qint64(value << shift);
+    return qint64(values.front());
 }
 
 QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *error) {
@@ -38,10 +34,15 @@ QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *er
     }
     const QString base = match.captured(1);
     const int width = first.fileName().size() - base.size() - 1;
+    CVolSeqName sequence;
+    if (!sequence.ParseName(first.fileName())) {
+        *error = QStringLiteral("Выберите первую часть с именем .001.");
+        return {};
+    }
     QStringList parts;
+    QString name = first.fileName();
     for (int number = 1; number <= 10000; ++number) {
-        const QString path = first.dir().filePath(
-            base + '.' + QStringLiteral("%1").arg(number, width, 10, QLatin1Char('0')));
+        const QString path = first.dir().filePath(name);
         const QFileInfo info(path);
         if (!info.exists())
             break;
@@ -50,6 +51,7 @@ QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *er
             return {};
         }
         parts << path;
+        name = sequence.GetNextName();
     }
     if (parts.size() < 2) {
         *error = QStringLiteral("Нужны как минимум две последовательные части.");
@@ -95,18 +97,17 @@ bool VolumeOperation::split(QString *error) {
         return false;
     }
     const qint64 total = sourceInfo.size();
-    const qint64 count = total / volumeSize_ + (total % volumeSize_ != 0);
+    const qint64 count = qint64(GetNumberOfVolumes(UInt64(total), {UInt64(volumeSize_)}));
     if (count > 10000) {
         *error = QStringLiteral("Слишком много частей (более 10000).");
         return false;
     }
-    const int width = qMax(3, QString::number(count).size());
+    CVolSeqName sequence;
+    sequence.UnchangedPart = sourceInfo.fileName() + '.';
+    sequence.SetNumDigits(count);
     QStringList targets;
     for (qint64 n = 1; n <= count; ++n) {
-        const QString target =
-            QDir(destination_)
-                .filePath(sourceInfo.fileName() + '.' +
-                          QStringLiteral("%1").arg(n, width, 10, QLatin1Char('0')));
+        const QString target = QDir(destination_).filePath(sequence.GetNextName());
         if (QFileInfo::exists(target) || QFileInfo(target).isSymLink()) {
             *error = QStringLiteral("Файл уже существует: %1").arg(target);
             return false;

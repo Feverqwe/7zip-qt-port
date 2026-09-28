@@ -160,3 +160,40 @@ QStringList MainWindow::selectedFilesystemPaths() const {
         paths << table_->item(index.row(), 1)->text();
     return paths;
 }
+
+void MainWindow::extractTo(const QString &destination, bool onlySelected, const QString &password,
+                           const ExtractionOptions &options) {
+    if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
+        return;
+    QStringList names;
+    if (onlySelected) {
+        names = selectedArchivePaths();
+        if (names.isEmpty())
+            return;
+    }
+    previousState_ = state_;
+    setState(State::Operating);
+    begin("Извлечение", destination);
+    backend_->extract(archive_, destination, names,
+                      password.isEmpty() ? archivePassword_ : password, options);
+}
+
+void MainWindow::testArchive() {
+    if (state_ != State::Viewing)
+        return;
+    previousState_ = state_;
+    setState(State::Operating);
+    begin("Проверка архива", archive_);
+    backend_->test(archive_, archivePassword_);
+}
+
+void MainWindow::addSources(const QStringList &sources) {
+    if (state_ != State::Viewing || !ArchiveFormats::canModify(archive_) || info_.encrypted ||
+        sources.isEmpty())
+        return;
+    previousState_ = state_;
+    updatingArchive_ = true;
+    setState(State::Operating);
+    begin("Добавление в архив", archive_);
+    backend_->add(archive_, sources);
+}

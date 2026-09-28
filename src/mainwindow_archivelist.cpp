@@ -7,71 +7,50 @@ void MainWindow::showArchiveFolder(const QString &folder) {
     static_cast<FileTable *>(table_)->filesystem = false;
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
-    QMap<QString, ArchiveEntry> children;
-    QMap<QString, int> sourceOrder;
+    const int dirIndex = proxyArchive_.FindDir(folder);
+    if (dirIndex < 0)
+        return;
     const QString prefix = folder.isEmpty() ? QString() : folder + '/';
     const bool flat = flatView_->isChecked();
-    for (const ArchiveEntry &entry : entries_) {
-        QString path = entry.path;
-        if (path.endsWith('/'))
-            path.chop(1);
-        if (!path.startsWith(prefix) || path == folder)
-            continue;
-        const QString relative = path.mid(prefix.size());
-        const int slash = relative.indexOf('/');
-        const QString name = flat || slash < 0 ? relative : relative.left(slash);
-        if (name.isEmpty())
-            continue;
-        if (!sourceOrder.contains(name))
-            sourceOrder.insert(name, sourceOrder.size());
-        const QString childPath = prefix + name;
-        if (!flat && slash >= 0) {
-            if (!children.contains(name)) {
-                ArchiveEntry implicit;
-                implicit.path = childPath;
-                implicit.directory = true;
-                children.insert(name, implicit);
-            }
-        } else {
-            ArchiveEntry visible = entry;
-            visible.path = childPath;
-            children.insert(name, visible);
-        }
-        if (flat) {
-            int separator = relative.indexOf('/');
-            while (separator >= 0) {
-                const QString parent = relative.left(separator);
-                if (!children.contains(parent)) {
-                    ArchiveEntry implicit;
-                    implicit.path = prefix + parent;
-                    implicit.directory = true;
-                    children.insert(parent, implicit);
-                    sourceOrder.insert(parent, sourceOrder.size());
-                }
-                separator = relative.indexOf('/', separator + 1);
-            }
-        }
-    }
+    CAgentFolder archiveFolder(proxyArchive_, unsigned(dirIndex), flat);
+    archiveFolder.LoadItems();
     table_->setSortingEnabled(false);
     table_->clearSelection();
     table_->setRowCount(0);
-    for (auto it = children.cbegin(); it != children.cend(); ++it) {
-        const ArchiveEntry &entry = it.value();
+    for (unsigned index = 0; index < archiveFolder.GetNumberOfItems(); ++index) {
+        const CProxyItem proxyItem = archiveFolder.GetItem(index);
+        const CProxyDir &parent = proxyArchive_.Dirs[proxyItem.DirIndex];
+        const bool isDir = proxyItem.Index < parent.SubDirs.size();
+        const int realIndex = proxyArchive_.GetRealIndex(proxyItem.DirIndex, proxyItem.Index);
+        const unsigned childDir = isDir ? parent.SubDirs[proxyItem.Index] : 0;
+        ArchiveEntry entry = realIndex < 0 ? ArchiveEntry{} : entries_[realIndex];
+        entry.directory = isDir;
+        const QString name = isDir ? proxyArchive_.Dirs[childDir].Name
+                                   : proxyArchive_.Files[unsigned(realIndex)].Name;
+        const QString panelPrefix = proxyArchive_.GetDirPath_as_Prefix(proxyItem.DirIndex);
+        if (isDir) {
+            entry.path = proxyArchive_.GetDirPath_as_Prefix(childDir);
+            entry.path.chop(1);
+        }
+        const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
         const int row = table_->rowCount();
         table_->insertRow(row);
-        const QStringList values = {it.key(),
+        const int sourceOrder = isDir ? int(childDir) : realIndex;
+        const QStringList values = {displayName,
                                     entry.path,
                                     entry.directory ? QString() : QString::number(entry.size),
                                     entry.directory ? QString() : QString::number(entry.packedSize),
                                     entry.modified,
                                     entry.directory ? QString()
-                                                    : QFileInfo(it.key()).suffix().toCaseFolded(),
-                                    QString::number(sourceOrder.value(it.key()))};
+                                                    : QFileInfo(name).suffix().toCaseFolded(),
+                                    QString::number(sourceOrder)};
         for (int col = 0; col < values.size(); ++col) {
             auto *item = new ArchiveTableItem(values[col]);
             item->setData(Qt::UserRole, entry.path);
             item->setData(Qt::UserRole + 1, entry.directory);
-            item->setData(Qt::UserRole + 3, it.key());
+            item->setData(Qt::UserRole + 3, displayName);
+            if (isDir)
+                item->setData(Qt::UserRole + 4, childDir);
             item->setToolTip(entry.path);
             if (col == 0)
                 item->setIcon(QApplication::style()->standardIcon(
@@ -79,7 +58,7 @@ void MainWindow::showArchiveFolder(const QString &folder) {
             if (!entry.directory && (col == 2 || col == 3))
                 item->setData(Qt::UserRole + 2, col == 2 ? entry.size : entry.packedSize);
             if (col == 6)
-                item->setData(Qt::UserRole + 2, sourceOrder.value(it.key()));
+                item->setData(Qt::UserRole + 2, sourceOrder);
             if (col == 2 || col == 3)
                 item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
             table_->setItem(row, col, item);
@@ -88,7 +67,7 @@ void MainWindow::showArchiveFolder(const QString &folder) {
     table_->setSortingEnabled(true);
     applySortMode();
     path_->setText(archiveDisplayPath());
-    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(children.size()));
+    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(archiveFolder.GetNumberOfItems()));
     refreshActions();
 }
 
@@ -183,4 +162,25 @@ void MainWindow::refreshActions() {
     table_->setDragEnabled(idle && state_ == State::Filesystem);
     iconList_->setDragEnabled(idle && state_ == State::Filesystem);
     path_->setReadOnly(!navigating);
+}
+
+QStringList MainWindow::selectedArchivePaths() const {
+    QStringList paths;
+    if (state_ != State::Viewing)
+        return paths;
+    for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
+        const auto *item = table_->item(index.row(), 0);
+        const QString path = item->data(Qt::UserRole).toString();
+        if (!item->data(Qt::UserRole + 1).toBool()) {
+            paths << path;
+            continue;
+        }
+        const unsigned dirIndex = item->data(Qt::UserRole + 4).toUInt();
+        std::vector<unsigned> realIndices;
+        proxyArchive_.AddRealIndices(dirIndex, realIndices);
+        for (unsigned realIndex : realIndices)
+            paths << entries_[realIndex].path;
+    }
+    paths.removeDuplicates();
+    return paths;
 }

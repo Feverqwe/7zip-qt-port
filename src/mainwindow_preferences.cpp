@@ -223,14 +223,7 @@ void MainWindow::openBookmark(int index) {
 }
 
 bool MainWindow::archiveFolderExists(const QString &folder) const {
-    for (const ArchiveEntry &entry : entries_) {
-        QString path = entry.path;
-        if (path.endsWith('/'))
-            path.chop(1);
-        if ((path == folder && entry.directory) || path.startsWith(folder + '/'))
-            return true;
-    }
-    return false;
+    return proxyArchive_.FindDir(folder) >= 0;
 }
 
 void MainWindow::updateToolbar() {
@@ -337,4 +330,22 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         }
     }
     return QMainWindow::eventFilter(watched, event);
+}
+
+void MainWindow::setViewMode(int mode) {
+    if (mode < 0 || mode > 3 || !viewStack_)
+        return;
+    viewMode_ = mode;
+    viewActions_[mode]->setChecked(true);
+    if (mode != 3) {
+        iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
+        iconList_->setIconSize(mode == 0 ? QSize(48, 48) : QSize(16, 16));
+        iconList_->setGridSize(mode == 0 ? QSize(140, 82) : mode == 1 ? QSize(180, 26) : QSize());
+        iconList_->setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
+        iconList_->setWrapping(true);
+        iconList_->setMovement(QListView::Static);
+    }
+    viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
+    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
+    settings.setValue("view/mode", mode);
 }

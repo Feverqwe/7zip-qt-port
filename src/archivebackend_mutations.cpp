@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivebackend.h"
 
 #include <QDir>
@@ -20,10 +21,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         emit finished(false, QStringLiteral("Выберите файлы или папку и имя архива .7z или .zip."));
         return;
     }
-    const QStringList methods = suffix == "7z"
-                                    ? QStringList{"LZMA2", "LZMA", "PPMd", "BZip2"}
-                                    : QStringList{"Deflate", "Deflate64", "BZip2", "LZMA"};
-    if (!QList<int>{0, 1, 3, 5, 7, 9}.contains(options.level) || options.threads < 0 ||
+    const auto &formatInfo = NCompressDialog::GetFormatInfo(suffix);
+    const QStringList methods = NCompressDialog::GetMethodNames(suffix);
+    if (options.level < 0 || options.level > 9 ||
+        !(formatInfo.LevelsMask & (UInt32(1) << options.level)) || options.threads < 0 ||
         options.threads > 256 || (!options.method.isEmpty() && !methods.contains(options.method))) {
         emit finished(false,
                       QStringLiteral("Недопустимые параметры сжатия для выбранного формата."));

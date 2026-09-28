@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CPP/7zip/UI/Agent/Agent.h"
 #include "archivebackend.h"
 #include "archiveformats.h"
 #include "combodialog.h"
@@ -7,6 +8,7 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
 #include "filesystemscanner.h"
+#include "filetable.h"
 #include "filetransferoperation.h"
 #include "fileviewerdialog.h"
 #include "propertiesdialog.h"
@@ -71,86 +73,6 @@
 #include <memory>
 #include <vector>
 
-class FileTable : public QTableWidget {
-  public:
-    using QTableWidget::QTableWidget;
-    bool filesystem = true;
-
-  protected:
-    QMimeData *mimeData(const QList<QTableWidgetItem *> &items) const override {
-        auto *data = new QMimeData;
-        if (!filesystem)
-            return data;
-        QList<QUrl> urls;
-        for (QTableWidgetItem *item : items) {
-            if (item->column() == 1)
-                urls << QUrl::fromLocalFile(item->text());
-        }
-        data->setUrls(urls);
-        return data;
-    }
-};
-
-class ArchiveTableItem : public QTableWidgetItem {
-  public:
-    using QTableWidgetItem::QTableWidgetItem;
-    static int compareNames(const QString &left, const QString &right) {
-        const auto digit = [](QChar value) {
-            return value >= QLatin1Char('0') && value <= QLatin1Char('9');
-        };
-        int leftIndex = 0;
-        int rightIndex = 0;
-        while (leftIndex < left.size() && rightIndex < right.size()) {
-            if (digit(left[leftIndex]) && digit(right[rightIndex])) {
-                while (leftIndex < left.size() && left[leftIndex] == QLatin1Char('0'))
-                    ++leftIndex;
-                while (rightIndex < right.size() && right[rightIndex] == QLatin1Char('0'))
-                    ++rightIndex;
-                int leftEnd = leftIndex;
-                int rightEnd = rightIndex;
-                while (leftEnd < left.size() && digit(left[leftEnd]))
-                    ++leftEnd;
-                while (rightEnd < right.size() && digit(right[rightEnd]))
-                    ++rightEnd;
-                const int leftLength = leftEnd - leftIndex;
-                const int rightLength = rightEnd - rightIndex;
-                if (leftLength != rightLength)
-                    return leftLength < rightLength ? -1 : 1;
-                const int numeric = QStringView(left)
-                                        .mid(leftIndex, leftLength)
-                                        .compare(QStringView(right).mid(rightIndex, rightLength));
-                if (numeric != 0)
-                    return numeric;
-                leftIndex = leftEnd;
-                rightIndex = rightEnd;
-                continue;
-            }
-            const QChar leftChar = left[leftIndex++].toUpper();
-            const QChar rightChar = right[rightIndex++].toUpper();
-            if (leftChar != rightChar)
-                return leftChar < rightChar ? -1 : 1;
-        }
-        if (leftIndex == left.size() && rightIndex == right.size())
-            return 0;
-        return leftIndex == left.size() ? -1 : 1;
-    }
-    bool operator<(const QTableWidgetItem &other) const override {
-        if (data(Qt::UserRole + 1).toBool() != other.data(Qt::UserRole + 1).toBool())
-            return data(Qt::UserRole + 1).toBool();
-        if (data(Qt::UserRole + 2).isValid() && other.data(Qt::UserRole + 2).isValid()) {
-            const qint64 left = data(Qt::UserRole + 2).toLongLong();
-            const qint64 right = other.data(Qt::UserRole + 2).toLongLong();
-            if (left != right)
-                return left < right;
-        }
-        const int value = compareNames(text(), other.text());
-        if (value != 0)
-            return value < 0;
-        return compareNames(data(Qt::UserRole + 3).toString(),
-                            other.data(Qt::UserRole + 3).toString()) < 0;
-    }
-};
-
 class MainWindow : public QMainWindow {
   public:
     explicit MainWindow(ArchiveBackend *backend = nullptr,
@@ -159,53 +81,34 @@ class MainWindow : public QMainWindow {
     void openArchive(const QString &path, bool nested = false, const QString &label = {});
 
     void extractTo(const QString &destination, bool onlySelected = false,
-                   const QString &password = {}, const ExtractionOptions &options = {}) {
-        if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
-            return;
-        QStringList names;
-        if (onlySelected) {
-            names = selectedArchivePaths();
-            if (names.isEmpty())
-                return;
-        }
-        previousState_ = state_;
-        setState(State::Operating);
-        begin("Извлечение", destination);
-        backend_->extract(archive_, destination, names,
-                          password.isEmpty() ? archivePassword_ : password, options);
-    }
+                   const QString &password = {}, const ExtractionOptions &options = {});
 
-    void testArchive() {
-        if (state_ != State::Viewing)
-            return;
-        previousState_ = state_;
-        setState(State::Operating);
-        begin("Проверка архива", archive_);
-        backend_->test(archive_, archivePassword_);
-    }
+    void testArchive();
 
   private:
+    QMenu *createMenusAndToolbar();
+    void createFileActions(QMenu *menu, QToolBar *toolbar);
+    void createFileExtras(QMenu *menu, QToolBar *toolbar);
+    void createViewModes(QMenu *viewMenu);
+    void createFavoritesMenu(QMenu *favoritesMenu);
+    void createViewOptions(QMenu *viewMenu);
+    void createToolbarOptions(QMenu *viewMenu);
+    void createFilePanel(QMenu *editMenu);
+    void createFileTable(QWidget *central);
+    void createPanelActions(QMenu *editMenu);
+    void createIconList(QWidget *central);
+    void connectFilesystemScanner();
+    void connectBackend();
+    void backendFinished(bool ok, const QString &message);
+    bool startPendingHash(bool ok);
+    bool startPendingArchiveMove(bool ok);
+    bool finishArchiveState(bool ok);
+    void finishViewExtraction(bool ok);
+    void closeProgressDialog();
+
     enum class State { Filesystem, Loading, Viewing, Operating };
     enum class SortMode { Name, Type, Date, Size, Unsorted };
-    void setViewMode(int mode) {
-        if (mode < 0 || mode > 3 || !viewStack_)
-            return;
-        viewMode_ = mode;
-        viewActions_[mode]->setChecked(true);
-        if (mode != 3) {
-            iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
-            iconList_->setIconSize(mode == 0 ? QSize(48, 48) : QSize(16, 16));
-            iconList_->setGridSize(mode == 0   ? QSize(140, 82)
-                                   : mode == 1 ? QSize(180, 26)
-                                               : QSize());
-            iconList_->setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
-            iconList_->setWrapping(true);
-            iconList_->setMovement(QListView::Static);
-        }
-        viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
-        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-        settings.setValue("view/mode", mode);
-    }
+    void setViewMode(int mode);
 
   public:
     ~MainWindow() override;
@@ -238,46 +141,16 @@ class MainWindow : public QMainWindow {
     void refreshCurrent();
     void createFolder();
     void createFile();
-    void selectByMask(bool select);
-    void selectByType(bool select);
+    void SelectSpec(bool select);
+    void SelectByType(bool select);
     void navigateTo(const QString &path);
     void activateRow(int row);
     void openSelectedInside();
     void openSelectedOutside();
-    void goBack() {
-        if (state_ == State::Loading || state_ == State::Operating)
-            return;
-        if (state_ == State::Viewing) {
-            if (archiveFolder_.isEmpty()) {
-                if (archiveParents_.empty())
-                    showDirectory(returnDirectory_, false);
-                else
-                    restoreParentArchive();
-            } else
-                goUp();
-        } else if (!history_.isEmpty()) {
-            showDirectory(history_.takeLast(), false);
-        }
-    }
-    void goUp() {
-        if (state_ != State::Viewing || archiveFolder_.isEmpty())
-            return;
-        const int separator = archiveFolder_.lastIndexOf('/');
-        showArchiveFolder(separator < 0 ? QString() : archiveFolder_.left(separator));
-    }
-    void goParent() {
-        if (state_ == State::Viewing) {
-            goBack();
-        } else if (state_ == State::Filesystem) {
-            QDir parent(directory_);
-            if (parent.cdUp())
-                showDirectory(parent.absolutePath(), true);
-        }
-    }
-    QString archiveDisplayPath() const {
-        return displayArchive_ +
-               (archiveFolder_.isEmpty() ? QString() : QStringLiteral(" / ") + archiveFolder_);
-    }
+    void goBack();
+    void goUp();
+    void goParent();
+    QString archiveDisplayPath() const;
     void restoreParentArchive();
     void showArchiveFolder(const QString &folder);
     void setState(State state);
@@ -308,38 +181,8 @@ class MainWindow : public QMainWindow {
     void transferSelected(bool move);
     void deleteSelected();
     void renameSelected();
-    void addSources(const QStringList &sources) {
-        if (state_ != State::Viewing || !ArchiveFormats::canModify(archive_) || info_.encrypted ||
-            sources.isEmpty())
-            return;
-        previousState_ = state_;
-        updatingArchive_ = true;
-        setState(State::Operating);
-        begin("Добавление в архив", archive_);
-        backend_->add(archive_, sources);
-    }
-    QStringList selectedArchivePaths() const {
-        QStringList paths;
-        if (state_ != State::Viewing)
-            return paths;
-        for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
-            const auto *item = table_->item(index.row(), 0);
-            const QString path = item->data(Qt::UserRole).toString();
-            if (!item->data(Qt::UserRole + 1).toBool()) {
-                paths << path;
-                continue;
-            }
-            for (const ArchiveEntry &entry : entries_) {
-                QString normalized = entry.path;
-                if (normalized.endsWith('/'))
-                    normalized.chop(1);
-                if (normalized == path || normalized.startsWith(path + '/'))
-                    paths << entry.path;
-            }
-        }
-        paths.removeDuplicates();
-        return paths;
-    }
+    void addSources(const QStringList &sources);
+    QStringList selectedArchivePaths() const;
 
     ArchiveBackend *backend_ = nullptr;
     struct ArchiveParent {
@@ -384,6 +227,7 @@ class MainWindow : public QMainWindow {
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
     QStringList archiveMovePaths_;
     QList<ArchiveEntry> entries_;
+    CProxyArc proxyArchive_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
     QComboBox *pathCombo_ = nullptr;

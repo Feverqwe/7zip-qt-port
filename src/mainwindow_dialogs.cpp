@@ -71,18 +71,12 @@ void MainWindow::showSelectedProperties() {
             item.size = table_->item(row, 2)->text().toLongLong();
             item.packedSize = table_->item(row, 3)->text().toLongLong();
         } else {
-            const QString prefix = item.path + '/';
-            for (const ArchiveEntry &entry : entries_) {
-                if (!entry.path.startsWith(prefix))
-                    continue;
-                if (entry.directory)
-                    ++item.nestedFolders;
-                else {
-                    ++item.nestedFiles;
-                    item.size += entry.size;
-                    item.packedSize += entry.packedSize;
-                }
-            }
+            const unsigned dirIndex = name->data(Qt::UserRole + 4).toUInt();
+            const CProxyDir &dir = proxyArchive_.Dirs[dirIndex];
+            item.nestedFolders = int(dir.NumSubDirs);
+            item.nestedFiles = int(dir.NumSubFiles);
+            item.size = qint64(dir.Size);
+            item.packedSize = qint64(dir.PackSize);
         }
         items.append(item);
     }
