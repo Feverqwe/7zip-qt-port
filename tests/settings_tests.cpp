@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "window_state_support.h"
 
 #include <QCheckBox>
 #include <QDir>
@@ -14,6 +14,101 @@ class SettingsTests : public QObject {
 
   private slots:
     void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+
+    void cleanup() {
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.setValue("list/singleClick", false);
+    }
+    void singleClickSelection_data() {
+        QTest::addColumn<int>("mode");
+        QTest::addColumn<bool>("archive");
+        QTest::addColumn<bool>("singleClick");
+        for (int mode = 0; mode < 4; ++mode)
+            for (bool singleClick : {false, true}) {
+                QTest::newRow(qPrintable(QStringLiteral("disk-%1-%2").arg(mode).arg(singleClick)))
+                    << mode << false << singleClick;
+                QTest::newRow(
+                    qPrintable(QStringLiteral("archive-%1-%2").arg(mode).arg(singleClick)))
+                    << mode << true << singleClick;
+            }
+    }
+    void singleClickSelection() {
+        QFETCH(int, mode);
+        QFETCH(bool, archive);
+        QFETCH(bool, singleClick);
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.setValue("list/singleClick", singleClick);
+        settings.setValue("view/flatDisk", false);
+        settings.setValue("view/flatArchive", false);
+        settings.sync();
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QStringList names = {"A папка", "B папка", "C папка"};
+        for (const QString &name : names)
+            QVERIFY(QDir(dir.path()).mkdir(name));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(dir.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        if (archive) {
+            window.openArchive(dir.filePath("click.zip"));
+            backend.completeList({ArchiveEntry{names[0] + "/child.txt", 1, 1},
+                                  ArchiveEntry{names[1] + "/child.txt", 1, 1},
+                                  ArchiveEntry{names[2] + "/child.txt", 1, 1}});
+        }
+        window.findChild<QAction *>(qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))
+            ->trigger();
+        window.show();
+        window.activateWindow();
+        QApplication::processEvents();
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *icons = window.findChild<QListView *>("iconList");
+        QAbstractItemView *view = mode == 3 ? static_cast<QAbstractItemView *>(table)
+                                            : static_cast<QAbstractItemView *>(icons);
+        const QString before = address->text();
+        const auto click = [&](int row, Qt::KeyboardModifiers modifiers) {
+            const QModelIndex index = table->model()->index(row, 0);
+            view->scrollTo(index);
+            QTest::mouseClick(view->viewport(), Qt::LeftButton, modifiers,
+                              view->visualRect(index).center());
+        };
+        click(0, Qt::ControlModifier);
+        QCOMPARE(address->text(), before);
+        click(1, Qt::ControlModifier);
+        QCOMPARE(address->text(), before);
+        QCOMPARE(table->selectionModel()->selectedRows().size(), 2);
+        QVERIFY(window.findChild<QAction *>("copyAction")->isEnabled());
+        click(2, Qt::ShiftModifier);
+        QCOMPARE(address->text(), before);
+        QVERIFY(table->selectionModel()->selectedRows().size() >= 2);
+        click(0, Qt::MetaModifier);
+        QCOMPARE(address->text(), before);
+        if (singleClick && (mode == 0 || mode == 3)) {
+            const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+            QVERIFY(QDir().mkpath(screenshots));
+            for (int width : {980, 640}) {
+                window.resize(width, width == 980 ? 620 : 400);
+                QApplication::processEvents();
+                QVERIFY(
+                    window.grab().save(screenshots + QStringLiteral("/single-click-%1-%2-%3.png")
+                                                         .arg(archive ? "archive" : "disk")
+                                                         .arg(mode)
+                                                         .arg(width)));
+            }
+        }
+        click(0, Qt::NoModifier);
+        if (!singleClick) {
+            QCOMPARE(address->text(), before);
+            const QModelIndex index = table->model()->index(0, 0);
+            QTest::mouseDClick(view->viewport(), Qt::LeftButton, Qt::NoModifier,
+                               view->visualRect(index).center());
+        }
+        QVERIFY(address->text() != before);
+        QCOMPARE(backend.extractCalls, 0);
+        settings.setValue("list/singleClick", false);
+        settings.sync();
+    }
 
     void optionsApplyCancelAndPersist() {
         QTemporaryDir temporary;

@@ -51,10 +51,8 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
         if (!fileListSettings_.singleClick)
             activateRow(row);
     });
-    connect(table_, &QTableWidget::cellClicked, this, [this](int row, int) {
-        if (fileListSettings_.singleClick)
-            activateRow(row);
-    });
+    connect(table_, &QTableWidget::cellClicked, this,
+            [this](int row, int) { activateSingleClickedRow(row); });
 }
 
 void MainWindow::createFileTable(QWidget *central) {
@@ -170,6 +168,7 @@ void MainWindow::createIconList(QWidget *central) {
     iconList_->setModelColumn(0);
     iconList_->setSelectionModel(table_->selectionModel());
     iconList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    iconList_->setSelectionBehavior(QAbstractItemView::SelectRows);
     iconList_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     iconList_->setUniformItemSizes(true);
     iconList_->setWordWrap(false);
@@ -186,10 +185,8 @@ void MainWindow::createIconList(QWidget *central) {
         if (!fileListSettings_.singleClick)
             activateRow(index.row());
     });
-    connect(iconList_, &QListView::clicked, this, [this](const QModelIndex &index) {
-        if (fileListSettings_.singleClick)
-            activateRow(index.row());
-    });
+    connect(iconList_, &QListView::clicked, this,
+            [this](const QModelIndex &index) { activateSingleClickedRow(index.row()); });
     connect(iconList_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
         const QModelIndex index = iconList_->indexAt(pos);
         if (index.isValid() &&
@@ -198,4 +195,12 @@ void MainWindow::createIconList(QWidget *central) {
                                                            QItemSelectionModel::Rows);
         showItemContextMenu(iconList_->viewport()->mapToGlobal(pos));
     });
+}
+
+void MainWindow::activateSingleClickedRow(int row) {
+    // Selection modifiers must keep the Qt multi-selection gesture intact.
+    const auto modifiers = QApplication::keyboardModifiers();
+    if (fileListSettings_.singleClick &&
+        !(modifiers & (Qt::ControlModifier | Qt::MetaModifier | Qt::ShiftModifier)))
+        activateRow(row);
 }

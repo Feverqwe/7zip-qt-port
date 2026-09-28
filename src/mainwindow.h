@@ -93,6 +93,7 @@ class MainWindow : public QMainWindow {
     void createFavoritesMenu(QMenu *favoritesMenu);
     void createViewOptions(QMenu *viewMenu);
     void createToolbarOptions(QMenu *viewMenu);
+    void activateSingleClickedRow(int row);
     void createFilePanel(QMenu *editMenu);
     void createFileTable(QWidget *central);
     void createPanelActions(QMenu *editMenu);
