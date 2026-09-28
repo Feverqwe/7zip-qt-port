@@ -92,7 +92,8 @@ class MainWindowLayoutTests : public QObject {
         auto *destination = dialog.findChild<QComboBox *>("extractDestination");
         QVERIFY(destination);
         QVERIFY(destination->isEditable());
-        QCOMPARE(destination->currentText(), QString("/initial"));
+        QCOMPARE(destination->currentText(), QString("/"));
+        QCOMPARE(dialog.findChild<QLineEdit *>("extractPathName")->text(), QString("initial"));
         QCOMPARE(destination->itemText(0), QString("/previous"));
         QVERIFY(dialog.findChild<QPushButton *>("extractBrowseButton"));
         auto *pathMode = dialog.findChild<QComboBox *>("extractPathMode");
@@ -120,6 +121,7 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(dialog.password(), QString("secret"));
         showPassword->setChecked(true);
         QCOMPARE(password->echoMode(), QLineEdit::Normal);
+        dialog.findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
         destination->setCurrentText("/changed");
         QCOMPARE(dialog.destination(), QString("/changed"));
     }

@@ -15,6 +15,9 @@ class ExtractDialogTests final : public QObject {
     QByteArray oldSettings_;
     QString settings_;
     QComboBox *path(CExtractDialog &dialog) {
+        const QString full = dialog.destination();
+        dialog.findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
+        dialog.findChild<QComboBox *>("extractDestination")->setEditText(full);
         return dialog.findChild<QComboBox *>("extractDestination");
     }
     QComboBox *pathMode(CExtractDialog &dialog) {

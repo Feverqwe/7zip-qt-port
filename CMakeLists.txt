@@ -107,7 +107,7 @@ if(BUILD_TESTING)
     )
     add_test(NAME archive_backend COMMAND archive_backend_tests)
     add_test(NAME archive_mutation COMMAND archive_mutation_tests)
-    qt_add_executable(extract_dialog_tests tests/extract_dialog_tests.cpp
+    qt_add_executable(extract_dialog_tests tests/extract_dialog_tests.cpp src/CPP/Common/Wildcard.cpp
         src/CPP/7zip/UI/GUI/ExtractDialog.cpp src/CPP/7zip/UI/GUI/ExtractDialog.h
         src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
         src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
@@ -115,6 +115,13 @@ if(BUILD_TESTING)
     target_link_libraries(extract_dialog_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME extract_dialog COMMAND extract_dialog_tests)
     set_tests_properties(extract_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
+    get_target_property(split_destination_sources extract_dialog_tests SOURCES)
+    list(REMOVE_ITEM split_destination_sources tests/extract_dialog_tests.cpp)
+    qt_add_executable(split_destination_tests tests/split_destination_tests.cpp ${split_destination_sources})
+    target_include_directories(split_destination_tests PRIVATE src)
+    target_link_libraries(split_destination_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    add_test(NAME split_destination COMMAND split_destination_tests)
+    set_tests_properties(split_destination PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     qt_add_executable(extraction_options_tests tests/extraction_options_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)
     target_include_directories(extraction_options_tests PRIVATE src)
     target_link_libraries(extraction_options_tests PRIVATE Qt6::Test)

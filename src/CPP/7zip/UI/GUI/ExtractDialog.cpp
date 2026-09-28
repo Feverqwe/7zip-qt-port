@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/GUI/ExtractDialog.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ExtractDialog.h"
+#include "../../../Common/Wildcard.h"
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
@@ -72,6 +73,18 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
 
     auto *options = new QHBoxLayout;
     auto *modeColumn = new QVBoxLayout;
+    auto *nameRow = new QHBoxLayout;
+    _nameEnable = new QCheckBox(this);
+    _nameEnable->setObjectName("extractNameEnable");
+    _nameEnable->setAccessibleName("Добавить имя папки назначения");
+    _nameEnable->setToolTip("Добавить имя папки назначения");
+    _pathName = new QLineEdit(this);
+    _pathName->setObjectName("extractPathName");
+    _pathName->setAccessibleName("Имя папки назначения");
+    _pathName->setPlaceholderText("Имя папки назначения");
+    nameRow->addWidget(_nameEnable);
+    nameRow->addWidget(_pathName, 1);
+    modeColumn->addLayout(nameRow);
     modeColumn->addWidget(new QLabel("Пути:", this));
     _pathMode = new QComboBox(this);
     _pathMode->setObjectName("extractPathMode");
@@ -92,7 +105,7 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     _showPassword = new QCheckBox("Показать пароль", passwordGroup);
     _showPassword->setObjectName("extractShowPassword");
     passwordLayout->addWidget(_showPassword);
-    options->addWidget(passwordGroup, 1);
+    options->addWidget(passwordGroup, 1, Qt::AlignTop);
     layout->addLayout(options);
     auto *hint = new QLabel("Папка назначения будет создана при необходимости. При выборе "
                             "«Без путей» файлы с одинаковыми именами из разных папок не "
@@ -107,6 +120,7 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(browse, &QPushButton::clicked, this, &CExtractDialog::OnButtonSetPath);
     connect(_showPassword, &QCheckBox::toggled, this, &CExtractDialog::UpdatePasswordControl);
+    connect(_nameEnable, &QCheckBox::toggled, _pathName, &QWidget::setVisible);
     OnInit(history);
 }
 
@@ -134,12 +148,23 @@ void CExtractDialog::OnInit(const QStringList &history) {
         OverwriteMode = _info.OverwriteMode;
     _showPassword->setChecked(_info.ShowPassword.Val);
     UpdatePasswordControl();
-    _path->setEditText(DirPath);
+    QString pathPrefix = DirPath;
+    if (_info.SplitDest.Val) {
+        _nameEnable->setChecked(true);
+        QString pathName;
+        SplitPathToParts_Smart(DirPath, pathPrefix, pathName);
+        if (pathPrefix.isEmpty())
+            pathPrefix = pathName;
+        else
+            _pathName->setText(pathName);
+    } else
+        _pathName->hide();
+    _path->setEditText(pathPrefix);
     for (unsigned i = 0; i < _info.Paths.Size() && i < kHistorySize; i++)
         _path->addItem(_info.Paths[i]);
     // Qt addItem selects the first item in an editable empty combo. Restore typed text.
     _path->setCurrentIndex(-1);
-    _path->setEditText(DirPath);
+    _path->setEditText(pathPrefix);
     AddComboItems(*_pathMode, {"Полные пути", "Без путей"}, kPathModeButtonsVals, PathMode);
     AddComboItems(*_overwriteMode,
                   {"Не перезаписывать существующие файлы", "Перезаписывать существующие файлы",
@@ -191,6 +216,16 @@ void CExtractDialog::OnOK() {
         s = _path->itemText(currentItem);
     s = s.trimmed();
     NormalizeDirPathPrefix(s);
+    const bool splitDest = _nameEnable->isChecked();
+    if (splitDest) {
+        QString pathName = _pathName->text().trimmed();
+        s += pathName;
+        NormalizeDirPathPrefix(s);
+    }
+    if (splitDest != _info.SplitDest.Val) {
+        _info.SplitDest.Def = true;
+        _info.SplitDest.Val = splitDest;
+    }
     DirPath = s;
     _info.Paths.Clear();
     AddUniqueString(_info.Paths, s);
@@ -204,7 +239,14 @@ void CExtractDialog::OnOK() {
 }
 
 QString CExtractDialog::destination() const {
-    return result() == QDialog::Accepted ? DirPath : _path->currentText().trimmed();
+    if (result() == QDialog::Accepted)
+        return DirPath;
+    QString s = _path->currentText().trimmed();
+    if (_nameEnable->isChecked()) {
+        NormalizeDirPathPrefix(s);
+        s += _pathName->text().trimmed();
+    }
+    return s;
 }
 
 ExtractionOptions CExtractDialog::options() const {

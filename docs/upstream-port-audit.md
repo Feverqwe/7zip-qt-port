@@ -48,7 +48,7 @@
 | `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
-| `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest, ElimDup и NtSecurity пока не перенесены. |
+| `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
 | `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
 | `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
@@ -394,3 +394,36 @@ MainWindow лишился самостоятельного алгоритма и
 header содержит только alias ExtractDialog=CExtractDialog. Неиспользуемые
 SFX, Lang, Help, NtSecurity, ElimDup, SplitDest пока остаются долгом.
 Обязательный clang-format изменяет оформление скопированного тела.
+
+### Итерация: SplitDest и исходное разделение пути
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/Common/Wildcard.cpp::SplitPathToParts_Smart`,
+`CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::{OnInit,OnOK,
+OnButtonClicked}` (ветки IDX_EXTRACT_NAME_ENABLE / SplitDest),
+`UI/Common/ZipRegistry.*::NExtract::CInfo::SplitDest`.
+
+Указательный обход SplitPathToParts_Smart скопирован в существующий
+зеркальный Common/Wildcard.cpp; имя, start/p, пропуск одного конечного
+разделителя и обратный поиск сохранены. QString/QChar заменяют UString/
+wchar_t, left/mid заменяют SetFrom/присваивание p. IsPathSepar сохраняет
+исходное разделение платформ: на Windows slash/backslash, POSIX slash.
+Структура borrowed Wildcard не реорганизуется; это единственный helper.
+
+Скопированы ветки OnInit: при SplitDest.Checked исходный путь разделяется,
+пустой prefix заменяется name (корень и одиночное относительное имя), иначе
+name попадает в отдельный Edit. OnOK сохраняет исходные Trim, +=pathName,
+NormalizeDirPathPrefix, сравнение SplitDest со старым значением и Def=true
+при изменении. Значение по умолчанию true и Key_Get_BoolPair_true перенесены
+в QSettings Load/Save NExtract::CInfo; только изменённый bool сохраняется.
+Name field показывается/скрывается Qt toggled вместо Win32 OnButtonClicked.
+Отмена не записывает флажок/историю, поле имени само не сохраняется:
+в истории хранится составной конечный путь, как в upstream.
+
+Qt presentation повторяет checkbox/Edit перед Path mode слева, Password
+справа по ExtractDialog.rc. У исходного пустого checkbox добавлены tooltip
+и accessibleName; Edit получил accessibleName/placeholder. Qt getter
+до OK собирает preview из тех же полей, после OK возвращает DirPath.
+Параметры движка не меняются: backend проверяет составное назначение
+существующей защитой путей/ссылок и создаёт его. NtSecurity, ElimDup,
+интерактивный Ask остаются долгом. Форматирование — clang-format.

@@ -11,6 +11,8 @@
 class CExtractDialog : public QDialog {
     Q_OBJECT
     QComboBox *_path = nullptr;
+    QLineEdit *_pathName = nullptr;
+    QCheckBox *_nameEnable = nullptr;
     QLineEdit *_passwordControl = nullptr;
     QComboBox *_pathMode = nullptr;
     QComboBox *_overwriteMode = nullptr;

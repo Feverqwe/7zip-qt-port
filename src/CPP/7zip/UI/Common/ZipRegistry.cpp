@@ -130,6 +130,8 @@ void CInfo::Save(const QString &path) const {
         key.setValue("ExtractMode", UInt32(PathMode));
     if (OverwriteMode_Force)
         key.setValue("OverwriteMode", UInt32(OverwriteMode));
+    if (SplitDest.Def)
+        key.setValue("SplitDest", SplitDest.Val);
     if (ShowPassword.Def)
         key.setValue("ShowPassword", ShowPassword.Val);
     QStringList paths;
@@ -143,6 +145,8 @@ void CInfo::Load(const QString &path) {
     PathMode_Force = false;
     OverwriteMode = NOverwriteMode::kAsk;
     OverwriteMode_Force = false;
+    SplitDest.Val = true;
+    SplitDest.Def = false;
     ShowPassword.Init();
     Paths.Clear();
     QSettings key(path, QSettings::IniFormat);
@@ -163,6 +167,9 @@ void CInfo::Load(const QString &path) {
         OverwriteMode = (NOverwriteMode::EEnum)v;
         OverwriteMode_Force = true;
     }
+    SplitDest.Def = key.contains("SplitDest");
+    if (SplitDest.Def)
+        SplitDest.Val = key.value("SplitDest").toBool();
     if (key.contains("ShowPassword")) {
         ShowPassword.Def = true;
         ShowPassword.Val = key.value("ShowPassword").toBool();

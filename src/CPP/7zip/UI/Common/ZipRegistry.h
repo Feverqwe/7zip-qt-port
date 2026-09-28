@@ -47,6 +47,7 @@ struct CInfo {
     NOverwriteMode::EEnum OverwriteMode;
     bool PathMode_Force;
     bool OverwriteMode_Force;
+    CBoolPair SplitDest;
     CBoolPair ShowPassword;
     CObjectVector<QString> Paths;
     void Save(const QString &path) const;

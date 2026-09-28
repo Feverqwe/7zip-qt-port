@@ -15,6 +15,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             QVERIFY(dialog);
             auto *destination = dialog->findChild<QComboBox *>("extractDestination");
             QVERIFY(destination);
+            dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
             destination->setCurrentText("/temporary/selected output");
             dialog->reject();
         });
@@ -26,6 +27,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             QVERIFY(dialog);
             auto *destination = dialog->findChild<QComboBox *>("extractDestination");
             QVERIFY(destination);
+            dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
             destination->setCurrentText("/temporary/selected output");
             auto *password = dialog->findChild<QLineEdit *>("extractPassword");
             QVERIFY(password);

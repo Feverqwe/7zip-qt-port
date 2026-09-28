@@ -49,3 +49,25 @@ bool DoesWildcardMatchName(QStringView mask, QStringView name) {
     const std::u16string nameString = name.toString().toStdU16String();
     return DoesWildcardMatchName(maskString.c_str(), nameString.c_str());
 }
+
+// Copied from SplitPathToParts_Smart; QChar/QString replace UString code units.
+void SplitPathToParts_Smart(const QString &path, QString &dirPrefix, QString &name) {
+    const QChar *start = path.constData();
+    const QChar *p = start + path.size();
+    const auto IsPathSepar = [](QChar c) {
+#ifdef Q_OS_WIN
+        return c == '/' || c == '\\';
+#else
+        return c == '/';
+#endif
+    };
+    if (p != start) {
+        if (IsPathSepar(*(p - 1)))
+            p--;
+        for (; p != start; p--)
+            if (IsPathSepar(*(p - 1)))
+                break;
+    }
+    dirPrefix = path.left(p - start);
+    name = path.mid(p - start);
+}
