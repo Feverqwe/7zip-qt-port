@@ -1,4 +1,4 @@
 interface:
   display_name: 'Sevenzip C++ and Qt'
-  short_description: 'Build the desktop UI and archive adapter'
-  default_prompt: 'Use $sevenzip-cpp-qt to implement this C++ and Qt feature with safe archive integration.'
+  short_description: 'Port upstream source and adapt UI to Qt'
+  default_prompt: 'Use $sevenzip-cpp-qt to copy the upstream implementation and adapt its UI and platform dependencies for this feature.'

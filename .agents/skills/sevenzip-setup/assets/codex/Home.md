@@ -8,6 +8,7 @@
 - [Development](docs/development.md)
 - [Testing](docs/testing.md)
 - [7zFM parity](docs/7zfm-parity.md)
+- [Upstream source-port audit](docs/upstream-port-audit.md)
 - [Context map](context/README.md)
 
 ## Local workspace
