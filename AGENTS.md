@@ -13,6 +13,17 @@ This project ports upstream source code, not just its observable behavior. Copy 
 - For each port, record the upstream commit, source paths and symbols, copied versus adapted portions, and reasons for deviations in `docs/upstream-port-audit.md`. Preserve source notices and the applicable upstream license. Record observable platform/workflow differences in `docs/7zfm-parity.md`.
 - Existing independently written logic is migration debt, not a model for new ports. Replace the relevant portion with upstream code during work on that area; do not turn a focused task into a repository-wide rewrite. A mirrored path or familiar symbol name alone is not evidence of a source port: review the implementation against upstream.
 
+## Keeping the port updatable
+
+Design each port for later upstream updates while implementing it. Preserved paths and names support comparison, but adapted Qt modules still require review; do not assume that a Git merge can update the whole port automatically.
+
+- Keep a reproducible upstream baseline for every borrowed module: record the full commit hash and original paths in `docs/upstream-port-audit.md`, with a source repository reference from which the exact original files can be retrieved. A moving branch or the current sibling checkout alone is not a sufficient baseline. When modules use different revisions, record them individually.
+- Keep Qt presentation, platform services, and `7zz` integration changes local and behind narrow adapters where practical. Preserve upstream functional bodies and module boundaries; do not reorganize copied modules just to separate every platform call. Record necessary changes so a reviewer can distinguish upstream logic from local adaptations.
+- Avoid unrelated renaming, reordering, cleanup, or style changes in borrowed code. Apply required project formatting, but account for formatting separately when comparing upstream versions so it does not hide functional changes.
+- Record the scope of partial ports, including omitted functions, branches, and dependencies. An upstream fix can affect an omitted path or a dependency of a copied function; a familiar filename does not mean the entire module has been ported.
+- For an upstream update, compare the recorded old upstream revision with the proposed new revision first, then apply the relevant changes to our current adapted implementation. Review changed dependencies and local deviations explicitly. Update unchanged vendored files from the exact new source; do not overwrite adapted files wholesale or discard local fixes. Perform comparisons in a separate checkout or retrieved source snapshot without modifying `../7zip-upstream` unless the user requests that change.
+- Update provenance per migrated module only after its changes have been reviewed and validated. Record the old and new revisions, retained adaptations, and any deferred changes with reasons in the audit; update parity documentation when workflows change. Add regression coverage for changed behavior and follow the focused checks and full gate below.
+
 ## Ownership and context
 
 - Read and change this repository's code, tests, docs, and build tooling as needed for the user's task. Preserve unrelated changes.
