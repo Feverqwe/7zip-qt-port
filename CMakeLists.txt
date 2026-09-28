@@ -22,6 +22,13 @@ set_target_properties(sevenzip_panel PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_panel PUBLIC src)
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
 
+add_library(sevenzip_filesystem STATIC
+    src/CPP/7zip/UI/FileManager/FSFolder.cpp
+    src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
+    src/filedeleteoperation.cpp src/filedeleteoperation.h)
+target_include_directories(sevenzip_filesystem PUBLIC src)
+target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
+
 qt_add_executable(sevenzip_desktop
     src/main.cpp
     src/CPP/Common/Wildcard.cpp src/CPP/Common/Wildcard.h src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp src/CPP/7zip/UI/FileManager/PanelSort.cpp src/CPP/7zip/UI/FileManager/PanelSort.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp
@@ -54,6 +61,9 @@ include(CTest)
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(filesystem_operations_tests tests/filesystem_operations_tests.cpp)
+    target_link_libraries(filesystem_operations_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME filesystem_operations COMMAND filesystem_operations_tests)
     qt_add_executable(panel_copy_info_tests tests/panel_copy_info_tests.cpp)
     target_link_libraries(panel_copy_info_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME panel_copy_info COMMAND panel_copy_info_tests)
@@ -207,7 +217,7 @@ if(BUILD_TESTING)
     set_tests_properties(nested_archive PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/nested-archive-settings.ini")
     qt_add_executable(file_transfer_tests tests/file_transfer_tests.cpp src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h)
     target_include_directories(file_transfer_tests PRIVATE src)
-    target_link_libraries(file_transfer_tests PRIVATE Qt6::Test)
+    target_link_libraries(file_transfer_tests PRIVATE Qt6::Test sevenzip_common)
     add_test(NAME file_transfer COMMAND file_transfer_tests)
     get_target_property(panel_sort_sources ui_state_tests SOURCES)
     list(REMOVE_ITEM panel_sort_sources tests/ui_state_tests.cpp)
@@ -273,5 +283,7 @@ foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_opera
     checksum_tests file_viewer_tests nested_archive_tests panel_sort_tests combine_name_tests panel_key_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_panel)
+        target_link_libraries(${target} PRIVATE sevenzip_filesystem)
+        target_sources(${target} PRIVATE src/mainwindow_filedelete.cpp)
     endif()
 endforeach()

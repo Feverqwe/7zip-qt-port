@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
@@ -147,24 +148,15 @@ void MainWindow::deleteSelected() {
         backend_->remove(archive_, paths);
         return;
     }
+    if (state_ != State::Filesystem)
+        return;
     const QStringList paths = selectedFilesystemPaths();
     if (paths.isEmpty())
         return;
     if (QMessageBox::question(this, "Удалить", "Удалить выбранные объекты из файловой системы?") !=
         QMessageBox::Yes)
         return;
-    for (const QString &path : paths) {
-        if (QFileInfo(path).isSymLink() || !QFileInfo(path).exists()) {
-            QMessageBox::warning(this, "Sevenzip Desktop", "Объект недоступен.");
-            break;
-        }
-        bool ok = QFileInfo(path).isDir() ? QDir(path).removeRecursively() : QFile::remove(path);
-        if (!ok) {
-            QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось удалить объект.");
-            break;
-        }
-    }
-    showDirectory(directory_, false);
+    startFileDelete(paths);
 }
 
 void MainWindow::renameSelected() {
@@ -205,9 +197,11 @@ void MainWindow::renameSelected() {
     if (!accepted)
         return;
     const QString target = QDir(source.absolutePath()).filePath(name);
+    NFsFolder::CFSFolder folder(directory_);
+    folder.AddPath(paths.first());
     if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
         name.contains('\\') || source.isSymLink() || QFileInfo::exists(target) ||
-        !QDir().rename(paths.first(), target))
+        !folder.Rename(0, name))
         QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось переименовать объект.");
     showDirectory(directory_, false);
 }

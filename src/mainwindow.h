@@ -7,6 +7,7 @@
 #include "copydialog.h"
 #include "createarchivedialog.h"
 #include "extractdialog.h"
+#include "filedeleteoperation.h"
 #include "filesystemscanner.h"
 #include "filetable.h"
 #include "filetransferoperation.h"
@@ -186,6 +187,7 @@ class MainWindow : public QMainWindow {
     void transferSelected(bool move);
     QString selectedCopyInfo() const;
     void deleteSelected();
+    void startFileDelete(const QStringList &paths);
     void renameSelected();
     void addSources(const QStringList &sources);
     QStringList selectedArchivePaths() const;
@@ -280,6 +282,7 @@ class MainWindow : public QMainWindow {
     VolumeOperation *volumeOperation_ = nullptr;
     QProgressDialog *volumeProgress_ = nullptr;
     FileTransferOperation *fileTransfer_ = nullptr;
+    FileDeleteOperation *fileDelete_ = nullptr;
     QProgressDialog *fileTransferProgress_ = nullptr;
     QAction *viewFile_ = nullptr;
     QAction *editFile_ = nullptr;

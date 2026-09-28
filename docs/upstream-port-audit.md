@@ -1,5 +1,41 @@
 # Ревизия происхождения кода 7zFM
 
+## Мутации файловой системы и рабочий поток удаления (2026-09-28)
+
+Источник: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/FSFolder.cpp::{GetRelPath, GetAbsPath, CreateFolder,
+CreateFile, Rename, Delete}`, `FSFolder.h::{CDirItem, CFSFolder}`,
+`CPP/Windows/FileDir.cpp::{DeleteFileAlways, RemoveDirWithSubItems}`.
+Адаптированные файлы сохранены по исходным путям; notices и LGPL сохранены.
+
+Перенесены ветки mkdir → CreateComplexDir, Create_NEW, Rename с родительским
+префиксом, индексный цикл Delete с SetTotal/SetCompleted и рекурсивный обход
+RemoveDirWithSubItems. Сохранён исходный порядок файлов, накопление isError
+в рекурсивном обходе и частичный результат удаления. Files/Folders и indices
+используют исходные CObjectVector/CRecordVector. Остальные методы CFSFolder
+не объявляются перенесёнными.
+
+Необходимые изменения: QFile/QDir/QFileInfo заменяют NIO/Win32 filesystem
+services; QString — платформенные пути, bool/ErrorMessage — HRESULT и last
+error, callbacks — IProgress. AddPath и конструктор формируют снимок панели
+Qt, включая Parent для плоского вида; это новая интеграционная обвязка.
+Win32 FILE_ATTRIBUTE_READONLY заменён Qt permissions только на Windows:
+на Unix удаление зависит от прав родительской папки. QFile удаляет сам symlink;
+ветка HasReparsePoint сохраняет запрет обхода его цели. Qt enumeration не
+имеет Next(error): проверяется читаемость папки, а rmdir выявляет оставшиеся
+записи. Сохраняется существующая политика отказа для непосредственно
+выбранного symlink и незамещения dangling symlink при Rename.
+
+FileDeleteOperation и mainwindow_filedelete.cpp — Qt worker/presentation glue:
+исходный прогресс i преобразуется в число i+1 для QProgressDialog, отмена
+проверяется до удаления каждого объекта и в рекурсии, завершение всегда
+обновляет панель, деструктор ожидает поток. Дополнительный CheckBreak нужен,
+потому что исходный RemoveDirWithSubItems не принимает IProgress и иначе
+большое дерево не реагировало бы на отмену. UI сохраняет прежнее ограничение
+создания одним именем; CFSFolder поддерживает исходную ветку составного пути.
+Корзина/SHFileOperation, alternate streams и остальные FSFolder методы — долг.
+Форматирование — обязательный clang-format.
+
 ## Qt layout diagnostics
 
 Reference inspected: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
@@ -50,7 +86,7 @@ Extract column ordering on disposable fixtures.
 | `src/mainwindow_archivelist.cpp` | `PanelItems.cpp`, `PanelSort.cpp`, `PanelMenu.cpp` | Построение дерева, раскрытие выбранных папок и плоский обход делегированы перенесённым `CProxyArc` / `CAgentFolder`. Строки таблицы адаптируют их данные к Qt. Собственные правила доступности команд ещё требуют переноса. |
 | `src/mainwindow_archiveopening.cpp` | `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственная цепочка вложенных архивов с временными файлами и backend. Нужно сверить стек папок и открытие по содержимому. |
 | `src/mainwindow_archivecommands.cpp` | `PanelCrc.cpp`, `PanelOperations.cpp`, `PanelCopy.cpp`, `PanelItemOpen.cpp` | Собственная связка действий с `ArchiveBackend`; выбор и правила команд требуют сверки. |
-| `src/mainwindow_fileoperations.cpp` | `PanelOperations.cpp`, `PanelCopy.cpp`, `PanelSplitFile.cpp` | Собственная Qt-обвязка файловых операций, удаления и переименования. Функциональные правила нужно сверить отдельно от диалогов. |
+| `src/mainwindow_fileoperations.cpp`, `mainwindow_filedelete.cpp` | `PanelOperations.cpp`, `PanelCopy.cpp`, `FSFolder.cpp` | Qt-обвязка подтверждения, рабочего потока и команд. Создание, переименование и удаление делегированы перенесённым методам CFSFolder; остальные правила панели остаются долгом. |
 | `src/CPP/7zip/UI/FileManager/PanelKey.cpp` | `PanelKey.cpp::OnKeyDown`, `Panel.cpp::CMyComboBoxEdit::OnMessage`, `App.cpp::CPanelCallbackImp::SetFocusToPath` | Qt-диспетчер клавиш списка и адреса: Shift+F4, Alt+F1/F2, Tab, закладки и делегирование команд выделения. Однопанельный режим сохраняет upstream-правило общей цели Alt+F1/F2. |
 | `src/mainwindow_preferences.cpp` | `PanelMenu.cpp`, `PanelSort.cpp`, `PanelFolderChange.cpp`, `App.cpp`, `PanelKey.cpp` | Собственный код меню, сортировки, истории, закладок и событий. Это несколько upstream-модулей в одном файле. |
 | `src/mainwindow_dialogs.cpp`, `propertiesdialog.cpp`, `propertiesdialog.h` | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Размеры и количество вложенных объектов архивной папки берутся из перенесённого `CProxyArc`. Qt-форма и сводка нескольких выбранных объектов остаются адаптацией; форматные и сырые свойства пока отсутствуют. |

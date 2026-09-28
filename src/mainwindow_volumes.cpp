@@ -6,6 +6,10 @@ MainWindow::~MainWindow() {
     // down focus. Navigation must stop before MainWindow members are destroyed.
     disconnect(pathCombo_, nullptr, this, nullptr);
     disconnect(path_, nullptr, this, nullptr);
+    if (fileDelete_) {
+        fileDelete_->cancel();
+        fileDelete_->wait();
+    }
     if (fileTransfer_) {
         fileTransfer_->cancel();
         fileTransfer_->wait();

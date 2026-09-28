@@ -1,5 +1,14 @@
 # Regression strategy
 
+`filesystem_operations` проверяет перенесённые CreateFolder/CreateFile/Rename/
+Delete: составной и абсолютный путь, Unicode/пробелы, занятое имя без потери
+данных, Rename в родительской папке плоского вида, пустые/скрытые записи,
+частичное удаление с ошибкой следующего объекта, отмену до запуска, между
+объектами и внутри дерева. Unix cases проверяют вложенные ссылки на папку,
+файл и отсутствующую цель без изменения внешнего файла. `ui_operations`
+проверяет подтверждение/отказ и обновление панели после worker; `ui_state`
+покрывает создание, `file_transfer` — прямого потребителя FSFolder.h.
+
 `copy_dialog` checks OK via both accept() and the button, Cancel, history order,
 case-insensitive deduplication, INI migration and explicit empty history,
 native-folder-dialog adaptation (normalization and canceled browsing), and

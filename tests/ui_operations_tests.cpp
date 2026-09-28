@@ -133,6 +133,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "deleteAction")->trigger();
+        QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QVERIFY(!QFileInfo::exists(renamed));
         QVERIFY(QFileInfo::exists(copied));
 

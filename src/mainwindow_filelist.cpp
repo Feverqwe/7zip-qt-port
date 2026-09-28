@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 
@@ -135,10 +136,11 @@ void MainWindow::createFolder() {
     if (!accepted)
         return;
     const QString target = QDir(directory_).filePath(name);
+    NFsFolder::CFSFolder folder(directory_);
     if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
         name.contains('\\') || name.contains(QRegularExpression("[<>:\"|?*]")) ||
         name.endsWith(' ') || name.endsWith('.') || QFileInfo::exists(target) ||
-        QFileInfo(target).isSymLink() || !QDir(directory_).mkdir(name)) {
+        QFileInfo(target).isSymLink() || !folder.CreateFolder(name)) {
         QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку.");
         return;
     }
@@ -161,12 +163,11 @@ void MainWindow::createFile() {
         QMessageBox::warning(this, "Создать файл", "Недопустимое имя или файл уже существует.");
         return;
     }
-    QFile file(target);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+    NFsFolder::CFSFolder folder(directory_);
+    if (!folder.CreateFile(name)) {
         QMessageBox::warning(this, "Создать файл", "Не удалось создать файл.");
         return;
     }
-    file.close();
     showDirectory(directory_, false);
     selectPaths({target});
 }
