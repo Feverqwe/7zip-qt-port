@@ -118,3 +118,89 @@ QString CVolSeqName::GetCombinedName() const {
         outName = QStringLiteral("file");
     return outName;
 }
+
+// CThreadSplit::ProcessVirt from upstream 0766b73. The transaction adapter
+// supplies stage paths instead of VolBasePath. QFile replaces NIO; optional
+// preallocation is omitted, while flush errors are reported before closing.
+bool CThreadSplit::ProcessVirt(QString *error) {
+    QFile inFile(FilePath);
+    if (!inFile.open(QIODevice::ReadOnly)) {
+        *error = inFile.errorString();
+        return false;
+    }
+    QFile outFile;
+    const qint64 kBufSize = 1 << 20;
+    QByteArray buffer(kBufSize, Qt::Uninitialized);
+    qint64 Written = 0;
+    qint64 pos = 0;
+    qint64 prev = 0;
+    qsizetype numFiles = 0;
+    qsizetype volIndex = 0;
+    const auto Close = [&] {
+        const bool ok = !outFile.isOpen() || outFile.flush();
+        outFile.close();
+        Written = 0;
+        if (!ok)
+            *error = QStringLiteral("Не удалось записать часть файла.");
+        return ok;
+    };
+    if (!Set_NumBytesCur(pos)) {
+        *error = QStringLiteral("Операция отменена.");
+        return false;
+    }
+    for (;;) {
+        qint64 volSize;
+        if (volIndex < VolumeSizes.size())
+            volSize = VolumeSizes[volIndex];
+        else
+            volSize = VolumeSizes.last();
+        const qint64 needSize = qMin(kBufSize, volSize - Written);
+        qint64 processedSize = inFile.read(buffer.data(), needSize);
+        if (processedSize < 0) {
+            *error = inFile.errorString();
+            return false;
+        }
+        if (processedSize == 0) {
+            if (!Close())
+                return false;
+            if (pos != TotalSize || inFile.size() != TotalSize) {
+                *error = QStringLiteral("Исходный файл изменился во время разделения.");
+                return false;
+            }
+            return true;
+        }
+        if (Written == 0) {
+            if (numFiles >= OutputPaths.size()) {
+                *error = QStringLiteral("Исходный файл изменился во время разделения.");
+                return false;
+            }
+            outFile.setFileName(OutputPaths[numFiles]);
+            if (!outFile.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+                *error = outFile.errorString();
+                return false;
+            }
+        }
+        const qint64 readSize = processedSize;
+        processedSize = outFile.write(buffer.constData(), readSize);
+        if (processedSize != readSize) {
+            *error = QStringLiteral("Ошибка записи части файла.");
+            return false;
+        }
+        Written += processedSize;
+        pos += processedSize;
+        if (Written == volSize) {
+            if (!Close())
+                return false;
+            ++numFiles;
+            if (volIndex < VolumeSizes.size())
+                ++volIndex;
+        }
+        if (pos - prev >= (qint64(1) << 22) || Written == 0) {
+            if (!Set_NumBytesCur(pos)) {
+                *error = QStringLiteral("Операция отменена.");
+                return false;
+            }
+            prev = pos;
+        }
+    }
+}

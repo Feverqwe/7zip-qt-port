@@ -4,8 +4,6 @@
 #include <QThread>
 #include <atomic>
 
-class QFile;
-
 struct VolumeParts {
     QStringList paths;
     qint64 totalSize = 0;
@@ -36,7 +34,6 @@ class VolumeOperation : public QThread {
   private:
     bool split(QString *error);
     bool combine(QString *error);
-    bool copyBytes(QFile &input, QFile &output, qint64 count, qint64 *progress, QString *error);
     Mode mode_;
     QString source_;
     QString destination_;

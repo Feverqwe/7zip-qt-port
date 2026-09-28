@@ -223,6 +223,43 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(QDir(dir.path()).entryList({"*.sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }
 
+    void splitRejectsSourceChange_data() {
+        QTest::addColumn<bool>("grow");
+        QTest::newRow("shrink") << false;
+        QTest::newRow("grow") << true;
+    }
+    void splitRejectsSourceChange() {
+        QFETCH(bool, grow);
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString source = dir.filePath(QStringLiteral("изменённый источник.bin"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QVERIFY(file.resize(3 << 20));
+        file.close();
+        VolumeOperation split(VolumeOperation::Mode::Split, source, dir.path(), 1 << 20);
+        bool changed = false;
+        connect(
+            &split, &VolumeOperation::advanced, &split,
+            [&](qint64 bytes) {
+                if (bytes != (1 << 20))
+                    return;
+                QFile input(source);
+                changed =
+                    input.open(QIODevice::ReadWrite) && input.resize(grow ? (4 << 20) : (1 << 20));
+            },
+            Qt::DirectConnection);
+        QSignalSpy result(&split, &VolumeOperation::result);
+        split.start();
+        QVERIFY(split.wait());
+        QVERIFY(changed);
+        QCOMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        QVERIFY(result.first()[1].toString().contains("изменился"));
+        QCOMPARE(QDir(dir.path()).entryList(QDir::Files | QDir::Hidden),
+                 QStringList{QFileInfo(source).fileName()});
+    }
+
     void combineSummary() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());

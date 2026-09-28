@@ -106,9 +106,18 @@ remain owned by Qt; the upstream alternate selection mode is not ported.
 каждого блока. `QFile` и callback заменяют NIO/HRESULT/CProgressSync. Адаптация
 добавляет проверку изменения размера, `flush` и отмену до первого чтения.
 `VolumeOperation` владеет проверкой путей, временным именем, публикацией
-и откатом; Split пока использует собственный цикл копирования.
+и откатом; Split делегирует чтение/запись перенесённому `CThreadSplit::ProcessVirt`.
 
 `CVolSeqName::ParseName` определяет допустимую первую часть как для меню,
 так и для worker. `GetCombinedName` содержит блок выбора имени результата
 из upstream `CApp::Combine` (удаление точек и fallback `file`). `MainWindow`
 выбирает папку назначения; правила имени принадлежат `PanelSplitFile.cpp`.
+
+Цикл `CThreadSplit::ProcessVirt()` перенесён из `PanelSplitFile.cpp` (`0766b73`)
+в тот же модуль: блоки 1 МиБ, ограничение чтения остатком тома, повтор последнего
+размера, переход к следующему файлу и прогресс через 4 МиБ либо на границе тома.
+Qt-адаптер передаёт список временных путей вместо `VolBasePath`, проверяет размер
+источника и сообщает ошибки `flush`. Предварительное выделение длины из
+`CPreAllocOutFile` не переносится: Qt пишет временный файл последовательно.
+`VolumeOperation::copyBytes` удалён; транзакционная публикация и откат остаются
+в `VolumeOperation`.

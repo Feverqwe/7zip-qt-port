@@ -23,3 +23,13 @@ class CThreadCombine {
     std::function<bool(qint64)> Set_NumBytesCur;
     bool ProcessVirt(QString *error);
 };
+
+class CThreadSplit {
+  public:
+    QString FilePath;
+    QStringList OutputPaths;
+    QList<qint64> VolumeSizes;
+    qint64 TotalSize = 0;
+    std::function<bool(qint64)> Set_NumBytesCur;
+    bool ProcessVirt(QString *error);
+};

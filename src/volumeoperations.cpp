@@ -92,25 +92,6 @@ VolumeParts VolumeOperation::inspectParts(const QString &firstPart, QString *err
     return result;
 }
 
-bool VolumeOperation::copyBytes(QFile &input, QFile &output, qint64 count, qint64 *progress,
-                                QString *error) {
-    while (count > 0) {
-        if (canceled_) {
-            *error = QStringLiteral("Операция отменена.");
-            return false;
-        }
-        const QByteArray data = input.read(qMin(count, qint64(1 << 20)));
-        if (data.isEmpty() || output.write(data) != data.size()) {
-            *error = QStringLiteral("Ошибка чтения или записи файла.");
-            return false;
-        }
-        count -= data.size();
-        *progress += data.size();
-        emit advanced(*progress);
-    }
-    return true;
-}
-
 bool VolumeOperation::split(QString *error) {
     const QFileInfo sourceInfo(source_);
     const QFileInfo destinationInfo(destination_);
@@ -146,35 +127,20 @@ bool VolumeOperation::split(QString *error) {
         }
         targets << target;
     }
-    QFile input(source_);
-    if (!input.open(QIODevice::ReadOnly)) {
-        *error = input.errorString();
-        return false;
-    }
     QStringList staged;
+    for (const QString &target : targets)
+        staged << target + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
     QStringList published;
-    qint64 progress = 0;
-    bool ok = true;
-    for (qsizetype i = 0; i < targets.size() && ok; ++i) {
-        const QString stage =
-            targets[i] + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
-        staged << stage;
-        QFile output(stage);
-        if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly) ||
-            !copyBytes(input, output,
-                       qMin(volumeSizes_[qMin(i, volumeSizes_.size() - 1)], total - progress),
-                       &progress, error) ||
-            !output.flush()) {
-            if (error->isEmpty())
-                *error = QStringLiteral("Не удалось записать часть файла.");
-            ok = false;
-        }
-        output.close();
-    }
-    if (ok && input.size() != total) {
-        *error = QStringLiteral("Исходный файл изменился во время разделения.");
-        ok = false;
-    }
+    CThreadSplit spliter;
+    spliter.FilePath = source_;
+    spliter.OutputPaths = staged;
+    spliter.VolumeSizes = volumeSizes_;
+    spliter.TotalSize = total;
+    spliter.Set_NumBytesCur = [this](qint64 pos) {
+        emit advanced(pos);
+        return !canceled_.load();
+    };
+    bool ok = spliter.ProcessVirt(error);
     if (ok && canceled_) {
         *error = QStringLiteral("Операция отменена.");
         ok = false;
