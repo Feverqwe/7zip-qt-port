@@ -60,6 +60,9 @@ void MainWindow::createFileTable(QWidget *central) {
     table_->verticalHeader()->hide();
     table_->setHorizontalHeaderLabels(
         {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"});
+    for (int column : {2, 3, 4})
+        table_->horizontalHeaderItem(column)->setData(Qt::InitialSortOrderRole,
+                                                      Qt::DescendingOrder);
     table_->setColumnHidden(1, true);
     table_->setColumnHidden(5, true);
     table_->setColumnHidden(6, true);
@@ -100,7 +103,9 @@ void MainWindow::createFileTable(QWidget *central) {
     table_->viewport()->setAcceptDrops(true);
     table_->sortItems(0, Qt::AscendingOrder);
     connect(table_->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this,
-            [this](int column, Qt::SortOrder) {
+            [this](int column, Qt::SortOrder order) {
+                sortColumn_ = column;
+                sortOrder_ = order;
                 const int mode = column == 5   ? 1
                                  : column == 4 ? 2
                                  : column == 2 ? 3

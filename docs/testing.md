@@ -90,3 +90,11 @@ last-dot extensions, names without extensions, dotfiles, folder-only selection,
 retaining unmatched selected items, deselection, inversion and missing focus.
 Existing `ui_state` mask/type and all/invert/clear scenarios check the Qt adapter
 in filesystem and archive views; the shared model retains the current index.
+
+`panel_sort` проверяет правила `PanelSort.cpp` (`0766b73`) через Qt-таблицу:
+папки перед файлами в обоих направлениях, повторный выбор свойства,
+размер и дата по убыванию при первом выборе, щелчок заголовка размера,
+сохранение свойства и направления после обновления архива (включая сжатый
+размер), обновления каталога и перехода в дочернюю папку и обратно.
+Фикстуры содержат Unicode и пробелы; архивный список подаёт управляемый backend.
+Снимки `sort-980.png` и `sort-640.png` сохраняются в `build/dev/ui-screenshots/`.

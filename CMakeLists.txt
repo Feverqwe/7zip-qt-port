@@ -127,6 +127,13 @@ if(BUILD_TESTING)
     target_include_directories(file_transfer_tests PRIVATE src)
     target_link_libraries(file_transfer_tests PRIVATE Qt6::Test)
     add_test(NAME file_transfer COMMAND file_transfer_tests)
+    get_target_property(panel_sort_sources ui_state_tests SOURCES)
+    list(REMOVE_ITEM panel_sort_sources tests/ui_state_tests.cpp)
+    qt_add_executable(panel_sort_tests tests/panel_sort_tests.cpp ${panel_sort_sources})
+    target_include_directories(panel_sort_tests PRIVATE src)
+    target_link_libraries(panel_sort_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    add_test(NAME panel_sort COMMAND panel_sort_tests)
+    set_tests_properties(panel_sort PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-sort-settings.ini;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots")
     qt_add_executable(panel_selection_tests tests/panel_selection_tests.cpp
         src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h
         src/CPP/Common/Wildcard.cpp)

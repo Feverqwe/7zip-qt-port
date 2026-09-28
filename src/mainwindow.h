@@ -213,6 +213,8 @@ class MainWindow : public QMainWindow {
     QAction *openBookmarks_[10]{};
     State state_ = State::Filesystem;
     SortMode sortMode_ = SortMode::Name;
+    int sortColumn_ = 0;
+    Qt::SortOrder sortOrder_ = Qt::AscendingOrder;
     QAction *sortActions_[5]{};
     QAction *viewActions_[4]{};
     QAction *flatView_ = nullptr;

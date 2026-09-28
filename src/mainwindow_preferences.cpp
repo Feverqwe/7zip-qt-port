@@ -29,6 +29,13 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
 }
 
 void MainWindow::setSortMode(SortMode mode) {
+    const int columns[] = {0, 5, 4, 2, 6};
+    const int column = columns[static_cast<int>(mode)];
+    if (column == sortColumn_)
+        sortOrder_ = sortOrder_ == Qt::AscendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder;
+    else
+        sortOrder_ = column == 2 || column == 4 ? Qt::DescendingOrder : Qt::AscendingOrder;
+    sortColumn_ = column;
     sortMode_ = mode;
     sortActions_[static_cast<int>(mode)]->setChecked(true);
     applySortMode();
@@ -37,8 +44,7 @@ void MainWindow::setSortMode(SortMode mode) {
 void MainWindow::applySortMode() {
     if (!table_)
         return;
-    const int columns[] = {0, 5, 4, 2, 6};
-    table_->sortItems(columns[static_cast<int>(sortMode_)], Qt::AscendingOrder);
+    table_->sortItems(sortColumn_, sortOrder_);
 }
 
 QIcon MainWindow::toolbarIcon(int kind) {

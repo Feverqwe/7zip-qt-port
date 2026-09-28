@@ -49,9 +49,9 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         action(window, "sort1Action")->trigger();
         QCOMPARE(names(), (QStringList{"c.bin", "z.bin", "a.txt"}));
         action(window, "sort2Action")->trigger();
-        QCOMPARE(names(), (QStringList{"c.bin", "a.txt", "z.bin"}));
+        QCOMPARE(names(), (QStringList{"z.bin", "a.txt", "c.bin"}));
         action(window, "sort3Action")->trigger();
-        QCOMPARE(names(), (QStringList{"a.txt", "c.bin", "z.bin"}));
+        QCOMPARE(names(), (QStringList{"z.bin", "c.bin", "a.txt"}));
         action(window, "sort4Action")->trigger();
         QCOMPARE(names(), (QStringList{"z.bin", "a.txt", "c.bin"}));
         action(window, "refreshAction")->trigger();
