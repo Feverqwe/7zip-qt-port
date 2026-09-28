@@ -1,220 +1,161 @@
 # Architecture
 
-Folder history is owned by upstream `CFolderHistory` (`AppState.h`/`App.cpp`),
-with UString/UStringVector and a 100-entry bound. MainWindow's address combo
-is a projection of that state. `CPanel::FoldersHistory` in PanelFolderChange.cpp
-owns confirmation/rebuilding; `CListViewDialog` supplies Qt list interaction.
-Navigation remains in MainWindow. ViewSettings translates upstream string
-vectors at the QSettings boundary (FolderHistory). MVP history keys are ignored.
-Favorites use `CFastFolders` and `CPanel::SetBookmark/OpenBookmark` from
-AppState.h/PanelFolderChange.cpp, with sparse UStringVector and FolderShortcuts.
-MainWindow adapts the complete folder prefix to existing navigation; it no
-longer stores a separate pair of archive path/internal folder. MVP favorites
-are ignored, without migration fallback.
-
-The Copy/Move view is the adapted upstream `CCopyDialog` under
-`src/CPP/7zip/UI/FileManager/CopyDialog.*`; `src/copydialog.h` is an alias.
-Qt layouts own resizing and a read-only scrolling view keeps long selections
-reachable. The copied `ViewSettings.*` history functions use QSettings with
-the upstream `CopyHistory` key. MVP `copy/history` is ignored.
-`MainWindow` supplies a folder-property snapshot and validates the destination; it uses
-the upstream case-insensitive list update and 20-entry cap. Workers and archive
-operations keep their existing owners.
-
-The `sevenzip_panel` library owns the copied `CPanel::GetItemsInfoString` in
-`App.cpp` and `ConvertSizeToString` in `PanelListNotify.cpp`. `CPanel` retains
-the summary API and upstream `CObjectVector`/`CRecordVector`; the snapshot
-adapter replaces `IFolderFolder` COM property access. The filesystem leaves
-directory sizes undefined; archives use the existing `CProxyArc` totals.
-The Qt constructor receives the completed summary before `CCopyDialog::OnInit`.
-
-Test-only layout diagnostics live in `tests/layout_inspection.h/.cpp`. They
-inspect public Qt widget geometry and write JSON without editable field values;
-they are not linked into the application. `ui_geometry` checks affected dialog
-relationships and scrolling against `docs/ui-layout-contracts.md`.
+This document describes component ownership, data flow and integration boundaries.
+Source provenance, baselines, adaptations and migration debt belong in the
+[source-port audit](upstream-port-audit.md). Supported workflows and differences
+from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
+are defined in [AGENTS.md](../AGENTS.md).
 
 ## Repository boundary
 
-`sevenzip-desktop` contains copied and adapted upstream application code, Qt presentation, platform integration, the archive backend adapter, tests, and build configuration. `../7zip-upstream` is the unmodified official source checkout from which code is copied; the application must not depend on a fixed absolute path to it.
+`sevenzip-desktop` contains application sources, Qt presentation, platform
+integration, tests and build tooling. Application modules live under
+`src/CPP/`; reusable dependencies live under `third_party/7zip/`.
+`../7zip-upstream` is a read-only source checkout, not a runtime dependency.
 
-The primary goal is a source port, as defined in `AGENTS.md`. Copy original implementations with their relative paths, filenames, symbols, module boundaries, and algorithm/control flow. Adapt UI presentation to Qt Widgets and change non-UI code only as required by platform or integration dependencies. Functional code inside upstream UI files is still code to retain; replacing Win32 controls does not justify independently rewriting surrounding rules. Reuse portable upstream types and dependencies. Keep new code limited to necessary presentation, portability/integration glue, or functionality with no usable upstream implementation.
-
-Adapted application sources live under `src/<upstream-relative-path>`; unchanged reusable dependencies live under `third_party/7zip/<upstream-relative-path>`. Preserve source notices and applicable licenses. Record commit, source paths/symbols, copied and adapted portions, and reasons for deviations in `docs/upstream-port-audit.md`; record observable differences in `docs/7zfm-parity.md`. Existing custom implementations are migration debt and should be replaced within the scope of work on the corresponding area.
-
-`ArchiveBackend` remains the archive-operation boundary. The current MVP reaches the official engine through `7zz`; a future direct engine adapter would preserve that boundary. This describes current integration, not an exemption from copying upstream application logic. The process adapter currently contains no copy of the engine source. Changing engine integration is separate work; archive formats and compression must continue to use the official implementation.
-
-## Components
+Archive operations go through `ArchiveBackend`, which launches the official
+`7zz` executable. Widgets do not construct process arguments or implement
+archive formats. A future direct engine adapter must preserve this boundary.
 
 ```text
 Qt Widgets (window, file list, dialogs)
           |
 ArchiveBackend interface (operations, progress, errors)
           |
-SevenZipProcessBackend (official 7zz executable)
-          |
-7-Zip original compression and format code
+QProcess (official 7zz executable)
 ```
 
-`src/archivebackend.h` defines archive entries, reported archive information and asynchronous operations. `src/archivebackend.cpp` and its companion source files own command arguments, `7zz l -slt` parsing, progress, cancellation and errors. `MainWindow` owns dialogs, table presentation and the explicit filesystem / loading / viewing / operating states. The address bar and table show the current directory until an archive is opened. The window retains the complete archive listing. The adapted upstream `CProxyArc` builds the directory tree, including implicit intermediate folders and explicit empty folders; `CAgentFolder` supplies the normal and flat item traversal. Table items retain full entry paths so sorting cannot change extraction targets. Selecting a folder expands to its listed descendants before calling the backend. Directory history and the source directory for an opened archive are kept in the window; a failed or cancelled listing restores the directory. All command availability is updated from these states and the table selection. A direct 7-Zip API adapter can replace this backend later.
+## Window and panel state
 
-Portable functions adapted from upstream live under `src/CPP/` with their source paths and names: `PanelSort.cpp` compares names, `PanelSelect.cpp` owns selection rules in `CPanelSelection`, `Common/Wildcard.cpp` matches masks, and `PanelSplitFile.cpp` names volume parts. `mainwindow_selection.cpp` adapts the selection dialog, focus and Qt selection model. `CPP/7zip/UI/FileManager/PanelKey.cpp` owns list and address keyboard dispatch, including address-popup focus, return to the active view and guarded command invocation. The window event filter delegates key presses to it; drag-and-drop stays in its existing adapter. `filetable.cpp` is the Qt table adapter for drag data and item ordering. The remaining source correspondence and migration gaps are recorded in `docs/upstream-port-audit.md`.
+`MainWindow` owns navigation, the current filesystem or archive location,
+selection and command availability. Its filesystem, loading, viewing and
+operating states determine which actions are enabled. Dialogs collect input;
+the window dispatches confirmed requests and handles asynchronous results.
 
-`mainwindow.cpp` initializes the window and filesystem scanner. `mainwindow_menus.cpp` builds menus and toolbar actions, `mainwindow_panel.cpp` builds the address and shared file views, and `mainwindow_backendevents.cpp` handles asynchronous archive results. Operation completion delegates hashing, archive moves, viewer extraction and state restoration to separate methods; the backend continues to own process arguments and archive safety checks.
+The implementation is divided by responsibility:
 
-`SettingsDialog` owns the File Manager settings form. `MainWindow` loads and saves its three supported list options, applies them to the current views, and supplies filesystem icons through Qt's `QFileIconProvider`. The dialog does not perform archive or filesystem operations.
-`PropertiesDialog` presents one selected item's metadata or a summary of multiple selected rows. `MainWindow` collects the current selection, reads selected archive folder totals from `CProxyArc`, and passes values into the dialog; the dialog never accesses the backend or the file table.
+| Files | Responsibility |
+| --- | --- |
+| `mainwindow.cpp` | Construction and scanner initialization |
+| `mainwindow_menus.cpp`, `mainwindow_panel.cpp` | Actions, toolbar, address and file views |
+| `mainwindow_filelist.cpp`, `mainwindow_archivelist.cpp` | Listing, navigation and command state |
+| `mainwindow_archiveopening.cpp` | Archive opening and nested archive lifetime |
+| `mainwindow_archivecommands.cpp`, `mainwindow_backendevents.cpp` | Archive requests and result handling |
+| `mainwindow_fileoperations.cpp`, `mainwindow_filedelete.cpp`, `mainwindow_volumes.cpp` | Filesystem and volume operation coordination |
+| `mainwindow_selection.cpp`, `mainwindow_preferences.cpp`, `mainwindow_dialogs.cpp` | Selection adapter, settings and dialog integration |
 
-`FileViewerDialog` reads at most 16 MiB of UTF-8 text from one file. It saves through `QSaveFile` after comparing current bytes with those originally read, and prompts before discarding edits. `MainWindow` offers F3 for one file in either mode and F4 for a filesystem file or one entry in a top-level, unencrypted archive. It asks `ArchiveBackend` to extract that listed path into a `QTemporaryDir`, opens the editor after extraction succeeds, and asks whether to update the archive if the user saved. The backend validates the entry and staged file, deletes the old entry and adds the edited one to a copy of the archive, then replaces the original only after both commands succeed. Failure or cancellation removes the copy. The temporary source remains alive until the update finishes. Nested and encrypted archives remain read-only. Enter and double-click open files with the system handler; extracted external-open copies remain owned by the window until it closes, and changes made in an external application are not written back. Backend extraction retains ownership of path validation, password checks, cancellation, and errors. The built-in text dialog is a Qt adaptation of 7zFM's configurable external viewer/editor.
+`CFolderHistory` and `CFastFolders` own persistent navigation data.
+`CPanel::FoldersHistory`, `SetBookmark` and `OpenBookmark` connect that data to
+navigation. The address combo is a projection of history. `ViewSettings`
+converts string vectors at the QSettings boundary; `MainWindow` supplies the
+complete displayed path to the navigation adapter.
 
-The File menu and item context menu expose Open Inside (Ctrl+PgDn) and Open Outside (Shift+Enter) from 7zFM. `src/mainwindow_archiveopening.cpp` owns these commands and the nested archive lifecycle; `MainWindow` delegates extraction and listing to `ArchiveBackend`. Explicit Open Inside and typed archive paths can attempt any regular file, allowing `7zz` to identify archives without recognized extensions; double-click uses the extension list to decide between archive opening and the system file handler. For each nested level it retains the parent archive listing, folder, password and temporary directory on a stack, then restores them when Back leaves the nested root or listing fails. Temporary paths are not added to persistent history or favorites. Nested archives remain read-only because mutations to a temporary copy cannot safely update the containing archive; the mutation actions are disabled while nested. External opening still retains its separate temporary copy until the window closes.
+`CProxyArc` owns the archive directory tree, entry indices and recursive size
+totals. `CAgentFolder` supplies normal and flat traversal. `MainWindow` converts
+these items into Qt rows and expands selected folders through the same tree.
+Full entry paths remain in item data independently of display order.
 
-The File menu offers Create Folder and Create File for the current filesystem directory. Create File uses an editable combo dialog patterned on `ComboDialog.rc`, creates an empty file without replacing an existing name, and selects it in the refreshed list. Edit provides selection commands, including case-insensitive wildcard matching and selection by the focused item's extension or folder type, following `PanelSelect.cpp`. View provides Refresh, which rereads the filesystem directory or starts a new asynchronous archive listing while commands are disabled. The archive refresh restores the internal folder and paths still present in the new listing; a failed or cancelled listing follows the normal return-to-directory behavior. These commands follow `7zFM` File/Edit/View placement and F7/Ctrl+N/Ctrl+R shortcuts. Folder and file name validation excludes separators and Windows reserved punctuation so created names remain portable. The main toolbar follows `7zFM`'s two groups: Add, Extract, Test, then Copy, Move, Delete, Info. Add opens new-archive creation in a filesystem folder and the existing-archive add dialog while viewing an archive. Back and Up sit beside the path field, following the separate navigation controls in the Windows panel header. The View menu exposes the four toolbar choices in upstream `resource.rc` and `App.cpp`: show each group, large buttons and button labels. They are stored in a local INI file through `QSettings`. Qt paints compact color glyphs matching the original bitmap symbols; it does not package upstream bitmap assets. The address is an editable combo box with the 20 most recently visited filesystem directories, archive roots and internal archive folders persisted in that INI. The Alt+F12 history dialog lists these locations, supports removal, and navigates to a selected entry, following Windows `FoldersHistory()`. The Qt address separates an archive path from its internal folder with ` / `; navigation first resolves existing filesystem paths, then an archive prefix. Reopening a saved folder uses the listing completion path shared with favorites and falls back to the nearest surviving parent. Address signals are disconnected before window teardown to prevent focus changes from starting navigation after members have been destroyed.
+`FilesystemScanner` enumerates disk entries in bounded timer batches without
+following directory symlinks. A generation counter discards stale batches
+after navigation or mode changes. Enumeration and final sorting run on the GUI
+thread. Table and icon/list views share a model and selection model.
 
-`7zFM`'s `PanelItems.cpp` puts Name first, defaults to a narrow property-column width, hides Packed Size for filesystem folders, and allows property-column customization from a header context menu. The Qt table hides its internal full-path column and row numbers, keeps Name elastic, and offers checkable Size, Packed Size and Modified header options. Grid lines are controlled by the Settings dialog and default to hidden. Packed Size is suppressed in filesystem mode; column choices persist in the same INI file. The path stays in item data for operations. `PanelMenu.cpp` builds the item context menu from selection and folder capabilities; the Qt context menu likewise distinguishes selection, filesystem and archive commands, with Create Folder and Refresh available from the background. Properties use filesystem metadata or the already listed archive entry. The Qt dialog shows basic fields for one item and row counts and file-size sums for multiple selections; the upstream dialog also includes format-specific and raw properties. Windows shell extensions and `7zFM`'s full File menu are not yet ported.
+`CPanelSelection` consumes a snapshot of names, folder flags and selection
+states; `mainwindow_selection.cpp` publishes the result to Qt in one update.
+`PanelSort.cpp` owns name comparison, while `filetable.cpp` adapts sorting and
+drag data to Qt. `PanelKey.cpp` dispatches list and address keys through the
+window event filter. Mouse and range selection remain owned by Qt.
 
-The View menu's sort commands follow `resource.rc`: Name, Type, Date, Size, and Unsorted, with Ctrl+F3–F7. Hidden table columns carry normalized type and source-order values; they do not appear in the file list. Rebuilding a filesystem folder records enumeration order, while rebuilding an archive folder records the item order from `CAgentFolder::LoadItems`. The window retains the exact sort column and direction across navigation and refresh, including Packed Size selected from the header. Repeated property selection reverses direction; size, packed size and date start descending. The Qt item adapter compensates for Qt reversing the entire comparator so folders stay before files in both directions, following upstream `PanelSort.cpp` at `0766b73`. Table items retain separate base names, parent prefixes and load indices. The comparator follows the upstream property → base name → prefix → load index fallback, including in Flat View; extension uses the last dot including dotfiles and folders. The current implementation keeps folders before files even in Unsorted mode; raw and format-specific property comparisons remain future work.
+Nested archive navigation keeps the parent listing, folder, password and
+temporary directory on a stack. Returning to the parent or a listing failure
+restores that state. Temporary locations are excluded from persistent history
+and favorites. External-open copies remain owned by the window until it closes.
+Address signals are disconnected before window teardown.
 
-The four list styles from `resource.rc` use Ctrl+1–4. A Qt `QListView` handles large icons, small icons, and the simple list, while the existing table handles details. They share the table model and selection model, so sorting, navigation, and file commands refer to the same entries when changing styles. The selected style is stored in the local INI. Qt icon placement is a platform adaptation of Windows ListView; two panels remain future work.
+## Dialogs and preferences
 
-Flat View follows `Panel.cpp::ChangeFlatMode()` with separate persistent disk and archive choices. `FilesystemScanner` owns the disk traversal and cancellation: `QDirIterator` enumerates descendants without following directory symlinks and emits bounded batches on a timer. A generation counter discards stale batches after navigation or mode changes. `MainWindow` presents those batches; selection actions stay disabled until the scan completes, while address navigation and the Flat View toggle remain available. In archive mode the existing listing supplies descendants and implicit parent directories. The visible name is relative to the current folder, while the hidden path column retains the absolute disk path or full archive entry path for operations and selection restoration. Enumeration and final sorting still run on the GUI thread; a very large tree can use substantial memory and sorting may briefly pause the UI.
+`SettingsDialog` presents list options; `MainWindow` applies them and supplies
+filesystem icons through `QFileIconProvider`. `PropertiesDialog` receives a
+metadata snapshot and never reads the file table or backend itself.
 
-The backend separates `7zz` output into complete lines across process reads, emits progress and current-file detail, and forwards each line to the UI. The window keeps the complete log of the current or last operation, including the final result. Its nonmodal progress dialog leaves the main window and log available while commands remain disabled by the window state. The Windows `7zFM` progress dialog shows the operation and current filename and has a messages view; the Qt menu command exposes the same information without changing the file-list layout.
+`sevenzip_panel` owns shared `CComboDialog`, `CCopyDialog`, `CSplitDialog` and
+panel summary functions. Callers validate operation input; dialogs commit
+values only after confirmation. Folder snapshots supply summary metadata;
+archive folder sizes come from `CProxyArc`. `ViewSettings` persists Copy/Move
+destination history through QSettings.
 
-The File → CRC submenu delegates selected filesystem paths to `ArchiveBackend::hash`, which validates the method and sources and runs `7zz h` asynchronously. For archive selections, `MainWindow` asks the existing extraction adapter to stage the selected entries in a `QTemporaryDir`, then passes their staged paths to the same hash operation. The operation journal displays 7zz's per-file and combined results. Cancellation applies to either stage and the temporary directory is removed when the operation ends.
+`CExtractDialog` owns extraction input and confirmation. `NExtract::CInfo`
+stores destination history and mode preferences in the Extraction INI group.
+`MainWindow` consumes the confirmed result; `ArchiveBackend` validates it,
+creates a missing destination and selects process arguments. Passwords are
+never persisted.
 
-Creation starts from the filesystem state. A single Qt dialog starts with the filesystem selection and accumulates files and folders from directory listings and shows the source set, archive name, format and destination before submission. The backend writes a uniquely named temporary archive in the destination directory, then renames it to the requested path only after `7zz` exits successfully. Failure, launch error and cancellation remove that temporary file. Existing targets are rejected, and a target inside a selected source directory is rejected. The window refreshes its filesystem listing after creation ends. Windows `7zFM` starts Add to archive from a filesystem selection and presents an options dialog; the Qt dialog keeps that review step while allowing a mixed source set from multiple directories. `CompressionOptions` passes the selected level, method, thread count and solid mode from that dialog through `MainWindow` to `ArchiveBackend`. The backend validates these values for the archive format and owns the `7zz` arguments. Encrypted creation requires matching password fields before submission. Existing archive updates retain their original compression settings.
+Compression rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
+`createarchivedialog_compression.cpp` binds them to Qt controls;
+`createarchivedialog_resources.cpp` supplies CPU/RAM information and display;
+`createarchivedialog_preferences.cpp` handles profile selection and persistence.
+`NCompression::CFormatOptions` and `CInfo` hold per-format profiles through
+QSettings. `CMemUse` parses memory limits. `CompressionOptions` carries confirmed
+values to the backend, which repeats validation before starting the operation.
 
-Adding is a separate command available while viewing an open archive, including an empty one. The same source picker shows a fixed target, format and destination. The backend requires a successful listing of that archive and rejects matching paths using case folding and Unicode normalization, as well as links and unsafe source names. It copies the archive to a temporary peer, runs `7zz a` on the copy, then moves the original to a backup and the updated copy into place. Failure or cancellation removes the copy and leaves the original; the backup is kept if rollback cannot restore the target. The UI disables commands through the update and follow-up listing, then displays the reread contents. Copying the existing archive currently runs on the GUI thread, so unusually large archives can pause the window before `7zz` starts. The original Windows Add command begins from filesystem selection; the separate open-archive command is a Qt workflow adaptation requested for stage 4.2.
+`FileViewerDialog` reads bounded UTF-8 text and saves through `QSaveFile` after
+checking for external changes. `MainWindow` owns extraction and the subsequent
+archive-update request, keeping the temporary source alive until completion.
 
-Stage 7 retains the Windows toolbar order for Copy, Move and Delete, adds Rename to the File menu, and exposes the same actions in the table context menu. Action availability is derived from mode and selection. Filesystem-to-filesystem Copy and Move use a typed existing destination directory, reject occupied names, links and a destination inside a source directory, then refresh the directory listing. `FileTransferOperation` owns copying and moving on a worker thread. Copy streams files into temporary peer paths before publishing them; Move uses rename and can fail across volumes. Cancellation and failure remove the current stage and roll back completed targets. The window owns the progress dialog, disables conflicting commands, and refreshes the list after the worker exits. Filesystem deletion requires confirmation and refreshes the list even on error. `FileDeleteOperation` runs the ported `CFSFolder::Delete` on a worker thread; a multi-item delete can finish some items before a later item fails or is canceled.
+## Filesystem and volume workers
 
-`sevenzip_filesystem` owns the mutation subset of upstream `FSFolder.cpp`:
-`GetRelPath`, `GetAbsPath`, `CreateFolder`, `CreateFile`, `Rename`, and `Delete`.
-The Qt panel supplies a snapshot of `Files`/`Folders` using upstream containers;
-flat-view entries retain their parent prefix. The window keeps presentation and
-the existing single-name validation. Adapted `CPP/Windows/FileDir.cpp` owns
-recursive removal and does not traverse symbolic links. `mainwindow_filedelete.cpp`
-connects worker progress/cancellation, command state and unconditional refresh.
-Destruction cancels and joins the worker. This is internal permanent deletion;
-recycle-bin integration and the rest of `CFSFolder` are pending.
+`sevenzip_filesystem` owns `CFSFolder` mutations and the filesystem path snapshot.
+`FileDir.cpp` owns recursive removal without traversing symbolic links.
+`FileDeleteOperation` runs deletion on a worker; the window connects progress,
+cancellation and refresh. Destruction cancels and joins the worker.
 
-Archive-to-filesystem Copy reuses selected extraction and its safety checks. Filesystem-to-archive Copy uses the existing Add action or local-file drop. Archive-to-filesystem Move uses the Copy/Move dialog and a two-stage workflow owned by `MainWindow`: backend extraction must succeed before backend deletion starts. It is available only in a top-level unencrypted archive. A failed or cancelled extraction leaves the archive unchanged; if deletion fails, destination copies remain and the archive retains its entries. The journal covers both stages and success triggers a new listing. Archive-to-archive copy and Move inside an archive remain unavailable. Delete for selected archive entries expands selected folders to their listed descendants; Rename accepts one file or folder in an unencrypted archive, including a folder represented only by descendants in the listing. The backend validates names against the current listing, copies the archive to a temporary peer, runs `7zz d` or `7zz rn`, and uses the same backup-and-replace sequence as Add. Success triggers a new listing; launch failure or cancellation leaves the original archive available. Drag-out of ordinary filesystem paths publishes local-file URLs; drag-in accepts only local-file URLs and always requests Copy. Native drag-out of archive entries is not implemented. This follows the Windows 7zFM command placement and selection-based availability; Qt's standard dialogs and URL drag protocol are platform adaptations.
+`FileTransferOperation` owns copying/moving on a worker and the transaction
+wrapper that stages, publishes and rolls back targets. `CCopyState`,
+`CopyFolder` and `CopyFile_Ask` in `FSFolderCopy.cpp` own recursive copying;
+`CCopyStateIO::MyCopyFile` owns byte transfer. Progress callbacks have no widget
+dependency. Move uses rename and a separate link-validation traversal.
 
-## Shared name and mask input
+`VolumeOperation` owns Split/Combine path validation, temporary outputs,
+publication and rollback. `PanelSplitFile.cpp` owns naming and the
+`CThreadSplit::ProcessVirt` / `CThreadCombine::ProcessVirt` transfer loops.
+The window coordinates confirmation and destination preparation; the worker
+validates Combine parts again before writing.
 
-`sevenzip_panel` also owns the adapted shared `CComboDialog` and
-`BrowseDialog.cpp::Dlg_CreateFolder`. Folder/file creation and selection masks
-use this upstream dialog; public Value is committed only by OnOK, while the
-operation caller owns validation. The former `combodialog.h` is an alias.
-The rest of BrowseDialog remains with native Qt browsing and is not ported.
+## Archive backend and safety
 
-## Split and Combine
+`archivebackend.h` defines entries, metadata and asynchronous operations.
+Companion implementations own process lifecycle, arguments, listing parsing,
+extraction validation and mutations. `QProcess` receives structured arguments
+without a shell. Output is assembled into complete lines and forwarded as
+progress, current-file detail and journal messages. The window owns the
+nonmodal progress dialog and operation journal.
 
-The File menu and selected-file context menu expose the Windows 7zFM Split/Combine commands from `PanelSplitFile.cpp`. Ported `CSplitDialog` owns destination, volume presets and OnOK; Combine uses shared `CCopyDialog` with the upstream summary block in `CThreadCombine::GetInfo`. Split accepts an ordered size sequence and repeats the last size, using upstream `ParseVolumeSizes` and `GetNumberOfVolumes`. `VolumeOperation::inspectParts` supplies the validated Combine names/total; the worker rediscovers and validates parts before writing. The window follows the upstream preparation branches: check the source after Split dialog, confirm >=100 parts, normalize/create the destination after confirmation. `VolumeOperation` streams 1 MiB chunks on a worker thread, names parts `.001` onward, checks for occupied names, and stages output in the destination directory. Cancel or failure removes staged output; successful completion publishes the parts or combined file without overwriting an existing target. Combine requires the first part, at least two consecutive nonempty parts, and rejects a detected numbering gap. The UI disables other commands while the job runs. Filesystem copy/move remain separate in `mainwindow_fileoperations.cpp`; archive operations remain in `ArchiveBackend`.
+Extraction requires a successful listing and validates the selected paths
+(or all entries for full extraction), destination ancestors, links, portable
+names, Unicode/case collisions and file/directory conflicts. No-path extraction
+also checks flattened names. Existing output files are checked against the
+chosen overwrite mode. Overwrite writes directly to the destination; failure
+or cancellation can leave changed files. Preflight checks cannot prevent
+concurrent external changes between validation and process writes.
 
-The large window implementation is divided among `mainwindow.cpp` (construction), `mainwindow_filelist.cpp` (filesystem list and navigation), `mainwindow_archivelist.cpp` (archive list and command state), `mainwindow_fileoperations.cpp`, `mainwindow_volumes.cpp`, `mainwindow_preferences.cpp`, `mainwindow_dialogs.cpp`, `mainwindow_archivecommands.cpp`, and `mainwindow_archiveopening.cpp`. The backend implementation is divided among process lifecycle, listing parsing, extraction validation, and mutations. `mainwindow.h` and `archivebackend.h` remain the interfaces and state declarations.
+Creation writes a temporary peer archive and publishes it after success.
+Mutations copy the existing archive, update that copy and replace the original
+through a backup/rollback sequence. Failed rollback retains the backup.
+Preparing the archive copy currently runs on the GUI thread. Archive Move to
+the filesystem is coordinated by `MainWindow`: extraction must succeed before
+deletion begins. CRC uses `ArchiveBackend::hash`; archive entries are staged
+through the extraction adapter first.
 
-## Functional target
+Passwords remain in memory while the archive is open and travel through
+process stdin as UTF-8. They are excluded from process arguments, persistence
+and forwarded output. Encrypted extraction requires a successful archive test
+before writing output. Backend validation owns format and encryption
+restrictions; UI availability reflects those capabilities.
 
-The Windows 7-Zip File Manager (`7zFM`) is the UI and interaction reference. New Qt Widgets features should follow its window structure, commands, dialogs, and workflow; necessary platform deviations must be documented. The MVP implements filesystem listing and folder navigation, archive folder navigation, column sorting, multiple selection, new archive creation, addition to an open archive, extraction, test and archive information, plus the supported stage 7 commands above. The Qt editable path combo shows the archive path and current internal folder while browsing an archive. Back and Up are beside it. Enter or double-click opens a file with the system handler, after checked temporary extraction for archive entries. This is limited to the platform's registered file handlers; nested archives and write-back after editing an extracted copy need separate work.
+## Diagnostics
 
-## Data and safety
-
-Archive paths and filenames are runtime input. `QProcess` receives structured arguments, not a shell string. Before full extraction the backend checks every listed entry; for selected extraction it checks only paths passed to `7zz` and rejects absolute or parent paths, links reported by `7zz`, nonportable names, case or Unicode equivalent duplicates, and file/directory conflicts. It also requires an existing destination directory and rejects symlinks along output paths. With the no-paths mode it checks collisions after flattening the names. Existing directories may be reused. The default rejects existing files; explicit skip and overwrite modes pass `-aos` and `-aoa` to `7zz` only after confirming each existing target is a regular file. Overwrite writes directly to the destination, so failure or cancellation can leave a changed file. Extraction only starts after a successful listing of the same archive. For encrypted archives, a successful `7zz t` is required before extraction to avoid files left by a wrong password. This is a preflight check; concurrent external changes to the archive or destination can invalidate it before `7zz` writes.
-
-The creation dialog follows the Windows 7-Zip Add to archive options with explicit encryption choices: `.7z` data AES-256 with optional header encryption, or `.zip` AES-256. The local `7zz` rejects Unicode ZIP AES passwords, so ZIP creation is limited to ASCII passwords. The window prompts when `7zz` requests a password for opening, testing or extracting, and keeps it only while that archive is open. The backend sends UTF-8 password bytes through the child process stdin using `-sccUTF-8`; the `-p` switch for creation contains no password. Secrets are absent from process arguments and redacted from forwarded output. Wrong-password diagnostics are distinguished only when `7zz` says so; other failures remain generic. Adding to an encrypted archive is disabled. The Windows UI uses its own password dialog and native callback; this Qt adaptation uses the official console process without changing the main window layout. Windows and Linux password transport still require CI and manual platform verification.
-
-The UI uses one extension policy for opening from the address bar, file list, bookmarks, and file dialog. Alongside writable `.7z` and `.zip`, it opens common 7-Zip readable formats (RAR, TAR, gzip, bzip2, xz, zstd, CAB, ISO, and WIM) through the same backend listing, test, and checked extraction paths. All mutation actions stay disabled for those other formats; the backend already rejects mutation requests outside `.7z`/`.zip`. A compressed TAR can be entered as a nested archive. Unlike Windows 7zFM, automatic opening still depends on a recognized extension rather than content detection.
-
-`7zz t` runs asynchronously through the same adapter and cancellation path, without a destination. The window enables Test and Info for an open archive, including an empty one, and disables them during loading and other operations. The Info dialog uses `Type` and `Physical Size` only when `7zz l -slt` reports them in the archive header. File and folder counts and total original file size come from parsed entries. The extraction dialog allows a typed or browsed destination and explicit path and overwrite choices. These Qt dialogs adapt the Windows `7zFM` Extract, Test and Info workflows; the toolbar position and file-list layout remain unchanged.
-
-The extraction dialog follows the main controls in `../GUI/ExtractDialog.rc`: destination history, path and overwrite modes, and a password field with a visibility switch. The adapted upstream CExtractDialog owns OnInit/OnOK, the mode tables and history processing. NExtract::CInfo persists the last 16 destinations, mode preferences and the password visibility flag in the Extraction INI group; passwords are never stored. MainWindow only consumes the confirmed result. The former history/extract key is read as a migration fallback. Full paths and no paths map to `7zz x` and `7zz e`; the backend owns validation and overwrite arguments, including `-aou` and `-aot` for the two rename modes. The backend creates a missing destination after checking existing ancestors for links and validates it again before launching `7zz`. Absolute paths and interactive overwrite prompts are not yet exposed. SplitDest uses the copied SplitPathToParts_Smart to separate the parent and name on initialization; OnOK appends the trimmed name to the normalized prefix and remembers the checkbox. The controls follow ExtractDialog.rc, with a separate optional name field to the left of the password group. A password entered here overrides the password retained from archive opening for this extraction attempt.
-
-The adapted upstream `CProxyArc` in `src/CPP/7zip/UI/Agent/AgentProxy.cpp` owns explicit and implicit directories, real item indices and recursive size totals. `CAgentFolder` in `Agent.cpp` supplies normal and flat traversal. `MainWindow` converts these items into Qt rows; folder properties and selection expansion use the same tree. `ArchiveBackend` metadata from `7zz` replaces COM property access through `IInArchive`.
-
-`FileTransferOperation` delegates recursive copying to adapted upstream `CCopyState`, `CopyFolder` and the read/write branch of `CopyFile_Ask` in `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`. `CCopyStateIO::MyCopyFile` owns byte copying; accumulated progress and current-file callbacks reach the worker without widget dependencies. The transaction wrapper publishes the stage and handles rollback. Nested destination validation uses `IsDestChild` from the same upstream module. Move still uses rename and a separate link-validation traversal; cross-volume fallback and interactive overwrite are pending.
-
-`CPanelSelection` is the extracted functional part of upstream `CPanel` from
-`PanelSelect.cpp` (0766b73). It receives a snapshot of displayed names, folder
-flags and selected states, and applies `SelectSpec`, `SelectByType`, `SelectAll`
-and `InvertSelection` without widgets or `MainWindow`. `mainwindow_selection.cpp`
-reads the Qt table in display order and publishes the resulting selection in
-one update, retaining the current index. Mouse and keyboard range selection
-remain owned by Qt; the upstream alternate selection mode is not ported.
-
-Сравнение имён `PanelSort.cpp::CompareFileNames_ForFolderList` теперь использует
-указательный алгоритм напрямую из upstream `0766b73`. Единственная замена
-в теле алгоритма — `wchar_t` на `char16_t`, чтобы сохранить UTF-16 Windows
-на macOS/Linux. `MyCharUpper` использует Qt; отдельная перегрузка преобразует
-`QStringView` в строки с завершающим нулём, включая срезы без терминатора.
-
-`Common/Wildcard.cpp::EnhancedMaskTest` также использует исходный указательный
-алгоритм. Регистр для выбора фиксирован как в Windows 7zFM (`false`), без
-изменяемого глобального флага; UTF-16 и рекурсивный поиск сохранены. Qt-адаптер
-владеет строками с терминатором перед вызовом ядра.
-
-Цикл объединения `CThreadCombine::ProcessVirt()` перенесён из upstream
-`PanelSplitFile.cpp` (`0766b73`) в тот же относительный путь. Сохранены порядок
-частей, чтение до EOF блоками 1 МиБ, проверка полной записи и прогресс после
-каждого блока. `QFile` и callback заменяют NIO/HRESULT/CProgressSync. Адаптация
-добавляет проверку изменения размера, `flush` и отмену до первого чтения.
-`VolumeOperation` владеет проверкой путей, временным именем, публикацией
-и откатом; Split делегирует чтение/запись перенесённому `CThreadSplit::ProcessVirt`.
-
-`CVolSeqName::ParseName` определяет допустимую первую часть как для меню,
-так и для worker. `GetCombinedName` содержит блок выбора имени результата
-из upstream `CApp::Combine` (удаление точек и fallback `file`). `MainWindow`
-выбирает папку назначения; правила имени принадлежат `PanelSplitFile.cpp`.
-
-Цикл `CThreadSplit::ProcessVirt()` перенесён из `PanelSplitFile.cpp` (`0766b73`)
-в тот же модуль: блоки 1 МиБ, ограничение чтения остатком тома, повтор последнего
-размера, переход к следующему файлу и прогресс через 4 МиБ либо на границе тома.
-Qt-адаптер передаёт список временных путей вместо `VolBasePath`, проверяет размер
-источника и сообщает ошибки `flush`. Предварительное выделение длины из
-`CPreAllocOutFile` не переносится: Qt пишет временный файл последовательно.
-`VolumeOperation::copyBytes` удалён; транзакционная публикация и откат остаются
-в `VolumeOperation`.
-
-Параметры сжатия принадлежат перенесённому CPP/7zip/UI/GUI/CompressDialog.cpp:
-таблицы форматов/уровней/методов, SetOrder2 для LZMA/Deflate/PPMd,
-SetDictionary2 для LZMA/PPMd/BZip2 и фиксированных Deflate, SetSolidBlockSize2,
-SetNumThreads2 и GetMemoryUsage_Threads_Dict_DecompMem. Методы получаются
-через GetMethodID по исходной таблице выбранного формата. Qt-форма живёт
-в createarchivedialog_compression.cpp; ресурсы CPU/памяти и их отображение —
-в createarchivedialog_resources.cpp. GetSystemInfo адаптирует исходные
-CProcessAffinity/GetRamSize из побайтово скопированного Windows/System.cpp
-(он поддерживает POSIX). Расчёт 80% использует Calc_From_Val_Percents.
-
-CompressionOptions::dictionaryBytes хранит байты в quint64. UI и backend
-используют один исходный ряд; GetOrderMode определяет mem/o для PPMd,
-d/fb для остальных методов. Auto не передаёт явную настройку движку.
-Solid представлен исходными CInfo::SolidIsSpecified и SolidBlockSize;
-CompressionOptions наследует перенесённую solid-часть CInfo. Combo хранит
-логарифмы (Auto=UInt32(-1), Non-solid=0, Full=64), OnOK преобразует их в
-байты. SetSolidBlockSize2 вычисляет Auto от метода/словаря; backend проверяет
-явные байты тем же портом и передаёт -ms=<bytes>b.
-
-Потоки задаются combo с исходными пределами метода и числом CPU вместо
-произвольного spinbox. SetNumThreads2 уменьшает Auto по оценке памяти для
-ZIP/LZMA2. UI показывает оценки для сжатия/распаковки; backend применяет
-исходный лимит (Auto 80% RAM либо пользовательские проценты/байты) перед
-запуском и передаёт -mmt только при явном выборе, -mmemuse при заданном
-лимите. CMemUse из UI/Common/ZipRegistry владеет разбором и переводом
-процентов в байты; CInfo передаёт это значение через CompressionOptions. Отмена и публикация stage остаются за ArchiveBackend.
-Список лимитов перенесён из SetMemUseCombo; память проверяется в OnOK
-Qt-диалога и повторно в backend. При неизвестной RAM отказ по Auto отключён,
-явный предел применяется; Auto-потоки при неизвестной RAM следуют upstream
-без уменьшения. Лимит сохраняется отдельно по формату при OK: CFormatOptions/CInfo
-из UI/Common/ZipRegistry используют исходный CObjectVector и Qt INI
-вместо Windows Registry. createarchivedialog_preferences.cpp адаптирует
-FindRegistryFormat/SaveOptionsInMem, сохраняет предыдущий формат перед
-сменой и восстанавливает выбранный элемент SetMemUseCombo. Отмена и
-ошибка валидации не записывают настройки. Остальные поля Registry
-остаются долгом. Подробные источники и отклонения записаны
-в upstream-port-audit.md.
-
-Профили доступных параметров сжатия принадлежат перенесённому
-`NCompression::CFormatOptions` в `CPP/7zip/UI/Common/ZipRegistry.*`.
-`createarchivedialog_preferences.cpp` адаптирует исходные сохранение и
-восстановление к Qt-контролам; запись выполняется только после валидации OK.
-Значения профиля проходят обычную валидацию ArchiveBackend при создании.
+`tests/layout_inspection.h/.cpp` inspects public widget geometry and writes
+JSON without editable field values. It is not linked into the application.
+See [layout contracts](ui-layout-contracts.md) and [testing](testing.md) for
+inspection procedures and coverage; [UI reference tooling](ui-reference.md)
+defines resource extraction and structural comparison.
