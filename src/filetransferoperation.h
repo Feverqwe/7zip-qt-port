@@ -22,7 +22,6 @@ class FileTransferOperation : public QThread {
 
   private:
     bool copyEntry(const QString &source, const QString &target, QString *error);
-    bool copyFile(const QString &source, const QString &target, QString *error);
     bool validateEntry(const QString &source, QString *error);
     static void removeEntry(const QString &path);
 

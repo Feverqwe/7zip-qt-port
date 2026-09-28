@@ -86,7 +86,7 @@ The extraction dialog follows the main controls in `../GUI/ExtractDialog.rc`: de
 
 The adapted upstream `CProxyArc` in `src/CPP/7zip/UI/Agent/AgentProxy.cpp` owns explicit and implicit directories, real item indices and recursive size totals. `CAgentFolder` in `Agent.cpp` supplies normal and flat traversal. `MainWindow` converts these items into Qt rows; folder properties and selection expansion use the same tree. `ArchiveBackend` metadata from `7zz` replaces COM property access through `IInArchive`.
 
-`FileTransferOperation` delegates byte copying to the adapted upstream `CCopyStateIO::MyCopyFile` in `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`. Its Qt adapter reports errors and progress to the worker; the existing transaction wrapper publishes the stage and handles rollback. Nested destination validation uses `IsDestChild` from the same upstream module.
+`FileTransferOperation` delegates recursive copying to adapted upstream `CCopyState`, `CopyFolder` and the read/write branch of `CopyFile_Ask` in `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`. `CCopyStateIO::MyCopyFile` owns byte copying; accumulated progress and current-file callbacks reach the worker without widget dependencies. The transaction wrapper publishes the stage and handles rollback. Nested destination validation uses `IsDestChild` from the same upstream module. Move still uses rename and a separate link-validation traversal; cross-volume fallback and interactive overwrite are pending.
 
 `CPanelSelection` is the extracted functional part of upstream `CPanel` from
 `PanelSelect.cpp` (0766b73). It receives a snapshot of displayed names, folder

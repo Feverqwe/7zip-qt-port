@@ -1,5 +1,11 @@
 # Regression strategy
 
+`file_transfer` exercises the upstream recursive copy branch with Unicode and
+space-containing names, hidden files, empty directories, cumulative byte
+progress and occupied destinations. Cancellation during a later source rolls
+back both its partial tree and an earlier published file. Existing cases cover
+single-file cancellation, nested symlink rejection for copy/move and self-copy.
+
 `extraction_options` checks both rename-on-conflict modes against disposable 7z and ZIP archives with a Unicode filename and spaces. It verifies that the original filename has the requested contents and both versions survive under separate names. `ui_layout` checks that the Extract dialog exposes both modes. Their actual filename suffixes are chosen by `7zz`. `archive_backend` checks creation of a nested Unicode destination and rejection of a linked ancestor.
 
 The regression gate is `./scripts/check.sh`. It checks C++ formatting, builds the development preset, and runs CTest. A tracked Git pre-commit hook runs the same gate after `.agents/skills/sevenzip-setup/scripts/setup.sh` configures the local checkout. GitHub Actions will run it on macOS, Linux, and Windows after the repository has a GitHub remote.

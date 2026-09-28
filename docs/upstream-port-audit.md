@@ -55,10 +55,10 @@ Extract column ordering on disposable fixtures.
 | `src/mainwindow_preferences.cpp` | `PanelMenu.cpp`, `PanelSort.cpp`, `PanelFolderChange.cpp`, `App.cpp`, `PanelKey.cpp` | Собственный код меню, сортировки, истории, закладок и событий. Это несколько upstream-модулей в одном файле. |
 | `src/mainwindow_dialogs.cpp`, `propertiesdialog.cpp`, `propertiesdialog.h` | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Размеры и количество вложенных объектов архивной папки берутся из перенесённого `CProxyArc`. Qt-форма и сводка нескольких выбранных объектов остаются адаптацией; форматные и сырые свойства пока отсутствуют. |
 | `src/mainwindow_volumes.cpp`, `volumeoperations.cpp`, `volumeoperations.h`, `volumedialog.cpp`, `volumedialog.h` | `PanelSplitFile.cpp`, `SplitDialog.cpp`, `SplitDialog.rc` | Qt-обвязка диалогов, рабочего потока, проверки путей и транзакционной публикации; нумерация делегирована `CVolSeqName`, разбор размера и расчёт числа томов — upstream `SplitUtils.cpp`. Цикл Combine делегирован перенесённому `CThreadCombine::ProcessVirt`; цикл Split делегирован `CThreadSplit::ProcessVirt`. Транзакционный откат принадлежит Qt-адаптеру. |
-| `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`, `FSFolder.h` | `CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile`, `IsDestChild`, `FSFolder.h::CCopyStateIO` | Цикл чтения/записи, учёт прогресса и проверка вложенного назначения перенесены с сохранением имён. `QFile` и callback заменяют `NIO` / `IProgress`; stage создаётся с `NewOnly`, ошибки буферизованной записи проверяются `flush`, сохраняется дата. Транзакционная обвязка и копирование дерева остаются отдельным долгом переноса. |
+| `src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp`, `FSFolder.h` | `CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile`, `CCopyState`, `CopyFolder`, `CopyFile_Ask`, `IsDestChild` | Цикл чтения/записи, накопленный прогресс, рекурсивная copy-ветка и проверка вложенного назначения перенесены с сохранением имён. `QFile`, `QDir` и callbacks заменяют платформенные операции; stage создаётся с `NewOnly`, ошибки записи проверяются `flush`, сохраняется дата. Транзакционная обвязка, move и интерактивный overwrite остаются адаптацией/долгом. |
 | `src/filetable.cpp`, `filetable.h` | `PanelItems.cpp`, `PanelSort.cpp`, `PanelDrag.cpp` | Qt-адаптер таблицы и drag-out. Функция сравнения вынесена в зеркальный `PanelSort.cpp`. |
 | `src/filesystemscanner.cpp`, `filesystemscanner.h` | `FSFolder.cpp::LoadSubItems`, `Panel.cpp::ChangeFlatMode` | Собственный порционный обход через Qt. Нужна сверка фильтров, ссылок и отмены. |
-| `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование байтов и проверка вложенного назначения делегированы перенесённому `CCopyStateIO` / `IsDestChild`. Рекурсивный обход, перемещение и транзакционное завершение ещё не перенесены из upstream-объектов папок. |
+| `src/filetransferoperation.cpp`, `filetransferoperation.h` | `FSFolderCopy.cpp`, `PanelCopy.cpp` | Qt-worker с временными файлами и откатом. Копирование дерева/байтов и проверка вложенного назначения делегированы перенесённым `CopyFolder`, `CopyFile_Ask`, `CCopyStateIO` / `IsDestChild`. Перемещение, предварительная проверка дерева для rename и транзакционное завершение остаются адаптацией. |
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
@@ -497,3 +497,29 @@ SFX/checksum ветки не применимы к текущим поддерж
 Reset_BlockLogSize: обычный размер solid сбрасывается к Auto, специальные
 0/64 сохраняются. SaveOptionsInMem при смене лимита сохраняет explicit threads
 перед их пересчётом. Оба сохранения меняют только in-memory профиль до OK.
+
+## Рекурсивное копирование файловой системы (2026-09-28)
+
+Источник: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyState::CallProgress`,
+`CopyFile_Ask` (UseReadWriteMode), `CombinePath`, `CopyFolder`.
+В том же зеркальном файле сохранены порядок CallProgress → IsDestChild →
+создание папки → перечисление → рекурсивная ветка/CopyFile_Ask, имена
+srcPath2/destPath2 и накопление StartPos после MyCopyFile.
+Самостоятельный обход copyEntry и обвязка copyFile удалены из worker.
+
+CCopyState вынесен в существующий FSFolder.h и namespace NFsFolder для
+доступа Qt-worker; из CProgressInfo нужен только StartPos. COM callbacks
+заменены функциями Progress/CurrentFile, HRESULT/RINOK — bool и проверкой
+результата; ошибки передаются в ErrorMessage. QString/QFileInfo/QDir заменяют
+FString/CFileInfo/CEnumerator и платформенные операции. Qt entryInfoList
+не предоставляет ошибку Next; перед обходом проверяется доступность папки.
+Скрытые и системные записи включены, ссылки отклоняются, stage создаётся
+только в отсутствующей папке (mkdir вместо CreateComplexDir).
+
+AskWrite адаптирован как отказ при конфликте до открытия файла, а не
+интерактивный запрос. Неиспользуемые skip/TotalSize и Win32 CopyFileEx ветки
+не подключены. MoveMode/MoveFile_Sys/RemoveDir остаются у транзакционного
+worker: он использует rename и откат, копирование с удалением источника
+нарушило бы текущую гарантию сохранности при ошибке. Межтомный перенос
+остаётся неподдержанным. Mandatory clang-format меняет оформление.

@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "filetransferoperation.h"
 
 #include <QDir>
@@ -10,6 +11,72 @@ class FileTransferTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void upstreamFolderCopyCountsHiddenFilesAndEmptyDirectories() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkpath(QStringLiteral("source/пустая папка")));
+        const QByteArray bytes("copied bytes");
+        for (const QString &name : {QStringLiteral(".hidden"), QStringLiteral("имя с пробелом")}) {
+            QFile file(temp.filePath("source/" + name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(bytes), bytes.size());
+        }
+        NFsFolder::CCopyState state;
+        quint64 completed = 0;
+        QStringList paths;
+        state.Progress = [&completed](quint64 value) {
+            if (value < completed)
+                return false;
+            completed = value;
+            return true;
+        };
+        state.CurrentFile = [&paths](const QString &path) { paths << path; };
+        QVERIFY(NFsFolder::CopyFolder(state, temp.filePath("source"), temp.filePath("target")));
+        QCOMPARE(completed, quint64(bytes.size() * 2));
+        QCOMPARE(paths.size(), 2);
+        QVERIFY(QDir(temp.filePath(QStringLiteral("target/пустая папка"))).exists());
+        for (const QString &source : paths) {
+            QFile copy(temp.filePath("target/" + QFileInfo(source).fileName()));
+            QVERIFY(copy.open(QIODevice::ReadOnly));
+            QCOMPARE(copy.readAll(), bytes);
+        }
+        QVERIFY(!NFsFolder::CopyFolder(state, temp.filePath("source"), temp.filePath("target")));
+        QFile existing(temp.filePath("target/.hidden"));
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), bytes);
+    }
+
+    void canceledTreeCopyRollsBackEarlierSources() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkpath("tree/empty"));
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        for (const QString &name : {QString("first"), QString("tree/second")}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write("bytes"), 5);
+        }
+        FileTransferOperation copy({temp.filePath("first"), temp.filePath("tree")},
+                                   temp.filePath("destination"), false);
+        QSignalSpy finished(&copy, &FileTransferOperation::result);
+        connect(
+            &copy, &FileTransferOperation::currentFile, &copy,
+            [&copy](const QString &path) {
+                if (path.endsWith("second"))
+                    copy.cancel();
+            },
+            Qt::DirectConnection);
+        copy.start();
+        QVERIFY(copy.wait(30000));
+        QTRY_COMPARE(finished.size(), 1);
+        QVERIFY(!finished.first().first().toBool());
+        QCOMPARE(
+            QDir(temp.filePath("destination")).entryList(QDir::AllEntries | QDir::NoDotAndDotDot),
+            QStringList());
+        QVERIFY(QFile::exists(temp.filePath("first")));
+        QVERIFY(QFile::exists(temp.filePath("tree/second")));
+    }
+
     void copiesNestedUnicodeAndMovesFile() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

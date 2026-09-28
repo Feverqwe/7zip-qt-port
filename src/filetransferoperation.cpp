@@ -20,27 +20,6 @@ void FileTransferOperation::removeEntry(const QString &path) {
         QFile::remove(path);
 }
 
-bool FileTransferOperation::copyFile(const QString &source, const QString &target, QString *error) {
-    NFsFolder::CCopyStateIO copyState;
-    quint64 previous = 0;
-    copyState.Progress = [this, &previous](quint64 completed) {
-        emit advanced(qint64(completed - previous));
-        previous = completed;
-        return !canceled_;
-    };
-    const bool completed = copyState.MyCopyFile(source, target, QFileInfo(source).permissions());
-    if (!completed) {
-        *error = QStringLiteral("Операция отменена.");
-        return false;
-    }
-    if (copyState.ErrorFileIndex >= 0 || !copyState.ErrorMessage.isEmpty()) {
-        *error = QStringLiteral("Ошибка чтения или записи файла: %1")
-                     .arg(copyState.ErrorFileIndex == 1 ? target : source);
-        return false;
-    }
-    return true;
-}
-
 bool FileTransferOperation::validateEntry(const QString &source, QString *error) {
     if (canceled_) {
         *error = QStringLiteral("Операция отменена.");
@@ -64,29 +43,24 @@ bool FileTransferOperation::validateEntry(const QString &source, QString *error)
 
 bool FileTransferOperation::copyEntry(const QString &source, const QString &target,
                                       QString *error) {
-    if (canceled_) {
-        *error = QStringLiteral("Операция отменена.");
+    NFsFolder::CCopyState state;
+    quint64 previous = 0;
+    state.Progress = [this, &previous](quint64 completed) {
+        if (completed != previous)
+            emit advanced(qint64(completed - previous));
+        previous = completed;
+        return !canceled_;
+    };
+    state.CurrentFile = [this](const QString &path) { emit currentFile(path); };
+    if (!state.CallProgress()) {
+        *error = state.ErrorMessage;
         return false;
     }
     const QFileInfo info(source);
-    if (!info.exists() || info.isSymLink()) {
-        *error = QStringLiteral("Источник недоступен: %1").arg(source);
-        return false;
-    }
-    emit currentFile(source);
-    if (!info.isDir())
-        return copyFile(source, target, error);
-    if (!QDir().mkdir(target)) {
-        *error = QStringLiteral("Не удалось создать папку: %1").arg(target);
-        return false;
-    }
-    const QFileInfoList children = QDir(source).entryInfoList(
-        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
-    for (const QFileInfo &child : children) {
-        if (!copyEntry(child.absoluteFilePath(), QDir(target).filePath(child.fileName()), error))
-            return false;
-    }
-    return true;
+    const bool copied = info.isDir() ? NFsFolder::CopyFolder(state, source, target)
+                                     : NFsFolder::CopyFile_Ask(state, source, info, target);
+    *error = state.ErrorMessage;
+    return copied;
 }
 
 void FileTransferOperation::run() {

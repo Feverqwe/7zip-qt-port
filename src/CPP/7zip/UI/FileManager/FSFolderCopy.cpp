@@ -3,6 +3,7 @@
 // QFile replaces NIO files, a progress function replaces IProgress, and bool
 // replaces HRESULT. ErrorFileIndex / ErrorMessage retain their upstream roles.
 #include "FSFolder.h"
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 
@@ -80,5 +81,91 @@ bool IsDestChild(const QString &src, const QString &dest) {
 #else
     return QString::compare(dest.left(len), src, Qt::CaseSensitive) == 0;
 #endif
+}
+
+bool CCopyState::CallProgress() {
+    if (!Progress || Progress(StartPos))
+        return true;
+    ErrorMessage = QStringLiteral("Операция отменена.");
+    return false;
+}
+
+bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &srcFileInfo,
+                  const QString &destPath) {
+#ifdef Q_OS_WIN
+    const auto caseSensitivity = Qt::CaseInsensitive;
+#else
+    const auto caseSensitivity = Qt::CaseSensitive;
+#endif
+    if (QString::compare(destPath, srcPath, caseSensitivity) == 0) {
+        state.ErrorMessage = QStringLiteral("Cannot copy file onto itself: %1").arg(destPath);
+        return false;
+    }
+
+    // AskWrite adapter: unfinished overwrite interaction retains fail-on-conflict.
+    if (!srcFileInfo.exists() || !srcFileInfo.isFile() || srcFileInfo.isSymLink() ||
+        QFileInfo::exists(destPath) || QFileInfo(destPath).isSymLink()) {
+        state.ErrorMessage = QStringLiteral("Источник или назначение недоступны: %1").arg(srcPath);
+        return false;
+    }
+    if (state.CurrentFile)
+        state.CurrentFile(srcPath);
+    CCopyStateIO state2;
+    state2.Progress = state.Progress;
+    state2.StartPos = state.StartPos;
+    if (!state2.MyCopyFile(srcPath, destPath, srcFileInfo.permissions())) {
+        state.ErrorMessage = QStringLiteral("Операция отменена.");
+        return false;
+    }
+    if (state2.ErrorFileIndex >= 0 || !state2.ErrorMessage.isEmpty()) {
+        const QString errorName = state2.ErrorFileIndex == 0 ? srcPath : destPath;
+        state.ErrorMessage = QStringLiteral("Ошибка чтения или записи файла: %1").arg(errorName);
+        return false;
+    }
+    state.StartPos += state2.CurrentSize;
+    return state.CallProgress();
+}
+
+static QString CombinePath(const QString &folderPath, const QString &fileName) {
+    QString s(folderPath);
+    if (!s.endsWith('/'))
+        s += '/';
+    s += fileName;
+    return s;
+}
+
+bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPath) {
+    if (!state.CallProgress())
+        return false;
+    if (IsDestChild(srcPath, destPath)) {
+        state.ErrorMessage = QStringLiteral("Cannot copy folder onto itself: %1").arg(destPath);
+        return false;
+    }
+    // Do not follow links or merge a stage with an existing directory. Qt's
+    // enumerator lacks the upstream Next error result; reject unreadable roots.
+    const QFileInfo source(srcPath);
+    if (!source.exists() || !source.isDir() || source.isSymLink() || !source.isReadable()) {
+        state.ErrorMessage = QStringLiteral("Источник недоступен: %1").arg(srcPath);
+        return false;
+    }
+    if (!QDir().mkdir(destPath)) {
+        state.ErrorMessage = QStringLiteral("Cannot create folder: %1").arg(destPath);
+        return false;
+    }
+
+    const QFileInfoList entries = QDir(srcPath).entryInfoList(
+        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System, QDir::NoSort);
+    for (const QFileInfo &fi : entries) {
+        const QString srcPath2 = CombinePath(srcPath, fi.fileName());
+        const QString destPath2 = CombinePath(destPath, fi.fileName());
+        if (fi.isDir()) {
+            if (!CopyFolder(state, srcPath2, destPath2))
+                return false;
+        } else {
+            if (!CopyFile_Ask(state, srcPath2, fi, destPath2))
+                return false;
+        }
+    }
+    return true;
 }
 } // namespace NFsFolder
