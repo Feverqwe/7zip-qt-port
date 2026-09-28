@@ -326,7 +326,7 @@ P0-02.2b3a commit: `dfee6fd`. P0-02.2b3b разделён перед смено�
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3b1 | Qt metadata snapshot implements unchanged IFolderFolder; CPanel uses CMyComPtr folder, source SetNewFolder/ReleaseFolder/property/name/path helpers, existing summary/property consumers preserved | P0-02.2b3a | done — audit § P0-02.2b3b1; focused 5/5, check.sh 58/58, vendor bytes 44/44 |
-| P0-02.2b3b2 | Filesystem/Agent location adapters и source bind/path scope на portable folder contract; local deterministic binding/error checks | P0-02.2b3b1 | active — a–c ниже |
+| P0-02.2b3b2 | Filesystem/Agent location adapters и source bind/path scope на portable folder contract; local deterministic binding/error checks | P0-02.2b3b1 | done — a–c ниже; remaining engine/optional contracts retain mandatory owners |
 | P0-02.2b3b3 | Window runtime location connects to panel folder owner, remove duplicate current filesystem/archive location fields; navigation/loading/failure/cancel consumers | P0-02.2b3b2 | todo |
 
 P0-02.2b3b1 checks 2026-09-29 macOS: affected targets/direct consumers build dev;
@@ -341,7 +341,7 @@ P0-02.2b3b1 commit: `07b7326`. P0-02.2b3b2 разделён до изменен�
 | --- | --- | --- | --- |
 | P0-02.2b3b2a | CAgentFolder IFolderFolder identity, _proxy bind/name/prefix/folder-property source bodies и typed property delegation; normal/flat/root/parent/name/error tests, legacy enumeration preserved | P0-02.2b3b1 | done — audit § P0-02.2b3b2a; focused 4/4, check.sh 59/59, vendor bytes 45/45; macOS 2026-09-29 |
 | P0-02.2b3b2b | CFSFolder folder identity/path/bind/property source scope через portable filesystem services; root/Unicode/failure tests, existing mutations preserved | P0-02.2b3b2a | done — b1–b3 ниже; optional property/operations scopes remain mandatory in their owners |
-| P0-02.2b3b2c | Owned archive metadata/provider context вместо borrowed proxy при долгом binding; location factory, source remaining required scope и b2 acceptance | P0-02.2b3b2b | active — c1–c2 ниже |
+| P0-02.2b3b2c | Owned archive metadata/provider context вместо borrowed proxy при долгом binding; location factory, source remaining required scope и b2 acceptance | P0-02.2b3b2b | done — c1–c2 ниже; remaining engine/interface scope explicitly assigned P0-03/04 and feature owners |
 
 _proxy2/alt streams, raw/archive handler properties, COM lifecycle/operations
 не становятся done от одного _proxy binding subset. Оставшиеся обязательные
@@ -360,7 +360,7 @@ P0-02.2b3b2b3 commit: `0297571`. Owned archive scope разделён до из�
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3b2c1 | Source CAgent proxy ctor/delete/ReadItems/root-bind subset; CAgentFolder retains source agent reference in children/parents, typed metadata adapter; input/root/agent release lifetime regressions | P0-02.2b3b2b | done — audit § P0-02.2b3b2c1; focused 4/4, check.sh 61/61; macOS 2026-09-29 |
-| P0-02.2b3b2c2 | Filesystem/archive location factories use owned contract, typed provider snapshots и b2 acceptance; required remaining engine/interface branches retain owning IDs | P0-02.2b3b2c1 | todo |
+| P0-02.2b3b2c2 | Filesystem/archive location factories use owned contract, typed provider snapshots и b2 acceptance; source GetSize/CalculateSizes unknown-metadata handling; required remaining engine/interface branches retain owning IDs | P0-02.2b3b2c1 | done — audit § P0-02.2b3b2c2; focused 6/6, check.sh 62/62; macOS 2026-09-29 |
 
 При следующем разделении добавить здесь, сохраняя остальных:
 

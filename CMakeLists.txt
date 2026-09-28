@@ -60,6 +60,11 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
 
+add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
+    src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
+target_include_directories(sevenzip_location PUBLIC src)
+target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
+
 qt_add_executable(sevenzip_desktop
     src/main.cpp
     src/CPP/Common/Wildcard.cpp src/CPP/Common/Wildcard.h src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp src/CPP/7zip/UI/FileManager/PanelSort.cpp src/CPP/7zip/UI/FileManager/PanelSort.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp
@@ -168,6 +173,9 @@ if(BUILD_TESTING)
     qt_add_executable(fs_folder_tests tests/fs_folder_tests.cpp)
     target_link_libraries(fs_folder_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME fs_folder COMMAND fs_folder_tests)
+    qt_add_executable(location_folder_tests tests/location_folder_tests.cpp)
+    target_link_libraries(location_folder_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME location_folder COMMAND location_folder_tests)
     qt_add_executable(panel_copy_info_tests tests/panel_copy_info_tests.cpp)
     target_link_libraries(panel_copy_info_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME panel_copy_info COMMAND panel_copy_info_tests)

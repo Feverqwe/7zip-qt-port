@@ -30,6 +30,7 @@ struct CPanelItem {
     bool SizeDefined = false;
     UInt64 Size = 0;
     UInt64 PackSize = 0;
+    bool PackSizeDefined = true;
     UInt64 NumSubDirs = 0;
     UInt64 NumSubFiles = 0;
     CObjectVector<CPanelProperty> Properties;

@@ -34,6 +34,12 @@ listing получает нового владельца. Open/ReOpen/Close и �
 ещё обязательны. Время жизни descendants/ancestors проверяется после release
 root и внешних references; runtime окна пока использует прежнюю lexical ветку.
 
+P0-02.2b3b2c2 добавляет folder factories для следующей runtime integration.
+Archive unknown size/packed size остаётся VT_EMPTY, defined zero — числом zero;
+source GetSize не добавляет negative sentinel к unsigned directory totals.
+Parser presence/type/range и full Properties catalog ещё обязательны P0-03/04.
+Видимый workflow не меняется этой фабрикой.
+
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
 Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный

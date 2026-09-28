@@ -4,6 +4,10 @@
 // ArchiveBackend metadata replaces IInArchive property access; CRC/raw properties
 // and CProxyArc2 alternate streams are not available in the process adapter.
 #include "AgentProxy.h"
+#include "7zip/PropID.h"
+#include "Common/MyVector.h"
+#include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
 #include <cstring>
 
 int CProxyArc::FindSubDir(const unsigned *items, unsigned right, const QString &name,
@@ -95,8 +99,28 @@ unsigned CProxyArc::AddDir(const unsigned dirIndex, const int arcIndex, const QS
     return (unsigned)subDirIndex;
 }
 
+static bool GetSize(const QList<ArchiveEntry> &entries, UInt32 index, PROPID propID, UInt64 &size) {
+    size = 0;
+    NWindows::NCOM::CPropVariant prop;
+    if (index >= UInt32(entries.size()))
+        throw 20120228;
+    const ArchiveEntry &entry = entries[int(index)];
+    // Typed 7zz metadata lookup substitutes the source IInArchive::GetProperty.
+    switch (propID) {
+    case kpidSize:
+        if (entry.size >= 0)
+            prop = UInt64(entry.size);
+        break;
+    case kpidPackSize:
+        if (entry.packedSize >= 0)
+            prop = UInt64(entry.packedSize);
+        break;
+    }
+    return ConvertPropVariantToUInt64(prop, size);
+}
+
 void CProxyArc::CalculateSizes(const QList<ArchiveEntry> &entries) {
-    std::vector<unsigned> vec;
+    CUIntVector vec;
     unsigned dirIndex = 0, i = 0;
     for (;;) {
         CProxyDir &dir = Dirs[dirIndex];
@@ -106,18 +130,21 @@ void CProxyArc::CalculateSizes(const QList<ArchiveEntry> &entries) {
             dir.NumSubFiles = dir.SubFiles.size();
             for (unsigned k = 0; k < dir.SubFiles.size(); ++k) {
                 const unsigned index = dir.SubFiles[k];
-                dir.Size += entries[index].size;
-                dir.PackSize += entries[index].packedSize;
+                UInt64 size, packSize;
+                GetSize(entries, index, kpidSize, size);
+                dir.Size += size;
+                GetSize(entries, index, kpidPackSize, packSize);
+                dir.PackSize += packSize;
             }
         }
 
         if (i == dir.SubDirs.size()) {
-            const unsigned num = vec.size();
+            const unsigned num = vec.Size();
             if (num < 2)
                 return;
             dirIndex = vec[num - 2];
             i = vec[num - 1];
-            vec.resize(num - 2);
+            vec.DeleteFrom(num - 2);
 
             CProxyDir &dir2 = Dirs[dirIndex];
             dir2.Size += dir.Size;
@@ -127,8 +154,8 @@ void CProxyArc::CalculateSizes(const QList<ArchiveEntry> &entries) {
             continue;
         }
 
-        vec.push_back(dirIndex);
-        vec.push_back(i + 1);
+        vec.Add(dirIndex);
+        vec.Add(i + 1);
         dirIndex = dir.SubDirs[i];
         i = 0;
     }

@@ -61,6 +61,21 @@ class ArchiveProxyTests : public QObject {
         QCOMPARE(proxy.FindDir("folder"), -1);
         QCOMPARE(proxy.Dirs[0].Size, quint64(0));
     }
+    void unknownSizeDoesNotWrapDirectoryTotals() {
+        CProxyArc proxy;
+        proxy.Load({ArchiveEntry{"folder/known", 17, 8}, ArchiveEntry{"folder/unknown", -1, -1},
+                    ArchiveEntry{"unknown-only/file", -1, -1}});
+        const int folder = proxy.FindDir("folder");
+        QVERIFY(folder > 0);
+        QCOMPARE(proxy.Dirs[folder].Size, quint64(17));
+        QCOMPARE(proxy.Dirs[folder].PackSize, quint64(8));
+        const int unknown = proxy.FindDir("unknown-only");
+        QVERIFY(unknown > 0);
+        QCOMPARE(proxy.Dirs[unknown].Size, quint64(0));
+        QCOMPARE(proxy.Dirs[unknown].PackSize, quint64(0));
+        QCOMPARE(proxy.Dirs[0].Size, quint64(17));
+        QCOMPARE(proxy.Dirs[0].PackSize, quint64(8));
+    }
 };
 QTEST_GUILESS_MAIN(ArchiveProxyTests)
 #include "archive_proxy_tests.moc"

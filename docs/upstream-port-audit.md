@@ -8,6 +8,54 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b2c2 — Qt location factory and unknown size boundary (2026-09-29)
+
+Project baseline `70fbcf3`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+New qtlocationfolder.h/.cpp is Qt/7zz input glue: no upstream implementation takes
+QString/ArchiveEntry snapshots. Filesystem factory converts native QString to
+FString, calls source FileName GetFullPath/NormalizeDirPathPrefix and CFSFolder
+Init, and follows source scoped COM/Detach/COM_TRY conventions. Archive factory
+maps the existing ArchiveEntry fields into owned QtPanelFolder typed records,
+then uses source CAgent initialization/root binding ownership. It creates no
+engine operations or commands. Source folder/module bodies stay in their owners.
+sevenzip_location registers the factory and the existing authoritative Agent
+sources; it links filesystem/panel dependencies. It is not connected to window
+runtime until P0-02.2b3b3. Archive virtual outer path requires later CFolderLink/
+LoadFullPath port; root relative path remains empty as source semantics require.
+
+Unknown metadata support exposed migration debt: CalculateSizes directly added
+signed negative sentinels to unsigned totals. AgentProxy.cpp GetSize is now copied
+from source zero-init/CPropVariant/ConvertPropVariantToUInt64 control flow, with
+ArchiveEntry typed lookup replacing IInArchive GetProperty. Negative sentinel
+becomes VT_EMPTY and zero aggregate contribution, distinct from defined zero.
+CalculateSizes retains original DFS/control flow, restores source CUIntVector
+and Add/Size/DeleteFrom operations, and source per-item GetSize/size/packSize
+addition. The current proxy's std-container directory/file storage and Qt names
+remain an earlier adaptation; CRC definedness/addition, tree/alt/raw and memory
+limits remain mandatory P0-03/04, not completed by this size subset.
+
+CPanelItem PackSizeDefined is a local metadata-input flag; default true preserves
+existing summaries/Properties snapshot behavior, while the factory sets it from
+the negative sentinel. QtPanelFolder returns VT_EMPTY for unknown packed size.
+Source ArchiveEntry parser still lacks full presence/type flags and uses qint64;
+full engine catalog, UInt64 range, timestamps/link/raw properties and presence
+parsing remain mandatory in P0-03/04. Factories expose the current read-only
+subset, not the complete IFolder/engine port. Backend retains unsafe path and
+link validation for extraction/mutations; these factories perform no writes.
+
+location_folder fixtures verify source normalized path/Unicode binding, missing/
+file/empty rejection, child lifetime after factory/root release, archive input
+release with typed metadata/type retained, unknown versus zero size/packed size,
+root aggregate totals and empty archive/null parent. archive_proxy adds unknown
+and unknown-only directory aggregate checks that fail with the old signed add.
+Affected location_folder/panel_folder/panel_copy_info/properties/agent_folder/
+archive_proxy targets built; focused 6/6 passed macOS 2026-09-29.
+Full `./scripts/check.sh` with staged files passed formatting, both diff checks,
+app build and 62/62 CTest.
+No visible UI/layout/text changes;
+Windows/Linux runtime unverified.
+
 ## P0-02.2b3b2c1 — source Agent proxy ownership subset (2026-09-29)
 
 Project baseline `0297571`; exact upstream [ip7z/7zip

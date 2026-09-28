@@ -50,6 +50,10 @@ bound children/parents retain its IUnknown identity. The source engine owner
 interface is not advertised. Window enumeration continues with the borrowed
 overload in its existing stack scope until factory/runtime migration. Raw/alternate-stream/operation and
 full engine catalog contracts remain open; unsupported interfaces are absent.
+`sevenzip_location` provides Qt input factories that use source CFSFolder path
+services or source CAgent ownership with an immutable typed metadata snapshot.
+Unknown metadata sentinels remain VT_EMPTY and do not wrap source directory
+totals. Runtime window binding and outer archive links are following iterations.
 
 ```text
 Qt Widgets (window, file list, dialogs)

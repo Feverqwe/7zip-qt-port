@@ -50,7 +50,8 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
             prop = item.Size;
         break;
     case kpidPackSize:
-        prop = item.PackSize;
+        if (item.PackSizeDefined)
+            prop = item.PackSize;
         break;
     case kpidNumSubDirs:
         prop = item.NumSubDirs;

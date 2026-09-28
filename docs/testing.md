@@ -29,6 +29,10 @@ and unbound load failure. Proxy fixtures explicitly outlive their folders until
 the borrowed overload is used. Additional owned-Agent cases release input/provider,
 root and explicit agent references before descendant/ancestor traversal, and
 check empty archive, invalid initialization and immutable repeat-Init rejection.
+`location_folder` covers filesystem/archive factories, normalized Unicode binding,
+failure output clearing, retained child metadata after input/root release, empty
+archive and unknown versus defined zero size/packed size. `archive_proxy` checks
+unknown-only and mixed directory totals using the source GetSize conversion.
 `archive_proxy`, `flat_view` and
 `ui_navigation` validate existing enumeration/window consumers.
 
