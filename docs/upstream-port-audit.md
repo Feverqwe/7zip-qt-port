@@ -271,3 +271,21 @@ CompressDialog.rc. Backend получает тот же набор через п
 не применяется (адаптация недоступного системного значения); Auto по
 памяти отключён, как в исходном SetNumThreads2. Пользовательский RAM
 selector, Registry, ZSTD и UI XZ остаются долгом. Форматирование — clang-format.
+
+### Итерация: исходный разбор лимита памяти
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/Common/ZipRegistry.h::NCompression::CMemUse`,
+`ZipRegistry.cpp::ParseMemUse`, `CMemUse::Parse` и
+`CPP/Common/MyString.h::MyCharLower_Ascii(wchar_t)`.
+Структура, Clear/GetBytes, весь указательный парсер и ASCII helper
+скопированы с сохранением имён, типов, ветвей и проверки переполнения.
+Адаптация: Parse принимает QString и передаёт нуль-терминированную
+std::wstring исходному wchar_t парсеру. Это позволяет использовать уже
+скопированный ConvertStringToUInt64 на всех ОС, без нового Qt-парсера.
+CMemUse использует ранее перенесённый Calc_From_Val_Percents, включая
+насыщение и округление. Остальной ZipRegistry (Windows Registry,
+критические секции и настройки форматов) не нужен для этого ядра и
+остаётся долгом; не добавлены платформенные Registry зависимости.
+Форматирование — обязательный clang-format. Подключение пользовательского
+предела к диалогу и backend выполняется следующей итерацией.
