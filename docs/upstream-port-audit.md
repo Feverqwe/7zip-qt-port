@@ -151,6 +151,35 @@ Project baseline: `d03de90`. Для всех 12 путей ниже FM =
 Runtime/build/layout не менялись и не проверялись. Platform-specific решения
 и полный dependency closure остаются открытыми у owners и в P0-01.4/P3-05.
 
+## P0-01.3b1 — отсутствующие FM Options, Language и service dialogs (2026-09-28)
+
+Project baseline `9eced86`; exact upstream для каждой строки —
+[ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+FM = `CPP/7zip/UI/FileManager`. Все 12 `.cpp` отсутствуют локально:
+copied/adapted scope пуст, все активные bodies обязательны до переноса или
+доказанного platform/entrypoint решения. Проверены bodies, соответствующие
+dialog headers/resources (включая Edit/Folders/MenuPage2.rc) и callers.
+
+| Путь / owner | Исходные symbols и обязательный scope | Dependencies и решение адаптации |
+| --- | --- | --- |
+| FM/OptionsDialog.cpp — P1-12/13/14, P2-08/09 | OptionsDialog: шесть страниц System/Menu/Folders/Edit/Settings/Language в исходном порядке; property-sheet result, reload menus/toolbars/lang items/list settings и refresh всех panels после Apply. | App, MyLoadMenu, все page headers/resources, PropertyPage/DialogSize. Перенести container/control flow; Qt tabs/Apply/Cancel presentation и settings transaction вместо Win32 property sheet. Одиночный текущий Settings dialog не покрывает контейнер. |
+| FM/EditPage.cpp — P1-08/13 | CEditPage OnInit/OnApply/OnCommand/OnButtonClicked, Edit_BrowseForFile: три viewer/editor/diff команды, changed flags, SplitCmdLineSmart, executable browse. | RegistryUtils, BrowseDialog, PanelItemOpen::SplitCmdLineSmart, Help/Lang, EditPage2.rc. Сохранить initialization и save-only-changed flow; executable filter/platform command launch адаптировать для ОС, без запуска из widget parser. Закомментированное восстановление старых parameters после Browse не активный scope. |
+| FM/FoldersPage.cpp — P1-12 | CFoldersPage OnInit/GetWorkMode/MyEnableControls/GetWorkDir/ModifiedEvent/OnApply и browse: system/current/specified temp path, removable-only, dirty/init state. | NWorkDir::CInfo/ZipRegistry, BrowseDialog, Help/Lang, FoldersPage2.rc. Перенести decision/persistence flow; Qt radio/path controls и portable removable-volume service. WasChanged закомментирован, не активная обязательная функция. |
+| FM/LangPage.cpp — P1-14 | CLangPage OnInit: enumerate/load/sort языки, default marks, compare sorted ID lists с английским baseline, missing/extra lines; OnApply/OnCommand/ShowLangInfo, AddVectorToString limits. | Common/Lang CLang, FileFind/ResourceString, LangUtils/RegistryUtils, LangPage.rc. Перенести loops/types и choice state; Qt combo/text, file enumeration и resources adapters. Информация о неполном переводе и bad-file errors не исключаются как presentation-only. |
+| FM/LangUtils.cpp — P1-14 | LangOpen/GetLangDirPrefix/LoadLangOneTime/ReloadLang/OpenDefaultLang, kLangPairs/kLangs/FindShortNames, Lang_GetShortNames_for_DefaultLang, LangString overloads, AddLangString, dialog/window caption/colon helpers. | Common/Lang, DLL module dir, Synchronization, Window/ResourceString, RegistryUtils. Portable parser/retrieval/fallback bodies сохранить; Qt control/resource ID map и OS locale adapter вместо LANGID/Win32. Registry user override/path-separator guard и English '-' sentinel сохранить. Global mutable store требует явного ownership/thread contract. |
+| FM/AboutDialog.cpp — P1-15, P2-01, P3-04 | CAboutDialog OnInit/OnHelp/OnButtonClicked: codecs load errors, version/CPU/date, homepage/help. | LoadCodecs/CCodecs, MyVersion/CpuArch, Lang/Help, AboutDialog.rc/logo/copyright. Перенести initialization; Qt dialog и URL open service, отдельно показывать version проекта/engine без неверного upstream attribution. External-codecs error branch остаётся с owner capabilities. |
+| FM/HelpUtils.cpp — P1-15, P3-04 | ShowHelpWindow topic routing: module-relative 7-zip.chm, HtmlHelp либо hh.exe process; UNDER_CE/MinGW branch пуст. | DLL/StringConvert, HtmlHelp или ProcessUtils/FileDir/FileName; callers из всех Options pages, Compress/Extract/Benchmark/Browse/About/menu. Qt/OS help service нужен на macOS/Linux с теми же topic destinations и shipped help resources. Пустая upstream MinGW ветка не разрешает оставить F1 без результата в продукте. |
+| FM/LinkDialog.cpp — P2-05, P0-08 | CLinkDialog init/current target/type, GetSymLink reproduce/validate reparse data, OnButton_Link hard/sym-file/sym-dir/junction/WSL create/delete checks; CApp::Link selection/destination/refresh. | FileDir/Find/IO/Name, CReparseAttr/FillLinkData, App/Panel, Browse/Lang, LinkDialog.rc. Сохранить flow; Qt presentation и portable hard/symlink services, Windows-specific junction/WSL/reparse capability. Не переписывать reparse encoding в widget; не скрывать unsupported platforms как полную готовность функции. |
+| FM/MemDialog.cpp — P1-07, P2-07 | CMemDialog AddInfoMessage_To_String/OnInit/EnableSpin/OnButtonClicked/OnContinue: required/limit/RAM info, allow/skip default, save next limit/remember current action, numeric validation. | StringToInt, Windows/System portable RAM API, ErrorMsg/MyMessages, Lang/ExtractRes, MemDialog.rc; caller ExtractCallback::RequestMemoryUse. Перенести policy/ranges/parse; Qt spin/edit/radio/errors, callback result transport. Commented AddAction/SkipFile не активные branches; SkipArc/Cancel обязательны. |
+| FM/MenuPage.cpp — P1-13, P2-07/09 | CMenuPage OnInit/OnApply/event changed flags: two-bitness shell handlers, cascaded/icons/ElimDup/zone, kMenuItems checkbox→flags, recheck registry state после apply errors. | Explorer ContextMenuFlags/RegistryContextMenu/resources, ZipRegistry/CContextMenuInfo, DLL/FileFind/ErrorMsg, Lang/Format/Help, MenuPage2.rc. Qt page/registry service adapters; Windows handler branch separately capability-gated. ElimDup и zone влияют на extraction callers и не N/A вместе с shell DLL. |
+| FM/FormatUtils.cpp — P0-09/10, P1-10/14 | NumberToString и оба MyFormatNew: upstream UInt64 conversion и replacement всех '{0}' placeholders. | IntToString/MyString, LangUtils. Portable bodies можно vendor/reuse через единственный mirrored module; QString conversion только boundary, не самостоятельный replacement algorithm. |
+| FM/PropertyName.cpp — P0-06/09, P1-10/14 | GetNameOfProperty: translated 1000+propID для ID<1000, supplied name fallback, decimal ID fallback. | IntToString, LangUtils, PropertyName.h/PropID; callers PanelMenu/ListNotify/ExtractCallback/Browse. Перенести body и property IDs, Qt string boundary; hardcoded current labels не подтверждают generic pipeline. |
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check` и 54 unique paths
+(30 mirrored + 24 missing), все 12 новых путей существуют в upstream и
+отсутствуют локально. Приложение/UX не менялись; build/CTest/layout не требуются.
+Windows/Linux runtime и rendered visual parity этим review не подтверждены.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

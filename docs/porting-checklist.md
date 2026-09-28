@@ -146,6 +146,17 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 Каждый подшаг проверяется docs-only (`git diff --check`, unique-path coverage)
 и коммитится отдельно. Родитель P0-01.3 закрывается только после 3d.
 
+P0-01.3b разделён перед фиксацией audit:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3b1 | Текущий чат: 12 FM options/language/help/dialog/format modules; bodies/resources/callers, owners и adapter decisions | P0-01.3a | done — audit § P0-01.3b1; 2026-09-28 macOS docs-only, diff check, 54 unique paths |
+| P0-01.3b2 | Текущий чат: 12 FM provider/platform/support modules; bodies/build callers, owners и adapter decisions | P0-01.3b1 | active |
+| P0-01.3b3 | Текущий чат: 9 FM open/drag/hash/Browse/system modules; bodies/callers, owners и adapter decisions; coverage 33 оставшихся FM | P0-01.3b2 | todo |
+
+P0-01.3a: local commit `9eced86`. P0-01.3b остаётся active до всех b1–b3;
+их docs-only diff/coverage проверки и коммиты выполняются отдельно.
+
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
 
