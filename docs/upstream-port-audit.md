@@ -174,3 +174,13 @@ vector остаётся вне процессной границы. Qt вклю�
 исходных вариантов; backend проверяет тот же список без собственного
 ограничения на LZMA. RAM limits, Registry и PPMdZip пока не перенесены.
 Обязательный clang-format меняет только оформление исходных циклов.
+
+### Итерация: память PPMdZip
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::CCompressDialog::SetDictionary2` (kPPMdZip).
+Скопированы Auto=1<<(level+19) и цикл i=20..28 с UInt32 dict=1<<i.
+AddDict/Registry заменены возвратом данных и Qt selection; исходные
+формулы, границы и типы сохранены. Backend уже использует GetOrderMode
+и mem=<bytes>b; одинаковая подпись PPMd разрешается в kPPMdZip по таблице
+ZIP. RAM limits и выбор Registry остаются долгом. Форматирование — clang-format.

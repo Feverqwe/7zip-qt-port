@@ -20,6 +20,10 @@ class CompressionMemoryTests final : public QObject {
             ppmd.append(quint64(mib) << 20);
         }
         QTest::newRow("PPMd-7z") << QString("7z") << QString("PPMd") << ppmd;
+        QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd")
+                                  << QList<quint64>{0,         1 << 20,  2 << 20,  4 << 20,
+                                                    8 << 20,   16 << 20, 32 << 20, 64 << 20,
+                                                    128 << 20, 256 << 20};
     }
     void choices() {
         QFETCH(QString, formatName);
@@ -67,6 +71,8 @@ class CompressionMemoryTests final : public QObject {
         QTest::addColumn<quint64>("invalidSize");
         QTest::newRow("PPMd-7z") << QString("7z") << QString("PPMd") << quint64(1 << 20)
                                  << quint64(5 << 20);
+        QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd") << quint64(1 << 20)
+                                  << quint64(3 << 20);
     }
     void operations() {
         QFETCH(QString, formatName);

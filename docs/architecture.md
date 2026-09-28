@@ -158,3 +158,7 @@ SetDictionary2 выдаёт также исходный ряд памяти PPMd
 варианты и доступность в Qt / backend определяет одна функция. При
 GetOrderMode=true backend кодирует dictionaryBytes как mem, как в
 upstream SetOutProperties, иначе как d.
+
+SetDictionary2 теперь выдаёт отдельную ветку kPPMdZip; формат ZIP определяет
+ID через исходную таблицу, хотя текст метода совпадает с PPMd в 7z.
+Для обоих вариантов Backend передаёт память через mem, порядок через o.

@@ -214,6 +214,16 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
         break;
     }
 
+    case kPPMdZip: {
+        options.AutoDict = (UInt32)1 << (level + 19);
+
+        for (unsigned i = 20; i <= 28; i++) {
+            const UInt32 dict = (UInt32)1 << i;
+            options.Values.append(quint64(dict));
+        }
+        break;
+    }
+
     default:
         break;
     }
