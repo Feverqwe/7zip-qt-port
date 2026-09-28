@@ -8,6 +8,37 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3b2a — cancellable source filesystem loading (2026-09-29)
+
+Project baseline `9014788`; exact source [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+CPP/7zip/UI/FileManager/FSFolder.cpp LoadSubItems/LoadItems and FSFolder.h Clear.
+Copies original Clear body/name (Files/Folders, commented Streams branch) and
+uses it instead of duplicate local clears. Existing source enumeration body and
+root-first/recursive Folders start/end grouping are unchanged. Prior POSIX native
+enumerator/Fill_FileInfo adaptation and explicit EOF/failure propagation remain.
+
+The Windows source loads synchronously without this Qt cancellation boundary.
+To run the same body in a worker, the existing Qt integration callbacks CheckBreak
+and SetCompleted are checked before each enumerator Next and after Files.Add,
+respectively. False returns E_ABORT and reports no successful complete listing;
+count progress is monotonic and no widgets run in these callbacks. No replacement
+walker, Qt container or changed enumeration order is introduced. Source callback
+interfaces for operations remain mandatory later; these existing callbacks are
+only narrow integration services. LoadItems clears partial records on a failed
+HRESULT or exception before its existing COM_TRY converts the exception. This
+prevents a cancelled/failed worker from handing off incomplete folder data.
+
+New fs_folder regression covers cancellation before enumeration, after reaching
+flat recursion, and an injected progress allocation exception, with pre-existing
+rows cleared, zero item count/no stale Folders, monotonic progress and successful
+reload after removing callbacks. Unicode/space/non-BMP fixture paths remain local.
+Checks macOS 2026-09-29: affected fs_folder/filesystem_operations/location_folder/
+flat_view targets built, focused 4/4 passed (1.21s), ./scripts/check.sh passed
+formatting/app build/all 62 CTest (26.55s). No visible or vendor changes. Worker handoff and actual
+window filesystem binding remain mandatory P0-02.2b3b3b2b/c; this substep does not
+complete those consumers or P0-02. Windows/Linux runtime remains unverified.
+
 ## P0-02.2b3b3b1 — owned archive runtime (2026-09-29)
 
 Project baseline `190abef`; upstream [ip7z/7zip

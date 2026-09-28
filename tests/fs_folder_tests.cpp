@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <new>
 
 using NWindows::NCOM::CPropVariant;
 
@@ -19,6 +20,59 @@ class FsFolderTests : public QObject {
         return QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal));
     }
   private slots:
+    void cancelledOrFailedLoadClearsPartialState_data() {
+        QTest::addColumn<int>("failure");
+        QTest::newRow("before-enumeration") << 0;
+        QTest::newRow("during-flat-recursion") << 1;
+        QTest::newRow("progress-exception") << 2;
+    }
+    void cancelledOrFailedLoadClearsPartialState() {
+        QFETCH(int, failure);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString nested = QStringLiteral("папка с пробелом/sub");
+        QVERIFY(QDir(temp.path()).mkpath(nested));
+        for (const QString &name :
+             {QStringLiteral("root.txt"), nested + QStringLiteral("/файл 📦.txt")}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write("fixture"), qint64(7));
+        }
+        auto *spec = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderFolder> folder = spec;
+        QCOMPARE(spec->SetFlatMode(1), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(4));
+        quint64 completed = 0;
+        bool orderedProgress = true;
+        bool reachedNested = false;
+        spec->CheckBreak = [failure](const QString &) { return failure != 0; };
+        spec->SetCompleted = [&](quint64 value) {
+            orderedProgress &= value == completed + 1;
+            completed = value;
+            if (value < 3)
+                return true;
+            reachedNested = spec->Files.Back().Parent >= 0;
+            if (failure == 2)
+                throw std::bad_alloc();
+            return false;
+        };
+        const HRESULT expected = failure == 2 ? E_OUTOFMEMORY : E_ABORT;
+        QCOMPARE(folder->LoadItems(), expected);
+        QVERIFY(orderedProgress);
+        QCOMPARE(completed, failure == 0 ? quint64(0) : quint64(3));
+        QCOMPARE(reachedNested, failure != 0);
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QVERIFY(spec->Folders.IsEmpty());
+        spec->CheckBreak = {};
+        spec->SetCompleted = {};
+        QCOMPARE(folder->LoadItems(), S_OK);
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(4));
+    }
     void normalFlatAndTypedMetadata() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

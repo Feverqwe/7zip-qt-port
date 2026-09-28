@@ -386,12 +386,20 @@ P0-02.2b3b3a commit: `190abef`. Runtime loading разделён до измен
 | Подшаг | Owner, scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3b3b1 | MainWindow archive listing/navigation owns CAgent root; CPanel binds owned CAgentFolder and renders matching source indices; one proxy implementation/instance, retained nested parent context; refresh/error/cancel/flat regressions | P0-02.2b3b3a | done — audit § P0-02.2b3b3b1; focused 9/9, check.sh 62/62; 16 normal/compact JSON reports inspected; macOS 2026-09-29 |
-| P0-02.2b3b3b2 | FilesystemScanner/CFSFolder source enumeration and source-index publication; responsive normal/flat loading, cancellation/stale-generation/error handling and owned GUI handoff | P0-02.2b3b3b1 | todo |
+| P0-02.2b3b3b2 | FilesystemScanner/CFSFolder source enumeration and source-index publication; responsive normal/flat loading, cancellation/stale-generation/error handling and owned GUI handoff | P0-02.2b3b3b1 | active — b2a–b2c ниже |
 | P0-02.2b3b3b3 | CPanel runtime loading acceptance and direct consumers; source indices/property owners across filesystem/archive transitions and four views | P0-02.2b3b3b2 | todo |
 
 Полный BindToPath/LoadFullPath, outer+nested CFolderLink, optional interfaces,
 engine property/operation scope остаются обязательными исходными owners; readonly
 archive runtime здесь не считается полным переносом этих функций.
+
+P0-02.2b3b3b1 commit: `9014788`. Filesystem loading разделён до изменения:
+
+| Подшаг | Owner, scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2b3b3b2a | CFSFolder LoadItems/LoadSubItems preserves source enumeration order/body, narrow progress/cancel callbacks; deterministic cancellation before enumeration/during flat recursion, no partial stale records on failure/cancel, successful reload | P0-02.2b3b3b1 | done — audit § P0-02.2b3b3b2a; focused 4/4, check.sh 62/62; macOS 2026-09-29 |
+| P0-02.2b3b3b2b | FilesystemScanner loads source folder off GUI thread and transfers ownership after completion; native enumeration once, progress/cancel/generation/teardown regressions; no concurrent non-atomic COM ownership | P0-02.2b3b3b2a | todo |
+| P0-02.2b3b3b2c | MainWindow normal/flat source folder binding and source-index batched presentation; eliminate QDir/QDirIterator enumeration, retain cancellation/navigation responsiveness and direct consumers | P0-02.2b3b3b2b | todo |
 
 ```text
 Parent: P?-?? — partial

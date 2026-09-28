@@ -36,9 +36,16 @@ class CFSFolder final : public IFolderFolder,
     HRESULT Init(const FString &path);
     CObjectVector<CDirItem> Files;
     FStringVector Folders;
+    void Clear() {
+        Files.Clear();
+        Folders.Clear();
+        // Streams.Clear();
+    }
     QString ErrorMessage;
     std::function<bool(quint64)> SetTotal;
     std::function<bool(quint64)> SetCompleted;
+    // LoadItems uses these existing integration callbacks for count progress
+    // and cooperative cancellation; no Qt widgets run in the source body.
     std::function<bool(const QString &)> CheckBreak;
     void AddPath(const QString &path);
     FString GetRelPath(const CDirItem &item) const;

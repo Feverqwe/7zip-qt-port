@@ -68,6 +68,8 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
         fi.NumFiles = 0;
         fi.Parent = dirItem;
         for (;;) {
+            if (CheckBreak && !CheckBreak(QtPath(_path + relPrefix)))
+                return E_ABORT;
             bool found;
 #ifdef _WIN32
             if (!enumerator.Next(fi, found))
@@ -89,6 +91,8 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
             fi.PackSize_Defined = false;
             fi.PackSize = fi.Size;
             Files.Add(fi);
+            if (SetCompleted && !SetCompleted(Files.Size()))
+                return E_ABORT;
         }
     }
     if (!_flatMode)
@@ -103,13 +107,16 @@ Z7_COM7F_IMF(CFSFolder::LoadItems()) {
     COM_TRY_BEGIN
     Int32 dummy;
     WasChanged(&dummy);
-    Files.Clear();
-    Folders.Clear();
-    const HRESULT result = LoadSubItems(-1, FString());
-    if (result != S_OK) {
-        Files.Clear();
-        Folders.Clear();
+    Clear();
+    HRESULT result;
+    try {
+        result = LoadSubItems(-1, FString());
+    } catch (...) {
+        Clear();
+        throw;
     }
+    if (result != S_OK)
+        Clear();
     return result;
     COM_TRY_END
 }
