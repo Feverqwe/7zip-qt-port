@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
@@ -60,9 +61,9 @@ void MainWindow::moveSelected() {
         const QStringList paths = selectedArchivePaths();
         if (paths.isEmpty())
             return;
-        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-        CopyDialog dialog(true, returnDirectory_, paths,
-                          settings.value("copy/history").toStringList(), this);
+        QStringList history;
+        ReadCopyHistory(history, toolbarSettingsPath());
+        CopyDialog dialog(true, returnDirectory_, paths, history, this);
         if (dialog.exec() != QDialog::Accepted)
             return;
         const QString destination = dialog.destination();
@@ -70,12 +71,10 @@ void MainWindow::moveSelected() {
             QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
             return;
         }
-        QStringList history = settings.value("copy/history").toStringList();
-        history.removeAll(destination);
-        history.prepend(destination);
+        AddUniqueStringToHeadOfList(history, destination);
         while (history.size() > 20)
             history.removeLast();
-        settings.setValue("copy/history", history);
+        SaveCopyHistory(history, toolbarSettingsPath());
         archiveMovePaths_ = paths;
         archiveMoveStage_ = ArchiveMoveStage::Extracting;
         previousState_ = state_;
@@ -93,21 +92,19 @@ void MainWindow::transferSelected(bool move) {
     const QStringList sources = selectedFilesystemPaths();
     if (state_ != State::Filesystem || sources.isEmpty())
         return;
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    CopyDialog dialog(move, directory_, sources, settings.value("copy/history").toStringList(),
-                      this);
+    QStringList history;
+    ReadCopyHistory(history, toolbarSettingsPath());
+    CopyDialog dialog(move, directory_, sources, history, this);
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();
     transferFiles(sources, destination, move);
     if (!QFileInfo(destination).isDir())
         return;
-    QStringList history = settings.value("copy/history").toStringList();
-    history.removeAll(destination);
-    history.prepend(destination);
+    AddUniqueStringToHeadOfList(history, destination);
     while (history.size() > 20)
         history.removeLast();
-    settings.setValue("copy/history", history);
+    SaveCopyHistory(history, toolbarSettingsPath());
 }
 
 void MainWindow::deleteSelected() {

@@ -1,5 +1,12 @@
 # Regression strategy
 
+`copy_dialog` checks OK via both accept() and the button, Cancel, history order,
+case-insensitive deduplication, INI migration and explicit empty history,
+native-folder-dialog adaptation (normalization and canceled browsing), and
+Copy/Move geometry at 440×250 and 340×220. Forty Unicode filenames exercise
+selection scrolling. Current-build JSON is in `build/dev/ui-reports/`.
+`ui_operations` also checks the persisted `CopyHistory` after actual F5 copying.
+
 `project_memory_setup` runs setup in an isolated temporary Git repository,
 checks memory/template initialization, then verifies that a populated index,
 task note, and attachment survive a second setup unchanged. It requires `sh`

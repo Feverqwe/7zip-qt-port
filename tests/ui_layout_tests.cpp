@@ -12,6 +12,7 @@
 #include <QListView>
 #include <QMenu>
 #include <QPixmap>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QStatusBar>
@@ -39,8 +40,8 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(destination->currentText(), QString("/initial"));
         QCOMPARE(destination->itemText(0), QString("/previous"));
         QVERIFY(dialog.findChild<QPushButton *>("copyBrowseButton"));
-        QVERIFY(dialog.findChild<QLabel *>("copySelectionInfo")
-                    ->text()
+        QVERIFY(dialog.findChild<QPlainTextEdit *>("copySelectionInfo")
+                    ->toPlainText()
                     .contains(QStringLiteral("имя с пробелом.txt")));
         destination->setCurrentText("/changed");
         QCOMPARE(dialog.destination(), QString("/changed"));

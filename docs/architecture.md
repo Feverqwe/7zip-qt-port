@@ -1,5 +1,14 @@
 # Architecture
 
+The Copy/Move view is the adapted upstream `CCopyDialog` under
+`src/CPP/7zip/UI/FileManager/CopyDialog.*`; `src/copydialog.h` is an alias.
+Qt layouts own resizing and a read-only scrolling view keeps long selections
+reachable. The copied `ViewSettings.*` history functions use QSettings with
+the upstream `CopyHistory` key and a fallback to legacy `copy/history`.
+`MainWindow` supplies selection names and validates the destination; it uses
+the upstream case-insensitive list update and 20-entry cap. Workers and archive
+operations keep their existing owners.
+
 Test-only layout diagnostics live in `tests/layout_inspection.h/.cpp`. They
 inspect public Qt widget geometry and write JSON without editable field values;
 they are not linked into the application. `ui_geometry` checks affected dialog

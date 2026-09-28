@@ -54,7 +54,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "copyAction")->isEnabled());
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QCOMPARE(settings.value("copy/history").toStringList().first(), destination);
+        QCOMPARE(settings.value("CopyHistory").toStringList().first(), destination);
         QFile copiedFile(copied);
         QVERIFY(copiedFile.open(QIODevice::ReadOnly));
         QCOMPARE(copiedFile.readAll(), QByteArray("original"));

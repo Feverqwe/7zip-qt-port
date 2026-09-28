@@ -62,7 +62,7 @@ Extract column ordering on disposable fixtures.
 | `src/fileviewerdialog.cpp`, `fileviewerdialog.h` | `PanelItemOpen.cpp`, `EditDialog.cpp`, `EditPage.cpp` | Собственный Qt-редактор и интеграция с backend; в upstream есть отдельные режимы редактора и внешнего открытия. |
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; шифрование, пользовательский лимит памяти, Registry и выбор источников ещё требуют переноса. |
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
-| `src/copydialog.cpp`, `copydialog.h` | `FileManager/CopyDialog.cpp`, `CopyDialog.rc` | Собственная Qt-форма. |
+| `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy` | Перенесены поля CCopyDialog, OnInit/OnOK/OnButtonSetPath, чтение/запись и исходная политика уникальной истории. Qt layouts заменяют OnSize, QSettings — Registry; старый header содержит только alias. Информация выделения остаётся адаптацией имён без полной GetItemsInfoString. |
 | `src/combodialog.cpp`, `combodialog.h` | `FileManager/ComboDialog.cpp`, `ComboDialog.rc` | Собственная Qt-форма. |
 | `src/settingsdialog.cpp`, `settingsdialog.h` | `FileManager/OptionsDialog.cpp`, `SettingsPage2.cpp`, `SettingsPage2.rc` | Собственная Qt-форма и часть параметров. |
 | `src/archiveformats.h` | `FileManager/FilePlugins.cpp`, `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственный статический список расширений для эвристики двойного щелчка и фильтра диалога. В upstream расширения приходят от установленных обработчиков; движок сам определяет формат при явном открытии. |
@@ -523,3 +523,35 @@ AskWrite адаптирован как отказ при конфликте до
 worker: он использует rename и откат, копирование с удалением источника
 нарушило бы текущую гарантию сохранности при ошибке. Межтомный перенос
 остаётся неподдержанным. Mandatory clang-format меняет оформление.
+
+## Диалог копирования/перемещения и история (2026-09-28)
+
+Источник того же commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/FileManager/CopyDialog.cpp`, `.h`, `.rc`,
+`ViewSettings.cpp::SaveStringList`, `ReadStringList`, `SaveCopyHistory`,
+`ReadCopyHistory`, `AddUniqueStringToHeadOfList`, `App.cpp::CApp::Copy`
+(обновление истории назначения). Исходный класс CCopyDialog и поля
+Title/Static/Value/Info/Strings сохранены в зеркальном пути. OnInit заполняет
+историю перед Value и устанавливает Info; OnOK получает Value только при OK.
+OnButtonSetPath сохраняет cancel → NormalizeDirPathPrefix → SetCurSel(-1)
+→ SetText. Qt QFileDialog заменяет MyBrowseForFolder, slash-проверка после
+fromNativeSeparators — платформенный NormalizeDirPathPrefix.
+
+Win32 Attach/SetItemText/NormalizeSize/OnSize заменены Qt-контролами и layouts
+с исходным порядком label → path/browse → info → OK/Cancel. Вместо Static
+SS_LEFTNOWORDWRAP используется read-only QPlainTextEdit без переноса строк:
+прокрутка сохраняет доступ к длинным именам и большому выделению. Входной
+список имён и конструктор — существующая Qt интеграция, а не перенос полного
+CPanel::GetItemsInfoString (property totals ещё не подключены). Исходный
+kCopyDialog_NumInfoLines сохранён для будущей сводки.
+
+Save/ReadStringList используют QSettings вместо Registry и explicit settings
+path вместо HKEY; вызовы идут в GUI-thread, lock не нужен. Имя CopyHistory
+сохранено; отсутствующий ключ читает прежний copy/history, явный пустой
+CopyHistory блокирует fallback. Старый ключ не изменяется. Исходный цикл
+удаляет все совпадения без учёта регистра и вставляет новый путь в начало;
+App copy workflow ограничивает список 20 записями и сохраняет после принятого
+существующего назначения. Проверка/создание назначения и backend остались
+на прежних границах; произвольное переименование цели/новая папка из CApp::Copy
+пока не перенесены. Самостоятельный copydialog.cpp удалён; header — alias.
+Форматирование изменено обязательным clang-format.
