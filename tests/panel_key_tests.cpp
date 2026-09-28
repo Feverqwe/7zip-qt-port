@@ -8,6 +8,62 @@ class PanelKeyTests final : public QObject {
     }
 
   private slots:
+    void parentKey_data() { keypadSelection_data(); }
+    void parentKey() {
+        QFETCH(int, mode);
+        QFETCH(bool, archive);
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString folder = QStringLiteral("папка с пробелом");
+        QVERIFY(QDir(dir.path()).mkdir(folder));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        address->setText(dir.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        if (archive) {
+            window.openArchive(dir.filePath("parent.zip"));
+            backend.completeList({ArchiveEntry{folder + "/file.txt", 1, 1}});
+        }
+        action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
+        window.show();
+        QWidget *view = mode == 3
+                            ? static_cast<QWidget *>(table)
+                            : static_cast<QWidget *>(window.findChild<QListView *>("iconList"));
+        const QString parentPath = address->text();
+        for (auto modifiers :
+             {Qt::NoModifier, Qt::ControlModifier, Qt::ShiftModifier, Qt::AltModifier}) {
+            table->setCurrentCell(0, 0);
+            action(window, "openItemAction")->trigger();
+            QVERIFY(address->text() != parentPath);
+            const QString childPath = address->text();
+            // Editing the address must never dispatch a panel navigation command.
+            address->setFocus();
+            QTest::keyClick(address, Qt::Key_Backspace, modifiers);
+            address->setText(childPath);
+            view->setFocus();
+            QTest::keyClick(view, Qt::Key_Backspace, modifiers);
+            QCOMPARE(address->text(), parentPath);
+        }
+        if (mode == 3 && archive) {
+            const QString screenshots = QDir::currentPath() + "/ui-screenshots";
+            QVERIFY(QDir().mkpath(screenshots));
+            for (int width : {980, 640}) {
+                window.resize(width, width == 980 ? 620 : 400);
+                QApplication::processEvents();
+                QVERIFY(window.grab().save(screenshots +
+                                           QStringLiteral("/parent-key-%1.png").arg(width)));
+            }
+        }
+        window.openArchive(dir.filePath("busy.zip"));
+        const QString busyPath = address->text();
+        QVERIFY(!action(window, "parentFolderAction")->isEnabled());
+        QTest::keyClick(view, Qt::Key_Backspace, Qt::ControlModifier);
+        QCOMPARE(address->text(), busyPath);
+        backend.cancel();
+    }
+
     void addressKeys_data() { keypadSelection_data(); }
     void addressKeys() {
         QFETCH(int, mode);
