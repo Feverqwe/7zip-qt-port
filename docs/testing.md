@@ -103,6 +103,15 @@ input and commands during archive loading do not change selection. Qt key
 events are synthesized on macOS; physical keypad mapping on Windows/Linux
 remains for platform verification.
 
+`ui_navigation` checks persistent history for internal archive folders with
+Unicode and spaces, restoring from the address combo and Alt+F12 dialog,
+navigation without reloading the current archive, fallback to a surviving
+parent and an unavailable archive. Dialog screenshots at 540×360 and 360×240
+are saved as `archive-history-540.png` and `archive-history-360.png`.
+The existing `file_viewer` scenario also covers window destruction after
+visiting an archive folder: address signals are disconnected before Qt's
+focus teardown can trigger navigation into a partially destroyed window.
+
 `panel_sort` проверяет правила `PanelSort.cpp` (`0766b73`) через Qt-таблицу:
 папки перед файлами в обоих направлениях, повторный выбор свойства,
 размер и дата по убыванию при первом выборе, щелчок заголовка размера,

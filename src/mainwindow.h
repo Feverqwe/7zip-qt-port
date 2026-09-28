@@ -208,7 +208,7 @@ class MainWindow : public QMainWindow {
     bool nestedListing_ = false;
     QString archivePassword_;
     QString archiveFolder_;
-    QString pendingBookmarkFolder_;
+    QString pendingArchiveFolder_;
     Bookmark bookmarks_[10];
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};

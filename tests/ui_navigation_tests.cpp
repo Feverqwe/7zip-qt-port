@@ -3,7 +3,101 @@
 class MainWindowNavigationTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
+    static void acceptHistoryLocation(MainWindow &window, const QString &location) {
+        QTimer::singleShot(0, &window, [&window, location] {
+            auto *dialog = window.findChild<QDialog *>("foldersHistoryDialog");
+            QVERIFY(dialog);
+            auto *list = dialog->findChild<QListWidget *>("foldersHistoryList");
+            QVERIFY(list);
+            const auto matches = list->findItems(location, Qt::MatchExactly);
+            QCOMPARE(matches.size(), 1);
+            list->setCurrentItem(matches.first());
+            const QString screenshots = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
+            if (!screenshots.isEmpty()) {
+                for (const QSize &size : {QSize(540, 360), QSize(360, 240)}) {
+                    dialog->resize(size);
+                    QApplication::processEvents();
+                    QVERIFY(dialog->grab().save(
+                        QDir(screenshots)
+                            .filePath(QStringLiteral("archive-history-%1.png").arg(size.width()))));
+                }
+            }
+            dialog->accept();
+        });
+        action(window, "foldersHistoryAction")->trigger();
+    }
+
   private slots:
+    void archiveFolderHistoryRestoresPersistentLocations() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString archivePath = temp.filePath(QStringLiteral("архив с пробелом.zip"));
+        QFile archive(archivePath);
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        archive.close();
+        const QString folder = QStringLiteral("папка/внутри");
+        const QString location = archivePath + " / " + folder;
+        const QList<ArchiveEntry> entries = {ArchiveEntry{folder + "/file.txt", 1, 1}};
+        {
+            ControlledBackend backend;
+            MainWindow window(&backend);
+            window.openArchive(archivePath);
+            backend.completeList(entries);
+            openRow(window, rowWithPath(window, QStringLiteral("папка")));
+            openRow(window, rowWithPath(window, folder));
+            auto *combo = window.findChild<QComboBox *>("pathCombo");
+            QVERIFY(combo);
+            QCOMPARE(combo->itemText(0), location);
+            QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"),
+                               QSettings::IniFormat);
+            QVERIFY(settings.value("history/paths").toStringList().contains(location));
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *combo = window.findChild<QComboBox *>("pathCombo");
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        const int index = combo->findText(location);
+        QVERIFY(index >= 0);
+        QVERIFY(
+            QMetaObject::invokeMethod(combo, "activated", Qt::DirectConnection, Q_ARG(int, index)));
+        QCOMPARE(backend.lastArchive, archivePath);
+        backend.completeList(entries);
+        QCOMPARE(address->text(), location);
+        QCOMPARE(table(window)->rowCount(), 1);
+        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("file.txt"));
+
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        acceptHistoryLocation(window, location);
+        QCOMPARE(backend.lastArchive, archivePath);
+        backend.completeList(entries);
+        QCOMPARE(address->text(), location);
+
+        address->setText(archivePath + " / папка");
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(backend.listCalls, 2);
+        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("внутри"));
+        address->setText(location);
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(address->text(), location);
+        QCOMPARE(combo->itemText(0), location);
+        QCOMPARE(combo->findText(location), 0);
+
+        // Reopening after the deepest folder disappears uses its surviving parent.
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        address->setText(location);
+        QTest::keyClick(address, Qt::Key_Return);
+        backend.completeList({ArchiveEntry{QStringLiteral("папка/other.txt"), 2, 2}});
+        QCOMPARE(address->text(), archivePath + " / папка");
+        QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("other.txt"));
+        QVERIFY(QFile::remove(archivePath));
+        address->setText(location);
+        QTest::keyClick(address, Qt::Key_Return);
+        QCOMPARE(address->text(), archivePath + " / папка");
+        QCOMPARE(backend.listCalls, 3);
+    }
+
     void keyboardNavigationAndCommandState() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

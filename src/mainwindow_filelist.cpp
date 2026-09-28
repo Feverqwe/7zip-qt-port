@@ -25,7 +25,7 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
         const QSignalBlocker blocked(flatView_);
         flatView_->setChecked(flatDisk_);
     }
-    pendingBookmarkFolder_.clear();
+    pendingArchiveFolder_.clear();
     refreshing_ = false;
     refreshFolder_.clear();
     refreshSelection_.clear();
@@ -182,6 +182,29 @@ void MainWindow::navigateTo(const QString &path) {
     else if (info.isFile() && !info.isSymLink())
         openArchive(path);
     else {
+        // The Qt address presentation separates an archive from its internal
+        // folder with " / ". Prefer real filesystem paths above, then locate
+        // an existing archive prefix rather than splitting folder names.
+        qsizetype separator = path.indexOf(QStringLiteral(" / "));
+        while (separator >= 0) {
+            const QFileInfo archiveInfo(path.left(separator));
+            if (archiveInfo.isFile() && !archiveInfo.isSymLink()) {
+                QString folder = path.mid(separator + 3);
+                if (state_ == State::Viewing && archiveParents_.empty() &&
+                    archiveInfo.absoluteFilePath() == archive_) {
+                    while (!folder.isEmpty() && !archiveFolderExists(folder)) {
+                        const qsizetype slash = folder.lastIndexOf('/');
+                        folder = slash < 0 ? QString() : folder.left(slash);
+                    }
+                    showArchiveFolder(folder);
+                } else {
+                    pendingArchiveFolder_ = folder;
+                    openArchive(archiveInfo.absoluteFilePath());
+                }
+                return;
+            }
+            separator = path.indexOf(QStringLiteral(" / "), separator + 3);
+        }
         statusBar()->showMessage("Путь не найден или тип файла не поддерживается: " + path);
         path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
     }

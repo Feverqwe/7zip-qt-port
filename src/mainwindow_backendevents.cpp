@@ -7,7 +7,7 @@ void MainWindow::connectBackend() {
                     return;
                 entries_ = entries;
                 proxyArchive_.Load(entries_);
-                QString folder = refreshing_ ? refreshFolder_ : pendingBookmarkFolder_;
+                QString folder = refreshing_ ? refreshFolder_ : pendingArchiveFolder_;
                 while (!folder.isEmpty()) {
                     bool present = false;
                     for (const ArchiveEntry &entry : entries_) {
@@ -26,7 +26,7 @@ void MainWindow::connectBackend() {
                     flatView_->setChecked(flatArchive_);
                 }
                 showArchiveFolder(folder);
-                pendingBookmarkFolder_.clear();
+                pendingArchiveFolder_.clear();
                 if (refreshing_)
                     selectPaths(refreshSelection_);
                 refreshing_ = false;

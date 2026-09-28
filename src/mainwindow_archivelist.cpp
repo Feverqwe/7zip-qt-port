@@ -3,14 +3,14 @@
 
 void MainWindow::showArchiveFolder(const QString &folder) {
     archiveFolder_ = folder;
-    if (archiveParents_.empty())
-        recordVisitedPath(archive_);
     static_cast<FileTable *>(table_)->filesystem = false;
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
     const int dirIndex = proxyArchive_.FindDir(folder);
     if (dirIndex < 0)
         return;
+    if (archiveParents_.empty())
+        recordVisitedPath(archiveDisplayPath());
     const QString prefix = folder.isEmpty() ? QString() : folder + '/';
     const bool flat = flatView_->isChecked();
     CAgentFolder archiveFolder(proxyArchive_, unsigned(dirIndex), flat);

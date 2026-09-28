@@ -224,7 +224,7 @@ void MainWindow::openBookmark(int index) {
             statusBar()->showMessage("Папка закладки отсутствует: " + bookmark.folder);
         return;
     }
-    pendingBookmarkFolder_ = bookmark.folder;
+    pendingArchiveFolder_ = bookmark.folder;
     openArchive(bookmark.path);
 }
 

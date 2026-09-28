@@ -1,6 +1,10 @@
 #include "mainwindow.h"
 
 MainWindow::~MainWindow() {
+    // QComboBox can emit activated from editingFinished while QWidget tears
+    // down focus. Navigation must stop before MainWindow members are destroyed.
+    disconnect(pathCombo_, nullptr, this, nullptr);
+    disconnect(path_, nullptr, this, nullptr);
     if (fileTransfer_) {
         fileTransfer_->cancel();
         fileTransfer_->wait();
