@@ -181,6 +181,17 @@ P0-01.3d разделён перед audit на самостоятельные s
 diff/unique-path checks и отдельного commit; d закрывается после d4.
 P0-01.3c2 commit: `0c70e3b`.
 
+P0-01.3d2 разделён до audit крупных modules:
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3d2a | Текущий чат: ArchiveOpenCallback/PropIDUtils, callbacks/volume lifetime и property/security/reparse presentation bodies, owners/adapters | P0-01.3d1 | done — audit § P0-01.3d2a; 2026-09-28 macOS docs-only, diff check, 100 unique paths |
+| P0-01.3d2b | Текущий чат: ArchiveCommandLine, parser phases/options/censor/update command scope | P0-01.3d2a | active |
+| P0-01.3d2c | Текущий чат: LoadCodecs/OpenArchive, capabilities/format selection/nesting/reopen source scope | P0-01.3d2b | todo |
+
+Каждый подшаг — отдельный docs-only проверенный commit. Parent d2 остаётся
+active до d2c. P0-01.3d1 commit: `9aad76e`.
+
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
 

@@ -310,6 +310,23 @@ Copied scope пуст. Здесь есть portable policy, которую не�
 Runtime/UX не менялись; build/CTest/layout не запускались. Mandatory bodies и
 platform/engine adapters остаются открытыми до functional ports и regression checks.
 
+## P0-01.3d2a — Common open callbacks и property conversion (2026-09-28)
+
+Project baseline `9aad76e`. Common = `CPP/7zip/UI/Common`; exact source обеих
+строк — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Проверены bodies, interfaces и consumers. Copied scope пуст; это открытые
+functional modules, включая code внутри platform/crypto/SFX conditionals.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/ArchiveOpenCallback.cpp — P0-04/10/12, P1-03, P2-01/02/08 | COpenCallbackImp Init2/subarchive/properties/progress/password/GetStream; CMultiStreams linked LRU Insert/Remove/Close/PrepareToOpenNew/EnsureOpen; CInFileStreamVol Read/Seek/GetSize/destructor и AtCloseFile. | FileFind/Name/System, FileStreams/StreamUtils, MyCom/PropVariant/IArchive/IPassword, ArchiveExtractCallback::IsSafePath; OpenArchive lifetime. Preserve reopen callback precedence, PasswordWasAsked, subarchive S_FALSE, safe-volume-path/wildcard guards, bounded open descriptors and saved-position reopen, volume names/sizes/used flags. Official engine owns in-process streams through 7zz boundary; retain application callbacks/policy with narrow adapter and explicitly review engine-owned scope. IProgress SetCompleted checks break even when byte totals ignored. No blanket N/A for COM presentation. |
+| Common/PropIDUtils.cpp — P0-05/12, P1-11/13, P2-07 | ConvertPosixAttribToString/ConvertWinAttribToString, ConvertPropertyToShortString2/ConvertPropertyToString2; SID/owner/ACL helpers and ConvertNtSecureToString, Windows CheckNtSecure, reparse-tag table/ConvertNtReparseToString. | CpuArch endian helpers, IntToString/StringConvert/PropVariantConv/PropID, FileIO::CReparseAttr; PanelListNotify/PanelMenu/BrowseDialog2, GUI ExtractGUI, ArchiveExtractCallback consumers. Preserve precision/ns100/time-zero handling, CRC/inode/address and attributes formatting, descriptor size/offset validation and reparse fallback hex. Copy portable conversion bodies, adapt typed backend property input and platform services; Qt text output only. Security display parses archive bytes across platforms; native ACL application remains Windows-specific. Commented Data_To_Hex/device/ACE-detail bodies are omitted upstream code, not active requirements. |
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 100 unique paths
+(30 mirrored + 70 missing), оба exact-source paths существуют.
+Runtime/UX не менялись; build/CTest/layout не запускались. Volume transport,
+property/security behavior и Windows/Linux проверки остаются functional work.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
