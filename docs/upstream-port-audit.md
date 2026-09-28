@@ -1,49 +1,5 @@
 # Ревизия происхождения кода 7zFM
 
-## Свойства и двухколоночный список (2026-09-28)
-
-Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
-`CPP/7zip/UI/FileManager/PanelMenu.cpp::{AddListAscii,AddSeparator,
-AddPropertyPair,CPanel::Properties}`: сохранены ветки single/multiple selection,
-цикл перечисления свойств, UInt64 totals, порядок накопления размеров,
-numDirs++ плюс NumSubDirs, NumSubFiles для папок, пропуск нулевых counts,
-разделитель, путь папки и общий заголовок/NumColumns=2.
-Strings/Values остаются UStringVector. Независимая сводка PropertiesDialog
-с исключением выбранного потомка выбранной папки удалена; upstream суммирует
-каждую выбранную строку. Сводка теперь включает вложенные counts.
-
-Адаптации: CPanelProperty/CPanelItem — snapshot вместо IFolder/CPropVariant;
-`AddPropertyString` сохраняет непустую ветку, но получает display strings.
-Числовая перегрузка использует существующий upstream ConvertSizeToString для
-size/pack и неизменённый ConvertUInt64ToString для counts. Вместо LangString
-используются Qt строки. `PropertiesDialog` теперь только мост snapshot→CPanel,
-который выбирает доступные поля текущего backend; его алгоритмы не являются
-портом перечисления COM metadata. CPanel::Properties заполняет переданный
-диалог вместо создания Win32 modal. Для filesystem тот же Qt view заменяет
-InvokeSystemCommand("properties"); packed summary там не показывается.
-
-Область частичного порта: raw properties, security descriptors, flags/errors,
-полный ConvertPropertyToString2, IFolderProperties и IFolderArcProps levels,
-non-open level и остальные команды PanelMenu не перенесены. Набор полей
-ограничен доступным snapshot, расширение metadata остаётся долгом backend.
-`PanelItems.cpp::{GetItem_UInt64Prop,GetItemSize}` сохраняют возврат 0 для parent-index,
-ошибку 2723400, zero для пустого свойства и GetItemSize tail delegation;
-snapshot replaces COM/variant conversion, optional IFolderGetItemName fast
-path отсутствует. Остальные PanelItems функции не перенесены.
-`CPP/7zip/PropID.h` vendored без изменений из того же baseline.
-
-`ListViewDialog.cpp/.h`: перенесены NumColumns/Values branches OnInit,
-CopyToClipboard, ShowItemInfo, DeleteItems, OnEnter. Сохранены исходные
-1024 wchar_t limit плюс " ...", замена CRLF/LF только в display copy,
-параллельное удаление Strings/Values, raw copy/detail и Enter для свойств
-без закрытия основного диалога. `qtlistview.h` — узкий presentation adapter
-для CListView на QTreeWidget; методы сохраняют исходные list operation names.
-История использует тот же adapter с одной колонкой. На POSIX wchar_t имеет
-32 бита: предел относится к upstream units платформы; на Windows — UTF-16.
-Settings single-click/hover и Win32 notifications остаются неперенесёнными.
-ShowItemInfo пока Qt read-only QTextEdit, не полный порт EditDialog.
-Форматирование адаптированных исходников — clang-format, vendored неизменно.
-
 Здесь хранится реестр происхождения кода: upstream-ревизии и исходники,
 перенесённые символы, адаптации, пропущенные части и долг переноса.
 Правила работы заданы в [AGENTS.md](../AGENTS.md); наблюдаемое поведение
@@ -51,6 +7,24 @@ ShowItemInfo пока Qt read-only QTextEdit, не полный порт EditDia
 Владельцы компонентов и интеграционные границы описаны в
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
+
+## Свойства и двухколоночный список (2026-09-28)
+
+Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Пути ниже относительно `CPP/7zip/UI/FileManager/`; адаптированные файлы — в `src/`.
+
+| Исходник и символы | Заимствование и адаптация |
+| --- | --- |
+| `PanelMenu.cpp::{AddListAscii,AddSeparator,AddPropertyPair,CPanel::Properties}` | Перенесены перечисление свойств и сводка single/multiple selection с UStringVector и UInt64 totals. CPanelItem/CPanelProperty заменяют COM metadata снимком доступных полей, Qt — LangString и создание modal. Числа форматируют ConvertSizeToString/ConvertUInt64ToString. |
+| `PanelItems.cpp::{GetItem_UInt64Prop,GetItemSize}` | Сохранены parent-index, пустое свойство, ошибка 2723400 и делегирование GetItemSize; snapshot заменяет COM/variant. |
+| `ListViewDialog.cpp/.h::{OnInit,CopyToClipboard,ShowItemInfo,DeleteItems,OnEnter}` | Перенесены NumColumns/Values, усечение display copy, raw copy/detail и параллельное удаление Strings/Values. `qtlistview.h` адаптирует CListView к QTreeWidget; QTextEdit заменяет EditDialog. Лимит 1024 wchar_t зависит от ширины wchar_t платформы. |
+
+Не перенесены raw/security/flags/errors, полный ConvertPropertyToString2,
+IFolderProperties/IFolderArcProps levels, non-open level, IFolderGetItemName
+fast path, остальные команды PanelMenu/PanelItems, single-click/hover и
+Win32 notifications. Qt-список заменяет filesystem shell properties.
+`third_party/7zip/CPP/7zip/PropID.h` скопирован без изменений из того же baseline;
+адаптированные файлы форматируются clang-format.
 
 ## История папок и общий список (2026-09-28)
 
