@@ -218,3 +218,10 @@ Focused CTest `compression_dictionary` проверяет малые значе�
 128 КиБ отклоняется как отсутствующий в исходном ряду; отмена не оставляет
 цель или stage. Снимки `compression-dictionary-760.png` и `-640.png`
 сохраняются в build/dev/ui-screenshots. 32-bit предел не проверен локально.
+
+CTest `compression_memory` проверяет ряд PPMd 7z, архитектурный предел,
+Auto на уровнях 5/9, сохранение выбора, Store и Auto без явного размера.
+Реальный архив с памятью 1 МиБ проходит 7zz t и извлечение с проверкой
+байтов Unicode-файла с пробелом. 5 МиБ отклоняется; отмена не оставляет
+цель или stage и сохраняет созданный архив. Снимки memory-PPMd-7z-760.png
+и memory-PPMd-7z-640.png находятся в build/dev/ui-screenshots.

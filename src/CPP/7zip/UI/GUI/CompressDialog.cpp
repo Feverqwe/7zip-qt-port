@@ -192,6 +192,28 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
         break;
     }
 
+    case kPPMd: {
+        options.AutoDict = (UInt32)1 << (level + 19);
+
+        const UInt32 kPpmd_Default_4g = (UInt32)0 - ((UInt32)1 << 10);
+        const size_t kPpmd_MaxDictSize_Up = (size_t)1 << (29 + sizeof(size_t) / 8);
+
+        for (unsigned i = (20 - 1) * 2; i <= (32 - 1) * 2; i++) {
+            if (i == (20 - 1) * 2 + 1)
+                continue;
+
+            const size_t dict_up = (size_t)(2 + (i & 1)) << (i / 2);
+            size_t dict = dict_up;
+            if (dict_up >= kPpmd_Default_4g)
+                dict = kPpmd_Default_4g;
+
+            options.Values.append(quint64(dict));
+            if (dict_up >= kPpmd_MaxDictSize_Up)
+                break;
+        }
+        break;
+    }
+
     default:
         break;
     }

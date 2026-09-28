@@ -33,11 +33,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const QString method = options.method.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
                                                                       : QStringLiteral("Deflate"))
                                                     : options.method;
-    const bool lzma = method == "LZMA" || method == "LZMA2";
     if ((options.dictionaryBytes != 0 &&
-         (!lzma || !NCompressDialog::SetDictionary2(NCompressDialog::GetMethodID(method, suffix),
-                                                    UInt32(options.level))
-                        .Values.contains(options.dictionaryBytes))) ||
+         (!NCompressDialog::SetDictionary2(NCompressDialog::GetMethodID(method, suffix),
+                                           UInt32(options.level))
+               .Values.contains(options.dictionaryBytes))) ||
         (options.wordSize != 0 &&
          !NCompressDialog::SetOrder2(NCompressDialog::GetMethodID(method, suffix),
                                      UInt32(options.level))
@@ -92,7 +91,11 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     if (options.level != 0) {
         QString methodArgument = "-m0=" + method;
         if (options.dictionaryBytes)
-            methodArgument += ":d=" + QString::number(options.dictionaryBytes) + "b";
+            methodArgument +=
+                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
+                     ? ":mem="
+                     : ":d=") +
+                QString::number(options.dictionaryBytes) + "b";
         if (options.wordSize)
             methodArgument +=
                 (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))

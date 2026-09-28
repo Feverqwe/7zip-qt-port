@@ -54,7 +54,7 @@ class CompressionDictionaryTests final : public QObject {
             QVERIFY(dialog.grab().save(
                 screenshots + QString("/compression-dictionary-%1.png").arg(size.width())));
         }
-        method->setCurrentText("PPMd");
+        method->setCurrentText("BZip2");
         QVERIFY(!dictionary->isEnabled());
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
     }

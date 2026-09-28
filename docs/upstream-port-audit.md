@@ -157,3 +157,20 @@ kLzmaMaxDictSize_Up. Сохранены типы UInt32/size_t, условия �
 вместо МиБ, чтобы не терять 64/256 КиБ; адаптер 7zz добавляет суффикс b.
 Auto=0 не передаёт словарь движку. Другие dictionary branches, RAM limits,
 расчёт памяти и Registry остаются долгом. clang-format меняет оформление.
+
+### Итерация: память PPMd в 7z
+
+Источник `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::CCompressDialog::SetDictionary2` (kPPMd)
+и `CPP/7zip/UI/GUI/UpdateGUI.cpp::SetOutProperties`.
+Скопированы Auto=1<<(level+19), константы kPpmd_Default_4g /
+kPpmd_MaxDictSize_Up, цикл i=38..62, пропуск 1.5 МиБ, ограничение размера
+и break по архитектуре. Формулы, типы и порядок вычислений сохранены;
+Win32 AddDict2/Registry заменены выдачей значений и текущим выбором Qt.
+Ряд не достигает границы 4g на поддерживаемых 32/64-bit, поэтому размер
+для подписи совпадает с реальным размером. Backend переносит выбор
+OrderMode ? "mem" : "d" в существующий QProcess аргумент; COM property
+vector остаётся вне процессной границы. Qt включает словарь по наличию
+исходных вариантов; backend проверяет тот же список без собственного
+ограничения на LZMA. RAM limits, Registry и PPMdZip пока не перенесены.
+Обязательный clang-format меняет только оформление исходных циклов.

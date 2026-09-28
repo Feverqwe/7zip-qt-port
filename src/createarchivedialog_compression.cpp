@@ -58,10 +58,9 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         SetOrder2();
         SetDictionary2();
         SetSolidBlockSize2(*solidBlock_, format_->currentText(), level_->currentData().toUInt());
-        const bool lzma = method_->currentText() == "LZMA" || method_->currentText() == "LZMA2";
         const bool compressed = level_->currentData().toInt() != 0;
         method_->setEnabled(compressed);
-        dictionary_->setEnabled(compressed && lzma);
+        dictionary_->setEnabled(compressed && dictionary_->count() > 1);
         wordSize_->setEnabled(compressed && wordSize_->count() > 1);
         solidBlock_->setEnabled(compressed && format_->currentText() == "7z" &&
                                 solid_->isChecked());

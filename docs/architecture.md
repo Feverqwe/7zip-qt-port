@@ -153,3 +153,8 @@ CompressionOptions::dictionaryBytes хранит байты в quint64; это �
 представить исходные размеры меньше МиБ и предел 3840 МиБ. Qt хранит
 значения combo как quint64, backend валидирует по тому же ряду и передаёт
 размер через d=<bytes>b. Auto оставляет выбор движку.
+
+SetDictionary2 выдаёт также исходный ряд памяти PPMd в 7z. Словарные
+варианты и доступность в Qt / backend определяет одна функция. При
+GetOrderMode=true backend кодирует dictionaryBytes как mem, как в
+upstream SetOutProperties, иначе как d.
