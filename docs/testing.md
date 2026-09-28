@@ -311,3 +311,17 @@ Unicode-папку с проверкой байтов; занятая файло
 создаётся через ArchiveBackend, проходит `7zz t` и извлечение с точным
 сравнением байтов Unicode-файла. Снимки compression-preferences-760.png и
 -640.png сохраняются в build/dev/ui-screenshots.
+
+`compression_preferences::levelChangeResetsProfile` для 7z/ZIP загружает
+профиль PPMd с ручными параметрами, меняет уровень и проверяет исходный
+метод/Auto, сохранность лимита RAM, переход к Store и восстановление после
+OK. Наборы compression_order/dictionary/memory/solid теперь ожидают сброс
+ручных спецификаций при смене уровня; для проверки рядов других методов
+после смены уровня метод выбирается снова. Это фиксирует отличие от
+прежней самостоятельно написанной политики Qt.
+
+`methodAndDictionaryDependencies` проверяет профиль LZMA2 → LZMA → LZMA2,
+сброс чужих параметров, восстановление профиля, Auto solid после смены
+словаря, сохранность слова/потоков и специальных solid 0/64. Cancel оставляет
+INI неизменным. Снимки Store 7z/ZIP после смены уровня:
+`level-reset-{7z,zip}-{760,640}.png` в build/dev/ui-screenshots.

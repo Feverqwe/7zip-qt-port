@@ -24,7 +24,7 @@ class CompressionSolidTests final : public QObject {
         QVERIFY(dialog.compressionOptions().SolidIsSpecified);
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(32 << 20));
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(32 << 20));
+        QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
         block->setCurrentIndex(block->findData(64u));
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(-1));
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
@@ -72,8 +72,10 @@ class CompressionSolidTests final : public QObject {
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (128 МиБ)"));
         method->setCurrentText("LZMA2");
+        dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (256 МиБ)"));
         method->setCurrentText("PPMd");
+        dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (128 МиБ)"));
         method->setCurrentText("BZip2");
         QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (112500 КиБ)"));

@@ -53,26 +53,31 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         registryFormat_ = format_->currentText();
         FormatChanged();
     });
-    const auto updateMethodOptions = [this] {
-        SetOrder2();
-        SetDictionary2();
-        SetSolidBlockSize2();
-        SetNumThreads2();
-        const bool compressed = level_->currentData().toInt() != 0;
-        method_->setEnabled(compressed);
-        dictionary_->setEnabled(compressed && dictionary_->count() > 1);
-        wordSize_->setEnabled(compressed && wordSize_->count() > 1);
-        solidBlock_->setEnabled(compressed && format_->currentText() == "7z");
-    };
-    connect(level_, &QComboBox::currentIndexChanged, this, updateMethodOptions);
-    connect(method_, &QComboBox::currentTextChanged, this, updateMethodOptions);
+    connect(level_, &QComboBox::currentIndexChanged, this, [this] {
+        // IDC_COMPRESS_LEVEL: clear the previous method-dependent specs before
+        // selecting the level's default method and recalculating its controls.
+        const UInt32 level = level_->currentData().toUInt();
+        Get_FormatOptions().ResetForLevelChange();
+        // Qt FormatChanged also fills the level combo; preserve the user's level.
+        Get_FormatOptions().Level = level;
+        FormatChanged();
+    });
+    connect(method_, &QComboBox::currentTextChanged, this, &CreateArchiveDialog::MethodChanged);
     connect(dictionary_, &QComboBox::currentIndexChanged, this, [this] {
-        SetSolidBlockSize2();
-        SetNumThreads2();
+        // IDC_COMPRESS_DICTIONARY preserves explicit threads, but resets a
+        // numeric solid size; Non-solid and Full-solid survive this change.
+        SaveOptionsInMem();
+        const UInt32 blockSizeLog = solidBlock_->currentData().toUInt();
+        if (blockSizeLog != 0 && blockSizeLog != 64)
+            Get_FormatOptions().Reset_BlockLogSize();
+        MethodChanged();
     });
     connect(threads_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
     connect(solidBlock_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
-    connect(memUse_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
+    connect(memUse_, &QComboBox::currentIndexChanged, this, [this] {
+        SaveOptionsInMem();
+        SetNumThreads2();
+    });
     FormatChanged();
 }
 

@@ -454,6 +454,33 @@ threads, с исходной проверкой совпадения метод�
 программном заполнении. Недоступные значения возвращаются к Auto; выбор
 большого словаря ограничивается текущим исходным рядом. SetLevel2 теперь
 использует исходные ветви persisted level (default 5, invalid >9 →9) и
-nearest-selection цикл. Внутри текущего формата пока остаётся прежняя Qt
-политика удержания допустимых значений при смене уровня/метода; это отдельный
-долг обработчиков IDC_COMPRESS_LEVEL/METHOD. Пароли в профиль не входят.
+nearest-selection цикл. Обработчики смены уровня/метода/словаря перенесены
+следующей итерацией. Пароли в профиль не входят.
+
+## Смена уровня сжатия (2026-09-28)
+
+Источник того же commit: `CompressDialog.cpp::OnCommand`, ветка
+`IDC_COMPRESS_LEVEL`, `CompressDialog.h::SetMethod/MethodChanged`,
+`ZipRegistry.h::CFormatOptions::ResetForLevelChange`.
+В Qt-обработчик скопирован вызов ResetForLevelChange перед заполнением
+метода и его зависимых контролов. Исходный reset очищает Method и присваивает
+sentinel Level/Dictionary/Order/BlockLogSize/NumThreads; MemUse сохраняется.
+Программное заполнение выполняет уже адаптированный FormatChanged, с
+записью текущего выбранного Level в in-memory профиль перед заполнением:
+это необходимо, поскольку Qt adapter заполняет также level combo, тогда
+как исходная ветка CBN_SELCHANGE использует уже выбранный Win32 level.
+Расчёты solid/threads/memory выполняются в исходном порядке зависимостей.
+SFX/checksum ветки не применимы к текущим поддерживаемым 7z/ZIP.
+Уровень 0 выключает Qt-контролы; список методов оставлен видимым и
+недоступным (upstream очищает его). Пароль/лимит памяти не сбрасываются.
+
+В той же итерации перенесены ветви `IDC_COMPRESS_METHOD`,
+`IDC_COMPRESS_DICTIONARY`, `IDC_COMPRESS_MEM_USE`. Qt MethodChanged
+заполняет словарь и слово в исходном порядке, затем solid/threads/memory
+по вызывающему обработчику upstream. Параметры восстанавливаются только
+при совпадении Method с сохранённым профилем; другие методы получают Auto.
+При смене словаря скопированы SaveOptionsInMem, проверка
+`blockSizeLog != kSolidLog_NoSolid && != kSolidLog_FullSolid` и
+Reset_BlockLogSize: обычный размер solid сбрасывается к Auto, специальные
+0/64 сохраняются. SaveOptionsInMem при смене лимита сохраняет explicit threads
+перед их пересчётом. Оба сохранения меняют только in-memory профиль до OK.

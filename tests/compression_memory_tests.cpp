@@ -39,6 +39,7 @@ class CompressionMemoryTests final : public QObject {
         dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         QVERIFY(dictionary->isEnabled());
         QList<quint64> actual;
         for (int i = 0; i < dictionary->count(); ++i)
@@ -49,15 +50,18 @@ class CompressionMemoryTests final : public QObject {
                                                : QStringLiteral("Автоматически (16 МиБ)"));
         dictionary->setCurrentIndex(1);
         level->setCurrentIndex(level->findData(9u));
+        method->setCurrentText(methodName);
         QCOMPARE(dictionary->itemText(0), bzip ? QStringLiteral("Автоматически (900 КиБ)")
                                                : QStringLiteral("Автоматически (256 МиБ)"));
         if (bzip) {
             level->setCurrentIndex(level->findData(1u));
+            method->setCurrentText(methodName);
             QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (100 КиБ)"));
             level->setCurrentIndex(level->findData(3u));
+            method->setCurrentText(methodName);
             QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (500 КиБ)"));
         }
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, expected[1]);
+        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         dialog.show();
         const QString screenshots = QDir::currentPath() + "/ui-screenshots";
         QVERIFY(QDir().mkpath(screenshots));
@@ -92,11 +96,13 @@ class CompressionMemoryTests final : public QObject {
         dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         QCOMPARE(dictionary->count(), 1);
         QVERIFY(!dictionary->isEnabled());
         QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (%1)").arg(sizeText));
         for (int value : {1, 3, 5, 7, 9}) {
             level->setCurrentIndex(level->findData(unsigned(value)));
+            method->setCurrentText(methodName);
             QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (%1)").arg(sizeText));
             QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         }

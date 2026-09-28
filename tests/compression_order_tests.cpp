@@ -23,7 +23,7 @@ class CompressionOrderTests final : public QObject {
         word->setCurrentIndex(word->findData(48));
         QCOMPARE(dialog.compressionOptions().wordSize, 48);
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(dialog.compressionOptions().wordSize, 48);
+        QCOMPARE(dialog.compressionOptions().wordSize, 0);
         QVERIFY(word->itemText(0).contains("64"));
         word->setCurrentIndex(0);
         dialog.show();
@@ -68,10 +68,12 @@ class CompressionOrderTests final : public QObject {
         QVERIFY(word->itemText(0).contains("32"));
         word->setCurrentIndex(word->findData(maximum));
         level->setCurrentIndex(level->findData(7u));
+        dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
         QVERIFY(word->itemText(0).contains("64"));
         level->setCurrentIndex(level->findData(9u));
+        dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
         QVERIFY(word->itemText(0).contains("128"));
-        QCOMPARE(dialog.compressionOptions().wordSize, maximum);
+        QCOMPARE(dialog.compressionOptions().wordSize, 0);
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -114,13 +116,14 @@ class CompressionOrderTests final : public QObject {
         word->setCurrentIndex(word->findData(12));
         for (int value : {1, 5, 7, 9}) {
             level->setCurrentIndex(level->findData(unsigned(value)));
+            method->setCurrentText("PPMd");
             const int autoOrder = formatName == "zip" ? value + 3
                                   : value == 9        ? 32
                                   : value == 7        ? 16
                                   : value == 5        ? 6
                                                       : 4;
             QCOMPARE(word->itemText(0), QStringLiteral("Автоматически (%1)").arg(autoOrder));
-            QCOMPARE(dialog.compressionOptions().wordSize, 12);
+            QCOMPARE(dialog.compressionOptions().wordSize, 0);
         }
         word->setCurrentIndex(word->findData(expected.last()));
         dialog.show();

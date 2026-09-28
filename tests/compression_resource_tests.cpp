@@ -94,7 +94,7 @@ class CompressionResourceTests final : public QObject {
         threads->setCurrentIndex(threads->findData(2u));
         QCOMPARE(dialog.compressionOptions().threads, 2);
         method->setCurrentText("BZip2");
-        QCOMPARE(dialog.compressionOptions().threads, 2);
+        QCOMPARE(dialog.compressionOptions().threads, 0);
         method->setCurrentText("PPMd");
         QVERIFY(!threads->isEnabled());
         QCOMPARE(threads->count(), 1);

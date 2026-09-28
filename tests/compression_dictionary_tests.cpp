@@ -36,12 +36,12 @@ class CompressionDictionaryTests final : public QObject {
         QVERIFY(dictionary->itemText(0).contains("32 МиБ"));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(3 << 20))));
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(3 << 20));
+        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         QVERIFY(dictionary->itemText(0).contains(sizeof(size_t) == 8 ? "256 МиБ" : "64 МиБ"));
         level->setCurrentIndex(level->findData(1u));
         QVERIFY(dictionary->itemText(0).contains("256 КиБ"));
         method->setCurrentText("LZMA");
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(3 << 20));
+        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         dialog.show();
         const QString screenshots = QDir::currentPath() + "/ui-screenshots";
         QVERIFY(QDir().mkpath(screenshots));

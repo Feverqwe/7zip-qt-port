@@ -89,14 +89,21 @@ void CreateArchiveDialog::FormatChanged() {
     const int methodIndex = method_->findText(fo.Method, Qt::MatchFixedString);
     if (methodIndex >= 0)
         method_->setCurrentIndex(methodIndex);
+    MethodChanged();
+}
+
+void CreateArchiveDialog::MethodChanged() {
+    const QSignalBlocker dictBlock(dictionary_), orderBlock(wordSize_), solidBlock(solidBlock_),
+        threadsBlock(threads_);
+    const NCompression::CFormatOptions fo = Get_FormatOptions();
     // Upstream restores method-dependent values only for the saved method.
     const bool sameMethod = method_->currentText().compare(fo.Method, Qt::CaseInsensitive) == 0;
     wordSize_->setCurrentIndex(0);
     dictionary_->setCurrentIndex(0);
     solidBlock_->setCurrentIndex(-1);
     threads_->setCurrentIndex(0);
-    SetOrder2();
     SetDictionary2();
+    SetOrder2();
     if (sameMethod) {
         const UInt64 dict = fo.Dictionary == UInt32(-2)   ? UInt64(1) << 32
                             : fo.Dictionary == UInt32(-1) ? 0
