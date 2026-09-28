@@ -43,5 +43,4 @@ ensure_link "$target_dir/README.md" "../README.md"
 ensure_link "$target_dir/AGENTS.md" "../AGENTS.md"
 ensure_link "$target_dir/docs" "../docs"
 
-git -C "$repo_root" config --local core.hooksPath .githooks
-echo "Sevenzip Desktop Obsidian vault and Git checks are ready at $target_dir"
+echo "Sevenzip Desktop Obsidian vault and task memory are ready at $target_dir"

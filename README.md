@@ -78,7 +78,7 @@ sh .agents/skills/sevenzip-setup/scripts/setup.sh
 
 `AGENTS.md` задаёт правила для агента: менять код и документацию, добавлять регрессионные тесты для поведения и доводить задачи до проверенного результата. Повторяемые проектные навыки лежат в `.agents/skills/`:
 
-- `$sevenzip-setup` — создаёт или обновляет локальную среду, Obsidian vault и Git-хук;
+- `$sevenzip-setup` — создаёт или обновляет локальную среду, Obsidian vault и память задач;
 - `$sevenzip-context` — находит и поддерживает знания о проекте;
 - `$sevenzip-navigation` — прослеживает код UI, адаптера и оригинального 7-Zip;
 - `$sevenzip-cpp-qt` — помогает писать C++17 и Qt Widgets, подключать `7zz` и соблюдать границы компонентов;
@@ -90,7 +90,7 @@ sh .agents/skills/sevenzip-setup/scripts/setup.sh
 open "obsidian://open?path=$(python3 -c 'from pathlib import Path; from urllib.parse import quote; print(quote(str(Path(".codex/Home.md").resolve()), safe=""))')"
 ```
 
-После настройки локальный pre-commit хук запускает `check.sh` перед коммитом. GitHub Actions повторит проверки на macOS, Linux и Windows после публикации репозитория на GitHub. Сейчас удалённый репозиторий не настроен, поэтому CI ещё не выполнялся.
+Автоматического pre-commit хука нет; `./scripts/check.sh` запускается вручную по правилам `AGENTS.md`. Настройка Obsidian не устанавливает Git-хуки.
 
 ## Лицензии
 

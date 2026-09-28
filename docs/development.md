@@ -37,7 +37,7 @@ attachments; it refreshes navigation pages and templates. See
 [the memory protocol](agent-memory.md) for reading, updating, and transferring
 memory between checkouts.
 
-The setup script enables the tracked `.githooks/pre-commit` hook in this repository's local Git config. It runs `scripts/check.sh` before a commit. `.github/workflows/ci.yml` runs the same gate on each push and pull request once this repository has a GitHub remote. Local tests run on the current machine; CI is needed to establish cross-platform results.
+There is no project pre-commit hook. Run `scripts/check.sh` manually according to `AGENTS.md`; setup does not install hooks or modify Git configuration. Local tests run on the current machine; separate platform checks are needed to establish cross-platform results.
 
 ## Upstream checkout
 
