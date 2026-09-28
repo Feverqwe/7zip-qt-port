@@ -8,6 +8,49 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-01.4 — reconciliation и закрытие inventory (2026-09-28)
+
+Project baseline `415513c`; upstream — [ip7z/7zip exact commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Таблицы P0-01.1–.3 ниже — актуальный исходный реестр; более ранние тематические
+записи после него сохраняют историю частичных портов, не заменяют omissions.
+Все 112 unique paths имеют owner, source scope/dependencies и decision:
+30 mirrored modules reviewed against bodies, 82 missing UI modules require
+source reuse with local presentation/platform/engine adapters. Inactive
+comment-only/definition/build files identified individually. No mandatory
+unported function was closed as done or N/A. Headers/resources belong to their
+modules; dependency closure is re-reviewed and expanded by each functional owner.
+
+| Область | Upstream UI .cpp | Mirrored UI | Missing UI |
+| --- | ---: | ---: | ---: |
+| FileManager | 67 | 22 | 45 |
+| Agent | 7 | 2 | 5 |
+| GUI | 10 | 2 | 8 |
+| Common | 25 | 1 | 24 |
+| Всего | 109 | 27 | 82 |
+
+Три supporting mirrored paths — CPP/Common/Wildcard.cpp,
+CPP/Windows/FileDir.cpp, CPP/7zip/Common/MethodProps.cpp. Coverage проверен
+равенством sets всех 109 UI paths плюс всех 30 local src/CPP paths, без duplicate
+rows/лишних source paths. Owner IDs относятся к 44 пакетам плана; slash shorthand
+внутри группы не создаёт новых IDs. Требующие более поздней capability ветки
+остаются у соответствующих owners, включая SFX legacy, VerCtrl, device copying,
+email integration, checksum handler и alternate command entrypoints.
+
+Сейчас необходимы: upstream string/vector/property/censor reuse, portable folder
+contracts и narrow process/filesystem/platform services; snapshots у ArchiveBackend
+не заменяют application bodies. Qt/std replacements в borrowed modules остаются
+migration debt, названной в строках. Upstream module boundaries authoritative;
+не создавать рядом вторую реализацию. P0-02 следующий по приоритету/зависимостям.
+
+Проверки 2026-09-28 macOS: `git diff --check`; data-processing assertions для
+112 unique owner rows, точного coverage и counts; повторная побайтовая сверка
+32 vendored source/header + License.txt с `git show <full revision>:<path>`;
+upstream HEAD exact baseline, status clean. Все passed. Docs-only, runtime/UX
+unchanged, build/CTest/layout не требуются и не запускались. Windows/Linux и
+rendered Windows visual parity не проверены. P0-01 done как inventory; 1/44
+packages complete, 43 remaining. Это не source/workflow/final acceptance.
+
 ## P0-01.1 — реестр первых 16 зеркальных модулей (2026-09-28)
 
 Проверенный project baseline: `a5923d4913f487b46a36c8637165e2a74aa85b1d`,

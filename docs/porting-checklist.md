@@ -46,8 +46,9 @@ N/A отдельной ветки не закрывает весь пакет, �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Начальный счёт: **0/44 завершённых пакетов; 44 остаются**.
-P0: 0/12; P1: 0/16; P2: 0/10; P3: 0/6.
+Текущий счёт: **1/44 завершённых пакетов; 43 остаются** (2026-09-28).
+P0: 1/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory,
+обязательные функциональные порты не закрыты этим аудитом.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
 Это счётчик выполнения плана, не процент исходных строк upstream.
@@ -56,7 +57,7 @@ P0: 0/12; P1: 0/16; P2: 0/10; P3: 0/6.
 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
-| [ ] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | partial — P0-01.1–.2 done; P0-01.3–.4 открыты |
+| [x] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | done — audit § P0-01.4; .1–.4 done; 2026-09-28 macOS docs-only diff/112 paths/33 vendor byte matches |
 | [ ] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | todo |
 | [ ] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | todo |
 | [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | todo |
@@ -131,7 +132,7 @@ Owner: текущий чат, 2026-09-28. Baseline upstream:
 | [x] | P0-01.1 | 16 mirrored `.cpp`: App/state, Panel navigation/items/menu/keys/selection/sort/summary, ViewSettings, FS operations, Split workers/utils, Agent/Proxy, Wildcard/FileDir. Реестр copied/adapted/omitted symbols и immediate dependencies, review bodies | — | done — audit § P0-01.1; 2026-09-28 macOS docs-only, diff/check paths; runtime других ОС не проверен |
 | [x] | P0-01.2 | Остальные 14 mirrored `.cpp`: dialogs/preferences/Compress/Extract/ZipRegistry/MethodProps, включая BrowseDialog/PanelListNotify; их headers, resources, vendored dependencies и Qt/std migration debt | P0-01.1 | done — audit § P0-01.2; 2026-09-28 macOS docs-only; 33 vendored byte matches, 30 paths coverage, diff check; runtime других ОС не проверен |
 | [x] | P0-01.3 | Все 82 отсутствующих `.cpp`: inspect source scope/callers/build dependencies, назначить decision/owner без механического N/A | P0-01.2 | done — .3a–d; 2026-09-28 macOS docs-only diff/coverage, 112 unique paths |
-| [ ] | P0-01.4 | Проверить полное покрытие 109 UI + 3 supporting `.cpp`, согласовать audit/plan/owners/counts, записать checks и handoff | P0-01.3 | active |
+| [x] | P0-01.4 | Проверить полное покрытие 109 UI + 3 supporting `.cpp`, согласовать audit/plan/owners/counts, записать checks и handoff | P0-01.3 | done — audit § P0-01.4; 2026-09-28 macOS docs-only diff/112 paths/33 vendor byte matches |
 
 Коммиты: P0-01.1 — `cfd02a5` (16 modules audit), P0-01.2 — `d03de90`
 (14 modules и vendor baseline). Подшаг P0-01.3 разделён до начала правок:
@@ -155,8 +156,8 @@ P0-01.3b разделён перед фиксацией audit:
 | P0-01.3b3 | Текущий чат: 9 FM open/drag/hash/Browse/system modules; bodies/callers, owners и adapter decisions; coverage 33 оставшихся FM | P0-01.3b2 | done — audit § P0-01.3b3; 2026-09-28 macOS docs-only, diff check, 75 unique paths, полный FM inventory |
 
 Local commits: P0-01.3a `9eced86`, b1 `ca5030a`, b2 `6ce4cac`.
-P0-01.3b завершён после b3; их docs-only diff/coverage проверки и коммиты
-выполняются отдельно. Следующий доступный scope — P0-01.3c.
+P0-01.3b завершён после b3; docs-only diff/coverage проверки и коммиты
+выполнены отдельно. На тот момент следующий scope был P0-01.3c (теперь done).
 
 P0-01.3c разделён перед audit:
 
@@ -189,8 +190,8 @@ P0-01.3d2 разделён до audit крупных modules:
 | P0-01.3d2b | Текущий чат: ArchiveCommandLine, parser phases/options/censor/update command scope | P0-01.3d2a | done — audit § P0-01.3d2b; 2026-09-28 macOS docs-only, diff check, 101 unique paths |
 | P0-01.3d2c | Текущий чат: LoadCodecs/OpenArchive, capabilities/format selection/nesting/reopen source scope | P0-01.3d2b | done — c1/c2, оба modules |
 
-Каждый подшаг — отдельный docs-only проверенный commit. Parent d2 остаётся
-active до d2c. P0-01.3d1 commit: `9aad76e`.
+Каждый подшаг — отдельный docs-only проверенный commit. Parent d2 закрыт
+после d2c. P0-01.3d1 commit: `9aad76e`.
 P0-01.3d2a commit: `6d0d8a9`.
 
 P0-01.3d2c разделён перед audit тела OpenArchive (3690 lines):
@@ -232,10 +233,10 @@ P0-01.3d4 разделён перед review engine integration:
 P0-01.3d3d commit: `153e222`.
 P0-01.3d4a commit: `8a1f3e2`.
 P0-01.3d4b commit: `b35a90a`.
+P0-01.3d4c commit: `415513c`.
 
-Следующий текущий scope: **P0-01.4**. Source inventory .3 завершён;
-parent P0-01 остаётся открытым до reconciliation .4. Inventory не закрывает
-обязательные функциональные порты P0–P3.
+Следующий доступный пакет: **P0-02**. Source inventory .1–.4 завершён;
+P0-01 done. Inventory не закрывает обязательные функциональные порты P0–P3.
 
 При первом разделении добавить здесь, сохраняя остальных:
 
