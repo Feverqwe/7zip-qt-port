@@ -6,7 +6,7 @@ cd "$project_root"
 preset="${1:-dev}"
 
 if [[ "$preset" != dev && "$preset" != release ]]; then
-  printf 'Usage: %s [dev|release]\n' "$0" >&2
+    printf 'Usage: %s [dev|release] [target ...]\n' "$0" >&2
   exit 2
 fi
 
@@ -31,4 +31,11 @@ else
   cmake --preset "$preset"
 fi
 
-cmake --build --preset "$preset"
+if [[ "$#" -gt 0 ]]; then
+  shift
+fi
+if [[ "$#" -gt 0 ]]; then
+  cmake --build --preset "$preset" --target "$@"
+else
+  cmake --build --preset "$preset"
+fi

@@ -1,0 +1,161 @@
+#include "createarchivedialog.h"
+#include "extractdialog.h"
+#include "layout_inspection.h"
+
+#include <QDialogButtonBox>
+#include <QFile>
+#include <QLabel>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QTemporaryDir>
+#include <QtTest>
+#include <memory>
+
+class UiGeometryTests final : public QObject {
+    Q_OBJECT
+    QTemporaryDir directory_;
+    QByteArray previousSettings_;
+
+    static bool footerFits(QDialog &dialog) {
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        return buttons && UiInspection::fullyVisible(*buttons, dialog) &&
+               UiInspection::fullyVisible(*buttons->button(QDialogButtonBox::Ok), dialog) &&
+               UiInspection::fullyVisible(*buttons->button(QDialogButtonBox::Cancel), dialog) &&
+               UiInspection::separate(*buttons->button(QDialogButtonBox::Ok),
+                                      *buttons->button(QDialogButtonBox::Cancel), dialog);
+    }
+
+  private slots:
+    void initTestCase() {
+        QVERIFY(directory_.isValid());
+        previousSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
+        qputenv("SEVENZIP_SETTINGS_PATH", directory_.filePath("settings.ini").toUtf8());
+    }
+    void cleanupTestCase() {
+        if (previousSettings_.isNull())
+            qunsetenv("SEVENZIP_SETTINGS_PATH");
+        else
+            qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_);
+    }
+
+    void detectsClippingOverlapAndHiddenControls() {
+        QWidget root;
+        root.resize(200, 100);
+        QWidget container(&root);
+        container.setGeometry(10, 10, 100, 60);
+        QLabel first("Short", &container);
+        first.setGeometry(0, 0, 70, 25);
+        QLabel second("Other", &container);
+        second.setGeometry(50, 0, 70, 25);
+        root.show();
+        QApplication::processEvents();
+        QVERIFY(UiInspection::fullyVisible(first, root));
+        QVERIFY(!UiInspection::fullyVisible(second, root));
+        QVERIFY(!UiInspection::separate(first, second, root));
+        second.move(0, 30);
+        QVERIFY(UiInspection::fullyVisible(second, root));
+        QVERIFY(UiInspection::separate(first, second, root));
+        first.setText("A label that cannot fit in the allocated width");
+        QVERIFY(!UiInspection::labelFits(first));
+        second.hide();
+        QVERIFY(!UiInspection::fullyVisible(second, root));
+    }
+
+    void reportOmitsEditableValues() {
+        QWidget root;
+        QLineEdit password(&root);
+        password.setObjectName("password");
+        password.setText("secret-value");
+        password.setEchoMode(QLineEdit::Normal);
+        QComboBox path(&root);
+        path.setEditable(true);
+        path.setEditText("private-path");
+        const QString report = UiInspection::dump(root);
+        QVERIFY(report.contains("password"));
+        QVERIFY(!report.contains("secret-value"));
+        QVERIFY(!report.contains("private-path"));
+    }
+
+    void dialogs_data() {
+        QTest::addColumn<bool>("create");
+        QTest::addColumn<QSize>("requestedSize");
+        QTest::newRow("create-normal") << true << QSize(760, 720);
+        QTest::newRow("create-compact") << true << QSize(640, 480);
+        QTest::newRow("extract-normal") << false << QSize(640, 360);
+        QTest::newRow("extract-compact") << false << QSize(470, 330);
+    }
+
+    void dialogs() {
+        QFETCH(bool, create);
+        QFETCH(QSize, requestedSize);
+        std::unique_ptr<QDialog> dialog;
+        if (create)
+            dialog = std::make_unique<CreateArchiveDialog>(directory_.path());
+        else
+            dialog = std::make_unique<ExtractDialog>(directory_.path(), QStringList{}, false);
+        dialog->resize(requestedSize);
+        dialog->show();
+        QApplication::processEvents();
+        const QString tag = QString::fromLatin1(QTest::currentDataTag());
+        QVERIFY(UiInspection::writeReport(*dialog, tag));
+        const QByteArray diagnosis = UiInspection::dump(*dialog).toUtf8();
+        QCOMPARE(dialog->size(), requestedSize.expandedTo(dialog->minimumSizeHint()));
+        QVERIFY2(footerFits(*dialog), diagnosis.constData());
+        if (create) {
+            auto *scroll = dialog->findChild<QScrollArea *>("archiveOptionsScrollArea");
+            QVERIFY(scroll);
+            for (const char *name : {"archiveFormat", "compressionLevel", "compressionMethod",
+                                     "compressionMemoryLimit", "archivePassword",
+                                     "archivePasswordConfirmation", "archiveDestination"}) {
+                auto *control = dialog->findChild<QWidget *>(name);
+                QVERIFY2(control, name);
+                // Qt scrolls input-method cursor rectangles for editable fields.
+                // Keep a margin so the entire control, not just its cursor, is exposed.
+                scroll->ensureWidgetVisible(control, 16, 16);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + name));
+                QVERIFY2(
+                    UiInspection::fullyVisible(*control, *dialog),
+                    qPrintable(QString::fromLatin1(name) + "\n" + UiInspection::dump(*dialog)));
+            }
+            for (const QString &format : {QString("7z"), QString("zip")}) {
+                dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
+                QApplication::processEvents();
+                QVERIFY2(footerFits(*dialog), qPrintable(UiInspection::dump(*dialog)));
+                QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + format));
+            }
+        } else {
+            auto *destination = dialog->findChild<QWidget *>("extractDestination");
+            auto *browse = dialog->findChild<QWidget *>("extractBrowseButton");
+            auto *pathMode = dialog->findChild<QWidget *>("extractPathMode");
+            auto *overwrite = dialog->findChild<QWidget *>("extractOverwriteMode");
+            auto *password = dialog->findChild<QWidget *>("extractPassword");
+            QVERIFY(destination && browse && pathMode && overwrite && password);
+            QVERIFY(UiInspection::separate(*destination, *browse, *dialog));
+            QVERIFY(UiInspection::bounds(*destination, *dialog).bottom() <
+                    UiInspection::bounds(*pathMode, *dialog).top());
+            QVERIFY(UiInspection::bounds(*pathMode, *dialog).bottom() <
+                    UiInspection::bounds(*overwrite, *dialog).top());
+            QVERIFY(UiInspection::bounds(*pathMode, *dialog).right() <
+                    UiInspection::bounds(*password, *dialog).left());
+            auto *nameEnabled = dialog->findChild<QCheckBox *>("extractNameEnable");
+            QVERIFY(nameEnabled);
+            for (bool enabled : {false, true}) {
+                nameEnabled->setChecked(enabled);
+                QApplication::processEvents();
+                QCOMPARE(dialog->findChild<QWidget *>("extractPathName")->isVisible(), enabled);
+                QVERIFY2(footerFits(*dialog), qPrintable(UiInspection::dump(*dialog)));
+                for (QWidget *control : {destination, browse, pathMode, overwrite, password})
+                    QVERIFY2(UiInspection::fullyVisible(*control, *dialog),
+                             qPrintable(UiInspection::dump(*dialog)));
+                for (QLabel *label : dialog->findChildren<QLabel *>())
+                    if (label->isVisible())
+                        QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->text()));
+                QVERIFY(UiInspection::writeReport(*dialog, tag + (enabled ? "-name" : "-no-name")));
+            }
+        }
+    }
+};
+
+QTEST_MAIN(UiGeometryTests)
+#include "ui_geometry_tests.moc"

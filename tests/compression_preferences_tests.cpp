@@ -1,4 +1,5 @@
 #include "createarchivedialog.h"
+#include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSettings>
 #include <QSignalSpy>
@@ -185,15 +186,13 @@ class CompressionPreferencesTests final : public QObject {
         QCOMPARE(zip.threads, 1);
         QCOMPARE(limit(restored)->currentData().toString(), QString("384M"));
         restored.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             restored.resize(size);
             QApplication::processEvents();
             restored.findChild<QScrollArea *>()->ensureWidgetVisible(limit(restored), 0, 80);
             QApplication::processEvents();
-            QVERIFY(restored.grab().save(
-                screenshots + QString("/compression-preferences-%1.png").arg(size.width())));
+            QVERIFY(UiInspection::writeReport(
+                restored, QString("compression-preferences-%1").arg(size.width())));
         }
         // Feed the restored public options through the real backend.
         ArchiveBackend backend;
@@ -326,15 +325,13 @@ class CompressionPreferencesTests final : public QObject {
         QVERIFY(!dialog.findChild<QComboBox *>("compressionDictionary")->isEnabled());
         QVERIFY(!dialog.findChild<QComboBox *>("compressionWordSize")->isEnabled());
         dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
             QApplication::processEvents();
             dialog.findChild<QScrollArea *>()->ensureWidgetVisible(limit(dialog), 0, 80);
             QApplication::processEvents();
-            QVERIFY(dialog.grab().save(
-                screenshots + QString("/level-reset-%1-%2.png").arg(formatName).arg(size.width())));
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("level-reset-%1-%2").arg(formatName).arg(size.width())));
         }
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));

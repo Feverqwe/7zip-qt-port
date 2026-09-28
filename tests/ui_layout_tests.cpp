@@ -1,3 +1,4 @@
+#include "layout_inspection.h"
 #include "mainwindow.h"
 
 #include <QCoreApplication>
@@ -190,15 +191,8 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(table->isColumnHidden(1));
         QVERIFY(table->verticalHeader()->isHidden());
 
-        const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR",
-                                                           QDir::currentPath() + "/ui-screenshots");
-        QVERIFY(QDir().mkpath(screenshotDir));
         const QString tag = QString::fromLatin1(QTest::currentDataTag());
-        const QString screenshot =
-            screenshotDir + "/" + QSysInfo::productType() + "-" + tag + ".png";
-        const QImage image = window.grab().toImage();
-        QVERIFY2(image.save(screenshot), qPrintable(screenshot));
-        QVERIFY(QFileInfo(screenshot).size() > 0);
+        QVERIFY(UiInspection::writeReport(window, QSysInfo::productType() + "-" + tag));
     }
 
     void toolbarCustomizationPersists() {

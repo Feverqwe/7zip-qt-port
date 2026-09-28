@@ -223,6 +223,16 @@ if(BUILD_TESTING)
     target_link_libraries(volume_operations_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME volume_operations COMMAND volume_operations_tests)
     set_tests_properties(volume_operations PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(ui_geometry_tests tests/ui_geometry_tests.cpp tests/layout_inspection.cpp
+        ${compression_order_sources} src/CPP/7zip/UI/GUI/ExtractDialog.cpp src/CPP/Common/Wildcard.cpp)
+    target_include_directories(ui_geometry_tests PRIVATE src tests)
+    target_link_libraries(ui_geometry_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    add_test(NAME ui_geometry COMMAND ui_geometry_tests)
+    set_tests_properties(ui_geometry PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    foreach(target IN ITEMS ui_layout_tests extract_dialog_tests compression_preferences_tests)
+        target_sources(${target} PRIVATE tests/layout_inspection.cpp)
+    endforeach()
     add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)
     set_tests_properties(application_starts PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen"

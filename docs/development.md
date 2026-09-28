@@ -23,6 +23,8 @@ sh .agents/skills/sevenzip-setup/scripts/setup.sh
 
 `check.sh` checks formatting, builds with the development CMake preset, and runs CTest. For a release build, run `./scripts/build.sh release` and `ctest --preset release --output-on-failure`.
 
+During implementation, build only affected targets with `./scripts/build.sh dev <target> [target ...]` and run relevant cases with `ctest --preset dev -R '<test-name-regex>' --output-on-failure`. The build script configures the preset and applies platform toolchain workarounds; without targets it builds everything. Run the full `check.sh` once before completing code, test, or build-tooling changes; do not repeat a passing gate on unchanged code. After a localized edit, rerun affected checks; repeat the full gate for broad changes or unresolved regression concerns. Documentation-only and agent-instruction edits need `git diff --check`.
+
 Run the built app on macOS from `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
 
 Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process; it does not alter system files.

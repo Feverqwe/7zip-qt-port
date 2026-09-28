@@ -1,5 +1,10 @@
 # Architecture
 
+Test-only layout diagnostics live in `tests/layout_inspection.h/.cpp`. They
+inspect public Qt widget geometry and write JSON without editable field values;
+they are not linked into the application. `ui_geometry` checks affected dialog
+relationships and scrolling against `docs/ui-layout-contracts.md`.
+
 ## Repository boundary
 
 `sevenzip-desktop` contains copied and adapted upstream application code, Qt presentation, platform integration, the archive backend adapter, tests, and build configuration. `../7zip-upstream` is the unmodified official source checkout from which code is copied; the application must not depend on a fixed absolute path to it.

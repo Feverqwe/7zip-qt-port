@@ -1,4 +1,5 @@
 #include "extractdialog.h"
+#include "layout_inspection.h"
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
@@ -136,14 +137,12 @@ class ExtractDialogTests final : public QObject {
     }
     void renderedLayout() {
         CExtractDialog dialog(QStringLiteral("/данные с пробелом/"), {"/previous/"}, false);
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         dialog.show();
         for (QSize size : {QSize(640, 360), QSize(470, 330)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            QVERIFY(dialog.grab().save(screenshots +
-                                       QString("/extract-port-%1.png").arg(size.width())));
+            QVERIFY(
+                UiInspection::writeReport(dialog, QString("extract-port-%1").arg(size.width())));
         }
         dialog.reject();
     }

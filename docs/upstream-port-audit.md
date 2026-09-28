@@ -1,5 +1,18 @@
 # Ревизия происхождения кода 7zFM
 
+## Qt layout diagnostics
+
+Reference inspected: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/ExtractDialog.rc` (`IDD_EXTRACT`) and
+`CPP/7zip/UI/GUI/CompressDialog.rc` (`IDD_COMPRESS`).
+`docs/ui-layout-contracts.md` records control grouping/order and current Qt
+adaptations. `tests/layout_inspection.cpp` is new test-only Qt integration glue:
+runtime QObject-tree inspection, ancestor-clipped QWidget geometry, and JSON
+reports are specific to Qt, so no upstream implementation is copied for this
+helper. It does not replace upstream dialog functional logic or establish
+pixel-level parity. `ui_geometry` checks reachability, footer geometry, and
+Extract column ordering on disposable fixtures.
+
 Источник сравнения: `../7zip-upstream`, commit `0766b73`, прежде всего
 `CPP/7zip/UI/FileManager/`. Эта таблица охватывает все производственные файлы
 `src/` на 28 сентября 2026 года. «Собственный» означает, что реализация написана
