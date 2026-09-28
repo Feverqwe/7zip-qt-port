@@ -349,6 +349,28 @@ size/marker/termination checks и event RAII; portable transport требует�
 (30 mirrored + 71 missing), exact source path существует. Runtime/UX не менялись;
 build/CTest/layout не запускались. Parser integration и platform behavior открыты.
 
+## P0-01.3d2c1 — Common codecs/capabilities (2026-09-28)
+
+Project baseline `6ab0a55`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полный source, CArcInfoEx/CCodecs interfaces и FM/Agent/GUI/Common
+consumers. Copied scope пуст. Codec implementation остаётся official engine;
+это не отменяет port metadata/capability/loading policy и явный adapter audit.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/LoadCodecs.cpp — P0-04/12, P1-04/05/11/14, P2-01/02/04/06/07, P3-05 | RegisterArc, CArcInfoEx FindExtension/AddExts, ParseSignatures, typed handler/method property helpers; CCodecs LoadCodecs/LoadFormats/LoadDll/LoadDllsFromFolder/Load/CloseLibs, IsSupportedDll, registry/module lookup, format name/extension/type-chain lookup, external codec/hasher interfaces and Get_CodecsInfoUser_Vector/error formatting. | RegisterArc/RegisterCodec/ICoder/IArchive, upstream MyCom/strings/buffers/vectors/StringToInt/StringConvert/PropVariant, DLL/FileFind/FileIO/ErrorMsg/Registry, external module ABI and optional large pages. Preserve sorted format order, paired/add extensions, flags/time flags/signature offsets, old-interface fallback, update support, dotted type/`*` lookup and exe exclusion. Retain typed/default/error semantics, incompatible-library reporting, unused-library cleanup and SetCodecs(NULL) before unload. Backend supplies official-engine capabilities/metadata; Qt widgets must not independently guess capability from extensions. In-process decoder/encoder/hasher factories and DLL exports belong engine transport adaptation; preserve original source scope and document exactly which remain delegated to 7zz. External handler support remains required review, not N/A. |
+
+Header scope включает CreateArchiveHandler/CreateInArchive/CreateOutArchive,
+CArcInfoEx flag/time helpers и compare: это часть dependency closure даже если
+factory выполняет engine. Commented local SplitString body не используется:
+active AddExts вызывает supporting SplitString; не копировать старую реализацию
+ради устранения зависимости. Windows registry fallback и non-Windows `7z.so`
+baseline не означают автоматически подходящую packaged Qt lookup policy.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 102 unique paths
+(30 mirrored + 72 missing), exact source path существует. Runtime/UI не менялись;
+build/CTest/layout не запускались. Capability adapters и platform loading открыты.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

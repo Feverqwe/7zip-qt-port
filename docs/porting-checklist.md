@@ -193,6 +193,16 @@ P0-01.3d2 разделён до audit крупных modules:
 active до d2c. P0-01.3d1 commit: `9aad76e`.
 P0-01.3d2a commit: `6d0d8a9`.
 
+P0-01.3d2c разделён перед audit тела OpenArchive (3690 lines):
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-01.3d2c1 | Текущий чат: LoadCodecs bodies/capability interfaces/consumers и engine-library boundary | P0-01.3d2b | done — audit § P0-01.3d2c1; 2026-09-28 macOS docs-only, diff check, 102 unique paths |
+| P0-01.3d2c2 | Текущий чат: OpenArchive bodies/item paths/format selection/nesting/reopen и source-to-backend scope | P0-01.3d2c1 | active |
+
+Parent c/d2 остаются active до c2. Каждый substep проверяется и коммитится
+отдельно. P0-01.3d2b commit: `6ab0a55`.
+
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
 
