@@ -164,6 +164,65 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(!QFileInfo::exists(source + ".001"));
         QCOMPARE(QDir(dir.path()).entryList({"*.sevenzip-*"}, QDir::Files).size(), 0);
     }
+    void combineRollback_data() {
+        QTest::addColumn<int>("failure");
+        QTest::newRow("cancel") << 0;
+        QTest::newRow("remove-next-part") << 1;
+        QTest::newRow("grow-current-part") << 2;
+        QTest::newRow("occupied-output") << 3;
+    }
+    void combineRollback() {
+        QFETCH(int, failure);
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString base = dir.filePath(QStringLiteral("части с пробелом.bin"));
+        for (const QString &suffix : {".001", ".002"}) {
+            QFile part(base + suffix);
+            QVERIFY(part.open(QIODevice::WriteOnly));
+            QCOMPARE(part.write(QByteArray(2 << 20, 'x')), qint64(2 << 20));
+        }
+        if (failure == 3) {
+            QFile occupied(base);
+            QVERIFY(occupied.open(QIODevice::WriteOnly));
+            QCOMPARE(occupied.write("existing"), qint64(8));
+        }
+        VolumeOperation combine(VolumeOperation::Mode::Combine, base + ".001", base);
+        bool triggered = false;
+        bool changed = false;
+        connect(
+            &combine, &VolumeOperation::advanced, &combine,
+            [&](qint64 bytes) {
+                if (bytes == 0 || triggered)
+                    return;
+                triggered = true;
+                if (failure == 0)
+                    combine.cancel();
+                else if (failure == 1)
+                    changed = QFile::remove(base + ".002");
+                else if (failure == 2) {
+                    QFile current(base + ".001");
+                    changed = current.open(QIODevice::Append) && current.write("extra") == 5;
+                }
+            },
+            Qt::DirectConnection);
+        QSignalSpy result(&combine, &VolumeOperation::result);
+        combine.start();
+        QVERIFY(combine.wait());
+        QCOMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        if (failure == 1 || failure == 2)
+            QVERIFY(changed);
+        if (failure == 0)
+            QCOMPARE(result.first()[1].toString(), QStringLiteral("Операция отменена."));
+        if (failure == 3) {
+            QFile occupied(base);
+            QVERIFY(occupied.open(QIODevice::ReadOnly));
+            QCOMPARE(occupied.readAll(), QByteArray("existing"));
+        } else
+            QVERIFY(!QFileInfo::exists(base));
+        QVERIFY(QDir(dir.path()).entryList({"*.sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+    }
+
     void combineSummary() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());

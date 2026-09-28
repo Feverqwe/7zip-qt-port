@@ -214,30 +214,16 @@ bool VolumeOperation::combine(QString *error) {
         return false;
     }
     const QString stage = destination_ + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
-    QFile output(stage);
-    if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
-        *error = output.errorString();
-        return false;
-    }
-    qint64 progress = 0;
-    bool ok = true;
-    for (const QString &part : parts) {
-        QFile input(part);
-        const QFileInfo info(part);
-        if (!info.isFile() || info.isSymLink() || !input.open(QIODevice::ReadOnly) ||
-            !copyBytes(input, output, info.size(), &progress, error) ||
-            input.size() != info.size()) {
-            if (error->isEmpty())
-                *error = QStringLiteral("Часть файла изменилась или недоступна: %1").arg(part);
-            ok = false;
-            break;
-        }
-    }
-    if (ok && !output.flush()) {
-        *error = QStringLiteral("Не удалось записать объединённый файл.");
-        ok = false;
-    }
-    output.close();
+    CThreadCombine combiner;
+    combiner.OutputPath = stage;
+    combiner.InputDirPrefix = QFileInfo(source_).absolutePath() + '/';
+    for (const QString &part : parts)
+        combiner.Names << QFileInfo(part).fileName();
+    combiner.Set_NumBytesCur = [this](qint64 pos) {
+        emit advanced(pos);
+        return !canceled_.load();
+    };
+    bool ok = combiner.ProcessVirt(error);
     if (ok && canceled_) {
         *error = QStringLiteral("Операция отменена.");
         ok = false;
