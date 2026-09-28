@@ -88,3 +88,9 @@ and `InvertSelection` without widgets or `MainWindow`. `mainwindow_selection.cpp
 reads the Qt table in display order and publishes the resulting selection in
 one update, retaining the current index. Mouse and keyboard range selection
 remain owned by Qt; the upstream alternate selection mode is not ported.
+
+Сравнение имён `PanelSort.cpp::CompareFileNames_ForFolderList` теперь использует
+указательный алгоритм напрямую из upstream `0766b73`. Единственная замена
+в теле алгоритма — `wchar_t` на `char16_t`, чтобы сохранить UTF-16 Windows
+на macOS/Linux. `MyCharUpper` использует Qt; отдельная перегрузка преобразует
+`QStringView` в строки с завершающим нулём, включая срезы без терминатора.

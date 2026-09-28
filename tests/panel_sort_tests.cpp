@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "window_state_support.h"
 #include <QHeaderView>
 
@@ -16,6 +17,21 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove("view/flatDisk");
         settings.remove("view/flatArchive");
+    }
+
+    void upstreamNaturalNameComparison() {
+        QCOMPARE(CompareFileNames_ForFolderList(u"file0002", u"file2"), 0);
+        QVERIFY(CompareFileNames_ForFolderList(u"file9", u"file10") < 0);
+        QVERIFY(CompareFileNames_ForFolderList(u"99999999999999999999", u"100000000000000000000") <
+                0);
+        QCOMPARE(CompareFileNames_ForFolderList(u"Альфа файл01.TXT", u"альфа файл1.txt"), 0);
+        QVERIFY(CompareFileNames_ForFolderList(u"file0", u"file00a") < 0);
+        QCOMPARE(CompareFileNames_ForFolderList(u"", u""), 0);
+        QVERIFY(CompareFileNames_ForFolderList(u"", u"0") < 0);
+        const QString first = QStringLiteral("--file2 trailing");
+        const QString second = QStringLiteral("--file10 trailing");
+        QVERIFY(CompareFileNames_ForFolderList(QStringView(first).mid(2, 5),
+                                               QStringView(second).mid(2, 6)) < 0);
     }
 
     void flatArchiveSortsNamesBeforePrefixes() {

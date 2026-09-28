@@ -1,60 +1,66 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelSort.cpp at 0766b73.
 // Copyright (C) 1999-2026 Igor Pavlov. GNU LGPL 2.1 or later.
-// QStringView replaces the upstream wchar_t pointers for portable Qt strings.
+// Pointer algorithm copied from upstream; char16_t replaces Windows wchar_t.
+// QStringView conversion and Qt properties adapt the panel at its boundary.
 
 #include "PanelSort.h"
 
 #include <QTableWidgetItem>
+#include <string>
 
-int CompareFileNames_ForFolderList(QStringView s1, QStringView s2) {
-    qsizetype i1 = 0;
-    qsizetype i2 = 0;
-    const auto at = [](QStringView text, qsizetype index) {
-        return index < text.size() ? text[index] : QChar();
-    };
+namespace {
+// Preserve Windows 7zFM UTF-16 code units on platforms with 32-bit wchar_t.
+char16_t MyCharUpper(char16_t c) { return QChar(c).toUpper().unicode(); }
+} // namespace
+
+int CompareFileNames_ForFolderList(const char16_t *s1, const char16_t *s2) {
     for (;;) {
-        QChar c1 = at(s1, i1);
-        QChar c2 = at(s2, i2);
-        if ((c1 >= QLatin1Char('0') && c1 <= QLatin1Char('9')) &&
-            (c2 >= QLatin1Char('0') && c2 <= QLatin1Char('9'))) {
-            for (; at(s1, i1) == QLatin1Char('0'); ++i1)
+        char16_t c1 = *s1;
+        char16_t c2 = *s2;
+        if ((c1 >= '0' && c1 <= '9') && (c2 >= '0' && c2 <= '9')) {
+            for (; *s1 == '0'; s1++)
                 ;
-            for (; at(s2, i2) == QLatin1Char('0'); ++i2)
+            for (; *s2 == '0'; s2++)
                 ;
-            qsizetype len1 = 0;
-            qsizetype len2 = 0;
-            for (; at(s1, i1 + len1) >= QLatin1Char('0') && at(s1, i1 + len1) <= QLatin1Char('9');
-                 ++len1)
+            size_t len1 = 0;
+            size_t len2 = 0;
+            for (; (s1[len1] >= '0' && s1[len1] <= '9'); len1++)
                 ;
-            for (; at(s2, i2 + len2) >= QLatin1Char('0') && at(s2, i2 + len2) <= QLatin1Char('9');
-                 ++len2)
+            for (; (s2[len2] >= '0' && s2[len2] <= '9'); len2++)
                 ;
             if (len1 < len2)
                 return -1;
             if (len1 > len2)
                 return 1;
-            for (; len1 > 0; ++i1, ++i2, --len1) {
-                if (at(s1, i1) == at(s2, i2))
+            for (; len1 > 0; s1++, s2++, len1--) {
+                if (*s1 == *s2)
                     continue;
-                return at(s1, i1) < at(s2, i2) ? -1 : 1;
+                return (*s1 < *s2) ? -1 : 1;
             }
-            c1 = at(s1, i1);
-            c2 = at(s2, i2);
+            c1 = *s1;
+            c2 = *s2;
         }
-        ++i1;
-        ++i2;
+        s1++;
+        s2++;
         if (c1 != c2) {
             // Probably we need to change the order for special characters like in Explorer.
-            const QChar u1 = c1.toUpper();
-            const QChar u2 = c2.toUpper();
+            char16_t u1 = MyCharUpper(c1);
+            char16_t u2 = MyCharUpper(c2);
             if (u1 < u2)
                 return -1;
             if (u1 > u2)
                 return 1;
         }
-        if (c1.isNull())
+        if (c1 == 0)
             return 0;
     }
+}
+
+int CompareFileNames_ForFolderList(QStringView s1, QStringView s2) {
+    // Views need not be null-terminated. Own the strings before calling upstream.
+    const std::u16string name1 = s1.toString().toStdU16String();
+    const std::u16string name2 = s2.toString().toStdU16String();
+    return CompareFileNames_ForFolderList(name1.c_str(), name2.c_str());
 }
 
 QStringView GetExtensionPtr(QStringView name) {
