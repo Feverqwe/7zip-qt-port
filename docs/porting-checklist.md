@@ -211,12 +211,13 @@ P0-01.3d3 разделён до review operations bodies:
 | --- | --- | --- | --- |
 | P0-01.3d3a | Текущий чат: EnumDirItems/Extract, scan/censor/output-dir/operation orchestration scope | P0-01.3d2c2 | done — audit § P0-01.3d3a; 2026-09-28 macOS docs-only, diff check, 105 unique paths |
 | P0-01.3d3b | Текущий чат: ArchiveExtractCallback, filesystem/overwrite/link/security/progress source scope | P0-01.3d3a | done — audit § P0-01.3d3b; 2026-09-28 macOS docs-only, diff check, 106 unique paths |
-| P0-01.3d3c | Текущий чат: Update, transaction/rename/scan/volume/SFX/delete source scope | P0-01.3d3b | active |
-| P0-01.3d3d | Текущий чат: UpdateCallback, streams/properties/update/error/cancel source scope | P0-01.3d3c | todo |
+| P0-01.3d3c | Текущий чат: Update, transaction/rename/scan/volume/SFX/delete source scope | P0-01.3d3b | done — audit § P0-01.3d3c; 2026-09-28 macOS docs-only, diff check, 107 unique paths |
+| P0-01.3d3d | Текущий чат: UpdateCallback, streams/properties/update/error/cancel source scope | P0-01.3d3c | active |
 
 Каждый substep — docs-only diff/unique-path checks и отдельный commit.
 P0-01.3d2c2 commit: `682128d`.
 P0-01.3d3a commit: `9289748`.
+P0-01.3d3b commit: `1a5f850`.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.

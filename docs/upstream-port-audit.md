@@ -446,6 +446,35 @@ Commented MyCopyFile/copy-link и delayed-symlink legacy не активные r
 build/CTest/layout не запускались. Callback/process integration и filesystem
 success/failure/cancel/Unicode/malicious-path regression остаются обязательными.
 
+## P0-01.3d3c — Common update transaction (2026-09-28)
+
+Project baseline `1a5f850`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полный source и Update.h options/callback interfaces; consumers —
+GUI/UpdateGUI и Common/CompressCall2. Copied scope пуст; compression transport
+остаётся official engine, transaction/command policy требует source port.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/Update.cpp — P0-10/12, P1-04/05/09, P2-01/02/06/07/10, P3-01/05 | CUpdateErrorInfo helpers, CMultiOutStream_Bunch cleanup/deletion control, CArchivePath parse/final/volume/temp paths, CUpdateOptions InitFormatIndex/SetArcPath, CUpdateProduceCallbackImp, CRenamePair Prepare/CompareTwoNames/GetNewPath, Compress, Censor_AreAllAllowed/Censor_CheckPath/EnumerateInArchiveItems, move-progress proxy и UpdateArchive including Windows MAPI branches. | UpdateAction/Pair/Produce/Callback/DirItem/EnumDirItems/OpenArchive/SetProperties/TempFiles/LoadCodecs, MyCom/strings/vectors/Wildcard, FileDir/Find/Name/Time/DLL/PropVariantConv, FileStreams/LimitedStreams/MultiOutStream/CopyCoder/MAPI. Preserve smart/exact/add naming, format capability/type/readonly/tail/multivolume guards, rename first-match/ADS/anti props, action pair production/stats, scan decisions and parent metadata. Preserve unique-new temp creation, SFX module lookup/copy, existing prefix/tail preservation, latest-time tracking, UpdateItems→all-inputs-closed→flush/close→processed status order. Backend process/filesystem/platform adapters replace transport/services; widgets pass typed options and callbacks. |
+
+UpdateArchive после success закрывает input archive, отключает deletion output
+volumes/temp и только затем replaces original with temp. При move failure/cancel
+после удаления original сохраняет temp; при new-archive cancel может включить
+cleanup. MoveArc_Finish может вернуть delayed E_ABORT; не превращать его в
+безусловный success и не удалять sources после него. DeleteAfterCompressing
+ограничен одним compress-action command, использует processed status и повторную
+проверку size/ctime/mtime/link before delete; folders удаляются в depth order,
+только empty. Это обязательная safety policy, а не удобство Qt filesystem API.
+Windows email workflow вызывает MAPI_DIALOG с attachment lifetime/current-dir
+restorer; portable integration/acceptance P3-01/05 остаётся open, не N/A.
+Известное source FIXME self-inclusion сравнивает paths без canonicalization:
+backend safety adaptation требует отдельного regression и documented deviation.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 107 unique paths
+(30 mirrored + 77 missing), exact source path существует. Runtime/UI не менялись;
+build/CTest/layout не запускались. Transaction success/failure/cancel, prefix,
+volumes/SFX и delete-after regression остаются обязательными functional checks.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
