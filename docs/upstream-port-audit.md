@@ -505,6 +505,38 @@ are inactive baseline code, not missing mandatory features.
 build/CTest/layout не запускались. Stream failure/cancel/lifetime, metadata,
 password and update deletion regressions remain required during functional port.
 
+## P0-01.3d4a — Common benchmark integration (2026-09-28)
+
+Project baseline `153e222`. Exact source — [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Прочитаны полный Bench.cpp (5036 lines), Bench.h и GUI/BenchmarkDialog call sites;
+Console/BenchCon delegates to Bench. Copied scope пуст; GUI source scope записан
+в P0-01.3c2. Benchmark algorithms are upstream source, not a Qt replacement.
+
+| Путь / owner | Обязательный source scope | Dependencies и адаптация |
+| --- | --- | --- |
+| Common/Bench.cpp — P2-04, P2-10, P3-05 | CBaseRandomGenerator/CBenchRandomGenerator, benchmark/CRC streams, platform clocks/user time, CBenchInfoCalc/ProgressStatus/ProgressInfo, CBenchInfo rating/usage/speed, CBenchProps, CAffinityMode, CEncoderInfo Generate/Encode/Decode, MethodBench, thread flushers, GetBenchMemoryUsage, CRC/hash/frequency benches, method/hash tables, print helpers, CTotalBenchRes, TotalBench/TotalBench_Hash and Bench property/mode/iteration orchestration. | Bench.h/CreateCoder/MethodProps/StreamObjects/StreamUtils/Property; C CRC/CpuArch/RotateDefs; Common buffers/strings/Wildcard; Windows portable Thread/Synchronization/SystemInfo/FileFind/FileIO and POSIX timing. Preserve deterministic generated data/salts, CRC verification and size/finish checks, coder properties/password cache warmup, filter versus coder paths, affinity/groups and LZMA encoder/decoder thread pairing, complexity and weighted totals. Engine codec/hash factories remain official; backend owns execution and typed results, Qt owns controls/callback display. |
+
+CBenchInfo NumIterations means threads during progress, iterations after Code;
+do not multiply partial and final values identically. Preserve 16-bit usage scale,
+minimum dictionary complexity, divide-by-zero guards and saturation. Ready/start
+barriers exclude generation from measurements; RAII flushers start in exit mode
+and join created threads on failure. Hash buffer freeing occurs outside measured
+interval. Keep cancellation/error propagation and final-result flags; E_NOTIMPL
+is skipped only in total method/hash suites, not blanket benchmark success.
+GUI callback selects old LZMA benchmark; text callback supports hash/filter
+bandwidth, wildcard totals, file input, dictionary/thread sweeps and CPU frequency
+phases. Memory-driven dictionary reduction and limits are functional policy.
+Current 7zz transport needs a narrow engine execution/result adapter retaining
+these bodies and GUI formulas; exact callback/transport capability remains open
+for P2-04, not an authorization to reproduce them from console text. Platform
+clock/CPU/group/large-page services require scoped adapters, no GUI global changes.
+Commented debug/alternative hash-update/CRC routines are inactive baseline paths.
+
+Проверки: 2026-09-28 macOS docs-only, `git diff --check`, 109 unique paths
+(30 mirrored + 79 missing), exact source exists. No runtime/UI changes or
+build/CTest/layout runs. P2-04 still requires functional and geometry checks;
+Windows/macOS/Linux native benchmark parity remains unverified.
+
 ## Активация общего списка и выбор при наведении (2026-09-28)
 
 Baseline: [ip7z/7zip, `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

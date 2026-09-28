@@ -224,11 +224,12 @@ P0-01.3d4 разделён перед review engine integration:
 
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
-| P0-01.3d4a | Текущий чат: Bench, benchmark orchestration versus official engine primitives, dependencies/adapters | P0-01.3d3d | active |
-| P0-01.3d4b | Текущий чат: HashCalc, hash orchestration/format/parser versus engine, dependencies/adapters | P0-01.3d4a | todo |
+| P0-01.3d4a | Текущий чат: Bench, benchmark orchestration versus official engine primitives, dependencies/adapters | P0-01.3d3d | done — audit § P0-01.3d4a; 2026-09-28 macOS docs-only, diff check, 109 unique paths |
+| P0-01.3d4b | Текущий чат: HashCalc, hash orchestration/format/parser versus engine, dependencies/adapters | P0-01.3d4a | active |
 | P0-01.3d4c | Текущий чат: CompressCall/CompressCall2, engine calls и final unique-path coverage | P0-01.3d4b | todo |
 
 Каждый substep требует source-body review, docs-only checks и отдельный commit.
+P0-01.3d3d commit: `153e222`.
 
 Следующий текущий scope: **P0-01.3**. Parent остаётся открытым до всех четырёх
 подшагов; наличие карты filenames в плане не заменяет review реализации.
