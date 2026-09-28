@@ -8,6 +8,49 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b2c1 — source Agent proxy ownership subset (2026-09-29)
+
+Project baseline `0297571`; exact upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Agent.h/.cpp adds CAgent _proxy/ArchiveType fields, source constructor null default,
+destructor conditional delete, ReadItems existing-proxy early return/allocation/
+Load skeleton and BindToRootFolder allocate/Init/Detach body. CAgentFolder Init
+copies source _agent strong reference/_agentSpec raw identity; child/parent Init
+again propagates the same agent rather than only a borrowed proxy/provider.
+Default child flat=false remains. Existing borrowed overload remains only for
+the current lexical stack traversal/tests, pending window migration.
+
+The engine IInFolderArchive contract requires IArchive, LoadCodecs and extract
+callback implementations; the current engine boundary is ArchiveBackend/7zz.
+This partial CAgent exposes only IUnknown ownership, replacing the source
+CMyComPtr<IInFolderArchive> with CMyComPtr<IUnknown>, not claiming the omitted
+engine interface. GetArchive returns the existing typed metadata IFolderFolder
+provider instead of IInArchive. Source proxy construction loads the owned 7zz
+entry snapshot via the earlier CProxyArc adapter; _archiveProps substitutes
+archive-link readiness. Qt Init copies that immutable snapshot/provider/type.
+It rejects null provider and repeat initialization, so a retained child cannot
+refer to a proxy replaced by a later listing; refresh creates a new owner.
+Load exceptions delete/reset the partial proxy before propagating to COM_TRY,
+allowing a retry without reusing incomplete data. These are explicit integration
+adaptations, not copies of Open/ReOpen/Close or complete ReadItems engine logic.
+
+Partial scope: _proxy2/tree/alt streams, RAM-limit setup, archive property catalog
+discovery, CArchiveLink/load-codecs/open/close/reopen and engine/extract/update/
+raw/zone/operation contracts remain mandatory in P0-03/04 and their inventory
+owners. This source ownership subset does not mark them done or N/A. Metadata
+provider/catalog adaptations from earlier b2a remain explicit. Factory assembly
+and runtime panel binding remain following substeps; no window behavior changes.
+
+agent_folder regressions release input lists/provider, root and explicit agent
+references before traversing surviving descendants; then release child/grandchild
+and walk back through newly bound ancestors to root. Typed metadata and archive
+type stay valid. Missing-provider/uninitialized root fails; initialized empty
+archive succeeds; repeat Init is rejected without changing the existing folder.
+Affected app/agent_folder/archive_proxy/flat_view/ui_navigation targets built;
+focused 4/4 passed macOS 2026-09-29. Full `./scripts/check.sh` with staged files
+passed formatting, both diff checks, app build and 61/61 CTest. No visible
+UI/text/layout change. Windows/Linux runtime unverified.
+
 ## P0-02.2b3b2b3 — filesystem binding, parent and logical drives (2026-09-29)
 
 Project baseline `e931b09`; exact upstream [ip7z/7zip

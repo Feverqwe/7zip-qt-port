@@ -141,6 +141,72 @@ class AgentFolderTests : public QObject {
         QCOMPARE(unbound.GetNumberOfItems(&count), E_FAIL);
         QCOMPARE(count, UInt32(0));
     }
+
+    void ownedAgentSurvivesInputRootAndAgentRelease() {
+        QList<ArchiveEntry> entries{{QString::fromUtf8("папка 📦/sub/file.txt"), 17, 8}};
+        CObjectVector<CPanelItem> items;
+        CPanelItem item;
+        item.RelPath = entries[0].path;
+        item.SizeDefined = true;
+        item.Size = 17;
+        item.PackSize = 8;
+        items.Add(item);
+        CMyComPtr<IFolderFolder> props = new QtPanelFolder("archive.zip", items);
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IUnknown> agent = agentSpec;
+        QCOMPARE(agentSpec->Init(entries, props, UString("zip")), S_OK);
+        QCOMPARE(agentSpec->Init({}, props, UString("other")), E_FAIL);
+        CMyComPtr<IFolderFolder> rootFolder;
+        QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), S_OK);
+        entries.clear();
+        items.Clear();
+        props.Release();
+        CMyComPtr<IFolderFolder> child;
+        QCOMPARE(rootFolder->BindToFolder(L"папка 📦", &child), S_OK);
+        rootFolder.Release();
+        agent.Release();
+        CMyComPtr<IFolderFolder> grandchild;
+        QCOMPARE(child->BindToFolder(L"sub", &grandchild), S_OK);
+        child.Release();
+        QCOMPARE(grandchild->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(grandchild->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(rowByName(grandchild, "file.txt"), 0);
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(grandchild->GetProperty(0, kpidSize, &value), S_OK);
+        QCOMPARE(value.uhVal.QuadPart, UInt64(17));
+        CMyComPtr<IFolderFolder> parent;
+        QCOMPARE(grandchild->BindToParentFolder(&parent), S_OK);
+        grandchild.Release();
+        QCOMPARE(parent->GetFolderProperty(kpidType, &value), S_OK);
+        QCOMPARE(ToQString(UString(value.bstrVal)), QStringLiteral("7-Zip.zip"));
+        QCOMPARE(parent->BindToParentFolder(&rootFolder), S_OK);
+        parent.Release();
+        QCOMPARE(rootFolder->LoadItems(), S_OK);
+        QCOMPARE(rowByName(rootFolder, QString::fromUtf8("папка 📦")), 0);
+        QCOMPARE(rootFolder->BindToParentFolder(&parent), S_OK);
+        QVERIFY(!parent);
+    }
+
+    void agentRootRejectsMissingMetadataAndEmptyArchiveIsValid() {
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IUnknown> owner = agentSpec;
+        CMyComPtr<IFolderFolder> rootFolder;
+        QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), E_FAIL);
+        QVERIFY(!rootFolder);
+        QCOMPARE(agentSpec->Init({}, nullptr, UString("zip")), E_INVALIDARG);
+        CObjectVector<CPanelItem> items;
+        CMyComPtr<IFolderFolder> props = new QtPanelFolder("empty.zip", items);
+        QCOMPARE(agentSpec->Init({}, props, UString("zip")), S_OK);
+        QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), S_OK);
+        owner.Release();
+        props.Release();
+        QCOMPARE(rootFolder->LoadItems(), S_OK);
+        UInt32 count = 99;
+        QCOMPARE(rootFolder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+    }
 };
 
 QTEST_GUILESS_MAIN(AgentFolderTests)

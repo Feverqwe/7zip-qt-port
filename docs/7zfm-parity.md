@@ -28,6 +28,12 @@ drive CFSDrives. POSIX root `/` возвращает null parent, missing/file b
 Physical imaging, icons и COM operations этого модуля ещё не перенесены.
 Runtime окна не меняется до P0-02.2b3b3.
 
+P0-02.2b3b2c1 переносит source CAgent proxy ownership/root binding и strong agent
+reference у папок. Для текущего 7zz metadata adapter listing immutable: новый
+listing получает нового владельца. Open/ReOpen/Close и остальные engine contracts
+ещё обязательны. Время жизни descendants/ancestors проверяется после release
+root и внешних references; runtime окна пока использует прежнюю lexical ветку.
+
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
 Прочитаны AGENTS.md, профильные skills, ресурсы и обработчики. Проектный

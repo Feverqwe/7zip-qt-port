@@ -26,7 +26,10 @@ list/selection clearing on release. `panel_copy_info`, `properties` and
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings
 and unbound load failure. Proxy fixtures explicitly outlive their folders until
-the owned-context adapter is ported. `archive_proxy`, `flat_view` and
+the borrowed overload is used. Additional owned-Agent cases release input/provider,
+root and explicit agent references before descendant/ancestor traversal, and
+check empty archive, invalid initialization and immutable repeat-Init rejection.
+`archive_proxy`, `flat_view` and
 `ui_navigation` validate existing enumeration/window consumers.
 
 `app_state` checks independent CAppState instances, combined history/favorites

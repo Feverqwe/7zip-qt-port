@@ -45,9 +45,10 @@ in migration. `ReleaseFolder` clears the bound list and caches before replacing
 the interface. Complete source notify/lifecycle guards remain open.
 `CAgentFolder` exposes the _proxy read-only IFolderFolder binding subset and
 IFolderSetFlatMode. Child/parent folders share the typed metadata provider by
-COM ownership; the current proxy model is still borrowed. Window enumeration
-continues within its existing stack scope. Long-lived runtime binding requires
-the owned context migration in P0-02.2b3b2c. Raw/alternate-stream/operation and
+COM ownership. A partial source `CAgent` now owns an immutable 7zz listing proxy;
+bound children/parents retain its IUnknown identity. The source engine owner
+interface is not advertised. Window enumeration continues with the borrowed
+overload in its existing stack scope until factory/runtime migration. Raw/alternate-stream/operation and
 full engine catalog contracts remain open; unsupported interfaces are absent.
 
 ```text

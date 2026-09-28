@@ -12,6 +12,8 @@ struct CProxyItem {
     unsigned Index;
 };
 
+class CAgent;
+
 class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_2(IFolderFolder, IFolderSetFlatMode)
   public:
@@ -21,6 +23,7 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     void Init(const CProxyArc *proxy, unsigned proxyDirIndex, IFolderFolder *archiveProps,
               const UString &archiveType);
+    void Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent);
     HRESULT BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
     unsigned GetNumberOfItems() const;
     CProxyItem GetItem(unsigned index) const;
@@ -36,4 +39,27 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     // Typed 7zz metadata boundary replaces the in-process archive property call.
     CMyComPtr<IFolderFolder> _archiveProps;
     UString _archiveType;
+    // IUnknown replaces the in-process IInFolderArchive owner at the 7zz boundary.
+    CMyComPtr<IUnknown> _agent;
+    CAgent *_agentSpec = nullptr;
+};
+
+// Partial source owner: proxy lifetime/root binding only. Engine operations remain
+// behind ArchiveBackend; IInFolderArchive is not advertised by this adapter.
+class CAgent final : public IUnknown, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_0
+  public:
+    CAgent();
+    ~CAgent();
+    HRESULT Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
+                 const UString &archiveType);
+    HRESULT BindToRootFolder(IFolderFolder **resultFolder);
+    CProxyArc *_proxy;
+    UString ArchiveType;
+    IFolderFolder *GetArchive() const { return _archiveProps; }
+
+  private:
+    HRESULT ReadItems();
+    CMyComPtr<IFolderFolder> _archiveProps;
+    QList<ArchiveEntry> _entries;
 };

@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/Agent/Agent.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // The CProxyArc folder walk/binding/property control flow is retained. The
-// _proxy2, operations and engine-owner branches remain outside this partial port.
+// _proxy2 and engine operation branches remain outside this partial port.
 #include "Agent.h"
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
@@ -59,6 +59,17 @@ void CAgentFolder::Init(const CProxyArc *proxy, unsigned proxyDirIndex, IFolderF
     _proxyDirIndex = proxyDirIndex;
     _archiveProps = archiveProps;
     _archiveType = archiveType;
+    _agent.Release();
+    _agentSpec = nullptr;
+}
+
+void CAgentFolder::Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent) {
+    _proxy = proxy;
+    _proxyDirIndex = proxyDirIndex;
+    _agent = (IUnknown *)agent;
+    _agentSpec = agent;
+    _archiveProps = agent->GetArchive();
+    _archiveType = agent->ArchiveType;
 }
 
 Z7_COM7F_IMF(CAgentFolder::GetNumberOfItems(UInt32 *numItems)) {
@@ -153,7 +164,10 @@ Z7_COM7F_IMF(CAgentFolder::GetProperty(UInt32 index, PROPID propID, PROPVARIANT 
 HRESULT CAgentFolder::BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder) {
     CAgentFolder *folderSpec = new CAgentFolder;
     CMyComPtr<IFolderFolder> agentFolder = folderSpec;
-    folderSpec->Init(_proxy, proxyDirIndex, _archiveProps, _archiveType);
+    if (_agentSpec)
+        folderSpec->Init(_proxy, proxyDirIndex, _agentSpec);
+    else
+        folderSpec->Init(_proxy, proxyDirIndex, _archiveProps, _archiveType);
     *resultFolder = agentFolder.Detach();
     return S_OK;
 }
@@ -198,7 +212,10 @@ Z7_COM7F_IMF(CAgentFolder::BindToParentFolder(IFolderFolder **resultFolder)) {
     proxyDirIndex = (unsigned)parent;
     CAgentFolder *folderSpec = new CAgentFolder;
     CMyComPtr<IFolderFolder> agentFolder = folderSpec;
-    folderSpec->Init(_proxy, proxyDirIndex, _archiveProps, _archiveType);
+    if (_agentSpec)
+        folderSpec->Init(_proxy, proxyDirIndex, _agentSpec);
+    else
+        folderSpec->Init(_proxy, proxyDirIndex, _archiveProps, _archiveType);
     *resultFolder = agentFolder.Detach();
     return S_OK;
     COM_TRY_END
@@ -253,4 +270,55 @@ Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id,
 Z7_COM7F_IMF(CAgentFolder::SetFlatMode(Int32 flatMode)) {
     _flatMode = IntToBool(flatMode);
     return S_OK;
+}
+
+CAgent::CAgent() : _proxy(NULL) {}
+
+CAgent::~CAgent() {
+    if (_proxy)
+        delete _proxy;
+}
+
+HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
+                     const UString &archiveType) {
+    COM_TRY_BEGIN
+    if (!archiveProps)
+        return E_INVALIDARG;
+    // A 7zz listing is immutable. Relisting creates a new owner, so bound folders
+    // cannot observe a replaced/deleted proxy through an old borrowed pointer.
+    if (_archiveProps)
+        return E_FAIL;
+    _entries = entries;
+    ArchiveType = archiveType;
+    _archiveProps = archiveProps;
+    return S_OK;
+    COM_TRY_END
+}
+
+HRESULT CAgent::ReadItems() {
+    if (_proxy)
+        return S_OK;
+    _proxy = new CProxyArc();
+    try {
+        _proxy->Load(_entries);
+    } catch (...) {
+        delete _proxy;
+        _proxy = NULL;
+        throw;
+    }
+    return S_OK;
+}
+
+HRESULT CAgent::BindToRootFolder(IFolderFolder **resultFolder) {
+    COM_TRY_BEGIN
+    *resultFolder = NULL;
+    if (!_archiveProps)
+        return E_FAIL;
+    RINOK(ReadItems())
+    CAgentFolder *folderSpec = new CAgentFolder;
+    CMyComPtr<IFolderFolder> rootFolder = folderSpec;
+    folderSpec->Init(_proxy, k_Proxy_RootDirIndex, this);
+    *resultFolder = rootFolder.Detach();
+    return S_OK;
+    COM_TRY_END
 }
