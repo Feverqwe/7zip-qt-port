@@ -312,6 +312,8 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
          (iconList_ && watched == iconList_->viewport())) &&
         event->type() == QEvent::KeyPress) {
         auto *key = static_cast<QKeyEvent *>(event);
+        if (handleSelectionKey(key))
+            return true;
         if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
             key->modifiers() == Qt::AltModifier) {
             openBookmark(key->key() - Qt::Key_0);

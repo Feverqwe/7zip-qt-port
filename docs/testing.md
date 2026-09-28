@@ -96,6 +96,13 @@ for extensionless files below dotted parent folders. The Qt selection adapter
 passes the base name, as `PanelSelect.cpp::GetItemName()` does, rather than the
 relative path displayed in flat mode.
 
+`panel_key` checks numeric keypad mask, all, type and invert commands in all
+four view modes, both on disk and in a controlled archive with Unicode names
+and spaces. It also checks that ordinary `*`, Ctrl+keypad plus, address-field
+input and commands during archive loading do not change selection. Qt key
+events are synthesized on macOS; physical keypad mapping on Windows/Linux
+remains for platform verification.
+
 `panel_sort` проверяет правила `PanelSort.cpp` (`0766b73`) через Qt-таблицу:
 папки перед файлами в обоих направлениях, повторный выбор свойства,
 размер и дата по убыванию при первом выборе, щелчок заголовка размера,
