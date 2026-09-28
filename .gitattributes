@@ -1,0 +1,5 @@
+# Keep unchanged upstream source bytes, including its whitespace. Local source,
+# tests and documentation retain Git's default whitespace checks.
+third_party/7zip/**/*.h -whitespace
+third_party/7zip/**/*.cpp -whitespace
+third_party/7zip/**/*.c -whitespace

@@ -8,6 +8,49 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3a — portable folder interfaces/ownership dependencies (2026-09-28)
+
+Project baseline `e7870e5`; exact source: [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied unchanged to third_party/7zip: CPP/Common/MyCom.h, MyUnknown.h,
+MyInitGuid.h; CPP/7zip/IDecl.h, IProgress.h, IStream.h,
+UI/FileManager/IFolder.h; CPP/Windows/PropVariant.h and PropVariant.cpp.
+All declarations and variant implementation bodies remain byte-for-byte source.
+Existing MyWindows.cpp supplies portable BSTR/variant services; Windows links
+oleaut32 and uuid for source runtime and IID_IUnknown. MyCom uses original
+non-atomic reference counting; folder owners must stay on the GUI thread unless
+the upstream atomic configuration and its dependencies are separately enabled.
+
+ClassDefs.cpp retains upstream include initialization order MyWindows →
+MyInitGuid → interface declarations, with blank groups preserving it under
+project clang-format. Agent.h is replaced by the narrower unchanged IFolder.h
+dependency because current Agent.h does not declare these COM interfaces.
+This partially initializes folder/stream/progress GUIDs only. Win32
+MyWindowsNew.h/Explorer MyExplorerCommand and remaining Agent interfaces are
+omitted here and remain required with their module ports. One ClassDefs owns
+these GUID definitions; consumers include declarations without INITGUID.
+First link caught include sorting ahead of initialization; order was fixed.
+
+No archive engine or compression implementation is added. Runtime window folder
+binding, CTempFileInfo/CFolderLink and source navigation/close bodies are still
+open. New folder_contract test uses only a deterministic local mock of the exact
+IFolderFolder interface; it verifies QueryInterface identity/rejection, refcount
+destruction, caller-owned BSTR property info, Unicode variant copy/clear/
+detach/attach, folder path and missing parent. This establishes portable local
+dependency behavior, not completion of filesystem/archive folder adapters.
+Exact-source comparison passed all 42 vendored files (41 headers/sources plus
+DOC/License.txt); current inventory is 29 mirrored UI/80 missing, 32 src/CPP cpp.
+Checks 2026-09-28 macOS: affected app/dependency/consumer targets built; focused
+folder_contract/app_state 2/2 passed; initial ./scripts/check.sh formatting/build/
+57 CTest passed; exact-source bytes 42/42. Staged diff-check then detected original
+upstream trailing whitespace in newly tracked vendored files. The premature local
+commit was soft-reset, preserving all changes. .gitattributes exempts unchanged
+vendored h/cpp/c bytes from whitespace errors; local source/tests/docs remain
+checked. Final ./scripts/check.sh with staged files and the explicit policy
+passed formatting, both diff-checks, build and 57/57 CTest on macOS
+2026-09-29 (local date). No required check remains failed for this substep.
+No visual changes; Windows/Linux runtime unverified.
+
 ## P0-02.2b2 — archive/flat/edit selected-state consumers (2026-09-28)
 
 Project baseline `c412350`; exact upstream [ip7z/7zip

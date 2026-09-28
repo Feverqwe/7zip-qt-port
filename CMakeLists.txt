@@ -14,13 +14,14 @@ add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/CPP/Windows/System.cpp src/CPP/7zip/Common/MethodProps.cpp src/CPP/7zip/UI/Common/ZipRegistry.cpp
+    third_party/7zip/CPP/Windows/PropVariant.cpp src/CPP/7zip/UI/FileManager/ClassDefs.cpp
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 if(WIN32)
-    target_link_libraries(sevenzip_common PUBLIC oleaut32)
+    target_link_libraries(sevenzip_common PUBLIC oleaut32 uuid)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
@@ -110,6 +111,9 @@ if(BUILD_TESTING)
     qt_add_executable(app_state_tests tests/app_state_tests.cpp)
     target_link_libraries(app_state_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME app_state COMMAND app_state_tests)
+    qt_add_executable(folder_contract_tests tests/folder_contract_tests.cpp)
+    target_link_libraries(folder_contract_tests PRIVATE sevenzip_common Qt6::Test)
+    add_test(NAME folder_contract COMMAND folder_contract_tests)
     add_test(NAME ui_parity_tool COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ui_parity_tests.py)
     add_test(NAME ui_parity_copy COMMAND ${Python3_EXECUTABLE}

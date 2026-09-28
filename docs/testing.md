@@ -1,5 +1,11 @@
 # Regression strategy
 
+`folder_contract` validates the unchanged upstream IFolderFolder ABI against a
+local mock: interface identity/rejection, reference ownership/destruction,
+Unicode property copy/clear/attach/detach, caller-owned property-info BSTR and
+missing parent. It exercises portable MyCom/PropVariant dependencies without
+opening a real filesystem folder or archive.
+
 `app_state` checks independent CAppState instances, combined history/favorites
 Save/Read with Unicode and sparse slots, switching settings paths, normalization,
 empty state and preservation of unrelated settings. `folder_history`, `bookmarks`,

@@ -17,6 +17,13 @@ Archive operations go through `ArchiveBackend`, which launches the official
 `7zz` executable. Widgets do not construct process arguments or implement
 archive formats. A future direct engine adapter must preserve this boundary.
 
+The unchanged upstream IFolder/IStream/IProgress declarations, MyCom ownership
+and PropVariant implementation are available for folder adapters. ClassDefs
+defines their GUIDs once; consumers use declarations. They currently establish
+the portable contract; runtime window folder binding is still migration work.
+Their default reference counting assumes GUI-thread ownership. Archive operations
+continue through ArchiveBackend.
+
 ```text
 Qt Widgets (window, file list, dialogs)
           |

@@ -21,6 +21,9 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `CPP/Common/MyTypes.h`
 - `CPP/Common/MyWindows.h`
 - `CPP/Common/MyWindows.cpp`
+- `CPP/Common/MyCom.h`
+- `CPP/Common/MyUnknown.h`
+- `CPP/Common/MyInitGuid.h`
 - `CPP/Common/MyBuffer.h`
 - `CPP/Common/MyString.cpp`
 - `CPP/Common/MyString.h`
@@ -37,13 +40,22 @@ three supported platforms. They are not formatted with the Qt application's rule
 - `CPP/Windows/StdAfx.h`
 - `CPP/Windows/System.cpp`
 - `CPP/Windows/System.h`
+- `CPP/Windows/PropVariant.cpp`
+- `CPP/Windows/PropVariant.h`
 - `CPP/7zip/PropID.h`
+- `CPP/7zip/IDecl.h`
+- `CPP/7zip/IProgress.h`
+- `CPP/7zip/IStream.h`
+- `CPP/7zip/UI/FileManager/IFolder.h`
 - `CPP/7zip/UI/Common/ExtractMode.h`
 - `License.txt`
 
-All 32 source/header files and `License.txt` (from upstream `DOC/License.txt`)
+All 41 source/header files and `License.txt` (from upstream `DOC/License.txt`)
 were compared byte for byte with the exact commit above on 2026-09-28.
 This provenance check does not establish runtime verification on all platforms.
+`.gitattributes` excludes unchanged vendored source from Git whitespace errors
+so upstream trailing spaces remain byte-for-byte intact. Local documentation,
+adapted source and tests keep the normal whitespace checks.
 
 See `License.txt` for the upstream license and `docs/upstream-port-audit.md`
 for the adapted functions outside this directory.

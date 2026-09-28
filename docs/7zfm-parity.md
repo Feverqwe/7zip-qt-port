@@ -448,3 +448,8 @@ does so after asynchronous relisting; failure/cancel retains displayed state
 because the backend updates a temporary archive. Local edit also uses the same
 refresh state. Full source module/lifecycle ports remain open; no layout/text
 changes. Windows/Linux runtime and rendered parity unverified.
+
+P0-02.2b3a connects unchanged portable upstream folder/stream/progress interfaces
+and property ownership dependencies. It changes no visible workflow or layout;
+actual folder binding and navigation/parent-stack bodies remain open. Dependency
+tests on macOS do not establish Windows/Linux runtime or rendered parity.

@@ -281,7 +281,7 @@ P0-02.2a commit: `5bc96ad`. P0-02.2b разделён до изменения se
 | --- | --- | --- | --- |
 | P0-02.2b1 | CSelectedState, SaveSelectedState/GetSelectedNames/Get_ItemIndices_Selected и selection/focus portion RefreshListCtrl; Qt list binding, filesystem refresh normal/flat consumers, sorted names и deleted focus fallback | P0-02.2a | done — audit § P0-02.2b1; focused 5/5, check.sh 56/56 |
 | P0-02.2b2 | Archive refresh/flat-mode/edit result consumers используют тот же selected-state owner; failure/cancel checks | P0-02.2b1 | done — audit § P0-02.2b2; focused 5/5, check.sh 56/56 |
-| P0-02.2b3 | CPanel location/parent stack source bodies, nested archive/navigation adapters и checks; удалить дублирующее location state | P0-02.2b2 | todo |
+| P0-02.2b3 | CPanel location/parent stack source bodies, nested archive/navigation adapters и checks; удалить дублирующее location state | P0-02.2b2 | active — b3a–b3d ниже |
 
 P0-02.2b1 checks 2026-09-28 macOS: affected targets/direct consumers build dev;
 `ctest --preset dev -R '^(panel_selected_state|panel_focus|panel_copy_info|ui_navigation|panel_selection)$' --output-on-failure`
@@ -298,6 +298,28 @@ P0-02.2b2 checks 2026-09-28 macOS: affected targets build dev;
 `ctest --preset dev -R '^(panel_selected_state|ui_state|ui_archive_states|flat_view|file_viewer)$' --output-on-failure`
 5/5; `./scripts/check.sh` format/build/56 CTest; `git diff --check`.
 Layout/text unchanged; Windows/Linux runtime не проверены.
+
+P0-02.2b2 commit: `e7870e5`. P0-02.2b3 разделён перед переносом folder contract.
+Owner всех частей: текущий чат; exact upstream baseline не меняется.
+
+| Подшаг | Scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2b3a | Unchanged IFolder/IStream/IProgress declarations, MyCom/MyUnknown/MyInitGuid и PropVariant; partial ClassDefs GUID owner; compile/runtime checks interface identity, refcount lifetime и Unicode property ownership | P0-02.2b2 | done — audit § P0-02.2b3a; focused 2/2, check.sh 57/57, vendor bytes 42/42 |
+| P0-02.2b3b | Narrow folder adapters для Qt/backend snapshot, CPanel folder binding и path/property source bodies; filesystem/archive location ownership и regression consumers | P0-02.2b3a | todo |
+| P0-02.2b3c | CTempFileInfo/CFolderLink и root/nested parent stack, source close/pop/cleanup ordering; cancellation/failure/temp-lifetime checks | P0-02.2b3b | todo |
+| P0-02.2b3d | BindToPath/LoadFullPath/parent navigation source scope и flat-mode owner, window integration без duplicate state, all location consumers; b3 acceptance | P0-02.2b3c | todo |
+
+P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
+dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`
+2/2; `./scripts/check.sh` format/build/57 CTest; exact-source byte comparison
+42/42 (41 headers/sources + license). Первый link обнаружил
+sorting include до GUID initialization; порядок исправлен до passing runs.
+Staged diff-check затем обнаружил исходные upstream trailing spaces; premature
+local commit отменён soft-reset без потери изменений. .gitattributes сохраняет
+точные vendor bytes, исключая vendored h/cpp/c из whitespace errors; local source/
+tests/docs проверяются. Финальный full gate со staged files прошёл formatting,
+обе diff-check, build и 57/57 CTest на macOS 2026-09-29 (local date).
+Visual contracts unchanged; Windows/Linux runtime не проверены.
 
 При следующем разделении добавить здесь, сохраняя остальных:
 
