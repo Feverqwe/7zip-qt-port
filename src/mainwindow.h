@@ -158,6 +158,8 @@ class MainWindow : public QMainWindow {
     QString archiveDisplayPath() const;
     void restoreParentArchive();
     void showArchiveFolder(const QString &folder);
+    void appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix, bool flat);
+    const CProxyArc &archiveProxy() const;
     void setState(State state);
     void refreshActions();
     void appendJournal(const QString &line);
@@ -200,6 +202,7 @@ class MainWindow : public QMainWindow {
         QString entry;
         QList<ArchiveEntry> entries;
         ArchiveInfo info;
+        CMyComPtr<IFolderFolder> root;
         std::unique_ptr<QTemporaryDir> temporary;
     };
     std::function<bool(const QUrl &)> fileOpener_;
@@ -236,7 +239,8 @@ class MainWindow : public QMainWindow {
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
     QStringList archiveMovePaths_;
     QList<ArchiveEntry> entries_;
-    CProxyArc proxyArchive_;
+    CMyComPtr<IFolderFolder> archiveRoot_;
+    QString listingFolderError_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
     QComboBox *pathCombo_ = nullptr;

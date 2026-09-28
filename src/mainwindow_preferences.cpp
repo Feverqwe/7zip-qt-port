@@ -172,7 +172,7 @@ void MainWindow::openBookmark(int index) {
 }
 
 bool MainWindow::archiveFolderExists(const QString &folder) const {
-    return proxyArchive_.FindDir(folder) >= 0;
+    return archiveRoot_ && archiveProxy().FindDir(folder) >= 0;
 }
 
 void MainWindow::updateToolbar() {

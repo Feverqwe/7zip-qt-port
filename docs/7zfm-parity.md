@@ -504,3 +504,13 @@ long-lived runtime binding waits for owned context. Reference: Agent.cpp folder
 bind/parent/prefix/property bodies at the pinned revision. _proxy2, raw/CRC/engine
 catalog and operations remain open. No text/layout changes; Windows/Linux runtime
 and rendered parity unverified.
+
+P0-02.2b3b3b1 connects owned CAgent/CAgentFolder to the archive window and source
+CPanel indices. Archive listing/flat navigation/refresh and nested return share
+one source proxy. Source GetProperty VT_EMPTY now leaves size/packed cells empty;
+defined zero displays 0, consistent with source PanelListNotify variant formatting.
+Grouping, columns and view controls are unchanged. Normal/compact four-view JSON
+inspection passed (16 reports); focused 9/9 and full gate 62/62 passed macOS
+2026-09-29. Full filesystem runtime, BindToPath/LoadFullPath,
+CFolderLink and operation/interface/catalog branches remain mandatory; this
+partial owner binding does not establish full module or Windows visual parity.

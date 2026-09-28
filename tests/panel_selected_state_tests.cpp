@@ -1,3 +1,4 @@
+#include "layout_inspection.h"
 #include "window_state_support.h"
 
 class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport {
@@ -21,6 +22,49 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
     }
 
   private slots:
+    void archiveRuntimeTypedSizes_data() { filesystemRefreshRetainsCurrentAndSelectedItems_data(); }
+    void archiveRuntimeTypedSizes() {
+        QFETCH(bool, flat);
+        QFETCH(int, mode);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "flatViewAction")->setChecked(false);
+        window.openArchive("typed-sizes.zip");
+        const QString folder = QStringLiteral("папка с пробелом");
+        const QString unknown = folder + QStringLiteral("/неизвестный.txt");
+        const QString zero = folder + QStringLiteral("/нулевой.txt");
+        QList<ArchiveEntry> entries = {{unknown, -1, -1}, {zero, 0, 0}};
+        backend.completeList(entries);
+        entries.clear(); // The runtime retains its own immutable metadata owner.
+        if (!flat)
+            openRow(window, rowWithPath(window, folder));
+        action(window, "flatViewAction")->setChecked(flat);
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
+        auto *view = table(window);
+        const int unknownRow = rowWithPath(window, unknown);
+        const int zeroRow = rowWithPath(window, zero);
+        QVERIFY(unknownRow >= 0 && zeroRow >= 0);
+        for (int column : {2, 3}) {
+            QVERIFY(view->item(unknownRow, column)->text().isEmpty());
+            QVERIFY(!view->item(unknownRow, column)->data(Qt::UserRole + 2).isValid());
+            QCOMPARE(view->item(zeroRow, column)->text(), QStringLiteral("0"));
+            QVERIFY(view->item(zeroRow, column)->data(Qt::UserRole + 2).isValid());
+        }
+        for (const QSize &size : {QSize(980, 620), QSize(640, 480)}) {
+            window.resize(size);
+            QCoreApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*window.centralWidget(), window));
+            const QWidget *activeView =
+                mode == 3 ? static_cast<QWidget *>(view) : window.findChild<QWidget *>("iconList");
+            QVERIFY(activeView && activeView->isVisible());
+            QVERIFY(UiInspection::fullyVisible(*activeView, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("archive-runtime-mode%1-flat%2-%3").arg(mode).arg(flat).arg(size.width())));
+        }
+        action(window, "flatViewAction")->setChecked(false);
+    }
     void archiveRefreshRetainsCurrentAndSelectedItems_data() {
         filesystemRefreshRetainsCurrentAndSelectedItems_data();
     }

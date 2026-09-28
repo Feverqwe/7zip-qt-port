@@ -27,6 +27,8 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     HRESULT BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
     unsigned GetNumberOfItems() const;
     CProxyItem GetItem(unsigned index) const;
+    // Read-only Qt presentation access to the source owner's authoritative tree.
+    const CProxyArc &GetProxy() const { return *_proxy; }
 
   private:
     void LoadFolder(unsigned dirIndex);

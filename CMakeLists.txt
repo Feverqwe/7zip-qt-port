@@ -364,9 +364,10 @@ if(BUILD_TESTING)
     target_include_directories(panel_selected_state_tests PRIVATE src tests)
     target_link_libraries(panel_selected_state_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
     target_sources(panel_selected_state_tests PRIVATE src/mainwindow_filedelete.cpp)
+    target_sources(panel_selected_state_tests PRIVATE tests/layout_inspection.cpp)
     add_test(NAME panel_selected_state COMMAND panel_selected_state_tests)
     set_tests_properties(panel_selected_state PROPERTIES ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-selected-state-settings.ini")
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-selected-state-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(volume_workflow_tests tests/volume_workflow_tests.cpp ${panel_sort_sources})
     target_include_directories(volume_workflow_tests PRIVATE src tests)
     target_link_libraries(volume_workflow_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -444,6 +445,16 @@ endif()
 foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests file_viewer_tests nested_archive_tests volume_operations_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_common)
+    endif()
+endforeach()
+
+# Window runtime uses the authoritative source-owned archive location factory.
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests
+    ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
+    checksum_tests file_viewer_tests nested_archive_tests panel_sort_tests combine_name_tests
+    panel_key_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests)
+    if(TARGET ${target})
+        target_link_libraries(${target} PRIVATE sevenzip_location)
     endif()
 endforeach()
 

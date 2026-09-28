@@ -1,41 +1,49 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "mainwindow.h"
+#include "qtlocationfolder.h"
 
 void MainWindow::connectBackend() {
-    connect(backend_, &ArchiveBackend::entriesReady, this,
-            [this](const QList<ArchiveEntry> &entries) {
-                if (state_ != State::Loading)
-                    return;
-                entries_ = entries;
-                proxyArchive_.Load(entries_);
-                QString folder = refreshing_ ? refreshFolder_ : pendingArchiveFolder_;
-                while (!folder.isEmpty()) {
-                    bool present = false;
-                    for (const ArchiveEntry &entry : entries_) {
-                        present = entry.path == folder || entry.path == folder + '/' ||
-                                  entry.path.startsWith(folder + '/');
-                        if (present)
-                            break;
-                    }
+    connect(
+        backend_, &ArchiveBackend::entriesReady, this, [this](const QList<ArchiveEntry> &entries) {
+            if (state_ != State::Loading)
+                return;
+            CMyComPtr<IFolderFolder> root;
+            const HRESULT result = CreateArchiveFolder(entries, ToUString(info_.format), &root);
+            if (result != S_OK) {
+                listingFolderError_ =
+                    QStringLiteral("Не удалось открыть архив (%1).").arg(quint32(result), 0, 16);
+                return;
+            }
+            entries_ = entries;
+            archiveRoot_ = root;
+            QString folder = refreshing_ ? refreshFolder_ : pendingArchiveFolder_;
+            while (!folder.isEmpty()) {
+                bool present = false;
+                for (const ArchiveEntry &entry : entries_) {
+                    present = entry.path == folder || entry.path == folder + '/' ||
+                              entry.path.startsWith(folder + '/');
                     if (present)
                         break;
-                    const int separator = folder.lastIndexOf('/');
-                    folder = separator < 0 ? QString() : folder.left(separator);
                 }
-                {
-                    const QSignalBlocker blocked(flatView_);
-                    flatView_->setChecked(flatArchive_);
-                }
-                showArchiveFolder(folder);
-                pendingArchiveFolder_.clear();
-                if (refreshing_)
-                    app_.GetFocusedPanel().RefreshListCtrl(
-                        folder == refreshFolder_ ? refreshSelectedState_ : CSelectedState());
-                refreshing_ = false;
-                refreshFolder_.clear();
-                refreshSelectedState_ = CSelectedState();
-                setState(State::Viewing);
-            });
+                if (present)
+                    break;
+                const int separator = folder.lastIndexOf('/');
+                folder = separator < 0 ? QString() : folder.left(separator);
+            }
+            {
+                const QSignalBlocker blocked(flatView_);
+                flatView_->setChecked(flatArchive_);
+            }
+            showArchiveFolder(folder);
+            pendingArchiveFolder_.clear();
+            if (refreshing_)
+                app_.GetFocusedPanel().RefreshListCtrl(
+                    folder == refreshFolder_ ? refreshSelectedState_ : CSelectedState());
+            refreshing_ = false;
+            refreshFolder_.clear();
+            refreshSelectedState_ = CSelectedState();
+            setState(State::Viewing);
+        });
     connect(backend_, &ArchiveBackend::infoReady, this,
             [this](const ArchiveInfo &info) { info_ = info; });
     connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
@@ -65,6 +73,12 @@ void MainWindow::connectBackend() {
 }
 
 void MainWindow::backendFinished(bool ok, const QString &message) {
+    if (!listingFolderError_.isEmpty()) {
+        const QString bindingError = listingFolderError_;
+        listingFolderError_.clear();
+        backendFinished(false, bindingError);
+        return;
+    }
     if (startPendingHash(ok))
         return;
     if (pendingHashExtraction_) {

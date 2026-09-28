@@ -13,7 +13,7 @@ QString MainWindow::selectedCopyInfo() const {
         item.RelPath = name->text();
         item.IsFolder = name->data(Qt::UserRole + 1).toBool();
         if (state_ == State::Viewing && item.IsFolder) {
-            item.Size = proxyArchive_.Dirs[name->data(Qt::UserRole + 4).toUInt()].Size;
+            item.Size = archiveProxy().Dirs[name->data(Qt::UserRole + 4).toUInt()].Size;
             item.SizeDefined = true;
         } else if (!item.IsFolder) {
             const QVariant size = table_->item(row, 2)->data(Qt::UserRole + 2);

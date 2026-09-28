@@ -35,28 +35,32 @@ process exit. Shutdown does not dispatch operation completion into a closing UI.
 
 The unchanged upstream IFolder/IStream/IProgress declarations, MyCom ownership
 and PropVariant implementation are available for folder adapters. ClassDefs
-defines their GUIDs once; consumers use declarations. They currently establish
-the portable contract; runtime window folder binding is still migration work.
+defines their GUIDs once; consumers use declarations. The window binds the
+archive subset; filesystem runtime binding is still migration work.
 Their default reference counting assumes GUI-thread ownership. Archive operations
 continue through ArchiveBackend.
 `CPanel::_folder` uses the unchanged upstream IFolderFolder/CMyComPtr contract.
 `QtPanelFolder` adapts existing read-only metadata snapshots used by Copy summaries
 and Properties; it exposes typed properties and owns the snapshot. It implements
 no filesystem/archive navigation. Source property/name/path helpers consume the
-interface; runtime filesystem/Agent binding and parent-stack ownership remain
-in migration. `ReleaseFolder` clears the bound list and caches before replacing
+interface; runtime filesystem binding and parent-stack ownership remain
+in migration. The active archive folder uses CAgentFolder. `ReleaseFolder` clears the bound list and caches before replacing
 the interface. Complete source notify/lifecycle guards remain open.
 `CAgentFolder` exposes the _proxy read-only IFolderFolder binding subset and
 IFolderSetFlatMode. Child/parent folders share the typed metadata provider by
 COM ownership. A partial source `CAgent` now owns an immutable 7zz listing proxy;
 bound children/parents retain its IUnknown identity. The source engine owner
-interface is not advertised. Window enumeration continues with the borrowed
-overload in its existing stack scope until factory/runtime migration. Raw/alternate-stream/operation and
+interface is not advertised. Window enumeration binds an owned folder from its
+root and publishes its source indices; nested Qt parent frames retain the same
+root. The former window proxy value and borrowed stack traversal are removed.
+The borrowed overload remains in focused legacy tests. Raw/alternate-stream/operation and
 full engine catalog contracts remain open; unsupported interfaces are absent.
 `sevenzip_location` provides Qt input factories that use source CFSFolder path
 services or source CAgent ownership with an immutable typed metadata snapshot.
 Unknown metadata sentinels remain VT_EMPTY and do not wrap source directory
-totals. Runtime window binding and outer archive links are following iterations.
+totals. The window uses its archive factory; filesystem runtime and outer archive
+links remain following iterations. Archive size/packed columns consume typed
+variants; absent values remain empty and known zero remains visible.
 QtPanelList carries source item parameters separately from sorted row positions.
 CPanel selection bits and property indices use source parameters; focus uses a
 presentation row. Legacy snapshots build a derived param-to-row map at Save/

@@ -16,6 +16,9 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     filesystemScanner_->cancel();
     scanningDisk_ = false;
     scanSelectedState_.reset();
+    app_.GetFocusedPanel().ReleaseFolder();
+    archiveRoot_.Release();
+    listingFolderError_.clear();
     directory_ = next;
     recordVisitedPath(directory_);
     archive_.clear();

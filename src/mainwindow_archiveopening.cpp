@@ -14,6 +14,9 @@ void MainWindow::openArchive(const QString &path, bool nested, const QString &la
         archiveParents_.clear();
     scanningDisk_ = false;
     scanSelectedState_.reset();
+    app_.GetFocusedPanel().ReleaseFolder();
+    archiveRoot_.Release();
+    listingFolderError_.clear();
     archive_ = QFileInfo(path).absoluteFilePath();
     displayArchive_ = nested ? label : archive_;
     archivePassword_.clear();
@@ -88,6 +91,7 @@ bool MainWindow::finishNestedExtraction(bool ok) {
         parent.entry = pendingNestedEntry_;
         parent.entries = entries_;
         parent.info = info_;
+        parent.root = archiveRoot_;
         parent.temporary = std::move(nestedTemporary_);
         archiveParents_.push_back(std::move(parent));
         const QString label = displayArchive_ + " / " + pendingNestedEntry_;
@@ -107,7 +111,7 @@ void MainWindow::restoreParentArchive() {
     displayArchive_ = parent.display;
     archivePassword_ = parent.password;
     entries_ = std::move(parent.entries);
-    proxyArchive_.Load(entries_);
+    archiveRoot_ = parent.root;
     info_ = parent.info;
     nestedListing_ = false;
     showArchiveFolder(parent.folder);

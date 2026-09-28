@@ -25,6 +25,10 @@ list/selection clearing on release. `panel_copy_info`, `properties` and
 Its source-index regression checks reordered Qt rows, a different unselected
 current item, typed size/path summary, refresh after another order, missing-row
 index gaps and a fixture parent sentinel excluded from operated indices.
+`panel_selected_state` checks unknown versus defined-zero archive size/packed
+metadata through the runtime in normal/flat and four views. It clears the caller
+input and writes current-build reports at normal/compact window sizes, while
+checking central-widget visibility.
 `archive_mutation` destroys an active backend during helper listing and partial
 creation: shutdown must not call completion handlers, leave a temporary archive,
 or alter the source file. This reproduces the implicit-destructor lifetime bug

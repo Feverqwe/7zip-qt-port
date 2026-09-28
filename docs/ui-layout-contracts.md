@@ -46,6 +46,22 @@ SEVENZIP_CAPTURE_SCREENSHOTS=1 ctest --preset dev -R '^ui_geometry$' --output-on
 
 This writes optional PNGs next to the JSON. Open only the affected screenshot.
 
+## Archive metadata cells
+
+Reference: pinned `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/PanelListNotify.cpp` property-to-text branches and
+`CPP/7zip/UI/Agent/Agent.cpp` typed GetProperty. Unknown size/packed metadata
+must leave the corresponding file cell empty; defined zero must display `0`.
+Directory size cells retain the current empty presentation. The seven-column
+model, hidden transport columns, view modes and navigation grouping are unchanged.
+
+`panel_selected_state` checks normal/flat archive cells in all four views at
+980×620 and 640×480, verifies central/active view visibility, and writes
+`archive-runtime-mode*-flat*-*.json` under `build/dev/ui-reports`. Review geometry,
+control order and clipping in those current-build reports. These establish Qt
+usability/typed value behavior, not rendered Windows pixel parity; full source
+column formatting and property catalogs remain mandatory P0-03/04 scope.
+
 ## File list settings
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

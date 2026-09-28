@@ -72,7 +72,7 @@ void MainWindow::showSelectedProperties() {
             item.packedSize = table_->item(row, 3)->text().toLongLong();
         } else {
             const unsigned dirIndex = name->data(Qt::UserRole + 4).toUInt();
-            const CProxyDir &dir = proxyArchive_.Dirs[dirIndex];
+            const CProxyDir &dir = archiveProxy().Dirs[dirIndex];
             item.nestedFolders = int(dir.NumSubDirs);
             item.nestedFiles = int(dir.NumSubFiles);
             item.size = qint64(dir.Size);

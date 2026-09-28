@@ -8,6 +8,61 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3b1 — owned archive runtime (2026-09-29)
+
+Project baseline `190abef`; upstream [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Reuses the already copied Agent.cpp CAgent proxy lifetime/ReadItems/root binding,
+CAgentFolder BindToFolder_Internal/SetFlatMode/LoadItems/GetItem/GetProperty and
+PanelFolderChange.cpp SetNewFolder/ReleaseFolder bodies. No second functional
+implementation or proxy instance is introduced: MainWindow's value CProxyArc is
+removed. Its archive root is IFolderFolder/CMyComPtr created through the existing
+Qt input factory; the active source CAgentFolder is retained by CPanel::_folder.
+A read-only CAgentFolder GetProxy accessor is Qt presentation glue for existing
+path expansion/aggregate/column consumers; the source tree stays with CAgent.
+
+The current FindDir path adapter resolves a directory, then the original
+BindToFolder_Internal constructs its owned folder. Source SetFlatMode/LoadItems
+populate matching indices before SetNewFolder clears/replaces rows; every Qt
+row's existing param is this folder's index. This deliberately does not claim
+the full source BindToPath body or its omitted alternate-stream/subarchive
+branches: those remain mandatory in P0-02.2b3d after CFolderLink. Current archive
+path fields remain temporary integration transport until that owner exists.
+
+Listing constructs the immutable owner before publishing entries/root. Factory
+HRESULT failure is retained until the backend's matching completion, then uses
+existing error/rollback UI. Opening another archive or a filesystem location
+releases the active folder before its root. Existing nested Qt parent frames
+retain the root by COM ownership, so returning restores the same source agent
+rather than rebuilding an independent proxy. Full outer+nested CFolderLink and
+temporary archive teardown source order remain mandatory P0-02.2b3c.
+
+File size/packed columns now read typed source GetProperty variants. Source
+PanelListNotify.cpp SetItemText numeric/text branches and its
+ConvertPropertyToShortString2/Windows PropVariantConv.cpp VT_EMPTY handling establish
+the empty-versus-zero distinction; the full formatting module remains P0-03/04.
+VT_EMPTY
+renders empty without a numeric sort role; defined zero renders 0. Other current
+columns retain Qt/7zz entry transport; complete property catalogs, presence flags,
+UInt64 parsing, timestamps, raw/CRC/_proxy2 and operations remain P0-03/04 and
+feature owners. Filesystem runtime is still mandatory P0-02.2b3b3b2; Copy/Properties
+snapshot adapters and remaining consumers are P0-02.2b3b3c, not completed here.
+
+New panel_selected_state typed-size regression covers normal/flat and four view
+modes, unknown versus known zero, caller-input clearing, normal/compact geometry
+and current-build widget JSON. Existing refresh, failure/cancel, navigation,
+properties and real nested-archive tests cover direct consumers. Checks macOS
+2026-09-29: affected app and nine window targets built; final focused 9/9 passed
+(7.29s). Current-build 16 reports inspected: pathCombo and active view fully
+visible, normal/compact geometry preserves navigation above the view and column
+grouping; inactive stack view is hidden. ./scripts/check.sh passed formatting,
+app build and all 62 CTest (25.45s). Qt archive row rendering is extracted into
+appendArchiveEntry in the same cohesive file, separating binding from rendering;
+Windows/Linux runtime and rendered Windows parity remain unverified. No upstream
+file or vendored file changed; 34 adapted CPP cpp (30 UI), 35 root Qt cpp,
+57 exact vendor files remain unchanged. CMake links window consumers to the
+existing sevenzip_location library; authoritative Agent sources retain one path.
+
 ## P0-02.2b3b3a — source list item parameters (2026-09-29)
 
 Project baseline `57804df`; exact upstream [ip7z/7zip

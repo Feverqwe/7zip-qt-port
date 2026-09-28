@@ -1,77 +1,104 @@
+#include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "Common/Defs.h"
+#include "Windows/PropVariant.h"
 #include "mainwindow.h"
 
+const CProxyArc &MainWindow::archiveProxy() const {
+    return static_cast<CAgentFolder *>((IFolderFolder *)archiveRoot_)->GetProxy();
+}
+
 void MainWindow::showArchiveFolder(const QString &folder) {
+    if (!archiveRoot_)
+        return;
+    const CProxyArc &proxy = archiveProxy();
+    const int dirIndex = proxy.FindDir(folder);
+    if (dirIndex < 0)
+        return;
+    CMyComPtr<IFolderFolder> folderOwner;
+    auto *root = static_cast<CAgentFolder *>((IFolderFolder *)archiveRoot_);
+    if (root->BindToFolder_Internal(unsigned(dirIndex), &folderOwner) != S_OK)
+        return;
+    auto *archiveFolder = static_cast<CAgentFolder *>((IFolderFolder *)folderOwner);
+    const bool flat = flatView_->isChecked();
+    archiveFolder->SetFlatMode(BoolToInt(flat));
+    if (archiveFolder->LoadItems() != S_OK)
+        return;
     archiveFolder_ = folder;
     static_cast<FileTable *>(table_)->filesystem = false;
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
-    const int dirIndex = proxyArchive_.FindDir(folder);
-    if (dirIndex < 0)
-        return;
     if (archiveParents_.empty())
         recordVisitedPath(archiveDisplayPath());
     const QString prefix = folder.isEmpty() ? QString() : folder + '/';
-    const bool flat = flatView_->isChecked();
-    CAgentFolder archiveFolder(proxyArchive_, unsigned(dirIndex), flat);
-    archiveFolder.LoadItems();
     table_->setSortingEnabled(false);
-    table_->clearSelection();
-    table_->setRowCount(0);
-    for (unsigned index = 0; index < archiveFolder.GetNumberOfItems(); ++index) {
-        const CProxyItem proxyItem = archiveFolder.GetItem(index);
-        const CProxyDir &parent = proxyArchive_.Dirs[proxyItem.DirIndex];
-        const bool isDir = proxyItem.Index < parent.SubDirs.size();
-        const int realIndex = proxyArchive_.GetRealIndex(proxyItem.DirIndex, proxyItem.Index);
-        const unsigned childDir = isDir ? parent.SubDirs[proxyItem.Index] : 0;
-        ArchiveEntry entry = realIndex < 0 ? ArchiveEntry{} : entries_[realIndex];
-        entry.directory = isDir;
-        const QString name = isDir ? proxyArchive_.Dirs[childDir].Name
-                                   : proxyArchive_.Files[unsigned(realIndex)].Name;
-        const QString panelPrefix = proxyArchive_.GetDirPath_as_Prefix(proxyItem.DirIndex);
-        if (isDir) {
-            entry.path = proxyArchive_.GetDirPath_as_Prefix(childDir);
-            entry.path.chop(1);
-        }
-        const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
-        const int row = table_->rowCount();
-        table_->insertRow(row);
-        const int sourceOrder = int(index);
-        const QStringList values = {displayName,
-                                    entry.path,
-                                    entry.directory ? QString() : QString::number(entry.size),
-                                    entry.directory ? QString() : QString::number(entry.packedSize),
-                                    entry.modified,
-                                    GetExtensionPtr(QStringView(name)).toString(),
-                                    QString::number(sourceOrder)};
-        for (int col = 0; col < values.size(); ++col) {
-            auto *item = new ArchiveTableItem(values[col]);
-            item->setData(Qt::UserRole, entry.path);
-            item->setData(Qt::UserRole + 1, entry.directory);
-            item->setData(Qt::UserRole + 3, name);
-            item->setData(Qt::UserRole + 5, flat ? panelPrefix.mid(prefix.size()) : QString());
-            item->setData(Qt::UserRole + 6, sourceOrder);
-            if (isDir)
-                item->setData(Qt::UserRole + 4, childDir);
-            item->setToolTip(entry.path);
-            if (col == 0)
-                item->setIcon(QApplication::style()->standardIcon(
-                    entry.directory ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
-            if (!entry.directory && (col == 2 || col == 3))
-                item->setData(Qt::UserRole + 2, col == 2 ? entry.size : entry.packedSize);
-            if (col == 6)
-                item->setData(Qt::UserRole + 2, sourceOrder);
-            if (col == 2 || col == 3)
-                item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            table_->setItem(row, col, item);
-        }
-    }
+    app_.GetFocusedPanel().SetNewFolder(folderOwner);
+    for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
+        appendArchiveEntry(*archiveFolder, index, prefix, flat);
     table_->setSortingEnabled(true);
     applySortMode();
     path_->setText(archiveDisplayPath());
-    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(archiveFolder.GetNumberOfItems()));
+    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(archiveFolder->GetNumberOfItems()));
     refreshActions();
+}
+
+void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
+                                    bool flat) {
+    const CProxyArc &proxy = folder.GetProxy();
+    const CProxyItem proxyItem = folder.GetItem(index);
+    const CProxyDir &parent = proxy.Dirs[proxyItem.DirIndex];
+    const bool isDir = proxyItem.Index < parent.SubDirs.size();
+    const int realIndex = proxy.GetRealIndex(proxyItem.DirIndex, proxyItem.Index);
+    const unsigned childDir = isDir ? parent.SubDirs[proxyItem.Index] : 0;
+    ArchiveEntry entry = realIndex < 0 ? ArchiveEntry{} : entries_[realIndex];
+    entry.directory = isDir;
+    const QString name = isDir ? proxy.Dirs[childDir].Name : proxy.Files[unsigned(realIndex)].Name;
+    const QString panelPrefix = proxy.GetDirPath_as_Prefix(proxyItem.DirIndex);
+    if (isDir) {
+        entry.path = proxy.GetDirPath_as_Prefix(childDir);
+        entry.path.chop(1);
+    }
+    const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
+    const int row = table_->rowCount();
+    table_->insertRow(row);
+    const int sourceOrder = int(index);
+    NWindows::NCOM::CPropVariant size, packedSize;
+    folder.GetProperty(index, kpidSize, &size);
+    folder.GetProperty(index, kpidPackSize, &packedSize);
+    const QVariant sizeValue =
+        size.vt == VT_UI8 ? QVariant::fromValue(quint64(size.uhVal.QuadPart)) : QVariant();
+    const QVariant packedValue = packedSize.vt == VT_UI8
+                                     ? QVariant::fromValue(quint64(packedSize.uhVal.QuadPart))
+                                     : QVariant();
+    const QStringList values = {displayName,
+                                entry.path,
+                                entry.directory ? QString() : sizeValue.toString(),
+                                entry.directory ? QString() : packedValue.toString(),
+                                entry.modified,
+                                GetExtensionPtr(QStringView(name)).toString(),
+                                QString::number(sourceOrder)};
+    for (int col = 0; col < values.size(); ++col) {
+        auto *item = new ArchiveTableItem(values[col]);
+        item->setData(Qt::UserRole, entry.path);
+        item->setData(Qt::UserRole + 1, entry.directory);
+        item->setData(Qt::UserRole + 3, name);
+        item->setData(Qt::UserRole + 5, flat ? panelPrefix.mid(prefix.size()) : QString());
+        item->setData(Qt::UserRole + 6, sourceOrder);
+        if (isDir)
+            item->setData(Qt::UserRole + 4, childDir);
+        item->setToolTip(entry.path);
+        if (col == 0)
+            item->setIcon(QApplication::style()->standardIcon(
+                entry.directory ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+        if (!entry.directory && (col == 2 || col == 3))
+            item->setData(Qt::UserRole + 2, col == 2 ? sizeValue : packedValue);
+        if (col == 6)
+            item->setData(Qt::UserRole + 2, sourceOrder);
+        if (col == 2 || col == 3)
+            item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        table_->setItem(row, col, item);
+    }
 }
 
 void MainWindow::setState(State state) {
@@ -180,7 +207,7 @@ QStringList MainWindow::selectedArchivePaths() const {
         }
         const unsigned dirIndex = item->data(Qt::UserRole + 4).toUInt();
         std::vector<unsigned> realIndices;
-        proxyArchive_.AddRealIndices(dirIndex, realIndices);
+        archiveProxy().AddRealIndices(dirIndex, realIndices);
         for (unsigned realIndex : realIndices)
             paths << entries_[realIndex].path;
     }

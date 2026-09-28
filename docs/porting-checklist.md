@@ -371,7 +371,7 @@ outer archive/full path ownership требует следующего CFolderLin
 | Подшаг | Scope и критерий | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.2b3b3a | Source CPanel GetRealItemIndex/GetItemParam mapping; selection vector uses source indices; sorted/flat rows retain independent focus/selection and correct property consumers | P0-02.2b3b2 | done — audit § P0-02.2b3b3a; focused 7/7, ASan 2/2, check.sh 62/62; macOS 2026-09-29; teardown gate failure fixed with before-fix regression |
-| P0-02.2b3b3b | Runtime folder loading/binding for filesystem/archive, source owner indices across timer/batch/flat loading; retain responsiveness and cancellation/error behavior | P0-02.2b3b3a | todo |
+| P0-02.2b3b3b | Runtime folder loading/binding for filesystem/archive, source owner indices across timer/batch/flat loading; retain responsiveness and cancellation/error behavior | P0-02.2b3b3a | active — b1–b3 ниже |
 | P0-02.2b3b3c | All location/navigation/mutation consumers and binding teardown acceptance; document temporary fields with mandatory removal in P0-02.2b3d | P0-02.2b3b3b | todo |
 
 P0-02.2b3b3a gate выявил SIGTRAP при teardown активного 7zz listing.
@@ -380,6 +380,18 @@ ArchiveBackend останавливает callbacks/process до разруше�
 удаляет backend при активном listing и незавершённом создании, проверяет отсутствие
 completion callbacks и очистку временного архива. Это не закрывает обязательный
 полный source operation/lifecycle scope P0-02.3.
+
+P0-02.2b3b3a commit: `190abef`. Runtime loading разделён до изменения:
+
+| Подшаг | Owner, scope и критерий | После | Статус |
+| --- | --- | --- | --- |
+| P0-02.2b3b3b1 | MainWindow archive listing/navigation owns CAgent root; CPanel binds owned CAgentFolder and renders matching source indices; one proxy implementation/instance, retained nested parent context; refresh/error/cancel/flat regressions | P0-02.2b3b3a | done — audit § P0-02.2b3b3b1; focused 9/9, check.sh 62/62; 16 normal/compact JSON reports inspected; macOS 2026-09-29 |
+| P0-02.2b3b3b2 | FilesystemScanner/CFSFolder source enumeration and source-index publication; responsive normal/flat loading, cancellation/stale-generation/error handling and owned GUI handoff | P0-02.2b3b3b1 | todo |
+| P0-02.2b3b3b3 | CPanel runtime loading acceptance and direct consumers; source indices/property owners across filesystem/archive transitions and four views | P0-02.2b3b3b2 | todo |
+
+Полный BindToPath/LoadFullPath, outer+nested CFolderLink, optional interfaces,
+engine property/operation scope остаются обязательными исходными owners; readonly
+archive runtime здесь не считается полным переносом этих функций.
 
 ```text
 Parent: P?-?? — partial
