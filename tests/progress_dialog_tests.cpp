@@ -1,6 +1,7 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "layout_inspection.h"
+#include "processpriority.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QLabel>
@@ -58,7 +59,9 @@ class ProgressDialogTests : public QObject {
         QCOMPARE(text(dialog, "IDT_PROGRESS_FILES_TOTAL"), QString());
         QCOMPARE(text(dialog, "IDT_PROGRESS_PROCESSED_VAL"), QString("0"));
         QVERIFY(!messages(dialog)->isVisible());
-        QVERIFY(!dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled());
+        bool background;
+        QCOMPARE(dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled(),
+                 NProcessPriority::GetBackground(0, background) == S_OK);
         QVERIFY(!dialog.findChild<QPushButton *>("IDCANCEL")->isEnabled());
         QVERIFY(pause(dialog)->isEnabled());
         dialog.accept();

@@ -7,6 +7,15 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b2b3b restores original Background/Foreground transition and
+caption/title flow. Background is the source default button and initial focus;
+Enter on focused Pause toggles pause. Actual native failure rolls back the toggle
+and reports an error, a necessary difference from the original ignored API failure.
+Darwin owned-child external policy tests exercise refusal and successful retry.
+Normal/compact JSON/geometry covers both captions. Process priority persists
+as upstream; full modal/worker/cancel and 7zz child propagation remain mandatory.
+Windows/Linux native runtime and rendered Windows reference remain unverified.
+
 P0-02.2b3c3b2b2b2b3a restores original ProgressDialog2 taskbar target/state/value
 and cleanup calls. Source pause takes precedence over first-error state, and
 resuming restores error state while counters continue. Actual Cocoa API checks

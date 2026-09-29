@@ -286,7 +286,19 @@ if(BUILD_TESTING)
     target_link_libraries(process_priority_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME process_priority COMMAND process_priority_tests)
     set_tests_properties(process_priority PROPERTIES TIMEOUT 15)
+    qt_add_executable(progress_priority_tests tests/progress_priority_tests.cpp
+        tests/layout_inspection.cpp)
+    target_link_libraries(progress_priority_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME progress_priority COMMAND progress_priority_tests)
+    set_tests_properties(progress_priority PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
+        FIXTURES_SETUP ui_reference_progress_priority TIMEOUT 15)
     if(APPLE)
+        qt_add_executable(progress_priority_failure_tests tests/progress_priority_failure_tests.cpp)
+        target_link_libraries(progress_priority_failure_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME progress_priority_failure COMMAND progress_priority_failure_tests)
+        set_tests_properties(progress_priority_failure PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
         qt_add_executable(progress_taskbar_tests tests/progress_taskbar_tests.cpp
             tests/fixtures/dock_observer.mm tests/fixtures/dock_observer.h)
         target_link_libraries(progress_taskbar_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -319,7 +331,8 @@ if(BUILD_TESTING)
         --contract ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/progress-dialog.contract.json
         --reports ${CMAKE_BINARY_DIR}/ui-reports
         --output ${CMAKE_BINARY_DIR}/ui-reports/progress-parity.json)
-    set_tests_properties(ui_parity_progress PROPERTIES FIXTURES_REQUIRED ui_reference_progress)
+    set_tests_properties(ui_parity_progress PROPERTIES
+        FIXTURES_REQUIRED "ui_reference_progress;ui_reference_progress_priority")
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

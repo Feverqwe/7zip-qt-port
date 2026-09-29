@@ -8,6 +8,48 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b2b3b — source priority/default button (2026-09-29)
+
+Project baseline `ab289b9`; exact upstream baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` in
+[ip7z/7zip](https://github.com/ip7z/7zip). Sources:
+`CPP/7zip/UI/FileManager/ProgressDialog2.cpp` OnPriorityButton,
+SetPriorityText, SetTitleText; `.h` member declaration;
+`ProgressDialog2a.rc` DEFPUSHBUTTON Background and PUSHBUTTON Pause;
+`ProgressDialog2.rc` Foreground string. Retain original _background toggle,
+SetPriorityText call and existing copied caption/title bodies. Native priority
+request delegates to processpriority, retaining original Windows API policy
+and previously verified POSIX services. No new scheduler algorithm in widgets.
+
+Necessary deviation: original SetPriorityClass ignores failures. On native
+failure, reverse the toggle and append the real HRESULT via source
+Sync.AddError_Code_Name; the old caption/title stays truthful and original
+elapsed-second error display shows the error. Enable Background only when actual
+native GetBackground capability succeeds. Preserve original initial _background
+false assumption and process-wide policy lifetime; destructor does not reset it.
+Qt services restore source default Background, initial focus and Enter on focused
+Pause. Cancel remains disabled until full modal/worker lifecycle is ported.
+
+progress_priority checks actual native process policy, both captions/titles,
+Background Enter/default/focus, focused Pause Enter without priority change,
+restoration and normal/compact button fitting/current JSON. RAII restores the
+test process's initial native policy. progress_priority_failure owns a copied
+Unicode/space executable and uses Darwin external background enforcement to
+produce a real foreground refusal; verify toggle rollback, one source error,
+visible error controls, then remove external enforcement and verify successful
+retry. Child and policy are joined/restored on all assertion paths. Fixture
+uses app.exit rather than quit: this incomplete source view intentionally rejects
+closing until its mandatory modal/cancel lifecycle is ported. No production
+close behavior is changed. No fake native service or exposed production internals.
+
+Twenty current JSON reports map all 26 source controls, including native
+background/foreground captions at 760×450 and 640×380. Windows/Linux runtime,
+rendered Windows/Dock reference, full modal/worker/cancel/finish/error workflow
+and 7zz child policy propagation remain mandatory subsequent/platform checks.
+Focused checks passed 6/6 in 13.81 s; full check.sh formatting/build/CTest passed
+95/95 in 64.46 s on macOS 2026-09-29. All 20 current JSON reports passed source
+parity contracts; inspected button bounds/text/size hints at both sizes, no clipping.
+
 ## P0-02.2b3c3b2b2b2b3a — original taskbar lifecycle (2026-09-29)
 
 Project baseline `0a84d24`. Original baseline remains

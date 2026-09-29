@@ -22,11 +22,13 @@ GUI ownership and delegates protocol I/O. main.cpp sets the authoritative
 desktopidentity basename; installation/association ownership remains P3-05 packaging.
 The source view is not wired to MainWindow operations until mandatory modal-worker,
 cancel/finish and update-callback services are ported; existing ArchiveBackend and
-operation progress ownership remain. Background/Cancel are disabled in this subset.
+operation progress ownership remain. Background uses actual native priority
+capability; failure rolls back source state and reports through CProgressSync.
+Cancel remains disabled in this subset.
 The icon ID service embeds original FM.ico with its native frames. processpriority
 owns native process policy and owned-child PID adaptation for future 7zz transport;
 widgets do not enumerate threads or construct process API requests. Source
-background/child propagation remains required. No native engine logic is
+7zz child propagation remains required. No native engine logic is
 implemented by widgets.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices

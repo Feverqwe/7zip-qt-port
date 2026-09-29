@@ -10,7 +10,7 @@
     "CPP/7zip/UI/FileManager/ProgressDialog2.cpp": "eb3c583acf055af5ae75b75c92d8fec93ee591779a67ca9dca526c2cd1596a8c"
   },
   "controls": {
-    "IDB_PROGRESS_BACKGROUND": {"selector": {"name": "IDB_PROGRESS_BACKGROUND"}, "textAdaptation": "Fixed Russian caption; disabled until mandatory priority service port."},
+    "IDB_PROGRESS_BACKGROUND": {"selector": {"name": "IDB_PROGRESS_BACKGROUND"}, "textAdaptation": "Fixed Russian Background/Foreground captions; native capability enables the source default button."},
     "IDB_PAUSE": {"selector": {"name": "IDB_PAUSE"}, "textAdaptation": "Fixed Russian Pause/Continue captions; source pause transition."},
     "IDCANCEL": {"selector": {"name": "IDCANCEL"}, "textAdaptation": "Fixed Russian Cancel caption; disabled until mandatory modal cancel/worker port."},
     "IDT_PROGRESS_ELAPSED": {"selector": {"name": "IDT_PROGRESS_ELAPSED"}, "textAdaptation": "Fixed Russian label."},
@@ -57,6 +57,25 @@
   ],
   "states": [
     {
+      "name": "native-background",
+      "reports": ["progress-priority-760-background.json", "progress-priority-640-background.json"],
+      "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnPriorityButton", "requirement": "Background toggle updates native policy, caption and title; original default button preserved."}],
+      "assert": [
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": true},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "text", "equals": "На &передний план"},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "fullyVisible", "equals": true}
+      ]
+    },
+    {
+      "name": "native-foreground",
+      "reports": ["progress-priority-760-foreground.json", "progress-priority-640-foreground.json"],
+      "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnPriorityButton", "requirement": "Foreground restores native policy and initial caption without hiding errors."}],
+      "assert": [
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "text", "equals": "В &фоновый режим"},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "fullyVisible", "equals": true}
+      ]
+    },
+    {
       "name": "compression-no-errors",
       "reports": ["progress-dialog-760-1-0.json", "progress-dialog-640-1-0.json"],
       "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnInit", "requirement": "Error controls initially hidden; compression labels shown."}, {"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnSize", "requirement": "Retain source two columns, status/path, bar, error list and footer at normal/compact sizes."}],
@@ -65,7 +84,7 @@
         {"id": "IDL_PROGRESS_MESSAGES", "property": "visible", "equals": false},
         {"id": "IDT_PROGRESS_PACKED", "property": "visible", "equals": true},
         {"id": "IDT_PROGRESS_RATIO", "property": "visible", "equals": true},
-        {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": false},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": true},
         {"id": "IDCANCEL", "property": "enabled", "equals": false},
         {"id": "IDB_PAUSE", "property": "enabled", "equals": true},
         {"id": "IDB_PAUSE", "property": "fullyVisible", "equals": true},
@@ -114,18 +133,19 @@
       "assert": [
         {"id": "IDB_PAUSE", "property": "text", "equals": "&Продолжить"},
         {"id": "IDB_PAUSE", "property": "fullyVisible", "equals": true},
-        {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": false},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": true},
         {"id": "IDCANCEL", "property": "enabled", "equals": false}
       ]
     }
   ],
   "behavioralTests": {
-    "ctest": "^progress_dialog$",
+    "ctest": "^(progress_dialog|progress_priority|progress_priority_failure)$",
+    "CProgressDialog::OnPriorityButton": "sourceTransitionDefaultFocusAndGeometry; nativeExternalPolicyRejectsForegroundAndAllowsRetry (Darwin): native policy, caption/title, default Enter, focused Pause Enter, real refusal rollback/report/retry",
     "CProgressDialog::UpdateStatInfo": "initialUnknownStateAndUnfinishedCommands; countersRatioTitleAndUnicodePath; decompressingAndFilesProgress",
     "CProgressDialog::SetProgressRange": "sourceRangeConverterAndBackwardProgress: zero, 32767/32768, 64-bit range, completion and backward reset; nativeProgressControlClampsOutOfRangePosition checks native control boundary semantics",
     "CProgressDialog::OnPauseButton": "pauseStopsRenderingAndPreservesElapsedTime",
     "CProgressDialog::UpdateMessagesDialog": "errorLinesAppendNumberingAndClipboard",
     "CProgressDialog::OnInit": "sourceIconIDAndEmbeddedFrames: conditional default/source/invalid ID and native embedded image frames; sourceLayoutStates covers normal/compact states",
-    "scope": "Presentation subset only; mandatory native taskbar/priority and full modal/worker/cancel/finish/error integration follow in b/b3. Geometry and decoded icon frames are not Windows pixel parity."
+    "scope": "Source presentation/taskbar/priority subset; full modal/worker/cancel/finish/error and operation integration remain mandatory. Geometry and decoded icon frames are not Windows pixel parity."
   }
 }

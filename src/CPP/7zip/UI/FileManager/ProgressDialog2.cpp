@@ -6,6 +6,7 @@
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
 #include "ViewSettings.h"
+#include "processpriority.h"
 #include "qtlistview.h"
 #include <QKeyEvent>
 #include <QPushButton>
@@ -314,6 +315,10 @@ CProgressDialog::CProgressDialog(QWidget *parent, const UString &title)
 #endif
     connect(static_cast<QPushButton *>(GetItem(IDB_PAUSE)), &QPushButton::clicked, this,
             &CProgressDialog::OnPauseButton);
+    auto *background = static_cast<QPushButton *>(GetItem(IDB_PROGRESS_BACKGROUND));
+    bool nativeBackground;
+    background->setEnabled(NProcessPriority::GetBackground(0, nativeBackground) == S_OK);
+    connect(background, &QPushButton::clicked, this, &CProgressDialog::OnPriorityButton);
     GetItem(IDL_PROGRESS_MESSAGES)->installEventFilter(this);
 }
 
@@ -400,6 +405,8 @@ bool CProgressDialog::OnInit() {
     _timer = startTimer(200);
     // CheckNeedClose follows in mandatory modal-worker b3.
     SetTaskbarProgressState();
+    if (GetItem(IDB_PROGRESS_BACKGROUND)->isEnabled())
+        GetItem(IDB_PROGRESS_BACKGROUND)->setFocus();
     return true;
 }
 
@@ -802,6 +809,16 @@ void CProgressDialog::OnPauseButton() {
 void CProgressDialog::SetPriorityText() {
     SetItemText(IDB_PROGRESS_BACKGROUND, _background ? _foreground_String : _background_String);
     SetTitleText();
+}
+
+void CProgressDialog::OnPriorityButton() {
+    _background = !_background;
+    const HRESULT result = NProcessPriority::SetBackground(0, _background);
+    if (result != S_OK) {
+        _background = !_background;
+        Sync.AddError_Code_Name(result, nullptr);
+    }
+    SetPriorityText();
 }
 
 void CProgressDialog::AddMessageDirect(const wchar_t *message, bool needNumber) {

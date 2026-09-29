@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ProgressDialog2.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Complete native CProgressSync and source presentation subset; full modal
-// dialog/thread and priority/default-button integration follow separately.
+// dialog/thread and operation integration follow separately.
 #ifndef ZIP7_INC_PROGRESS_DIALOG_2_H
 #define ZIP7_INC_PROGRESS_DIALOG_2_H
 
@@ -94,7 +94,7 @@ class CProgressSync {
     bool ThereIsMessage() const { return !Messages.IsEmpty() || FinalMessage.ThereIsMessage(); }
 };
 
-// Source presentation subset. Full modal/thread/cancel and priority/default-button
+// Source presentation subset. Full modal/thread/cancel and operation
 // services remain mandatory subsequent ports; this view is not yet an app owner.
 class CProgressDialog : public CQtProgressDialog {
     bool _isDir;
@@ -200,6 +200,7 @@ class CProgressDialog : public CQtProgressDialog {
     void SetPauseText();
     void SetPriorityText();
     void OnPauseButton();
+    void OnPriorityButton();
     void EnableErrorsControls(bool enable);
     void AddMessageDirect(const wchar_t *message, bool needNumber);
     void AddMessage(const wchar_t *message);

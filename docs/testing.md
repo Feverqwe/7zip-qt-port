@@ -1,5 +1,15 @@
 # Regression strategy
 
+`progress_priority` checks real native process policy through the source
+Background/Foreground button, original default/focus/Enter and focused Pause
+Enter, title/caption restoration and normal/compact geometry/JSON. RAII restores
+the process's original policy. `progress_priority_failure` owns a Unicode/space
+child executable on Darwin and applies external native background enforcement:
+foreground failure rolls back the source toggle, reports a visible source error,
+and retries successfully after removing the external enforcement. All owned
+processes/policies are cleaned up on failure. Unsandboxed setpriority is required.
+These tests do not accept operation/7zz child propagation or full modal lifecycle.
+
 `progress_taskbar` observes native Cocoa Dock state driven by original source
 dialog counters/error/pause/resume and destructor cleanup. It also exercises
 main/parent/dialog target branches, never-shown lifetime and a destroyed main
@@ -48,9 +58,10 @@ It also checks default/invalid/source IconID and actual embedded 16/32/48 icon
 frames through windowIcon; no Windows icon rendering claim follows from that.
 Normal 760×450 and compact 640×380 tests cover compression/error/paused states,
 control visibility, label/button fitting, separation and source ordering. Its
-fixture produces 16 current-build JSON reports for `ui_parity_progress`, mapping
+fixture produces 16 current-build JSON reports; `progress_priority` adds four
+native priority reports for `ui_parity_progress`, mapping
 all 26 controls from the pinned source resource. These checks do not accept the
-pending priority/default-button or modal-worker/cancel/finish/update scope;
+pending modal-worker/cancel/finish/update scope;
 Windows rendering and Windows/Linux runtime remain unverified.
 
 `progress_statistics_helpers` compiles the authoritative progress module in a

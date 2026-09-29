@@ -110,11 +110,11 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     messages->setTextElideMode(Qt::ElideNone);
     AddControl(IDL_PROGRESS_MESSAGES, "IDL_PROGRESS_MESSAGES", messages, 8, 124, 360, 48);
     auto *background = new QPushButton(QStringLiteral("В &фоновый режим"), this);
-    background->setAutoDefault(false);
-    background->setEnabled(false); // Mandatory priority service follows in b2b2b.
+    background->setAutoDefault(true);
+    background->setDefault(true); // Source DEFPUSHBUTTON.
     AddControl(IDB_PROGRESS_BACKGROUND, "IDB_PROGRESS_BACKGROUND", background, 112, 180, 80, 16);
     auto *pause = new QPushButton(QStringLiteral("&Пауза"), this);
-    pause->setAutoDefault(false);
+    pause->setAutoDefault(true);
     AddControl(IDB_PAUSE, "IDB_PAUSE", pause, 200, 180, 80, 16);
     auto *cancel = new QPushButton(QStringLiteral("Отмена"), this);
     cancel->setAutoDefault(false);

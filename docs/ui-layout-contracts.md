@@ -311,10 +311,13 @@ line height upward to fit QLabel text. Source NormalizeSize only handles
 oversized windows/work-area overlap; it does not supply a minimum size.
 Normal 760×450 and compact 640×380 geometry tests check every visible control,
 text/button fitting and footer/list separation. `ui_parity_progress` maps all
-26 IDs to 16 JSON reports across compression/errors/paused states. Captions are
-fixed Russian; clipboard shortcuts also accept macOS Meta. Background/Cancel
-are disabled until mandatory priority/taskbar and modal cancel/worker
-services land. This view is not yet the application's operation progress owner.
+26 IDs to 20 JSON reports across compression/errors/paused and native priority
+states. Captions are fixed Russian; clipboard shortcuts also accept macOS Meta.
+Background is the source default button and receives initial focus when native
+priority capability is available; Enter on focused Pause toggles pause instead.
+Real priority failure restores the previous caption/title and reports a source
+Sync error. Cancel remains disabled until mandatory modal cancel/worker services
+land. This view is not yet the application's operation progress owner.
 No Windows rendered reference; geometry does not establish pixel parity.
 The original IconID branch loads the exact FM.ico through a Qt ID/resource
 service, including native 16/32/48 frames; default negative IDs preserve the
