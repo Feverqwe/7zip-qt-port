@@ -8,6 +8,65 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.3 — operation-state and window-close integration (accepted, 2026-09-29)
+
+Baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip. Original `CPP/7zip/UI/FileManager/FM.cpp`
+`WndProc::WM_CLOSE` supplies soft exit → revoke drop target → conditional
+CApp::Save → ReleaseApp → conditional SaveWindowInfo → hard exit. This body is
+copied at its original path through `IQtFileManagerWindowServices`;
+Qt closeEvent supplies destruction. Qt asynchronous workers are additionally
+joined before Save/ReleaseApp while folders and temporary inputs live.
+The global exit launcher becomes existing per-panel launchers. Win32 activation/
+drop registration becomes Qt deactivation/acceptDrops removal; full drag/drop
+remains P0-08. Only WM_CLOSE is ported here: startup, command dispatch and other
+message branches remain mandatory.
+
+Original FM.cpp::ExecuteCommand, App.cpp::CApp::OnCopy and PanelOperations.cpp
+retain timer/notify guards around synchronous modal operations. No upstream
+asynchronous state owner exists. QtAppOperationState holds the original CPanel
+RAII guards across worker completion for both independent panels, owned by CApp.
+Scan permits navigation while suppressing inconsistent selection notifications;
+Open/Operation block consumers. Transition retains guards, completion restores
+them after rows/selection agree, close restores them before disabling all panels.
+A scoped live-call counter rejects reentrant close that would release a caller's
+folder; modal/open close is rejected like a disabled Win32 parent. Qt enums
+remain presentation adapters; complete command policy, OnTimer and RefreshListCtrl
+remain P0-03/P0-05.
+
+ViewSettings.cpp/.h::CWindowInfo::Save/Read copy original binary record loops,
+macros, keys, flags, signed conversion and exact-size validation: Position is five
+little-endian DWORDs, Panels three. QSettings QByteArray replaces Registry binary
+values; four Int32 fields replace RECT. Wrong QVariant types are rejected.
+The close consumer supplies Qt logical normal geometry with exclusive right/
+bottom, maximized state and CApp panel/focus fields. Until P0-08 has a visible
+splitter, its saved coordinate is preserved (half width only when absent).
+Placement restoration and complete splitter behavior remain mandatory P0-08.
+
+FilesystemScanner::cancelAndWait is Qt thread quiescence, not an enumeration
+algorithm port: cancel/join/delete loaders before folder release. QPointer
+protects already queued finished callbacks: disconnect cannot remove a MetaCall.
+Backend/scanner/file/volume callbacks stop before join; terminal-state guards
+reject queued completion and deferred view/hash actions. Destructor invokes the
+native close body too, with forced quiescence if a modal child vetoed close.
+Source notices remain; repository formatting is applied separately.
+
+Focused close/owner/window-info/scanner tests passed 4/4 (1.70 s); expanded
+binding_lifecycle/ui_operations/ui_navigation/ui_archive_states and those four
+passed 8/8 (7.54 s, macOS arm64, Qt 6.11.2, 2026-09-29). `./scripts/check.sh`
+passed formatting, app/all-consumer build and 122/122 CTest (84.83 s).
+`git diff --check` passed; upstream checkout remains clean. P0-02 acceptance
+combines P0-02.1 shared state, P0-02.2 creation/focus/persistence/independence,
+P0-04.1 prerequisite native location/selection owners and P0-02.3 operation/
+close lifetime, with root/nested/address/refresh/selection/start/error/cancel/
+close consumers in the full gate. This accepts the required owner component,
+not complete App.cpp/Panel.cpp/FM.cpp modules. Historical omitted branches remain
+mandatory under P0-03 command/title policy, P0-04 remaining navigation, P0-05
+model/timer, P0-08 second visible panel/drop/placement and P1-08 editor/child
+process owners; P0-10 still requires all-consumer progress integration.
+Windows/Linux/rendered Windows parity unverified.
+No visible layout/text changes.
+
 ## P0-02.2 — application/panel lifecycle owner (accepted iteration, 2026-09-29)
 
 Baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

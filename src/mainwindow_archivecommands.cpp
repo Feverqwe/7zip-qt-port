@@ -5,6 +5,9 @@
 #include <QScopedValueRollback>
 
 void MainWindow::calculateHash(const QString &method) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if ((state_ != State::Filesystem && state_ != State::Viewing) ||
         table_->selectionModel()->selectedRows().isEmpty())
         return;
@@ -38,6 +41,9 @@ void MainWindow::calculateHash(const QString &method) {
 }
 
 void MainWindow::openArchiveFile(const QString &entry) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     viewTemporary_ = std::make_unique<QTemporaryDir>();
     if (!viewTemporary_->isValid()) {
         viewTemporary_.reset();
@@ -129,6 +135,9 @@ void MainWindow::createDialog() {
 void MainWindow::createArchive(const QString &target, const QStringList &sources,
                                const QString &password, bool encryptHeaders,
                                const CompressionOptions &options) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Filesystem || sources.isEmpty() || target.isEmpty())
         return;
     previousState_ = state_;
@@ -151,6 +160,9 @@ void MainWindow::addDialog() {
 
 void MainWindow::extractTo(const QString &destination, bool onlySelected, const QString &password,
                            const ExtractionOptions &options) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Viewing || entries_.isEmpty() || destination.isEmpty())
         return;
     QStringList names;
@@ -167,6 +179,9 @@ void MainWindow::extractTo(const QString &destination, bool onlySelected, const 
 }
 
 void MainWindow::testArchive() {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Viewing)
         return;
     previousState_ = state_;
@@ -176,6 +191,9 @@ void MainWindow::testArchive() {
 }
 
 void MainWindow::addSources(const QStringList &sources) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Viewing || !ArchiveFormats::canModify(archive_) || info_.encrypted ||
         sources.isEmpty())
         return;

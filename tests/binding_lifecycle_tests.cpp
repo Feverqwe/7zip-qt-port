@@ -43,6 +43,30 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void closingWindowStopsPendingHashBeforeReleasedOwnerCanRestartIt() {
+        LifecycleBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        openListedArchive(window, backend, "close hash lifetime.zip",
+                          {{QStringLiteral("имя й с пробелом.txt"), 6, 3}});
+        table(window)->selectRow(0);
+        action(window, "hashSHA256Action")->trigger();
+        backend.observedTemporary = backend.lastExtractDestination;
+        QVERIFY(backend.busy());
+        QVERIFY(QFileInfo::exists(backend.observedTemporary));
+        QVERIFY(window.close());
+        QCOMPARE(backend.cancelCalls, 1);
+        QVERIFY(backend.temporaryExistedOnCancel);
+        QVERIFY(!backend.busy());
+        QCOMPARE(table(window)->rowCount(), 0);
+        backend.completeList({{"late event.txt", 9, 5}});
+        QCoreApplication::processEvents();
+        QCOMPARE(backend.hashCalls, 0);
+        QCOMPARE(backend.extractCalls, 1);
+        QCOMPARE(table(window)->rowCount(), 0);
+        QVERIFY(!window.isEnabled());
+    }
+
     void transportCanStopImmediatelyAfterStart() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());

@@ -7,6 +7,9 @@
 #include <QScopedValueRollback>
 
 void MainWindow::openArchive(const QString &path) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ == State::Loading || state_ == State::Operating)
         return;
     const QFileInfo file(path);
@@ -60,6 +63,9 @@ bool MainWindow::isNestedArchive() const {
 }
 
 void MainWindow::renderBoundFolder() {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     auto &panel = app_.GetFocusedPanel();
     const auto selection = panel.TakeRefreshSelection();
     panel.LoadFullPath();
@@ -108,11 +114,13 @@ void MainWindow::renderBoundFolder() {
         QSignalBlocker block(flatView_);
         flatView_->setChecked(flatArchive_);
     }
-    setState(State::Viewing);
+    // Keep operation guards until rows and native selection agree. The enum
+    // here selects Qt presentation; the app owner still blocks commands.
+    state_ = State::Viewing;
     renderArchiveFolder();
     if (selection)
         panel.RefreshListCtrl(*selection);
-    refreshActions();
+    setState(State::Viewing);
 }
 
 void MainWindow::openSelectedInside() {
@@ -128,6 +136,9 @@ void MainWindow::openSelectedInside() {
 }
 
 void MainWindow::showArchiveFolder(const QString &folder) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     auto &panel = app_.GetFocusedPanel();
     if (panel.GetParentFolders().IsEmpty())
         return;
@@ -152,6 +163,9 @@ void MainWindow::openSelectedOutside() {
 }
 
 void MainWindow::openNestedArchive(const QString &entry) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     auto &panel = app_.GetFocusedPanel();
     UInt32 count = 0;
     if (!panel.GetFolder() || panel.GetFolder()->GetNumberOfItems(&count) != S_OK)
@@ -187,6 +201,9 @@ void MainWindow::goUp() {
 }
 
 void MainWindow::goParent() {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Viewing && state_ != State::Filesystem)
         return;
     auto &panel = app_.GetFocusedPanel();

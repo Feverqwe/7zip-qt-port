@@ -11,6 +11,10 @@
 #include "Windows/PropVariantConv.h"
 #include "qtpanelfolder.h"
 
+CApp::CApp() : _qtOperations(Panels) {}
+
+CApp::~CApp() { ReleaseApp(); }
+
 void CPanelCallbackImp::OnTab() {
     if (_app->NumPanels != 1)
         _app->Panels[1 - _index].SetFocusToList();
@@ -116,6 +120,7 @@ void CApp::SetListSettings() {
 HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &arcFormat,
                      int xSizes[2], bool needOpenArc, COpenResult &openRes,
                      IQtAppPresentation &presentation, const QString &settingsPath) {
+    _qtOperations.ResetForCreate();
     _window = window;
     _presentation = &presentation;
     _settingsPath = settingsPath;
@@ -179,6 +184,7 @@ void CApp::Save() {
 }
 
 void CApp::ReleaseApp() {
+    _qtOperations.Close();
     // 24.09: ReleasePanel() will stop panel timer processing.
     // but we want to stop timer processing for all panels
     // before ReleasePanel() calling.

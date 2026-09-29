@@ -16,6 +16,7 @@ class FilesystemScanner : public QObject {
 
     void start(const QString &directory);
     void cancel();
+    void cancelAndWait();
     bool isRunning() const;
 
   signals:

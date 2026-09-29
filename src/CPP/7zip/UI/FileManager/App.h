@@ -5,6 +5,7 @@
 #include "AppState.h"
 #include "Panel.h"
 #include "RegistryUtils.h"
+#include "qtappoperationstate.h"
 
 const unsigned kNumPanelsMax = 2;
 
@@ -43,6 +44,8 @@ class IQtAppPresentation {
 
 class CApp {
   public:
+    CApp();
+    ~CApp();
     unsigned NumPanels = 2;
     unsigned LastFocusedPanel = 0;
     bool ShowSystemMenu = false;
@@ -68,6 +71,8 @@ class CApp {
     void DragEnd();
     void Save();
     void ReleaseApp();
+    QtAppOperationState &QtOperations() { return _qtOperations; }
+    const QtAppOperationState &QtOperations() const { return _qtOperations; }
 
     unsigned GetFocusedPanelIndex() const { return LastFocusedPanel; }
     bool IsPanelVisible(unsigned index) const { return NumPanels > 1 || index == LastFocusedPanel; }
@@ -75,6 +80,7 @@ class CApp {
     void SetFocusToLastItem() { Panels[LastFocusedPanel].SetFocusToLastRememberedItem(); }
 
   private:
+    QtAppOperationState _qtOperations;
     QPointer<QWidget> _window;
     IQtAppPresentation *_presentation = nullptr;
     QString _settingsPath;

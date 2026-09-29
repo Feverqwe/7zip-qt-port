@@ -18,6 +18,24 @@ struct CListMode {
 void SavePanelPath(UInt32 panel, const UString &path, const QString &settingsPath);
 bool ReadPanelPath(UInt32 panel, UString &path, const QString &settingsPath);
 
+// RECT's four signed 32-bit coordinates, without the Win32 header dependency.
+struct CWindowRect {
+    Int32 left;
+    Int32 top;
+    Int32 right;
+    Int32 bottom;
+};
+
+struct CWindowInfo {
+    CWindowRect rect;
+    bool maximized;
+    UInt32 numPanels;
+    UInt32 currentPanel;
+    UInt32 splitterPos;
+    void Save(const QString &settingsPath) const;
+    void Read(bool &windowPosDefined, bool &panelInfoDefined, const QString &settingsPath);
+};
+
 void SaveFolderHistory(const UStringVector &folders, const QString &settingsPath);
 void ReadFolderHistory(UStringVector &folders, const QString &settingsPath);
 void SaveFastFolders(const UStringVector &folders, const QString &settingsPath);

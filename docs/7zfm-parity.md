@@ -7,6 +7,16 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.3 uses the pinned FM.cpp WM_CLOSE reference: soft external
+exit, revoke drop, save CApp, release panels, save window info, hard exit.
+Qt additionally joins asynchronous workers while their inputs still live.
+Close during a live native/modal open is ignored, like a disabled Win32 parent;
+ordinary asynchronous operation close cancels/joins and prevents late refresh.
+Binary Position/Panels storage follows ViewSettings; Qt logical coordinates replace
+WINDOWPLACEMENT. Full restore/visible splitter remains P0-08. No layout/text change;
+Windows/Linux runtime and rendered Windows parity remain unverified.
+Focused consumers passed 8/8; full gate 122/122 (84.83 s), macOS arm64 2026-09-29.
+
 P0-02.2 owner integration now creates the visible panel through source CApp/CPanel
 and restores per-panel ListMode/FlatViewArc settings. Original keys take precedence
 over migrated legacy Qt keys. Focus changes route through the panel's native

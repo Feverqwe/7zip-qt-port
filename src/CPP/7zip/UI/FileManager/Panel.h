@@ -180,6 +180,7 @@ class CPanel : public QObject {
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
     explicit CPanel(IFolderFolder *folder);
     void ReleasePanel();
+    void ExitExternalWorkers(bool hardExit);
     HRESULT Create(QWidget *mainWindow, QWidget *parentWindow, UINT id,
                    const UString &currentFolderPrefix, const UString &arcFormat,
                    CPanelCallback *panelCallback, CAppState *appState, bool needOpenArc,

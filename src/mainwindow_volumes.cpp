@@ -4,36 +4,30 @@
 #include "mainwindow.h"
 #include "qtapppresentation.h"
 #include "qtassociatedfileservices.h"
+#include <QCloseEvent>
 
 MainWindow::~MainWindow() {
     removeEventFilter(this);
     // QComboBox can emit activated from editingFinished while QWidget tears
     // down focus. Navigation must stop before MainWindow members are destroyed.
-    disconnect(pathCombo_, nullptr, this, nullptr);
-    disconnect(path_, nullptr, this, nullptr);
-    // Quiesce callbacks and process writes while temporary paths and folder
-    // members are still alive; QObject child destruction happens afterward.
-    disconnect(backend_, nullptr, this, nullptr);
-    disconnect(filesystemScanner_, nullptr, this, nullptr);
-    filesystemScanner_->cancel();
-    backend_->cancelAndWait();
-    if (fileDelete_) {
-        fileDelete_->cancel();
-        fileDelete_->wait();
+    QCloseEvent close;
+    closeEvent(&close);
+    if (!app_.QtOperations().closed()) {
+        // Destruction cannot be vetoed; retain the same input lifetime even
+        // when a modal child prevented an ordinary user close.
+        app_.QtOperations().Close();
+        for (auto &panel : app_.Panels)
+            panel.Disable_Processing_Timer_Notify_StatusBar();
+        quiesceOperations();
+        app_.Save();
+        app_.ReleaseApp();
     }
-    if (fileTransfer_) {
-        fileTransfer_->cancel();
-        fileTransfer_->wait();
-    }
-    if (volumeOperation_) {
-        volumeOperation_->cancel();
-        volumeOperation_->wait();
-    }
-    app_.Save();
-    app_.ReleaseApp();
 }
 
 void MainWindow::startVolume(VolumeOperation::Mode mode) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Filesystem || volumeOperation_ ||
         !(mode == VolumeOperation::Mode::Split ? split_ : combine_)->isEnabled())
         return;
@@ -120,6 +114,8 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             &VolumeOperation::cancel);
     connect(volumeOperation_, &VolumeOperation::result, this,
             [this](bool success, const QString &message) {
+                if (app_.QtOperations().closed())
+                    return;
                 if (volumeProgress_) {
                     volumeProgress_->close();
                     volumeProgress_->deleteLater();
@@ -136,6 +132,8 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             });
     auto *operation = volumeOperation_;
     connect(operation, &QThread::finished, this, [this, operation] {
+        if (app_.QtOperations().closed())
+            return;
         operation->deleteLater();
         if (volumeOperation_ == operation)
             volumeOperation_ = nullptr;

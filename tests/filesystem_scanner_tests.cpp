@@ -120,6 +120,34 @@ class FilesystemScannerTests : public QObject {
         scanner.reset();
         QVERIFY(completed.isEmpty() && failed.isEmpty());
     }
+    void closeTimeJoinDiscardsAlreadyQueuedCompletionAndAllowsLaterRestart() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        createFiles(temp.path(), 30);
+        FilesystemScanner scanner;
+        QSignalSpy completed(&scanner, &FilesystemScanner::completed);
+        QSignalSpy failed(&scanner, &FilesystemScanner::failed);
+        int owners = 0;
+        connect(&scanner, &FilesystemScanner::folderReady, this,
+                [&](IFolderFolder *) { ++owners; });
+        scanner.start(temp.path());
+        auto *loader = scanner.findChild<FilesystemFolderLoader *>();
+        QVERIFY(loader);
+        const QPointer<FilesystemFolderLoader> guard(loader);
+        // Block without pumping GUI events: finished is queued at this point.
+        QVERIFY(loader->wait(3000));
+        scanner.cancelAndWait();
+        QVERIFY(!scanner.isRunning());
+        QVERIFY(guard.isNull());
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::MetaCall);
+        QCoreApplication::processEvents();
+        QCOMPARE(owners, 0);
+        QVERIFY(completed.isEmpty() && failed.isEmpty());
+        scanner.start(temp.path());
+        QTRY_COMPARE(completed.size(), 1);
+        QCOMPARE(owners, 1);
+        QVERIFY(failed.isEmpty());
+    }
     void restartFromNativeProgressDiscardsOldOwner() {
         QTemporaryDir first;
         QTemporaryDir second;

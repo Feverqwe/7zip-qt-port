@@ -9,6 +9,9 @@
 #include <QScopedValueRollback>
 
 void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     const QFileInfo info(path);
     if (!info.isDir()) {
         statusBar()->showMessage("Папка не найдена: " + path);
@@ -134,6 +137,9 @@ void MainWindow::selectPaths(const QStringList &paths) {
 }
 
 void MainWindow::refreshCurrent() {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ == State::Filesystem) {
         CSelectedState selection;
         app_.GetFocusedPanel().SaveSelectedState(selection);

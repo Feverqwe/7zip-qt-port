@@ -105,12 +105,18 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
 }
 
 void MainWindow::setState(State state) {
+    const auto kind = state == State::Loading     ? QtAppOperationState::Kind::Open
+                      : state == State::Operating ? QtAppOperationState::Kind::Operation
+                      : scanningDisk_             ? QtAppOperationState::Kind::Scan
+                                                  : QtAppOperationState::Kind::Idle;
+    if (!app_.QtOperations().Begin(kind))
+        return;
     state_ = state;
     refreshActions();
 }
 
 void MainWindow::refreshActions() {
-    const bool navigating = state_ != State::Loading && state_ != State::Operating;
+    const bool navigating = !app_.QtOperations().closed() && !app_.QtOperations().blocking();
     const bool idle = navigating && !scanningDisk_;
     for (QAction *action : sortActions_)
         action->setEnabled(idle);

@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/App.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "qtfilemanagerwindowservices.h"
 #include <QDir>
 #include <QFocusEvent>
 #include <QLineEdit>
@@ -39,6 +40,95 @@ class ReleaseObservedFolder final : public IFolderFolder, public CMyUnknownImp {
 class AppLifecycleTests : public QObject {
     Q_OBJECT
   private slots:
+    void closeRetainsNativeOrderAndRejectsLiveCallers() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        OwnerPresentation presentation;
+        CApp app;
+        COpenResult opened;
+        int widths[2] = {300, 300};
+        QCOMPARE(app.Create(nullptr, ToUString(fixture.path()), UString(), widths, false, opened,
+                            presentation, fixture.filePath("close settings.ini")),
+                 S_OK);
+        QStringList events;
+        class Services final : public IQtFileManagerWindowServices {
+            CApp &app;
+            QStringList &events;
+
+          public:
+            Services(CApp &owner, QStringList &log) : app(owner), events(log) {}
+            bool CanCloseNow() const override { return true; }
+            void Deactivate() override {
+                events << "inactive";
+                app.QtOperations().Close();
+                for (auto &panel : app.Panels)
+                    panel.Disable_Processing_Timer_Notify_StatusBar();
+            }
+            void ExitExternalWorkers(bool hard) override {
+                events << (hard ? "exit-hard" : "exit-soft");
+            }
+            void RevokeDropTarget() override { events << "revoke"; }
+            void QuiesceOperations() override {
+                QVERIFY(app.Panels[0].GetFolder());
+                QVERIFY(app.Panels[1].GetFolder());
+                events << "join";
+            }
+            bool WindowWasCreated() const override { return true; }
+            void SaveWindowInfo() override {
+                QVERIFY(!app.Panels[0].GetFolder());
+                QVERIFY(!app.Panels[1].GetFolder());
+                events << "window-info";
+            }
+        } services(app, events);
+        for (unsigned i = 0; i < kNumPanelsMax; ++i)
+            app.Panels[i].SetNewFolder(new ReleaseObservedFolder([&, i] {
+                QVERIFY(!app.Panels[0].ShouldProcessNotifications());
+                QVERIFY(!app.Panels[1].ShouldProcessNotifications());
+                events << QStringLiteral("release%1").arg(i);
+            }));
+        {
+            QtAppOperationState::CallScope call(app.QtOperations());
+            QVERIFY(!WndProc(QtFileManagerMessage::Close, app, services));
+            QVERIFY(events.isEmpty());
+        }
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Open));
+        QVERIFY(!WndProc(QtFileManagerMessage::Close, app, services));
+        QVERIFY(events.isEmpty());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Operation));
+        QVERIFY(WndProc(QtFileManagerMessage::Close, app, services));
+        QCOMPARE(events, QStringList({"inactive", "exit-soft", "revoke", "join", "release0",
+                                      "release1", "window-info", "exit-hard"}));
+        QVERIFY(WndProc(QtFileManagerMessage::Close, app, services));
+        QCOMPARE(events.size(), 8);
+    }
+
+    void operationGuardsStayWithAppUntilCompletionOrRelease() {
+        CApp app;
+        CApp independent;
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Open));
+        QVERIFY(app.QtOperations().blocking());
+        for (auto &panel : app.Panels)
+            QVERIFY(!panel.ShouldProcessNotifications());
+        QVERIFY(independent.Panels[0].ShouldProcessNotifications());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Operation));
+        app.QtOperations().End();
+        QVERIFY(!app.QtOperations().active());
+        for (auto &panel : app.Panels)
+            QVERIFY(panel.ShouldProcessNotifications());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Scan));
+        QVERIFY(app.QtOperations().active());
+        QVERIFY(!app.QtOperations().blocking());
+        app.ReleaseApp();
+        QVERIFY(app.QtOperations().closed());
+        QVERIFY(!app.QtOperations().active());
+        for (auto &panel : app.Panels)
+            QVERIFY(!panel.ShouldProcessNotifications());
+        QVERIFY(!app.QtOperations().Begin(QtAppOperationState::Kind::Operation));
+        app.QtOperations().End();
+        for (auto &panel : app.Panels)
+            QVERIFY(!panel.ShouldProcessNotifications());
+    }
+
     void createdPanelCallbacksKeepIndependentFocusAndStopAfterRelease() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

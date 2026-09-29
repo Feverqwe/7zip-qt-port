@@ -90,6 +90,9 @@ class MainWindow : public QMainWindow {
 
   private:
     friend class QtAppPresentation;
+    friend class QtFileManagerWindowServices;
+    void closeEvent(QCloseEvent *event) override;
+    void quiesceOperations();
     QMenu *createMenusAndToolbar();
     void createFileActions(QMenu *menu, QToolBar *toolbar);
     void createFileExtras(QMenu *menu, QToolBar *toolbar);

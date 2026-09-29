@@ -105,6 +105,8 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/FM.cpp src/qtfilemanagerwindowservices.h
+    src/qtappoperationstate.cpp src/qtappoperationstate.h
     src/CPP/7zip/UI/FileManager/PanelDrag.cpp
     src/CPP/7zip/UI/GUI/HashGUI.cpp src/CPP/7zip/UI/GUI/HashGUI.h
     src/CPP/7zip/UI/FileManager/ExtractCallback.cpp src/CPP/7zip/UI/FileManager/ExtractCallback.h
@@ -781,6 +783,10 @@ if(BUILD_TESTING)
     set_tests_properties(app_lifecycle_window PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/app-lifecycle-window-settings.ini")
     qt_add_executable(app_lifecycle_tests tests/app_lifecycle_tests.cpp)
+    qt_add_executable(window_info_tests tests/window_info_tests.cpp)
+    target_include_directories(window_info_tests PRIVATE src)
+    target_link_libraries(window_info_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME window_info COMMAND window_info_tests)
     target_include_directories(app_lifecycle_tests PRIVATE src)
     target_link_libraries(app_lifecycle_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME app_lifecycle COMMAND app_lifecycle_tests)
@@ -917,7 +923,8 @@ get_property(engine_consumer_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(engine_consumer IN LISTS engine_consumer_targets)
     get_target_property(engine_consumer_sources ${engine_consumer} SOURCES)
     if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
-        target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h)
+        target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
+            src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp

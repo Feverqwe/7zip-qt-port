@@ -41,9 +41,19 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
 void MainWindow::connectFilesystemScanner() {
     filesystemScanner_ = new FilesystemScanner(this);
     connect(filesystemScanner_, &FilesystemScanner::folderReady, this,
-            [this](IFolderFolder *folder) { app_.GetFocusedPanel().SetNewFolder(folder); });
+            [this](IFolderFolder *folder) {
+                if (app_.QtOperations().closed())
+                    return;
+                QtAppOperationState::CallScope call(app_.QtOperations());
+                auto &panel = app_.GetFocusedPanel();
+                panel.SetNewFolder(folder);
+                panel.LoadFullPath();
+            });
     connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
             [this](const QFileInfoList &files, quint32 firstSourceIndex) {
+                if (app_.QtOperations().closed())
+                    return;
+                QtAppOperationState::CallScope call(app_.QtOperations());
                 quint32 sourceIndex = firstSourceIndex;
                 for (const QFileInfo &file : files)
                     appendFilesystemEntry(file, sourceIndex++);
@@ -51,24 +61,34 @@ void MainWindow::connectFilesystemScanner() {
                     QStringLiteral("Показано: %1 объектов…").arg(table_->rowCount()));
             });
     connect(filesystemScanner_, &FilesystemScanner::advanced, this, [this](quint64 count) {
+        if (app_.QtOperations().closed())
+            return;
         statusBar()->showMessage(QStringLiteral("Сканирование: %1 объектов…").arg(count));
     });
     connect(filesystemScanner_, &FilesystemScanner::completed, this, [this] {
+        if (app_.QtOperations().closed())
+            return;
+        QtAppOperationState::CallScope call(app_.QtOperations());
         scanningDisk_ = false;
         table_->setSortingEnabled(true);
         applySortMode();
         if (scanSelectedState_)
             app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
         scanSelectedState_.reset();
-        refreshActions();
+        setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
     });
     connect(filesystemScanner_, &FilesystemScanner::failed, this, [this](qint32) {
+        if (app_.QtOperations().closed())
+            return;
+        QtAppOperationState::CallScope call(app_.QtOperations());
         scanningDisk_ = false;
         scanSelectedState_.reset();
+        table_->clearSelection();
+        table_->setRowCount(0);
         app_.GetFocusedPanel().ReleaseFolder();
         table_->setSortingEnabled(true);
-        refreshActions();
+        setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("Не удалось прочитать папку."));
     });
 }

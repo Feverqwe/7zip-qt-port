@@ -3,11 +3,11 @@
 
 void MainWindow::connectBackend() {
     connect(backend_, &ArchiveBackend::infoReady, this, [this](const ArchiveInfo &info) {
-        if (!sourceArchiveProgress_)
+        if (!app_.QtOperations().closed() && !sourceArchiveProgress_)
             info_ = info;
     });
     connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
-        if (sourceArchiveProgress_)
+        if (app_.QtOperations().closed() || sourceArchiveProgress_)
             return;
         CPasswordDialog dialog(this);
         dialog.OnInit();
@@ -18,10 +18,12 @@ void MainWindow::connectBackend() {
         archivePassword_ = dialog.Password;
         backend_->providePassword(dialog.Password);
     });
-    connect(backend_, &ArchiveBackend::outputReceived, this,
-            [this](const QString &line) { appendJournal(line); });
+    connect(backend_, &ArchiveBackend::outputReceived, this, [this](const QString &line) {
+        if (!app_.QtOperations().closed())
+            appendJournal(line);
+    });
     connect(backend_, &ArchiveBackend::progress, this, [this](int percent, const QString &detail) {
-        if (!progress_)
+        if (app_.QtOperations().closed() || !progress_)
             return;
         if (percent >= 0)
             progress_->setValue(percent);
@@ -36,6 +38,9 @@ void MainWindow::connectBackend() {
 }
 
 void MainWindow::backendFinished(bool ok, const QString &message, bool messageDisplayed) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (sourceArchiveProgress_)
         return; // Source worker owns completion until its modal lifecycle joins.
     if (startPendingHash(ok))
@@ -65,7 +70,10 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
     appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
                   resultMessage);
     if (hashFinished && ok)
-        QTimer::singleShot(0, this, [this] { showJournal(); });
+        QTimer::singleShot(0, this, [this] {
+            if (!app_.QtOperations().closed())
+                showJournal();
+        });
     closeProgressDialog();
     if (finishArchiveState(ok))
         return;
@@ -117,7 +125,9 @@ bool MainWindow::finishArchiveState(bool ok) {
             showDirectory(directory_, false);
         else if (updatingArchive_ && ok) {
             updatingArchive_ = false;
-            setState(State::Viewing);
+            // Mutation completion and native reopen are one guarded transition.
+            // Change the presentation mode without enabling commands in between.
+            state_ = State::Viewing;
             refreshCurrent();
             return true;
         } else
@@ -139,6 +149,8 @@ void MainWindow::finishViewExtraction(bool ok) {
         pendingViewPath_.clear();
         if (ok && QFileInfo(file).isFile()) {
             QTimer::singleShot(0, this, [this, file, external, editable] {
+                if (app_.QtOperations().closed())
+                    return;
                 if (external) {
                     if (openLocalFile(file))
                         openedTemporaries_.push_back(std::move(viewTemporary_));

@@ -11,9 +11,13 @@
 
 FilesystemScanner::FilesystemScanner(QObject *parent) : QObject(parent) {}
 
-FilesystemScanner::~FilesystemScanner() {
+FilesystemScanner::~FilesystemScanner() { cancelAndWait(); }
+
+void FilesystemScanner::cancelAndWait() {
     cancel();
-    for (auto *loader : loaders_) {
+    const auto loaders = loaders_;
+    loaders_.clear();
+    for (auto *loader : loaders) {
         disconnect(loader, nullptr, this, nullptr);
         loader->cancel();
         loader->wait();
@@ -32,8 +36,13 @@ void FilesystemScanner::start(const QString &directory) {
                 if (generation == generation_ && loader == loader_)
                     emit advanced(count);
             });
-    connect(loader, &QThread::finished, this,
-            [this, loader, generation] { loaderFinished(loader, generation); });
+    const QPointer<FilesystemFolderLoader> guard(loader);
+    connect(loader, &QThread::finished, this, [this, guard, generation] {
+        // Disconnect does not remove already queued signals. A close-time join
+        // may have deleted this loader before its finished delivery reaches us.
+        if (guard)
+            loaderFinished(guard, generation);
+    });
     loader->start();
 }
 

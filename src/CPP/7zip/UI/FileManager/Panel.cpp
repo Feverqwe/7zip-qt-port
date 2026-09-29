@@ -57,6 +57,11 @@ bool CPanel::OnCreate() {
     return true;
 }
 
+void CPanel::ExitExternalWorkers(bool hardExit) {
+    if (_exitEventLauncher)
+        _exitEventLauncher->Exit(hardExit);
+}
+
 void CPanel::ReleasePanel() {
     Disable_Processing_Timer_Notify_StatusBar();
     // Local per-panel launcher replaces the original global exit owner. Join

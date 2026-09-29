@@ -73,7 +73,11 @@ per-panel keys are absent. CPanel owns source binding/creation defaults and
 processing state. MainWindow renders the bound filesystem provider without
 releasing/rebinding it, quiesces its current workers, then saves and releases
 the app owner. ReleaseApp disables all panels before any ReleasePanel call.
-Full operation-state acceptance remains P0-02.3; source command/title/drop
+P0-02.3 adds CApp-owned QtAppOperationState retaining native timer/notify guards
+through completion, and native FM WM_CLOSE through narrow Qt window services.
+Close stops callbacks and joins workers before folder release, saves native app/
+window records and becomes terminal; modal/live callers reject reentrant close.
+Owner/lifecycle acceptance passed P0-02.3; source command/title/drop
 routing, periodic model refresh and the second visible panel remain their
 mandatory P0-03/P0-05/P0-08 owners.
 
@@ -90,10 +94,10 @@ complete external-open and command/navigation acceptance remain mandatory.
 
 ArchiveBackend::cancelAndWait is the transport quiescence boundary for destruction:
 stop process writes before a window releases temporary source/destination paths.
-MainWindow disconnects backend/scanner callbacks before invoking it; backend
+MainWindow disconnects backend/scanner/file/volume callbacks before invoking it; backend
 completion retains operation-specific cancellation cleanup. Ordinary cancel remains
 asynchronous. Source CApp/panel/parent-stack release is connected; complete
-operation-state and window-close acceptance remains mandatory P0-02.3.
+operation-state and window-close consumers passed P0-02.3 acceptance.
 
 The owned-provider/selected-consumer lifecycle is a prerequisite for native stack
 integration. Broader runtime acceptance stays open until original parent/path

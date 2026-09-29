@@ -14,6 +14,9 @@ QString MainWindow::selectedCopyInfo() {
     return panel.GetItemsInfoString(indices);
 }
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
+    if (app_.QtOperations().closed())
+        return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Filesystem || !QFileInfo(destination).isDir() ||
         QFileInfo(destination).isSymLink() || sources.isEmpty()) {
         QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
@@ -28,11 +31,15 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
     connect(fileTransferProgress_, &QProgressDialog::canceled, fileTransfer_,
             &FileTransferOperation::cancel);
     connect(fileTransfer_, &FileTransferOperation::currentFile, this, [this](const QString &path) {
+        if (app_.QtOperations().closed())
+            return;
         if (fileTransferProgress_)
             fileTransferProgress_->setLabelText(QFileInfo(path).fileName());
     });
     connect(fileTransfer_, &FileTransferOperation::result, this,
             [this](bool success, const QString &message) {
+                if (app_.QtOperations().closed())
+                    return;
                 if (fileTransferProgress_) {
                     fileTransferProgress_->close();
                     fileTransferProgress_->deleteLater();
@@ -45,6 +52,8 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
             });
     auto *operation = fileTransfer_;
     connect(operation, &QThread::finished, this, [this, operation, sources] {
+        if (app_.QtOperations().closed())
+            return;
         operation->deleteLater();
         if (fileTransfer_ == operation)
             fileTransfer_ = nullptr;

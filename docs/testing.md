@@ -1,5 +1,17 @@
 # Regression strategy
 
+`app_lifecycle` additionally checks app-owned operation guard lifetime, independent
+owners and source WM_CLOSE order: caller/open rejection, join while folders live,
+disable-all before release, window-info/hard-exit ordering and idempotence.
+`app_lifecycle_window` checks ordinary close, late completion, closed-window open
+rejection, native geometry records and modal-open caller survival. `window_info`
+checks fixed original Position/Panels bytes, signed coordinates, independent
+records, malformed sizes and wrong QVariant types. `binding_lifecycle` closes
+during hash extraction: cancel sees live temporary input, join completes and
+late success cannot start hash or refill released rows. `filesystem_scanner`
+joins an already finished loader with its finished callback still queued, drains
+MetaCalls without use-after-free and starts a fresh scan afterward.
+
 `app_lifecycle` checks the source Create/CreateOnePanel, per-panel settings/focus,
 creation failure, early non-archive return and all-panel disable-before-release.
 `app_lifecycle_window` checks joined archive startup success/failure/cancel,

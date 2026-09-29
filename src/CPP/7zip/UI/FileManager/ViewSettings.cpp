@@ -3,8 +3,70 @@
 // QSettings replaces Registry. Callers supply the INI path; GUI-thread access
 // needs no Win32 critical section. Only upstream-named keys are read.
 #include "ViewSettings.h"
+#include "../C/CpuArch.h"
+#include "Common/MyBuffer.h"
 
 #include <QSettings>
+
+#define Set32(p, v) SetUi32(((Byte *)p), v)
+#define SetBool(p, v) Set32(p, ((v) ? 1 : 0))
+#define Get32(p, dest) dest = GetUi32((const Byte *)p);
+#define Get32_LONG(p, dest) dest = (Int32)GetUi32((const Byte *)p);
+#define GetBool(p, dest) dest = (GetUi32(p) != 0);
+
+static const char *const kPositionValueName = "Position";
+static const char *const kPanelsInfoValueName = "Panels";
+static const UInt32 kWindowPositionHeaderSize = 5 * 4;
+static const UInt32 kPanelsInfoHeaderSize = 3 * 4;
+
+void CWindowInfo::Save(const QString &settingsPath) const {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    {
+        Byte buf[kWindowPositionHeaderSize];
+        Set32(buf, (UInt32)rect.left);
+        Set32(buf + 4, (UInt32)rect.top);
+        Set32(buf + 8, (UInt32)rect.right);
+        Set32(buf + 12, (UInt32)rect.bottom);
+        SetBool(buf + 16, maximized);
+        key.setValue(kPositionValueName,
+                     QByteArray(reinterpret_cast<const char *>(buf), kWindowPositionHeaderSize));
+    }
+    {
+        Byte buf[kPanelsInfoHeaderSize];
+        Set32(buf, numPanels);
+        Set32(buf + 4, currentPanel);
+        Set32(buf + 8, splitterPos);
+        key.setValue(kPanelsInfoValueName,
+                     QByteArray(reinterpret_cast<const char *>(buf), kPanelsInfoHeaderSize));
+    }
+}
+
+static bool QueryBuf(QSettings &key, const char *name, CByteBuffer &buf, UInt32 dataSize) {
+    const QVariant value = key.value(QString::fromLatin1(name));
+    if (value.metaType().id() != QMetaType::QByteArray)
+        return false;
+    const QByteArray bytes = value.toByteArray();
+    if (bytes.size() != dataSize)
+        return false;
+    buf.CopyFrom(reinterpret_cast<const Byte *>(bytes.constData()), dataSize);
+    return true;
+}
+
+void CWindowInfo::Read(bool &windowPosDefined, bool &panelInfoDefined,
+                       const QString &settingsPath) {
+    windowPosDefined = false;
+    panelInfoDefined = false;
+    QSettings key(settingsPath, QSettings::IniFormat);
+    CByteBuffer buf;
+    if (QueryBuf(key, kPositionValueName, buf, kWindowPositionHeaderSize)) {
+        Get32_LONG(buf, rect.left) Get32_LONG(buf + 4, rect.top) Get32_LONG(buf + 8, rect.right)
+            Get32_LONG(buf + 12, rect.bottom) GetBool(buf + 16, maximized) windowPosDefined = true;
+    }
+    if (QueryBuf(key, kPanelsInfoValueName, buf, kPanelsInfoHeaderSize)) {
+        Get32(buf, numPanels) Get32(buf + 4, currentPanel) Get32(buf + 8, splitterPos)
+            panelInfoDefined = true;
+    }
+}
 
 static const char *const kCopyHistoryValueName = "CopyHistory";
 static const char *const kFolderHistoryValueName = "FolderHistory";

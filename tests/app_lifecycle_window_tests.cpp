@@ -129,6 +129,63 @@ class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport 
         QCOMPARE(modes.Panels[1], 0u);
         QVERIFY(!ReadFlatView(0, settings));
     }
+
+    void closeSavesGeometryAndIgnoresQueuedCompletion() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.setGeometry(40, 60, 720, 480);
+        window.show();
+        QCoreApplication::processEvents();
+        const QRect geometry = window.geometry();
+        // A worker can finish after close was requested. Its deferred signal
+        // must neither refresh the released folder nor display an error dialog.
+        QMetaObject::invokeMethod(
+            &backend, [&backend] { emit backend.finished(false, QStringLiteral("late failure")); },
+            Qt::QueuedConnection);
+        QVERIFY(window.close());
+        const int rows = table(window)->rowCount();
+        QCOMPARE(rows, 0);
+        QCoreApplication::sendPostedEvents(nullptr, QEvent::MetaCall);
+        QCoreApplication::processEvents();
+        QCOMPARE(table(window)->rowCount(), rows);
+        QVERIFY(!window.isEnabled());
+        QVERIFY(!window.acceptDrops());
+        const int calls = backend.listCalls;
+        window.openArchive(QStringLiteral("closed.zip"));
+        QCOMPARE(backend.listCalls, calls);
+        QVERIFY(window.close());
+        CWindowInfo info{};
+        bool position = false, panels = false;
+        info.Read(position, panels, qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QVERIFY(position);
+        QVERIFY(panels);
+        QCOMPARE(info.rect.left, geometry.x());
+        QCOMPARE(info.rect.top, geometry.y());
+        QCOMPARE(info.rect.right, geometry.x() + geometry.width());
+        QCOMPARE(info.rect.bottom, geometry.y() + geometry.height());
+        QCOMPARE(info.numPanels, 1u);
+    }
+
+    void sourceModalOpenCannotReleaseItsCaller() {
+        QTemporaryDir fixture;
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        const QString archive = fixture.filePath("close during open.zip");
+        QVERIFY(backend.prepareArchiveFixture(archive));
+        bool attempted = false;
+        backend.queueListAction([&] {
+            attempted = true;
+            QVERIFY(!window.close());
+            QVERIFY(window.isEnabled());
+            backend.completeList({ArchiveEntry{"имя с пробелом.txt", 1, 1}});
+        });
+        window.openArchive(archive);
+        QVERIFY(attempted);
+        QCOMPARE(table(window)->rowCount(), 1);
+        QVERIFY(window.close());
+        QVERIFY(!backend.busy());
+    }
 };
 
 QTEST_MAIN(AppLifecycleWindowTests)

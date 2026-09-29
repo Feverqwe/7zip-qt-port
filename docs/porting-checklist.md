@@ -58,8 +58,8 @@ N/A отдельной ветки не закрывает весь пакет, �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **1/44 завершённых пакетов; 43 остаются** (2026-09-28).
-P0: 1/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory,
+Текущий счёт: **2/44 завершённых пакетов; 42 остаются** (2026-09-29).
+P0: 2/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory, P0-02 как owners/lifecycle;
 обязательные функциональные порты не закрыты этим аудитом.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -72,14 +72,14 @@ P0: 1/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory,
 открытые строки, перечисленные в карте, **входят в новые результаты**, а не
 закрываются сменой структуры. Их дочерние строки — внутренний список работ;
 отдельных новых завершений или коммитов для helpers/методов/ресурсов не будет.
-У всех текущих итераций owner — этот чат. Счёт parent packages остаётся 1/44.
+У всех текущих итераций owner — этот чат. После P0-02.3 счёт parent packages — 2/44.
 
 | Рабочий ID | Целый результат и критерий приёмки | Точные prerequisites / исторический открытый scope | Статус |
 | --- | --- | --- | --- |
 | P0-10.1 | Подключённый общий source progress/callback component: CProgressDialog/CProgressThreadVirt, modal/finish/error/cancel-confirm, pause/background и реальные worker/process capabilities; необходимые UpdateCallbackGUI2/UpdateCallback100Imp bodies, первый реальный consumer через ArchiveBackend, замена его прежнего progress owner; success/failure/cancel/exception/prompt races, source text/normal/compact JSON и focused/full gate | Досрочный prerequisite для P0-04.1 changed-file update; принятые native folder/provider contracts, processing guards и sync/platform services из historical P0-02 достаточны, полные P0-02/P0-03 не требуются для этого компонента. Входит открытый P0-02.2b3c3b2b (включая b3b/b3c) и P0-02.2b3c3b2c; уже done helpers/services не переносятся повторно | done — audit § P0-10.1; integrated Add/drop, native callbacks/control/worker lifetime; focused 9/9 15.81 с, later affected archive checks 1.24/1.26 с; check.sh 101/101 72.05 с; 24 JSON states/26 controls; macOS arm64 2026-09-29, Windows/Linux runtime unverified; P0-10.2 и parent приёмка обязательны |
 | P0-04.1 | Source navigation/parent-stack component: OpenAsArc, CFolderLink, CloseOneLevel/CloseOpenFolders, изменённые временные файлы и update prompt, CThreadCopyFrom/OnOpenItemChanged, BindToPath/LoadFullPath; current root/nested/address/parent consumers используют один native owner без Qt ArchiveParent/location дубликатов; password/failure/cancel/temp lifetime и UX проверены | Досрочный prerequisite для завершения P0-02 owners. После P0-10.1 и принятых typed providers/selection contracts. Входят открытые P0-02.2b3c/.2b3d, .2b3c3b2d/.2b3c3b3 и remaining navigation portions .2b3b3c3; progress/callback часть принадлежит P0-10.1 | done — audit § P0-04.1; root/nested/address/parent native consumers, changed nested success/failure/cancel, exact result/journal, selection/temp lifetime; check.sh 119/119 58.65 с; 16 normal/compact archive JSON; macOS arm64 2026-09-29. Known/editor/child-process P1-08, routing P0-03 и full P0-04 parent обязательны; Windows/Linux unverified |
 | P0-02.2 | Один полностью подключённый CApp/CPanel owner: Create/CreateOnePanel/ReleaseApp, independent panel state, focus/selection/location contracts, all-panel disable-before-release; MainWindow остаётся Qt presentation, teardown/refresh/navigation consumers проверены | После P0-04.1; existing P0-02.1/selected/provider evidence сохранены. Входит remaining own lifecycle P0-02.2c и owner-only portions .2b/.2b3/.2b3b; navigation/FS/progress код учитывается у соседних owners | done — audit § P0-02.2; native Create/CreateOnePanel/OnCreate/Save/ReleaseApp/ReleasePanel, per-panel focus/settings, startup success/failure/cancel и direct consumers; check.sh 121/121 85.30 с, 16 normal/compact JSON; macOS arm64 2026-09-29. P0-02.3/full parent, command/title/drop/model owners обязательны; Windows/Linux unverified |
-| P0-02.3 | Application/panel operation-state component и полная P0-02 приёмка: start/error/cancel/window-close порядок, quiescence до освобождения owners, независимые экземпляры и сквозные consumer checks | После P0-02.2 и P0-10.1. Входит прежний P0-02.3 и remaining owner teardown/operation consumers; routing rules остаются P0-03 | todo |
+| P0-02.3 | Application/panel operation-state component и полная P0-02 приёмка: start/error/cancel/window-close порядок, quiescence до освобождения owners, независимые экземпляры и сквозные consumer checks | После P0-02.2 и P0-10.1. Входит прежний P0-02.3 и remaining owner teardown/operation consumers; routing rules остаются P0-03 | done — audit § P0-02.3; native WM_CLOSE/operation guards/CWindowInfo, scanner/backend/file/volume quiescence; focused 8/8 7.54 с, check.sh 122/122 84.83 с macOS arm64 2026-09-29. Parent P0-02 принят; P0-03/04/05/08/10 и P1-08 omitted scopes обязательны, Windows/Linux unverified |
 | P0-05 | Полный filesystem model/enumeration/flat component с текущими consumers, source property/filter/load bodies, scheduling/cancel/stale batches и большим deterministic fixture; принятые source enumeration/provider части используются как evidence | После P0-02/P0-04 по parent плану; ранее досрочно выполненные FS portions P0-02.2b3b2/.2b3b3b/.2b3b3c зафиксированы только в их фактическом scope. Их remaining FS части входят сюда, remaining navigation — P0-04.1 | partial — ранний source enumeration/property port подтверждён historical evidence, полный пакет не принят |
 | P0-10.2 | Общий progress/messages для всех archive/filesystem/volume consumers: удалить разрозненные progress/journal owners, сохранить сообщения/partial results и destruction/cancel races; полная P0-10 приёмка и актуальные geometry/contracts | После P0-10.1, P0-02/P0-03 и требуемых model consumers; необходимые transport/callback dependencies — внутренние работы результата, engine не переписывается | todo |
 
@@ -108,7 +108,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | done — audit § P0-01.4; .1–.4 done; 2026-09-28 macOS docs-only diff/112 paths/33 vendor byte matches |
-| [ ] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | active — текущий чат, 2026-09-28; подшаги ниже |
+| [x] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | done — audit § P0-02.3 parent acceptance; .1/.2/.3 и native location prerequisite, full gate 122/122; macOS 2026-09-29, Windows/Linux unverified |
 | [ ] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | todo |
 | [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | partial — ранние native prerequisites имеют historical evidence; remaining P0-04.1 укрупнён в карте, parent ждёт полной command/navigation приёмки |
 | [ ] | P0-05 | FSFolder enumeration/model/flat view | P0-02, P0-04 | partial — ранний source enumeration/provider scope принят historical checks; remaining полный FS компонент в карте, parent ещё не принят |
@@ -285,19 +285,20 @@ P0-01.3d4a commit: `8a1f3e2`.
 P0-01.3d4b commit: `b35a90a`.
 P0-01.3d4c commit: `415513c`.
 
-Следующий доступный пакет: **P0-02**. Source inventory .1–.4 завершён;
+Следующий доступный пакет: **P0-03**. Source inventory .1–.4 и P0-02 owners завершены;
 P0-01 done. Inventory не закрывает обязательные функциональные порты P0–P3.
 
 ### P0-02 — owners и panel state
 
 Owner: текущий чат, 2026-09-28. Upstream baseline как P0-01.
-Parent остаётся open до source bodies, интеграции и consumer checks всех частей.
+Parent принят после source bodies, интеграции и consumer checks .1/.2/.3;
+старые открытые соседние scopes сохраняются у owners карты укрупнения.
 
 | Подшаг | Результат и критерии | После | Статус |
 | --- | --- | --- | --- |
 | P0-02.1 | CAppState из AppState.h: общие history/favorites owner, Read/Save, window integration; независимость instances, persistence, history/bookmark consumer tests | P0-01 | done — audit § P0-02.1; 2026-09-28 macOS build dev, focused 5/5 и check.sh 54/54 |
 | P0-02.2 | CApp/CPanel lifecycle, location и panel focus/selected state; один panel через owners, separate instances для P0-08; source bodies + navigation/selection consumer checks | P0-02.1 | done — integrated scope/evidence в карте укрупнения и audit § P0-02.2; P0-02.3/full parent остаются обязательными |
-| P0-02.3 | Operation start/error/cancel/close state ownership через panel/application adapters; сквозные consumer checks, architecture/audit/parity, parent acceptance | P0-02.2 | todo |
+| P0-02.3 | Operation start/error/cancel/close state ownership через panel/application adapters; сквозные consumer checks, architecture/audit/parity, parent acceptance | P0-02.2 | done — integrated component, focused 8/8 и check.sh 122/122; карта укрупнения/audit § P0-02.3, 2026-09-29 macOS |
 
 P0-01.4 commit: `36fad59`. P0-02.1 project baseline `36fad59`, exact source
 revision и copied/adapted scope в audit. Checks: `./scripts/build.sh dev`,
