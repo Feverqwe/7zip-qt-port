@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c1a restores original native single-item cleanup and Windows readonly
+attribute handling under the Qt path wrapper. POSIX remove() accepts an empty
+directory whereas Windows DeleteFile rejects it; current UI directory commands
+still route through their directory owner. No layout/text change. Native parent
+stack and complete filesystem/reparse/alternate-stream workflows remain mandatory.
+
 P0-02.2b3b3c3c3 accepts the bounded owned-provider/selected-consumer lifecycle
 prerequisite. Full native parent/path/navigation, all-panel release, operation
 state and platform acceptance remain open; no runtime/text/layout change is made.

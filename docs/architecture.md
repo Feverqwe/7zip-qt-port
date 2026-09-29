@@ -73,15 +73,18 @@ accessor supplies immutable full Path values by archive index; window path/
 directory/proxy presentation roles and entries_ are not this consumer's metadata
 source. QStringList conversion and overlap deduplication are integration glue.
 The current 7zz flat directory expansion flag remains explicit until source
-Extract integration; single-item/filesystem/hash-result path consumers are
-following migration work.
+Extract integration. Selected single-item/filesystem/hash-result paths now use
+source helpers; focused open/navigation and full context/parent paths remain
+mandatory migration work.
 The existing supplied archive Modified text is retained as sparse MTimeText
 compatibility data, advertised as VT_BSTR rather than pretending it is FILETIME.
 Native archive time parsing/precision/timezone work remains P0-03/P0-04.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single
-FileDir owner, whose GetCurrentDir has source Windows/POSIX bodies. These services
+FileDir owner, whose GetCurrentDir, native DeleteFileAlways and RemoveDir retain
+source Windows/POSIX bodies. The Qt deletion path wrapper delegates to the native
+function; Windows readonly handling uses original SetFileAttrib. These services
 are prerequisites for CFSFolder binding. Recursive scanning now uses the source
 folder in a Qt worker; normal window listing calls that same folder synchronously.
 `CFSFolder` owns FString/CFileInfo metadata and exposes the source read-only

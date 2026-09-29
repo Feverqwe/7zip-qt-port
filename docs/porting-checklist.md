@@ -306,8 +306,21 @@ Owner всех частей: текущий чат; exact upstream baseline не
 | --- | --- | --- | --- |
 | P0-02.2b3a | Unchanged IFolder/IStream/IProgress declarations, MyCom/MyUnknown/MyInitGuid и PropVariant; partial ClassDefs GUID owner; compile/runtime checks interface identity, refcount lifetime и Unicode property ownership | P0-02.2b2 | done — audit § P0-02.2b3a; focused 2/2, check.sh 57/57, vendor bytes 42/42 |
 | P0-02.2b3b | Narrow folder adapters для Qt/backend snapshot, CPanel folder binding и path/property source bodies; filesystem/archive location ownership и regression consumers | P0-02.2b3a | active — b1–b3 ниже |
-| P0-02.2b3c | CTempFileInfo/CFolderLink и root/nested parent stack, source close/pop/cleanup ordering; cancellation/failure/temp-lifetime checks | P0-02.2b3b2, P0-02.2b3b3c3c | todo — provider/selected-consumer prerequisites accepted; full runtime parent stays open through b3d |
+| P0-02.2b3c | CTempFileInfo/CFolderLink и root/nested parent stack, source close/pop/cleanup ordering; cancellation/failure/temp-lifetime checks | P0-02.2b3b2, P0-02.2b3b3c3c | active — a–d below; provider/selected-consumer prerequisites accepted, full runtime parent stays open through b3d |
 | P0-02.2b3d | BindToPath/LoadFullPath/parent navigation source scope и flat-mode owner, window integration без duplicate state, all location consumers; b3 acceptance | P0-02.2b3c | todo |
+
+Native parent-stack work is split before code. Preserve original structs, paths,
+names and close/update/pop order; inspect additional dependencies before each
+functional port and subdivide if needed. No omitted mandatory branch is N/A.
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c1 | Original platform cleanup and library-transfer prerequisites for CTempFileInfo/CFolderLink; exact native types and narrow Qt boundary; a/b below | P0-02.2b3b2, P0-02.2b3b3c3c | active |
+| P0-02.2b3c1a | Windows/FileDir.cpp original typed DeleteFileAlways/RemoveDir and required Windows SetFileAttrib; Qt deletion wrapper delegates instead of independent readonly logic; Unicode/spaces/readonly/missing/nonempty/symlink regressions and direct consumers | P0-02.2b3b3c3c | done — audit § P0-02.2b3c1a; focused 6/6, check.sh 78/78; macOS 2026-09-29; Windows/Linux runtime unverified |
+| P0-02.2b3c1b | Windows/DLL CLibrary original load/free/LoadEx plus source transfer/copy guard for parent links across platforms; deterministic local library fixture, failure/idempotence/lifetime checks; omitted module-path helpers explicit | P0-02.2b3c1a | todo |
+| P0-02.2b3c2 | Original CTempFileInfo/CFolderLink types and cleanup/change detection/parent ownership, required native time comparison; copied versus platform adaptations documented and public behavior checks | P0-02.2b3c1 | todo |
+| P0-02.2b3c3 | Original source parent stack and CloseOneLevel/CloseOpenFolders/OpenParentArchiveFolder functional bodies, required update dependencies and root/nested runtime integration; split before code if needed | P0-02.2b3c2 | todo |
+| P0-02.2b3c4 | Root/nested cancel/failure/pop/temp/update lifetime acceptance, direct consumers, source omissions review; parent closure only after complete mandatory scope | P0-02.2b3c3 | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

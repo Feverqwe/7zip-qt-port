@@ -8,6 +8,46 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c1a — native single-item temporary cleanup prerequisite (2026-09-29)
+
+Project baseline `0aa7401`; exact source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy original CPP/Windows/FileDir.cpp DeleteFileAlways and RemoveDir bodies for
+Windows/POSIX, plus required Windows SetFileAttrib. Preserve original CFSTR/
+DWORD signatures, NFind::GetFileAttrib, readonly-file attribute clearing, directory
+guard, Win98/Unicode main-path branches and long-path fallback through existing
+source FileName GetSuperPath. POSIX retains remove/rmdir directly. Source comments
+and notices remain; project formatting is the only functional-body difference.
+
+Adaptations are header/include paths and the existing namespace layout. QString
+DeleteFileAlways now only converts native separators/Unicode through us2fs and
+delegates; its independent QFileInfo/QFile readonly policy is removed. Each native
+borrowed function has one implementation. This prerequisite introduces no archive
+operation or path parser and keeps widgets behind their operation owners.
+
+The broader FileDir port remains partial: recursive Qt RemoveDirWithSubItems and
+other FileDir functions/time/attributes/copy/temp services remain mandatory in
+their filesystem/platform operation owners and P3-05 closure. This does not port
+CTempFileInfo/CFolderLink yet; those follow library support and native time review.
+Source POSIX DeleteFileAlways uses remove(), so it can remove an empty directory;
+Windows uses DeleteFile and rejects that target. Retain this source platform
+contract rather than invent a shared policy. Current UI directory routing remains
+in its existing directory operation owner.
+
+New filesystem_cleanup validates typed/native and Qt-boundary readonly Unicode/
+space files, repeated/missing deletion, nonempty directory/file rejection and
+empty directory removal/platform contract. POSIX symlink cleanup removes file/
+directory links while retaining target bytes and a readonly target. Actual Windows
+reparse/alternate-stream/link acceptance remains mandatory P2-05/P1-10/P3-03.
+No layout/text change; native single-item cleanup is a dependency, not a completed
+parent-stack or complete filesystem operation workflow claim.
+
+Validation macOS arm64, 2026-09-29: native filesystem/app/direct consumer targets
+built; focused 6/6 passed (2.53 s) after direct-consumer relinking; mandatory
+check.sh 78/78 (42.58 s), formatting and git diff --check passed. Windows bodies
+are copied with their original branches but Windows compilation/runtime and Linux
+runtime remain unverified locally. Source/vendor counts are unchanged.
+
 ## P0-02.2b3b3c3c3 — combined bounded acceptance and dependency ordering (2026-09-29)
 
 Project baseline `1189a8299fc65327bc1fbaef73063ac66df1b042`; upstream remains

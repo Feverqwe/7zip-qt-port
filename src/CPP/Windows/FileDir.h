@@ -7,6 +7,11 @@
 
 namespace NWindows::NFile::NDir {
 bool GetCurrentDir(FString &path);
+bool DeleteFileAlways(CFSTR path);
+bool RemoveDir(CFSTR path);
+#ifdef _WIN32
+bool SetFileAttrib(CFSTR path, DWORD attrib);
+#endif
 bool DeleteFileAlways(const QString &path);
 bool RemoveDirWithSubItems(const QString &path,
                            const std::function<bool(const QString &)> &checkBreak = {});

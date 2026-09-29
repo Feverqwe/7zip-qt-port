@@ -1,5 +1,11 @@
 # Regression strategy
 
+`filesystem_cleanup` checks original native DeleteFileAlways/RemoveDir and the
+Qt path wrapper with readonly Unicode/space files, missing/repeated deletion,
+nonempty/file directory targets and source platform-specific empty-directory
+semantics. POSIX links are deleted without changing readonly target bytes.
+Windows reparse/alternate-stream/link runtime remains a separate mandatory scope.
+
 `binding_lifecycle` verifies selected consumers across archive replacement,
 cancelled extraction, failed/cancelled listing and filesystem return in normal/
 flat/four views. It checks disabled loading commands, owner-specific metadata/
