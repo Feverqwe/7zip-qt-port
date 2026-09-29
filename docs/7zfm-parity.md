@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3c1 verifies selected consumers across archive replacement, cancelled
+extraction and failed/cancelled listing back to filesystem. Loading disables
+selected commands; requests follow the current source owner and temporary hash
+extraction cleanup completes. No layout/text change; full native navigation,
+outer stack and operation teardown remain mandatory.
+
 P0-02.2b3b3c3b3e verifies selected versus unselected focus and replacement empty-folder
 owner at the Create input boundary. No layout/text change. The audit lists every
 remaining focused open/navigation, selection restoration, drag/icon and duplicate

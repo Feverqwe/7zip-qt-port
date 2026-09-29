@@ -8,6 +8,35 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3c1 — bound consumer replacement/failure/cancel acceptance (2026-09-29)
+
+Project baseline `3a82e8d`; source ip7z/7zip remains
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+No functional source body is added or changed: acceptance targets the existing
+source CPanel selection/property/path binding and owned CAgent/CFSFolder adapters.
+Original PanelFolderChange ReleaseFolder/SetNewFolder and PanelItems operated
+selection/path bodies establish the owner boundary; Qt loading/backend events
+remain integration code until full source BindToPath/LoadFullPath/outer stack.
+
+New binding_lifecycle public-window tests cover normal/flat/four views and both
+failed/cancelled listing. Loading clears rows and disables selected commands.
+Cancelled archive hash extraction removes its temporary directory and retains
+the correct owner/selection for another extraction. A replacement archive supplies
+its own metadata and paths despite forged presentation roles. Failed/cancelled
+subsequent listing returns to the filesystem owner; hash requests its original
+Unicode/space path without issuing stale archive extraction. Fixtures use local
+temporary files and controlled backend signals, without services or user archives.
+
+This validates provider/selected-consumer transitions, not complete native
+navigation, command dispatch, full interface catalog or shutdown. Teardown and
+operation quiescence follow c3c2; outer-stack/source path integration remains
+mandatory P0-02.2b3c/d and final parent acceptance stays open.
+
+Validation macOS arm64, 2026-09-29: affected lifecycle target built; focused
+7/7 passed (8.11 s), mandatory check.sh 77/77 (32.44 s), formatting and
+git diff --check passed. No visible layout/text change or source/vendor inventory
+change; Windows/Linux runtime remains unverified.
+
 ## P0-02.2b3b3c3b3e — selected-consumer acceptance and remaining boundaries (2026-09-29)
 
 Project baseline `6ac6746`; exact original source remains ip7z/7zip

@@ -418,7 +418,7 @@ port stays P0-02.2b3c/d; no old borrowed compatibility branch is declared N/A.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3a | CAgentFolder owned lifecycle only: remove test-only external-proxy constructor/Init and child/parent/catalog compatibility branches; migrate fixtures to source-owned CAgent factory; surviving child/parent/catalog and unbound failure checks | P0-02.2b3b3c2 | done — audit § P0-02.2b3b3c3a; focused 10/10, check.sh 72/72; macOS 2026-09-29 |
 | P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | done — b1–b3 verified; selected-consumer scope only; remaining focused navigation/context consumers explicitly mandatory b3c/d |
-| P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | todo |
+| P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | active — a–c below; selected consumer boundary commit 3a82e8d |
 
 Selection translation prerequisites split before implementation. Original Extract
 flat-folder expansion policy and unsupported proxy2/alternate streams remain
@@ -441,6 +441,16 @@ native/outer path stack are not considered accepted by these narrower consumers.
 | P0-02.2b3b3c3b3c | Archive single-item rename/view/edit and hash-result selected targets consume source names/full prefixes/indices; success/failure/cancel direct regressions, remaining open/navigation owner inventory | P0-02.2b3b3c3b3b | done — audit § P0-02.2b3b3c3b3c; focused 9/9, check.sh 75/75; macOS 2026-09-29 |
 | P0-02.2b3b3c3b3d | Filesystem selected paths and relevant single-item consumers use owned source paths; native Unicode/flat/sorted/source-index/operation regressions without inventing path algorithms | P0-02.2b3b3c3b3c | done — audit § P0-02.2b3b3c3b3d; focused 3/3 and expanded 8/8, check.sh 76/76; macOS 2026-09-29 |
 | P0-02.2b3b3c3b3e | Remaining consumer acceptance and documented dependency boundary to full source BindToPath/LoadFullPath/parent stack; close only verified scope | P0-02.2b3b3c3b3d | done — audit § P0-02.2b3b3c3b3e; focused 7/7, check.sh 76/76; macOS 2026-09-29; full native location consumers stay mandatory |
+
+Consumer lifecycle acceptance is split before code. This is the bound-provider/
+selected-consumer prerequisite for native parent/path integration, not completion
+of remaining focused navigation or duplicate context fields.
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3b3c3c1 | Public consumer regressions across archive replacement, failed/cancelled listing, retained owner after cancelled extraction, and filesystem return; source paths/indices, disabled loading commands, no stale requests/temporary paths | P0-02.2b3b3c3b | done — audit § P0-02.2b3b3c3c1; focused 7/7, check.sh 77/77; macOS 2026-09-29 |
+| P0-02.2b3b3c3c2 | Teardown operation quiescence and temporary/folder lifetime ordering; inspect source ReleaseApp/ReleasePanel/CloseOpenFolders and current backend/thread destruction, adapt only Qt/7zz services and add deterministic destruction regressions | P0-02.2b3b3c3c1 | todo |
+| P0-02.2b3b3c3c3 | Combined lifecycle acceptance, explicit remaining source stack/interfaces/command obligations and dependency ordering; close only validated provider/selected-consumer scope | P0-02.2b3b3c3c2 | todo |
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 

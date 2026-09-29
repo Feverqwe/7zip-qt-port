@@ -1,5 +1,12 @@
 # Regression strategy
 
+`binding_lifecycle` verifies selected consumers across archive replacement,
+cancelled extraction, failed/cancelled listing and filesystem return in normal/
+flat/four views. It checks disabled loading commands, owner-specific metadata/
+paths under forged presentation roles, no stale archive requests and temporary
+cleanup. Controlled backend fixtures and local Unicode/space files are used;
+full native navigation and operation teardown are separate mandatory scopes.
+
 `filesystem_selection_runtime` checks source paths through hash and Create input
 in normal/flat/four views after sorting and Properties, with Unicode/spaces and
 duplicate basenames. Forged row path/type roles cannot replace original targets;
