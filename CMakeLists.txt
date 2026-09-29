@@ -19,6 +19,7 @@ add_custom_command(OUTPUT "${resource_strings_header}"
 qt_standard_project_setup()
 
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
+    src/CPP/Windows/DLL.cpp src/CPP/Windows/DLL.h
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
@@ -32,6 +33,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
+target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 if(WIN32)
     target_link_libraries(sevenzip_common PUBLIC oleaut32 uuid)
 endif()
@@ -196,6 +198,15 @@ if(BUILD_TESTING)
     qt_add_executable(filesystem_cleanup_tests tests/filesystem_cleanup_tests.cpp)
     target_link_libraries(filesystem_cleanup_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME filesystem_cleanup COMMAND filesystem_cleanup_tests)
+    add_library(native_library_fixture SHARED tests/fixtures/native_library_fixture.c)
+    set_target_properties(native_library_fixture PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+    qt_add_executable(native_library_tests tests/native_library_tests.cpp)
+    target_include_directories(native_library_tests PRIVATE src)
+    target_link_libraries(native_library_tests PRIVATE sevenzip_common Qt6::Test)
+    target_compile_definitions(native_library_tests PRIVATE
+        "NATIVE_LIBRARY_FIXTURE=\"$<TARGET_FILE:native_library_fixture>\"")
+    add_dependencies(native_library_tests native_library_fixture)
+    add_test(NAME native_library COMMAND native_library_tests)
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

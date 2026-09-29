@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c1b compiles original CLibrary lifetime/loading and extends POSIX with
+original Windows parent-link transfer/copy guard. No displayed behavior changes;
+native parent-stack integration follows. Module-path/resource services and
+Windows/Linux runtime remain mandatory, unverified local scopes.
+
 P0-02.2b3c1a restores original native single-item cleanup and Windows readonly
 attribute handling under the Qt path wrapper. POSIX remove() accepts an empty
 directory whereas Windows DeleteFile rejects it; current UI directory commands

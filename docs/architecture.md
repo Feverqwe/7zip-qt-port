@@ -39,6 +39,12 @@ availability are separate subsequent migration scopes.
 
 ## Repository boundary
 
+sevenzip_common owns original native CLibrary loading/free and procedure lookup.
+POSIX parent-link transfer/copy guard uses the original Windows method bodies;
+there is one adapted DLL owner. This is a parent-stack lifetime dependency, not
+in-process archive engine integration. Module-path/resource services remain
+mandatory separate ports; ArchiveBackend retains all archive transport.
+
 PropertyName retains source resource/custom/numeric lookup. The non-Z7_LANG
 LangUtils resource fallbacks call the adapted ResourceString service in
 sevenzip_panel. Native Win32 LoadString storage is replaced by a build-generated

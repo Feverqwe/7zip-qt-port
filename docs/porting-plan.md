@@ -57,11 +57,11 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 отдельной 7zG/console-программы. Они должны получить явное решение о переносе,
 адаптации или неприменимости, а не автоматически копироваться целиком.
 
-Дополнительно есть 6 зеркальных `.cpp` вне этой таблицы:
+Дополнительно есть 7 зеркальных `.cpp` вне этой таблицы:
 `CPP/Common/Wildcard.cpp`, `CPP/Windows/FileDir.cpp`,
-`CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/ResourceString.cpp`,
+`CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/DLL.cpp`, `CPP/Windows/ResourceString.cpp`,
 `CPP/7zip/Common/MethodProps.cpp`.
-Всего в `src/CPP` — 39 `.cpp`.
+Всего в `src/CPP` — 40 `.cpp`.
 В корне `src/` — 37 `.cpp` Qt/integration; это не 37 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
 В `third_party/7zip` — 66 файлов, побайтово совпадающих с теми же путями baseline,

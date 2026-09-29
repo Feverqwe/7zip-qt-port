@@ -1,5 +1,11 @@
 # Regression strategy
 
+`native_library` loads a compiled local shared-library fixture copied to a Unicode/
+space path. It checks source Free/Load/lookup, missing/failed reload, copy guard,
+detached/replacement ownership and destructor unload. Windows-only LoadEx coverage
+is present for Windows runtime. Module-path/resource helpers and archive plugin/
+engine integration are separate mandatory scopes; no service or user data is used.
+
 `filesystem_cleanup` checks original native DeleteFileAlways/RemoveDir and the
 Qt path wrapper with readonly Unicode/space files, missing/repeated deletion,
 nonempty/file directory targets and source platform-specific empty-directory

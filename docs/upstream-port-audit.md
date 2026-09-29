@@ -8,6 +8,48 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c1b — native library lifetime/transfer prerequisite (2026-09-29)
+
+Project baseline `3bfe67e`; exact original source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy CPP/Windows/DLL.cpp CLibrary Free/Load Windows and POSIX functional bodies,
+Windows LoadEx and POSIX GetProcAddress. Preserve HMODULE/CFSTR/DWORD signatures,
+Free-before-load, failed unload retaining its handle, Win98/Unicode selection,
+native dlopen flags/dlsym/dlclose and boolean return contracts. Header retains
+original platform class branches, names and module ownership.
+
+Required adaptation: source FileManager CFolderLink transfers Library via
+Attach/Detach after copying an empty link; upstream POSIX CLibrary lacks those
+methods and the Windows loaded-copy guard. Copy original Windows constructor
+guard (integer exception 20230102), IsLoaded and Attach/Detach bodies into the
+POSIX class. No new transfer algorithm or Qt loader is introduced. Include paths,
+notices and project formatting are local adaptations. sevenzip_common builds
+one authoritative DLL implementation and links CMAKE_DL_LIBS where required.
+
+Partial scope: MyGetModuleFileName/GetModuleDirPrefix are declared but not ported
+here, not marked N/A. DLL.cpp's module-path implementation is Windows-only and
+uses g_hInstance; upstream POSIX directory-prefix implementation belongs to
+UI/Common/ArchiveCommandLine.cpp and its Console-supplied g_ModuleDirPrefix.
+These are not dependencies of parent-link library lifetime. Their resource/tool/
+language/options/help callers remain mandatory P1-08/P1-13/P1-14/P1-15/P3-05.
+No production in-process archive engine/plugin loading is introduced; 7zz remains
+behind ArchiveBackend. Original CFolderLink/stack integration follows c2/c3.
+
+New native_library uses a compiled local C shared-library fixture with one exported
+constant-return function. Tests copy it to a Unicode/space path and check failed/
+empty load, missing procedure, source loaded-copy rejection, detached transfer,
+replacement ownership, repeated Free, failed reload releasing the prior module
+and destructor unload. Windows-only LoadEx/transfer coverage is present but its
+runtime remains unverified locally. This tests source lifetime/loader contracts,
+not full archive workflows or module-path services. No displayed UI changes.
+
+Validation macOS arm64, 2026-09-29: app/native-library/cleanup/lifecycle/typed-folder
+targets built; focused 5/5 passed (2.68 s), mandatory check.sh 79/79 (46.93 s),
+formatting and git diff --check passed. Source support count increases to seven
+mirrored CPP modules (40 total, UI remains 33); root Qt glue stays 37 and vendor
+dependencies/resources stay 66 plus original License. Windows compilation/LoadEx
+runtime and Linux runtime remain unverified locally.
+
 ## P0-02.2b3c1a — native single-item temporary cleanup prerequisite (2026-09-29)
 
 Project baseline `0aa7401`; exact source ip7z/7zip
