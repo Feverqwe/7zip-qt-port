@@ -66,6 +66,8 @@ ProgressDialog2 owns complete original CProgressSync counters, native critical
 section, pause/stop and error accumulation. Its POSIX pause sleep is a narrow Qt
 platform service. Full CProgressDialog/CProgressThreadVirt and operation UI remain
 mandatory later ports; the current QProgressDialog frontend is still migration debt.
+Original GetTimeString is the native duration formatter for that presentation;
+source progress/update resource tables use the same generated resource owner.
 POSIX parent-link transfer/copy guard uses the original Windows method bodies;
 there is one adapted DLL owner. This is a parent-stack lifetime dependency, not
 in-process archive engine integration. Module-path/resource services remain

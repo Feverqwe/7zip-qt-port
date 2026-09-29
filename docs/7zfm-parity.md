@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b1 ports original progress duration formatting/resources and extracts
+the exact desktop progress resource reference. Source control order/grouping is
+recorded; no displayed view has changed or passed full progress acceptance yet.
+Qt geometry/state and Windows rendered parity remain unverified for that view.
+
 P0-02.2b3c3b2a2 compiles complete original CProgressSync native pause/stop/counter/
 error state. POSIX pause waits use the same 100 ms interval through a Qt platform
 sleep service. No displayed progress UI changes yet; original modal progress,

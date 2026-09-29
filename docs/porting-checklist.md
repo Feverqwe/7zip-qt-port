@@ -352,7 +352,7 @@ chat owns all scopes; avoid independent Qt implementations of upstream state.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2a | Original portable Windows/Synchronization/Thread/C Threads and ErrorMsg prerequisites; CProgressSync fields and full methods in mirrored ProgressDialog2, narrow platform sleep service; pause/resume/stop/null counters/unknown state/native errors/thread lifetime regressions | P0-02.2b3c3b1 | done — a1/a2 verified; full modal progress/callback/update remains mandatory b–d |
-| P0-02.2b3c3b2b | Original CProgressThreadVirt Process/Create and required CProgressDialog lifecycle/presentation adapted to Qt; modal background work, final error handling, cancel/pause and thread joins; original resource/text normal/compact geometry and deterministic failures | P0-02.2b3c3b2a | todo |
+| P0-02.2b3c3b2b | Original CProgressThreadVirt Process/Create and required CProgressDialog lifecycle/presentation adapted to Qt; modal background work, final error handling, cancel/pause and thread joins; original resource/text normal/compact geometry and deterministic failures | P0-02.2b3c3b2a | active — b1–b3 split below before code |
 | P0-02.2b3c3b2c | Original UpdateCallbackGUI2/UpdateCallback100Imp interfaces and full required callback bodies; progress/error/password/move/stop/reopen contracts through source synchronization, preserve remaining mandatory callback/engine owners | P0-02.2b3c3b2b | todo |
 | P0-02.2b3c3b2d | Original CThreadCopyFrom/OnOpenItemChanged with typed folder operation/ArchiveBackend boundary and update acceptance; source path/index/password handling, success/failure/cancel preserving temporary ownership before caller cleanup | P0-02.2b3c3b2c | todo |
 
@@ -360,6 +360,17 @@ chat owns all scopes; avoid independent Qt implementations of upstream state.
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2a1 | Unchanged C/Threads.c, Windows Thread/Synchronization/Handle headers and complete ErrorMsg cpp/h; native threading link and deterministic event/lock/join/reuse/error formatting regressions, exact byte comparison | P0-02.2b3c3b1 | done — audit § P0-02.2b3c3b2a1; focused 4/4, check.sh 83/83, vendor bytes 76/76; macOS 2026-09-29 |
 | P0-02.2b3c3b2a2 | Complete original CProgressSync in mirrored ProgressDialog2, original native types/synchronization/error owners with narrow sleep adaptation; pause/resume/stop/counters/null/unknown/error/final-message checks and direct consumers; no full dialog acceptance claim | P0-02.2b3c3b2a1 | done — audit § P0-02.2b3c3b2a2; focused 3/3, check.sh 84/84, all functional bodies compare equal after formatting/sleep adaptation; macOS 2026-09-29 |
+
+Progress resources/handlers inspected before new presentation code: original view
+has two statistic columns, status/file path, progress bar, error list and ordered
+Background/Pause/Cancel controls. Rendering resources do not prove Windows pixels.
+Current chat owns the following prerequisites and complete modal implementation.
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2b1 | Original GetTimeString and unchanged progress/control/operation resources, strict generator supports source brace-delimited tables; generated upstream view reference, duration/overflow/metadata and generator regressions; no dialog acceptance claim | P0-02.2b3c3b2a | done — audit § P0-02.2b3c3b2b1; pre-change generator regression failed, focused 4/4, check.sh 85/85, vendor bytes 82/82 and source function match; macOS 2026-09-29 |
+| P0-02.2b3c3b2b2 | Original CProgressDialog presentation/statistics/range/title/message/pause/background functional bodies and Qt widget/platform adapters; source grouping/order and text spec, normal/compact geometry/JSON with current source counter states; full omitted modal/worker lifecycle remains b3 | P0-02.2b3c3b2b1 | todo |
+| P0-02.2b3c3b2b3 | Complete CProgressDialog Create/WaitCreating/finish/cancel/error lifecycle and original CProgressThreadVirt Process/Create, native workers/joins and required Qt platform services; modal success/failure/exception/cancel/pause/finish-during-prompt and combined view acceptance; split before code if needed | P0-02.2b3c3b2b2 | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

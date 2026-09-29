@@ -8,7 +8,45 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
-## P0-02.2b3c3b2a2 — complete native CProgressSync state (2026-09-29)
+## P0-02.2b3c3b2b1 — source progress resources and duration formatter (2026-09-29)
+
+Project baseline `20f5b1e`; exact source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy original ProgressDialog2.cpp GetTimeString and UINT_TO_STR_2 macro into the
+existing mirrored module, retaining UInt64 hours, two-digit minute/second logic,
+unbounded hour conversion above 99 and caller-supplied native buffer. Declaration
+is available at the production header boundary for progress presentation. Native
+IntToString is reused; only include paths, notices and formatting differ.
+
+Vendor unchanged ProgressDialog2Res.h/ProgressDialog2.rc/ProgressDialog2a.rc,
+GUI/resource3.h/.rc and CPP/7zip/GuiCommon.rc at their original paths. The resource
+generator now accepts source BEGIN/END or brace-delimited STRINGTABLE pairs and
+requires matching end delimiters. Mixed-resource opt-in and strict table parsing
+remain unchanged; malformed/missing/nested tables fail before replacing output.
+Progress and update-operation tables join the generated resource bundle; fixed
+Russian pause/continue/foreground/cancel/close and operation captions adapt the
+existing UI language boundary. Full CLang loading remains P1-14.
+
+Generate docs/ui-reference/progress-dialog.reference.json with the existing
+extractor from the exact upstream resource/handlers and shared includes. It
+records IDD_PROGRESS, all controls, hashes and the desktop profile; no resource
+data is hand-authored. It establishes source grouping/order, not Qt or Windows
+appearance acceptance. Full statistic/rendering/title/messages/pause/background/
+modal/cancel/thread/finish/error integration remains mandatory b2/b3 and P0-10/
+P1-11; no progress view is accepted by this prerequisite alone.
+
+New progress_format tests zero/second/minute/hour boundaries, 99→100 hours,
+32/64-bit maximum durations, termination/buffer guard and native caption lookup.
+Generator regressions cover original brace tables, mismatched delimiters/nesting
+and output preservation. Testing the new fixture against the pre-change generator
+reproduces rejection of a valid brace table. No displayed view changes occur.
+Validation macOS arm64, 2026-09-29: affected app/progress-format/sync/formatter
+targets built; focused 4/4 passed (1.00 s), mandatory check.sh format/build/85 CTest
+passed (45.11 s), git diff --check passed. GetTimeString tokens match original
+after formatting; exact vendor source/resource/license comparison 82/82 with no
+differences (81 dependencies/resources plus License). Reference extraction produced
+one original desktop dialog with exact pinned hashes. Source/root CPP counts stay
+42/37. Windows/Linux runtime and full Qt progress view remain unverified.
 
 Project baseline `674ec1d`; original CPP/7zip/UI/FileManager/ProgressDialog2.h/.cpp
 at ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, retrievable from

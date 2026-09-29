@@ -11,12 +11,15 @@ find_package(Threads REQUIRED)
 set(property_name_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/PropertyName.rc")
 set(extract_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GUI/Extract.rc")
 set(file_manager_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/resource.rc")
+set(progress_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/ProgressDialog2.rc")
+set(update_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GUI/resource3.rc")
 set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
 add_custom_command(OUTPUT "${resource_strings_header}"
-    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource}"
-        "-DMIXED_RESOURCE_FILES=${file_manager_resource}"
+    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource}"
+        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource}"
         "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
-    DEPENDS "${property_name_resource}" "${extract_resource}" "${file_manager_resource}" scripts/rc_strings.cmake
+    DEPENDS "${property_name_resource}" "${extract_resource}" "${file_manager_resource}"
+        "${progress_resource}" "${update_resource}" scripts/rc_strings.cmake
     VERBATIM)
 
 qt_standard_project_setup()
@@ -235,6 +238,9 @@ if(BUILD_TESTING)
     target_link_libraries(progress_sync_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME progress_sync COMMAND progress_sync_tests)
     set_tests_properties(progress_sync PROPERTIES TIMEOUT 10)
+    qt_add_executable(progress_format_tests tests/progress_format_tests.cpp)
+    target_link_libraries(progress_format_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME progress_format COMMAND progress_format_tests)
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

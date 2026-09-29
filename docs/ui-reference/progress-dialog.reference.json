@@ -1,0 +1,656 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "resource": "CPP/7zip/UI/FileManager/ProgressDialog2.rc",
+  "profile": "desktop; RC_INVOKED; UNDER_CE undefined; SDK constants symbolic",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/ProgressDialog2.rc": "fab7aa68a2061d84d6acf28914b1c9f4d585512e1f75e8168170d9256508b3f0",
+    "CPP/7zip/UI/FileManager/ProgressDialog2Res.h": "b3f045bed1642029e2f02d28b5b655f850a65c9adae4dc0c27ac3511782e3655",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/ProgressDialog2a.rc": "e72a5064d4f46c063c2b002b46129c935bb14dc573c5d388f391c162850f3d1b",
+    "CPP/7zip/UI/FileManager/ProgressDialog2.cpp": "eb3c583acf055af5ae75b75c92d8fec93ee591779a67ca9dca526c2cd1596a8c"
+  },
+  "opaqueIncludes": [
+    "CommCtrl.h",
+    "windows.h"
+  ],
+  "dialogs": [
+    {
+      "id": "IDD_PROGRESS",
+      "caption": "Progress",
+      "boundsDLU": [
+        0,
+        0,
+        376,
+        204
+      ],
+      "controls": [
+        {
+          "id": "IDB_PROGRESS_BACKGROUND",
+          "kind": "DEFPUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "&Background",
+          "boundsDLU": [
+            112,
+            180,
+            80,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDB_PAUSE",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "&Pause",
+          "boundsDLU": [
+            200,
+            180,
+            80,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDCANCEL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "Cancel",
+          "boundsDLU": [
+            288,
+            180,
+            80,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_ELAPSED",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Elapsed time:",
+          "boundsDLU": [
+            8,
+            8,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_REMAINING",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Remaining time:",
+          "boundsDLU": [
+            8,
+            19,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_FILES",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Files:",
+          "boundsDLU": [
+            8,
+            30,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_ERRORS",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Errors:",
+          "boundsDLU": [
+            8,
+            52,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_TOTAL",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Total size:",
+          "boundsDLU": [
+            206,
+            8,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_SPEED",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Speed:",
+          "boundsDLU": [
+            206,
+            19,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_PROCESSED",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Processed:",
+          "boundsDLU": [
+            206,
+            30,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_PACKED",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Compressed size:",
+          "boundsDLU": [
+            206,
+            41,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_RATIO",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Compression ratio:",
+          "boundsDLU": [
+            206,
+            52,
+            90,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_PROGRESS_ELAPSED_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            98,
+            8,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_REMAINING_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            98,
+            19,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_FILES_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            98,
+            30,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_FILES_TOTAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            98,
+            41,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_ERRORS_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            98,
+            52,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_TOTAL_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            296,
+            8,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_SPEED_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            296,
+            19,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_PROCESSED_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            296,
+            30,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_PACKED_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            296,
+            41,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_RATIO_VAL",
+          "kind": "RTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            296,
+            52,
+            72,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_STATUS",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            64,
+            360,
+            8
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_PROGRESS_FILE_NAME",
+          "kind": "CONTROL",
+          "qtClass": null,
+          "text": "",
+          "boundsDLU": [
+            8,
+            76,
+            360,
+            24
+          ],
+          "style": "SS_NOPREFIX | SS_LEFTNOWORDWRAP"
+        },
+        {
+          "id": "IDC_PROGRESS1",
+          "kind": "CONTROL",
+          "qtClass": null,
+          "text": "Progress1",
+          "boundsDLU": [
+            8,
+            100,
+            360,
+            16
+          ],
+          "style": "PBS_SMOOTH | WS_BORDER"
+        },
+        {
+          "id": "IDL_PROGRESS_MESSAGES",
+          "kind": "CONTROL",
+          "qtClass": null,
+          "text": "List1",
+          "boundsDLU": [
+            8,
+            124,
+            360,
+            48
+          ],
+          "style": "LVS_REPORT | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP"
+        }
+      ]
+    }
+  ],
+  "behaviorSymbols": {
+    "CPP/7zip/UI/FileManager/ProgressDialog2.cpp": [
+      "CProgressDialog::OnButtonClicked",
+      "CProgressDialog::OnCancel",
+      "CProgressDialog::OnExternalCloseMessage",
+      "CProgressDialog::OnInit",
+      "CProgressDialog::OnMessage",
+      "CProgressDialog::OnNotify",
+      "CProgressDialog::OnOK",
+      "CProgressDialog::OnPauseButton",
+      "CProgressDialog::OnPriorityButton",
+      "CProgressDialog::OnSize",
+      "CProgressDialog::OnTimer"
+    ]
+  },
+  "behaviorCandidates": [
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 265,
+      "code": "ShowCompressionInfo(true),"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 299,
+      "code": "window.SetText((UString)s + MainTitle);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 332,
+      "code": "void CProgressDialog::EnableErrorsControls(bool enable)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 334,
+      "code": "ShowItem_Bool(IDT_PROGRESS_ERRORS, enable);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 335,
+      "code": "ShowItem_Bool(IDT_PROGRESS_ERRORS_VAL, enable);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 336,
+      "code": "ShowItem_Bool(IDL_PROGRESS_MESSAGES, enable);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 339,
+      "code": "bool CProgressDialog::OnInit()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 393,
+      "code": "SetText(_title);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 402,
+      "code": "EnableErrorsControls(false);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 431,
+      "code": "return CModalDialog::OnInit();"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 449,
+      "code": "bool CProgressDialog::OnSize(WPARAM /* wParam */, int xSize, int ySize)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 478,
+      "code": "ChangeSubWindowSizeX(GetItem(IDT_PROGRESS_STATUS), xSize - mx * 2);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 479,
+      "code": "ChangeSubWindowSizeX(GetItem(IDT_PROGRESS_FILE_NAME), xSize - mx * 2);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 480,
+      "code": "ChangeSubWindowSizeX(GetItem(IDC_PROGRESS1), xSize - mx * 2);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 518,
+      "code": "MoveItem(IDCANCEL, xPos, yPos, bSizeX, _buttonSizeY);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 520,
+      "code": "MoveItem(IDB_PAUSE, xPos, yPos, bSizeX, _buttonSizeY);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 522,
+      "code": "MoveItem(IDB_PROGRESS_BACKGROUND, xPos, yPos, bSizeX, _buttonSizeY);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 564,
+      "code": "MoveItem(kIDs[i], x, yPos, labelSize, sY);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 565,
+      "code": "MoveItem(kIDs[i + 1], x + labelSize, yPos, valueSize, sY);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 571,
+      "code": "void CProgressDialog::OnCancel() { Sync.Set_Stopped(true); }"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 572,
+      "code": "void CProgressDialog::OnOK() { }"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 640,
+      "code": "void CProgressDialog::ShowSize(unsigned id, UInt64 val, UInt64 &prev)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 649,
+      "code": "SetItemText(id, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 746,
+      "code": "ShowSize(IDT_PROGRESS_TOTAL_VAL, total, _totalBytes_Prev);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 758,
+      "code": "SetItemText(IDT_PROGRESS_ELAPSED_VAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 769,
+      "code": "SetItemText(IDT_PROGRESS_ERRORS_VAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 773,
+      "code": "EnableErrorsControls(true);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 785,
+      "code": "SetItemText(IDT_PROGRESS_REMAINING_VAL, L\"\");"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 799,
+      "code": "SetItemText(IDT_PROGRESS_REMAINING_VAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 825,
+      "code": "SetItemText(IDT_PROGRESS_SPEED_VAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 854,
+      "code": "SetItemText(IDT_PROGRESS_FILES_VAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 866,
+      "code": "SetItemText(IDT_PROGRESS_FILES_TOTAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 876,
+      "code": "ShowSize(IDT_PROGRESS_PROCESSED_VAL, completed, _processed_Prev);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 877,
+      "code": "ShowSize(IDT_PROGRESS_PACKED_VAL, UNDEFINED_VAL, _packed_Prev);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 881,
+      "code": "ShowSize(IDT_PROGRESS_PROCESSED_VAL, unpackSize, _processed_Prev);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 882,
+      "code": "ShowSize(IDT_PROGRESS_PACKED_VAL, packSize, _packed_Prev);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 895,
+      "code": "SetItemText(IDT_PROGRESS_RATIO_VAL, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 908,
+      "code": "SetItemText(IDT_PROGRESS_STATUS, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 931,
+      "code": "SetItemText(IDT_PROGRESS_FILE_NAME, s1);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 935,
+      "code": "bool CProgressDialog::OnTimer(WPARAM /* timerID */, LPARAM /* callback */)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 991,
+      "code": "bool CProgressDialog::OnExternalCloseMessage()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 998,
+      "code": "// SetText(L\"Finished2 \");"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1002,
+      "code": "SetItemText(IDCANCEL, LangString(IDS_CLOSE));"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1050,
+      "code": "bool CProgressDialog::OnMessage(UINT message, WPARAM wParam, LPARAM lParam)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1081,
+      "code": "return CModalDialog::OnMessage(message, wParam, lParam);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1121,
+      "code": "SetText(s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1126,
+      "code": "SetItemText(IDB_PAUSE, Sync.Get_Paused() ? _continue_String : _pause_String);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1130,
+      "code": "void CProgressDialog::OnPauseButton()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1144,
+      "code": "SetItemText(IDB_PROGRESS_BACKGROUND, _background ?"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1150,
+      "code": "void CProgressDialog::OnPriorityButton()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1234,
+      "code": "bool CProgressDialog::OnButtonClicked(unsigned buttonID, HWND buttonHWND)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1293,
+      "code": "return CModalDialog::OnButtonClicked(buttonID, buttonHWND);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp",
+      "line": 1318,
+      "code": "bool CProgressDialog::OnNotify(UINT /* controlID */, LPNMHDR header)"
+    }
+  ],
+  "limitations": [
+    "DLU are not pixels; combo height includes dropdown extent",
+    "Behavior candidates are navigation hints, not a C++ semantic analysis",
+    "No Windows rendering, focus or tab-order verification"
+  ]
+}

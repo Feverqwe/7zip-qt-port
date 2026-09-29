@@ -8,6 +8,8 @@
 #include "Windows/ErrorMsg.h"
 #include "Windows/Synchronization.h"
 
+void GetTimeString(UInt64 timeValue, wchar_t *s);
+
 struct CProgressMessageBoxPair {
     UString Title;
     UString Message;

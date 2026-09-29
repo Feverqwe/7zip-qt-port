@@ -1,5 +1,10 @@
 # Regression strategy
 
+`progress_format` checks original native duration formatting across hour/UInt64
+boundaries and source progress/update captions. Generator cases also check paired
+brace tables and output preservation. The extracted progress resource reference
+does not accept a Qt view until its own current-build geometry/state checks exist.
+
 `progress_sync` checks source unknown/null counters, scan/status/native paths,
 paused native workers resumed or cancelled, callback abort/reopen state and error/
 final-message accumulation. Workers join before state destruction and CTest is

@@ -58,6 +58,11 @@ files, otherwise extraction fails. Commit and dependency hash equality with the
 reviewed contract is checked during comparison. Compare a new extraction with
 the stored reference before updating either baseline or contract.
 
+`progress-dialog.reference.json` records the exact desktop IDD_PROGRESS resource,
+its shared inputs and reviewed handler navigation index. It is a source reference
+prerequisite; Qt mapping/state contracts and current-build reports follow the full
+progress view port. Its presence alone proves no rendering or workflow parity.
+
 The maintained baseline is upstream
 [`ip7z/7zip` at `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 `copy-dialog.reference.json` is generated resource data and short source

@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ProgressDialog2.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ProgressDialog2.h"
+#include "Common/IntToString.h"
 #include "Common/StringConvert.h"
 #ifndef _WIN32
 #include <QThread>
@@ -168,4 +169,31 @@ void CProgressSync::AddError_Code_Name(HRESULT systemError, const wchar_t *name)
     if (systemError == 0)
         s = "Error";
     AddError_Message_Name(s, name);
+}
+
+#define UINT_TO_STR_2(val)                                                                         \
+    {                                                                                              \
+        s[0] = (wchar_t)('0' + (val) / 10);                                                        \
+        s[1] = (wchar_t)('0' + (val) % 10);                                                        \
+        s += 2;                                                                                    \
+    }
+
+void GetTimeString(UInt64 timeValue, wchar_t *s) {
+    UInt64 hours = timeValue / 3600;
+    UInt32 seconds = (UInt32)(timeValue - hours * 3600);
+    UInt32 minutes = seconds / 60;
+    seconds %= 60;
+    if (hours > 99) {
+        ConvertUInt64ToString(hours, s);
+        for (; *s != 0; s++)
+            ;
+    } else {
+        UInt32 hours32 = (UInt32)hours;
+        UINT_TO_STR_2(hours32)
+    }
+    *s++ = ':';
+    UINT_TO_STR_2(minutes)
+    *s++ = ':';
+    UINT_TO_STR_2(seconds)
+    *s = 0;
 }

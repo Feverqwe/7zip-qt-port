@@ -3,9 +3,11 @@
 // Win32 LoadString/HINSTANCE storage is replaced by compiled source STRINGTABLE
 // strings and the existing fixed Russian UI captions. Language files: P1-14.
 #include "ResourceString.h"
+#include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/GUI/ExtractRes.h"
+#include "7zip/UI/GUI/resource3.h"
 
 namespace NWindows {
 
@@ -17,6 +19,19 @@ struct ResourceStringEntry {
 #include "ResourceStrings.h"
 
 static const ResourceStringEntry kLocalizedStrings[] = {
+    {IDS_PROGRESS_PAUSED, L"Приостановлено"},
+    {IDS_PROGRESS_FOREGROUND, L"На &передний план"},
+    {IDS_CONTINUE, L"&Продолжить"},
+    {IDS_PROGRESS_ASK_CANCEL, L"Отменить операцию?"},
+    {IDS_CLOSE, L"&Закрыть"},
+    {IDS_PROGRESS_REMOVE, L"Удаление"},
+    {IDS_PROGRESS_ADD, L"Добавление"},
+    {IDS_PROGRESS_UPDATE, L"Обновление"},
+    {IDS_PROGRESS_ANALYZE, L"Анализ"},
+    {IDS_PROGRESS_REPLICATE, L"Репликация"},
+    {IDS_PROGRESS_REPACK, L"Перепаковка"},
+    {IDS_PROGRESS_DELETE, L"Удаление"},
+    {IDS_PROGRESS_HEADER, L"Создание заголовка"},
     {IDS_WANT_UPDATE_MODIFIED_FILE, L"Файл '{0}' был изменён.\nОбновить его в архиве?"},
     {IDS_CANNOT_UPDATE_FILE, L"Не удалось обновить файл\n'{0}'"},
     {IDS_PROP_PATH, L"Путь"},
