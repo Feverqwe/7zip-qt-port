@@ -161,15 +161,15 @@ void CProxyArc::CalculateSizes(const QList<ArchiveEntry> &entries) {
     }
 }
 
-void CProxyArc::AddRealIndices(const unsigned dirIndex, std::vector<unsigned> &realIndices) const {
+void CProxyArc::AddRealIndices(const unsigned dirIndex, CUIntVector &realIndices) const {
     const CProxyDir &dir = Dirs[dirIndex];
     if (dir.IsLeaf())
-        realIndices.push_back((unsigned)dir.ArcIndex);
+        realIndices.Add((unsigned)dir.ArcIndex);
     unsigned i;
     for (i = 0; i < dir.SubDirs.size(); i++)
         AddRealIndices(dir.SubDirs[i], realIndices);
     for (i = 0; i < dir.SubFiles.size(); i++)
-        realIndices.push_back(dir.SubFiles[i]);
+        realIndices.Add(dir.SubFiles[i]);
 }
 
 int CProxyArc::GetRealIndex(const unsigned dirIndex, const unsigned index) const {
@@ -182,6 +182,21 @@ int CProxyArc::GetRealIndex(const unsigned dirIndex, const unsigned index) const
         return -1;
     }
     return (int)dir.SubFiles[index - numDirItems];
+}
+
+void CProxyArc::GetRealIndices_Unsorted(unsigned dirIndex, const UInt32 *indices,
+                                        const UInt32 numItems, CUIntVector &realIndices) const {
+    const CProxyDir &dir = Dirs[dirIndex];
+    realIndices.Clear();
+    for (UInt32 i = 0; i < numItems; i++) {
+        const UInt32 index = indices[i];
+        const unsigned numDirItems = dir.SubDirs.size();
+        if (index < numDirItems)
+            AddRealIndices(dir.SubDirs[index], realIndices);
+        else
+            realIndices.Add(dir.SubFiles[index - numDirItems]);
+    }
+    // HeapSort(realIndices.NonConstData(), realIndices.Size());
 }
 
 int CProxyArc::FindDir(const QString &path) const {

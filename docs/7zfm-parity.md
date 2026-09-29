@@ -7,6 +7,14 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b1 adds the original normal/flat real-index mapping and unchanged
+HeapSort dependency. Normal directory selection expands descendants; flat
+mapping distinguishes explicit archive entries and implicit folders and retains
+the source caller's expansion flag. The current 7zz selection caller still
+expands selected folders; original engine Extract uses a different flag. This
+caller adaptation and source operation port stay explicit, with no complete
+Extract or alternate-stream parity claim. Visible UI is unchanged.
+
 P0-02.2b3b3c3a removes the test-only external-proxy compatibility lifecycle.
 Initialized archive folders and their children/parents always retain the source
 CAgent; catalogs use its source expansion/remapping. Default unbound calls fail

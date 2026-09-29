@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b1 — source operated-to-archive index mapping (2026-09-29)
+
+Project baseline `7c52e61`; exact [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copy Agent.cpp CAgentFolder::GetRealIndex/GetRealIndices original _proxy
+branches and AgentProxy.cpp CProxyArc::GetRealIndices_Unsorted body. Existing
+AddRealIndices restores original CUIntVector result and Add calls; one recursive
+implementation remains. Copy C/Sort.c and C/Sort.h byte-for-byte into unchanged
+vendor paths with their public-domain notices. Existing Precomp/CpuArch/7zTypes
+dependencies remain exact vendor files. CMake enables C for the original Sort.c
+and compiles it in sevenzip_common; no std/Qt sorting replacement is introduced.
+
+Source normal selection delegates unsorted directory/file expansion; flat mode
+retains flag-dependent recursion, implicit-directory omission and explicit
+directory archive-index handling. Original final HeapSort preserves overlapping
+duplicates. Source names, signatures/types, loops, branches and module owners
+remain. Necessary adaptations: size() on the existing adapted proxy's std
+directory arrays, include path to unchanged vendor C dependency, and project
+formatting. Existing tree containers/string adapters remain documented migration
+debt; this focused step restores the result vector without a whole proxy rewrite.
+Current window caller changes only vector/result iteration type, preserving
+its existing row-derived path policy until b2; it is not claimed source-migrated.
+
+Mandatory omitted branches: CProxyArc2/_proxy2 and alternate-stream expansion
+P1-10/full handler metadata. The retained includeAltStreams signature has no
+effect in the original _proxy branch. Original engine Extract passes false for
+includeFolderSubItemsInFlatMode; current 7zz UI expands selected directories.
+Caller policy must be recorded during b2/operation migration, not silently
+claimed complete. Full Extract operation and source path/outer stack remain open.
+
+New agent_real_indices checks normal/flat explicit/implicit folders, source
+real-index values, both expansion policies, replaced output, sorted archive order,
+overlap/repeated selections with preserved duplicates, empty selection and 2048
+reverse indices. Existing direct proxy tests retain unsorted recursive traversal
+contracts using the original vector type. No UI presentation changes.
+
+Validation macOS arm64, 2026-09-29: affected application/mapping/proxy/folder
+targets built; focused tests passed 5/5 (0.63 s). Mandatory check.sh built all
+consumers and passed 73/73 (39.80 s); git diff --check passed. Exact upstream
+vendor comparison passed 67/67 including License.txt (66 source/header/resource
+files); local vendor README is project documentation. Initial new test build
+needed the source vector's explicit ConstData() rather than an implicit pointer
+conversion; production/source types were preserved. Windows/Linux runtime remains
+unverified locally. Window consumer migration follows in b2.
+
 ## P0-02.2b3b3c3a — owned Agent folder lifecycle only (2026-09-29)
 
 Project baseline `2511ee8`; pinned ip7z/7zip

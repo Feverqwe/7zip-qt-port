@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-- C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, Git, clang-format
+- C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, Git, clang-format
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
 - Official `7zz` executable for archive functionality once implemented

@@ -13,8 +13,8 @@ LangUtils resource fallbacks call the adapted ResourceString service in
 sevenzip_panel. Native Win32 LoadString storage is replaced by a build-generated
 table from unchanged upstream PropertyName.rc plus fixed Russian presentation
 captions. Generation rejects unsupported syntax; generated headers stay in the
-build directory. Full source CLang loading/default-language/selection is P1-14,
-and Properties consumers still require PanelMenu integration and live binding.
+build directory. Full source CLang loading/default-language/selection is P1-14;
+selected-item Properties consumes the source PanelMenu and live folder binding.
 The same generated resource bundle includes unchanged Extract.rc. Source
 OpenArchive/ExtractCallback error-property helpers are compiled in sevenzip_panel
 for presentation consumers; they do not introduce engine opening/extraction in
@@ -34,8 +34,8 @@ default legacy catalog. Owned CAgentFolder applies original catalog expansion/
 remapping and ReadItems scans ThereIsPathProp before proxy publication.
 Directory counts come from the source proxy, while transport file counts remain
 absent. Failed catalog queries do not publish an owner. External-proxy
-compatibility delegation remains mandatory lifecycle migration; transport
-descriptors do not imply full engine metadata.
+compatibility delegation is removed; every initialized folder retains its agent.
+Transport descriptors do not imply full engine metadata.
 The existing supplied archive Modified text is retained as sparse MTimeText
 compatibility data, advertised as VT_BSTR rather than pretending it is FILETIME.
 Native archive time parsing/precision/timezone work remains P0-03/P0-04.
@@ -207,8 +207,9 @@ Address signals are disconnected before window teardown.
 through source-ported `CFmSettings` in the FM INI group. Omitted flags are
 preserved but do not affect Qt views yet. `settingsdialog.h` is a compatibility
 alias. `MainWindow` applies accepted values and supplies
-filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies a
-metadata snapshot to `CPanel::Properties`, which owns enumeration and totals.
+filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies the
+current operated indices to its bound `CPanel::Properties`, which owns enumeration
+and totals through the source folder interface.
 `CListViewDialog` presents the result through the shared Qt list adapter;
 the dialog never reads the file table or backend itself.
 `CListViewDialog` reads CFmSettings for single-click activation and delegates

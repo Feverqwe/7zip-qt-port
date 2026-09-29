@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
 
+#include "Common/MyVector.h"
 #include "archivebackend.h"
 #include <deque>
 #include <vector>
@@ -39,8 +40,10 @@ class CProxyArc {
     QString GetDirPath_as_Prefix(unsigned dirIndex) const;
     void GetDirPath_as_Prefix_from_Base(unsigned dirIndex, QString &prefix,
                                         unsigned baseDirIndex) const;
-    void AddRealIndices(unsigned dirIndex, std::vector<unsigned> &realIndices) const;
+    void AddRealIndices(unsigned dirIndex, CUIntVector &realIndices) const;
     int GetRealIndex(unsigned dirIndex, unsigned index) const;
+    void GetRealIndices_Unsorted(unsigned dirIndex, const UInt32 *indices, UInt32 numItems,
+                                 CUIntVector &realIndices) const;
 
   private:
     int FindSubDir(const unsigned *items, unsigned right, const QString &name,

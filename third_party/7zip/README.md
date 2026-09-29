@@ -14,6 +14,7 @@ They are not formatted with the Qt application's rules.
 - `C/Precomp.h`
 - `C/Threads.h`
 - `C/CpuArch.h`
+- `C/Sort.c` and `Sort.h` (original public-domain HeapSort)
 - `CPP/Common/Common.h`
 - `CPP/Common/Common0.h`
 - `CPP/Common/Defs.h`
@@ -71,7 +72,7 @@ Additional portable filesystem dependencies:
 - `CPP/7zip/UI/FileManager/PropertyNameRes.h` and `PropertyName.rc`
 - `CPP/7zip/UI/GUI/ExtractRes.h` and `Extract.rc`
 
-All 64 source/header/resource files and `License.txt` (from upstream `DOC/License.txt`)
+All 66 source/header/resource files and `License.txt` (from upstream `DOC/License.txt`)
 are retained byte for byte from the exact commit above.
 This provenance check does not establish runtime verification on all platforms.
 `.gitattributes` excludes unchanged vendored source from Git whitespace errors

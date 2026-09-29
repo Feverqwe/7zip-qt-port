@@ -417,8 +417,17 @@ port stays P0-02.2b3c/d; no old borrowed compatibility branch is declared N/A.
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3a | CAgentFolder owned lifecycle only: remove test-only external-proxy constructor/Init and child/parent/catalog compatibility branches; migrate fixtures to source-owned CAgent factory; surviving child/parent/catalog and unbound failure checks | P0-02.2b3b3c2 | done — audit § P0-02.2b3b3c3a; focused 10/10, check.sh 72/72; macOS 2026-09-29 |
-| P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | todo |
+| P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | active — b1/b2 below; c3a commit 7c52e61 |
 | P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | todo |
+
+Selection translation prerequisites split before implementation. Original Extract
+flat-folder expansion policy and unsupported proxy2/alternate streams remain
+explicit mandatory operation/handler scopes, not a complete Extract claim.
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3b3c3b1 | Original CAgentFolder GetRealIndex/GetRealIndices, CProxyArc GetRealIndices_Unsorted and CUIntVector AddRealIndices; unchanged C/Sort dependency; normal/flat explicit/implicit directories, flags, overlap/duplicate/sorted/empty selection and existing consumers | P0-02.2b3b3c3a | done — audit § P0-02.2b3b3c3b1; focused 5/5, check.sh 73/73, vendor bytes 67/67; macOS 2026-09-29 |
+| P0-02.2b3b3c3b2 | Window archive-selection paths consume source operated/real indices and owner's typed path metadata, remove row/proxy reconstruction; selected-folder/flat policy recorded, extraction/copy/move/hash direct regressions and remaining consumer inventory | P0-02.2b3b3c3b1 | todo |
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 

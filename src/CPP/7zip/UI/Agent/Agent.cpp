@@ -3,6 +3,7 @@
 // The CProxyArc folder walk/binding/property control flow is retained. The
 // _proxy2 and engine operation branches remain outside this partial port.
 #include "Agent.h"
+#include "../../../../../third_party/7zip/C/Sort.h"
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "Common/ComTry.h"
@@ -291,6 +292,59 @@ Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *pro
 Z7_COM7F_IMF(CAgentFolder::SetFlatMode(Int32 flatMode)) {
     _flatMode = IntToBool(flatMode);
     return S_OK;
+}
+
+int CAgentFolder::GetRealIndex(unsigned index) const {
+    if (!_flatMode)
+        return _proxy->GetRealIndex(_proxyDirIndex, index);
+    {
+        const CProxyItem &item = _items[index];
+        {
+            const CProxyDir *dir = &_proxy->Dirs[item.DirIndex];
+            const unsigned realIndex = item.Index;
+            if (realIndex < dir->SubDirs.size()) {
+                const CProxyDir &f = _proxy->Dirs[dir->SubDirs[realIndex]];
+                if (!f.IsLeaf())
+                    return -1;
+                return f.ArcIndex;
+            }
+            return (int)dir->SubFiles[realIndex - dir->SubDirs.size()];
+        }
+    }
+}
+
+void CAgentFolder::GetRealIndices(const UInt32 *indices, const UInt32 numItems,
+                                  const bool includeAltStreams,
+                                  const bool includeFolderSubItemsInFlatMode,
+                                  CUIntVector &realIndices) const {
+    // The omitted proxy2 branch owns alternate-stream expansion (P1-10).
+    (void)includeAltStreams;
+    if (!_flatMode) {
+        _proxy->GetRealIndices_Unsorted(_proxyDirIndex, indices, numItems, realIndices);
+    } else {
+        realIndices.Clear();
+        for (UInt32 i = 0; i < numItems; i++) {
+            const CProxyItem &item = _items[indices[i]];
+            UInt32 arcIndex;
+            {
+                const CProxyDir *dir = &_proxy->Dirs[item.DirIndex];
+                const unsigned realIndex = item.Index;
+                if (realIndex < dir->SubDirs.size()) {
+                    if (includeFolderSubItemsInFlatMode) {
+                        _proxy->AddRealIndices(dir->SubDirs[realIndex], realIndices);
+                        continue;
+                    }
+                    const CProxyDir &f = _proxy->Dirs[dir->SubDirs[realIndex]];
+                    if (!f.IsLeaf())
+                        continue;
+                    arcIndex = (unsigned)f.ArcIndex;
+                } else
+                    arcIndex = dir->SubFiles[realIndex - dir->SubDirs.size()];
+            }
+            realIndices.Add(arcIndex);
+        }
+    }
+    HeapSort(realIndices.NonConstData(), realIndices.Size());
 }
 
 CAgent::CAgent() : _proxy(NULL) {}

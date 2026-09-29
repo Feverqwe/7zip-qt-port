@@ -1,5 +1,12 @@
 # Regression strategy
 
+`agent_real_indices` verifies original owned-folder mapping from selected source
+items to archive indices: normal recursive expansion, flat implicit/explicit
+directories, both flat recursion policies, empty output replacement, preserved
+overlap/repeated-selection duplicates and source HeapSort archive order for 2048
+reverse indices. Proxy2/alternate-stream and complete Extract acceptance remain
+mandatory later scopes; this prerequisite changes no displayed UI.
+
 `properties_runtime` checks public Properties across normal/flat and all four
 views with filesystem→archive→filesystem transitions. Duplicate Unicode/space
 names retain source prefixes and metadata; loaded size/primed packed cache stays

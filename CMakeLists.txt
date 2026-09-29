@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(sevenzip_desktop VERSION 0.1.0 LANGUAGES CXX)
+project(sevenzip_desktop VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,7 +18,8 @@ add_custom_command(OUTPUT "${resource_strings_header}"
 
 qt_standard_project_setup()
 
-add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
+add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
+    third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp third_party/7zip/CPP/Common/UTFConvert.cpp
@@ -478,6 +479,9 @@ if(BUILD_TESTING)
     target_include_directories(agent_folder_tests PRIVATE src)
     target_link_libraries(agent_folder_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME agent_folder COMMAND agent_folder_tests)
+    qt_add_executable(agent_real_indices_tests tests/agent_real_indices_tests.cpp)
+    target_link_libraries(agent_real_indices_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME agent_real_indices COMMAND agent_real_indices_tests)
     qt_add_executable(volume_operations_tests tests/volume_operations_tests.cpp src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(volume_operations_tests PRIVATE src)
     target_link_libraries(volume_operations_tests PRIVATE sevenzip_panel Qt6::Test)

@@ -206,10 +206,10 @@ QStringList MainWindow::selectedArchivePaths() const {
             continue;
         }
         const unsigned dirIndex = item->data(Qt::UserRole + 4).toUInt();
-        std::vector<unsigned> realIndices;
+        CUIntVector realIndices;
         archiveProxy().AddRealIndices(dirIndex, realIndices);
-        for (unsigned realIndex : realIndices)
-            paths << entries_[realIndex].path;
+        FOR_VECTOR(i, realIndices)
+        paths << entries_[realIndices[i]].path;
     }
     paths.removeDuplicates();
     return paths;

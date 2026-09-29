@@ -22,6 +22,9 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     void Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent);
     HRESULT BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
+    int GetRealIndex(unsigned index) const;
+    void GetRealIndices(const UInt32 *indices, UInt32 numItems, bool includeAltStreams,
+                        bool includeFolderSubItemsInFlatMode, CUIntVector &realIndices) const;
     unsigned GetNumberOfItems() const;
     CProxyItem GetItem(unsigned index) const;
     // Read-only Qt presentation access to the source owner's authoritative tree.
