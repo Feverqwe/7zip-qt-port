@@ -21,14 +21,13 @@ void MainWindow::renderArchiveFolder() {
     if (archiveFolder->LoadItems() != S_OK)
         return;
     static_cast<FileTable *>(table_)->filesystem = false;
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
     if (!isNestedArchive())
         recordVisitedPath(archiveDisplayPath());
     const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';
     table_->setSortingEnabled(false);
     app_.GetFocusedPanel().SetNewFolder(folderOwner);
     app_.GetFocusedPanel().LoadFullPath();
+    configureColumns();
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
         appendArchiveEntry(*archiveFolder, index, prefix, flat);
     table_->setSortingEnabled(true);
@@ -75,13 +74,18 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
     const QVariant packedValue = packedSize.vt == VT_UI8
                                      ? QVariant::fromValue(quint64(packedSize.uhVal.QuadPart))
                                      : QVariant();
-    const QStringList values = {displayName,
-                                entry.path,
-                                entry.directory ? QString() : sizeValue.toString(),
-                                entry.directory ? QString() : packedValue.toString(),
-                                entry.modified,
-                                GetExtensionPtr(QStringView(name)).toString(),
-                                QString::number(sourceOrder)};
+    QStringList values = {displayName,
+                          entry.path,
+                          entry.directory ? QString() : sizeValue.toString(),
+                          entry.directory ? QString() : packedValue.toString(),
+                          entry.modified,
+                          GetExtensionPtr(QStringView(name)).toString(),
+                          QString::number(sourceOrder)};
+    for (int col : {2, 3, 4})
+        if (!table_->isColumnHidden(col))
+            values[col] = sourceColumnText(index, col);
+    for (int col = 7; col < table_->columnCount(); ++col)
+        values << (table_->isColumnHidden(col) ? QString() : sourceColumnText(index, col));
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
         item->setData(Qt::UserRole, entry.path);
@@ -99,8 +103,8 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
             item->setData(Qt::UserRole + 2, col == 2 ? sizeValue : packedValue);
         if (col == 6)
             item->setData(Qt::UserRole + 2, sourceOrder);
-        if (col == 2 || col == 3)
-            item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        if (col != 1 && col != 5 && col != 6)
+            item->setTextAlignment(sourceColumnAlignment(col));
         table_->setItem(row, col, item);
     }
 }

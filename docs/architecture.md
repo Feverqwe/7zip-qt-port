@@ -25,7 +25,11 @@ transition. Read-only root command policy prevents filesystem mutations.
 For ordinary filesystem rows, CFSFolder provides source item indices, names,
 flat prefixes, comment and file-identity properties. Qt only presents the bound
 values and normalizes visible Unicode; its existing icon and timestamp display
-remain pending separate source UI owners. FilesystemFolderLoader runs source
+remain pending separate source UI owners. `CPanel::InitColumns` now owns the
+folder capability catalog and `CListViewInfo` save/restore; `FileTable` maps Qt
+columns back to source property IDs and raw flags. `MainWindow` snapshots the
+header and presents source-formatted cells but does not sort parsed text. Hidden
+path/index cells remain transport-only. FilesystemFolderLoader runs source
 enumeration off the GUI thread and FilesystemScanner batches Qt row publication.
 The P0-05.2 large-scan fixture checks ordered source indices, event-loop turns
 between bounded 32-row GUI batches, cancellation and rejection of stale batches.
@@ -368,8 +372,11 @@ QFile::decodeName supplies native POSIX-to-Qt path conversion (macOS NFC); the
 source folder retains native bytes. CPanel compares source names when restoring
 selection; Qt display names retain Qt normalization. Normal loading uses the same
 folder, source metadata and indices. Uncalculated directory sizes remain absent;
-POSIX links expose their own lstat metadata. Full column/property catalogs
-remain P0-06.2 work; network namespace capabilities remain P1-11.
+POSIX links expose their own lstat metadata. `CPanel::InitColumns` owns the
+source property catalog and per-folder-type column settings; `MainWindow`
+projects it into the shared Qt header. The external `7zz` adapter still needs
+binary raw property support in P1-10; network namespace capabilities remain
+P1-11.
 
 `CPanelSelection` consumes a snapshot of names, folder flags and selection
 states; `mainwindow_selection.cpp` publishes the result to Qt in one update.

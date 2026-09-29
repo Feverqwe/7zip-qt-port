@@ -104,6 +104,11 @@ class MainWindow : public QMainWindow {
     void activateSingleClickedRow(int row);
     void createFilePanel(QMenu *editMenu);
     void createFileTable(QWidget *central);
+    void configureColumns();
+    void saveColumns();
+    void showColumnsMenu(const QPoint &pos);
+    QString sourceColumnText(UInt32 itemIndex, int column);
+    Qt::Alignment sourceColumnAlignment(int column) const;
     void createPanelActions(QMenu *editMenu);
     void createIconList(QWidget *central);
     void connectFilesystemScanner();
@@ -216,6 +221,7 @@ class MainWindow : public QMainWindow {
     State state_ = State::Filesystem;
     SortMode sortMode_ = SortMode::Name;
     int sortColumn_ = 0;
+    bool configuringColumns_ = false;
     Qt::SortOrder sortOrder_ = Qt::AscendingOrder;
     QAction *sortActions_[5]{};
     QAction *viewActions_[4]{};

@@ -25,9 +25,9 @@ void MainWindow::renderRootFolder() {
     table_->clearSelection();
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
-    table_->setColumnHidden(3, true);
     static_cast<FileTable *>(table_)->filesystem = false;
     path_->clear(); // The source root's current folder prefix is empty.
+    configureColumns();
     for (UInt32 index = 0; index < count; ++index) {
         NWindows::NCOM::CPropVariant name;
         if (folder->GetProperty(index, kpidName, &name) != S_OK || name.vt != VT_BSTR)
@@ -43,7 +43,8 @@ void MainWindow::renderRootFolder() {
             if (column == 0) {
                 item->setText(nativeName.normalized(QString::NormalizationForm_C));
                 item->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
-            }
+            } else if (column >= 7)
+                item->setText(sourceColumnText(index, column));
             table_->setItem(row, column, item);
         }
     }

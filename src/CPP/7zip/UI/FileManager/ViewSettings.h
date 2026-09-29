@@ -3,7 +3,45 @@
 #pragma once
 
 #include "Common/MyString.h"
+#include "Common/MyVector.h"
+#include "Common/MyWindows.h"
 #include <QStringList>
+
+struct CColumnInfo {
+    PROPID PropID;
+    bool IsVisible;
+    UInt32 Width;
+
+    bool IsEqual(const CColumnInfo &a) const {
+        return PropID == a.PropID && IsVisible == a.IsVisible && Width == a.Width;
+    }
+};
+
+struct CListViewInfo {
+    CRecordVector<CColumnInfo> Columns;
+    PROPID SortID;
+    bool Ascending;
+    bool IsLoaded;
+
+    void Clear() {
+        SortID = 0;
+        Ascending = true;
+        IsLoaded = false;
+        Columns.Clear();
+    }
+    CListViewInfo() : SortID(0), Ascending(true), IsLoaded(false) {}
+    bool IsEqual(const CListViewInfo &info) const {
+        if (Columns.Size() != info.Columns.Size() || SortID != info.SortID ||
+            Ascending != info.Ascending)
+            return false;
+        FOR_VECTOR(i, Columns)
+        if (!Columns[i].IsEqual(info.Columns[i]))
+            return false;
+        return true;
+    }
+    void Save(const UString &id, const QString &settingsPath) const;
+    void Read(const UString &id, const QString &settingsPath);
+};
 
 const UInt32 kListMode_Report = 3;
 void SaveToolbarsMask(UInt32 toolbarMask, const QString &settingsPath);

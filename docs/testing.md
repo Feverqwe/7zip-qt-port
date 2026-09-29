@@ -22,6 +22,12 @@ entries. `flat_view`, `panel_selected_state` and `properties_runtime` are the
 direct Qt consumers of source names/prefixes and typed metadata. The protected
 child fixture runs only when the test process actually lacks read permission;
 macOS validation confirmed this branch without a skip.
+`panel_columns` checks source folder catalogs, raw-property text/sort through a
+deterministic provider, all-property header controls, per-type layout and sort
+persistence, Unicode/space values and eight normal/compact four-view JSON reports.
+`view_settings_columns` checks the exact source binary record, independent IDs
+and malformed settings. Real `7zz` binary raw fields require P1-10 transport;
+the provider fixture does not claim they appear in an external archive listing.
 ControlledBackend reports typed fixture format and overrides typed openFolder;
 explicit metadata takes precedence and no fixture reopen launches an engine.
 

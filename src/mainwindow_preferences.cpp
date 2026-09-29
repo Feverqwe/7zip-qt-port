@@ -48,9 +48,10 @@ void MainWindow::applySortMode() {
     if (!table_)
         return;
     auto &panel = app_.GetFocusedPanel();
-    panel._sortID = SortPropIDForColumn(sortColumn_);
+    panel._sortID = static_cast<FileTable *>(table_)->propertyId(sortColumn_);
     panel._ascending = sortOrder_ == Qt::AscendingOrder;
     table_->sortItems(sortColumn_, sortOrder_);
+    saveColumns();
 }
 
 QIcon MainWindow::toolbarIcon(int kind) {

@@ -346,6 +346,49 @@ Z7_COM7F_IMF(CAgentFolder::SetFlatMode(Int32 flatMode)) {
     return S_OK;
 }
 
+Z7_COM7F_IMF(CAgentFolder::GetNumRawProps(UInt32 *numProps)) {
+    CMyComPtr<IInArchive> archive = _agentSpec ? _agentSpec->GetArchive() : nullptr;
+    CMyComPtr<IArchiveGetRawProps> rawProps;
+    if (archive)
+        archive.QueryInterface(IID_IArchiveGetRawProps, &rawProps);
+    if (rawProps)
+        return rawProps->GetNumRawProps(numProps);
+    *numProps = 0;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CAgentFolder::GetParent(UInt32 /* index */, UInt32 * /* parent */,
+                                     UInt32 * /* parentType */)) {
+    return E_FAIL;
+}
+
+Z7_COM7F_IMF(CAgentFolder::GetRawPropInfo(UInt32 index, BSTR *name, PROPID *propID)) {
+    CMyComPtr<IInArchive> archive = _agentSpec ? _agentSpec->GetArchive() : nullptr;
+    CMyComPtr<IArchiveGetRawProps> rawProps;
+    if (archive)
+        archive.QueryInterface(IID_IArchiveGetRawProps, &rawProps);
+    return rawProps ? rawProps->GetRawPropInfo(index, name, propID) : E_FAIL;
+}
+
+Z7_COM7F_IMF(CAgentFolder::GetRawProp(UInt32 index, PROPID propID, const void **data,
+                                      UInt32 *dataSize, UInt32 *propType)) {
+    CMyComPtr<IInArchive> archive = _agentSpec ? _agentSpec->GetArchive() : nullptr;
+    CMyComPtr<IArchiveGetRawProps> rawProps;
+    if (archive)
+        archive.QueryInterface(IID_IArchiveGetRawProps, &rawProps);
+    if (rawProps) {
+        if (!IsBound() || index >= GetNumberOfItems())
+            return E_INVALIDARG;
+        const int arcIndex = GetRealIndex(index);
+        if (arcIndex >= 0)
+            return rawProps->GetRawProp(unsigned(arcIndex), propID, data, dataSize, propType);
+    }
+    *data = nullptr;
+    *dataSize = 0;
+    *propType = 0;
+    return S_OK;
+}
+
 int CAgentFolder::GetRealIndex(unsigned index) const {
     if (!_flatMode)
         return _proxy->GetRealIndex(_proxyDirIndex, index);

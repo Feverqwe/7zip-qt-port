@@ -50,9 +50,12 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
 }
 
 void MainWindow::createFileTable(QWidget *central) {
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     table_ = new FileTable(0, 7, central);
-    static_cast<FileTable *>(table_)->sourcePanel = &app_.GetFocusedPanel();
+    auto *fileTable = static_cast<FileTable *>(table_);
+    fileTable->sourcePanel = &app_.GetFocusedPanel();
+    fileTable->propertyIds = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
+                              kpidMTime, kpidExtension, kpidNoProperty};
+    fileTable->rawProperties.resize(7);
     table_->setObjectName("archiveTable");
     table_->verticalHeader()->hide();
     table_->setHorizontalHeaderLabels(
@@ -63,34 +66,21 @@ void MainWindow::createFileTable(QWidget *central) {
     table_->setColumnHidden(1, true);
     table_->setColumnHidden(5, true);
     table_->setColumnHidden(6, true);
-    table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    table_->horizontalHeader()->setSectionsMovable(true);
+    table_->setColumnWidth(0, 160);
     table_->setColumnWidth(2, 100);
     table_->setColumnWidth(3, 100);
     table_->setColumnWidth(4, 150);
     table_->setShowGrid(fileListSettings_.ShowGrid);
     table_->setWordWrap(false);
     table_->setTextElideMode(Qt::ElideMiddle);
-    for (int column : {2, 3, 4})
-        table_->setColumnHidden(
-            column, !settings.value(QStringLiteral("columns/%1").arg(column), true).toBool());
     table_->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(table_->horizontalHeader(), &QWidget::customContextMenuRequested, this,
-            [this](const QPoint &pos) {
-                QMenu menu(this);
-                for (int column : {2, 3, 4}) {
-                    if (column == 3 && state_ == State::Filesystem)
-                        continue;
-                    QAction *option = menu.addAction(table_->horizontalHeaderItem(column)->text());
-                    option->setCheckable(true);
-                    option->setChecked(!table_->isColumnHidden(column));
-                    connect(option, &QAction::toggled, this, [this, column](bool visible) {
-                        table_->setColumnHidden(column, !visible);
-                        QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-                        settings.setValue(QStringLiteral("columns/%1").arg(column), visible);
-                    });
-                }
-                menu.exec(table_->horizontalHeader()->mapToGlobal(pos));
-            });
+            [this](const QPoint &pos) { showColumnsMenu(pos); });
+    connect(table_->horizontalHeader(), &QHeaderView::sectionResized, this,
+            [this] { saveColumns(); });
+    connect(table_->horizontalHeader(), &QHeaderView::sectionMoved, this,
+            [this] { saveColumns(); });
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -104,15 +94,19 @@ void MainWindow::createFileTable(QWidget *central) {
                 sortColumn_ = column;
                 sortOrder_ = order;
                 auto &panel = app_.GetFocusedPanel();
-                panel._sortID = SortPropIDForColumn(column);
+                panel._sortID = static_cast<FileTable *>(table_)->propertyId(column);
                 panel._ascending = order == Qt::AscendingOrder;
-                const int mode = column == 5   ? 1
-                                 : column == 4 ? 2
-                                 : column == 2 ? 3
-                                 : column == 6 ? 4
-                                               : 0;
-                sortMode_ = static_cast<SortMode>(mode);
-                sortActions_[mode]->setChecked(true);
+                if (!configuringColumns_) {
+                    const int mode = column == 5   ? 1
+                                     : column == 4 ? 2
+                                     : column == 2 ? 3
+                                     : column == 6 ? 4
+                                                   : 0;
+                    sortMode_ = static_cast<SortMode>(mode);
+                    if (column == 0 || column == 2 || column == 4 || column == 5 || column == 6)
+                        sortActions_[mode]->setChecked(true);
+                    saveColumns();
+                }
             });
     table_->installEventFilter(this);
     table_->viewport()->installEventFilter(this);
@@ -123,6 +117,149 @@ void MainWindow::createFileTable(QWidget *central) {
             table_->selectRow(row);
         showItemContextMenu(table_->viewport()->mapToGlobal(pos));
     });
+}
+
+void MainWindow::configureColumns() {
+    auto &panel = app_.GetFocusedPanel();
+    if (panel.InitColumns() != S_OK)
+        return;
+    configuringColumns_ = true;
+    const QSignalBlocker blocked(table_->horizontalHeader());
+    auto *fileTable = static_cast<FileTable *>(table_);
+    const CPropColumns &columns = panel.GetColumns();
+    int extraCount = 0;
+    FOR_VECTOR(i, columns) {
+        const PROPID id = columns[i].ID;
+        if (id != kpidName && id != kpidSize && id != kpidPackSize && id != kpidMTime)
+            ++extraCount;
+    }
+    table_->setRowCount(0);
+    table_->setColumnCount(7 + extraCount);
+    fileTable->propertyIds = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
+                              kpidMTime, kpidExtension, kpidNoProperty};
+    fileTable->rawProperties.fill(false, 7 + extraCount);
+    QStringList labels = {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"};
+    int next = 7;
+    FOR_VECTOR(i, columns) {
+        const CPropColumn &prop = columns[i];
+        int column = -1;
+        if (prop.ID == kpidName)
+            column = 0;
+        else if (prop.ID == kpidSize)
+            column = 2;
+        else if (prop.ID == kpidPackSize)
+            column = 3;
+        else if (prop.ID == kpidMTime)
+            column = 4;
+        else {
+            column = next++;
+            fileTable->propertyIds.append(prop.ID);
+            labels << ToQString(prop.Name);
+        }
+        fileTable->rawProperties[column] = prop.IsRawProp;
+        labels[column] = ToQString(prop.Name);
+        table_->setColumnWidth(column, qMax(32, int(prop.Width)));
+        table_->setColumnHidden(column, !prop.IsVisible);
+    }
+    table_->setHorizontalHeaderLabels(labels);
+    for (int column : {2, 3, 4})
+        table_->horizontalHeaderItem(column)->setData(Qt::InitialSortOrderRole,
+                                                      Qt::DescendingOrder);
+    for (int column : {1, 5, 6})
+        table_->setColumnHidden(column, true);
+    for (int column : {2, 3, 4}) {
+        if (columns.FindItem_for_PropID(fileTable->propertyId(column)) < 0)
+            table_->setColumnHidden(column, true);
+    }
+    const CPropColumns &visible = panel.GetVisibleColumns();
+    FOR_VECTOR(i, visible) {
+        const int column = fileTable->columnForProperty(visible[i].ID);
+        if (column >= 0)
+            table_->horizontalHeader()->moveSection(table_->horizontalHeader()->visualIndex(column),
+                                                    int(i));
+    }
+    sortColumn_ = fileTable->columnForProperty(panel._sortID);
+    if (sortColumn_ < 0 || table_->isColumnHidden(sortColumn_))
+        sortColumn_ = panel._sortID == kpidNoProperty ? 6 : 0;
+    sortOrder_ = panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
+    configuringColumns_ = false;
+}
+
+void MainWindow::saveColumns() {
+    if (configuringColumns_ || !table_)
+        return;
+    auto &panel = app_.GetFocusedPanel();
+    if (panel.GetColumns().IsEmpty())
+        return;
+    const auto *fileTable = static_cast<FileTable *>(table_);
+    CPropColumns visible;
+    const CPropColumns &columns = panel.GetColumns();
+    FOR_VECTOR(i, columns) {
+        const int column = fileTable->columnForProperty(columns[i].ID);
+        if (column < 0 || table_->isColumnHidden(column))
+            continue;
+        CPropColumn prop = columns[i];
+        prop.IsVisible = true;
+        prop.Order = table_->horizontalHeader()->visualIndex(column);
+        prop.Width = UInt32(table_->horizontalHeader()->sectionSize(column));
+        visible.Add(prop);
+    }
+    panel.SaveListViewInfo(visible);
+}
+
+void MainWindow::showColumnsMenu(const QPoint &pos) {
+    auto &panel = app_.GetFocusedPanel();
+    const CPropColumns &columns = panel.GetColumns();
+    auto *fileTable = static_cast<FileTable *>(table_);
+    QMenu menu(this);
+    FOR_VECTOR(i, columns) {
+        const CPropColumn &prop = columns[i];
+        const int column = fileTable->columnForProperty(prop.ID);
+        if (column < 0)
+            continue;
+        QAction *option = menu.addAction(ToQString(prop.Name));
+        option->setCheckable(true);
+        option->setChecked(!table_->isColumnHidden(column));
+        option->setEnabled(prop.ID != kpidName);
+        connect(option, &QAction::toggled, this, [this, column](bool visible) {
+            table_->setColumnHidden(column, !visible);
+            if (visible) {
+                const bool sorting = table_->isSortingEnabled();
+                table_->setSortingEnabled(false);
+                for (int row = 0; row < table_->rowCount(); ++row) {
+                    QTableWidgetItem *item = table_->item(row, column);
+                    if (item)
+                        item->setText(
+                            sourceColumnText(item->data(Qt::UserRole + 6).toUInt(), column));
+                }
+                table_->setSortingEnabled(sorting);
+            }
+            if (!visible && sortColumn_ == column) {
+                sortColumn_ = 0;
+                sortOrder_ = Qt::AscendingOrder;
+                applySortMode();
+            }
+            saveColumns();
+        });
+    }
+    menu.exec(table_->horizontalHeader()->mapToGlobal(pos));
+}
+
+QString MainWindow::sourceColumnText(UInt32 itemIndex, int column) {
+    const auto *fileTable = static_cast<const FileTable *>(table_);
+    const auto &panel = app_.GetFocusedPanel();
+    const CPropColumns &columns = panel.GetColumns();
+    const int index = columns.FindItem_for_PropID(fileTable->propertyId(column));
+    return index >= 0 ? panel.GetItemText(itemIndex, columns[index]) : QString();
+}
+
+Qt::Alignment MainWindow::sourceColumnAlignment(int column) const {
+    const auto *fileTable = static_cast<const FileTable *>(table_);
+    const CPanel &panel = app_.Panels[app_.GetFocusedPanelIndex()];
+    const CPropColumns &columns = panel.GetColumns();
+    const int index = columns.FindItem_for_PropID(fileTable->propertyId(column));
+    return index >= 0 ? GetColumnAlign(columns[index].ID, columns[index].Type)
+                      : Qt::AlignLeft | Qt::AlignVCenter;
 }
 
 void MainWindow::createPanelActions(QMenu *editMenu) {

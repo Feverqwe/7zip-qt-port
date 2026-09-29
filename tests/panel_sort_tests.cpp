@@ -18,6 +18,7 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove("view/flatDisk");
         settings.remove("view/flatArchive");
+        settings.remove("Columns");
     }
 
     void upstreamNaturalNameComparison() {

@@ -151,6 +151,18 @@ class AgentFolderTests : public QObject {
 
     void sourceFolderPropertiesAndRejectedBindings() {
         CMyComPtr<IFolderFolder> folder = root({{"folder/file.txt", 9, 4}, {"root.txt", 2, 1}});
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(folder.QueryInterface(IID_IArchiveGetRawProps, &raw), S_OK);
+        UInt32 rawCount = 99;
+        QCOMPARE(raw->GetNumRawProps(&rawCount), S_OK);
+        QCOMPARE(rawCount, UInt32(0));
+        const void *rawData = reinterpret_cast<const void *>(1);
+        UInt32 rawSize = 99;
+        UInt32 rawType = 99;
+        QCOMPARE(raw->GetRawProp(0, kpidNtReparse, &rawData, &rawSize, &rawType), S_OK);
+        QVERIFY(!rawData);
+        QCOMPARE(rawSize, UInt32(0));
+        QCOMPARE(rawType, UInt32(0));
         NWindows::NCOM::CPropVariant type;
         QCOMPARE(folder->GetFolderProperty(kpidType, &type), S_OK);
         QCOMPARE(ToQString(UString(type.bstrVal)), QString("7-Zip.zip"));

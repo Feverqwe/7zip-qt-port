@@ -403,6 +403,67 @@ pass 4/4 (5.64 s); `./scripts/check.sh` passes formatting, app build and
 sort report has fully visible toolbar, address, table and status. P0-06.2/.3
 and parent acceptance are still mandatory.
 
+## P0-06.2 — source column catalog, raw comparison and Qt header (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([source tree](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager)).
+Reviewed original paths: `CPP/7zip/UI/FileManager/PanelItems.cpp` (`InitColumns`,
+`SaveListViewInfo`, `GetColumnVisible/Width/Align`, `ShowColumnsContextMenu`),
+`ViewSettings.h/.cpp` (`CColumnInfo`, `CListViewInfo::Save/Read`),
+`PanelSort.cpp` (`CompareItems2` raw branch and `CompareFileNames_Le16`),
+`PanelListNotify.cpp` (`GetItemText` property/raw branches), `Panel.h`, and
+`CPP/7zip/UI/Agent/Agent.h/.cpp` (`CAgentFolder::GetNumRawProps`,
+`GetRawPropInfo`, `GetRawProp`, `GetParent`). `PropertyName.cpp` and portable
+`CPP/7zip/UI/Common/PropIDUtils.cpp` are existing reviewed dependencies.
+
+The mirrored `PanelItems.cpp` now builds `CPropColumns` from each bound folder's
+typed and raw property capabilities, merges the saved visibility/width/order,
+forces Name visible and restores its property sort. The original
+`SaveListViewInfo` column-order/hidden-column construction and binary
+`CListViewInfo` v1 layout remain in their upstream owners. The former fixed
+Qt `columns/2..4` flags are replaced by a per-FolderTypeID `QSettings` byte
+record; hex-encoded UTF-8 type IDs prevent INI slash/Unicode key collisions.
+Registry calls and Win32 `LVCOLUMN` reads are replaced only by a Qt header
+snapshot. Qt `FileTable` holds the current source property/raw mapping, retains
+hidden path/index transport cells, displays source-formatted property text and
+sorts original item indices without parsing display strings. The dynamic header
+menu lists all reported properties, keeps Name visible, restores shown columns
+and resets a hidden sort column to Name. Four view modes share the same rows and
+column state. The previous seven-position `SortPropIDForColumn` adapter was
+removed. `GetColumnAlign` keeps the original property/type switch with Qt
+alignment constants; copied modules use project clang-format separately from
+functional comparison.
+
+`PanelListNotify.cpp::GetItemText` retains the source size grouping, BSTR newline
+replacement, `ConvertPropertyToShortString2` fallback, raw security/reparse
+conversion and short-hex/long-data branches. The Name and flat-prefix Qt
+presentation remains the accepted P0-05 adaptation. Time uses level 0 here;
+five precision levels, UTC control and view-specific formatting belong to
+P0-06.3. The source raw comparison's empty/data-type/reparse branch is copied;
+the Qt row supplies its source index and raw flag. Malformed reparse bytes are
+rejected before pointer comparison, a portability guard absent from the Win32
+call site. `CAgentFolder` now implements the upstream raw interface and maps
+folder rows to original archive indices; `qtarchiveproperties.cpp` forwards an
+available raw provider across the `7zz` metadata adapter. The current external
+`7zz` listing does not supply binary raw fields, so real archive raw values are
+not claimed: the code path is checked with a deterministic provider fixture,
+and complete archive raw-value transport remains mandatory P1-10. `_proxy2`
+alternate streams remain P1-10/P2-05. There is one authoritative copy of each
+borrowed functional body.
+
+`panel_columns` checks Unicode/space filesystem values, raw catalog/text/sort,
+all-column header control, independent filesystem/archive records,
+width/order/sort restoration and eight current-build JSON reports (four modes
+at 980×620 and 640×400); toolbar, address, list and status stay visible.
+`view_settings_columns` checks exact binary bytes and malformed records;
+`agent_folder`, `panel_sort` and `ui_layout` cover direct consumers. Focused
+5/5 pass after the local alignment/test-cleanup edits; the app rebuild passes. The full
+`./scripts/check.sh` before that edit passed formatting, app build and 132/132
+CTest (93.36 s) on macOS arm64; the subsequent alignment-only change received
+focused rebuild/tests. Windows/Linux runtime and rendered Windows visual parity
+remain unverified. P0-06.3 time and P0-06.4 auto-refresh/parent acceptance are
+still mandatory.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

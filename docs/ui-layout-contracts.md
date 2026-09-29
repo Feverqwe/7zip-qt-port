@@ -97,15 +97,16 @@ Reference: pinned `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/PanelListNotify.cpp` property-to-text branches and
 `CPP/7zip/UI/Agent/Agent.cpp` typed GetProperty. Unknown size/packed metadata
 must leave the corresponding file cell empty; defined zero must display `0`.
-Directory size cells retain the current empty presentation. The seven-column
-model, hidden transport columns, view modes and navigation grouping are unchanged.
+Directory size cells retain the current empty presentation. The hidden transport
+columns, view modes and navigation grouping are unchanged. P0-06.2 adds the
+source property catalog to the visible table columns.
 
 `panel_selected_state` checks normal/flat archive cells in all four views at
 980×620 and 640×480, verifies central/active view visibility, and writes
 `archive-runtime-mode*-flat*-*.json` under `build/dev/ui-reports`. Review geometry,
 control order and clipping in those current-build reports. These establish Qt
-usability/typed value behavior, not rendered Windows pixel parity; full source
-column formatting and property catalogs remain mandatory P0-06.2 scope.
+usability/typed value behavior, not rendered Windows pixel parity. The later
+`panel_columns` reports cover source property columns and their header controls.
 
 For recursive filesystem loading, `flat_view` also writes normal/compact
 `filesystem-native-scan-*` and `filesystem-presentation-*` reports. Navigation
@@ -136,8 +137,20 @@ names under `dir10` and `dir2` place `dir10` first. Header and sort action
 remain in sync. The list, address, toolbar and status keep their existing order
 and stay unclipped at 980×620 and 640×400. `panel_sort` writes
 `source-sort-flat-980.json` and `source-sort-flat-640.json`; these are current Qt
-structure reports, not a rendered Windows comparison. Raw columns and the full
-column/time menu are P0-06.2.
+structure reports, not a rendered Windows comparison. P0-06.2 covers raw-column
+sorting and the column header menu; time precision controls remain P0-06.3.
+
+### Source property columns (P0-06.2)
+
+Reference: pinned `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/PanelItems.cpp::InitColumns/SaveListViewInfo` and
+`PanelListNotify.cpp::GetItemText`. The header exposes folder-type property
+columns, preserving visibility, width, order and sort between openings. Name
+cannot be hidden. The shared list remains fully visible in all four modes at
+980×620 and 640×400. `panel_columns` writes eight `source-columns-*` JSON
+reports for those states. These establish the Qt structure and usability; they
+do not establish rendered Windows parity or availability of binary raw metadata
+from the external `7zz` backend (P1-10).
 
 ## File list settings
 

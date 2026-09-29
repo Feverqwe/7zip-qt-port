@@ -18,8 +18,68 @@ static const char *const kPositionValueName = "Position";
 static const char *const kPanelsInfoValueName = "Panels";
 static const UInt32 kWindowPositionHeaderSize = 5 * 4;
 static const UInt32 kPanelsInfoHeaderSize = 3 * 4;
+static const UInt32 kListViewHeaderSize = 3 * 4;
+static const UInt32 kColumnInfoSize = 3 * 4;
+static const UInt32 kListViewVersion = 1;
 static const char *const kToolbars = "Toolbars";
 static const UInt32 kDefaultToolbarMask = ((UInt32)1 << 31) | 8 | 4 | 1;
+
+static QString ColumnSettingsKey(const UString &id) {
+    return QStringLiteral("Columns/@") + QString::fromLatin1(ToQString(id).toUtf8().toHex());
+}
+
+void CListViewInfo::Save(const UString &id, const QString &settingsPath) const {
+    const UInt32 dataSize = kListViewHeaderSize + kColumnInfoSize * Columns.Size();
+    CByteArr buf(dataSize);
+    Set32(buf, kListViewVersion);
+    Set32(buf + 4, SortID);
+    SetBool(buf + 8, Ascending);
+    FOR_VECTOR(i, Columns) {
+        const CColumnInfo &column = Columns[i];
+        Byte *p = buf + kListViewHeaderSize + i * kColumnInfoSize;
+        Set32(p, column.PropID);
+        SetBool(p + 4, column.IsVisible);
+        Set32(p + 8, column.Width);
+    }
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.setValue(ColumnSettingsKey(id),
+                 QByteArray(reinterpret_cast<const char *>((const Byte *)buf), dataSize));
+}
+
+void CListViewInfo::Read(const UString &id, const QString &settingsPath) {
+    Clear();
+    QSettings key(settingsPath, QSettings::IniFormat);
+    const QVariant value = key.value(ColumnSettingsKey(id));
+    if (value.metaType().id() != QMetaType::QByteArray)
+        return;
+    const QByteArray bytes = value.toByteArray();
+    unsigned size = unsigned(bytes.size());
+    if (size < kListViewHeaderSize)
+        return;
+    const Byte *buf = reinterpret_cast<const Byte *>(bytes.constData());
+    UInt32 version;
+    Get32(buf, version);
+    if (version != kListViewVersion)
+        return;
+    Get32(buf + 4, SortID);
+    GetBool(buf + 8, Ascending);
+    IsLoaded = true;
+    size -= kListViewHeaderSize;
+    if (size % kColumnInfoSize != 0)
+        return;
+    if (size > 1000 * kColumnInfoSize)
+        return;
+    const unsigned numItems = size / kColumnInfoSize;
+    Columns.ClearAndReserve(numItems);
+    for (unsigned i = 0; i < numItems; i++) {
+        CColumnInfo column;
+        const Byte *p = buf + kListViewHeaderSize + i * kColumnInfoSize;
+        Get32(p, column.PropID);
+        GetBool(p + 4, column.IsVisible);
+        Get32(p + 8, column.Width);
+        Columns.AddInReserved(column);
+    }
+}
 
 void SaveToolbarsMask(UInt32 toolbarMask, const QString &settingsPath) {
     QSettings key(settingsPath, QSettings::IniFormat);

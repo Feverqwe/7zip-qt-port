@@ -34,7 +34,8 @@ bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {
             const UInt32 first = data(Qt::UserRole + 6).toUInt();
             const UInt32 second = other.data(Qt::UserRole + 6).toUInt();
             return table->sourcePanel->CompareItemIndices(first, second,
-                                                          SortPropIDForColumn(columnIndex)) < 0;
+                                                          table->propertyId(columnIndex),
+                                                          table->isRawProperty(columnIndex)) < 0;
         }
     }
     return QTableWidgetItem::operator<(other);

@@ -45,7 +45,6 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     table_->setRowCount(0);
     path_->setText(directory_);
     static_cast<FileTable *>(table_)->filesystem = true;
-    table_->setColumnHidden(3, true);
     if (flatDisk_) {
         scanningDisk_ = true;
         setState(State::Filesystem);
@@ -62,6 +61,7 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
             result = folder->LoadItems();
         }
         if (result == S_OK) {
+            configureColumns();
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
             for (UInt32 i = 0; i < spec->Files.Size(); ++i)
                 appendFilesystemEntry(
@@ -97,13 +97,18 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
     table_->insertRow(row);
     const QString displayName = ((flatDisk_ ? nativePrefix : QString()) + nativeName)
                                     .normalized(QString::NormalizationForm_C);
-    const QStringList values = {displayName,
-                                file.absoluteFilePath(),
-                                directory ? QString() : sizeValue.toString(),
-                                QString(),
-                                file.lastModified().toString(Qt::ISODate),
-                                GetExtensionPtr(QStringView(nativeName)).toString(),
-                                QString::number(sourceIndex)};
+    QStringList values = {displayName,
+                          file.absoluteFilePath(),
+                          directory ? QString() : sizeValue.toString(),
+                          QString(),
+                          file.lastModified().toString(Qt::ISODate),
+                          GetExtensionPtr(QStringView(nativeName)).toString(),
+                          QString::number(sourceIndex)};
+    for (int col : {2, 3, 4})
+        if (!table_->isColumnHidden(col))
+            values[col] = sourceColumnText(sourceIndex, col);
+    for (int col = 7; col < table_->columnCount(); ++col)
+        values << (table_->isColumnHidden(col) ? QString() : sourceColumnText(sourceIndex, col));
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
         item->setData(Qt::UserRole + 1, directory);
@@ -122,8 +127,8 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
             item->setData(Qt::UserRole + 2, sizeValue);
         if (col == 6)
             item->setData(Qt::UserRole + 2, sourceIndex);
-        if (col == 2 || col == 3)
-            item->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        if (col != 1 && col != 5 && col != 6)
+            item->setTextAlignment(sourceColumnAlignment(col));
         table_->setItem(row, col, item);
     }
 }

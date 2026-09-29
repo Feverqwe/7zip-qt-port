@@ -32,6 +32,7 @@ Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 
 class CAgentFolder final : public IFolderFolder,
+                           public IArchiveGetRawProps,
                            public IFolderSetFlatMode,
                            public IArchiveFolderInternal,
                            public IFolderOperations,
@@ -41,6 +42,7 @@ class CAgentFolder final : public IFolderFolder,
                            public IQtProgressServices,
                            public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
+    Z7_COM_QI_ENTRY(IArchiveGetRawProps)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
     Z7_COM_QI_ENTRY(IArchiveFolderInternal)
     else if (iid == IID_IFolderOperations && (CanCopyFromFile() || CanCopyTo())) {
@@ -56,6 +58,7 @@ class CAgentFolder final : public IFolderFolder,
   public:
     CAgentFolder() = default;
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IArchiveFolderInternal)
     Z7_IFACE_COM7_IMP(IFolderOperations)

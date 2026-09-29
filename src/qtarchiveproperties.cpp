@@ -12,24 +12,48 @@ bool ArchiveUpdateEnabled(IInArchive *archive) {
 }
 
 namespace {
-class CFolderArchiveProperties final : public IInArchive, public IOutArchive, public CMyUnknownImp {
+class CFolderArchiveProperties final : public IInArchive,
+                                       public IOutArchive,
+                                       public IArchiveGetRawProps,
+                                       public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IInArchive)
+    else if (_rawProps && iid == IID_IArchiveGetRawProps) {
+        *outObject = static_cast<IArchiveGetRawProps *>(this);
+    }
     else if (_resourceSpec && _resourceSpec->HasUpdateService() && iid == IID_IOutArchive) {
         *outObject = static_cast<IOutArchive *>(this);
     }
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
     CMyComPtr<IFolderFolder> _properties;
+    CMyComPtr<IArchiveGetRawProps> _rawProps;
     CMyComPtr<IUnknown> _resource;
     QtArchiveFileResource *_resourceSpec;
 
   public:
     CFolderArchiveProperties(IFolderFolder *properties, IUnknown *resource)
         : _properties(properties), _resource(resource),
-          _resourceSpec(dynamic_cast<QtArchiveFileResource *>(resource)) {}
+          _resourceSpec(dynamic_cast<QtArchiveFileResource *>(resource)) {
+        _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
+    }
     Z7_IFACE_COM7_IMP(IInArchive)
     Z7_IFACE_COM7_IMP(IOutArchive)
+    Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
 };
+
+Z7_COM7F_IMF(CFolderArchiveProperties::GetParent(UInt32 index, UInt32 *parent, UInt32 *type)) {
+    return _rawProps ? _rawProps->GetParent(index, parent, type) : E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFolderArchiveProperties::GetNumRawProps(UInt32 *count)) {
+    return _rawProps ? _rawProps->GetNumRawProps(count) : E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFolderArchiveProperties::GetRawPropInfo(UInt32 index, BSTR *name, PROPID *id)) {
+    return _rawProps ? _rawProps->GetRawPropInfo(index, name, id) : E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFolderArchiveProperties::GetRawProp(UInt32 index, PROPID id, const void **data,
+                                                  UInt32 *size, UInt32 *type)) {
+    return _rawProps ? _rawProps->GetRawProp(index, id, data, size, type) : E_NOTIMPL;
+}
 
 Z7_COM7F_IMF(CFolderArchiveProperties::GetFileTimeType(UInt32 *type)) {
     if (!type)
@@ -49,6 +73,8 @@ Z7_COM7F_IMF(CFolderArchiveProperties::Open(IInStream *, const UInt64 *,
     CMyComPtr<IFolderFolder> metadata;
     RINOK(_resourceSpec->ReOpen(&metadata, callback))
     _properties = metadata;
+    _rawProps.Release();
+    _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
     return S_OK;
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::Close()) { return S_OK; }

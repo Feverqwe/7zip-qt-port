@@ -33,6 +33,18 @@ their current behavior; raw property columns and full column/time controls
 remain P0-06.2. Normal/compact geometry is checked locally, with no rendered
 Windows comparison.
 
+P0-06.2 now projects the bound folder's original property catalog into the Qt
+list. The header menu offers every reported property, with Name always shown;
+width, order, visibility and sort restore separately for filesystem and archive
+folder types. Raw values and sorting follow the source interface when a folder
+provides it. The external `7zz` listing currently has no binary raw provider,
+so this does not claim visible NTFS/security/reparse values for real archives;
+full archive raw-value transport remains P1-10. Hidden columns are read when
+shown, avoiding work during ordinary row publication. The normal/compact
+four-view JSON confirms layout and control visibility, not pixel fidelity.
+Time precision/UTC controls and automatic refresh remain P0-06.3/.4; Windows
+rendered reference and Windows/Linux runtime checks remain outstanding.
+
 The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
 backslash on the focused file list uses the same command. The Qt list presents
 the provider's original item names and indices. On macOS, Computer opens `/`,

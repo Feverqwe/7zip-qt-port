@@ -5,6 +5,7 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "Panel.h"
+#include "PropertyName.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
@@ -12,6 +13,211 @@
 #include "Windows/WinDefs.h"
 
 static const UInt32 kParentIndex = (UInt32)-1;
+
+static bool GetColumnVisible(PROPID propID, bool isFsFolder) {
+    if (isFsFolder) {
+        switch (propID) {
+        case kpidATime:
+        case kpidChangeTime:
+        case kpidAttrib:
+        case kpidPackSize:
+        case kpidINode:
+        case kpidLinks:
+        case kpidNtReparse:
+            return false;
+        }
+    }
+    return true;
+}
+
+static unsigned GetColumnWidth(PROPID propID, VARTYPE /* varType */) {
+    switch (propID) {
+    case kpidName:
+        return 160;
+    }
+    return 100;
+}
+
+Qt::Alignment GetColumnAlign(PROPID propID, VARTYPE varType) {
+    switch (propID) {
+    case kpidCTime:
+    case kpidATime:
+    case kpidMTime:
+    case kpidChangeTime:
+        return Qt::AlignLeft | Qt::AlignVCenter;
+    }
+    switch (varType) {
+    case VT_UI1:
+    case VT_I2:
+    case VT_UI2:
+    case VT_I4:
+    case VT_INT:
+    case VT_UI4:
+    case VT_UINT:
+    case VT_I8:
+    case VT_UI8:
+    case VT_BOOL:
+        return Qt::AlignRight | Qt::AlignVCenter;
+    case VT_EMPTY:
+    case VT_I1:
+    case VT_FILETIME:
+    case VT_BSTR:
+        return Qt::AlignLeft | Qt::AlignVCenter;
+    default:
+        return Qt::AlignHCenter | Qt::AlignVCenter;
+    }
+}
+
+static int ItemProperty_Compare_NameFirst(void *const *a1, void *const *a2, void * /* param */) {
+    return (*(*((const CPropColumn *const *)a1)))
+        .Compare_NameFirst(*(*((const CPropColumn *const *)a2)));
+}
+
+HRESULT CPanel::InitColumns() {
+    SaveListViewInfo(_visibleColumns);
+    if (!_folder)
+        return E_FAIL;
+    const UString oldType = _typeIDString;
+    _typeIDString = GetFolderTypeID();
+    if (!_needSaveInfo || _typeIDString != oldType)
+        _listViewInfo.Read(_typeIDString, _settingsPath);
+    _ascending = _listViewInfo.Ascending;
+    _columns.Clear();
+    const bool isFsFolder = IsFSFolder() || IsAltStreamsFolder();
+    UInt32 numProps = 0;
+    if (_folder->GetNumberOfProperties(&numProps) == S_OK) {
+        for (UInt32 i = 0; i < numProps; i++) {
+            CMyComBSTR name;
+            PROPID propID;
+            VARTYPE varType;
+            const HRESULT res = _folder->GetPropertyInfo(i, &name, &propID, &varType);
+            if (res != S_OK || propID == kpidIsDir)
+                continue;
+            CPropColumn prop;
+            prop.Type = varType;
+            prop.ID = propID;
+            prop.Name = GetNameOfProperty(propID, name);
+            prop.Order = -1;
+            prop.IsVisible = GetColumnVisible(propID, isFsFolder);
+            prop.Width = GetColumnWidth(propID, varType);
+            prop.IsRawProp = false;
+            _columns.Add(prop);
+        }
+    }
+    if (_folderRawProps) {
+        UInt32 numRawProps = 0;
+        if (_folderRawProps->GetNumRawProps(&numRawProps) == S_OK) {
+            for (UInt32 i = 0; i < numRawProps; i++) {
+                CMyComBSTR name;
+                PROPID propID;
+                if (_folderRawProps->GetRawPropInfo(i, &name, &propID) != S_OK)
+                    continue;
+                CPropColumn prop;
+                prop.Type = VT_EMPTY;
+                prop.ID = propID;
+                prop.Name = GetNameOfProperty(propID, name);
+                prop.Order = -1;
+                prop.IsVisible = GetColumnVisible(propID, isFsFolder);
+                prop.Width = GetColumnWidth(propID, VT_BSTR);
+                prop.IsRawProp = true;
+                _columns.Add(prop);
+            }
+        }
+    }
+    unsigned order = 0;
+    unsigned i;
+    for (i = 0; i < _listViewInfo.Columns.Size(); i++) {
+        const CColumnInfo &columnInfo = _listViewInfo.Columns[i];
+        const int index = _columns.FindItem_for_PropID(columnInfo.PropID);
+        if (index >= 0) {
+            CPropColumn &item = _columns[index];
+            if (item.Order >= 0)
+                continue;
+            bool isVisible = columnInfo.IsVisible;
+            if (columnInfo.PropID == kpidName)
+                isVisible = true;
+            item.IsVisible = isVisible;
+            item.Width = columnInfo.Width;
+            if (isVisible)
+                item.Order = (int)(order++);
+        }
+    }
+    for (i = 0; i < _columns.Size(); i++) {
+        CPropColumn &item = _columns[i];
+        if (item.IsVisible && item.Order < 0)
+            item.Order = (int)(order++);
+    }
+    for (i = 0; i < _columns.Size(); i++) {
+        CPropColumn &item = _columns[i];
+        if (item.Order < 0)
+            item.Order = (int)(order++);
+    }
+    if (_listViewInfo.IsLoaded)
+        _sortID = _listViewInfo.SortID;
+    else {
+        _sortID = 0;
+        if (IsFSFolder() || IsAltStreamsFolder() || IsArcFolder())
+            _sortID = kpidName;
+    }
+    CPropColumns newColumns;
+    for (i = 0; i < _columns.Size(); i++) {
+        const CPropColumn &prop = _columns[i];
+        if (prop.IsVisible)
+            newColumns.Add(prop);
+    }
+    newColumns.Sort(ItemProperty_Compare_NameFirst, NULL);
+    _visibleColumns.Clear();
+    FOR_VECTOR(columnIndex, newColumns)
+    _visibleColumns.Add(newColumns[columnIndex]);
+    _needSaveInfo = true;
+    return S_OK;
+}
+
+void CPanel::SaveListViewInfo(const CPropColumns &visibleColumns) {
+    if (!_needSaveInfo)
+        return;
+
+    _visibleColumns = visibleColumns;
+    FOR_VECTOR(i, _columns) {
+        CPropColumn &prop = _columns[i];
+        const int index = _visibleColumns.FindItem_for_PropID(prop.ID);
+        prop.IsVisible = index >= 0;
+        if (index >= 0) {
+            prop.Order = _visibleColumns[index].Order;
+            prop.Width = _visibleColumns[index].Width;
+        }
+    }
+
+    CListViewInfo viewInfo;
+    const PROPID sortPropID = _sortID;
+    CPropColumns sortedProperties = _visibleColumns;
+    sortedProperties.Sort();
+    FOR_VECTOR(i, sortedProperties) {
+        const CPropColumn &prop = sortedProperties[i];
+        CColumnInfo columnInfo;
+        columnInfo.IsVisible = prop.IsVisible;
+        columnInfo.PropID = prop.ID;
+        columnInfo.Width = prop.Width;
+        viewInfo.Columns.Add(columnInfo);
+    }
+    FOR_VECTOR(i, _columns) {
+        const CPropColumn &prop = _columns[i];
+        if (sortedProperties.FindItem_for_PropID(prop.ID) < 0) {
+            CColumnInfo columnInfo;
+            columnInfo.IsVisible = false;
+            columnInfo.PropID = prop.ID;
+            columnInfo.Width = prop.Width;
+            viewInfo.Columns.Add(columnInfo);
+        }
+    }
+    viewInfo.SortID = sortPropID;
+    viewInfo.Ascending = _ascending;
+    viewInfo.IsLoaded = true;
+    if (!_listViewInfo.IsEqual(viewInfo)) {
+        viewInfo.Save(_typeIDString, _settingsPath);
+        _listViewInfo = viewInfo;
+    }
+}
 
 unsigned CPanel::GetRealItemIndex(int indexInListView) const {
     quintptr param;

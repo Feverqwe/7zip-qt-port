@@ -176,7 +176,8 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(table->isVisible());
         QVERIFY(toolbar->isVisible());
         QVERIFY(window.statusBar()->isVisible());
-        QCOMPARE(table->columnCount(), 7);
+        QVERIFY(table->columnCount() >
+                7); // Source folder property catalog extends the transport columns.
         QVERIFY(table->isColumnHidden(5));
         QVERIFY(table->isColumnHidden(6));
 

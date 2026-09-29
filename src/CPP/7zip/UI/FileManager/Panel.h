@@ -5,6 +5,7 @@
 #pragma once
 
 #include "7zip/Archive/IArchive.h"
+#include "7zip/PropID.h"
 #include "7zip/UI/Common/ExtractMode.h"
 #include "7zip/UI/FileManager/IFolder.h"
 #include "CPP/Windows/DLL.h"
@@ -14,6 +15,7 @@
 #include "Common/MyString.h"
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
+#include "ViewSettings.h"
 #include "Windows/FileFind.h"
 #include "Windows/Synchronization.h"
 #include "Windows/TimeUtils.h"
@@ -171,6 +173,50 @@ struct COpenResult {
     bool Encrypted;
     UString ErrorMessage;
     COpenResult() : ArchiveIsOpened(false), Encrypted(false) {}
+};
+
+struct CPropColumn {
+    int Order;
+    PROPID ID;
+    VARTYPE Type;
+    bool IsVisible;
+    bool IsRawProp;
+    UInt32 Width;
+    UString Name;
+
+    bool IsEqualTo(const CPropColumn &a) const {
+        return Order == a.Order && ID == a.ID && Type == a.Type && IsVisible == a.IsVisible &&
+               IsRawProp == a.IsRawProp && Width == a.Width && Name == a.Name;
+    }
+    int Compare(const CPropColumn &a) const { return MyCompare(Order, a.Order); }
+    int Compare_NameFirst(const CPropColumn &a) const {
+        if (ID == kpidName) {
+            if (a.ID != kpidName)
+                return -1;
+        } else if (a.ID == kpidName)
+            return 1;
+        return MyCompare(Order, a.Order);
+    }
+};
+
+Qt::Alignment GetColumnAlign(PROPID propID, VARTYPE varType);
+
+class CPropColumns : public CObjectVector<CPropColumn> {
+  public:
+    int FindItem_for_PropID(PROPID id) const {
+        FOR_VECTOR(i, (*this))
+        if ((*this)[i].ID == id)
+            return (int)i;
+        return -1;
+    }
+    bool IsEqualTo(const CPropColumns &props) const {
+        if (Size() != props.Size())
+            return false;
+        FOR_VECTOR(i, (*this))
+        if (!(*this)[i].IsEqualTo(props[i]))
+            return false;
+        return true;
+    }
 };
 
 class CPanel : public QObject {
@@ -361,7 +407,13 @@ class CPanel : public QObject {
     UString GetItemRelPath2(unsigned index) const;
     UString GetItemFullPath(unsigned index) const;
     bool IsItem_Folder(UInt32 index) const;
-    int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID) const;
+    int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,
+                           bool isRawProp = false) const;
+    HRESULT InitColumns();
+    void SaveListViewInfo(const CPropColumns &visibleColumns);
+    const CPropColumns &GetColumns() const { return _columns; }
+    const CPropColumns &GetVisibleColumns() const { return _visibleColumns; }
+    QString GetItemText(UInt32 itemIndex, const CPropColumn &property) const;
     bool IsItem_AltStream(unsigned itemIndex) const;
     // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
     void RefreshListCtrl(const CSelectedState &state);
@@ -417,6 +469,11 @@ class CPanel : public QObject {
     bool _thereAreDeletedItems = false;
     CMyComPtr<IFolderManager> _folderManager;
     QString _settingsPath;
+    bool _needSaveInfo = false;
+    UString _typeIDString;
+    CListViewInfo _listViewInfo;
+    CPropColumns _columns;
+    CPropColumns _visibleColumns;
     QWidget *GetParent() const;
     void MessageBox_Error(const UString &message) const;
     void MessageBox_Error_LangID(UINT resourceID) const;

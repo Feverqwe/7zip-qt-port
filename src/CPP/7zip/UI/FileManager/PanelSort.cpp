@@ -4,11 +4,13 @@
 // QStringView conversion and Qt properties adapt the panel at its boundary.
 
 #include "PanelSort.h"
+#include "../C/CpuArch.h"
 #include "7zip/PropID.h"
 #include "Panel.h"
+#include "Windows/FileIO.h"
 #include "Windows/PropVariant.h"
 
-#include <iterator>
+#include <optional>
 #include <string>
 
 namespace {
@@ -71,16 +73,57 @@ QStringView GetExtensionPtr(QStringView name) {
     return name.mid(dotPos < 0 ? name.size() : dotPos);
 }
 
-PROPID SortPropIDForColumn(int column) {
-    constexpr PROPID properties[] = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
-                                     kpidMTime, kpidExtension, kpidNoProperty};
-    return column >= 0 && column < int(std::size(properties)) ? properties[column] : kpidNoProperty;
+static int CompareFileNames_Le16(const Byte *s1, unsigned size1, const Byte *s2, unsigned size2) {
+    size1 &= ~1u;
+    size2 &= ~1u;
+    for (unsigned i = 0;; i += 2) {
+        if (i >= size1)
+            return (i >= size2) ? 0 : -1;
+        if (i >= size2)
+            return 1;
+        UInt16 c1 = GetUi16(s1 + i);
+        UInt16 c2 = GetUi16(s2 + i);
+        if (c1 == c2) {
+            if (c1 == 0)
+                return 0;
+            continue;
+        }
+        return c1 < c2 ? -1 : 1;
+    }
+}
+
+static std::optional<int> CompareRawItems(IArchiveGetRawProps *props, UInt32 first, UInt32 second,
+                                          PROPID propID) {
+    const void *data1 = nullptr;
+    const void *data2 = nullptr;
+    UInt32 dataSize1 = 0;
+    UInt32 dataSize2 = 0;
+    UInt32 propType1 = 0;
+    UInt32 propType2 = 0;
+    if (props->GetRawProp(first, propID, &data1, &dataSize1, &propType1) != S_OK ||
+        props->GetRawProp(second, propID, &data2, &dataSize2, &propType2) != S_OK)
+        return 0;
+    if (dataSize1 == 0)
+        return dataSize2 == 0 ? 0 : -1;
+    if (dataSize2 == 0)
+        return 1;
+    if (propType1 != NPropDataType::kRaw || propType2 != NPropDataType::kRaw)
+        return 0;
+    if (propID == kpidNtReparse) {
+        NWindows::NFile::CReparseShortInfo r1;
+        NWindows::NFile::CReparseShortInfo r2;
+        if (!r1.Parse(static_cast<const Byte *>(data1), dataSize1) ||
+            !r2.Parse(static_cast<const Byte *>(data2), dataSize2))
+            return 0;
+        return CompareFileNames_Le16(static_cast<const Byte *>(data1) + r1.Offset, r1.Size,
+                                     static_cast<const Byte *>(data2) + r2.Offset, r2.Size);
+    }
+    return std::nullopt;
 }
 
 // The source CompareItems2/CompareItems property loop, adapted to source item
-// indices held by Qt rows. Raw-property columns join this owner with the full
-// column catalog in P0-06.2.
-int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID) const {
+// indices and the raw-column flag held by Qt rows.
+int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID, bool isRawProp) const {
     if (first == UInt32(-1))
         return -1;
     if (second == UInt32(-1))
@@ -93,8 +136,14 @@ int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID) const
     PROPID propID = sortID;
     int res = 0;
     for (unsigned iter = 0; iter < 3; iter++) {
+        const std::optional<int> rawResult =
+            iter == 0 && isRawProp && _folderRawProps
+                ? CompareRawItems(_folderRawProps, first, second, propID)
+                : std::nullopt;
         if (propID == kpidNoProperty)
             res = first < second ? -1 : first > second ? 1 : 0;
+        else if (rawResult)
+            res = *rawResult;
         else if (_folderCompare)
             res = _folderCompare->CompareItems(first, second, propID, 0);
         else if (propID == kpidName)

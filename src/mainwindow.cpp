@@ -51,6 +51,7 @@ void MainWindow::connectFilesystemScanner() {
                 auto &panel = app_.GetFocusedPanel();
                 panel.SetNewFolder(folder);
                 panel.LoadFullPath();
+                configureColumns();
             });
     connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
             [this](const QFileInfoList &files, quint32 firstSourceIndex) {
