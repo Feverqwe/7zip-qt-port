@@ -15,6 +15,16 @@
 #include <QDir>
 #include <QFile>
 
+#ifdef _WIN32
+#if !defined(_WIN32_WINNT) || _WIN32_WINNT < 0x0501
+#ifdef _APISETFILE_
+EXTERN_C_BEGIN
+WINBASEAPI DWORD WINAPI GetCompressedFileSizeW(LPCWSTR lpFileName, LPDWORD lpFileSizeHigh);
+EXTERN_C_END
+#endif
+#endif
+#endif
+
 namespace NFsFolder {
 namespace {
 FString FsPath(const QString &path) {
@@ -25,6 +35,41 @@ QString QtPath(const FString &path) {
     return QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(path)));
 }
 } // namespace
+
+#ifndef UNDER_CE
+bool MyGetCompressedFileSizeW(CFSTR path, UInt64 &size) {
+#ifdef _WIN32
+    using namespace NWindows::NFile::NName;
+    DWORD highPart;
+    DWORD lowPart = INVALID_FILE_SIZE;
+    IF_USE_MAIN_PATH {
+        lowPart = ::GetCompressedFileSizeW(fs2us(path), &highPart);
+        if (lowPart != INVALID_FILE_SIZE || ::GetLastError() == NO_ERROR) {
+            size = ((UInt64)highPart << 32) | lowPart;
+            return true;
+        }
+    }
+#ifdef Z7_LONG_PATH
+    if (USE_SUPER_PATH) {
+        UString superPath;
+        if (GetSuperPath(path, superPath, USE_MAIN_PATH)) {
+            lowPart = ::GetCompressedFileSizeW(superPath, &highPart);
+            if (lowPart != INVALID_FILE_SIZE || ::GetLastError() == NO_ERROR) {
+                size = ((UInt64)highPart << 32) | lowPart;
+                return true;
+            }
+        }
+    }
+#endif
+#else
+    // The source Windows compressed-allocation API has no POSIX equivalent.
+    // Report unavailable so its original fi.Size fallback remains authoritative.
+    (void)path;
+    (void)size;
+#endif
+    return false;
+}
+#endif
 
 CFSFolder::CFSFolder(QString path) {
     FString prefix = FsPath(QDir::cleanPath(std::move(path)));
@@ -157,8 +202,17 @@ Z7_COM7F_IMF(CFSFolder::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *va
             prop = fi.Size;
         break;
     case kpidPackSize:
-        // Native compressed allocation/links/comments are a remaining source scope.
-        return E_NOTIMPL;
+#ifdef UNDER_CE
+        prop = fi.Size;
+#else
+        if (!fi.PackSize_Defined) {
+            fi.PackSize_Defined = true;
+            if (fi.IsDir() || !MyGetCompressedFileSizeW(_path + GetRelPath(fi), fi.PackSize))
+                fi.PackSize = fi.Size;
+        }
+        prop = fi.PackSize;
+#endif
+        break;
     case kpidAttrib:
         prop = (UInt32)fi.GetWinAttrib();
         break;

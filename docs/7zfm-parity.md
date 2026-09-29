@@ -17,6 +17,14 @@ Focused 10/10, ASan 1/1 and full gate 65/65 passed on macOS 2026-09-29.
 Windows/Linux runtime and Windows native reparse/ACL workflow acceptance remain
 unverified; no rendered parity is claimed.
 
+P0-02.2b3b3c2b1 replaces FSFolder's packed-size E_NOTIMPL placeholder with the
+original cached GetProperty branch and Windows native compressed-size helper.
+POSIX retains the original logical-size fallback because that Windows API is
+unavailable; this does not establish compressed-allocation parity. Directory
+Size is absent until calculated while the source packed fallback is zero.
+Current window/dialog layout and visible text are unchanged; live Properties
+binding follows. Windows native behavior remains unverified locally.
+
 ## Аудит диалогов (2026-09-28)
 
 P0-02.2b3b2b1 (2026-09-29) добавляет source filesystem services, без изменения

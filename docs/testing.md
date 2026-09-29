@@ -45,6 +45,11 @@ catalog descriptors, invalid indices and failure clearing stale rows. It also
 checks name/index/flat binding, ancestor/root, child flat defaults, missing/file
 rejection and WasChanged identity. Windows root-to-FSDrives/rebind is conditional
 and still requires execution on Windows.
+Its packed-size cases verify normal/flat typed values, cached results after file
+removal, missing-before-first-read fallback to loaded size, directory packed zero
+versus absent uncalculated Size, and stale-record removal on reload. Windows
+native compressed-allocation behavior requires Windows execution; POSIX uses
+the explicit source logical-size fallback.
 The POSIX source-folder link regression verifies flat no-follow traversal and
 typed link metadata. Windows reparse traversal requires Windows runtime acceptance;
 QFile::link on Windows creates shortcuts and cannot validate directory junctions.

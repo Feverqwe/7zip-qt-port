@@ -20,6 +20,63 @@ class FsFolderTests : public QObject {
         return QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal));
     }
   private slots:
+    void packedSizeUsesSourceCacheAndMissingFileFallback_data() {
+        QTest::addColumn<bool>("flat");
+        QTest::addColumn<bool>("cached");
+        for (bool flat : {false, true})
+            for (bool cached : {false, true})
+                QTest::newRow(qPrintable(QString("flat%1-cached%2").arg(flat).arg(cached)))
+                    << flat << cached;
+    }
+    void packedSizeUsesSourceCacheAndMissingFileFallback() {
+        QFETCH(bool, flat);
+        QFETCH(bool, cached);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("directory"));
+        const QString name = QStringLiteral("cache й with spaces");
+        QFile file(temp.filePath(name));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("fixture"), qint64(7));
+        file.close();
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderSetFlatMode> mode;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &mode), S_OK);
+        QCOMPARE(mode->SetFlatMode(flat), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(2));
+        UInt32 fileIndex = count;
+        CPropVariant value;
+        for (UInt32 i = 0; i < count; ++i) {
+            if (text(folder, i, kpidName).normalized(QString::NormalizationForm_C) == name)
+                fileIndex = i;
+            else {
+                QCOMPARE(folder->GetProperty(i, kpidSize, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+                QCOMPARE(folder->GetProperty(i, kpidPackSize, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_UI8));
+                QCOMPARE(value.uhVal.QuadPart, UInt64(0));
+            }
+        }
+        QVERIFY(fileIndex < count);
+        UInt64 firstPacked = 7;
+        if (cached) {
+            QCOMPARE(folder->GetProperty(fileIndex, kpidPackSize, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_UI8));
+            firstPacked = value.uhVal.QuadPart;
+        }
+        QVERIFY(QFile::remove(file.fileName()));
+        QCOMPARE(folder->GetProperty(fileIndex, kpidPackSize, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_UI8));
+        QCOMPARE(value.uhVal.QuadPart, firstPacked);
+        QCOMPARE(folder->GetProperty(fileIndex, kpidSize, &value), S_OK);
+        QCOMPARE(value.uhVal.QuadPart, UInt64(7));
+        QCOMPARE(folder->LoadItems(), S_OK);
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+    }
 #ifndef _WIN32
     void flatListingDoesNotFollowDirectoryLinks() {
         QTemporaryDir temp;

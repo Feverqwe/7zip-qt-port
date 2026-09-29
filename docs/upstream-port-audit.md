@@ -8,6 +8,41 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2b1 — source filesystem packed-size property (2026-09-29)
+
+Project baseline `47f562b`; unchanged pinned source [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+CPP/7zip/UI/FileManager/FSFolder.cpp MyGetCompressedFileSizeW and GetProperty
+kpidPackSize. Copies the complete cached property branch: UNDER_CE size path,
+one-time PackSize_Defined, directory/API-failure fallback to fi.Size and typed
+property assignment. The previous E_NOTIMPL placeholder is removed. Existing
+source LoadItems/LoadSubItems reset cached flags; property catalog already includes
+the source packed-size descriptor, so there is no independent catalog algorithm.
+
+MyGetCompressedFileSizeW retains the original Windows native call, error check,
+64-bit high/low composition, main/long-path selection and fallback flow. The
+existing portable FileName owner supplies source path helpers. Source old-SDK
+declaration is retained behind its Windows conditions. POSIX has no equivalent
+Windows compressed-allocation API in the inspected portable services; the narrow
+adapter returns unavailable and the original property branch falls back to
+fi.Size. It does not introduce a new st_blocks/compression algorithm. Native
+allocation/link/stream metadata and full Properties capabilities remain mandatory
+P1-10/P2-05/P2-06/P3-05 scopes; this fallback is explicit, not N/A or a claim of
+equivalent compressed allocation on all platforms.
+
+Regression checks public normal/flat properties for Unicode/space files: typed
+packed values, uncalculated directory Size empty but source packed zero defined,
+cached values after the file disappears, missing-file native lookup falling back
+to loaded size, and reload removing stale records. The previous placeholder
+fails these assertions. No new UI text/layout: live Properties binding and full
+formatting remain the following substeps. Windows runtime cannot be inferred
+from the local POSIX fallback checks.
+
+Validation on macOS arm64, 2026-09-29: affected application/test targets build;
+focused filesystem/property consumers 5/5 pass (3.10 s); scripts/check.sh passes
+formatting, application build and all 65 CTest cases (31.42 s). Windows and Linux
+runtime checks remain unverified locally.
+
 ## P0-02.2b3b3c2a — original typed property formatters (2026-09-29)
 
 Project baseline `6bd328b`; exact source [ip7z/7zip

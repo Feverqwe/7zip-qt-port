@@ -25,6 +25,11 @@ disabled until their FileDir service prerequisites are ported; no UI operation
 interface is advertised by this formatter dependency.
 Optional property/operations interfaces remain incomplete. Both window modes bind
 their source folder to CPanel before publishing matching source item indices.
+Packed size uses the original cached FSFolder property branch and Windows native
+compressed-size service. On POSIX that service reports unavailable, retaining the
+original logical-size fallback. Directory Size remains absent until calculated;
+its source packed-size fallback is defined zero. Full native allocation/link/
+stream metadata remains migration work.
 
 `sevenzip-desktop` contains application sources, Qt presentation, platform
 integration, tests and build tooling. Application modules live under
