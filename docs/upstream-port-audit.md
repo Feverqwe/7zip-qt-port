@@ -366,6 +366,43 @@ Focused `fs_folder`, `filesystem_scanner` and `flat_view` pass 3/3 (2.51 s);
 on macOS arm64, 2026-09-29. The updated current-build 640×480 JSON has a
 fully visible toolbar, address, table and status. No pixel parity is claimed.
 
+## P0-06.1 — typed source sort and current list consumers (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([PanelSort.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelSort.cpp),
+same revision for `PanelItems.cpp` and `Panel.h`). Existing mirrored
+`PanelSort.cpp` already contained the upstream natural filename pointer loop.
+This iteration ports `CompareItems2`/`CompareItems` property iteration into
+`CPanel::CompareItemIndices`: parent and folder priority, source `IFolderCompare`
+dispatch, natural base-name/extension comparison, `CPropVariant` type/BSTR/value
+comparison, name→prefix→source-index fallback. The Qt row comparator now passes
+original source indices and a property ID; the previous independent Qt value/
+text comparator was removed. `FileTable` holds only a non-owning panel pointer,
+whose lifetime is managed by `CApp`; Qt still reverses property order for
+descending and compensates folder grouping. Header/action changes synchronize
+the native panel's `_sortID`/`_ascending` with the visible state. Root rows use
+the same item type and source owner.
+
+Necessary adaptations: upstream Win32 `LPARAM` list-item indices come from Qt
+row roles; `wchar_t` names are converted at the existing Qt text boundary;
+`SortPropIDForColumn` maps the current seven-column view. The original raw
+property branch and `SetSortRawStatus` require the source column catalog and
+remain P0-06.2. View column/time persistence and timer refresh remain
+P0-06.2/.3. Windows `ListView_SortItems` and focus-scroll call are represented
+by Qt sorting and the current shared selection model. There is no second
+functional sort implementation for bound folders.
+
+The old flat-prefix test expected natural digit order for `dir2`/`dir10`.
+Upstream compares `kpidPrefix` as a BSTR, so the test now expects lexical
+`dir10` before `dir2` after equal names. Focused source-sort/flat/selection/root
+consumers and current-build 980×620/640×400 JSON validate the resulting Qt
+behavior; Windows rendering/runtime and Linux runtime remain unverified.
+Focused `panel_sort`, `flat_view`, `panel_selected_state` and `root_navigation`
+pass 4/4 (5.64 s); `./scripts/check.sh` passes formatting, app build and
+130/130 CTest (88.78 s) on macOS arm64, 2026-09-29. The current-build compact
+sort report has fully visible toolbar, address, table and status. P0-06.2/.3
+and parent acceptance are still mandatory.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

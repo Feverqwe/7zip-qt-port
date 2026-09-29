@@ -415,6 +415,13 @@ rows are arriving. `fs_folder` covers hidden/empty entries, inaccessible child
 continuation and symlink-cycle suppression. These checks bound GUI work per
 event turn; they do not establish a wall-clock latency guarantee.
 
+`panel_sort` now exercises the source property comparator through normal/flat
+archive and filesystem rows, header and sort actions, typed sizes, natural
+basenames, lexical BSTR prefixes, reverse direction and refresh preservation.
+It writes `source-sort-flat-980.json` and `source-sort-flat-640.json` and checks
+the list remains fully visible. `flat_view`, `panel_selected_state` and
+`root_navigation` are direct consumers of the same bound-folder row indices.
+
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,
 and normal/compact geometry reports. `settings` exercises window consumers

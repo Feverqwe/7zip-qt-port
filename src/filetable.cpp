@@ -1,4 +1,5 @@
 #include "filetable.h"
+#include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 
 #include <QHeaderView>
@@ -26,5 +27,15 @@ bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {
         return tableWidget()->horizontalHeader()->sortIndicatorOrder() == Qt::AscendingOrder
                    ? folder
                    : !folder;
-    return CompareItems(*this, other) < 0;
+    auto *table = static_cast<FileTable *>(tableWidget());
+    if (table && table->sourcePanel && table->sourcePanel->GetFolder()) {
+        const int columnIndex = column();
+        if (columnIndex >= 0 && columnIndex < table->columnCount()) {
+            const UInt32 first = data(Qt::UserRole + 6).toUInt();
+            const UInt32 second = other.data(Qt::UserRole + 6).toUInt();
+            return table->sourcePanel->CompareItemIndices(first, second,
+                                                          SortPropIDForColumn(columnIndex)) < 0;
+        }
+    }
+    return QTableWidgetItem::operator<(other);
 }

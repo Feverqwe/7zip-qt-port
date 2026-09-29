@@ -4,8 +4,11 @@
 // QStringView conversion and Qt properties adapt the panel at its boundary.
 
 #include "PanelSort.h"
+#include "7zip/PropID.h"
+#include "Panel.h"
+#include "Windows/PropVariant.h"
 
-#include <QTableWidgetItem>
+#include <iterator>
 #include <string>
 
 namespace {
@@ -68,32 +71,62 @@ QStringView GetExtensionPtr(QStringView name) {
     return name.mid(dotPos < 0 ? name.size() : dotPos);
 }
 
-int CompareItems(const QTableWidgetItem &left, const QTableWidgetItem &right) {
-    const bool isDir1 = left.data(Qt::UserRole + 1).toBool();
-    const bool isDir2 = right.data(Qt::UserRole + 1).toBool();
+PROPID SortPropIDForColumn(int column) {
+    constexpr PROPID properties[] = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
+                                     kpidMTime, kpidExtension, kpidNoProperty};
+    return column >= 0 && column < int(std::size(properties)) ? properties[column] : kpidNoProperty;
+}
+
+// The source CompareItems2/CompareItems property loop, adapted to source item
+// indices held by Qt rows. Raw-property columns join this owner with the full
+// column catalog in P0-06.2.
+int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID) const {
+    if (first == UInt32(-1))
+        return -1;
+    if (second == UInt32(-1))
+        return 1;
+    const bool isDir1 = IsItem_Folder(first);
+    const bool isDir2 = IsItem_Folder(second);
     if (isDir1 != isDir2)
         return isDir1 ? -1 : 1;
 
-    if (left.data(Qt::UserRole + 2).isValid() && right.data(Qt::UserRole + 2).isValid()) {
-        const qint64 first = left.data(Qt::UserRole + 2).toLongLong();
-        const qint64 second = right.data(Qt::UserRole + 2).toLongLong();
-        if (first != second)
-            return first < second ? -1 : 1;
-    }
+    PROPID propID = sortID;
     int res = 0;
-    // Name is the base name, even when the Qt presentation shows a relative path.
-    if (left.column() != 0)
-        res = CompareFileNames_ForFolderList(QStringView(left.text()), QStringView(right.text()));
-    if (res == 0)
-        res = CompareFileNames_ForFolderList(QStringView(left.data(Qt::UserRole + 3).toString()),
-                                             QStringView(right.data(Qt::UserRole + 3).toString()));
-    if (res == 0)
-        res = CompareFileNames_ForFolderList(QStringView(left.data(Qt::UserRole + 5).toString()),
-                                             QStringView(right.data(Qt::UserRole + 5).toString()));
-    if (res == 0) {
-        const int first = left.data(Qt::UserRole + 6).toInt();
-        const int second = right.data(Qt::UserRole + 6).toInt();
-        res = first < second ? -1 : first > second ? 1 : 0;
+    for (unsigned iter = 0; iter < 3; iter++) {
+        if (propID == kpidNoProperty)
+            res = first < second ? -1 : first > second ? 1 : 0;
+        else if (_folderCompare)
+            res = _folderCompare->CompareItems(first, second, propID, 0);
+        else if (propID == kpidName)
+            res = CompareFileNames_ForFolderList(QStringView(ToQString(GetItemName(first))),
+                                                 QStringView(ToQString(GetItemName(second))));
+        else if (propID == kpidExtension) {
+            const UString name1 = GetItemName(first);
+            const UString name2 = GetItemName(second);
+            res = CompareFileNames_ForFolderList(GetExtensionPtr(QStringView(ToQString(name1))),
+                                                 GetExtensionPtr(QStringView(ToQString(name2))));
+        } else {
+            NWindows::NCOM::CPropVariant prop1, prop2;
+            _folder->GetProperty(first, propID, &prop1);
+            _folder->GetProperty(second, propID, &prop2);
+            if (prop1.vt != prop2.vt)
+                res = prop1.vt < prop2.vt ? -1 : 1;
+            else if (prop1.vt == VT_BSTR)
+                res = MyStringCompareNoCase(prop1.bstrVal, prop2.bstrVal);
+            else
+                res = prop1.Compare(prop2);
+        }
+        if (res)
+            break;
+        if (propID == kpidName) {
+            propID = kpidPrefix;
+            continue;
+        }
+        if (iter)
+            break;
+        propID = kpidName;
     }
+    if (res == 0)
+        res = first < second ? -1 : first > second ? 1 : 0;
     return res;
 }

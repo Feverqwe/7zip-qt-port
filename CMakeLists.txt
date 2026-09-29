@@ -881,7 +881,7 @@ if(BUILD_TESTING)
     add_test(NAME volume_workflow COMMAND volume_workflow_tests)
     set_tests_properties(volume_workflow PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/volume-workflow-settings.ini")
-    qt_add_executable(panel_sort_tests tests/panel_sort_tests.cpp ${panel_sort_sources})
+    qt_add_executable(panel_sort_tests tests/panel_sort_tests.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(panel_sort_tests PRIVATE src)
     target_link_libraries(panel_sort_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME panel_sort COMMAND panel_sort_tests)

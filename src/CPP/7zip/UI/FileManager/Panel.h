@@ -361,6 +361,7 @@ class CPanel : public QObject {
     UString GetItemRelPath2(unsigned index) const;
     UString GetItemFullPath(unsigned index) const;
     bool IsItem_Folder(UInt32 index) const;
+    int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID) const;
     bool IsItem_AltStream(unsigned itemIndex) const;
     // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
     void RefreshListCtrl(const CSelectedState &state);

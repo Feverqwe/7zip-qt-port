@@ -24,6 +24,15 @@ switching mode or location discards pending rows. The deterministic 2048-file
 Unicode fixture and the 1500-file normal/compact window scenario verify this
 local behavior. Windows/Linux runtime and Windows appearance are unverified.
 
+P0-06.1 sorts bound filesystem, archive and root items by source properties and
+source indices. The native rule groups directories first, compares the selected
+typed property, then name, flat prefix and source index. An equal basename in
+`dir10` and `dir2` uses source BSTR prefix order (`dir10` first), rather than
+natural path sorting. The Qt header/action selection and four view modes keep
+their current behavior; raw property columns and full column/time controls
+remain P0-06.2. Normal/compact geometry is checked locally, with no rendered
+Windows comparison.
+
 The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
 backslash on the focused file list uses the same command. The Qt list presents
 the provider's original item names and indices. On macOS, Computer opens `/`,

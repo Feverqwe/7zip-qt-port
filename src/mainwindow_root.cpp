@@ -36,7 +36,7 @@ void MainWindow::renderRootFolder() {
         const int row = table_->rowCount();
         table_->insertRow(row);
         for (int column = 0; column < table_->columnCount(); ++column) {
-            auto *item = new QTableWidgetItem;
+            auto *item = new ArchiveTableItem;
             item->setData(Qt::UserRole + 6, index);
             item->setData(Qt::UserRole + 3, nativeName);
             item->setData(Qt::UserRole + 1, true);

@@ -368,14 +368,16 @@ QFile::decodeName supplies native POSIX-to-Qt path conversion (macOS NFC); the
 source folder retains native bytes. CPanel compares source names when restoring
 selection; Qt display names retain Qt normalization. Normal loading uses the same
 folder, source metadata and indices. Uncalculated directory sizes remain absent;
-POSIX links expose their own lstat metadata. Full property catalogs, source
-BindToPath/LoadFullPath and parent-stack ownership remain migration work.
+POSIX links expose their own lstat metadata. Full column/property catalogs
+remain P0-06.2 work; network namespace capabilities remain P1-11.
 
 `CPanelSelection` consumes a snapshot of names, folder flags and selection
 states; `mainwindow_selection.cpp` publishes the result to Qt in one update.
-`PanelSort.cpp` owns name comparison, while `filetable.cpp` adapts sorting and
-drag data to Qt. `PanelKey.cpp` dispatches list and address keys through the
-window event filter. Mouse and range selection remain owned by Qt.
+`PanelSort.cpp` owns source typed-property, name/prefix and item-index sorting;
+`filetable.cpp` passes bound source indices and property IDs to the panel and
+adapts descending folder grouping and drag data to Qt. `PanelKey.cpp` dispatches
+list and address keys through the window event filter. Mouse and range
+selection remain owned by Qt.
 
 Nested archive navigation keeps the parent listing, folder, password and
 temporary directory on a stack. Returning to the parent or a listing failure

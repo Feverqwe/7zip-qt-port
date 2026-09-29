@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 #include "qtlocationfolder.h"
 
@@ -46,6 +47,9 @@ void MainWindow::setSortMode(SortMode mode) {
 void MainWindow::applySortMode() {
     if (!table_)
         return;
+    auto &panel = app_.GetFocusedPanel();
+    panel._sortID = SortPropIDForColumn(sortColumn_);
+    panel._ascending = sortOrder_ == Qt::AscendingOrder;
     table_->sortItems(sortColumn_, sortOrder_);
 }
 

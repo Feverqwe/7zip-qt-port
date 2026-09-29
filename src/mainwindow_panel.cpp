@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 
 void MainWindow::createFilePanel(QMenu *editMenu) {
@@ -51,6 +52,7 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
 void MainWindow::createFileTable(QWidget *central) {
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     table_ = new FileTable(0, 7, central);
+    static_cast<FileTable *>(table_)->sourcePanel = &app_.GetFocusedPanel();
     table_->setObjectName("archiveTable");
     table_->verticalHeader()->hide();
     table_->setHorizontalHeaderLabels(
@@ -101,6 +103,9 @@ void MainWindow::createFileTable(QWidget *central) {
             [this](int column, Qt::SortOrder order) {
                 sortColumn_ = column;
                 sortOrder_ = order;
+                auto &panel = app_.GetFocusedPanel();
+                panel._sortID = SortPropIDForColumn(column);
+                panel._ascending = order == Qt::AscendingOrder;
                 const int mode = column == 5   ? 1
                                  : column == 4 ? 2
                                  : column == 2 ? 3

@@ -1,11 +1,13 @@
 #pragma once
 
 #include <QTableWidget>
+class CPanel;
 
 class FileTable : public QTableWidget {
   public:
     using QTableWidget::QTableWidget;
     bool filesystem = true;
+    CPanel *sourcePanel = nullptr;
 
   protected:
     QMimeData *mimeData(const QList<QTableWidgetItem *> &items) const override;
