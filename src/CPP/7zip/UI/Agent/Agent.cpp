@@ -74,6 +74,25 @@ Z7_COM7F_IMF(CAgentFolder::GetNumberOfItems(UInt32 *numItems)) {
     return S_OK;
 }
 
+#define SET_realIndex_AND_dir                                                                      \
+    unsigned realIndex;                                                                            \
+    const CProxyDir *dir;                                                                          \
+    if (_flatMode) {                                                                               \
+        const CProxyItem &item = _items[index];                                                    \
+        dir = &_proxy->Dirs[item.DirIndex];                                                        \
+        realIndex = item.Index;                                                                    \
+    } else {                                                                                       \
+        dir = &_proxy->Dirs[_proxyDirIndex];                                                       \
+        realIndex = index;                                                                         \
+    }
+
+UString CAgentFolder::GetName(UInt32 index) const {
+    SET_realIndex_AND_dir;
+    if (realIndex < dir->SubDirs.size())
+        return ToUString(_proxy->Dirs[dir->SubDirs[realIndex]].Name);
+    return ToUString(_proxy->Files[dir->SubFiles[realIndex - dir->SubDirs.size()]].Name);
+}
+
 void CAgentFolder::GetPrefix(UInt32 index, UString &prefix) const {
     prefix.Empty();
     if (!_flatMode)
@@ -84,6 +103,13 @@ void CAgentFolder::GetPrefix(UInt32 index, UString &prefix) const {
     QString path;
     _proxy->GetDirPath_as_Prefix_from_Base(itemDirIndex, path, _proxyDirIndex);
     prefix = ToUString(path);
+}
+
+UString CAgentFolder::GetFullPrefix(const UInt32 index) const {
+    unsigned foldIndex = _proxyDirIndex;
+    if (_flatMode)
+        foldIndex = _items[index].DirIndex;
+    return ToUString(_proxy->GetDirPath_as_Prefix(foldIndex));
 }
 
 Z7_COM7F_IMF(CAgentFolder::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {

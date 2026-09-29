@@ -23,6 +23,8 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     void Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent);
     HRESULT BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
     int GetRealIndex(unsigned index) const;
+    UString GetName(UInt32 index) const;
+    UString GetFullPrefix(UInt32 index) const;
     void GetRealIndices(const UInt32 *indices, UInt32 numItems, bool includeAltStreams,
                         bool includeFolderSubItemsInFlatMode, CUIntVector &realIndices) const;
     unsigned GetNumberOfItems() const;

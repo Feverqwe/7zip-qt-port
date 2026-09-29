@@ -8,6 +8,37 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b3a — source archive item names/full prefixes (2026-09-29)
+
+Project baseline `96c5cab`; pinned ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Copy original Agent.cpp
+SET_realIndex_AND_dir macro and GetName/GetFullPrefix _proxy functional bodies
+at their original module. Names/signatures/UString return types, flat item versus
+current directory selection, directory/file branch and full-prefix index
+selection remain original. Source GetDirPath_as_Prefix owns path construction.
+
+Adaptations: current proxy directory arrays use size() and current Name/prefix
+storage is QString, converted through existing ToUString at that boundary.
+These are existing documented proxy migration debt, not a reason to invent a
+second name/path algorithm. The macro invocation adds a semicolon solely for
+project clang-format statement layout; it does not change control flow.
+Original _proxy2/alternate-stream branches remain
+mandatory P1-10. No complete Agent module or engine operation claim. Single-item
+window/path consumers are subsequent steps; their current row adapters remain
+explicit migration work.
+
+agent_folder now verifies both normal and flat source names/full root-relative
+prefixes, a bound nonroot base, Unicode/spaces, duplicate file basenames in
+different subfolders and explicit empty directory. Root/parent references are
+released before enumeration; the retained source owner remains authoritative.
+No displayed UI changes, so appearance inspection is not required.
+
+Validation macOS arm64, 2026-09-29: affected application/folder/selection targets
+built; focused consumers passed 3/3 (1.09 s). Mandatory check.sh passed 74/74
+(33.94 s); git diff --check passed. Windows/Linux runtime remains unverified
+locally; no vendor/module-count change or upstream edits. Relative/full native
+panel path helpers and consumer bindings remain b–e.
+
 ## P0-02.2b3b3c3b2 — source-owned archive selection paths (2026-09-29)
 
 Project baseline `9829490`; same pinned ip7z/7zip

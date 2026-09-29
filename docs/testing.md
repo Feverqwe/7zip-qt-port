@@ -1,5 +1,11 @@
 # Regression strategy
 
+`agent_folder` additionally checks original GetName/GetFullPrefix at root and
+nonroot base in normal/flat modes after parent/root release. Duplicate basenames,
+Unicode/space directories and explicit empty folders retain full archive-root
+relative prefixes. These helpers are prerequisites for remaining single-item
+consumer migration; no window appearance changes are claimed.
+
 `archive_selection_runtime` corrupts Qt path/directory/proxy presentation roles
 while retaining source indices and verifies selected extraction, Copy, Move and
 hash extraction paths in normal/flat/four views. Source archive order, selected

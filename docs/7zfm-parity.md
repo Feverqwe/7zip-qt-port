@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b3a adds original archive item names and full root-relative prefix
+helpers in normal/flat modes, including bound nonroot folders. Displayed commands
+are unchanged; remaining single-item/hash-result path consumers still require
+binding to these helpers. Alternate-stream/proxy2 branches remain mandatory.
+
 P0-02.2b3b3c3b2 routes selected archive extraction/Copy/Move/hash extraction
 paths through source operated and real indices plus the owner's full Path
 metadata. Display roles cannot substitute paths; requests follow source archive

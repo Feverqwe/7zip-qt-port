@@ -29,6 +29,48 @@ class AgentFolderTests : public QObject {
     }
 
   private slots:
+    void sourceNameAndFullPrefixRemainRootRelative_data() {
+        QTest::addColumn<bool>("flatMode");
+        QTest::newRow("normal") << false;
+        QTest::newRow("flat") << true;
+    }
+    void sourceNameAndFullPrefixRemainRootRelative() {
+        QFETCH(bool, flatMode);
+        const QString directory = QStringLiteral("папка й с пробелом");
+        auto rootFolder = root({{directory + "/base/same.txt", 7, 3},
+                                {directory + "/base/sub/same.txt", 11, 5},
+                                {directory + "/base/empty/", 0, 0, {}, true}});
+        QVERIFY(rootFolder);
+        QCOMPARE(rootFolder->LoadItems(), S_OK);
+        auto *rootSpec = static_cast<CAgentFolder *>((IFolderFolder *)rootFolder);
+        QCOMPARE(ToQString(rootSpec->GetFullPrefix(0)), QString());
+        QCOMPARE(ToQString(rootSpec->GetName(0)), directory);
+        CMyComPtr<IFolderFolder> top;
+        const auto native = directory.toStdWString();
+        QCOMPARE(rootFolder->BindToFolder(native.c_str(), &top), S_OK);
+        CMyComPtr<IFolderFolder> base;
+        QCOMPARE(top->BindToFolder(L"base", &base), S_OK);
+        rootFolder.Release();
+        top.Release();
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(base.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(flatMode ? 1 : 0), S_OK);
+        QCOMPARE(base->LoadItems(), S_OK);
+        auto *spec = static_cast<CAgentFolder *>((IFolderFolder *)base);
+        UInt32 count = 0;
+        QCOMPARE(base->GetNumberOfItems(&count), S_OK);
+        QStringList paths;
+        for (UInt32 i = 0; i < count; ++i)
+            paths << ToQString(spec->GetFullPrefix(i) + spec->GetName(i));
+        QStringList expected = {directory + "/base/sub", directory + "/base/empty",
+                                directory + "/base/same.txt"};
+        if (flatMode)
+            expected << directory + "/base/sub/same.txt";
+        paths.sort();
+        expected.sort();
+        QCOMPARE(paths, expected);
+    }
+
     void nameIndexAndParentBindingUseSourcePaths() {
         CMyComPtr<IFolderFolder> folder =
             root({{QStringLiteral("папка с пробелом/внутри/файл 😀.txt"), 13, 5},
