@@ -152,6 +152,7 @@ class MainWindow : public QMainWindow {
     bool eventFilter(QObject *watched, QEvent *event) override;
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
+    void handleSelectionClick(int row);
     void showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
     void renderRootFolder();
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
@@ -276,6 +277,9 @@ class MainWindow : public QMainWindow {
     QStringList history_;
     QTableWidget *table_ = nullptr;
     QListView *iconList_ = nullptr;
+    Qt::KeyboardModifiers selectionClickModifiers_ = Qt::NoModifier;
+    bool selectionClickLeft_ = false;
+    bool selectionShiftSequence_ = false;
     QStackedWidget *viewStack_ = nullptr;
     QProgressDialog *progress_ = nullptr;
     bool sourceArchiveProgress_ = false;

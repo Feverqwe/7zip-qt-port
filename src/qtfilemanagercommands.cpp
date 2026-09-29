@@ -148,7 +148,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     panel.SaveSelectedState(selection);
     CRecordVector<UInt32> operated;
     panel.Get_ItemIndices_Operated(operated);
-    c.selected = !w.table_->selectionModel()->selectedRows().isEmpty();
+    c.selected = !operated.IsEmpty();
     c.one = operated.Size() == 1;
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;

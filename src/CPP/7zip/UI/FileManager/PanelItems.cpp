@@ -270,20 +270,22 @@ void CPanel::Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const {
 }
 
 void CPanel::SaveSelectedState(CSelectedState &s) {
-    // Qt selection notifications do not yet use the upstream OnNotify body.
-    // Synchronize its status vector at this presentation boundary.
-    const unsigned numItems = GetFolderItemCount();
-    _selectedStatusVector.ClearAndReserve(numItems);
-    for (unsigned i = 0; i < numItems; i++)
-        _selectedStatusVector.AddInReserved(false);
-    for (int row = 0; row < _selectionList.GetItemCount(); ++row) {
-        const unsigned realIndex = GetRealItemIndex(row);
-        if (realIndex == kParentIndex)
-            continue;
-        if (realIndex >= numItems)
-            throw 1;
-        _selectedStatusVector[realIndex] = _selectionList.IsItemSelected(row);
-    }
+    // Native marks are independent of focused-row selection in alternative mode.
+    if (!_mySelectMode) {
+        const unsigned numItems = GetFolderItemCount();
+        _selectedStatusVector.ClearAndReserve(numItems);
+        for (unsigned i = 0; i < numItems; i++)
+            _selectedStatusVector.AddInReserved(false);
+        for (int row = 0; row < _selectionList.GetItemCount(); ++row) {
+            const unsigned realIndex = GetRealItemIndex(row);
+            if (realIndex == kParentIndex)
+                continue;
+            if (realIndex >= numItems)
+                throw 1;
+            _selectedStatusVector[realIndex] = _selectionList.IsItemSelected(row);
+        }
+    } else
+        EnsureSelectionVectorSize();
 
     s.FocusedName_Defined = false;
     s.FocusedName.Empty();
@@ -308,7 +310,7 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
     if (select) {
         _selectionList.SelectItem(index);
         const unsigned realIndex = GetRealItemIndex(index);
-        if (realIndex != kParentIndex)
+        if (!_mySelectMode && realIndex != kParentIndex)
             _selectedStatusVector[realIndex] = true;
     }
 }
@@ -365,11 +367,11 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
                 selected = true;
         }
         _selectedStatusVector[realIndex] = selected;
-        if (selected)
+        if (selected && !_mySelectMode)
             _selectionList.SelectItem((int)i);
     }
     if (_selectionList.GetItemCount() > 0 && cursorIndex >= 0)
-        SetFocusedSelectedItem(cursorIndex, state.SelectFocused);
+        SetFocusedSelectedItem(cursorIndex, _mySelectMode || state.SelectFocused);
     // Qt rows are sorted separately; item params preserve source folder indices.
     if (cursorIndex < 0 && _selectionList.GetItemCount() > 0) {
         if (focusedPos >= _selectionList.GetItemCount())
@@ -378,6 +380,9 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
         SetFocusedSelectedItem(focusedPos, false);
     }
     _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
+    _selectionIsDefined = false;
+    _startGroupSelect = _selectionList.GetFocusedItem();
+    UpdateSelection();
 }
 
 void CPanel::RefreshListCtrl() {

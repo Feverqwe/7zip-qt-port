@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 #include "qtlocationfolder.h"
+#include <QMouseEvent>
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
@@ -215,6 +216,7 @@ void MainWindow::showSettings() {
     const bool showDotsChanged = fileListSettings_.ShowDots != dialog.settings().ShowDots;
     fileListSettings_ = dialog.settings();
     app_.SetListSettings();
+    refreshActions();
     if (showDotsChanged)
         updateParentEntry();
     if (state_ == State::Filesystem)
@@ -238,6 +240,12 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     if (watched == this && event->type() == QEvent::FocusIn) {
         app_.SetFocusToLastItem();
         return true;
+    }
+    if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
+        event->type() == QEvent::MouseButtonPress) {
+        const auto *mouse = static_cast<QMouseEvent *>(event);
+        selectionClickModifiers_ = mouse->modifiers();
+        selectionClickLeft_ = mouse->button() == Qt::LeftButton;
     }
     if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
         (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
@@ -271,6 +279,9 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     if (event->type() == QEvent::KeyPress &&
         handlePanelKey(watched, static_cast<QKeyEvent *>(event)))
         return true;
+    if (event->type() == QEvent::KeyRelease &&
+        static_cast<QKeyEvent *>(event)->key() == Qt::Key_Shift)
+        selectionShiftSequence_ = false;
     return QMainWindow::eventFilter(watched, event);
 }
 

@@ -25,6 +25,32 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         }
         return false;
     }
+    CPanel &panel = app_.GetFocusedPanel();
+    if (panel._mySelectMode) {
+        if (key->key() == Qt::Key_Shift) {
+            panel.BeginShiftSelection();
+            selectionShiftSequence_ = true;
+        } else if (key->key() == Qt::Key_Insert && key->modifiers() == Qt::NoModifier) {
+            panel.OnInsert();
+            refreshActions();
+            return true;
+        } else if (key->modifiers() == Qt::ShiftModifier &&
+                   (key->key() == Qt::Key_Up || key->key() == Qt::Key_Down ||
+                    key->key() == Qt::Key_Left || key->key() == Qt::Key_Right)) {
+            if (!selectionShiftSequence_) {
+                panel.BeginShiftSelection();
+                selectionShiftSequence_ = true;
+            }
+            panel.OnArrowWithShift();
+            QTimer::singleShot(0, this, [this] {
+                if (!app_.QtOperations().closed()) {
+                    app_.GetFocusedPanel().OnShiftSelectMessage();
+                    refreshActions();
+                }
+            });
+        } else if (!key->modifiers().testFlag(Qt::ShiftModifier))
+            selectionShiftSequence_ = false;
+    }
     if (key->key() == Qt::Key_F4 && key->modifiers() == Qt::ShiftModifier) {
         if (createFile_->isEnabled())
             createFile_->trigger();

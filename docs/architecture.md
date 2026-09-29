@@ -399,11 +399,16 @@ indexed status vector and selection rules. `mainwindow_selection.cpp` keeps the
 Qt mask dialog and synchronizes current Qt selection before invoking those
 source methods; `QtPanelList` applies source indices back to the shared
 table/icon selection model while keeping the focused row and parent sentinel.
+In alternative selection, that source vector owns marks independently of the
+single focused Qt row. `PanelSelect.cpp` owns Ctrl/Shift mouse ranges,
+Shift-arrow and Insert; `PanelKey.cpp` and the window's clicked signals adapt
+Qt event timing. `QtPanelList` paints marks through the shared model, so table
+and icon views show the same state. Source operated indices drive commands
+even when only one Qt focus row is selected.
 `PanelSort.cpp` owns source typed-property, name/prefix and item-index sorting;
 `filetable.cpp` passes bound source indices and property IDs to the panel and
 adapts descending folder grouping and drag data to Qt. `PanelKey.cpp` dispatches
-list and address keys through the window event filter. Mouse and range
-selection remain owned by Qt until the source mouse/range/mark model is ported.
+list and address keys through the window event filter.
 
 Nested archive navigation keeps the parent listing, folder, password and
 temporary directory on a stack. Returning to the parent or a listing failure

@@ -253,6 +253,10 @@ class CPanel : public QObject {
     PROPID _sortID = 0;
     bool _ascending = true;
     bool _mySelectMode = false;
+    bool _selectionIsDefined = false;
+    bool _selectMark = false;
+    int _startGroupSelect = 0;
+    int _prevFocusedItem = -1;
     bool _showDots = false;
     bool _showRealFileIcons = false;
     UInt32 GetListViewMode() const { return _listViewMode; }
@@ -384,12 +388,23 @@ class CPanel : public QObject {
     void SetFocusToList();
     void SetFocusToPath();
     void SetFocusToLastRememberedItem();
-    void AttachSelectionView(QAbstractItemView *view) { _selectionList.Attach(view); }
+    void AttachSelectionView(QAbstractItemView *view) {
+        _selectionList.Attach(view);
+        _selectionList.SetSingleSelection(_mySelectMode);
+    }
     void UpdateSelection();
     void SelectSpec(const UString &mask, bool selectMode);
     void SelectByType(bool selectMode);
     void SelectAll(bool selectMode);
     void InvertSelection();
+    void KillSelection();
+    void OnShiftSelectMessage();
+    void OnArrowWithShift();
+    void OnInsert();
+    void OnLeftClick(int indexInList, Qt::KeyboardModifiers modifiers);
+    void BeginShiftSelection();
+    void SetAlternativeSelection(bool enabled);
+    bool IsItemMarked(UInt32 index) const;
     void SaveSelectedState(CSelectedState &state);
     void GetSelectedNames(UStringVector &selectedNames);
     void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;
@@ -506,6 +521,7 @@ class CPanel : public QObject {
     UString GetItemPrefix(unsigned index) const;
     unsigned GetRealItemIndex(int indexInListView) const;
     UInt32 GetFolderItemCount() const;
+    void EnsureSelectionVectorSize();
     void SetFocusedSelectedItem(int index, bool select);
     UInt64 GetItemSize(UInt32 index) const;
     UInt64 GetItem_UInt64Prop(UInt32 index, UInt32 propID) const;

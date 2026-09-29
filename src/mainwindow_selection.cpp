@@ -1,5 +1,12 @@
 #include "mainwindow.h"
 
+void MainWindow::handleSelectionClick(int row) {
+    if (!selectionClickLeft_ || row < 0 || !app_.GetFocusedPanel()._mySelectMode)
+        return;
+    app_.GetFocusedPanel().OnLeftClick(row, selectionClickModifiers_);
+    refreshActions();
+}
+
 // Adapted from PanelKey.cpp::OnKeyDown(): VK_ADD, VK_SUBTRACT, VK_MULTIPLY.
 // Qt identifies the numeric keypad with KeypadModifier on every platform.
 bool MainWindow::handleSelectionKey(QKeyEvent *key) {

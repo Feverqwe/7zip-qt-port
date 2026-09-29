@@ -115,6 +115,8 @@ void MainWindow::createFileTable(QWidget *central) {
             });
     table_->installEventFilter(this);
     table_->viewport()->installEventFilter(this);
+    connect(table_, &QTableWidget::cellClicked, this,
+            [this](int row, int) { handleSelectionClick(row); });
     table_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(table_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
         const int row = table_->rowAt(pos.y());
@@ -323,7 +325,9 @@ void MainWindow::createIconList(QWidget *central) {
     iconList_->setModel(table_->model());
     iconList_->setModelColumn(0);
     iconList_->setSelectionModel(table_->selectionModel());
-    iconList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    iconList_->setSelectionMode(fileListSettings_.AlternativeSelection
+                                    ? QAbstractItemView::SingleSelection
+                                    : QAbstractItemView::ExtendedSelection);
     iconList_->setSelectionBehavior(QAbstractItemView::SelectRows);
     iconHover_ = new QtFileListHover(*iconList_);
     iconHover_->SetEnabled(fileListSettings_.SingleClick);
@@ -336,6 +340,8 @@ void MainWindow::createIconList(QWidget *central) {
     iconList_->setContextMenuPolicy(Qt::CustomContextMenu);
     iconList_->installEventFilter(this);
     iconList_->viewport()->installEventFilter(this);
+    connect(iconList_, &QListView::clicked, this,
+            [this](const QModelIndex &index) { handleSelectionClick(index.row()); });
     iconList_->addAction(selectAll_);
     iconList_->addAction(openItem_);
     iconList_->addAction(parent_);

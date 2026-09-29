@@ -23,7 +23,6 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent)
     _singleClick->setObjectName("singleClickOption");
     _alternativeSelection = new QCheckBox(QStringLiteral("Альтернативное выделение"), this);
     _alternativeSelection->setObjectName(QStringLiteral("alternativeSelectionOption"));
-    _alternativeSelection->setEnabled(false);
     _showSystemMenu = new QCheckBox(QStringLiteral("Показывать системное меню"), this);
     _showSystemMenu->setObjectName(QStringLiteral("showSystemMenuOption"));
     for (auto *control : {_showDots, _showRealFileIcons, _fullRow, _showGrid, _singleClick,
@@ -61,13 +60,13 @@ void CSettingsPage::OnButtonClicked() {
 
 void CSettingsPage::OnApply() {
     if (_wasChanged) {
-        // Retain the alternative-selection flag until its mark policy is ported.
         CFmSettings st = _settings;
         st.ShowDots = _showDots->isChecked();
         st.ShowRealFileIcons = _showRealFileIcons->isChecked();
         st.FullRow = _fullRow->isChecked();
         st.ShowGrid = _showGrid->isChecked();
         st.SingleClick = _singleClick->isChecked();
+        st.AlternativeSelection = _alternativeSelection->isChecked();
         st.ShowSystemMenu = _showSystemMenu->isChecked();
         st.Save(_settingsPath);
         _settings = st;

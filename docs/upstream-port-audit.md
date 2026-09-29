@@ -634,6 +634,52 @@ the full unsandboxed `./scripts/check.sh` gate passes on macOS arm64
 2026-09-29 (135/135 CTest). No layout or text changed in this iteration;
 the P0-07.1 normal/compact geometry evidence remains applicable.
 
+## P0-07.3 — source alternative marks, mouse and keyboard selection (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([PanelSelect.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelSelect.cpp),
+[PanelKey.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelKey.cpp),
+[PanelListNotify.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelListNotify.cpp)).
+Copied the active control flow of `CPanel::OnLeftClick`,
+`OnArrowWithShift`, `OnShiftSelectMessage`, `OnInsert` and `KillSelection`
+into the mirrored
+`PanelSelect.cpp`, plus their `_selectionIsDefined`, `_selectMark`,
+`_startGroupSelect` and `_prevFocusedItem` fields in `Panel.h`. The Qt click
+signal supplies row/modifier state where Win32 used `NM_CLICK`/`LVKF_*`;
+the key adapter calls the source shift-range completion after Qt moves focus,
+replacing `PostMsg(kShiftSelectMessage)`. `QtPanelList` projects the original
+marked vector as RGB(255,192,192) backgrounds in the shared table/icon model,
+and constrains Qt selection to the single focused row where upstream sets
+`LVS_SINGLESEL`. Parent sentinel rows are skipped. `EnsureSelectionVectorSize`
+is narrow Qt initial-load glue: this presentation can publish rows without a
+`RefreshListCtrl` call, while upstream initializes its vector during list
+construction. It also preserves marks during incremental row loading.
+
+`CApp::SetListSettings` now calls the panel transition, while the original
+`CSettingsPage` reads/writes AlternativeSelection through `CFmSettings` with
+Apply/Cancel persistence. `SaveSelectedState` retains source marks in that
+mode; `RefreshListCtrl` restores marked names independently from Qt focus.
+Current command availability, hash/extract guards and Copy summary use source
+operated indices, so a single focused Qt row does not replace multiple marks.
+`CDisableNotify` prevents Qt selection notifications from resetting the source
+vector mid-command. Unadapted Win32 custom-draw, `LVS_*` style bits and
+`HWND` messages are presentation only; source mark/range bodies remain.
+`PanelKey.cpp` still has other P0-08/P0-09/P1 command branches outside this
+selection scope. The deleted-item custom-draw branch remains P0-09; two-panel
+drag/drop remains P1-16. The inactive commented
+`OnUpWithShift`/`OnDownWithShift` are not ported.
+
+`panel_selection` tests the source mark/range/Insert/KillSelection bodies,
+focus restoration and parent sentinel. `panel_key` runs disk/archive ×
+normal/flat × four views, plus root, settings toggles, Copy summary,
+filesystem row removal, scroll and hover. `fm_settings` verifies enabled
+Apply/Cancel persistence. Current-build 32 normal/compact 980×620/640×400
+JSON reports and one removal report show visible unclipped lists; targeted
+table/icon viewport screenshots show red marks separate from the blue focused
+row. Focused direct-consumer CTest passes 9/9 and the full unsandboxed
+`./scripts/check.sh` gate passes 135/135 on macOS arm64 2026-09-29.
+Windows/Linux runtime and rendered Windows visual parity remain unverified.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

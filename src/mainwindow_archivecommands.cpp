@@ -9,7 +9,7 @@ void MainWindow::calculateHash(const QString &method) {
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
     if ((state_ != State::Filesystem && state_ != State::Viewing) ||
-        table_->selectionModel()->selectedRows().isEmpty())
+        sourceOperatedIndices().IsEmpty())
         return;
     hashMethod_ = method;
     previousState_ = state_;
@@ -110,7 +110,7 @@ void MainWindow::viewSelectedFile(bool editable) {
 void MainWindow::extract(bool onlySelected) {
     if (state_ != State::Viewing || entries_.isEmpty())
         return;
-    if (onlySelected && table_->selectionModel()->selectedRows().isEmpty())
+    if (onlySelected && sourceOperatedIndices().IsEmpty())
         return;
     ExtractDialog dialog(returnDirectory_, {}, onlySelected, this);
     if (dialog.exec() != QDialog::Accepted)

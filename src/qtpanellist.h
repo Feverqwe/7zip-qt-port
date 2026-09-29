@@ -19,6 +19,9 @@ class QtPanelList {
     void DeleteListItems();
     void SelectItem(int row);
     void SetItemState_Selected(int row, bool selected);
+    void SelectOnly(int row);
+    void SetItemMarked(int row, bool marked);
+    void SetSingleSelection(bool enabled);
     void SetFocusedItem(int row);
     void EnsureVisible(int row);
     void Invalidate() {

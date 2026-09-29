@@ -70,6 +70,10 @@ void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &setti
         window_.tableHover_->SetEnabled(settings.SingleClick);
     if (window_.iconHover_)
         window_.iconHover_->SetEnabled(settings.SingleClick);
+    if (window_.iconList_)
+        window_.iconList_->setSelectionMode(settings.AlternativeSelection
+                                                ? QAbstractItemView::SingleSelection
+                                                : QAbstractItemView::ExtendedSelection);
 }
 
 void QtAppPresentation::ReloadToolbars(CApp &) { window_.updateToolbar(); }

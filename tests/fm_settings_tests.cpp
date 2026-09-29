@@ -40,10 +40,11 @@ class FmSettingsTests : public QObject {
         st.Save(path);
         for (bool confirm : {false, true}) {
             CSettingsPage page(path);
-            for (const char *name : {"showDotsOption", "realFileIconsOption", "fullRowOption",
-                                     "gridOption", "singleClickOption", "showSystemMenuOption"})
+            for (const char *name :
+                 {"showDotsOption", "realFileIconsOption", "fullRowOption", "gridOption",
+                  "singleClickOption", "alternativeSelectionOption", "showSystemMenuOption"})
                 page.findChild<QCheckBox *>(name)->setChecked(true);
-            QVERIFY(!page.findChild<QCheckBox *>("alternativeSelectionOption")->isEnabled());
+            QVERIFY(page.findChild<QCheckBox *>("alternativeSelectionOption")->isEnabled());
             if (confirm)
                 page.accept();
             else
@@ -54,7 +55,7 @@ class FmSettingsTests : public QObject {
             QCOMPARE(st.FullRow, confirm);
             QCOMPARE(st.ShowGrid, confirm);
             QCOMPARE(st.SingleClick, confirm);
-            QVERIFY(!st.AlternativeSelection);
+            QCOMPARE(st.AlternativeSelection, confirm);
             QCOMPARE(st.ShowSystemMenu, confirm);
         }
         // Opening and confirming an unchanged page must not materialize defaults.

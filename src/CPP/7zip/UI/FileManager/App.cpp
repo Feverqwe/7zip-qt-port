@@ -125,7 +125,7 @@ void CApp::SetListSettings() {
     ShowSystemMenu = st.ShowSystemMenu;
     for (unsigned i = 0; i < kNumPanelsMax; i++) {
         CPanel &panel = Panels[i];
-        panel._mySelectMode = st.AlternativeSelection;
+        panel.SetAlternativeSelection(st.AlternativeSelection);
         panel._showDots = st.ShowDots;
         panel._showRealFileIcons = st.ShowRealFileIcons;
         // Qt view styles replace LVS_EX/LVS_SINGLESEL bit fields.

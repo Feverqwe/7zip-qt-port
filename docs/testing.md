@@ -434,7 +434,7 @@ the list remains fully visible. `flat_view`, `panel_selected_state` and
 `root_navigation` are direct consumers of the same bound-folder row indices.
 
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
-unchanged/confirmed/cancelled SettingsPage, the disabled AlternativeSelection
+unchanged/confirmed/cancelled SettingsPage, the enabled AlternativeSelection
 control and seven-control order in 340×300/460×300 geometry reports. `settings`
 exercises window single-click consumers across disk/archive and all four modes.
 `list_settings_runtime` checks ShowDots, parent navigation, sort and virtual
@@ -447,6 +447,13 @@ inspection is needed. The runtime evidence is macOS-local.
 `list_activation` covers settings-driven single/double-click in history,
 modified selection clicks, Alt/full-property detail, hover selection on/off,
 leaving the list and deleting a hovered row. Fixtures use a temporary INI.
+`panel_key` also checks source alternative marks through Ctrl-click, Shift-click,
+Shift-arrow, Insert, mask/all/invert and settings transitions on disk/archive,
+normal/flat and all four views. It verifies source operated counts and Copy
+summary, root/parent behavior, refresh and row removal/scroll, and writes
+980×620/640×400 mark-state JSON. `panel_selection` checks the same source
+vector and focused-row contract directly. Only targeted table/icon mark color
+screenshots are captured with `SEVENZIP_CAPTURE_SCREENSHOTS=1`.
 
 `compression_limit` now owns a fresh temporary settings file on each suite run;
 its default assertions do not depend on INI data left by previous runs.

@@ -82,11 +82,65 @@ class PanelSelectionTests final : public QObject {
         QVERIFY(!selected(view, 2));
         QVERIFY(selected(view, 3));
         QVERIFY(selected(view, 4));
-
         view.selectionModel()->setCurrentIndex(view.model()->index(0, 0),
                                                QItemSelectionModel::NoUpdate);
         panel.SelectByType(false);
         QVERIFY(selected(view, 4));
+        panel.KillSelection();
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 0);
+    }
+
+    void alternativeMarkSourceTransitions() {
+        CPanel panel(QStringLiteral("/tmp/"), items());
+        QTableWidget view;
+        populate(view);
+        panel.AttachSelectionView(&view);
+        CSelectedState snapshot;
+        panel.SaveSelectedState(snapshot);
+        view.selectionModel()->setCurrentIndex(view.model()->index(1, 0),
+                                               QItemSelectionModel::NoUpdate);
+        view.selectRow(1);
+        panel.SetAlternativeSelection(true);
+        QCOMPARE(view.selectionMode(), QAbstractItemView::SingleSelection);
+        QVERIFY(panel.IsItemMarked(0));
+        QVERIFY(!panel.IsItemMarked(1));
+
+        panel.OnLeftClick(2, Qt::ControlModifier);
+        QVERIFY(panel.IsItemMarked(1));
+        panel.OnLeftClick(4, Qt::ShiftModifier);
+        QVERIFY(!panel.IsItemMarked(0));
+        QVERIFY(panel.IsItemMarked(1));
+        QVERIFY(panel.IsItemMarked(2));
+        QVERIFY(panel.IsItemMarked(3));
+        QVERIFY(!selected(view, 0));
+        CRecordVector<UInt32> selectedIndices;
+        panel.Get_ItemIndices_Selected(selectedIndices);
+        QCOMPARE(selectedIndices.Size(), unsigned(3));
+        view.selectionModel()->setCurrentIndex(view.model()->index(1, 0),
+                                               QItemSelectionModel::NoUpdate);
+        panel.SaveSelectedState(snapshot);
+        panel.RefreshListCtrl(snapshot);
+        QVERIFY(!panel.IsItemMarked(0));
+        panel.Get_ItemIndices_Selected(selectedIndices);
+        QCOMPARE(selectedIndices.Size(), unsigned(3));
+
+        view.selectionModel()->setCurrentIndex(view.model()->index(3, 0),
+                                               QItemSelectionModel::NoUpdate);
+        panel.OnInsert();
+        QVERIFY(!panel.IsItemMarked(2));
+        QCOMPARE(view.currentRow(), 4);
+        panel.SelectAll(false);
+        panel.BeginShiftSelection();
+        panel.OnArrowWithShift();
+        view.selectionModel()->setCurrentIndex(view.model()->index(3, 0),
+                                               QItemSelectionModel::NoUpdate);
+        panel.OnShiftSelectMessage();
+        QVERIFY(panel.IsItemMarked(2));
+
+        panel.SetAlternativeSelection(false);
+        QCOMPARE(view.selectionMode(), QAbstractItemView::ExtendedSelection);
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 2);
+        QVERIFY(!selected(view, 0));
     }
 };
 QTEST_MAIN(PanelSelectionTests)
