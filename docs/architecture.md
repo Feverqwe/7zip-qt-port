@@ -6,6 +6,14 @@ Source provenance, baselines, adaptations and migration debt belong in the
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
 
+CPanel relative/full path helpers and current prefix storage use original
+UString. Source folder/type/device/super-drive classification owns their path
+branches; Qt conversions are confined to setters and presentation. Ownerless
+row path fallback is removed. Complete LoadFullPath/outer-stack prefix setup
+remains open; a caller using GetItemFullPath must supply the native source folder
+prefix until that integration. Filesystem/single-item path consumers and command
+availability are separate subsequent migration scopes.
+
 ## Repository boundary
 
 PropertyName retains source resource/custom/numeric lookup. The non-Z7_LANG

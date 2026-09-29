@@ -208,7 +208,13 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
             item->setData(Qt::UserRole + 3, names[i].section('/', -1));
             view.setItem(i, 0, item);
         }
-        CPanel panel;
+        CObjectVector<CPanelItem> items;
+        for (const QString &name : names) {
+            CPanelItem item;
+            item.RelPath = name;
+            items.Add(item);
+        }
+        CPanel panel("", items);
         panel.AttachSelectionView(&view);
         view.setCurrentCell(2, 0, QItemSelectionModel::NoUpdate);
         selectRow(&view, 0);

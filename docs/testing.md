@@ -1,5 +1,13 @@
 # Regression strategy
 
+`panel_path` tests original relative/full panel path helpers with native source
+normal/flat folders, Unicode/spaces and duplicate basenames after owner release.
+Typed public folder fixtures cover pure/device/super drive prefix semantics,
+folder/arc/hash classification, failed type lookup and invalid name/hash types.
+Windows drive separators are conditional; actual Windows drive-provider/outer
+stack acceptance remains mandatory. The selection/focus fixture now binds a
+source folder provider, and existing state/copy/Properties consumers stay covered.
+
 `agent_folder` additionally checks original GetName/GetFullPrefix at root and
 nonroot base in normal/flat modes after parent/root release. Duplicate basenames,
 Unicode/space directories and explicit empty folders retain full archive-root

@@ -31,14 +31,14 @@ void CFolderHistory::AddString(const UString &s) {
 }
 
 CPanel::CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items)
-    : _currentFolderPrefix(prefix) {
+    : _currentFolderPrefix(ToUString(prefix)) {
     SetNewFolder(new QtPanelFolder(prefix, items));
 }
 
 CPanel::CPanel(IFolderFolder *folder) {
     SetNewFolder(folder);
     if (_folder)
-        _currentFolderPrefix = ToQString(GetFolderPath(_folder));
+        _currentFolderPrefix = GetFolderPath(_folder);
 }
 
 static void AddSizeValue(QString &s, UInt64 size) {
@@ -100,12 +100,12 @@ QString CPanel::GetItemsInfoString(const CRecordVector<UInt32> &indices) const {
     if (numDefined == 2)
         AddValuePair1(info, QStringLiteral("Размер"), filesSize + foldersSize);
     info += '\n';
-    info += _currentFolderPrefix;
+    info += ToQString(_currentFolderPrefix);
     for (i = 0; i < indices.Size() && (int)i < (int)kCopyDialog_NumInfoLines - 6; i++) {
         info += '\n';
         info += "  ";
         const UInt32 index = indices[i];
-        info += GetItemRelPath(index);
+        info += ToQString(GetItemRelPath(index));
         if (IsItem_Folder(index))
             info += '/';
     }

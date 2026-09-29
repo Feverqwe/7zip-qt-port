@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/Panel.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Qt supplies a snapshot of IFolder properties for selection summaries and
-// property lists; panel controls and operations remain in their adapters.
+// Bound source IFolder owns metadata and paths; Qt supplies list controls and
+// narrow presentation/operation adapters around the partial source panel.
 #pragma once
 
 #include "7zip/UI/FileManager/IFolder.h"
@@ -69,7 +69,21 @@ class CPanel : public QObject {
     void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;
     void Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const;
     // Qt supplies its display prefix until source LoadFullPath/parent-stack integration.
-    void SetCurrentFolderPrefix(const QString &prefix) { _currentFolderPrefix = prefix; }
+    void SetCurrentFolderPrefix(const QString &prefix) { _currentFolderPrefix = ToUString(prefix); }
+    UString GetFolderTypeID() const;
+    bool IsFolderTypeEqTo(const char *s) const;
+    bool IsRootFolder() const;
+    bool IsFSFolder() const;
+    bool IsFSDrivesFolder() const;
+    bool IsAltStreamsFolder() const;
+    bool IsArcFolder() const;
+    bool IsHashFolder() const;
+    bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
+    bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
+    UString GetFsPath() const;
+    UString GetItemRelPath(unsigned index) const;
+    UString GetItemRelPath2(unsigned index) const;
+    UString GetItemFullPath(unsigned index) const;
     // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
     void RefreshListCtrl(const CSelectedState &state);
     bool _lastFocusedIsList = true;
@@ -90,12 +104,11 @@ class CPanel : public QObject {
     CMyComPtr<IFolderFolder> _folder;
     CMyComPtr<IFolderGetItemName> _folderGetItemName;
     CRecordVector<bool> _isDirVector;
-    QString _currentFolderPrefix;
+    UString _currentFolderPrefix;
     bool IsItem_Folder(UInt32 index) const;
     bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
     UString GetItemName(unsigned index) const;
     UString GetItemPrefix(unsigned index) const;
-    QString GetItemRelPath(UInt32 index) const;
     unsigned GetRealItemIndex(int indexInListView) const;
     UInt32 GetFolderItemCount() const;
     void SetFocusedSelectedItem(int index, bool select);

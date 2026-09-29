@@ -112,7 +112,7 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
         AddPropertyString(kpidPackSize, packSize, message);
         AddSeparator(message);
     }
-    AddPropertyPair(ToUString(QStringLiteral("Путь")), ToUString(_currentFolderPrefix), message);
+    AddPropertyPair(ToUString(QStringLiteral("Путь")), _currentFolderPrefix, message);
     message.Title = ToUString(QStringLiteral("Свойства"));
     message.NumColumns = 2;
 }

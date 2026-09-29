@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b3b — native source panel path helpers (2026-09-29)
+
+Project baseline `5bc9b8d`; pinned ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Restore original PanelItems.cpp
+GetItemRelPath UString signature/body; copy GetItemRelPath2/GetItemFullPath.
+Copy Panel.cpp GetFolderTypeID/IsFolderTypeEqTo/IsRootFolder/IsFSFolder/
+IsFSDrivesFolder/IsAltStreamsFolder/IsArcFolder/IsHashFolder/GetFsPath bodies and
+Panel.h IsDeviceDrivesPrefix/IsSuperDrivesPrefix. Original type comparison,
+variant handling, two-character Windows drive-name branch, source pure-drive
+prefix omission and device/super prefix retention remain intact. Existing
+adapted Windows/FileName.cpp IsDrivePath2 supplies the dependency; no new path
+parsing/normalization algorithm is introduced.
+
+Restore _currentFolderPrefix to original UString storage. Qt setter/constructor
+inputs convert once through ToUString; summary and Properties presentation use
+existing conversions only at the boundary. Native folder constructor retains
+GetFolderPath directly. Remove QtPanelList::GetItemRelPathForItem and the
+independent ownerless row fallback; the legacy selection/focus fixture now binds
+its existing source-interface snapshot provider. Empty unbound panels still
+support zero-item state saving, without calling path helpers on absent owners.
+
+Adaptations are namespace-qualified native calls, Qt boundary conversions and
+project formatting. Caller-supplied temporary prefix still replaces complete
+LoadFullPath/outer-stack initialization; callers must supply the source's
+normalized full folder prefix before GetItemFullPath, rather than rely on a
+display prefix previously set by Properties. Parent/native stack and full
+FSDrives/alternate-stream folder providers remain mandatory b3c/d/P0-04/P1-08/
+P1-10. Classifier/helper bodies do not claim those folder modules or centralized
+command availability complete. Remaining path consumers follow c/d/e.
+
+New panel_path uses native owned CFSFolder in normal/flat modes with Unicode/
+spaces/duplicate basenames and validates full paths after external owner release.
+A public typed folder fixture checks pure/device/super drive prefixes, source
+folder/arc/hash classification and failed/type-invalid metadata contracts. Native
+Windows separator expectations are conditional and remain unverified locally.
+No displayed UI changes; source-to-Qt strings retain the existing contract.
+
+Validation macOS arm64, 2026-09-29: affected application/path/state/folder/copy/
+Properties targets built; focused checks passed 5/5 (3.97 s). Mandatory check.sh
+passed 75/75 and git diff --check passed. Initial test fixture build used a
+private CPropVariant char-pointer constructor; it now uses the original supported
+assignment API without changing source types. Windows drive separator branches
+and Windows/Linux runtime remain unverified locally; native/source/vendor counts
+unchanged. Remaining path consumers and full stack/command scopes stay open.
+
 ## P0-02.2b3b3c3b3a — source archive item names/full prefixes (2026-09-29)
 
 Project baseline `96c5cab`; pinned ip7z/7zip

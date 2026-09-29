@@ -20,7 +20,6 @@ class QtPanelList {
     QString GetItemRelPath(unsigned row) const;
     bool GetItemParam(unsigned row, quintptr &param) const;
     void PrepareItemIndices();
-    QString GetItemRelPathForItem(unsigned itemIndex) const;
     void ClearSelection();
     void DeleteListItems();
     void SelectItem(int row);

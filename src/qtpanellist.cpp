@@ -44,12 +44,6 @@ void QtPanelList::PrepareItemIndices() {
     }
 }
 
-QString QtPanelList::GetItemRelPathForItem(unsigned itemIndex) const {
-    const int row = itemRows_.value(itemIndex, -1);
-    if (row < 0)
-        throw 1;
-    return GetItemRelPath(unsigned(row));
-}
 void QtPanelList::ClearSelection() {
     if (IsBound())
         view_->selectionModel()->clearSelection();

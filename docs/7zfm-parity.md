@@ -7,6 +7,13 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b3b restores original UString panel path helpers and source
+folder-type/drive-prefix rules. Relative/full paths come from the bound source
+folder, with no ownerless row fallback. Complete source full-prefix stack setup,
+actual drive/alternate-stream providers and remaining path consumers stay open;
+helper tests do not claim their workflows or cross-platform runtime parity.
+Displayed UI is unchanged.
+
 P0-02.2b3b3c3b3a adds original archive item names and full root-relative prefix
 helpers in normal/flat modes, including bound nonroot folders. Displayed commands
 are unchanged; remaining single-item/hash-result path consumers still require

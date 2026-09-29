@@ -5,6 +5,7 @@
 #include "7zip/PropID.h"
 #include "Panel.h"
 #include "ViewSettings.h"
+#include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/WinDefs.h"
@@ -41,7 +42,7 @@ void CPanel::GetSelectedNames(UStringVector &selectedNames) {
     Get_ItemIndices_Selected(indices);
     selectedNames.ClearAndReserve(indices.Size());
     FOR_VECTOR(i, indices)
-    selectedNames.AddInReserved(ToUString(GetItemRelPath(indices[i])));
+    selectedNames.AddInReserved(GetItemRelPath(indices[i]));
     selectedNames.Sort();
 }
 
@@ -87,7 +88,7 @@ void CPanel::SaveSelectedState(CSelectedState &s) {
         if (s.FocusedItem >= 0) {
             const unsigned realIndex = GetRealItemIndex(s.FocusedItem);
             if (realIndex != kParentIndex) {
-                s.FocusedName = ToUString(GetItemRelPath(realIndex));
+                s.FocusedName = GetItemRelPath(realIndex);
                 s.FocusedName_Defined = true;
                 s.SelectFocused = _selectionList.IsItemSelected(s.FocusedItem);
             }
@@ -148,8 +149,7 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
             (state.SelectedNames.Size() == 1 && selectedName == name) ||
             (state.FocusedName_Defined && focusedNamePure == name) ||
             (needCheckSlash && (name.Find(L'/') >= 0 || name.Find(L'\\') >= 0))) {
-            // IFolder prefix/name property access becomes one Qt row snapshot.
-            relPath = ToUString(GetItemRelPath(realIndex));
+            relPath = GetItemRelPath(realIndex);
             if (relPath == state.FocusedName)
                 cursorIndex = (int)i;
             if (state.SelectedNames.FindInSorted(relPath) != -1)
@@ -233,9 +233,21 @@ UString CPanel::GetItemPrefix(unsigned itemIndex) const {
     return prefix;
 }
 
-QString CPanel::GetItemRelPath(UInt32 itemIndex) const {
-    // Borrowed presentation-only panels still have no runtime folder owner.
-    if (!_folder && _selectionList.IsBound())
-        return _selectionList.GetItemRelPathForItem(itemIndex);
-    return ToQString(GetItemPrefix(itemIndex) + GetItemName(itemIndex));
+UString CPanel::GetItemRelPath(unsigned itemIndex) const {
+    return GetItemPrefix(itemIndex) + GetItemName(itemIndex);
+}
+
+UString CPanel::GetItemRelPath2(unsigned itemIndex) const {
+    UString s = GetItemRelPath(itemIndex);
+#if defined(_WIN32) && !defined(UNDER_CE)
+    if (s.Len() == 2 && NWindows::NFile::NName::IsDrivePath2(s)) {
+        if (IsFSDrivesFolder() && !IsDeviceDrivesPrefix())
+            s.Add_PathSepar();
+    }
+#endif
+    return s;
+}
+
+UString CPanel::GetItemFullPath(unsigned itemIndex) const {
+    return GetFsPath() + GetItemRelPath2(itemIndex);
 }

@@ -1,8 +1,47 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/Panel.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "Panel.h"
+#include "7zip/PropID.h"
+#include "Windows/PropVariant.h"
+#include "Windows/WinDefs.h"
 #include <QEvent>
 #include <QWidget>
+
+UString CPanel::GetFolderTypeID() const {
+    {
+        NWindows::NCOM::CPropVariant prop;
+        if (_folder->GetFolderProperty(kpidType, &prop) == S_OK)
+            if (prop.vt == VT_BSTR)
+                return (const wchar_t *)prop.bstrVal;
+    }
+    return UString();
+}
+
+bool CPanel::IsFolderTypeEqTo(const char *s) const {
+    return StringsAreEqual_Ascii(GetFolderTypeID(), s);
+}
+
+bool CPanel::IsRootFolder() const { return IsFolderTypeEqTo("RootFolder"); }
+bool CPanel::IsFSFolder() const { return IsFolderTypeEqTo("FSFolder"); }
+bool CPanel::IsFSDrivesFolder() const { return IsFolderTypeEqTo("FSDrives"); }
+bool CPanel::IsAltStreamsFolder() const { return IsFolderTypeEqTo("AltStreamsFolder"); }
+bool CPanel::IsArcFolder() const { return GetFolderTypeID().IsPrefixedBy_Ascii_NoCase("7-Zip"); }
+
+bool CPanel::IsHashFolder() const {
+    if (_folder) {
+        NWindows::NCOM::CPropVariant prop;
+        if (_folder->GetFolderProperty(kpidIsHash, &prop) == S_OK)
+            if (prop.vt == VT_BOOL)
+                return VARIANT_BOOLToBool(prop.boolVal);
+    }
+    return false;
+}
+
+UString CPanel::GetFsPath() const {
+    if (IsFSDrivesFolder() && !IsDeviceDrivesPrefix() && !IsSuperDrivesPrefix())
+        return UString();
+    return _currentFolderPrefix;
+}
 
 void CPanel::SetFocusToList() {
     if (_listView)
