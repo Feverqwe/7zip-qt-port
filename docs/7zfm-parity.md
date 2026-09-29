@@ -7,6 +7,13 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b2b2a supplies native launcher Update/Query transport and replay,
+verified through an owned private DBus on macOS. Compatible Linux launchers use
+progress/visibility/urgency; their protocol has no native colored paused/error bar
+or indeterminate property. Source pause/title/error UI remains mandatory integration.
+Linux identity/session adapter and actual desktop rendering remain unverified/open;
+private transport success does not establish visual parity or a live launcher.
+
 P0-02.2b3c3b2b2b2b1 supplies the Cocoa native Dock progress prerequisite. Apple's
 process-wide badge displays percentage/indeterminate and pause/error markers;
 this differs from the Windows per-window colored taskbar bar. Native API state

@@ -8,6 +8,56 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b2b2a — native launcher transport prerequisite (2026-09-29)
+
+Project baseline `62cee4d`; 7zip source remains pinned to
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Original ProgressDialog2 taskbar bodies remain mandatory b3; upstream has no
+Linux launcher owner. qtlauncherprogress is new narrow OS protocol glue, not a
+replacement source statistics/state implementation. It owns an explicit DBus
+connection and one native launcher entry; widgets and archive operations do not
+select buses or publish protocol maps. Reuse native HRESULT/UInt64 and TBPFLAG.
+
+Implement the documented
+[Ubuntu launcher protocol](https://wiki.ubuntu.com/Unity/LauncherAPI): application
+desktop-ID URI, Update changed-property maps, Query complete state at the same
+object path, and full replay when com.canonical.Unity becomes owned. QObject
+exports only the explicitly scriptable protocol method/signal. Each instance has
+a unique object path, without mutable global identity/state. Publish native
+double progress, visibility and urgency; clamp display fraction, preserve error
+state on value updates, and clear owned visibility/urgency before unregistering.
+Missing bus, invalid desktop basename, missing initialization, wrong owner thread
+and disconnected transport return failures. Do not change cached native state
+after a failed publish. Idempotent changes send no redundant delta.
+
+QtDBus is used instead of adding libunity/GLib dependencies. The protocol's
+stability limitation is explicit; Qt itself uses the same launcher interface for
+native Unix badges in
+[Qt v6.11.2 qdesktopunixservices.cpp](https://github.com/qt/qtbase/blob/v6.11.2/src/gui/platform/unix/qdesktopunixservices.cpp).
+No Qt functional body is copied. Native protocol facts are used at the OS
+boundary; source dialog pause/error/target decisions remain outside this owner.
+There is no colored paused/error or indeterminate progress property: pause keeps
+the fraction, error uses native urgency, and indeterminate returns ENOTSUP rather
+than a fake animation. The original dialog only requests normal/paused/error/
+no-progress states. Desktop compatibility and rendering are separate from successful
+transport; no mandatory source branch is declared N/A.
+
+launcher_progress starts only an owned private dbus-daemon and two explicit
+connections. Native signal/reply round trips check Unicode/space desktop IDs,
+double/map signatures, deltas versus complete Query, service-name registration/
+restart replay, zero/UInt64/over-total values, error/pause/normal/clear,
+unregister-on-destruction, invalid arguments, absent/disconnected bus and joined
+worker owner-thread failures with state preservation. No live session bus or
+external service is used. Sandbox bind fails EPERM; authorized unsandboxed checks
+exercise the private Unix socket. QtDBus is required for Linux, and on Apple only
+for these tests; dbus-daemon is a Unix test dependency. CTest is initialized before
+dependency selection so default BUILD_TESTING configurations do not omit coverage.
+macOS arm64 focused launcher/Cocoa/priority/sync 4/4 passed (1.52 s); mandatory
+./scripts/check.sh format/app build/CTest passed 91/91 (58.59 s), exit 0;
+diff-check clean. Linux application identity,
+CQtTaskbarProgress integration and actual desktop rendering remain mandatory b2b;
+Windows/source UI and modal/worker/cancel/update remain open.
+
 ## P0-02.2b3c3b2b2b2b1 — Cocoa Dock service prerequisite (2026-09-29)
 
 Project baseline `ab47135`; original taskbar call sites remain pinned to

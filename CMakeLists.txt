@@ -4,9 +4,17 @@ project(sevenzip_desktop VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+include(CTest)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Threads REQUIRED)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
+    find_package(Qt6 REQUIRED COMPONENTS DBus)
+    add_library(sevenzip_launcher STATIC src/qtlauncherprogress.cpp src/qtlauncherprogress.h)
+    target_include_directories(sevenzip_launcher PUBLIC src third_party/7zip/CPP)
+    target_link_libraries(sevenzip_launcher PUBLIC Qt6::DBus)
+    set_target_properties(sevenzip_launcher PROPERTIES AUTOMOC ON AUTOUIC OFF)
+endif()
 
 set(property_name_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/PropertyName.rc")
 set(extract_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GUI/Extract.rc")
@@ -146,10 +154,17 @@ set_target_properties(sevenzip_desktop PROPERTIES
     WIN32_EXECUTABLE TRUE
 )
 
-include(CTest)
-
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    if(TARGET sevenzip_launcher)
+        find_program(DBUS_DAEMON_EXECUTABLE dbus-daemon REQUIRED)
+        qt_add_executable(launcher_progress_tests tests/launcher_progress_tests.cpp)
+        target_compile_definitions(launcher_progress_tests PRIVATE
+            "DBUS_DAEMON_PATH=\"${DBUS_DAEMON_EXECUTABLE}\"")
+        target_link_libraries(launcher_progress_tests PRIVATE sevenzip_launcher Qt6::Test)
+        add_test(NAME launcher_progress COMMAND launcher_progress_tests)
+        set_tests_properties(launcher_progress PROPERTIES TIMEOUT 20)
+    endif()
     qt_add_executable(password_dialog_tests tests/password_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(password_dialog_tests PRIVATE tests)
     target_link_libraries(password_dialog_tests PRIVATE sevenzip_panel Qt6::Test)

@@ -1,5 +1,12 @@
 # Regression strategy
 
+`launcher_progress` owns a private dbus-daemon and connections, exercising native
+Update/Query round trips, UTF-8 desktop IDs, state/value/clear, name-owner replay,
+registration lifetime, invalid/disconnected failures and joined owner-thread checks.
+It never connects to the user's live session bus. Sandboxes denying Unix socket
+bind must be reported; an authorized unsandboxed run checks actual transport.
+Transport success does not verify a Linux launcher or source progress integration.
+
 `taskbar_progress_mac` checks actual native Dock badge state/value/clear and object
 ownership on macOS, including pause/error persistence across value updates,
 UInt64/clamping, invalid calls, absent Cocoa in an owned child and non-GUI calls

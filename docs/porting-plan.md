@@ -65,7 +65,7 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 `CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/DLL.cpp`, `CPP/Windows/ResourceString.cpp`,
 `CPP/7zip/Common/MethodProps.cpp`.
 Всего в `src/CPP` — 42 `.cpp`.
-В корне `src/` — 39 `.cpp` Qt/integration; это не 39 неперенесённых компонентов:
+В корне `src/` — 40 `.cpp` Qt/integration; это не 40 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
 Отдельно есть Apple-only Objective-C++ `qttaskbarprogress_mac.mm`: narrow native
 Dock service, без принятой интеграции source progress dialog.

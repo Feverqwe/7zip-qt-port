@@ -6,6 +6,9 @@
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
 - Official `7zz` executable for archive functionality once implemented
+- Qt 6 DBus for the Linux launcher service; Unix launcher regression tests also
+  need `dbus-daemon` to create their own private bus. macOS builds with testing
+  enabled require Qt DBus; Cocoa-only production builds do not.
 
 On macOS with Homebrew:
 

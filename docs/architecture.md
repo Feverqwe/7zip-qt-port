@@ -12,6 +12,10 @@ widgets, native-style presentation APIs, font units, monotonic ticks and clipboa
 qttaskbarprogress_mac owns Cocoa native Dock objects behind an opaque interface;
 source dialog state/target selection remains mandatory integration. It exposes
 only native state/value/initialization services, without statistics or operations.
+CQtLauncherProgress is the separate native DBus entry owner. It accepts an explicit
+connection and desktop ID, publishes deltas/replay, exports native Query and clears
+its entry before unregistering. Linux session/identity selection remains a native
+adapter prerequisite; successful transport does not establish visible desktop support.
 The source view is not wired to MainWindow operations until mandatory modal-worker,
 cancel/finish and update-callback services are ported; existing ArchiveBackend and
 operation progress ownership remain. Background/Cancel are disabled in this subset.
