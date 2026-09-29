@@ -5,6 +5,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "mainwindow.h"
+#include "qtfilemanagercommands.h"
 #include "qtlocationfolder.h"
 
 void MainWindow::renderArchiveFolder() {
@@ -116,87 +117,12 @@ void MainWindow::setState(State state) {
 }
 
 void MainWindow::refreshActions() {
+    app_.RefreshTitle();
     const bool navigating = !app_.QtOperations().closed() && !app_.QtOperations().blocking();
     const bool idle = navigating && !scanningDisk_;
-    for (QAction *action : sortActions_)
-        action->setEnabled(idle);
-    for (QAction *action : viewActions_)
-        action->setEnabled(idle);
-    flatView_->setEnabled(navigating);
-    open_->setEnabled(idle);
-    create_->setEnabled(idle && state_ == State::Filesystem);
-    add_->setEnabled(idle && state_ == State::Viewing && ArchiveFormats::canModify(archive_) &&
-                     !info_.encrypted && !isNestedArchive());
-    toolbarAdd_->setEnabled(create_->isEnabled() || add_->isEnabled());
-    extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
-    test_->setEnabled(idle && state_ == State::Viewing);
-    infoAction_->setEnabled(idle && state_ == State::Viewing);
-    selected_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty() &&
-                          !table_->selectionModel()->selectedRows().isEmpty());
-    back_->setEnabled(navigating && (state_ == State::Viewing || !history_.isEmpty()));
-    up_->setEnabled(navigating && state_ == State::Viewing && !archiveFolder_.isEmpty());
-    bool canOpenItem = false;
-    const int row = table_->currentRow();
-    if (idle && row >= 0 && row < table_->rowCount()) {
-        if (state_ == State::Viewing)
-            canOpenItem = true;
-        else {
-            const QFileInfo info(table_->item(row, 1)->text());
-            canOpenItem = info.isDir() || (info.isFile() && !info.isSymLink());
-        }
-    }
-    openItem_->setEnabled(canOpenItem);
-    bool inside = false;
-    bool outside = false;
-    if (canOpenItem) {
-        const bool folder = table_->item(row, 0)->data(Qt::UserRole + 1).toBool();
-        const QString path = state_ == State::Filesystem
-                                 ? table_->item(row, 1)->text()
-                                 : table_->item(row, 0)->data(Qt::UserRole).toString();
-        inside = folder || (state_ == State::Viewing || !QFileInfo(path).isSymLink());
-        outside = !folder;
-    }
-    openInside_->setEnabled(inside);
-    openOutside_->setEnabled(outside);
-    parent_->setEnabled(navigating && (state_ == State::Viewing ||
-                                       (state_ == State::Filesystem && QDir(directory_).cdUp())));
-    selectAll_->setEnabled(idle && table_->rowCount() > 0);
-    const bool selected = !table_->selectionModel()->selectedRows().isEmpty();
-    deselectAll_->setEnabled(idle && selected);
-    invertSelection_->setEnabled(idle && table_->rowCount() > 0);
-    refresh_->setEnabled(idle);
-    settingsAction_->setEnabled(idle);
-    foldersHistory_->setEnabled(idle && pathCombo_->count() > 0);
     refreshBookmarks();
-    createFolder_->setEnabled(idle && state_ == State::Filesystem);
-    createFile_->setEnabled(idle && state_ == State::Filesystem);
-    selectMask_->setEnabled(idle && table_->rowCount() > 0);
-    deselectMask_->setEnabled(idle && table_->rowCount() > 0);
-    selectType_->setEnabled(idle && table_->currentRow() >= 0);
-    deselectType_->setEnabled(idle && table_->currentRow() >= 0);
-    copy_->setEnabled(idle && selected);
-    const bool writableArchive = state_ == State::Viewing && ArchiveFormats::canModify(archive_) &&
-                                 !info_.encrypted && !isNestedArchive();
-    move_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
-    remove_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
-    const bool one = table_->selectionModel()->selectedRows().size() == 1;
-    bool oneFile = false;
-    if (idle && one) {
-        const auto indices = sourceOperatedIndices();
-        oneFile = indices.Size() == 1 && !app_.GetFocusedPanel().IsItem_Folder(indices[0]);
-    }
-    viewFile_->setEnabled(idle && oneFile);
-    editFile_->setEnabled(idle && oneFile && (state_ == State::Filesystem || writableArchive));
-    split_->setEnabled(idle && state_ == State::Filesystem && oneFile &&
-                       !QFileInfo(selectedFilesystemPaths().value(0)).isSymLink());
-    CVolSeqName sequence;
-    combine_->setEnabled(
-        split_->isEnabled() &&
-        sequence.ParseName(QFileInfo(selectedFilesystemPaths().value(0)).fileName()));
-    rename_->setEnabled(idle && one && (state_ == State::Filesystem || writableArchive));
-    properties_->setEnabled(idle && selected);
-    for (QAction *action : hashActions_)
-        action->setEnabled(idle && selected);
+    if (commands_)
+        commands_->RefreshActions();
     table_->setEnabled(idle);
     iconList_->setEnabled(idle);
     table_->setDragEnabled(idle && state_ == State::Filesystem);

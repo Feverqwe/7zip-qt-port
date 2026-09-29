@@ -6,6 +6,8 @@
 #include <QStringList>
 
 const UInt32 kListMode_Report = 3;
+void SaveToolbarsMask(UInt32 toolbarMask, const QString &settingsPath);
+UInt32 ReadToolbarsMask(const QString &settingsPath);
 
 struct CListMode {
     UInt32 Panels[2];

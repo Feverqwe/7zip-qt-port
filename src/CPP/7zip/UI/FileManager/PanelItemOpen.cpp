@@ -25,6 +25,7 @@ using namespace NWindows;
 using namespace NFile;
 using namespace NDir;
 static const FChar *const kTempDirPrefix = FTEXT("7zO");
+static const UInt32 kParentIndex = (UInt32)-1;
 
 void CExitEventLauncher::Exit(bool hardExit) {
     // Native event/owned-thread lifecycle. Always join on POSIX/Qt: detaching
@@ -276,6 +277,66 @@ bool FindExt(const char *p, const UString &name, CStringFinder &finder);
 static bool DoItemAlwaysStart(const UString &name) {
     CStringFinder finder;
     return FindExt(kStartExtensions, name, finder);
+}
+
+void CPanel::OpenFolderExternal(unsigned index) {
+    UString prefix = GetFsPath();
+    UString path = prefix;
+    if (index == kParentIndex) {
+        if (prefix.IsEmpty())
+            return;
+        const wchar_t c = prefix.Back();
+        if (!IS_PATH_SEPAR(c) && c != ':')
+            return;
+        prefix.DeleteBack();
+        int pos = prefix.ReverseFind_PathSepar();
+        if (pos < 0)
+            return;
+        prefix.DeleteFrom((unsigned)(pos + 1));
+        path = prefix;
+    } else {
+        path += GetItemRelPath(index);
+        path.Add_PathSepar();
+    }
+    // OS association without a waitable process handle is the existing narrow
+    // StartApplicationDontWait service; known-process owners remain P1-08.
+    if (_externalFileServices)
+        _externalFileServices->StartApplication(prefix, path, GetParent());
+    else
+        MessageBox_Error_UnsupportOperation();
+}
+
+void CPanel::OpenItem(unsigned index, bool tryInternal, bool tryExternal, const wchar_t *type) {
+    CDisableTimerProcessing disableTimerProcessing(*this);
+    const UString name = GetItemRelPath2(index);
+    if (tryExternal)
+        if (IsVirus_Message(name))
+            return;
+    if (!_parentFolders.IsEmpty()) {
+        OpenItemInArchive(index, tryInternal, tryExternal, false, false, type);
+        return;
+    }
+    CDisableNotify disableNotify(*this);
+    UString prefix = GetFsPath();
+    UString fullPath = prefix + name;
+    if (tryInternal)
+        if (!tryExternal || !DoItemAlwaysStart(name)) {
+            HRESULT res = OpenAsArc_Index(index, type);
+            disableNotify.Restore(); // allow text notification update
+            _selectionList.Invalidate();
+            if (res == S_OK || res == E_ABORT)
+                return;
+            if (res != S_FALSE) {
+                MessageBox_Error_HRESULT(res);
+                return;
+            }
+        }
+    if (tryExternal) {
+        if (_externalFileServices)
+            _externalFileServices->StartApplication(prefix, fullPath, GetParent());
+        else
+            MessageBox_Error_UnsupportOperation();
+    }
 }
 
 void SplitCmdLineSmart(const UString &cmd, UString &prg, UString &params) {

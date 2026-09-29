@@ -18,6 +18,22 @@ static const char *const kPositionValueName = "Position";
 static const char *const kPanelsInfoValueName = "Panels";
 static const UInt32 kWindowPositionHeaderSize = 5 * 4;
 static const UInt32 kPanelsInfoHeaderSize = 3 * 4;
+static const char *const kToolbars = "Toolbars";
+static const UInt32 kDefaultToolbarMask = ((UInt32)1 << 31) | 8 | 4 | 1;
+
+void SaveToolbarsMask(UInt32 toolbarMask, const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.setValue(kToolbars, toolbarMask);
+}
+
+UInt32 ReadToolbarsMask(const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    bool ok = false;
+    const qulonglong value = key.value(kToolbars).toULongLong(&ok);
+    if (!ok || value > 0xFFFFFFFFu)
+        return kDefaultToolbarMask;
+    return static_cast<UInt32>(value);
+}
 
 void CWindowInfo::Save(const QString &settingsPath) const {
     QSettings key(settingsPath, QSettings::IniFormat);

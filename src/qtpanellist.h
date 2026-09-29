@@ -20,6 +20,10 @@ class QtPanelList {
     void SelectItem(int row);
     void SetFocusedItem(int row);
     void EnsureVisible(int row);
+    void Invalidate() {
+        if (view_)
+            view_->viewport()->update();
+    }
 
   private:
     QPointer<QAbstractItemView> view_;

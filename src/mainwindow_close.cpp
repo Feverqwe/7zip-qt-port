@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "qtfilemanagercommands.h"
 #include "qtfilemanagerwindowservices.h"
 #include <QCloseEvent>
 

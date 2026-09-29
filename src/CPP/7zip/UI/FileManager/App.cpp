@@ -9,11 +9,17 @@
 #include "Panel.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include "qtfilemanagercommandservices.h"
 #include "qtpanelfolder.h"
+#include <QWidget>
 
 CApp::CApp() : _qtOperations(Panels) {}
 
 CApp::~CApp() { ReleaseApp(); }
+
+bool CApp::ExecuteCommand(unsigned id) {
+    return !_qtOperations.closed() && _qtCommandServices && WndProc(id, *this, *_qtCommandServices);
+}
 
 void CPanelCallbackImp::OnTab() {
     if (_app->NumPanels != 1)
@@ -42,12 +48,23 @@ void CPanelCallbackImp::DragBegin() { _app->DragBegin(_index); }
 void CPanelCallbackImp::DragEnd() { _app->DragEnd(); }
 void CPanelCallbackImp::RefreshTitle(bool always) { _app->RefreshTitlePanel(_index, always); }
 
-void CApp::RefreshTitle() { RefreshTitlePanel(LastFocusedPanel); }
+void CApp::RefreshTitle(bool always) {
+    if (_qtOperations.closed())
+        return;
+    UString path = GetFocusedPanel().GetCurrentFolderPrefix();
+    if (path.IsEmpty())
+        path = "7-Zip";
+    if (!always && path == PrevTitle)
+        return;
+    PrevTitle = path;
+    if (_window)
+        _window->setWindowTitle(ToQString(path));
+}
 
 void CApp::RefreshTitlePanel(unsigned index, bool always) {
-    if (_presentation)
-        if (auto *callback = _presentation->PanelCallback(index))
-            callback->RefreshTitle(always);
+    if (index != GetFocusedPanelIndex())
+        return;
+    RefreshTitle(always);
 }
 
 void CApp::OnCopy(bool move, bool copyToSame, unsigned index) {
@@ -117,15 +134,74 @@ void CApp::SetListSettings() {
     }
 }
 
+void CApp::ReadToolbar(bool smallScreen) {
+    const UInt32 mask = ReadToolbarsMask(_settingsPath);
+    if (mask & ((UInt32)1 << 31)) {
+        ShowButtonsLables = !smallScreen;
+        LargeButtons = false;
+        ShowStandardToolbar = ShowArchiveToolbar = true;
+    } else {
+        ShowButtonsLables = ((mask & 1) != 0);
+        LargeButtons = ((mask & 2) != 0);
+        ShowStandardToolbar = ((mask & 4) != 0);
+        ShowArchiveToolbar = ((mask & 8) != 0);
+    }
+}
+void CApp::SaveToolbar() {
+    UInt32 mask = 0;
+    if (ShowButtonsLables)
+        mask |= 1;
+    if (LargeButtons)
+        mask |= 2;
+    if (ShowStandardToolbar)
+        mask |= 4;
+    if (ShowArchiveToolbar)
+        mask |= 8;
+    SaveToolbarsMask(mask, _settingsPath);
+}
+void CApp::ReloadToolbars() {
+    if (_presentation)
+        _presentation->ReloadToolbars(*this);
+}
+void CApp::MoveSubWindows() {
+    if (_presentation)
+        _presentation->MoveSubWindows();
+}
+void CApp::SaveToolbarChanges() {
+    SaveToolbar();
+    ReloadToolbars();
+    MoveSubWindows();
+}
+void CApp::SwitchStandardToolbar() {
+    ShowStandardToolbar = !ShowStandardToolbar;
+    SaveToolbarChanges();
+}
+void CApp::SwitchArchiveToolbar() {
+    ShowArchiveToolbar = !ShowArchiveToolbar;
+    SaveToolbarChanges();
+}
+void CApp::SwitchButtonsLables() {
+    ShowButtonsLables = !ShowButtonsLables;
+    SaveToolbarChanges();
+}
+void CApp::SwitchLargeButtons() {
+    LargeButtons = !LargeButtons;
+    SaveToolbarChanges();
+}
+
 HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &arcFormat,
                      int xSizes[2], bool needOpenArc, COpenResult &openRes,
                      IQtAppPresentation &presentation, const QString &settingsPath) {
     _qtOperations.ResetForCreate();
+    _qtCommandServices = nullptr;
+    PrevTitle.Empty();
     _window = window;
     _presentation = &presentation;
     _settingsPath = settingsPath;
-    // Qt menu/toolbar initialization replaces MyLoadMenu/ReadToolbar/ReloadToolbars.
+    // Qt child/menu construction replaces Win32 handles, not toolbar state.
     _presentation->Initialize(*this);
+    ReadToolbar();
+    ReloadToolbars();
     unsigned i;
     for (i = 0; i < kNumPanelsMax; i++)
         Panels[i].PanelCreated = false;
@@ -185,6 +261,7 @@ void CApp::Save() {
 
 void CApp::ReleaseApp() {
     _qtOperations.Close();
+    _qtCommandServices = nullptr;
     // 24.09: ReleasePanel() will stop panel timer processing.
     // but we want to stop timer processing for all panels
     // before ReleasePanel() calling.

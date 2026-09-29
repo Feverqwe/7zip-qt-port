@@ -105,6 +105,9 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
+    src/CPP/7zip/UI/FileManager/MyLoadMenu.cpp src/CPP/7zip/UI/FileManager/MyLoadMenu.h
+    src/qtfilemenuservices.h src/qtfilemanagercommandservices.h
     src/CPP/7zip/UI/FileManager/FM.cpp src/qtfilemanagerwindowservices.h
     src/qtappoperationstate.cpp src/qtappoperationstate.h
     src/CPP/7zip/UI/FileManager/PanelDrag.cpp
@@ -462,6 +465,11 @@ if(BUILD_TESTING)
         src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
     target_link_libraries(archive_opening_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME archive_opening COMMAND archive_opening_tests)
+    qt_add_executable(agent_capability_tests tests/agent_capability_tests.cpp
+        src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
+        src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
+    target_link_libraries(agent_capability_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME agent_capability COMMAND agent_capability_tests)
     set_tests_properties(archive_opening PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     target_link_libraries(archive_progress_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME archive_progress COMMAND archive_progress_tests)
@@ -541,6 +549,9 @@ if(BUILD_TESTING)
     qt_add_executable(fs_folder_tests tests/fs_folder_tests.cpp)
     target_link_libraries(fs_folder_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME fs_folder COMMAND fs_folder_tests)
+    qt_add_executable(native_fs_operations_tests tests/native_fs_operations_tests.cpp)
+    target_link_libraries(native_fs_operations_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME native_fs_operations COMMAND native_fs_operations_tests)
     qt_add_executable(location_folder_tests tests/location_folder_tests.cpp)
     target_link_libraries(location_folder_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME location_folder COMMAND location_folder_tests)
@@ -729,6 +740,13 @@ if(BUILD_TESTING)
     add_test(NAME file_transfer COMMAND file_transfer_tests)
     get_target_property(panel_sort_sources ui_state_tests SOURCES)
     list(REMOVE_ITEM panel_sort_sources tests/ui_state_tests.cpp)
+    qt_add_executable(command_policy_runtime_tests tests/command_policy_runtime_tests.cpp ${panel_sort_sources})
+    target_include_directories(command_policy_runtime_tests PRIVATE src tests)
+    target_link_libraries(command_policy_runtime_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(command_policy_runtime_tests PRIVATE src/mainwindow_filedelete.cpp src/mainwindow_selectionpaths.cpp)
+    add_test(NAME command_policy_runtime COMMAND command_policy_runtime_tests)
+    set_tests_properties(command_policy_runtime PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/command-policy-settings.ini")
     qt_add_executable(bookmark_tests tests/bookmark_tests.cpp ${panel_sort_sources})
     target_include_directories(bookmark_tests PRIVATE src tests)
     target_link_libraries(bookmark_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
@@ -783,7 +801,23 @@ if(BUILD_TESTING)
     set_tests_properties(app_lifecycle_window PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/app-lifecycle-window-settings.ini")
     qt_add_executable(app_lifecycle_tests tests/app_lifecycle_tests.cpp)
+    qt_add_executable(native_toolbar_state_tests tests/native_toolbar_state_tests.cpp)
+    target_link_libraries(native_toolbar_state_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME native_toolbar_state COMMAND native_toolbar_state_tests)
+    set_tests_properties(native_toolbar_state PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(window_info_tests tests/window_info_tests.cpp)
+    qt_add_executable(file_menu_policy_tests tests/file_menu_policy_tests.cpp)
+    target_include_directories(file_menu_policy_tests PRIVATE src)
+    target_link_libraries(file_menu_policy_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME file_menu_policy COMMAND file_menu_policy_tests)
+    qt_add_executable(native_command_dispatch_tests tests/native_command_dispatch_tests.cpp)
+    target_include_directories(native_command_dispatch_tests PRIVATE src)
+    target_link_libraries(native_command_dispatch_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME native_command_dispatch COMMAND native_command_dispatch_tests)
+    qt_add_executable(native_open_commands_tests tests/native_open_commands_tests.cpp)
+    target_link_libraries(native_open_commands_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME native_open_commands COMMAND native_open_commands_tests)
+    set_tests_properties(native_open_commands PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
     target_include_directories(window_info_tests PRIVATE src)
     target_link_libraries(window_info_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME window_info COMMAND window_info_tests)
@@ -924,7 +958,11 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     get_target_property(engine_consumer_sources ${engine_consumer} SOURCES)
     if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
-            src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h)
+            src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
+            src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
+            src/qtfilemanagercommandworkflows.cpp
+            src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
+            src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp

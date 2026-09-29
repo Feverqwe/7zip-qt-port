@@ -91,6 +91,7 @@ class MainWindow : public QMainWindow {
   private:
     friend class QtAppPresentation;
     friend class QtFileManagerWindowServices;
+    friend class QtFileManagerCommands;
     void closeEvent(QCloseEvent *event) override;
     void quiesceOperations();
     QMenu *createMenusAndToolbar();
@@ -135,6 +136,7 @@ class MainWindow : public QMainWindow {
     void saveBookmark(int index);
     void openBookmark(int index);
     void updateToolbar();
+    void applyFlatView(bool enabled);
     void showSettings();
     void updateFilesystemIcons();
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -153,8 +155,6 @@ class MainWindow : public QMainWindow {
     void SelectByType(bool select);
     void navigateTo(const QString &path);
     void activateRow(int row);
-    void openSelectedInside();
-    void openSelectedOutside();
     void goBack();
     void goUp();
     void goParent();
@@ -202,6 +202,7 @@ class MainWindow : public QMainWindow {
     CMyComPtr<IFolderManager> folderManager_;
     std::unique_ptr<class QtAssociatedFileServices> associatedFileServices_;
     std::unique_ptr<class QtAppPresentation> appPresentation_;
+    std::unique_ptr<class QtFileManagerCommands> commands_;
     std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;
     QString displayArchive_;

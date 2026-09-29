@@ -10,6 +10,7 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "Common/ComTry.h"
 #include "Common/Defs.h"
+#include "Windows/FileFind.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/System.h"
@@ -251,6 +252,16 @@ Z7_COM7F_IMF(CAgentFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value))
     NWindows::NCOM::CPropVariant prop;
     const CProxyDir &dir = _proxy->Dirs[_proxyDirIndex];
     switch (propID) {
+    case kpidReadOnly:
+        if ((_agentSpec->_proxy && _agentSpec->_proxy->Are_Changed_LongPaths) ||
+            _agentSpec->Is_Attrib_ReadOnly())
+            prop = true;
+        else
+            prop = _agentSpec->IsThere_ReadOnlyArc();
+        break;
+    case kpidIsHash:
+        prop = _agentSpec->_isHashHandler;
+        break;
     case kpidSize:
         prop = UInt64(dir.Size);
         break;
@@ -414,6 +425,17 @@ bool CAgent::CanUpdate() const {
     return true;
 }
 
+bool CAgent::IsThere_ReadOnlyArc() const {
+    FOR_VECTOR(i, _archiveLink.Arcs) {
+        const CArc &arc = _archiveLink.Arcs[i];
+        // Original FormatIndex/UpdateEnabled lookup is supplied by the typed
+        // file-only engine capability; the codec catalog is mandatory P2-01.
+        if (arc.IsReadOnly || !ArchiveUpdateEnabled(arc.Archive))
+            return true;
+    }
+    return false;
+}
+
 HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
                      const UString &archiveType, IUnknown *engineResource) {
     COM_TRY_BEGIN
@@ -444,6 +466,8 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
     _archiveLink.IsOpen = true;
     ArchiveType = archiveType;
     _archiveFilePath = arc.Path;
+    NWindows::NFile::NFind::CFileInfo fi;
+    _attrib = fi.Find(us2fs(_archiveFilePath)) ? fi.GetWinAttrib() : (DWORD)-1;
     _engineResource = engineResource;
     return S_OK;
     COM_TRY_END

@@ -379,30 +379,24 @@ FString CFSFolder::GetRelPath(const CDirItem &item) const {
 }
 
 void CFSFolder::GetAbsPath(const QString &name, QString &absPath) const {
-    absPath.clear();
-    if (!QDir::isAbsolutePath(name))
-        absPath += QtPath(_path);
-    absPath += name;
+    FString sourcePath;
+    GetAbsPath(name.toStdWString().c_str(), sourcePath);
+    absPath = QtPath(sourcePath);
 }
 
 bool CFSFolder::CreateFolder(const QString &name) {
+    if (CreateFolder(name.toStdWString().c_str(), nullptr) == S_OK)
+        return true;
     QString absPath;
     GetAbsPath(name, absPath);
-    if (QDir().mkdir(absPath))
-        return true;
-    const QFileInfo info(absPath);
-    if (!info.exists() && !info.isSymLink())
-        if (QDir().mkpath(absPath))
-            return true;
     ErrorMessage = QStringLiteral("Не удалось создать папку: %1").arg(absPath);
     return false;
 }
 
 bool CFSFolder::CreateFile(const QString &name) {
-    QString absPath;
-    GetAbsPath(name, absPath);
-    QFile outFile(absPath);
-    if (!outFile.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+    if (CreateFile(name.toStdWString().c_str(), nullptr) != S_OK) {
+        QString absPath;
+        GetAbsPath(name, absPath);
         ErrorMessage = QStringLiteral("Не удалось создать файл: %1").arg(absPath);
         return false;
     }
@@ -410,51 +404,143 @@ bool CFSFolder::CreateFile(const QString &name) {
 }
 
 bool CFSFolder::Rename(UInt32 index, const QString &newName) {
-    if (index >= Files.Size())
-        return false;
-    const CDirItem &fi = Files[index];
-    QString fullPrefix = QtPath(_path);
-    if (fi.Parent >= 0)
-        fullPrefix += QtPath(Folders[fi.Parent]);
-    // Qt rename never replaces a target, including a dangling symlink.
-    const QString target = fullPrefix + newName;
-    if (QFileInfo(target).isSymLink() || !QDir().rename(fullPrefix + QtPath(fi.Name), target)) {
-        ErrorMessage = QStringLiteral("Не удалось переименовать объект: %1").arg(target);
+    if (Rename(index, newName.toStdWString().c_str(), nullptr) != S_OK) {
+        ErrorMessage = QStringLiteral("Не удалось переименовать объект: %1").arg(newName);
         return false;
     }
     return true;
 }
 
+class CMutationProgress final : public IProgress, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IProgress)
+    CFSFolder &folder_;
+
+  public:
+    explicit CMutationProgress(CFSFolder &folder) : folder_(folder) {}
+    Z7_COM7F_IMF(SetTotal(UInt64 total)) override {
+        return !folder_.SetTotal || folder_.SetTotal(total) ? S_OK : E_ABORT;
+    }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *completed)) override {
+        return !folder_.SetCompleted || !completed || folder_.SetCompleted(*completed) ? S_OK
+                                                                                       : E_ABORT;
+    }
+};
+
 bool CFSFolder::Delete(const UInt32 *indices, UInt32 numItems) {
-    if (SetTotal && !SetTotal(numItems))
-        return false;
+    ErrorMessage.clear();
+    CMyComPtr<IProgress> progress = new CMutationProgress(*this);
+    if (Delete(indices, numItems, progress) == S_OK)
+        return true;
+    if (ErrorMessage.isEmpty())
+        ErrorMessage = QStringLiteral("Не удалось удалить выбранные объекты.");
+    return false;
+}
+
+void CFSFolder::GetAbsPath(const wchar_t *name, FString &absPath) const {
+    absPath.Empty();
+    if (!NWindows::NFile::NName::IsAbsolutePath(name))
+        absPath += _path;
+    absPath += us2fs(name);
+}
+
+Z7_COM7F_IMF(CFSFolder::CreateFolder(const wchar_t *name, IProgress * /* progress */)) {
+    FString absPath;
+    GetAbsPath(name, absPath);
+    if (NWindows::NFile::NDir::CreateDir(absPath))
+        return S_OK;
+#ifdef _WIN32
+    if (::GetLastError() != ERROR_ALREADY_EXISTS)
+#else
+    if (errno != EEXIST)
+#endif
+        if (NWindows::NFile::NDir::CreateComplexDir(absPath))
+            return S_OK;
+    return GetLastError_noZero_HRESULT();
+}
+
+Z7_COM7F_IMF(CFSFolder::CreateFile(const wchar_t *name, IProgress * /* progress */)) {
+    FString absPath;
+    GetAbsPath(name, absPath);
+    NWindows::NFile::NIO::COutFile outFile;
+    if (!outFile.Create_NEW(absPath))
+        return GetLastError_noZero_HRESULT();
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::Rename(UInt32 index, const wchar_t *newName, IProgress * /* progress */)) {
+    if (index >= Files.Size())
+        return E_NOTIMPL;
+    const CDirItem &fi = Files[index];
+    FString fullPrefix = _path;
+    if (fi.Parent >= 0)
+        fullPrefix += Folders[fi.Parent];
+    const QFileInfo target(QtPath(fullPrefix + us2fs(newName)));
+    if (target.exists() || target.isSymLink())
+        return HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
+    if (!NWindows::NFile::NDir::MyMoveFile(fullPrefix + fi.Name, fullPrefix + us2fs(newName)))
+        return GetLastError_noZero_HRESULT();
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress *progress)) {
+    if (!progress)
+        return E_INVALIDARG;
+    RINOK(progress->SetTotal(numItems))
     for (UInt32 i = 0; i < numItems; i++) {
-        const UInt32 index = indices[i];
+        UInt32 index = indices[i];
         if (index >= Files.Size())
-            return false;
+            return E_INVALIDARG;
         bool result = true;
         {
             const CDirItem &fi = Files[index];
-            const QString fullPath = QtPath(_path + GetRelPath(fi));
-            if (CheckBreak && !CheckBreak(fullPath))
-                return false;
-            // Keep the existing panel policy for a directly selected link.
-            // Links found inside a directory are unlinked without traversal.
-            if (QFileInfo(fullPath).isSymLink())
-                result = false;
-            else if (fi.IsDir())
-                result = NWindows::NFile::NDir::RemoveDirWithSubItems(fullPath, CheckBreak);
-            else
-                result = NWindows::NFile::NDir::DeleteFileAlways(fullPath);
-            if (!result) {
-                ErrorMessage = QStringLiteral("Не удалось удалить объект: %1").arg(fullPath);
-                return false;
-            }
+            const FString fullPath = _path + GetRelPath(fi);
+            // Existing Qt transport refuses directly selected symbolic links.
+            // Source filesystem service retains recursive no-follow deletion.
+            const QString path = QtPath(fullPath);
+            if (QFileInfo(path).isSymLink())
+                return E_NOTIMPL;
+            if (CheckBreak && !CheckBreak(path))
+                return E_ABORT;
+            if (fi.IsDir()) {
+                bool canceled = false;
+                result =
+                    NWindows::NFile::NDir::RemoveDirWithSubItems(path, [&](const QString &item) {
+                        if (CheckBreak && !CheckBreak(item)) {
+                            canceled = true;
+                            return false;
+                        }
+                        return true;
+                    });
+                if (canceled)
+                    return E_ABORT;
+            } else
+                result = NWindows::NFile::NDir::DeleteFileAlways(path);
         }
-        const quint64 completed = i;
-        if (SetCompleted && !SetCompleted(completed))
-            return false;
+        if (!result) {
+            ErrorMessage =
+                QStringLiteral("Не удалось удалить: ") + QtPath(_path + GetRelPath(Files[index]));
+            return GetLastError_noZero_HRESULT();
+        }
+        const UInt64 completed = i;
+        RINOK(progress->SetCompleted(&completed))
     }
-    return true;
+    return S_OK;
 }
+
+// Partial interface: full CopyTo/SetProperty consumers are mandatory P1-03/
+// P1-04. The current Qt transport continues to own those workflows; native
+// callers receive an explicit unavailable result instead of a fake success.
+Z7_COM7F_IMF(CFSFolder::CopyTo(Int32, const UInt32 *, UInt32, Int32, Int32, const wchar_t *,
+                               IFolderOperationsExtractCallback *)) {
+    return E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFSFolder::SetProperty(UInt32, PROPID, const PROPVARIANT *, IProgress *)) {
+    return E_NOTIMPL;
+}
+// These two unavailable bodies are also the original upstream implementation.
+Z7_COM7F_IMF(CFSFolder::CopyFrom(Int32, const wchar_t *, const wchar_t *const *, UInt32,
+                                 IProgress *)) {
+    return E_NOTIMPL;
+}
+Z7_COM7F_IMF(CFSFolder::CopyFromFile(UInt32, const wchar_t *, IProgress *)) { return E_NOTIMPL; }
 } // namespace NFsFolder

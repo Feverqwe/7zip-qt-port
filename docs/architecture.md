@@ -6,6 +6,17 @@ Source provenance, baselines, adaptations and migration debt belong in the
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
 
+Native CApp::ExecuteCommand is the common entry for current menus, toolbar,
+shared context actions, panel activation and keyboard commands. MyLoadMenu owns
+the copied dispatch and CFileMenu capability policy. QtFileManagerCommands binds
+actions and projects one capability snapshot per refresh; every execution takes
+a fresh snapshot before effects. It adds only current transport restrictions and
+delegates operations to existing owners. QAction enabled state is presentation.
+Native CApp owns toolbar flags, persistence ordering and focused-folder title;
+QtAppPresentation supplies toolbar reload/layout services. Dialog.cpp retains
+the source dialog-unit size predicate with Qt font/work-area services. Complete
+model, two-panel, mutation and shell workflows retain their separate plan owners.
+
 CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt
 widgets, native-style presentation APIs, font units, monotonic ticks and clipboard.

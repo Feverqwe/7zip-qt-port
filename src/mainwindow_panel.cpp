@@ -124,33 +124,27 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
     openItem_ = new QAction(table_);
     openItem_->setObjectName("openItemAction");
     table_->addAction(openItem_);
-    connect(openItem_, &QAction::triggered, this, [this] { activateRow(table_->currentRow()); });
     parent_ = new QAction(table_);
     parent_->setObjectName("parentFolderAction");
     table_->addAction(parent_);
-    connect(parent_, &QAction::triggered, this, [this] { goParent(); });
     selectAll_ = new QAction(table_);
     selectAll_->setObjectName("selectAllAction");
     selectAll_->setShortcut(QKeySequence::SelectAll);
     selectAll_->setShortcutContext(Qt::WidgetShortcut);
     table_->addAction(selectAll_);
-    connect(selectAll_, &QAction::triggered, this, [this] { SelectAll(true); });
     selectAll_->setText("Выделить всё");
     editMenu->addAction(selectAll_);
-    deselectAll_ = editMenu->addAction("Снять выделение", this, [this] { SelectAll(false); });
+    deselectAll_ = editMenu->addAction("Снять выделение");
     deselectAll_->setObjectName("deselectAllAction");
-    invertSelection_ =
-        editMenu->addAction("Инвертировать выделение", this, [this] { InvertSelection(); });
+    invertSelection_ = editMenu->addAction("Инвертировать выделение");
     invertSelection_->setObjectName("invertSelectionAction");
-    selectMask_ = editMenu->addAction("Выделить по маске…", this, [this] { SelectSpec(true); });
+    selectMask_ = editMenu->addAction("Выделить по маске…");
     selectMask_->setObjectName("selectMaskAction");
-    deselectMask_ =
-        editMenu->addAction("Снять выделение по маске…", this, [this] { SelectSpec(false); });
+    deselectMask_ = editMenu->addAction("Снять выделение по маске…");
     deselectMask_->setObjectName("deselectMaskAction");
-    selectType_ = editMenu->addAction("Выделить по типу", this, [this] { SelectByType(true); });
+    selectType_ = editMenu->addAction("Выделить по типу");
     selectType_->setObjectName("selectTypeAction");
-    deselectType_ =
-        editMenu->addAction("Снять выделение по типу", this, [this] { SelectByType(false); });
+    deselectType_ = editMenu->addAction("Снять выделение по типу");
     deselectType_->setObjectName("deselectTypeAction");
 }
 

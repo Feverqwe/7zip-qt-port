@@ -254,7 +254,7 @@ class FsFolderTests : public QObject {
         QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(0));
         void *unsupported = nullptr;
-        QCOMPARE(folder->QueryInterface(IID_IFolderOperations, &unsupported), E_NOINTERFACE);
+        QCOMPARE(folder->QueryInterface(IID_IFolderAltStreams, &unsupported), E_NOINTERFACE);
         QVERIFY(unsupported == nullptr);
         CMyComPtr<IFolderFolder> child;
         QVERIFY(folder->BindToFolder(L"missing", &child) != S_OK);

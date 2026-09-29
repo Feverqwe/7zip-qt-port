@@ -1,5 +1,17 @@
 # Regression strategy
 
+`file_menu_policy` covers native read-only/hash/FS capability and compact menu
+filtering, version-control attributes and source dialog-unit/work-area bounds.
+`native_command_dispatch` checks typed open/hash parameters, Shift delete and
+plugin release ordering; `command_policy_runtime` checks actual QAction routing,
+focused versus selected indices, canonical Unicode/space paths, typed missing
+writer/encryption restrictions and stale busy/closed actions. `native_toolbar_state`
+checks native mask/default/legacy precedence and save-before-reload ordering.
+`native_fs_operations` checks real IFolderOperations, new-only creation,
+no-replacement rename, deletion progress and cancellation before/inside recursion.
+ControlledBackend reports typed fixture format and overrides typed openFolder;
+explicit metadata takes precedence and no fixture reopen launches an engine.
+
 `app_lifecycle` additionally checks app-owned operation guard lifetime, independent
 owners and source WM_CLOSE order: caller/open rejection, join while folders live,
 disable-all before release, window-info/hard-exit ordering and idempotence.

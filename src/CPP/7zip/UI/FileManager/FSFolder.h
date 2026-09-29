@@ -25,14 +25,16 @@ struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
 class CFSFolder final : public IFolderFolder,
                         public IFolderSetFlatMode,
                         public IFolderWasChanged,
+                        public IFolderOperations,
                         public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_3(IFolderFolder, IFolderSetFlatMode, IFolderWasChanged)
+    Z7_COM_UNKNOWN_IMP_4(IFolderFolder, IFolderSetFlatMode, IFolderWasChanged, IFolderOperations)
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderWasChanged)
+    Z7_IFACE_COM7_IMP(IFolderOperations)
     HRESULT Init(const FString &path);
     HRESULT InitToRoot() { return Init((FString)FSTRING_PATH_SEPARATOR); }
     CObjectVector<CDirItem> Files;
@@ -59,6 +61,7 @@ class CFSFolder final : public IFolderFolder,
   private:
     HRESULT LoadSubItems(int dirItem, const FString &relPrefix);
     HRESULT BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder);
+    void GetAbsPath(const wchar_t *name, FString &absPath) const;
     FString _path;
     bool _flatMode = false;
 #ifdef _WIN32

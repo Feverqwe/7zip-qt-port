@@ -4,6 +4,7 @@
 #include "mainwindow.h"
 #include "qtapppresentation.h"
 #include "qtassociatedfileservices.h"
+#include "qtfilemanagercommands.h"
 #include <QCloseEvent>
 
 MainWindow::~MainWindow() {

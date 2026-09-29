@@ -2,6 +2,7 @@
 #include "qtapppresentation.h"
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
+#include "qtfilemanagercommands.h"
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener)
     : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
@@ -23,6 +24,8 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
                                        false, opened, *appPresentation_, toolbarSettingsPath());
     if (result != S_OK)
         throw result;
+    commands_ = std::make_unique<QtFileManagerCommands>(*this);
+    commands_->AttachActions();
     installEventFilter(this);
     renderBoundFolder();
     refreshActions();

@@ -127,6 +127,9 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         pressSelectAll(view);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 3);
 
+        // Enter operates the selection; choose a single file after Select All.
+        view->clearSelection();
+
         for (int row = 0; row < view->rowCount(); ++row) {
             if (view->item(row, 0)->text() == "plain.txt")
                 view->setCurrentCell(row, 0);
@@ -165,6 +168,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         pressSelectAll(view);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         QCOMPARE(action(window, "extractSelectedAction")->isEnabled(), true);
+        view->clearSelection();
         view->setCurrentCell(rowWithPath(window, QStringLiteral("папка")), 0);
         QTest::keyClick(view, Qt::Key_Return);
         QVERIFY(address->text().endsWith(QStringLiteral(" / папка")));
@@ -196,7 +200,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                            ArchiveEntry{QStringLiteral("root.txt"), 1, 1}});
         QCOMPARE(table(window)->rowCount(), 3);
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "upAction")->isEnabled());
+        // The shared parent command leaves an archive root for its filesystem.
+        QVERIFY(action(window, "upAction")->isEnabled());
         const int empty = rowWithPath(window, QStringLiteral("пустая папка"));
         const int rootFile = rowWithPath(window, QStringLiteral("root.txt"));
         QVERIFY(empty >= 0);
@@ -236,10 +241,12 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         }
         const int file = rowWithPath(window, QStringLiteral("папка с пробелом/") + longName);
         QVERIFY(file >= 0);
+        const int extractionCalls = backend.extractCalls;
+        backend.queueSourceExtractAction([&] { backend.cancel(); });
         openRow(window, file);
+        QCOMPARE(backend.extractCalls, extractionCalls + 1);
         QCOMPARE(backend.lastSelected,
                  QStringList({QStringLiteral("папка с пробелом/") + longName}));
-        backend.cancel();
         QCOMPARE(table(window)->rowCount(), 2);
         QCOMPARE(rowWithPath(window, QStringLiteral("папка с пробелом/") + longName), file);
         openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом/глубже")));
@@ -282,7 +289,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
         openListedArchive(window, backend, "three.zip", {});
         QCOMPARE(table(window)->rowCount(), 0);
-        QVERIFY(!action(window, "upAction")->isEnabled());
+        QVERIFY(action(window, "upAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(backend.prepareArchiveFixture("failed.7z"));
         QTimer warningResponder;
@@ -293,7 +300,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         warningResponder.stop();
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
-        QVERIFY(!action(window, "upAction")->isEnabled());
+        QVERIFY(action(window, "upAction")->isEnabled());
     }
 
     void reopeningAndEmptyArchive() {
@@ -396,7 +403,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                 emptyInfo = dialog->findChild<QLabel *>("archiveInfoText");
         }
         QVERIFY(emptyInfo);
-        QVERIFY(emptyInfo->text().contains(QStringLiteral("Формат: не указан 7zz")));
+        QVERIFY(emptyInfo->text().contains(QStringLiteral("Формат: zip")));
         action(window, "testArchiveAction")->trigger();
         QCOMPARE(backend.testCalls, 2);
         backend.fail(QStringLiteral("Операция отменена."));

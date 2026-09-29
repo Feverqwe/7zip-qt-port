@@ -128,6 +128,8 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
     CAgentFolder *_agentFolder;
     UString ArchiveType;
     UString _archiveFilePath;
+    // INVALID_FILE_ATTRIBUTES has no non-Windows header definition.
+    DWORD _attrib = (DWORD)-1;
     FString _hashBaseFolderPrefix;
     bool ThereIsPathProp = false;
     const CArc &GetArc() const { return _archiveLink.Arcs.Back(); }
@@ -137,6 +139,10 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
         return GetArc().Archive;
     }
     bool CanUpdate() const;
+    bool Is_Attrib_ReadOnly() const {
+        return _attrib != (DWORD)-1 && (_attrib & FILE_ATTRIBUTE_READONLY);
+    }
+    bool IsThere_ReadOnlyArc() const;
     HRESULT ReOpen(IArchiveOpenCallback *callback);
     HRESULT Close();
     void KeepModeForNextOpen() { _archiveLink.KeepModeForNextOpen(); }

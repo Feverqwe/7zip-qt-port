@@ -35,7 +35,10 @@
 
 class ControlledBackend : public ArchiveBackend {
   public:
-    ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
+    ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {
+        connect(this, &ArchiveBackend::infoReady, this,
+                [this](const ArchiveInfo &) { listedInfoReported_ = true; });
+    }
     ~ControlledBackend() override {
         for (const QString &path : ownedArchiveFixtures_)
             QFile::remove(path);
@@ -54,9 +57,29 @@ class ControlledBackend : public ArchiveBackend {
         nextListCompletion_ = [this, entries] { completeList(entries); };
     }
     void queueListAction(std::function<void()> action) { nextListCompletion_ = std::move(action); }
+    void queueSourceExtractAction(std::function<void()> action) {
+        nextSourceExtractCompletion_ = std::move(action);
+    }
+    void extractSourceEntry(const QString &archive, const QString &entry, const QString &output,
+                            const QString &, const QString &password) override {
+        extract(archive, output, {entry}, password);
+        if (nextSourceExtractCompletion_) {
+            auto completion = std::move(nextSourceExtractCompletion_);
+            nextSourceExtractCompletion_ = {};
+            QTimer::singleShot(0, this, std::move(completion));
+        } else {
+            QTimer::singleShot(0, this, [this] { cancel(); });
+        }
+    }
     bool busy() const override { return busy_; }
     HRESULT lastResult() const override { return result_; }
+    void openFolder(const QString &archive, const QString &format,
+                    const QString &password = {}) override {
+        lastOpenFormat = format;
+        list(archive, password);
+    }
     void list(const QString &archive, const QString & = {}) override {
+        listedInfoReported_ = false;
         ++listCalls;
         lastArchive = archive;
         busy_ = true;
@@ -114,6 +137,13 @@ class ControlledBackend : public ArchiveBackend {
     HRESULT setPaused(bool) override { return S_OK; }
     HRESULT setBackground(bool) override { return S_OK; }
     void completeList(const QList<ArchiveEntry> &entries) {
+        if (!listedInfoReported_) {
+            // Model the engine's typed metadata for this disposable fixture.
+            // Explicit infoReady responses (encryption/offset/format) win.
+            ArchiveInfo info;
+            info.format = QFileInfo(lastArchive).suffix().toLower();
+            emit infoReady(info);
+        }
         busy_ = false;
         result_ = S_OK;
         emit entriesReady(entries);
@@ -143,6 +173,8 @@ class ControlledBackend : public ArchiveBackend {
     int listCalls = 0;
     int extractCalls = 0;
     int testCalls = 0;
+    bool listedInfoReported_ = false;
+    QString lastOpenFormat;
     int createCalls = 0;
     int addCalls = 0;
     int removeCalls = 0;
@@ -168,6 +200,7 @@ class ControlledBackend : public ArchiveBackend {
     HRESULT result_ = S_OK;
     QStringList ownedArchiveFixtures_;
     std::function<void()> nextListCompletion_;
+    std::function<void()> nextSourceExtractCompletion_;
 };
 
 class MainWindowTestSupport {

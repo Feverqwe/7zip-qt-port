@@ -1,8 +1,49 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/FM.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Partial port: WM_CLOSE lifecycle. Startup/command dispatch remain mandatory.
+// Partial port: WM_CLOSE and WM_COMMAND/toolbar dispatch. Full startup/window
+// placement/drop presentation retain their mandatory plan owners.
 #include "App.h"
+#include "MyLoadMenu.h"
+#include "qtfilemanagercommandservices.h"
 #include "qtfilemanagerwindowservices.h"
+
+static void ExecuteCommand(unsigned commandID, CApp &g_App,
+                           IQtFileManagerMenuCommandServices &services) {
+    CPanel::CDisableTimerProcessing disableTimerProcessing1(g_App.Panels[0]);
+    CPanel::CDisableTimerProcessing disableTimerProcessing2(g_App.Panels[1]);
+    switch (commandID) {
+    case kMenuCmdID_Toolbar_Add:
+        services.AddToArchive();
+        break;
+    case kMenuCmdID_Toolbar_Extract:
+        services.ExtractArchives();
+        break;
+    case kMenuCmdID_Toolbar_Test:
+        services.TestArchives();
+        break;
+    }
+}
+
+bool WndProc(unsigned wmId, CApp &g_App, IQtFileManagerMenuCommandServices &services) {
+    if (g_App.QtOperations().closed() || !services.CanExecuteCommand(wmId))
+        return false;
+    // Exit holds no native folder input. Its Qt close event must be allowed to
+    // perform WM_CLOSE; every other synchronous command protects live callers.
+    if (wmId == 8) // IDCLOSE
+        return OnMenuCommand(wmId, services);
+    QtAppOperationState::CallScope call(g_App.QtOperations());
+    // Original WM_COMMAND body, after Qt has supplied the action ID instead of
+    // LOWORD(wParam). Control-notification messages are handled by Qt signals.
+    if (wmId >= kMenuCmdID_Toolbar_Start && wmId < kMenuCmdID_Toolbar_End) {
+        ExecuteCommand(wmId, g_App, services);
+        return true;
+    }
+    if (OnMenuCommand(wmId, services))
+        return true;
+    // Existing Qt-only dialogs/navigation entries have no original menu ID.
+    // Their explicit registry entries share this owner and capability gate.
+    return services.ExecuteExtensionCommand(wmId);
+}
 
 bool WndProc(QtFileManagerMessage message, CApp &app, IQtFileManagerWindowServices &services) {
     switch (message) {

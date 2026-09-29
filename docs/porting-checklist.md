@@ -58,8 +58,9 @@ N/A отдельной ветки не закрывает весь пакет, �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **2/44 завершённых пакетов; 42 остаются** (2026-09-29).
-P0: 2/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory, P0-02 как owners/lifecycle;
+Текущий счёт: **3/44 завершённых пакетов; 41 остаётся** (2026-09-29).
+P0: 3/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory, P0-02 как owners/lifecycle,
+P0-03 как integrated command policy/dispatch;
 обязательные функциональные порты не закрыты этим аудитом.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -109,7 +110,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | --- | --- | --- | --- | --- |
 | [x] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | done — audit § P0-01.4; .1–.4 done; 2026-09-28 macOS docs-only diff/112 paths/33 vendor byte matches |
 | [x] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | done — audit § P0-02.3 parent acceptance; .1/.2/.3 и native location prerequisite, full gate 122/122; macOS 2026-09-29, Windows/Linux unverified |
-| [ ] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | todo |
+| [x] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | done — audit § P0-03; native policy/CApp dispatch/current Qt consumers; focused fixes 5/5 3.35 с, check.sh 129/129 87.96 с; macOS arm64 2026-09-29; Windows/Linux unverified |
 | [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | partial — ранние native prerequisites имеют historical evidence; remaining P0-04.1 укрупнён в карте, parent ждёт полной command/navigation приёмки |
 | [ ] | P0-05 | FSFolder enumeration/model/flat view | P0-02, P0-04 | partial — ранний source enumeration/provider scope принят historical checks; remaining полный FS компонент в карте, parent ещё не принят |
 | [ ] | P0-06 | Столбцы, сортировка, время и auto-refresh | P0-05 | todo |
@@ -285,8 +286,37 @@ P0-01.3d4a commit: `8a1f3e2`.
 P0-01.3d4b commit: `b35a90a`.
 P0-01.3d4c commit: `415513c`.
 
-Следующий доступный пакет: **P0-03**. Source inventory .1–.4 и P0-02 owners завершены;
+После owners следующим доступным пакетом был **P0-03**, принят ниже.
+Теперь следующий пакет — **P0-04**. Source inventory .1–.4 и P0-02 owners завершены;
 P0-01 done. Inventory не закрывает обязательные функциональные порты P0–P3.
+
+### P0-03 — integrated command component (2026-09-29)
+
+Одна рабочая итерация P0-03, без helper-коммитов: исходный CFileMenu policy и
+ExecuteFileCommand/OnMenuCommand dispatch; необходимые active-panel/operated
+indices/read-only/capability bodies и узкие Qt services; current menus, toolbar,
+context и keyboard consumers подключаются к одному owner. Удалить дублирующие
+refreshActions правила и прямые QAction workflow branches. Qt-only busy/closed/
+transport ограничения применяются в том же owner, не распределяются по widgets.
+Операции, не перенесённые в своих пакетах, остаются disabled с причиной.
+Приёмка: матрица filesystem/archive/nested/read-only/encrypted/loading/operation,
+focused item versus selection, stale/disabled dispatch и одинаковый consumer route;
+тексты/geometry/JSON при затронутых видимых состояниях, focused tests и полный gate.
+Baseline тот же `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; bodies
+MyLoadMenu.cpp/.h, PanelMenu.cpp, PanelKey.cpp, App.cpp/.h изучены до изменений.
+Полные mutation/Copy/Edit workflows сохраняются у P1-03/P1-04/P1-01/P1-08; P0-03
+переносит их command routing/capability границу и не закрывает эти пакеты.
+
+Приёмка P0-03: done, 2026-09-29 macOS arm64/Qt 6.11.2. Native CFileMenu,
+ExecuteFileCommand/OnMenuCommand/WM_COMMAND, operated/focused/read-only rules,
+toolbar persistence/title и current menus/context/toolbar/keys подключены.
+Filesystem/archive/nested/loading/busy/closed и missing-writer/encrypted matrix,
+native open paths, source FS prerequisite success/failure/cancel и все consumers
+проверены. Focused fixes 5/5 (3.35 с); ./scripts/check.sh: formatting/build PASS,
+129/129 CTest (87.96 с). Current normal/small/compact JSON inspected; Windows
+rendered parity, Windows/Linux runtime unverified. Root/address оставшийся P0-04,
+model/timer P0-05/06, two-panel P0-08, resource/shell P0-09/P2-09 и полные
+mutation/editor workflows остаются обязательными, не N/A. Следующий ID: P0-04.
 
 ### P0-02 — owners и panel state
 

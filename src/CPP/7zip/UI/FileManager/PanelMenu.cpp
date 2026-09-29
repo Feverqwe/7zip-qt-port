@@ -6,13 +6,52 @@
 #include "../Common/OpenArchive.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/Common/PropIDUtils.h"
+#include "7zip/UI/FileManager/PropertyNameRes.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "ExtractCallback.h"
+#include "LangUtils.h"
 #include "ListViewDialog.h"
+#include "MyLoadMenu.h"
 #include "Panel.h"
 #include "PropertyName.h"
 #include "ViewSettings.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include "qtfilemenuservices.h"
+
+void CPanel::CreateFileMenu(IQtFileMenuServices &menu, bool programMenu) {
+    CRecordVector<UInt32> operatedIndices;
+    Get_ItemIndices_Operated(operatedIndices);
+    const int firstDirIndex = FindDir_InOperatedList(operatedIndices);
+    // Windows shell/plugin context-menu objects are mandatory P0-09/P2-09.
+    // This source-owned policy applies to the current Qt command items.
+    CFileMenu fm;
+    fm.readOnly = IsThereReadOnlyFolder();
+    fm.isHashFolder = IsHashFolder();
+    fm.isFsFolder = Is_IO_FS_Folder();
+    fm.programMenu = programMenu;
+    fm.allAreFiles = (firstDirIndex == -1);
+    fm.numItems = operatedIndices.Size();
+    fm.isAltStreamsSupported = false;
+    if (fm.numItems == 1)
+        fm.FilePath = us2fs(GetItemFullPath(operatedIndices[0]));
+    if (_folderAltStreams) {
+        if (operatedIndices.Size() <= 1) {
+            UInt32 realIndex = (UInt32)(Int32)-1;
+            if (operatedIndices.Size() == 1)
+                realIndex = operatedIndices[0];
+            Int32 val = 0;
+            if (_folderAltStreams->AreAltStreamsSupported(realIndex, &val) == S_OK)
+                fm.isAltStreamsSupported = IntToBool(val);
+        }
+    } else {
+        if (fm.numItems == 0)
+            fm.isAltStreamsSupported = IsFSFolder();
+        else
+            fm.isAltStreamsSupported = IsFolder_with_FsItems();
+    }
+    fm.Load(menu, 0);
+}
 
 static const char *const kSeparator = "------------------------";
 
@@ -38,6 +77,36 @@ bool CPanel::IsThereReadOnlyFolder() const {
     if (IsReadOnlyFolder(_parentFolders[i].ParentFolder))
         return true;
     return false;
+}
+
+bool CPanel::CheckBeforeUpdate(UINT resourceID) {
+    if (!_folderOperations) {
+        MessageBox_Error_UnsupportOperation();
+        return false;
+    }
+    for (int i = (int)_parentFolders.Size(); i >= 0; i--) {
+        IFolderFolder *folder;
+        if (i == (int)_parentFolders.Size())
+            folder = _folder;
+        else
+            folder = _parentFolders[i].ParentFolder;
+        if (!IsReadOnlyFolder(folder))
+            continue;
+        UString s;
+        AddLangString(s, resourceID);
+        s.Add_LF();
+        AddLangString(s, IDS_OPERATION_IS_NOT_SUPPORTED);
+        s.Add_LF();
+        if (i == 0)
+            s += GetFolderPath(folder);
+        else
+            s += _parentFolders[i - 1].VirtualPath;
+        s.Add_LF();
+        AddLangString(s, IDS_PROP_READ_ONLY);
+        MessageBox_Error(s);
+        return false;
+    }
+    return true;
 }
 
 static void AddListAscii(CListViewDialog &dialog, const char *s) {

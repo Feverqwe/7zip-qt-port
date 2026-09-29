@@ -8,6 +8,15 @@
 #include "qtappoperationstate.h"
 
 const unsigned kNumPanelsMax = 2;
+const int kMenuCmdID_Toolbar_Start = 1070;
+const int kMenuCmdID_Plugin_Start = 1100;
+enum {
+    kMenuCmdID_Toolbar_Add = kMenuCmdID_Toolbar_Start,
+    kMenuCmdID_Toolbar_Extract,
+    kMenuCmdID_Toolbar_Test,
+    kMenuCmdID_Toolbar_End
+};
+class IQtFileManagerMenuCommandServices;
 
 class CApp;
 
@@ -40,6 +49,8 @@ class IQtAppPresentation {
     virtual bool CreatePanel(CPanel &panel, unsigned index) = 0;
     virtual CPanelCallback *PanelCallback(unsigned index) = 0;
     virtual void SetListSettings(unsigned index, const CFmSettings &settings) = 0;
+    virtual void ReloadToolbars(CApp &) {}
+    virtual void MoveSubWindows() {}
 };
 
 class CApp {
@@ -49,6 +60,10 @@ class CApp {
     unsigned NumPanels = 2;
     unsigned LastFocusedPanel = 0;
     bool ShowSystemMenu = false;
+    bool ShowStandardToolbar = true;
+    bool ShowArchiveToolbar = true;
+    bool ShowButtonsLables = true;
+    bool LargeButtons = false;
     CAppState AppState;
     CPanelCallbackImp m_PanelCallbackImp[kNumPanelsMax];
     CPanel Panels[kNumPanelsMax];
@@ -59,8 +74,18 @@ class CApp {
     HRESULT CreateOnePanel(unsigned panelIndex, const UString &mainPath, const UString &arcFormat,
                            bool needOpenArc, COpenResult &openRes);
     void SetListSettings();
+    void ReadToolbar(bool smallScreen = false);
+    void SaveToolbar();
+    void ReloadToolbars();
+    void MoveSubWindows();
+    void SaveToolbarChanges();
+    void SwitchStandardToolbar();
+    void SwitchArchiveToolbar();
+    void SwitchButtonsLables();
+    void SwitchLargeButtons();
     void SetFocusedPanel(unsigned index);
-    void RefreshTitle();
+    UString PrevTitle;
+    void RefreshTitle(bool always = false);
     void RefreshTitlePanel(unsigned index, bool always = false);
     // Existing Qt command consumers remain behind this routing boundary until
     // their full application command bodies are ported in P0-03/P0-08.
@@ -71,6 +96,10 @@ class CApp {
     void DragEnd();
     void Save();
     void ReleaseApp();
+    void AttachQtCommandServices(IQtFileManagerMenuCommandServices *services) {
+        _qtCommandServices = services;
+    }
+    bool ExecuteCommand(unsigned id);
     QtAppOperationState &QtOperations() { return _qtOperations; }
     const QtAppOperationState &QtOperations() const { return _qtOperations; }
 
@@ -81,6 +110,7 @@ class CApp {
 
   private:
     QtAppOperationState _qtOperations;
+    IQtFileManagerMenuCommandServices *_qtCommandServices = nullptr;
     QPointer<QWidget> _window;
     IQtAppPresentation *_presentation = nullptr;
     QString _settingsPath;

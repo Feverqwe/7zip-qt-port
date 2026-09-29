@@ -20,12 +20,32 @@ class ViewerBackend : public ControlledBackend {
     ViewerBackend() = default;
     void list(const QString &, const QString & = {}) override {
         QTimer::singleShot(0, this, [this] {
+            ArchiveInfo info;
+            info.format = QStringLiteral("7z");
+            emit infoReady(info);
             QList<ArchiveEntry> entries = {
                 ArchiveEntry{"folder/имя с пробелом.txt", 6, 6, {}, false, false}};
             entries.append(additionalEntries);
             emit entriesReady(entries);
             emit finished(true, "Архив открыт.");
         });
+    }
+    void extractSourceEntry(const QString &, const QString &entry, const QString &output,
+                            const QString &, const QString &) override {
+        extracted = {entry};
+        temporary = QFileInfo(output).absolutePath();
+        if (cancelExtraction) {
+            QTimer::singleShot(0, this, [this] { cancel(); });
+            return;
+        }
+        QFile file(output);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+            QTimer::singleShot(0, this, [this] { fail("Fixture stream creation failed."); });
+            return;
+        }
+        file.write("hello\n");
+        file.close();
+        QTimer::singleShot(0, this, [this] { completeExtraction(); });
     }
     void extract(const QString &, const QString &destination, const QStringList &selected,
                  const QString & = {}, const ExtractionOptions & = {}) override {
@@ -257,7 +277,9 @@ class FileViewerTests : public QObject {
             open->trigger();
             QTRY_VERIFY(!opened.isEmpty());
             QCOMPARE(backend.extracted, QStringList({"folder/имя с пробелом.txt"}));
-            extractedDirectory = backend.temporary;
+            // Native CopyTo owns the final file separately from the transport
+            // stream's scratch directory, which is released on completion.
+            extractedDirectory = QFileInfo(opened.toLocalFile()).absolutePath();
             QVERIFY(QFileInfo::exists(opened.toLocalFile()));
             QVERIFY(QFileInfo::exists(extractedDirectory));
         }

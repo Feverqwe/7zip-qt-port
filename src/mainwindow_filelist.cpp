@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
@@ -256,22 +257,10 @@ void MainWindow::navigateTo(const QString &path) {
 }
 
 void MainWindow::activateRow(int row) {
-    if (state_ == State::Loading || state_ == State::Operating)
-        return;
     if (row < 0 || row >= table_->rowCount())
         return;
-    if (state_ == State::Filesystem) {
-        const QString path = table_->item(row, 1)->text();
-        const QFileInfo info(path);
-        if (info.isDir() || (info.isFile() && ArchiveFormats::canOpen(path)))
-            navigateTo(path);
-        else if (info.isFile() && !info.isSymLink())
-            openLocalFile(path);
-    } else if (state_ == State::Viewing) {
-        const QTableWidgetItem *item = table_->item(row, 0);
-        if (item->data(Qt::UserRole + 1).toBool())
-            showArchiveFolder(item->data(Qt::UserRole).toString());
-        else
-            openArchiveFile(item->data(Qt::UserRole).toString());
-    }
+    if (!table_->selectionModel()->isRowSelected(row, QModelIndex()))
+        table_->selectRow(row);
+    table_->setCurrentCell(row, 0, QItemSelectionModel::NoUpdate);
+    app_.ExecuteCommand(IDM_OPEN);
 }

@@ -12,6 +12,28 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 
+static const UInt32 kParentIndex = (UInt32)-1;
+
+void CPanel::OpenFolder(unsigned index) {
+    if (index == kParentIndex) {
+        OpenParentFolder();
+        return;
+    }
+    CMyComPtr<IFolderFolder> newFolder;
+    const HRESULT res = _folder->BindToFolder((unsigned)index, &newFolder);
+    if (res != 0) {
+        MessageBox_Error_HRESULT(res);
+        return;
+    }
+    if (!newFolder)
+        return;
+    SetNewFolder(newFolder);
+    LoadFullPath();
+    RefreshListCtrl();
+    // 17.02: fixed : now we don't select first item
+    _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
+}
+
 void CPanel::ReleaseFolder() {
     _refreshSelection.reset();
     _selectionList.DeleteListItems();

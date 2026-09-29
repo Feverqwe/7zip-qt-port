@@ -297,6 +297,11 @@ class CPanel : public QObject {
                           const UString &virtualFilePath, const UString &arcFormat);
     HRESULT OpenAsArc_Name(const UString &relPath, const UString &arcFormat);
     HRESULT OpenAsArc_Index(unsigned index, const wchar_t *type = NULL);
+    void OpenFolder(unsigned index);
+    void OpenFolderExternal(unsigned index);
+    void OpenItem(unsigned index, bool tryInternal, bool tryExternal, const wchar_t *type = NULL);
+    void OpenFocusedItemAsInternal(const wchar_t *type);
+    void OpenSelectedItems(bool tryInternal);
     void OpenItemInArchive(unsigned index, bool tryInternal, bool tryExternal, bool editMode,
                            bool useEditor, const wchar_t *type = NULL);
     bool IsVirus_Message(const UString &name);
@@ -337,7 +342,18 @@ class CPanel : public QObject {
     bool IsAltStreamsFolder() const;
     bool IsArcFolder() const;
     bool IsHashFolder() const;
+    bool Is_IO_FS_Folder() const {
+        return IsFSFolder() || IsFSDrivesFolder() || IsAltStreamsFolder();
+    }
+    bool IsFsOrPureDrivesFolder() const {
+        return IsFSFolder() || (IsFSDrivesFolder() && !IsDeviceDrivesPrefix());
+    }
+    bool IsFolder_with_FsItems() const;
+    int FindDir_InOperatedList(const CRecordVector<UInt32> &indices) const;
+    void CreateFileMenu(class IQtFileMenuServices &menu, bool programMenu);
     bool IsThereReadOnlyFolder() const;
+    bool DoesItSupportOperations() const { return _folderOperations != NULL; }
+    bool CheckBeforeUpdate(UINT resourceID);
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
@@ -402,6 +418,7 @@ class CPanel : public QObject {
     QString _settingsPath;
     QWidget *GetParent() const;
     void MessageBox_Error(const UString &message) const;
+    void MessageBox_Error_LangID(UINT resourceID) const;
     void MessageBox_Error_HRESULT(HRESULT result) const;
     void MessageBox_LastError() const;
     void MessageBox_Error_UnsupportOperation() const;

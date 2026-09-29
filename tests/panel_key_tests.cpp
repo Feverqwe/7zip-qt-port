@@ -35,6 +35,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         const QString parentPath = address->text();
         for (auto modifiers :
              {Qt::NoModifier, Qt::ControlModifier, Qt::ShiftModifier, Qt::AltModifier}) {
+            table->selectRow(0);
             table->setCurrentCell(0, 0);
             action(window, "openItemAction")->trigger();
             QVERIFY(address->text() != parentPath);

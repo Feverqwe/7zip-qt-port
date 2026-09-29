@@ -1,0 +1,288 @@
+#include "qtfilemanagercommands.h"
+#include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "mainwindow.h"
+#include "qtdialogscreenservices.h"
+#include "qtfilemenuprojection.h"
+
+QtFileManagerCommands::QtFileManagerCommands(MainWindow &window) : window_(window) {}
+
+void QtFileManagerCommands::Bind(QAction *action, unsigned id) {
+    actions_[id].append(action);
+    QObject::disconnect(action, &QAction::triggered, &window_, nullptr);
+    QObject::connect(action, &QAction::triggered, &window_, [this, id] {
+        if (!window_.app_.ExecuteCommand(id))
+            window_.refreshActions();
+    });
+    action->setProperty("nativeCommandID", id);
+}
+
+void QtFileManagerCommands::BindToggle(QAction *action, unsigned id, bool CApp::*state) {
+    actions_[id].append(action);
+    QObject::disconnect(action, &QAction::toggled, &window_, nullptr);
+    QObject::connect(action, &QAction::toggled, &window_, [this, action, id, state](bool checked) {
+        const bool previous = window_.app_.*state;
+        if (checked == previous)
+            return;
+        // QAction toggles before dispatch; native CApp owns the actual flag.
+        // Roll presentation back before the command and mirror it on reload.
+        {
+            QSignalBlocker block(action);
+            action->setChecked(previous);
+        }
+        window_.app_.ExecuteCommand(id);
+    });
+    action->setProperty("nativeCommandID", id);
+}
+
+void QtFileManagerCommands::AttachActions() {
+    AttachFileActions();
+    AttachPanelActions();
+    AttachViewActions();
+    window_.app_.AttachQtCommandServices(this);
+}
+
+void QtFileManagerCommands::AttachFileActions() {
+    auto &w = window_;
+    Bind(w.open_, OpenDialog);
+    Bind(w.create_, CreateArchive);
+    Bind(w.add_, AddSources);
+    Bind(w.selected_, ExtractSelected);
+    Bind(w.infoAction_, ArchiveInformation);
+    Bind(w.back_, Back);
+    Bind(w.journalAction_, Journal);
+    Bind(w.toolbarAdd_, kMenuCmdID_Toolbar_Add);
+    Bind(w.extract_, kMenuCmdID_Toolbar_Extract);
+    Bind(w.test_, kMenuCmdID_Toolbar_Test);
+    Bind(w.openItem_, IDM_OPEN);
+    Bind(w.openInside_, IDM_OPEN_INSIDE);
+    Bind(w.openOutside_, IDM_OPEN_OUTSIDE);
+    Bind(w.viewFile_, IDM_FILE_VIEW);
+    Bind(w.editFile_, IDM_FILE_EDIT);
+    Bind(w.rename_, IDM_RENAME);
+    Bind(w.copy_, IDM_COPY_TO);
+    Bind(w.move_, IDM_MOVE_TO);
+    Bind(w.remove_, IDM_DELETE);
+    Bind(w.split_, IDM_SPLIT);
+    Bind(w.combine_, IDM_COMBINE);
+    Bind(w.properties_, IDM_PROPERTIES);
+    Bind(w.createFolder_, IDM_CREATE_FOLDER);
+    Bind(w.createFile_, IDM_CREATE_FILE);
+    const unsigned hashIDs[] = {IDM_CRC32,    IDM_CRC64,    IDM_XXH64,   IDM_MD5,
+                                IDM_SHA1,     IDM_SHA256,   IDM_SHA384,  IDM_SHA512,
+                                IDM_SHA3_256, IDM_BLAKE2SP, IDM_HASH_ALL};
+    for (unsigned i = 0; i < 11; ++i)
+        Bind(w.hashActions_[i], hashIDs[i]);
+}
+
+void QtFileManagerCommands::AttachPanelActions() {
+    auto &w = window_;
+    Bind(w.up_, IDM_OPEN_PARENT_FOLDER);
+    Bind(w.parent_, IDM_OPEN_PARENT_FOLDER);
+    Bind(w.selectAll_, IDM_SELECT_ALL);
+    Bind(w.deselectAll_, IDM_DESELECT_ALL);
+    Bind(w.invertSelection_, IDM_INVERT_SELECTION);
+    Bind(w.selectMask_, IDM_SELECT);
+    Bind(w.deselectMask_, IDM_DESELECT);
+    Bind(w.selectType_, IDM_SELECT_BY_TYPE);
+    Bind(w.deselectType_, IDM_DESELECT_BY_TYPE);
+}
+
+void QtFileManagerCommands::AttachViewActions() {
+    auto &w = window_;
+    Bind(w.refresh_, IDM_VIEW_REFRESH);
+    Bind(w.foldersHistory_, IDM_FOLDERS_HISTORY);
+    Bind(w.settingsAction_, IDM_OPTIONS);
+    actions_[IDM_VIEW_FLAT_VIEW].append(w.flatView_);
+    QObject::disconnect(w.flatView_, &QAction::toggled, &w, nullptr);
+    QObject::connect(w.flatView_, &QAction::toggled, &w, [this](bool checked) {
+        const bool previous =
+            window_.state_ == MainWindow::State::Viewing ? window_.flatArchive_ : window_.flatDisk_;
+        if (checked == previous)
+            return;
+        {
+            QSignalBlocker block(window_.flatView_);
+            window_.flatView_->setChecked(previous);
+        }
+        window_.app_.ExecuteCommand(IDM_VIEW_FLAT_VIEW);
+    });
+    w.flatView_->setProperty("nativeCommandID", IDM_VIEW_FLAT_VIEW);
+    BindToggle(w.standardToolbarOption_, IDM_VIEW_STANDARD_TOOLBAR, &CApp::ShowStandardToolbar);
+    BindToggle(w.archiveToolbarOption_, IDM_VIEW_ARCHIVE_TOOLBAR, &CApp::ShowArchiveToolbar);
+    BindToggle(w.buttonTextOption_, IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, &CApp::ShowButtonsLables);
+    BindToggle(w.largeButtonsOption_, IDM_VIEW_TOOLBARS_LARGE_BUTTONS, &CApp::LargeButtons);
+    for (unsigned i = 0; i < 4; ++i)
+        Bind(w.viewActions_[i], IDM_VIEW_LARGE_ICONS + i);
+    const unsigned sortIDs[] = {IDM_VIEW_ARANGE_BY_NAME, IDM_VIEW_ARANGE_BY_TYPE,
+                                IDM_VIEW_ARANGE_BY_DATE, IDM_VIEW_ARANGE_BY_SIZE,
+                                IDM_VIEW_ARANGE_NO_SORT};
+    for (unsigned i = 0; i < 5; ++i)
+        Bind(w.sortActions_[i], sortIDs[i]);
+    for (unsigned i = 0; i < 10; ++i) {
+        Bind(w.openBookmarks_[i], 830 + i);
+        Bind(w.saveBookmarks_[i], 810 + i);
+    }
+}
+
+bool QtFileManagerCommands::CanExecuteCommand(unsigned id) {
+    auto &w = window_;
+    if (w.app_.QtOperations().closed())
+        return false;
+    if (id == 8)
+        return !w.app_.QtOperations().callActive() && !w.sourceArchiveProgress_ &&
+               !QApplication::activeModalWidget();
+    return Availability().value(id, false);
+}
+
+QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTransportCapabilities() {
+    auto &w = window_;
+    TransportCapabilities c;
+    auto &panel = w.app_.GetFocusedPanel();
+    CSelectedState selection;
+    panel.SaveSelectedState(selection);
+    CRecordVector<UInt32> operated;
+    panel.Get_ItemIndices_Operated(operated);
+    c.selected = !w.table_->selectionModel()->selectedRows().isEmpty();
+    c.one = operated.Size() == 1;
+    c.operated = !operated.IsEmpty();
+    c.focused = selection.FocusedItem >= 0;
+    c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
+    c.filesystem = panel.IsFSFolder();
+    c.archive = panel.IsArcFolder();
+    c.nested = w.isNestedArchive();
+    c.writable = c.archive && !panel.IsThereReadOnlyFolder() &&
+                 ArchiveFormats::canModify(w.archive_) && !w.info_.encrypted && !c.nested;
+    c.entries = !w.entries_.isEmpty();
+    c.rows = w.table_->rowCount() > 0;
+    c.foldersHistory = w.pathCombo_->count() > 0;
+    if (c.oneFile && c.filesystem) {
+        const QFileInfo file(ToQString(panel.GetItemFullPath(operated[0])));
+        c.split = !file.isSymLink();
+        CVolSeqName sequence;
+        c.combine = c.split && sequence.ParseName(file.fileName());
+    }
+    return c;
+}
+
+QHash<unsigned, bool> QtFileManagerCommands::Availability() {
+    auto &w = window_;
+    QHash<unsigned, bool> availability;
+    if (w.app_.QtOperations().closed())
+        return availability;
+    const bool navigating = !w.app_.QtOperations().blocking();
+    availability[Journal] = !w.journalText_.isEmpty();
+    availability[Back] =
+        navigating && (w.state_ == MainWindow::State::Viewing || !w.history_.isEmpty());
+    availability[IDM_OPEN_PARENT_FOLDER] =
+        navigating && (w.state_ == MainWindow::State::Viewing || QDir(w.directory_).cdUp());
+    availability[IDM_VIEW_FLAT_VIEW] = navigating;
+    if (!navigating || w.scanningDisk_)
+        return availability;
+    const TransportCapabilities capabilities = ReadTransportCapabilities();
+    QtFileMenuProjection menu;
+    QtDialogScreenServices screen(&w);
+    menu.screenServices = &screen;
+    // Only command IDs are needed for capability projection; rendered strings
+    // and HMENU ownership remain Qt presentation, not a second functional menu.
+    for (auto it = actions_.cbegin(); it != actions_.cend(); ++it)
+        menu.sourceItems.append({it.key(), UString(), false});
+    w.app_.GetFocusedPanel().CreateFileMenu(menu, true);
+    for (auto it = actions_.cbegin(); it != actions_.cend(); ++it) {
+        if (!availability.contains(it.key()))
+            availability[it.key()] =
+                menu.IsEnabled(it.key()) && TransportAllows(it.key(), capabilities);
+    }
+    return availability;
+}
+
+bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabilities &c) const {
+    switch (id) {
+    case OpenDialog:
+        return true;
+    case CreateArchive:
+        return c.filesystem;
+    case AddSources:
+        return c.writable;
+    case kMenuCmdID_Toolbar_Add:
+        return c.filesystem || c.writable;
+    case kMenuCmdID_Toolbar_Extract:
+        return c.archive && c.entries;
+    case kMenuCmdID_Toolbar_Test:
+    case ArchiveInformation:
+        return c.archive;
+    case ExtractSelected:
+        return c.archive && c.selected && c.entries;
+    case IDM_OPEN:
+    case IDM_OPEN_OUTSIDE:
+        return c.operated;
+    case IDM_OPEN_INSIDE:
+        return c.focused;
+    case IDM_FILE_VIEW:
+        return c.oneFile;
+    case IDM_FILE_EDIT:
+        return c.oneFile && (c.filesystem || c.writable);
+    case IDM_COPY_TO:
+    case IDM_PROPERTIES:
+        return c.selected;
+    case IDM_MOVE_TO:
+    case IDM_DELETE:
+        return c.selected && (c.filesystem || c.writable);
+    case IDM_RENAME:
+        return c.one && c.selected && (c.filesystem || c.writable);
+    case IDM_CREATE_FOLDER:
+    case IDM_CREATE_FILE:
+        return c.filesystem;
+    case IDM_SPLIT:
+        return c.split;
+    case IDM_COMBINE:
+        return c.combine;
+    case IDM_CRC32:
+    case IDM_CRC64:
+    case IDM_XXH64:
+    case IDM_MD5:
+    case IDM_SHA1:
+    case IDM_SHA256:
+    case IDM_SHA384:
+    case IDM_SHA512:
+    case IDM_SHA3_256:
+    case IDM_BLAKE2SP:
+    case IDM_HASH_ALL:
+        return c.selected;
+    case IDM_SELECT_ALL:
+    case IDM_INVERT_SELECTION:
+    case IDM_SELECT:
+    case IDM_DESELECT:
+        return c.rows;
+    case IDM_DESELECT_ALL:
+        return c.selected;
+    case IDM_SELECT_BY_TYPE:
+    case IDM_DESELECT_BY_TYPE:
+        return c.focused;
+    case IDM_FOLDERS_HISTORY:
+        return c.foldersHistory;
+    }
+    if (id >= 830 && id < 840)
+        return !ToQString(CPanel::OpenBookmark(window_.app_.AppState.FastFolders, id - 830))
+                    .isEmpty();
+    if (id >= 810 && id < 820)
+        return !c.nested;
+    return true;
+}
+
+void QtFileManagerCommands::RefreshActions() {
+    const auto availability = Availability();
+    for (auto it = actions_.cbegin(); it != actions_.cend(); ++it) {
+        const bool enabled = availability.value(it.key(), false);
+        for (QAction *action : it.value())
+            action->setEnabled(enabled);
+    }
+    for (unsigned i = 0; i < 4; ++i) {
+        const QSignalBlocker block(window_.viewActions_[i]);
+        window_.viewActions_[i]->setChecked(i == window_.app_.GetFocusedPanel().GetListViewMode());
+    }
+    for (unsigned i = 0; i < 5; ++i) {
+        const QSignalBlocker block(window_.sortActions_[i]);
+        window_.sortActions_[i]->setChecked(i == static_cast<unsigned>(window_.sortMode_));
+    }
+}

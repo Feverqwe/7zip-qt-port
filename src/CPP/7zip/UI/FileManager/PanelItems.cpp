@@ -3,6 +3,7 @@
 // IFolder/variant property bodies retain upstream control flow. Qt list rows
 // remain a presentation snapshot pending the full folder-load port.
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "Panel.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
@@ -213,6 +214,44 @@ bool CPanel::IsItem_AltStream(unsigned itemIndex) const {
     if (itemIndex == kParentIndex)
         return false;
     return GetItem_BoolProp(itemIndex, kpidIsAltStream);
+}
+
+void CPanel::OpenFocusedItemAsInternal(const wchar_t *type) {
+    const int focusedItem = _selectionList.GetFocusedItem();
+    if (focusedItem < 0)
+        return;
+    const unsigned realIndex = GetRealItemIndex(focusedItem);
+    if (IsItem_Folder(realIndex))
+        OpenFolder(realIndex);
+    else
+        OpenItem(realIndex, true, false, type);
+}
+
+void CPanel::OpenSelectedItems(bool tryInternal) {
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_Operated(indices);
+    if (indices.Size() > 20) {
+        MessageBox_Error_LangID(IDS_TOO_MANY_ITEMS);
+        return;
+    }
+    const int focusedItem = _selectionList.GetFocusedItem();
+    if (focusedItem >= 0) {
+        const unsigned realIndex = GetRealItemIndex(focusedItem);
+        if (realIndex == kParentIndex && (tryInternal || indices.Size() == 0) &&
+            _selectionList.IsItemSelected(focusedItem))
+            indices.Insert(0, realIndex);
+    }
+    FOR_VECTOR(i, indices) {
+        UInt32 index = indices[i];
+        if (IsItem_Folder(index)) {
+            if (tryInternal) {
+                OpenFolder(index);
+                break;
+            } else
+                OpenFolderExternal(index);
+        } else
+            OpenItem(index, (tryInternal && indices.Size() == 1), true);
+    }
 }
 
 bool CPanel::IsItem_Folder(UInt32 itemIndex) const {

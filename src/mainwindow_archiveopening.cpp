@@ -123,18 +123,6 @@ void MainWindow::renderBoundFolder() {
     setState(State::Viewing);
 }
 
-void MainWindow::openSelectedInside() {
-    if (!openInside_->isEnabled())
-        return;
-    const int row = table_->currentRow();
-    if (state_ == State::Filesystem)
-        navigateTo(table_->item(row, 1)->text());
-    else if (table_->item(row, 0)->data(Qt::UserRole + 1).toBool())
-        showArchiveFolder(table_->item(row, 0)->data(Qt::UserRole).toString());
-    else
-        openNestedArchive(table_->item(row, 0)->data(Qt::UserRole).toString());
-}
-
 void MainWindow::showArchiveFolder(const QString &folder) {
     if (app_.QtOperations().closed())
         return;
@@ -150,16 +138,6 @@ void MainWindow::showArchiveFolder(const QString &folder) {
             return;
     }
     renderBoundFolder();
-}
-
-void MainWindow::openSelectedOutside() {
-    if (!openOutside_->isEnabled())
-        return;
-    const int row = table_->currentRow();
-    if (state_ == State::Filesystem)
-        openLocalFile(table_->item(row, 1)->text());
-    else
-        openArchiveFile(table_->item(row, 0)->data(Qt::UserRole).toString());
 }
 
 void MainWindow::openNestedArchive(const QString &entry) {

@@ -38,12 +38,12 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
     if (handleSelectionKey(key))
         return true;
     if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 && key->modifiers() == Qt::AltModifier) {
-        openBookmark(key->key() - Qt::Key_0);
+        app_.ExecuteCommand(830 + key->key() - Qt::Key_0);
         return true;
     }
     if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
         key->modifiers() == (Qt::AltModifier | Qt::ShiftModifier)) {
-        saveBookmark(key->key() - Qt::Key_0);
+        app_.ExecuteCommand(810 + key->key() - Qt::Key_0);
         return true;
     }
     if (!(key->modifiers() &

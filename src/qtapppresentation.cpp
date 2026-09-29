@@ -5,6 +5,20 @@ void QtAppPresentation::Initialize(CApp &app) {
     // Preserve the existing single-panel preferences when introducing the
     // original per-panel keys. Explicit source keys always take precedence.
     QSettings key(window_.toolbarSettingsPath(), QSettings::IniFormat);
+    if (!key.contains("Toolbars") &&
+        (key.contains("toolbar/text") || key.contains("toolbar/large") ||
+         key.contains("toolbar/standard") || key.contains("toolbar/archive"))) {
+        UInt32 mask = 0;
+        if (key.value("toolbar/text", true).toBool())
+            mask |= 1;
+        if (key.value("toolbar/large", false).toBool())
+            mask |= 2;
+        if (key.value("toolbar/standard", true).toBool())
+            mask |= 4;
+        if (key.value("toolbar/archive", true).toBool())
+            mask |= 8;
+        SaveToolbarsMask(mask, window_.toolbarSettingsPath());
+    }
     if (!key.contains("ListMode")) {
         CListMode modes;
         bool ok = false;
@@ -37,8 +51,8 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
 }
 
 CPanelCallback *QtAppPresentation::PanelCallback(unsigned) {
-    // Qt commands still use their current MainWindow consumers. Full native
-    // command/title/drop routing is mandatory P0-03/P0-08. Native focus callbacks
+    // Commands/title use CApp's native entry. Two-panel/drop integration remains
+    // mandatory P0-08. Native focus callbacks
     // are owned by CApp::m_PanelCallbackImp, not this presentation service.
     return nullptr;
 }
@@ -49,4 +63,10 @@ void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &setti
     window_.fileListSettings_ = settings;
     if (window_.table_)
         window_.table_->setShowGrid(settings.ShowGrid);
+}
+
+void QtAppPresentation::ReloadToolbars(CApp &) { window_.updateToolbar(); }
+void QtAppPresentation::MoveSubWindows() {
+    if (window_.layout())
+        window_.layout()->activate();
 }

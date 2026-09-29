@@ -12,6 +12,8 @@ class QtAppPresentation final : public IQtAppPresentation {
     bool CreatePanel(CPanel &panel, unsigned index) override;
     CPanelCallback *PanelCallback(unsigned index) override;
     void SetListSettings(unsigned index, const CFmSettings &settings) override;
+    void ReloadToolbars(CApp &app) override;
+    void MoveSubWindows() override;
 
   private:
     MainWindow &window_;

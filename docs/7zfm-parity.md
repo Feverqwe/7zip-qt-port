@@ -7,6 +7,19 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+Current File/Edit/View/Favorites, toolbar and shared context commands use the
+same native command dispatch as keyboard and panel activation. Read-only native
+folders keep read commands and reject mutations; stale enabled actions cannot
+bypass busy/closed, nested, encrypted or missing-writer restrictions. Open Inside
+uses focus; ordinary/external open uses operated indices, including multiple
+selected files. Toolbar switches retain native flags and save/reload order.
+The window caption follows native CApp::RefreshTitle: focused folder prefix,
+or `7-Zip` for an empty prefix. Menu size classification uses Qt system font
+metrics and available screen geometry in the original dialog-unit calculation.
+Qt widgets/icons and unavailable source commands remain the P0-09/P2-09 scope;
+full source mutation/edit workflows remain P1-01/P1-03/P1-04/P1-08. Windows
+rendered parity and Windows/Linux execution remain unverified locally.
+
 P0-02.3 uses the pinned FM.cpp WM_CLOSE reference: soft external
 exit, revoke drop, save CApp, release panels, save window info, hard exit.
 Qt additionally joins asynchronous workers while their inputs still live.

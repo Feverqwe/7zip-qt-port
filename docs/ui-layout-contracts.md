@@ -12,6 +12,13 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+The main-window caption is native CApp::RefreshTitle's focused folder prefix,
+with `7-Zip` for an empty prefix. Toolbar option checks mirror native CApp flags;
+existing grouping and action order stay in the main-window normal/compact reports.
+Command availability comes from native menu policy plus transport restrictions.
+Screen-size menu filtering uses available monitor geometry and Qt system-font
+units, independently of the main window's compact resize fixture.
+
 ### Source extraction prompts (P0-04.1 prerequisite)
 
 `extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with

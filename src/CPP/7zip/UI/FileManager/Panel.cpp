@@ -3,6 +3,8 @@
 #include "Panel.h"
 #include "7zip/PropID.h"
 #include "Common/StringConvert.h"
+#include "LangUtils.h"
+#include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/WinDefs.h"
 #include <QComboBox>
@@ -62,6 +64,10 @@ void CPanel::ExitExternalWorkers(bool hardExit) {
         _exitEventLauncher->Exit(hardExit);
 }
 
+void CPanel::MessageBox_Error_LangID(UINT resourceID) const {
+    MessageBox_Error(LangString(resourceID));
+}
+
 void CPanel::ReleasePanel() {
     Disable_Processing_Timer_Notify_StatusBar();
     // Local per-panel launcher replaces the original global exit owner. Join
@@ -71,7 +77,7 @@ void CPanel::ReleasePanel() {
     // It's for unloading COM dll's: don't change it.
     CloseOpenFolders();
     // Win32 context-menu COM objects have no Qt owner here. Their mandatory
-    // menu integration remains P0-03/P0-11; do not introduce dummy COM members.
+    // menu integration remains P0-03/P0-09/P2-09; do not add dummy COM members.
 }
 
 CPanel::~CPanel() {
@@ -81,6 +87,29 @@ CPanel::~CPanel() {
     if (_exitEventLauncher)
         _exitEventLauncher->Exit(true);
     CloseOpenFolders();
+}
+
+bool CPanel::IsFolder_with_FsItems() const {
+    if (IsFsOrPureDrivesFolder())
+        return true;
+#if defined(_WIN32) && !defined(UNDER_CE)
+    FString prefix = us2fs(GetFsPath());
+    return (prefix.Len() == NWindows::NFile::NName::GetNetworkServerPrefixSize(prefix));
+#else
+    return false;
+#endif
+}
+
+int CPanel::FindDir_InOperatedList(const CRecordVector<UInt32> &operatedIndices) const {
+    const UInt32 *indices = operatedIndices.ConstData();
+    const unsigned numItems = operatedIndices.Size();
+    for (unsigned i = 0; i < numItems; i++)
+        // Native directory cache is loaded by full RefreshListCtrl (P0-05).
+        // Query the same authoritative provider through existing IsItem_Folder
+        // until that complete cache owner is connected.
+        if (IsItem_Folder(indices[i]))
+            return (int)i;
+    return -1;
 }
 
 UString CPanel::GetFolderTypeID() const {

@@ -145,10 +145,6 @@ void MainWindow::refreshBookmarks() {
                                   : QString::number(index) + QStringLiteral(" — ") + path;
         openBookmarks_[index]->setText(label);
         openBookmarks_[index]->setToolTip(label);
-        openBookmarks_[index]->setEnabled(!path.isEmpty() && state_ != State::Loading &&
-                                          state_ != State::Operating);
-        saveBookmarks_[index]->setEnabled(state_ != State::Loading && state_ != State::Operating &&
-                                          !isNestedArchive());
     }
 }
 
@@ -159,7 +155,7 @@ void MainWindow::saveBookmark(int index) {
     CPanel::SetBookmark(app_.AppState.FastFolders, (unsigned)index,
                         ToUString(state_ == State::Filesystem ? directory_ : archiveDisplayPath()));
     app_.AppState.FastFolders.Save(toolbarSettingsPath());
-    refreshBookmarks();
+    refreshActions();
 }
 
 void MainWindow::openBookmark(int index) {
@@ -174,8 +170,16 @@ void MainWindow::openBookmark(int index) {
 
 void MainWindow::updateToolbar() {
     auto *toolbar = findChild<QToolBar *>("archiveToolbar");
-    const bool archive = archiveToolbarOption_->isChecked();
-    const bool standard = standardToolbarOption_->isChecked();
+    const bool archive = app_.ShowArchiveToolbar;
+    const bool standard = app_.ShowStandardToolbar;
+    const QSignalBlocker archiveSignals(archiveToolbarOption_);
+    const QSignalBlocker standardSignals(standardToolbarOption_);
+    const QSignalBlocker largeSignals(largeButtonsOption_);
+    const QSignalBlocker textSignals(buttonTextOption_);
+    archiveToolbarOption_->setChecked(archive);
+    standardToolbarOption_->setChecked(standard);
+    largeButtonsOption_->setChecked(app_.LargeButtons);
+    buttonTextOption_->setChecked(app_.ShowButtonsLables);
     for (QAction *action : {toolbarAdd_, extract_, test_})
         toolbar->widgetForAction(action)->setVisible(archive);
     for (QAction *action : {copy_, move_, remove_, infoAction_})
@@ -185,11 +189,6 @@ void MainWindow::updateToolbar() {
     toolbar->setIconSize(largeButtonsOption_->isChecked() ? QSize(48, 36) : QSize(24, 24));
     toolbar->setToolButtonStyle(buttonTextOption_->isChecked() ? Qt::ToolButtonTextUnderIcon
                                                                : Qt::ToolButtonIconOnly);
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    settings.setValue("toolbar/archive", archive);
-    settings.setValue("toolbar/standard", standard);
-    settings.setValue("toolbar/large", largeButtonsOption_->isChecked());
-    settings.setValue("toolbar/text", buttonTextOption_->isChecked());
 }
 
 void MainWindow::showSettings() {

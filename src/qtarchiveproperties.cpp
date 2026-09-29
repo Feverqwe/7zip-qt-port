@@ -3,6 +3,14 @@
 #include "Windows/PropVariant.h"
 #include "qtarchivefileresource.h"
 
+bool ArchiveUpdateEnabled(IInArchive *archive) {
+    if (!archive)
+        return false;
+    CMyComPtr<IOutArchive> update;
+    archive->QueryInterface(IID_IOutArchive, reinterpret_cast<void **>(&update));
+    return bool(update);
+}
+
 namespace {
 class CFolderArchiveProperties final : public IInArchive, public IOutArchive, public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IInArchive)
