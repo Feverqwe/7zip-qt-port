@@ -7,6 +7,10 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3c3 accepts the bounded owned-provider/selected-consumer lifecycle
+prerequisite. Full native parent/path/navigation, all-panel release, operation
+state and platform acceptance remain open; no runtime/text/layout change is made.
+
 P0-02.2b3b3c3c2 stops the 7zz transport before window temporary paths are released
 and disconnects callbacks before cancellation. Window destruction cannot leave
 that operation writing into a removed temporary directory or reopen UI through

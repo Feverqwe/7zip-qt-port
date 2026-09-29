@@ -23,6 +23,12 @@ MainWindow disconnects backend/scanner callbacks before invoking it; backend
 completion retains operation-specific cancellation cleanup. Ordinary cancel remains
 asynchronous. Complete source CApp/panel/parent-stack release is still mandatory.
 
+The owned-provider/selected-consumer lifecycle is a prerequisite for native stack
+integration. Broader runtime acceptance stays open until original parent/path
+owners replace directory_, archiveFolder_, archiveParents_ and focused navigation
+consumers. Native stack work depends on the accepted providers and bounded
+lifecycle, avoiding a dependency on a runtime parent that itself needs that stack.
+
 CPanel relative/full path helpers and current prefix storage use original
 UString. Source folder/type/device/super-drive classification owns their path
 branches; Qt conversions are confined to setters and presentation. Ownerless

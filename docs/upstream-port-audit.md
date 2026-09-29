@@ -8,6 +8,40 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3c3 — combined bounded acceptance and dependency ordering (2026-09-29)
+
+Project baseline `1189a8299fc65327bc1fbaef73063ac66df1b042`; upstream remains
+ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at
+https://github.com/ip7z/7zip. Documentation-only acceptance adds no source body,
+runtime or platform changes. The unchanged runtime has current gate evidence:
+c3c1 focused 7/7, c3c2 focused 5/5 and latest check.sh 77/77 (41.91 s), macOS
+arm64 2026-09-29. Vendor comparison confirms 67/67 exact files including License;
+39 source CPP/33 UI, 37 root Qt glue and 66 vendored dependencies/resources remain.
+
+Accepted prerequisite: owned typed CAgent/CFSFolder binding, native selected
+indices/properties/paths and selected consumer transitions, plus 7zz transport
+quiescence before Qt temporary cleanup. Original native lifecycle/navigation is
+not accepted by those fixtures. Remaining obligations are:
+
+| Mandatory scope | Unported/remainder |
+| --- | --- |
+| P0-02.2b3c | Original CTempFileInfo/CFolderLink, parent ownership, source close/pop/update/cleanup order, root/nested temporary lifetime and required platform dependencies |
+| P0-02.2b3d | Original BindToPath/LoadFullPath/parent/flat ownership, focused open/navigation/path controls, all context consumers and removal of duplicate Qt location/parent fields |
+| P0-02.2c | Original Create/CreateOnePanel/ReleaseApp/ReleasePanel, disable all panel notifications before releasing any; remaining typed interface/release fields required by the source body |
+| P0-02.3/P0-03 | Operation/application state, complete source capabilities/dispatch and start/error/cancel/close integration |
+| Later operation/handler owners | Native mutation/Extract/Copy workflows, raw/alternate-stream metadata, native archive time, CRC/hash and platform/shell integration listed in earlier consumer inventory |
+
+Broader b3b runtime parents stay active until full navigation/context integration.
+The old b3c→b3b→full-navigation-b3d→b3c ordering would create a cycle. Make b3c
+depend explicitly on accepted typed providers b3b2 and bounded lifecycle c3c;
+keep b3d after b3c and close broader runtime parents only after their original
+requirements pass. This is prerequisite refinement, not N/A or a completed claim
+for omitted functions. Next source prerequisite is native temporary cleanup and
+library transfer support before copying original temporary/parent structures.
+
+Validation for this documentation-only substep is git diff --check; runtime code
+is unchanged from the verified commit and its full gate is not repeated.
+
 ## P0-02.2b3b3c3c2 — transport quiescence before temporary cleanup (2026-09-29)
 
 Project baseline `dc9f7e8`; upstream baseline remains ip7z/7zip

@@ -306,7 +306,7 @@ Owner всех частей: текущий чат; exact upstream baseline не
 | --- | --- | --- | --- |
 | P0-02.2b3a | Unchanged IFolder/IStream/IProgress declarations, MyCom/MyUnknown/MyInitGuid и PropVariant; partial ClassDefs GUID owner; compile/runtime checks interface identity, refcount lifetime и Unicode property ownership | P0-02.2b2 | done — audit § P0-02.2b3a; focused 2/2, check.sh 57/57, vendor bytes 42/42 |
 | P0-02.2b3b | Narrow folder adapters для Qt/backend snapshot, CPanel folder binding и path/property source bodies; filesystem/archive location ownership и regression consumers | P0-02.2b3a | active — b1–b3 ниже |
-| P0-02.2b3c | CTempFileInfo/CFolderLink и root/nested parent stack, source close/pop/cleanup ordering; cancellation/failure/temp-lifetime checks | P0-02.2b3b | todo |
+| P0-02.2b3c | CTempFileInfo/CFolderLink и root/nested parent stack, source close/pop/cleanup ordering; cancellation/failure/temp-lifetime checks | P0-02.2b3b2, P0-02.2b3b3c3c | todo — provider/selected-consumer prerequisites accepted; full runtime parent stays open through b3d |
 | P0-02.2b3d | BindToPath/LoadFullPath/parent navigation source scope и flat-mode owner, window integration без duplicate state, all location consumers; b3 acceptance | P0-02.2b3c | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
@@ -409,7 +409,7 @@ P0-03/04/feature scopes, not N/A.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c1 | Copy/Move summary uses source CPanel operated indices and bound folder properties, no rebuilt row metadata snapshot; source paths/names/totals and missing/zero sizes in normal/flat/four views; Qt display prefix remains explicit until full source path stack | P0-02.2b3b3b | done — audit § P0-02.2b3b3c1; focused 8/8, check.sh 64/64, 16 normal/compact source summary JSON reports inspected; macOS 2026-09-29 |
 | P0-02.2b3b3c2 | Properties consumes source folder catalogs/typed values and operated indices; copy original formatting dependencies and preserve Qt dialog/geometry; remove window metadata reconstruction | P0-02.2b3b3c1 | done — scoped selected-item consumer c2a–c2c verified; raw/archive-level/shell/native time remain mandatory owners |
-| P0-02.2b3b3c3 | Remaining location/navigation/mutation consumers and teardown acceptance; verify source index ownership and temporary context fields before source parent/path stack migration | P0-02.2b3b3c2 | active — a–c below; c2 acceptance commit 2511ee8 |
+| P0-02.2b3b3c3 | Remaining location/navigation/mutation consumers and teardown acceptance; verify source index ownership and temporary context fields before source parent/path stack migration | P0-02.2b3b3c2 | active — owned provider/selected consumer a–c verified; full focused navigation/context migration remains mandatory b3c/d |
 
 Remaining consumer/lifetime migration is split before code. Full path/outer-stack
 port stays P0-02.2b3c/d; no old borrowed compatibility branch is declared N/A.
@@ -418,7 +418,7 @@ port stays P0-02.2b3c/d; no old borrowed compatibility branch is declared N/A.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3a | CAgentFolder owned lifecycle only: remove test-only external-proxy constructor/Init and child/parent/catalog compatibility branches; migrate fixtures to source-owned CAgent factory; surviving child/parent/catalog and unbound failure checks | P0-02.2b3b3c2 | done — audit § P0-02.2b3b3c3a; focused 10/10, check.sh 72/72; macOS 2026-09-29 |
 | P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | done — b1–b3 verified; selected-consumer scope only; remaining focused navigation/context consumers explicitly mandatory b3c/d |
-| P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | active — a–c below; selected consumer boundary commit 3a82e8d |
+| P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | done — c1–c3 verified; scoped provider/selected consumer acceptance; full source release/stack/navigation remain mandatory |
 
 Selection translation prerequisites split before implementation. Original Extract
 flat-folder expansion policy and unsupported proxy2/alternate streams remain
@@ -450,7 +450,14 @@ of remaining focused navigation or duplicate context fields.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3c1 | Public consumer regressions across archive replacement, failed/cancelled listing, retained owner after cancelled extraction, and filesystem return; source paths/indices, disabled loading commands, no stale requests/temporary paths | P0-02.2b3b3c3b | done — audit § P0-02.2b3b3c3c1; focused 7/7, check.sh 77/77; macOS 2026-09-29 |
 | P0-02.2b3b3c3c2 | Teardown operation quiescence and temporary/folder lifetime ordering; inspect source ReleaseApp/ReleasePanel/CloseOpenFolders and current backend/thread destruction, adapt only Qt/7zz services and add deterministic destruction regressions | P0-02.2b3b3c3c1 | done — audit § P0-02.2b3b3c3c2; pre-fix regression failed, focused 5/5, check.sh 77/77; macOS 2026-09-29; full native release/stack mandatory |
-| P0-02.2b3b3c3c3 | Combined lifecycle acceptance, explicit remaining source stack/interfaces/command obligations and dependency ordering; close only validated provider/selected-consumer scope | P0-02.2b3b3c3c2 | todo |
+| P0-02.2b3b3c3c3 | Combined lifecycle acceptance, explicit remaining source stack/interfaces/command obligations and dependency ordering; close only validated provider/selected-consumer scope | P0-02.2b3b3c3c2 | done — audit § P0-02.2b3b3c3c3; unchanged runtime 1189a82 gate 77/77, vendor 67/67; docs-only diff check; macOS 2026-09-29 |
+
+Dependency clarification (c3c3): b3b/b3b3/b3b3c/b3b3c3 remain active because
+their full location/navigation/context acceptance requires b3d. Native stack b3c
+therefore depends on the completed typed providers b3b2 and bounded consumer
+lifecycle c3c, rather than waiting for the broader runtime parent's b3d-dependent
+closure. This removes a dependency cycle without waiving any original functions;
+close the broader parents only after b3c/d integration and their remaining checks.
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 
