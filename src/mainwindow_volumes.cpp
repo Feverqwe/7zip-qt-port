@@ -9,6 +9,12 @@ MainWindow::~MainWindow() {
     // down focus. Navigation must stop before MainWindow members are destroyed.
     disconnect(pathCombo_, nullptr, this, nullptr);
     disconnect(path_, nullptr, this, nullptr);
+    // Quiesce callbacks and process writes while temporary paths and folder
+    // members are still alive; QObject child destruction happens afterward.
+    disconnect(backend_, nullptr, this, nullptr);
+    disconnect(filesystemScanner_, nullptr, this, nullptr);
+    filesystemScanner_->cancel();
+    backend_->cancelAndWait();
     if (fileDelete_) {
         fileDelete_->cancel();
         fileDelete_->wait();

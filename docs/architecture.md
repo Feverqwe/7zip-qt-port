@@ -17,6 +17,12 @@ Source IsItem_Folder owns single-file eligibility. ArchiveBackend retains all
 operation transport and temporary-file handling. Remaining filesystem consumers,
 open/navigation and full native path stack are still separate mandatory scopes.
 
+ArchiveBackend::cancelAndWait is the transport quiescence boundary for destruction:
+stop process writes before a window releases temporary source/destination paths.
+MainWindow disconnects backend/scanner callbacks before invoking it; backend
+completion retains operation-specific cancellation cleanup. Ordinary cancel remains
+asynchronous. Complete source CApp/panel/parent-stack release is still mandatory.
+
 CPanel relative/full path helpers and current prefix storage use original
 UString. Source folder/type/device/super-drive classification owns their path
 branches; Qt conversions are confined to setters and presentation. Ownerless

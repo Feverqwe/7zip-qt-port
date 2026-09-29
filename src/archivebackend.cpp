@@ -48,10 +48,7 @@ ArchiveBackend::~ArchiveBackend() {
     // QProcess can emit readyRead/finished during destruction. Stop callbacks
     // while their buffers and operation state are still alive.
     disconnect(&process_, nullptr, this, nullptr);
-    if (process_.state() != QProcess::NotRunning) {
-        process_.kill();
-        process_.waitForFinished();
-    }
+    cancelAndWait();
     if (process_.state() == QProcess::NotRunning &&
         (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete || job_ == Job::Rename ||
          job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd))
@@ -261,6 +258,15 @@ void ArchiveBackend::cancel() {
     cancelled_ = true;
     pendingPassword_.clear();
     process_.kill();
+}
+
+void ArchiveBackend::cancelAndWait() {
+    if (busy())
+        cancel();
+    if (process_.state() != QProcess::NotRunning) {
+        process_.kill();
+        process_.waitForFinished(-1);
+    }
 }
 
 void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {

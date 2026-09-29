@@ -8,6 +8,45 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3c2 — transport quiescence before temporary cleanup (2026-09-29)
+
+Project baseline `dc9f7e8`; upstream baseline remains ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Inspect original App.cpp ReleaseApp, Panel.cpp ReleasePanel/destructor and
+PanelFolderChange.cpp CloseOpenFolders/CloseOneLevel: stop notification activity
+before releasing panel/folder/library resources. Their complete native lifecycle
+body ports remain mandatory P0-02.2c and the parent-stack scopes; this iteration
+does not replace them with a claimed completed Qt implementation.
+
+The application uses 7zz in QProcess, so upstream in-process library/COM teardown
+has no directly usable process-stop implementation. Add narrow ArchiveBackend
+cancelAndWait transport glue: preserve virtual cancellation, kill any remaining
+process, wait for its termination before returning. Existing operation completion
+and cancelled-mutation cleanup remain authoritative in ArchiveBackend; no archive
+or source path algorithm is added. Its destructor reuses this quiescence stage
+after disabling its internal process callbacks. MainWindow disconnects backend/
+scanner callbacks and cancels scanning before stopping transport while temporary
+paths and source-folder members are still alive. Existing filesystem operation
+cancel/wait and scanner worker join remain in their owners.
+
+A failing pre-fix regression observed zero backend cancellations when destroying
+an active archive-hash window. The corrected test requires cancellation while the
+temporary directory still exists, then idle backend and removed directory after
+window destruction; late backend events cannot issue more requests. Real-process
+tests use this test executable's controlled list fixture, without shell/services/
+real archives: immediate-start cancellation, ready-process cancellation, completed
+failure before return, idempotent idle stop and subsequent reuse. The fixture has
+a bounded 30-second lifetime; killed cancellation must finish within five seconds.
+
+No layout/text changes. Full native ReleaseApp/ReleasePanel/CloseOpenFolders,
+source outer stack/interface release and cross-platform acceptance remain open.
+
+Validation macOS arm64, 2026-09-29: affected application/backend/viewer/nested/
+lifecycle targets built; focused 5/5 passed (6.00 s), mandatory check.sh 77/77
+(41.91 s), formatting and git diff --check passed. The baseline destruction case
+failed before the fix. Vendor bytes match pinned source 67/67 including License;
+source/module inventory is unchanged. Windows/Linux runtime remains unverified.
+
 ## P0-02.2b3b3c3c1 — bound consumer replacement/failure/cancel acceptance (2026-09-29)
 
 Project baseline `3a82e8d`; source ip7z/7zip remains

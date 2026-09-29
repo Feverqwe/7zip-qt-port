@@ -449,7 +449,7 @@ of remaining focused navigation or duplicate context fields.
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3c1 | Public consumer regressions across archive replacement, failed/cancelled listing, retained owner after cancelled extraction, and filesystem return; source paths/indices, disabled loading commands, no stale requests/temporary paths | P0-02.2b3b3c3b | done — audit § P0-02.2b3b3c3c1; focused 7/7, check.sh 77/77; macOS 2026-09-29 |
-| P0-02.2b3b3c3c2 | Teardown operation quiescence and temporary/folder lifetime ordering; inspect source ReleaseApp/ReleasePanel/CloseOpenFolders and current backend/thread destruction, adapt only Qt/7zz services and add deterministic destruction regressions | P0-02.2b3b3c3c1 | todo |
+| P0-02.2b3b3c3c2 | Teardown operation quiescence and temporary/folder lifetime ordering; inspect source ReleaseApp/ReleasePanel/CloseOpenFolders and current backend/thread destruction, adapt only Qt/7zz services and add deterministic destruction regressions | P0-02.2b3b3c3c1 | done — audit § P0-02.2b3b3c3c2; pre-fix regression failed, focused 5/5, check.sh 77/77; macOS 2026-09-29; full native release/stack mandatory |
 | P0-02.2b3b3c3c3 | Combined lifecycle acceptance, explicit remaining source stack/interfaces/command obligations and dependency ordering; close only validated provider/selected-consumer scope | P0-02.2b3b3c3c2 | todo |
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:

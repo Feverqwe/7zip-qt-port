@@ -6,6 +6,11 @@ flat/four views. It checks disabled loading commands, owner-specific metadata/
 paths under forged presentation roles, no stale archive requests and temporary
 cleanup. Controlled backend fixtures and local Unicode/space files are used;
 full native navigation and operation teardown are separate mandatory scopes.
+Its destruction case checks backend cancellation before temporary cleanup and
+rejects late requests after window destruction. A controlled process mode in the
+same executable checks immediate/ready QProcess cancellation, completion before
+cancelAndWait returns, idle idempotence and reuse. No shell, service or real archive
+is required; complete native App/panel/parent-stack release remains mandatory.
 
 `filesystem_selection_runtime` checks source paths through hash and Create input
 in normal/flat/four views after sorting and Properties, with Unicode/spaces and

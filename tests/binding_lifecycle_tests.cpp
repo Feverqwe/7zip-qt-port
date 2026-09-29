@@ -1,4 +1,6 @@
 #include "window_state_support.h"
+#include <QElapsedTimer>
+#include <QTextStream>
 
 class LifecycleBackend : public ControlledBackend {
   public:
@@ -8,6 +10,12 @@ class LifecycleBackend : public ControlledBackend {
     }
     QStringList hashPaths;
     int hashCalls = 0;
+    void cancel() override {
+        temporaryExistedOnCancel = QFileInfo::exists(observedTemporary);
+        ControlledBackend::cancel();
+    }
+    QString observedTemporary;
+    bool temporaryExistedOnCancel = false;
 };
 
 class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
@@ -34,6 +42,69 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void transportCanStopImmediatelyAfterStart() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.list(temporary.filePath("starting-process.zip"));
+        QElapsedTimer elapsed;
+        elapsed.start();
+        backend.cancelAndWait();
+        QVERIFY(elapsed.elapsed() < 5000);
+        QVERIFY(!backend.busy());
+        QCOMPARE(finished.size(), 1);
+        QVERIFY(!finished.first().at(0).toBool());
+    }
+
+    void transportStopsBeforeCancelAndWaitReturns() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy output(&backend, &ArchiveBackend::outputReceived);
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        for (int iteration = 0; iteration < 2; ++iteration) {
+            const int previousOutput = output.size();
+            backend.list(temporary.filePath("controlled-process.zip"));
+            QTRY_VERIFY(output.size() > previousOutput);
+            QVERIFY(backend.busy());
+            QCOMPARE(output.last().at(0).toString(), QString("Fixture process ready."));
+            QElapsedTimer elapsed;
+            elapsed.start();
+            backend.cancelAndWait();
+            QVERIFY(elapsed.elapsed() < 5000);
+            QVERIFY(!backend.busy());
+            QCOMPARE(finished.size(), iteration + 1);
+            QVERIFY(!finished.last().at(0).toBool());
+            QCOMPARE(finished.last().at(1).toString(), QStringLiteral("Операция отменена."));
+            backend.cancelAndWait();
+            QCOMPARE(finished.size(), iteration + 1);
+        }
+    }
+
+    void destroyingWindowStopsBackendBeforeTemporaryCleanup() {
+        LifecycleBackend backend;
+        auto window = std::make_unique<MainWindow>(&backend);
+        action(*window, "flatViewAction")->setChecked(false);
+        window->openArchive("owned-lifetime.zip");
+        backend.completeList({{QStringLiteral("имя й с пробелом.txt"), 6, 3}});
+        table(*window)->selectRow(0);
+        action(*window, "hashSHA256Action")->trigger();
+        backend.observedTemporary = backend.lastExtractDestination;
+        QVERIFY(QFileInfo::exists(backend.observedTemporary));
+        QVERIFY(backend.busy());
+        const QPointer<MainWindow> destroyed = window.get();
+        window.reset();
+        QVERIFY(destroyed.isNull());
+        QCOMPARE(backend.cancelCalls, 1);
+        QVERIFY(backend.temporaryExistedOnCancel);
+        QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(backend.observedTemporary));
+        backend.completeList({{"late event.txt", 9, 5}});
+        QCoreApplication::processEvents();
+        QCOMPARE(backend.extractCalls, 1);
+    }
+
     void consumersRebindAfterReplacementAndFailedListing_data() {
         QTest::addColumn<bool>("flat");
         QTest::addColumn<int>("mode");
@@ -125,5 +196,19 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
     }
 };
 
-QTEST_MAIN(BindingLifecycleTests)
+int main(int argc, char **argv) {
+    // Controlled process fixture: ArchiveBackend's list command invokes this
+    // executable instead of 7zz. No shell, real archive or service is involved.
+    if (argc > 1 && QByteArray(argv[1]) == "l") {
+        QCoreApplication app(argc, argv);
+        QTextStream output(stdout);
+        output << "Fixture process ready.\n";
+        output.flush();
+        QTimer::singleShot(30000, &app, &QCoreApplication::quit);
+        return app.exec();
+    }
+    QApplication app(argc, argv);
+    BindingLifecycleTests tests;
+    return QTest::qExec(&tests, argc, argv);
+}
 #include "binding_lifecycle_tests.moc"

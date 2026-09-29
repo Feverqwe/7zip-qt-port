@@ -68,6 +68,8 @@ class ArchiveBackend : public QObject {
     virtual void replaceEntry(const QString &archive, const QString &entry,
                               const QString &sourceRoot);
     virtual void cancel();
+    // Stop the transport before callers release its source/destination resources.
+    void cancelAndWait();
     void providePassword(const QString &password);
 
   signals:

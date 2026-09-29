@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3c2 stops the 7zz transport before window temporary paths are released
+and disconnects callbacks before cancellation. Window destruction cannot leave
+that operation writing into a removed temporary directory or reopen UI through
+completion callbacks. No dialog/layout change. Full native panel/parent-stack
+release and Windows/Linux runtime remain mandatory.
+
 P0-02.2b3b3c3c1 verifies selected consumers across archive replacement, cancelled
 extraction and failed/cancelled listing back to filesystem. Loading disables
 selected commands; requests follow the current source owner and temporary hash
