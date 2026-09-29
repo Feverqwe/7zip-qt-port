@@ -7,6 +7,13 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b2a supplies reversible native process background policy: Windows
+uses the original idle/normal process classes, Darwin process background policy,
+Linux all-thread OTHER/BATCH scheduling. These are platform scheduling adaptations,
+not identical scheduler guarantees. macOS native self/child/worker transitions
+are verified; Windows/Linux remain unverified. The source Background button and
+7zz child propagation remain mandatory and disabled/unintegrated at this stage.
+
 P0-02.2b3c3b2b2b1 restores the source IconID conditional using the exact original
 FM.ico embedded in Qt; default/invalid IDs and real 16/32/48 frames are tested.
 Taskbar SDK definitions are copied unchanged for the upcoming native services.

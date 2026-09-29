@@ -8,6 +8,54 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b2a — native process background prerequisite (2026-09-29)
+
+Project baseline `d2307a2`; source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy complete unchanged `CPP/Windows/ProcessUtils.h`, including CProcess::Open
+and inherited CHandle ownership. Only those inline process services are consumed;
+Create/MyCreateProcess and PSAPI services are not linked or claimed ported.
+Original ProgressDialog2.cpp::OnPriorityButton uses GetCurrentProcess and
+SetPriorityClass(IDLE_PRIORITY_CLASS/NORMAL_PRIORITY_CLASS). processpriority
+preserves that Windows API boundary, adding an owned-child CProcess handle and
+real HRESULT failures for the external 7zz transport. The source button body
+and child transport propagation remain mandatory subsequent integration.
+
+Upstream has no equivalent Darwin/Linux service for this Windows-only branch.
+New narrow platform glue is therefore necessary. Darwin setpriority with
+PRIO_DARWIN_PROCESS uses PRIO_DARWIN_BG/0 for reversible process-wide policy.
+The [Apple XNU implementation](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/kern/kern_resource.c)
+sets the target task but get_background_proc queries current_task, so
+getpriority(child) cannot verify the child. Query proc_pidinfo(PROC_PIDTBSDINFO)
+instead, using the effective internal/external Darwin-background flag bits
+0x8000/0x10000 documented in Apple's
+[proc_info.h](https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/proc_info.h).
+These flags are private SDK definitions: local constants are an explicit OS
+compatibility dependency, not copied functional code. Verify effective state
+after setting; another policy owner preventing foreground restoration returns
+an error rather than false success. No unrelated process is targeted.
+
+Linux scheduling is per thread. Enumerate /proc/PID/task and change every live
+thread between SCHED_OTHER/SCHED_BATCH, retaining SCHED_RESET_ON_FORK. Native
+CRecordVector owns snapshots; bounded rechecks include newly created threads,
+which inherit creator policy. Preserve unrelated real-time/idle or mixed policy
+by returning ENOTSUP. On failure attempt to restore captured threads; continually
+changing thread sets return EAGAIN. Concurrent external scheduler changes and
+rollback failures cannot be made atomic by these OS APIs. No irreversible nice
+or SCHED_IDLE change is used. Linux code/runtime remains unverified locally.
+
+process_priority uses only its own process and an owned copied test executable
+with Unicode/spaces. A native worker exists before switching the child; separate
+native observations verify both main and worker, idempotence, repeated restoration,
+invalid PID/output preservation and join-before-destruction. macOS arm64 focused
+native/progress consumers 5/5 passed (0.76 s). Sandbox setpriority returns EPERM;
+authorized unsandboxed checks exercise the actual successful API. Mandatory
+./scripts/check.sh format/build/CTest passed 89/89 (58.07 s), exit 0; exact
+vendor byte comparison passed 85/85 (84 dependencies/resources plus license),
+diff-check clean. Windows compilation/runtime remains
+unverified, as does Linux. No displayed control changed; background/taskbar,
+default-button and modal/cancel/update acceptance remain mandatory.
+
 ## P0-02.2b3c3b2b2b1 — original progress icon and taskbar header (2026-09-29)
 
 Project baseline `a464b8d`; exact source ip7z/7zip

@@ -1,5 +1,15 @@
 # Regression strategy
 
+`process_priority` verifies reversible native background changes for the test
+process and an owned child whose native worker already exists, repeated/idempotent
+restoration, invalid PID failure and output preservation. It copies only its own
+test executable to a Unicode/space path and joins all owned threads/processes.
+Darwin checks effective target policy through proc_pidinfo; getpriority(child)
+queries the caller's task policy. A sandbox denying setpriority must be reported
+as a failed environment check; an authorized unsandboxed run verifies success.
+Windows/Linux implementations require their respective platform checks. This
+prerequisite does not accept background-button, 7zz propagation or taskbar UI.
+
 `progress_dialog` exercises original CProgressDialog presentation through public
 Sync state, Qt timers/buttons/keys and observable controls: unknown counters,
 compression/decompression/file modes, native progress scaling/endpoint/clamping,

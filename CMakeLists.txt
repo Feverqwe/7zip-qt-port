@@ -25,6 +25,7 @@ add_custom_command(OUTPUT "${resource_strings_header}"
 qt_standard_project_setup()
 
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
+    src/processpriority.cpp src/processpriority.h
     third_party/7zip/C/Threads.c third_party/7zip/CPP/Windows/ErrorMsg.cpp
     src/CPP/Windows/DLL.cpp src/CPP/Windows/DLL.h
     third_party/7zip/CPP/Common/StringToInt.cpp
@@ -242,6 +243,11 @@ if(BUILD_TESTING)
     qt_add_executable(progress_sync_tests tests/progress_sync_tests.cpp)
     target_link_libraries(progress_sync_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME progress_sync COMMAND progress_sync_tests)
+    qt_add_executable(process_priority_tests tests/process_priority_tests.cpp)
+    target_include_directories(process_priority_tests PRIVATE src)
+    target_link_libraries(process_priority_tests PRIVATE sevenzip_common Qt6::Test)
+    add_test(NAME process_priority COMMAND process_priority_tests)
+    set_tests_properties(process_priority PROPERTIES TIMEOUT 15)
     set_tests_properties(progress_sync PROPERTIES TIMEOUT 10)
     qt_add_executable(progress_format_tests tests/progress_format_tests.cpp)
     target_link_libraries(progress_format_tests PRIVATE sevenzip_panel Qt6::Test)
