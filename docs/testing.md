@@ -406,6 +406,15 @@ retain current separately from selected items. `file_viewer` checks those two
 items separately after successful, failed and cancelled replacement.
 These are nonvisual state checks; geometry contracts are unchanged.
 
+`filesystem_scanner` also checks a 2048-file nested Unicode flat fixture:
+source-index batches remain ordered and limited to 32 rows, and a queued GUI
+heartbeat runs before completion. Its restart/cancel cases reject stale batches
+and owners. `flat_view` exercises the 1500-file window scenario at 980×620 and
+640×480, including progress, partial rows, cancellation and navigation while
+rows are arriving. `fs_folder` covers hidden/empty entries, inaccessible child
+continuation and symlink-cycle suppression. These checks bound GUI work per
+event turn; they do not establish a wall-clock latency guarantee.
+
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
 unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,
 and normal/compact geometry reports. `settings` exercises window consumers

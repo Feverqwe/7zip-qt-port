@@ -330,6 +330,42 @@ passes 130/130, 88.79 s on macOS arm64, 2026-09-29. Current-build 980×620 and
 status; these reports do not measure Windows rendering. P0-05 parent acceptance
 is not claimed by this read-model component.
 
+## P0-05.2 — large flat filesystem presentation and P0-05 acceptance (2026-09-29)
+
+Baseline remains ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([FSFolder.cpp source](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/FSFolder.cpp)).
+No borrowed functional body changes in this iteration: the accepted
+`CFSFolder::LoadSubItems`/`LoadItems`, `GetProperty`/`GetRelPath` and native
+item indices remain the sole flat enumeration model. `FilesystemFolderLoader`
+still adapts worker scheduling and atomic cancellation; `FilesystemScanner`
+transports its completed source folder to Qt and rejects stale generations.
+The GUI batch cap changed from 128 to 32 because presentation can resolve
+native icons per row after batch preparation. This bounds one delivery even
+when the preparation timer has not expired. It does not change source order,
+filters, metadata or the worker's count-progress cadence.
+
+The deterministic nested Unicode fixture contains 2048 files and two parent
+folders; it verifies 2050 ordered source indices, at most 32 rows per GUI
+batch, an event-loop turn before completion and no failure. Existing scanner
+tests cover restart during native enumeration, restart/cancel during row
+publication, destruction and invalid roots. Existing source-model tests cover
+hidden/empty entries, unreadable siblings, Unicode names, symlink-cycle
+suppression, metadata and cancellation. The 1500-file `flat_view` scenario
+checks normal/compact status, partial listing, cancel, mode switch and
+navigation without stale rows. Current-build compact report at 640×480 keeps
+the toolbar, address, table and status fully visible; its upstream reference
+is the File Manager list/flat command structure, not a rendered Windows image.
+
+The P0-05 source filesystem model, narrow async adapter and current normal/flat
+consumers are accepted within the above scope. Source sort/column/time and
+auto-refresh remain P0-06, native icons P0-09, write-side `SetProperty`/comment
+editing P1-03, raw reparse/ADS P2-05/P2-06 and larger-operation responsiveness
+P2-10. Windows/Linux runtime and rendered Windows appearance remain unverified.
+Focused `fs_folder`, `filesystem_scanner` and `flat_view` pass 3/3 (2.51 s);
+`./scripts/check.sh` passes formatting, app build and 130/130 CTest (85.77 s)
+on macOS arm64, 2026-09-29. The updated current-build 640×480 JSON has a
+fully visible toolbar, address, table and status. No pixel parity is claimed.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

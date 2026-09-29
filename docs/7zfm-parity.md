@@ -17,6 +17,13 @@ column/time formatting, source sort and system icons remain P0-06/P0-09.
 The checked Qt layout and runtime are macOS-only; no rendered Windows parity
 claim follows from them.
 
+P0-05.2 presents large flat folders through the original CFSFolder item order.
+Qt yields between 32-row batches so native icon lookup and row creation do not
+monopolize one event-loop turn. Native count and shown-row status remain visible;
+switching mode or location discards pending rows. The deterministic 2048-file
+Unicode fixture and the 1500-file normal/compact window scenario verify this
+local behavior. Windows/Linux runtime and Windows appearance are unverified.
+
 The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
 backslash on the focused file list uses the same command. The Qt list presents
 the provider's original item names and indices. On macOS, Computer opens `/`,

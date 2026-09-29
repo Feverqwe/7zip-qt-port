@@ -27,7 +27,8 @@ flat prefixes, comment and file-identity properties. Qt only presents the bound
 values and normalizes visible Unicode; its existing icon and timestamp display
 remain pending separate source UI owners. FilesystemFolderLoader runs source
 enumeration off the GUI thread and FilesystemScanner batches Qt row publication.
-Their large-scan/stale-result acceptance is P0-05.2.
+The P0-05.2 large-scan fixture checks ordered source indices, event-loop turns
+between bounded 32-row GUI batches, cancellation and rejection of stale batches.
 
 CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt
@@ -357,8 +358,9 @@ Full entry paths remain in item data independently of display order.
 `FilesystemFolderLoader` runs the original CFSFolder recursive enumeration in a
 worker without following POSIX directory symlinks or Windows directory reparse
 points. `FilesystemScanner` waits for
-completion before taking its COM owner, then presents source-index batches on
-GUI timers. Count progress and atomic cancel remain available during native
+completion before taking its COM owner, then presents source-index batches of
+at most 32 rows on GUI timers. Count progress and atomic cancel remain available
+during native
 loading; cancelled workers are joined before destruction. A generation counter
 discards stale results/batches after navigation or mode changes. Final sorting
 runs on the GUI thread. Table and icon/list views share a model/selection model.

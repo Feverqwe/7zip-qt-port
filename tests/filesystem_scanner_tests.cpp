@@ -36,7 +36,7 @@ class FilesystemScannerTests : public QObject {
                 [&](IFolderFolder *folder) { retained = folder; });
         connect(&scanner, &FilesystemScanner::batchReady, this,
                 [&](const QFileInfoList &files, quint32 first) {
-                    ordered &= first == quint32(displayedPaths.size()) && files.size() <= 128;
+                    ordered &= first == quint32(displayedPaths.size()) && files.size() <= 32;
                     batchesOnGui &= QThread::currentThread() == thread();
                     for (const QFileInfo &file : files)
                         displayedPaths.append(file.absoluteFilePath());
@@ -73,6 +73,33 @@ class FilesystemScannerTests : public QObject {
         scanner.cancel();
         QCOMPARE(retained->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(302));
+    }
+    void largeFlatListingYieldsBetweenOrderedBatches() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        createFiles(temp.path(), 2048);
+        FilesystemScanner scanner;
+        quint32 expectedIndex = 0;
+        bool ordered = true;
+        bool eventLoopResumed = false;
+        bool scheduledHeartbeat = false;
+        connect(&scanner, &FilesystemScanner::batchReady, this,
+                [&](const QFileInfoList &files, quint32 first) {
+                    ordered &= first == expectedIndex && files.size() <= 32;
+                    expectedIndex += quint32(files.size());
+                    if (!scheduledHeartbeat) {
+                        scheduledHeartbeat = true;
+                        QTimer::singleShot(0, &scanner, [&] { eventLoopResumed = true; });
+                    }
+                });
+        QSignalSpy completed(&scanner, &FilesystemScanner::completed);
+        QSignalSpy failed(&scanner, &FilesystemScanner::failed);
+        scanner.start(temp.path());
+        QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 15000);
+        QVERIFY(failed.isEmpty());
+        QVERIFY(ordered);
+        QVERIFY(eventLoopResumed);
+        QCOMPARE(expectedIndex, quint32(2050));
     }
     void cancellationDuringPresentationRejectsStaleGeneration() {
         QTemporaryDir first;

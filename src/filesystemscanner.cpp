@@ -93,7 +93,9 @@ void FilesystemScanner::scanBatch(quint64 generation) {
     QFileInfoList files;
     const quint32 firstIndex = nextIndex_;
     auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder_);
-    while (files.size() < 128 && elapsed.elapsed() < 8 && nextIndex_ < spec->Files.Size()) {
+    // Row creation can include native icon lookup. Keep each GUI delivery
+    // bounded independently of the time spent preparing QFileInfo values.
+    while (files.size() < 32 && elapsed.elapsed() < 8 && nextIndex_ < spec->Files.Size()) {
         const FString relPath = spec->GetRelPath(spec->Files[nextIndex_++]);
         const QString name = QtFilesystemPath(relPath);
         files.append(QFileInfo(QDir(directory_).filePath(name)));
