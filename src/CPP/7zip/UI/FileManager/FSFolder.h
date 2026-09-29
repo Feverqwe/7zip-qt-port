@@ -4,6 +4,7 @@
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyCom.h"
 #include "Common/MyVector.h"
+#include "TextPairs.h"
 #include "Windows/FileFind.h"
 #include <QFileDevice>
 #include <QFileInfo>
@@ -14,24 +15,48 @@ namespace NFsFolder {
 struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
     UInt64 PackSize = 0;
     bool PackSize_Defined = false;
+    CFiTime ChangeTime{};
+    UInt64 FileIndex = 0;
+    UInt32 NumLinks = 0;
+    bool FileInfo_Defined = false;
+    bool FileInfo_WasRequested = false;
+    bool ChangeTime_Defined = false;
+    bool ChangeTime_WasRequested = false;
     bool FolderStat_Defined = false;
     int Parent = -1;
     UInt64 NumFolders = 0;
     UInt64 NumFiles = 0;
 };
 
+struct CFsFolderStat {
+    UInt64 NumFolders = 0;
+    UInt64 NumFiles = 0;
+    UInt64 Size = 0;
+    IProgress *Progress = nullptr;
+    FString Path;
+
+    CFsFolderStat(const FString &path, IProgress *progress = nullptr)
+        : Progress(progress), Path(path) {}
+    HRESULT Enumerate();
+};
+
 // Partial source folder owner. Runtime panel loading is integrated separately;
 // mutations retain their Qt service boundary and existing callbacks.
 class CFSFolder final : public IFolderFolder,
+                        public IFolderCalcItemFullSize,
+                        public IFolderClone,
                         public IFolderSetFlatMode,
                         public IFolderWasChanged,
                         public IFolderOperations,
                         public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_4(IFolderFolder, IFolderSetFlatMode, IFolderWasChanged, IFolderOperations)
+    Z7_COM_UNKNOWN_IMP_6(IFolderFolder, IFolderCalcItemFullSize, IFolderClone, IFolderSetFlatMode,
+                         IFolderWasChanged, IFolderOperations)
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IFolderCalcItemFullSize)
+    Z7_IFACE_COM7_IMP(IFolderClone)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderWasChanged)
     Z7_IFACE_COM7_IMP(IFolderOperations)
@@ -64,6 +89,11 @@ class CFSFolder final : public IFolderFolder,
     void GetAbsPath(const wchar_t *name, FString &absPath) const;
     FString _path;
     bool _flatMode = false;
+    bool _commentsAreLoaded = false;
+    CPairsStorage _comments;
+    bool LoadComments();
+    bool ReadFileInfo(CDirItem &item);
+    void ReadChangeTime(CDirItem &item);
 #ifdef _WIN32
     NWindows::NFile::NFind::CFindChangeNotification _findChangeNotification;
 #endif

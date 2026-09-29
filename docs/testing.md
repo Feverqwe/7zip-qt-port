@@ -15,6 +15,13 @@ root refresh and stale busy-command rejection. It writes current-build root
 window JSON at 980×620 and 640×400; inspect toolbar, address, list and status
 geometry. Windows root item count is conditional; Windows/Linux runtime and
 rendered Windows parity remain separate checks.
+`fs_folder` also checks the source TextPairs comment parser through filesystem
+properties, lazy reload, hard-link identity/change time, Unicode directory
+counts and cancellation, and a protected flat child alongside hidden/empty
+entries. `flat_view`, `panel_selected_state` and `properties_runtime` are the
+direct Qt consumers of source names/prefixes and typed metadata. The protected
+child fixture runs only when the test process actually lacks read permission;
+macOS validation confirmed this branch without a skip.
 ControlledBackend reports typed fixture format and overrides typed openFolder;
 explicit metadata takes precedence and no fixture reopen launches an engine.
 

@@ -113,6 +113,11 @@ remains above the disabled list while loading/presenting, and both stay visible
 without clipping. Status distinguishes scan progress from shown row count; list
 commands return after completion or failure. This Qt responsiveness adaptation
 keeps source enumeration in CFSFolder, not a presentation-layer walker.
+P0-05.1 reads displayed normal/flat names and prefixes from bound CFSFolder
+properties, with NFC only for Qt text. The same 980×620 and 640×480 current-build
+`filesystem-native-scan-*` / `filesystem-presentation-*` reports check visible
+toolbar, address, list and status during scan/presentation; they do not prove
+rendered Windows parity or final large-scan responsiveness (P0-05.2).
 
 `panel_selected_state` writes normal/flat `filesystem-runtime-*` reports at
 980×620 and 640×480. Filesystem size cells use native typed metadata: uncalculated

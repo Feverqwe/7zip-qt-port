@@ -8,8 +8,25 @@
 #include <QTemporaryDir>
 #include <QtTest>
 #include <new>
+#ifndef _WIN32
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 using NWindows::NCOM::CPropVariant;
+
+class FolderStatProgress final : public IProgress, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IProgress)
+
+  public:
+    bool cancel = false;
+    int checks = 0;
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override {
+        ++checks;
+        return cancel ? E_ABORT : S_OK;
+    }
+};
 
 class FsFolderTests : public QObject {
     Q_OBJECT
@@ -20,6 +37,69 @@ class FsFolderTests : public QObject {
         return QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal));
     }
   private slots:
+    void directoryStatisticsRetainSourceCountsAndCancel() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir().mkpath(temp.filePath(QStringLiteral("папка с пробелом/sub"))));
+        QFile file(temp.filePath(QStringLiteral("папка с пробелом/sub/payload")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("payload"), qint64(7));
+        file.close();
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        CMyComPtr<IFolderCalcItemFullSize> statistics;
+        QCOMPARE(folder.QueryInterface(IID_IFolderCalcItemFullSize, &statistics), S_OK);
+        CPropVariant value;
+        QCOMPARE(folder->GetProperty(0, kpidSize, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+        CMyComPtr<IProgress> progress = new FolderStatProgress;
+        auto *control = static_cast<FolderStatProgress *>((IProgress *)progress);
+        control->cancel = true;
+        QCOMPARE(statistics->CalcItemFullSize(0, progress), E_ABORT);
+        QCOMPARE(folder->GetProperty(0, kpidNumSubFiles, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+        control->cancel = false;
+        QCOMPARE(statistics->CalcItemFullSize(0, progress), S_OK);
+        QVERIFY(control->checks >= 3);
+        QCOMPARE(folder->GetProperty(0, kpidNumSubDirs, &value), S_OK);
+        QCOMPARE(value.uhVal.QuadPart, UInt64(1));
+        QCOMPARE(folder->GetProperty(0, kpidNumSubFiles, &value), S_OK);
+        QCOMPARE(value.uhVal.QuadPart, UInt64(1));
+        QCOMPARE(folder->GetProperty(0, kpidSize, &value), S_OK);
+        QCOMPARE(value.uhVal.QuadPart, UInt64(7));
+    }
+    void descriptionCommentsUseSourceParserAndReload() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QFile item(temp.filePath(QStringLiteral("file with spaces.txt")));
+        QVERIFY(item.open(QIODevice::WriteOnly));
+        item.close();
+        QFile description(temp.filePath(QStringLiteral("descript.ion")));
+        QVERIFY(description.open(QIODevice::WriteOnly));
+        QCOMPARE(
+            description.write("\xEF\xBB\xBF\r\n\"file with spaces.txt\"  first\x04metadata\r\n"),
+            qint64(45));
+        description.close();
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        UInt32 itemIndex = count;
+        for (UInt32 index = 0; index < count; ++index)
+            if (text(folder, index, kpidName) == QStringLiteral("file with spaces.txt"))
+                itemIndex = index;
+        QVERIFY(itemIndex < count);
+        QCOMPARE(text(folder, itemIndex, kpidComment), QStringLiteral("first"));
+        QVERIFY(description.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(description.write("\"file with spaces.txt\" second\r\n"), qint64(31));
+        description.close();
+        QCOMPARE(text(folder, itemIndex, kpidComment), QStringLiteral("first"));
+        QCOMPARE(folder->LoadItems(), S_OK);
+        QCOMPARE(text(folder, itemIndex, kpidComment), QStringLiteral("second"));
+    }
     void packedSizeUsesSourceCacheAndMissingFileFallback_data() {
         QTest::addColumn<bool>("flat");
         QTest::addColumn<bool>("cached");
@@ -78,6 +158,74 @@ class FsFolderTests : public QObject {
         QCOMPARE(count, UInt32(1));
     }
 #ifndef _WIN32
+    void flatListingKeepsUnreadableChildAndVisibleSiblings() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString denied = temp.filePath(QStringLiteral("denied"));
+        QVERIFY(QDir().mkdir(denied));
+        QVERIFY(QDir().mkdir(temp.filePath(QStringLiteral("empty"))));
+        QFile hidden(temp.filePath(QStringLiteral(".hidden")));
+        QVERIFY(hidden.open(QIODevice::WriteOnly));
+        hidden.close();
+        QFile visible(temp.filePath(QStringLiteral("видимый файл")));
+        QVERIFY(visible.open(QIODevice::WriteOnly));
+        visible.close();
+        const QByteArray deniedPath = QFile::encodeName(denied);
+        QCOMPARE(::chmod(deniedPath.constData(), 0), 0);
+        if (::access(deniedPath.constData(), R_OK) == 0) {
+            ::chmod(deniedPath.constData(), 0700);
+            QSKIP("This process can still read mode-000 directories");
+        }
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        const HRESULT result = folder->LoadItems();
+        ::chmod(deniedPath.constData(), 0700);
+        QCOMPARE(result, S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(4));
+        QStringList names;
+        for (UInt32 index = 0; index < count; ++index)
+            names.append(text(folder, index, kpidName).normalized(QString::NormalizationForm_C));
+        QVERIFY(names.contains(QStringLiteral("denied")));
+        QVERIFY(names.contains(QStringLiteral("empty")));
+        QVERIFY(names.contains(QStringLiteral(".hidden")));
+        QVERIFY(names.contains(QStringLiteral("видимый файл")));
+    }
+    void hardLinksExposeSourceFileIdentityAndChangeTime() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QFile original(temp.filePath(QStringLiteral("original")));
+        QVERIFY(original.open(QIODevice::WriteOnly));
+        QCOMPARE(original.write("payload"), qint64(7));
+        original.close();
+        const QByteArray source = QFile::encodeName(original.fileName());
+        const QByteArray linked = QFile::encodeName(temp.filePath(QStringLiteral("linked")));
+        QCOMPARE(::link(source.constData(), linked.constData()), 0);
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(2));
+        UInt64 inode = 0;
+        for (UInt32 index = 0; index < count; ++index) {
+            CPropVariant links, identity, changed;
+            QCOMPARE(folder->GetProperty(index, kpidLinks, &links), S_OK);
+            QCOMPARE(links.vt, VARTYPE(VT_UI4));
+            QCOMPARE(links.ulVal, UInt32(2));
+            QCOMPARE(folder->GetProperty(index, kpidINode, &identity), S_OK);
+            QCOMPARE(identity.vt, VARTYPE(VT_UI8));
+            QVERIFY(identity.uhVal.QuadPart != 0);
+            if (index == 0)
+                inode = identity.uhVal.QuadPart;
+            else
+                QCOMPARE(identity.uhVal.QuadPart, inode);
+            QCOMPARE(folder->GetProperty(index, kpidChangeTime, &changed), S_OK);
+            QCOMPARE(changed.vt, VARTYPE(VT_FILETIME));
+        }
+    }
     void flatListingDoesNotFollowDirectoryLinks() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -186,6 +334,15 @@ class FsFolderTests : public QObject {
         UInt32 count = 0;
         QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(1));
+        CMyComPtr<IFolderClone> cloneOwner;
+        QCOMPARE(folder.QueryInterface(IID_IFolderClone, &cloneOwner), S_OK);
+        CMyComPtr<IFolderFolder> clone;
+        QCOMPARE(cloneOwner->Clone(&clone), S_OK);
+        QVERIFY(clone);
+        QCOMPARE(clone->LoadItems(), S_OK);
+        UInt32 cloneCount = 0;
+        QCOMPARE(clone->GetNumberOfItems(&cloneCount), S_OK);
+        QCOMPARE(cloneCount, count);
         QCOMPARE(text(folder, 0, kpidName), QString::fromUtf8("папка"));
         CPropVariant value;
         QCOMPARE(folder->GetProperty(0, kpidSize, &value), S_OK);

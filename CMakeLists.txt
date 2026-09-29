@@ -172,6 +172,7 @@ add_library(sevenzip_filesystem STATIC
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     third_party/7zip/CPP/7zip/Common/FilePathAutoRename.cpp
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
+    src/CPP/7zip/UI/FileManager/TextPairs.cpp
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
     src/CPP/Windows/FileName.cpp

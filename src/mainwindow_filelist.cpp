@@ -80,29 +80,35 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
 
 void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {
     IFolderFolder *folder = app_.GetFocusedPanel().GetFolder();
-    NWindows::NCOM::CPropVariant isDir, size;
+    NWindows::NCOM::CPropVariant isDir, size, name, prefix;
     folder->GetProperty(sourceIndex, kpidIsDir, &isDir);
     folder->GetProperty(sourceIndex, kpidSize, &size);
+    folder->GetProperty(sourceIndex, kpidName, &name);
+    folder->GetProperty(sourceIndex, kpidPrefix, &prefix);
     const bool directory = isDir.vt == VT_BOOL && isDir.boolVal != VARIANT_FALSE;
+    const QString nativeName =
+        name.vt == VT_BSTR ? QString::fromWCharArray(name.bstrVal) : file.fileName();
+    const QString nativePrefix =
+        prefix.vt == VT_BSTR ? QDir::fromNativeSeparators(QString::fromWCharArray(prefix.bstrVal))
+                             : QString();
     const QVariant sizeValue =
         size.vt == VT_UI8 ? QVariant::fromValue(quint64(size.uhVal.QuadPart)) : QVariant();
     const int row = table_->rowCount();
     table_->insertRow(row);
-    const QString displayName =
-        flatDisk_ ? QDir(directory_).relativeFilePath(file.absoluteFilePath()) : file.fileName();
+    const QString displayName = ((flatDisk_ ? nativePrefix : QString()) + nativeName)
+                                    .normalized(QString::NormalizationForm_C);
     const QStringList values = {displayName,
                                 file.absoluteFilePath(),
                                 directory ? QString() : sizeValue.toString(),
                                 QString(),
                                 file.lastModified().toString(Qt::ISODate),
-                                GetExtensionPtr(QStringView(file.fileName())).toString(),
+                                GetExtensionPtr(QStringView(nativeName)).toString(),
                                 QString::number(sourceIndex)};
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
         item->setData(Qt::UserRole + 1, directory);
-        item->setData(Qt::UserRole + 3, file.fileName());
-        item->setData(Qt::UserRole + 5,
-                      displayName.left(displayName.size() - file.fileName().size()));
+        item->setData(Qt::UserRole + 3, nativeName);
+        item->setData(Qt::UserRole + 5, nativePrefix);
         item->setData(Qt::UserRole + 6, sourceIndex);
         if (col == 0) {
             if (fileListSettings_.ShowRealFileIcons) {

@@ -7,6 +7,16 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-05.1 filesystem rows now display the bound source folder's name and flat
+prefix; Qt normalizes visible Unicode to NFC while retaining raw source names
+and indices for operations. Hidden files and empty directories remain listed.
+Flat enumeration retains a protected child row and continues to visible
+siblings; cancellation still stops the scan. Filesystem Properties can read
+source `descript.ion` comments and link/inode/change-time values. Complete
+column/time formatting, source sort and system icons remain P0-06/P0-09.
+The checked Qt layout and runtime are macOS-only; no rendered Windows parity
+claim follows from them.
+
 The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
 backslash on the focused file list uses the same command. The Qt list presents
 the provider's original item names and indices. On macOS, Computer opens `/`,

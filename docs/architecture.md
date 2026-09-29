@@ -22,6 +22,12 @@ into Qt cells with source indices; the address is empty at the native root.
 Qt Back history marks this empty prefix explicitly. Typed relative paths and
 Parent call the native binding/parent owner, including the POSIX `/` to root
 transition. Read-only root command policy prevents filesystem mutations.
+For ordinary filesystem rows, CFSFolder provides source item indices, names,
+flat prefixes, comment and file-identity properties. Qt only presents the bound
+values and normalizes visible Unicode; its existing icon and timestamp display
+remain pending separate source UI owners. FilesystemFolderLoader runs source
+enumeration off the GUI thread and FilesystemScanner batches Qt row publication.
+Their large-scan/stale-result acceptance is P0-05.2.
 
 CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt

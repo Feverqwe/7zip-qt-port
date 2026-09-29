@@ -288,6 +288,48 @@ normal/flat modes. Required formatting is separate from functional adaptations.
 Windows/Linux runtime and rendered Windows parity remain unverified. The
 integrated owner iteration is accepted; P0-02.3/full parent acceptance is mandatory.
 
+## P0-05.1 — filesystem read model and normal/flat consumers (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([FSFolder.cpp/h](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager),
+same revision for `TextPairs.cpp/h`). `TextPairs.cpp/h` were copied to their
+mirrored paths; only `StdAfx.h`/relative Common includes became project include
+paths. `CPairsStorage` parse, sort, lookup, replacement and save bodies remain
+the original implementation. Required clang-format is mechanical and separate
+from the include adaptation. `CFSFolder::LoadComments`, lazy `kpidComment`
+lookup/cutoff, `ReadFileInfo`, `ReadChangeTime`, `CalcItemFullSize`,
+`CFsFolderStat::Enumerate` and `Clone` start from the original bodies. Previously
+accepted `LoadItems`/`LoadSubItems` and typed-property bodies remain the owner.
+
+The Windows link and NT change-time calls are retained under `_WIN32`; POSIX
+uses `lstat` for the same inode/link/status-change metadata and the portable
+7-Zip `CFiTime` conversion. POSIX `CEnumerator::Next`/`Fill_FileInfo` adapt the
+source Windows iterator shape. In flat recursion the source continues past an
+unreadable child; the local cancellation callback alone propagates `E_ABORT`.
+The outer root still reports its own binding failure to Qt. Directory-size
+enumeration retains source count/size/progress flow and does not follow POSIX
+symlinks. `mainwindow_filelist.cpp` now takes visible names/prefixes and sort
+roles from source properties/indices; NFC normalization is limited to Qt text.
+QFileInfo remains for Qt icons and pre-existing timestamp presentation; native
+time formatting and complete column/sort ownership are P0-06.
+
+The read-model consumer checks cover quoted UTF-8 `descript.ion` comments and
+reload, hard links/inode/change time, Unicode nested directory statistics with
+cancellation, and hidden/empty/unreadable sibling enumeration. Normal/flat UI
+and source properties consumers are exercised by `flat_view`,
+`panel_selected_state` and `properties_runtime`. The incomplete source
+`IFolderCompare`/fast item-name sort path and periodic model refresh belong to
+P0-06, system icons to P0-09, comment writes/`SetProperty` to P1-03, raw
+reparse/ADS interfaces to P2-05/P2-06. P0-05.2 still owns large asynchronous
+scan, stale batches and full parent acceptance. Windows/Linux runtime and
+rendered Windows comparison remain unverified.
+Focused `fs_folder`, `flat_view`, `panel_selected_state`, `properties_runtime`
+pass 4/4, 6.13 s; the full `./scripts/check.sh` formatting/build/all CTest gate
+passes 130/130, 88.79 s on macOS arm64, 2026-09-29. Current-build 980×620 and
+640×480 flat scan/presentation JSON retains visible toolbar, address, list and
+status; these reports do not measure Windows rendering. P0-05 parent acceptance
+is not claimed by this read-model component.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
