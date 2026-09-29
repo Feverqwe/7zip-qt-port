@@ -1,0 +1,14 @@
+// Adapted from 7-Zip CPP/7zip/UI/FileManager/FormatUtils.h (0766b73).
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+#ifndef ZIP7_INC_FORMAT_UTILS_H
+#define ZIP7_INC_FORMAT_UTILS_H
+
+#include "Common/MyString.h"
+#include "Common/MyTypes.h"
+
+UString NumberToString(UInt64 number);
+
+UString MyFormatNew(const UString &format, const UString &argument);
+UString MyFormatNew(UINT resourceID, const UString &argument);
+
+#endif

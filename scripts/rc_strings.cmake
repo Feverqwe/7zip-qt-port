@@ -1,11 +1,21 @@
 # Qt presentation adapter for the single-line STRINGTABLE syntax used by the
 # pinned upstream resources. Generate build output only; reject unhandled syntax.
+cmake_minimum_required(VERSION 3.21)
 if(NOT DEFINED RESOURCE_FILES OR NOT DEFINED OUTPUT_FILE)
     message(FATAL_ERROR "RESOURCE_FILES and OUTPUT_FILE are required")
 endif()
 
 set(entries "")
+foreach(mixed_file IN LISTS MIXED_RESOURCE_FILES)
+    if(NOT mixed_file IN_LIST RESOURCE_FILES)
+        message(FATAL_ERROR "Mixed resource must be a declared input: ${mixed_file}")
+    endif()
+endforeach()
 foreach(resource_file IN LISTS RESOURCE_FILES)
+    set(mixed_resource FALSE)
+    if(resource_file IN_LIST MIXED_RESOURCE_FILES)
+        set(mixed_resource TRUE)
+    endif()
     file(STRINGS "${resource_file}" resource_lines ENCODING UTF-8)
     set(in_table FALSE)
     set(expect_begin FALSE)
@@ -35,7 +45,7 @@ foreach(resource_file IN LISTS RESOURCE_FILES)
             else()
                 message(FATAL_ERROR "Unsupported STRINGTABLE line in ${resource_file}: ${line}")
             endif()
-        elseif(NOT line MATCHES "^#include \"[^\"]+\"$" AND
+        elseif(NOT mixed_resource AND NOT line MATCHES "^#include \"[^\"]+\"$" AND
                NOT line STREQUAL "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US")
             message(FATAL_ERROR "Unsupported resource syntax in ${resource_file}: ${line}")
         endif()

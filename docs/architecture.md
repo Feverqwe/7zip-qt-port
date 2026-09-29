@@ -50,6 +50,12 @@ availability are separate subsequent migration scopes.
 
 ## Repository boundary
 
+FormatUtils owns the complete original native number/placeholder helpers.
+ResourceString's generated bundle includes the original FileManager STRINGTABLE;
+mixed resource files explicitly opt into table extraction without interpreting
+Win32 menus/accelerators/bitmaps or included dialogs. Actual command/dialog ports
+retain their feature owners, and full source language loading remains P1-14.
+
 sevenzip_common owns original native CLibrary loading/free and procedure lookup.
 POSIX parent-link transfer/copy guard uses the original Windows method bodies;
 there is one adapted DLL owner. This is a parent-stack lifetime dependency, not

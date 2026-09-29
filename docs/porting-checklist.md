@@ -330,10 +330,20 @@ Current chat owns all substeps; UI and transport adapters stay narrow.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3a | Original processing flags and CDisableTimerProcessing/CDisableTimerProcessing2/CDisableNotify/Disable_Processing_Timer_Notify_StatusBar; native initialization, source RefreshListCtrl guards and Qt notification boundary; nested/restore/exception and selection-consumer checks | P0-02.2b3c2 | done — audit § P0-02.2b3c3a; pre-fix regressions failed; focused 4/4, check.sh 81/81, after localized final-command refresh affected 7/7; macOS 2026-09-29 |
-| P0-02.2b3c3b | Original OpenParentArchiveFolder/OnOpenItemChanged update dependencies and Qt dialog/progress/7zz service adaptations; retain changed-file YES/NO/CANCEL/error/cleanup flow, success/failure/cancel regression and required resource/layout checks; split before code as needed | P0-02.2b3c3a | todo |
+| P0-02.2b3c3b | Original OpenParentArchiveFolder/OnOpenItemChanged update dependencies and Qt dialog/progress/7zz service adaptations; retain changed-file YES/NO/CANCEL/error/cleanup flow, success/failure/cancel regression and required resource/layout checks | P0-02.2b3c3a | active — b1–b3 split below before code |
 | P0-02.2b3c3c | Original OpenAsArc, _parentFolders/_library/flat-mode ownership and CloseOneLevel/CloseOpenFolders bodies with transport opening adapter; source push/pop/lifetime checks; no duplicate functional implementation | P0-02.2b3c3b | todo |
 | P0-02.2b3c3d | Root/nested runtime opening, restore/update/cleanup paths consume source stack, remove Qt ArchiveParent functional state; preserve provider snapshots only in transport boundary and test all direct consumers | P0-02.2b3c3c | todo |
 | P0-02.2b3c3e | C3 combined source/body/dependency and runtime acceptance; explicit mandatory memory/password/zone/platform obligations, no parent closure with missing branches | P0-02.2b3c3d | todo |
+
+B's resource, background-update and consumer dependencies are separated before
+code; current chat owns all parts. Preserve original native helper bodies and
+keep modal presentation/process services behind their narrow adapters.
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b1 | Complete original FormatUtils NumberToString/MyFormatNew bodies and unchanged resource.h/resourceGui.h/resource.rc captions; strict generated STRINGTABLE boundary with explicit mixed-resource mode; numeric/Unicode/placeholder/resource and generator failure/idempotence checks | P0-02.2b3c3a | done — audit § P0-02.2b3c3b1; focused 3/3, check.sh 82/82, vendor bytes 70/70; macOS 2026-09-29 |
+| P0-02.2b3c3b2 | Original background CopyFromFile/OnOpenItemChanged service dependencies with Qt progress/cancel and ArchiveBackend update boundary; source indices/native paths, error/password/operation contracts and deterministic success/failure/cancel; subdivide before code as needed | P0-02.2b3c3b1 | todo |
+| P0-02.2b3c3b3 | Original OpenParentArchiveFolder changed-file prompt/update/cleanup body, Qt dialog services and source native stack prerequisite; YES/NO/CANCEL/missing/unchanged/update-error lifetime checks and required dialog text/geometry | P0-02.2b3c3b2 | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

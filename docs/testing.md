@@ -1,5 +1,10 @@
 # Regression strategy
 
+`format_utils` checks original native numeric/placeholder functions, Unicode/space
+arguments, resource update/error captions and absent IDs. resource_strings_generator
+also checks explicit mixed-resource extraction, strict table failures and preserving
+valid output. Caption availability does not accept an unintegrated update dialog.
+
 `panel_processing` checks nested source notification guards, exception restoration,
 disabled-panel/memory-mode restoration and observable selection callbacks during
 source RefreshListCtrl. Intermediate callbacks are gated while final selection and

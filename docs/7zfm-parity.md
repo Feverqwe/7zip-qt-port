@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b1 compiles original FormatUtils and source caption bundle, preserving
+literal {0} substitution and update/error line breaks. Fixed Russian captions are
+available to upcoming update dialogs; no displayed dialog/layout changes yet.
+Complete modified-nested-file prompt/progress/cancel/update remains mandatory.
+
 P0-02.2b3c3a restores original processing guards around source selection restoration.
 Qt selection callbacks defer command refresh during intermediate restore state
 and resume afterward. No visible text/layout changes. Full native notification/

@@ -8,6 +8,48 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b1 — complete FormatUtils and source caption bundle (2026-09-29)
+
+Project baseline `138f6db`; exact original ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy all FormatUtils.cpp/.h functions into the mirrored FileManager owner:
+NumberToString's upstream UInt64 conversion and both MyFormatNew overloads,
+retaining UString replacement of every literal {0}, native arguments, return
+types and functional bodies. Only include paths, removed Win32 StdAfx dependency,
+notices and repository formatting change; no Qt replacement algorithm is added.
+Original IntToString/MyString and adapted non-Z7_LANG resource lookup are reused.
+
+Copy unchanged FileManager resource.h/resourceGui.h/resource.rc into third_party
+at the original relative paths. The exact source STRINGTABLE is added to the
+existing generated ResourceString bundle; its two modified-file update/error
+captions receive fixed Russian presentation strings with the original placeholders
+and line breaks. These captions are prerequisites, not visible dialog integration.
+Full source CLang/default-language selection remains mandatory P1-14.
+
+Resource adaptation: resource.rc also contains Win32 menus/accelerators/bitmaps
+and included dialogs. The existing generator has an explicit MIXED_RESOURCE_FILES
+allowlist whose files must also be declared inputs. It extracts only their table
+strings; parsing remains strict inside each STRINGTABLE and rejects missing or
+incomplete tables before replacing output. Strict resources retain strict
+outer-syntax validation. No referenced include/bitmap/menu is loaded or claimed
+ported by caption extraction; full commands/resources/platform presentation remain
+mandatory P0-09/P1-13/P3-05 and their feature owners. CMake script minimum matches
+the project's 3.21 requirement for IN_LIST policy and deterministic generation.
+
+New format_utils tests UInt64 zero/32-bit boundary/maximum, Unicode/spaces,
+multiple/empty/no-placeholder replacements, untouched {1}/%1 and nonrecursive
+literal-placeholder arguments, native source-resource overload and missing ID.
+Generator regressions cover explicit mixed-mode opt-in, table-only output,
+repeat identity, unsupported/missing/incomplete/undeclared inputs and preserving
+valid output on failures. No archive operation or visible layout/text is changed.
+Validation macOS arm64, 2026-09-29: affected app/formatter/property targets built;
+focused formatter/resource-generator/property tests 3/3 passed (0.56 s), mandatory
+check.sh formatting/build/82 CTest passed (42.74 s), git diff --check passed.
+Vendored source/resource/license byte comparison 70/70 with no differences.
+Source CPP becomes 41 (34 UI + seven support), FM mirrored paths 28/67; vendor
+becomes 69 unchanged dependencies/resources plus License. Windows/Linux runtime
+remains unverified. Parent update/close integration stays mandatory c3b2/b3/c/d/e.
+
 ## P0-02.2b3c3a — source processing guards and Qt notifications (2026-09-29)
 
 Project baseline `5d9f9c7`; original ip7z/7zip

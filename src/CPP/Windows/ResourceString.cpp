@@ -4,6 +4,7 @@
 // strings and the existing fixed Russian UI captions. Language files: P1-14.
 #include "ResourceString.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 
 namespace NWindows {
@@ -16,6 +17,8 @@ struct ResourceStringEntry {
 #include "ResourceStrings.h"
 
 static const ResourceStringEntry kLocalizedStrings[] = {
+    {IDS_WANT_UPDATE_MODIFIED_FILE, L"Файл '{0}' был изменён.\nОбновить его в архиве?"},
+    {IDS_CANNOT_UPDATE_FILE, L"Не удалось обновить файл\n'{0}'"},
     {IDS_PROP_PATH, L"Путь"},
     {IDS_PROP_NAME, L"Имя"},
     {IDS_PROP_EXTENSION, L"Расширение"},
