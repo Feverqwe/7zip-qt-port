@@ -1,14 +1,19 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelMenu.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Properties single-item enumeration and multi-item totals retain upstream
-// control flow. IFolder exposes the Qt metadata snapshot. Raw/archive-level
+// control flow. IFolder supplies typed properties; the legacy Qt caller still
+// binds a metadata snapshot until live Properties integration. Raw/archive-level
 // properties and Windows shell invocation are outside this partial port.
+#include "../Common/OpenArchive.h"
 #include "7zip/PropID.h"
-#include "Common/IntToString.h"
+#include "7zip/UI/Common/PropIDUtils.h"
+#include "ExtractCallback.h"
 #include "ListViewDialog.h"
 #include "Panel.h"
+#include "PropertyName.h"
 #include "ViewSettings.h"
 #include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
 
 static const char *const kSeparator = "------------------------";
 
@@ -24,36 +29,41 @@ static void AddPropertyPair(const UString &name, const UString &val, CListViewDi
     dialog.Values.Add(val);
 }
 
-static void AddPropertyString(const CPanelProperty &prop, CListViewDialog &dialog) {
-    if (!prop.Value.IsEmpty())
-        AddPropertyPair(prop.Name, prop.Value, dialog);
+static void AddPropertyString(PROPID propID, const wchar_t *nameBSTR,
+                              const NWindows::NCOM::CPropVariant &prop, CListViewDialog &dialog) {
+    if (prop.vt != VT_EMPTY) {
+        UString val;
+
+        if (propID == kpidErrorFlags || propID == kpidWarningFlags) {
+            UInt32 flags = GetOpenArcErrorFlags(prop);
+            if (flags == 0)
+                return;
+            if (flags != 0)
+                val = GetOpenArcErrorMessage(flags);
+        }
+
+        if (val.IsEmpty()) {
+            if ((prop.vt == VT_UI8 || prop.vt == VT_UI4 || prop.vt == VT_UI2) &&
+                IsSizeProp(propID)) {
+                UInt64 v = 0;
+                ConvertPropVariantToUInt64(prop, v);
+                val = ToUString(ConvertSizeToString(v));
+            } else
+                ConvertPropertyToString2(val, prop, propID, 9);
+        }
+
+        if (!val.IsEmpty()) {
+            if (propID == kpidErrorType)
+                AddPropertyPair(L"Open WARNING:", L"Cannot open the file as expected archive type",
+                                dialog);
+            AddPropertyPair(GetNameOfProperty(propID, nameBSTR), val, dialog);
+        }
+    }
 }
 
-static void AddPropertyString(UInt32 propID, UInt64 val, CListViewDialog &dialog) {
-    const char *name = "";
-    switch (propID) {
-    case kpidNumSubDirs:
-        name = "Папок";
-        break;
-    case kpidNumSubFiles:
-        name = "Файлов";
-        break;
-    case kpidSize:
-        name = "Размер";
-        break;
-    case kpidPackSize:
-        name = "Сжатый размер";
-        break;
-    }
-    UString value;
-    if (propID == kpidSize || propID == kpidPackSize)
-        value = ToUString(ConvertSizeToString(val));
-    else {
-        wchar_t temp[32];
-        ConvertUInt64ToString(val, temp);
-        value = temp;
-    }
-    AddPropertyPair(ToUString(QString::fromUtf8(name)), value, dialog);
+static void AddPropertyString(PROPID propID, UInt64 val, CListViewDialog &dialog) {
+    NWindows::NCOM::CPropVariant prop = val;
+    AddPropertyString(propID, NULL, prop, dialog);
 }
 
 void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices, bool archive,
@@ -71,10 +81,7 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices, bool archi
                 NWindows::NCOM::CPropVariant prop;
                 if (_folder->GetProperty(index, propID, &prop) != S_OK)
                     continue;
-                // Qt snapshot provides localized, preformatted BSTR values.
-                // Full source formatting/raw/archive properties remain open.
-                if (prop.vt == VT_BSTR && prop.bstrVal)
-                    AddPropertyString({UString(name), UString(prop.bstrVal)}, message);
+                AddPropertyString(propID, name, prop, message);
             }
         }
         AddSeparator(message);
@@ -103,6 +110,8 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices, bool archi
         if (numFiles != 0)
             AddPropertyString(kpidNumSubFiles, numFiles, message);
         AddPropertyString(kpidSize, unpackSize, message);
+        // Legacy Qt snapshots have no filesystem packed-size metadata yet.
+        // Remove this visibility adaptation with live binding in c2c.
         if (archive)
             AddPropertyString(kpidPackSize, packSize, message);
         AddSeparator(message);

@@ -416,7 +416,7 @@ P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2a | Compile unchanged portable PropVariantConv/PropIDUtils and required FileLink dependencies; typed strings/numeric/bool/time/attributes/reparse/invalid-input formatting regressions; no duplicate formatter | P0-02.2b3b3c1 | done — audit § P0-02.2b3b3c2a; focused 10/10, ASan 1/1, check.sh 65/65, vendor bytes 61/61; macOS 2026-09-29; Windows native link operation dependencies remain mandatory P2-05/P3-05 |
-| P0-02.2b3b3c2b | Source property-name/PanelMenu formatting branches and required folder-property gaps; narrow Qt resource and platform services; catalog/unknown/error behavior tests | P0-02.2b3b3c2a | active — b1–b3 below |
+| P0-02.2b3b3c2b | Source property-name/PanelMenu formatting branches and required folder-property gaps; narrow Qt resource and platform services; catalog/unknown/error behavior tests | P0-02.2b3b3c2a | done — scoped formatter/cache b1–b3 verified; live archive catalog and complete Properties integration remain c2c |
 | P0-02.2b3b3c2c | Live Properties binding/operated indices, remove window metadata snapshots, normal/flat/four-view size/metadata/geometry acceptance and existing direct consumers | P0-02.2b3b3c2b | todo |
 
 P0-02.2b3b3c2a commit: `47f562b`. Formatter integration prerequisites split before
@@ -426,7 +426,7 @@ code; no missing required source property is treated as N/A.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2b1 | CFSFolder source cached PackSize branch and native Windows compressed-size helper; source fallback on unsupported POSIX API, typed/cached/normal-flat/catalog and existing filesystem consumers | P0-02.2b3b3c2a | done — audit § P0-02.2b3b3c2b1; focused 5/5, check.sh 65/65; macOS 2026-09-29; native allocation metadata remains mandatory |
 | P0-02.2b3b3c2b2 | Original property-name/resource lookup and error/size formatting dependencies; narrow Qt resource adapter, source resource IDs, unknown/custom fallback and localized error checks | P0-02.2b3b3c2b1 | done — a–c verified below; formatter consumer remains b3 |
-| P0-02.2b3b3c2b3 | Original PanelMenu typed formatting/item property branches, catalog/unknown/error/aggregate tests, preserve scoped raw/archive-level mandatory omissions | P0-02.2b3b3c2b2 | todo |
+| P0-02.2b3b3c2b3 | Original PanelMenu typed formatting/item property branches, catalog/unknown/error/aggregate tests, preserve scoped raw/archive-level mandatory omissions | P0-02.2b3b3c2b2 | done — audit § P0-02.2b3b3c2b3; focused 7/7, check.sh 70/70, two normal/compact typed JSON reports reviewed; macOS 2026-09-29; temporary legacy snapshot packed-size visibility remains mandatory c2c |
 
 P0-02.2b3b3c2b1 commit: `d41d64c`. Dependency owners split before code:
 

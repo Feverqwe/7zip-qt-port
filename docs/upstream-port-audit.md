@@ -8,6 +8,54 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2b3 — original PanelMenu typed properties (2026-09-29)
+
+Project baseline `e749ee6`; pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+CPP/7zip/UI/FileManager/PanelMenu.cpp AddPropertyString both overloads are copied
+completely: VT_EMPTY skip, original error/warning flags conversion/zero skip,
+UI8/UI4/UI2 plus IsSizeProp grouped-size branch, native ConvertPropertyToString2
+with source precision 9, empty formatted suppression, original ErrorType warning
+pair and GetNameOfProperty lookup. UInt64 overload constructs the original
+CPropVariant and delegates to the same helper, removing independently written
+caption/number switches. Original UString, PROPID, variant types and control
+flow are retained; fully qualifying NCOM and ToUString at the existing QString
+size formatter return are narrow adaptations, plus includes/project formatting.
+
+Single-item enumeration now calls that original helper after the original
+GetPropertyInfo/GetProperty success checks, replacing the independent BSTR-only
+restriction. Existing source aggregate loop now shares typed caption/formatting;
+counts group digits as source IsSizeProp requires. sevenzip_panel links the
+existing sevenzip_filesystem formatter owner; no module implementation is copied
+again. A public test-only typed folder contract fixture drives complete catalogs,
+unknown/custom names, typed sizes/counts/date/CRC/bool, empty/zero and failed
+descriptor/read paths, combined flags/invalid types and expected-type warning.
+
+Mandatory partial scope: window still creates legacy Qt Properties snapshots.
+Its archive-only packed aggregate visibility adaptation remains until c2c live
+binding supplies native filesystem packed metadata; no fabricated filesystem
+packed value is added. Source always-visible packed aggregate branch must be
+restored there. Folder/archive-level properties, _folderRawProps and archive
+levels remain P0-03/P0-04/P1-10; source native filesystem shell Properties path
+remains P2-09. Full CPanel::Properties/PanelMenu is not claimed complete by these
+helper bodies. Original warning English literals remain language work P1-14.
+
+Visible count-grouping and typed formatting checks use the existing two-column
+Properties text specification and source ListViewDialog.rc order, at normal
+540×360 and compact 360×240. Current-build typed reports check unclipped
+list/header/footer, separated buttons, full value retention, displayed source
+truncation and LF normalization. No screenshots or rendered Windows reference
+are available/required for this structural check.
+
+Validation macOS arm64, 2026-09-29: affected application/Properties/panel targets
+build; final focused 7/7 (0.91 s); scripts/check.sh formatting/full build/CTest
+70/70 (35.34 s). Initial geometry fixture needed the concrete QAbstractButton
+include, corrected before passing checks. Reviewed current-build JSON reports
+typed-properties-540/-360: list [11,11,518,307]/[11,11,338,187], visible header,
+footer [11,324,518,25]/[11,204,338,25], separated visible OK/Cancel controls.
+Counts remain 39 source cpp, 33 mirrored UI paths, 64 vendored files plus license.
+Windows/Linux runtime and rendered Windows parity remain unverified locally.
+
 ## P0-02.2b3b3c2b2c — source archive error property helpers (2026-09-29)
 
 Project baseline `607eec5`; pinned [ip7z/7zip

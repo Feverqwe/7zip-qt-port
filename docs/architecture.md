@@ -19,6 +19,12 @@ The same generated resource bundle includes unchanged Extract.rc. Source
 OpenArchive/ExtractCallback error-property helpers are compiled in sevenzip_panel
 for presentation consumers; they do not introduce engine opening/extraction in
 widgets or move ArchiveBackend's operation boundary.
+PanelMenu now calls the original typed property helper for every successfully
+read item property and for numeric aggregate totals. sevenzip_panel links the
+existing native property formatter owner sevenzip_filesystem; no duplicate
+formatting implementation is added. The window's Properties snapshot caller and
+its temporary filesystem packed-size visibility remain live-binding migration
+scope, while raw/archive-level/shell capabilities retain their mandatory owners.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single

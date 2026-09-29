@@ -78,6 +78,7 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
+target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
@@ -421,6 +422,13 @@ if(BUILD_TESTING)
     qt_add_executable(archive_error_properties_tests tests/archive_error_properties_tests.cpp)
     target_link_libraries(archive_error_properties_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME archive_error_properties COMMAND archive_error_properties_tests)
+
+    qt_add_executable(panel_property_tests tests/panel_property_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(panel_property_tests PRIVATE tests)
+    target_link_libraries(panel_property_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME panel_property COMMAND panel_property_tests)
+    set_tests_properties(panel_property PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     add_test(NAME resource_strings_generator COMMAND "${CMAKE_COMMAND}"
         "-DPROJECT_ROOT=${CMAKE_CURRENT_SOURCE_DIR}" "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/resource-strings-tests"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/rc_strings_tests.cmake")

@@ -1,5 +1,13 @@
 # Regression strategy
 
+`panel_property` exercises the original PanelMenu typed formatting through a
+public IFolderFolder fixture: known/custom catalog names, UI2/UI4/UI8 sizes and
+counts, maximum values, CRC, boolean, nanosecond timestamps, absent/empty/zero
+values, failed property descriptors/reads, error flags and expected-type warning.
+Aggregate counts use the same source formatter. Normal/compact typed-property
+dialog reports verify list/header/footer visibility and separation; full values
+remain intact while display text applies ListViewDialog truncation/LF rules.
+
 `archive_error_properties` verifies original OpenArchive error-property type
 rules (absent versus defined zero, UI4/UI8 narrowing, invalid-type exception),
 ExtractCallback flag ordering, encrypted-header password hints and unknown-bit

@@ -125,6 +125,10 @@ then ` ...`; CRLF/LF become spaces. Copy and Enter/double-click detail
 use the full value. Delete is disabled for properties.
 Geometry: list/header/footer at 540×360 and 360×240, long Unicode paths and
 horizontal scrolling. Test coverage is described in [testing](testing.md).
+`panel_property` writes `typed-properties-540` and `typed-properties-360` reports
+with source typed maximum-size and multiline error values. List/header/footer
+remain visible and separated; names/values remain two columns, long values use
+the existing source truncation/detail contract and error LF displays as spaces.
 Only structural Qt usability is verified; a rendered Windows reference
 was unavailable.
 

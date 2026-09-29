@@ -7,6 +7,17 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2b3 replaces the Properties BSTR-only formatting restriction with
+original PanelMenu typed branches, including defined zero versus absence,
+grouped sizes/counts, CRC/boolean/time formatting, error flags and expected-type
+warning. Aggregate counts above 999 now use the same source grouping. Original
+warning literals remain English pending full language work. Properties window
+still receives legacy snapshots; live owner binding and filesystem packed-size
+visibility remain mandatory c2c, not N/A. Raw/archive-level/shell capabilities
+remain P0-03/P0-04/P1-10/P2-09. The reference is PanelMenu.cpp and
+ListViewDialog.cpp/.rc; normal/compact Qt geometry cannot verify rendered Windows
+parity without a Windows runtime reference.
+
 P0-02.2b3b3c2b2c adds original archive error-property conversion and message
 branches: source bit ordering, encrypted-header password hint, and unknown bits
 preserved as hexadecimal. Source ExtractRes.h/Extract.rc IDs/texts back the
