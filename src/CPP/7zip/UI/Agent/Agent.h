@@ -29,6 +29,8 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     CProxyItem GetItem(unsigned index) const;
     // Read-only Qt presentation access to the source owner's authoritative tree.
     const CProxyArc &GetProxy() const { return *_proxy; }
+    // Read-only 7zz transport boundary for original archive-index Path queries.
+    IFolderFolder *GetArchiveProperties() const { return _archiveProps; }
 
   private:
     void LoadFolder(unsigned dirIndex);

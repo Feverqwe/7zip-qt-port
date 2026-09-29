@@ -415,6 +415,13 @@ if(BUILD_TESTING)
     add_test(NAME properties_runtime COMMAND properties_runtime_tests)
     set_tests_properties(properties_runtime PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/properties-runtime-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(archive_selection_runtime_tests tests/archive_selection_runtime_tests.cpp ${panel_sort_sources})
+    target_include_directories(archive_selection_runtime_tests PRIVATE src tests)
+    target_link_libraries(archive_selection_runtime_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
+    target_sources(archive_selection_runtime_tests PRIVATE src/mainwindow_filedelete.cpp)
+    add_test(NAME archive_selection_runtime COMMAND archive_selection_runtime_tests)
+    set_tests_properties(archive_selection_runtime PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-selection-runtime-settings.ini")
     qt_add_executable(property_formatting_tests tests/property_formatting_tests.cpp)
     target_link_libraries(property_formatting_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME property_formatting COMMAND property_formatting_tests)
@@ -535,7 +542,7 @@ endif()
 foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests panel_sort_tests combine_name_tests
-    panel_key_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests)
+    panel_key_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_location sevenzip_folder_loader)
     endif()

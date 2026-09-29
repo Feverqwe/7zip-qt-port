@@ -191,7 +191,7 @@ class MainWindow : public QMainWindow {
     void startFileDelete(const QStringList &paths);
     void renameSelected();
     void addSources(const QStringList &sources);
-    QStringList selectedArchivePaths() const;
+    QStringList selectedArchivePaths();
 
     ArchiveBackend *backend_ = nullptr;
     struct ArchiveParent {

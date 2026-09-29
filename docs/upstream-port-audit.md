@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b2 — source-owned archive selection paths (2026-09-29)
+
+Project baseline `9829490`; same pinned ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Existing original PanelItems
+Get_ItemIndices_Operated and Agent.cpp GetRealIndices own selection and archive
+mapping. MainWindow's integration adapter synchronizes Qt selection through
+SaveSelectedState, gets source operated indices and delegates mapping to the
+bound owned CAgentFolder. It queries original full Path values from the immutable
+typed archive provider, matching original engine GetArchive()->GetProperty
+(arcIndex, kpidPath) at the process boundary. Remove Qt path/directory/proxy-index
+roles, independent proxy expansion and entries_ path reconstruction from this
+consumer. Narrow read-only GetArchiveProperties accessor exposes the existing
+retained transport interface; it contains no functional algorithm.
+
+Local integrations: synchronization remains temporary until full OnNotify;
+QStringList converts BSTR paths to the ArchiveBackend request boundary and
+deduplicates overlapping source results. Failed/type-invalid Path query returns
+an empty request atomically, with no partial operation/fallback to row metadata.
+The 7zz consumer retains its existing selected-folder expansion policy, passing
+includeFolderSubItemsInFlatMode=true. The original engine Extract passes false;
+this explicit transport policy preserves current Copy/Move/hash directory
+workflows pending mandatory source Extract integration P0-12, and is not claimed
+full Extract parity. ArchiveBackend still owns arguments, validation and process
+operations. No codec/format implementation or command syntax enters widgets.
+
+Dedicated archive_selection_runtime covers normal/flat/four views, corrupted
+Qt path/directory/proxy roles with intact source item parameters, directory+file
+overlap, source archive ordering and duplicate basenames. Public selected
+extraction, Copy, Move and hash extraction use source paths; Cancel/failed Copy
+returns to idle, cancelled Move never removes entries. This is selected-path
+integration acceptance, not full operation success/callback/format acceptance.
+
+Remaining consumer inventory: filesystem selectedFilesystemPaths, single-item
+rename/view/edit/open paths, and hashSelection_ result targets still use rows;
+they remain explicit b3 work, inspected/split before changes. Current location
+fields, full BindToPath/LoadFullPath/outer stack stay mandatory b3c/d and P0-04.
+No new UI presentation; appearance inspection is unnecessary for this iteration.
+
+Validation macOS arm64, 2026-09-29: affected application/selection/mapping and
+direct consumer targets built. Initial focused selection/mapping checks passed
+2/2 (0.92 s); expanded operation/loading/Properties/hash consumers passed 7/7
+(6.26 s). Mandatory check.sh passed 74/74 (32.76 s) and git diff --check passed.
+Windows/Linux runtime remains unverified locally; source/vendor counts unchanged
+and upstream remains read-only. Remaining b3 consumers and c3 parent stay open.
+
 ## P0-02.2b3b3c3b1 — source operated-to-archive index mapping (2026-09-29)
 
 Project baseline `7c52e61`; exact [ip7z/7zip

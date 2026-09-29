@@ -7,6 +7,15 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b2 routes selected archive extraction/Copy/Move/hash extraction
+paths through source operated and real indices plus the owner's full Path
+metadata. Display roles cannot substitute paths; requests follow source archive
+order and deduplicate overlap at the 7zz boundary. The current selected-folder
+expansion policy remains true in flat mode, explicitly differing from native
+engine Extract's false flag until mandatory P0-12 integration. Remaining
+single-item/filesystem/hash-result consumers and full operation acceptance stay
+open. Visible UI is unchanged.
+
 P0-02.2b3b3c3b1 adds the original normal/flat real-index mapping and unchanged
 HeapSort dependency. Normal directory selection expands descendants; flat
 mapping distinguishes explicit archive entries and implicit folders and retains

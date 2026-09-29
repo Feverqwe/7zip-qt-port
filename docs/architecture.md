@@ -36,6 +36,14 @@ Directory counts come from the source proxy, while transport file counts remain
 absent. Failed catalog queries do not publish an owner. External-proxy
 compatibility delegation is removed; every initialized folder retains its agent.
 Transport descriptors do not imply full engine metadata.
+Archive selected-path requests synchronize source operated indices and delegate
+their mapping to CAgentFolder::GetRealIndices. A narrow read-only transport
+accessor supplies immutable full Path values by archive index; window path/
+directory/proxy presentation roles and entries_ are not this consumer's metadata
+source. QStringList conversion and overlap deduplication are integration glue.
+The current 7zz flat directory expansion flag remains explicit until source
+Extract integration; single-item/filesystem/hash-result path consumers are
+following migration work.
 The existing supplied archive Modified text is retained as sparse MTimeText
 compatibility data, advertised as VT_BSTR rather than pretending it is FILETIME.
 Native archive time parsing/precision/timezone work remains P0-03/P0-04.

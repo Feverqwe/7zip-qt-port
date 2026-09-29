@@ -1,5 +1,13 @@
 # Regression strategy
 
+`archive_selection_runtime` corrupts Qt path/directory/proxy presentation roles
+while retaining source indices and verifies selected extraction, Copy, Move and
+hash extraction paths in normal/flat/four views. Source archive order, selected
+folder/file overlaps, duplicate basenames, dialog Cancel, failed Copy and
+cancelled Move without removal are checked through the public window/backend
+boundary. Native engine flat expansion policy/full operation acceptance and
+remaining single-item/filesystem/hash-result path consumers stay mandatory.
+
 `agent_real_indices` verifies original owned-folder mapping from selected source
 items to archive indices: normal recursive expansion, flat implicit/explicit
 directories, both flat recursion policies, empty output replacement, preserved

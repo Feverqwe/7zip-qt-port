@@ -194,22 +194,30 @@ void MainWindow::refreshActions() {
     path_->setReadOnly(!navigating);
 }
 
-QStringList MainWindow::selectedArchivePaths() const {
+QStringList MainWindow::selectedArchivePaths() {
     QStringList paths;
     if (state_ != State::Viewing)
         return paths;
-    for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
-        const auto *item = table_->item(index.row(), 0);
-        const QString path = item->data(Qt::UserRole).toString();
-        if (!item->data(Qt::UserRole + 1).toBool()) {
-            paths << path;
-            continue;
-        }
-        const unsigned dirIndex = item->data(Qt::UserRole + 4).toUInt();
-        CUIntVector realIndices;
-        archiveProxy().AddRealIndices(dirIndex, realIndices);
-        FOR_VECTOR(i, realIndices)
-        paths << entries_[realIndices[i]].path;
+    CPanel &panel = app_.GetFocusedPanel();
+    if (!panel.GetFolder())
+        return paths;
+    CSelectedState selection;
+    panel.SaveSelectedState(selection);
+    CRecordVector<UInt32> indices;
+    panel.Get_ItemIndices_Operated(indices);
+    auto *folder = static_cast<CAgentFolder *>(panel.GetFolder());
+    CUIntVector realIndices;
+    // Preserve the 7zz selected-directory transport policy until source Extract
+    // integration (P0-12); the original engine Extract passes false here.
+    folder->GetRealIndices(indices.ConstData(), indices.Size(), false, true, realIndices);
+    IFolderFolder *properties = folder->GetArchiveProperties();
+    if (!properties)
+        return paths;
+    FOR_VECTOR(i, realIndices) {
+        NWindows::NCOM::CPropVariant path;
+        if (properties->GetProperty(realIndices[i], kpidPath, &path) != S_OK || path.vt != VT_BSTR)
+            return {};
+        paths << ToQString(UString(path.bstrVal));
     }
     paths.removeDuplicates();
     return paths;
