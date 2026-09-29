@@ -1,5 +1,10 @@
 # Regression strategy
 
+`property_classification` verifies the source PanelListNotify numeric property
+contract: byte sizes, counts and offsets use grouped decimal formatting;
+timestamps, CRC, inode/address IDs and error flags do not. It complements
+`property_formatting` and `panel_copy_info`; PanelMenu integration is separate.
+
 `property_formatting` checks compiled upstream PropVariantConv/PropIDUtils with
 empty, unsigned maximum, signed, boolean and Unicode properties; CRC, attributes,
 inode/address formatting; UTC nanosecond precision and zero-time suppression.

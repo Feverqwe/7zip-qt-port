@@ -8,6 +8,29 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2b2a — source numeric property classification (2026-09-29)
+
+Project baseline `d41d64c`; pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+CPP/7zip/UI/FileManager/PanelListNotify.cpp IsSizeProp is copied in full, with
+the original switch, all 22 cases and false fallback. Only project formatting
+and throw() to noexcept change; original UINT/PROPIDs are retained. This adds
+the missing dependency for PanelMenu's numeric size/count formatting, without
+another classifier. Existing ConvertSizeToString remains its authoritative
+formatter. Size/count/offset/stream/error-count properties are distinguished
+from timestamps, checksum, inode/address identifiers and error flags.
+
+Public classification regression is a focused test target. No visible text or
+layout changes in this dependency substep. PanelMenu use, property resources,
+error text and live Properties binding remain mandatory following substeps;
+full PanelListNotify notification/selection/column logic is not completed.
+
+Validation macOS arm64, 2026-09-29: affected application/test targets build;
+focused classification/formatting/copy/properties/folder tests 5/5 (0.88 s);
+scripts/check.sh formatting, full build and CTest 66/66 (34.43 s). Initial gate
+rejected include ordering; clang-format corrected it before the passing gate.
+No Windows/Linux runtime or rendered UI claim is made.
+
 ## P0-02.2b3b3c2b1 — source filesystem packed-size property (2026-09-29)
 
 Project baseline `47f562b`; unchanged pinned source [ip7z/7zip

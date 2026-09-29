@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelListNotify.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // The integer formatting algorithm is copied; QString replaces UString.
+#include "7zip/PropID.h"
 #include "Panel.h"
 
 #define INT_TO_STR_SPEC(v)                                                                         \
@@ -51,4 +52,33 @@ QString ConvertSizeToString(UInt64 value) {
     wchar_t s[32];
     ConvertSizeToString(value, s);
     return QString::fromWCharArray(s);
+}
+
+bool IsSizeProp(UINT propID) noexcept {
+    switch (propID) {
+    case kpidSize:
+    case kpidPackSize:
+    case kpidNumSubDirs:
+    case kpidNumSubFiles:
+    case kpidOffset:
+    case kpidLinks:
+    case kpidNumBlocks:
+    case kpidNumVolumes:
+    case kpidPhySize:
+    case kpidHeadersSize:
+    case kpidTotalSize:
+    case kpidFreeSpace:
+    case kpidClusterSize:
+    case kpidNumErrors:
+    case kpidNumStreams:
+    case kpidNumAltStreams:
+    case kpidAltStreamsSize:
+    case kpidVirtualSize:
+    case kpidUnpackSize:
+    case kpidTotalPhySize:
+    case kpidTailSize:
+    case kpidEmbeddedStubSize:
+        return true;
+    }
+    return false;
 }
