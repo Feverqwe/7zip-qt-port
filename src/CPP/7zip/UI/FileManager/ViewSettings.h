@@ -5,6 +5,19 @@
 #include "Common/MyString.h"
 #include <QStringList>
 
+const UInt32 kListMode_Report = 3;
+
+struct CListMode {
+    UInt32 Panels[2];
+    void Init() { Panels[0] = Panels[1] = kListMode_Report; }
+    CListMode() { Init(); }
+    void Save(const QString &settingsPath) const;
+    void Read(const QString &settingsPath);
+};
+
+void SavePanelPath(UInt32 panel, const UString &path, const QString &settingsPath);
+bool ReadPanelPath(UInt32 panel, UString &path, const QString &settingsPath);
+
 void SaveFolderHistory(const UStringVector &folders, const QString &settingsPath);
 void ReadFolderHistory(UStringVector &folders, const QString &settingsPath);
 void SaveFastFolders(const UStringVector &folders, const QString &settingsPath);

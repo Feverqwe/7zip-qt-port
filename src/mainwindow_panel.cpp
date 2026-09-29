@@ -34,10 +34,7 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
     viewStack_->addWidget(table_);
     viewStack_->addWidget(iconList_);
     layout->addWidget(viewStack_);
-    int initialView = settings.value("view/mode", 3).toInt();
-    if (initialView < 0 || initialView > 3)
-        initialView = 3;
-    setViewMode(initialView);
+    setViewMode(static_cast<int>(app_.GetFocusedPanel().GetListViewMode()));
     setCentralWidget(central);
     statusBar()->showMessage("Готово");
     connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });

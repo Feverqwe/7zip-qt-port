@@ -181,10 +181,12 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
         app_.GetFocusedPanel().SaveSelectedState(selection);
         if (state_ == State::Viewing) {
             flatArchive_ = enabled;
-            settings.setValue("view/flatArchive", enabled);
+            app_.GetFocusedPanel().SetFlatModeForArc(enabled);
+            SaveFlatView(app_.GetFocusedPanelIndex(), enabled, toolbarSettingsPath());
             showArchiveFolder(archiveFolder_);
         } else if (state_ == State::Filesystem) {
             flatDisk_ = enabled;
+            app_.GetFocusedPanel().SetFlatModeForDisk(enabled);
             settings.setValue("view/flatDisk", enabled);
             showDirectory(directory_, false);
             if (scanningDisk_)

@@ -7,6 +7,21 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2 owner integration now creates the visible panel through source CApp/CPanel
+and restores per-panel ListMode/FlatViewArc settings. Original keys take precedence
+over migrated legacy Qt keys. Focus changes route through the panel's native
+CPanelCallbackImp; app instances retain separate state. Saving an open archive
+stores its outer containing directory. Shutdown disables every panel before any
+folder owner is released, after existing Qt workers quiesce. The concrete Windows
+reference is App.cpp Create/CreateOnePanel/Save/ReleaseApp and Panel.cpp
+Create/OnCreate/ReleasePanel at the audit baseline. Qt child-control construction
+retains the existing layout. Full operation-state, command/title/drop routing,
+second-panel presentation and rendered Windows acceptance remain mandatory.
+P0-02.2 owner iteration passes check.sh 121/121, 85.30 s on macOS arm64
+(2026-09-29); 16 current normal/compact archive JSON reports retain visible address
+and active lists in all normal/flat modes. P0-02.3/full parent acceptance and
+Windows/Linux/rendered Windows verification remain mandatory.
+
 P0-04.1 is accepted as an integrated prerequisite. Native component tests on macOS exercise PanelCopy into
 disk/CVirtFileSystem, nested ZIP opening in memory and return to the same parent
 folder, all-items extraction with cumulative progress, and changed-file update
@@ -23,7 +38,7 @@ internal-folder separator remains presentation only. Source parent navigation
 returns to the archive's containing directory, and missing address suffixes bind
 to their surviving ancestor. Root failure/cancel keeps the prior return-directory
 workflow and records the backend result text in status/journal. Busy commands
-and password/cancel assertions run during native modal opening. Full CApp release,
+and password/cancel assertions run during native modal opening. Full operation-state,
 external-process/editor lifecycle and final application acceptance remain open.
 The full formatting/build/CTest gate passes 119/119 on macOS arm64 (2026-09-29,
 58.65 s). Native changed-nested return updates the outer ZIP on success and keeps

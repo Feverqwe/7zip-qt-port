@@ -66,7 +66,16 @@ current CAgentFolder and engine resource; the resource stores ArchiveInfo beside
 its metadata transport. Native ReOpen/GetPathParts restore ordinary folder paths
 through a joined modal bridge. CSelectedState carries deferred parent focus into
 Qt row presentation, then is consumed; provider count changes suppress stale row
-notifications. Full CApp/panel creation/release remains mandatory P0-02 work.
+notifications. CApp now owns Create/CreateOnePanel/Save/ReleaseApp and its
+per-panel native focus callbacks. QtAppPresentation builds menus/toolbars and
+the one visible Qt panel, and migrates legacy preferences only when original
+per-panel keys are absent. CPanel owns source binding/creation defaults and
+processing state. MainWindow renders the bound filesystem provider without
+releasing/rebinding it, quiesces its current workers, then saves and releases
+the app owner. ReleaseApp disables all panels before any ReleasePanel call.
+Full operation-state acceptance remains P0-02.3; source command/title/drop
+routing, periodic model refresh and the second visible panel remain their
+mandatory P0-03/P0-05/P0-08 owners.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
 and archive paths. Expanded extraction requests use real indices and typed Path;
@@ -83,7 +92,8 @@ ArchiveBackend::cancelAndWait is the transport quiescence boundary for destructi
 stop process writes before a window releases temporary source/destination paths.
 MainWindow disconnects backend/scanner callbacks before invoking it; backend
 completion retains operation-specific cancellation cleanup. Ordinary cancel remains
-asynchronous. Complete source CApp/panel/parent-stack release is still mandatory.
+asynchronous. Source CApp/panel/parent-stack release is connected; complete
+operation-state and window-close acceptance remains mandatory P0-02.3.
 
 The owned-provider/selected-consumer lifecycle is a prerequisite for native stack
 integration. Broader runtime acceptance stays open until original parent/path

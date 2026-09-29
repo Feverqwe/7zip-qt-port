@@ -67,7 +67,8 @@ void MainWindow::renderBoundFolder() {
         const QString directory = panel.GetFolder()
                                       ? QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder())))
                                       : returnDirectory_;
-        showDirectory(directory.isEmpty() ? returnDirectory_ : directory, false);
+        showDirectory(directory.isEmpty() ? returnDirectory_ : directory, false,
+                      panel.GetFolder() && panel.IsFSFolder());
         if (selection && !scanningDisk_)
             panel.RefreshListCtrl(*selection);
         refreshActions();

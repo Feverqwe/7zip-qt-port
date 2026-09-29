@@ -21,10 +21,12 @@
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <functional>
 #include <memory>
 #include <optional>
 
 class CFolderHistory;
+struct CAppState;
 class CFastFolders;
 class CListViewDialog;
 class QWidget;
@@ -177,6 +179,28 @@ class CPanel : public QObject {
     ~CPanel() override;
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
     explicit CPanel(IFolderFolder *folder);
+    void ReleasePanel();
+    HRESULT Create(QWidget *mainWindow, QWidget *parentWindow, UINT id,
+                   const UString &currentFolderPrefix, const UString &arcFormat,
+                   CPanelCallback *panelCallback, CAppState *appState, bool needOpenArc,
+                   COpenResult &openRes);
+    bool OnCreate();
+    // Replaces CreateEx and Win32 child-control construction, not path binding.
+    void AttachCreationPresentation(std::function<bool(CPanel &)> create) {
+        _createPresentation = std::move(create);
+    }
+    bool PanelCreated = false;
+    UInt32 _listViewMode = 3;
+    int _xSize = 0;
+    PROPID _sortID = 0;
+    bool _ascending = true;
+    bool _mySelectMode = false;
+    bool _showDots = false;
+    bool _showRealFileIcons = false;
+    UInt32 GetListViewMode() const { return _listViewMode; }
+    bool GetFlatModeForArc() const { return _flatModeForArc; }
+    void SetFlatModeForArc(bool enabled) { _flatModeForArc = enabled; }
+    void SetFlatModeForDisk(bool enabled) { _flatModeForDisk = enabled; }
     // Qt notification adapters replace the Win32 OnNotify entry point.
     bool ShouldProcessNotifications() const { return _processNotify; }
     void Disable_Processing_Timer_Notify_StatusBar() {
@@ -295,13 +319,14 @@ class CPanel : public QObject {
     IFolderFolder *GetFolder() const { return _folder; }
     void AttachPresentation(QWidget *list, QWidget *address);
     void SetFocusToList();
+    void SetFocusToPath();
     void SetFocusToLastRememberedItem();
     void AttachSelectionView(QAbstractItemView *view) { _selectionList.Attach(view); }
     void SaveSelectedState(CSelectedState &state);
     void GetSelectedNames(UStringVector &selectedNames);
     void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;
     void Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const;
-    // Qt supplies its display prefix until source LoadFullPath/parent-stack integration.
+    // Fixture-only snapshot prefix; production consumers use LoadFullPath.
     void SetCurrentFolderPrefix(const QString &prefix) { _currentFolderPrefix = ToUString(prefix); }
     UString GetFolderTypeID() const;
     bool IsFolderTypeEqTo(const char *s) const;
@@ -340,6 +365,14 @@ class CPanel : public QObject {
     static UString OpenBookmark(CFastFolders &fastFolders, unsigned index);
 
   private:
+    friend class CApp;
+    QPointer<QWidget> _mainWindow;
+    QPointer<QWidget> _parentWindow;
+    std::function<bool(CPanel &)> _createPresentation;
+    CAppState *_appState = nullptr;
+    UINT _baseID = 0;
+    UINT _comboBoxID = 0;
+    UINT _statusBarID = 0;
     CPanelCallback *_panelCallback = nullptr;
     std::optional<CSelectedState> _refreshSelection;
     IQtExternalFileServices *_externalFileServices = nullptr;

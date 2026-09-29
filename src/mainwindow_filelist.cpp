@@ -8,7 +8,7 @@
 #include "qtlocationfolder.h"
 #include <QScopedValueRollback>
 
-void MainWindow::showDirectory(const QString &path, bool remember) {
+void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound) {
     const QFileInfo info(path);
     if (!info.isDir()) {
         statusBar()->showMessage("Папка не найдена: " + path);
@@ -21,7 +21,8 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     filesystemScanner_->cancel();
     scanningDisk_ = false;
     scanSelectedState_.reset();
-    app_.GetFocusedPanel().CloseOpenFolders();
+    if (!sourceAlreadyBound)
+        app_.GetFocusedPanel().CloseOpenFolders();
     directory_ = next;
     recordVisitedPath(directory_);
     archive_.clear();
@@ -47,7 +48,8 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     } else {
         COpenResult opened;
         auto &panel = app_.GetFocusedPanel();
-        HRESULT result = panel.BindToPath(ToUString(directory_), UString(), opened);
+        HRESULT result =
+            sourceAlreadyBound ? S_OK : panel.BindToPath(ToUString(directory_), UString(), opened);
         CMyComPtr<IFolderFolder> folder = panel.GetFolder();
         if (result == S_OK) {
             panel.LoadFullPath();

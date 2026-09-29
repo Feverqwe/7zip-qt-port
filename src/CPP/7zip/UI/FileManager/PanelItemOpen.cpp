@@ -100,7 +100,11 @@ void CPanel::MessageBox_LastError() const {
     MessageBox_Error_HRESULT(GetLastError_noZero_HRESULT());
 }
 
-QWidget *CPanel::GetParent() const { return _listView ? _listView->window() : nullptr; }
+QWidget *CPanel::GetParent() const {
+    if (_parentWindow)
+        return _parentWindow;
+    return _listView ? _listView->window() : _mainWindow.data();
+}
 
 void CPanel::MessageBox_Error(const UString &message) const {
     QMessageBox box(QMessageBox::Critical, QStringLiteral("7-Zip"),

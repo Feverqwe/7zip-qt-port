@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtassociatedfileservices.h"
 
 MainWindow::~MainWindow() {
@@ -28,6 +29,8 @@ MainWindow::~MainWindow() {
         volumeOperation_->cancel();
         volumeOperation_->wait();
     }
+    app_.Save();
+    app_.ReleaseApp();
 }
 
 void MainWindow::startVolume(VolumeOperation::Mode mode) {

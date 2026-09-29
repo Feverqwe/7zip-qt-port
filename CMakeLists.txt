@@ -105,6 +105,7 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/PanelDrag.cpp
     src/CPP/7zip/UI/GUI/HashGUI.cpp src/CPP/7zip/UI/GUI/HashGUI.h
     src/CPP/7zip/UI/FileManager/ExtractCallback.cpp src/CPP/7zip/UI/FileManager/ExtractCallback.h
     src/qtcallbackdialogs.cpp src/qtcallbackdialogs.h src/qtmodalresult.h
@@ -772,6 +773,18 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-selection-runtime-settings.ini")
     qt_add_executable(property_formatting_tests tests/property_formatting_tests.cpp)
     qt_add_executable(binding_lifecycle_tests tests/binding_lifecycle_tests.cpp ${panel_sort_sources})
+    qt_add_executable(app_lifecycle_window_tests tests/app_lifecycle_window_tests.cpp ${panel_sort_sources})
+    target_include_directories(app_lifecycle_window_tests PRIVATE src tests)
+    target_link_libraries(app_lifecycle_window_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
+    target_sources(app_lifecycle_window_tests PRIVATE src/mainwindow_filedelete.cpp)
+    add_test(NAME app_lifecycle_window COMMAND app_lifecycle_window_tests)
+    set_tests_properties(app_lifecycle_window PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/app-lifecycle-window-settings.ini")
+    qt_add_executable(app_lifecycle_tests tests/app_lifecycle_tests.cpp)
+    target_include_directories(app_lifecycle_tests PRIVATE src)
+    target_link_libraries(app_lifecycle_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME app_lifecycle COMMAND app_lifecycle_tests)
+    set_tests_properties(app_lifecycle PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     target_include_directories(binding_lifecycle_tests PRIVATE src tests)
     target_link_libraries(binding_lifecycle_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
     target_sources(binding_lifecycle_tests PRIVATE src/mainwindow_filedelete.cpp)
@@ -889,7 +902,7 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)
     set_tests_properties(application_starts PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/application-smoke-settings.ini"
     )
 endif()
 
@@ -903,6 +916,9 @@ endforeach()
 get_property(engine_consumer_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(engine_consumer IN LISTS engine_consumer_targets)
     get_target_property(engine_consumer_sources ${engine_consumer} SOURCES)
+    if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
+        target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h)
+    endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp
             src/archivebackend_sourceextract.cpp)
@@ -918,7 +934,7 @@ endif()
 foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests
-    panel_key_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests)
+    panel_key_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_location sevenzip_folder_loader)
         target_sources(${target} PRIVATE src/mainwindow_selectionpaths.cpp)

@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // GetItemsInfoString and its helpers retain upstream control flow. Qt resource
 // strings adapt language access; IFolder and variant ownership stay upstream.
+#include "App.h"
 #include "7zip/PropID.h"
 #include "AppState.h"
 #include "CopyDialog.h"
@@ -9,6 +10,185 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "qtpanelfolder.h"
+
+void CPanelCallbackImp::OnTab() {
+    if (_app->NumPanels != 1)
+        _app->Panels[1 - _index].SetFocusToList();
+    _app->RefreshTitle();
+}
+
+void CPanelCallbackImp::SetFocusToPath(unsigned index) {
+    unsigned newPanelIndex = index;
+    if (_app->NumPanels == 1)
+        newPanelIndex = _app->LastFocusedPanel;
+    _app->RefreshTitle();
+    _app->Panels[newPanelIndex].SetFocusToPath();
+}
+
+void CPanelCallbackImp::OnCopy(bool move, bool copyToSame) {
+    _app->OnCopy(move, copyToSame, _index);
+}
+void CPanelCallbackImp::OnSetSameFolder() { _app->OnSetSameFolder(_index); }
+void CPanelCallbackImp::OnSetSubFolder() { _app->OnSetSubFolder(_index); }
+void CPanelCallbackImp::PanelWasFocused() {
+    _app->SetFocusedPanel(_index);
+    _app->RefreshTitlePanel(_index);
+}
+void CPanelCallbackImp::DragBegin() { _app->DragBegin(_index); }
+void CPanelCallbackImp::DragEnd() { _app->DragEnd(); }
+void CPanelCallbackImp::RefreshTitle(bool always) { _app->RefreshTitlePanel(_index, always); }
+
+void CApp::RefreshTitle() { RefreshTitlePanel(LastFocusedPanel); }
+
+void CApp::RefreshTitlePanel(unsigned index, bool always) {
+    if (_presentation)
+        if (auto *callback = _presentation->PanelCallback(index))
+            callback->RefreshTitle(always);
+}
+
+void CApp::OnCopy(bool move, bool copyToSame, unsigned index) {
+    if (_presentation)
+        if (auto *callback = _presentation->PanelCallback(index))
+            callback->OnCopy(move, copyToSame);
+}
+
+void CApp::OnSetSameFolder(unsigned index) {
+    if (_presentation)
+        if (auto *callback = _presentation->PanelCallback(index))
+            callback->OnSetSameFolder();
+}
+
+void CApp::OnSetSubFolder(unsigned index) {
+    if (_presentation)
+        if (auto *callback = _presentation->PanelCallback(index))
+            callback->OnSetSubFolder();
+}
+
+void CApp::DragBegin(unsigned index) {
+    if (_presentation)
+        if (auto *callback = _presentation->PanelCallback(index))
+            callback->DragBegin();
+}
+
+void CApp::DragEnd() {
+    if (_presentation)
+        if (auto *callback = _presentation->PanelCallback(LastFocusedPanel))
+            callback->DragEnd();
+}
+
+HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const UString &arcFormat,
+                             bool needOpenArc, COpenResult &openRes) {
+    if (Panels[panelIndex].PanelCreated)
+        return S_OK;
+    if (!_presentation)
+        return E_NOTIMPL;
+    m_PanelCallbackImp[panelIndex].Init(this, panelIndex);
+    UString path;
+    if (mainPath.IsEmpty()) {
+        if (!ReadPanelPath(panelIndex, path, _settingsPath))
+            path.Empty();
+    } else
+        path = mainPath;
+    const unsigned id = 1000 + 100 * panelIndex; // check it
+    Panels[panelIndex].AttachCreationPresentation([this, panelIndex](CPanel &panel) {
+        return _presentation->CreatePanel(panel, panelIndex);
+    });
+    return Panels[panelIndex].Create(_window, _window, id, path, arcFormat,
+                                     &m_PanelCallbackImp[panelIndex], &AppState, needOpenArc,
+                                     openRes);
+}
+
+void CApp::SetListSettings() {
+    CFmSettings st;
+    st.Load(_settingsPath);
+    ShowSystemMenu = st.ShowSystemMenu;
+    for (unsigned i = 0; i < kNumPanelsMax; i++) {
+        CPanel &panel = Panels[i];
+        panel._mySelectMode = st.AlternativeSelection;
+        panel._showDots = st.ShowDots;
+        panel._showRealFileIcons = st.ShowRealFileIcons;
+        // Qt view styles replace LVS_EX/LVS_SINGLESEL bit fields.
+        if (_presentation)
+            _presentation->SetListSettings(i, st);
+    }
+}
+
+HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &arcFormat,
+                     int xSizes[2], bool needOpenArc, COpenResult &openRes,
+                     IQtAppPresentation &presentation, const QString &settingsPath) {
+    _window = window;
+    _presentation = &presentation;
+    _settingsPath = settingsPath;
+    // Qt menu/toolbar initialization replaces MyLoadMenu/ReadToolbar/ReloadToolbars.
+    _presentation->Initialize(*this);
+    unsigned i;
+    for (i = 0; i < kNumPanelsMax; i++)
+        Panels[i].PanelCreated = false;
+    AppState.Read(_settingsPath);
+    SetListSettings();
+    if (LastFocusedPanel >= kNumPanelsMax)
+        LastFocusedPanel = 0;
+    CListMode listMode;
+    listMode.Read(_settingsPath);
+    for (i = 0; i < kNumPanelsMax; i++) {
+        CPanel &panel = Panels[i];
+        panel._listViewMode = listMode.Panels[i];
+        panel._xSize = xSizes[i];
+        panel._flatModeForArc = ReadFlatView(i, _settingsPath);
+    }
+    for (i = 0; i < kNumPanelsMax; i++) {
+        unsigned panelIndex = i;
+        if (needOpenArc && LastFocusedPanel == 1)
+            panelIndex = 1 - i;
+        bool isMainPanel = (panelIndex == LastFocusedPanel);
+        if (NumPanels > 1 || isMainPanel) {
+            if (NumPanels == 1)
+                Panels[panelIndex]._xSize = xSizes[0] + xSizes[1];
+            COpenResult openRes2;
+            UString path;
+            if (isMainPanel)
+                path = mainPath;
+            RINOK(CreateOnePanel(panelIndex, path, arcFormat, isMainPanel && needOpenArc,
+                                 *(isMainPanel ? &openRes : &openRes2)))
+            if (isMainPanel) {
+                if (needOpenArc && !openRes.ArchiveIsOpened)
+                    return S_OK;
+            }
+        }
+    }
+    SetFocusedPanel(LastFocusedPanel);
+    Panels[LastFocusedPanel].SetFocusToList();
+    return S_OK;
+}
+
+void CApp::Save() {
+    AppState.Save(_settingsPath);
+    CListMode listMode;
+    for (unsigned i = 0; i < kNumPanelsMax; i++) {
+        const CPanel &panel = Panels[i];
+        UString path;
+        if (panel._parentFolders.IsEmpty())
+            path = panel._currentFolderPrefix;
+        else
+            path = panel._parentFolders[0].ParentFolderPath;
+        SavePanelPath(i, path, _settingsPath);
+        listMode.Panels[i] = panel.GetListViewMode();
+        SaveFlatView(i, panel._flatModeForArc, _settingsPath);
+    }
+    listMode.Save(_settingsPath);
+}
+
+void CApp::ReleaseApp() {
+    // 24.09: ReleasePanel() will stop panel timer processing.
+    // but we want to stop timer processing for all panels
+    // before ReleasePanel() calling.
+    unsigned i;
+    for (i = 0; i < kNumPanelsMax; i++)
+        Panels[i].Disable_Processing_Timer_Notify_StatusBar();
+    // It's for unloading COM dll's: don't change it.
+    for (i = 0; i < kNumPanelsMax; i++)
+        Panels[i].ReleasePanel();
+}
 
 static void AddUniqueStringToHead(UStringVector &list, const UString &s) {
     for (unsigned i = 0; i < list.Size();)

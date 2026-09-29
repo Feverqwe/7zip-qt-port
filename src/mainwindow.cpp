@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 
@@ -10,15 +11,20 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     app_.NumPanels = 1;
     folderManager_ = new QtArchiveFolderManager(*backend_);
     associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(fileOpener_);
-    app_.GetFocusedPanel().AttachFolderManager(folderManager_, toolbarSettingsPath());
-    app_.GetFocusedPanel().AttachExternalFileServices(associatedFileServices_.get());
-    app_.AppState.Read(toolbarSettingsPath());
-    QMenu *editMenu = createMenusAndToolbar();
-    createFilePanel(editMenu);
-    app_.GetFocusedPanel().AttachSelectionView(table_);
-    installEventFilter(this);
+    for (auto &panel : app_.Panels) {
+        panel.AttachFolderManager(folderManager_, toolbarSettingsPath());
+        panel.AttachExternalFileServices(associatedFileServices_.get());
+    }
+    appPresentation_ = std::make_unique<QtAppPresentation>(*this);
     connectFilesystemScanner();
-    showDirectory(QDir::currentPath(), false);
+    COpenResult opened;
+    int widths[2] = {width() / 2, width() - width() / 2};
+    const HRESULT result = app_.Create(this, ToUString(QDir::currentPath()), UString(), widths,
+                                       false, opened, *appPresentation_, toolbarSettingsPath());
+    if (result != S_OK)
+        throw result;
+    installEventFilter(this);
+    renderBoundFolder();
     refreshActions();
     connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
         if (app_.GetFocusedPanel().ShouldProcessNotifications())

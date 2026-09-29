@@ -2,10 +2,72 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "Panel.h"
 #include "7zip/PropID.h"
+#include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "Windows/WinDefs.h"
+#include <QComboBox>
 #include <QEvent>
 #include <QWidget>
+
+HRESULT CPanel::Create(QWidget *mainWindow, QWidget *parentWindow, UINT id,
+                       const UString &currentFolderPrefix, const UString &arcFormat,
+                       CPanelCallback *panelCallback, CAppState *appState, bool needOpenArc,
+                       COpenResult &openRes) {
+    _mainWindow = mainWindow;
+    _parentWindow = parentWindow;
+    _processTimer = true;
+    _processNotify = true;
+    _processStatusBar = true;
+    _panelCallback = panelCallback;
+    _appState = appState;
+    _baseID = id;
+    _comboBoxID = _baseID + 3;
+    _statusBarID = _comboBoxID + 1;
+    UString cfp = currentFolderPrefix;
+    if (!currentFolderPrefix.IsEmpty())
+        if (currentFolderPrefix[0] == L'.') {
+            FString cfpF;
+            if (NWindows::NFile::NDir::MyGetFullPathName(us2fs(currentFolderPrefix), cfpF))
+                cfp = fs2us(cfpF);
+        }
+    RINOK(BindToPath(cfp, arcFormat, openRes))
+    if (needOpenArc && !openRes.ArchiveIsOpened)
+        return S_OK;
+    // Qt service replaces CreateEx and its WM_CREATE dispatch.
+    if (!_createPresentation)
+        return E_NOTIMPL;
+    if (!OnCreate())
+        return E_FAIL;
+    PanelCreated = true;
+    return S_OK;
+}
+
+bool CPanel::OnCreate() {
+    _sortID = kpidName;
+    _ascending = true;
+    _lastFocusedIsList = true;
+    const UInt32 kNumListModes = 4;
+    if (_listViewMode >= kNumListModes)
+        _listViewMode = kNumListModes - 1;
+    // Original list/header/up/status child controls are Qt presentation. The
+    // source owner retains mode, sort, focus, binding and processing state.
+    if (!_createPresentation(*this))
+        return false;
+    RefreshListCtrl();
+    return true;
+}
+
+void CPanel::ReleasePanel() {
+    Disable_Processing_Timer_Notify_StatusBar();
+    // Local per-panel launcher replaces the original global exit owner. Join
+    // before folder cleanup, since its workers may still refer to this panel.
+    if (_exitEventLauncher)
+        _exitEventLauncher->Exit(true);
+    // It's for unloading COM dll's: don't change it.
+    CloseOpenFolders();
+    // Win32 context-menu COM objects have no Qt owner here. Their mandatory
+    // menu integration remains P0-03/P0-11; do not introduce dummy COM members.
+}
 
 CPanel::~CPanel() {
     // Native destructor folder cleanup, after stopping Qt notifications and
@@ -57,6 +119,14 @@ void CPanel::SetFocusToList() {
         _listView->setFocus();
 }
 
+void CPanel::SetFocusToPath() {
+    if (_headerComboBox) {
+        _headerComboBox->setFocus();
+        if (auto *combo = qobject_cast<QComboBox *>(_headerComboBox.data()))
+            combo->showPopup();
+    }
+}
+
 void CPanel::SetFocusToLastRememberedItem() {
     if (_lastFocusedIsList)
         SetFocusToList();
@@ -86,6 +156,8 @@ bool CPanel::eventFilter(QObject *watched, QEvent *event) {
             _lastFocusedIsList = true;
         else if (watched == _headerComboBox)
             _lastFocusedIsList = false;
+        if (_panelCallback && _processNotify)
+            _panelCallback->PanelWasFocused();
     }
     return QObject::eventFilter(watched, event);
 }

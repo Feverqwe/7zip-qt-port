@@ -1,5 +1,12 @@
 # Regression strategy
 
+`app_lifecycle` checks the source Create/CreateOnePanel, per-panel settings/focus,
+creation failure, early non-archive return and all-panel disable-before-release.
+`app_lifecycle_window` checks joined archive startup success/failure/cancel,
+legacy preference migration/source-key precedence and saving the outer archive
+parent. `application_starts` uses a build-local settings file so native CApp::Save
+does not touch personal application preferences during the smoke test.
+
 The native navigation component is exercised through root/nested/address/parent
 window consumers and native callback/transaction fixtures. `native_navigation_window`
 updates a real Unicode/space ZIP externally, refreshes its metadata/selection, and

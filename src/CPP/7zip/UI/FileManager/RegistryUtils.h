@@ -6,6 +6,8 @@
 
 // Shared Qt configuration-path adapter for callers of registry-ported modules.
 QString FmSettingsPath();
+void SaveFlatView(UInt32 panelIndex, bool enable, const QString &settingsPath);
+bool ReadFlatView(UInt32 panelIndex, const QString &settingsPath);
 void SaveRegEditor(bool useEditor, const UString &path, const QString &settingsPath);
 void ReadRegEditor(bool useEditor, UString &path, const QString &settingsPath);
 

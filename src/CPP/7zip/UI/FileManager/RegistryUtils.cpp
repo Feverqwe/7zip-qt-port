@@ -68,6 +68,24 @@ static void ReadOption(QSettings &key, const char *name, bool &dest) {
     }
 }
 
+static QString GetFlatViewName(UInt32 panelIndex) {
+    return QStringLiteral("FlatViewArc") + QString::number(panelIndex);
+}
+
+void SaveFlatView(UInt32 panelIndex, bool enable, const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.beginGroup("FM");
+    SaveOption(key, qPrintable(GetFlatViewName(panelIndex)), enable);
+}
+
+bool ReadFlatView(UInt32 panelIndex, const QString &settingsPath) {
+    bool enabled = false;
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.beginGroup("FM");
+    ReadOption(key, qPrintable(GetFlatViewName(panelIndex)), enabled);
+    return enabled;
+}
+
 void CFmSettings::Save(const QString &settingsPath) const {
     QSettings key(settingsPath, QSettings::IniFormat);
     key.beginGroup("FM");

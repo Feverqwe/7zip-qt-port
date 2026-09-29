@@ -89,6 +89,7 @@ class MainWindow : public QMainWindow {
     void testArchive();
 
   private:
+    friend class QtAppPresentation;
     QMenu *createMenusAndToolbar();
     void createFileActions(QMenu *menu, QToolBar *toolbar);
     void createFileExtras(QMenu *menu, QToolBar *toolbar);
@@ -136,7 +137,7 @@ class MainWindow : public QMainWindow {
     bool eventFilter(QObject *watched, QEvent *event) override;
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
-    void showDirectory(const QString &path, bool remember);
+    void showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     QStringList selectedPaths() const;
     void selectPaths(const QStringList &paths);
@@ -197,6 +198,7 @@ class MainWindow : public QMainWindow {
     ArchiveBackend *backend_ = nullptr;
     CMyComPtr<IFolderManager> folderManager_;
     std::unique_ptr<class QtAssociatedFileServices> associatedFileServices_;
+    std::unique_ptr<class QtAppPresentation> appPresentation_;
     std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;
     QString displayArchive_;

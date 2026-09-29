@@ -10,6 +10,48 @@ static const char *const kCopyHistoryValueName = "CopyHistory";
 static const char *const kFolderHistoryValueName = "FolderHistory";
 static const char *const kFastFoldersValueName = "FolderShortcuts";
 
+void CListMode::Save(const QString &settingsPath) const {
+    UInt32 t = 0;
+    for (int i = 0; i < 2; i++)
+        t |= (Panels[i] & 0xFF) << (i * 8);
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.setValue("ListMode", t);
+}
+
+void CListMode::Read(const QString &settingsPath) {
+    Init();
+    QSettings key(settingsPath, QSettings::IniFormat);
+    bool ok = false;
+    const qulonglong value = key.value("ListMode").toULongLong(&ok);
+    if (!ok || value > 0xFFFFFFFFu)
+        return;
+    UInt32 t = static_cast<UInt32>(value);
+    for (int i = 0; i < 2; i++) {
+        Panels[i] = t & 0xFF;
+        t >>= 8;
+    }
+}
+
+static UString GetPanelPathName(UInt32 panelIndex) {
+    UString s(L"PanelPath");
+    s.Add_UInt32(panelIndex);
+    return s;
+}
+
+void SavePanelPath(UInt32 panel, const UString &path, const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.setValue(ToQString(GetPanelPathName(panel)), ToQString(path));
+}
+
+bool ReadPanelPath(UInt32 panel, UString &path, const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    const QString name = ToQString(GetPanelPathName(panel));
+    if (!key.contains(name))
+        return false;
+    path = ToUString(key.value(name).toString());
+    return true;
+}
+
 static void SaveStringList(const char *valueName, const UStringVector &folders,
                            const QString &settingsPath) {
     QStringList strings;

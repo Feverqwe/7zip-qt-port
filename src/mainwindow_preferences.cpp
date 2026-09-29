@@ -197,7 +197,7 @@ void MainWindow::showSettings() {
     if (dialog.exec() != QDialog::Accepted)
         return;
     fileListSettings_ = dialog.settings();
-    table_->setShowGrid(fileListSettings_.ShowGrid);
+    app_.SetListSettings();
     if (state_ == State::Filesystem)
         updateFilesystemIcons();
 }
@@ -259,6 +259,7 @@ void MainWindow::setViewMode(int mode) {
     if (mode < 0 || mode > 3 || !viewStack_)
         return;
     viewMode_ = mode;
+    app_.GetFocusedPanel()._listViewMode = static_cast<UInt32>(mode);
     viewActions_[mode]->setChecked(true);
     if (mode != 3) {
         iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
@@ -270,6 +271,8 @@ void MainWindow::setViewMode(int mode) {
     }
     viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
     app_.GetFocusedPanel().AttachPresentation(viewStack_->currentWidget(), pathCombo_);
-    QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    settings.setValue("view/mode", mode);
+    CListMode modes;
+    for (unsigned i = 0; i < kNumPanelsMax; ++i)
+        modes.Panels[i] = app_.Panels[i].GetListViewMode();
+    modes.Save(toolbarSettingsPath());
 }

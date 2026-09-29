@@ -8,6 +8,68 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2 — application/panel lifecycle owner (accepted iteration, 2026-09-29)
+
+Baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip. Current internal work copies App.cpp
+CApp::ReleaseApp and Panel.cpp CPanel::ReleasePanel at their original paths.
+All panels disable timer/notify/status-bar before the first folder release,
+including the invisible panel. MainWindow calls ReleaseApp after its existing
+backend/scanner/file-operation quiescence. The local per-panel external-file
+launcher is joined before its folders are released; upstream uses a global
+launcher. Win32 context-menu COM owners are absent from the Qt port and their
+mandatory integration remains P0-03/P0-11, not a completed lifecycle dependency.
+
+ViewSettings.cpp/h CListMode::Read/Save bit packing and GetPanelPathName,
+ReadPanelPath/SavePanelPath are copied with explicit QSettings storage replacing
+Registry. The ListMode/PanelPath keys remain original; invalid or overflowing
+DWORD values retain source defaults. RegistryUtils.cpp/h ReadFlatView/SaveFlatView
+use the original per-panel FM/FlatViewArc keys and existing bool registry adapter.
+These persistence dependencies are internal to the owner iteration.
+
+App.cpp/h now copies Create/CreateOnePanel/Save creation and persistence control
+flow: visible-panel filtering, invalid focus fallback, combined one-panel width,
+main archive owner attempted first, needOpenArc early return and per-panel
+settings. CPanelCallbackImp retains its original class/path and index/focus/tab
+routing. The former g_App reference in OnTab is per-instance `_app`. Panel.cpp/h
+copies Create path normalization/binding, needOpenArc and creation result rules,
+and OnCreate name-sort/ascending/list-focus defaults and view-mode clamping.
+QtAppPresentation replaces Win32 menu/toolbar/child-control construction. It
+provides the existing single visible panel; the second presentation/splitter is
+mandatory P0-08. PanelDrag.cpp retains the SetFocusedPanel owner assignment at
+its source path; CDropTarget synchronization remains mandatory P0-08.
+
+MainWindow now invokes CApp::Create rather than constructing the panel directly;
+rendering an already bound filesystem folder does not close/rebind its source
+owner. Native panel callbacks own focus changes. Qt teardown suppresses callback
+dispatch after notification shutdown; guarded Qt widget references replace HWND.
+SetListSettings retains CFmSettings values for all panels and passes view styles
+to the Qt adapter. CApp::Save runs after workers quiesce and before ReleaseApp,
+and stores the outer archive's parent rather than an internal virtual folder.
+The legacy view/mode and view/flatArchive keys migrate once only when the source
+per-panel keys are absent. Source keys take precedence; ongoing view/flat changes
+use CListMode/SaveFlatView. Disk flat compatibility state remains a Qt scanner
+integration constraint pending P0-05. Source complete RefreshListCtrl/OnTimer,
+command/title/drop bodies and full Win32 menu-equivalent integration remain
+mandatory P0-03/P0-05/P0-08/P0-11. Their current Qt consumers are not source
+completion evidence; the owner callback boundary does not claim these bodies.
+
+Focused owner/window builds pass. app_lifecycle/binding_lifecycle/settings/
+panel_focus pass 4/4, 4.90 s on macOS arm64 2026-09-29 before additional startup
+fixtures. Native owner fixtures cover disable-all-before-release, hidden owner,
+idempotence, source settings, creation failure, early non-archive return and
+separate panel state. New window fixtures check preference migration/precedence
+and outer parent persistence. Initial flat fixture expected one row, but native
+flat traversal includes its implicit directory too; the corrected fixture checks
+both rows and the visible child. Final owner/window focused checks pass 2/2,
+0.87 s, including archive startup success/failure/cancel. Final check.sh
+formatting/build/all CTest PASS 121/121, 85.30 s, macOS arm64 2026-09-29,
+/tmp/sevenzip-p0-02-2-check.log. The 16 current full-gate archive-runtime reports
+show address and active views fully visible at normal/compact sizes in all four
+normal/flat modes. Required formatting is separate from functional adaptations.
+Windows/Linux runtime and rendered Windows parity remain unverified. The
+integrated owner iteration is accepted; P0-02.3/full parent acceptance is mandatory.
+
 ## P0-04.1 — source navigation/parent-stack component (accepted prerequisite, 2026-09-29)
 
 Latest internal scope (2026-09-29; supersedes earlier partial callback snapshots):
@@ -68,7 +130,7 @@ visible at 980×620 and 640×480 in all four normal/flat modes. No Windows rende
 reference or Windows/Linux runtime validation is claimed. All 88 newly vendored
 files match the exact recorded upstream baseline byte-for-byte. Required formatting
 of adapted src/tests is separate from functional adaptations. The prerequisite
-is ready for one integrated commit; full P0-04/P0-03 command acceptance,
+was committed as `d0bc1d2`; full P0-04/P0-03 command acceptance,
 known/editor/child-process workflows, model/transport and other parent omissions
 remain mandatory under their recorded owners.
 
