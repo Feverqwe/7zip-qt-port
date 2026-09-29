@@ -1,5 +1,11 @@
 # Regression strategy
 
+`archive_property_catalog` checks the immutable 7zz property provider's canonical
+Path/Size/PackSize descriptors, full Unicode/space paths, absent versus maximum/
+zero values, empty input, bad indices, factory ownership and preservation of
+legacy custom-property callers. Folder-side source catalog expansion and live
+Properties acceptance are separate following checks.
+
 `panel_property` exercises the original PanelMenu typed formatting through a
 public IFolderFolder fixture: known/custom catalog names, UI2/UI4/UI8 sizes and
 counts, maximum values, CRC, boolean, nanosecond timestamps, absent/empty/zero

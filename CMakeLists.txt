@@ -429,6 +429,10 @@ if(BUILD_TESTING)
     add_test(NAME panel_property COMMAND panel_property_tests)
     set_tests_properties(panel_property PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+
+    qt_add_executable(archive_property_catalog_tests tests/archive_property_catalog_tests.cpp)
+    target_link_libraries(archive_property_catalog_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME archive_property_catalog COMMAND archive_property_catalog_tests)
     add_test(NAME resource_strings_generator COMMAND "${CMAKE_COMMAND}"
         "-DPROJECT_ROOT=${CMAKE_CURRENT_SOURCE_DIR}" "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/resource-strings-tests"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/rc_strings_tests.cmake")

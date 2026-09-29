@@ -7,6 +7,13 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2ca1 makes the archive transport provider's Path/Size/PackSize
+catalog explicit, with native source types and no fabricated absent values.
+This prerequisite changes no displayed dialog; source folder catalog expansion
+and live Properties integration follow. Full engine metadata remains mandatory
+P0-03/P0-04/P1-10. It does not establish a complete Properties workflow or
+Windows rendered/runtime parity.
+
 P0-02.2b3b3c2b3 replaces the Properties BSTR-only formatting restriction with
 original PanelMenu typed branches, including defined zero versus absence,
 grouped sizes/counts, CRC/boolean/time formatting, error flags and expected-type

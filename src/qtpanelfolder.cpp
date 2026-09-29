@@ -4,10 +4,14 @@
 
 namespace {
 constexpr PROPID kSnapshotProperty = 0x10000;
-}
+const PROPID kArchiveProperties[] = {kpidPath, kpidSize, kpidPackSize};
+} // namespace
 
-QtPanelFolder::QtPanelFolder(const QString &prefix, const CObjectVector<CPanelItem> &items)
-    : prefix_(prefix), items_(items) {
+QtPanelFolder::QtPanelFolder(const QString &prefix, const CObjectVector<CPanelItem> &items,
+                             PropertyCatalog catalog)
+    : prefix_(prefix), items_(items), catalog_(catalog) {
+    if (catalog_ == PropertyCatalog::ArchiveTransport)
+        return;
     // Names are already localized/formatted by the Qt property presentation.
     // Describe their union once; missing values use the source VT_EMPTY contract.
     FOR_VECTOR(i, items_)
@@ -36,6 +40,9 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
     NWindows::NCOM::CPropVariant prop;
     const int separator = item.RelPath.lastIndexOf('/');
     switch (id) {
+    case kpidPath:
+        prop = ToUString(item.RelPath);
+        break;
     case kpidName:
         prop = ToUString(item.RelPath.mid(separator + 1));
         break;
@@ -87,11 +94,20 @@ Z7_COM7F_IMF(QtPanelFolder::BindToParentFolder(IFolderFolder **folder)) {
 }
 
 Z7_COM7F_IMF(QtPanelFolder::GetNumberOfProperties(UInt32 *count)) {
-    *count = propertyNames_.Size();
+    *count = catalog_ == PropertyCatalog::ArchiveTransport ? Z7_ARRAY_SIZE(kArchiveProperties)
+                                                           : propertyNames_.Size();
     return S_OK;
 }
 
 Z7_COM7F_IMF(QtPanelFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type)) {
+    if (catalog_ == PropertyCatalog::ArchiveTransport) {
+        if (index >= Z7_ARRAY_SIZE(kArchiveProperties))
+            return E_INVALIDARG;
+        *name = NULL;
+        *id = kArchiveProperties[index];
+        *type = k7z_PROPID_To_VARTYPE[(unsigned)*id];
+        return S_OK;
+    }
     if (index >= propertyNames_.Size())
         return E_INVALIDARG;
     *name = ::SysAllocStringLen(propertyNames_[index], propertyNames_[index].Len());

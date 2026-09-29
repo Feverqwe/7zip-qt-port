@@ -417,7 +417,7 @@ P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2a | Compile unchanged portable PropVariantConv/PropIDUtils and required FileLink dependencies; typed strings/numeric/bool/time/attributes/reparse/invalid-input formatting regressions; no duplicate formatter | P0-02.2b3b3c1 | done — audit § P0-02.2b3b3c2a; focused 10/10, ASan 1/1, check.sh 65/65, vendor bytes 61/61; macOS 2026-09-29; Windows native link operation dependencies remain mandatory P2-05/P3-05 |
 | P0-02.2b3b3c2b | Source property-name/PanelMenu formatting branches and required folder-property gaps; narrow Qt resource and platform services; catalog/unknown/error behavior tests | P0-02.2b3b3c2a | done — scoped formatter/cache b1–b3 verified; live archive catalog and complete Properties integration remain c2c |
-| P0-02.2b3b3c2c | Live Properties binding/operated indices, remove window metadata snapshots, normal/flat/four-view size/metadata/geometry acceptance and existing direct consumers | P0-02.2b3b3c2b | todo |
+| P0-02.2b3b3c2c | Live Properties binding/operated indices, remove window metadata snapshots, normal/flat/four-view size/metadata/geometry acceptance and existing direct consumers | P0-02.2b3b3c2b | active — a–c below |
 
 P0-02.2b3b3c2a commit: `47f562b`. Formatter integration prerequisites split before
 code; no missing required source property is treated as N/A.
@@ -435,6 +435,19 @@ P0-02.2b3b3c2b1 commit: `d41d64c`. Dependency owners split before code:
 | P0-02.2b3b3c2b2a | PanelListNotify original IsSizeProp classification; numeric size/count/offset versus time/checksum/id formatting contracts | P0-02.2b3b3c2b1 | done — audit § P0-02.2b3b3c2b2a; focused 5/5, check.sh 66/66; macOS 2026-09-29 |
 | P0-02.2b3b3c2b2b | PropertyName original name lookup and Qt resource boundary, source caption IDs; known/custom/unknown fallback tests; full language loading stays mandatory P1-14 | P0-02.2b3b3c2b2a | done — audit § P0-02.2b3b3c2b2b; focused 5/5, generator 1/1, check.sh 68/68, vendor bytes 63/63; macOS 2026-09-29 |
 | P0-02.2b3b3c2b2c | OpenArchive GetOpenArcErrorFlags and ExtractCallback GetOpenArcErrorMessage source branches; typed/undefined/invalid/combined/encrypted/unknown flags tests | P0-02.2b3b3c2b2b | done — audit § P0-02.2b3b3c2b2c; focused 5/5, generator 1/1, check.sh 69/69, vendor bytes 65/65; macOS 2026-09-29 |
+
+P0-02.2b3b3c2b3 commit: `a7338e0`. Live Properties prerequisites split before code:
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3b3c2ca | Typed archive transport property catalog and original CAgentFolder catalog expansion/remapping; normal/flat/property presence/error checks, full engine metadata remains P0-03/P0-04 | P0-02.2b3b3c2b | active — a1/a2 below |
+| P0-02.2b3b3c2cb | PropertiesDialog/MainWindow consume operated indices/live CPanel owner, remove snapshot metadata reconstruction, restore source packed aggregate visibility; focused source metadata and layout checks | P0-02.2b3b3c2ca | todo |
+| P0-02.2b3b3c2cc | Filesystem/archive normal/flat/four-view runtime acceptance for source index/name/counts, immutable/absent/zero metadata, transitions and normal/compact Properties geometry | P0-02.2b3b3c2cb | todo |
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3b3c2ca1 | QtPanelFolder 7zz typed Path/Size/PackSize transport catalog, preserve legacy custom-property callers; source types/names/Unicode/zero/absence/invalid-index checks | P0-02.2b3b3c2b | done — audit § P0-02.2b3b3c2ca1; focused 7/7, check.sh 71/71; macOS 2026-09-29 |
+| P0-02.2b3b3c2ca2 | Original CAgent ReadItems ThereIsPathProp scan and CAgentFolder GetNumberOfProperties/GetPropertyInfo plus kProps; transport Path→Name, optional Name/counts/flat Prefix and failure scope | P0-02.2b3b3c2ca1 | todo |
 
 ```text
 Parent: P?-?? — partial

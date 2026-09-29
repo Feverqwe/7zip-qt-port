@@ -8,6 +8,45 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2ca1 — typed 7zz archive transport catalog (2026-09-29)
+
+Project baseline `a7338e0`; inspected pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+CPP/7zip/UI/Agent/Agent.cpp GetNumberOfProperties/GetPropertyInfo and ReadItems
+ThereIsPathProp scan; CPP/7zip/UI/FileManager/IFolder.h property contract and
+k7z_PROPID_To_VARTYPE from CPP/7zip/Common/PropId.cpp. Source CAgentFolder derives
+its visible catalog from the archive engine, remaps Path to Name and appends
+counts/flat Prefix. Its current partial adapter only delegates to the metadata
+provider; the factory previously supplied an empty custom catalog.
+
+This prerequisite adds an explicit ArchiveTransport catalog to the existing
+QtPanelFolder and selects it in CreateArchiveFolder. Its fixed Path/Size/PackSize
+descriptors describe the immutable ArchiveEntry fields already transported by
+7zz, use the unchanged source property IDs/type table and no localized BSTR
+caption. GetProperty Path returns the full transported relative path; size/pack
+retain existing presence flags and typed UInt64 values. Invalid indices return
+the existing public E_INVALIDARG convention. Legacy custom presentation catalog
+callers retain their existing default mode and union of custom property names.
+
+No source implementation provides a 7zz transport-to-IFolder catalog: the
+inspected source queries an in-process IInArchive. This is new narrow integration
+glue at that boundary, not a replacement for the original CAgentFolder catalog
+algorithm. The latter and original ThereIsPathProp scan are mandatory ca2 next;
+live Properties cb/cc still follows. Full handler metadata (time/attributes/CRC/
+raw/archive levels/stream properties and absent/U64 parser semantics) remains
+P0-03/P0-04/P1-10; no absent fields are advertised as implemented or N/A.
+
+Public adapter/factory regressions check full Unicode/space paths, canonical
+catalog types/no captions, immutable input ownership, maximum UInt64/known zero,
+absent values despite known descriptors, empty archives, bad indices and legacy
+custom catalog preservation. No displayed text/layout changes in this transport
+prerequisite; runtime catalog expansion and Properties integration remain open.
+
+Validation macOS arm64, 2026-09-29: affected application/folder/runtime/property
+targets build; focused direct consumers 7/7 (3.09 s); scripts/check.sh formatting,
+full build and CTest 71/71 (34.91 s). No new production source files/vendor bytes;
+counts remain unchanged. Windows/Linux runtime remains unverified locally.
+
 ## P0-02.2b3b3c2b3 — original PanelMenu typed properties (2026-09-29)
 
 Project baseline `e749ee6`; pinned [ip7z/7zip

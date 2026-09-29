@@ -25,6 +25,11 @@ existing native property formatter owner sevenzip_filesystem; no duplicate
 formatting implementation is added. The window's Properties snapshot caller and
 its temporary filesystem packed-size visibility remain live-binding migration
 scope, while raw/archive-level/shell capabilities retain their mandatory owners.
+CreateArchiveFolder configures the existing QtPanelFolder with an explicit
+ArchiveTransport catalog (Path/Size/PackSize), using source IDs/type descriptors
+and immutable presence-aware metadata. Custom presentation callers keep the
+default legacy catalog. CAgentFolder's original catalog expansion/remapping is
+the next prerequisite; transport descriptors do not imply full engine metadata.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single

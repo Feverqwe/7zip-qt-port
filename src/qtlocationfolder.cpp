@@ -53,7 +53,8 @@ HRESULT CreateArchiveFolder(const QList<ArchiveEntry> &entries, const UString &a
             item.PackSize = UInt64(entry.packedSize);
         items.Add(item);
     }
-    CMyComPtr<IFolderFolder> props = new QtPanelFolder(QString(), items);
+    CMyComPtr<IFolderFolder> props =
+        new QtPanelFolder(QString(), items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
     auto *agentSpec = new CAgent;
     CMyComPtr<IUnknown> agent = agentSpec;
     RINOK(agentSpec->Init(entries, props, archiveType))
