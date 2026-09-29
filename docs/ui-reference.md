@@ -1,5 +1,10 @@
 # Upstream UI reference and Qt comparison
 
+To collect rendered Windows sizes, control IDs, fonts and optional PNGs from
+official 7zFM, use the [Windows capture guide](windows-ui-reference.md) and
+`scripts/capture-7zfm-reference.ps1`. Its runtime JSON is a separate schema,
+not yet an input to the RC/Qt comparator below.
+
 `scripts/check_ui_parity.py` extracts a desktop 7zFM resource reference and
 compares it with a reviewed contract and the existing Qt widget JSON reports.
 It runs without Windows. Python 3.9+ and the standard library are sufficient
