@@ -123,6 +123,9 @@ class FileViewerTests : public QObject {
         QTRY_VERIFY(view->isEnabled());
         QVERIFY(edit->isEnabled());
 
+        table->item(0, 0)->setData(Qt::UserRole, QString("forged/view-only.txt"));
+        table->item(0, 0)->setData(Qt::UserRole + 1, true);
+
         bool displayed = false;
         QTimer::singleShot(0, &window, [&] {
             QTimer::singleShot(30, &window, [&] {
@@ -170,6 +173,9 @@ class FileViewerTests : public QObject {
         table->selectRow(editedRow);
         table->setCurrentCell(focusedRow, 0, QItemSelectionModel::NoUpdate);
         QTRY_VERIFY(edit->isEnabled());
+        const auto editedIndex = table->item(editedRow, 0)->data(Qt::UserRole + 6);
+        table->item(editedRow, 0)->setData(Qt::UserRole, QString("forged/edit-only.txt"));
+        table->item(editedRow, 0)->setData(Qt::UserRole + 1, true);
         QTimer answer;
         connect(&answer, &QTimer::timeout, &window, [&] {
             if (auto *question = window.findChild<QMessageBox *>()) {
@@ -202,9 +208,8 @@ class FileViewerTests : public QObject {
         QCOMPARE(table->item(table->currentRow(), 0)->data(Qt::UserRole).toString(),
                  QString("folder/z current.txt"));
         QCOMPARE(table->item(table->selectionModel()->selectedRows()[0].row(), 0)
-                     ->data(Qt::UserRole)
-                     .toString(),
-                 QStringLiteral("folder/имя с пробелом.txt"));
+                     ->data(Qt::UserRole + 6),
+                 editedIndex);
         QVERIFY(!table->selectionModel()->isRowSelected(table->currentRow(), {}));
     }
 

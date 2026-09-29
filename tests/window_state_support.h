@@ -41,10 +41,11 @@ class ControlledBackend : public ArchiveBackend {
         lastArchive = archive;
         busy_ = true;
     }
-    void extract(const QString &, const QString &, const QStringList &selected,
+    void extract(const QString &, const QString &destination, const QStringList &selected,
                  const QString &password = {}, const ExtractionOptions &options = {}) override {
         ++extractCalls;
         lastSelected = selected;
+        lastExtractDestination = destination;
         lastExtractPassword = password;
         lastExtractionOptions = options;
         busy_ = true;
@@ -97,6 +98,10 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = false;
         emit finished(true, QStringLiteral("Архив создан."));
     }
+    void completeExtraction() {
+        busy_ = false;
+        emit finished(true, QStringLiteral("Извлечение завершено."));
+    }
     void completeAdd() {
         busy_ = false;
         emit finished(true, QStringLiteral("Файлы добавлены."));
@@ -116,6 +121,7 @@ class ControlledBackend : public ArchiveBackend {
     CompressionOptions lastCompressionOptions;
     QString lastArchive;
     QStringList lastSelected;
+    QString lastExtractDestination;
     QString lastExtractPassword;
     ExtractionOptions lastExtractionOptions;
     QString lastTestPassword;

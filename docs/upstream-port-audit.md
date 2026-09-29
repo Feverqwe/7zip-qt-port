@@ -8,6 +8,42 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b3c — archive single-item and hash-result consumers (2026-09-29)
+
+Project baseline `fc97d31`; original source remains ip7z/7zip commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, retrievable from
+https://github.com/ip7z/7zip. This integration consumes the already copied
+Agent.cpp GetName/GetFullPrefix/GetRealIndices and PanelItems.cpp
+Get_ItemIndices_Operated/IsItem_Folder bodies. IsItem_Folder becomes public for
+production command consumers; its original implementation is unchanged.
+
+New mainwindow_selectionpaths.cpp owns the narrow Qt synchronization and path
+conversion boundary, shared by all window targets. It synchronizes the native
+selection until full source OnNotify integration, then uses source operated
+indices. Logical archive targets compose source GetFullPrefix + GetName; expanded
+extraction paths retain the existing source real-index/property transport mapping.
+Rename, View/Edit and hash-result targets no longer read row path/directory roles.
+View/Edit size limits read typed kpidSize from the owner. Single-file command
+availability uses source IsItem_Folder, including return from failure/cancel.
+Existing Qt dialogs, viewer limit, backend operation flow and error handling remain
+integration code; this is not a port of complete native open/edit/hash workflows.
+
+Regressions corrupt presentation roles while preserving source indices: Unicode
+rename retains its original hint/path and Cancel makes no request; successful
+hash uses original logical selected targets after extraction in normal/flat and
+four views; archive View/Edit preserve paths, selection/focus, saved bytes and
+temporary cleanup across success/failure/cancel. Filesystem selected paths follow
+substep d; open/navigation still use presentation paths until native binding and
+parent stack integration. Full command routing is P0-03, open/edit P0-04, source
+Extract P0-12 and complete CRC/hash P2-03. No mandatory branches are waived.
+
+Validation macOS arm64, 2026-09-29: affected app/consumer targets built; focused
+9/9 passed (7.06 s), mandatory check.sh passed 75/75 (37.08 s), formatting and
+git diff --check passed. Initial View/Edit failure/cancel regression exposed the
+remaining presentation-based eligibility predicate and was fixed before the gate.
+No layout/text change requires appearance inspection. Windows/Linux runtime is
+unverified. Source/vendor counts are unchanged; one Qt integration file is added.
+
 ## P0-02.2b3b3c3b3b — native source panel path helpers (2026-09-29)
 
 Project baseline `5bc9b8d`; pinned ip7z/7zip

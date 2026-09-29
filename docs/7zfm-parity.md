@@ -7,6 +7,14 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b3c binds archive Rename/View/Edit and logical hash-result targets
+to original source names/full prefixes/operated indices. Source folder metadata
+also controls single-file eligibility and the existing viewer size limit.
+Failure/cancel return to an operable selection without trusting row path/type
+roles. Dialogs, control order and displayed text are unchanged. Full native
+open/edit/hash workflows, filesystem consumers and parent/path stack stay open;
+Windows/Linux runtime and rendered Windows parity remain unverified.
+
 P0-02.2b3b3c3b3b restores original UString panel path helpers and source
 folder-type/drive-prefix rules. Relative/full paths come from the bound source
 folder, with no ownerless row fallback. Complete source full-prefix stack setup,

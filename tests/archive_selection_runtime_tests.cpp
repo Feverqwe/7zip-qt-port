@@ -1,5 +1,28 @@
 #include "window_state_support.h"
 
+class PathHashBackend : public ControlledBackend {
+  public:
+    void hash(const QStringList &paths, const QString &method) override {
+        hashPaths = paths;
+        hashMethod = method;
+        ++hashCalls;
+        hashRunning = true;
+    }
+    bool busy() const override { return hashRunning || ControlledBackend::busy(); }
+    void cancel() override {
+        hashRunning = false;
+        ControlledBackend::cancel();
+    }
+    void completeHash() {
+        hashRunning = false;
+        emit finished(true, QStringLiteral("Fixture hash complete."));
+    }
+    QStringList hashPaths;
+    QString hashMethod;
+    int hashCalls = 0;
+    bool hashRunning = false;
+};
+
 class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
@@ -36,6 +59,83 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
     }
 
   private slots:
+    void successfulHashUsesSourceLogicalSelection_data() {
+        sourcePathsAcrossViewsAndConsumers_data();
+    }
+    void successfulHashUsesSourceLogicalSelection() {
+        QFETCH(bool, flat);
+        QFETCH(int, mode);
+        PathHashBackend backend;
+        MainWindow window(&backend);
+        action(window, "flatViewAction")->setChecked(false);
+        window.openArchive("source-hash.zip");
+        const QString directory = QStringLiteral("папка й с пробелом");
+        backend.completeList({{"root.bin", 3, 1}, {directory + "/inside.txt", 7, 3}});
+        action(window, "flatViewAction")->setChecked(flat);
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
+        const int directoryRow = rowWithPath(window, directory);
+        const int rootRow = rowWithPath(window, "root.bin");
+        QVERIFY(directoryRow >= 0 && rootRow >= 0);
+        selectOnly(window, directoryRow);
+        table(window)->selectionModel()->select(table(window)->model()->index(rootRow, 0),
+                                                QItemSelectionModel::Select |
+                                                    QItemSelectionModel::Rows);
+        corruptPresentationPath(window, directoryRow);
+        corruptPresentationPath(window, rootRow);
+        action(window, "hashSHA256Action")->trigger();
+        QCOMPARE(backend.lastSelected, (QStringList{"root.bin", directory + "/inside.txt"}));
+        const QDir extracted(backend.lastExtractDestination);
+        QVERIFY(extracted.exists());
+        backend.completeExtraction();
+        QCOMPARE(backend.hashCalls, 1);
+        QCOMPARE(backend.hashMethod, QString("SHA256"));
+        QStringList expected = {extracted.filePath(directory), extracted.filePath("root.bin")};
+        QStringList actual = backend.hashPaths;
+        expected.sort();
+        actual.sort();
+        QCOMPARE(actual, expected);
+        backend.completeHash();
+        QVERIFY(!QFileInfo::exists(extracted.path()));
+        QVERIFY(action(window, "hashSHA256Action")->isEnabled());
+        action(window, "flatViewAction")->setChecked(false);
+    }
+
+    void renameUsesSourcePathAndOriginalNameHint() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        action(window, "flatViewAction")->setChecked(false);
+        window.openArchive("source-rename.zip");
+        backend.completeList({{"a/same.txt", 3, 1}, {"b/same.txt", 7, 3}});
+        action(window, "flatViewAction")->setChecked(true);
+        const int row = rowWithPath(window, "b/same.txt");
+        QVERIFY(row >= 0);
+        selectOnly(window, row);
+        corruptPresentationPath(window, row);
+        QString hint;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            hint = dialog->textValue();
+            dialog->setTextValue(QStringLiteral("новое й.txt"));
+            dialog->accept();
+        });
+        action(window, "renameAction")->trigger();
+        QCOMPARE(hint, QString("same.txt"));
+        QCOMPARE(backend.renameCalls, 1);
+        QCOMPARE(backend.lastRenameOld, QString("b/same.txt"));
+        QCOMPARE(backend.lastRenameNew, QStringLiteral("b/новое й.txt"));
+        backend.cancel();
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
+            if (dialog)
+                dialog->reject();
+        });
+        action(window, "renameAction")->trigger();
+        QCOMPARE(backend.renameCalls, 1);
+        action(window, "flatViewAction")->setChecked(false);
+    }
+
     void sourcePathsAcrossViewsAndConsumers_data() {
         QTest::addColumn<bool>("flat");
         QTest::addColumn<int>("mode");

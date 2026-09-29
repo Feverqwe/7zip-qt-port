@@ -152,10 +152,10 @@ void MainWindow::renameSelected() {
     if (state_ == State::Viewing) {
         if (!rename_->isEnabled())
             return;
-        const QString oldPath =
-            table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
-                ->data(Qt::UserRole)
-                .toString();
+        const QStringList paths = selectedArchiveItemsPaths();
+        if (paths.size() != 1)
+            return;
+        const QString oldPath = paths.first();
         bool accepted = false;
         const QString name =
             QInputDialog::getText(this, "Переименовать", "Новое имя:", QLineEdit::Normal,

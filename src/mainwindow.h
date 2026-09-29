@@ -192,6 +192,8 @@ class MainWindow : public QMainWindow {
     void renameSelected();
     void addSources(const QStringList &sources);
     QStringList selectedArchivePaths();
+    QStringList selectedArchiveItemsPaths();
+    CRecordVector<UInt32> sourceOperatedIndices();
 
     ArchiveBackend *backend_ = nullptr;
     struct ArchiveParent {

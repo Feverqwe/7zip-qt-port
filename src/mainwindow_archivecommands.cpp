@@ -1,3 +1,5 @@
+#include "7zip/PropID.h"
+#include "Windows/PropVariant.h"
 #include "mainwindow.h"
 
 void MainWindow::calculateHash(const QString &method) {
@@ -16,9 +18,7 @@ void MainWindow::calculateHash(const QString &method) {
         backend_->hash(paths, method);
         return;
     }
-    hashSelection_.clear();
-    for (const QModelIndex &index : table_->selectionModel()->selectedRows())
-        hashSelection_ << table_->item(index.row(), 0)->data(Qt::UserRole).toString();
+    hashSelection_ = selectedArchiveItemsPaths();
     const QStringList entries = selectedArchivePaths();
     if (entries.isEmpty())
         return;
@@ -55,13 +55,16 @@ void MainWindow::openArchiveFile(const QString &entry) {
 void MainWindow::viewSelectedFile(bool editable) {
     if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
-    const auto rows = table_->selectionModel()->selectedRows();
-    if (rows.size() != 1)
+    const auto indices = sourceOperatedIndices();
+    if (indices.Size() != 1)
         return;
-    const int row = rows.first().row();
-    if (table_->item(row, 0)->data(Qt::UserRole + 1).toBool())
+    if (app_.GetFocusedPanel().IsItem_Folder(indices[0]))
         return;
     if (state_ == State::Filesystem) {
+        const auto rows = table_->selectionModel()->selectedRows();
+        if (rows.size() != 1)
+            return;
+        const int row = rows.first().row();
         const QString path = table_->item(row, 1)->text();
         if (QFileInfo(path).isFile() && !QFileInfo(path).isSymLink())
             openFileViewer(path, editable);
@@ -69,13 +72,16 @@ void MainWindow::viewSelectedFile(bool editable) {
     }
     if (editable && (info_.encrypted || !archiveParents_.empty()))
         return;
-    const QString entry = table_->item(row, 0)->data(Qt::UserRole).toString();
-    for (const ArchiveEntry &item : entries_) {
-        if (item.path == entry && item.size > 16 * 1024 * 1024) {
-            QMessageBox::information(this, "Просмотр",
-                                     "Файл больше 16 МиБ. Просмотр текста недоступен.");
-            return;
-        }
+    const QStringList paths = selectedArchiveItemsPaths();
+    if (paths.size() != 1)
+        return;
+    const QString entry = paths.first();
+    NWindows::NCOM::CPropVariant size;
+    app_.GetFocusedPanel().GetFolder()->GetProperty(indices[0], kpidSize, &size);
+    if (size.vt == VT_UI8 && size.uhVal.QuadPart > 16 * 1024 * 1024) {
+        QMessageBox::information(this, "Просмотр",
+                                 "Файл больше 16 МиБ. Просмотр текста недоступен.");
+        return;
     }
     viewTemporary_ = std::make_unique<QTemporaryDir>();
     if (!viewTemporary_->isValid()) {

@@ -171,10 +171,11 @@ void MainWindow::refreshActions() {
     move_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
     remove_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
     const bool one = table_->selectionModel()->selectedRows().size() == 1;
-    const bool oneFile =
-        one && !table_->item(table_->selectionModel()->selectedRows().first().row(), 0)
-                    ->data(Qt::UserRole + 1)
-                    .toBool();
+    bool oneFile = false;
+    if (idle && one) {
+        const auto indices = sourceOperatedIndices();
+        oneFile = indices.Size() == 1 && !app_.GetFocusedPanel().IsItem_Folder(indices[0]);
+    }
     viewFile_->setEnabled(idle && oneFile);
     editFile_->setEnabled(idle && oneFile && (state_ == State::Filesystem || writableArchive));
     split_->setEnabled(idle && state_ == State::Filesystem && oneFile &&
@@ -192,33 +193,4 @@ void MainWindow::refreshActions() {
     table_->setDragEnabled(idle && state_ == State::Filesystem);
     iconList_->setDragEnabled(idle && state_ == State::Filesystem);
     path_->setReadOnly(!navigating);
-}
-
-QStringList MainWindow::selectedArchivePaths() {
-    QStringList paths;
-    if (state_ != State::Viewing)
-        return paths;
-    CPanel &panel = app_.GetFocusedPanel();
-    if (!panel.GetFolder())
-        return paths;
-    CSelectedState selection;
-    panel.SaveSelectedState(selection);
-    CRecordVector<UInt32> indices;
-    panel.Get_ItemIndices_Operated(indices);
-    auto *folder = static_cast<CAgentFolder *>(panel.GetFolder());
-    CUIntVector realIndices;
-    // Preserve the 7zz selected-directory transport policy until source Extract
-    // integration (P0-12); the original engine Extract passes false here.
-    folder->GetRealIndices(indices.ConstData(), indices.Size(), false, true, realIndices);
-    IFolderFolder *properties = folder->GetArchiveProperties();
-    if (!properties)
-        return paths;
-    FOR_VECTOR(i, realIndices) {
-        NWindows::NCOM::CPropVariant path;
-        if (properties->GetProperty(realIndices[i], kpidPath, &path) != S_OK || path.vt != VT_BSTR)
-            return {};
-        paths << ToQString(UString(path.bstrVal));
-    }
-    paths.removeDuplicates();
-    return paths;
 }

@@ -6,6 +6,13 @@ Source provenance, baselines, adaptations and migration debt belong in the
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
 
+mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
+and archive paths. Expanded extraction requests use real indices and typed Path;
+logical rename/view/edit/hash-result targets use source full prefixes and names.
+Source IsItem_Folder owns single-file eligibility. ArchiveBackend retains all
+operation transport and temporary-file handling. Remaining filesystem consumers,
+open/navigation and full native path stack are still separate mandatory scopes.
+
 CPanel relative/full path helpers and current prefix storage use original
 UString. Source folder/type/device/super-drive classification owns their path
 branches; Qt conversions are confined to setters and presentation. Ownerless

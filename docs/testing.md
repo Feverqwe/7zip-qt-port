@@ -1,5 +1,12 @@
 # Regression strategy
 
+`archive_selection_runtime` additionally verifies successful hash-result targets
+in normal/flat/four views and Unicode rename with its original input hint, plus
+Cancel without another request. `file_viewer` corrupts archive row path/directory
+roles and checks source View/Edit paths, saved bytes, temporary cleanup and
+selection/focus across success/failure/cancel. These checks validate consumer
+binding; full native open/edit/hash workflows remain mandatory later scopes.
+
 `panel_path` tests original relative/full panel path helpers with native source
 normal/flat folders, Unicode/spaces and duplicate basenames after owner release.
 Typed public folder fixtures cover pure/device/super drive prefix semantics,

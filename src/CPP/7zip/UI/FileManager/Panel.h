@@ -84,6 +84,7 @@ class CPanel : public QObject {
     UString GetItemRelPath(unsigned index) const;
     UString GetItemRelPath2(unsigned index) const;
     UString GetItemFullPath(unsigned index) const;
+    bool IsItem_Folder(UInt32 index) const;
     // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
     void RefreshListCtrl(const CSelectedState &state);
     bool _lastFocusedIsList = true;
@@ -105,7 +106,6 @@ class CPanel : public QObject {
     CMyComPtr<IFolderGetItemName> _folderGetItemName;
     CRecordVector<bool> _isDirVector;
     UString _currentFolderPrefix;
-    bool IsItem_Folder(UInt32 index) const;
     bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
     UString GetItemName(unsigned index) const;
     UString GetItemPrefix(unsigned index) const;

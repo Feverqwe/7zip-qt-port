@@ -438,7 +438,7 @@ native/outer path stack are not considered accepted by these narrower consumers.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3b3a | Original Agent.cpp GetName/GetFullPrefix _proxy bodies for bound single items; normal/flat/subfolder/full-root prefixes, Unicode and retained child-owner tests; proxy2 stays mandatory P1-10 | P0-02.2b3b3c3b2 | done — audit § P0-02.2b3b3c3b3a; focused 3/3, check.sh 74/74; macOS 2026-09-29 |
 | P0-02.2b3b3c3b3b | Original CPanel relative/full filesystem path helpers and required type/prefix classification; source UString signatures and owned fixtures, precise drive/outer-stack omissions and native path boundary checks | P0-02.2b3b3c3b3a | done — audit § P0-02.2b3b3c3b3b; focused 5/5, check.sh 75/75; macOS 2026-09-29 |
-| P0-02.2b3b3c3b3c | Archive single-item rename/view/edit and hash-result selected targets consume source names/full prefixes/indices; success/failure/cancel direct regressions, remaining open/navigation owner inventory | P0-02.2b3b3c3b3b | todo |
+| P0-02.2b3b3c3b3c | Archive single-item rename/view/edit and hash-result selected targets consume source names/full prefixes/indices; success/failure/cancel direct regressions, remaining open/navigation owner inventory | P0-02.2b3b3c3b3b | done — audit § P0-02.2b3b3c3b3c; focused 9/9, check.sh 75/75; macOS 2026-09-29 |
 | P0-02.2b3b3c3b3d | Filesystem selected paths and relevant single-item consumers use owned source paths; native Unicode/flat/sorted/source-index/operation regressions without inventing path algorithms | P0-02.2b3b3c3b3c | todo |
 | P0-02.2b3b3c3b3e | Remaining consumer acceptance and documented dependency boundary to full source BindToPath/LoadFullPath/parent stack; close only verified scope | P0-02.2b3b3c3b3d | todo |
 
