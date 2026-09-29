@@ -66,8 +66,23 @@ control visibility, label/button fitting, separation and source ordering. Its
 fixture produces 16 current-build JSON reports; `progress_priority` adds four
 native priority reports for `ui_parity_progress`, mapping
 all 26 controls from the pinned source resource. These checks do not accept the
-pending modal-worker/cancel/finish/update scope;
+separate integrated modal-worker/cancel/finish/update suites described below;
 Windows rendering and Windows/Linux runtime remain unverified.
+
+P0-10.1 focused suites add `progress_worker` (native worker/result/exception,
+startup fast/request/timeout, modal finish/messages and normal/compact default
+Close), `progress_cancel` (YES/NO/CANCEL/Escape, prior pause and finish deferred
+during prompt), and `update_callback` (all native COM interfaces, counters,
+operation/error/move/reopen and GUI-owned password accept/cancel).
+`process_pause` observes an owned disposable native child stop/resume across
+three cycles and cancellation while paused. `archive_progress` connects the
+source worker to real ArchiveBackend: real zip Add with Unicode/spaces, unchanged
+archive on missing-source failure, GUI start exception composition, owned engine
+password accept/empty/cancel, pause/background failure rollback and completion
+while paused. It also produces normal/compact control/error-close JSON.
+`ui_operations` checks Add/drop modal consumer state and refresh/selection flow.
+These are current-component tests; acceptance of all progress/journal consumers
+remains P0-10.2 and Windows/Linux runtime needs its own evidence.
 
 `progress_statistics_helpers` compiles the authoritative progress module in a
 separate test translation unit to preserve original file-local helper visibility.

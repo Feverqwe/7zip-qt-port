@@ -1,4 +1,5 @@
 #include "archivebackend.h"
+#include "processpriority.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -25,11 +26,17 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
     }
     process_.setProgram(executable);
     process_.setProcessChannelMode(QProcess::MergedChannels);
+    connect(&process_, &QProcess::started, this, [this] {
+        processPause_.Attach(UInt32(process_.processId()));
+        if (!cancelled_)
+            emit engineStarted();
+    });
     connect(&process_, &QProcess::readyRead, this, [this] { consumeOutput(process_.readAll()); });
     connect(&process_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
             &ArchiveBackend::complete);
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart && job_ != Job::None) {
+            processPause_.ResetAfterExit();
             if (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete ||
                 job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd)
                 QFile::remove(createTemporary_);
@@ -57,6 +64,18 @@ ArchiveBackend::~ArchiveBackend() {
 
 bool ArchiveBackend::busy() const { return job_ != Job::None; }
 
+HRESULT ArchiveBackend::setPaused(bool paused) {
+    if (process_.state() != QProcess::Running)
+        return E_FAIL;
+    return processPause_.SetPaused(paused);
+}
+
+HRESULT ArchiveBackend::setBackground(bool background) {
+    if (process_.state() != QProcess::Running)
+        return E_FAIL;
+    return NProcessPriority::SetBackground(UInt32(process_.processId()), background);
+}
+
 void ArchiveBackend::start(Job job, const QStringList &arguments, const QString &workingDirectory) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
@@ -77,7 +96,7 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
 }
 
 void ArchiveBackend::providePassword(const QString &password) {
-    if (!busy() || password.isEmpty())
+    if (!busy())
         return;
     pendingPassword_ = password;
     if (job_ == Job::ExtractCheck)
@@ -267,9 +286,11 @@ void ArchiveBackend::cancelAndWait() {
         process_.kill();
         process_.waitForFinished(-1);
     }
+    processPause_.ResetAfterExit();
 }
 
 void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
+    processPause_.ResetAfterExit();
     if (job_ == Job::None)
         return;
     consumeOutput(process_.readAll(), true);

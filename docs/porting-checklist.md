@@ -65,6 +65,44 @@ P0: 1/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory,
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
 Это счётчик выполнения плана, не процент исходных строк upstream.
 
+## Рабочие итерации после укрупнения (2026-09-29)
+
+Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).
+Исторические ID, статусы, audit, commits и evidence ниже сохранены. Старые
+открытые строки, перечисленные в карте, **входят в новые результаты**, а не
+закрываются сменой структуры. Их дочерние строки — внутренний список работ;
+отдельных новых завершений или коммитов для helpers/методов/ресурсов не будет.
+У всех текущих итераций owner — этот чат. Счёт parent packages остаётся 1/44.
+
+| Рабочий ID | Целый результат и критерий приёмки | Точные prerequisites / исторический открытый scope | Статус |
+| --- | --- | --- | --- |
+| P0-10.1 | Подключённый общий source progress/callback component: CProgressDialog/CProgressThreadVirt, modal/finish/error/cancel-confirm, pause/background и реальные worker/process capabilities; необходимые UpdateCallbackGUI2/UpdateCallback100Imp bodies, первый реальный consumer через ArchiveBackend, замена его прежнего progress owner; success/failure/cancel/exception/prompt races, source text/normal/compact JSON и focused/full gate | Досрочный prerequisite для P0-04.1 changed-file update; принятые native folder/provider contracts, processing guards и sync/platform services из historical P0-02 достаточны, полные P0-02/P0-03 не требуются для этого компонента. Входит открытый P0-02.2b3c3b2b (включая b3b/b3c) и P0-02.2b3c3b2c; уже done helpers/services не переносятся повторно | done — audit § P0-10.1; integrated Add/drop, native callbacks/control/worker lifetime; focused 9/9 15.81 с, later affected archive checks 1.24/1.26 с; check.sh 101/101 72.05 с; 24 JSON states/26 controls; macOS arm64 2026-09-29, Windows/Linux runtime unverified; P0-10.2 и parent приёмка обязательны |
+| P0-04.1 | Source navigation/parent-stack component: OpenAsArc, CFolderLink, CloseOneLevel/CloseOpenFolders, изменённые временные файлы и update prompt, CThreadCopyFrom/OnOpenItemChanged, BindToPath/LoadFullPath; current root/nested/address/parent consumers используют один native owner без Qt ArchiveParent/location дубликатов; password/failure/cancel/temp lifetime и UX проверены | Досрочный prerequisite для завершения P0-02 owners. После P0-10.1 и принятых typed providers/selection contracts. Входят открытые P0-02.2b3c/.2b3d, .2b3c3b2d/.2b3c3b3 и remaining navigation portions .2b3b3c3; progress/callback часть принадлежит P0-10.1 | todo — обязательные memory/password/zone и omitted branches сохраняются, full P0-04 parent не закрывается этим prerequisite автоматически |
+| P0-02.2 | Один полностью подключённый CApp/CPanel owner: Create/CreateOnePanel/ReleaseApp, independent panel state, focus/selection/location contracts, all-panel disable-before-release; MainWindow остаётся Qt presentation, teardown/refresh/navigation consumers проверены | После P0-04.1; existing P0-02.1/selected/provider evidence сохранены. Входит remaining own lifecycle P0-02.2c и owner-only portions .2b/.2b3/.2b3b; navigation/FS/progress код учитывается у соседних owners | active — исторический ID переиспользуется для оставшегося owner результата, не создаётся второй .2 |
+| P0-02.3 | Application/panel operation-state component и полная P0-02 приёмка: start/error/cancel/window-close порядок, quiescence до освобождения owners, независимые экземпляры и сквозные consumer checks | После P0-02.2 и P0-10.1. Входит прежний P0-02.3 и remaining owner teardown/operation consumers; routing rules остаются P0-03 | todo |
+| P0-05 | Полный filesystem model/enumeration/flat component с текущими consumers, source property/filter/load bodies, scheduling/cancel/stale batches и большим deterministic fixture; принятые source enumeration/provider части используются как evidence | После P0-02/P0-04 по parent плану; ранее досрочно выполненные FS portions P0-02.2b3b2/.2b3b3b/.2b3b3c зафиксированы только в их фактическом scope. Их remaining FS части входят сюда, remaining navigation — P0-04.1 | partial — ранний source enumeration/property port подтверждён historical evidence, полный пакет не принят |
+| P0-10.2 | Общий progress/messages для всех archive/filesystem/volume consumers: удалить разрозненные progress/journal owners, сохранить сообщения/partial results и destruction/cancel races; полная P0-10 приёмка и актуальные geometry/contracts | После P0-10.1, P0-02/P0-03 и требуемых model consumers; необходимые transport/callback dependencies — внутренние работы результата, engine не переписывается | todo |
+
+Порядок ближайшей работы: P0-10.1 → P0-04.1 → P0-02.2 → P0-02.3 →
+P0-03, затем остальные parent IDs по приоритету и выполненным зависимостям.
+P0-04 целиком закрывается только после своей command/navigation приёмки с P0-03;
+P0-05 и P0-10 целиком — только после перечисленных parent критериев.
+Все остальные открытые P0/P1/P2/P3 строки остаются крупными рабочими пакетами
+с прежними ID и зависимостями. Если понадобится несколько результатов, допустим
+только один уровень .1/.2, каждый с подключённым компонентом/сценарием и UX.
+Historical требования отдельного commit на старый helper ниже являются записью
+прежнего процесса, а не правилом для новых итераций. Git history не переписывается.
+
+Карта начата на HEAD `f21eee3`; параллельно пользователь сохранил новые правила
+в коммите `73359b3` (`upd plan`). Этот коммит и его checklist/prompt/plan правки
+сохранены; текущий HEAD — `73359b3`.
+При укрупнении сохранены собственные WIP: ProgressDialog2 cpp/h,
+qtprogresscontrols cpp/h, progress_worker_tests, его CMake registration и прежняя
+active запись checklist. Они завершены внутри единого P0-10.1 вместе с callback
+dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 сохранены;
+новая приёмка P0-10.1: focused 9/9, 24 JSON states и check.sh 101/101, 72.05 с
+на macOS arm64 2026-09-29. Windows/Linux runtime остаётся обязательным.
+
 ## P0 — критическая основа и ежедневный UX
 
 | Готов | ID | Результат | После | Статус / evidence |
@@ -72,13 +110,13 @@ P0: 1/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory,
 | [x] | P0-01 | Реестр symbols, omissions, dependencies всех 109 UI `.cpp` и текущих зеркальных модулей | — | done — audit § P0-01.4; .1–.4 done; 2026-09-28 macOS docs-only diff/112 paths/33 vendor byte matches |
 | [ ] | P0-02 | CApp/CPanel owners и независимое состояние панелей | P0-01 | active — текущий чат, 2026-09-28; подшаги ниже |
 | [ ] | P0-03 | Единые command availability/dispatch для menus/toolbar/keys | P0-02 | todo |
-| [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | todo |
-| [ ] | P0-05 | FSFolder enumeration/model/flat view | P0-02, P0-04 | todo |
+| [ ] | P0-04 | Исходная навигация, адрес и parent-folder stack | P0-02, P0-03 | partial — ранние native prerequisites имеют historical evidence; remaining P0-04.1 укрупнён в карте, parent ждёт полной command/navigation приёмки |
+| [ ] | P0-05 | FSFolder enumeration/model/flat view | P0-02, P0-04 | partial — ранний source enumeration/provider scope принят historical checks; remaining полный FS компонент в карте, parent ещё не принят |
 | [ ] | P0-06 | Столбцы, сортировка, время и auto-refresh | P0-05 | todo |
 | [ ] | P0-07 | Mouse/keyboard selection и полные list settings/hover | P0-03, P0-05 | todo |
 | [ ] | P0-08 | Две панели, F9/Tab/Alt+F1/F2, persistence | P0-02, P0-03, P0-04, P0-07 | todo |
 | [ ] | P0-09 | Исходные menus/toolbar/context/status и UI contracts | P0-03, P0-06, P0-08 | todo |
-| [ ] | P0-10 | Общий progress/messages, cancel-confirm, pause/background | P0-02, P0-03 | todo |
+| [ ] | P0-10 | Общий progress/messages, cancel-confirm, pause/background | P0-02, P0-03 | active — P0-10.1 accepted integrated prerequisite для P0-04.1; P0-10.2 и полная parent приёмка обязательны |
 | [ ] | P0-11 | OverwriteDialog и решения конфликта Copy/Move | P0-10 | todo |
 | [ ] | P0-12 | Настоящий Ask при Extract через общий callback | P0-11 | todo |
 
@@ -364,8 +402,8 @@ chat owns all scopes; avoid independent Qt implementations of upstream state.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2a | Original portable Windows/Synchronization/Thread/C Threads and ErrorMsg prerequisites; CProgressSync fields and full methods in mirrored ProgressDialog2, narrow platform sleep service; pause/resume/stop/null counters/unknown state/native errors/thread lifetime regressions | P0-02.2b3c3b1 | done — a1/a2 verified; full modal progress/callback/update remains mandatory b–d |
-| P0-02.2b3c3b2b | Original CProgressThreadVirt Process/Create and required CProgressDialog lifecycle/presentation adapted to Qt; modal background work, final error handling, cancel/pause and thread joins; original resource/text normal/compact geometry and deterministic failures | P0-02.2b3c3b2a | active — b1–b3 split below before code |
-| P0-02.2b3c3b2c | Original UpdateCallbackGUI2/UpdateCallback100Imp interfaces and full required callback bodies; progress/error/password/move/stop/reopen contracts through source synchronization, preserve remaining mandatory callback/engine owners | P0-02.2b3c3b2b | todo |
+| P0-02.2b3c3b2b | Original CProgressThreadVirt Process/Create and required CProgressDialog lifecycle/presentation adapted to Qt; modal background work, final error handling, cancel/pause and thread joins; original resource/text normal/compact geometry and deterministic failures | P0-02.2b3c3b2a | done via P0-10.1 — b1–b3 evidence retained; integrated native worker/modal/control/Add acceptance, check.sh 101/101; final Windows/Linux runtime remains mandatory |
+| P0-02.2b3c3b2c | Original UpdateCallbackGUI2/UpdateCallback100Imp interfaces and full required callback bodies; progress/error/password/move/stop/reopen contracts through source synchronization, preserve remaining mandatory callback/engine owners | P0-02.2b3c3b2b | done via P0-10.1 — full native interfaces/bodies and first real Add consumer; focused callback/password/error/reopen/transport checks and check.sh 101/101; remaining consumers P0-10.2 |
 | P0-02.2b3c3b2d | Original CThreadCopyFrom/OnOpenItemChanged with typed folder operation/ArchiveBackend boundary and update acceptance; source path/index/password handling, success/failure/cancel preserving temporary ownership before caller cleanup | P0-02.2b3c3b2c | todo |
 
 | Substep | Scope and acceptance | After | Status |
@@ -382,7 +420,7 @@ Current chat owns the following prerequisites and complete modal implementation.
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b1 | Original GetTimeString and unchanged progress/control/operation resources, strict generator supports source brace-delimited tables; generated upstream view reference, duration/overflow/metadata and generator regressions; no dialog acceptance claim | P0-02.2b3c3b2a | done — audit § P0-02.2b3c3b2b1; pre-change generator regression failed, focused 4/4, check.sh 85/85, vendor bytes 82/82 and source function match; macOS 2026-09-29 |
 | P0-02.2b3c3b2b2 | Original CProgressDialog presentation/statistics/range/title/message/pause/background functional bodies and Qt widget/platform adapters; source grouping/order and text spec, normal/compact geometry/JSON with current source counter states; full omitted modal/worker lifecycle remains b3 | P0-02.2b3c3b2b1 | done — a/b bounded source presentation accepted, all 26 controls/20 current JSON reports; b3 full modal/worker lifecycle and final Windows/Linux platform acceptance remain mandatory |
-| P0-02.2b3c3b2b3 | Complete CProgressDialog Create/WaitCreating/finish/cancel/error lifecycle and original CProgressThreadVirt Process/Create, native workers/joins and required Qt platform services; modal success/failure/exception/cancel/pause/finish-during-prompt and combined view acceptance; split before code if needed | P0-02.2b3c3b2b2 | active — a–c split below before code; native workers and original source flow retained |
+| P0-02.2b3c3b2b3 | Complete CProgressDialog Create/WaitCreating/finish/cancel/error lifecycle and original CProgressThreadVirt Process/Create, native workers/joins and required Qt platform services; modal success/failure/exception/cancel/pause/finish-during-prompt and combined view acceptance; split before code if needed | P0-02.2b3c3b2b2 | done via P0-10.1 — a evidence retained; b/c integrated native lifecycle, joins, races and Add consumer; 24 JSON states, check.sh 101/101; Windows/Linux runtime remains mandatory |
 
 The current chat owns b3. Source Windows waits retain WaitForMultipleObjects;
 portable native CThread has no timed completion query. Supply a narrow monotonic
@@ -392,8 +430,8 @@ No wait-service acceptance closes the full modal or update workflow.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b3a | Portable start-request/worker-finished wait service for the original 500 ms two-handle boundary where POSIX upstream lacks an implementation; finish precedence, latched events, monotonic timeout, native worker wake/join/ownership checks; no dialog/worker workflow acceptance yet | P0-02.2b3c3b2b2 | done — audit § P0-02.2b3c3b2b3a; focused 3/3 0.56 s, check.sh 96/96 63.43 s, native thread/event/join fixtures; macOS 2026-09-29; source modal integration b/c remains mandatory, Windows/Linux runtime unverified |
-| P0-02.2b3c3b2b3b | Copy complete source Create/WaitCreating/ProcessWasFinished/CheckNeedClose/OnMessage/OnExternalCloseMessage, CProgressCloser/MyThreadFunction/CProgressThreadVirt Process/Create and HResultToMessage; narrow Qt queued/modal/message services and native worker joins; delayed/fast success/error/exception, final/error-close states, normal/compact JSON and deterministic lifetime checks | P0-02.2b3c3b2b3a | active — original complete bodies/dependencies inspected; Windows original wait, POSIX completion context/join, atomic worker→GUI flags, explicit per-dialog question policy and queued/modal native presentation boundaries; active cancel stays disabled until c |
-| P0-02.2b3c3b2b3c | Copy source OnCancel/OnButtonClicked cancel-pause-confirmation and finish-during-prompt branches; original YES/NO/CANCEL resource/text/focus, restore pre-prompt pause, joined cancellation and full modal combined acceptance through real deterministic workers/fixtures | P0-02.2b3c3b2b3b | todo — all required branches remain mandatory, no fake completed owner |
+| P0-02.2b3c3b2b3b | Copy complete source Create/WaitCreating/ProcessWasFinished/CheckNeedClose/OnMessage/OnExternalCloseMessage, CProgressCloser/MyThreadFunction/CProgressThreadVirt Process/Create and HResultToMessage; narrow Qt queued/modal/message services and native worker joins; delayed/fast success/error/exception, final/error-close states, normal/compact JSON and deterministic lifetime checks | P0-02.2b3c3b2b3a | done via P0-10.1 — original native flow, atomic worker flags, Qt modal/messages, joined success/error/exception and first real Add consumer; current normal/compact JSON, check.sh 101/101 |
+| P0-02.2b3c3b2b3c | Copy source OnCancel/OnButtonClicked cancel-pause-confirmation and finish-during-prompt branches; original YES/NO/CANCEL resource/text/focus, restore pre-prompt pause, joined cancellation and full modal combined acceptance through real deterministic workers/fixtures | P0-02.2b3c3b2b3b | done via P0-10.1 — source YES/NO/CANCEL/Escape, previous pause restoration, finish-during-prompt races and real paused Add cancellation preserve archive/cleanup; check.sh 101/101 |
 
 B2 statistics/message presentation can be accepted independently of process
 priority/taskbar services; keep those mandatory and disable unfinished controls.

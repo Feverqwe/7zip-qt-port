@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "window_state_support.h"
 
 class MainWindowOperationsTests : public QObject, protected MainWindowTestSupport {
@@ -218,10 +219,30 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCoreApplication::sendEvent(table(window)->viewport(), &archiveEnter);
         QDropEvent archiveDrop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton,
                                Qt::NoModifier);
+        QTimer cancelAdd;
+        cancelAdd.setInterval(5);
+        bool cancelRequested = false;
+        connect(&cancelAdd, &QTimer::timeout, &window, [&] {
+            if (auto *question = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                if (question->objectName() == "progressCancelQuestion")
+                    question->button(QMessageBox::Yes)->click();
+                return;
+            }
+            if (backend.addCalls == 1 && !cancelRequested) {
+                cancelRequested = true;
+                QVERIFY(!action(window, "copyAction")->isEnabled());
+                auto *progress =
+                    dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
+                QVERIFY(progress);
+                QTimer::singleShot(0, progress, [progress] { progress->reject(); });
+            }
+        });
+        cancelAdd.start();
         QCoreApplication::sendEvent(table(window)->viewport(), &archiveDrop);
+        cancelAdd.stop();
         QCOMPARE(backend.addCalls, 1);
-        QVERIFY(!action(window, "copyAction")->isEnabled());
-        backend.cancel();
+        QVERIFY(cancelRequested);
+        QVERIFY(action(window, "copyAction")->isEnabled());
     }
 
     void stage7ArchiveCommandStates() {
@@ -455,7 +476,36 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "createArchiveAction")->isEnabled());
 
-        auto choose = [&] {
+        auto choose = [&](int outcome) {
+            const int expectedCalls = backend.addCalls + 1;
+            bool completed = false;
+            QTimer finish;
+            finish.setInterval(5);
+            connect(&finish, &QTimer::timeout, &window, [&] {
+                if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                    if (box->objectName() == "progressCancelQuestion")
+                        box->button(QMessageBox::Yes)->click();
+                    else if (box->objectName() == "progressFinalMessage")
+                        box->button(QMessageBox::Ok)->click();
+                    return;
+                }
+                if (backend.addCalls != expectedCalls || completed)
+                    return;
+                completed = true;
+                QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+                QVERIFY(!action(window, "openArchiveAction")->isEnabled());
+                QVERIFY(!table(window)->isEnabled());
+                auto *progress =
+                    dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
+                QVERIFY(progress);
+                if (outcome == 0)
+                    QTimer::singleShot(0, progress, [progress] { progress->reject(); });
+                else if (outcome == 1)
+                    backend.fail(QStringLiteral("Ошибка добавления."));
+                else
+                    backend.completeAdd();
+            });
+            finish.start();
             QTimer::singleShot(0, &window, [&] {
                 auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
                 QVERIFY(dialog);
@@ -482,24 +532,19 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             });
             action(window, "toolbarAddAction")->trigger();
+            QVERIFY(completed);
         };
-        choose();
+        choose(0);
         QCOMPARE(backend.addCalls, 1);
         QCOMPARE(backend.lastAddTarget, archive);
         QCOMPARE(backend.lastAddSources.first().normalized(QString::NormalizationForm_C),
                  canonicalSource.normalized(QString::NormalizationForm_C));
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(!table(window)->isEnabled());
-        backend.cancel();
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
-        choose();
+        choose(1);
         QCOMPARE(backend.addCalls, 2);
-        backend.fail(QStringLiteral("Операция отменена."));
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
-        choose();
+        choose(2);
         QCOMPARE(backend.addCalls, 3);
-        backend.completeAdd();
         QCOMPARE(backend.listCalls, 2);
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         backend.completeList({{QStringLiteral("новый файл.txt"), 4, 4, {}, false, false}});

@@ -10,8 +10,8 @@ CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt
 widgets, native-style presentation APIs, font units, monotonic ticks and clipboard.
 qtprogresswait supplies only the portable monotonic startup request/completion
-wait boundary; native worker creation/events and source modal lifecycle remain
-the ProgressDialog2 owner's mandatory integration.
+wait boundary; ProgressDialog2 owns native worker creation/events and the source
+modal lifecycle.
 The source dialog owns original taskbar state/target/value/cleanup call sites;
 guarded Qt targets become HWND only at the native Windows boundary.
 qttaskbarprogress_mac owns Cocoa native Dock objects behind an opaque interface. It exposes
@@ -23,15 +23,32 @@ adapter boundary; successful transport does not establish visible desktop suppor
 qttaskbarprogress_linux selects the actual session and Qt desktop identity, validates
 GUI ownership and delegates protocol I/O. main.cpp sets the authoritative
 desktopidentity basename; installation/association ownership remains P3-05 packaging.
-The source view is not wired to MainWindow operations until mandatory modal-worker,
-cancel/finish and update-callback services are ported; existing ArchiveBackend and
-operation progress ownership remain. Background uses actual native priority
+The source view's first MainWindow consumer is Add; existing ArchiveBackend and
+remaining operation progress owners are still migration debt. Background uses actual native priority
 capability; failure rolls back source state and reports through CProgressSync.
-Cancel remains disabled in this subset.
+P0-10.1 work now connects source CProgressThreadVirt and UpdateCallbackGUI2/
+UpdateCallback100 to Add in an open archive through ArchiveProgressOperation.
+This Qt integration owner bridges backend signals to the native worker, queues
+GUI process requests and retains the worker until process completion/cleanup.
+Password presentation runs on the GUI owner thread; accepted empty passwords are
+sent as an empty line to the waiting engine. Start exceptions return to the
+source worker's original exception/result composition. The source callback's
+COM methods and native containers remain authoritative.
+
+ArchiveBackend owns CProcessPause and child priority/PID lifetime, including reset
+after exit. External engine pause uses native process control rather than blocking
+the bridge in cooperative CheckStop: completion is still observed while paused.
+Source sync's nonblocking path setter publishes external paths; a transport-only
+percentage fallback updates the bar/title without fabricating byte/file counters.
+Actual byte/count progress retains the original source calculation. Source pause
+failure restores sync state; background child failure restores the parent policy
+and reports through source messages. Backend startup propagates active parent
+background policy to its new owned engine. This component is
+accepted for Add/drop; remaining progress/journal consumers belong to P0-10.2.
 The icon ID service embeds original FM.ico with its native frames. processpriority
 owns native process policy and owned-child PID adaptation for future 7zz transport;
 widgets do not enumerate threads or construct process API requests. Source
-7zz child propagation remains required. No native engine logic is
+7zz child propagation is supplied by ArchiveProgressOperation/ArchiveBackend. No native engine logic is
 implemented by widgets.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
@@ -92,8 +109,9 @@ owners; their modal UI/operation integration remains subsequent mandatory scope.
 
 ProgressDialog2 owns complete original CProgressSync counters, native critical
 section, pause/stop and error accumulation. Its POSIX pause sleep is a narrow Qt
-platform service. Full CProgressDialog/CProgressThreadVirt and operation UI remain
-mandatory later ports; the current QProgressDialog frontend is still migration debt.
+platform service. CProgressDialog/CProgressThreadVirt modal/cancel/finish and the
+first Add consumer are implemented in P0-10.1. Remaining QProgressDialog frontends
+and all-consumer operation acceptance are migration debt in P0-10.2.
 Original GetTimeString is the native duration formatter for that presentation;
 source progress/update resource tables use the same generated resource owner.
 POSIX parent-link transfer/copy guard uses the original Windows method bodies;

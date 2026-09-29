@@ -2,13 +2,16 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ProgressDialog2.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
+#include "7zip/UI/GUI/ExtractRes.h"
 #include "Common/IntToString.h"
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
 #include "ViewSettings.h"
 #include "processpriority.h"
 #include "qtlistview.h"
+#include <QApplication>
 #include <QKeyEvent>
+#include <QMetaObject>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShowEvent>
@@ -18,6 +21,14 @@
 #endif
 
 using namespace NWindows;
+
+static const unsigned kCloseMessage = 0x8000 + 1; // Source WM_APP + 1.
+static const unsigned kCreateDelay = 500;         // Desktop source, not Windows CE.
+#ifndef _WIN32
+static const unsigned IDCANCEL = 2;
+static const unsigned IDCLOSE = 8;
+static const unsigned IDYES = 6;
+#endif
 
 static const DWORD kPauseSleepTime = 100;
 
@@ -319,6 +330,8 @@ CProgressDialog::CProgressDialog(QWidget *parent, const UString &title)
     bool nativeBackground;
     background->setEnabled(NProcessPriority::GetBackground(0, nativeBackground) == S_OK);
     connect(background, &QPushButton::clicked, this, &CProgressDialog::OnPriorityButton);
+    connect(static_cast<QPushButton *>(GetItem(IDCANCEL)), &QPushButton::clicked, this,
+            [this] { OnButtonClicked(IDCANCEL); });
     GetItem(IDL_PROGRESS_MESSAGES)->installEventFilter(this);
 }
 
@@ -403,7 +416,7 @@ bool CProgressDialog::OnInit() {
         SetIcon(icon);
     }
     _timer = startTimer(200);
-    // CheckNeedClose follows in mandatory modal-worker b3.
+    CheckNeedClose();
     SetTaskbarProgressState();
     if (GetItem(IDB_PROGRESS_BACKGROUND)->isEnabled())
         GetItem(IDB_PROGRESS_BACKGROUND)->setFocus();
@@ -598,6 +611,11 @@ void CProgressDialog::UpdateStatInfo(bool showAll) {
         if (IS_UNDEFINED_VAL(progressTotal)) {
             // SetPos(0);
             // SetRange(progressCompleted);
+            const int percent = TransportPercent.load();
+            if (percent >= 0) {
+                SetProgressRange(100);
+                SetProgressPos(UInt64(percent));
+            }
         } else {
             if (_progressBar_Pos != 0 || progressCompleted != 0 ||
                 (_progressBar_Range == 0 && progressTotal != 0)) {
@@ -683,6 +701,9 @@ void CProgressDialog::UpdateStatInfo(bool showAll) {
         }
         {
             UInt64 percent = 0;
+            const int transportPercent = TransportPercent.load();
+            if (IS_UNDEFINED_VAL(progressTotal) && transportPercent >= 0)
+                percent = UInt64(transportPercent);
             {
                 if (IS_DEFINED_VAL(progressTotal)) {
                     percent = progressCompleted * 100;
@@ -798,6 +819,12 @@ void CProgressDialog::SetPauseText() {
 void CProgressDialog::OnPauseButton() {
     bool paused = !Sync.Get_Paused();
     Sync.Set_Paused(paused);
+    const HRESULT result = SetPausedTransport(paused);
+    if (result != S_OK) {
+        Sync.Set_Paused(!paused);
+        Sync.AddError_Code_Name(result, nullptr);
+        return;
+    }
     UInt32 curTime = GetTickCount();
     if (paused)
         _elapsedTime += (curTime - _prevTime);
@@ -813,12 +840,16 @@ void CProgressDialog::SetPriorityText() {
 
 void CProgressDialog::OnPriorityButton() {
     _background = !_background;
-    const HRESULT result = NProcessPriority::SetBackground(0, _background);
+    const HRESULT result = SetBackgroundTransport(_background);
     if (result != S_OK) {
         _background = !_background;
         Sync.AddError_Code_Name(result, nullptr);
     }
     SetPriorityText();
+}
+
+HRESULT CProgressDialog::SetBackgroundTransport(bool background) {
+    return NProcessPriority::SetBackground(0, background);
 }
 
 void CProgressDialog::AddMessageDirect(const wchar_t *message, bool needNumber) {
@@ -934,7 +965,7 @@ bool CProgressDialog::eventFilter(QObject *watched, QEvent *event) {
 bool CProgressDialog::OnTimer() {
     if (Sync.Get_Paused())
         return true;
-    // CheckNeedClose/worker completion follows in mandatory b3.
+    CheckNeedClose();
     UpdateStatInfo(false);
     return true;
 }
@@ -959,5 +990,252 @@ bool CProgressDialog::OnNotify(QKeyEvent *key) {
     return false;
 }
 void CProgressDialog::OnOK() {}
+void CProgressDialog::OnCancel() { Sync.Set_Stopped(true); }
 void CProgressDialog::accept() { OnOK(); }
-void CProgressDialog::reject() {} // Full source cancel transition follows in b3.
+void CProgressDialog::reject() { OnButtonClicked(IDCANCEL); }
+
+struct CWaitCursor {
+    CWaitCursor() { QApplication::setOverrideCursor(Qt::WaitCursor); }
+    ~CWaitCursor() { QApplication::restoreOverrideCursor(); }
+};
+
+qintptr CProgressDialog::Create(const UString &title, NWindows::CThread &thread,
+                                QWidget *wndParent) {
+    qintptr res = 0;
+    try {
+        if (WaitMode) {
+            CWaitCursor waitCursor;
+#ifdef _WIN32
+            HANDLE h[] = {thread, _createDialogEvent};
+            const DWORD res2 = WaitForMultipleObjects(Z7_ARRAY_SIZE(h), h, FALSE, kCreateDelay);
+            if (res2 == WAIT_OBJECT_0 && !Sync.ThereIsMessage())
+                return 0;
+#else
+            const auto res2 = _startWait.Wait(kCreateDelay);
+            if (res2 == CQtProgressStartWait::EResult::Finished && !Sync.ThereIsMessage()) {
+                thread.Wait_Close();
+                return 0;
+            }
+#endif
+        }
+        _title = title;
+        // Desktop resource has only IDD_PROGRESS; source UNDER_CE sizing is absent.
+        res = CQtProgressDialog::CreateModal(wndParent);
+    } catch (...) {
+        _wasCreated = true;
+        _dialogCreatedEvent.Set();
+    }
+    thread.Wait_Close();
+    if (!MessagesDisplayed)
+        if (!DisableUserQuestions)
+            MessageBox(wndParent, L"Progress Error", L"7-Zip", true);
+    return res;
+}
+
+bool CProgressDialog::OnExternalCloseMessage() {
+    SetTaskbarProgressState(TBPF_NOPROGRESS);
+    UpdateStatInfo(true);
+    SetItemText(IDCANCEL, LangString(IDS_CLOSE));
+    SetDefaultButton(IDCANCEL);
+    HideItem(IDB_PROGRESS_BACKGROUND);
+    HideItem(IDB_PAUSE);
+    ProcessWasFinished_GuiVirt();
+    bool thereAreMessages;
+    CProgressFinalMessage fm;
+    {
+        NSynchronization::CCriticalSectionLock lock(Sync._cs);
+        thereAreMessages = !Sync.Messages.IsEmpty();
+        fm = Sync.FinalMessage;
+    }
+    if (!fm.ErrorMessage.Message.IsEmpty()) {
+        MessagesDisplayed = true;
+        if (fm.ErrorMessage.Title.IsEmpty())
+            fm.ErrorMessage.Title = "7-Zip";
+        if (!DisableUserQuestions)
+            MessageBox(this, fm.ErrorMessage.Message, fm.ErrorMessage.Title, true);
+    } else if (!thereAreMessages) {
+        MessagesDisplayed = true;
+        if (!fm.OkMessage.Message.IsEmpty()) {
+            if (fm.OkMessage.Title.IsEmpty())
+                fm.OkMessage.Title = "7-Zip";
+            if (!DisableUserQuestions)
+                MessageBox(this, fm.OkMessage.Message, fm.OkMessage.Title, false);
+        }
+    }
+    if (!DisableUserQuestions)
+        if (thereAreMessages && !_cancelWasPressed) {
+            _waitCloseByCancelButton = true;
+            UpdateMessagesDialog();
+            return true;
+        }
+    End(0);
+    return true;
+}
+
+bool CProgressDialog::OnMessage(unsigned message) {
+    switch (message) {
+    case kCloseMessage: {
+        if (_timer) {
+            killTimer(_timer);
+            _timer = 0;
+        }
+        if (_inCancelMessageBox) {
+            _externalCloseMessageWasReceived = true;
+            break;
+        }
+        return OnExternalCloseMessage();
+    }
+    }
+    return false; // Other native UI messages are dispatched by Qt.
+}
+void CProgressDialog::PostMsg(unsigned message) {
+    QMetaObject::invokeMethod(this, [this, message] { OnMessage(message); }, Qt::QueuedConnection);
+}
+bool CProgressDialog::OnButtonClicked(unsigned buttonID) {
+    switch (buttonID) {
+    case IDCANCEL:
+        if (_waitCloseByCancelButton) {
+            MessagesDisplayed = true;
+            End(IDCLOSE);
+            break;
+        }
+        if (_cancelWasPressed)
+            return true;
+        {
+            const bool paused = Sync.Get_Paused();
+            if (!paused)
+                OnPauseButton();
+            _inCancelMessageBox = true;
+            const int res = AskCancel(this, LangString(IDS_PROGRESS_ASK_CANCEL), _title);
+            _inCancelMessageBox = false;
+            if (res == IDYES)
+                _cancelWasPressed = true;
+            if (Sync.Get_Paused() != paused)
+                OnPauseButton();
+            if (_externalCloseMessageWasReceived) {
+                OnExternalCloseMessage();
+                return true;
+            }
+            if (!_cancelWasPressed)
+                return true;
+            MessagesDisplayed = true;
+        }
+        break;
+    case IDB_PAUSE:
+        OnPauseButton();
+        return true;
+    case IDB_PROGRESS_BACKGROUND:
+        OnPriorityButton();
+        return true;
+    default:
+        return false;
+    }
+    // Original CModalDialog::OnButtonClicked dispatches IDCANCEL to OnCancel.
+    OnCancel();
+    return true;
+}
+void CProgressDialog::CheckNeedClose() {
+    if (_needClose) {
+        PostMsg(kCloseMessage);
+        _needClose = false;
+    }
+}
+void CProgressDialog::ProcessWasFinished() {
+    if (!WaitMode)
+        WaitCreating();
+    if (_wasCreated)
+        PostMsg(kCloseMessage);
+    else
+        _needClose = true;
+}
+
+#ifndef _WIN32
+struct CProgressThreadContext {
+    CProgressThreadVirt *Progress;
+    CQtProgressStartWait *Wait;
+};
+#endif
+static THREAD_FUNC_DECL MyThreadFunction(void *param) {
+#ifdef _WIN32
+    CProgressThreadVirt *p = (CProgressThreadVirt *)param;
+#else
+    auto *context = static_cast<CProgressThreadContext *>(param);
+    CProgressThreadVirt *p = context->Progress;
+#endif
+    try {
+        p->Process();
+        p->ThreadFinishedOK = true;
+    } catch (...) {
+        p->Result = E_FAIL;
+    }
+#ifndef _WIN32
+    context->Wait->SignalFinished();
+#endif
+    return 0;
+}
+HRESULT CProgressThreadVirt::Create(const UString &title, QWidget *parentWindow) {
+    NWindows::CThread thread;
+#ifdef _WIN32
+    const WRes wres = thread.Create(MyThreadFunction, this);
+#else
+    CProgressThreadContext context{this, &_startWait};
+    const WRes wres = thread.Create(MyThreadFunction, &context);
+#endif
+    if (wres != 0)
+        return HRESULT_FROM_WIN32(wres);
+    CProgressDialog::Create(title, thread, parentWindow);
+    return S_OK;
+}
+static void AddMessageToString(UString &dest, const UString &src) {
+    if (!src.IsEmpty()) {
+        if (!dest.IsEmpty())
+            dest.Add_LF();
+        dest += src;
+    }
+}
+void CProgressThreadVirt::Process() {
+    CProgressCloser closer(*this);
+    UString m;
+    try {
+        Result = ProcessVirt();
+    } catch (const wchar_t *s) {
+        m = s;
+    } catch (const UString &s) {
+        m = s;
+    } catch (const char *s) {
+        m = GetUnicodeString(s);
+    } catch (int v) {
+        m = "Error #";
+        m.Add_UInt32((unsigned)v);
+    } catch (...) {
+        m = "Error";
+    }
+    if (Result != E_ABORT) {
+        if (m.IsEmpty() && Result != S_OK)
+            m = HResultToMessage(Result);
+    }
+    AddMessageToString(m, FinalMessage.ErrorMessage.Message);
+    {
+        FOR_VECTOR(i, ErrorPaths) {
+            if (i >= 32)
+                break;
+            AddMessageToString(m, fs2us(ErrorPaths[i]));
+        }
+    }
+    CProgressSync &sync = Sync;
+    NSynchronization::CCriticalSectionLock lock(sync._cs);
+    if (m.IsEmpty()) {
+        if (!FinalMessage.OkMessage.Message.IsEmpty())
+            sync.FinalMessage.OkMessage = FinalMessage.OkMessage;
+    } else {
+        sync.FinalMessage.ErrorMessage.Message = m;
+        if (Result == S_OK)
+            Result = E_FAIL;
+    }
+}
+UString HResultToMessage(HRESULT errorCode) {
+    if (errorCode == E_OUTOFMEMORY)
+        return LangString(IDS_MEM_ERROR);
+    else
+        return NError::MyFormatMessage(errorCode);
+}

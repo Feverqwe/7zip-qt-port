@@ -8,6 +8,83 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-10.1 — integrated progress/callback component (2026-09-29)
+
+This integrated component is accepted in its stated scope. Historical evidence
+below is retained; remaining consumers are grouped in the checklist's iteration map.
+The reproducible source baseline is
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from
+[ip7z/7zip](https://github.com/ip7z/7zip).
+
+Copied source functional bodies: FileManager/ProgressDialog2 modal creation,
+native worker/Process/result/exception composition, finish and cancel-confirm;
+GUI/UpdateCallbackGUI2 Init/operation/move/password state;
+FileManager/UpdateCallback100 all eight COM callback interfaces and methods;
+FileManager/ExtractCallback::SetExtractErrorMessage. Adapted application files
+retain their upstream paths under src/CPP/7zip/UI. Exact unchanged interfaces
+Archive/IArchive.h, IPassword.h and ICoder.h are under third_party/7zip/CPP/7zip.
+ClassDefs remains the single GUID definition owner. Agent/IFolderArchive.h and
+Common/IFileExtractCallback.h retain all interface declarations, with opaque
+CCodecs/CArchiveLink declarations replacing heavyweight engine includes:
+the current integration executes official 7zz through ArchiveBackend.
+
+Qt adaptations: modal/event/message/default-button services; atomic worker→GUI
+lifecycle flags; explicit per-dialog question policy; POSIX startup wait and
+join; password widgets constructed/executed/destroyed on the GUI owner thread
+through qtcallbackpassword. Current resource language provider uses original
+non-Z7_LANG fallback; complete language-file ownership remains P1-14.
+Source Before_ArcReopen clears stop only, retaining pause.
+
+ArchiveProgressOperation is the first connected integration owner: MainWindow
+Add/drop uses the original native modal worker and callbacks; its old QProgressDialog
+owner is removed for this scenario. Remaining progress/journal consumers are
+P0-10.2, not omitted completion. The bridge publishes external paths with source
+Set_FilePath and polls completion even while paused: blocking a local callback
+in CheckStop would otherwise miss independent engine completion. Unknown byte/file
+totals remain unknown; a percent-only atomic fallback updates only bar/title.
+Accepted empty password is sent as an empty line through backend stdin, preserving
+source callback acceptance. Start exceptions return to original Process composition;
+after-start exceptions first quiesce the child through cancelAndWait. Scoped
+MainWindow ownership policy restores normal routing after modal completion.
+
+processpause supplies the missing external-process service: POSIX SIGSTOP/CONT,
+Windows owned thread handles/native CThread suspend/resume with bounded snapshot
+rechecks and rollback. It does not contain archive logic. Relevant native contracts:
+[SuspendThread](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-suspendthread),
+[Thread32Next](https://learn.microsoft.com/en-us/windows/win32/api/tlhelp32/nf-tlhelp32-thread32next),
+[POSIX signals](https://man7.org/linux/man-pages/man7/signal.7.html).
+ArchiveBackend owns the process handle/PID lifetime, native controls and reset
+after exit; widgets receive no process IDs or command syntax.
+
+Source button pause failure restores sync state; child priority failure restores
+parent policy and reports errors. Startup propagates an active parent background
+policy; foreground remains normal spawn policy until an explicit live transition.
+Already cancelled startup emits no policy request. POSIX stop/continue delivery
+is asynchronous; native owned-child observations confirm stop/resume, not a fake
+progress-only pause. Windows preserves another owner's suspend counts and retains
+partial resume failures for retry; Windows/Linux runtime remains unverified.
+
+Source/interface body comparisons passed for complete UpdateCallback100 and
+IFolderArchive/IFileExtractCallback declarations ignoring only formatting/comments
+and escaped macro line breaks. GUI2 matches except the reviewed password service.
+The three added vendor headers byte-match the baseline; sibling checkout stays
+clean. Current inventory: root C++45, mirrored C++44, third_party paths89
+(86 prior tracked paths plus these three headers). Required formatting is separate
+from functional adaptations.
+
+Focused evidence on macOS arm64, Qt 6.11.2, 2026-09-29: progress_worker/cancel/dialog
+3/3 in 11.45 s; update_callback 1/1 in 0.29 s; process_pause 1/1 in 0.97 s.
+Final focused 9/9 passed in 15.81 s; later localized archive/consumer checks passed,
+including after-start exception cleanup and cancel of Add preserving the original
+archive. Full `./scripts/check.sh` passed formatting, app build and **101/101 CTest
+in 72.05 s** on macOS arm64/Qt 6.11.2, 2026-09-29; log
+`/tmp/sevenzip-p0-10-1-check.log`. Current-build parity passed all 24 reports/26
+controls. Reviewed four new normal/compact Close reports: no clipping or unfit text,
+correct hidden Pause/Background, error list and default Close; unknown totals empty.
+Native confirmation and password behavior/geometry are covered separately.
+Windows/Linux runtime and rendered Windows parity remain unverified and mandatory;
+all remaining progress/journal consumers and parent P0-10 acceptance stay P0-10.2.
+
 ## P0-02.2b3c3b2b3a — portable startup wait boundary (2026-09-29)
 
 Project baseline `e9908a5`. Exact upstream baseline

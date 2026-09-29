@@ -103,7 +103,7 @@ class MainWindow : public QMainWindow {
     void createIconList(QWidget *central);
     void connectFilesystemScanner();
     void connectBackend();
-    void backendFinished(bool ok, const QString &message);
+    void backendFinished(bool ok, const QString &message, bool messageDisplayed = false);
     bool startPendingHash(bool ok);
     bool startPendingArchiveMove(bool ok);
     bool finishArchiveState(bool ok);
@@ -256,6 +256,7 @@ class MainWindow : public QMainWindow {
     QListView *iconList_ = nullptr;
     QStackedWidget *viewStack_ = nullptr;
     QProgressDialog *progress_ = nullptr;
+    bool sourceArchiveProgress_ = false;
     QDialog *journalDialog_ = nullptr;
     QPointer<QDialog> infoDialog_;
     QPlainTextEdit *journalView_ = nullptr;

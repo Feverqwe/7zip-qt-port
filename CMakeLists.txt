@@ -43,6 +43,7 @@ endif()
 
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
     src/processpriority.cpp src/processpriority.h
+    src/processpause.cpp src/processpause.h
     third_party/7zip/C/Threads.c third_party/7zip/CPP/Windows/ErrorMsg.cpp
     src/CPP/Windows/DLL.cpp src/CPP/Windows/DLL.h
     third_party/7zip/CPP/Common/StringToInt.cpp
@@ -56,7 +57,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
+target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP PRIVATE src)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
@@ -65,8 +66,12 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/archiveprogressoperation.cpp src/archiveprogressoperation.h
     src/CPP/7zip/UI/FileManager/FormatUtils.cpp src/CPP/7zip/UI/FileManager/FormatUtils.h
     src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp src/CPP/7zip/UI/FileManager/ProgressDialog2.h
+    src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.cpp src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.h
+    src/CPP/7zip/UI/FileManager/UpdateCallback100.cpp src/CPP/7zip/UI/FileManager/UpdateCallback100.h
+    src/qtcallbackpassword.cpp src/qtcallbackpassword.h
     src/qtprogresscontrols.cpp src/qtprogresscontrols.h
     src/qtpanellist.cpp src/qtpanellist.h
     src/qtpanelfolder.cpp src/qtpanelfolder.h
@@ -286,7 +291,38 @@ if(BUILD_TESTING)
     target_link_libraries(progress_wait_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME progress_wait COMMAND progress_wait_tests)
     set_tests_properties(progress_wait PROPERTIES TIMEOUT 10)
+    qt_add_executable(progress_worker_tests tests/progress_worker_tests.cpp
+        tests/layout_inspection.cpp)
+    target_link_libraries(progress_worker_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME progress_worker COMMAND progress_worker_tests)
+    set_tests_properties(progress_worker PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
+        FIXTURES_SETUP ui_reference_progress_worker TIMEOUT 30)
+    qt_add_executable(update_callback_tests tests/update_callback_tests.cpp)
+    qt_add_executable(archive_progress_tests tests/archive_progress_tests.cpp tests/layout_inspection.cpp
+        src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
+        src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
+    target_link_libraries(archive_progress_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME archive_progress COMMAND archive_progress_tests)
+    set_tests_properties(archive_progress PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
+        FIXTURES_SETUP ui_reference_archive_progress TIMEOUT 30)
+    target_link_libraries(update_callback_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME update_callback COMMAND update_callback_tests)
+    set_tests_properties(update_callback PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    qt_add_executable(progress_cancel_tests tests/progress_cancel_tests.cpp
+        tests/layout_inspection.cpp)
+    target_link_libraries(progress_cancel_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME progress_cancel COMMAND progress_cancel_tests)
+    set_tests_properties(progress_cancel PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
+        TIMEOUT 30)
     qt_add_executable(process_priority_tests tests/process_priority_tests.cpp)
+    qt_add_executable(process_pause_tests tests/process_pause_tests.cpp)
+    target_include_directories(process_pause_tests PRIVATE src)
+    target_link_libraries(process_pause_tests PRIVATE sevenzip_common Qt6::Test)
+    add_test(NAME process_pause COMMAND process_pause_tests)
+    set_tests_properties(process_pause PROPERTIES TIMEOUT 15)
     target_include_directories(process_priority_tests PRIVATE src)
     target_link_libraries(process_priority_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME process_priority COMMAND process_priority_tests)
@@ -337,7 +373,7 @@ if(BUILD_TESTING)
         --reports ${CMAKE_BINARY_DIR}/ui-reports
         --output ${CMAKE_BINARY_DIR}/ui-reports/progress-parity.json)
     set_tests_properties(ui_parity_progress PROPERTIES
-        FIXTURES_REQUIRED "ui_reference_progress;ui_reference_progress_priority")
+        FIXTURES_REQUIRED "ui_reference_progress;ui_reference_progress_priority;ui_reference_progress_worker;ui_reference_archive_progress")
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

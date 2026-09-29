@@ -5,9 +5,11 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QLabel>
+#include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QTest>
+#include <QTimer>
 #include <QTreeWidget>
 
 namespace {
@@ -48,7 +50,7 @@ class ProgressDialogTests : public QObject {
         second.show();
         QVERIFY(!second.windowIcon().isNull());
     }
-    void initialUnknownStateAndUnfinishedCommands() {
+    void initialUnknownStateAndSourceCommands() {
         CProgressDialog dialog(nullptr, L"Обновление");
         dialog.show();
         QTRY_COMPARE(text(dialog, "IDT_PROGRESS_ELAPSED_VAL"), QString("00:00:00"));
@@ -62,9 +64,13 @@ class ProgressDialogTests : public QObject {
         bool background;
         QCOMPARE(dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled(),
                  NProcessPriority::GetBackground(0, background) == S_OK);
-        QVERIFY(!dialog.findChild<QPushButton *>("IDCANCEL")->isEnabled());
+        QVERIFY(dialog.findChild<QPushButton *>("IDCANCEL")->isEnabled());
         QVERIFY(pause(dialog)->isEnabled());
         dialog.accept();
+        QTimer::singleShot(0, &dialog, [] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+                box->button(QMessageBox::No)->click();
+        });
         dialog.reject();
         QVERIFY(dialog.isVisible());
         QVERIFY(!dialog.Sync.Get_Stopped());

@@ -47,6 +47,8 @@ void MainWindow::connectBackend() {
     connect(backend_, &ArchiveBackend::infoReady, this,
             [this](const ArchiveInfo &info) { info_ = info; });
     connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
+        if (sourceArchiveProgress_)
+            return;
         CPasswordDialog dialog(this);
         dialog.OnInit();
         if (dialog.exec() != QDialog::Accepted || dialog.Password.isEmpty()) {
@@ -69,10 +71,13 @@ void MainWindow::connectBackend() {
             statusBar()->showMessage(operationName_ + ": " + currentDetail_);
         }
     });
-    connect(backend_, &ArchiveBackend::finished, this, &MainWindow::backendFinished);
+    connect(backend_, &ArchiveBackend::finished, this,
+            [this](bool ok, const QString &message) { backendFinished(ok, message); });
 }
 
-void MainWindow::backendFinished(bool ok, const QString &message) {
+void MainWindow::backendFinished(bool ok, const QString &message, bool messageDisplayed) {
+    if (sourceArchiveProgress_)
+        return; // Source worker owns completion until its modal lifecycle joins.
     if (!listingFolderError_.isEmpty()) {
         const QString bindingError = listingFolderError_;
         listingFolderError_.clear();
@@ -118,7 +123,7 @@ void MainWindow::backendFinished(bool ok, const QString &message) {
             return;
     }
     statusBar()->showMessage(resultMessage);
-    if (!ok && resultMessage != "Операция отменена.")
+    if (!ok && !messageDisplayed && resultMessage != "Операция отменена.")
         QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
 }
 

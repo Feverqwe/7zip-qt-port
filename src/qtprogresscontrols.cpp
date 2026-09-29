@@ -7,6 +7,7 @@
 #include <QClipboard>
 #include <QFontMetricsF>
 #include <QLabel>
+#include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScreen>
@@ -117,8 +118,7 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     pause->setAutoDefault(true);
     AddControl(IDB_PAUSE, "IDB_PAUSE", pause, 200, 180, 80, 16);
     auto *cancel = new QPushButton(QStringLiteral("Отмена"), this);
-    cancel->setAutoDefault(false);
-    cancel->setEnabled(false); // Mandatory modal cancel/worker lifecycle follows in b3.
+    cancel->setAutoDefault(true);
     AddControl(kCancelID, "IDCANCEL", cancel, 288, 180, 80, 16);
     setTabOrder(messages, background);
     setTabOrder(background, pause);
@@ -127,6 +127,48 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
 }
 
 QWidget *CQtProgressDialog::GetItem(unsigned id) const { return _controls.value(id); }
+qintptr CQtProgressDialog::CreateModal(QWidget *parent) {
+    if (parentWidget() != parent)
+        setParent(parent, Qt::Dialog);
+    return exec();
+}
+void CQtProgressDialog::End(qintptr result) { done(int(result)); }
+void CQtProgressDialog::SetDefaultButton(unsigned id) {
+    auto *button = static_cast<QPushButton *>(GetItem(id));
+    for (auto *other : findChildren<QPushButton *>())
+        other->setDefault(false);
+    button->setEnabled(true);
+    button->setAutoDefault(true);
+    button->setDefault(true);
+    button->setFocus();
+}
+void CQtProgressDialog::MessageBox(QWidget *parent, const UString &message, const UString &title,
+                                   bool error) {
+    QMessageBox box(error ? QMessageBox::Critical : QMessageBox::Information,
+                    QString::fromWCharArray(title.Ptr()), QString::fromWCharArray(message.Ptr()),
+                    QMessageBox::Ok, parent);
+    box.setObjectName("progressFinalMessage");
+    box.setTextFormat(Qt::PlainText);
+    box.exec();
+}
+int CQtProgressDialog::AskCancel(QWidget *parent, const UString &message, const UString &title) {
+    QMessageBox box(QMessageBox::Question, QString::fromWCharArray(title.Ptr()),
+                    QString::fromWCharArray(message.Ptr()),
+                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, parent);
+    box.setObjectName("progressCancelQuestion");
+    box.setTextFormat(Qt::PlainText);
+    box.button(QMessageBox::Yes)->setText(QStringLiteral("&Да"));
+    box.button(QMessageBox::No)->setText(QStringLiteral("&Нет"));
+    box.button(QMessageBox::Cancel)->setText(QStringLiteral("Отмена"));
+    box.setDefaultButton(QMessageBox::Yes);
+    box.setEscapeButton(QMessageBox::Cancel);
+    const int result = box.exec();
+    if (result == QMessageBox::Yes)
+        return 6; // Native IDYES.
+    if (result == QMessageBox::No)
+        return 7; // Native IDNO.
+    return 2;     // Native IDCANCEL, including Escape/window close.
+}
 #ifdef _WIN32
 HWND CQtProgressDialog::GetNativeTaskbarWindow(QWidget *widget) {
     return widget ? reinterpret_cast<HWND>(widget->winId()) : nullptr;

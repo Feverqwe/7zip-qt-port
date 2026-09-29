@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
+#include "processpause.h"
 
 #include <QObject>
 #include <QProcess>
@@ -68,6 +69,9 @@ class ArchiveBackend : public QObject {
     virtual void replaceEntry(const QString &archive, const QString &entry,
                               const QString &sourceRoot);
     virtual void cancel();
+    // Native controls affect only this backend's live engine child.
+    virtual HRESULT setPaused(bool paused);
+    virtual HRESULT setBackground(bool background);
     // Stop the transport before callers release its source/destination resources.
     void cancelAndWait();
     void providePassword(const QString &password);
@@ -79,6 +83,7 @@ class ArchiveBackend : public QObject {
     void outputReceived(const QString &text);
     void finished(bool success, const QString &message);
     void passwordRequired();
+    void engineStarted();
 
   private:
     enum class Job {
@@ -106,6 +111,7 @@ class ArchiveBackend : public QObject {
     bool prepareMutation(const QString &archive);
 
     QProcess process_;
+    CProcessPause processPause_;
     Job job_ = Job::None;
     QString output_;
     QByteArray pendingOutput_;

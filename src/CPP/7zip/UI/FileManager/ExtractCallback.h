@@ -8,5 +8,6 @@
 #include "Common/MyString.h"
 
 UString GetOpenArcErrorMessage(UInt32 errorFlags);
+void SetExtractErrorMessage(Int32 opRes, Int32 encrypted, const wchar_t *fileName, UString &s);
 
 #endif

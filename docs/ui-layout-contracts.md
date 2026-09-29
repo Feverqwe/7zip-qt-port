@@ -287,7 +287,7 @@ cover initial values, Unicode/spaces, show/hide, OK/Enter and Cancel. Editable
 password values stay out of reports. Russian captions and Qt button ordering
 are documented adaptations. Windows rendering remains unverified.
 
-## Progress presentation subset
+## Progress dialog and modal lifecycle
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 ProgressDialog2.rc/ProgressDialog2a.rc (`IDD_PROGRESS`) and the complete handlers
@@ -311,13 +311,18 @@ line height upward to fit QLabel text. Source NormalizeSize only handles
 oversized windows/work-area overlap; it does not supply a minimum size.
 Normal 760×450 and compact 640×380 geometry tests check every visible control,
 text/button fitting and footer/list separation. `ui_parity_progress` maps all
-26 IDs to 20 JSON reports across compression/errors/paused and native priority
+26 IDs to 24 JSON reports across compression/errors/paused, native priority and finish-Close
 states. Captions are fixed Russian; clipboard shortcuts also accept macOS Meta.
 Background is the source default button and receives initial focus when native
 priority capability is available; Enter on focused Pause toggles pause instead.
 Real priority failure restores the previous caption/title and reports a source
-Sync error. Cancel remains disabled until mandatory modal cancel/worker services
-land. This view is not yet the application's operation progress owner.
+Sync error. Cancel uses source YES/NO/CANCEL and Escape-as-Cancel, temporarily
+pausing and restoring prior pause. Native completion while the question is open
+is deferred until the answer; completed errors hide Pause/Background and focus
+the default Close button. Native message boxes use plain text. Their Qt platform
+layout is checked separately from the 26-control source resource; macOS ignores
+message-box window titles. Add in an open archive is the first operation consumer
+under P0-10.1 validation. Other consumers remain mandatory P0-10.2 work.
 No Windows rendered reference; geometry does not establish pixel parity.
 The original IconID branch loads the exact FM.ico through a Qt ID/resource
 service, including native 16/32/48 frames; default negative IDs preserve the

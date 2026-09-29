@@ -1,6 +1,8 @@
 #include "7zip/PropID.h"
 #include "Windows/PropVariant.h"
+#include "archiveprogressoperation.h"
 #include "mainwindow.h"
+#include <QScopedValueRollback>
 
 void MainWindow::calculateHash(const QString &method) {
     if ((state_ != State::Filesystem && state_ != State::Viewing) ||
@@ -180,6 +182,27 @@ void MainWindow::addSources(const QStringList &sources) {
     previousState_ = state_;
     updatingArchive_ = true;
     setState(State::Operating);
-    begin("Добавление в архив", archive_);
-    backend_->add(archive_, sources);
+    operationName_ = QStringLiteral("Добавление в архив");
+    journalText_.clear();
+    if (journalView_)
+        journalView_->clear();
+    appendJournal(operationName_ + ": " + archive_);
+    journalAction_->setEnabled(true);
+    bool success = false;
+    bool messageDisplayed = false;
+    QString message;
+    {
+        QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+        ArchiveProgressOperation operation(*backend_,
+                                           [this, sources] { backend_->add(archive_, sources); });
+        operation.MainWindow = this;
+        const HRESULT result = operation.Create(ToUString(operationName_), this);
+        success = result == S_OK && operation.succeeded();
+        message = result == S_OK ? operation.resultMessage()
+                                 : QString::fromWCharArray(HResultToMessage(result).Ptr());
+        messageDisplayed = operation.MessagesDisplayed;
+    }
+    // This update's messages/errors were displayed by the source dialog.
+    // Existing state completion still owns refresh/selection restoration.
+    backendFinished(success, message, messageDisplayed);
 }

@@ -7,6 +7,23 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-10.1 is accepted for the first Add/drop consumer: source modal/worker finish, confirmation with
+YES/NO/CANCEL, temporary pause restoration and finish-during-prompt deferral are
+implemented with focused native worker tests. Source Close after errors remains
+available until acknowledged. Password callbacks now use the existing source
+PasswordDialog on the GUI owner thread. On macOS Qt ignores QMessageBox window
+titles; message bodies remain plain text, as required by the native workflow
+([Qt window-title contract](https://doc.qt.io/qt-6/qmessagebox.html#setWindowTitle)).
+First real ArchiveBackend consumer and process-control propagation are connected;
+current 24-report contract/JSON review and full 101/101 gate passed on macOS.
+No rendered Windows reference or Windows/Linux runtime verification is available.
+Qt message-box button order follows the platform; source Yes default and
+Cancel/Escape semantics are retained. Add/drop is the first modal consumer;
+other progress/journal owners remain P0-10.2. External percentages update only
+bar/title; unavailable byte/file totals stay empty. Native pause/background
+failure is reported with state/policy rollback. A launch exception after process
+start first quiesces the child, then uses source error composition.
+
 P0-02.2b3c3b2b2b2b3b restores original Background/Foreground transition and
 caption/title flow. Background is the source default button and initial focus;
 Enter on focused Pause toggles pause. Actual native failure rolls back the toggle

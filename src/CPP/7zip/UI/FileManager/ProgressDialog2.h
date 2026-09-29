@@ -1,22 +1,26 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ProgressDialog2.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Complete native CProgressSync and source presentation subset; full modal
-// dialog/thread and operation integration follow separately.
+// Native CProgressSync, source presentation/modal/thread/cancel bodies;
+// Qt and external-engine services are narrow integration boundaries.
 #ifndef ZIP7_INC_PROGRESS_DIALOG_2_H
 #define ZIP7_INC_PROGRESS_DIALOG_2_H
 
 #include "Common/MyCom.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/Synchronization.h"
+#include "Windows/Thread.h"
 #include "qtprogresscontrols.h"
 #include <QPointer>
+#include <atomic>
 #ifdef _WIN32
 #include "7zip/UI/FileManager/MyWindowsNew.h"
 #else
+#include "qtprogresswait.h"
 #include "qttaskbarprogress.h"
 #endif
 
 void GetTimeString(UInt64 timeValue, wchar_t *s);
+UString HResultToMessage(HRESULT errorCode);
 
 struct CProgressMessageBoxPair {
     UString Title;
@@ -94,12 +98,11 @@ class CProgressSync {
     bool ThereIsMessage() const { return !Messages.IsEmpty() || FinalMessage.ThereIsMessage(); }
 };
 
-// Source presentation subset. Full modal/thread/cancel and operation
-// services remain mandatory subsequent ports; this view is not yet an app owner.
+// Source dialog owner. Application consumers migrate in P0-10.1/P0-10.2.
 class CProgressDialog : public CQtProgressDialog {
     bool _isDir;
-    bool _wasCreated;
-    bool _needClose;
+    std::atomic<bool> _wasCreated;
+    std::atomic<bool> _needClose;
     bool _errorsWereDisplayed;
     bool _waitCloseByCancelButton;
     bool _cancelWasPressed;
@@ -201,12 +204,18 @@ class CProgressDialog : public CQtProgressDialog {
     void SetPriorityText();
     void OnPauseButton();
     void OnPriorityButton();
+    bool OnButtonClicked(unsigned buttonID);
+    bool OnMessage(unsigned message);
+    bool OnExternalCloseMessage();
+    void CheckNeedClose();
+    void PostMsg(unsigned message);
     void EnableErrorsControls(bool enable);
     void AddMessageDirect(const wchar_t *message, bool needNumber);
     void AddMessage(const wchar_t *message);
     void UpdateMessagesDialog();
     void CopyToClipboard();
     void OnOK();
+    void OnCancel();
     bool OnTimer();
     bool OnNotify(QKeyEvent *event);
     void showEvent(QShowEvent *event) override;
@@ -214,17 +223,65 @@ class CProgressDialog : public CQtProgressDialog {
     void timerEvent(QTimerEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
 
+  protected:
+    // External 7zz reports a percentage without byte counters. Do not invent
+    // byte/file totals; apply only to the progress/title presentation fallback.
+    std::atomic<int> TransportPercent{-1};
+    virtual HRESULT SetPausedTransport(bool) { return S_OK; }
+    virtual HRESULT SetBackgroundTransport(bool background);
+#ifndef _WIN32
+    CQtProgressStartWait _startWait;
+#endif
+
   public:
     CProgressSync Sync;
     int IconID;
     QPointer<QWidget> MainWindow;
     UString MainTitle;
     UString MainAddTitle;
+    // Explicit application question policy instead of the original FM global.
+    bool DisableUserQuestions = false;
     explicit CProgressDialog(QWidget *parent = nullptr, const UString &title = UString());
     ~CProgressDialog() override;
     bool OnInit();
+    void WaitCreating() {
+        _createDialogEvent.Set();
+#ifndef _WIN32
+        _startWait.SignalRequested();
+#endif
+        _dialogCreatedEvent.Lock();
+    }
+    qintptr Create(const UString &title, NWindows::CThread &thread, QWidget *wndParent = nullptr);
+    void ProcessWasFinished();
+    virtual void ProcessWasFinished_GuiVirt() {}
     void accept() override;
     void reject() override;
+};
+
+class CProgressCloser {
+    CProgressDialog *_p;
+
+  public:
+    CProgressCloser(CProgressDialog &p) : _p(&p) {}
+    ~CProgressCloser() { _p->ProcessWasFinished(); }
+};
+
+class CProgressThreadVirt : public CProgressDialog {
+  protected:
+    FStringVector ErrorPaths;
+    CProgressFinalMessage FinalMessage;
+    virtual HRESULT ProcessVirt() = 0;
+
+  public:
+    HRESULT Result;
+    bool ThreadFinishedOK;
+    void Process();
+    void AddErrorPath(const FString &path) { ErrorPaths.Add(path); }
+    HRESULT Create(const UString &title, QWidget *parentWindow = nullptr);
+    CProgressThreadVirt() : Result(E_FAIL), ThreadFinishedOK(false) {}
+    CProgressMessageBoxPair &GetMessagePair(bool isError) {
+        return isError ? FinalMessage.ErrorMessage : FinalMessage.OkMessage;
+    }
 };
 
 #endif

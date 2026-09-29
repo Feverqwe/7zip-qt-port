@@ -85,6 +85,8 @@ class ControlledBackend : public ArchiveBackend {
         busy_ = false;
         emit finished(false, QStringLiteral("Операция отменена."));
     }
+    HRESULT setPaused(bool) override { return S_OK; }
+    HRESULT setBackground(bool) override { return S_OK; }
     void completeList(const QList<ArchiveEntry> &entries) {
         busy_ = false;
         emit entriesReady(entries);
