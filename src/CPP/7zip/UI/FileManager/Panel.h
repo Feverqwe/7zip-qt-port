@@ -17,6 +17,7 @@
 #include "Common/MyVector.h"
 #include "ViewSettings.h"
 #include "Windows/FileFind.h"
+#include "Windows/PropVariantConv.h"
 #include "Windows/Synchronization.h"
 #include "Windows/TimeUtils.h"
 #include "qtpanellist.h"
@@ -238,6 +239,7 @@ class CPanel : public QObject {
     }
     bool PanelCreated = false;
     UInt32 _listViewMode = 3;
+    int _timestampLevel = kTimestampPrintLevel_MIN;
     int _xSize = 0;
     PROPID _sortID = 0;
     bool _ascending = true;

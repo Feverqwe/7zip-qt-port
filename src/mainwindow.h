@@ -107,6 +107,7 @@ class MainWindow : public QMainWindow {
     void configureColumns();
     void saveColumns();
     void showColumnsMenu(const QPoint &pos);
+    void redrawTimestampColumns();
     QString sourceColumnText(UInt32 itemIndex, int column);
     Qt::Alignment sourceColumnAlignment(int column) const;
     void createPanelActions(QMenu *editMenu);
@@ -224,6 +225,8 @@ class MainWindow : public QMainWindow {
     bool configuringColumns_ = false;
     Qt::SortOrder sortOrder_ = Qt::AscendingOrder;
     QAction *sortActions_[5]{};
+    QAction *timeActions_[5]{};
+    QAction *utcTimeAction_ = nullptr;
     QAction *viewActions_[4]{};
     QAction *flatView_ = nullptr;
     bool flatDisk_ = false;

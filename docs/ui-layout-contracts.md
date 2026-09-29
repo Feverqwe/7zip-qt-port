@@ -152,6 +152,19 @@ reports for those states. These establish the Qt structure and usability; they
 do not establish rendered Windows parity or availability of binary raw metadata
 from the external `7zz` backend (P1-10).
 
+### Time precision and UTC (P0-06.3)
+
+Reference: pinned `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`MyLoadMenu.cpp` View/Time popup construction and command dispatch,
+`PanelListNotify.cpp` property-to-text branch, and unchanged portable
+`PropVariantConv.cpp`/`PropIDUtils.cpp`. The popup presents five current-time
+examples (day, minute, second, 100 ns, nanosecond) and a separate UTC toggle.
+Changing either setting redraws visible time columns in place; day-level ties
+still sort by source `FILETIME`. `panel_columns` checks the menu text and state,
+filesystem/archive cells, persistence and fully visible list at 980×620 and
+640×400 in `source-time-*.json`. These Qt reports do not establish rendered
+Windows parity.
+
 ## File list settings
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

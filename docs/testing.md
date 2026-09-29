@@ -28,6 +28,11 @@ persistence, Unicode/space values and eight normal/compact four-view JSON report
 `view_settings_columns` checks the exact source binary record, independent IDs
 and malformed settings. Real `7zz` binary raw fields require P1-10 transport;
 the provider fixture does not claim they appear in an external archive listing.
+The same suite checks the five source View → Time examples, UTC, persisted
+precision, filesystem and archive `FILETIME` presentation, and sorting by raw
+time when day-level display strings are equal. `source-time-980.json` and
+`source-time-640.json` record current-build list geometry with the time menu
+installed.
 ControlledBackend reports typed fixture format and overrides typed openFolder;
 explicit metadata takes precedence and no fixture reopen launches an engine.
 

@@ -377,6 +377,11 @@ source property catalog and per-folder-type column settings; `MainWindow`
 projects it into the shared Qt header. The external `7zz` adapter still needs
 binary raw property support in P1-10; network namespace capabilities remain
 P1-11.
+`CPanel::_timestampLevel` and `CApp` carry the source time-level state. Qt View
+menu actions use the original command IDs and `MyLoadMenu` dispatch; unchanged
+`PropIDUtils`/`PropVariantConv` format typed `FILETIME` cells. `MainWindow`
+redraws those cells on level/UTC changes and persists the choice through
+QSettings; sort comparison continues to read typed folder properties.
 
 `CPanelSelection` consumes a snapshot of names, folder flags and selection
 states; `mainwindow_selection.cpp` publishes the result to Qt in one update.

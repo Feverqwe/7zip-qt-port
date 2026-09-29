@@ -1,5 +1,7 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
 #include "mainwindow.h"
 #include "qtfilemanagercommands.h"
 #include <QScopedValueRollback>
@@ -137,7 +139,7 @@ void QtFileManagerCommands::SwitchStandardToolbar() { window_.app_.SwitchStandar
 void QtFileManagerCommands::SwitchArchiveToolbar() { window_.app_.SwitchArchiveToolbar(); }
 void QtFileManagerCommands::SwitchButtonsLables() { window_.app_.SwitchButtonsLables(); }
 void QtFileManagerCommands::SwitchLargeButtons() { window_.app_.SwitchLargeButtons(); }
-bool &QtFileManagerCommands::TimestampShowUTC() { Q_UNREACHABLE(); }
+bool &QtFileManagerCommands::TimestampShowUTC() { return g_Timestamp_Show_UTC; }
 void QtFileManagerCommands::OptionsDialog() { window_.showSettings(); }
 void QtFileManagerCommands::OpenBookmark(unsigned index) { window_.openBookmark(index); }
 void QtFileManagerCommands::SetBookmark(unsigned index) { window_.saveBookmark(index); }
@@ -154,10 +156,23 @@ void QtFileManagerCommands::Link() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::OpenAltStreams() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Change_AutoRefresh_Mode() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::SwitchOnOffOnePanel() { Q_UNREACHABLE(); }
-void QtFileManagerCommands::RedrawListItems_InPanels() { Q_UNREACHABLE(); }
-unsigned QtFileManagerCommands::TimestampLevelCount() const { return 0; }
-int QtFileManagerCommands::TimestampLevel(unsigned) const { Q_UNREACHABLE(); }
-void QtFileManagerCommands::SetTimestampLevel(int) { Q_UNREACHABLE(); }
+void QtFileManagerCommands::RedrawListItems_InPanels() {
+    QSettings settings(MainWindow::toolbarSettingsPath(), QSettings::IniFormat);
+    settings.setValue(QStringLiteral("view/timestampUTC"), g_Timestamp_Show_UTC);
+    window_.redrawTimestampColumns();
+}
+unsigned QtFileManagerCommands::TimestampLevelCount() const {
+    return window_.app_._timestampLevels.Size();
+}
+int QtFileManagerCommands::TimestampLevel(unsigned index) const {
+    return window_.app_._timestampLevels[index];
+}
+void QtFileManagerCommands::SetTimestampLevel(int level) {
+    window_.app_.SetTimestampLevel(level);
+    QSettings settings(MainWindow::toolbarSettingsPath(), QSettings::IniFormat);
+    settings.setValue(QStringLiteral("view/timestampLevel"), level);
+    window_.redrawTimestampColumns();
+}
 void QtFileManagerCommands::MyBenchmark(bool) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::ShowHelpWindow(const char *) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::AboutDialog() { Q_UNREACHABLE(); }

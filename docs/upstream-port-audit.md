@@ -464,6 +464,45 @@ focused rebuild/tests. Windows/Linux runtime and rendered Windows visual parity
 remain unverified. P0-06.3 time and P0-06.4 auto-refresh/parent acceptance are
 still mandatory.
 
+## P0-06.3 — source time precision and UTC View workflow (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([source tree](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager)).
+Reviewed original paths/symbols: `CPP/7zip/UI/FileManager/Panel.h`
+(`_timestampLevel`, MIN default), `App.h` (`_timestampLevels`,
+`GetTimestampLevel`, `SetTimestampLevel`), `PanelListNotify.cpp::GetItemText`,
+`MyLoadMenu.cpp` View/Time popup and `WndProc` time dispatch;
+`CPP/Windows/PropVariantConv.h/.cpp` and
+`CPP/7zip/UI/Common/PropIDUtils.cpp::ConvertPropertyToShortString2` are the
+previously vendored, unchanged formatting dependencies. Portable
+`CPP/Windows/TimeUtils.cpp` supplies the current UTC sample. The shared
+`FormatUtils.cpp` has no time-formatting body and was reviewed but not changed.
+
+`CPanel` now retains the source MIN default and supplies its selected level to
+the copied `GetItemText` property branch. `CApp` owns the same all-panel level
+update and menu-level vector as upstream. The source View/Time popup loop
+formats five examples (DAY/MIN/SEC/NTFS/NS) with `ConvertUtcFileTimeToString`,
+records the available levels, and uses the original `IDM_VIEW_TIME` range and
+`IDM_VIEW_TIME_UTC` dispatch. Qt `QMenu`/`QAction` replace Win32 menu handles;
+the existing `QtFileManagerCommands` boundary redraws visible typed time cells
+without replacing the source formatter or converting displayed text back into
+timestamps. The column comparator continues to read raw `FILETIME` properties.
+Qt `QSettings` additionally persists precision and UTC between launches;
+upstream retains these across panels but only in memory. The external `7zz`
+local listing text is converted to `FILETIME` at the existing metadata adapter;
+its actual precision cannot exceed the listing's supplied digits. No time
+logic was copied into `FormatUtils`, and no duplicate formatter was introduced.
+
+`panel_columns` now checks five menu examples, day/second/UTC transitions,
+reopening, raw time sort despite equal day strings, Unicode/space filesystem
+and archive values, and current-build 980×620/640×400 JSON. The reports show
+fully visible toolbar, address, view stack and table. Focused
+`view_settings_columns|ui_layout|command_policy_runtime|panel_sort|panel_columns`
+passes 5/5; `./scripts/check.sh` passes formatting, app build and the full
+CTest gate (133 tests registered) on macOS arm64. Windows/Linux runtime and
+rendered Windows menu parity remain unverified. Auto-refresh and full P0-06 acceptance
+remain mandatory P0-06.4.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

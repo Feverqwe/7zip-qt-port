@@ -1,3 +1,6 @@
+#include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
+#include "Windows/TimeUtils.h"
 #include "mainwindow.h"
 
 QMenu *MainWindow::createMenusAndToolbar() {
@@ -150,6 +153,38 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
         sortActions_[index] = action;
     }
     sortActions_[0]->setChecked(true);
+    auto *timeMenu = viewMenu->addMenu(QStringLiteral("Время"));
+    timeMenu->setObjectName(QStringLiteral("timestampMenu"));
+    auto *timeGroup = new QActionGroup(timeMenu);
+    for (unsigned i = 0; i < 5; ++i) {
+        QAction *action = timeMenu->addAction(QString());
+        action->setObjectName(QStringLiteral("timestampLevel%1Action").arg(i));
+        action->setCheckable(true);
+        action->setActionGroup(timeGroup);
+        timeActions_[i] = action;
+    }
+    utcTimeAction_ = timeMenu->addAction(QStringLiteral("UTC"));
+    utcTimeAction_->setObjectName(QStringLiteral("timestampUtcAction"));
+    utcTimeAction_->setCheckable(true);
+    connect(timeMenu, &QMenu::aboutToShow, this, [this, timeMenu] {
+        FILETIME now;
+        NWindows::NTime::GetCurUtcFileTime(now);
+        const int levels[] = {kTimestampPrintLevel_DAY, kTimestampPrintLevel_MIN,
+                              kTimestampPrintLevel_SEC, kTimestampPrintLevel_NTFS,
+                              kTimestampPrintLevel_NS};
+        char caption[64];
+        if (ConvertUtcFileTimeToString(now, caption, kTimestampPrintLevel_DAY))
+            timeMenu->menuAction()->setText(QString::fromLatin1(caption));
+        app_._timestampLevels.Clear();
+        for (unsigned i = 0; i < 5; ++i) {
+            if (ConvertUtcFileTimeToString(now, caption, levels[i])) {
+                timeActions_[i]->setText(QString::fromLatin1(caption));
+                app_._timestampLevels.Add(levels[i]);
+            }
+            timeActions_[i]->setChecked(app_.GetTimestampLevel() == levels[i]);
+        }
+        utcTimeAction_->setChecked(g_Timestamp_Show_UTC);
+    });
     viewMenu->addSeparator();
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     fileListSettings_.Load(toolbarSettingsPath());

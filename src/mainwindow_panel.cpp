@@ -262,6 +262,27 @@ Qt::Alignment MainWindow::sourceColumnAlignment(int column) const {
                       : Qt::AlignLeft | Qt::AlignVCenter;
 }
 
+void MainWindow::redrawTimestampColumns() {
+    if (!table_ || !app_.GetFocusedPanel().GetFolder())
+        return;
+    const auto *fileTable = static_cast<const FileTable *>(table_);
+    const CPropColumns &columns = app_.GetFocusedPanel().GetColumns();
+    const bool sorting = table_->isSortingEnabled();
+    table_->setSortingEnabled(false);
+    for (int column = 0; column < table_->columnCount(); ++column) {
+        const int index = columns.FindItem_for_PropID(fileTable->propertyId(column));
+        if (index < 0 || columns[index].Type != VT_FILETIME || table_->isColumnHidden(column))
+            continue;
+        for (int row = 0; row < table_->rowCount(); ++row) {
+            QTableWidgetItem *item = table_->item(row, column);
+            QTableWidgetItem *name = table_->item(row, 0);
+            if (item && name)
+                item->setText(sourceColumnText(name->data(Qt::UserRole + 6).toUInt(), column));
+        }
+    }
+    table_->setSortingEnabled(sorting);
+}
+
 void MainWindow::createPanelActions(QMenu *editMenu) {
     openItem_ = new QAction(table_);
     openItem_->setObjectName("openItemAction");

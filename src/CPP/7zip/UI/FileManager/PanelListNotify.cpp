@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelListNotify.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // The integer and property-to-text branches are copied; QString is the Qt text
-// boundary and time precision remains P0-06.3.
+// boundary; source time precision is owned by the panel.
 #include "7zip/PropID.h"
 #include "7zip/UI/Common/PropIDUtils.h"
 #include "Panel.h"
@@ -145,6 +145,6 @@ QString CPanel::GetItemText(UInt32 itemIndex, const CPropColumn &property) const
         return value;
     }
     char text[64];
-    ConvertPropertyToShortString2(text, prop, propID, 0);
+    ConvertPropertyToShortString2(text, prop, propID, _timestampLevel);
     return QString::fromLatin1(text);
 }

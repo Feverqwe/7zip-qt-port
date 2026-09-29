@@ -29,9 +29,9 @@ source indices. The native rule groups directories first, compares the selected
 typed property, then name, flat prefix and source index. An equal basename in
 `dir10` and `dir2` uses source BSTR prefix order (`dir10` first), rather than
 natural path sorting. The Qt header/action selection and four view modes keep
-their current behavior; raw property columns and full column/time controls
-remain P0-06.2. Normal/compact geometry is checked locally, with no rendered
-Windows comparison.
+their current behavior; raw property columns and full column controls are
+P0-06.2, time precision and UTC are P0-06.3. Normal/compact geometry is
+checked locally, with no rendered Windows comparison.
 
 P0-06.2 now projects the bound folder's original property catalog into the Qt
 list. The header menu offers every reported property, with Name always shown;
@@ -42,8 +42,15 @@ so this does not claim visible NTFS/security/reparse values for real archives;
 full archive raw-value transport remains P1-10. Hidden columns are read when
 shown, avoiding work during ordinary row publication. The normal/compact
 four-view JSON confirms layout and control visibility, not pixel fidelity.
-Time precision/UTC controls and automatic refresh remain P0-06.3/.4; Windows
-rendered reference and Windows/Linux runtime checks remain outstanding.
+P0-06.3 adds the source View → Time menu examples for day, minute, second,
+100 ns and nanosecond levels, plus UTC. Current panel time values use the
+unchanged `PropVariantConv`/`PropIDUtils` formatter; changing the setting
+redraws date cells without reparsing displayed text for sorting. The choice
+survives reopening through Qt settings. Archive `7zz` local listing text is
+converted back to `FILETIME` at the metadata boundary. Windows 7zFM keeps the
+level across panels in memory; this Qt port also persists level and UTC between
+launches. Auto-refresh remains P0-06.4; Windows rendered reference and
+Windows/Linux runtime checks remain outstanding.
 
 The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
 backslash on the focused file list uses the same command. The Qt list presents

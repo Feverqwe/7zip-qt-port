@@ -100,6 +100,8 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
     void init() {
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove("Columns");
+        settings.remove("view/timestampLevel");
+        settings.remove("view/timestampUTC");
     }
 
     void rawCatalogTextAndSortUseSourceInterface() {
@@ -235,6 +237,93 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         QVERIFY(files->isColumnHidden(diskSize));
+    }
+
+    void sourceTimeLevelsUtcAndRawSortSurviveReopen() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        CurrentDirectoryGuard directoryGuard;
+        QVERIFY(QDir::setCurrent(temp.path()));
+        const QDateTime base =
+            QDateTime::fromString(QStringLiteral("2024-02-03T04:05:06.100Z"), Qt::ISODateWithMs);
+        for (const auto &name : {QStringLiteral("later.txt"), QStringLiteral("earlier.txt")}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            file.write("data");
+            file.close();
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QVERIFY(file.setFileTime(base.addMSecs(name.startsWith('l') ? 800 : 0),
+                                     QFileDevice::FileModificationTime));
+            file.close();
+        }
+        {
+            MainWindow window;
+            window.show();
+            auto *files = static_cast<FileTable *>(table(window));
+            auto *timeMenu = window.findChild<QMenu *>("timestampMenu");
+            QVERIFY(timeMenu);
+            QVERIFY(QMetaObject::invokeMethod(timeMenu, "aboutToShow", Qt::DirectConnection));
+            for (int index = 0; index < 5; ++index) {
+                auto *action = window.findChild<QAction *>(
+                    QStringLiteral("timestampLevel%1Action").arg(index));
+                QVERIFY(action);
+                QVERIFY(!action->text().isEmpty());
+            }
+            files->sortItems(4, Qt::AscendingOrder);
+            QCOMPARE(files->item(0, 0)->text(), QStringLiteral("earlier.txt"));
+            auto *day = window.findChild<QAction *>("timestampLevel0Action");
+            day->trigger();
+            QCOMPARE(files->item(0, 4)->text().size(), 10);
+            QCOMPARE(files->item(1, 4)->text(), files->item(0, 4)->text());
+            QCOMPARE(files->item(0, 0)->text(), QStringLiteral("earlier.txt"));
+            auto *utc = window.findChild<QAction *>("timestampUtcAction");
+            utc->trigger();
+            QVERIFY(files->item(0, 4)->text().endsWith('Z'));
+            auto *seconds = window.findChild<QAction *>("timestampLevel2Action");
+            seconds->trigger();
+            QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
+            QCOMPARE(files->item(0, 0)->text(), QStringLiteral("earlier.txt"));
+            QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"),
+                               QSettings::IniFormat);
+            QCOMPARE(settings.value("view/timestampLevel").toInt(), kTimestampPrintLevel_SEC);
+            QVERIFY(settings.value("view/timestampUTC").toBool());
+        }
+        {
+            MainWindow reopened;
+            reopened.show();
+            auto *files = static_cast<FileTable *>(table(reopened));
+            QVERIFY(files->item(0, 4)->text().endsWith('Z'));
+            QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
+            auto *timeMenu = reopened.findChild<QMenu *>("timestampMenu");
+            QVERIFY(QMetaObject::invokeMethod(timeMenu, "aboutToShow", Qt::DirectConnection));
+            QVERIFY(reopened.findChild<QAction *>("timestampLevel2Action")->isChecked());
+            QVERIFY(reopened.findChild<QAction *>("timestampUtcAction")->isChecked());
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                reopened.resize(size);
+                QCoreApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*reopened.centralWidget(), reopened));
+                QVERIFY(UiInspection::writeReport(
+                    reopened, QStringLiteral("source-time-%1").arg(size.width())));
+            }
+        }
+        {
+            ControlledBackend backend;
+            MainWindow archive(&backend);
+            archive.show();
+            ArchiveEntry entry;
+            entry.path = QStringLiteral("архив с пробелом.txt");
+            entry.modified = base.toLocalTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")) +
+                             QStringLiteral(".1234567");
+            openListedArchive(archive, backend, temp.filePath("time.7z"), {entry});
+            QTRY_COMPARE(table(archive)->rowCount(), 1);
+            auto *files = static_cast<FileTable *>(table(archive));
+            QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
+            QVERIFY(files->item(0, 4)->text().endsWith('Z'));
+            QVERIFY(QMetaObject::invokeMethod(archive.findChild<QMenu *>("timestampMenu"),
+                                              "aboutToShow", Qt::DirectConnection));
+            archive.findChild<QAction *>("timestampLevel0Action")->trigger();
+            QCOMPARE(files->item(0, 4)->text().size(), 11);
+        }
     }
 };
 
