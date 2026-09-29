@@ -65,7 +65,6 @@ void CPanel::Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const {
 void CPanel::SaveSelectedState(CSelectedState &s) {
     // Qt selection notifications do not yet use the upstream OnNotify body.
     // Synchronize its status vector at this presentation boundary.
-    _selectionList.PrepareItemIndices();
     const unsigned numItems = GetFolderItemCount();
     _selectedStatusVector.ClearAndReserve(numItems);
     for (unsigned i = 0; i < numItems; i++)
@@ -108,7 +107,6 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
 }
 
 void CPanel::RefreshListCtrl(const CSelectedState &state) {
-    _selectionList.PrepareItemIndices();
     int focusedPos = state.FocusedItem;
     if (focusedPos < 0)
         focusedPos = 0;

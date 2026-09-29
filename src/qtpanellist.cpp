@@ -35,22 +35,12 @@ bool QtPanelList::GetItemParam(unsigned row, quintptr &param) const {
     return ok;
 }
 
-void QtPanelList::PrepareItemIndices() {
-    itemRows_.clear();
-    for (int row = 0; row < GetItemCount(); ++row) {
-        quintptr param;
-        if (GetItemParam(unsigned(row), param))
-            itemRows_.insert(unsigned(param), row);
-    }
-}
-
 void QtPanelList::ClearSelection() {
     if (IsBound())
         view_->selectionModel()->clearSelection();
 }
 
 void QtPanelList::DeleteListItems() {
-    itemRows_.clear();
     if (IsBound())
         view_->model()->removeRows(0, GetItemCount());
 }

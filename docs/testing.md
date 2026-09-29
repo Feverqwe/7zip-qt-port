@@ -6,6 +6,10 @@ duplicate basenames. Forged row path/type roles cannot replace original targets;
 Create Cancel makes no backend request. Existing actual Copy/Move/Delete/Rename
 and filesystem UTF-8 Edit tests also forge row paths. Native operation control
 flow and focused open/navigation remain distinct mandatory scopes.
+It also checks Create's selected versus unselected focus, forged focused metadata
+and a replacement empty-folder owner in normal/flat/four views;
+Cancel never requests backend work. Source parent/path stack and full Create
+validation remain mandatory beyond this consumer acceptance.
 
 `archive_selection_runtime` additionally verifies successful hash-result targets
 in normal/flat/four views and Unicode rename with its original input hint, plus

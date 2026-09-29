@@ -417,7 +417,7 @@ port stays P0-02.2b3c/d; no old borrowed compatibility branch is declared N/A.
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3a | CAgentFolder owned lifecycle only: remove test-only external-proxy constructor/Init and child/parent/catalog compatibility branches; migrate fixtures to source-owned CAgent factory; surviving child/parent/catalog and unbound failure checks | P0-02.2b3b3c2 | done — audit § P0-02.2b3b3c3a; focused 10/10, check.sh 72/72; macOS 2026-09-29 |
-| P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | active — b1/b2 below; c3a commit 7c52e61 |
+| P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | done — b1–b3 verified; selected-consumer scope only; remaining focused navigation/context consumers explicitly mandatory b3c/d |
 | P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | todo |
 
 Selection translation prerequisites split before implementation. Original Extract
@@ -428,7 +428,7 @@ explicit mandatory operation/handler scopes, not a complete Extract claim.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c3b1 | Original CAgentFolder GetRealIndex/GetRealIndices, CProxyArc GetRealIndices_Unsorted and CUIntVector AddRealIndices; unchanged C/Sort dependency; normal/flat explicit/implicit directories, flags, overlap/duplicate/sorted/empty selection and existing consumers | P0-02.2b3b3c3a | done — audit § P0-02.2b3b3c3b1; focused 5/5, check.sh 73/73, vendor bytes 67/67; macOS 2026-09-29 |
 | P0-02.2b3b3c3b2 | Window archive-selection paths consume source operated/real indices and owner's typed path metadata, remove row/proxy reconstruction; selected-folder/flat policy recorded, extraction/copy/move/hash direct regressions and remaining consumer inventory | P0-02.2b3b3c3b1 | done — audit § P0-02.2b3b3c3b2; focused 2/2 and expanded 7/7, check.sh 74/74; macOS 2026-09-29 |
-| P0-02.2b3b3c3b3 | Remaining single-item/filesystem path and hash-result selection consumers use source folder helpers; inspect original bodies/dependencies before code and split if needed; full outer/native path stack remains b3c/d | P0-02.2b3b3c3b2 | active — a–e below; b2 commit 96c5cab |
+| P0-02.2b3b3c3b3 | Remaining single-item/filesystem path and hash-result selection consumers use source folder helpers; inspect original bodies/dependencies before code and split if needed; full outer/native path stack remains b3c/d | P0-02.2b3b3c3b2 | done — a–e verified; remaining consumer inventory in audit § P0-02.2b3b3c3b3e |
 
 Remaining path consumer prerequisites are split before code. Original names/types/
 control flow stay authoritative; temporary full-location adapter and complete
@@ -440,7 +440,7 @@ native/outer path stack are not considered accepted by these narrower consumers.
 | P0-02.2b3b3c3b3b | Original CPanel relative/full filesystem path helpers and required type/prefix classification; source UString signatures and owned fixtures, precise drive/outer-stack omissions and native path boundary checks | P0-02.2b3b3c3b3a | done — audit § P0-02.2b3b3c3b3b; focused 5/5, check.sh 75/75; macOS 2026-09-29 |
 | P0-02.2b3b3c3b3c | Archive single-item rename/view/edit and hash-result selected targets consume source names/full prefixes/indices; success/failure/cancel direct regressions, remaining open/navigation owner inventory | P0-02.2b3b3c3b3b | done — audit § P0-02.2b3b3c3b3c; focused 9/9, check.sh 75/75; macOS 2026-09-29 |
 | P0-02.2b3b3c3b3d | Filesystem selected paths and relevant single-item consumers use owned source paths; native Unicode/flat/sorted/source-index/operation regressions without inventing path algorithms | P0-02.2b3b3c3b3c | done — audit § P0-02.2b3b3c3b3d; focused 3/3 and expanded 8/8, check.sh 76/76; macOS 2026-09-29 |
-| P0-02.2b3b3c3b3e | Remaining consumer acceptance and documented dependency boundary to full source BindToPath/LoadFullPath/parent stack; close only verified scope | P0-02.2b3b3c3b3d | todo |
+| P0-02.2b3b3c3b3e | Remaining consumer acceptance and documented dependency boundary to full source BindToPath/LoadFullPath/parent stack; close only verified scope | P0-02.2b3b3c3b3d | done — audit § P0-02.2b3b3c3b3e; focused 7/7, check.sh 76/76; macOS 2026-09-29; full native location consumers stay mandatory |
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 

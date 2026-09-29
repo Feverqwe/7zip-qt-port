@@ -7,11 +7,17 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b3e verifies selected versus unselected focus and replacement empty-folder
+owner at the Create input boundary. No layout/text change. The audit lists every
+remaining focused open/navigation, selection restoration, drag/icon and duplicate
+context consumer with its mandatory owner; selected-consumer acceptance does not
+close those workflows or the source parent/path stack.
+
 P0-02.2b3b3c3b3d routes filesystem selected-operation paths through original
 CPanel full-path helpers and the bound native folder prefix. Sorting, flat mode
 and preceding Properties cannot substitute paths from presentation rows. Existing
 dialogs and cancellation remain unchanged. Create input follows source operated
-selection, including the focused item when nothing is selected. This consumer integration
+selection: an unselected focused item is excluded. This consumer integration
 does not complete native operation control flow, focused open/navigation or the
 source parent/path stack. Windows/Linux runtime remains unverified.
 

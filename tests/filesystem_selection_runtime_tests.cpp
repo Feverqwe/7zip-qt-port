@@ -28,6 +28,66 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
     }
 
   private slots:
+    void createUnselectedFocusDoesNotBecomeSource_data() {
+        sourcePathsAcrossViewsAndConsumers_data();
+    }
+    void createUnselectedFocusDoesNotBecomeSource() {
+        QFETCH(bool, flat);
+        QFETCH(int, mode);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QDir root(QFileInfo(temporary.path()).canonicalFilePath());
+        const QString name = QStringLiteral("focused й с пробелом.txt");
+        createFile(root.filePath(name));
+        QTemporaryDir empty;
+        QVERIFY(empty.isValid());
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        action(window, "flatViewAction")->setChecked(false);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(root.path());
+        emit address->returnPressed();
+        action(window, "flatViewAction")->setChecked(flat);
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        QTRY_VERIFY(table(window)->isEnabled());
+        table(window)->clearSelection();
+        table(window)->setCurrentCell(0, 0, QItemSelectionModel::NoUpdate);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 0);
+        table(window)->item(0, 1)->setText(root.filePath("forged-focused.txt"));
+        table(window)->item(0, 0)->setData(Qt::UserRole + 1, true);
+        QStringList sources;
+        auto cancelCreate = [&] {
+            QTimer::singleShot(0, &window, [&] {
+                auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                QVERIFY(dialog);
+                auto *items = dialog->findChild<QListWidget *>("selectedSources");
+                QVERIFY(items);
+                for (int i = 0; i < items->count(); ++i)
+                    sources << items->item(i)->data(Qt::UserRole).toString();
+                dialog->reject();
+            });
+            action(window, "createArchiveAction")->trigger();
+        };
+        cancelCreate();
+        QVERIFY(sources.isEmpty());
+        QCOMPARE(backend.createCalls, 0);
+        table(window)->selectionModel()->select(table(window)->model()->index(0, 0),
+                                                QItemSelectionModel::Select |
+                                                    QItemSelectionModel::Rows);
+        cancelCreate();
+        QCOMPARE(sources, QStringList{root.filePath(name)});
+        sources.clear();
+        address->setText(empty.path());
+        emit address->returnPressed();
+        QTRY_COMPARE(table(window)->rowCount(), 0);
+        QTRY_VERIFY(table(window)->isEnabled());
+        cancelCreate();
+        QVERIFY(sources.isEmpty());
+        QCOMPARE(backend.createCalls, 0);
+        action(window, "flatViewAction")->setChecked(false);
+    }
+
     void sourcePathsAcrossViewsAndConsumers_data() {
         QTest::addColumn<bool>("flat");
         QTest::addColumn<int>("mode");

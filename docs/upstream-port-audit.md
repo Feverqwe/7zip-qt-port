@@ -8,6 +8,47 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b3e — selected-consumer acceptance and remaining boundaries (2026-09-29)
+
+Project baseline `6ac6746`; exact original source remains ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Compare PanelItems.cpp Get_ItemIndices_Operated/SaveSelectedState/RefreshListCtrl
+and Panel.cpp AddToArchive. No new functional algorithm is introduced. Remove
+QtPanelList's itemRows_ hash and PrepareItemIndices: after source folder paths
+replaced the row fallback, this map had no readers. Remove its two synchronization
+calls only; original selection, name/focus and path functional bodies remain.
+
+Public-window regressions verify that an unselected focused item is not a Create
+source, while selecting it supplies its original path despite forged row path/type
+in normal/flat/four views. A subsequent empty-folder
+owner supplies no stale paths. Create Cancel never requests backend work. The
+existing Qt empty-folder dialog remains; complete source AddToArchive validation,
+errors and CompressFiles are mandatory P1-05 rather than completed here.
+
+Remaining consumer inventory is explicit:
+
+| Consumer | Current authority/debt | Mandatory destination |
+| --- | --- | --- |
+| Copy/Move summary, selected Properties | Source operated indices and typed owner metadata | Complete catalog/raw/native-time/command scopes P0-03/P0-04/P1-10/P2-09 |
+| Archive selected extraction/mutation/hash extraction | Source real indices and typed full Path; 7zz flat expansion/dedup adaptation retained | Native Extract policy and operation integration P0-12/P1-04 |
+| Archive Rename/View/Edit and hash-result targets | Source names/full prefixes; Qt workflow glue | Native open/edit/hash P0-04/P2-03, mutation P1-04 |
+| Filesystem selected operation/View/Edit/Create/volume paths | Source full paths, native prefix restoration | Complete native operation workflows P1-01/P1-03/P1-05/P2-01/P2-02 |
+| openItem/openInside/openOutside and their availability | Current Qt row path/type, focused-row routing | Source BindToPath/LoadFullPath/parent/open integration P0-02.2b3c/d and P0-03/P0-04 |
+| selectedPaths/selectPaths, post-transfer selection | Remaining Qt row path restoration | Source refresh/selection integration P0-02.2b3d/P0-07/P1-01 |
+| Drag/drop paths, native icon lookup | Remaining presentation path/type roles | Source drag and shell/icon boundaries P1-02/P0-09/P3-05 |
+| directory_/archiveFolder_/archiveParents_ and temporary display prefix | Independent Qt context/stack pending replacement | P0-02.2b3c/d, not accepted by selected-consumer tests |
+
+This closes only the planned selected-consumer helper/binding scope. Full native
+location consumers, command dispatch, outer stack and platform workflows remain
+mandatory; familiar helper paths or successful Qt tests do not complete modules.
+
+Validation macOS arm64, 2026-09-29: affected app/selection/runtime targets built;
+focused 7/7 passed (7.83 s); mandatory check.sh passed 76/76. Formatting and
+git diff --check passed. Initial focused expectation incorrectly included an
+unselected focus; comparison with the unchanged original guards corrected the
+test and descriptions before the gate. No layout/text changes. Windows/Linux
+runtime remains unverified; source/vendor inventory is unchanged.
+
 ## P0-02.2b3b3c3b3d — filesystem selected-path consumers (2026-09-29)
 
 Project baseline `b4bfbec`; ip7z/7zip source baseline remains
@@ -37,8 +78,10 @@ normal/flat/four views, sorting, Unicode/spaces, duplicate basenames, a precedin
 Properties call and forged path/type roles through hash and Create input/Cancel.
 Existing actual filesystem Copy/Move/Delete/Rename and UTF-8 Edit regressions
 also forge row paths, checking original files and operation outcomes.
-Create input now follows source operated selection, including a focused item
-when nothing is selected; complete AddToArchive/CompressFiles remains P1-05.
+Create input follows source operated selection. An unselected focused item is
+excluded by the original GetSelectedCount/IsItemSelected guards; complete
+AddToArchive/CompressFiles remains P1-05. The earlier focused-fallback description
+was incorrect and is superseded by the original-body comparison in substep e.
 
 Validation macOS arm64, 2026-09-29: affected application/consumer targets built;
 focused 3/3 passed (2.67 s), expanded direct consumers 8/8 (7.66 s), mandatory
