@@ -306,6 +306,9 @@ class FileViewerTests : public QObject {
         table->selectRow(0);
         QTRY_VERIFY(edit->isEnabled());
 
+        table->item(0, 1)->setText(dir.filePath("forged-editor.txt"));
+        table->item(0, 0)->setData(Qt::UserRole + 1, true);
+
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<FileViewerDialog *>("fileViewerDialog");
             QVERIFY(dialog);

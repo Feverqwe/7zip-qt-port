@@ -1,0 +1,112 @@
+#include "window_state_support.h"
+
+class FilesystemPathBackend : public ControlledBackend {
+  public:
+    void hash(const QStringList &paths, const QString &method) override {
+        hashPaths = paths;
+        hashMethod = method;
+        ++hashCalls;
+    }
+    QStringList hashPaths;
+    QString hashMethod;
+    int hashCalls = 0;
+};
+
+class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTestSupport {
+    Q_OBJECT
+
+    static int diskRow(MainWindow &window, const QString &path) {
+        for (int row = 0; row < table(window)->rowCount(); ++row)
+            if (table(window)->item(row, 1)->text() == path)
+                return row;
+        return -1;
+    }
+    static void createFile(const QString &path) {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("source fixture"), qint64(14));
+    }
+
+  private slots:
+    void sourcePathsAcrossViewsAndConsumers_data() {
+        QTest::addColumn<bool>("flat");
+        QTest::addColumn<int>("mode");
+        for (bool flat : {false, true})
+            for (int mode = 0; mode < 4; ++mode)
+                QTest::newRow(qPrintable(QString("%1-%2").arg(flat ? "flat" : "normal").arg(mode)))
+                    << flat << mode;
+    }
+    void sourcePathsAcrossViewsAndConsumers() {
+        QFETCH(bool, flat);
+        QFETCH(int, mode);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QDir root(QFileInfo(temporary.path()).canonicalFilePath());
+        const QString directory = QStringLiteral("папка й с пробелом");
+        const QString name = QStringLiteral("одинаковое й.txt");
+        QVERIFY(root.mkdir(directory));
+        createFile(root.filePath(name));
+        createFile(root.filePath(directory + '/' + name));
+
+        FilesystemPathBackend backend;
+        MainWindow window(&backend);
+        action(window, "flatViewAction")->setChecked(false);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(root.path());
+        emit address->returnPressed();
+        action(window, "flatViewAction")->setChecked(flat);
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
+        QTRY_COMPARE(table(window)->rowCount(), flat ? 3 : 2);
+        QTRY_VERIFY(table(window)->isEnabled());
+        table(window)->sortItems(0, Qt::DescendingOrder);
+        const QString second = root.filePath(flat ? directory + '/' + name : directory);
+        const int firstRow = diskRow(window, root.filePath(name));
+        const int secondRow = diskRow(window, second);
+        QVERIFY(firstRow >= 0 && secondRow >= 0);
+        table(window)->clearSelection();
+        for (int row : {firstRow, secondRow})
+            table(window)->selectionModel()->select(table(window)->model()->index(row, 0),
+                                                    QItemSelectionModel::Select |
+                                                        QItemSelectionModel::Rows);
+        // Properties supplies a display prefix without its native separator.
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            dialog->reject();
+        });
+        action(window, "selectedPropertiesAction")->trigger();
+        for (int row : {firstRow, secondRow}) {
+            table(window)->item(row, 1)->setText(root.filePath("forged/display-only.txt"));
+            table(window)->item(row, 0)->setData(Qt::UserRole + 1, true);
+        }
+        QStringList expected = {root.filePath(name), second};
+        expected.sort();
+        action(window, "hashSHA256Action")->trigger();
+        QCOMPARE(backend.hashCalls, 1);
+        QCOMPARE(backend.hashMethod, QString("SHA256"));
+        QStringList actual = backend.hashPaths;
+        actual.sort();
+        QCOMPARE(actual, expected);
+        emit backend.finished(true, QStringLiteral("Fixture hash complete."));
+        QTRY_VERIFY(action(window, "createArchiveAction")->isEnabled());
+
+        QStringList dialogSources;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            auto *sources = dialog->findChild<QListWidget *>("selectedSources");
+            QVERIFY(sources);
+            for (int i = 0; i < sources->count(); ++i)
+                dialogSources << sources->item(i)->data(Qt::UserRole).toString();
+            dialog->reject();
+        });
+        action(window, "createArchiveAction")->trigger();
+        dialogSources.sort();
+        QCOMPARE(dialogSources, expected);
+        QCOMPARE(backend.createCalls, 0);
+        action(window, "flatViewAction")->setChecked(false);
+    }
+};
+
+QTEST_MAIN(FilesystemSelectionRuntimeTests)
+#include "filesystem_selection_runtime_tests.moc"

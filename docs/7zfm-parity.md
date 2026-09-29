@@ -7,6 +7,14 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3b3d routes filesystem selected-operation paths through original
+CPanel full-path helpers and the bound native folder prefix. Sorting, flat mode
+and preceding Properties cannot substitute paths from presentation rows. Existing
+dialogs and cancellation remain unchanged. Create input follows source operated
+selection, including the focused item when nothing is selected. This consumer integration
+does not complete native operation control flow, focused open/navigation or the
+source parent/path stack. Windows/Linux runtime remains unverified.
+
 P0-02.2b3b3c3b3c binds archive Rename/View/Edit and logical hash-result targets
 to original source names/full prefixes/operated indices. Source folder metadata
 also controls single-file eligibility and the existing viewer size limit.

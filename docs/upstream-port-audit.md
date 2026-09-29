@@ -8,6 +8,45 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3b3d — filesystem selected-path consumers (2026-09-29)
+
+Project baseline `b4bfbec`; ip7z/7zip source baseline remains
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Inspect original PanelOperations.cpp DeleteItems operated-index/full-path calls,
+PanelItems.cpp GetItemRelPath/GetItemRelPath2/GetItemFullPath and
+PanelFolderChange.cpp GetFolderPath and Panel.cpp AddToArchive's operated-index
+selection. The already copied functional bodies remain
+authoritative and unchanged; this iteration binds their filesystem consumers.
+
+selectedFilesystemPaths moves from row text enumeration into the shared Qt
+selection/path boundary. It gets source operated indices, restores the native
+normalized folder prefix through source GetFolderPath (Properties may have set a
+display prefix without a separator), and converts GetItemFullPath via us2fs and
+QtFilesystemPath. Qt decoding/native separator conversion remains at the OS
+boundary. No new path-composition, enumeration or normalization algorithm is
+introduced. Existing Copy/Move/Delete/Rename/hash/split/combine consumers share
+this method; View/Edit and Create dialog selection now use it as well.
+
+Complete LoadFullPath/BindToPath/outer-parent prefix ownership remains mandatory;
+the temporary prefix restoration is a narrow integration adaptation. Native
+operation control flows, focused open/navigation, selection restoration and
+drag/drop row consumers are not closed by this selected-path binding. Full
+filesystem operation owners and command availability remain their later steps.
+Dialogs/layout/text are unchanged. New filesystem_selection_runtime checks
+normal/flat/four views, sorting, Unicode/spaces, duplicate basenames, a preceding
+Properties call and forged path/type roles through hash and Create input/Cancel.
+Existing actual filesystem Copy/Move/Delete/Rename and UTF-8 Edit regressions
+also forge row paths, checking original files and operation outcomes.
+Create input now follows source operated selection, including a focused item
+when nothing is selected; complete AddToArchive/CompressFiles remains P1-05.
+
+Validation macOS arm64, 2026-09-29: affected application/consumer targets built;
+focused 3/3 passed (2.67 s), expanded direct consumers 8/8 (7.66 s), mandatory
+check.sh 76/76 (33.88 s), formatting and git diff --check passed. No visual
+layout/text change requires geometry inspection. Windows/Linux runtime remains
+unverified. Source counts remain 39 mirrored/33 UI; root Qt glue is 37 files;
+66 exact vendored dependencies/resources plus original License remain unchanged.
+
 ## P0-02.2b3b3c3b3c — archive single-item and hash-result consumers (2026-09-29)
 
 Project baseline `fc97d31`; original source remains ip7z/7zip commit

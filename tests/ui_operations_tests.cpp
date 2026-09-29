@@ -31,6 +31,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(QFileInfo(outbound->urls().first().toLocalFile()).canonicalFilePath(),
                  QFileInfo(source).canonicalFilePath());
 
+        table(window)->item(row, 1)->setText(temp.filePath("forged-selection.txt"));
+
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<CopyDialog *>(widget))
@@ -104,6 +106,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
 
         const int copiedRow = filesystemRow(window, QStringLiteral("имя с пробелом.txt"));
         table(window)->selectRow(copiedRow);
+        table(window)->item(copiedRow, 1)->setText(temp.filePath("forged-rename.txt"));
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
@@ -118,6 +121,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!QFileInfo::exists(source));
 
         table(window)->selectRow(filesystemRow(window, QStringLiteral("новое имя.txt")));
+        table(window)
+            ->item(table(window)->selectionModel()->selectedRows().first().row(), 1)
+            ->setText(temp.filePath("forged-delete.txt"));
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
@@ -144,6 +150,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         table(window)->selectRow(filesystemRow(window, "move me.txt"));
+        table(window)
+            ->item(table(window)->selectionModel()->selectedRows().first().row(), 1)
+            ->setText(temp.filePath("forged-move.txt"));
         QTimer::singleShot(0, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<CopyDialog *>(widget);

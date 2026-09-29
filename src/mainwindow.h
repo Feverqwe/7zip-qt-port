@@ -181,7 +181,7 @@ class MainWindow : public QMainWindow {
                        const QString &password = {}, bool encryptHeaders = false,
                        const CompressionOptions &options = {});
     void addDialog();
-    QStringList selectedFilesystemPaths() const;
+    QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move);
     void copySelected();
     void moveSelected();

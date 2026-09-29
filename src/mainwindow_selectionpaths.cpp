@@ -1,6 +1,8 @@
 #include "7zip/PropID.h"
+#include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
+#include "qtlocationfolder.h"
 
 CRecordVector<UInt32> MainWindow::sourceOperatedIndices() {
     CRecordVector<UInt32> indices;
@@ -22,6 +24,22 @@ QStringList MainWindow::selectedArchiveItemsPaths() {
     auto *folder = static_cast<CAgentFolder *>(app_.GetFocusedPanel().GetFolder());
     FOR_VECTOR(i, indices)
     paths << ToQString(folder->GetFullPrefix(indices[i]) + folder->GetName(indices[i]));
+    return paths;
+}
+
+QStringList MainWindow::selectedFilesystemPaths() {
+    QStringList paths;
+    if (state_ != State::Filesystem)
+        return paths;
+    CPanel &panel = app_.GetFocusedPanel();
+    if (!panel.GetFolder())
+        return paths;
+    const auto indices = sourceOperatedIndices();
+    // Restore the native normalized prefix after presentation-only consumers,
+    // until original LoadFullPath owns the complete location/parent stack.
+    panel.SetCurrentFolderPrefix(ToQString(GetFolderPath(panel.GetFolder())));
+    FOR_VECTOR(i, indices)
+    paths << QtFilesystemPath(us2fs(panel.GetItemFullPath(indices[i])));
     return paths;
 }
 

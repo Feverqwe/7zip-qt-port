@@ -1,5 +1,12 @@
 # Regression strategy
 
+`filesystem_selection_runtime` checks source paths through hash and Create input
+in normal/flat/four views after sorting and Properties, with Unicode/spaces and
+duplicate basenames. Forged row path/type roles cannot replace original targets;
+Create Cancel makes no backend request. Existing actual Copy/Move/Delete/Rename
+and filesystem UTF-8 Edit tests also forge row paths. Native operation control
+flow and focused open/navigation remain distinct mandatory scopes.
+
 `archive_selection_runtime` additionally verifies successful hash-result targets
 in normal/flat/four views and Unicode rename with its original input hint, plus
 Cancel without another request. `file_viewer` corrupts archive row path/directory

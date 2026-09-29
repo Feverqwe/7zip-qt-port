@@ -9,6 +9,10 @@ are defined in [AGENTS.md](../AGENTS.md).
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
 and archive paths. Expanded extraction requests use real indices and typed Path;
 logical rename/view/edit/hash-result targets use source full prefixes and names.
+Filesystem selected paths use source GetItemFullPath with the native folder's
+normalized prefix and OS conversion at the Qt boundary. Copy/Move/Delete/Rename,
+hash, split/combine, View/Edit and Create input share this owner. Full prefix
+stack setup and focused open/navigation remain mandatory later integration.
 Source IsItem_Folder owns single-file eligibility. ArchiveBackend retains all
 operation transport and temporary-file handling. Remaining filesystem consumers,
 open/navigation and full native path stack are still separate mandatory scopes.

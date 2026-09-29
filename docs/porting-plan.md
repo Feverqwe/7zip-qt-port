@@ -62,11 +62,11 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 `CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/ResourceString.cpp`,
 `CPP/7zip/Common/MethodProps.cpp`.
 Всего в `src/CPP` — 39 `.cpp`.
-В корне `src/` — 36 `.cpp` Qt/integration; это не 36 неперенесённых компонента:
+В корне `src/` — 37 `.cpp` Qt/integration; это не 37 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
-В `third_party/7zip` — 64 файла, побайтово совпадающих с теми же путями baseline,
+В `third_party/7zip` — 66 файлов, побайтово совпадающих с теми же путями baseline,
 плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.
-Это зависимости и ресурсы, не 64 завершённые пользовательские функции.
+Это зависимости и ресурсы, не 66 завершённых пользовательских функций.
 В таблице учитываются только файлы `src/`: переносимый `UI/Common/PropIDUtils.cpp`
 собирается без изменений из `third_party/7zip` и входит в счётчик зависимостей.
 Его дальнейшая runtime-интеграция и Windows-проверки остаются обязательными;

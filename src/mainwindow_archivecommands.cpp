@@ -61,11 +61,10 @@ void MainWindow::viewSelectedFile(bool editable) {
     if (app_.GetFocusedPanel().IsItem_Folder(indices[0]))
         return;
     if (state_ == State::Filesystem) {
-        const auto rows = table_->selectionModel()->selectedRows();
-        if (rows.size() != 1)
+        const QStringList paths = selectedFilesystemPaths();
+        if (paths.size() != 1)
             return;
-        const int row = rows.first().row();
-        const QString path = table_->item(row, 1)->text();
+        const QString path = paths.first();
         if (QFileInfo(path).isFile() && !QFileInfo(path).isSymLink())
             openFileViewer(path, editable);
         return;
@@ -117,9 +116,7 @@ void MainWindow::extract(bool onlySelected) {
 void MainWindow::createDialog() {
     if (state_ != State::Filesystem)
         return;
-    QStringList selectedPaths;
-    for (const QModelIndex &index : table_->selectionModel()->selectedRows())
-        selectedPaths << table_->item(index.row(), 1)->text();
+    const QStringList selectedPaths = selectedFilesystemPaths();
     CreateArchiveDialog dialog(directory_, selectedPaths, this);
     if (dialog.exec() != QDialog::Accepted)
         return;
@@ -148,15 +145,6 @@ void MainWindow::addDialog() {
     if (state_ != State::Viewing || dialog.sources().isEmpty())
         return;
     addSources(dialog.sources());
-}
-
-QStringList MainWindow::selectedFilesystemPaths() const {
-    QStringList paths;
-    if (state_ != State::Filesystem)
-        return paths;
-    for (const QModelIndex &index : table_->selectionModel()->selectedRows())
-        paths << table_->item(index.row(), 1)->text();
-    return paths;
 }
 
 void MainWindow::extractTo(const QString &destination, bool onlySelected, const QString &password,
