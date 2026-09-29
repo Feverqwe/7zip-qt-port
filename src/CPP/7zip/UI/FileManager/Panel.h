@@ -106,6 +106,75 @@ class CPanel : public QObject {
     CPanel() = default;
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
     explicit CPanel(IFolderFolder *folder);
+    // Qt notification adapters replace the Win32 OnNotify entry point.
+    bool ShouldProcessNotifications() const { return _processNotify; }
+    void Disable_Processing_Timer_Notify_StatusBar() {
+        _processTimer = false;
+        _processNotify = false;
+        _processStatusBar = false;
+    }
+
+    class CDisableTimerProcessing {
+        Z7_CLASS_NO_COPY(CDisableTimerProcessing)
+        bool _processTimer;
+        CPanel &_panel;
+
+      public:
+        CDisableTimerProcessing(CPanel &panel) : _panel(panel) { Disable(); }
+        ~CDisableTimerProcessing() { Restore(); }
+        void Disable() {
+            _processTimer = _panel._processTimer;
+            _panel._processTimer = false;
+        }
+        void Restore() { _panel._processTimer = _processTimer; }
+    };
+
+    class CDisableTimerProcessing2 {
+        Z7_CLASS_NO_COPY(CDisableTimerProcessing2)
+        bool _processTimer;
+        CPanel *_panel;
+
+      public:
+        CDisableTimerProcessing2(CPanel *panel) : _processTimer(true), _panel(panel) { Disable(); }
+        ~CDisableTimerProcessing2() { Restore(); }
+        void Disable() {
+            if (_panel) {
+                _processTimer = _panel->_processTimer;
+                _panel->_processTimer = false;
+            }
+        }
+        void Restore() {
+            if (_panel) {
+                _panel->_processTimer = _processTimer;
+                _panel = NULL;
+            }
+        }
+    };
+
+    class CDisableNotify {
+        Z7_CLASS_NO_COPY(CDisableNotify)
+        bool _processNotify;
+        bool _processStatusBar;
+        CPanel &_panel;
+
+      public:
+        CDisableNotify(CPanel &panel) : _panel(panel) { Disable(); }
+        ~CDisableNotify() { Restore(); }
+        void Disable() {
+            _processNotify = _panel._processNotify;
+            _processStatusBar = _panel._processStatusBar;
+            _panel._processNotify = false;
+            _panel._processStatusBar = false;
+        }
+        void SetMemMode_Enable() {
+            _processNotify = true;
+            _processStatusBar = true;
+        }
+        void Restore() {
+            _panel._processNotify = _processNotify;
+            _panel._processStatusBar = _processStatusBar;
+        }
+    };
     void ReleaseFolder();
     void SetNewFolder(IFolderFolder *folder);
     // Borrowed interface for Qt property rendering; ownership stays in CPanel.
@@ -147,6 +216,10 @@ class CPanel : public QObject {
     static UString OpenBookmark(CFastFolders &fastFolders, unsigned index);
 
   private:
+    // Original Create initializes these to true; Qt panels exist before Create is ported.
+    bool _processTimer = true;
+    bool _processNotify = true;
+    bool _processStatusBar = true;
     bool eventFilter(QObject *watched, QEvent *event) override;
     QPointer<QWidget> _listView;
     QPointer<QWidget> _headerComboBox;

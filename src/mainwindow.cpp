@@ -14,9 +14,14 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     connectFilesystemScanner();
     showDirectory(QDir::currentPath(), false);
     refreshActions();
-    connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this,
-            [this] { refreshActions(); });
-    connect(table_, &QTableWidget::currentCellChanged, this, [this] { refreshActions(); });
+    connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
+        if (app_.GetFocusedPanel().ShouldProcessNotifications())
+            refreshActions();
+    });
+    connect(table_, &QTableWidget::currentCellChanged, this, [this] {
+        if (app_.GetFocusedPanel().ShouldProcessNotifications())
+            refreshActions();
+    });
 
     connectBackend();
 }

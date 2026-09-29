@@ -35,6 +35,11 @@ uses unchanged upstream Compare_FiTime for native FILETIME/timespec. The runtime
 parent stack and close/update/navigation owners remain subsequent mandatory ports;
 record availability alone does not replace the window's archiveParents_ state.
 
+CPanel owns original processing flags and nested RAII guards. Qt selection and
+current-cell callbacks query the source notification flag before updating commands;
+source RefreshListCtrl guards its intermediate selection changes. Full native
+timer/notify/status dispatch and all-panel release integration remain mandatory.
+
 CPanel relative/full path helpers and current prefix storage use original
 UString. Source folder/type/device/super-drive classification owns their path
 branches; Qt conversions are confined to setters and presentation. Ownerless

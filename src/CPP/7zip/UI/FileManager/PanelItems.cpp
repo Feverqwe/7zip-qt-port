@@ -107,6 +107,8 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
 }
 
 void CPanel::RefreshListCtrl(const CSelectedState &state) {
+    CDisableTimerProcessing timerProcessing(*this);
+    CDisableNotify disableNotify(*this);
     int focusedPos = state.FocusedItem;
     if (focusedPos < 0)
         focusedPos = 0;

@@ -8,6 +8,50 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3a — source processing guards and Qt notifications (2026-09-29)
+
+Project baseline `5d9f9c7`; original ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy Panel.h _processTimer/_processNotify/_processStatusBar and complete inline
+Disable_Processing_Timer_Notify_StatusBar, CDisableTimerProcessing,
+CDisableTimerProcessing2 and CDisableNotify bodies, retaining field names,
+save/disable/restore order, nullable pointer and one-time pointer restore,
+SetMemMode_Enable and Z7_CLASS_NO_COPY contracts. Formatting is tracked separately
+from functional adaptation. PanelItems.cpp RefreshListCtrl now creates the original
+timer/notify guards before selection restoration, as in the source function.
+
+Qt adaptation: the original Panel.cpp Create true initialization moves temporarily
+to field initializers because Qt CPanel owners exist before full Create migration.
+ShouldProcessNotifications is a narrow production presentation query replacing
+Panel.cpp OnNotify's original early return when _processNotify is false. Existing
+table selection/current-cell adapters use it before refreshActions. No independent
+notification policy is added. Timer/status flags and guard bodies are preserved;
+full OnTimer/OnNotify/status-bar dispatch and all-panel Disable-before-ReleaseApp
+integration remain mandatory P0-02.2c/P0-02.3 and later list/command owners.
+
+The Qt filesystem refresh and flat-mode callers explicitly refresh commands after
+the guard restores final selection, corresponding to upstream RefreshListCtrl's
+post-Restore status/notification update. Without that final update, Copy/Properties
+would remain disabled after selection restoration. Existing panel_selected_state
+adds command availability assertions across normal/flat and four presentation
+modes; no new layout or visibility policy is introduced.
+
+New panel_processing exercises exception-safe nested notify restoration, a
+permanently disabled panel, source SetMemMode_Enable, nullable/idempotent pointer
+restore and observable Qt selection notifications during source RefreshListCtrl.
+The raw Qt signal still fires but the guarded consumer skips intermediate state;
+final selected source indices and resumed notifications are checked. No production
+internals are exposed solely for tests. Root/nested update/stack integration is
+still mandatory c3b–e; this is their processing prerequisite, not full acceptance.
+No visible layout/text change. Validation macOS arm64, 2026-09-29: removing the
+RefreshListCtrl guards reproduced intermediate consumerCalls=2 (expected 0);
+restored source guards passed focused 4/4 (3.70 s), mandatory check.sh format/
+build/81 CTest (42.30 s). Subsequent localized final-command refresh assertions
+reproduced eight failures before the fix; affected app and seven consumer targets
+rebuilt, final focused 7/7 passed (8.72 s). Required formatting/diff checks pass
+after that localized edit; no unchanged full gate is repeated. Windows/Linux
+runtime remains unverified, source/vendor counts unchanged.
+
 ## P0-02.2b3c2 — original temporary-file and parent-link records (2026-09-29)
 
 Project baseline `1b3ab4a`; original CPP/7zip/UI/FileManager/Panel.h at

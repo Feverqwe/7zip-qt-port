@@ -162,6 +162,8 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
             action(window, "flatViewAction")->setChecked(false);
             QCOMPARE(view->currentRow(), rowWithPath(window, focused));
             QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
+            QVERIFY(action(window, "copyAction")->isEnabled());
+            QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
             // Relative names from a removed folder must not select a namesake
             // in its surviving parent after the folder fallback.
             action(window, "refreshAction")->trigger();
@@ -288,6 +290,8 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(view->item(view->selectionModel()->selectedRows()[0].row(), 1)->text(), selected);
         QVERIFY(!view->selectionModel()->isRowSelected(view->currentRow(), QModelIndex()));
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
 
         if (!flat) {
             action(window, "flatViewAction")->setChecked(true);
@@ -296,6 +300,8 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
             action(window, "flatViewAction")->setChecked(false);
             QCOMPARE(view->item(view->currentRow(), 1)->text(), focused);
             QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
+            QVERIFY(action(window, "copyAction")->isEnabled());
+            QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
         }
 
         const int oldFocusedRow = view->currentRow();

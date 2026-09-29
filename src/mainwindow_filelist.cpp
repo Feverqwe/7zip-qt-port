@@ -141,8 +141,10 @@ void MainWindow::refreshCurrent() {
         showDirectory(directory_, false);
         if (scanningDisk_)
             scanSelectedState_ = selection;
-        else
+        else {
             app_.GetFocusedPanel().RefreshListCtrl(selection);
+            refreshActions();
+        }
     } else if (state_ == State::Viewing) {
         refreshing_ = true;
         refreshFolder_ = archiveFolder_;

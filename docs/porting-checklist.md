@@ -319,8 +319,21 @@ functional port and subdivide if needed. No omitted mandatory branch is N/A.
 | P0-02.2b3c1a | Windows/FileDir.cpp original typed DeleteFileAlways/RemoveDir and required Windows SetFileAttrib; Qt deletion wrapper delegates instead of independent readonly logic; Unicode/spaces/readonly/missing/nonempty/symlink regressions and direct consumers | P0-02.2b3b3c3c | done — audit § P0-02.2b3c1a; focused 6/6, check.sh 78/78; macOS 2026-09-29; Windows/Linux runtime unverified |
 | P0-02.2b3c1b | Windows/DLL CLibrary original load/free/LoadEx plus source transfer/copy guard for parent links across platforms; deterministic local library fixture, failure/idempotence/lifetime checks; omitted module-path helpers explicit | P0-02.2b3c1a | done — audit § P0-02.2b3c1b; focused 5/5, check.sh 79/79; macOS 2026-09-29; full module-path/resource services mandatory |
 | P0-02.2b3c2 | Original CTempFileInfo/CFolderLink types and cleanup/change detection/parent ownership, required native time comparison; copied versus platform adaptations documented and public behavior checks | P0-02.2b3c1 | done — audit § P0-02.2b3c2; focused 5/5, check.sh 80/80; macOS 2026-09-29; full runtime stack/update remains mandatory c3/c4 |
-| P0-02.2b3c3 | Original source parent stack and CloseOneLevel/CloseOpenFolders/OpenParentArchiveFolder functional bodies, required update dependencies and root/nested runtime integration; split before code if needed | P0-02.2b3c2 | todo |
+| P0-02.2b3c3 | Original source parent stack and CloseOneLevel/CloseOpenFolders/OpenParentArchiveFolder functional bodies, required update dependencies and root/nested runtime integration | P0-02.2b3c2 | active — a–e split below before code |
 | P0-02.2b3c4 | Root/nested cancel/failure/pop/temp/update lifetime acceptance, direct consumers, source omissions review; parent closure only after complete mandatory scope | P0-02.2b3c3 | todo |
+
+C3 dependencies inspected after c2: original close/pop calls changed-nested update
+before deleting the link; update uses processing guards and a modal background
+CopyFromFile service. Port those prerequisites before integrating close/pop.
+Current chat owns all substeps; UI and transport adapters stay narrow.
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3a | Original processing flags and CDisableTimerProcessing/CDisableTimerProcessing2/CDisableNotify/Disable_Processing_Timer_Notify_StatusBar; native initialization, source RefreshListCtrl guards and Qt notification boundary; nested/restore/exception and selection-consumer checks | P0-02.2b3c2 | done — audit § P0-02.2b3c3a; pre-fix regressions failed; focused 4/4, check.sh 81/81, after localized final-command refresh affected 7/7; macOS 2026-09-29 |
+| P0-02.2b3c3b | Original OpenParentArchiveFolder/OnOpenItemChanged update dependencies and Qt dialog/progress/7zz service adaptations; retain changed-file YES/NO/CANCEL/error/cleanup flow, success/failure/cancel regression and required resource/layout checks; split before code as needed | P0-02.2b3c3a | todo |
+| P0-02.2b3c3c | Original OpenAsArc, _parentFolders/_library/flat-mode ownership and CloseOneLevel/CloseOpenFolders bodies with transport opening adapter; source push/pop/lifetime checks; no duplicate functional implementation | P0-02.2b3c3b | todo |
+| P0-02.2b3c3d | Root/nested runtime opening, restore/update/cleanup paths consume source stack, remove Qt ArchiveParent functional state; preserve provider snapshots only in transport boundary and test all direct consumers | P0-02.2b3c3c | todo |
+| P0-02.2b3c3e | C3 combined source/body/dependency and runtime acceptance; explicit mandatory memory/password/zone/platform obligations, no parent closure with missing branches | P0-02.2b3c3d | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

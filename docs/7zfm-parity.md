@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3a restores original processing guards around source selection restoration.
+Qt selection callbacks defer command refresh during intermediate restore state
+and resume afterward. No visible text/layout changes. Full native notification/
+timer/status dispatch and nested update/parent-stack workflows remain mandatory.
+
 P0-02.2b3c2 copies original CTempFileInfo/CFolderLink cleanup/change/lifetime
 records. Native time comparison retains upstream FILETIME/timespec precision;
 cleanup only deletes an explicitly owned file and then its empty parent directory.

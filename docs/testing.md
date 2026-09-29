@@ -1,5 +1,10 @@
 # Regression strategy
 
+`panel_processing` checks nested source notification guards, exception restoration,
+disabled-panel/memory-mode restoration and observable selection callbacks during
+source RefreshListCtrl. Intermediate callbacks are gated while final selection and
+later user notifications remain valid; full timer/dispatch workflows remain open.
+
 `folder_link` checks original temporary/parent records through native cleanup,
 size/time change detection, virtual override, parent/zone-buffer lifetime and
 Add(empty)-then-library-transfer semantics. Unicode/space fixtures include owned,

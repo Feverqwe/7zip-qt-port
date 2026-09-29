@@ -190,8 +190,10 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
             if (scanningDisk_)
                 scanSelectedState_ = selection;
         }
-        if (!scanningDisk_)
+        if (!scanningDisk_) {
             app_.GetFocusedPanel().RefreshListCtrl(selection);
+            refreshActions();
+        }
     });
     viewMenu->addSeparator();
     createToolbarOptions(viewMenu);
