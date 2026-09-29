@@ -1,12 +1,21 @@
 # Regression strategy
 
+`properties` uses source-owned archive folders and current CPanel indices for
+summaries, descendants, packed size and absent fields. Window cases verify loaded
+filesystem size and primed packed cache after external mutation, and archive
+Properties independent of altered display cells. Supplied archive timestamp text
+retains all digits as compatibility BSTR data; sparse values stay absent.
+Native FILETIME parsing remains migration work. Fresh normal/compact live-source
+Properties reports verify the existing two-column list/header/footer contract.
+
 `archive_property_catalog` checks the immutable 7zz property provider's canonical
 Path/Size/PackSize descriptors, full Unicode/space paths, absent versus maximum/
 zero values, empty input, bad indices, factory ownership and preservation of
 legacy custom-property callers. The same target checks owned source folder
 catalog expansion/remapping and optional Name, normal/flat Prefix, source
 directory totals versus absent file counts, invalid indices, retained ownership,
-catalog failures and root-bind retry. Live Properties acceptance follows.
+catalog failures and root-bind retry, plus sparse unparsed timestamp descriptors.
+Full four-view/flat live Properties acceptance remains the following check.
 
 `panel_property` exercises the original PanelMenu typed formatting through a
 public IFolderFolder fixture: known/custom catalog names, UI2/UI4/UI8 sizes and

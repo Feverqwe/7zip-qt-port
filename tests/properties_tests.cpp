@@ -1,11 +1,26 @@
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "qtlocationfolder.h"
 #include "window_state_support.h"
 #include <QTreeWidget>
 #include <QtTest>
 
 class PropertiesTests : public QObject {
     Q_OBJECT
+    static CMyComPtr<IFolderFolder> archiveFolder(const QList<ArchiveEntry> &entries) {
+        CMyComPtr<IFolderFolder> folder;
+        if (CreateArchiveFolder(entries, UString(L"7z"), &folder) != S_OK)
+            return {};
+        return folder;
+    }
+    static CRecordVector<UInt32> allIndices(IFolderFolder *folder) {
+        CRecordVector<UInt32> indices;
+        UInt32 count;
+        if (folder->GetNumberOfItems(&count) == S_OK)
+            for (UInt32 i = 0; i < count; ++i)
+                indices.Add(i);
+        return indices;
+    }
     static QString value(const QDialog &dialog, const QString &name) {
         auto *list = dialog.findChild<QTreeWidget *>("propertiesList");
         if (!list)
@@ -41,7 +56,7 @@ class PropertiesTests : public QObject {
             QCOMPARE(value(*dialog, "Файлов"), QString("2"));
             QCOMPARE(value(*dialog, "Папок"), QString("1"));
             QCOMPARE(value(*dialog, "Размер"), QString("10"));
-            QVERIFY(value(*dialog, "Сжатый размер").isNull());
+            QCOMPARE(value(*dialog, "Сжатый размер"), QString("10"));
             QCOMPARE(value(*dialog, "Путь"), QFileInfo(temporary.path()).canonicalFilePath());
             checked = true;
             dialog->reject();
@@ -52,9 +67,11 @@ class PropertiesTests : public QObject {
     }
 
     void archiveSummaryIncludesPackedSize() {
-        PropertiesDialog dialog(
-            {{"a.txt", "a.txt", {}, false, 10, 4}, {"b.txt", "b.txt", {}, false, 5, 2}}, true,
-            "archive.7z");
+        auto folder = archiveFolder({ArchiveEntry{"a.txt", 10, 4}, ArchiveEntry{"b.txt", 5, 2}});
+        QVERIFY(folder);
+        CPanel panel(folder);
+        panel.SetCurrentFolderPrefix("archive.7z");
+        PropertiesDialog dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Сжатый размер"), QString("6"));
         QCOMPARE(value(dialog, "Размер"), QString("15"));
         QCOMPARE(value(dialog, "Файлов"), QString("2"));
@@ -85,25 +102,31 @@ class PropertiesTests : public QObject {
         QVERIFY(checked);
     }
 
-    void upstreamSummaryIncludesDescendantCountsAndEverySelectedRow() {
-        PropertiesDialog dialog(
-            {{QStringLiteral("папка"), QStringLiteral("папка"), {}, true, 20, 8, 2, 1},
-             {QStringLiteral("файл.txt"), QStringLiteral("папка/файл.txt"), {}, false, 13, 5},
-             {QStringLiteral("другой.txt"), QStringLiteral("другой.txt"), {}, false, 4, 2}},
-            true, "archive.7z");
-        QCOMPARE(value(dialog, "Размер"), QString("37"));
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("15"));
-        QCOMPARE(value(dialog, "Файлов"), QString("4"));
+    void sourceSummaryUsesDescendantsOfTheSelectedFolder() {
+        auto folder = archiveFolder({ArchiveEntry{QStringLiteral("папка/файл.txt"), 13, 5},
+                                     ArchiveEntry{QStringLiteral("папка/sub/второй.txt"), 7, 3},
+                                     ArchiveEntry{QStringLiteral("другой.txt"), 4, 2}});
+        QVERIFY(folder);
+        CPanel panel(folder);
+        PropertiesDialog dialog(panel, allIndices(folder));
+        QCOMPARE(value(dialog, "Размер"), QString("24"));
+        QCOMPARE(value(dialog, "Сжатый размер"), QString("10"));
+        QCOMPARE(value(dialog, "Файлов"), QString("3"));
         QCOMPARE(value(dialog, "Папок"), QString("2"));
     }
 
     void singleFileFormatsSizeAndOmitsUnavailableDate() {
-        PropertiesDialog dialog(
-            {{QStringLiteral("файл 😀.txt"), "/tmp/file.txt", {}, false, 12345, 3}}, false, "/tmp");
+        auto folder = archiveFolder({ArchiveEntry{QStringLiteral("файл 😀.txt"), 12345, 3}});
+        QVERIFY(folder);
+        CPanel panel(folder);
+        panel.SetCurrentFolderPrefix("archive.7z");
+        PropertiesDialog dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Имя"), QStringLiteral("файл 😀.txt"));
         QCOMPARE(value(dialog, "Размер"), QString("12 345"));
         QVERIFY(value(dialog, "Изменён").isNull());
-        QVERIFY(value(dialog, "Сжатый размер").isNull());
+        QCOMPARE(value(dialog, "Сжатый размер"), QString("3"));
+        QVERIFY(value(dialog, "Файлов").isNull());
+        QVERIFY(value(dialog, "Папок").isNull());
         auto *list = dialog.findChild<QTreeWidget *>();
         QVERIFY(!list->header()->isHidden());
         QCOMPARE(list->columnCount(), 2);
@@ -116,10 +139,12 @@ class PropertiesTests : public QObject {
     }
     void geometry() {
         QFETCH(QSize, size);
-        PropertiesDialog dialog(
-            {{QStringLiteral("длинное имя 😀.txt"), QString("/long path/").repeated(150),
-              "2026-09-28 12:00:00", false, 12345, 5432}},
-            true, "archive.zip");
+        auto folder =
+            archiveFolder({ArchiveEntry{QStringLiteral("длинное имя 😀.txt"), 12345, 5432}});
+        QVERIFY(folder);
+        CPanel panel(folder);
+        panel.SetCurrentFolderPrefix("archive.zip" + QString("/long path/").repeated(150));
+        PropertiesDialog dialog(panel, allIndices(folder));
         dialog.resize(size);
         dialog.show();
         QApplication::processEvents();
@@ -132,6 +157,79 @@ class PropertiesTests : public QObject {
         for (auto *button : buttons->buttons())
             QVERIFY(UiInspection::fullyVisible(*button, dialog));
         QVERIFY(UiInspection::writeReport(dialog, QString("properties-%1").arg(size.width())));
+    }
+
+    void filesystemPropertiesUseLoadedMetadataUntilReload() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString original = QDir::currentPath();
+        QVERIFY(QDir::setCurrent(temporary.path()));
+        const QString name = QStringLiteral("файл й с пробелом.txt");
+        QFile file(temporary.filePath(name));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("fixture"), qint64(7));
+        file.close();
+        MainWindow window;
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *action = window.findChild<QAction *>("selectedPropertiesAction");
+        QVERIFY(table && action);
+        QCOMPARE(table->rowCount(), 1);
+        table->selectRow(0);
+        int inspected = 0;
+        auto inspect = [&] {
+            QTimer::singleShot(0, [&] {
+                auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
+                QVERIFY(dialog);
+                QCOMPARE(value(*dialog, "Имя").normalized(QString::NormalizationForm_C), name);
+                QCOMPARE(value(*dialog, "Размер"), QString("7"));
+                QCOMPARE(value(*dialog, "Сжатый размер"), QString("7"));
+                QVERIFY(!value(*dialog, "Изменён").isEmpty());
+                ++inspected;
+                dialog->reject();
+            });
+            action->trigger();
+        };
+        inspect(); // Also primes upstream's lazy packed-size cache on Windows.
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(file.write(QByteArray(23, 'x')), qint64(23));
+        file.close();
+        inspect(); // A row/QFileInfo reconstruction would incorrectly show 23.
+        QCOMPARE(inspected, 2);
+        QVERIFY(QDir::setCurrent(original));
+    }
+
+    void archivePropertiesUsePresenceAndRetainSuppliedTimestampText() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.openArchive("metadata.7z");
+        backend.completeList({ArchiveEntry{"unknown.txt", -1, -1, "2026-09-28 12:34:56.1234567"},
+                              ArchiveEntry{"zero.txt", 0, 0}});
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *action = window.findChild<QAction *>("selectedPropertiesAction");
+        QVERIFY(table && action);
+        int unknownRow = -1;
+        for (int row = 0; row < table->rowCount(); ++row)
+            if (table->item(row, 0)->text() == "unknown.txt")
+                unknownRow = row;
+        QVERIFY(unknownRow >= 0);
+        table->selectRow(unknownRow);
+        // Presentation cells are not authoritative metadata.
+        table->item(unknownRow, 2)->setText("999");
+        table->item(unknownRow, 3)->setText("888");
+        table->item(unknownRow, 4)->setText("changed presentation");
+        bool inspected = false;
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
+            QVERIFY(dialog);
+            QCOMPARE(value(*dialog, "Имя"), QString("unknown.txt"));
+            QVERIFY(value(*dialog, "Размер").isNull());
+            QVERIFY(value(*dialog, "Сжатый размер").isNull());
+            QCOMPARE(value(*dialog, "Изменён"), QString("2026-09-28 12:34:56.1234567"));
+            inspected = true;
+            dialog->reject();
+        });
+        action->trigger();
+        QVERIFY(inspected);
     }
 };
 QTEST_MAIN(PropertiesTests)

@@ -441,7 +441,7 @@ P0-02.2b3b3c2b3 commit: `a7338e0`. Live Properties prerequisites split before co
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2ca | Typed archive transport property catalog and original CAgentFolder catalog expansion/remapping; normal/flat/property presence/error checks, full engine metadata remains P0-03/P0-04 | P0-02.2b3b3c2b | done — a1/a2 verified below; full handler metadata and borrowed lifetime remain mandatory |
-| P0-02.2b3b3c2cb | PropertiesDialog/MainWindow consume operated indices/live CPanel owner, remove snapshot metadata reconstruction, restore source packed aggregate visibility; focused source metadata and layout checks | P0-02.2b3b3c2ca | todo |
+| P0-02.2b3b3c2cb | PropertiesDialog/MainWindow consume operated indices/live CPanel owner, remove snapshot metadata reconstruction, restore source packed aggregate visibility and retain existing raw Modified transport text until mandatory native time parsing P0-03/P0-04; focused source metadata/layout checks | P0-02.2b3b3c2ca | done — audit § P0-02.2b3b3c2cb; focused 8/8 and expanded direct consumers 6/6, check.sh 71/71; two normal/compact JSON reports reviewed; macOS 2026-09-29 |
 | P0-02.2b3b3c2cc | Filesystem/archive normal/flat/four-view runtime acceptance for source index/name/counts, immutable/absent/zero metadata, transitions and normal/compact Properties geometry | P0-02.2b3b3c2cb | todo |
 
 | Substep | Owner, scope and acceptance | After | Status |

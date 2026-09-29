@@ -34,6 +34,8 @@ struct CPanelItem {
     UInt64 NumSubDirs = 0;
     UInt64 NumSubFiles = 0;
     CObjectVector<CPanelProperty> Properties;
+    // Unparsed 7zz timestamp compatibility text; native FILETIME parsing remains P0-03/P0-04.
+    QString MTimeText;
 };
 
 struct CSelectedState {
@@ -72,8 +74,7 @@ class CPanel : public QObject {
     void RefreshListCtrl(const CSelectedState &state);
     bool _lastFocusedIsList = true;
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
-    void Properties(const CRecordVector<UInt32> &operatedIndices, bool archive,
-                    CListViewDialog &message) const;
+    void Properties(const CRecordVector<UInt32> &operatedIndices, CListViewDialog &message) const;
     static QString FoldersHistory(CFolderHistory &history, const QString &settingsPath,
                                   QWidget *parent);
     static void SetBookmark(CFastFolders &fastFolders, unsigned index,

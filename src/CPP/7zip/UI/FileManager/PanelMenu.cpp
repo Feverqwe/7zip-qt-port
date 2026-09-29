@@ -1,8 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelMenu.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Properties single-item enumeration and multi-item totals retain upstream
-// control flow. IFolder supplies typed properties; the legacy Qt caller still
-// binds a metadata snapshot until live Properties integration. Raw/archive-level
+// control flow. IFolder supplies the bound owner's typed properties. Raw/archive-level
 // properties and Windows shell invocation are outside this partial port.
 #include "../Common/OpenArchive.h"
 #include "7zip/PropID.h"
@@ -66,7 +65,7 @@ static void AddPropertyString(PROPID propID, UInt64 val, CListViewDialog &dialog
     AddPropertyString(propID, NULL, prop, dialog);
 }
 
-void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices, bool archive,
+void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
                         CListViewDialog &message) const {
     if (operatedIndices.Size() == 1) {
         UInt32 index = operatedIndices[0];
@@ -110,10 +109,7 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices, bool archi
         if (numFiles != 0)
             AddPropertyString(kpidNumSubFiles, numFiles, message);
         AddPropertyString(kpidSize, unpackSize, message);
-        // Legacy Qt snapshots have no filesystem packed-size metadata yet.
-        // Remove this visibility adaptation with live binding in c2c.
-        if (archive)
-            AddPropertyString(kpidPackSize, packSize, message);
+        AddPropertyString(kpidPackSize, packSize, message);
         AddSeparator(message);
     }
     AddPropertyPair(ToUString(QStringLiteral("Путь")), ToUString(_currentFolderPrefix), message);

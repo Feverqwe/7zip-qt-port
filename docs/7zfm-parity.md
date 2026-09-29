@@ -7,6 +7,19 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2cb binds window Properties to the current source folder and operated
+indices. It displays source catalogs instead of synthesized Type/item-Path rows;
+the current-location footer remains the existing full Qt location until
+LoadFullPath/outer-stack migration. Filesystem packed size is now shown as source
+Properties requires. Loaded size and primed packed cache are preserved after
+external file changes; archive display-cell edits cannot change source values.
+Unknown sizes/counts remain absent and zero stays defined. Existing supplied
+archive Modified text retains fractional digits as explicitly unparsed BSTR
+compatibility data; native FILETIME/timezone/precision remains mandatory
+P0-03/P0-04. Raw/archive-level/shell Properties remain their mandatory owners.
+Normal/compact Qt list structure uses ListViewDialog.cpp/.rc; no rendered Windows
+reference or cross-platform runtime claim is made.
+
 P0-02.2b3b3c2ca2 uses the original owned CAgentFolder catalog expansion: Path
 becomes Name, descendant count descriptors are added, Prefix appears only in
 flat mode and Name is inserted when the transport has no Path. Directory counts

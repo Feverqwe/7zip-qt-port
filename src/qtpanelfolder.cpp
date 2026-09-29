@@ -10,8 +10,12 @@ const PROPID kArchiveProperties[] = {kpidPath, kpidSize, kpidPackSize};
 QtPanelFolder::QtPanelFolder(const QString &prefix, const CObjectVector<CPanelItem> &items,
                              PropertyCatalog catalog)
     : prefix_(prefix), items_(items), catalog_(catalog) {
-    if (catalog_ == PropertyCatalog::ArchiveTransport)
+    if (catalog_ == PropertyCatalog::ArchiveTransport) {
+        FOR_VECTOR(i, items_)
+        if (!items_[i].MTimeText.isEmpty())
+            hasMTimeText_ = true;
         return;
+    }
     // Names are already localized/formatted by the Qt property presentation.
     // Describe their union once; missing values use the source VT_EMPTY contract.
     FOR_VECTOR(i, items_)
@@ -60,6 +64,12 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
         if (item.PackSizeDefined)
             prop = item.PackSize;
         break;
+    case kpidMTime:
+        if (!hasMTimeText_)
+            return E_NOTIMPL;
+        if (!item.MTimeText.isEmpty())
+            prop = ToUString(item.MTimeText);
+        break;
     case kpidNumSubDirs:
         if (catalog_ != PropertyCatalog::ArchiveTransport)
             prop = item.NumSubDirs;
@@ -96,13 +106,21 @@ Z7_COM7F_IMF(QtPanelFolder::BindToParentFolder(IFolderFolder **folder)) {
 }
 
 Z7_COM7F_IMF(QtPanelFolder::GetNumberOfProperties(UInt32 *count)) {
-    *count = catalog_ == PropertyCatalog::ArchiveTransport ? Z7_ARRAY_SIZE(kArchiveProperties)
-                                                           : propertyNames_.Size();
+    *count = catalog_ == PropertyCatalog::ArchiveTransport
+                 ? Z7_ARRAY_SIZE(kArchiveProperties) + (hasMTimeText_ ? 1 : 0)
+                 : propertyNames_.Size();
     return S_OK;
 }
 
 Z7_COM7F_IMF(QtPanelFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type)) {
     if (catalog_ == PropertyCatalog::ArchiveTransport) {
+        if (hasMTimeText_ && index == Z7_ARRAY_SIZE(kArchiveProperties)) {
+            *name = NULL;
+            *id = kpidMTime;
+            // Truthfully describe unparsed transport text, not a native FILETIME.
+            *type = VT_BSTR;
+            return S_OK;
+        }
         if (index >= Z7_ARRAY_SIZE(kArchiveProperties))
             return E_INVALIDARG;
         *name = NULL;

@@ -44,6 +44,7 @@ HRESULT CreateArchiveFolder(const QList<ArchiveEntry> &entries, const UString &a
     for (const ArchiveEntry &entry : entries) {
         CPanelItem item;
         item.RelPath = entry.path;
+        item.MTimeText = entry.modified;
         item.IsFolder = entry.directory;
         item.SizeDefined = entry.size >= 0;
         if (item.SizeDefined)

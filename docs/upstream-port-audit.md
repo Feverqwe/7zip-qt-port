@@ -8,6 +8,63 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2cb — live source Properties binding (2026-09-29)
+
+Project baseline `93e832b`; pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+CPP/7zip/UI/FileManager/PanelMenu.cpp source Properties aggregate now always
+calls AddPropertyString(kpidPackSize, packSize, message), restoring the original
+branch after native filesystem packed metadata became available. The local
+archive bool/visibility filter is removed from CPanel::Properties and callers.
+Existing copied typed enumeration/aggregate bodies remain authoritative.
+PanelItems.cpp Get_ItemIndices_Operated remains the original source algorithm;
+MainWindow synchronizes selection through existing SaveSelectedState until the
+full OnNotify port, then supplies source indices and its bound focused CPanel.
+
+Local Qt presentation glue PropertiesDialog now only invokes that CPanel and
+initializes the existing ListViewDialog. PropertyItem and its snapshot constructor
+are removed. MainWindow no longer reconstructs metadata from table text,
+QFileInfo, display roles or a second proxy calculation. It still supplies the
+visible full location to the existing temporary folder-prefix adapter until
+mandatory LoadFullPath/outer-stack migration; no native path algorithm is added.
+
+Preserving current archive timestamp UX requires carrying ArchiveEntry.modified
+into the existing immutable metadata provider. Inspected source Console/List.cpp
+CFieldPrinter::PrintItem emits kpidMTime from FILETIME via the listing formatter;
+it does not provide a reverse 7zz-text reader usable here. No independent date
+parser is added. MTimeText compatibility field advertises sparse kpidMTime as
+VT_BSTR only when supplied, returns VT_EMPTY per missing item and retains raw
+text/fractional digits. The original PanelMenu variant formatter handles it.
+This truthfully describes unparsed transport text, not native FILETIME or a
+completed time/precision/timezone source port. Canonical native archive time
+parsing and complete handler metadata remain mandatory P0-03/P0-04/P1-10.
+Filesystem timestamps already come from the copied native folder properties.
+
+Regression uses real source folder ownership/indices rather than invented
+PropertyItem totals: valid selected folder descendants, file packed size and
+empty counts, known/unknown sizes, sparse raw timestamp. Window archive cells
+are deliberately changed to prove they cannot alter Properties values; loaded
+filesystem Size remains 7 after external file replacement with 23, with original
+lazy packed cache primed before mutation. Unicode normalization is only in the
+test comparison of native macOS decomposed names, not a rewritten source value.
+Source filesystem packed size is now visible; unknown fields remain omitted.
+
+Mandatory omissions: full raw/archive-level and native shell Properties paths
+P0-03/P0-04/P1-10/P2-09; unparsed archive timestamps as above; full OnNotify,
+LoadFullPath and outer/native ownership migration under P0-02. Synthesized
+Type/item-Path rows from the old snapshot are removed in favor of source catalogs
+and existing current-location footer. No whole PanelMenu/Properties port or
+cross-platform visual parity is claimed. Four-view/flat runtime acceptance is cc.
+
+Validation macOS arm64, 2026-09-29: affected application and tests built; initial
+focused checks passed 8/8, expanded Properties/context-menu direct consumers
+passed 6/6 (2.83 s). First full gate found one obsolete synthesized item-path
+expectation in ui_archive_states; it now checks the source name and current
+directory footer. Repeated mandatory check.sh passed 71/71; git diff --check
+passed. Fresh 540×360 and 360×240 Properties widget JSON reviewed: two-column
+header/list order, separate footer, visible OK/Cancel, no clipped controls.
+No Windows rendering reference or Windows/Linux runtime verification available.
+
 ## P0-02.2b3b3c2ca2 — source owned archive property catalog (2026-09-29)
 
 Project baseline `3132579`; pinned [ip7z/7zip

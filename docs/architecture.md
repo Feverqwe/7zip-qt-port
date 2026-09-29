@@ -22,9 +22,11 @@ widgets or move ArchiveBackend's operation boundary.
 PanelMenu now calls the original typed property helper for every successfully
 read item property and for numeric aggregate totals. sevenzip_panel links the
 existing native property formatter owner sevenzip_filesystem; no duplicate
-formatting implementation is added. The window's Properties snapshot caller and
-its temporary filesystem packed-size visibility remain live-binding migration
-scope, while raw/archive-level/shell capabilities retain their mandatory owners.
+formatting implementation is added. Window Properties passes its bound focused
+CPanel and source operated indices directly to PropertiesDialog; metadata is
+not rebuilt from rows/QFileInfo or another proxy. Packed aggregate visibility
+now follows the original unconditional branch. Raw/archive-level/shell
+capabilities retain their mandatory owners.
 CreateArchiveFolder configures the existing QtPanelFolder with an explicit
 ArchiveTransport catalog (Path/Size/PackSize), using source IDs/type descriptors
 and immutable presence-aware metadata. Custom presentation callers keep the
@@ -34,6 +36,9 @@ Directory counts come from the source proxy, while transport file counts remain
 absent. Failed catalog queries do not publish an owner. External-proxy
 compatibility delegation remains mandatory lifecycle migration; transport
 descriptors do not imply full engine metadata.
+The existing supplied archive Modified text is retained as sparse MTimeText
+compatibility data, advertised as VT_BSTR rather than pretending it is FILETIME.
+Native archive time parsing/precision/timezone work remains P0-03/P0-04.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single
@@ -77,8 +82,9 @@ archive and filesystem subsets.
 Their default reference counting assumes GUI-thread ownership. Archive operations
 continue through ArchiveBackend.
 `CPanel::_folder` uses the unchanged upstream IFolderFolder/CMyComPtr contract.
-`QtPanelFolder` adapts the remaining read-only Properties snapshots and the 7zz
-input metadata provider; it exposes typed properties and owns the snapshot. It implements
+`QtPanelFolder` adapts the 7zz input metadata provider and legacy selection/test
+presentation fixtures; window Properties uses its bound source folder directly.
+The adapter exposes properties and owns immutable input metadata. It implements
 no filesystem/archive navigation. Source property/name/path helpers consume the
 interface; complete parent-stack ownership remains in migration. Active filesystem
 folders use CFSFolder and archive folders use CAgentFolder. `ReleaseFolder` clears the bound list and caches before replacing

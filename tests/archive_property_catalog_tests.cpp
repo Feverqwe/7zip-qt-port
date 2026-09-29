@@ -56,6 +56,29 @@ class ArchivePropertyCatalogTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void suppliedTimestampTextRemainsSparseAndExplicitlyUnparsed() {
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(
+            CreateArchiveFolder({ArchiveEntry{"known.txt", 1, 1, "2026-09-28 12:34:56.1234567"},
+                                 ArchiveEntry{"unknown.txt", 2, 2}},
+                                UString(L"7z"), &folder),
+            S_OK);
+        UInt32 count;
+        QCOMPARE(folder->GetNumberOfProperties(&count), S_OK);
+        QCOMPARE(count, 6u);
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE type;
+        QCOMPARE(folder->GetPropertyInfo(3, &name, &id, &type), S_OK);
+        QCOMPARE(id, PROPID(kpidMTime));
+        QCOMPARE(type, VARTYPE(VT_BSTR)); // Compatibility text, not fabricated FILETIME.
+        CPropVariant prop;
+        QCOMPARE(folder->GetProperty(0, kpidMTime, &prop), S_OK);
+        QCOMPARE(QString::fromWCharArray(prop.bstrVal), QString("2026-09-28 12:34:56.1234567"));
+        QCOMPARE(folder->GetProperty(1, kpidMTime, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(VT_EMPTY));
+    }
+
     void sourceFolderExpandsCatalogAndRemapsPath_data() {
         QTest::addColumn<bool>("flat");
         QTest::newRow("normal") << false;

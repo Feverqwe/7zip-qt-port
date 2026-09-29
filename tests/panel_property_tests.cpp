@@ -95,7 +95,7 @@ class PanelPropertyTests : public QObject {
         CPanel panel(folder);
         CRecordVector<UInt32> selected;
         selected.Add(0);
-        panel.Properties(selected, true, dialog);
+        panel.Properties(selected, dialog);
     }
 
   private slots:
@@ -202,7 +202,7 @@ class PanelPropertyTests : public QObject {
         indices.Add(0);
         indices.Add(1);
         CListViewDialog dialog;
-        panel.Properties(indices, true, dialog);
+        panel.Properties(indices, dialog);
         QCOMPARE(value(dialog, "Папок"), QString("1 234"));
         QCOMPARE(value(dialog, "Файлов"), QString("5 678"));
         QCOMPARE(value(dialog, "Размер"), QString("10 345"));

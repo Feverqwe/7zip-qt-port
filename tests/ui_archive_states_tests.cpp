@@ -346,7 +346,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         });
         action(window, "selectedPropertiesAction")->trigger();
         QVERIFY(properties.contains(QStringLiteral("имя с пробелом.txt")));
-        QVERIFY(properties.contains(QFileInfo(file.fileName()).canonicalFilePath()));
+        QVERIFY(properties.contains(QFileInfo(temp.path()).canonicalFilePath()));
         commands.clear();
         view->clearSelection();
         capture();

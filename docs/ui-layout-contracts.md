@@ -116,6 +116,12 @@ visible, separate text area and footer. Coverage is described in
 
 ## Selected properties
 
+Window Properties now reads the bound source folder/operated indices. File
+packed size is visible for filesystem and archive owners; empty source values
+are omitted. Rows follow the source property catalog, with the existing full
+current-location footer. Archive Modified text remains sparse raw compatibility
+data until native time parsing; it is not a precision/timezone acceptance claim.
+
 Reference: ListViewDialog.rc; source scope and baseline are recorded in the
 [properties audit](upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
 Two columns (property/value) fill the body with a visible empty header,

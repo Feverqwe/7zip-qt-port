@@ -54,34 +54,16 @@ void MainWindow::showInfo() {
 void MainWindow::showSelectedProperties() {
     if (!properties_->isEnabled())
         return;
-    QVector<PropertyItem> items;
-    for (const QModelIndex &index : table_->selectionModel()->selectedRows()) {
-        const int row = index.row();
-        const QTableWidgetItem *name = table_->item(row, 0);
-        PropertyItem item;
-        item.name = name->text();
-        item.directory = name->data(Qt::UserRole + 1).toBool();
-        item.path = state_ == State::Filesystem ? table_->item(row, 1)->text()
-                                                : name->data(Qt::UserRole).toString();
-        item.modified = table_->item(row, 4)->text();
-        if (state_ == State::Filesystem) {
-            const QFileInfo file(item.path);
-            item.size = item.directory ? 0 : file.size();
-        } else if (!item.directory) {
-            item.size = table_->item(row, 2)->text().toLongLong();
-            item.packedSize = table_->item(row, 3)->text().toLongLong();
-        } else {
-            const unsigned dirIndex = name->data(Qt::UserRole + 4).toUInt();
-            const CProxyDir &dir = archiveProxy().Dirs[dirIndex];
-            item.nestedFolders = int(dir.NumSubDirs);
-            item.nestedFiles = int(dir.NumSubFiles);
-            item.size = qint64(dir.Size);
-            item.packedSize = qint64(dir.PackSize);
-        }
-        items.append(item);
-    }
-    PropertiesDialog dialog(items, state_ == State::Viewing,
-                            state_ == State::Filesystem ? directory_ : archiveDisplayPath(), this);
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selection;
+    // Synchronize the Qt selection until the full source OnNotify port is connected.
+    panel.SaveSelectedState(selection);
+    CRecordVector<UInt32> indices;
+    panel.Get_ItemIndices_Operated(indices);
+    if (indices.IsEmpty())
+        return;
+    panel.SetCurrentFolderPrefix(state_ == State::Filesystem ? directory_ : archiveDisplayPath());
+    PropertiesDialog dialog(panel, indices, this);
     dialog.exec();
 }
 

@@ -15,4 +15,5 @@ class QtPanelFolder final : public IFolderFolder, public CMyUnknownImp {
     CObjectVector<CPanelItem> items_;
     UStringVector propertyNames_;
     PropertyCatalog catalog_;
+    bool hasMTimeText_ = false;
 };
