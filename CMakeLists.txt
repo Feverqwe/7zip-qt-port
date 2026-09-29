@@ -7,6 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
+set(property_name_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/PropertyName.rc")
+set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
+add_custom_command(OUTPUT "${resource_strings_header}"
+    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource}"
+        "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
+    DEPENDS "${property_name_resource}" scripts/rc_strings.cmake
+    VERBATIM)
+
 qt_standard_project_setup()
 
 add_library(sevenzip_common STATIC third_party/7zip/CPP/Common/StringToInt.cpp
@@ -33,6 +41,9 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/SettingsPage.cpp src/CPP/7zip/UI/FileManager/SettingsPage.h
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
+    src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
+    src/CPP/7zip/UI/FileManager/LangUtils.h src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
+    "${resource_strings_header}"
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
     src/qtlistview.cpp src/qtlistview.h
     src/CPP/7zip/UI/FileManager/AppState.h
@@ -44,6 +55,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
 target_include_directories(sevenzip_panel PUBLIC src)
+target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
 
 add_library(sevenzip_filesystem STATIC
@@ -398,6 +410,13 @@ if(BUILD_TESTING)
     qt_add_executable(property_classification_tests tests/property_classification_tests.cpp)
     target_link_libraries(property_classification_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME property_classification COMMAND property_classification_tests)
+
+    qt_add_executable(property_name_tests tests/property_name_tests.cpp)
+    target_link_libraries(property_name_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME property_name COMMAND property_name_tests)
+    add_test(NAME resource_strings_generator COMMAND "${CMAKE_COMMAND}"
+        "-DPROJECT_ROOT=${CMAKE_CURRENT_SOURCE_DIR}" "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/resource-strings-tests"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/rc_strings_tests.cmake")
     qt_add_executable(volume_workflow_tests tests/volume_workflow_tests.cpp ${panel_sort_sources})
     target_include_directories(volume_workflow_tests PRIVATE src tests)
     target_link_libraries(volume_workflow_tests PRIVATE sevenzip_panel Qt6::Test)

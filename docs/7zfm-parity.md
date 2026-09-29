@@ -7,6 +7,14 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2b2b adds original PropertyName priority and source resource IDs.
+The current fixed Russian presentation captions override corresponding native
+English resource text; other captions retain exact source English fallback.
+This dependency changes no displayed dialog yet. Full language selection/loading
+remains mandatory P1-14, and PanelMenu/live Properties integration follows.
+The reference is PropertyName.cpp, PropertyNameRes.h/.rc and LangUtils.h at the
+pinned source revision, not a rendered Windows reference.
+
 P0-02.2b3b3c2a compiles the original typed property formatters and portable
 reparse parsers; it changes no current dialog text or layout. PropertyName/
 PanelMenu formatting and live Properties binding remain the next mandatory

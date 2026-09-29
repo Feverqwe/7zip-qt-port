@@ -433,7 +433,7 @@ P0-02.2b3b3c2b1 commit: `d41d64c`. Dependency owners split before code:
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2b2a | PanelListNotify original IsSizeProp classification; numeric size/count/offset versus time/checksum/id formatting contracts | P0-02.2b3b3c2b1 | done — audit § P0-02.2b3b3c2b2a; focused 5/5, check.sh 66/66; macOS 2026-09-29 |
-| P0-02.2b3b3c2b2b | PropertyName original name lookup and Qt resource boundary, source caption IDs; known/custom/unknown fallback tests; full language loading stays mandatory P1-14 | P0-02.2b3b3c2b2a | todo |
+| P0-02.2b3b3c2b2b | PropertyName original name lookup and Qt resource boundary, source caption IDs; known/custom/unknown fallback tests; full language loading stays mandatory P1-14 | P0-02.2b3b3c2b2a | done — audit § P0-02.2b3b3c2b2b; focused 5/5, generator 1/1, check.sh 68/68, vendor bytes 63/63; macOS 2026-09-29 |
 | P0-02.2b3b3c2b2c | OpenArchive GetOpenArcErrorFlags and ExtractCallback GetOpenArcErrorMessage source branches; typed/undefined/invalid/combined/encrypted/unknown flags tests | P0-02.2b3b3c2b2b | todo |
 
 ```text

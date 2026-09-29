@@ -1,5 +1,11 @@
 # Regression strategy
 
+`property_name` checks the original resource/custom-name/numeric-ID priority,
+localized source IDs, unchanged English fallback, Unicode custom names, maximum
+IDs and resource replacement/append semantics. `resource_strings_generator`
+checks source STRINGTABLE conversion in Unicode/space paths, repeatability and
+failure before replacing valid output when syntax is unsupported/incomplete.
+
 `property_classification` verifies the source PanelListNotify numeric property
 contract: byte sizes, counts and offsets use grouped decimal formatting;
 timestamps, CRC, inode/address IDs and error flags do not. It complements

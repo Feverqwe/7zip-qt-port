@@ -39,32 +39,33 @@ Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https:/
 
 | Область upstream | Всего `.cpp` | Есть соответствующий `.cpp` в `src/` | Нет соответствующего файла в `src/` |
 | --- | ---: | ---: | ---: |
-| `CPP/7zip/UI/FileManager` | 67 | 25 | 42 |
+| `CPP/7zip/UI/FileManager` | 67 | 26 | 41 |
 | `CPP/7zip/UI/Agent` | 7 | 2 | 5 |
 | `CPP/7zip/UI/GUI` | 10 | 2 | 8 |
 | `CPP/7zip/UI/Common` | 25 | 1 | 24 |
-| **Всего** | **109** | **30** | **79** |
+| **Всего** | **109** | **31** | **78** |
 
 Текущие counts включают частичный Panel.cpp из P0-02.2a и ClassDefs.cpp из
-P0-02.2b3a и partial FSDrives.cpp из P0-02.2b3b2b3;
+P0-02.2b3a, partial FSDrives.cpp из P0-02.2b3b2b3 и PropertyName.cpp
+из P0-02.2b3b3c2b2b;
 P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 missing.
-Все 30 совпадений путей
+Все 31 совпадение путей
 требуют проверки пропущенных функций/веток. Нельзя считать их полностью
-завершёнными модулями. Из 79 отсутствующих файлов часть
+завершёнными модулями. Из 78 отсутствующих файлов часть
 содержит необходимую логику, часть обслуживает Win32 presentation или запуск
 отдельной 7zG/console-программы. Они должны получить явное решение о переносе,
 адаптации или неприменимости, а не автоматически копироваться целиком.
 
-Дополнительно есть 5 зеркальных `.cpp` вне этой таблицы:
+Дополнительно есть 6 зеркальных `.cpp` вне этой таблицы:
 `CPP/Common/Wildcard.cpp`, `CPP/Windows/FileDir.cpp`,
-`CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`,
+`CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/ResourceString.cpp`,
 `CPP/7zip/Common/MethodProps.cpp`.
-Всего в `src/CPP` — 35 `.cpp`.
+Всего в `src/CPP` — 37 `.cpp`.
 В корне `src/` — 36 `.cpp` Qt/integration; это не 36 неперенесённых компонента:
 часть является необходимой обвязкой, часть содержит миграционный долг.
-В `third_party/7zip` — 60 файлов, побайтово совпадающих с теми же путями baseline,
+В `third_party/7zip` — 62 файла, побайтово совпадающих с теми же путями baseline,
 плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.
-Это зависимости, не 60 завершённых пользовательских функций.
+Это зависимости и ресурсы, не 62 завершённые пользовательские функции.
 В таблице учитываются только файлы `src/`: переносимый `UI/Common/PropIDUtils.cpp`
 собирается без изменений из `third_party/7zip` и входит в счётчик зависимостей.
 Его дальнейшая runtime-интеграция и Windows-проверки остаются обязательными;

@@ -8,6 +8,14 @@ are defined in [AGENTS.md](../AGENTS.md).
 
 ## Repository boundary
 
+PropertyName retains source resource/custom/numeric lookup. The non-Z7_LANG
+LangUtils resource fallbacks call the adapted ResourceString service in
+sevenzip_panel. Native Win32 LoadString storage is replaced by a build-generated
+table from unchanged upstream PropertyName.rc plus fixed Russian presentation
+captions. Generation rejects unsupported syntax; generated headers stay in the
+build directory. Full source CLang loading/default-language/selection is P1-14,
+and Properties consumers still require PanelMenu integration and live binding.
+
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single
 FileDir owner, whose GetCurrentDir has source Windows/POSIX bodies. These services

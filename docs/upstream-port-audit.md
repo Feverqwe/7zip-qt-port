@@ -8,6 +8,53 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2b2b — original property name/resource fallback (2026-09-29)
+
+Project baseline `d2360d3`; pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+CPP/7zip/UI/FileManager/PropertyName.cpp GetNameOfProperty is copied completely:
+IDs below 1000 first try LangString(1000 + propID), then custom name, then the
+original UInt32 decimal conversion. UString, PROPID, branch order and temporary
+buffer are retained; include paths, source notice and project formatting adapt.
+PropertyName.h retains its declaration with explicit portable MyWindows types.
+LangUtils.h copies the original non-Z7_LANG three inline resource fallbacks;
+it does not claim to port the Z7_LANG language-file branch or CLang parser.
+
+PropertyNameRes.h and PropertyName.rc are copied byte-exact into third_party
+under original paths. There is one authoritative English caption table. Local
+scripts/rc_strings.cmake converts the supported single-line STRINGTABLE resource
+syntax to a generated build-directory header; no reusable cross-platform RC
+loader exists in the inspected source. Unsupported/incomplete syntax fails
+before replacing existing valid output, and repeated generation is stable.
+Generated declarations refer directly to unchanged source resource macros.
+
+CPP/Windows/ResourceString.cpp/.h retain MyLoadString interfaces. Their Win32
+LoadStringW/ANSI buffer/HINSTANCE presentation service is replaced by compiled
+resource entries and fixed Russian caption overrides for the existing UI.
+Windows instance overload routes to the application's single portable resource
+bundle; no opaque HINSTANCE type is invented on POSIX. The initial unchanged
+header failed there because HINSTANCE is Windows-only, so this narrow header
+adaptation is authoritative under src; no duplicate vendored header remains.
+These resource-service bodies are new platform/presentation glue, not a claim
+that the original native LoadString buffer logic is compiled across platforms.
+
+Mandatory omissions: full LangUtils.cpp/CLang loading, ReloadLang/LoadLangOneTime,
+native default-language resolution, language discovery and UI selection P1-14;
+PanelMenu typed/error properties and live Properties binding following substeps;
+raw/archive-level property interfaces P0-03/P0-04/P1-10. None is closed or N/A.
+No currently displayed text/layout changes: the dependency is not yet wired
+into PanelMenu. New focused public tests cover localized/source English priority,
+custom Unicode/empty names, unknown and maximum IDs, replacement/append semantics;
+generator tests use Unicode/space paths, repeat generation and invalid syntax.
+
+Validation macOS arm64, 2026-09-29: affected application/Properties/property-name
+targets build; focused 5/5 (0.65 s), Unicode-path generator rerun 1/1 (0.07 s);
+scripts/check.sh formatting, full build and CTest 68/68 (33.39 s); all 63 vendored
+files including source license match pinned source bytes. Windows/Linux runtime
+and rendered Windows parity remain unverified locally. Counts now 31 mirrored UI
+paths/78 missing, 37 src/CPP cpp, 36 root Qt cpp, 62 vendored dependencies/resources
+plus License.txt; path counts do not establish complete modules.
+
 ## P0-02.2b3b3c2b2a — source numeric property classification (2026-09-29)
 
 Project baseline `d41d64c`; pinned [ip7z/7zip

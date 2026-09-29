@@ -3,3 +3,4 @@
 third_party/7zip/**/*.h -whitespace
 third_party/7zip/**/*.cpp -whitespace
 third_party/7zip/**/*.c -whitespace
+third_party/7zip/**/*.rc -whitespace
