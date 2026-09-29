@@ -29,6 +29,12 @@ owners replace directory_, archiveFolder_, archiveParents_ and focused navigatio
 consumers. Native stack work depends on the accepted providers and bounded
 lifecycle, avoiding a dependency on a runtime parent that itself needs that stack.
 
+Panel.h owns original CTempFileInfo/CFolderLink records, native metadata, explicit
+temporary cleanup and parent/interface/library references. Their change detector
+uses unchanged upstream Compare_FiTime for native FILETIME/timespec. The runtime
+parent stack and close/update/navigation owners remain subsequent mandatory ports;
+record availability alone does not replace the window's archiveParents_ state.
+
 CPanel relative/full path helpers and current prefix storage use original
 UString. Source folder/type/device/super-drive classification owns their path
 branches; Qt conversions are confined to setters and presentation. Ownerless

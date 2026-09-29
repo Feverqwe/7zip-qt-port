@@ -8,6 +8,44 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c2 — original temporary-file and parent-link records (2026-09-29)
+
+Project baseline `1b3ab4a`; original CPP/7zip/UI/FileManager/Panel.h at
+ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, retrievable from
+https://github.com/ip7z/7zip. Copy complete CTempFileInfo and CFolderLink structs
+into the existing mirrored Panel.h, retaining all fields, constructors, comments,
+upstream FString/UString/CFileInfo/CMyComPtr/CLibrary/CByteBuffer types and inline
+DeleteDirAndFile/WasChanged_from_TempFileInfo/WasChanged_from_FolderLink bodies.
+Explicit NeedDelete controls file-then-directory cleanup; directory removal is
+nonrecursive. Change detection retains size-or-modification-time comparison and
+the original virtual-archive override. No independent Qt record replaces them.
+
+Required platform adaptation: replace Win32 CompareFileTime with the existing
+upstream global Compare_FiTime. Windows TimeUtils.h maps it to CompareFileTime;
+POSIX's unchanged TimeUtils.cpp compares native timespec seconds/nanoseconds.
+There is no new time conversion or comparison algorithm. Includes and formatting
+are other local changes; original native cleanup/library owners from c1 are reused.
+
+Partial integration remains explicit: this ports the complete two records and
+their helpers, not CPanel's _parentFolders/_library, CloseOneLevel/CloseOpenFolders,
+OpenParentArchiveFolder, OpenAsArc or BindToPath/LoadFullPath. Those and nested
+changed-archive update workflows remain mandatory c3/c4/b3d and operation owners.
+Existing Qt archiveParents_ is migration debt until runtime stack integration.
+IsVirtual/Password/ZoneBuf fields are preserved; memory-archive, password and zone
+workflows are not accepted merely because their record fields compile.
+
+New folder_link exercises public native records: borrowed/owned cleanup, repeat
+cleanup, nonempty parent preservation, Unicode/space paths, native size/time
+changes and virtual override, source CObjectVector copy retaining a live folder
+and independent CByteBuffer, original Add(empty-link)-then-Library.Attach order,
+loaded-copy guard and transfer back before pop. Fixture uses a local compiled
+shared library and local filesystem provider; no live archives or services.
+No visible UI/layout changes. Validation macOS arm64, 2026-09-29: affected app,
+folder-link, native-library, cleanup, path and lifecycle targets built; focused
+5/5 passed (2.49 s), mandatory check.sh formatting/build/80 CTest passed (42.34 s),
+git diff --check passed. Windows/Linux compilation/runtime remain unverified.
+Source/module/vendor counts are unchanged; only an existing header is extended.
+
 ## P0-02.2b3c1b — native library lifetime/transfer prerequisite (2026-09-29)
 
 Project baseline `3bfe67e`; exact original source ip7z/7zip

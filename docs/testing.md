@@ -1,5 +1,11 @@
 # Regression strategy
 
+`folder_link` checks original temporary/parent records through native cleanup,
+size/time change detection, virtual override, parent/zone-buffer lifetime and
+Add(empty)-then-library-transfer semantics. Unicode/space fixtures include owned,
+borrowed and nonempty-parent cleanup. These helper checks do not accept the full
+nested runtime/update workflow, which remains mandatory parent-stack integration.
+
 `native_library` loads a compiled local shared-library fixture copied to a Unicode/
 space path. It checks source Free/Load/lookup, missing/failed reload, copy guard,
 detached/replacement ownership and destructor unload. Windows-only LoadEx coverage

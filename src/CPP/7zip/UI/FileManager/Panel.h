@@ -5,10 +5,15 @@
 #pragma once
 
 #include "7zip/UI/FileManager/IFolder.h"
+#include "CPP/Windows/DLL.h"
+#include "CPP/Windows/FileDir.h"
+#include "Common/MyBuffer.h"
 #include "Common/MyCom.h"
 #include "Common/MyString.h"
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
+#include "Windows/FileFind.h"
+#include "Windows/TimeUtils.h"
 #include "qtpanellist.h"
 #include <QObject>
 #include <QPointer>
@@ -48,6 +53,51 @@ struct CSelectedState {
 
     CSelectedState()
         : FocusedItem(-1), SelectFocused(true), FocusedName_Defined(false), CalledFromTimer(false) {
+    }
+};
+
+struct CTempFileInfo {
+    UInt32 FileIndex; // index of file in folder
+    bool NeedDelete;
+    UString RelPath; // Relative path of file from Folder
+    FString FolderPath;
+    FString FilePath;
+    NWindows::NFile::NFind::CFileInfo FileInfo;
+
+    CTempFileInfo() : FileIndex((UInt32)(Int32)-1), NeedDelete(false) {}
+    void DeleteDirAndFile() const {
+        if (NeedDelete) {
+            NWindows::NFile::NDir::DeleteFileAlways(FilePath);
+            NWindows::NFile::NDir::RemoveDir(FolderPath);
+        }
+    }
+    bool WasChanged_from_TempFileInfo(const NWindows::NFile::NFind::CFileInfo &newFileInfo) const {
+        return newFileInfo.Size != FileInfo.Size ||
+               Compare_FiTime(&newFileInfo.MTime, &FileInfo.MTime) != 0;
+    }
+};
+
+struct CFolderLink : public CTempFileInfo {
+    bool IsVirtual; // == true (if archive was open via IInStream):
+                    //    archive was open from another archive,
+                    //    archive size meets the size conditions derived from g_RAM_Size.
+                    //    VirtFileSystem was used
+                    //    archive was fully extracted to memory.
+    bool UsePassword;
+    NWindows::NDLL::CLibrary Library;
+    CMyComPtr<IFolderFolder>
+        ParentFolder;         // can be NULL, if parent is FS folder (in _parentFolders[0])
+    UString ParentFolderPath; // including tail slash (doesn't include paths parts of parent in next
+                              // level)
+    UString Password;
+    UString VirtualPath; // without tail slash
+    CByteBuffer ZoneBuf; // ZoneBuf for virtaul stream (IsVirtual)
+
+    CFolderLink() : IsVirtual(false), UsePassword(false) {}
+    bool WasChanged_from_FolderLink(const NWindows::NFile::NFind::CFileInfo &newFileInfo) const {
+        // we call it, if we have two real files.
+        // if archive was virtual, it means that we have updated that virtual to real file.
+        return IsVirtual || CTempFileInfo::WasChanged_from_TempFileInfo(newFileInfo);
     }
 };
 

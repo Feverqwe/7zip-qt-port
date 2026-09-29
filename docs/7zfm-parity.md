@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c2 copies original CTempFileInfo/CFolderLink cleanup/change/lifetime
+records. Native time comparison retains upstream FILETIME/timespec precision;
+cleanup only deletes an explicitly owned file and then its empty parent directory.
+No displayed behavior/layout changes. Full root/nested close/pop/update/runtime
+integration, memory-archive/password/zone workflows remain mandatory later scope.
+
 P0-02.2b3c1b compiles original CLibrary lifetime/loading and extends POSIX with
 original Windows parent-link transfer/copy guard. No displayed behavior changes;
 native parent-stack integration follows. Module-path/resource services and
