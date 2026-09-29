@@ -1,5 +1,13 @@
 # Regression strategy
 
+`taskbar_progress_mac` checks actual native Dock badge state/value/clear and object
+ownership on macOS, including pause/error persistence across value updates,
+UInt64/clamping, invalid calls, absent Cocoa in an owned child and non-GUI calls
+in a joined worker. It restores only its own process's badge. These native API
+observations do not establish rendered Dock appearance or source dialog integration.
+The formatting gate includes Objective-C++ .mm files; Apple-only targets enable
+that language through CMake. Linux/Windows taskbar acceptance remains separate.
+
 `process_priority` verifies reversible native background changes for the test
 process and an owned child whose native worker already exists, repeated/idempotent
 restoration, invalid PID failure and output preservation. It copies only its own

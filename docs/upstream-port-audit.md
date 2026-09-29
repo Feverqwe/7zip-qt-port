@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b2b1 — Cocoa Dock service prerequisite (2026-09-29)
+
+Project baseline `ab47135`; original taskbar call sites remain pinned to
+ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at
+https://github.com/ip7z/7zip, ProgressDialog2.cpp/.h constructor, OnInit,
+SetTaskbarProgressState, SetProgressPos and destructor. Upstream has no POSIX
+taskbar implementation. New qttaskbarprogress_mac.mm is narrow platform
+presentation glue, not a replacement for those mandatory original bodies.
+qttaskbarprogress.h carries their native HrInit/SetProgressState/SetProgressValue
+interface and TBPFLAG ABI constants (same values as MyWindowsNew.h).
+
+Cocoa uses the application's process-wide Dock badge rather than a Windows
+per-window colored bar. It shows a percentage, an ellipsis when indeterminate,
+and pause/error markers; selected-window policy still belongs to the source
+dialog. Source counts remain UInt64; native badge text is a clamped approximate
+percentage, and does not replace source statistics or progress arithmetic.
+[Apple badgeLabel](https://developer.apple.com/documentation/appkit/nsdocktile/badgelabel?language=objc)
+defines native badge text and system-owned appearance. Preserve the initial badge
+when clearing or destroying this owner; avoid erasing a later badge installed by
+another owner. Initialize only on the GUI thread with an existing NSApp/dockTile;
+do not create an application or advertise capability for an offscreen platform.
+Missing application and non-GUI calls report real errors. SDK/native object
+ownership stays entirely in the Objective-C++ file behind an opaque CImpl.
+
+Use unchanged MyTypes.h/7zTypes HRESULT/UInt64 types at this boundary.
+MyWindows.h cannot enter Objective-C++: its Win32 BOOL=int conflicts with Apple's
+BOOL=bool. This is resolved by a narrow include boundary, without modifying
+vendor types or leaking Cocoa into source CProgressDialog. AppKit is linked only
+on Apple; CMake enables C++17 Objective-C++ only there. The existing formatting
+gate now checks .mm files as well as C++ headers/sources.
+
+taskbar_progress_mac checks actual AppKit badgeLabel after value/state/clear,
+blocking pause/error states, UInt64/max/over-total values, idempotent initialization,
+invalid arguments, destructor cleanup and another badge owner's preservation.
+A separate owned child with QCoreApplication proves absent-Cocoa capability;
+a joined Qt worker verifies non-GUI failures leave the badge unchanged. Neither
+uses another application or a live service. macOS arm64 focused service/progress/
+current JSON consumers 4/4 passed (9.48 s). Mandatory ./scripts/check.sh
+format/build/CTest passed 90/90 (57.75 s), exit 0, with Objective-C++ formatting
+and current progress JSON consumers included; diff-check clean.
+No source taskbar branch or Background button is accepted by this prerequisite;
+Linux desktop service, Windows bodies/target/lifetime, source background/default
+button and full modal/worker/cancel/update remain mandatory. No rendered Dock or
+Windows pixel fidelity is claimed from native API getters or Qt geometry.
+
 ## P0-02.2b3c3b2b2b2a — native process background prerequisite (2026-09-29)
 
 Project baseline `d2307a2`; source ip7z/7zip

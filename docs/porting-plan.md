@@ -67,6 +67,8 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 Всего в `src/CPP` — 42 `.cpp`.
 В корне `src/` — 39 `.cpp` Qt/integration; это не 39 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
+Отдельно есть Apple-only Objective-C++ `qttaskbarprogress_mac.mm`: narrow native
+Dock service, без принятой интеграции source progress dialog.
 В `third_party/7zip` — 84 файла, побайтово совпадающих с теми же путями baseline,
 плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.
 Это зависимости и ресурсы, не 84 завершённых пользовательских функций.

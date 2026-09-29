@@ -24,6 +24,12 @@ add_custom_command(OUTPUT "${resource_strings_header}"
 
 qt_standard_project_setup()
 
+if(APPLE)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+endif()
+
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
     src/processpriority.cpp src/processpriority.h
     third_party/7zip/C/Threads.c third_party/7zip/CPP/Windows/ErrorMsg.cpp
@@ -79,6 +85,10 @@ qt_add_resources(sevenzip_panel upstream_progress_icons
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
+if(APPLE)
+    target_sources(sevenzip_panel PRIVATE src/qttaskbarprogress_mac.mm src/qttaskbarprogress.h)
+    target_link_libraries(sevenzip_panel PUBLIC "-framework AppKit")
+endif()
 
 add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
@@ -248,6 +258,13 @@ if(BUILD_TESTING)
     target_link_libraries(process_priority_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME process_priority COMMAND process_priority_tests)
     set_tests_properties(process_priority PROPERTIES TIMEOUT 15)
+    if(APPLE)
+        qt_add_executable(taskbar_progress_mac_tests tests/taskbar_progress_mac_tests.mm)
+        target_link_libraries(taskbar_progress_mac_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME taskbar_progress_mac COMMAND taskbar_progress_mac_tests)
+        set_tests_properties(taskbar_progress_mac PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+    endif()
     set_tests_properties(progress_sync PROPERTIES TIMEOUT 10)
     qt_add_executable(progress_format_tests tests/progress_format_tests.cpp)
     target_link_libraries(progress_format_tests PRIVATE sevenzip_panel Qt6::Test)

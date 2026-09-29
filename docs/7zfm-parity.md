@@ -7,6 +7,13 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b2b1 supplies the Cocoa native Dock progress prerequisite. Apple's
+process-wide badge displays percentage/indeterminate and pause/error markers;
+this differs from the Windows per-window colored taskbar bar. Native API state
+and cleanup are verified on macOS, including preservation of another badge owner;
+rendered Dock appearance remains unverified. Original source target/state policy,
+Windows taskbar, Linux service and Background button integration remain mandatory.
+
 P0-02.2b3c3b2b2b2a supplies reversible native process background policy: Windows
 uses the original idle/normal process classes, Darwin process background policy,
 Linux all-thread OTHER/BATCH scheduling. These are platform scheduling adaptations,

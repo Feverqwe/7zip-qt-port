@@ -13,7 +13,7 @@ for source_dir in src tests; do
   if [[ -d "$source_dir" ]]; then
     while IFS= read -r -d '' source_file; do
       clang-format --dry-run --Werror "$source_file"
-    done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0)
+    done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \) -print0)
   fi
 done
 
