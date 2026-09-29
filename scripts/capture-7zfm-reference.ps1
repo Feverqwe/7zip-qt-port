@@ -83,8 +83,11 @@ public static class Native {
     }
     public static IntPtr PreviewHost(string name) {
         // Property-page templates have WS_CHILD and require a real parent.
+        // At 150% DPI, property-page templates can be ~780 physical pixels tall.
+        // The host client must extend below them or CopyFromScreen captures another
+        // window instead of the page's lower edge.
         IntPtr host = CreateWindowEx(0, "Static", "7-Zip resource preview " + name, 0x10CF0000,
-            20, 20, 1000, 800, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            20, 20, 1000, 1200, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         if (host == IntPtr.Zero) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
         return host;
     }
@@ -190,6 +193,9 @@ public static class Native {
         if (previous == IntPtr.Zero) throw new InvalidOperationException("Per-monitor V2 DPI context unavailable (requires Windows 10 1703+).");
         return previous;
     }
+    public static bool IsChildWindow(IntPtr window) {
+        return (unchecked((uint)GetWindowLong(window, -16)) & 0x40000000u) != 0;
+    }
     public static object Capture(IntPtr window) {
         Point origin = new Point();
         if (!ClientToScreen(window, ref origin)) throw new InvalidOperationException("Cannot measure window.");
@@ -248,11 +254,22 @@ $outputPath = [IO.Path]::GetFullPath($OutputDirectory)
 [void][IO.Directory]::CreateDirectory($outputPath)
 Write-Host "Output: $outputPath"
 Write-Host 'JSON omits editable values. PNG includes everything visible in the window.'
-function Save-Reference([IntPtr]$window, [string]$exePath, [string]$resourceName = '') {
+function Save-Reference([IntPtr]$window, [string]$exePath, [string]$resourceName = '', [IntPtr]$previewHost = [IntPtr]::Zero) {
             $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($exePath)
             $previous = [SevenzipReference.Native]::BeginPhysicalCoordinates()
             try {
                 $geometry = [SevenzipReference.Native]::Capture($window)
+                if ($previewHost -ne [IntPtr]::Zero -and [SevenzipReference.Native]::IsChildWindow($window)) {
+                    $hostBounds = ([SevenzipReference.Native]::Capture($previewHost)).window
+                    $child = $geometry.window.windowBoundsScreenPx
+                    $origin = $hostBounds.clientOriginScreenPx
+                    $size = $hostBounds.clientSizePx
+                    if ($child[0] -lt $origin[0] -or $child[1] -lt $origin[1] -or
+                        ($child[0] + $child[2]) -gt ($origin[0] + $size[0]) -or
+                        ($child[1] + $child[3]) -gt ($origin[1] + $size[1])) {
+                        throw "Resource $resourceName extends outside the preview host; increase its size."
+                    }
+                }
                 $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ') + '-' + [Guid]::NewGuid().ToString('N').Substring(0, 6)
                 $base = Join-Path $outputPath $stamp
                 $screenshotName = $null
@@ -314,7 +331,7 @@ if ($TemplatesFrom) {
                     [SevenzipReference.Native]::Pump()
                     Start-Sleep -Milliseconds 50
                 }
-                Save-Reference $window $exePath $name
+                Save-Reference $window $exePath $name $hostWindow
             } catch {
                 $failures += [ordered]@{ resourceName = $name; error = $_.Exception.Message }
                 Write-Warning "Resource $name : $($_.Exception.Message)"
