@@ -9,10 +9,23 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_ui_parity import compare
-from ui_reference import parse_dialogs, preprocess
+from ui_reference import behavior_symbols, parse_dialogs, preprocess
 
 
 class ResourceTests(unittest.TestCase):
+    def test_handler_and_helper_definition_index_excludes_declarations(self):
+        source = '''
+bool CDialog::OnInit() { return true; }
+void CDialog::UpdateStatInfo(bool showAll) { SetItemText(1, value); }
+void CDialog::SetPauseText() { }
+bool CDialog::HasErrors() const { return true; }
+void CDialog::Unimplemented();
+void PlainFunction() { }
+'''
+        self.assertEqual(behavior_symbols(source), [
+            "CDialog::HasErrors", "CDialog::OnInit", "CDialog::SetPauseText",
+            "CDialog::UpdateStatInfo"])
+
     def test_macros_includes_conditionals_and_symbolic_ids(self):
         compiler = shutil.which("clang") or shutil.which("gcc")
         if not compiler:

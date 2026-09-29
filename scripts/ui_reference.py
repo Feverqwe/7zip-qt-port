@@ -164,6 +164,14 @@ def parse_dialogs(text):
     return dialogs
 
 
+def behavior_symbols(text):
+    # Navigation only: index supported member definitions, including helper
+    # bodies reached by event handlers. A declaration alone is not evidence.
+    return sorted(set(re.findall(
+        r'^\s*(?:bool|void|INT_PTR)\s+(\w+::\w+)\s*\([^;{}]*\)\s*(?:const\s*)?\{',
+        text, re.MULTILINE)))
+
+
 def extract(root, resource, behavior_sources=(), compiler=None):
     root = Path(root).resolve()
     compiler = compiler or shutil.which("clang") or shutil.which("gcc")
@@ -178,8 +186,7 @@ def extract(root, resource, behavior_sources=(), compiler=None):
         source = str((root / source).resolve().relative_to(root))
         path = root / source
         dependencies[source] = digest(path)
-        symbols[source] = sorted(set(re.findall(r'^\s*(?:bool|void|INT_PTR)\s+([\w]+::On\w+)\s*\(',
-                                                path.read_text(encoding="utf-8-sig"), re.MULTILINE)))
+        symbols[source] = behavior_symbols(path.read_text(encoding="utf-8-sig"))
         for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
             if re.search(r'::On\w+\s*\(|\b(?:Show\w*|Enable\w*|CheckButton|SetItemText|'
                          r'MoveItem|ChangeSubWindow\w*|SetText|SetCurSel)\s*\(', line):

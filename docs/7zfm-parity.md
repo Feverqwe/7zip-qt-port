@@ -7,6 +7,16 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2a2 ports the source progress presentation subset and manual resize
+flow. Native statistics, file/byte modes, title/path shortening, error numbering,
+selected-or-all copy and pause rendering are tested with 26 mapped controls in
+16 normal/compact JSON reports. Russian text, Qt font units and macOS Meta
+shortcuts are explicit adaptations. Background/Cancel stay disabled until their
+mandatory platform/modal-worker services; the current app progress owner is
+not replaced yet. Source taskbar/icon/priority and full cancel/finish/update remain
+mandatory. No Windows rendered reference; pixel parity and Windows/Linux runtime
+remain unverified.
+
 P0-02.2b3c3b2b2a1 copies source progress statistic helper bodies, including the
 original truncation and overflow approximation. These prerequisites do not change
 the displayed progress view; complete statistics/pause/message/layout acceptance

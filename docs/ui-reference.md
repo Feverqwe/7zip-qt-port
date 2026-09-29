@@ -6,8 +6,9 @@ It runs without Windows. Python 3.9+ and the standard library are sufficient
 for comparison; extraction additionally needs clang or GCC on PATH (or
 `--compiler /path/to/compiler`). MSVC's preprocessor is not supported yet.
 
-Maintained contracts cover Copy/Move (six upstream controls) and the archive
-password prompt (all five controls), normal/compact reports and selected
+Maintained contracts cover Copy/Move (six upstream controls), the archive
+password prompt (all five controls) and the progress presentation subset (all
+26 controls), normal/compact reports and selected
 spatial/state properties. Other dialogs
 can be extracted, but require their own reviewed mappings and state coverage.
 Main-window menus/toolbars built dynamically in C++ need separate contracts;
@@ -21,10 +22,15 @@ ctest --preset dev -R '^ui_parity_(tool|copy)$' --output-on-failure
 
 ./scripts/build.sh dev password_dialog_tests
 ctest --preset dev -R '^ui_parity_password$' --output-on-failure
+
+./scripts/build.sh dev progress_dialog_tests
+ctest --preset dev -R '^ui_parity_progress$' --output-on-failure
 ```
 
 CTest's `ui_reference_copy` fixture runs `copy_dialog` first, even with this
-filter, so reports come from the current build. Output is
+filter, so reports come from the current build. `ui_reference_progress` similarly
+runs `progress_dialog` and writes `progress-parity.json` for its 16 reports.
+Copy output is
 `build/dev/ui-reports/copy-parity.json`: checked states, errors, recorded
 adaptations and limitations. Exit codes: 0 passed, 1 comparison differences,
 2 invalid inputs/extraction error. Tests use local disposable fixtures, no
@@ -118,7 +124,8 @@ Use the maintained Copy contract as the executable example:
   transitions/results. The comparator does not execute these tests itself;
   the CTest producer fixture runs the Copy behavioral suite.
 
-`behaviorSymbols` indexes common `bool`/`void`/`INT_PTR` On* handlers.
+`behaviorSymbols` indexes common `bool`/`void`/`INT_PTR` member definitions,
+including helpers called by On* handlers; declarations alone are excluded.
 `behaviorCandidates` lists selected state/layout calls with source lines.
 These are search hints, not semantic C++ parsing: branches, cross-function
 dependencies, focus, initial editable values and transition results must be

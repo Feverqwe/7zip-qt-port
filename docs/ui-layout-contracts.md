@@ -287,6 +287,36 @@ cover initial values, Unicode/spaces, show/hide, OK/Enter and Cancel. Editable
 password values stay out of reports. Russian captions and Qt button ordering
 are documented adaptations. Windows rendering remains unverified.
 
+## Progress presentation subset
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+ProgressDialog2.rc/ProgressDialog2a.rc (`IDD_PROGRESS`) and the complete handlers
+and statistic/message dependencies in ProgressDialog2.cpp. Keep the original
+two statistic columns: elapsed/remaining/files/file-total/errors on the left;
+total/speed/processed/packed/ratio on the right. Below them, status, two-line
+directory/name, progress bar, two-column error list, then Background/Pause/Cancel
+in that order. Percentage belongs in the title; hide text inside the bar.
+
+Initially errors label/value/list are hidden. New messages show all three and
+use source numbered first lines and unnumbered continuations; copy selected
+rows or all rows if none selected. ShowCompressionInfo=false hides packed and
+ratio labels/values without rearranging the source groups. Pause changes to
+Continue, prefixes the title and freezes timer rendering/elapsed accumulation;
+resume preserves elapsed time. Files-progress scales by count, while speed
+remains byte based. Unknown totals clear size/remaining totals according to
+the original cached state. Native endpoint/unknown/overflow behavior is retained.
+
+Source OnSize controls geometry through Qt font-DLU/rect/move services; round
+line height upward to fit QLabel text. Source NormalizeSize only handles
+oversized windows/work-area overlap; it does not supply a minimum size.
+Normal 760×450 and compact 640×380 geometry tests check every visible control,
+text/button fitting and footer/list separation. `ui_parity_progress` maps all
+26 IDs to 16 JSON reports across compression/errors/paused states. Captions are
+fixed Russian; clipboard shortcuts also accept macOS Meta. Background/Cancel
+are disabled until mandatory priority/taskbar/icon and modal cancel/worker
+services land. This view is not yet the application's operation progress owner.
+No Windows rendered reference; geometry does not establish pixel parity.
+
 When extending a view, update its specification and add the relevant geometric
 relationship or conditional state to its focused test. Add contracts for other
 views as they are changed rather than rewriting all UI tests at once.

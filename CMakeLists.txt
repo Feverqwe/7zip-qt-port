@@ -49,6 +49,7 @@ endif()
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/FormatUtils.cpp src/CPP/7zip/UI/FileManager/FormatUtils.h
     src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp src/CPP/7zip/UI/FileManager/ProgressDialog2.h
+    src/qtprogresscontrols.cpp src/qtprogresscontrols.h
     src/qtpanellist.cpp src/qtpanellist.h
     src/qtpanelfolder.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
@@ -243,8 +244,21 @@ if(BUILD_TESTING)
     add_test(NAME progress_format COMMAND progress_format_tests)
     qt_add_executable(progress_statistics_helpers_tests tests/progress_statistics_helpers_tests.cpp)
     target_include_directories(progress_statistics_helpers_tests PRIVATE src)
-    target_link_libraries(progress_statistics_helpers_tests PRIVATE sevenzip_common Qt6::Test)
+    target_link_libraries(progress_statistics_helpers_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME progress_statistics_helpers COMMAND progress_statistics_helpers_tests)
+    qt_add_executable(progress_dialog_tests tests/progress_dialog_tests.cpp tests/layout_inspection.cpp)
+    target_link_libraries(progress_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME progress_dialog COMMAND progress_dialog_tests)
+    set_tests_properties(progress_dialog PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
+        FIXTURES_SETUP ui_reference_progress TIMEOUT 40)
+    add_test(NAME ui_parity_progress COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_ui_parity.py compare
+        --reference ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/progress-dialog.reference.json
+        --contract ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/progress-dialog.contract.json
+        --reports ${CMAKE_BINARY_DIR}/ui-reports
+        --output ${CMAKE_BINARY_DIR}/ui-reports/progress-parity.json)
+    set_tests_properties(ui_parity_progress PROPERTIES FIXTURES_REQUIRED ui_reference_progress)
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

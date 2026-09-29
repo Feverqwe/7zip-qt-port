@@ -1,5 +1,16 @@
 # Regression strategy
 
+`progress_dialog` exercises original CProgressDialog presentation through public
+Sync state, Qt timers/buttons/keys and observable controls: unknown counters,
+compression/decompression/file modes, native progress scaling/endpoint/clamping,
+Unicode/space paths/titles, pause freeze/resume and multiline error numbering/copy.
+Normal 760×450 and compact 640×380 tests cover compression/error/paused states,
+control visibility, label/button fitting, separation and source ordering. Its
+fixture produces 16 current-build JSON reports for `ui_parity_progress`, mapping
+all 26 controls from the pinned source resource. These checks do not accept the
+pending native taskbar/icon/priority or modal-worker/cancel/finish/update scope;
+Windows rendering and Windows/Linux runtime remain unverified.
+
 `progress_statistics_helpers` compiles the authoritative progress module in a
 separate test translation unit to preserve original file-local helper visibility.
 It checks source size-unit boundaries and buffer guards, overflow/zero arithmetic,
@@ -9,7 +20,7 @@ number digit boundaries. It does not accept the unfinished progress view.
 `progress_format` checks original native duration formatting across hour/UInt64
 boundaries and source progress/update captions. Generator cases also check paired
 brace tables and output preservation. The extracted progress resource reference
-does not accept a Qt view until its own current-build geometry/state checks exist.
+supports the reviewed presentation subset; it does not accept full progress flow.
 
 `progress_sync` checks source unknown/null counters, scan/status/native paths,
 paused native workers resumed or cancelled, callback abort/reopen state and error/

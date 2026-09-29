@@ -6,6 +6,15 @@ Source provenance, baselines, adaptations and migration debt belong in the
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
 
+CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
+statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt
+widgets, native-style presentation APIs, font units, monotonic ticks and clipboard.
+The source view is not wired to MainWindow operations until mandatory modal-worker,
+cancel/finish and update-callback services are ported; existing ArchiveBackend and
+operation progress ownership remain. Background/Cancel are disabled in this subset.
+Taskbar/icon/process-priority services remain required; no native engine logic is
+implemented by widgets.
+
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
 and archive paths. Expanded extraction requests use real indices and typed Path;
 logical rename/view/edit/hash-result targets use source full prefixes and names.

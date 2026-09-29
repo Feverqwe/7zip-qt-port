@@ -48,7 +48,8 @@ Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https:/
 Текущие counts включают частичный Panel.cpp из P0-02.2a и ClassDefs.cpp из
 P0-02.2b3a, partial FSDrives.cpp из P0-02.2b3b2b3 и PropertyName.cpp
 из P0-02.2b3b3c2b2b, полный FormatUtils.cpp из P0-02.2b3c3b1,
-sync-only ProgressDialog2.cpp из P0-02.2b3c3b2a2,
+partial ProgressDialog2.cpp (complete sync + presentation subset)
+из P0-02.2b3c3b2a2/b2b2a2,
 helper-only OpenArchive.cpp/ExtractCallback.cpp
 из P0-02.2b3b3c2b2c;
 P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 missing.
@@ -64,7 +65,7 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 `CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/DLL.cpp`, `CPP/Windows/ResourceString.cpp`,
 `CPP/7zip/Common/MethodProps.cpp`.
 Всего в `src/CPP` — 42 `.cpp`.
-В корне `src/` — 37 `.cpp` Qt/integration; это не 37 неперенесённых компонентов:
+В корне `src/` — 38 `.cpp` Qt/integration; это не 38 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
 В `third_party/7zip` — 81 файл, побайтово совпадающий с теми же путями baseline,
 плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.

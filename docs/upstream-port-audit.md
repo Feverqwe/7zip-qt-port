@@ -8,6 +8,78 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2a2 — source progress presentation subset (2026-09-29)
+
+Project baseline `21ccf28`; exact source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Original `CPP/7zip/UI/FileManager/ProgressDialog2.h/.cpp` supplies CProgressDialog
+fields/defaults, complete nested CU64ToI32Converter, error-control visibility,
+range/position cache, ShowSize, UpdateStatInfo, title/main-title composition,
+pause caption/transition, message splitting/numbering/append/autosize policy,
+selected-or-all clipboard loop and no-op OnOK. Copy those functional bodies;
+native UInt64/UString/UStringVector/CUIntVector and lock/counter snapshots remain.
+UpdateStatInfo preserves original elapsed wrap arithmetic, file-versus-byte
+progress choice, unknown totals, remaining/speed/ratio calculations, per-second
+refresh, directory/name split and middle truncation. SetProgressRange retains
+the source converter's 15-bit scale and endpoint +1. No Qt arithmetic replaces it.
+
+Copy original OnSize control flow: margins/row step from native controls,
+character reduction limit, three footer buttons, message minimum-height branch,
+two label/value columns and control moves. Adapt only unused Win32 event args,
+RECT representation/height, InvalidateRect→update and widget services. OnInit
+retains cache reset, controls attachment, created-event signaling, captions,
+two columns, error/compression visibility and 200 ms timer. Qt dispatch invokes
+OnInit/OnSize/OnTimer/OnNotify/OnOK under the original names. No-op reject keeps
+the unfinished cancel route unavailable; it is not a port of OnCancel.
+
+New src/qtprogresscontrols.cpp/.h owns only Qt presentation/platform services:
+all 26 resource IDs and initial DLU positions from ProgressDialog2a.rc, plain
+labels, progress bar without embedded percentage, existing CListView two-column
+row selection, native-style control text/rect/move APIs, font units, QElapsedTimer
+modulo-32-bit ticks and clipboard. Original Windows/Control/ProgressBar.h sends
+PBM_SETPOS; its documented nearest-boundary clamp is retained in the Qt service
+because QProgressBar otherwise ignores out-of-range positions. A failing
+regression kept 25 instead of source maximum 101 before this adaptation;
+see [Microsoft PBM_SETPOS](https://learn.microsoft.com/en-us/windows/win32/controls/pbm-setpos).
+Round font line height upward for QLabel;
+initial downward rounding failed labelFits at every size. NormalizeSize adapts
+the original Windows/Control/Dialog.cpp work-area/overlap/oversize/maximize
+policy; it does not introduce a minimum window size. Fixed Russian captions use
+the existing language boundary; full CLang remains P1-14. QPointer protects the
+main-window title target lifetime; Ctrl shortcuts also accept macOS Meta.
+
+Partial scope is explicit: taskbar COM initialization/state/value/destructor
+calls, hwndForTaskbar selection, IconID resource loading and whole-process
+priority/background transition remain mandatory b2b2b. Source CheckNeedClose
+calls, OnCancel/OnButtonClicked cancel confirmation, finish-during-question,
+OnMessage/OnExternalCloseMessage, WaitCreating/Create/ProcessWasFinished and
+CProgressCloser/CProgressThreadVirt remain mandatory b3. Constructor native
+events are copied prerequisites, not modal/thread acceptance. Background and
+Cancel controls stay disabled. MainWindow still owns its existing operation
+progress; callback/update integration remains b2c/b2d. No parent step is closed.
+
+One-off comparison of twelve complete function bodies finds only formatting,
+recorded GetTickCount service substitution and deferred taskbar calls; source
+SetProgressPos/OnSize/OnInit/OnNotify/clipboard adaptations are reviewed directly.
+No code/dependency baseline revision changed. UI extractor now indexes supported
+bool/void/INT_PTR member definitions including event helpers, excludes declarations,
+and has a deterministic regression; re-extracted progress reference changes only
+its navigation symbol list, with identical source/resource hashes and controls.
+
+progress_dialog tests unknown/counter/file-mode/compression/Unicode-path/title
+states, source 0/32767/32768/64-bit progress scaling, completion/backward progress,
+pause freeze/resume elapsed time, multiline/empty/trailing-LF errors, append
+numbering and selected-or-all copy. Geometry covers 760×450 and 640×380,
+compression on/off, errors hidden/shown and paused rendering. All 26 controls map
+to 16 current-build JSON reports; reviewed ui_parity_progress checks source
+grouping/order/conditional states. No screenshots or Windows rendered reference;
+pixel fidelity and Windows/Linux runtime remain unverified. Focused source,
+parity-tool and existing Copy/Password consumers: final 10/10, 10.10 s on macOS
+arm64 2026-09-29, including button fitting and native clamp checks.
+Full `./scripts/check.sh` format/build/CTest 88/88, 53.75 s, exit 0;
+`git diff --check` clean. No source counts change; root Qt/integration cpp count
+38 includes the new narrow control service. Exact vendor baseline remains 82/82.
+
 ## P0-02.2b3c3b2b2a1 — source statistic helper bodies (2026-09-29)
 
 Project baseline `aed9488`; exact source ip7z/7zip
