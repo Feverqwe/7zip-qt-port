@@ -115,7 +115,7 @@ class MainWindow : public QMainWindow {
     void finishViewExtraction(bool ok);
     void closeProgressDialog();
 
-    enum class State { Filesystem, Loading, Viewing, Operating };
+    enum class State { Filesystem, Namespace, Loading, Viewing, Operating };
     enum class SortMode { Name, Type, Date, Size, Unsorted };
     void setViewMode(int mode);
 
@@ -143,6 +143,7 @@ class MainWindow : public QMainWindow {
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
     void showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
+    void renderRootFolder();
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     QStringList selectedPaths() const;
     void selectPaths(const QStringList &paths);
@@ -158,6 +159,7 @@ class MainWindow : public QMainWindow {
     void goBack();
     void goUp();
     void goParent();
+    void goRoot(bool remember = true);
     QString archiveDisplayPath() const;
     void renderBoundFolder();
     bool isNestedArchive() const;
@@ -259,6 +261,7 @@ class MainWindow : public QMainWindow {
     QAction *selected_ = nullptr;
     QAction *back_ = nullptr;
     QAction *up_ = nullptr;
+    QAction *root_ = nullptr;
     QAction *openItem_ = nullptr;
     QAction *openInside_ = nullptr;
     QAction *openOutside_ = nullptr;

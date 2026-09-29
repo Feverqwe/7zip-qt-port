@@ -9,6 +9,12 @@ writer/encryption restrictions and stale busy/closed actions. `native_toolbar_st
 checks native mask/default/legacy precedence and save-before-reload ordering.
 `native_fs_operations` checks real IFolderOperations, new-only creation,
 no-replacement rename, deletion progress and cancellation before/inside recursion.
+`root_navigation` checks source RootFolder item identity, View-menu and list-key
+entry, read-only policy, Computer/Parent/Back, typed Unicode relative path,
+root refresh and stale busy-command rejection. It writes current-build root
+window JSON at 980×620 and 640×400; inspect toolbar, address, list and status
+geometry. Windows root item count is conditional; Windows/Linux runtime and
+rendered Windows parity remain separate checks.
 ControlledBackend reports typed fixture format and overrides typed openFolder;
 explicit metadata takes precedence and no fixture reopen launches an engine.
 

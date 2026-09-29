@@ -1,5 +1,6 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelKey.cpp at 0766b73.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+#include "7zip/UI/FileManager/resource.h"
 #include "mainwindow.h"
 
 // Qt adapter for PanelKey.cpp::OnKeyDown and Panel.cpp::CMyComboBoxEdit.
@@ -33,6 +34,10 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
     if (key->key() == Qt::Key_Backspace) {
         if (parent_->isEnabled())
             parent_->trigger();
+        return true;
+    }
+    if (key->key() == Qt::Key_Backslash && key->modifiers() == Qt::NoModifier) {
+        app_.ExecuteCommand(IDM_OPEN_ROOT_FOLDER);
         return true;
     }
     if (handleSelectionKey(key))

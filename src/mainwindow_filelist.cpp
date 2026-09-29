@@ -20,7 +20,9 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
         return;
     }
     const QString next = info.canonicalFilePath();
-    if (remember && !directory_.isEmpty() && directory_ != next)
+    if (remember && state_ == State::Namespace)
+        history_.append(QString());
+    else if (remember && !directory_.isEmpty() && directory_ != next)
         history_.append(directory_);
     filesystemScanner_->cancel();
     scanningDisk_ = false;
@@ -141,6 +143,15 @@ void MainWindow::refreshCurrent() {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
+    if (state_ == State::Namespace) {
+        auto &panel = app_.GetFocusedPanel();
+        CSelectedState selection;
+        panel.SaveSelectedState(selection);
+        renderRootFolder();
+        panel.RefreshListCtrl(selection);
+        refreshActions();
+        return;
+    }
     if (state_ == State::Filesystem) {
         CSelectedState selection;
         app_.GetFocusedPanel().SaveSelectedState(selection);
@@ -235,13 +246,18 @@ void MainWindow::navigateTo(const QString &path) {
         return;
     if (state_ == State::Viewing && path == archiveDisplayPath())
         return;
-    const QFileInfo info(path);
+    // A typed relative address belongs to the displayed filesystem folder.
+    // CPanel::BindToPath still resolves the resulting native path.
+    const QString nativeAddress = state_ == State::Filesystem && QDir::isRelativePath(path)
+                                      ? QDir(directory_).filePath(path)
+                                      : path;
+    const QFileInfo info(nativeAddress);
     if (info.isDir())
-        showDirectory(path, true);
+        showDirectory(nativeAddress, true);
     else if (info.isFile() && !info.isSymLink())
-        openArchive(path);
+        openArchive(nativeAddress);
     else {
-        QString nativePath = path;
+        QString nativePath = nativeAddress;
         nativePath.replace(QStringLiteral(" / "), QStringLiteral("/"));
         auto &panel = app_.GetFocusedPanel();
         HRESULT result;

@@ -288,6 +288,40 @@ normal/flat modes. Required formatting is separate from functional adaptations.
 Windows/Linux runtime and rendered Windows parity remain unverified. The
 integrated owner iteration is accepted; P0-02.3/full parent acceptance is mandatory.
 
+## P0-04.2 — root/address/parent window integration (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([source](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager)).
+The previously copied `RootFolder.cpp` (`CRootFolder::LoadItems`, `GetProperty`,
+`BindToFolder`) and `PanelFolderChange.cpp` (`CPanel::OpenRootFolder`,
+`OpenParentFolder`, `BindToPath`, `LoadFullPath`) remain the functional owner.
+`PanelKey.cpp` now routes the resource `IDM_OPEN_ROOT_FOLDER` backslash command
+through CApp; its other source key flow is retained. Qt's `mainwindow_root.cpp`
+presents `IFolderFolder` item names and original indices, without a second root
+enumeration or path algorithm. `mainwindow_archiveopening.cpp`,
+`mainwindow_filelist.cpp` and `qtfilemanagercommandworkflows.cpp` bind root,
+typed relative paths, parent and Back through the panel; Qt history uses an
+empty marker for the source root prefix. `qtfilemanagercommands.cpp` derives
+Parent availability from the native folder, including POSIX `/`, and prohibits
+filesystem mutations on the read-only root. View-menu text, icon, list cells,
+address clearing and normal/compact presentation are Qt adaptations.
+
+The original Windows RootFolder has Computer/Documents/Network/Volumes; POSIX
+has one Computer entry binding `/`. Windows drives/network namespace and Browse
+providers remain P1-11, source icons/menu completeness P0-09, filesystem model
+and polling P0-05/06, external editor P1-08. No full-module RootFolder claim is
+made. Current root, relative/Unicode address, Parent/Back, busy stale-command
+and source-index checks are in `root_navigation`; earlier P0-04.1 archive/nested,
+password/cancel/update and TAR/GZip evidence is retained. Windows/Linux runtime
+and rendered Windows comparison remain unverified. The current-build root JSON
+reports at 980×620 and 640×400 establish Qt geometry on macOS only.
+The first full gate found seven flat-filesystem crashes while CPanel had no
+bound folder during scanning; the command projection now checks that transient
+state before querying IsRootFolder. The affected eight CTest suites pass 8/8,
+13.45 s; final formatting/build/all CTest gate passes 130/130, 87.96 s on
+macOS arm64, 2026-09-29. This completes current P0-04 parent navigation scope;
+the named P0-05/P0-09/P1-08/P1-11 owners retain their omissions.
+
 ## P0-04.1 — source navigation/parent-stack component (accepted prerequisite, 2026-09-29)
 
 Latest internal scope (2026-09-29; supersedes earlier partial callback snapshots):

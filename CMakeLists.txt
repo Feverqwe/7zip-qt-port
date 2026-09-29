@@ -747,6 +747,14 @@ if(BUILD_TESTING)
     add_test(NAME command_policy_runtime COMMAND command_policy_runtime_tests)
     set_tests_properties(command_policy_runtime PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/command-policy-settings.ini")
+    qt_add_executable(root_navigation_tests tests/root_navigation_tests.cpp
+        tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(root_navigation_tests PRIVATE src tests)
+    target_link_libraries(root_navigation_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(root_navigation_tests PRIVATE src/mainwindow_filedelete.cpp src/mainwindow_selectionpaths.cpp)
+    add_test(NAME root_navigation COMMAND root_navigation_tests)
+    set_tests_properties(root_navigation PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/root-navigation-settings.ini")
     qt_add_executable(bookmark_tests tests/bookmark_tests.cpp ${panel_sort_sources})
     target_include_directories(bookmark_tests PRIVATE src tests)
     target_link_libraries(bookmark_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
@@ -960,7 +968,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
-            src/qtfilemanagercommandworkflows.cpp
+            src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
             src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
             src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)
     endif()

@@ -52,7 +52,7 @@ void UpdateSelection(QTableWidget &table, const CPanelSelection &selection) {
 } // namespace
 
 void MainWindow::SelectSpec(bool selectMode) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
+    if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
     ComboDialog dialog(selectMode ? "Выделить" : "Снять выделение", "Маска:", "*", this);
     if (dialog.exec() != QDialog::Accepted)
@@ -64,7 +64,7 @@ void MainWindow::SelectSpec(bool selectMode) {
 }
 
 void MainWindow::SelectByType(bool selectMode) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
+    if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
     auto selection = readSelection(*table_);
     selection.SelectByType(table_->currentRow(), selectMode);
@@ -72,7 +72,7 @@ void MainWindow::SelectByType(bool selectMode) {
 }
 
 void MainWindow::SelectAll(bool selectMode) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
+    if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
     auto selection = readSelection(*table_);
     selection.SelectAll(selectMode);
@@ -80,7 +80,7 @@ void MainWindow::SelectAll(bool selectMode) {
 }
 
 void MainWindow::InvertSelection() {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
+    if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
     auto selection = readSelection(*table_);
     selection.InvertSelection();

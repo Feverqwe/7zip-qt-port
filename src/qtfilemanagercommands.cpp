@@ -93,6 +93,7 @@ void QtFileManagerCommands::AttachViewActions() {
     auto &w = window_;
     Bind(w.refresh_, IDM_VIEW_REFRESH);
     Bind(w.foldersHistory_, IDM_FOLDERS_HISTORY);
+    Bind(w.root_, IDM_OPEN_ROOT_FOLDER);
     Bind(w.settingsAction_, IDM_OPTIONS);
     actions_[IDM_VIEW_FLAT_VIEW].append(w.flatView_);
     QObject::disconnect(w.flatView_, &QAction::toggled, &w, nullptr);
@@ -148,8 +149,9 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
-    c.filesystem = panel.IsFSFolder();
-    c.archive = panel.IsArcFolder();
+    c.filesystem = panel.GetFolder() && panel.IsFSFolder();
+    c.root = panel.GetFolder() && panel.IsRootFolder();
+    c.archive = panel.GetFolder() && panel.IsArcFolder();
     c.nested = w.isNestedArchive();
     c.writable = c.archive && !panel.IsThereReadOnlyFolder() &&
                  ArchiveFormats::canModify(w.archive_) && !w.info_.encrypted && !c.nested;
@@ -171,12 +173,15 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     if (w.app_.QtOperations().closed())
         return availability;
     const bool navigating = !w.app_.QtOperations().blocking();
+    auto &panel = w.app_.GetFocusedPanel();
+    const bool hasFolder = panel.GetFolder() != nullptr;
     availability[Journal] = !w.journalText_.isEmpty();
     availability[Back] =
         navigating && (w.state_ == MainWindow::State::Viewing || !w.history_.isEmpty());
     availability[IDM_OPEN_PARENT_FOLDER] =
-        navigating && (w.state_ == MainWindow::State::Viewing || QDir(w.directory_).cdUp());
-    availability[IDM_VIEW_FLAT_VIEW] = navigating;
+        navigating && hasFolder && !panel.IsRootFolder() &&
+        (w.state_ == MainWindow::State::Viewing || panel.IsFSFolder());
+    availability[IDM_VIEW_FLAT_VIEW] = navigating && (!hasFolder || !panel.IsRootFolder());
     if (!navigating || w.scanningDisk_)
         return availability;
     const TransportCapabilities capabilities = ReadTransportCapabilities();
@@ -214,8 +219,9 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case ExtractSelected:
         return c.archive && c.selected && c.entries;
     case IDM_OPEN:
-    case IDM_OPEN_OUTSIDE:
         return c.operated;
+    case IDM_OPEN_OUTSIDE:
+        return c.operated && !c.root;
     case IDM_OPEN_INSIDE:
         return c.focused;
     case IDM_FILE_VIEW:
@@ -224,7 +230,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return c.oneFile && (c.filesystem || c.writable);
     case IDM_COPY_TO:
     case IDM_PROPERTIES:
-        return c.selected;
+        return c.selected && !c.root;
     case IDM_MOVE_TO:
     case IDM_DELETE:
         return c.selected && (c.filesystem || c.writable);
@@ -248,7 +254,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_SHA3_256:
     case IDM_BLAKE2SP:
     case IDM_HASH_ALL:
-        return c.selected;
+        return c.selected && !c.root;
     case IDM_SELECT_ALL:
     case IDM_INVERT_SELECTION:
     case IDM_SELECT:
@@ -266,7 +272,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return !ToQString(CPanel::OpenBookmark(window_.app_.AppState.FastFolders, id - 830))
                     .isEmpty();
     if (id >= 810 && id < 820)
-        return !c.nested;
+        return !c.nested && !c.root;
     return true;
 }
 

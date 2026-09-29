@@ -161,6 +161,8 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     flatView_->setChecked(flatDisk_);
     viewMenu->addSeparator();
     createToolbarOptions(viewMenu);
+    root_ = viewMenu->addAction("Открыть корневую папку");
+    root_->setObjectName("openRootAction");
     refresh_ = viewMenu->addAction("Обновить");
     refresh_->setObjectName("refreshAction");
     refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));

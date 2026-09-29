@@ -16,6 +16,12 @@ Native CApp owns toolbar flags, persistence ordering and focused-folder title;
 QtAppPresentation supplies toolbar reload/layout services. Dialog.cpp retains
 the source dialog-unit size predicate with Qt font/work-area services. Complete
 model, two-panel, mutation and shell workflows retain their separate plan owners.
+For virtual root navigation, CRootFolder and CPanel own names, item binding and
+parent resolution. `mainwindow_root.cpp` only renders the bound `IFolderFolder`
+into Qt cells with source indices; the address is empty at the native root.
+Qt Back history marks this empty prefix explicitly. Typed relative paths and
+Parent call the native binding/parent owner, including the POSIX `/` to root
+transition. Read-only root command policy prevents filesystem mutations.
 
 CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt

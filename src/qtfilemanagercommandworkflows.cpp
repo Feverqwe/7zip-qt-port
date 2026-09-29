@@ -14,6 +14,7 @@ void QtFileManagerCommands::OpenNative(bool internal, bool external, const wchar
     CSelectedState selection;
     panel.SaveSelectedState(selection);
     const bool wasFilesystem = panel.IsFSFolder();
+    const bool wasRoot = panel.IsRootFolder();
     CMyComPtr<IFolderFolder> previousFolder = panel.GetFolder();
     const UString previousPrefix = panel.GetCurrentFolderPrefix();
     const auto previousState = w.state_;
@@ -31,6 +32,8 @@ void QtFileManagerCommands::OpenNative(bool internal, bool external, const wchar
     if (wasFilesystem && panel.IsFSFolder() &&
         QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder()))) != previousDirectory)
         w.history_.append(previousDirectory);
+    if (wasRoot && panel.IsFSFolder())
+        w.history_.append(QString()); // Empty native root prefix in Qt Back history.
     if ((IFolderFolder *)previousFolder == panel.GetFolder() &&
         previousPrefix == panel.GetCurrentFolderPrefix())
         w.setState(previousState);
@@ -122,7 +125,7 @@ void QtFileManagerCommands::SortItemsWithPropID(unsigned propID) {
                                                  : MainWindow::SortMode::Name;
     window_.setSortMode(mode);
 }
-void QtFileManagerCommands::OpenRootFolder() { Q_UNREACHABLE(); }
+void QtFileManagerCommands::OpenRootFolder() { window_.goRoot(); }
 void QtFileManagerCommands::OpenParentFolder() { window_.goParent(); }
 void QtFileManagerCommands::FoldersHistory() { window_.showFoldersHistory(); }
 void QtFileManagerCommands::ChangeFlatMode() {

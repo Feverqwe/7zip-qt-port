@@ -19,6 +19,19 @@ Command availability comes from native menu policy plus transport restrictions.
 Screen-size menu filtering uses available monitor geometry and Qt system-font
 units, independently of the main window's compact resize fixture.
 
+### Virtual root main window (P0-04.2)
+
+Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/RootFolder.cpp`, `PanelFolderChange.cpp`,
+`PanelKey.cpp`, `resource.rc` View menu. The native root has an empty address
+and `7-Zip` caption; the list contains source-provided item names and indices.
+Parent is disabled at the root, enabled at POSIX `/`, and mutations are disabled
+on the root provider. The usual menu, toolbar, address, list, status order stays.
+`root_navigation` checks visibility without clipping at 980×620 and 640×400 and
+writes `macos-root-980x620.json`/`macos-root-640x400.json` on the checked host.
+The JSON verifies Qt structure/usability; source resources establish grouping,
+not Windows pixel appearance. Windows runtime capture is still unverified.
+
 ### Source extraction prompts (P0-04.1 prerequisite)
 
 `extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with

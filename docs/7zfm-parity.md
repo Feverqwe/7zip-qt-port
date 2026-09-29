@@ -7,6 +7,17 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
+backslash on the focused file list uses the same command. The Qt list presents
+the provider's original item names and indices. On macOS, Computer opens `/`,
+Parent from `/` returns to the virtual root, and Back returns through the prior
+filesystem location. Typed relative and Unicode paths bind through CPanel.
+The original Windows root has Computer, Documents, Network and Volumes; their
+complete Windows providers and system icons remain P1-11/P0-09. Root read-only
+commands stay available while mutations are disabled. Current Qt geometry was
+checked at 980×620 and 640×400; no rendered Windows comparison or Windows/Linux
+runtime verification is claimed.
+
 Current File/Edit/View/Favorites, toolbar and shared context commands use the
 same native command dispatch as keyboard and panel activation. Read-only native
 folders keep read commands and reject mutations; stale enabled actions cannot

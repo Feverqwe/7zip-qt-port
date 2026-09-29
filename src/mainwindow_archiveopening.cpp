@@ -69,6 +69,12 @@ void MainWindow::renderBoundFolder() {
     auto &panel = app_.GetFocusedPanel();
     const auto selection = panel.TakeRefreshSelection();
     panel.LoadFullPath();
+    if (panel.IsRootFolder()) {
+        renderRootFolder();
+        if (selection)
+            panel.RefreshListCtrl(*selection);
+        return;
+    }
     if (!panel.IsArcFolder()) {
         const QString directory = panel.GetFolder()
                                       ? QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder())))
@@ -169,8 +175,13 @@ void MainWindow::goBack() {
         return;
     if (state_ == State::Viewing)
         goParent();
-    else if (!history_.isEmpty())
-        showDirectory(history_.takeLast(), false);
+    else if (!history_.isEmpty()) {
+        const QString previous = history_.takeLast();
+        if (previous.isEmpty())
+            goRoot(false);
+        else
+            showDirectory(previous, false);
+    }
 }
 
 void MainWindow::goUp() {
@@ -193,6 +204,8 @@ void MainWindow::goParent() {
         panel.OpenParentFolder();
     }
     renderBoundFolder();
+    if (panel.IsRootFolder() && !history_.isEmpty() && history_.last().isEmpty())
+        history_.removeLast(); // Parent consumed the virtual-root Back location.
 }
 
 QString MainWindow::archiveDisplayPath() const {
