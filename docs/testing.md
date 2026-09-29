@@ -4,11 +4,13 @@
 Sync state, Qt timers/buttons/keys and observable controls: unknown counters,
 compression/decompression/file modes, native progress scaling/endpoint/clamping,
 Unicode/space paths/titles, pause freeze/resume and multiline error numbering/copy.
+It also checks default/invalid/source IconID and actual embedded 16/32/48 icon
+frames through windowIcon; no Windows icon rendering claim follows from that.
 Normal 760×450 and compact 640×380 tests cover compression/error/paused states,
 control visibility, label/button fitting, separation and source ordering. Its
 fixture produces 16 current-build JSON reports for `ui_parity_progress`, mapping
 all 26 controls from the pinned source resource. These checks do not accept the
-pending native taskbar/icon/priority or modal-worker/cancel/finish/update scope;
+pending native taskbar/priority or modal-worker/cancel/finish/update scope;
 Windows rendering and Windows/Linux runtime remain unverified.
 
 `progress_statistics_helpers` compiles the authoritative progress module in a

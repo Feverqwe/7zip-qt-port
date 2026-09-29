@@ -1,3 +1,4 @@
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "layout_inspection.h"
 #include <QApplication>
@@ -22,6 +23,30 @@ class ProgressDialogTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void sourceIconIDAndEmbeddedFrames() {
+        CProgressDialog normal;
+        const auto originalIcon = normal.windowIcon().cacheKey();
+        normal.show();
+        QCOMPARE(normal.windowIcon().cacheKey(), originalIcon);
+        CProgressDialog source;
+        source.IconID = IDI_ICON;
+        source.show();
+        QVERIFY(!source.windowIcon().isNull());
+        for (const int size : {16, 32, 48}) {
+            QVERIFY(source.windowIcon().availableSizes().contains(QSize(size, size)));
+            const QPixmap frame = source.windowIcon().pixmap(size, size);
+            QVERIFY(!frame.isNull());
+            QCOMPARE(frame.size(), QSize(size, size));
+        }
+        CProgressDialog invalid;
+        invalid.IconID = 99999;
+        invalid.show();
+        QVERIFY(invalid.windowIcon().isNull());
+        CProgressDialog second;
+        second.IconID = IDI_ICON;
+        second.show();
+        QVERIFY(!second.windowIcon().isNull());
+    }
     void initialUnknownStateAndUnfinishedCommands() {
         CProgressDialog dialog(nullptr, L"Обновление");
         dialog.show();

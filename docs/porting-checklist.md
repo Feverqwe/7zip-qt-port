@@ -379,12 +379,17 @@ No view-only acceptance closes the full progress or update workflow.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b2a | Source CProgressDialog fields/init, resize, range/statistics/time/title/message/clipboard and pause rendering; narrow Qt controls/font/tick/clipboard services; current native counter states, source text specification and all controls mapped to normal/compact JSON/geometry; cancel/background unavailable until their required services | P0-02.2b3c3b2b1 | done — a1/a2 presentation subset verified; mandatory taskbar/icon/priority b and modal-worker/cancel/finish b3 remain open |
-| P0-02.2b3c3b2b2b | Original Windows taskbar/process-priority/icon bodies and required portable platform services/capabilities, source background transition and complete presentation acceptance; no mandatory service marked N/A; native/Qt behavior and all affected consumers verified | P0-02.2b3c3b2b2a | todo |
+| P0-02.2b3c3b2b2b | Original Windows taskbar/process-priority/icon bodies and required portable platform services/capabilities, source background transition and complete presentation acceptance; no mandatory service marked N/A; native/Qt behavior and all affected consumers verified | P0-02.2b3c3b2b2a | active — b1/b2 split below before code; original Windows services and POSIX capability dependencies inspected |
 
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b2a1 | Complete original file-local ReduceString, ConvertSizeToString, GetChangedString, GetPower32/64, MyMultAndDiv and GetNumDigits bodies in ProgressDialog2.cpp; native arithmetic/string boundaries verified without exporting helpers or changing native visibility | P0-02.2b3c3b2b1 | done — focused 3/3 0.57 s, check.sh 86/86 44.78 s; seven bodies equal after formatting; macOS 2026-09-29; no displayed view acceptance |
 | P0-02.2b3c3b2b2a2 | Original CProgressDialog converter, fields/init/resize, statistics/title/messages/clipboard/pause with narrow Qt services; source resource text and every control reviewed in normal/compact current-build JSON/geometry; cancel/background disabled pending mandatory services | P0-02.2b3c3b2b2a1 | done — audit § P0-02.2b3c3b2b2a2; focused 10/10 10.10 s, check.sh 88/88 53.75 s; all 26 controls/16 JSON reports; native clamp baseline failed before fix; macOS 2026-09-29; explicit omitted platform/modal scope stays mandatory |
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2b2b1 | Exact MyWindowsNew taskbar SDK/interface prerequisite and native FM.ico/IDI_ICON resource; copy original OnInit conditional icon-loading branch with narrow Qt resource/IconID service, verify real source asset loading/default/invalid-ID behavior and presentation consumers; no taskbar/priority acceptance yet | P0-02.2b3c3b2b2a | done — audit § P0-02.2b3c3b2b2b1; focused 5/5 10.03 s, check.sh 88/88 53.64 s, exact vendor bytes 84/84; macOS 2026-09-29; native taskbar/background still mandatory b2 |
+| P0-02.2b3c3b2b2b2 | Original taskbar constructor/state/value/target/destructor bodies and OnPriorityButton transition; implement required macOS/Linux native services with actual reversible priority/capability evidence, integrate source background/default-button states and full presentation checks; split before code if dependencies require | P0-02.2b3c3b2b2b1 | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b1 restores the source IconID conditional using the exact original
+FM.ico embedded in Qt; default/invalid IDs and real 16/32/48 frames are tested.
+Taskbar SDK definitions are copied unchanged for the upcoming native services.
+No rendered Windows icon/pixel fidelity or Windows SDK compilation is claimed
+from macOS checks. Taskbar/background and complete modal/update remain mandatory.
+
 P0-02.2b3c3b2b2a2 ports the source progress presentation subset and manual resize
 flow. Native statistics, file/byte modes, title/path shortening, error numbering,
 selected-or-all copy and pause rendering are tested with 26 mapped controls in

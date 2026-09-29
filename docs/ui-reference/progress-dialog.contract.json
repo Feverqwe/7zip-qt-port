@@ -125,6 +125,7 @@
     "CProgressDialog::SetProgressRange": "sourceRangeConverterAndBackwardProgress: zero, 32767/32768, 64-bit range, completion and backward reset; nativeProgressControlClampsOutOfRangePosition checks native control boundary semantics",
     "CProgressDialog::OnPauseButton": "pauseStopsRenderingAndPreservesElapsedTime",
     "CProgressDialog::UpdateMessagesDialog": "errorLinesAppendNumberingAndClipboard",
-    "scope": "Presentation subset only; mandatory native taskbar/priority and full modal/worker/cancel/finish/error integration follow in b/b3. Geometry is not Windows pixel parity."
+    "CProgressDialog::OnInit": "sourceIconIDAndEmbeddedFrames: conditional default/source/invalid ID and native embedded image frames; sourceLayoutStates covers normal/compact states",
+    "scope": "Presentation subset only; mandatory native taskbar/priority and full modal/worker/cancel/finish/error integration follow in b/b3. Geometry and decoded icon frames are not Windows pixel parity."
   }
 }

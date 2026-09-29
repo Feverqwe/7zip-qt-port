@@ -1,5 +1,6 @@
 #include "qtprogresscontrols.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "qtlistview.h"
 #include <QApplication>
@@ -182,3 +183,16 @@ void CQtProgressDialog::NormalizeSize(bool fullNormalize) {
     normalized.moveCenter(workRect.center());
     setGeometry(normalized);
 }
+
+QIcon CQtProgressDialog::LoadIcon(int id) {
+    // Static-library resources need an explicit reference to their initializer.
+    static const bool initialized = [] {
+        Q_INIT_RESOURCE(upstream_progress_icons);
+        return true;
+    }();
+    Q_UNUSED(initialized)
+    if (id == IDI_ICON)
+        return QIcon(QStringLiteral(":/upstream/7zip/UI/FileManager/FM.ico"));
+    return {};
+}
+void CQtProgressDialog::SetIcon(const QIcon &icon) { setWindowIcon(icon); }

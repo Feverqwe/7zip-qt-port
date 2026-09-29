@@ -12,7 +12,8 @@ widgets, native-style presentation APIs, font units, monotonic ticks and clipboa
 The source view is not wired to MainWindow operations until mandatory modal-worker,
 cancel/finish and update-callback services are ported; existing ArchiveBackend and
 operation progress ownership remain. Background/Cancel are disabled in this subset.
-Taskbar/icon/process-priority services remain required; no native engine logic is
+The icon ID service embeds original FM.ico with its native frames; taskbar and
+process-priority services remain required. No native engine logic is
 implemented by widgets.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices

@@ -8,6 +8,44 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b1 — original progress icon and taskbar header (2026-09-29)
+
+Project baseline `a464b8d`; exact source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Copy unchanged `CPP/7zip/UI/FileManager/MyWindowsNew.h` (native SDK/old-SDK
+ITaskbarList interfaces/flags/GUID prerequisite) and FileManager/FM.ico into the
+same vendor paths. The header is included on Windows only; native taskbar bodies
+remain mandatory b2. All original SDK conditionals/definitions/bytes are retained.
+
+Copy the original ProgressDialog2.cpp::OnInit `if (IconID >= 0)` icon-loading
+branch, replacing only Win32 HINSTANCE/MAKEINTRESOURCE/HICON/ICON_BIG services
+with Qt LoadIcon(int)/SetIcon(QIcon). Native IDI_ICON remains 1 from the already
+vendored resourceGui.h. Qt embeds the exact source ICO through upstream_progress_icons
+and preserves all three 16/32/48 frames. Explicit resource initialization keeps
+static-library consumers reliable; unknown IDs return an empty icon, while a
+negative IconID preserves the existing default icon because the source branch
+does not run. No widget statistics, resize or command behavior is changed.
+
+GUI/UpdateGUI.cpp and ExtractGUI.cpp set IconID=IDI_ICON before Create. Their
+GUI/FM.ico is byte-identical to FileManager/FM.ico (SHA-256
+`649f8e81cce9d8e3ab9a0d06db31788f5ced3c6ed99a78304a87dba35ecf06cc`);
+one authoritative original asset serves these callers through the Qt ID mapping.
+Other icons/bitmaps, native GUI resources/callers and full application icon/menu/
+toolbar migration remain mandatory P0-09/P1-13/P3-05 and related workflow steps.
+No redraw or new artwork replaces the original asset. Notice/license baseline is
+preserved; required formatting applies only to local C++.
+
+progress_dialog now checks unchanged default ID, actual embedded image frames,
+invalid ID and repeated loading through the public windowIcon boundary. Source
+icon pixels are not claimed visually equivalent to a rendered Windows window;
+there is no Windows rendered reference. The existing 26-control/16-report geometry
+contract remains valid. macOS arm64 focused five progress/presentation consumers
+5/5, 10.03 s; full `./scripts/check.sh` format/build/CTest 88/88, 53.64 s,
+exit 0, diff-check clean and exact vendor bytes 84/84 (83 files + license).
+Windows SDK header
+compilation/runtime and Linux remain unverified here. Taskbar/background services
+and full modal-worker/cancel/finish/update remain mandatory, not N/A.
+
 ## P0-02.2b3c3b2b2a2 — source progress presentation subset (2026-09-29)
 
 Project baseline `21ccf28`; exact source ip7z/7zip

@@ -313,9 +313,12 @@ Normal 760×450 and compact 640×380 geometry tests check every visible control,
 text/button fitting and footer/list separation. `ui_parity_progress` maps all
 26 IDs to 16 JSON reports across compression/errors/paused states. Captions are
 fixed Russian; clipboard shortcuts also accept macOS Meta. Background/Cancel
-are disabled until mandatory priority/taskbar/icon and modal cancel/worker
+are disabled until mandatory priority/taskbar and modal cancel/worker
 services land. This view is not yet the application's operation progress owner.
 No Windows rendered reference; geometry does not establish pixel parity.
+The original IconID branch loads the exact FM.ico through a Qt ID/resource
+service, including native 16/32/48 frames; default negative IDs preserve the
+existing icon. Image decoding tests do not verify Windows title-bar rendering.
 
 When extending a view, update its specification and add the relevant geometric
 relationship or conditional state to its focused test. Add contracts for other

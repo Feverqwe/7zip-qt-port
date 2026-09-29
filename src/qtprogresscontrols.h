@@ -5,6 +5,7 @@
 #include <QDialog>
 #include <QElapsedTimer>
 #include <QHash>
+#include <QIcon>
 
 class CListView;
 class QProgressBar;
@@ -60,6 +61,8 @@ class CQtProgressDialog : public QDialog {
     int Units_To_Pixels_X(int units) const;
     UInt32 GetTickCount() const;
     void NormalizeSize(bool fullNormalize);
+    static QIcon LoadIcon(int id);
+    void SetIcon(const QIcon &icon);
     static void ChangeSubWindowSizeX(QWidget *widget, int width);
     static void ClipboardSetText(const UString &text);
 

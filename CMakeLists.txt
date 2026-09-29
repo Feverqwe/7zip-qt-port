@@ -71,6 +71,10 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/BrowseDialog.cpp src/CPP/7zip/UI/FileManager/BrowseDialog.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
+qt_add_resources(sevenzip_panel upstream_progress_icons
+    PREFIX "/upstream/7zip/UI/FileManager"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
+    FILES third_party/7zip/CPP/7zip/UI/FileManager/FM.ico)
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)

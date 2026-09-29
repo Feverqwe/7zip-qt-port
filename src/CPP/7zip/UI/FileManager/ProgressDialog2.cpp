@@ -364,8 +364,12 @@ bool CProgressDialog::OnInit() {
         HideItem(IDT_PROGRESS_RATIO);
         HideItem(IDT_PROGRESS_RATIO_VAL);
     }
+    if (IconID >= 0) {
+        QIcon icon = LoadIcon(IconID);
+        SetIcon(icon);
+    }
     _timer = startTimer(200);
-    // Taskbar/icon and CheckNeedClose follow in mandatory b/b3.
+    // Taskbar and CheckNeedClose follow in mandatory b/b3.
     return true;
 }
 

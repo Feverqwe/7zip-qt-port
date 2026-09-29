@@ -10,6 +10,9 @@
 #include "Windows/Synchronization.h"
 #include "qtprogresscontrols.h"
 #include <QPointer>
+#ifdef _WIN32
+#include "7zip/UI/FileManager/MyWindowsNew.h"
+#endif
 
 void GetTimeString(UInt64 timeValue, wchar_t *s);
 
