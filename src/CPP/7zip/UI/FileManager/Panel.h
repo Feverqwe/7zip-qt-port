@@ -4,6 +4,8 @@
 // narrow presentation/operation adapters around the partial source panel.
 #pragma once
 
+#include "7zip/Archive/IArchive.h"
+#include "7zip/UI/Common/ExtractMode.h"
 #include "7zip/UI/FileManager/IFolder.h"
 #include "CPP/Windows/DLL.h"
 #include "CPP/Windows/FileDir.h"
@@ -13,16 +15,77 @@
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
 #include "Windows/FileFind.h"
+#include "Windows/Synchronization.h"
 #include "Windows/TimeUtils.h"
 #include "qtpanellist.h"
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <memory>
+#include <optional>
 
 class CFolderHistory;
 class CFastFolders;
 class CListViewDialog;
 class QWidget;
+class CVirtFileSystem;
+
+// Native launcher owner, scoped to this panel rather than a process-wide global.
+struct CExitEventLauncher {
+    NWindows::NSynchronization::CManualResetEvent _exitEvent;
+    bool _needExit;
+    unsigned _numActiveThreads;
+    CRecordVector<::CThread> _threads;
+    CExitEventLauncher() {
+        _needExit = false;
+        if (_exitEvent.Create(false) != S_OK)
+            throw 9387173;
+        _needExit = true;
+        _numActiveThreads = 0;
+    }
+    ~CExitEventLauncher() { Exit(true); }
+    void Exit(bool hardExit);
+};
+
+// Default OS associations can successfully launch without a process handle.
+// Known-process/editor services are a separate mandatory transport extension.
+class IQtExternalFileServices {
+  public:
+    virtual ~IQtExternalFileServices() = default;
+    virtual HRESULT StartApplication(const UString &dir, const UString &path, QWidget *window) = 0;
+};
+
+class CPanelCallback {
+  public:
+    virtual void OnTab() = 0;
+    virtual void SetFocusToPath(unsigned index) = 0;
+    virtual void OnCopy(bool move, bool copyToSame) = 0;
+    virtual void OnSetSameFolder() = 0;
+    virtual void OnSetSubFolder() = 0;
+    virtual void PanelWasFocused() = 0;
+    virtual void DragBegin() = 0;
+    virtual void DragEnd() = 0;
+    virtual void RefreshTitle(bool always) = 0;
+};
+
+struct CCopyToOptions {
+    bool streamMode;
+    bool moveMode;
+    bool testMode;
+    bool includeAltStreams;
+    bool replaceAltStreamChars;
+    bool showErrorMessages;
+    bool NeedRegistryZone;
+    NExtract::NZoneIdMode::EEnum ZoneIdMode;
+    CByteBuffer ZoneBuf;
+    UString folder;
+    UStringVector hashMethods;
+    CVirtFileSystem *VirtFileSystemSpec;
+    CCopyToOptions()
+        : streamMode(false), moveMode(false), testMode(false), includeAltStreams(true),
+          replaceAltStreamChars(false), showErrorMessages(false), NeedRegistryZone(true),
+          ZoneIdMode(NExtract::NZoneIdMode::kNone), VirtFileSystemSpec(NULL) {}
+};
 
 struct CPanelProperty {
     UString Name;
@@ -101,9 +164,17 @@ struct CFolderLink : public CTempFileInfo {
     }
 };
 
+struct COpenResult {
+    bool ArchiveIsOpened;
+    bool Encrypted;
+    UString ErrorMessage;
+    COpenResult() : ArchiveIsOpened(false), Encrypted(false) {}
+};
+
 class CPanel : public QObject {
   public:
     CPanel() = default;
+    ~CPanel() override;
     CPanel(const QString &prefix, const CObjectVector<CPanelItem> &items);
     explicit CPanel(IFolderFolder *folder);
     // Qt notification adapters replace the Win32 OnNotify entry point.
@@ -176,7 +247,50 @@ class CPanel : public QObject {
         }
     };
     void ReleaseFolder();
+    void AttachPanelCallback(CPanelCallback *callback) { _panelCallback = callback; }
+    void AttachExternalFileServices(IQtExternalFileServices *services) {
+        _externalFileServices = services;
+    }
+    void RefreshTitle(bool always = false) {
+        if (_panelCallback)
+            _panelCallback->RefreshTitle(always);
+    }
+    void RefreshTitleAlways() { RefreshTitle(true); }
+    void Get_ZoneId_Stream_from_ParentFolders(CByteBuffer &buf);
+    HRESULT CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &indices,
+                   UStringVector *messages, bool &usePassword, UString &password,
+                   const UStringVector *filePaths = NULL);
     void SetNewFolder(IFolderFolder *folder);
+    void AttachFolderManager(IFolderManager *manager, const QString &settingsPath) {
+        _folderManager = manager;
+        _settingsPath = settingsPath;
+    }
+    HRESULT OpenAsArc(IInStream *inStream, const CTempFileInfo &tempFileInfo,
+                      const UString &virtualFilePath, const UString &arcFormat,
+                      COpenResult &openRes);
+    HRESULT OpenAsArc_Msg(IInStream *inStream, const CTempFileInfo &tempFileInfo,
+                          const UString &virtualFilePath, const UString &arcFormat);
+    HRESULT OpenAsArc_Name(const UString &relPath, const UString &arcFormat);
+    HRESULT OpenAsArc_Index(unsigned index, const wchar_t *type = NULL);
+    void OpenItemInArchive(unsigned index, bool tryInternal, bool tryExternal, bool editMode,
+                           bool useEditor, const wchar_t *type = NULL);
+    bool IsVirus_Message(const UString &name);
+    HRESULT OpenParentArchiveFolder();
+    HRESULT OnOpenItemChanged(UInt32 index, const wchar_t *fullFilePath, bool usePassword,
+                              const UString &password);
+    bool OnOpenItemChanged(const CTempFileInfo &tpi, const UString &fullPathFolderPrefix,
+                           bool usePassword, const UString &password);
+    void CloseOneLevel();
+    void CloseOpenFolders();
+    void LoadFullPath();
+    void SetToRootFolder();
+    HRESULT BindToPath(const UString &fullPath, const UString &arcFormat, COpenResult &openRes);
+    HRESULT BindToPathAndRefresh(const UString &path);
+    UString GetParentDirPrefix() const;
+    void OpenParentFolder();
+    void OpenRootFolder();
+    const CObjectVector<CFolderLink> &GetParentFolders() const { return _parentFolders; }
+    const UString &GetCurrentFolderPrefix() const { return _currentFolderPrefix; }
     // Borrowed interface for Qt property rendering; ownership stays in CPanel.
     IFolderFolder *GetFolder() const { return _folder; }
     void AttachPresentation(QWidget *list, QWidget *address);
@@ -197,6 +311,7 @@ class CPanel : public QObject {
     bool IsAltStreamsFolder() const;
     bool IsArcFolder() const;
     bool IsHashFolder() const;
+    bool IsThereReadOnlyFolder() const;
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
@@ -204,8 +319,17 @@ class CPanel : public QObject {
     UString GetItemRelPath2(unsigned index) const;
     UString GetItemFullPath(unsigned index) const;
     bool IsItem_Folder(UInt32 index) const;
+    bool IsItem_AltStream(unsigned itemIndex) const;
     // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
     void RefreshListCtrl(const CSelectedState &state);
+    void RefreshListCtrl();
+    // Qt loads rows after synchronous source navigation. Transfer its requested
+    // selection to that presentation stage instead of deriving it again there.
+    std::optional<CSelectedState> TakeRefreshSelection() {
+        auto state = std::move(_refreshSelection);
+        _refreshSelection.reset();
+        return state;
+    }
     bool _lastFocusedIsList = true;
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
     void Properties(const CRecordVector<UInt32> &operatedIndices, CListViewDialog &message) const;
@@ -216,6 +340,10 @@ class CPanel : public QObject {
     static UString OpenBookmark(CFastFolders &fastFolders, unsigned index);
 
   private:
+    CPanelCallback *_panelCallback = nullptr;
+    std::optional<CSelectedState> _refreshSelection;
+    IQtExternalFileServices *_externalFileServices = nullptr;
+    std::unique_ptr<CExitEventLauncher> _exitEventLauncher;
     // Original Create initializes these to true; Qt panels exist before Create is ported.
     bool _processTimer = true;
     bool _processNotify = true;
@@ -226,6 +354,23 @@ class CPanel : public QObject {
     QtPanelList _selectionList;
     CRecordVector<bool> _selectedStatusVector;
     CMyComPtr<IFolderFolder> _folder;
+    CMyComPtr<IFolderCompare> _folderCompare;
+    CMyComPtr<IArchiveGetRawProps> _folderRawProps;
+    CMyComPtr<IFolderAltStreams> _folderAltStreams;
+    CMyComPtr<IFolderOperations> _folderOperations;
+    CObjectVector<CFolderLink> _parentFolders;
+    NWindows::NDLL::CLibrary _library;
+    bool _flatMode = false;
+    bool _flatModeForDisk = false;
+    bool _flatModeForArc = false;
+    bool _thereAreDeletedItems = false;
+    CMyComPtr<IFolderManager> _folderManager;
+    QString _settingsPath;
+    QWidget *GetParent() const;
+    void MessageBox_Error(const UString &message) const;
+    void MessageBox_Error_HRESULT(HRESULT result) const;
+    void MessageBox_LastError() const;
+    void MessageBox_Error_UnsupportOperation() const;
     CMyComPtr<IFolderGetItemName> _folderGetItemName;
     CRecordVector<bool> _isDirVector;
     UString _currentFolderPrefix;
@@ -243,3 +388,5 @@ QString ConvertSizeToString(UInt64 value);
 bool IsSizeProp(UINT propID) noexcept;
 void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size);
 UString GetFolderPath(IFolderFolder *folder);
+// Source command split used by the Qt external process adapter.
+void SplitCmdLineSmart(const UString &cmd, UString &prg, UString &params);

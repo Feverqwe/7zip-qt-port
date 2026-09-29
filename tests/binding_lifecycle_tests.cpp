@@ -1,5 +1,6 @@
 #include "window_state_support.h"
 #include <QElapsedTimer>
+#include <QScopeGuard>
 #include <QTextStream>
 
 class LifecycleBackend : public ControlledBackend {
@@ -86,8 +87,8 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         LifecycleBackend backend;
         auto window = std::make_unique<MainWindow>(&backend);
         action(*window, "flatViewAction")->setChecked(false);
-        window->openArchive("owned-lifetime.zip");
-        backend.completeList({{QStringLiteral("имя й с пробелом.txt"), 6, 3}});
+        openListedArchive(*window, backend, "owned-lifetime.zip",
+                          {{QStringLiteral("имя й с пробелом.txt"), 6, 3}});
         table(*window)->selectRow(0);
         action(*window, "hashSHA256Action")->trigger();
         backend.observedTemporary = backend.lastExtractDestination;
@@ -137,9 +138,12 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         navigate(window, root.path());
         action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
         const QString oldPath = QStringLiteral("old й с пробелом.txt");
+        QVERIFY(backend.prepareArchiveFixture("first-owner.zip"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({{oldPath, 6, 3}}); });
+            verifyLoadingCommands(window);
+        });
         window.openArchive("first-owner.zip");
-        verifyLoadingCommands(window);
-        backend.completeList({{oldPath, 6, 3}});
         action(window, "flatViewAction")->setChecked(flat);
         selectAndForge(window);
         action(window, "hashSHA256Action")->trigger();
@@ -155,9 +159,12 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         backend.cancel();
 
         const QString newPath = QStringLiteral("new й с пробелом.txt");
+        QVERIFY(backend.prepareArchiveFixture("second-owner.zip"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({{newPath, 19, 7}}); });
+            verifyLoadingCommands(window);
+        });
         window.openArchive("second-owner.zip");
-        verifyLoadingCommands(window);
-        backend.completeList({{newPath, 19, 7}});
         QCOMPARE(table(window)->item(0, 2)->text(), QString("19"));
         selectAndForge(window);
         window.extractTo(destination.path(), true);
@@ -170,17 +177,21 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         backend.cancel();
         QVERIFY(!QFileInfo::exists(newTemporary));
 
-        window.openArchive("failed-owner.zip");
-        verifyLoadingCommands(window);
-        if (cancel)
-            backend.cancel();
-        else {
-            QTimer::singleShot(0, &window, [] {
-                if (auto *dialog = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
-                    dialog->accept();
+        QVERIFY(backend.prepareArchiveFixture("failed-owner.zip"));
+        QTimer warningResponder;
+        connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
+        warningResponder.start(1);
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] {
+                if (cancel)
+                    backend.cancel();
+                else
+                    backend.fail(QStringLiteral("Fixture listing failed."));
             });
-            backend.fail(QStringLiteral("Fixture listing failed."));
-        }
+            verifyLoadingCommands(window);
+        });
+        window.openArchive("failed-owner.zip");
+        warningResponder.stop();
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(), root.path());
         action(window, "flatViewAction")->setChecked(flat);
         QTRY_COMPARE(table(window)->rowCount(), 1);

@@ -68,9 +68,9 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         PathHashBackend backend;
         MainWindow window(&backend);
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("source-hash.zip");
         const QString directory = QStringLiteral("папка й с пробелом");
-        backend.completeList({{"root.bin", 3, 1}, {directory + "/inside.txt", 7, 3}});
+        openListedArchive(window, backend, "source-hash.zip",
+                          {{"root.bin", 3, 1}, {directory + "/inside.txt", 7, 3}});
         action(window, "flatViewAction")->setChecked(flat);
         action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
         const int directoryRow = rowWithPath(window, directory);
@@ -104,8 +104,8 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         ControlledBackend backend;
         MainWindow window(&backend);
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("source-rename.zip");
-        backend.completeList({{"a/same.txt", 3, 1}, {"b/same.txt", 7, 3}});
+        openListedArchive(window, backend, "source-rename.zip",
+                          {{"a/same.txt", 3, 1}, {"b/same.txt", 7, 3}});
         action(window, "flatViewAction")->setChecked(true);
         const int row = rowWithPath(window, "b/same.txt");
         QVERIFY(row >= 0);
@@ -153,12 +153,12 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         MainWindow window(&backend);
         window.show();
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("owned-selection.zip");
         const QString directory = QStringLiteral("папка й с пробелом");
         const QString first = directory + "/same.txt";
         const QString nested = directory + "/deep/same.txt";
         const QStringList expected = {"root.bin", first, nested};
-        backend.completeList(
+        openListedArchive(
+            window, backend, "owned-selection.zip",
             {{"root.bin", 11, 5}, {first, 13, 6}, {nested, 17, 8}, {"other/same.txt", 19, 9}});
         action(window, "flatViewAction")->setChecked(flat);
         action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
@@ -215,8 +215,8 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         ControlledBackend backend;
         MainWindow window(&backend);
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("duplicate-paths.zip");
-        backend.completeList({{"a/same.txt", 1, 1}, {"b/same.txt", 2, 2}});
+        openListedArchive(window, backend, "duplicate-paths.zip",
+                          {{"a/same.txt", 1, 1}, {"b/same.txt", 2, 2}});
         action(window, "flatViewAction")->setChecked(true);
         const int row = rowWithPath(window, "b/same.txt");
         QVERIFY(row >= 0);

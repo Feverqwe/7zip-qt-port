@@ -5,14 +5,21 @@
 #include <QThread>
 
 bool AskCallbackPassword(CProgressDialog &parent, UString &password) {
+    bool showPassword = false;
+    return AskCallbackPassword(parent, password, showPassword);
+}
+
+bool AskCallbackPassword(CProgressDialog &parent, UString &password, bool &showPassword) {
     bool accepted = false;
     const auto show = [&] {
         CPasswordDialog dialog(&parent);
+        dialog.ShowPassword = showPassword;
         dialog.OnInit();
         if (dialog.exec() != QDialog::Accepted)
             return;
         const std::wstring text = dialog.Password.toStdWString();
         password = text.c_str();
+        showPassword = dialog.ShowPassword;
         accepted = true;
     };
     // Qt widgets must be constructed, executed and destroyed on their owner thread.

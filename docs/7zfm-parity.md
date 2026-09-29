@@ -7,6 +7,39 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-04.1 is accepted as an integrated prerequisite. Native component tests on macOS exercise PanelCopy into
+disk/CVirtFileSystem, nested ZIP opening in memory and return to the same parent
+folder, all-items extraction with cumulative progress, and changed-file update
+after a stale item index. Prefix mismatch, missing item and released folder reject
+the update without starting the engine. These are component integration checks;
+MainWindow now uses the native parent stack for root/nested/address/parent
+navigation; its older ArchiveParent stack is removed. Focused application
+regressions cover TAR/GZip, unknown extension and nested Unicode/space ZIP,
+externally updated archive refresh, selection and parent focus. After native
+selection restoration, commands are refreshed explicitly because notifications
+were disabled. Cancellation no longer presents an erroneous data-error result.
+Nested archive addresses use their native virtual prefix; the existing Qt
+internal-folder separator remains presentation only. Source parent navigation
+returns to the archive's containing directory, and missing address suffixes bind
+to their surviving ancestor. Root failure/cancel keeps the prior return-directory
+workflow and records the backend result text in status/journal. Busy commands
+and password/cancel assertions run during native modal opening. Full CApp release,
+external-process/editor lifecycle and final application acceptance remain open.
+The full formatting/build/CTest gate passes 119/119 on macOS arm64 (2026-09-29,
+58.65 s). Native changed-nested return updates the outer ZIP on success and keeps
+outer bytes plus changed temporary data after failed or cancelled update.
+The 16 current archive-runtime JSON reports verify address/active view visibility
+at normal/compact sizes across normal/flat and all four modes. This accepts the
+prerequisite component, not full P0-04 command or rendered Windows parity.
+The hash result dependency uses the native two-column ListViewDialog with
+filename/size/digest, no initial selected row, native Delete flag and OK/Cancel.
+Normal/compact current-build JSON confirms visible list and footer at 540×360
+and 420×360. Native resourceGui STRINGTABLE now supplies previously missing
+titles/messages; the current fixed Russian presenter translates checksum,
+testing/moving/opening/scanning and no-error captions. Full language selection
+remains P1-14. Full hash workflows remain P2-03, not completed by this dependency.
+Rendered Windows parity and Windows/Linux runtime remain unverified.
+
 P0-10.1 is accepted for the first Add/drop consumer: source modal/worker finish, confirmation with
 YES/NO/CANCEL, temporary pause restoration and finish-during-prompt deferral are
 implemented with focused native worker tests. Source Close after errors remains

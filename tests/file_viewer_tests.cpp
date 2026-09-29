@@ -1,5 +1,6 @@
 #include "fileviewerdialog.h"
 #include "mainwindow.h"
+#include "window_state_support.h"
 
 #include <QAction>
 #include <QApplication>
@@ -14,9 +15,9 @@
 #include <QTimer>
 #include <QtTest>
 
-class ViewerBackend : public ArchiveBackend {
+class ViewerBackend : public ControlledBackend {
   public:
-    ViewerBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
+    ViewerBackend() = default;
     void list(const QString &, const QString & = {}) override {
         QTimer::singleShot(0, this, [this] {
             QList<ArchiveEntry> entries = {
@@ -110,6 +111,7 @@ class FileViewerTests : public QObject {
         ViewerBackend backend;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
         window.openArchive(dir.filePath("test.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *view = window.findChild<QAction *>("viewFileAction");
@@ -160,6 +162,7 @@ class FileViewerTests : public QObject {
         backend.replacementOutcome = outcome;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
         window.openArchive(dir.filePath("test.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *edit = window.findChild<QAction *>("editFileAction");
@@ -244,6 +247,7 @@ class FileViewerTests : public QObject {
                      QFileInfo(diskFile).canonicalFilePath());
 
             opened = QUrl();
+            QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
             window.openArchive(dir.filePath("test.7z"));
             QTRY_COMPARE(table->rowCount(), 1);
             emit table->cellDoubleClicked(0, 0);
@@ -270,6 +274,7 @@ class FileViewerTests : public QObject {
             ++launches;
             return true;
         });
+        QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
         window.openArchive(dir.filePath("test.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *open = window.findChild<QAction *>("openItemAction");

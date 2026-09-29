@@ -97,7 +97,7 @@ class ChecksumTests : public QObject {
         QVERIFY(journal->toPlainText().contains(digest));
 
         window.openArchive(archive);
-        QVERIFY(finished.wait(30000));
+        QCOMPARE(finished.size(), 1); // Source modal opening has already joined its worker.
         QVERIFY(finished.takeFirst().first().toBool());
         QTRY_COMPARE(table->rowCount(), 1);
         table->selectRow(0);

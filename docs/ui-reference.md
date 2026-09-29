@@ -78,6 +78,12 @@ upstream UI functional algorithm is replaced or ported by this tool.
 
 ### Extraction scope
 
+`overwrite-dialog` and `mem-dialog` references/contracts cover the extraction
+prompt resources. Their current-build producer is `extract_prompt`; comparisons
+are `ui_parity_overwrite` and `ui_parity_mem`. Both use normal/compact reports,
+with extra overwrite actions and memory editing state varied. These dependencies
+are included in the integrated P0-04.1 prerequisite and its full gate.
+
 The real C preprocessor expands local includes, object/function macros and
 conditional branches with `RC_INVOKED` defined and `UNDER_CE` undefined.
 `windows.h`, `CommCtrl.h`, `winnt.h` and `WinUser.h` are deliberately opaque;
@@ -89,6 +95,8 @@ The parser supports DIALOG/DIALOGEX, BEGIN/END or braces, labels, buttons,
 groups, edits, combos, listboxes and generic CONTROL declarations. Unknown
 statements and unresolved coordinate expressions fail rather than disappearing.
 Coordinates support integers, parentheses, unary signs and +, -, * arithmetic.
+ICON maps to a QLabel presentation; icon provider/rendering adaptations require
+review, and no resource-to-pixel claim follows from that mapping.
 CONTROL checkbox/radio styles map to Qt classes; other generic controls require
 an explicit reviewed class adaptation. More syntax should be added with tests
 when a real upstream resource needs it. LISTBOX's default mapping is QListWidget;

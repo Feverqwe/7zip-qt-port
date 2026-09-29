@@ -849,6 +849,8 @@ void CProgressDialog::OnPriorityButton() {
 }
 
 HRESULT CProgressDialog::SetBackgroundTransport(bool background) {
+    if (_transport)
+        return _transport->SetBackground(background);
     return NProcessPriority::SetBackground(0, background);
 }
 
@@ -1147,6 +1149,12 @@ void CProgressDialog::ProcessWasFinished() {
         PostMsg(kCloseMessage);
     else
         _needClose = true;
+#ifndef _WIN32
+    // FileFolderPluginOpen has its own native worker entry point, not the
+    // CProgressThreadVirt completion context. Wake the same finished latch;
+    // Create still joins the native thread before releasing its owner.
+    _startWait.SignalFinished();
+#endif
 }
 
 #ifndef _WIN32

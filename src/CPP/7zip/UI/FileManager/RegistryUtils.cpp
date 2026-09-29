@@ -6,6 +6,32 @@
 #include <QSettings>
 #include <QStandardPaths>
 
+static void SaveCuString(const QString &settingsPath, const char *valuePath, const UString &value) {
+    if (settingsPath.isEmpty())
+        return;
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.beginGroup("FM");
+    key.setValue(QString::fromLatin1(valuePath), QString::fromWCharArray(value.Ptr()));
+}
+
+static void ReadCuString(const QString &settingsPath, const char *valuePath, UString &res) {
+    res.Empty();
+    if (settingsPath.isEmpty())
+        return;
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.beginGroup("FM");
+    const auto value = key.value(QString::fromLatin1(valuePath)).toString().toStdWString();
+    res = value.c_str();
+}
+
+void SaveRegEditor(bool useEditor, const UString &path, const QString &settingsPath) {
+    SaveCuString(settingsPath, useEditor ? "Editor" : "Viewer", path);
+}
+
+void ReadRegEditor(bool useEditor, UString &path, const QString &settingsPath) {
+    ReadCuString(settingsPath, useEditor ? "Editor" : "Viewer", path);
+}
+
 QString FmSettingsPath() {
     const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
     if (!overridden.isEmpty())

@@ -1,14 +1,107 @@
 // Adapted from 7-Zip CPP/7zip/UI/Common/ZipRegistry (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ZipRegistry.h"
+#include "Common/StringConvert.h"
 #include "Common/StringToInt.h"
 #include <QSettings>
 
-inline wchar_t MyCharLower_Ascii(wchar_t c) {
-    if (c >= 'A' && c <= 'Z')
-        return (wchar_t)(c + 0x20);
-    return c;
+// Native CContextMenuInfo defaults and defined-value branches. The explicit
+// application settings file replaces the process-wide Windows registry key.
+void CContextMenuInfo::Save(const QString &path) const {
+    if (path.isEmpty())
+        return;
+    QSettings key(path, QSettings::IniFormat);
+    key.beginGroup("Options");
+    const auto setPair = [&key](const QString &name, const CBoolPair &pair) {
+        if (pair.Def)
+            key.setValue(name, pair.Val);
+        else
+            key.remove(name);
+    };
+    setPair("CascadedMenu", Cascaded);
+    setPair("MenuIcons", MenuIcons);
+    setPair("ElimDupExtract", ElimDup);
+    key.setValue("WriteZoneIdExtract", WriteZone);
+    if (Flags_Def)
+        key.setValue("ContextMenu", Flags);
 }
+
+void CContextMenuInfo::Load(const QString &path) {
+    Cascaded.Val = true;
+    Cascaded.Def = false;
+    MenuIcons.Val = false;
+    MenuIcons.Def = false;
+    ElimDup.Val = true;
+    ElimDup.Def = false;
+    WriteZone = (UInt32)(Int32)-1;
+    Flags = (UInt32)(Int32)-1;
+    Flags_Def = false;
+    if (path.isEmpty())
+        return;
+    QSettings key(path, QSettings::IniFormat);
+    key.beginGroup("Options");
+    const auto getPair = [&key](const QString &name, CBoolPair &pair) {
+        if (key.contains(name)) {
+            bool ok;
+            const UInt32 value = key.value(name).toUInt(&ok);
+            if (ok) {
+                pair.Val = value != 0;
+                pair.Def = true;
+            }
+        }
+    };
+    getPair("CascadedMenu", Cascaded);
+    getPair("ElimDupExtract", ElimDup);
+    getPair("MenuIcons", MenuIcons);
+    bool ok;
+    const UInt32 zone = key.value("WriteZoneIdExtract").toUInt(&ok);
+    if (ok)
+        WriteZone = zone;
+    const UInt32 flags = key.value("ContextMenu").toUInt(&ok);
+    if (ok) {
+        Flags = flags;
+        Flags_Def = true;
+    }
+}
+
+namespace NWorkDir {
+void CInfo::Save(const QString &path) const {
+    if (path.isEmpty())
+        return;
+    QSettings key(path, QSettings::IniFormat);
+    key.beginGroup(QStringLiteral("Options"));
+    key.setValue(QStringLiteral("WorkDirType"), (UInt32)Mode);
+    key.setValue(QStringLiteral("WorkDirPath"), QString::fromWCharArray(fs2us(Path).Ptr()));
+    key.setValue(QStringLiteral("TempRemovableOnly"), ForRemovableOnly);
+}
+void CInfo::Load(const QString &path) {
+    SetDefault();
+    if (path.isEmpty())
+        return;
+    QSettings key(path, QSettings::IniFormat);
+    key.beginGroup(QStringLiteral("Options"));
+    bool ok = false;
+    const UInt32 dirType = key.value(QStringLiteral("WorkDirType")).toUInt(&ok);
+    if (!ok)
+        return;
+    switch (dirType) {
+    case NMode::kSystem:
+    case NMode::kCurrent:
+    case NMode::kSpecified:
+        Mode = (NMode::EEnum)dirType;
+    }
+    if (key.contains(QStringLiteral("WorkDirPath"))) {
+        const auto value = key.value(QStringLiteral("WorkDirPath")).toString().toStdWString();
+        Path = us2fs(value.c_str());
+    } else {
+        Path.Empty();
+        if (Mode == NMode::kSpecified)
+            Mode = NMode::kSystem;
+    }
+    if (key.contains(QStringLiteral("TempRemovableOnly")))
+        ForRemovableOnly = key.value(QStringLiteral("TempRemovableOnly")).toBool();
+}
+} // namespace NWorkDir
 
 namespace NCompression {
 static bool ParseMemUse(const wchar_t *s, CMemUse &mu) {
@@ -169,6 +262,41 @@ void CInfo::Load(const QString &path) {
 } // namespace NCompression
 
 namespace NExtract {
+UInt32 Read_LimitGB(const QString &path) {
+    UInt32 v = (UInt32)(Int32)-1;
+    if (path.isEmpty())
+        return v;
+    QSettings key(path, QSettings::IniFormat);
+    bool valid = false;
+    const UInt32 stored = key.value("Extraction/MemLimit").toUInt(&valid);
+    if (valid)
+        v = stored;
+    return v;
+}
+
+void Save_LimitGB(const QString &path, UInt32 limit_GB) {
+    if (path.isEmpty())
+        return;
+    QSettings key(path, QSettings::IniFormat);
+    key.setValue("Extraction/MemLimit", limit_GB);
+}
+
+bool Read_ShowPassword(const QString &path) {
+    bool showPassword = false;
+    if (path.isEmpty())
+        return showPassword;
+    QSettings key(path, QSettings::IniFormat);
+    showPassword = key.value("Extraction/ShowPassword", showPassword).toBool();
+    return showPassword;
+}
+
+void Save_ShowPassword(const QString &path, bool showPassword) {
+    if (path.isEmpty())
+        return;
+    QSettings key(path, QSettings::IniFormat);
+    key.setValue("Extraction/ShowPassword", showPassword);
+}
+
 void CInfo::Save(const QString &path) const {
     QSettings key(path, QSettings::IniFormat);
     key.beginGroup("Extraction");

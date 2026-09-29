@@ -71,7 +71,7 @@ void MainWindow::viewSelectedFile(bool editable) {
             openFileViewer(path, editable);
         return;
     }
-    if (editable && (info_.encrypted || !archiveParents_.empty()))
+    if (editable && (info_.encrypted || isNestedArchive()))
         return;
     const QStringList paths = selectedArchiveItemsPaths();
     if (paths.size() != 1)

@@ -1,4 +1,5 @@
 #include "window_state_support.h"
+#include <QScopeGuard>
 #include <QTreeWidget>
 
 class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
@@ -22,9 +23,9 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(view->item(1, 0)->text(), QStringLiteral("2.txt"));
         QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
 
-        window.openArchive(temp.filePath("test.7z"));
-        backend.completeList({ArchiveEntry{"10.txt", 10, 10}, ArchiveEntry{"2.txt", 2, 2},
-                              ArchiveEntry{"1.txt", 1, 1}});
+        openListedArchive(window, backend, temp.filePath("test.7z"),
+                          {ArchiveEntry{"10.txt", 10, 10}, ArchiveEntry{"2.txt", 2, 2},
+                           ArchiveEntry{"1.txt", 1, 1}});
         QCOMPARE(view->item(0, 0)->text(), QStringLiteral("1.txt"));
         QCOMPARE(view->item(1, 0)->text(), QStringLiteral("2.txt"));
         QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
@@ -35,11 +36,10 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(temp.isValid());
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive(temp.filePath("sort.7z"));
-        const QList<ArchiveEntry> entries = {ArchiveEntry{"z.bin", 30, 1, "2024-01-01"},
-                                             ArchiveEntry{"a.txt", 10, 1, "2023-01-01"},
-                                             ArchiveEntry{"c.bin", 20, 1, "2022-01-01"}};
-        backend.completeList(entries);
+        const QList<ArchiveEntry> entries = {ArchiveEntry{"z.bin", 30, 1, "2024-01-01 00:00:00"},
+                                             ArchiveEntry{"a.txt", 10, 1, "2023-01-01 00:00:00"},
+                                             ArchiveEntry{"c.bin", 20, 1, "2022-01-01 00:00:00"}};
+        openListedArchive(window, backend, temp.filePath("sort.7z"), entries);
         auto names = [&] {
             QStringList result;
             for (int row = 0; row < table(window)->rowCount(); ++row)
@@ -55,8 +55,8 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(names(), (QStringList{"z.bin", "c.bin", "a.txt"}));
         action(window, "sort4Action")->trigger();
         QCOMPARE(names(), (QStringList{"z.bin", "a.txt", "c.bin"}));
+        backend.queueList(entries);
         action(window, "refreshAction")->trigger();
-        backend.completeList(entries);
         QCOMPARE(names(), (QStringList{"z.bin", "a.txt", "c.bin"}));
         QVERIFY(action(window, "sort4Action")->isChecked());
     }
@@ -145,9 +145,9 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         action(window, "deselectTypeAction")->trigger();
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
 
-        window.openArchive(temp.filePath("test.7z"));
-        backend.completeList({ArchiveEntry{"first.txt", 1, 1}, ArchiveEntry{"second.TXT", 1, 1},
-                              ArchiveEntry{"other.bin", 1, 1}});
+        openListedArchive(window, backend, temp.filePath("test.7z"),
+                          {ArchiveEntry{"first.txt", 1, 1}, ArchiveEntry{"second.TXT", 1, 1},
+                           ArchiveEntry{"other.bin", 1, 1}});
         applyMask("selectMaskAction", "*.txt");
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
         QVERIFY(!action(window, "createFileAction")->isEnabled());
@@ -215,16 +215,20 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QTest::keyClick(view, Qt::Key_1, Qt::AltModifier);
         QCOMPARE(address->text(), QFileInfo(first).canonicalFilePath());
 
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] {
+                backend.completeList({ArchiveEntry{QStringLiteral("внутри/файл.txt"), 1, 1}});
+            });
+            QVERIFY(!action(window, "openBookmark1Action")->isEnabled());
+        });
         window.openArchive(archive);
-        QVERIFY(!action(window, "openBookmark1Action")->isEnabled());
-        backend.completeList({ArchiveEntry{QStringLiteral("внутри/файл.txt"), 1, 1}});
         openRow(window, rowWithPath(window, QStringLiteral("внутри")));
         action(window, "saveBookmark2Action")->trigger();
         action(window, "openBookmark1Action")->trigger();
         QCOMPARE(address->text(), QFileInfo(first).canonicalFilePath());
+        backend.queueList({ArchiveEntry{QStringLiteral("внутри/файл.txt"), 1, 1}});
         action(window, "openBookmark2Action")->trigger();
         QCOMPARE(backend.listCalls, 2);
-        backend.completeList({ArchiveEntry{QStringLiteral("внутри/файл.txt"), 1, 1}});
         QVERIFY(address->text().endsWith(QStringLiteral(" / внутри")));
         QCOMPARE(view->rowCount(), 1);
 
@@ -234,7 +238,7 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QFile::remove(archive);
         action(reopened, "openBookmark2Action")->trigger();
         QCOMPARE(reopened.findChild<QLineEdit *>("archivePath")->text(),
-                 QFileInfo(QDir::currentPath()).canonicalFilePath());
+                 QFileInfo(temp.path()).canonicalFilePath());
     }
 
     void mainWindowFolderAndSelectionCommands() {
@@ -307,22 +311,23 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
     void refreshArchiveKeepsFolderAndSelection() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("example.7z");
         ArchiveEntry first;
         first.path = QStringLiteral("папка с пробелом/первый.txt");
-        backend.completeList({first});
+        openListedArchive(window, backend, "example.7z", {first});
         openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом")));
         QCOMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
-        action(window, "refreshAction")->trigger();
-        QCOMPARE(backend.listCalls, 2);
-        QVERIFY(!action(window, "refreshAction")->isEnabled());
-        QVERIFY(!action(window, "createFolderAction")->isEnabled());
-        action(window, "refreshAction")->trigger();
-        QCOMPARE(backend.listCalls, 2);
         ArchiveEntry second;
         second.path = QStringLiteral("папка с пробелом/второй.txt");
-        backend.completeList({first, second});
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({first, second}); });
+            QCOMPARE(backend.listCalls, 2);
+            QVERIFY(!action(window, "refreshAction")->isEnabled());
+            QVERIFY(!action(window, "createFolderAction")->isEnabled());
+            action(window, "refreshAction")->trigger();
+            QCOMPARE(backend.listCalls, 2);
+        });
+        action(window, "refreshAction")->trigger();
         QCOMPARE(table(window)->rowCount(), 2);
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(table(window)
@@ -333,23 +338,26 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
                     ->text()
                     .endsWith(QStringLiteral(" / папка с пробелом")));
         QVERIFY(action(window, "refreshAction")->isEnabled());
+        backend.queueList({});
         action(window, "refreshAction")->trigger();
-        backend.completeList({});
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(!window.findChild<QLineEdit *>("archivePath")
                      ->text()
                      .endsWith(QStringLiteral(" / папка с пробелом")));
+        backend.queueListAction([&] { backend.cancel(); });
         action(window, "refreshAction")->trigger();
-        backend.cancel();
         QVERIFY(action(window, "createFolderAction")->isEnabled());
         QVERIFY(action(window, "refreshAction")->isEnabled());
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
 
-        window.openArchive("example.7z");
-        backend.completeList({first});
+        openListedArchive(window, backend, "example.7z", {first});
+        QTimer warningResponder;
+        connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
+        warningResponder.start(1);
+        backend.queueListAction(
+            [&] { backend.fail(QStringLiteral("Не удалось перечитать архив.")); });
         action(window, "refreshAction")->trigger();
-        QTimer::singleShot(0, &window, [] { dismissWarnings(); });
-        backend.fail(QStringLiteral("Не удалось перечитать архив."));
+        warningResponder.stop();
         QVERIFY(action(window, "createFolderAction")->isEnabled());
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
     }

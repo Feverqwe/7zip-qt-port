@@ -10,6 +10,7 @@
 #include <QDir>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QFile>
 #include <QImage>
 #include <QInputDialog>
 #include <QLabel>
@@ -35,11 +36,35 @@
 class ControlledBackend : public ArchiveBackend {
   public:
     ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
+    ~ControlledBackend() override {
+        for (const QString &path : ownedArchiveFixtures_)
+            QFile::remove(path);
+    }
+    bool prepareArchiveFixture(const QString &path) {
+        if (QFileInfo(path).isFile() && !QFileInfo(path).isSymLink())
+            return true;
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::NewOnly))
+            return false;
+        file.close();
+        ownedArchiveFixtures_.append(QFileInfo(path).absoluteFilePath());
+        return true;
+    }
+    void queueList(const QList<ArchiveEntry> &entries) {
+        nextListCompletion_ = [this, entries] { completeList(entries); };
+    }
+    void queueListAction(std::function<void()> action) { nextListCompletion_ = std::move(action); }
     bool busy() const override { return busy_; }
+    HRESULT lastResult() const override { return result_; }
     void list(const QString &archive, const QString & = {}) override {
         ++listCalls;
         lastArchive = archive;
         busy_ = true;
+        if (nextListCompletion_) {
+            auto completion = std::move(nextListCompletion_);
+            nextListCompletion_ = {};
+            QTimer::singleShot(0, this, std::move(completion));
+        }
     }
     void extract(const QString &, const QString &destination, const QStringList &selected,
                  const QString &password = {}, const ExtractionOptions &options = {}) override {
@@ -83,17 +108,20 @@ class ControlledBackend : public ArchiveBackend {
     void cancel() override {
         ++cancelCalls;
         busy_ = false;
+        result_ = E_ABORT;
         emit finished(false, QStringLiteral("Операция отменена."));
     }
     HRESULT setPaused(bool) override { return S_OK; }
     HRESULT setBackground(bool) override { return S_OK; }
     void completeList(const QList<ArchiveEntry> &entries) {
         busy_ = false;
+        result_ = S_OK;
         emit entriesReady(entries);
         emit finished(true, QStringLiteral("Архив открыт."));
     }
     void fail(const QString &message) {
         busy_ = false;
+        result_ = E_FAIL;
         emit finished(false, message);
     }
     void completeCreate() {
@@ -137,10 +165,19 @@ class ControlledBackend : public ArchiveBackend {
 
   private:
     bool busy_ = false;
+    HRESULT result_ = S_OK;
+    QStringList ownedArchiveFixtures_;
+    std::function<void()> nextListCompletion_;
 };
 
 class MainWindowTestSupport {
   protected:
+    static void openListedArchive(MainWindow &window, ControlledBackend &backend,
+                                  const QString &path, const QList<ArchiveEntry> &entries) {
+        QVERIFY(backend.prepareArchiveFixture(path));
+        backend.queueList(entries);
+        window.openArchive(path);
+    }
     static QAction *action(MainWindow &window, const char *name) {
         auto *result = window.findChild<QAction *>(name);
         Q_ASSERT(result);

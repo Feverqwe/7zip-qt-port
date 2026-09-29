@@ -1,4 +1,7 @@
+#include "qtprogresscontrols.h"
 #include "window_state_support.h"
+#include <QProgressBar>
+#include <QScopeGuard>
 #include <QTreeWidget>
 
 class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSupport {
@@ -8,8 +11,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     void extractionDestinationAndCancellation() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("archive.zip");
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/δ space.txt"), 3, 3}});
+        openListedArchive(window, backend, "archive.zip",
+                          {ArchiveEntry{QStringLiteral("папка/δ space.txt"), 3, 3}});
         QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
         QTimer::singleShot(0, &window, [] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
@@ -50,11 +53,16 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
 
     void launchFailure() {
         ArchiveBackend backend(nullptr, "/definitely/missing/7zz");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        QFile archive(temporary.filePath("missing.7z"));
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        archive.close();
         MainWindow window(&backend);
         QTimer timer;
         connect(&timer, &QTimer::timeout, &window, [] { dismissWarnings(); });
         timer.start(10);
-        window.openArchive("missing.7z");
+        window.openArchive(archive.fileName());
         QTRY_VERIFY_WITH_TIMEOUT(window.statusBar()->currentMessage().contains("7zz"), 3000);
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
@@ -104,12 +112,14 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QCOMPARE(table(window)->rowCount(), 0);
         action(window, "backAction")->trigger();
         QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({}); });
+            QVERIFY(!action(window, "backAction")->isEnabled());
+        });
         QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
                                           Q_ARG(int, archiveRow), Q_ARG(int, 0)));
         QCOMPARE(backend.listCalls, 1);
         QCOMPARE(backend.lastArchive, QFileInfo(archive.fileName()).canonicalFilePath());
-        QVERIFY(!action(window, "backAction")->isEnabled());
-        backend.completeList({});
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "backAction")->isEnabled());
         action(window, "backAction")->trigger();
@@ -121,13 +131,29 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     void cancellation() {
         ControlledBackend backend;
         MainWindow window(&backend);
+        QVERIFY(backend.prepareArchiveFixture("cancel.7z"));
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [] {
+            if (auto *question = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                question && question->objectName() == "progressCancelQuestion")
+                question->button(QMessageBox::Yes)->click();
+        });
+        responder.start(1);
+        backend.queueListAction([&] {
+            auto *progress = dynamic_cast<CQtProgressDialog *>(QApplication::activeModalWidget());
+            if (!progress) {
+                backend.cancel();
+                QFAIL("Native archive open progress dialog is missing");
+            }
+            auto *button = progress->findChild<QPushButton *>("IDCANCEL");
+            if (!button) {
+                backend.cancel();
+                QFAIL("Native archive open cancel control is missing");
+            }
+            button->click();
+        });
         window.openArchive("cancel.7z");
-        auto *progress = window.findChildren<QProgressDialog *>().last();
-        QVERIFY(progress);
-        progress->show();
-        auto *button = progress->findChild<QPushButton *>();
-        QVERIFY(button);
-        button->click();
+        responder.stop();
         QCOMPARE(backend.cancelCalls, 1);
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "openItemAction")->isEnabled());
@@ -142,17 +168,16 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         auto *log = window.findChild<QPlainTextEdit *>("operationJournalText");
         QVERIFY(log);
         QVERIFY(log->toPlainText().contains(QStringLiteral("Операция отменена.")));
-        window.openArchive("after-cancel.zip");
+        openListedArchive(window, backend, "after-cancel.zip", {});
         QCOMPARE(backend.listCalls, 2);
-        backend.completeList({});
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
     }
 
     void operationCancellationKeepsArchive() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("opened.7z");
-        backend.completeList({ArchiveEntry{QStringLiteral("файл.txt"), 4, 4}});
+        openListedArchive(window, backend, "opened.7z",
+                          {ArchiveEntry{QStringLiteral("файл.txt"), 4, 4}});
         QCoreApplication::processEvents();
         window.extractTo("/temporary/destination");
         QCOMPARE(backend.extractCalls, 1);
@@ -183,19 +208,22 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     void passwordPromptCancellationAndReopen() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("protected.7z");
-        QTimer::singleShot(0, &window, [] {
+        QVERIFY(backend.prepareArchiveFixture("protected.7z"));
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-            QVERIFY(dialog);
-            dialog->reject();
+            if (dialog && dialog->objectName() == "passwordDialog")
+                dialog->reject();
         });
-        emit backend.passwordRequired();
+        responder.start(1);
+        backend.queueListAction([&] { emit backend.passwordRequired(); });
+        window.openArchive("protected.7z");
+        responder.stop();
         QCOMPARE(backend.cancelCalls, 1);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
-        window.openArchive("empty.zip");
+        openListedArchive(window, backend, "empty.zip", {});
         QCOMPARE(backend.listCalls, 2);
-        backend.completeList({});
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
     }
@@ -203,24 +231,37 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     void passwordReuseAndResetOnReopen() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("protected.7z");
+        QVERIFY(backend.prepareArchiveFixture("protected.7z"));
         const QString password = QStringLiteral("disposable-δ-password");
-        QTimer::singleShot(0, &window, [&password] {
+        QTimer responder;
+        bool supplied = false;
+        connect(&responder, &QTimer::timeout, &window, [&] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-            QVERIFY(dialog);
-            QCOMPARE(dialog->objectName(), QString("passwordDialog"));
+            if (!dialog || dialog->objectName() != "passwordDialog" || supplied)
+                return;
+            supplied = true;
+            const auto finish = qScopeGuard([&] {
+                dialog->accept();
+                QTimer::singleShot(0, &backend, [&] {
+                    emit backend.infoReady(
+                        ArchiveInfo{QStringLiteral("7z"), 120, 0, 3, 1, 0, true});
+                    backend.completeList({ArchiveEntry{QStringLiteral("δ file.txt"), 3, 3}});
+                });
+            });
             auto *edit = dialog->findChild<QLineEdit *>("passwordEdit");
             QVERIFY(edit);
             edit->setText(password);
             auto *show = dialog->findChild<QCheckBox *>("passwordShow");
             QVERIFY(show);
-            show->click();
+            if (!show->isChecked())
+                show->click();
             QCOMPARE(edit->echoMode(), QLineEdit::Normal);
-            dialog->accept();
         });
-        emit backend.passwordRequired();
-        emit backend.infoReady(ArchiveInfo{QStringLiteral("7z"), 120, 3, 1, 0, true});
-        backend.completeList({ArchiveEntry{QStringLiteral("δ file.txt"), 3, 3}});
+        responder.start(1);
+        backend.queueListAction([&] { emit backend.passwordRequired(); });
+        window.openArchive("protected.7z");
+        responder.stop();
+        QVERIFY(supplied);
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         window.testArchive();
         QCOMPARE(backend.lastTestPassword, password);
@@ -228,8 +269,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         backend.fail(QStringLiteral("Операция отменена."));
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
-        window.openArchive("empty.zip");
-        backend.completeList({});
+        openListedArchive(window, backend, "empty.zip", {});
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         window.testArchive();
@@ -269,15 +309,23 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.show();
         auto *journal = action(window, "operationJournalAction");
         QVERIFY(!journal->isEnabled());
+        QVERIFY(backend.prepareArchiveFixture("first.7z"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({}); });
+            QVERIFY(journal->isEnabled());
+            auto *progress = dynamic_cast<CQtProgressDialog *>(QApplication::activeModalWidget());
+            QVERIFY(progress);
+            QCOMPARE(progress->windowModality(), Qt::ApplicationModal);
+            backend.report(42, QStringLiteral("папка/имя с пробелом.txt"),
+                           QStringLiteral("42% + папка/имя с пробелом.txt"));
+            auto *bar = progress->findChild<QProgressBar *>("IDC_PROGRESS1");
+            auto *name = progress->findChild<QLabel *>("IDT_PROGRESS_FILE_NAME");
+            QVERIFY(bar && name);
+            QTRY_COMPARE(bar->value(), 42);
+            QTRY_VERIFY(name->text().contains(QStringLiteral("имя с пробелом.txt")));
+            QVERIFY(name->text().contains(QStringLiteral("папка")));
+        });
         window.openArchive("first.7z");
-        QVERIFY(journal->isEnabled());
-        auto *progress = window.findChildren<QProgressDialog *>().last();
-        QCOMPARE(progress->windowModality(), Qt::NonModal);
-        backend.report(42, QStringLiteral("папка/имя с пробелом.txt"),
-                       QStringLiteral("42% + папка/имя с пробелом.txt"));
-        QCOMPARE(progress->value(), 42);
-        QVERIFY(progress->labelText().contains(QStringLiteral("папка/имя с пробелом.txt")));
-        backend.completeList({});
         journal->trigger();
         QCoreApplication::processEvents();
         auto *text = window.findChild<QPlainTextEdit *>("operationJournalText");
@@ -295,10 +343,16 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             QVERIFY(dialog->grab().save(screenshot));
         }
 
+        QVERIFY(backend.prepareArchiveFixture("second.zip"));
+        QTimer warningResponder;
+        connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
+        warningResponder.start(1);
+        backend.queueListAction([&] {
+            backend.report(-1, {}, QStringLiteral("ERROR: повреждённый архив"));
+            backend.fail(QStringLiteral("7zz завершился с кодом 2."));
+        });
         window.openArchive("second.zip");
-        backend.report(-1, {}, QStringLiteral("ERROR: повреждённый архив"));
-        QTimer::singleShot(0, &window, [] { dismissWarnings(); });
-        backend.fail(QStringLiteral("7zz завершился с кодом 2."));
+        warningResponder.stop();
         QVERIFY(text->toPlainText().contains(QStringLiteral("ERROR: повреждённый архив")));
         QVERIFY(text->toPlainText().contains(QStringLiteral("Ошибка: 7zz завершился с кодом 2.")));
         QVERIFY(!text->toPlainText().contains(QStringLiteral("42% +")));
@@ -346,7 +400,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         });
         action(window, "selectedPropertiesAction")->trigger();
         QVERIFY(properties.contains(QStringLiteral("имя с пробелом.txt")));
-        QVERIFY(properties.contains(QFileInfo(temp.path()).canonicalFilePath()));
+        QVERIFY(properties.contains(
+            QDir::fromNativeSeparators(QFileInfo(temp.path()).canonicalFilePath() + '/')));
         commands.clear();
         view->clearSelection();
         capture();
@@ -356,8 +411,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(commands.contains("Создать папку…"));
         QVERIFY(commands.contains("Обновить"));
 
-        window.openArchive("menu.7z");
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/файл.txt"), 1, 1}});
+        openListedArchive(window, backend, "menu.7z",
+                          {ArchiveEntry{QStringLiteral("папка/файл.txt"), 1, 1}});
         commands.clear();
         capture();
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
@@ -384,8 +439,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QCOMPARE(address->text(), QFileInfo(folder).canonicalFilePath());
         QVERIFY(combo->findText(QFileInfo(QDir::currentPath()).canonicalFilePath()) >= 0);
         const QString archive = temp.filePath("archive.7z");
-        window.openArchive(archive);
-        backend.completeList({});
+        openListedArchive(window, backend, archive, {});
         QVERIFY(combo->findText(QFileInfo(archive).absoluteFilePath()) >= 0);
         const int folderIndex = combo->findText(QFileInfo(folder).canonicalFilePath());
         QVERIFY(folderIndex >= 0);

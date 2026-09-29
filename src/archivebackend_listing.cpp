@@ -8,6 +8,34 @@
 #include <QSet>
 #include <QUuid>
 
+HRESULT ArchiveBackend::listingFailureResult(int exitCode, QProcess::ExitStatus status) const {
+    // Console/List.cpp (0766b733) prints these only for Open_Strict == S_FALSE.
+    // Unknown engine output, process/I/O failures and crashes remain E_FAIL.
+    if (status != QProcess::NormalExit || exitCode != 2)
+        return E_FAIL;
+    QString output = output_;
+    QString archive = archive_;
+#ifdef Q_OS_MACOS
+    // The engine prints filesystem-native NFD names on macOS. Compare the
+    // transport label canonically without changing source/archive entry names.
+    output = output.normalized(QString::NormalizationForm_C);
+    archive = archive.normalized(QString::NormalizationForm_C);
+#endif
+    const QStringList lines = output.split('\n');
+    const QString prefix = QStringLiteral("ERROR: ") + archive + QStringLiteral(" : ");
+    if (lines.contains(prefix + QStringLiteral("Cannot open the file as archive")) ||
+        lines.contains(prefix + QStringLiteral("Cannot open encrypted archive. Wrong password?")))
+        return S_FALSE;
+    if (lines.contains(prefix + archive)) {
+        static const QRegularExpression typeError(
+            QStringLiteral("^Open ERROR: Cannot open the file as \\[.+\\] archive$"));
+        for (const QString &line : lines)
+            if (typeError.match(line).hasMatch())
+                return S_FALSE;
+    }
+    return E_FAIL;
+}
+
 QList<ArchiveEntry> ArchiveBackend::parseListing(const QString &output) {
     QList<ArchiveEntry> result;
     ArchiveEntry current;

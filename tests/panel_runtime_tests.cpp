@@ -45,10 +45,10 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
         MainWindow window(&backend);
         window.show();
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("source-summary.zip");
         const QString directory = QStringLiteral("папка й");
         const QString file = QStringLiteral("отдельный й.txt");
-        backend.completeList({{directory + "/inside", 11, 3}, {file, 7, 2}, {"unknown", -1, -1}});
+        openListedArchive(window, backend, "source-summary.zip",
+                          {{directory + "/inside", 11, 3}, {file, 7, 2}, {"unknown", -1, -1}});
         action(window, "flatViewAction")->setChecked(flat);
         action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
         auto *view = table(window);
@@ -108,6 +108,8 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
         QFETCH(int, mode);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
+        QTemporaryDir archives;
+        QVERIFY(archives.isValid());
         const QDir root(QFileInfo(temp.path()).canonicalFilePath());
         const QString directory = QStringLiteral("папка й с пробелом");
         const QString name = QStringLiteral("текущий й.txt");
@@ -150,11 +152,10 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
             }
         }
         selectOnly(view, diskRow(window, root.filePath(name)));
-        window.openArchive("runtime.zip");
-        QVERIFY(view->selectionModel()->selectedRows().isEmpty());
         QList<ArchiveEntry> entries = {
             {name, 11, 3}, {directory + '/' + name, 13, 5}, {"zero", 0, 0}, {"unknown", -1, -1}};
-        backend.completeList(entries);
+        openListedArchive(window, backend, archives.filePath("runtime.zip"), entries);
+        QVERIFY(view->selectionModel()->selectedRows().isEmpty());
         entries.clear();
         action(window, "flatViewAction")->setChecked(flat);
         QCOMPARE(view->rowCount(), flat ? 5 : 4);
@@ -230,8 +231,7 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
                 [&](IFolderFolder *) { ++readyCount; });
         action(window, "flatViewAction")->setChecked(true);
         QVERIFY(!action(window, "refreshAction")->isEnabled());
-        window.openArchive("replacement.zip");
-        backend.completeList({{"source", 29, 17}});
+        openListedArchive(window, backend, temp.filePath("replacement.zip"), {{"source", 29, 17}});
         auto *view = table(window);
         QCOMPARE(view->rowCount(), 1);
         QCOMPARE(view->item(0, 2)->text(), QStringLiteral("29"));

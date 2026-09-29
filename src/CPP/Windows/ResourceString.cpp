@@ -3,9 +3,11 @@
 // Win32 LoadString/HINSTANCE storage is replaced by compiled source STRINGTABLE
 // strings and the existing fixed Russian UI captions. Language files: P1-14.
 #include "ResourceString.h"
+#include "7zip/UI/FileManager/OverwriteDialogRes.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "7zip/UI/GUI/resource3.h"
 
@@ -19,6 +21,21 @@ struct ResourceStringEntry {
 #include "ResourceStrings.h"
 
 static const ResourceStringEntry kLocalizedStrings[] = {
+    {IDS_MESSAGE_NO_ERRORS, L"Ошибок нет"},
+    {IDS_PROGRESS_TESTING, L"Проверка"},
+    {IDS_MOVING, L"Перемещение"},
+    {IDS_CHECKSUM_CALCULATING, L"Расчёт контрольных сумм"},
+    {IDS_CHECKSUM_INFORMATION, L"Контрольные суммы"},
+    {IDS_CHECKSUM_CRC_DATA, L"Контрольная сумма данных:"},
+    {IDS_CHECKSUM_CRC_DATA_NAMES, L"Контрольная сумма данных и имён:"},
+    {IDS_CHECKSUM_CRC_STREAMS_NAMES, L"Контрольная сумма потоков и имён:"},
+    {IDS_OPENNING, L"Открытие"},
+    {IDS_SCANNING, L"Сканирование"},
+    {IDS_FILE_SIZE, L"{0} байт"},
+    {IDS_MEM_REQUIRES_BIG_MEM, L"Для операции требуется большой объём памяти."},
+    {IDS_MEM_REQUIRED_MEM_SIZE, L"Требуется памяти"},
+    {IDS_MEM_CURRENT_MEM_LIMIT, L"Текущий лимит памяти"},
+    {IDS_MEM_RAM_SIZE, L"Оперативная память"},
     {IDS_PROGRESS_PAUSED, L"Приостановлено"},
     {IDS_PROGRESS_FOREGROUND, L"На &передний план"},
     {IDS_CONTINUE, L"&Продолжить"},

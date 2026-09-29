@@ -86,12 +86,11 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         MainWindow window(&backend);
         window.show();
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("typed-sizes.zip");
         const QString folder = QStringLiteral("папка с пробелом");
         const QString unknown = folder + QStringLiteral("/неизвестный.txt");
         const QString zero = folder + QStringLiteral("/нулевой.txt");
         QList<ArchiveEntry> entries = {{unknown, -1, -1}, {zero, 0, 0}};
-        backend.completeList(entries);
+        openListedArchive(window, backend, "typed-sizes.zip", entries);
         entries.clear(); // The runtime retains its own immutable metadata owner.
         if (!flat)
             openRow(window, rowWithPath(window, folder));
@@ -132,13 +131,12 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         MainWindow window(&backend);
         window.show();
         action(window, "flatViewAction")->setChecked(false);
-        window.openArchive("selection-refresh.zip");
         const QString folder = QStringLiteral("папка с пробелом");
         const QString selected = folder + QStringLiteral("/имя.txt");
         const QString focused = folder + QStringLiteral("/текущий.txt");
         QList<ArchiveEntry> entries = {
             {selected, 1, 1}, {focused, 2, 2}, {QStringLiteral("другая/имя.txt"), 3, 3}};
-        backend.completeList(entries);
+        openListedArchive(window, backend, "selection-refresh.zip", entries);
         if (!flat)
             openRow(window, rowWithPath(window, folder));
         action(window, "flatViewAction")->setChecked(flat);
@@ -148,9 +146,9 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         selectRow(view, rowWithPath(window, selected));
         view->setCurrentCell(rowWithPath(window, focused), 0, QItemSelectionModel::NoUpdate);
         entries.append({folder + "/0 new.txt", 4, 4});
+        backend.queueList(entries);
         action(window, "refreshAction")->trigger();
         QCOMPARE(backend.listCalls, 2);
-        backend.completeList(entries);
         QCOMPARE(view->currentRow(), rowWithPath(window, focused));
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
         QVERIFY(view->selectionModel()->isRowSelected(rowWithPath(window, selected), {}));
@@ -166,8 +164,8 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
             QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
             // Relative names from a removed folder must not select a namesake
             // in its surviving parent after the folder fallback.
+            backend.queueList({{QStringLiteral("имя.txt"), 5, 5}});
             action(window, "refreshAction")->trigger();
-            backend.completeList({{QStringLiteral("имя.txt"), 5, 5}});
             QCOMPARE(view->rowCount(), 1);
             QVERIFY(view->selectionModel()->selectedRows().isEmpty());
         }
@@ -185,19 +183,21 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        window.openArchive("first.zip");
-        backend.completeList({{QStringLiteral("имя.txt"), 1, 1}});
+        openListedArchive(window, backend, "first.zip", {{QStringLiteral("имя.txt"), 1, 1}});
         table(window)->selectRow(0);
+        backend.queueListAction([&] {
+            if (cancel)
+                backend.cancel();
+            else
+                backend.fail("fixture list failure");
+        });
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [] { dismissWarnings(); });
+        responder.start(10);
         action(window, "refreshAction")->trigger();
-        if (cancel)
-            backend.cancel();
-        else {
-            QTimer::singleShot(0, &window, [] { dismissWarnings(); });
-            backend.fail("fixture list failure");
-        }
+        responder.stop();
         QVERIFY(action(window, "createFolderAction")->isEnabled());
-        window.openArchive("second.zip");
-        backend.completeList({{QStringLiteral("имя.txt"), 2, 2}});
+        openListedArchive(window, backend, "second.zip", {{QStringLiteral("имя.txt"), 2, 2}});
         QCOMPARE(table(window)->rowCount(), 1);
         QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
     }

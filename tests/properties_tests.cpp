@@ -2,10 +2,11 @@
 #include "mainwindow.h"
 #include "qtlocationfolder.h"
 #include "window_state_support.h"
+#include <QScopeGuard>
 #include <QTreeWidget>
 #include <QtTest>
 
-class PropertiesTests : public QObject {
+class PropertiesTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     static CMyComPtr<IFolderFolder> archiveFolder(const QList<ArchiveEntry> &entries) {
         CMyComPtr<IFolderFolder> folder;
@@ -52,12 +53,14 @@ class PropertiesTests : public QObject {
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
+            const auto closeDialog = qScopeGuard([dialog] { dialog->reject(); });
             QCOMPARE(dialog->windowTitle(), QString("Свойства"));
             QCOMPARE(value(*dialog, "Файлов"), QString("2"));
             QCOMPARE(value(*dialog, "Папок"), QString("1"));
             QCOMPARE(value(*dialog, "Размер"), QString("10"));
             QCOMPARE(value(*dialog, "Сжатый размер"), QString("10"));
-            QCOMPARE(value(*dialog, "Путь"), QFileInfo(temporary.path()).canonicalFilePath());
+            QCOMPARE(QDir::fromNativeSeparators(value(*dialog, "Путь")),
+                     QFileInfo(temporary.path()).canonicalFilePath() + '/');
             checked = true;
             dialog->reject();
         });
@@ -80,9 +83,9 @@ class PropertiesTests : public QObject {
     void archiveFolderPropertiesIncludeNestedFiles() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("folder.7z");
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/внутри.txt"), 13, 5},
-                              ArchiveEntry{QStringLiteral("папка/sub/ещё.txt"), 7, 3}});
+        openListedArchive(window, backend, "folder.7z",
+                          {ArchiveEntry{QStringLiteral("папка/внутри.txt"), 13, 5},
+                           ArchiveEntry{QStringLiteral("папка/sub/ещё.txt"), 7, 3}});
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *action = window.findChild<QAction *>("selectedPropertiesAction");
         QCOMPARE(table->rowCount(), 1);
@@ -91,6 +94,7 @@ class PropertiesTests : public QObject {
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
+            const auto closeDialog = qScopeGuard([dialog] { dialog->reject(); });
             QCOMPARE(value(*dialog, "Файлов"), QString("2"));
             QCOMPARE(value(*dialog, "Папок"), QString("1"));
             QCOMPARE(value(*dialog, "Размер"), QString("20"));
@@ -201,9 +205,9 @@ class PropertiesTests : public QObject {
     void archivePropertiesUsePresenceAndRetainSuppliedTimestampText() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("metadata.7z");
-        backend.completeList({ArchiveEntry{"unknown.txt", -1, -1, "2026-09-28 12:34:56.1234567"},
-                              ArchiveEntry{"zero.txt", 0, 0}});
+        openListedArchive(window, backend, "metadata.7z",
+                          {ArchiveEntry{"unknown.txt", -1, -1, "2026-09-28 12:34:56.1234567"},
+                           ArchiveEntry{"zero.txt", 0, 0}});
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         auto *action = window.findChild<QAction *>("selectedPropertiesAction");
         QVERIFY(table && action);
@@ -221,6 +225,7 @@ class PropertiesTests : public QObject {
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
+            const auto closeDialog = qScopeGuard([dialog] { dialog->reject(); });
             QCOMPARE(value(*dialog, "Имя"), QString("unknown.txt"));
             QVERIFY(value(*dialog, "Размер").isNull());
             QVERIFY(value(*dialog, "Сжатый размер").isNull());

@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "resource": "CPP/7zip/UI/FileManager/OverwriteDialog.rc",
+  "profile": "desktop; RC_INVOKED; UNDER_CE undefined; SDK constants symbolic",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/OverwriteDialog.rc": "5fe96f6d1f1757e3c158ab0a4f9c15c6380417ed9b0ba3b3f913339f3fa5166e",
+    "CPP/7zip/UI/FileManager/OverwriteDialogRes.h": "1d105c6eed6c8f563bf58b8a62898a33e5d704126f4ede65319e4351e1c2d587",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/OverwriteDialog.cpp": "25d767e4108018f967cdf684d88a7a95adcc96aa343e3467113fb11c7e1b49e9"
+  },
+  "opaqueIncludes": [
+    "CommCtrl.h",
+    "windows.h"
+  ],
+  "dialogs": [
+    {
+      "id": "IDD_OVERWRITE",
+      "caption": "Confirm File Replace",
+      "boundsDLU": [
+        0,
+        0,
+        356,
+        216
+      ],
+      "controls": [
+        {
+          "id": "IDT_OVERWRITE_HEADER",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Destination folder already contains processed file.",
+          "boundsDLU": [
+            8,
+            7,
+            340,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_BEGIN",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Would you like to replace the existing file",
+          "boundsDLU": [
+            8,
+            28,
+            340,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDI_OVERWRITE_OLD_FILE",
+          "kind": "ICON",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            44,
+            24,
+            24
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDI_OVERWRITE_OLD_FILE_2",
+          "kind": "ICON",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            68,
+            24,
+            24
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            40,
+            44,
+            308,
+            50
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_END",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "with this one?",
+          "boundsDLU": [
+            8,
+            98,
+            340,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDI_OVERWRITE_NEW_FILE",
+          "kind": "ICON",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            114,
+            24,
+            24
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDI_OVERWRITE_NEW_FILE_2",
+          "kind": "ICON",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            138,
+            24,
+            24
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            40,
+            114,
+            308,
+            50
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDYES",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "&Yes",
+          "boundsDLU": [
+            100,
+            168,
+            64,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDB_YES_TO_ALL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "Yes to &All",
+          "boundsDLU": [
+            172,
+            168,
+            64,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDB_AUTO_RENAME",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "A&uto Rename",
+          "boundsDLU": [
+            244,
+            168,
+            104,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDNO",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "&No",
+          "boundsDLU": [
+            100,
+            192,
+            64,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDB_NO_TO_ALL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "No to A&ll",
+          "boundsDLU": [
+            172,
+            192,
+            64,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDCANCEL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "&Cancel",
+          "boundsDLU": [
+            284,
+            192,
+            64,
+            16
+          ],
+          "style": ""
+        }
+      ]
+    }
+  ],
+  "behaviorSymbols": {
+    "CPP/7zip/UI/FileManager/OverwriteDialog.cpp": [
+      "COverwriteDialog::OnButtonClicked",
+      "COverwriteDialog::OnDestroy",
+      "COverwriteDialog::OnInit",
+      "COverwriteDialog::ReduceString",
+      "COverwriteDialog::SetFileInfoControl",
+      "COverwriteDialog::SetItemIcon"
+    ]
+  },
+  "behaviorCandidates": [
+    {
+      "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+      "line": 119,
+      "code": "SetItemText(textID, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+      "line": 232,
+      "code": "bool COverwriteDialog::OnInit()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+      "line": 263,
+      "code": "return CModalDialog::OnInit();"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+      "line": 266,
+      "code": "bool COverwriteDialog::OnDestroy()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+      "line": 275,
+      "code": "bool COverwriteDialog::OnButtonClicked(unsigned buttonID, HWND buttonHWND)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+      "line": 287,
+      "code": "return CModalDialog::OnButtonClicked(buttonID, buttonHWND);"
+    }
+  ],
+  "limitations": [
+    "DLU are not pixels; combo height includes dropdown extent",
+    "Behavior candidates are navigation hints, not a C++ semantic analysis",
+    "No Windows rendering, focus or tab-order verification"
+  ]
+}

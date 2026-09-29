@@ -10,10 +10,7 @@ QString MainWindow::selectedCopyInfo() {
     panel.SaveSelectedState(selection);
     CRecordVector<UInt32> indices;
     panel.Get_ItemIndices_Operated(indices);
-    QString prefix = state_ == State::Viewing ? archiveDisplayPath() : directory_;
-    if (!prefix.endsWith('/'))
-        prefix += '/';
-    panel.SetCurrentFolderPrefix(prefix);
+    panel.LoadFullPath();
     return panel.GetItemsInfoString(indices);
 }
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {

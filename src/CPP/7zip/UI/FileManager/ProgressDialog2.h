@@ -10,6 +10,7 @@
 #include "Windows/Synchronization.h"
 #include "Windows/Thread.h"
 #include "qtprogresscontrols.h"
+#include "qtprogresstransport.h"
 #include <QPointer>
 #include <atomic>
 #ifdef _WIN32
@@ -227,7 +228,10 @@ class CProgressDialog : public CQtProgressDialog {
     // External 7zz reports a percentage without byte counters. Do not invent
     // byte/file totals; apply only to the progress/title presentation fallback.
     std::atomic<int> TransportPercent{-1};
-    virtual HRESULT SetPausedTransport(bool) { return S_OK; }
+    IQtProgressTransport *_transport = nullptr;
+    virtual HRESULT SetPausedTransport(bool paused) {
+        return _transport ? _transport->SetPaused(paused) : S_OK;
+    }
     virtual HRESULT SetBackgroundTransport(bool background);
 #ifndef _WIN32
     CQtProgressStartWait _startWait;
@@ -241,6 +245,11 @@ class CProgressDialog : public CQtProgressDialog {
     UString MainAddTitle;
     // Explicit application question policy instead of the original FM global.
     bool DisableUserQuestions = false;
+    void AttachTransport(IQtProgressTransport *transport) { _transport = transport; }
+    void SetTransportPercent(int percent) {
+        if (percent >= 0 && percent <= 100)
+            TransportPercent.store(percent);
+    }
     explicit CProgressDialog(QWidget *parent = nullptr, const UString &title = UString());
     ~CProgressDialog() override;
     bool OnInit();

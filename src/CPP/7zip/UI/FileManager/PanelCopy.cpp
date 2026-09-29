@@ -1,0 +1,297 @@
+/// PanelCopy.cpp
+
+// Adapted from 7-Zip PanelCopy.cpp (0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+#include "Common/StringConvert.h"
+#include "qtprogresstransport.h"
+#include <memory>
+
+#include "../Common/ZipRegistry.h"
+
+#include "../GUI/HashGUI.h"
+
+#include "ExtractCallback.h"
+#include "FSFolder.h"
+#include "LangUtils.h"
+#include "Panel.h"
+#include "UpdateCallback100.h"
+
+#include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/GUI/ExtractRes.h"
+
+class CPanelCopyThread : public CProgressThreadVirt {
+    bool ResultsWereShown;
+    bool NeedShowRes;
+
+    HRESULT ProcessVirt() Z7_override;
+    virtual void ProcessWasFinished_GuiVirt() Z7_override;
+
+  public:
+    const CCopyToOptions *options;
+    const UStringVector *CopyFrom_Paths;
+    CMyComPtr<IFolderOperations> FolderOperations;
+    CRecordVector<UInt32> Indices;
+    CExtractCallbackImp *ExtractCallbackSpec;
+    CMyComPtr<IFolderOperationsExtractCallback> ExtractCallback;
+
+    CHashBundle Hash;
+    // UString FirstFilePath;
+
+    // HRESULT Result2;
+
+    void ShowFinalResults(QWidget *hwnd);
+
+    CPanelCopyThread()
+        : ResultsWereShown(false), NeedShowRes(false), CopyFrom_Paths(NULL)
+    // , Result2(E_FAIL)
+    {}
+};
+
+void CPanelCopyThread::ShowFinalResults(QWidget *hwnd) {
+    if (NeedShowRes)
+        if (!ResultsWereShown) {
+            ResultsWereShown = true;
+            ShowHashResults(Hash, hwnd);
+        }
+}
+
+void CPanelCopyThread::ProcessWasFinished_GuiVirt() { ShowFinalResults(this); }
+
+HRESULT CPanelCopyThread::ProcessVirt() {
+    /*
+    CMyComPtr<IFolderSetReplaceAltStreamCharsMode> iReplace;
+    FolderOperations.QueryInterface(IID_IFolderSetReplaceAltStreamCharsMode, &iReplace);
+    if (iReplace)
+    {
+      RINOK(iReplace->SetReplaceAltStreamCharsMode(ReplaceAltStreamChars ? 1 : 0));
+    }
+    */
+
+    HRESULT result2;
+
+    if (FolderOperations) {
+        {
+            CMyComPtr<IFolderSetZoneIdMode> setZoneMode;
+            FolderOperations.QueryInterface(IID_IFolderSetZoneIdMode, &setZoneMode);
+            if (setZoneMode) {
+                RINOK(setZoneMode->SetZoneIdMode(options->ZoneIdMode))
+            }
+        }
+        {
+            CMyComPtr<IFolderSetZoneIdFile> setZoneFile;
+            FolderOperations.QueryInterface(IID_IFolderSetZoneIdFile, &setZoneFile);
+            if (setZoneFile) {
+                RINOK(setZoneFile->SetZoneIdFile(options->ZoneBuf, (UInt32)options->ZoneBuf.Size()))
+            }
+        }
+    }
+
+    if (CopyFrom_Paths) {
+        // Mandatory P0-05/P1-02 dependency: native CopyFileSystemItems is not
+        // connected yet. Archive opening uses the folder-operation branch below.
+        return E_NOTIMPL;
+    } else if (options->testMode) {
+        CMyComPtr<IArchiveFolder> archiveFolder;
+        FolderOperations.QueryInterface(IID_IArchiveFolder, &archiveFolder);
+        if (!archiveFolder)
+            return E_NOTIMPL;
+        CMyComPtr<IFolderArchiveExtractCallback> extractCallback2;
+        RINOK(ExtractCallback.QueryInterface(IID_IFolderArchiveExtractCallback, &extractCallback2))
+        NExtract::NPathMode::EEnum pathMode = NExtract::NPathMode::kCurPaths;
+        // NExtract::NPathMode::kFullPathnames;
+        result2 = archiveFolder->Extract(
+            Indices.ConstData(), Indices.Size(), BoolToInt(options->includeAltStreams),
+            BoolToInt(options->replaceAltStreamChars), pathMode, NExtract::NOverwriteMode::kAsk,
+            options->folder, BoolToInt(true), extractCallback2);
+    } else
+        result2 = FolderOperations->CopyTo(BoolToInt(options->moveMode), Indices.ConstData(),
+                                           Indices.Size(), BoolToInt(options->includeAltStreams),
+                                           BoolToInt(options->replaceAltStreamChars),
+                                           options->folder, ExtractCallback);
+
+    if (result2 == S_OK && !ExtractCallbackSpec->ThereAreMessageErrors) {
+        if (!options->hashMethods.IsEmpty())
+            NeedShowRes = true;
+        else if (options->testMode) {
+            CProgressMessageBoxPair &pair =
+                GetMessagePair(false); // GetMessagePair(ExtractCallbackSpec->Hash.NumErrors != 0);
+            AddHashBundleRes(pair.Message, Hash);
+        }
+    }
+
+    return result2;
+}
+
+/*
+#ifdef Z7_EXTERNAL_CODECS
+
+static void ThrowException_if_Error(HRESULT res)
+{
+  if (res != S_OK)
+    throw CSystemException(res);
+}
+
+#endif
+*/
+
+void CPanel::Get_ZoneId_Stream_from_ParentFolders(CByteBuffer &buf) {
+    // we suppose that ZoneId of top parent has priority over ZoneId from childs.
+    FOR_VECTOR(i, _parentFolders) {
+        // _parentFolders[0] = is top level archive
+        // _parentFolders[1 ... ].isVirtual == true is possible
+        //           if extracted size meets size conditions derived from g_RAM_Size.
+        const CFolderLink &fl = _parentFolders[i];
+        if (fl.IsVirtual) {
+            if (fl.ZoneBuf.Size() != 0) {
+                buf = fl.ZoneBuf;
+                return;
+            }
+        } else if (!fl.FilePath.IsEmpty()) {
+            ReadZoneFile_Of_BaseFile(fl.FilePath, buf);
+            if (buf.Size() != 0)
+                return;
+        }
+    }
+}
+
+HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &indices,
+                       UStringVector *messages, bool &usePassword, UString &password,
+                       const UStringVector *filePaths) {
+    if (options.NeedRegistryZone && !options.testMode) {
+        CContextMenuInfo ci;
+        ci.Load(_settingsPath);
+        if (ci.WriteZone != (UInt32)(Int32)-1)
+            options.ZoneIdMode = (NExtract::NZoneIdMode::EEnum)(int)(Int32)ci.WriteZone;
+    }
+
+    if (options.ZoneBuf.Size() == 0 && options.ZoneIdMode != NExtract::NZoneIdMode::kNone)
+        Get_ZoneId_Stream_from_ParentFolders(options.ZoneBuf);
+
+    if (IsHashFolder()) {
+        if (!options.testMode)
+            return E_NOTIMPL;
+    }
+
+    if (!filePaths)
+        if (!_folderOperations) {
+            const UString errorMessage = LangString(IDS_OPERATION_IS_NOT_SUPPORTED);
+            if (options.showErrorMessages)
+                MessageBox_Error(errorMessage);
+            else if (messages)
+                messages->Add(errorMessage);
+            return E_FAIL;
+        }
+
+    HRESULT res = S_OK;
+
+    {
+        /*
+        #ifdef Z7_EXTERNAL_CODECS
+        CExternalCodecs g_ExternalCodecs;
+        #endif
+        */
+        /* extracter.Hash uses g_ExternalCodecs
+           extracter must be declared after g_ExternalCodecs for correct destructor order !!! */
+
+        CPanelCopyThread extracter;
+
+        extracter.ExtractCallbackSpec = new CExtractCallbackImp;
+        extracter.ExtractCallback = extracter.ExtractCallbackSpec;
+        extracter.ExtractCallbackSpec->Src_Is_IO_FS_Folder = IsFSFolder() || IsAltStreamsFolder();
+        // options.src_Is_IO_FS_Folder;
+        extracter.options = &options;
+        extracter.ExtractCallbackSpec->ProgressDialog = &extracter;
+        extracter.ExtractCallbackSpec->SettingsPath = _settingsPath;
+        std::unique_ptr<IQtProgressTransport> transport;
+        if (auto *services =
+                dynamic_cast<IQtProgressServices *>((IFolderOperations *)_folderOperations))
+            transport = services->CreateProgressTransport(extracter);
+        extracter.CompressingMode = false;
+
+        extracter.ExtractCallbackSpec->StreamMode = options.streamMode;
+
+        if (indices.Size() == 1) {
+            extracter.Hash.FirstFileName = GetItemRelPath(indices[0]);
+            extracter.Hash.MainName = extracter.Hash.FirstFileName;
+        }
+
+        if (options.VirtFileSystemSpec) {
+            extracter.ExtractCallbackSpec->VirtFileSystem = options.VirtFileSystemSpec;
+            extracter.ExtractCallbackSpec->VirtFileSystemSpec = options.VirtFileSystemSpec;
+        }
+        extracter.ExtractCallbackSpec->ProcessAltStreams = options.includeAltStreams;
+
+        if (!options.hashMethods.IsEmpty()) {
+            /* this code is used when we call CRC calculation for files in side archive
+               But new code uses global codecs so we don't need to call LoadGlobalCodecs again */
+
+            /*
+            #ifdef Z7_EXTERNAL_CODECS
+            ThrowException_if_Error(LoadGlobalCodecs());
+            #endif
+            */
+
+            extracter.Hash.SetMethods(EXTERNAL_CODECS_VARS_G options.hashMethods);
+            extracter.ExtractCallbackSpec->SetHashMethods(&extracter.Hash);
+        } else if (options.testMode) {
+            extracter.ExtractCallbackSpec->SetHashCalc(&extracter.Hash);
+        }
+
+        // extracter.Hash.Init();
+
+        UString title;
+        {
+            UInt32 titleID = IDS_COPYING;
+            if (options.moveMode)
+                titleID = IDS_MOVING;
+            else if (!options.hashMethods.IsEmpty() && options.streamMode) {
+                titleID = IDS_CHECKSUM_CALCULATING;
+                if (options.hashMethods.Size() == 1) {
+                    const UString &s = options.hashMethods[0];
+                    if (!s.IsEqualTo("*"))
+                        title = s;
+                }
+            } else if (options.testMode)
+                titleID = IDS_PROGRESS_TESTING;
+
+            if (title.IsEmpty())
+                title = LangString(titleID);
+        }
+
+        const UString progressWindowTitle("7-Zip"); // LangString(IDS_APP_TITLE);
+
+        extracter.MainWindow = GetParent();
+        extracter.MainTitle = progressWindowTitle;
+        extracter.MainAddTitle = title + L' ';
+
+        extracter.ExtractCallbackSpec->OverwriteMode = NExtract::NOverwriteMode::kAsk;
+        extracter.ExtractCallbackSpec->Init();
+
+        extracter.CopyFrom_Paths = filePaths;
+        if (!filePaths) {
+            extracter.Indices = indices;
+            extracter.FolderOperations = _folderOperations;
+        }
+
+        extracter.ExtractCallbackSpec->PasswordIsDefined = usePassword;
+        extracter.ExtractCallbackSpec->Password = password;
+
+        RINOK(extracter.Create(title, GetParent()))
+
+        if (messages)
+            *messages = extracter.Sync.Messages;
+
+        // res = extracter.Result2;
+        res = extracter.Result;
+
+        if (res == S_OK && extracter.ExtractCallbackSpec->IsOK()) {
+            usePassword = extracter.ExtractCallbackSpec->PasswordIsDefined;
+            password = extracter.ExtractCallbackSpec->Password;
+        }
+
+        extracter.ShowFinalResults(GetParent());
+    }
+
+    RefreshTitleAlways();
+    return res;
+}

@@ -9,7 +9,7 @@
 #include <QTimer>
 #include <QtTest>
 
-class SettingsTests : public QObject {
+class SettingsTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
   private slots:
@@ -52,10 +52,10 @@ class SettingsTests : public QObject {
         address->setText(dir.path());
         QTest::keyClick(address, Qt::Key_Return);
         if (archive) {
-            window.openArchive(dir.filePath("click.zip"));
-            backend.completeList({ArchiveEntry{names[0] + "/child.txt", 1, 1},
-                                  ArchiveEntry{names[1] + "/child.txt", 1, 1},
-                                  ArchiveEntry{names[2] + "/child.txt", 1, 1}});
+            openListedArchive(window, backend, dir.filePath("click.zip"),
+                              {ArchiveEntry{names[0] + "/child.txt", 1, 1},
+                               ArchiveEntry{names[1] + "/child.txt", 1, 1},
+                               ArchiveEntry{names[2] + "/child.txt", 1, 1}});
         }
         window.findChild<QAction *>(qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))
             ->trigger();
@@ -84,7 +84,8 @@ class SettingsTests : public QObject {
         QVERIFY(table->selectionModel()->selectedRows().size() >= 2);
         click(0, Qt::MetaModifier);
         QCOMPARE(address->text(), before);
-        if (singleClick && (mode == 0 || mode == 3)) {
+        if (singleClick && (mode == 0 || mode == 3) &&
+            qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1) {
             const QString screenshots = QDir::currentPath() + "/ui-screenshots";
             QVERIFY(QDir().mkpath(screenshots));
             for (int width : {980, 640}) {

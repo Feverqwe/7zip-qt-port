@@ -1,0 +1,269 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "resource": "CPP/7zip/UI/FileManager/MemDialog.rc",
+  "profile": "desktop; RC_INVOKED; UNDER_CE undefined; SDK constants symbolic",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/MemDialog.rc": "de54cd16f885a5bf524956ac8c5dc4502565e3417c75079c5349f91ffde0d3fd",
+    "CPP/7zip/UI/FileManager/MemDialogRes.h": "de32162b83051a8736978dcfc69869eb2373cb5e17006ae35fb6e9733894bcb4",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/MemDialog.cpp": "a5a6e2fbf5cb4e6f279dbe3e9d271edcdbe56b0bda919329161375b32c2e651f"
+  },
+  "opaqueIncludes": [
+    "CommCtrl.h",
+    "windows.h"
+  ],
+  "dialogs": [
+    {
+      "id": "IDD_MEM",
+      "caption": "Memory usage request",
+      "boundsDLU": [
+        0,
+        0,
+        336,
+        216
+      ],
+      "controls": [
+        {
+          "id": "IDT_MEM_MESSAGE",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "",
+          "boundsDLU": [
+            8,
+            8,
+            320,
+            72
+          ],
+          "style": "SS_NOPREFIX"
+        },
+        {
+          "id": "IDX_MEM_SAVE_LIMIT",
+          "kind": "CONTROL",
+          "qtClass": "QCheckBox",
+          "text": "Change allowed limit for next operations",
+          "boundsDLU": [
+            8,
+            84,
+            320,
+            10
+          ],
+          "style": "BS_AUTOCHECKBOX | WS_TABSTOP"
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "kind": "EDITTEXT",
+          "qtClass": "QLineEdit",
+          "text": null,
+          "boundsDLU": [
+            18,
+            100,
+            50,
+            12
+          ],
+          "style": "ES_CENTER | ES_NUMBER | ES_AUTOHSCROLL"
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "kind": "CONTROL",
+          "qtClass": null,
+          "text": "4",
+          "boundsDLU": [
+            68,
+            100,
+            8,
+            12
+          ],
+          "style": "UDS_SETBUDDYINT | UDS_ALIGNRIGHT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_NOTHOUSANDS"
+        },
+        {
+          "id": "IDT_MEM_GB",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "GB",
+          "boundsDLU": [
+            76,
+            102,
+            160,
+            10
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDG_MEM_ACTION",
+          "kind": "GROUPBOX",
+          "qtClass": "QGroupBox",
+          "text": "Action",
+          "boundsDLU": [
+            8,
+            120,
+            320,
+            62
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDR_MEM_ACTION_ALLOW",
+          "kind": "CONTROL",
+          "qtClass": "QRadioButton",
+          "text": "&Allow archive unpacking",
+          "boundsDLU": [
+            16,
+            134,
+            304,
+            10
+          ],
+          "style": "BS_AUTORADIOBUTTON | WS_GROUP"
+        },
+        {
+          "id": "IDR_MEM_ACTION_SKIP_ARC",
+          "kind": "CONTROL",
+          "qtClass": "QRadioButton",
+          "text": "&Skip archive unpacking",
+          "boundsDLU": [
+            16,
+            148,
+            304,
+            10
+          ],
+          "style": "BS_AUTORADIOBUTTON"
+        },
+        {
+          "id": "IDX_MEM_REMEMBER",
+          "kind": "CONTROL",
+          "qtClass": "QCheckBox",
+          "text": "&Repeat selected action for current operation",
+          "boundsDLU": [
+            26,
+            164,
+            294,
+            10
+          ],
+          "style": "BS_AUTOCHECKBOX | WS_TABSTOP"
+        },
+        {
+          "id": "IDCONTINUE",
+          "kind": "DEFPUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "Continue",
+          "boundsDLU": [
+            192,
+            192,
+            64,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDCANCEL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "Cancel",
+          "boundsDLU": [
+            264,
+            192,
+            64,
+            16
+          ],
+          "style": ""
+        }
+      ]
+    }
+  ],
+  "behaviorSymbols": {
+    "CPP/7zip/UI/FileManager/MemDialog.cpp": [
+      "CMemDialog::AddInfoMessage_To_String",
+      "CMemDialog::EnableSpin",
+      "CMemDialog::OnButtonClicked",
+      "CMemDialog::OnContinue",
+      "CMemDialog::OnInit"
+    ]
+  },
+  "behaviorCandidates": [
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 42,
+      "code": "void CMemDialog::EnableSpin(bool enable)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 44,
+      "code": "EnableItem(IDC_MEM_SPIN, enable);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 45,
+      "code": "EnableItem(IDE_MEM_SPIN_EDIT, enable);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 82,
+      "code": "bool CMemDialog::OnInit()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 118,
+      "code": "SetItemText(IDT_MEM_MESSAGE, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 127,
+      "code": "SetItemText(IDT_MEM_GB, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 148,
+      "code": "SetItemText(IDE_MEM_SPIN_EDIT, s);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 151,
+      "code": "EnableSpin(false);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 155,
+      "code": "m_Action.SetCurSel(0);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 174,
+      "code": "return CModalDialog::OnInit();"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 178,
+      "code": "bool CMemDialog::OnButtonClicked(unsigned buttonID, HWND buttonHWND)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 182,
+      "code": "EnableSpin(IsButtonCheckedBool(IDX_MEM_SAVE_LIMIT));"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 185,
+      "code": "return CDialog::OnButtonClicked(buttonID, buttonHWND);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 189,
+      "code": "void CMemDialog::OnContinue()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 209,
+      "code": "ShowErrorMessage(*this,"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+      "line": 217,
+      "code": "CModalDialog::OnContinue();"
+    }
+  ],
+  "limitations": [
+    "DLU are not pixels; combo height includes dropdown extent",
+    "Behavior candidates are navigation hints, not a C++ semantic analysis",
+    "No Windows rendering, focus or tab-order verification"
+  ]
+}

@@ -34,6 +34,7 @@ class CFSFolder final : public IFolderFolder,
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderWasChanged)
     HRESULT Init(const FString &path);
+    HRESULT InitToRoot() { return Init((FString)FSTRING_PATH_SEPARATOR); }
     CObjectVector<CDirItem> Files;
     FStringVector Folders;
     void Clear() {

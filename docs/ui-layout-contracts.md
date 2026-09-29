@@ -12,6 +12,31 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Source extraction prompts (P0-04.1 prerequisite)
+
+`extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with
+extra buttons shown/hidden, and MemDialog reports at 700×460 / 560×460 with
+limit editing disabled/enabled. `ui_parity_overwrite` / `ui_parity_mem` run
+that current-build producer fixture before comparing pinned RC contracts.
+
+Overwrite order is destination notice, question start, old file icon/details,
+question end, new file icon/details, then two rows of Yes/Yes to all/Auto rename
+and No/No to all/Cancel. Source ReduceString, byte size and timestamp formatting
+remain native. No is the default when requested; extra actions hide together.
+Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
+explicitly in the contract. Widths must fit labels and footer buttons without
+clipping. Default and native result IDs are checked behaviorally.
+
+Memory order is native requirement/limit/RAM message, change-limit checkbox,
+independent edit/spinner and GB label, Action group containing Allow/Skip and
+Remember, Continue/Cancel. Source RAM-dependent default and spinner range,
+text validation, NeedSave/Remember/SkipArc and cancellation are preserved.
+The text field remains independent of the spinner range, including source
+acceptance of zero; invalid text does not close the dialog. Qt spinner buttons
+adapt the original edit/up-down pair. These checks establish structure and local
+Qt usability. Native PanelOpen integration is checked in P0-04.1; Windows
+rendering remains unverified.
+
 ```sh
 ./scripts/build.sh dev ui_geometry_tests
 ctest --preset dev -R '^ui_geometry$' --output-on-failure
@@ -102,6 +127,19 @@ is in `list_activation`; this adaptation does not change the geometry contract.
 `folder_history` verifies list/footer visibility and separation at 540×360
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
 usability; rendered Windows parity remains unverified.
+
+## Hash results
+
+The native HashGUI result presenter uses the same ListViewDialog resource and
+two-column property/value body. Its title is «Контрольные суммы»; source bundle
+rows include the filename, byte size and requested digest. It starts without
+selected rows and retains the native DeleteIsAllowed flag. OK/Cancel remain
+below the list. `hash_results` checks exact source-generated rows against a
+CRC32 fixture, title/state and unclipped, separate list/footer/buttons at
+540×360 and 420×360; reports are `hash-results-540`/`hash-results-420`.
+Horizontal scrolling remains available for long Unicode names/values. This
+checks Qt structure/usability, not rendered Windows pixel parity. The complete
+hash command/file workflow remains mandatory P2-03.
 
 ## Full text detail
 

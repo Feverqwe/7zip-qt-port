@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+#include "qtarchivefoldermanager.h"
+#include "qtassociatedfileservices.h"
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener)
     : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
@@ -6,6 +8,10 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     setWindowTitle("Sevenzip Desktop");
     resize(980, 620);
     app_.NumPanels = 1;
+    folderManager_ = new QtArchiveFolderManager(*backend_);
+    associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(fileOpener_);
+    app_.GetFocusedPanel().AttachFolderManager(folderManager_, toolbarSettingsPath());
+    app_.GetFocusedPanel().AttachExternalFileServices(associatedFileServices_.get());
     app_.AppState.Read(toolbarSettingsPath());
     QMenu *editMenu = createMenusAndToolbar();
     createFilePanel(editMenu);

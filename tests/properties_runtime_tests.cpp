@@ -110,7 +110,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(properties.values.value("Имя").normalized(QString::NormalizationForm_C), name);
         QCOMPARE(properties.values.value("Размер"), QString("7"));
         QCOMPARE(properties.values.value("Сжатый размер"), QString("7"));
-        QCOMPARE(properties.values.value("Путь"), root.path());
+        QCOMPARE(properties.values.value("Путь"), QDir::fromNativeSeparators(root.path() + '/'));
         QVERIFY(!properties.values.value("Изменён").isEmpty());
         // Prime the source's lazy Windows packed-size cache before changing the file.
         createFile(root.filePath(name), 31);
@@ -141,12 +141,12 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(!properties.values.contains("Размер"));
         QVERIFY(!properties.values.contains("Файлов"));
         QVERIFY(!properties.values.contains("Папок"));
-        window.openArchive("properties-runtime.zip");
+        openListedArchive(window, backend, "properties-runtime.zip",
+                          {{name, 17, 5, "2026-09-29 12:34:56.1234567"},
+                           {directory + '/' + name, 23, 9},
+                           {"zero", 0, 0},
+                           {"unknown", -1, -1}});
         QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
-        backend.completeList({{name, 17, 5, "2026-09-29 12:34:56.1234567"},
-                              {directory + '/' + name, 23, 9},
-                              {"zero", 0, 0},
-                              {"unknown", -1, -1}});
         action(window, "flatViewAction")->setChecked(flat);
         selectOnly(window, rowWithPath(window, name));
         // Sorting/display text cannot change source metadata or operated indices.
@@ -215,7 +215,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(properties.shown);
         QCOMPARE(properties.values.value("Размер"), QString("31"));
         QCOMPARE(properties.values.value("Сжатый размер"), QString("31"));
-        QCOMPARE(properties.values.value("Путь"), root.path());
+        QCOMPARE(properties.values.value("Путь"), QDir::fromNativeSeparators(root.path() + '/'));
         selectOnly(window, diskRow(window, root.filePath("zero")));
         properties = inspect(window);
         QVERIFY(properties.shown);

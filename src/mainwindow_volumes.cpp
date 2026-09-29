@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "mainwindow.h"
+#include "qtassociatedfileservices.h"
 
 MainWindow::~MainWindow() {
     removeEventFilter(this);

@@ -35,9 +35,7 @@ QStringList MainWindow::selectedFilesystemPaths() {
     if (!panel.GetFolder())
         return paths;
     const auto indices = sourceOperatedIndices();
-    // Restore the native normalized prefix after presentation-only consumers,
-    // until original LoadFullPath owns the complete location/parent stack.
-    panel.SetCurrentFolderPrefix(ToQString(GetFolderPath(panel.GetFolder())));
+    panel.LoadFullPath();
     FOR_VECTOR(i, indices)
     paths << QtFilesystemPath(us2fs(panel.GetItemFullPath(indices[i])));
     return paths;
@@ -56,7 +54,7 @@ QStringList MainWindow::selectedArchivePaths() {
     // Preserve the 7zz selected-directory transport policy until source Extract
     // integration (P0-12); the original engine Extract passes false here.
     folder->GetRealIndices(indices.ConstData(), indices.Size(), false, true, realIndices);
-    IFolderFolder *properties = folder->GetArchiveProperties();
+    IInArchive *properties = folder->GetArchiveProperties();
     if (!properties)
         return paths;
     FOR_VECTOR(i, realIndices) {

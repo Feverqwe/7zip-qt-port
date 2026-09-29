@@ -32,13 +32,18 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             emit engineStarted();
     });
     connect(&process_, &QProcess::readyRead, this, [this] { consumeOutput(process_.readAll()); });
+    connect(&process_, &QProcess::readyReadStandardError, this, [this] {
+        if (job_ == Job::SourceExtract)
+            consumeOutput(process_.readAllStandardError());
+    });
     connect(&process_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
             &ArchiveBackend::complete);
     connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
         if (error == QProcess::FailedToStart && job_ != Job::None) {
             processPause_.ResetAfterExit();
             if (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete ||
-                job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd)
+                job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd ||
+                job_ == Job::SourceUpdate || job_ == Job::SourceExtract)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
             pendingPassword_.clear();
@@ -58,11 +63,14 @@ ArchiveBackend::~ArchiveBackend() {
     cancelAndWait();
     if (process_.state() == QProcess::NotRunning &&
         (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete || job_ == Job::Rename ||
-         job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd))
+         job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd || job_ == Job::SourceUpdate ||
+         job_ == Job::SourceExtract))
         QFile::remove(createTemporary_);
 }
 
 bool ArchiveBackend::busy() const { return job_ != Job::None; }
+
+HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
 HRESULT ArchiveBackend::setPaused(bool paused) {
     if (process_.state() != QProcess::Running)
@@ -82,11 +90,15 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
         return;
     }
     job_ = job;
+    lastResult_ = E_FAIL;
     output_.clear();
     pendingOutput_.clear();
     cancelled_ = false;
     passwordPrompted_ = false;
     process_.setWorkingDirectory(workingDirectory);
+    process_.setProcessChannelMode(job == Job::SourceExtract ? QProcess::SeparateChannels
+                                                             : QProcess::MergedChannels);
+    process_.setStandardOutputFile(job == Job::SourceExtract ? createTemporary_ : QString());
     QStringList processArguments = arguments;
     processArguments.insert(1, "-sccUTF-8");
     process_.setArguments(processArguments);
@@ -159,6 +171,19 @@ void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
 }
 
 void ArchiveBackend::list(const QString &archive, const QString &password) {
+    startListing(archive, password, {});
+}
+
+void ArchiveBackend::openFolder(const QString &archive, const QString &format,
+                                const QString &password) {
+    if (format.isEmpty())
+        list(archive, password);
+    else
+        startListing(archive, password, format);
+}
+
+void ArchiveBackend::startListing(const QString &archive, const QString &password,
+                                  const QString &format) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -168,7 +193,11 @@ void ArchiveBackend::list(const QString &archive, const QString &password) {
     listed_ = false;
     encrypted_ = false;
     pendingPassword_ = password;
-    start(Job::List, {"l", "-slt", "--", archive_});
+    QStringList arguments{"l", "-slt"};
+    if (!format.isEmpty())
+        arguments << QStringLiteral("-t") + format;
+    arguments << "--" << archive_;
+    start(Job::List, arguments);
 }
 
 void ArchiveBackend::extract(const QString &archive, const QString &destination,
@@ -294,23 +323,30 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (job_ == Job::None)
         return;
     consumeOutput(process_.readAll(), true);
+    if (job_ == Job::SourceExtract)
+        consumeOutput(process_.readAllStandardError(), true);
     pendingPassword_.clear();
     const Job completed = job_;
     job_ = Job::None;
     if (cancelled_) {
+        lastResult_ = E_ABORT;
         extractPassword_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
-            completed == Job::ReplaceAdd)
+            completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
+            completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
+        if (completed == Job::List)
+            lastResult_ = listingFailureResult(exitCode, status);
         extractPassword_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
-            completed == Job::ReplaceAdd)
+            completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
+            completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
         const bool wrongPassword =
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
@@ -376,6 +412,11 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                 const qint64 size = line.mid(16).toLongLong(&valid);
                 if (valid)
                     info.physicalSize = size;
+            } else if (line.startsWith(QStringLiteral("Offset = "))) {
+                bool valid = false;
+                const qint64 offset = line.mid(9).toLongLong(&valid);
+                if (valid)
+                    info.offset = offset;
             }
         }
         for (const ArchiveEntry &entry : entries_) {
@@ -392,6 +433,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         emit infoReady(info);
         emit entriesReady(entries_);
     }
+    lastResult_ = S_OK;
     emit progress(100, QString());
     emit finished(true, completed == Job::List      ? QStringLiteral("Архив открыт.")
                         : completed == Job::Extract ? QStringLiteral("Извлечение завершено.")

@@ -3,37 +3,31 @@
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "Common/Defs.h"
 #include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
 #include "mainwindow.h"
+#include "qtlocationfolder.h"
 
-const CProxyArc &MainWindow::archiveProxy() const {
-    return static_cast<CAgentFolder *>((IFolderFolder *)archiveRoot_)->GetProxy();
-}
-
-void MainWindow::showArchiveFolder(const QString &folder) {
-    if (!archiveRoot_)
-        return;
-    const CProxyArc &proxy = archiveProxy();
-    const int dirIndex = proxy.FindDir(folder);
-    if (dirIndex < 0)
-        return;
-    CMyComPtr<IFolderFolder> folderOwner;
-    auto *root = static_cast<CAgentFolder *>((IFolderFolder *)archiveRoot_);
-    if (root->BindToFolder_Internal(unsigned(dirIndex), &folderOwner) != S_OK)
+void MainWindow::renderArchiveFolder() {
+    auto &panel = app_.GetFocusedPanel();
+    CPanel::CDisableTimerProcessing disableTimerProcessing(panel);
+    CPanel::CDisableNotify disableNotify(panel);
+    CMyComPtr<IFolderFolder> folderOwner = panel.GetFolder();
+    if (!folderOwner)
         return;
     auto *archiveFolder = static_cast<CAgentFolder *>((IFolderFolder *)folderOwner);
     const bool flat = flatView_->isChecked();
     archiveFolder->SetFlatMode(BoolToInt(flat));
     if (archiveFolder->LoadItems() != S_OK)
         return;
-    archiveFolder_ = folder;
     static_cast<FileTable *>(table_)->filesystem = false;
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     table_->setColumnHidden(3, !settings.value("columns/3", true).toBool());
-    if (archiveParents_.empty())
+    if (!isNestedArchive())
         recordVisitedPath(archiveDisplayPath());
-    const QString prefix = folder.isEmpty() ? QString() : folder + '/';
+    const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';
     table_->setSortingEnabled(false);
     app_.GetFocusedPanel().SetNewFolder(folderOwner);
+    app_.GetFocusedPanel().LoadFullPath();
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
         appendArchiveEntry(*archiveFolder, index, prefix, flat);
     table_->setSortingEnabled(true);
@@ -48,24 +42,33 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
     const CProxyArc &proxy = folder.GetProxy();
     const CProxyItem proxyItem = folder.GetItem(index);
     const CProxyDir &parent = proxy.Dirs[proxyItem.DirIndex];
-    const bool isDir = proxyItem.Index < parent.SubDirs.size();
+    const bool isDir = proxyItem.Index < parent.SubDirs.Size();
     const int realIndex = proxy.GetRealIndex(proxyItem.DirIndex, proxyItem.Index);
     const unsigned childDir = isDir ? parent.SubDirs[proxyItem.Index] : 0;
-    ArchiveEntry entry = realIndex < 0 ? ArchiveEntry{} : entries_[realIndex];
+    ArchiveEntry entry;
     entry.directory = isDir;
-    const QString name = isDir ? proxy.Dirs[childDir].Name : proxy.Files[unsigned(realIndex)].Name;
-    const QString panelPrefix = proxy.GetDirPath_as_Prefix(proxyItem.DirIndex);
+    const QString name = QString::fromWCharArray(isDir ? proxy.Dirs[childDir].Name
+                                                       : proxy.Files[unsigned(realIndex)].Name);
+    const QString panelPrefix =
+        QDir::fromNativeSeparators(ToQString(proxy.GetDirPath_as_Prefix(proxyItem.DirIndex)));
     if (isDir) {
-        entry.path = proxy.GetDirPath_as_Prefix(childDir);
+        entry.path = QDir::fromNativeSeparators(ToQString(proxy.GetDirPath_as_Prefix(childDir)));
         entry.path.chop(1);
-    }
+    } else
+        entry.path = panelPrefix + name;
     const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
     const int row = table_->rowCount();
     table_->insertRow(row);
     const int sourceOrder = int(index);
-    NWindows::NCOM::CPropVariant size, packedSize;
+    NWindows::NCOM::CPropVariant size, packedSize, modified;
     folder.GetProperty(index, kpidSize, &size);
     folder.GetProperty(index, kpidPackSize, &packedSize);
+    folder.GetProperty(index, kpidMTime, &modified);
+    if (modified.vt == VT_FILETIME) {
+        char text[64];
+        if (ConvertUtcFileTimeToString(modified.filetime, text))
+            entry.modified = QString::fromLatin1(text);
+    }
     const QVariant sizeValue =
         size.vt == VT_UI8 ? QVariant::fromValue(quint64(size.uhVal.QuadPart)) : QVariant();
     const QVariant packedValue = packedSize.vt == VT_UI8
@@ -117,7 +120,7 @@ void MainWindow::refreshActions() {
     open_->setEnabled(idle);
     create_->setEnabled(idle && state_ == State::Filesystem);
     add_->setEnabled(idle && state_ == State::Viewing && ArchiveFormats::canModify(archive_) &&
-                     !info_.encrypted && archiveParents_.empty());
+                     !info_.encrypted && !isNestedArchive());
     toolbarAdd_->setEnabled(create_->isEnabled() || add_->isEnabled());
     extract_->setEnabled(idle && state_ == State::Viewing && !entries_.isEmpty());
     test_->setEnabled(idle && state_ == State::Viewing);
@@ -167,7 +170,7 @@ void MainWindow::refreshActions() {
     deselectType_->setEnabled(idle && table_->currentRow() >= 0);
     copy_->setEnabled(idle && selected);
     const bool writableArchive = state_ == State::Viewing && ArchiveFormats::canModify(archive_) &&
-                                 !info_.encrypted && archiveParents_.empty();
+                                 !info_.encrypted && !isNestedArchive();
     move_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
     remove_->setEnabled(idle && selected && (state_ == State::Filesystem || writableArchive));
     const bool one = table_->selectionModel()->selectedRows().size() == 1;

@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "mainwindow.h"
+#include "qtlocationfolder.h"
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
@@ -147,13 +148,13 @@ void MainWindow::refreshBookmarks() {
         openBookmarks_[index]->setEnabled(!path.isEmpty() && state_ != State::Loading &&
                                           state_ != State::Operating);
         saveBookmarks_[index]->setEnabled(state_ != State::Loading && state_ != State::Operating &&
-                                          archiveParents_.empty());
+                                          !isNestedArchive());
     }
 }
 
 void MainWindow::saveBookmark(int index) {
     if (index < 0 || index >= 10 || (state_ != State::Filesystem && state_ != State::Viewing) ||
-        !archiveParents_.empty())
+        isNestedArchive())
         return;
     CPanel::SetBookmark(app_.AppState.FastFolders, (unsigned)index,
                         ToUString(state_ == State::Filesystem ? directory_ : archiveDisplayPath()));
@@ -169,10 +170,6 @@ void MainWindow::openBookmark(int index) {
     if (path.isEmpty())
         return;
     navigateTo(path);
-}
-
-bool MainWindow::archiveFolderExists(const QString &folder) const {
-    return archiveRoot_ && archiveProxy().FindDir(folder) >= 0;
 }
 
 void MainWindow::updateToolbar() {

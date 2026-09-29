@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "window_state_support.h"
+#include <QScopeGuard>
 
 class MainWindowOperationsTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -192,8 +193,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
         QTRY_VERIFY(table(window)->isEnabled());
 
-        window.openArchive("items.zip");
-        backend.completeList({ArchiveEntry{QStringLiteral("nested/file.txt"), 4, 4}});
+        openListedArchive(window, backend, "items.zip",
+                          {ArchiveEntry{QStringLiteral("nested/file.txt"), 4, 4}});
         const int row = filesystemRow(window, "nested");
         QVERIFY(row >= 0);
         table(window)->selectRow(row);
@@ -248,25 +249,33 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     void stage7ArchiveCommandStates() {
         ControlledBackend backend;
         MainWindow window(&backend);
+        QVERIFY(backend.prepareArchiveFixture("first.7z"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard(
+                [&] { backend.completeList({ArchiveEntry{QStringLiteral("file.txt"), 4, 4}}); });
+            QVERIFY(!action(window, "copyAction")->isEnabled());
+            QVERIFY(!action(window, "moveAction")->isEnabled());
+        });
         window.openArchive("first.7z");
-        QVERIFY(!action(window, "copyAction")->isEnabled());
-        QVERIFY(!action(window, "moveAction")->isEnabled());
-        backend.completeList({ArchiveEntry{QStringLiteral("file.txt"), 4, 4}});
         table(window)->selectRow(0);
         QVERIFY(action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "moveAction")->isEnabled());
         QVERIFY(action(window, "deleteAction")->isEnabled());
         QVERIFY(action(window, "renameAction")->isEnabled());
+        QVERIFY(backend.prepareArchiveFixture("second.zip"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({}); });
+            QVERIFY(!action(window, "copyAction")->isEnabled());
+        });
         window.openArchive("second.zip");
-        QVERIFY(!action(window, "copyAction")->isEnabled());
-        backend.completeList({});
         QVERIFY(!action(window, "copyAction")->isEnabled());
         QVERIFY(!action(window, "moveAction")->isEnabled());
         QVERIFY(!action(window, "deleteAction")->isEnabled());
         QVERIFY(!action(window, "renameAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
+        QVERIFY(backend.prepareArchiveFixture("cancel.7z"));
+        backend.queueListAction([&] { backend.cancel(); });
         window.openArchive("cancel.7z");
-        backend.cancel();
         QVERIFY(!action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
     }
@@ -277,8 +286,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const QString destination = temp.filePath("destination");
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive(temp.filePath("items.7z"));
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/файл с пробелом.txt"), 4, 4}});
+        openListedArchive(window, backend, temp.filePath("items.7z"),
+                          {ArchiveEntry{QStringLiteral("папка/файл с пробелом.txt"), 4, 4}});
         table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
         QString moveInfo;
         const auto submit = [&window, &destination, &moveInfo] {
@@ -341,9 +350,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(backend.extractCalls, 4);
         backend.completeAdd();
         QCOMPARE(backend.removeCalls, 2);
+        backend.queueList({});
         backend.completeAdd();
         QCOMPARE(backend.listCalls, 2);
-        backend.completeList({});
         QVERIFY(!action(window, "moveAction")->isEnabled());
     }
     void movesRealArchiveEntryToDirectory() {
@@ -387,8 +396,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     void stage7ArchiveMutations() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("mutate.7z");
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/file.txt"), 4, 4}});
+        openListedArchive(window, backend, "mutate.7z",
+                          {ArchiveEntry{QStringLiteral("папка/file.txt"), 4, 4}});
         table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
         QVERIFY(action(window, "deleteAction")->isEnabled());
         QVERIFY(action(window, "renameAction")->isEnabled());
@@ -442,12 +451,18 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(backend.renameCalls, 2);
         QCOMPARE(backend.lastRenameOld, QStringLiteral("папка/file.txt"));
         QCOMPARE(backend.lastRenameNew, QStringLiteral("папка/новый.txt"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] {
+                backend.completeList({ArchiveEntry{QStringLiteral("папка/новый.txt"), 4, 4}});
+            });
+            QVERIFY(!action(window, "renameAction")->isEnabled());
+        });
         backend.completeAdd();
         QCOMPARE(backend.listCalls, 2);
         QVERIFY(!action(window, "renameAction")->isEnabled());
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/новый.txt"), 4, 4}});
-        QVERIFY(!action(window, "renameAction")->isEnabled());
-        openRow(window, filesystemRow(window, QStringLiteral("папка")));
+        QVERIFY(window.findChild<QLineEdit *>("archivePath")
+                    ->text()
+                    .endsWith(QStringLiteral(" / папка")));
         table(window)->selectRow(filesystemRow(window, QStringLiteral("новый.txt")));
         QVERIFY(action(window, "renameAction")->isEnabled());
     }
@@ -468,10 +483,13 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         const QString archive = temp.filePath("existing.zip");
+        QVERIFY(backend.prepareArchiveFixture(archive));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({}); });
+            QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+            QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
+        });
         window.openArchive(archive);
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
-        backend.completeList({});
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "createArchiveAction")->isEnabled());
@@ -543,16 +561,22 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         choose(1);
         QCOMPARE(backend.addCalls, 2);
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] {
+                backend.completeList({{QStringLiteral("новый файл.txt"), 4, 4, {}, false, false}});
+            });
+            QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        });
         choose(2);
         QCOMPARE(backend.addCalls, 3);
         QCOMPARE(backend.listCalls, 2);
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
-        backend.completeList({{QStringLiteral("новый файл.txt"), 4, 4, {}, false, false}});
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QCOMPARE(table(window)->rowCount(), 1);
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList({}); });
+            QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        });
         window.openArchive(archive);
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
-        backend.completeList({});
         QVERIFY(action(window, "addArchiveAction")->isEnabled());
     }
     void createDialogAndStateTransitions() {
@@ -659,11 +683,12 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(backend.createCalls, 2);
         backend.fail(QStringLiteral("Операция отменена."));
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
-        window.openArchive("empty.7z");
-        backend.completeList({});
+        openListedArchive(window, backend, temp.filePath("empty.7z"), {});
         QVERIFY(!action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         action(window, "backAction")->trigger();
+        QVERIFY(QFile::remove(temp.filePath("empty.7z")));
+        action(window, "refreshAction")->trigger();
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
         chooseSources();
         QCOMPARE(backend.createCalls, 3);

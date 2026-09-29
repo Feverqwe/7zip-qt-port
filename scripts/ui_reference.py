@@ -18,7 +18,7 @@ KINDS = {
     "GROUPBOX": "QGroupBox", "EDITTEXT": "QLineEdit",
     "COMBOBOX": "QComboBox", "CHECKBOX": "QCheckBox",
     "AUTOCHECKBOX": "QCheckBox", "AUTORADIOBUTTON": "QRadioButton",
-    "LISTBOX": "QListWidget", "CONTROL": None,
+    "LISTBOX": "QListWidget", "CONTROL": None, "ICON": "QLabel",
 }
 TOKEN = re.compile(r'L?"(?:[^"\\]|\\.|"")*"|[A-Za-z_]\w*|0[xX][0-9a-fA-F]+|\d+|[^\s]')
 

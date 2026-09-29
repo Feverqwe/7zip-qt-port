@@ -9,4 +9,5 @@
 #include "7zip/ICoder.h"
 #include "7zip/IPassword.h"
 #include "7zip/UI/FileManager/IFolder.h"
+#include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/Agent/IFolderArchive.h"

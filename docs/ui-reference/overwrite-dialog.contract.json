@@ -1,0 +1,398 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "dialog": "IDD_OVERWRITE",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/OverwriteDialog.rc": "5fe96f6d1f1757e3c158ab0a4f9c15c6380417ed9b0ba3b3f913339f3fa5166e",
+    "CPP/7zip/UI/FileManager/OverwriteDialogRes.h": "1d105c6eed6c8f563bf58b8a62898a33e5d704126f4ede65319e4351e1c2d587",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/OverwriteDialog.cpp": "25d767e4108018f967cdf684d88a7a95adcc96aa343e3467113fb11c7e1b49e9"
+  },
+  "controls": {
+    "IDT_OVERWRITE_HEADER": {
+      "selector": {
+        "name": "overwriteHeader"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDT_OVERWRITE_QUESTION_BEGIN": {
+      "selector": {
+        "name": "overwriteQuestionBegin"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDI_OVERWRITE_OLD_FILE": {
+      "selector": {
+        "name": "overwriteOldFileIcon"
+      }
+    },
+    "IDI_OVERWRITE_OLD_FILE_2": {
+      "omit": "QFileIconProvider exposes one platform file icon; secondary Windows EXE/ICO shell extraction has no portable provider equivalent."
+    },
+    "IDT_OVERWRITE_OLD_FILE_SIZE_TIME": {
+      "selector": {
+        "name": "overwriteOldFile"
+      }
+    },
+    "IDT_OVERWRITE_QUESTION_END": {
+      "selector": {
+        "name": "overwriteQuestionEnd"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDI_OVERWRITE_NEW_FILE": {
+      "selector": {
+        "name": "overwriteNewFileIcon"
+      }
+    },
+    "IDI_OVERWRITE_NEW_FILE_2": {
+      "omit": "QFileIconProvider exposes one platform file icon; secondary Windows EXE/ICO shell extraction has no portable provider equivalent."
+    },
+    "IDT_OVERWRITE_NEW_FILE_SIZE_TIME": {
+      "selector": {
+        "name": "overwriteNewFile"
+      }
+    },
+    "IDYES": {
+      "selector": {
+        "name": "overwriteYes"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDB_YES_TO_ALL": {
+      "selector": {
+        "name": "overwriteYesAll"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDB_AUTO_RENAME": {
+      "selector": {
+        "name": "overwriteRename"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDNO": {
+      "selector": {
+        "name": "overwriteNo"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDB_NO_TO_ALL": {
+      "selector": {
+        "name": "overwriteNoAll"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDCANCEL": {
+      "selector": {
+        "name": "overwriteCancel"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    }
+  },
+  "relations": [
+    {
+      "a": "IDT_OVERWRITE_HEADER",
+      "kind": "above",
+      "b": "IDT_OVERWRITE_QUESTION_BEGIN"
+    },
+    {
+      "a": "IDT_OVERWRITE_QUESTION_BEGIN",
+      "kind": "above",
+      "b": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME"
+    },
+    {
+      "a": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
+      "kind": "above",
+      "b": "IDT_OVERWRITE_QUESTION_END"
+    },
+    {
+      "a": "IDT_OVERWRITE_QUESTION_END",
+      "kind": "above",
+      "b": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME"
+    }
+  ],
+  "states": [
+    {
+      "name": "extra-buttons-0",
+      "reports": [
+        "overwrite-700-0.json",
+        "overwrite-560-0.json"
+      ],
+      "evidence": [
+        {
+          "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+          "symbol": "COverwriteDialog::OnInit",
+          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+        }
+      ],
+      "assert": [
+        {
+          "id": "IDT_OVERWRITE_HEADER",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_HEADER",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_BEGIN",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_BEGIN",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_OLD_FILE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_OLD_FILE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_END",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_END",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_NEW_FILE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_NEW_FILE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDYES",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDYES",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDB_YES_TO_ALL",
+          "property": "visible",
+          "equals": false
+        },
+        {
+          "id": "IDB_AUTO_RENAME",
+          "property": "visible",
+          "equals": false
+        },
+        {
+          "id": "IDNO",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDNO",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDB_NO_TO_ALL",
+          "property": "visible",
+          "equals": false
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "fullyVisible",
+          "equals": true
+        }
+      ]
+    },
+    {
+      "name": "extra-buttons-1",
+      "reports": [
+        "overwrite-700-1.json",
+        "overwrite-560-1.json"
+      ],
+      "evidence": [
+        {
+          "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
+          "symbol": "COverwriteDialog::OnInit",
+          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+        }
+      ],
+      "assert": [
+        {
+          "id": "IDT_OVERWRITE_HEADER",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_HEADER",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_BEGIN",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_BEGIN",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_OLD_FILE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_OLD_FILE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_END",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_QUESTION_END",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_NEW_FILE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDI_OVERWRITE_NEW_FILE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDYES",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDYES",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDB_YES_TO_ALL",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDB_YES_TO_ALL",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDB_AUTO_RENAME",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDB_AUTO_RENAME",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDNO",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDNO",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDB_NO_TO_ALL",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDB_NO_TO_ALL",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "fullyVisible",
+          "equals": true
+        }
+      ]
+    }
+  ],
+  "behavioralTests": {
+    "ctest": "^extract_prompt$",
+    "scope": "Native overwrite answers/default/cancel/formatting; memory enable/validation/commit/cancel; CVirtFileSystem memory and disk content; extraction progress stop and registry limit. Windows rendering and production PanelOpen integration remain unverified."
+  }
+}

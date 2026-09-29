@@ -107,6 +107,8 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
 }
 
 void CPanel::RefreshListCtrl(const CSelectedState &state) {
+    if (_selectionList.GetItemCount() == 0)
+        _refreshSelection = state;
     CDisableTimerProcessing timerProcessing(*this);
     CDisableNotify disableNotify(*this);
     int focusedPos = state.FocusedItem;
@@ -171,6 +173,11 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
     _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
 }
 
+void CPanel::RefreshListCtrl() {
+    CSelectedState state;
+    RefreshListCtrl(state);
+}
+
 UInt64 CPanel::GetItem_UInt64Prop(UInt32 itemIndex, UInt32 propID) const {
     if (itemIndex == kParentIndex)
         return 0;
@@ -200,6 +207,12 @@ bool CPanel::GetItem_BoolProp(UInt32 itemIndex, PROPID propID) const {
     if (prop.vt == VT_EMPTY)
         return false;
     throw 2723401;
+}
+
+bool CPanel::IsItem_AltStream(unsigned itemIndex) const {
+    if (itemIndex == kParentIndex)
+        return false;
+    return GetItem_BoolProp(itemIndex, kpidIsAltStream);
 }
 
 bool CPanel::IsItem_Folder(UInt32 itemIndex) const {

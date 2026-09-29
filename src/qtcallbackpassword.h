@@ -3,3 +3,4 @@
 #include "Common/MyString.h"
 class CProgressDialog;
 bool AskCallbackPassword(CProgressDialog &parent, UString &password);
+bool AskCallbackPassword(CProgressDialog &parent, UString &password, bool &showPassword);

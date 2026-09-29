@@ -1,51 +1,11 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "mainwindow.h"
-#include "qtlocationfolder.h"
 
 void MainWindow::connectBackend() {
-    connect(
-        backend_, &ArchiveBackend::entriesReady, this, [this](const QList<ArchiveEntry> &entries) {
-            if (state_ != State::Loading)
-                return;
-            CMyComPtr<IFolderFolder> root;
-            const HRESULT result = CreateArchiveFolder(entries, ToUString(info_.format), &root);
-            if (result != S_OK) {
-                listingFolderError_ =
-                    QStringLiteral("Не удалось открыть архив (%1).").arg(quint32(result), 0, 16);
-                return;
-            }
-            entries_ = entries;
-            archiveRoot_ = root;
-            QString folder = refreshing_ ? refreshFolder_ : pendingArchiveFolder_;
-            while (!folder.isEmpty()) {
-                bool present = false;
-                for (const ArchiveEntry &entry : entries_) {
-                    present = entry.path == folder || entry.path == folder + '/' ||
-                              entry.path.startsWith(folder + '/');
-                    if (present)
-                        break;
-                }
-                if (present)
-                    break;
-                const int separator = folder.lastIndexOf('/');
-                folder = separator < 0 ? QString() : folder.left(separator);
-            }
-            {
-                const QSignalBlocker blocked(flatView_);
-                flatView_->setChecked(flatArchive_);
-            }
-            showArchiveFolder(folder);
-            pendingArchiveFolder_.clear();
-            if (refreshing_)
-                app_.GetFocusedPanel().RefreshListCtrl(
-                    folder == refreshFolder_ ? refreshSelectedState_ : CSelectedState());
-            refreshing_ = false;
-            refreshFolder_.clear();
-            refreshSelectedState_ = CSelectedState();
-            setState(State::Viewing);
-        });
-    connect(backend_, &ArchiveBackend::infoReady, this,
-            [this](const ArchiveInfo &info) { info_ = info; });
+    connect(backend_, &ArchiveBackend::infoReady, this, [this](const ArchiveInfo &info) {
+        if (!sourceArchiveProgress_)
+            info_ = info;
+    });
     connect(backend_, &ArchiveBackend::passwordRequired, this, [this] {
         if (sourceArchiveProgress_)
             return;
@@ -78,12 +38,6 @@ void MainWindow::connectBackend() {
 void MainWindow::backendFinished(bool ok, const QString &message, bool messageDisplayed) {
     if (sourceArchiveProgress_)
         return; // Source worker owns completion until its modal lifecycle joins.
-    if (!listingFolderError_.isEmpty()) {
-        const QString bindingError = listingFolderError_;
-        listingFolderError_.clear();
-        backendFinished(false, bindingError);
-        return;
-    }
     if (startPendingHash(ok))
         return;
     if (pendingHashExtraction_) {
@@ -106,8 +60,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
         archiveMoveStage_ = ArchiveMoveStage::None;
         archiveMovePaths_.clear();
     }
-    if (nestedListing_ && ok)
-        nestedListing_ = false;
     if (!ok)
         archivePassword_.clear();
     appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
@@ -118,10 +70,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
     if (finishArchiveState(ok))
         return;
     finishViewExtraction(ok);
-    if (pendingNested_) {
-        if (finishNestedExtraction(ok))
-            return;
-    }
     statusBar()->showMessage(resultMessage);
     if (!ok && !messageDisplayed && resultMessage != "Операция отменена.")
         QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
@@ -158,29 +106,19 @@ bool MainWindow::startPendingArchiveMove(bool ok) {
 
 bool MainWindow::finishArchiveState(bool ok) {
     if (state_ == State::Loading && !ok) {
-        if (nestedListing_ && !archiveParents_.empty())
-            restoreParentArchive();
-        else
-            showDirectory(returnDirectory_, false);
+        showDirectory(returnDirectory_, false);
     } else if (state_ == State::Operating) {
         if (replacingArchiveEntry_) {
             replacingArchiveEntry_ = false;
             viewTemporary_.reset();
-            if (ok) {
-                refreshing_ = true;
-                refreshFolder_ = archiveFolder_;
-            } else
-                refreshSelectedState_ = CSelectedState();
             pendingEditEntry_.clear();
         }
         if (creating_)
             showDirectory(directory_, false);
         else if (updatingArchive_ && ok) {
             updatingArchive_ = false;
-            entries_.clear();
-            table_->setRowCount(0);
-            setState(State::Loading);
-            backend_->list(archive_);
+            setState(State::Viewing);
+            refreshCurrent();
             return true;
         } else
             setState(previousState_ == State::Viewing ? State::Viewing : State::Filesystem);

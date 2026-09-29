@@ -3,8 +3,19 @@
 #pragma once
 #include "../../Common/MethodProps.h"
 #include "7zip/UI/Common/ExtractMode.h"
+#include "Common/MyString.h"
 #include "Common/MyVector.h"
 #include <QString>
+struct CContextMenuInfo {
+    CBoolPair Cascaded;
+    CBoolPair MenuIcons;
+    CBoolPair ElimDup;
+    bool Flags_Def;
+    UInt32 Flags;
+    UInt32 WriteZone;
+    void Save(const QString &path) const;
+    void Load(const QString &path);
+};
 namespace NCompression {
 struct CMemUse {
     // UString Str;
@@ -60,6 +71,10 @@ struct CInfo {
 } // namespace NCompression
 
 namespace NExtract {
+UInt32 Read_LimitGB(const QString &path);
+void Save_LimitGB(const QString &path, UInt32 limit_GB);
+bool Read_ShowPassword(const QString &path);
+void Save_ShowPassword(const QString &path, bool showPassword);
 struct CInfo {
     NPathMode::EEnum PathMode;
     NOverwriteMode::EEnum OverwriteMode;
@@ -72,3 +87,22 @@ struct CInfo {
     void Load(const QString &path);
 };
 } // namespace NExtract
+
+namespace NWorkDir {
+namespace NMode {
+enum EEnum { kSystem, kCurrent, kSpecified };
+}
+struct CInfo {
+    NMode::EEnum Mode;
+    bool ForRemovableOnly;
+    FString Path;
+    void SetForRemovableOnlyDefault() { ForRemovableOnly = true; }
+    void SetDefault() {
+        Mode = NMode::kSystem;
+        Path.Empty();
+        SetForRemovableOnlyDefault();
+    }
+    void Save(const QString &path) const;
+    void Load(const QString &path);
+};
+} // namespace NWorkDir

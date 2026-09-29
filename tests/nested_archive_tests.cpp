@@ -16,9 +16,18 @@ class NestedBackend : public ArchiveBackend {
   public:
     NestedBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
 
+    HRESULT lastResult() const override { return cancelExtraction ? E_ABORT : E_FAIL; }
+    void openFolder(const QString &archive, const QString &,
+                    const QString &password = {}) override {
+        list(archive, password);
+    }
+
     void list(const QString &archive, const QString & = {}) override {
         listed << archive;
         QTimer::singleShot(0, this, [this, archive] {
+            ArchiveInfo info;
+            info.format = "zip";
+            emit infoReady(info);
             if (archive == listed.first())
                 emit entriesReady(
                     {ArchiveEntry{"folder/вложенный архив.zip", 4, 4, {}, false, false}});
@@ -26,6 +35,21 @@ class NestedBackend : public ArchiveBackend {
                 emit entriesReady({ArchiveEntry{"inside.txt", 3, 3, {}, false, false}});
             const bool success = archive == listed.first() || !failNestedListing;
             emit finished(success, success ? "Архив открыт." : "Неверный архив.");
+        });
+    }
+    void extractSourceEntry(const QString &, const QString &entry, const QString &output,
+                            const QString &, const QString &) override {
+        extracted = {entry};
+        temporary = output;
+        QTimer::singleShot(0, this, [this, output] {
+            if (cancelExtraction) {
+                emit finished(false, QStringLiteral("Операция отменена."));
+                return;
+            }
+            QFile file(output);
+            const bool ok = file.open(QIODevice::WriteOnly) && file.write("test") == 4;
+            file.close();
+            emit finished(ok, ok ? QStringLiteral("Извлечено.") : QStringLiteral("Ошибка записи."));
         });
     }
     void extract(const QString &, const QString &destination, const QStringList &selected,
@@ -241,6 +265,9 @@ class NestedArchiveTests : public QObject {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         NestedBackend backend;
+        QFile outer(dir.filePath("outer.7z"));
+        QVERIFY(outer.open(QIODevice::WriteOnly));
+        outer.close();
         int externalOpens = 0;
         MainWindow window(&backend, [&](const QUrl &) {
             ++externalOpens;
@@ -270,7 +297,7 @@ class NestedArchiveTests : public QObject {
                     table->item(0, 0)->text() == "inside.txt");
         QCOMPARE(backend.extracted, QStringList({"folder/вложенный архив.zip"}));
         QVERIFY(QFileInfo::exists(backend.listed.last()));
-        QVERIFY(address->text().contains("outer.7z / folder/вложенный архив.zip"));
+        QVERIFY(address->text().endsWith("outer.7z/folder/вложенный архив.zip"));
         table->selectRow(0);
         QVERIFY(!add->isEnabled());
         QVERIFY(!remove->isEnabled());
@@ -278,6 +305,7 @@ class NestedArchiveTests : public QObject {
         QCOMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
         QVERIFY(!QFileInfo::exists(backend.listed.last()));
         table->selectRow(0);
+        QVERIFY(outside->isEnabled());
         outside->trigger();
         QTRY_COMPARE(externalOpens, 1);
     }
@@ -287,6 +315,9 @@ class NestedArchiveTests : public QObject {
         QVERIFY(dir.isValid());
         NestedBackend backend;
         backend.cancelExtraction = true;
+        QFile outer(dir.filePath("outer.7z"));
+        QVERIFY(outer.open(QIODevice::WriteOnly));
+        outer.close();
         MainWindow window(&backend);
         window.openArchive(dir.filePath("outer.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");
@@ -308,6 +339,9 @@ class NestedArchiveTests : public QObject {
         QVERIFY(dir.isValid());
         NestedBackend backend;
         backend.failNestedListing = true;
+        QFile outer(dir.filePath("outer.7z"));
+        QVERIFY(outer.open(QIODevice::WriteOnly));
+        outer.close();
         MainWindow window(&backend);
         window.openArchive(dir.filePath("outer.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");

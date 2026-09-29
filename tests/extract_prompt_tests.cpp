@@ -1,0 +1,227 @@
+#include "CPP/7zip/UI/Common/ZipRegistry.h"
+#include "CPP/7zip/UI/FileManager/ExtractCallback.h"
+#include "CPP/7zip/UI/FileManager/MemDialog.h"
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
+#include "layout_inspection.h"
+#include <QCheckBox>
+#include <QDialogButtonBox>
+#include <QFile>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QRadioButton>
+#include <QTemporaryDir>
+#include <QTimer>
+#include <QToolButton>
+#include <QtTest>
+
+class ExtractPromptTests final : public QObject {
+    Q_OBJECT
+  private slots:
+    void virtualFileMemoryAndSpill() {
+        for (bool spill : {false, true}) {
+            QTemporaryDir directory;
+            QVERIFY(directory.isValid());
+            CMyComPtr2<ISequentialOutStream, CVirtFileSystem> system;
+            system.Create_if_Empty();
+            system->DirPrefix = qUtf8Printable(directory.path() + "/");
+            system->MaxTotalAllocSize = spill ? 2 : 1024;
+            auto &file = system->Files.AddNew();
+            file.BaseName = L"../密碼 file.bin";
+            file.WrittenSize = 0;
+            file.ExpectedSize = 8;
+            const QByteArray first("abcd"), second("efgh");
+            UInt32 written = 0;
+            QCOMPARE(system.Interface()->Write(first.constData(), first.size(), &written), S_OK);
+            QCOMPARE(written, UInt32(4));
+            QCOMPARE(system.Interface()->Write(second.constData(), second.size(), &written), S_OK);
+            QCOMPARE(written, UInt32(4));
+            QCOMPARE(system->CloseMemFile(), S_OK);
+            QCOMPARE(system->WasStreamFlushedToFS(), spill);
+            if (!spill) {
+                QCOMPARE(file.WrittenSize, size_t(8));
+                QCOMPARE(
+                    QByteArray(reinterpret_cast<const char *>(static_cast<const Byte *>(file.Data)),
+                               file.WrittenSize),
+                    QByteArray("abcdefgh"));
+                QCOMPARE(system->FlushToDisk(true), S_OK);
+            }
+            QDir dir(directory.path());
+            const auto names = dir.entryList(QDir::Files | QDir::Hidden);
+            QCOMPARE(names.size(), 1);
+            QVERIFY(!names.front().contains('/'));
+            QFile output(dir.filePath(names.front()));
+            QVERIFY(output.open(QIODevice::ReadOnly));
+            QCOMPARE(output.readAll(), QByteArray("abcdefgh"));
+        }
+    }
+    void extractionCallbackProgressAndLimitSettings() {
+        CProgressDialog progress;
+        CMyComPtr2<IFolderArchiveExtractCallback, CExtractCallbackImp> callback;
+        callback.Create_if_Empty();
+        callback->ProgressDialog = &progress;
+        callback->Init();
+        QCOMPARE(callback.Interface()->SetTotal(100), S_OK);
+        UInt64 current = 20;
+        QCOMPARE(callback.Interface()->SetCompleted(&current), S_OK);
+        progress.Sync.Set_Stopped(true);
+        QCOMPARE(callback.Interface()->SetCompleted(&current), E_ABORT);
+        QTemporaryDir directory;
+        const QString settings = directory.filePath("test.ini");
+        QCOMPARE(NExtract::Read_LimitGB(settings), UInt32(-1));
+        NExtract::Save_LimitGB(settings, 3);
+        QCOMPARE(NExtract::Read_LimitGB(settings), UInt32(3));
+        callback->SettingsPath = settings;
+        CMyComPtr<IArchiveRequestMemoryUseCallback> memory;
+        QCOMPARE(callback.Interface()->QueryInterface(IID_IArchiveRequestMemoryUseCallback,
+                                                      reinterpret_cast<void **>(&memory)),
+                 S_OK);
+        UInt64 allowed = 1ULL << 30;
+        UInt32 answer = 0;
+        QCOMPARE(memory->RequestMemoryUse(0, NArchive::NEventIndexType::kNoIndex, 0, nullptr,
+                                          2ULL << 30, &allowed, &answer),
+                 S_OK);
+        QCOMPARE(allowed, 3ULL << 30);
+        QCOMPARE(answer, UInt32(NRequestMemoryAnswerFlags::k_Allow));
+    }
+    void overwriteResultsAndDefaults() {
+        for (const auto &item : {qMakePair("overwriteYes", IDYES), qMakePair("overwriteNo", IDNO),
+                                 qMakePair("overwriteYesAll", IDB_YES_TO_ALL),
+                                 qMakePair("overwriteNoAll", IDB_NO_TO_ALL),
+                                 qMakePair("overwriteRename", IDB_AUTO_RENAME),
+                                 qMakePair("overwriteCancel", IDCANCEL)}) {
+            COverwriteDialog dialog;
+            dialog.DefaultButton_is_NO = true;
+            dialog.OnInit();
+            dialog.show();
+            QVERIFY(dialog.findChild<QPushButton *>("overwriteNo")->isDefault());
+            dialog.findChild<QPushButton *>(item.first)->click();
+            QCOMPARE(dialog.result(), item.second);
+        }
+        COverwriteDialog dialog;
+        dialog.ShowExtraButtons = false;
+        dialog.OnInit();
+        dialog.show();
+        for (const auto *name : {"overwriteYesAll", "overwriteNoAll", "overwriteRename"})
+            QVERIFY(!dialog.findChild<QPushButton *>(name)->isVisible());
+        QTest::keyClick(&dialog, Qt::Key_Escape);
+        QCOMPARE(dialog.result(), IDCANCEL);
+    }
+    void overwriteNativeFormatting() {
+        COverwriteDialog dialog;
+        const QString name = QStringLiteral("密碼 ") + QString(100, QChar('x')) + " ";
+        dialog.OldFileInfo.Path = (QString("/temporary folder/") + name).toStdWString().c_str();
+        dialog.OldFileInfo.SetSize(10ULL << 30);
+        dialog.NewFileInfo.Path = L"new file.bin";
+        dialog.OnInit();
+        const auto old = dialog.findChild<QLabel *>("overwriteOldFile")->text();
+        QVERIFY(old.contains("temporary folder/\n"));
+        QVERIFY(old.contains(" ... "));
+        QVERIFY(old.contains("\"密碼 "));
+        QVERIFY(old.contains(" : 10 GiB"));
+        QVERIFY(!dialog.findChild<QLabel *>("overwriteNewFile")->text().contains("GiB"));
+    }
+    void memoryStateAndCommit() {
+        CMemDialog dialog;
+        dialog.Required_GB = 0;
+        dialog.Limit_GB = 4;
+        dialog.ShowRemember = false;
+        dialog.OnInit();
+        dialog.show();
+        auto *edit = dialog.findChild<QLineEdit *>("memLimit");
+        auto *save = dialog.findChild<QCheckBox *>("memSaveLimit");
+        QVERIFY(!edit->isEnabled());
+        QVERIFY(!dialog.findChild<QCheckBox *>("memRemember")->isVisible());
+        QVERIFY(dialog.findChild<QRadioButton *>("memAllow")->isChecked());
+        save->click();
+        QVERIFY(edit->isEnabled());
+        edit->setText("0"); // The upstream text parser accepts zero.
+        dialog.findChild<QRadioButton *>("memSkip")->click();
+        dialog.OnContinue();
+        QCOMPARE(dialog.result(), IDCONTINUE);
+        QCOMPARE(dialog.Limit_GB, UInt32(0));
+        QVERIFY(dialog.NeedSave);
+        QVERIFY(dialog.SkipArc);
+        CMemDialog cancelled;
+        cancelled.OnInit();
+        cancelled.findChild<QCheckBox *>("memSaveLimit")->click();
+        cancelled.findChild<QLineEdit *>("memLimit")->setText("99");
+        cancelled.reject();
+        QCOMPARE(cancelled.result(), IDCANCEL);
+        QCOMPARE(cancelled.Limit_GB, UInt32(4));
+        QVERIFY(!cancelled.NeedSave);
+    }
+    void memoryInvalidInput() {
+        for (const auto &text : {QString(), QString("2x"), QString("1073741825")}) {
+            CMemDialog dialog;
+            dialog.OnInit();
+            dialog.findChild<QCheckBox *>("memSaveLimit")->click();
+            dialog.findChild<QLineEdit *>("memLimit")->setText(text);
+            QTimer::singleShot(0, [] {
+                for (auto *widget : QApplication::topLevelWidgets())
+                    if (auto *message = qobject_cast<QMessageBox *>(widget))
+                        message->accept();
+            });
+            dialog.OnContinue();
+            QCOMPARE(dialog.result(), 0);
+            QCOMPARE(dialog.Limit_GB, UInt32(4));
+        }
+    }
+    void geometry() {
+        for (int width : {700, 560}) {
+            for (bool extra : {true, false}) {
+                COverwriteDialog dialog;
+                dialog.ShowExtraButtons = extra;
+                dialog.OldFileInfo.Path = L"/каталог с пробелом/旧文件.bin";
+                dialog.NewFileInfo.Path = L"новый файл.bin";
+                dialog.OldFileInfo.SetSize(12345);
+                dialog.NewFileInfo.SetSize(67890);
+                dialog.OnInit();
+                dialog.resize(width, 440);
+                dialog.show();
+                QApplication::processEvents();
+                for (auto *label : dialog.findChildren<QLabel *>()) {
+                    if (!label->isVisible())
+                        continue;
+                    QVERIFY(UiInspection::fullyVisible(*label, dialog));
+                    QVERIFY(UiInspection::labelFits(*label));
+                }
+                for (auto *button : dialog.findChildren<QPushButton *>())
+                    if (button->isVisible()) {
+                        QVERIFY(UiInspection::fullyVisible(*button, dialog));
+                        QVERIFY(button->width() >= button->sizeHint().width());
+                    }
+                QVERIFY(UiInspection::writeReport(
+                    dialog, QString("overwrite-%1-%2").arg(width).arg(extra)));
+            }
+            for (bool change : {false, true}) {
+                CMemDialog dialog;
+                dialog.Required_GB = 4;
+                dialog.ArcPath = L"/каталог с пробелом/archive.7z";
+                dialog.FilePath = L"密碼.bin";
+                dialog.OnInit();
+                dialog.resize(width, 460);
+                dialog.show();
+                if (change)
+                    dialog.findChild<QCheckBox *>("memSaveLimit")->click();
+                QApplication::processEvents();
+                for (const auto *name :
+                     {"memMessage", "memSaveLimit", "memLimit", "memSpin", "memGB", "memAction",
+                      "memAllow", "memSkip", "memRemember", "memButtons"}) {
+                    auto *control = dialog.findChild<QWidget *>(name);
+                    QVERIFY(control);
+                    QVERIFY(UiInspection::fullyVisible(*control, dialog));
+                    if (qobject_cast<QLabel *>(control))
+                        QVERIFY(UiInspection::labelFits(*control));
+                    else if (qobject_cast<QAbstractButton *>(control))
+                        QVERIFY(control->width() >= control->sizeHint().width());
+                }
+                QVERIFY(
+                    UiInspection::writeReport(dialog, QString("mem-%1-%2").arg(width).arg(change)));
+            }
+        }
+    }
+};
+QTEST_MAIN(ExtractPromptTests)
+#include "extract_prompt_tests.moc"

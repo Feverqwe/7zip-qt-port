@@ -51,16 +51,33 @@ widgets do not enumerate threads or construct process API requests. Source
 7zz child propagation is supplied by ArchiveProgressOperation/ArchiveBackend. No native engine logic is
 implemented by widgets.
 
+P0-04.1 WIP also attaches one retained QtArchiveFolderManager and
+QtAssociatedFileServices to the focused native panel. MainWindow owns those
+services before CApp in member lifetime order; panels retain their manager.
+The association adapter invokes the existing injectable QUrl opener on the GUI
+thread and displays plain-text launch errors. It supplies no waitable process
+handle; the copied native no-handle temp worker waits on a panel-scoped
+CExitEventLauncher and joins before panel member release. Unchanged files are
+deleted at owner exit, changed files are retained. This does not substitute for
+the mandatory known/child-process/editor service or complete window-close owner.
+MainWindow root/nested/address/parent navigation now uses the native panel parent
+stack. Its duplicate ArchiveParent/temp stack is removed. The presenter reads the
+current CAgentFolder and engine resource; the resource stores ArchiveInfo beside
+its metadata transport. Native ReOpen/GetPathParts restore ordinary folder paths
+through a joined modal bridge. CSelectedState carries deferred parent focus into
+Qt row presentation, then is consumed; provider count changes suppress stale row
+notifications. Full CApp/panel creation/release remains mandatory P0-02 work.
+
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
 and archive paths. Expanded extraction requests use real indices and typed Path;
 logical rename/view/edit/hash-result targets use source full prefixes and names.
 Filesystem selected paths use source GetItemFullPath with the native folder's
 normalized prefix and OS conversion at the Qt boundary. Copy/Move/Delete/Rename,
-hash, split/combine, View/Edit and Create input share this owner. Full prefix
-stack setup and focused open/navigation remain mandatory later integration.
+hash, split/combine, View/Edit and Create input share this owner. Native
+LoadFullPath supplies the prefix for current root/nested/address/parent consumers.
 Source IsItem_Folder owns single-file eligibility. ArchiveBackend retains all
 operation transport and temporary-file handling. Remaining filesystem consumers,
-open/navigation and full native path stack are still separate mandatory scopes.
+complete external-open and command/navigation acceptance remain mandatory.
 
 ArchiveBackend::cancelAndWait is the transport quiescence boundary for destruction:
 stop process writes before a window releases temporary source/destination paths.
@@ -70,15 +87,15 @@ asynchronous. Complete source CApp/panel/parent-stack release is still mandatory
 
 The owned-provider/selected-consumer lifecycle is a prerequisite for native stack
 integration. Broader runtime acceptance stays open until original parent/path
-owners replace directory_, archiveFolder_, archiveParents_ and focused navigation
-consumers. Native stack work depends on the accepted providers and bounded
+owners replace presentation-state decisions and complete all focused navigation
+consumers; archiveParents_ has been removed. Native stack work uses accepted providers and bounded
 lifecycle, avoiding a dependency on a runtime parent that itself needs that stack.
 
 Panel.h owns original CTempFileInfo/CFolderLink records, native metadata, explicit
 temporary cleanup and parent/interface/library references. Their change detector
 uses unchanged upstream Compare_FiTime for native FILETIME/timespec. The runtime
-parent stack and close/update/navigation owners remain subsequent mandatory ports;
-record availability alone does not replace the window's archiveParents_ state.
+parent stack and close/update/navigation consumers are connected by P0-04.1;
+complete CApp release and external-process/editor owners remain mandatory.
 
 CPanel owns original processing flags and nested RAII guards. Qt selection and
 current-cell callbacks query the source notification flag before updating commands;
@@ -156,9 +173,12 @@ The current 7zz flat directory expansion flag remains explicit until source
 Extract integration. Selected single-item/filesystem/hash-result paths now use
 source helpers; focused open/navigation and full context/parent paths remain
 mandatory migration work.
-The existing supplied archive Modified text is retained as sparse MTimeText
-compatibility data, advertised as VT_BSTR rather than pretending it is FILETIME.
-Native archive time parsing/precision/timezone work remains P0-03/P0-04.
+Archive transport converts the local timestamp text emitted by 7zz List.cpp to
+native FILETIME with declared fractional precision; seven fractional digits survive
+the round trip. Invalid and missing timestamps return S_OK/VT_EMPTY, as native
+codecs require. Custom presentation snapshots retain their separate text catalog.
+The bridge is needed because the engine boundary exposes listing text; full native
+codec property/raw catalogs remain mandatory P0-03/P0-04 work.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single
@@ -235,8 +255,8 @@ Refresh, while bound folders supply source name/prefix.
 Copy/Move summaries now use that active panel's bound folder and source operated
 indices. Qt selection is synchronized through SaveSelectedState until source
 OnNotify is connected; Get_ItemIndices_Operated retains the source selected-focus
-fallback and parent exclusion. The current display prefix is supplied explicitly
-by Qt until LoadFullPath/parent-stack migration. No row metadata copy is used.
+fallback and parent exclusion. Native LoadFullPath supplies the current prefix.
+No row metadata copy is used for functional selection decisions.
 
 ```text
 Qt Widgets (window, file list, dialogs)
@@ -248,8 +268,9 @@ QProcess (official 7zz executable)
 
 ## Window and panel state
 
-`MainWindow` owns navigation, the current filesystem or archive location,
-selection and command availability. Its filesystem, loading, viewing and
+`CPanel` owns the native folder and archive parent stack. `MainWindow` dispatches
+navigation and presents that location, selection and command availability.
+Its filesystem, loading, viewing and
 operating states determine which actions are enabled. Dialogs collect input;
 the window dispatches confirmed requests and handles asynchronous results.
 

@@ -1,0 +1,78 @@
+// Adapted from 7-Zip CPP/7zip/UI/FileManager/OpenCallback.cpp (0766b73).
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+
+#include "Common/StdAfx.h"
+
+#include "Common/ComTry.h"
+#include "Common/StringConvert.h"
+
+#include "Windows/FileName.h"
+#include "Windows/PropVariant.h"
+
+#include "7zip/Common/FileStreams.h"
+
+#include "../Common/ZipRegistry.h"
+
+#include "OpenCallback.h"
+#include "PasswordDialog.h"
+#include "qtcallbackpassword.h"
+
+using namespace NWindows;
+
+HRESULT COpenArchiveCallback::Open_SetTotal(const UInt64 *numFiles, const UInt64 *numBytes)
+// Z7_COM7F_IMF(COpenArchiveCallback::SetTotal(const UInt64 *numFiles, const UInt64 *numBytes))
+{
+    // COM_TRY_BEGIN
+    RINOK(ProgressDialog.Sync.CheckStop()) {
+        // NSynchronization::CCriticalSectionLock lock(_criticalSection);
+        ProgressDialog.Sync.Set_NumFilesTotal(numFiles ? *numFiles : (UInt64)(Int64)-1);
+        // if (numFiles)
+        {
+            ProgressDialog.Sync.Set_FilesProgressMode(numFiles != NULL);
+        }
+        if (numBytes)
+            ProgressDialog.Sync.Set_NumBytesTotal(*numBytes);
+    }
+    return S_OK;
+    // COM_TRY_END
+}
+
+HRESULT COpenArchiveCallback::Open_SetCompleted(const UInt64 *numFiles, const UInt64 *numBytes)
+// Z7_COM7F_IMF(COpenArchiveCallback::SetCompleted(const UInt64 *numFiles, const UInt64 *numBytes))
+{
+    // COM_TRY_BEGIN
+    // NSynchronization::CCriticalSectionLock lock(_criticalSection);
+    if (numFiles)
+        ProgressDialog.Sync.Set_NumFilesCur(*numFiles);
+    if (numBytes)
+        ProgressDialog.Sync.Set_NumBytesCur(*numBytes);
+    return ProgressDialog.Sync.CheckStop();
+    // COM_TRY_END
+}
+
+HRESULT COpenArchiveCallback::Open_CheckBreak() { return ProgressDialog.Sync.CheckStop(); }
+
+HRESULT COpenArchiveCallback::Open_Finished() { return ProgressDialog.Sync.CheckStop(); }
+
+#ifndef Z7_NO_CRYPTO
+HRESULT COpenArchiveCallback::Open_CryptoGetTextPassword(BSTR *password)
+// Z7_COM7F_IMF(COpenArchiveCallback::CryptoGetTextPassword(BSTR *password))
+{
+    // COM_TRY_BEGIN
+    PasswordWasAsked = true;
+    if (!PasswordIsDefined) {
+        bool showPassword = NExtract::Read_ShowPassword(SettingsPath);
+        bool selectedShowPassword = showPassword;
+
+        ProgressDialog.WaitCreating();
+        if (!AskCallbackPassword(ProgressDialog, Password, selectedShowPassword))
+            return E_ABORT;
+
+        PasswordIsDefined = true;
+        if (selectedShowPassword != showPassword)
+            NExtract::Save_ShowPassword(SettingsPath, selectedShowPassword);
+    }
+    return StringToBstr(Password, password);
+    // COM_TRY_END
+}
+#endif

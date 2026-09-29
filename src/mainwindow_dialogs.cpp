@@ -62,7 +62,7 @@ void MainWindow::showSelectedProperties() {
     panel.Get_ItemIndices_Operated(indices);
     if (indices.IsEmpty())
         return;
-    panel.SetCurrentFolderPrefix(state_ == State::Filesystem ? directory_ : archiveDisplayPath());
+    panel.LoadFullPath();
     PropertiesDialog dialog(panel, indices, this);
     dialog.exec();
 }
@@ -102,7 +102,6 @@ void MainWindow::openFileViewer(const QString &path, bool editable) {
             previousState_ = state_;
             updatingArchive_ = true;
             replacingArchiveEntry_ = true;
-            app_.GetFocusedPanel().SaveSelectedState(refreshSelectedState_);
             setState(State::Operating);
             begin(QStringLiteral("Обновление файла в архиве"), pendingEditEntry_);
             backend_->replaceEntry(archive_, pendingEditEntry_, viewTemporary_->path());

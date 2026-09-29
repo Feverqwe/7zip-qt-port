@@ -4,7 +4,9 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
+#include "qtarchivereopen.h"
 #include "qtlocationfolder.h"
+#include <QScopedValueRollback>
 
 void MainWindow::showDirectory(const QString &path, bool remember) {
     const QFileInfo info(path);
@@ -19,24 +21,17 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
     filesystemScanner_->cancel();
     scanningDisk_ = false;
     scanSelectedState_.reset();
-    app_.GetFocusedPanel().ReleaseFolder();
-    archiveRoot_.Release();
-    listingFolderError_.clear();
+    app_.GetFocusedPanel().CloseOpenFolders();
     directory_ = next;
     recordVisitedPath(directory_);
     archive_.clear();
     displayArchive_.clear();
-    archiveParents_.clear();
     archivePassword_.clear();
     archiveFolder_.clear();
     {
         const QSignalBlocker blocked(flatView_);
         flatView_->setChecked(flatDisk_);
     }
-    pendingArchiveFolder_.clear();
-    refreshing_ = false;
-    refreshFolder_.clear();
-    refreshSelectedState_ = CSelectedState();
     entries_.clear();
     table_->clearSelection();
     table_->setSortingEnabled(false);
@@ -50,10 +45,12 @@ void MainWindow::showDirectory(const QString &path, bool remember) {
         statusBar()->showMessage("Сканирование вложенных папок…");
         filesystemScanner_->start(directory_);
     } else {
-        CMyComPtr<IFolderFolder> folder;
-        HRESULT result = CreateFilesystemFolder(directory_, &folder);
+        COpenResult opened;
+        auto &panel = app_.GetFocusedPanel();
+        HRESULT result = panel.BindToPath(ToUString(directory_), UString(), opened);
+        CMyComPtr<IFolderFolder> folder = panel.GetFolder();
         if (result == S_OK) {
-            app_.GetFocusedPanel().SetNewFolder(folder);
+            panel.LoadFullPath();
             result = folder->LoadItems();
         }
         if (result == S_OK) {
@@ -146,12 +143,38 @@ void MainWindow::refreshCurrent() {
             refreshActions();
         }
     } else if (state_ == State::Viewing) {
-        refreshing_ = true;
-        refreshFolder_ = archiveFolder_;
-        app_.GetFocusedPanel().SaveSelectedState(refreshSelectedState_);
+        auto &panel = app_.GetFocusedPanel();
+        CSelectedState selection;
+        panel.SaveSelectedState(selection);
+        CMyComPtr<IFolderFolder> oldFolder = panel.GetFolder();
+        auto *folder = dynamic_cast<CAgentFolder *>((IFolderFolder *)oldFolder);
+        if (!folder)
+            return;
+        const UString previousFolderPath = GetFolderPath(oldFolder);
         setState(State::Loading);
-        begin("Обновление архива", archive_);
-        backend_->list(archive_);
+        CMyComPtr<IFolderFolder> refreshed;
+        HRESULT result;
+        {
+            QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
+            const auto &parents = panel.GetParentFolders();
+            result = ReOpenArchiveFolder(*folder, toolbarSettingsPath(), this, &refreshed,
+                                         !parents.IsEmpty() && parents.Back().UsePassword,
+                                         parents.IsEmpty() ? UString() : parents.Back().Password);
+        }
+        if (result == S_OK) {
+            panel.SetNewFolder(refreshed);
+            renderBoundFolder();
+            panel.RefreshListCtrl(
+                GetFolderPath(refreshed) == previousFolderPath ? selection : CSelectedState());
+            refreshActions();
+        } else {
+            // Native ReOpen releases the old proxy; never render stale folders.
+            showDirectory(returnDirectory_, false);
+            if (result != E_ABORT)
+                QMessageBox::warning(
+                    this, QStringLiteral("7-Zip"),
+                    QStringLiteral("Не удалось обновить архив (%1).").arg(quint32(result), 0, 16));
+        }
     }
 }
 
@@ -209,31 +232,18 @@ void MainWindow::navigateTo(const QString &path) {
     else if (info.isFile() && !info.isSymLink())
         openArchive(path);
     else {
-        // The Qt address presentation separates an archive from its internal
-        // folder with " / ". Prefer real filesystem paths above, then locate
-        // an existing archive prefix rather than splitting folder names.
-        qsizetype separator = path.indexOf(QStringLiteral(" / "));
-        while (separator >= 0) {
-            const QFileInfo archiveInfo(path.left(separator));
-            if (archiveInfo.isFile() && !archiveInfo.isSymLink()) {
-                QString folder = path.mid(separator + 3);
-                if (state_ == State::Viewing && archiveParents_.empty() &&
-                    archiveInfo.absoluteFilePath() == archive_) {
-                    while (!folder.isEmpty() && !archiveFolderExists(folder)) {
-                        const qsizetype slash = folder.lastIndexOf('/');
-                        folder = slash < 0 ? QString() : folder.left(slash);
-                    }
-                    showArchiveFolder(folder);
-                } else {
-                    pendingArchiveFolder_ = folder;
-                    openArchive(archiveInfo.absoluteFilePath());
-                }
-                return;
-            }
-            separator = path.indexOf(QStringLiteral(" / "), separator + 3);
+        QString nativePath = path;
+        nativePath.replace(QStringLiteral(" / "), QStringLiteral("/"));
+        auto &panel = app_.GetFocusedPanel();
+        HRESULT result;
+        {
+            QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
+            COpenResult opened;
+            result = panel.BindToPath(ToUString(nativePath), UString(), opened);
         }
-        statusBar()->showMessage("Путь не найден или тип файла не поддерживается: " + path);
-        path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
+        renderBoundFolder();
+        if (result != S_OK && result != E_ABORT)
+            statusBar()->showMessage(QStringLiteral("Путь не найден: ") + path);
     }
 }
 

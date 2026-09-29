@@ -16,6 +16,30 @@
 
 static const char *const kSeparator = "------------------------";
 
+static bool IsReadOnlyFolder(IFolderFolder *folder) {
+    if (!folder)
+        return false;
+    bool res = false;
+    {
+        NWindows::NCOM::CPropVariant prop;
+        if (folder->GetFolderProperty(kpidReadOnly, &prop) == S_OK)
+            if (prop.vt == VT_BOOL)
+                res = VARIANT_BOOLToBool(prop.boolVal);
+    }
+    return res;
+}
+
+bool CPanel::IsThereReadOnlyFolder() const {
+    if (!_folderOperations)
+        return true;
+    if (IsReadOnlyFolder(_folder))
+        return true;
+    FOR_VECTOR(i, _parentFolders)
+    if (IsReadOnlyFolder(_parentFolders[i].ParentFolder))
+        return true;
+    return false;
+}
+
 static void AddListAscii(CListViewDialog &dialog, const char *s) {
     dialog.Strings.Add((UString)s);
     dialog.Values.AddNew();

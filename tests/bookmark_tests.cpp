@@ -68,8 +68,8 @@ class BookmarkTests : public QObject, protected MainWindowTestSupport {
         QFile file(archivePath);
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
-        window.openArchive(archivePath);
-        backend.completeList({ArchiveEntry{QStringLiteral("папка/внутри/файл.txt"), 1, 1}});
+        openListedArchive(window, backend, archivePath,
+                          {ArchiveEntry{QStringLiteral("папка/внутри/файл.txt"), 1, 1}});
         openRow(window, rowWithPath(window, QStringLiteral("папка")));
         openRow(window, rowWithPath(window, QStringLiteral("папка/внутри")));
         action(window, "saveBookmark7Action")->trigger();
@@ -81,9 +81,9 @@ class BookmarkTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(paths[7], location);
         ControlledBackend reopenedBackend;
         MainWindow reopened(&reopenedBackend);
+        reopenedBackend.queueList({ArchiveEntry{QStringLiteral("папка/внутри/файл.txt"), 1, 1}});
         action(reopened, "openBookmark7Action")->trigger();
         QCOMPARE(reopenedBackend.lastArchive, archivePath);
-        reopenedBackend.completeList({ArchiveEntry{QStringLiteral("папка/внутри/файл.txt"), 1, 1}});
         QCOMPARE(reopened.findChild<QLineEdit *>("archivePath")->text(), location);
     }
 
@@ -97,13 +97,13 @@ class BookmarkTests : public QObject, protected MainWindowTestSupport {
         file.close();
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive(archivePath);
-        backend.completeList({ArchiveEntry{QStringLiteral("parent/deep/file.txt"), 1, 1}});
+        openListedArchive(window, backend, archivePath,
+                          {ArchiveEntry{QStringLiteral("parent/deep/file.txt"), 1, 1}});
         openRow(window, rowWithPath(window, "parent"));
         openRow(window, rowWithPath(window, "parent/deep"));
         action(window, "saveBookmark2Action")->trigger();
+        backend.queueList({ArchiveEntry{"parent/other.txt", 1, 1}});
         action(window, "refreshAction")->trigger();
-        backend.completeList({ArchiveEntry{"parent/other.txt", 1, 1}});
         const int calls = backend.listCalls;
         action(window, "openBookmark2Action")->trigger();
         QCOMPARE(backend.listCalls, calls);

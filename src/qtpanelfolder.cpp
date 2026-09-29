@@ -1,10 +1,41 @@
 #include "qtpanelfolder.h"
+#include "7zip/Archive/Common/ItemNameUtils.h"
 #include "7zip/PropID.h"
 #include "Windows/PropVariant.h"
+#include <QDateTime>
 
 namespace {
 constexpr PROPID kSnapshotProperty = 0x10000;
 const PROPID kArchiveProperties[] = {kpidPath, kpidSize, kpidPackSize};
+
+void SetArchiveTime(const QString &text, NWindows::NCOM::CPropVariant &prop) {
+    // List.cpp prints local time. This file-only engine transport has to reverse
+    // that presentation; source codecs normally return FILETIME directly.
+    if (text.size() < 19)
+        return;
+    const QDateTime time = QDateTime::fromString(text.left(19), "yyyy-MM-dd HH:mm:ss");
+    if (!time.isValid())
+        return;
+    const qint64 seconds = time.toSecsSinceEpoch();
+    constexpr qint64 epochOffset = 11644473600LL;
+    if (seconds < -epochOffset)
+        return;
+    QString fraction;
+    if (text.size() > 19) {
+        if (text[19] != '.' || text.size() > 27 || text.size() == 20)
+            return;
+        fraction = text.mid(20);
+        for (const QChar c : fraction)
+            if (c < '0' || c > '9')
+                return;
+    }
+    const unsigned digits = unsigned(fraction.size());
+    if (digits > 7)
+        return;
+    const UInt64 ticks =
+        UInt64(seconds + epochOffset) * 10000000 + fraction.leftJustified(7, '0').toUInt();
+    prop.SetAsTimeFrom_Ft64_Prec(ticks, k_PropVar_TimePrec_Base + digits);
+}
 } // namespace
 
 QtPanelFolder::QtPanelFolder(const QString &prefix, const CObjectVector<CPanelItem> &items,
@@ -45,7 +76,9 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
     const int separator = item.RelPath.lastIndexOf('/');
     switch (id) {
     case kpidPath:
-        prop = ToUString(item.RelPath);
+        prop = item.IsFolder && catalog_ == PropertyCatalog::ArchiveTransport
+                   ? NArchive::NItemName::GetOsPath_Remove_TailSlash(ToUString(item.RelPath))
+                   : ToUString(item.RelPath);
         break;
     case kpidName:
         prop = ToUString(item.RelPath.mid(separator + 1));
@@ -65,6 +98,10 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
             prop = item.PackSize;
         break;
     case kpidMTime:
+        if (catalog_ == PropertyCatalog::ArchiveTransport) {
+            SetArchiveTime(item.MTimeText, prop);
+            break;
+        }
         if (!hasMTimeText_)
             return E_NOTIMPL;
         if (!item.MTimeText.isEmpty())
@@ -79,6 +116,8 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
             prop = item.NumSubFiles;
         break;
     default:
+        if (catalog_ == PropertyCatalog::ArchiveTransport)
+            break; // Native codec contract: unavailable properties are VT_EMPTY.
         if (id < kSnapshotProperty || id - kSnapshotProperty >= propertyNames_.Size())
             return E_NOTIMPL;
         FOR_VECTOR(i, item.Properties)
@@ -117,8 +156,7 @@ Z7_COM7F_IMF(QtPanelFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id
         if (hasMTimeText_ && index == Z7_ARRAY_SIZE(kArchiveProperties)) {
             *name = NULL;
             *id = kpidMTime;
-            // Truthfully describe unparsed transport text, not a native FILETIME.
-            *type = VT_BSTR;
+            *type = VT_FILETIME;
             return S_OK;
         }
         if (index >= Z7_ARRAY_SIZE(kArchiveProperties))
@@ -141,4 +179,28 @@ Z7_COM7F_IMF(QtPanelFolder::GetFolderProperty(PROPID id, PROPVARIANT *value)) {
         return E_NOTIMPL;
     NWindows::NCOM::CPropVariant prop(ToUString(prefix_));
     return prop.Detach(value);
+}
+
+Z7_COM7F_IMF(QtPanelFolder::Open(IInStream *, const UInt64 *, IArchiveOpenCallback *)) {
+    return E_NOTIMPL;
+}
+
+Z7_COM7F_IMF(QtPanelFolder::Close()) { return S_OK; }
+
+Z7_COM7F_IMF(QtPanelFolder::Extract(const UInt32 *, UInt32, Int32, IArchiveExtractCallback *)) {
+    return E_NOTIMPL; // Actual engine operations stay behind ArchiveBackend.
+}
+
+Z7_COM7F_IMF(QtPanelFolder::GetArchiveProperty(PROPID, PROPVARIANT *value)) {
+    NWindows::NCOM::CPropVariant prop;
+    return prop.Detach(value);
+}
+
+Z7_COM7F_IMF(QtPanelFolder::GetNumberOfArchiveProperties(UInt32 *count)) {
+    *count = 0;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(QtPanelFolder::GetArchivePropertyInfo(UInt32, BSTR *, PROPID *, VARTYPE *)) {
+    return E_INVALIDARG;
 }

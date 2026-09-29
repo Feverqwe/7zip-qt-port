@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "Windows/PropVariant.h"
+#include "Windows/PropVariantConv.h"
 #include "qtlocationfolder.h"
 #include "qtpanelfolder.h"
 
@@ -56,11 +57,12 @@ class ArchivePropertyCatalogTests : public QObject {
     Q_OBJECT
 
   private slots:
-    void suppliedTimestampTextRemainsSparseAndExplicitlyUnparsed() {
+    void suppliedTimestampUsesNativeTimeAndMissingValuesRemainSparse() {
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(
             CreateArchiveFolder({ArchiveEntry{"known.txt", 1, 1, "2026-09-28 12:34:56.1234567"},
-                                 ArchiveEntry{"unknown.txt", 2, 2}},
+                                 ArchiveEntry{"unknown.txt", 2, 2},
+                                 ArchiveEntry{"invalid.txt", 3, 3, "invalid timestamp"}},
                                 UString(L"7z"), &folder),
             S_OK);
         UInt32 count;
@@ -71,11 +73,18 @@ class ArchivePropertyCatalogTests : public QObject {
         VARTYPE type;
         QCOMPARE(folder->GetPropertyInfo(3, &name, &id, &type), S_OK);
         QCOMPARE(id, PROPID(kpidMTime));
-        QCOMPARE(type, VARTYPE(VT_BSTR)); // Compatibility text, not fabricated FILETIME.
+        QCOMPARE(type, VARTYPE(VT_FILETIME));
         CPropVariant prop;
         QCOMPARE(folder->GetProperty(0, kpidMTime, &prop), S_OK);
-        QCOMPARE(QString::fromWCharArray(prop.bstrVal), QString("2026-09-28 12:34:56.1234567"));
+        QCOMPARE(prop.vt, VARTYPE(VT_FILETIME));
+        char text[64];
+        QVERIFY(ConvertUtcFileTimeToString2(prop.filetime, 0, text, kTimestampPrintLevel_NTFS,
+                                            kTimestampPrintFlags_Force_LOCAL |
+                                                kTimestampPrintFlags_DisableZ));
+        QCOMPARE(QString::fromLatin1(text), QString("2026-09-28 12:34:56.1234567"));
         QCOMPARE(folder->GetProperty(1, kpidMTime, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(VT_EMPTY));
+        QCOMPARE(folder->GetProperty(2, kpidMTime, &prop), S_OK);
         QCOMPARE(prop.vt, VARTYPE(VT_EMPTY));
     }
 
@@ -240,7 +249,8 @@ class ArchivePropertyCatalogTests : public QObject {
         VARTYPE type;
         QCOMPARE(folder->GetPropertyInfo(count, &name, &id, &type), E_INVALIDARG);
         QCOMPARE(folder->GetProperty(1, kpidPath, &prop), E_INVALIDARG);
-        QCOMPARE(folder->GetProperty(0, kpidMTime, &prop), E_NOTIMPL);
+        QCOMPARE(folder->GetProperty(0, kpidMTime, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(VT_EMPTY));
     }
 
     void knownCatalogDoesNotFabricateAbsentValues() {

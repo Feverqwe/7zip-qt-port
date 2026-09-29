@@ -1,0 +1,400 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "dialog": "IDD_MEM",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/MemDialog.rc": "de54cd16f885a5bf524956ac8c5dc4502565e3417c75079c5349f91ffde0d3fd",
+    "CPP/7zip/UI/FileManager/MemDialogRes.h": "de32162b83051a8736978dcfc69869eb2373cb5e17006ae35fb6e9733894bcb4",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/MemDialog.cpp": "a5a6e2fbf5cb4e6f279dbe3e9d271edcdbe56b0bda919329161375b32c2e651f"
+  },
+  "controls": {
+    "IDT_MEM_MESSAGE": {
+      "selector": {
+        "name": "memMessage"
+      }
+    },
+    "IDX_MEM_SAVE_LIMIT": {
+      "selector": {
+        "name": "memSaveLimit"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDE_MEM_SPIN_EDIT": {
+      "selector": {
+        "name": "memLimit"
+      }
+    },
+    "IDC_MEM_SPIN": {
+      "selector": {
+        "name": "memSpin"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal.",
+      "qtClass": "QWidget",
+      "classAdaptation": "QLineEdit plus two QToolButton arrows preserve the native independent edit value and bounded spinner; QSpinBox would clamp typed values before source validation."
+    },
+    "IDT_MEM_GB": {
+      "selector": {
+        "name": "memGB"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDG_MEM_ACTION": {
+      "selector": {
+        "name": "memAction"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDR_MEM_ACTION_ALLOW": {
+      "selector": {
+        "name": "memAllow"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDR_MEM_ACTION_SKIP_ARC": {
+      "selector": {
+        "name": "memSkip"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDX_MEM_REMEMBER": {
+      "selector": {
+        "name": "memRemember"
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDCONTINUE": {
+      "selector": {
+        "within": "memButtons",
+        "class": "QPushButton",
+        "text": [
+          "&Продолжить"
+        ]
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    },
+    "IDCANCEL": {
+      "selector": {
+        "within": "memButtons",
+        "class": "QPushButton",
+        "text": [
+          "Cancel",
+          "&Cancel",
+          "Отмена",
+          "&Отмена"
+        ]
+      },
+      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+    }
+  },
+  "relations": [
+    {
+      "a": "IDT_MEM_MESSAGE",
+      "kind": "above",
+      "b": "IDX_MEM_SAVE_LIMIT"
+    },
+    {
+      "a": "IDX_MEM_SAVE_LIMIT",
+      "kind": "above",
+      "b": "IDE_MEM_SPIN_EDIT"
+    },
+    {
+      "a": "IDE_MEM_SPIN_EDIT",
+      "kind": "above",
+      "b": "IDG_MEM_ACTION"
+    },
+    {
+      "a": "IDR_MEM_ACTION_ALLOW",
+      "kind": "inside",
+      "b": "IDG_MEM_ACTION"
+    },
+    {
+      "a": "IDR_MEM_ACTION_SKIP_ARC",
+      "kind": "inside",
+      "b": "IDG_MEM_ACTION"
+    },
+    {
+      "a": "IDR_MEM_ACTION_ALLOW",
+      "kind": "above",
+      "b": "IDR_MEM_ACTION_SKIP_ARC"
+    }
+  ],
+  "states": [
+    {
+      "name": "change-limit-0",
+      "reports": [
+        "mem-700-0.json",
+        "mem-560-0.json"
+      ],
+      "evidence": [
+        {
+          "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+          "symbol": "CMemDialog::OnInit",
+          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+        }
+      ],
+      "assert": [
+        {
+          "id": "IDT_MEM_MESSAGE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_MEM_MESSAGE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_SAVE_LIMIT",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_SAVE_LIMIT",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_MEM_GB",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_MEM_GB",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDG_MEM_ACTION",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDG_MEM_ACTION",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_ALLOW",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_ALLOW",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_SKIP_ARC",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_SKIP_ARC",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_REMEMBER",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_REMEMBER",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDCONTINUE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDCONTINUE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "property": "enabled",
+          "equals": false
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "property": "enabled",
+          "equals": false
+        }
+      ]
+    },
+    {
+      "name": "change-limit-1",
+      "reports": [
+        "mem-700-1.json",
+        "mem-560-1.json"
+      ],
+      "evidence": [
+        {
+          "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
+          "symbol": "CMemDialog::OnInit",
+          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+        }
+      ],
+      "assert": [
+        {
+          "id": "IDT_MEM_MESSAGE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_MEM_MESSAGE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_SAVE_LIMIT",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_SAVE_LIMIT",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDT_MEM_GB",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDT_MEM_GB",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDG_MEM_ACTION",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDG_MEM_ACTION",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_ALLOW",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_ALLOW",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_SKIP_ARC",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDR_MEM_ACTION_SKIP_ARC",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_REMEMBER",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDX_MEM_REMEMBER",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDCONTINUE",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDCONTINUE",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "visible",
+          "equals": true
+        },
+        {
+          "id": "IDCANCEL",
+          "property": "fullyVisible",
+          "equals": true
+        },
+        {
+          "id": "IDE_MEM_SPIN_EDIT",
+          "property": "enabled",
+          "equals": true
+        },
+        {
+          "id": "IDC_MEM_SPIN",
+          "property": "enabled",
+          "equals": true
+        }
+      ]
+    }
+  ],
+  "behavioralTests": {
+    "ctest": "^extract_prompt$",
+    "scope": "Native overwrite answers/default/cancel/formatting; memory enable/validation/commit/cancel; CVirtFileSystem memory and disk content; extraction progress stop and registry limit. Windows rendering and production PanelOpen integration remain unverified."
+  }
+}

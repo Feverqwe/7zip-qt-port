@@ -1,43 +1,117 @@
+#include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "Common/StringConvert.h"
+#include "Windows/PropVariant.h"
 #include "mainwindow.h"
+#include "qtarchivefileresource.h"
+#include <QScopedValueRollback>
 
-void MainWindow::openArchive(const QString &path, bool nested, const QString &label) {
+void MainWindow::openArchive(const QString &path) {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
     const QFileInfo file(path);
-    if (!ArchiveFormats::canOpen(path) && (!file.isFile() || file.isSymLink())) {
-        QMessageBox::warning(this, "Sevenzip Desktop",
-                             "Формат архива не поддерживается для открытия.");
+    if (!file.isFile() || file.isSymLink()) {
+        statusBar()->showMessage(QStringLiteral("Файл не найден: ") + path);
         return;
     }
     filesystemScanner_->cancel();
-    if (!nested)
-        archiveParents_.clear();
     scanningDisk_ = false;
     scanSelectedState_.reset();
-    app_.GetFocusedPanel().ReleaseFolder();
-    archiveRoot_.Release();
-    listingFolderError_.clear();
-    archive_ = QFileInfo(path).absoluteFilePath();
-    displayArchive_ = nested ? label : archive_;
-    archivePassword_.clear();
     if (infoDialog_)
         infoDialog_->close();
     if (state_ == State::Filesystem)
         returnDirectory_ = directory_;
-    else if (returnDirectory_.isEmpty())
-        returnDirectory_ = QFileInfo(archive_).absolutePath();
-    entries_.clear();
-    info_ = ArchiveInfo{};
-    archiveFolder_.clear();
-    refreshing_ = false;
-    refreshFolder_.clear();
-    refreshSelectedState_ = CSelectedState();
-    table_->setRowCount(0);
-    path_->setText(archive_);
+    auto &panel = app_.GetFocusedPanel();
+    operationName_ = QStringLiteral("Открытие архива");
+    journalText_.clear();
+    if (journalView_)
+        journalView_->clear();
+    appendJournal(operationName_ + ": " + file.absoluteFilePath());
+    journalAction_->setEnabled(true);
+    QString message;
+    const auto completion = connect(backend_, &ArchiveBackend::finished, this,
+                                    [&message](bool, const QString &text) { message = text; });
     setState(State::Loading);
-    begin("Открытие архива", archive_);
-    nestedListing_ = nested;
-    backend_->list(archive_);
+    HRESULT result;
+    {
+        QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
+        COpenResult opened;
+        result = panel.BindToPath(ToUString(file.absoluteFilePath()), UString(), opened);
+    }
+    disconnect(completion);
+    if (panel.IsArcFolder())
+        renderBoundFolder();
+    else
+        showDirectory(returnDirectory_, false);
+    if (result == E_ABORT)
+        message = QStringLiteral("Операция отменена.");
+    else if (message.isEmpty())
+        message =
+            result == S_OK ? QStringLiteral("Архив открыт.") : ToQString(HResultToMessage(result));
+    appendJournal((result == S_OK ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
+                  message);
+    statusBar()->showMessage(message);
+    if (result != S_OK && result != E_ABORT)
+        QMessageBox::warning(this, QStringLiteral("Sevenzip Desktop"), message);
+}
+
+bool MainWindow::isNestedArchive() const {
+    return app_.Panels[app_.GetFocusedPanelIndex()].GetParentFolders().Size() > 1;
+}
+
+void MainWindow::renderBoundFolder() {
+    auto &panel = app_.GetFocusedPanel();
+    const auto selection = panel.TakeRefreshSelection();
+    panel.LoadFullPath();
+    if (!panel.IsArcFolder()) {
+        const QString directory = panel.GetFolder()
+                                      ? QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder())))
+                                      : returnDirectory_;
+        showDirectory(directory.isEmpty() ? returnDirectory_ : directory, false);
+        if (selection && !scanningDisk_)
+            panel.RefreshListCtrl(*selection);
+        refreshActions();
+        return;
+    }
+    auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
+    if (!folder)
+        return;
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
+    if (!resource)
+        return;
+    archive_ = resource->EnginePath;
+    info_ = resource->Info;
+    const auto &parents = panel.GetParentFolders();
+    archivePassword_ = parents.IsEmpty() ? QString() : ToQString(parents.Back().Password);
+    archiveFolder_ = QDir::fromNativeSeparators(ToQString(GetFolderPath(folder)));
+    if (archiveFolder_.endsWith('/'))
+        archiveFolder_.chop(1);
+    displayArchive_ = QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix()));
+    displayArchive_.chop(archiveFolder_.size() + (archiveFolder_.isEmpty() ? 1 : 2));
+    entries_.clear();
+    IInArchive *metadata = folder->GetArchiveProperties();
+    UInt32 count = 0;
+    if (metadata && metadata->GetNumberOfItems(&count) == S_OK) {
+        for (UInt32 index = 0; index < count; ++index) {
+            NWindows::NCOM::CPropVariant path, directory;
+            metadata->GetProperty(index, kpidPath, &path);
+            metadata->GetProperty(index, kpidIsDir, &directory);
+            ArchiveEntry entry;
+            if (path.vt == VT_BSTR)
+                entry.path = QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal));
+            entry.directory = directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
+            entries_.append(entry);
+        }
+    }
+    {
+        QSignalBlocker block(flatView_);
+        flatView_->setChecked(flatArchive_);
+    }
+    setState(State::Viewing);
+    renderArchiveFolder();
+    if (selection)
+        panel.RefreshListCtrl(*selection);
+    refreshActions();
 }
 
 void MainWindow::openSelectedInside() {
@@ -52,6 +126,20 @@ void MainWindow::openSelectedInside() {
         openNestedArchive(table_->item(row, 0)->data(Qt::UserRole).toString());
 }
 
+void MainWindow::showArchiveFolder(const QString &folder) {
+    auto &panel = app_.GetFocusedPanel();
+    if (panel.GetParentFolders().IsEmpty())
+        return;
+    const UString path = panel.GetParentFolders().Back().VirtualPath + L"/" + ToUString(folder);
+    {
+        QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
+        COpenResult result;
+        if (panel.BindToPath(path, UString(), result) != S_OK)
+            return;
+    }
+    renderBoundFolder();
+}
+
 void MainWindow::openSelectedOutside() {
     if (!openOutside_->isEnabled())
         return;
@@ -63,93 +151,52 @@ void MainWindow::openSelectedOutside() {
 }
 
 void MainWindow::openNestedArchive(const QString &entry) {
-    nestedTemporary_ = std::make_unique<QTemporaryDir>();
-    if (!nestedTemporary_->isValid()) {
-        nestedTemporary_.reset();
-        QMessageBox::warning(this, "Открыть архив", "Не удалось создать временную папку.");
+    auto &panel = app_.GetFocusedPanel();
+    UInt32 count = 0;
+    if (!panel.GetFolder() || panel.GetFolder()->GetNumberOfItems(&count) != S_OK)
+        return;
+    for (UInt32 index = 0; index < count; ++index) {
+        const QString path = QDir::fromNativeSeparators(
+            ToQString(GetFolderPath(panel.GetFolder()) + panel.GetItemRelPath(index)));
+        if (path != entry)
+            continue;
+        setState(State::Operating);
+        {
+            QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
+            panel.LoadFullPath();
+            panel.OpenItemInArchive(index, true, false, false, false);
+        }
+        renderBoundFolder();
         return;
     }
-    pendingViewPath_ = QDir(nestedTemporary_->path()).filePath(entry);
-    pendingNestedEntry_ = entry;
-    pendingNested_ = true;
-    previousState_ = state_;
-    setState(State::Operating);
-    begin("Открытие вложенного архива", entry);
-    backend_->extract(archive_, nestedTemporary_->path(), {entry}, archivePassword_);
-}
-
-bool MainWindow::finishNestedExtraction(bool ok) {
-    pendingNested_ = false;
-    const QString file = pendingViewPath_;
-    pendingViewPath_.clear();
-    if (ok && QFileInfo(file).isFile()) {
-        ArchiveParent parent;
-        parent.path = archive_;
-        parent.display = displayArchive_;
-        parent.password = archivePassword_;
-        parent.folder = archiveFolder_;
-        parent.entry = pendingNestedEntry_;
-        parent.entries = entries_;
-        parent.info = info_;
-        parent.root = archiveRoot_;
-        parent.temporary = std::move(nestedTemporary_);
-        archiveParents_.push_back(std::move(parent));
-        const QString label = displayArchive_ + " / " + pendingNestedEntry_;
-        pendingNestedEntry_.clear();
-        openArchive(file, true, label);
-        return true;
-    }
-    nestedTemporary_.reset();
-    pendingNestedEntry_.clear();
-    return false;
-}
-
-void MainWindow::restoreParentArchive() {
-    ArchiveParent parent = std::move(archiveParents_.back());
-    archiveParents_.pop_back();
-    archive_ = parent.path;
-    displayArchive_ = parent.display;
-    archivePassword_ = parent.password;
-    entries_ = std::move(parent.entries);
-    archiveRoot_ = parent.root;
-    info_ = parent.info;
-    nestedListing_ = false;
-    showArchiveFolder(parent.folder);
-    setState(State::Viewing);
-    selectPaths({parent.entry});
 }
 
 void MainWindow::goBack() {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
-    if (state_ == State::Viewing) {
-        if (archiveFolder_.isEmpty()) {
-            if (archiveParents_.empty())
-                showDirectory(returnDirectory_, false);
-            else
-                restoreParentArchive();
-        } else
-            goUp();
-    } else if (!history_.isEmpty()) {
+    if (state_ == State::Viewing)
+        goParent();
+    else if (!history_.isEmpty())
         showDirectory(history_.takeLast(), false);
-    }
 }
 
 void MainWindow::goUp() {
-    if (state_ != State::Viewing || archiveFolder_.isEmpty())
-        return;
-    const int separator = archiveFolder_.lastIndexOf('/');
-    showArchiveFolder(separator < 0 ? QString() : archiveFolder_.left(separator));
+    if (state_ == State::Viewing && !archiveFolder_.isEmpty())
+        goParent();
 }
 
 void MainWindow::goParent() {
-    if (state_ == State::Viewing) {
-        goBack();
-    } else if (state_ == State::Filesystem) {
-        QDir parent(directory_);
-        if (parent.cdUp())
-            showDirectory(parent.absolutePath(), true);
+    if (state_ != State::Viewing && state_ != State::Filesystem)
+        return;
+    auto &panel = app_.GetFocusedPanel();
+    if (!panel.GetFolder())
+        return;
+    setState(State::Operating);
+    {
+        QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
+        panel.OpenParentFolder();
     }
+    renderBoundFolder();
 }
 
 QString MainWindow::archiveDisplayPath() const {

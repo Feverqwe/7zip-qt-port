@@ -1,5 +1,7 @@
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "window_state_support.h"
+#include <QScopeGuard>
 
 #include <QAction>
 #include <QApplication>
@@ -14,32 +16,7 @@
 #include <QTimer>
 #include <QtTest>
 
-class ControlledBackend : public ArchiveBackend {
-  public:
-    ControlledBackend() : ArchiveBackend(nullptr, "/missing/7zz") {}
-    bool busy() const override { return busy_; }
-    void list(const QString &, const QString & = {}) override { busy_ = true; }
-    void extract(const QString &, const QString &, const QStringList &selected,
-                 const QString & = {}, const ExtractionOptions & = {}) override {
-        lastSelected = selected;
-        busy_ = true;
-    }
-    void cancel() override {
-        busy_ = false;
-        emit finished(false, QStringLiteral("Операция отменена."));
-    }
-    void completeList(const QList<ArchiveEntry> &entries) {
-        busy_ = false;
-        emit entriesReady(entries);
-        emit finished(true, QStringLiteral("Архив открыт."));
-    }
-    QStringList lastSelected;
-
-  private:
-    bool busy_ = false;
-};
-
-class FlatViewTests : public QObject {
+class FlatViewTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
     static QAction *action(MainWindow &window, const char *name) {
@@ -76,11 +53,11 @@ class FlatViewTests : public QObject {
     void flatSelectionUsesNamesInsteadOfParentPaths() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("selection.zip");
-        backend.completeList({ArchiveEntry{"parent.txt/README", 1, 1},
-                              ArchiveEntry{QStringLiteral("другая папка/README"), 2, 2},
-                              ArchiveEntry{"parent.txt/note.txt", 3, 3},
-                              ArchiveEntry{"parent.txt/child", 0, 0, {}, true}});
+        openListedArchive(window, backend, "selection.zip",
+                          {ArchiveEntry{"parent.txt/README", 1, 1},
+                           ArchiveEntry{QStringLiteral("другая папка/README"), 2, 2},
+                           ArchiveEntry{"parent.txt/note.txt", 3, 3},
+                           ArchiveEntry{"parent.txt/child", 0, 0, {}, true}});
         auto *flat = action(window, "flatViewAction");
         if (!flat->isChecked())
             flat->trigger();
@@ -117,13 +94,12 @@ class FlatViewTests : public QObject {
     void flatArchiveViewShowsNestedPathsAndKeepsOperationsExact() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("flat.7z");
         const QList<ArchiveEntry> entries = {
             ArchiveEntry{QStringLiteral("раздел один/common.txt"), 1, 1},
             ArchiveEntry{QStringLiteral("раздел два/common.txt"), 2, 2},
             ArchiveEntry{QStringLiteral("раздел один/deep/leaf.txt"), 3, 3},
             ArchiveEntry{QStringLiteral("пустая"), 0, 0, {}, true}};
-        backend.completeList(entries);
+        openListedArchive(window, backend, "flat.7z", entries);
         QCOMPARE(table(window)->rowCount(), 3);
         QAction *flat = action(window, "flatViewAction");
         QVERIFY(flat->isEnabled());
@@ -186,13 +162,15 @@ class FlatViewTests : public QObject {
         QVERIFY(QFileInfo::exists(QDir(folder).filePath(QStringLiteral("новое имя.txt"))));
         QVERIFY(!QFileInfo::exists(nested));
         QTRY_COMPARE(table(window)->rowCount(), 2);
-        window.openArchive(temp.filePath("other.7z"));
-        backend.completeList({ArchiveEntry{QStringLiteral("inner/archive.txt"), 1, 1}});
+        openListedArchive(window, backend, temp.filePath("other.7z"),
+                          {ArchiveEntry{QStringLiteral("inner/archive.txt"), 1, 1}});
         QVERIFY(!flat->isChecked());
         QCOMPARE(table(window)->rowCount(), 1);
         action(window, "backAction")->trigger();
         QVERIFY(flat->isChecked());
-        QTRY_COMPARE(table(window)->rowCount(), 2);
+        QTRY_COMPARE(table(window)->rowCount(), 3);
+        QVERIFY(filesystemRow(window, QStringLiteral("папка с пробелом/новое имя.txt")) >= 0);
+        QVERIFY(filesystemRow(window, "other.7z") >= 0);
         flat->trigger();
     }
 
@@ -283,11 +261,10 @@ class FlatViewTests : public QObject {
     void flatArchiveViewKeepsFolderNavigationAndRefresh() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive("flat-navigation.zip");
         const QList<ArchiveEntry> entries = {
             ArchiveEntry{QStringLiteral("outer/inner/file.txt"), 1, 1},
             ArchiveEntry{QStringLiteral("outer/top.txt"), 2, 2}};
-        backend.completeList(entries);
+        openListedArchive(window, backend, "flat-navigation.zip", entries);
         QAction *flat = action(window, "flatViewAction");
         flat->trigger();
         openRow(window, rowWithPath(window, QStringLiteral("outer")));
@@ -296,9 +273,11 @@ class FlatViewTests : public QObject {
         QCOMPARE(
             table(window)->item(rowWithPath(window, QStringLiteral("outer/top.txt")), 0)->text(),
             QStringLiteral("top.txt"));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.completeList(entries); });
+            QVERIFY(!flat->isEnabled());
+        });
         action(window, "refreshAction")->trigger();
-        QVERIFY(!flat->isEnabled());
-        backend.completeList(entries);
         QVERIFY(flat->isEnabled());
         QVERIFY(flat->isChecked());
         QCOMPARE(table(window)->rowCount(), 3);

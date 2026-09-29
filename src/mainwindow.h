@@ -81,7 +81,7 @@ class MainWindow : public QMainWindow {
     explicit MainWindow(ArchiveBackend *backend = nullptr,
                         std::function<bool(const QUrl &)> fileOpener = {});
 
-    void openArchive(const QString &path, bool nested = false, const QString &label = {});
+    void openArchive(const QString &path);
 
     void extractTo(const QString &destination, bool onlySelected = false,
                    const QString &password = {}, const ExtractionOptions &options = {});
@@ -130,7 +130,6 @@ class MainWindow : public QMainWindow {
     void refreshBookmarks();
     void saveBookmark(int index);
     void openBookmark(int index);
-    bool archiveFolderExists(const QString &folder) const;
     void updateToolbar();
     void showSettings();
     void updateFilesystemIcons();
@@ -156,10 +155,11 @@ class MainWindow : public QMainWindow {
     void goUp();
     void goParent();
     QString archiveDisplayPath() const;
-    void restoreParentArchive();
+    void renderBoundFolder();
+    bool isNestedArchive() const;
     void showArchiveFolder(const QString &folder);
+    void renderArchiveFolder();
     void appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix, bool flat);
-    const CProxyArc &archiveProxy() const;
     void setState(State state);
     void refreshActions();
     void appendJournal(const QString &line);
@@ -172,7 +172,6 @@ class MainWindow : public QMainWindow {
     void openFileViewer(const QString &path, bool editable);
     bool openLocalFile(const QString &path);
     void openNestedArchive(const QString &entry);
-    bool finishNestedExtraction(bool ok);
     void openArchiveFile(const QString &entry);
     void viewSelectedFile(bool editable);
     void extract(bool onlySelected);
@@ -196,28 +195,13 @@ class MainWindow : public QMainWindow {
     CRecordVector<UInt32> sourceOperatedIndices();
 
     ArchiveBackend *backend_ = nullptr;
-    struct ArchiveParent {
-        QString path;
-        QString display;
-        QString password;
-        QString folder;
-        QString entry;
-        QList<ArchiveEntry> entries;
-        ArchiveInfo info;
-        CMyComPtr<IFolderFolder> root;
-        std::unique_ptr<QTemporaryDir> temporary;
-    };
+    CMyComPtr<IFolderManager> folderManager_;
+    std::unique_ptr<class QtAssociatedFileServices> associatedFileServices_;
     std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;
     QString displayArchive_;
-    std::vector<ArchiveParent> archiveParents_;
-    std::unique_ptr<QTemporaryDir> nestedTemporary_;
-    QString pendingNestedEntry_;
-    bool pendingNested_ = false;
-    bool nestedListing_ = false;
     QString archivePassword_;
     QString archiveFolder_;
-    QString pendingArchiveFolder_;
     CApp app_;
     QAction *saveBookmarks_[10]{};
     QAction *openBookmarks_[10]{};
@@ -241,17 +225,12 @@ class MainWindow : public QMainWindow {
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
     QStringList archiveMovePaths_;
     QList<ArchiveEntry> entries_;
-    CMyComPtr<IFolderFolder> archiveRoot_;
-    QString listingFolderError_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;
     QComboBox *pathCombo_ = nullptr;
     QString directory_;
     QString returnDirectory_;
     QStringList history_;
-    bool refreshing_ = false;
-    QString refreshFolder_;
-    CSelectedState refreshSelectedState_;
     QTableWidget *table_ = nullptr;
     QListView *iconList_ = nullptr;
     QStackedWidget *viewStack_ = nullptr;

@@ -1,6 +1,7 @@
 #include "window_state_support.h"
+#include <QScopeGuard>
 
-class PanelKeyTests final : public QObject {
+class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
     static QAction *action(MainWindow &window, const char *name) {
@@ -23,8 +24,8 @@ class PanelKeyTests final : public QObject {
         address->setText(dir.path());
         QTest::keyClick(address, Qt::Key_Return);
         if (archive) {
-            window.openArchive(dir.filePath("parent.zip"));
-            backend.completeList({ArchiveEntry{folder + "/file.txt", 1, 1}});
+            openListedArchive(window, backend, dir.filePath("parent.zip"),
+                              {ArchiveEntry{folder + "/file.txt", 1, 1}});
         }
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         window.show();
@@ -46,7 +47,8 @@ class PanelKeyTests final : public QObject {
             QTest::keyClick(view, Qt::Key_Backspace, modifiers);
             QCOMPARE(address->text(), parentPath);
         }
-        if (mode == 3 && archive) {
+        if (mode == 3 && archive &&
+            qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1) {
             const QString screenshots = QDir::currentPath() + "/ui-screenshots";
             QVERIFY(QDir().mkpath(screenshots));
             for (int width : {980, 640}) {
@@ -56,12 +58,15 @@ class PanelKeyTests final : public QObject {
                                            QStringLiteral("/parent-key-%1.png").arg(width)));
             }
         }
+        QVERIFY(backend.prepareArchiveFixture(dir.filePath("busy.zip")));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.cancel(); });
+            const QString busyPath = address->text();
+            QVERIFY(!action(window, "parentFolderAction")->isEnabled());
+            QTest::keyClick(view, Qt::Key_Backspace, Qt::ControlModifier);
+            QCOMPARE(address->text(), busyPath);
+        });
         window.openArchive(dir.filePath("busy.zip"));
-        const QString busyPath = address->text();
-        QVERIFY(!action(window, "parentFolderAction")->isEnabled());
-        QTest::keyClick(view, Qt::Key_Backspace, Qt::ControlModifier);
-        QCOMPARE(address->text(), busyPath);
-        backend.cancel();
     }
 
     void addressKeys_data() { keypadSelection_data(); }
@@ -76,8 +81,8 @@ class PanelKeyTests final : public QObject {
         address->setText(dir.path());
         QTest::keyClick(address, Qt::Key_Return);
         if (archive) {
-            window.openArchive(dir.filePath("адрес space.zip"));
-            backend.completeList({ArchiveEntry{"папка/файл.txt", 1, 1}});
+            openListedArchive(window, backend, dir.filePath("адрес space.zip"),
+                              {ArchiveEntry{"папка/файл.txt", 1, 1}});
         }
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         window.show();
@@ -105,7 +110,8 @@ class PanelKeyTests final : public QObject {
             QTest::keyClick(view, static_cast<Qt::Key>(key), Qt::AltModifier | Qt::ShiftModifier);
             QVERIFY(!combo->view()->isVisible());
         }
-        if (mode == 3 && !archive) {
+        if (mode == 3 && !archive &&
+            qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1) {
             const QString screenshots = QDir::currentPath() + "/ui-screenshots";
             QVERIFY(QDir().mkpath(screenshots));
             for (int width : {980, 640}) {
@@ -167,10 +173,14 @@ class PanelKeyTests final : public QObject {
         QCOMPARE(dialogs, 2);
         QVERIFY(QFileInfo::exists(dir.filePath(name)));
         QCOMPARE(QFileInfo(dir.filePath(name)).size(), qint64(0));
+        QVERIFY(backend.prepareArchiveFixture(dir.filePath("busy.zip")));
+        backend.queueListAction([&] {
+            const auto finish =
+                qScopeGuard([&] { backend.completeList({ArchiveEntry{"file.txt", 1, 1}}); });
+            pressCreate(view, true);
+            QCOMPARE(dialogs, 2);
+        });
         window.openArchive(dir.filePath("busy.zip"));
-        pressCreate(view, true);
-        QCOMPARE(dialogs, 2);
-        backend.completeList({ArchiveEntry{"file.txt", 1, 1}});
         pressCreate(view, true);
         QCOMPARE(dialogs, 2);
         QCOMPARE(backend.extractCalls, 0);
@@ -197,9 +207,9 @@ class PanelKeyTests final : public QObject {
         MainWindow window(&backend);
         const QStringList names = {QStringLiteral("Альфа файл.txt"), "beta.TXT", "other.bin"};
         if (archive) {
-            window.openArchive("keys.zip");
-            backend.completeList({ArchiveEntry{names[0], 1, 1}, ArchiveEntry{names[1], 2, 2},
-                                  ArchiveEntry{names[2], 3, 3}});
+            openListedArchive(window, backend, temp.filePath("keys.zip"),
+                              {ArchiveEntry{names[0], 1, 1}, ArchiveEntry{names[1], 2, 2},
+                               ArchiveEntry{names[2], 3, 3}});
         } else {
             for (const auto &name : names) {
                 QFile file(temp.filePath(name));
@@ -265,11 +275,14 @@ class PanelKeyTests final : public QObject {
         address->setFocus();
         QTest::keyClick(address, Qt::Key_Asterisk, keypad);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 0);
-        window.openArchive("busy.zip");
-        QVERIFY(!action(window, "selectAllAction")->isEnabled());
-        QTest::keyClick(view, Qt::Key_Plus, keypad | Qt::ShiftModifier);
-        QCOMPARE(table->selectionModel()->selectedRows().size(), 0);
-        backend.cancel();
+        QVERIFY(backend.prepareArchiveFixture(temp.filePath("busy.zip")));
+        backend.queueListAction([&] {
+            const auto finish = qScopeGuard([&] { backend.cancel(); });
+            QVERIFY(!action(window, "selectAllAction")->isEnabled());
+            QTest::keyClick(view, Qt::Key_Plus, keypad | Qt::ShiftModifier);
+            QCOMPARE(table->selectionModel()->selectedRows().size(), 0);
+        });
+        window.openArchive(temp.filePath("busy.zip"));
     }
 };
 

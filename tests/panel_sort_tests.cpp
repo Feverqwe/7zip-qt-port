@@ -38,12 +38,12 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         QTemporaryDir temp;
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive(temp.filePath("flat.7z"));
-        backend.completeList({{"a/file10.txt", 5, 1},
-                              {"z/file2.txt", 5, 1},
-                              {"dir10/common.txt", 5, 1},
-                              {"dir2/common.txt", 5, 1},
-                              {QStringLiteral("папка с пробелом/Альфа.txt"), 5, 1}});
+        openListedArchive(window, backend, temp.filePath("flat.7z"),
+                          {{"a/file10.txt", 5, 1},
+                           {"z/file2.txt", 5, 1},
+                           {"dir10/common.txt", 5, 1},
+                           {"dir2/common.txt", 5, 1},
+                           {QStringLiteral("папка с пробелом/Альфа.txt"), 5, 1}});
         action(window, "flatViewAction")->setChecked(true);
         auto fileNames = [&] {
             QStringList result;
@@ -82,14 +82,14 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         QTemporaryDir temp;
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive(temp.filePath("extensions.7z"));
-        backend.completeList({{".hidden", 1, 1},
-                              {"README", 1, 1},
-                              {"last.", 1, 1},
-                              {"a.tar.gz", 1, 1},
-                              {"b.TXT", 1, 1},
-                              {"z.aaa", 0, 0, {}, true},
-                              {"a.zzz", 0, 0, {}, true}});
+        openListedArchive(window, backend, temp.filePath("extensions.7z"),
+                          {{".hidden", 1, 1},
+                           {"README", 1, 1},
+                           {"last.", 1, 1},
+                           {"a.tar.gz", 1, 1},
+                           {"b.TXT", 1, 1},
+                           {"z.aaa", 0, 0, {}, true},
+                           {"a.zzz", 0, 0, {}, true}});
         action(window, "sort1Action")->trigger();
         QCOMPARE(names(window), (QStringList{"z.aaa", "a.zzz", "README", "last.", "a.tar.gz",
                                              ".hidden", "b.TXT"}));
@@ -124,26 +124,25 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
         QTemporaryDir temp;
         ControlledBackend backend;
         MainWindow window(&backend);
-        window.openArchive(temp.filePath("sort.7z"));
         const QList<ArchiveEntry> entries = {{"file2.txt", 2, 20, "2022-01-01"},
                                              {"file10.txt", 10, 10, "2024-01-01"},
                                              {QStringLiteral("папка с пробелом"), 0, 0, {}, true},
                                              {"folder", 0, 0, {}, true}};
-        backend.completeList(entries);
+        openListedArchive(window, backend, temp.filePath("sort.7z"), entries);
         const QStringList folders = {"folder", QStringLiteral("папка с пробелом")};
         action(window, "sort3Action")->trigger();
         QCOMPARE(names(window), (QStringList{folders[1], folders[0], "file10.txt", "file2.txt"}));
         QCOMPARE(table(window)->horizontalHeader()->sortIndicatorOrder(), Qt::DescendingOrder);
+        backend.queueList(entries);
         action(window, "refreshAction")->trigger();
-        backend.completeList(entries);
         QCOMPARE(names(window), (QStringList{folders[1], folders[0], "file10.txt", "file2.txt"}));
         action(window, "sort3Action")->trigger();
         QCOMPARE(names(window), (QStringList{folders[0], folders[1], "file2.txt", "file10.txt"}));
         // A header property not exposed by the sort menu must survive refresh too.
         table(window)->sortItems(3, Qt::DescendingOrder);
         QCOMPARE(names(window).mid(2), (QStringList{"file2.txt", "file10.txt"}));
+        backend.queueList(entries);
         action(window, "refreshAction")->trigger();
-        backend.completeList(entries);
         QCOMPARE(table(window)->horizontalHeader()->sortIndicatorSection(), 3);
         QCOMPARE(table(window)->horizontalHeader()->sortIndicatorOrder(), Qt::DescendingOrder);
         QCOMPARE(names(window).mid(2), (QStringList{"file2.txt", "file10.txt"}));

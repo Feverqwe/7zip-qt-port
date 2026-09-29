@@ -8,21 +8,20 @@
 #include <functional>
 
 class ArchiveBackend;
+class ArchiveProgressTransport;
 class ArchiveProgressOperation : public CProgressThreadVirt {
     ArchiveBackend &_backend;
     std::function<void()> _start;
     CMyComPtr<IFolderArchiveUpdateCallback> _callback;
     CUpdateCallback100Imp *_callbackImpl;
+    std::unique_ptr<ArchiveProgressTransport> _transport;
     QMutex _mutex;
-    QString _detail;
     QString _message;
     bool _completed = false;
     bool _success = false;
     std::exception_ptr _startException;
     std::atomic<bool> _passwordRequested{false};
     HRESULT ProcessVirt() override;
-    HRESULT SetPausedTransport(bool paused) override;
-    HRESULT SetBackgroundTransport(bool background) override;
 
   public:
     ArchiveProgressOperation(ArchiveBackend &backend, std::function<void()> start);

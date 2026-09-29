@@ -55,7 +55,7 @@ void PlainFunction() { }
             self.assertEqual(opaque, ["windows.h"])
 
     def test_unknown_statements_and_expressions_fail_closed(self):
-        for statement in ['ICON "icon",IDC_ICON,0,0,10,10',
+        for statement in ['SCROLLBAR IDC_UNKNOWN,0,0,10,10',
                           'LTEXT "a",IDC_A,unknown,0,10,10',
                           'LTEXT "a",IDC_A,__import__("os"),0,10,10']:
             with self.subTest(statement=statement), self.assertRaises((ValueError, SyntaxError)):
@@ -73,6 +73,17 @@ void PlainFunction() { }
         self.assertEqual(dialogs[0]["controls"][0]["qtClass"], "QCheckBox")
         self.assertFalse(dialogs[0]["controls"][1]["editable"])
         self.assertIn("ES_PASSWORD", dialogs[1]["controls"][0]["style"])
+
+    def test_icons_do_not_consume_neighboring_resource_statements(self):
+        dialog = parse_dialogs('''IDD_TEST DIALOG 0,0,100,80 BEGIN
+            LTEXT "File",IDT_FILE,8,8,80,8
+            ICON "",IDI_FILE,8,20 + 4,24,24
+            LTEXT "Size",IDT_SIZE,40,24,50,8
+            END''')[0]
+        self.assertEqual([c["id"] for c in dialog["controls"]],
+                         ["IDT_FILE", "IDI_FILE", "IDT_SIZE"])
+        self.assertEqual(dialog["controls"][1]["boundsDLU"], [8,24,24,24])
+        self.assertEqual(dialog["controls"][1]["qtClass"], "QLabel")
 
 
 class CompareTests(unittest.TestCase):

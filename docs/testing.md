@@ -1,5 +1,17 @@
 # Regression strategy
 
+The native navigation component is exercised through root/nested/address/parent
+window consumers and native callback/transaction fixtures. `native_navigation_window`
+updates a real Unicode/space ZIP externally, refreshes its metadata/selection, and
+checks parent focus. `nested_update` returns from a changed nested archive through
+OpenParentFolder and the native update prompt: successful replacement, failed update
+and cancellation check outer bytes and owned temporary data. `source_extract_contract`
+checks all-items/cumulative progress and cancellation without a fabricated DataError.
+Manual-listing window fixtures complete inside native modal opening; busy-command,
+password, cancellation and error assertions run during that lifecycle. Tests create
+and remove only their own placeholder archive files. Normal/compact archive-runtime
+JSON reports remain the layout evidence; Windows/Linux runtime is checked separately.
+
 `progress_wait` checks the portable startup wait boundary with latched signals,
 finish precedence and zero/finite timeout; original native CThread/CManualResetEvent
 fixtures exercise request/completion wakeup and explicit join/RAII ownership.

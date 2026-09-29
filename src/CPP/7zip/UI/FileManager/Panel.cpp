@@ -7,6 +7,15 @@
 #include <QEvent>
 #include <QWidget>
 
+CPanel::~CPanel() {
+    // Native destructor folder cleanup, after stopping Qt notifications and
+    // joining the per-panel external-file workers that can refer to this owner.
+    Disable_Processing_Timer_Notify_StatusBar();
+    if (_exitEventLauncher)
+        _exitEventLauncher->Exit(true);
+    CloseOpenFolders();
+}
+
 UString CPanel::GetFolderTypeID() const {
     {
         NWindows::NCOM::CPropVariant prop;

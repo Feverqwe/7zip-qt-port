@@ -19,6 +19,7 @@ struct ArchiveEntry {
 struct ArchiveInfo {
     QString format;
     qint64 physicalSize = -1;
+    qint64 offset = 0;
     qint64 unpackedSize = 0;
     int files = 0;
     int folders = 0;
@@ -53,7 +54,10 @@ class ArchiveBackend : public QObject {
     explicit ArchiveBackend(QObject *parent = nullptr, QString executable = QString());
     ~ArchiveBackend() override;
     virtual bool busy() const;
+    virtual HRESULT lastResult() const;
     virtual void list(const QString &archive, const QString &password = {});
+    virtual void openFolder(const QString &archive, const QString &format,
+                            const QString &password = {});
     virtual void extract(const QString &archive, const QString &destination,
                          const QStringList &selected = {}, const QString &password = {},
                          const ExtractionOptions &options = {});
@@ -68,6 +72,16 @@ class ArchiveBackend : public QObject {
                              const QString &newPath);
     virtual void replaceEntry(const QString &archive, const QString &entry,
                               const QString &sourceRoot);
+    // Source IOutArchive transport writes a new archive; native WorkDir owns publication.
+    virtual void updateSourceFile(const QString &archive, const QString &entry,
+                                  const QString &sourceRoot, const QString &output,
+                                  const QString &format, const QString &password);
+    // Binary stdout is isolated from progress/password/error text. Native
+    // callbacks own the final output stream and filesystem presentation.
+    virtual void extractSourceEntry(const QString &archive, const QString &entry,
+                                    const QString &output, const QString &format,
+                                    const QString &password);
+    static bool sourceUpdatePathIsSafe(const QString &path);
     virtual void cancel();
     // Native controls affect only this backend's live engine child.
     virtual HRESULT setPaused(bool paused);
@@ -98,17 +112,21 @@ class ArchiveBackend : public QObject {
         Delete,
         Rename,
         ReplaceDelete,
-        ReplaceAdd
+        ReplaceAdd,
+        SourceUpdate,
+        SourceExtract
     };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
+    HRESULT listingFailureResult(int exitCode, QProcess::ExitStatus status) const;
     static bool safePath(const QString &path);
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error) const;
     bool prepareMutation(const QString &archive);
+    void startListing(const QString &archive, const QString &password, const QString &format);
 
     QProcess process_;
     CProcessPause processPause_;
@@ -124,6 +142,7 @@ class ArchiveBackend : public QObject {
     QList<ArchiveEntry> entries_;
     bool listed_ = false;
     bool cancelled_ = false;
+    HRESULT lastResult_ = E_FAIL;
     QString pendingPassword_;
     bool passwordPrompted_ = false;
     bool encrypted_ = false;
