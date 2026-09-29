@@ -96,7 +96,9 @@ bound children/parents retain its IUnknown identity. The source engine owner
 interface is not advertised. Window enumeration binds an owned folder from its
 root and publishes its source indices; nested Qt parent frames retain the same
 root. The former window proxy value and borrowed stack traversal are removed.
-The borrowed overload remains in focused legacy tests. Raw/alternate-stream/operation and
+The test-only external-proxy constructor/overload is removed; all initialized
+folders retain a CAgent owner, including the focused test fixtures.
+Raw/alternate-stream/operation and
 full engine catalog contracts remain open; unsupported interfaces are absent.
 `sevenzip_location` provides Qt input factories that use source CFSFolder path
 services or source CAgent ownership with an immutable typed metadata snapshot.

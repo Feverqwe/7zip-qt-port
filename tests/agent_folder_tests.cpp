@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "Windows/PropVariant.h"
+#include "qtlocationfolder.h"
 #include "qtpanelfolder.h"
 #include <QtTest>
 
@@ -20,32 +21,19 @@ class AgentFolderTests : public QObject {
         return -1;
     }
 
-    static CMyComPtr<IFolderFolder> root(CProxyArc &proxy, const QList<ArchiveEntry> &entries) {
-        proxy.Load(entries);
-        CObjectVector<CPanelItem> items;
-        for (const ArchiveEntry &entry : entries) {
-            CPanelItem item;
-            item.RelPath = entry.path;
-            item.IsFolder = entry.directory;
-            item.SizeDefined = true;
-            item.Size = UInt64(entry.size);
-            item.PackSize = UInt64(entry.packedSize);
-            items.Add(item);
-        }
-        CMyComPtr<IFolderFolder> props = new QtPanelFolder("archive.zip", items);
-        auto *spec = new CAgentFolder;
-        CMyComPtr<IFolderFolder> folder = spec;
-        spec->Init(&proxy, k_Proxy_RootDirIndex, props, UString("zip"));
+    static CMyComPtr<IFolderFolder> root(const QList<ArchiveEntry> &entries) {
+        CMyComPtr<IFolderFolder> folder;
+        if (CreateArchiveFolder(entries, UString("zip"), &folder) != S_OK)
+            return {};
         return folder;
     }
 
   private slots:
     void nameIndexAndParentBindingUseSourcePaths() {
-        CProxyArc proxy;
         CMyComPtr<IFolderFolder> folder =
-            root(proxy, {{QStringLiteral("папка с пробелом/внутри/файл 😀.txt"), 13, 5},
-                         {QStringLiteral("папка с пробелом/другой.txt"), 7, 3},
-                         {"root.bin", 4, 2}});
+            root({{QStringLiteral("папка с пробелом/внутри/файл 😀.txt"), 13, 5},
+                  {QStringLiteral("папка с пробелом/другой.txt"), 7, 3},
+                  {"root.bin", 4, 2}});
         QCOMPARE(folder->LoadItems(), S_OK);
         const int index = rowByName(folder, QStringLiteral("папка с пробелом"));
         QVERIFY(index >= 0);
@@ -58,8 +46,18 @@ class AgentFolderTests : public QObject {
         CMyComPtr<IFolderFolder> inner;
         QCOMPARE(byName->BindToFolder(L"внутри", &inner), S_OK);
         QCOMPARE(ToQString(GetFolderPath(inner)), QStringLiteral("папка с пробелом/внутри/"));
-        folder.Release(); // children own delegated properties; proxy is explicitly external here.
+        folder.Release(); // Children retain the source agent and its authoritative proxy.
         QCOMPARE(inner->LoadItems(), S_OK);
+        UInt32 propertyCount = 0;
+        QCOMPARE(inner->GetNumberOfProperties(&propertyCount), S_OK);
+        QCOMPARE(propertyCount, UInt32(5));
+        CMyComBSTR propertyName;
+        PROPID propertyId;
+        VARTYPE propertyType;
+        QCOMPARE(inner->GetPropertyInfo(0, &propertyName, &propertyId, &propertyType), S_OK);
+        QCOMPARE(propertyId, PROPID(kpidName));
+        QCOMPARE(propertyType, VARTYPE(VT_BSTR));
+        QVERIFY(propertyName == nullptr);
         NWindows::NCOM::CPropVariant size;
         QCOMPARE(inner->GetProperty(0, kpidSize, &size), S_OK);
         QCOMPARE(size.uhVal.QuadPart, UInt64(13));
@@ -75,10 +73,9 @@ class AgentFolderTests : public QObject {
     }
 
     void flatPrefixAndFolderBindingRemainRelativeToBase() {
-        CProxyArc proxy;
-        CMyComPtr<IFolderFolder> folder = root(proxy, {{"base/a/same.txt", 1, 1},
-                                                       {"base/b/same.txt", 2, 2},
-                                                       {"base/b/deep/child.txt", 3, 3}});
+        CMyComPtr<IFolderFolder> folder = root({{"base/a/same.txt", 1, 1},
+                                                {"base/b/same.txt", 2, 2},
+                                                {"base/b/deep/child.txt", 3, 3}});
         CMyComPtr<IFolderFolder> base;
         QCOMPARE(folder->BindToFolder(L"base", &base), S_OK);
         CMyComPtr<IFolderSetFlatMode> flat;
@@ -111,9 +108,7 @@ class AgentFolderTests : public QObject {
     }
 
     void sourceFolderPropertiesAndRejectedBindings() {
-        CProxyArc proxy;
-        CMyComPtr<IFolderFolder> folder =
-            root(proxy, {{"folder/file.txt", 9, 4}, {"root.txt", 2, 1}});
+        CMyComPtr<IFolderFolder> folder = root({{"folder/file.txt", 9, 4}, {"root.txt", 2, 1}});
         NWindows::NCOM::CPropVariant type;
         QCOMPARE(folder->GetFolderProperty(kpidType, &type), S_OK);
         QCOMPARE(ToQString(UString(type.bstrVal)), QString("7-Zip.zip"));
@@ -140,6 +135,13 @@ class AgentFolderTests : public QObject {
         UInt32 count = 9;
         QCOMPARE(unbound.GetNumberOfItems(&count), E_FAIL);
         QCOMPARE(count, UInt32(0));
+        count = 9;
+        QCOMPARE(unbound.GetNumberOfProperties(&count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE propertyType;
+        QCOMPARE(unbound.GetPropertyInfo(0, &name, &id, &propertyType), E_FAIL);
     }
 
     void ownedAgentSurvivesInputRootAndAgentRelease() {

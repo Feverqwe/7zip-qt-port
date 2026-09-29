@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c3a removes the test-only external-proxy compatibility lifecycle.
+Initialized archive folders and their children/parents always retain the source
+CAgent; catalogs use its source expansion/remapping. Default unbound calls fail
+without publishing undefined counts. Runtime presentation is unchanged;
+remaining consumer migration and outer/native path-stack scope stay mandatory.
+
 P0-02.2b3b3c2cc verifies source Properties in normal/flat and all four views
 through filesystem/archive transitions and Refresh. Native loaded size/cache,
 duplicate Unicode names/prefixes, directory counts/flat absence and missing/zero

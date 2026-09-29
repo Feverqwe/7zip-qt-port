@@ -409,7 +409,16 @@ P0-03/04/feature scopes, not N/A.
 | --- | --- | --- | --- |
 | P0-02.2b3b3c1 | Copy/Move summary uses source CPanel operated indices and bound folder properties, no rebuilt row metadata snapshot; source paths/names/totals and missing/zero sizes in normal/flat/four views; Qt display prefix remains explicit until full source path stack | P0-02.2b3b3b | done — audit § P0-02.2b3b3c1; focused 8/8, check.sh 64/64, 16 normal/compact source summary JSON reports inspected; macOS 2026-09-29 |
 | P0-02.2b3b3c2 | Properties consumes source folder catalogs/typed values and operated indices; copy original formatting dependencies and preserve Qt dialog/geometry; remove window metadata reconstruction | P0-02.2b3b3c1 | done — scoped selected-item consumer c2a–c2c verified; raw/archive-level/shell/native time remain mandatory owners |
-| P0-02.2b3b3c3 | Remaining location/navigation/mutation consumers and teardown acceptance; verify source index ownership and temporary context fields before source parent/path stack migration | P0-02.2b3b3c2 | todo |
+| P0-02.2b3b3c3 | Remaining location/navigation/mutation consumers and teardown acceptance; verify source index ownership and temporary context fields before source parent/path stack migration | P0-02.2b3b3c2 | active — a–c below; c2 acceptance commit 2511ee8 |
+
+Remaining consumer/lifetime migration is split before code. Full path/outer-stack
+port stays P0-02.2b3c/d; no old borrowed compatibility branch is declared N/A.
+
+| Substep | Owner, scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3b3c3a | CAgentFolder owned lifecycle only: remove test-only external-proxy constructor/Init and child/parent/catalog compatibility branches; migrate fixtures to source-owned CAgent factory; surviving child/parent/catalog and unbound failure checks | P0-02.2b3b3c2 | done — audit § P0-02.2b3b3c3a; focused 10/10, check.sh 72/72; macOS 2026-09-29 |
+| P0-02.2b3b3c3b | Remaining selection/navigation/mutation consumers use source indices and owned folder interfaces where available; inspect original paths/real-index mapping before implementation, split additional dependencies if needed; retain explicit temporary full-path boundary until source stack | P0-02.2b3b3c3a | todo |
+| P0-02.2b3b3c3c | Consumer replacement/failed load/cancellation/teardown acceptance and direct regressions; record remaining path/outer-stack prerequisites without claiming them completed | P0-02.2b3b3c3b | todo |
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 

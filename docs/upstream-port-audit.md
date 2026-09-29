@@ -8,6 +8,42 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c3a — owned Agent folder lifecycle only (2026-09-29)
+
+Project baseline `2511ee8`; pinned ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Inspected Agent.h original Init and
+Agent.cpp BindToFolder_Internal/BindToParentFolder/GetNumberOfProperties/
+GetPropertyInfo. Source folder Init retains the agent; child/parent construction
+always passes that owner. Remove the independently added external-proxy
+constructor and metadata-only Init overload, which were used only by legacy
+archive_proxy/agent_folder fixtures. Child/parent binding now unconditionally
+uses the existing original owner branch. Catalog queries have one original
+owned expansion/remapping path; default unbound public calls fail safely with
+E_FAIL and count zero rather than dereferencing an absent agent. No duplicate
+source algorithm or new proxy copy is introduced.
+
+The retained partial source Init still omits proxy2/alternate-stream state and
+uses IUnknown instead of engine IInFolderArchive at the 7zz boundary; archive
+type/provider references remain narrow transport adaptations. Full engine/raw/
+alternate-stream operation interfaces remain mandatory P0-03/P0-04/P1-10.
+This removes borrowed compatibility debt only, not the full engine/outer-stack
+scope. Other source bodies and authoritative module paths remain unchanged.
+
+Fixtures now use the same owned source factory as the runtime. They retain
+independent CProxyArc instances only when testing that module directly, never
+as a folder backing store. Public checks retain child→ancestor traversal after
+root/input/provider/explicit agent release; the former borrowed fixture now
+also exposes the source five-property catalog after root release. Flat subtree
+loads and 4500-directory counts use owned folder interfaces. Unbound catalogue
+queries return failure without publishing undefined counts. No UI appearance
+change, so appearance inspection is unnecessary for this iteration.
+
+Validation macOS arm64, 2026-09-29: affected application/folder/catalog/runtime
+targets built; focused consumers passed 10/10 (6.96 s). Mandatory check.sh
+passed 72/72 and git diff --check passed. Windows/Linux runtime remains
+unverified locally; upstream checkout remains unchanged. Further consumer
+selection mapping is c3b; full path/outer-stack migration remains open.
+
 ## P0-02.2b3b3c2cc — live Properties runtime acceptance (2026-09-29)
 
 Project baseline `bed7edf`; same pinned upstream

@@ -9,9 +9,6 @@
 #include "Common/Defs.h"
 #include "Windows/PropVariant.h"
 
-CAgentFolder::CAgentFolder(const CProxyArc &proxy, unsigned dirIndex, bool flatMode)
-    : _proxy(&proxy), _proxyDirIndex(dirIndex), _flatMode(flatMode) {}
-
 void CAgentFolder::LoadFolder(unsigned dirIndex) {
     CProxyItem item;
     item.DirIndex = dirIndex;
@@ -52,16 +49,6 @@ CProxyItem CAgentFolder::GetItem(unsigned index) const {
 }
 
 bool CAgentFolder::IsBound() const { return _proxy && _proxyDirIndex < _proxy->Dirs.size(); }
-
-void CAgentFolder::Init(const CProxyArc *proxy, unsigned proxyDirIndex, IFolderFolder *archiveProps,
-                        const UString &archiveType) {
-    _proxy = proxy;
-    _proxyDirIndex = proxyDirIndex;
-    _archiveProps = archiveProps;
-    _archiveType = archiveType;
-    _agent.Release();
-    _agentSpec = nullptr;
-}
 
 void CAgentFolder::Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent) {
     _proxy = proxy;
@@ -164,10 +151,7 @@ Z7_COM7F_IMF(CAgentFolder::GetProperty(UInt32 index, PROPID propID, PROPVARIANT 
 HRESULT CAgentFolder::BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder) {
     CAgentFolder *folderSpec = new CAgentFolder;
     CMyComPtr<IFolderFolder> agentFolder = folderSpec;
-    if (_agentSpec)
-        folderSpec->Init(_proxy, proxyDirIndex, _agentSpec);
-    else
-        folderSpec->Init(_proxy, proxyDirIndex, _archiveProps, _archiveType);
+    folderSpec->Init(_proxy, proxyDirIndex, _agentSpec);
     *resultFolder = agentFolder.Detach();
     return S_OK;
 }
@@ -212,10 +196,7 @@ Z7_COM7F_IMF(CAgentFolder::BindToParentFolder(IFolderFolder **resultFolder)) {
     proxyDirIndex = (unsigned)parent;
     CAgentFolder *folderSpec = new CAgentFolder;
     CMyComPtr<IFolderFolder> agentFolder = folderSpec;
-    if (_agentSpec)
-        folderSpec->Init(_proxy, proxyDirIndex, _agentSpec);
-    else
-        folderSpec->Init(_proxy, proxyDirIndex, _archiveProps, _archiveType);
+    folderSpec->Init(_proxy, proxyDirIndex, _agentSpec);
     *resultFolder = agentFolder.Detach();
     return S_OK;
     COM_TRY_END
@@ -259,14 +240,9 @@ static const PROPID kProps[] = {kpidNumSubDirs, kpidNumSubFiles, kpidPrefix};
 
 Z7_COM7F_IMF(CAgentFolder::GetNumberOfProperties(UInt32 *numProps)) {
     COM_TRY_BEGIN
-    if (!_agentSpec) {
-        // Explicit external-proxy compatibility path; owned runtime folders
-        // use the source catalog below. Full borrowed lifetime migration: c3.
-        if (!_archiveProps) {
-            *numProps = 0;
-            return E_NOTIMPL;
-        }
-        return _archiveProps->GetNumberOfProperties(numProps);
+    if (!IsBound()) {
+        *numProps = 0;
+        return E_FAIL;
     }
     RINOK(_agentSpec->GetArchive()->GetNumberOfProperties(numProps))
     *numProps += Z7_ARRAY_SIZE(kProps);
@@ -281,9 +257,8 @@ Z7_COM7F_IMF(CAgentFolder::GetNumberOfProperties(UInt32 *numProps)) {
 Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *propID,
                                            VARTYPE *varType)) {
     COM_TRY_BEGIN
-    if (!_agentSpec)
-        return _archiveProps ? _archiveProps->GetPropertyInfo(index, name, propID, varType)
-                             : E_NOTIMPL;
+    if (!IsBound())
+        return E_FAIL;
     UInt32 numProps;
     RINOK(_agentSpec->GetArchive()->GetNumberOfProperties(&numProps))
     // Source in-process callers supply valid indices. The public 7zz adapter

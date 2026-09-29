@@ -18,11 +18,8 @@ class CAgentFolder final : public IFolderFolder, public IFolderSetFlatMode, publ
     Z7_COM_UNKNOWN_IMP_2(IFolderFolder, IFolderSetFlatMode)
   public:
     CAgentFolder() = default;
-    CAgentFolder(const CProxyArc &proxy, unsigned dirIndex, bool flatMode);
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
-    void Init(const CProxyArc *proxy, unsigned proxyDirIndex, IFolderFolder *archiveProps,
-              const UString &archiveType);
     void Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent);
     HRESULT BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
     unsigned GetNumberOfItems() const;

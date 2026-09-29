@@ -130,8 +130,9 @@ before the explicit QProcess shutdown fix.
 `agent_folder` validates the source _proxy folder contract: name/index/ancestor/
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings
-and unbound load failure. Proxy fixtures explicitly outlive their folders until
-the borrowed overload is used. Additional owned-Agent cases release input/provider,
+and unbound load/catalog failure. All initialized folder fixtures use the owned
+source factory or explicit CAgent; no external proxy is a borrowed backing store.
+Child catalogs remain expanded/remapped after root release. Owned-Agent cases release input/provider,
 root and explicit agent references before descendant/ancestor traversal, and
 check empty archive, invalid initialization and immutable repeat-Init rejection.
 `location_folder` covers filesystem/archive factories, normalized Unicode binding,

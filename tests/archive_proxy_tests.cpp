@@ -1,14 +1,17 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
+#include "qtlocationfolder.h"
 #include <QtTest>
 
 class ArchiveProxyTests : public QObject {
     Q_OBJECT
   private slots:
     void implicitDirectoriesAndRecursiveProperties() {
+        const QList<ArchiveEntry> entries = {{QStringLiteral("папка/один файл.txt"), 13, 5},
+                                             {QStringLiteral("папка/sub/ещё.txt"), 7, 3},
+                                             {"root.bin", 4, 2},
+                                             {"empty/", 0, 0, {}, true}};
         CProxyArc proxy;
-        proxy.Load({ArchiveEntry{QStringLiteral("папка/один файл.txt"), 13, 5},
-                    ArchiveEntry{QStringLiteral("папка/sub/ещё.txt"), 7, 3},
-                    ArchiveEntry{"root.bin", 4, 2}, ArchiveEntry{"empty/", 0, 0, {}, true}});
+        proxy.Load(entries);
         const int folder = proxy.FindDir(QStringLiteral("папка"));
         QVERIFY(folder > 0);
         QCOMPARE(proxy.Dirs[folder].Size, quint64(20));
@@ -22,12 +25,21 @@ class ArchiveProxyTests : public QObject {
         QCOMPARE(indices.size(), size_t(2));
         QVERIFY(std::find(indices.begin(), indices.end(), 0u) != indices.end());
         QVERIFY(std::find(indices.begin(), indices.end(), 1u) != indices.end());
-        CAgentFolder root(proxy, 0, false);
-        root.LoadItems();
-        QCOMPARE(root.GetNumberOfItems(), 3u);
-        CAgentFolder flat(proxy, unsigned(folder), true);
-        flat.LoadItems();
-        QCOMPARE(flat.GetNumberOfItems(), 3u);
+        CMyComPtr<IFolderFolder> root;
+        QCOMPARE(CreateArchiveFolder(entries, UString("zip"), &root), S_OK);
+        QCOMPARE(root->LoadItems(), S_OK);
+        UInt32 count;
+        QCOMPARE(root->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 3u);
+        CMyComPtr<IFolderFolder> child;
+        QCOMPARE(root->BindToFolder(L"папка", &child), S_OK);
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(child.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        root.Release();
+        QCOMPARE(child->LoadItems(), S_OK);
+        QCOMPARE(child->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 3u);
     }
     void largeUnsortedDirectorySetRetainsEveryChild() {
         QList<ArchiveEntry> entries;
@@ -36,9 +48,12 @@ class ArchiveProxyTests : public QObject {
                 ArchiveEntry{QString("directory-%1/file.bin").arg(i, 5, 10, QChar('0')), 1, 1});
         CProxyArc proxy;
         proxy.Load(entries);
-        CAgentFolder root(proxy, 0, false);
-        root.LoadItems();
-        QCOMPARE(root.GetNumberOfItems(), 4500u);
+        CMyComPtr<IFolderFolder> root;
+        QCOMPARE(CreateArchiveFolder(entries, UString("zip"), &root), S_OK);
+        QCOMPARE(root->LoadItems(), S_OK);
+        UInt32 count;
+        QCOMPARE(root->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 4500u);
         QCOMPARE(proxy.Dirs[0].Size, quint64(4500));
         for (int i : {1, 2048, 4096, 4500}) {
             const int folder = proxy.FindDir(QString("directory-%1").arg(i, 5, 10, QChar('0')));
