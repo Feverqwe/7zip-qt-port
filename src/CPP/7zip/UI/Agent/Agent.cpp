@@ -255,16 +255,62 @@ Z7_COM7F_IMF(CAgentFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value))
     COM_TRY_END
 }
 
+static const PROPID kProps[] = {kpidNumSubDirs, kpidNumSubFiles, kpidPrefix};
+
 Z7_COM7F_IMF(CAgentFolder::GetNumberOfProperties(UInt32 *numProps)) {
-    if (!_archiveProps) {
-        *numProps = 0;
-        return E_NOTIMPL;
+    COM_TRY_BEGIN
+    if (!_agentSpec) {
+        // Explicit external-proxy compatibility path; owned runtime folders
+        // use the source catalog below. Full borrowed lifetime migration: c3.
+        if (!_archiveProps) {
+            *numProps = 0;
+            return E_NOTIMPL;
+        }
+        return _archiveProps->GetNumberOfProperties(numProps);
     }
-    return _archiveProps->GetNumberOfProperties(numProps);
+    RINOK(_agentSpec->GetArchive()->GetNumberOfProperties(numProps))
+    *numProps += Z7_ARRAY_SIZE(kProps);
+    if (!_flatMode)
+        (*numProps)--;
+    if (!_agentSpec->ThereIsPathProp)
+        (*numProps)++;
+    return S_OK;
+    COM_TRY_END
 }
 
-Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type)) {
-    return _archiveProps ? _archiveProps->GetPropertyInfo(index, name, id, type) : E_NOTIMPL;
+Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *propID,
+                                           VARTYPE *varType)) {
+    COM_TRY_BEGIN
+    if (!_agentSpec)
+        return _archiveProps ? _archiveProps->GetPropertyInfo(index, name, propID, varType)
+                             : E_NOTIMPL;
+    UInt32 numProps;
+    RINOK(_agentSpec->GetArchive()->GetNumberOfProperties(&numProps))
+    // Source in-process callers supply valid indices. The public 7zz adapter
+    // validates them and propagates a failed transport query before using count.
+    if (!_agentSpec->ThereIsPathProp) {
+        if (index == 0) {
+            *propID = kpidName;
+            *varType = VT_BSTR;
+            *name = NULL;
+            return S_OK;
+        }
+        index--;
+    }
+    if (index < numProps) {
+        RINOK(_agentSpec->GetArchive()->GetPropertyInfo(index, name, propID, varType))
+        if (*propID == kpidPath)
+            *propID = kpidName;
+    } else {
+        index -= numProps;
+        if (index >= Z7_ARRAY_SIZE(kProps) - (!_flatMode ? 1 : 0))
+            return E_INVALIDARG;
+        *propID = kProps[index];
+        *varType = k7z_PROPID_To_VARTYPE[(unsigned)*propID];
+        *name = NULL;
+    }
+    return S_OK;
+    COM_TRY_END
 }
 
 Z7_COM7F_IMF(CAgentFolder::SetFlatMode(Int32 flatMode)) {
@@ -298,6 +344,19 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
 HRESULT CAgent::ReadItems() {
     if (_proxy)
         return S_OK;
+    {
+        ThereIsPathProp = false;
+        UInt32 numProps;
+        RINOK(GetArchive()->GetNumberOfProperties(&numProps))
+        for (UInt32 i = 0; i < numProps; i++) {
+            CMyComBSTR name;
+            PROPID propID;
+            VARTYPE varType;
+            RINOK(GetArchive()->GetPropertyInfo(i, &name, &propID, &varType))
+            if (propID == kpidPath)
+                ThereIsPathProp = true;
+        }
+    }
     _proxy = new CProxyArc();
     try {
         _proxy->Load(_entries);

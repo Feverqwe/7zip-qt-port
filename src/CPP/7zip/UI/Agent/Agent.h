@@ -58,6 +58,7 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
     HRESULT BindToRootFolder(IFolderFolder **resultFolder);
     CProxyArc *_proxy;
     UString ArchiveType;
+    bool ThereIsPathProp = false;
     IFolderFolder *GetArchive() const { return _archiveProps; }
 
   private:

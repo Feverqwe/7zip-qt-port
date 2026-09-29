@@ -440,14 +440,14 @@ P0-02.2b3b3c2b3 commit: `a7338e0`. Live Properties prerequisites split before co
 
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
-| P0-02.2b3b3c2ca | Typed archive transport property catalog and original CAgentFolder catalog expansion/remapping; normal/flat/property presence/error checks, full engine metadata remains P0-03/P0-04 | P0-02.2b3b3c2b | active — a1/a2 below |
+| P0-02.2b3b3c2ca | Typed archive transport property catalog and original CAgentFolder catalog expansion/remapping; normal/flat/property presence/error checks, full engine metadata remains P0-03/P0-04 | P0-02.2b3b3c2b | done — a1/a2 verified below; full handler metadata and borrowed lifetime remain mandatory |
 | P0-02.2b3b3c2cb | PropertiesDialog/MainWindow consume operated indices/live CPanel owner, remove snapshot metadata reconstruction, restore source packed aggregate visibility; focused source metadata and layout checks | P0-02.2b3b3c2ca | todo |
 | P0-02.2b3b3c2cc | Filesystem/archive normal/flat/four-view runtime acceptance for source index/name/counts, immutable/absent/zero metadata, transitions and normal/compact Properties geometry | P0-02.2b3b3c2cb | todo |
 
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2ca1 | QtPanelFolder 7zz typed Path/Size/PackSize transport catalog, preserve legacy custom-property callers; source types/names/Unicode/zero/absence/invalid-index checks | P0-02.2b3b3c2b | done — audit § P0-02.2b3b3c2ca1; focused 7/7, check.sh 71/71; macOS 2026-09-29 |
-| P0-02.2b3b3c2ca2 | Original CAgent ReadItems ThereIsPathProp scan and CAgentFolder GetNumberOfProperties/GetPropertyInfo plus kProps; transport Path→Name, optional Name/counts/flat Prefix and failure scope | P0-02.2b3b3c2ca1 | todo |
+| P0-02.2b3b3c2ca2 | Original CAgent ReadItems ThereIsPathProp scan and CAgentFolder GetNumberOfProperties/GetPropertyInfo plus kProps; transport Path→Name, optional Name/counts/flat Prefix and failure scope | P0-02.2b3b3c2ca1 | done — audit § P0-02.2b3b3c2ca2; focused 7/7, check.sh 71/71; macOS 2026-09-29; borrowed compatibility delegation remains mandatory c3 |
 
 ```text
 Parent: P?-?? — partial

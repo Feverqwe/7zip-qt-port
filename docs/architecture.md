@@ -28,8 +28,12 @@ scope, while raw/archive-level/shell capabilities retain their mandatory owners.
 CreateArchiveFolder configures the existing QtPanelFolder with an explicit
 ArchiveTransport catalog (Path/Size/PackSize), using source IDs/type descriptors
 and immutable presence-aware metadata. Custom presentation callers keep the
-default legacy catalog. CAgentFolder's original catalog expansion/remapping is
-the next prerequisite; transport descriptors do not imply full engine metadata.
+default legacy catalog. Owned CAgentFolder applies original catalog expansion/
+remapping and ReadItems scans ThereIsPathProp before proxy publication.
+Directory counts come from the source proxy, while transport file counts remain
+absent. Failed catalog queries do not publish an owner. External-proxy
+compatibility delegation remains mandatory lifecycle migration; transport
+descriptors do not imply full engine metadata.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single

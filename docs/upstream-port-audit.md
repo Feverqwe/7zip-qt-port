@@ -8,6 +8,53 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2ca2 — source owned archive property catalog (2026-09-29)
+
+Project baseline `3132579`; pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+CPP/7zip/UI/Agent/Agent.cpp kProps, CAgentFolder GetNumberOfProperties/
+GetPropertyInfo and ReadItems ThereIsPathProp block are copied as the functional
+base. Owned runtime folders retain original property count expansion, hiding
+Prefix outside flat mode, optional Name insertion, Path-to-Name remapping,
+delegated descriptor query and canonical extra-property types. The source
+ReadItems loop resets ThereIsPathProp and scans original property IDs/descriptors
+before proxy loading; the named source field is retained in CAgent.h.
+
+Adaptations: existing GetArchive() returns the immutable typed 7zz provider
+instead of an in-process archive engine; ReadItems queries that provider before
+allocating/publishing the proxy. Source ignores GetNumberOfProperties failure
+in ReadItems/GetPropertyInfo; RINOK is required at the transport boundary so an
+error cannot leave an undefined count or publish a partial owner. GetPropertyInfo
+validates the visible extra-property index before indexing kProps, including
+hidden Prefix in normal mode. These checks add safe public adapter failure
+behavior without replacing the source catalog algorithm. Source formatting and
+portable includes are the other changes.
+
+Borrowed external-proxy compatibility initialization still has no CAgent owner
+and retains its previous direct catalog delegation. It does not run a duplicate
+property scan or claim to implement owned source semantics. This legacy branch
+and full borrowed/outer lifecycle migration remain mandatory P0-02 c3; all
+runtime factories and their children/parents use the owned source branch.
+Commented optional alt-stream/proxy2 catalog paths and complete handler metadata
+remain mandatory P0-03/P0-04/P1-10; no whole Agent module completion is claimed.
+
+ArchiveTransport has no engine file descendant counts, so its existing
+GetProperty count slots now return VT_EMPTY rather than a fabricated file zero;
+source CAgentFolder supplies its computed directory counts unchanged. Legacy
+custom presentation count values remain as supplied. Regressions check normal/
+flat descriptors/order/types, Path remap/optional Name, canonical directory
+totals and flat size absence, unknown file counts, invalid indices, owned
+catalog after external owner release, count/descriptor failure before root
+publication, successful retry, and later query failures. No current window
+dialog changes until live Properties binding; appearance inspection is not
+required for this nonvisual catalog step.
+
+Validation macOS arm64, 2026-09-29: affected application/Agent/folder/Properties
+targets build; focused direct consumers 7/7 (2.96 s); scripts/check.sh formatting,
+full build and CTest 71/71 (35.80 s). Source/vendor counts remain unchanged;
+the sibling source checkout remains unmodified. Windows/Linux runtime is
+unverified locally, and this catalog check does not establish rendered parity.
+
 ## P0-02.2b3b3c2ca1 — typed 7zz archive transport catalog (2026-09-29)
 
 Project baseline `a7338e0`; inspected pinned [ip7z/7zip

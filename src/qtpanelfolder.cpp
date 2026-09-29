@@ -61,10 +61,12 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
             prop = item.PackSize;
         break;
     case kpidNumSubDirs:
-        prop = item.NumSubDirs;
+        if (catalog_ != PropertyCatalog::ArchiveTransport)
+            prop = item.NumSubDirs;
         break;
     case kpidNumSubFiles:
-        prop = item.NumSubFiles;
+        if (catalog_ != PropertyCatalog::ArchiveTransport)
+            prop = item.NumSubFiles;
         break;
     default:
         if (id < kSnapshotProperty || id - kSnapshotProperty >= propertyNames_.Size())

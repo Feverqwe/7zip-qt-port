@@ -7,6 +7,15 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2ca2 uses the original owned CAgentFolder catalog expansion: Path
+becomes Name, descendant count descriptors are added, Prefix appears only in
+flat mode and Name is inserted when the transport has no Path. Directory counts
+come from the source proxy; file count values unsupported by the transport stay
+absent. Catalog errors prevent root publication and allow retry. The legacy
+external-proxy compatibility branch remains lifecycle migration, and full
+handler metadata remains mandatory. Live window Properties binding follows;
+no current displayed dialog or rendered Windows parity is claimed here.
+
 P0-02.2b3b3c2ca1 makes the archive transport provider's Path/Size/PackSize
 catalog explicit, with native source types and no fabricated absent values.
 This prerequisite changes no displayed dialog; source folder catalog expansion

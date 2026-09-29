@@ -3,8 +3,10 @@
 `archive_property_catalog` checks the immutable 7zz property provider's canonical
 Path/Size/PackSize descriptors, full Unicode/space paths, absent versus maximum/
 zero values, empty input, bad indices, factory ownership and preservation of
-legacy custom-property callers. Folder-side source catalog expansion and live
-Properties acceptance are separate following checks.
+legacy custom-property callers. The same target checks owned source folder
+catalog expansion/remapping and optional Name, normal/flat Prefix, source
+directory totals versus absent file counts, invalid indices, retained ownership,
+catalog failures and root-bind retry. Live Properties acceptance follows.
 
 `panel_property` exercises the original PanelMenu typed formatting through a
 public IFolderFolder fixture: known/custom catalog names, UI2/UI4/UI8 sizes and

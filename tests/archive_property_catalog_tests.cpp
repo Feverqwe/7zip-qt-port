@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/Agent/Agent.h"
 #include "Windows/PropVariant.h"
 #include "qtlocationfolder.h"
 #include "qtpanelfolder.h"
@@ -7,10 +8,174 @@
 
 using NWindows::NCOM::CPropVariant;
 
+class FailingCatalog final : public IFolderFolder, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IFolderFolder)
+  public:
+    bool FailCount = false;
+    bool FailDescriptor = false;
+    Z7_IFACE_COM7_IMP(IFolderFolder)
+};
+
+Z7_COM7F_IMF(FailingCatalog::LoadItems()) { return S_OK; }
+Z7_COM7F_IMF(FailingCatalog::GetNumberOfItems(UInt32 *count)) {
+    *count = 0;
+    return S_OK;
+}
+Z7_COM7F_IMF(FailingCatalog::GetNumberOfProperties(UInt32 *count)) {
+    if (FailCount)
+        return E_FAIL;
+    *count = 1;
+    return S_OK;
+}
+Z7_COM7F_IMF(FailingCatalog::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type)) {
+    if (FailDescriptor)
+        return E_FAIL;
+    if (index != 0)
+        return E_INVALIDARG;
+    *name = nullptr;
+    *id = kpidPath;
+    *type = VT_BSTR;
+    return S_OK;
+}
+Z7_COM7F_IMF(FailingCatalog::GetProperty(UInt32, PROPID, PROPVARIANT *)) { return E_NOTIMPL; }
+Z7_COM7F_IMF(FailingCatalog::GetFolderProperty(PROPID, PROPVARIANT *)) { return E_NOTIMPL; }
+Z7_COM7F_IMF(FailingCatalog::BindToFolder(UInt32, IFolderFolder **folder)) {
+    *folder = nullptr;
+    return E_NOTIMPL;
+}
+Z7_COM7F_IMF(FailingCatalog::BindToFolder(const wchar_t *, IFolderFolder **folder)) {
+    *folder = nullptr;
+    return E_NOTIMPL;
+}
+Z7_COM7F_IMF(FailingCatalog::BindToParentFolder(IFolderFolder **folder)) {
+    *folder = nullptr;
+    return E_NOTIMPL;
+}
+
 class ArchivePropertyCatalogTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void sourceFolderExpandsCatalogAndRemapsPath_data() {
+        QTest::addColumn<bool>("flat");
+        QTest::newRow("normal") << false;
+        QTest::newRow("flat") << true;
+    }
+
+    void sourceFolderExpandsCatalogAndRemapsPath() {
+        QFETCH(bool, flat);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(CreateArchiveFolder({ArchiveEntry{QStringLiteral("папка й/a.txt"), 7, 3},
+                                      ArchiveEntry{QStringLiteral("папка й/sub/b.txt"), 0, 0}},
+                                     UString(L"7z"), &folder),
+                 S_OK);
+        CMyComPtr<IFolderSetFlatMode> mode;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &mode), S_OK);
+        QCOMPARE(mode->SetFlatMode(flat), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count;
+        QCOMPARE(folder->GetNumberOfProperties(&count), S_OK);
+        QCOMPARE(count, flat ? 6u : 5u);
+        const PROPID ids[] = {kpidName,       kpidSize,        kpidPackSize,
+                              kpidNumSubDirs, kpidNumSubFiles, kpidPrefix};
+        const VARTYPE types[] = {VT_BSTR, VT_UI8, VT_UI8, VT_UI8, VT_UI8, VT_BSTR};
+        for (UInt32 i = 0; i < count; ++i) {
+            CMyComBSTR name;
+            PROPID id;
+            VARTYPE type;
+            QCOMPARE(folder->GetPropertyInfo(i, &name, &id, &type), S_OK);
+            QCOMPARE(id, ids[i]);
+            QCOMPARE(type, types[i]);
+            QVERIFY(!name);
+        }
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE type;
+        QCOMPARE(folder->GetPropertyInfo(count, &name, &id, &type), E_INVALIDARG);
+        QCOMPARE(folder->GetPropertyInfo(0xFFFFFFFF, &name, &id, &type), E_INVALIDARG);
+        CPropVariant prop;
+        QCOMPARE(folder->GetProperty(0, kpidName, &prop), S_OK);
+        QCOMPARE(QString::fromWCharArray(prop.bstrVal), QStringLiteral("папка й"));
+        QCOMPARE(folder->GetProperty(0, kpidNumSubDirs, &prop), S_OK);
+        QCOMPARE(prop.uhVal.QuadPart, UInt64(1));
+        QCOMPARE(folder->GetProperty(0, kpidNumSubFiles, &prop), S_OK);
+        QCOMPARE(prop.uhVal.QuadPart, UInt64(2));
+        QCOMPARE(folder->GetProperty(0, kpidSize, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(flat ? VT_EMPTY : VT_UI8));
+        if (!flat)
+            QCOMPARE(prop.uhVal.QuadPart, UInt64(7));
+    }
+
+    void sourceFolderInsertsNameWhenTransportHasNoPath() {
+        CObjectVector<CPanelItem> items;
+        CPanelItem item;
+        item.RelPath = "file.txt";
+        item.Properties.Add({UString(L"Custom note"), UString(L"value")});
+        items.Add(item);
+        CMyComPtr<IFolderFolder> metadata = new QtPanelFolder("", items);
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IUnknown> agent = agentSpec;
+        QCOMPARE(agentSpec->Init({ArchiveEntry{"file.txt", 9, 4}}, metadata, UString(L"7z")), S_OK);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(agentSpec->BindToRootFolder(&folder), S_OK);
+        QVERIFY(!agentSpec->ThereIsPathProp);
+        UInt32 count;
+        QCOMPARE(folder->GetNumberOfProperties(&count), S_OK);
+        QCOMPARE(count, 4u);
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE type;
+        QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), S_OK);
+        QCOMPARE(id, PROPID(kpidName));
+        QCOMPARE(type, VARTYPE(VT_BSTR));
+        QVERIFY(!name);
+        QCOMPARE(folder->GetPropertyInfo(1, &name, &id, &type), S_OK);
+        QCOMPARE(QString::fromWCharArray(name), QString("Custom note"));
+        CPropVariant prop;
+        QCOMPARE(folder->GetProperty(0, id, &prop), S_OK);
+        QCOMPARE(QString::fromWCharArray(prop.bstrVal), QString("value"));
+        agent.Release();
+        metadata.Release();
+        QCOMPARE(folder->GetNumberOfProperties(&count), S_OK);
+        QCOMPARE(count, 4u);
+    }
+
+    void metadataFailuresDoNotPublishPartialOwnerAndCanRetry_data() {
+        QTest::addColumn<bool>("countFailure");
+        QTest::newRow("count") << true;
+        QTest::newRow("descriptor") << false;
+    }
+
+    void metadataFailuresDoNotPublishPartialOwnerAndCanRetry() {
+        QFETCH(bool, countFailure);
+        auto *metadataSpec = new FailingCatalog;
+        CMyComPtr<IFolderFolder> metadata = metadataSpec;
+        metadataSpec->FailCount = countFailure;
+        metadataSpec->FailDescriptor = !countFailure;
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IUnknown> agent = agentSpec;
+        QCOMPARE(agentSpec->Init({}, metadata, UString(L"7z")), S_OK);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(agentSpec->BindToRootFolder(&folder), E_FAIL);
+        QVERIFY(!folder);
+        metadataSpec->FailCount = false;
+        metadataSpec->FailDescriptor = false;
+        QCOMPARE(agentSpec->BindToRootFolder(&folder), S_OK);
+        QVERIFY(agentSpec->ThereIsPathProp);
+        UInt32 count;
+        QCOMPARE(folder->GetNumberOfProperties(&count), S_OK);
+        QCOMPARE(count, 3u); // Remapped Path, appended counts; Prefix hidden.
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE type;
+        metadataSpec->FailCount = true;
+        QCOMPARE(folder->GetNumberOfProperties(&count), E_FAIL);
+        QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), E_FAIL);
+        metadataSpec->FailCount = false;
+        metadataSpec->FailDescriptor = true;
+        QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), E_FAIL);
+    }
+
     void transportCatalogOwnsNativeTypesAndFullUnicodePaths() {
         CObjectVector<CPanelItem> items;
         CPanelItem item;
@@ -94,6 +259,10 @@ class ArchivePropertyCatalogTests : public QObject {
         QCOMPARE(child->GetProperty(0, kpidPackSize, &prop), S_OK);
         QCOMPARE(prop.vt, VARTYPE(VT_UI8));
         QCOMPARE(prop.uhVal.QuadPart, UInt64(0));
+        QCOMPARE(child->GetProperty(0, kpidNumSubDirs, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(VT_EMPTY));
+        QCOMPARE(child->GetProperty(0, kpidNumSubFiles, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(VT_EMPTY));
         CObjectVector<CPanelItem> custom;
         CPanelItem ui;
         ui.Properties.Add({UString(L"Custom й"), UString(L"value")});
