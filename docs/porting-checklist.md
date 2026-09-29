@@ -369,8 +369,22 @@ Current chat owns the following prerequisites and complete modal implementation.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b1 | Original GetTimeString and unchanged progress/control/operation resources, strict generator supports source brace-delimited tables; generated upstream view reference, duration/overflow/metadata and generator regressions; no dialog acceptance claim | P0-02.2b3c3b2a | done — audit § P0-02.2b3c3b2b1; pre-change generator regression failed, focused 4/4, check.sh 85/85, vendor bytes 82/82 and source function match; macOS 2026-09-29 |
-| P0-02.2b3c3b2b2 | Original CProgressDialog presentation/statistics/range/title/message/pause/background functional bodies and Qt widget/platform adapters; source grouping/order and text spec, normal/compact geometry/JSON with current source counter states; full omitted modal/worker lifecycle remains b3 | P0-02.2b3c3b2b1 | todo |
+| P0-02.2b3c3b2b2 | Original CProgressDialog presentation/statistics/range/title/message/pause/background functional bodies and Qt widget/platform adapters; source grouping/order and text spec, normal/compact geometry/JSON with current source counter states; full omitted modal/worker lifecycle remains b3 | P0-02.2b3c3b2b1 | active — a/b split below before presentation code; platform priority/taskbar service remains mandatory |
 | P0-02.2b3c3b2b3 | Complete CProgressDialog Create/WaitCreating/finish/cancel/error lifecycle and original CProgressThreadVirt Process/Create, native workers/joins and required Qt platform services; modal success/failure/exception/cancel/pause/finish-during-prompt and combined view acceptance; split before code if needed | P0-02.2b3c3b2b2 | todo |
+
+B2 statistics/message presentation can be accepted independently of process
+priority/taskbar services; keep those mandatory and disable unfinished controls.
+No view-only acceptance closes the full progress or update workflow.
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2b2a | Source CProgressDialog fields/init, resize, range/statistics/time/title/message/clipboard and pause rendering; narrow Qt controls/font/tick/clipboard services; current native counter states, source text specification and all controls mapped to normal/compact JSON/geometry; cancel/background unavailable until their required services | P0-02.2b3c3b2b1 | active — split a1/a2 before code; complete presentation remains mandatory |
+| P0-02.2b3c3b2b2b | Original Windows taskbar/process-priority bodies and required portable platform services/capabilities, source background transition and complete presentation acceptance; no mandatory service marked N/A; native/Qt behavior and all affected consumers verified | P0-02.2b3c3b2b2a | todo |
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2b2a1 | Complete original file-local ReduceString, ConvertSizeToString, GetChangedString, GetPower32/64, MyMultAndDiv and GetNumDigits bodies in ProgressDialog2.cpp; native arithmetic/string boundaries verified without exporting helpers or changing native visibility | P0-02.2b3c3b2b1 | done — focused 3/3 0.57 s, check.sh 86/86 44.78 s; seven bodies equal after formatting; macOS 2026-09-29; no displayed view acceptance |
+| P0-02.2b3c3b2b2a2 | Original CProgressDialog converter, fields/init/resize, statistics/title/messages/clipboard/pause with narrow Qt services; source resource text and every control reviewed in normal/compact current-build JSON/geometry; cancel/background disabled pending mandatory services | P0-02.2b3c3b2b2a1 | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

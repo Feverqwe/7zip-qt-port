@@ -1,5 +1,11 @@
 # Regression strategy
 
+`progress_statistics_helpers` compiles the authoritative progress module in a
+separate test translation unit to preserve original file-local helper visibility.
+It checks source size-unit boundaries and buffer guards, overflow/zero arithmetic,
+32/64-bit power boundaries, native Unicode truncation/change detection and message
+number digit boundaries. It does not accept the unfinished progress view.
+
 `progress_format` checks original native duration formatting across hour/UInt64
 boundaries and source progress/update captions. Generator cases also check paired
 brace tables and output preservation. The extracted progress resource reference

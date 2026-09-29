@@ -8,6 +8,40 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2a1 — source statistic helper bodies (2026-09-29)
+
+Project baseline `aed9488`; exact source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip,
+`CPP/7zip/UI/FileManager/ProgressDialog2.cpp`: ReduceString,
+ConvertSizeToString, GetChangedString, GetPower32, GetPower64, MyMultAndDiv and
+GetNumDigits. Copy all seven complete file-local bodies to the existing mirrored
+module, retaining names, static visibility, native UString/UInt64/UInt32/Byte,
+thresholds, loops, branch order and overflow approximation. Only required
+clang-format differs; all seven bodies compare equal after removing whitespace.
+
+MyMultAndDiv repeatedly shifts the larger factor and the divisor when the sum
+of factor bit lengths exceeds 64. At extreme inputs the divisor reaches zero;
+the original then returns the reduced product without division. Tests retain
+that source behavior, including `(2^63 * 2) / 2` yielding `2^62`, rather than
+substituting a newly written exact arithmetic algorithm. No correction to this
+upstream calculation is claimed in this port.
+
+The focused test compiles the authoritative ProgressDialog2.cpp in its own
+translation unit and links sevenzip_common, avoiding exported test-only helpers,
+duplicate source bodies or a visibility change to the original functions.
+Regressions cover native size thresholds and buffer guards, ordinary/overflow/
+zero arithmetic, every 32/64-bit power boundary, changed/unchanged/empty Unicode
+strings with spaces and source message-number digit transitions. Helpers remain
+unconsumed by a production CProgressDialog until mandatory a2; the converter,
+statistics/control rendering, source resize, titles/messages/clipboard/pause,
+platform services and complete modal/thread/update workflows remain unported.
+No displayed view or parent acceptance is claimed by this prerequisite.
+
+Checks on macOS arm64 2026-09-29: affected three targets build; focused
+progress_statistics_helpers/progress_format/progress_sync 3/3, 0.57 s.
+Full `./scripts/check.sh` format/build/CTest 86/86, 44.78 s, exit 0;
+`git diff --check` clean. Windows/Linux unverified.
+
 ## P0-02.2b3c3b2b1 — source progress resources and duration formatter (2026-09-29)
 
 Project baseline `20f5b1e`; exact source ip7z/7zip

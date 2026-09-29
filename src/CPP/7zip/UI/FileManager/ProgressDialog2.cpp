@@ -197,3 +197,84 @@ void GetTimeString(UInt64 timeValue, wchar_t *s) {
     UINT_TO_STR_2(seconds)
     *s = 0;
 }
+
+static void ReduceString(UString &s, unsigned size) {
+    if (s.Len() <= size)
+        return;
+    s.Delete(size / 2, s.Len() - size);
+    s.Insert(size / 2, L" ... ");
+}
+
+static void ConvertSizeToString(UInt64 v, wchar_t *s) {
+    Byte c = 0;
+    if (v >= ((UInt64)100000 << 20)) {
+        v >>= 30;
+        c = 'G';
+    } else if (v >= ((UInt64)100000 << 10)) {
+        v >>= 20;
+        c = 'M';
+    } else if (v >= ((UInt64)100000 << 0)) {
+        v >>= 10;
+        c = 'K';
+    }
+    ConvertUInt64ToString(v, s);
+    if (c != 0) {
+        s += MyStringLen(s);
+        *s++ = ' ';
+        *s++ = c;
+        *s++ = 'B';
+        *s++ = 0;
+    }
+}
+
+static void GetChangedString(const UString &newStr, UString &prevStr, bool &hasChanged) {
+    hasChanged = !(prevStr == newStr);
+    if (hasChanged)
+        prevStr = newStr;
+}
+
+static unsigned GetPower32(UInt32 val) {
+    const unsigned kStart = 32;
+    UInt32 mask = ((UInt32)1 << (kStart - 1));
+    for (unsigned i = kStart;; i--) {
+        if (i == 0 || (val & mask) != 0)
+            return i;
+        mask >>= 1;
+    }
+}
+
+static unsigned GetPower64(UInt64 val) {
+    UInt32 high = (UInt32)(val >> 32);
+    if (high == 0)
+        return GetPower32((UInt32)val);
+    return GetPower32(high) + 32;
+}
+
+static UInt64 MyMultAndDiv(UInt64 mult1, UInt64 mult2, UInt64 divider) {
+    unsigned pow1 = GetPower64(mult1);
+    unsigned pow2 = GetPower64(mult2);
+    while (pow1 + pow2 > 64) {
+        if (pow1 > pow2) {
+            pow1--;
+            mult1 >>= 1;
+        } else {
+            pow2--;
+            mult2 >>= 1;
+        }
+        divider >>= 1;
+    }
+    UInt64 res = mult1 * mult2;
+    if (divider != 0)
+        res /= divider;
+    return res;
+}
+
+static unsigned GetNumDigits(unsigned val) {
+    unsigned i = 0;
+    for (;;) {
+        i++;
+        val /= 10;
+        if (val == 0)
+            return i;
+    }
+}
