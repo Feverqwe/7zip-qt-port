@@ -22,7 +22,7 @@ namespace SevenzipReference {
 public static class Native {
     [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] public struct Point { public int X, Y; }
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)] public struct LogFont {
+    [StructLayout(LayoutKind.Sequential, CharSet = System.Runtime.InteropServices.CharSet.Unicode)] public struct LogFont {
         public int Height, Width, Escapement, Orientation, Weight;
         public byte Italic, Underline, StrikeOut, CharSet, OutPrecision, ClipPrecision, Quality, PitchAndFamily;
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FaceName;
@@ -31,7 +31,7 @@ public static class Native {
     delegate bool ResourceProc(IntPtr module, IntPtr type, IntPtr name, IntPtr parameter);
     delegate IntPtr DialogProc(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
     [StructLayout(LayoutKind.Sequential)] struct CommonControls { public uint Size, Classes; }
-    [DllImport("comctl32.dll")] static extern bool InitCommonControlsEx(ref CommonControls controls);
+    [DllImport("comctl32.dll", SetLastError = true)] static extern bool InitCommonControlsEx(ref CommonControls controls);
     [StructLayout(LayoutKind.Sequential)] struct Message {
         public IntPtr Window; public uint Id; public UIntPtr WParam; public IntPtr LParam;
         public uint Time; public Point Position; public uint Private;
@@ -51,9 +51,20 @@ public static class Native {
     [DllImport("user32.dll")] static extern bool TranslateMessage(ref Message message);
     [DllImport("user32.dll")] static extern IntPtr DispatchMessage(ref Message message);
     static DialogProc previewProcedure = delegate(IntPtr window, uint message, IntPtr wp, IntPtr lp) { return IntPtr.Zero; };
+    public static void InitializeControls() {
+        // ICC_WIN95_CLASSES is the baseline needed by 7-Zip's list/tree/tab/progress
+        // controls. Do not fail the entire run if a newer optional class is absent.
+        var controls = new CommonControls { Size = 8, Classes = 0x00FF };
+        if (!InitCommonControlsEx(ref controls))
+            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(),
+                "Cannot initialize baseline native common controls.");
+        foreach (uint optional in new uint[] { 0x0100, 0x0200, 0x0400, 0x0800, 0x1000, 0x2000, 0x8000 }) {
+            controls.Classes = optional;
+            InitCommonControlsEx(ref controls);
+        }
+    }
     public static IntPtr LoadTemplates(string path) {
-        var controls = new CommonControls { Size = 8, Classes = 0xFFFF };
-        if (!InitCommonControlsEx(ref controls)) throw new InvalidOperationException("Cannot initialize native common controls.");
+        InitializeControls();
         // LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE: no executable entry point.
         IntPtr module = LoadLibraryEx(path, IntPtr.Zero, 0x22);
         if (module == IntPtr.Zero) throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
@@ -205,6 +216,7 @@ public static class Native {
 '@
 }
 if ($SelfTest) {
+    [SevenzipReference.Native]::InitializeControls()
     $previous = [SevenzipReference.Native]::BeginPhysicalCoordinates()
     $probeWindow = [IntPtr]::Zero
     try {
