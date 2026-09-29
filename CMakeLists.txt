@@ -45,6 +45,7 @@ endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/FormatUtils.cpp src/CPP/7zip/UI/FileManager/FormatUtils.h
+    src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp src/CPP/7zip/UI/FileManager/ProgressDialog2.h
     src/qtpanellist.cpp src/qtpanellist.h
     src/qtpanelfolder.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
@@ -230,6 +231,10 @@ if(BUILD_TESTING)
     target_link_libraries(native_services_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME native_services COMMAND native_services_tests)
     set_tests_properties(native_services PROPERTIES TIMEOUT 10)
+    qt_add_executable(progress_sync_tests tests/progress_sync_tests.cpp)
+    target_link_libraries(progress_sync_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME progress_sync COMMAND progress_sync_tests)
+    set_tests_properties(progress_sync PROPERTIES TIMEOUT 10)
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

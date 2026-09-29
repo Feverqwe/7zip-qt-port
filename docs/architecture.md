@@ -61,6 +61,11 @@ It also builds unchanged native C Threads and ErrorMsg, exposing upstream
 Thread/Synchronization wrappers with one authoritative implementation and the
 platform Threads::Threads link. Source progress/update consumers reuse these
 owners; their modal UI/operation integration remains subsequent mandatory scope.
+
+ProgressDialog2 owns complete original CProgressSync counters, native critical
+section, pause/stop and error accumulation. Its POSIX pause sleep is a narrow Qt
+platform service. Full CProgressDialog/CProgressThreadVirt and operation UI remain
+mandatory later ports; the current QProgressDialog frontend is still migration debt.
 POSIX parent-link transfer/copy guard uses the original Windows method bodies;
 there is one adapted DLL owner. This is a parent-stack lifetime dependency, not
 in-process archive engine integration. Module-path/resource services remain

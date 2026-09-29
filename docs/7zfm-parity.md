@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2a2 compiles complete original CProgressSync native pause/stop/counter/
+error state. POSIX pause waits use the same 100 ms interval through a Qt platform
+sleep service. No displayed progress UI changes yet; original modal progress,
+callbacks and parent update workflows remain mandatory subsequent scope.
+
 P0-02.2b3c3b2a1 compiles unchanged upstream native thread/synchronization/error
 services needed by source progress/update state. No displayed behavior changes;
 modal progress, pause/cancel, update callbacks and parent integration remain open.

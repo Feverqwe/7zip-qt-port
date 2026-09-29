@@ -1,5 +1,10 @@
 # Regression strategy
 
+`progress_sync` checks source unknown/null counters, scan/status/native paths,
+paused native workers resumed or cancelled, callback abort/reopen state and error/
+final-message accumulation. Workers join before state destruction and CTest is
+bounded; these checks do not accept the pending full progress dialog/transport UI.
+
 `native_services` checks source native event/semaphore/critical-section/thread
 contracts, explicit joins and reuse, exact concurrent counts and native/unknown
 error formatting. Fixtures use local state and a bounded CTest timeout; full

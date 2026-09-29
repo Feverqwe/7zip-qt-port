@@ -8,6 +8,44 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2a2 — complete native CProgressSync state (2026-09-29)
+
+Project baseline `674ec1d`; original CPP/7zip/UI/FileManager/ProgressDialog2.h/.cpp
+at ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, retrievable from
+https://github.com/ip7z/7zip. Copy complete CProgressSync and both message structs
+into the mirrored module, retaining all fields, native types, inline methods,
+constructor defaults, macros and every CProgressSync function body. Preserve
+native critical-section scopes, stopped-before-paused checks, lock release before
+pause sleep, unknown totals, null update preservation, mutation-before-abort,
+clear-stop-only behavior and source error accumulation/trailing-LF handling.
+
+Only platform service adaptation: Windows retains Sleep(kPauseSleepTime); POSIX
+uses QThread::msleep with the same original 100 ms interval because Win32 Sleep is
+unavailable there. Native synchronization and error formatting reuse unchanged
+upstream owners from a1. Includes, notices and formatting are other local changes;
+no Qt counters, containers, stop/pause policy or error formatter replaces source.
+
+Partial module scope is explicit: full CProgressSync/message records are ported;
+CProgressDialog, CProgressThreadVirt, progress rendering/resources/timer/remaining
+time/ratio/background/message/pause/cancel UI, worker exception/result handling
+and actual archive transport/callback integration remain mandatory b/c/d and
+P0-10/P1-11. The existing QProgressDialog operation UI remains migration debt;
+this state prerequisite does not claim a complete dialog or end-user workflow.
+
+New progress_sync checks unknown totals, null completed/ratio pointers, scan
+metadata preserving completion, Unicode/space paths, null path clearing, real
+native worker paused-then-resumed/cancelled, stop precedence while paused,
+callback E_ABORT and reopen retaining counters/errors, final-message presence and
+source error/name composition. Workers join before source state is destroyed;
+failure cleanup stops a paused worker. Bounded CTest timeout and local state only.
+No visible UI change. Validation macOS arm64, 2026-09-29: affected app/sync/native
+services/formatter targets built; focused 3/3 passed (0.69 s), mandatory check.sh
+format/build/84 CTest passed (44.35 s), git diff --check passed. One-off comparison
+of all CProgressSync functional bodies matches after removing formatting and the
+documented sleep service adaptation. Source becomes 42 mirrored CPP (35 UI/seven
+support), FM 29/67; vendor/root counts remain 75 plus License/37. Windows/Linux
+compilation/runtime and full progress UI remain unverified locally.
+
 ## P0-02.2b3c3b2a1 — unchanged native thread/synchronization/error services (2026-09-29)
 
 Project baseline `4644aae`; exact source ip7z/7zip
