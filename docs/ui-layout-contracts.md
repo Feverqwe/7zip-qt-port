@@ -138,6 +138,12 @@ the existing source truncation/detail contract and error LF displays as spaces.
 Only structural Qt usability is verified; a rendered Windows reference
 was unavailable.
 
+`properties_runtime` produces `properties-runtime-flat*-mode*-*.json`,
+`properties-directory-flat*-mode*-*.json` and
+`properties-summary-flat*-mode*-*.json` for file, directory and aggregate states
+in all normal/flat/four-view combinations at 540×360 and 360×240. The same list,
+empty two-column header and separate visible OK/Cancel footer apply to each.
+
 ## Shared name/mask dialog
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

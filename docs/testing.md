@@ -1,5 +1,14 @@
 # Regression strategy
 
+`properties_runtime` checks public Properties across normal/flat and all four
+views with filesystem→archive→filesystem transitions. Duplicate Unicode/space
+names retain source prefixes and metadata; loaded size/primed packed cache stays
+stable until Refresh. It covers native directory unknown size, archive directory
+counts/flat absence, defined zero versus missing values, altered table cells,
+folder+file aggregates and Cancel without extraction. Forty-eight normal/compact
+file/directory/summary JSON reports use the existing two-column dialog contract.
+Raw archive timestamp text remains compatibility data, not native time acceptance.
+
 `properties` uses source-owned archive folders and current CPanel indices for
 summaries, descendants, packed size and absent fields. Window cases verify loaded
 filesystem size and primed packed cache after external mutation, and archive
@@ -15,7 +24,8 @@ legacy custom-property callers. The same target checks owned source folder
 catalog expansion/remapping and optional Name, normal/flat Prefix, source
 directory totals versus absent file counts, invalid indices, retained ownership,
 catalog failures and root-bind retry, plus sparse unparsed timestamp descriptors.
-Full four-view/flat live Properties acceptance remains the following check.
+The dedicated properties_runtime suite covers four-view/flat live integration;
+complete handler metadata and native archive timestamp parsing remain mandatory.
 
 `panel_property` exercises the original PanelMenu typed formatting through a
 public IFolderFolder fixture: known/custom catalog names, UI2/UI4/UI8 sizes and

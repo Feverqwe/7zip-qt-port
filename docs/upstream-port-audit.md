@@ -8,6 +8,40 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2cc — live Properties runtime acceptance (2026-09-29)
+
+Project baseline `bed7edf`; same pinned upstream
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from ip7z/7zip. This acceptance
+iteration changes no borrowed implementation. Dedicated properties_runtime
+exercises the existing source PanelItems operated-index selection, PanelMenu
+Properties enumeration/aggregate, native CFSFolder metadata/cache and owned
+CAgentFolder normal/flat catalogs through the public window action.
+
+Eight normal/flat × four-view scenarios cover filesystem→archive→filesystem,
+cleared selection on owner replacement, Unicode/space duplicate basenames and
+source relative prefixes, size/primed packed cache before mutation versus after
+Refresh, uncalculated filesystem directories, archive directory counts/normal
+totals versus absent flat size, known/unknown/zero fields, file counts absent,
+raw Modified compatibility digits, deliberately corrupted presentation cells,
+and folder+file source aggregates. Cancel closes each Properties dialog without
+archive extraction. Test fixtures own no real user archives or secrets.
+
+The shared ListViewDialog.cpp/.rc reference is unchanged. Normal/compact
+540×360/360×240 JSON reports for file, directory and aggregate in all eight
+scenarios verify two columns, header/list/footer ordering and fully visible
+OK/Cancel. This is structural Qt acceptance, not Windows pixel parity.
+Full raw/archive-level/shell Properties and handler time/metadata remain
+mandatory P0-03/P0-04/P1-10/P2-09. OnNotify/full path/outer-stack ownership and
+remaining consumers stay open under P0-02; no whole module completion claimed.
+
+Validation macOS arm64, 2026-09-29: affected target built; focused Properties,
+catalog, native loading and navigation consumers passed 9/9 (5.44 s). All 48
+current-build widget reports reviewed; list/header/footer/buttons visible with
+unclipped exposed bounds and stable ordering. Mandatory check.sh passed 72/72;
+git diff --check passed. Windows/Linux runtime and rendered Windows reference
+remain unverified locally. Scoped selected-item consumer c2 is complete;
+remaining navigation/mutation/teardown consumers are c3.
+
 ## P0-02.2b3b3c2cb — live source Properties binding (2026-09-29)
 
 Project baseline `93e832b`; pinned [ip7z/7zip

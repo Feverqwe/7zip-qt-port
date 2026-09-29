@@ -408,7 +408,7 @@ P0-03/04/feature scopes, not N/A.
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c1 | Copy/Move summary uses source CPanel operated indices and bound folder properties, no rebuilt row metadata snapshot; source paths/names/totals and missing/zero sizes in normal/flat/four views; Qt display prefix remains explicit until full source path stack | P0-02.2b3b3b | done — audit § P0-02.2b3b3c1; focused 8/8, check.sh 64/64, 16 normal/compact source summary JSON reports inspected; macOS 2026-09-29 |
-| P0-02.2b3b3c2 | Properties consumes source folder catalogs/typed values and operated indices; copy original formatting dependencies and preserve Qt dialog/geometry; remove window metadata reconstruction | P0-02.2b3b3c1 | active — c2a–c2c below |
+| P0-02.2b3b3c2 | Properties consumes source folder catalogs/typed values and operated indices; copy original formatting dependencies and preserve Qt dialog/geometry; remove window metadata reconstruction | P0-02.2b3b3c1 | done — scoped selected-item consumer c2a–c2c verified; raw/archive-level/shell/native time remain mandatory owners |
 | P0-02.2b3b3c3 | Remaining location/navigation/mutation consumers and teardown acceptance; verify source index ownership and temporary context fields before source parent/path stack migration | P0-02.2b3b3c2 | todo |
 
 P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
@@ -417,7 +417,7 @@ P0-02.2b3b3c1 commit: `6bd328b`. Properties migration is split before code:
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2a | Compile unchanged portable PropVariantConv/PropIDUtils and required FileLink dependencies; typed strings/numeric/bool/time/attributes/reparse/invalid-input formatting regressions; no duplicate formatter | P0-02.2b3b3c1 | done — audit § P0-02.2b3b3c2a; focused 10/10, ASan 1/1, check.sh 65/65, vendor bytes 61/61; macOS 2026-09-29; Windows native link operation dependencies remain mandatory P2-05/P3-05 |
 | P0-02.2b3b3c2b | Source property-name/PanelMenu formatting branches and required folder-property gaps; narrow Qt resource and platform services; catalog/unknown/error behavior tests | P0-02.2b3b3c2a | done — scoped formatter/cache b1–b3 verified; live archive catalog and complete Properties integration remain c2c |
-| P0-02.2b3b3c2c | Live Properties binding/operated indices, remove window metadata snapshots, normal/flat/four-view size/metadata/geometry acceptance and existing direct consumers | P0-02.2b3b3c2b | active — a–c below |
+| P0-02.2b3b3c2c | Live Properties binding/operated indices, remove window metadata snapshots, normal/flat/four-view size/metadata/geometry acceptance and existing direct consumers | P0-02.2b3b3c2b | done — a–c verified below; full module/raw/handler metadata remains mandatory |
 
 P0-02.2b3b3c2a commit: `47f562b`. Formatter integration prerequisites split before
 code; no missing required source property is treated as N/A.
@@ -442,7 +442,7 @@ P0-02.2b3b3c2b3 commit: `a7338e0`. Live Properties prerequisites split before co
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2ca | Typed archive transport property catalog and original CAgentFolder catalog expansion/remapping; normal/flat/property presence/error checks, full engine metadata remains P0-03/P0-04 | P0-02.2b3b3c2b | done — a1/a2 verified below; full handler metadata and borrowed lifetime remain mandatory |
 | P0-02.2b3b3c2cb | PropertiesDialog/MainWindow consume operated indices/live CPanel owner, remove snapshot metadata reconstruction, restore source packed aggregate visibility and retain existing raw Modified transport text until mandatory native time parsing P0-03/P0-04; focused source metadata/layout checks | P0-02.2b3b3c2ca | done — audit § P0-02.2b3b3c2cb; focused 8/8 and expanded direct consumers 6/6, check.sh 71/71; two normal/compact JSON reports reviewed; macOS 2026-09-29 |
-| P0-02.2b3b3c2cc | Filesystem/archive normal/flat/four-view runtime acceptance for source index/name/counts, immutable/absent/zero metadata, transitions and normal/compact Properties geometry | P0-02.2b3b3c2cb | todo |
+| P0-02.2b3b3c2cc | Filesystem/archive normal/flat/four-view runtime acceptance for source index/name/counts, immutable/absent/zero metadata, transitions and normal/compact Properties geometry | P0-02.2b3b3c2cb | done — audit § P0-02.2b3b3c2cc; focused 9/9, check.sh 72/72, 48 normal/compact JSON reports reviewed; macOS 2026-09-29 |
 
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |

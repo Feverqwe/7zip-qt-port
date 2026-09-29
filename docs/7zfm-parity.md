@@ -7,6 +7,14 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2cc verifies source Properties in normal/flat and all four views
+through filesystem/archive transitions and Refresh. Native loaded size/cache,
+duplicate Unicode names/prefixes, directory counts/flat absence and missing/zero
+archive values retain their source semantics. File/directory/summary dialogs
+keep visible list/header/footer at normal and compact sizes; Cancel performs no
+archive operation. These macOS Qt checks leave the previously recorded complete
+metadata, native time parsing, raw/archive-level/shell and lifecycle scopes open.
+
 P0-02.2b3b3c2cb binds window Properties to the current source folder and operated
 indices. It displays source catalogs instead of synthesized Type/item-Path rows;
 the current-location footer remains the existing full Qt location until
