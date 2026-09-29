@@ -127,6 +127,11 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
 }
 
 QWidget *CQtProgressDialog::GetItem(unsigned id) const { return _controls.value(id); }
+#ifdef _WIN32
+HWND CQtProgressDialog::GetNativeTaskbarWindow(QWidget *widget) {
+    return widget ? reinterpret_cast<HWND>(widget->winId()) : nullptr;
+}
+#endif
 void CQtProgressDialog::SetItemText(unsigned id, const UString &text) {
     QWidget *widget = GetItem(id);
     if (auto *label = qobject_cast<QLabel *>(widget))

@@ -9,8 +9,9 @@ are defined in [AGENTS.md](../AGENTS.md).
 CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt
 widgets, native-style presentation APIs, font units, monotonic ticks and clipboard.
-qttaskbarprogress_mac owns Cocoa native Dock objects behind an opaque interface;
-source dialog state/target selection remains mandatory integration. It exposes
+The source dialog owns original taskbar state/target/value/cleanup call sites;
+guarded Qt targets become HWND only at the native Windows boundary.
+qttaskbarprogress_mac owns Cocoa native Dock objects behind an opaque interface. It exposes
 only native state/value/initialization services, without statistics or operations.
 CQtLauncherProgress is the separate native DBus entry owner. It accepts an explicit
 connection and desktop ID, publishes deltas/replay, exports native Query and clears
@@ -25,7 +26,7 @@ operation progress ownership remain. Background/Cancel are disabled in this subs
 The icon ID service embeds original FM.ico with its native frames. processpriority
 owns native process policy and owned-child PID adaptation for future 7zz transport;
 widgets do not enumerate threads or construct process API requests. Source
-background/child propagation and taskbar integration remain required. No native engine logic is
+background/child propagation remains required. No native engine logic is
 implemented by widgets.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices

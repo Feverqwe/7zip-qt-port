@@ -1,5 +1,12 @@
 # Regression strategy
 
+`progress_taskbar` observes native Cocoa Dock state driven by original source
+dialog counters/error/pause/resume and destructor cleanup. It also exercises
+main/parent/dialog target branches, never-shown lifetime and a destroyed main
+target. The badge is process-wide, so these tests do not establish per-window
+target rendering. Background/default-button and modal-worker integration remain
+mandatory separate scopes. The fixture restores its own process's badge.
+
 `taskbar_adapter` isolates the Linux Qt/DBus adapter from Cocoa and runs it in an
 owned Unicode/space executable on a private session bus. Native signals/Query
 check GUI identity, state/value/clear, destruction, bad/missing identity or bus,
@@ -43,7 +50,7 @@ Normal 760×450 and compact 640×380 tests cover compression/error/paused states
 control visibility, label/button fitting, separation and source ordering. Its
 fixture produces 16 current-build JSON reports for `ui_parity_progress`, mapping
 all 26 controls from the pinned source resource. These checks do not accept the
-pending native taskbar/priority or modal-worker/cancel/finish/update scope;
+pending priority/default-button or modal-worker/cancel/finish/update scope;
 Windows rendering and Windows/Linux runtime remain unverified.
 
 `progress_statistics_helpers` compiles the authoritative progress module in a

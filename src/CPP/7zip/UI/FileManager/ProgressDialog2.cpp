@@ -302,16 +302,40 @@ CProgressDialog::CProgressDialog(QWidget *parent, const UString &title)
         throw 1334987;
     if (_createDialogEvent.Create() != S_OK)
         throw 1334987;
+#ifdef _WIN32
+    CoCreateInstance(CLSID_TaskbarList, NULL, CLSCTX_INPROC_SERVER, IID_ITaskbarList3,
+                     (void **)&_taskbarList);
+    if (_taskbarList)
+        _taskbarList->HrInit();
+#else
+    _taskbarList.reset(new CQtTaskbarProgress);
+    if (_taskbarList->HrInit() != S_OK)
+        _taskbarList.reset();
+#endif
     connect(static_cast<QPushButton *>(GetItem(IDB_PAUSE)), &QPushButton::clicked, this,
             &CProgressDialog::OnPauseButton);
     GetItem(IDL_PROGRESS_MESSAGES)->installEventFilter(this);
 }
 
-CProgressDialog::~CProgressDialog() { AddToTitle(L""); }
+CProgressDialog::~CProgressDialog() {
+    SetTaskbarProgressState(TBPF_NOPROGRESS);
+    AddToTitle(L"");
+}
 
 void CProgressDialog::AddToTitle(const wchar_t *s) {
     if (MainWindow)
         MainWindow->setWindowTitle(ToQString((UString)s + MainTitle));
+}
+
+void CProgressDialog::SetTaskbarProgressState() {
+    if (_taskbarList && _hwndForTaskbar) {
+        TBPFLAG tbpFlags;
+        if (Sync.Get_Paused())
+            tbpFlags = TBPF_PAUSED;
+        else
+            tbpFlags = _errorsWereDisplayed ? TBPF_ERROR : TBPF_NORMAL;
+        SetTaskbarProgressState(tbpFlags);
+    }
 }
 
 void CProgressDialog::EnableErrorsControls(bool enable) {
@@ -321,6 +345,11 @@ void CProgressDialog::EnableErrorsControls(bool enable) {
 }
 
 bool CProgressDialog::OnInit() {
+    _hwndForTaskbar = MainWindow;
+    if (!_hwndForTaskbar)
+        _hwndForTaskbar = parentWidget();
+    if (!_hwndForTaskbar)
+        _hwndForTaskbar = this;
     INIT_AS_UNDEFINED(_progressBar_Range)
     INIT_AS_UNDEFINED(_progressBar_Pos)
     INIT_AS_UNDEFINED(_prevPercentValue)
@@ -369,7 +398,8 @@ bool CProgressDialog::OnInit() {
         SetIcon(icon);
     }
     _timer = startTimer(200);
-    // Taskbar and CheckNeedClose follow in mandatory b/b3.
+    // CheckNeedClose follows in mandatory modal-worker b3.
+    SetTaskbarProgressState();
     return true;
 }
 
@@ -506,7 +536,14 @@ void CProgressDialog::SetProgressPos(UInt64 pos) {
     if (pos >= _progressBar_Range || pos <= _progressBar_Pos ||
         pos - _progressBar_Pos >= (_progressBar_Range >> 10)) {
         m_ProgressBar.SetPos(_progressConv.Count(pos));
-        // Taskbar progress-value service follows in mandatory b.
+        if (_taskbarList && _hwndForTaskbar) {
+#ifdef _WIN32
+            _taskbarList->SetProgressValue(GetNativeTaskbarWindow(_hwndForTaskbar), pos,
+                                           _progressBar_Range);
+#else
+            _taskbarList->SetProgressValue(_hwndForTaskbar, pos, _progressBar_Range);
+#endif
+        }
         _progressBar_Pos = pos;
     }
 }
@@ -584,7 +621,7 @@ void CProgressDialog::UpdateStatInfo(bool showAll) {
             if (!_errorsWereDisplayed) {
                 _errorsWereDisplayed = true;
                 EnableErrorsControls(true);
-                // Taskbar error-state service follows in mandatory b.
+                SetTaskbarProgressState();
             }
         }
         if (progressCompleted != 0) {
@@ -757,7 +794,7 @@ void CProgressDialog::OnPauseButton() {
     UInt32 curTime = GetTickCount();
     if (paused)
         _elapsedTime += (curTime - _prevTime);
-    // Taskbar paused-state service follows in mandatory b.
+    SetTaskbarProgressState();
     _prevTime = curTime;
     SetPauseText();
 }

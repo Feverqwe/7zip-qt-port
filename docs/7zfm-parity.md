@@ -7,6 +7,15 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b2b3a restores original ProgressDialog2 taskbar target/state/value
+and cleanup calls. Source pause takes precedence over first-error state, and
+resuming restores error state while counters continue. Actual Cocoa API checks
+cover badge state and cleanup, including a destroyed target; its process-wide
+badge does not establish per-window or rendered Windows fidelity. No layout,
+visible text or control availability changes. Background/default-button and full
+modal/worker/cancel integration remain mandatory; Windows/Linux runtime remains
+unverified.
+
 P0-02.2b3c3b2b2b2b2b wires the Linux native adapter to Qt GUI ownership, real
 session selection and the application's sevenzip_desktop entry identity. Owned
 private-bus child tests on macOS verify its portable boundary and cleanup. No

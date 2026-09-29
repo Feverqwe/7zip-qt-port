@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ProgressDialog2.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Complete native CProgressSync and source presentation subset; full modal
-// dialog/thread and taskbar/priority services follow separately.
+// dialog/thread and priority/default-button integration follow separately.
 #ifndef ZIP7_INC_PROGRESS_DIALOG_2_H
 #define ZIP7_INC_PROGRESS_DIALOG_2_H
 
@@ -12,6 +12,8 @@
 #include <QPointer>
 #ifdef _WIN32
 #include "7zip/UI/FileManager/MyWindowsNew.h"
+#else
+#include "qttaskbarprogress.h"
 #endif
 
 void GetTimeString(UInt64 timeValue, wchar_t *s);
@@ -92,7 +94,7 @@ class CProgressSync {
     bool ThereIsMessage() const { return !Messages.IsEmpty() || FinalMessage.ThereIsMessage(); }
 };
 
-// Source presentation subset. Full modal/thread/cancel and taskbar/priority
+// Source presentation subset. Full modal/thread/cancel and priority/default-button
 // services remain mandatory subsequent ports; this view is not yet an app owner.
 class CProgressDialog : public CQtProgressDialog {
     bool _isDir;
@@ -154,6 +156,13 @@ class CProgressDialog : public CQtProgressDialog {
     CQtProgressBar m_ProgressBar;
     CQtProgressListView _messageList;
     UStringVector _messageStrings;
+#ifdef _WIN32
+    CMyComPtr<ITaskbarList3> _taskbarList;
+#else
+    std::unique_ptr<CQtTaskbarProgress> _taskbarList;
+#endif
+    // Guarded Qt window lifetime; convert to actual HWND only at the Win32 call.
+    QPointer<QWidget> _hwndForTaskbar;
     UInt32 _prevTime;
     UInt64 _elapsedTime;
     UInt64 _prevPercentValue;
@@ -172,6 +181,16 @@ class CProgressDialog : public CQtProgressDialog {
     NWindows::NSynchronization::CManualResetEvent _dialogCreatedEvent;
 
     void AddToTitle(const wchar_t *s);
+    void SetTaskbarProgressState(TBPFLAG tbpFlags) {
+        if (_taskbarList && _hwndForTaskbar) {
+#ifdef _WIN32
+            _taskbarList->SetProgressState(GetNativeTaskbarWindow(_hwndForTaskbar), tbpFlags);
+#else
+            _taskbarList->SetProgressState(_hwndForTaskbar, tbpFlags);
+#endif
+        }
+    }
+    void SetTaskbarProgressState();
     void SetProgressRange(UInt64 range);
     void SetProgressPos(UInt64 pos);
     void ShowSize(unsigned id, UInt64 val, UInt64 &prev);

@@ -61,7 +61,7 @@ target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 if(WIN32)
-    target_link_libraries(sevenzip_common PUBLIC oleaut32 uuid)
+    target_link_libraries(sevenzip_common PUBLIC ole32 oleaut32 uuid)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
@@ -287,6 +287,12 @@ if(BUILD_TESTING)
     add_test(NAME process_priority COMMAND process_priority_tests)
     set_tests_properties(process_priority PROPERTIES TIMEOUT 15)
     if(APPLE)
+        qt_add_executable(progress_taskbar_tests tests/progress_taskbar_tests.cpp
+            tests/fixtures/dock_observer.mm tests/fixtures/dock_observer.h)
+        target_link_libraries(progress_taskbar_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME progress_taskbar COMMAND progress_taskbar_tests)
+        set_tests_properties(progress_taskbar PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+            TIMEOUT 15)
         qt_add_executable(taskbar_progress_mac_tests tests/taskbar_progress_mac_tests.mm)
         target_link_libraries(taskbar_progress_mac_tests PRIVATE sevenzip_panel Qt6::Test)
         add_test(NAME taskbar_progress_mac COMMAND taskbar_progress_mac_tests)

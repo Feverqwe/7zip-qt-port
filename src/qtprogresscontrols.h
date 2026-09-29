@@ -65,6 +65,9 @@ class CQtProgressDialog : public QDialog {
     void SetIcon(const QIcon &icon);
     static void ChangeSubWindowSizeX(QWidget *widget, int width);
     static void ClipboardSetText(const UString &text);
+#ifdef _WIN32
+    static HWND GetNativeTaskbarWindow(QWidget *widget);
+#endif
 
   public:
     explicit CQtProgressDialog(QWidget *parent = nullptr);

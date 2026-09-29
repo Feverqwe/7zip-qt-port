@@ -8,6 +8,40 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b2b3a — original taskbar lifecycle (2026-09-29)
+
+Project baseline `0a84d24`. Original baseline remains
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` in
+[ip7z/7zip](https://github.com/ip7z/7zip), files
+`CPP/7zip/UI/FileManager/ProgressDialog2.cpp` and `.h`.
+Copied constructor CoCreateInstance/HrInit, destructor NOPROGRESS clear,
+SetTaskbarProgressState (both overloads), OnInit target selection and state call,
+SetProgressPos value call, UpdateStatInfo first-error state call and OnPauseButton
+state call. Preserve native state precedence, range/position cache and call order.
+Mandatory clang-format changes formatting separately from these functional bodies.
+
+Windows retains CMyComPtr/ITaskbarList3 and exact SDK declarations. Qt platform
+owns GUI COM initialization; ole32 is linked explicitly. GetNativeTaskbarWindow
+converts the guarded QWidget target to HWND only at the native service boundary.
+GetParent and original *this target become parentWidget and this. QPointer starts
+null and clears on widget destruction, avoiding use of an uninitialized or retired
+target before OnInit/after owner deletion. POSIX constructor initializes the
+previously verified CQtTaskbarProgress and discards it on real capability failure;
+the source state/value/destructor control flow stays the same.
+
+New progress_taskbar tests observe actual Cocoa Dock API state from the source
+dialog: counters, pause/resume, error precedence, end value and prior badge restore.
+Main/parent/dialog target branches, never-shown lifetime and deleted main target
+are exercised; the process-wide Cocoa badge cannot distinguish per-window targets.
+No production internals are exposed. Original blocking Set_NumBytesCur requires
+resuming before a synchronous GUI-thread update; the test follows that contract.
+Background/default-button integration remains mandatory b3b; complete modal,
+worker, cancel, finish and operation integration remain later mandatory scopes.
+Windows/Linux native compilation/runtime and rendered reference remain unverified.
+Focused checks passed 5/5 in 11.85 s; full check.sh formatting/build/CTest passed
+93/93 in 58.93 s on macOS 2026-09-29. No layout/text/availability changes require
+new appearance checks; existing progress geometry/reference consumers passed.
+
 ## P0-02.2b3c3b2b2b2b2b — Linux session/identity adapter (2026-09-29)
 
 Project baseline `75de494`; original 7zip baseline remains
