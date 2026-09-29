@@ -8,7 +8,11 @@ preset="${1:-dev}"
 compiler_cache=""
 if command -v ccache >/dev/null 2>&1; then
   compiler_cache="$(command -v ccache)"
+  if [[ -z "${CCACHE_DIR:-}" && "$(uname -s)" == Darwin ]]; then
+    export CCACHE_DIR=/private/tmp/sevenzip-desktop-ccache
+  fi
   printf 'Using compiler cache: %s\n' "$compiler_cache"
+  printf 'Compiler cache directory: %s\n' "$(ccache --get-config cache_dir)"
 fi
 
 configure() {
