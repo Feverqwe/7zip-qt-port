@@ -5,6 +5,23 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
 
+compiler_cache=""
+if command -v ccache >/dev/null 2>&1; then
+  compiler_cache="$(command -v ccache)"
+  printf 'Using compiler cache: %s\n' "$compiler_cache"
+fi
+
+configure() {
+  if [[ -n "$compiler_cache" ]]; then
+    cmake --preset "$preset" \
+      "-DCMAKE_C_COMPILER_LAUNCHER=$compiler_cache" \
+      "-DCMAKE_CXX_COMPILER_LAUNCHER=$compiler_cache" \
+      "-DCMAKE_OBJCXX_COMPILER_LAUNCHER=$compiler_cache" "$@"
+  else
+    cmake --preset "$preset" "$@"
+  fi
+}
+
 if [[ "$preset" != dev && "$preset" != release ]]; then
     printf 'Usage: %s [dev|release] [target ...]\n' "$0" >&2
   exit 2
@@ -23,12 +40,12 @@ if [[ "$(uname -s)" == Darwin ]]; then
   fi
 
   if [[ -z "${CMAKE_PREFIX_PATH:-}" ]] && command -v brew >/dev/null 2>&1 && brew list --versions qtbase >/dev/null 2>&1; then
-    cmake --preset "$preset" -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
+    configure -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
   else
-    cmake --preset "$preset"
+    configure
   fi
 else
-  cmake --preset "$preset"
+  configure
 fi
 
 if [[ "$#" -gt 0 ]]; then
