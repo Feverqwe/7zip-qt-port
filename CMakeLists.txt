@@ -960,6 +960,11 @@ if(BUILD_TESTING)
         add_test(NAME project_memory_setup COMMAND ${SEVENZIP_TEST_SH}
             ${CMAKE_CURRENT_SOURCE_DIR}/tests/project_memory_setup_test.sh)
     endif()
+    find_program(SEVENZIP_TEST_BASH NAMES bash)
+    if(SEVENZIP_TEST_BASH)
+        add_test(NAME agent_output COMMAND ${SEVENZIP_TEST_BASH}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/agent_output_test.sh)
+    endif()
     add_test(NAME application_starts COMMAND sevenzip_desktop --smoke-test)
     set_tests_properties(application_starts PROPERTIES
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/application-smoke-settings.ini"

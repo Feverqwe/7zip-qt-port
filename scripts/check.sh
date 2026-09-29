@@ -22,5 +22,6 @@ done
 
 git diff --check
 git diff --cached --check
-./scripts/build.sh dev
-./scripts/ctest.sh --preset dev --output-on-failure
+# The outer check.sh log already captures both commands in compact mode.
+SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/build.sh dev
+SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/ctest.sh --preset dev --output-on-failure
