@@ -5,6 +5,9 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
 
+source "$project_root/scripts/agent-output.sh"
+sevenzip_setup_output "build.sh ${*:-dev}"
+
 compiler_cache=""
 if command -v ccache >/dev/null 2>&1; then
   compiler_cache="$(command -v ccache)"

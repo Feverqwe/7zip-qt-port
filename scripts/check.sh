@@ -4,6 +4,9 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
+source "$project_root/scripts/agent-output.sh"
+sevenzip_setup_output 'check.sh (format, build, CTest)'
+
 if ! command -v clang-format >/dev/null 2>&1; then
   printf 'clang-format is required for the regression gate.\n' >&2
   exit 1
@@ -20,4 +23,4 @@ done
 git diff --check
 git diff --cached --check
 ./scripts/build.sh dev
-ctest --preset dev --output-on-failure
+./scripts/ctest.sh --preset dev --output-on-failure
