@@ -15,7 +15,10 @@ only native state/value/initialization services, without statistics or operation
 CQtLauncherProgress is the separate native DBus entry owner. It accepts an explicit
 connection and desktop ID, publishes deltas/replay, exports native Query and clears
 its entry before unregistering. Linux session/identity selection remains a native
-adapter prerequisite; successful transport does not establish visible desktop support.
+adapter boundary; successful transport does not establish visible desktop support.
+qttaskbarprogress_linux selects the actual session and Qt desktop identity, validates
+GUI ownership and delegates protocol I/O. main.cpp sets the authoritative
+desktopidentity basename; installation/association ownership remains P3-05 packaging.
 The source view is not wired to MainWindow operations until mandatory modal-worker,
 cancel/finish and update-callback services are ported; existing ArchiveBackend and
 operation progress ownership remain. Background/Cancel are disabled in this subset.

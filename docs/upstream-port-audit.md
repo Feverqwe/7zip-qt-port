@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b2b2b2b — Linux session/identity adapter (2026-09-29)
+
+Project baseline `75de494`; original 7zip baseline remains
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+No upstream Linux taskbar owner exists. qttaskbarprogress_linux.cpp provides
+the narrow native CQtTaskbarProgress interface using the verified launcher
+transport. Require an actual QGuiApplication on its GUI thread, use its desktop
+entry basename plus .desktop for the native URI, and select the real session bus
+only inside this platform adapter. Reject missing identity, failed initialization,
+wrong thread and null window target. No widget or archive backend publishes DBus.
+The Linux adapter is linked into sevenzip_panel only on Linux; Apple tests compile
+it in a separate executable so Cocoa's implementation remains authoritative there.
+
+Set the application's Qt desktop basename to sevenzip_desktop through one
+desktopidentity constant in main.cpp. This matches the executable and reserves
+the entry identity required by later P3-05 packaging. It does not install a desktop
+entry, icon, association or claim packaging complete. Qt's
+[desktopFileName property](https://doc.qt.io/qt-6/qguiapplication.html#desktopFileName-prop)
+expects the basename without a path or trailing extension. Main remains local Qt
+startup glue; the full original FM startup is not accepted by this identity change.
+
+Extract the existing bounded private-bus test fixture unchanged into its own
+files/library for reuse, rather than duplicate daemon/connection teardown. New
+taskbar_adapter exercises the actual adapter in an owned copied executable with
+a Unicode/space name. Its environment redirects only that child's session bus to
+the private fixture; an explicit fixture-address guard prevents accidental live
+session use from child mode. Observe native signals and Query replies while its
+GUI event loop runs; verify source-shaped normal/error/pause/value calls, null/
+invalid/unsupported failures, joined worker thread failure without state change,
+explicit owner destruction/entry removal and child shutdown. Separate child modes
+check absent GUI, missing/invalid identity and nonexistent bus. Every owned daemon,
+child and thread is stopped/joined before fixture destruction. No production
+internals are exposed for tests.
+
+macOS arm64 affected app/adapter/launcher targets build; focused adapter/launcher/
+Cocoa/app smoke 4/4 passed (2.09 s). Mandatory ./scripts/check.sh format/app
+build/CTest passed 92/92 (60.72 s), exit 0. After a local CMake-only header-list
+registration, affected targets rebuilt and the same four cases passed again
+(2.09 s); implementation unchanged, diff-check clean.
+These checks verify portable C++/Qt/DBus boundaries on macOS, not a Linux kernel,
+windowing system or rendered launcher. Actual Linux and Windows runtime checks,
+P3-05 descriptor/icon/packaging, source Windows/taskbar/priority/default-button
+integration b3 and full modal/worker/cancel/update remain mandatory. No new view
+layout/text geometry changed; actual desktop rendering remains unverified.
+
 ## P0-02.2b3c3b2b2b2b2a — native launcher transport prerequisite (2026-09-29)
 
 Project baseline `62cee4d`; 7zip source remains pinned to

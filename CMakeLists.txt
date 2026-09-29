@@ -14,6 +14,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
     target_include_directories(sevenzip_launcher PUBLIC src third_party/7zip/CPP)
     target_link_libraries(sevenzip_launcher PUBLIC Qt6::DBus)
     set_target_properties(sevenzip_launcher PROPERTIES AUTOMOC ON AUTOUIC OFF)
+    add_library(sevenzip_linux_taskbar STATIC src/qttaskbarprogress_linux.cpp src/qttaskbarprogress.h)
+    target_link_libraries(sevenzip_linux_taskbar PUBLIC sevenzip_launcher Qt6::Widgets)
+    set_target_properties(sevenzip_linux_taskbar PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 endif()
 
 set(property_name_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/PropertyName.rc")
@@ -96,6 +99,8 @@ target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
 if(APPLE)
     target_sources(sevenzip_panel PRIVATE src/qttaskbarprogress_mac.mm src/qttaskbarprogress.h)
     target_link_libraries(sevenzip_panel PUBLIC "-framework AppKit")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(sevenzip_panel PUBLIC sevenzip_linux_taskbar)
 endif()
 
 add_library(sevenzip_filesystem STATIC
@@ -128,7 +133,7 @@ target_include_directories(sevenzip_folder_loader PUBLIC src)
 target_link_libraries(sevenzip_folder_loader PUBLIC sevenzip_location Qt6::Core)
 
 qt_add_executable(sevenzip_desktop
-    src/main.cpp
+    src/main.cpp src/desktopidentity.h
     src/CPP/Common/Wildcard.cpp src/CPP/Common/Wildcard.h src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp src/CPP/7zip/UI/FileManager/PanelSort.cpp src/CPP/7zip/UI/FileManager/PanelSort.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp
     src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h
     src/combodialog.h
@@ -158,12 +163,20 @@ if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
     if(TARGET sevenzip_launcher)
         find_program(DBUS_DAEMON_EXECUTABLE dbus-daemon REQUIRED)
-        qt_add_executable(launcher_progress_tests tests/launcher_progress_tests.cpp)
-        target_compile_definitions(launcher_progress_tests PRIVATE
+        add_library(private_bus_fixture STATIC tests/fixtures/private_bus.cpp tests/fixtures/private_bus.h)
+        target_link_libraries(private_bus_fixture PUBLIC Qt6::DBus)
+        set_target_properties(private_bus_fixture PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+        target_compile_definitions(private_bus_fixture PRIVATE
             "DBUS_DAEMON_PATH=\"${DBUS_DAEMON_EXECUTABLE}\"")
-        target_link_libraries(launcher_progress_tests PRIVATE sevenzip_launcher Qt6::Test)
+        qt_add_executable(launcher_progress_tests tests/launcher_progress_tests.cpp)
+        target_link_libraries(launcher_progress_tests PRIVATE sevenzip_launcher private_bus_fixture Qt6::Test)
         add_test(NAME launcher_progress COMMAND launcher_progress_tests)
         set_tests_properties(launcher_progress PROPERTIES TIMEOUT 20)
+        qt_add_executable(taskbar_adapter_tests tests/taskbar_adapter_tests.cpp src/desktopidentity.h
+            tests/fixtures/taskbar_adapter_child.cpp tests/fixtures/taskbar_adapter_child.h)
+        target_link_libraries(taskbar_adapter_tests PRIVATE sevenzip_linux_taskbar private_bus_fixture Qt6::Test)
+        add_test(NAME taskbar_adapter COMMAND taskbar_adapter_tests)
+        set_tests_properties(taskbar_adapter PROPERTIES TIMEOUT 30)
     endif()
     qt_add_executable(password_dialog_tests tests/password_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(password_dialog_tests PRIVATE tests)

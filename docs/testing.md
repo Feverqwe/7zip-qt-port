@@ -1,5 +1,13 @@
 # Regression strategy
 
+`taskbar_adapter` isolates the Linux Qt/DBus adapter from Cocoa and runs it in an
+owned Unicode/space executable on a private session bus. Native signals/Query
+check GUI identity, state/value/clear, destruction, bad/missing identity or bus,
+null target and joined wrong-thread failures. Child modes require the fixture bus
+address explicitly, avoiding live user session access. The shared private_bus
+fixture owns all daemon connections and teardown. Running this on macOS verifies
+portable adapter logic; actual Linux desktop rendering remains a separate check.
+
 `launcher_progress` owns a private dbus-daemon and connections, exercising native
 Update/Query round trips, UTF-8 desktop IDs, state/value/clear, name-owner replay,
 registration lifetime, invalid/disconnected failures and joined owner-thread checks.

@@ -1,59 +1,13 @@
+#include "fixtures/private_bus.h"
 #include "qtlauncherprogress.h"
 #include <QDBusArgument>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
-#include <QProcess>
-#include <QTemporaryDir>
 #include <QThread>
-#include <QUuid>
 #include <QtTest>
 
 namespace {
 const QString kInterface = QStringLiteral("com.canonical.Unity.LauncherEntry");
-class CPrivateBus {
-    QProcess _daemon;
-    QStringList _names;
-    QTemporaryDir _directory;
-
-  public:
-    QString Address;
-    bool Start() {
-        if (!_directory.isValid())
-            return false;
-        _daemon.start(QString::fromUtf8(DBUS_DAEMON_PATH),
-                      {"--session", "--nofork", "--nopidfile", "--print-address=1",
-                       "--address=unix:tmpdir=" + _directory.path()});
-        if (!_daemon.waitForStarted(3000))
-            return false;
-        for (unsigned i = 0; !_daemon.canReadLine() && i < 3; ++i)
-            if (!_daemon.waitForReadyRead(1000)) {
-                qWarning().noquote() << _daemon.errorString() << _daemon.readAllStandardError();
-                return false;
-            }
-        Address = QString::fromUtf8(_daemon.readLine().trimmed());
-        return Address.startsWith("unix:");
-    }
-    QDBusConnection Connect() {
-        const QString name = QUuid::createUuid().toString(QUuid::Id128);
-        _names.append(name);
-        return QDBusConnection::connectToBus(Address, name);
-    }
-    void Stop() {
-        if (_daemon.state() != QProcess::NotRunning) {
-            _daemon.terminate();
-            if (!_daemon.waitForFinished(1000)) {
-                _daemon.kill();
-                _daemon.waitForFinished(1000);
-            }
-        }
-    }
-    ~CPrivateBus() {
-        for (const auto &name : _names)
-            QDBusConnection::disconnectFromBus(name);
-        Stop();
-    }
-};
-
 struct CUpdate {
     QString Uri;
     QVariantMap Properties;

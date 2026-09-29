@@ -7,6 +7,12 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2b2b2b2b wires the Linux native adapter to Qt GUI ownership, real
+session selection and the application's sevenzip_desktop entry identity. Owned
+private-bus child tests on macOS verify its portable boundary and cleanup. No
+descriptor is installed yet; P3-05 packaging and actual Linux launcher rendering
+remain mandatory. Source taskbar/background/default button integration is still open.
+
 P0-02.2b3c3b2b2b2b2a supplies native launcher Update/Query transport and replay,
 verified through an owned private DBus on macOS. Compatible Linux launchers use
 progress/visibility/urgency; their protocol has no native colored paused/error bar

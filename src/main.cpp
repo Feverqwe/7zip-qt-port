@@ -1,3 +1,4 @@
+#include "desktopidentity.h"
 #include "mainwindow.h"
 
 #include <QApplication>
@@ -6,6 +7,7 @@
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("Sevenzip Desktop");
+    app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
     MainWindow window;
     if (app.arguments().contains("--smoke-test")) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
