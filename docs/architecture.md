@@ -15,6 +15,10 @@ table from unchanged upstream PropertyName.rc plus fixed Russian presentation
 captions. Generation rejects unsupported syntax; generated headers stay in the
 build directory. Full source CLang loading/default-language/selection is P1-14,
 and Properties consumers still require PanelMenu integration and live binding.
+The same generated resource bundle includes unchanged Extract.rc. Source
+OpenArchive/ExtractCallback error-property helpers are compiled in sevenzip_panel
+for presentation consumers; they do not introduce engine opening/extraction in
+widgets or move ArchiveBackend's operation boundary.
 
 Portable filesystem enumeration and times use unchanged upstream FileFind and
 TimeUtils. Adapted FileName retains the source path bodies and uses the single

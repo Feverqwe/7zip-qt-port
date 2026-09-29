@@ -7,6 +7,13 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3b3c2b2c adds original archive error-property conversion and message
+branches: source bit ordering, encrypted-header password hint, and unknown bits
+preserved as hexadecimal. Source ExtractRes.h/Extract.rc IDs/texts back the
+current fixed Russian presentation overrides. No displayed dialog changes yet;
+PanelMenu integration follows. Full archive open/extract callbacks remain
+mandatory operation owners, and rendered Windows parity is unverified.
+
 P0-02.2b3b3c2b2b adds original PropertyName priority and source resource IDs.
 The current fixed Russian presentation captions override corresponding native
 English resource text; other captions retain exact source English fallback.

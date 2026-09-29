@@ -425,7 +425,7 @@ code; no missing required source property is treated as N/A.
 | Substep | Owner, scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2b1 | CFSFolder source cached PackSize branch and native Windows compressed-size helper; source fallback on unsupported POSIX API, typed/cached/normal-flat/catalog and existing filesystem consumers | P0-02.2b3b3c2a | done — audit § P0-02.2b3b3c2b1; focused 5/5, check.sh 65/65; macOS 2026-09-29; native allocation metadata remains mandatory |
-| P0-02.2b3b3c2b2 | Original property-name/resource lookup and error/size formatting dependencies; narrow Qt resource adapter, source resource IDs, unknown/custom fallback and localized error checks | P0-02.2b3b3c2b1 | active — a–c below |
+| P0-02.2b3b3c2b2 | Original property-name/resource lookup and error/size formatting dependencies; narrow Qt resource adapter, source resource IDs, unknown/custom fallback and localized error checks | P0-02.2b3b3c2b1 | done — a–c verified below; formatter consumer remains b3 |
 | P0-02.2b3b3c2b3 | Original PanelMenu typed formatting/item property branches, catalog/unknown/error/aggregate tests, preserve scoped raw/archive-level mandatory omissions | P0-02.2b3b3c2b2 | todo |
 
 P0-02.2b3b3c2b1 commit: `d41d64c`. Dependency owners split before code:
@@ -434,7 +434,7 @@ P0-02.2b3b3c2b1 commit: `d41d64c`. Dependency owners split before code:
 | --- | --- | --- | --- |
 | P0-02.2b3b3c2b2a | PanelListNotify original IsSizeProp classification; numeric size/count/offset versus time/checksum/id formatting contracts | P0-02.2b3b3c2b1 | done — audit § P0-02.2b3b3c2b2a; focused 5/5, check.sh 66/66; macOS 2026-09-29 |
 | P0-02.2b3b3c2b2b | PropertyName original name lookup and Qt resource boundary, source caption IDs; known/custom/unknown fallback tests; full language loading stays mandatory P1-14 | P0-02.2b3b3c2b2a | done — audit § P0-02.2b3b3c2b2b; focused 5/5, generator 1/1, check.sh 68/68, vendor bytes 63/63; macOS 2026-09-29 |
-| P0-02.2b3b3c2b2c | OpenArchive GetOpenArcErrorFlags and ExtractCallback GetOpenArcErrorMessage source branches; typed/undefined/invalid/combined/encrypted/unknown flags tests | P0-02.2b3b3c2b2b | todo |
+| P0-02.2b3b3c2b2c | OpenArchive GetOpenArcErrorFlags and ExtractCallback GetOpenArcErrorMessage source branches; typed/undefined/invalid/combined/encrypted/unknown flags tests | P0-02.2b3b3c2b2b | done — audit § P0-02.2b3b3c2b2c; focused 5/5, generator 1/1, check.sh 69/69, vendor bytes 65/65; macOS 2026-09-29 |
 
 ```text
 Parent: P?-?? — partial

@@ -4,18 +4,22 @@ set(resource "${TEST_ROOT}/test.rc")
 set(output "${TEST_ROOT}/test.h")
 set(fixture "#include \"TestRes.h\"\nLANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\nSTRINGTABLE\nBEGIN\n IDS_ALPHA \"Alpha\"\n // IDS_IGNORED \"Ignored\"\n IDS_BETA \"Beta\"\nEND\n")
 file(WRITE "${resource}" "${fixture}")
-execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${resource}" "-DOUTPUT_FILE=${output}"
+set(second_resource "${TEST_ROOT}/second.rc")
+file(WRITE "${second_resource}" "STRINGTABLE DISCARDABLE\nBEGIN\n IDS_GAMMA \"Gamma\"\nEND\n")
+set(inputs "${resource};${second_resource}")
+execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${inputs}" "-DOUTPUT_FILE=${output}"
     -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
     message(FATAL_ERROR "Valid source STRINGTABLE rejected")
 endif()
 file(READ "${output}" content)
 if(NOT content MATCHES "IDS_ALPHA, L\"Alpha\"" OR
-   NOT content MATCHES "IDS_BETA, L\"Beta\"" OR content MATCHES "IDS_IGNORED")
+   NOT content MATCHES "IDS_BETA, L\"Beta\"" OR
+   NOT content MATCHES "IDS_GAMMA, L\"Gamma\"" OR content MATCHES "IDS_IGNORED")
     message(FATAL_ERROR "Generated captions differ from source")
 endif()
 file(SHA256 "${output}" initial_hash)
-execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${resource}" "-DOUTPUT_FILE=${output}"
+execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${inputs}" "-DOUTPUT_FILE=${output}"
     -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status)
 file(SHA256 "${output}" repeated_hash)
 if(NOT status EQUAL 0 OR NOT initial_hash STREQUAL repeated_hash)
@@ -24,13 +28,13 @@ endif()
 
 foreach(invalid IN ITEMS unsupported unterminated missing_table)
     if(invalid STREQUAL "unsupported")
-        file(WRITE "${resource}" "STRINGTABLE\nBEGIN\n IDS_ALPHA \"Alpha\"\n UNSUPPORTED_SYNTAX\nEND\n")
+        file(WRITE "${second_resource}" "STRINGTABLE\nBEGIN\n IDS_ALPHA \"Alpha\"\n UNSUPPORTED_SYNTAX\nEND\n")
     elseif(invalid STREQUAL "unterminated")
-        file(WRITE "${resource}" "STRINGTABLE\nBEGIN\n IDS_ALPHA \"Alpha\"\n")
+        file(WRITE "${second_resource}" "STRINGTABLE\nBEGIN\n IDS_ALPHA \"Alpha\"\n")
     else()
-        file(WRITE "${resource}" "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\n")
+        file(WRITE "${second_resource}" "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\n")
     endif()
-    execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${resource}" "-DOUTPUT_FILE=${output}"
+    execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${inputs}" "-DOUTPUT_FILE=${output}"
         -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status
         OUTPUT_QUIET ERROR_QUIET)
     file(SHA256 "${output}" after_hash)

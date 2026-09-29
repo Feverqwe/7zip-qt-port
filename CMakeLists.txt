@@ -8,11 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 
 set(property_name_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/PropertyName.rc")
+set(extract_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GUI/Extract.rc")
 set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
 add_custom_command(OUTPUT "${resource_strings_header}"
-    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource}"
+    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource}"
         "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
-    DEPENDS "${property_name_resource}" scripts/rc_strings.cmake
+    DEPENDS "${property_name_resource}" "${extract_resource}" scripts/rc_strings.cmake
     VERBATIM)
 
 qt_standard_project_setup()
@@ -42,6 +43,8 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
+    src/CPP/7zip/UI/FileManager/ExtractCallback.cpp src/CPP/7zip/UI/FileManager/ExtractCallback.h
+    src/CPP/7zip/UI/Common/OpenArchive.cpp src/CPP/7zip/UI/Common/OpenArchive.h
     src/CPP/7zip/UI/FileManager/LangUtils.h src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
     "${resource_strings_header}"
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
@@ -414,6 +417,10 @@ if(BUILD_TESTING)
     qt_add_executable(property_name_tests tests/property_name_tests.cpp)
     target_link_libraries(property_name_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME property_name COMMAND property_name_tests)
+
+    qt_add_executable(archive_error_properties_tests tests/archive_error_properties_tests.cpp)
+    target_link_libraries(archive_error_properties_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME archive_error_properties COMMAND archive_error_properties_tests)
     add_test(NAME resource_strings_generator COMMAND "${CMAKE_COMMAND}"
         "-DPROJECT_ROOT=${CMAKE_CURRENT_SOURCE_DIR}" "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/resource-strings-tests"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/rc_strings_tests.cmake")

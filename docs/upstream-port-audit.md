@@ -8,6 +8,46 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3b3c2b2c — source archive error property helpers (2026-09-29)
+
+Project baseline `607eec5`; pinned [ip7z/7zip
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+CPP/7zip/UI/Common/OpenArchive.cpp GetOpenArcErrorFlags is copied completely:
+optional defined flag reset, original VT_UI8/UI4/EMPTY branches, UInt32 cast,
+invalid-type throw 151199. Source declaration/default argument is retained in
+the scoped OpenArchive.h; unrelated engine interfaces are not replaced.
+CPP/7zip/UI/FileManager/ExtractCallback.cpp copies the complete original
+k_ErrorFlagsIds array and GetOpenArcErrorMessage: ordered eleven bits, skipping
+missing resource strings, encrypted-header password hint, newlines, clearing
+only resolved flags, original hex fallback for remaining bits. UString, source
+constants, helper names and control flow are unchanged apart from formatting
+and portable include paths. ExtractCallback.h exposes the original helper
+prototype from the cpp as a narrow consumer interface, not callback classes.
+
+Byte-exact CPP/7zip/UI/GUI/ExtractRes.h and Extract.rc provide all source resource
+IDs and English texts. The existing resource generator now takes both resource
+tables; its multi-input/late-error regression preserves valid output. Russian
+message overrides are presentation adaptation, with original English fallback
+retained in the generated bundle. Existing PropID.h/7zTypes supply flags/array
+size; no archive engine dependency is invented for these standalone helpers.
+sevenzip_panel compiles this subset for property presentation only.
+
+Mandatory omissions: OpenArchive engine opening, CArc/CArcErrorInfo and open
+callbacks P0-03/P0-04; full ExtractCallback classes, ErrorInfo_Print/HRESULT
+messages, extraction/test/update workflows and progress/cancel P0-05/P0-12 and
+their operation owners; full language loading/selection P1-14; PanelMenu and live
+Properties binding following substeps. These partial filenames do not establish
+completed modules. No visible text/layout changes until consumer integration.
+
+Validation macOS arm64, 2026-09-29: affected application/property targets build;
+focused 5/5 (0.48 s), extended multi-resource generator 1/1 (0.04 s);
+scripts/check.sh formatting/full build/CTest 69/69 (33.49 s). Initial signed
+test-fixture constructor is private upstream; fixture uses public Set_Int64
+before the passing checks. All 65 vendored files including license match source
+bytes. Counts: 33 mirrored UI paths/76 missing, 39 src/CPP cpp, 36 root Qt cpp,
+64 vendored dependencies/resources plus license. Windows/Linux runtime remains
+unverified locally; no rendered UI acceptance is claimed for these helpers.
+
 ## P0-02.2b3b3c2b2b — original property name/resource fallback (2026-09-29)
 
 Project baseline `d2360d3`; pinned [ip7z/7zip

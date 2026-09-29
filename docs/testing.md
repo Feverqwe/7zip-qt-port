@@ -1,5 +1,11 @@
 # Regression strategy
 
+`archive_error_properties` verifies original OpenArchive error-property type
+rules (absent versus defined zero, UI4/UI8 narrowing, invalid-type exception),
+ExtractCallback flag ordering, encrypted-header password hints and unknown-bit
+hex fallback. Resource-generator coverage includes multiple STRINGTABLE inputs
+and rejects an invalid later table before overwriting the combined output.
+
 `property_name` checks the original resource/custom-name/numeric-ID priority,
 localized source IDs, unchanged English fallback, Unicode custom names, maximum
 IDs and resource replacement/append semantics. `resource_strings_generator`

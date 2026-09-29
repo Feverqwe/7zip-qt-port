@@ -4,6 +4,7 @@
 // strings and the existing fixed Russian UI captions. Language files: P1-14.
 #include "ResourceString.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
+#include "7zip/UI/GUI/ExtractRes.h"
 
 namespace NWindows {
 
@@ -41,6 +42,17 @@ static const ResourceStringEntry kLocalizedStrings[] = {
     {IDS_PROP_ERROR_FLAGS, L"Ошибки"},
     {IDS_PROP_WARNING_FLAGS, L"Предупреждения"},
     {IDS_PROP_WARNING, L"Предупреждение"},
+    {IDS_EXTRACT_MSG_IS_NOT_ARC, L"Не является архивом"},
+    {IDS_EXTRACT_MSG_HEADERS_ERROR, L"Ошибка заголовков"},
+    {IDS_OPEN_MSG_UNAVAILABLE_START, L"Недоступно начало архива"},
+    {IDS_OPEN_MSG_UNCONFIRMED_START, L"Начало архива не подтверждено"},
+    {IDS_EXTRACT_MSG_UEXPECTED_END, L"Неожиданный конец данных"},
+    {IDS_EXTRACT_MSG_DATA_AFTER_END, L"Есть данные после конца содержимого"},
+    {IDS_EXTRACT_MSG_UNSUPPORTED_METHOD, L"Неподдерживаемый метод сжатия"},
+    {IDS_OPEN_MSG_UNSUPPORTED_FEATURE, L"Неподдерживаемая функция"},
+    {IDS_EXTRACT_MSG_DATA_ERROR, L"Ошибка данных"},
+    {IDS_EXTRACT_MSG_CRC_ERROR, L"Ошибка CRC"},
+    {IDS_EXTRACT_MSG_WRONG_PSW_GUESS, L"Неверный пароль?"},
 };
 
 UString MyLoadString(UINT resourceID) {

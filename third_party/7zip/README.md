@@ -69,15 +69,16 @@ Additional portable filesystem dependencies:
 - `CPP/Windows/PropVariantConv.cpp`
 - `CPP/7zip/UI/Common/PropIDUtils.cpp`, `PropIDUtils.h` and `StdAfx.h`
 - `CPP/7zip/UI/FileManager/PropertyNameRes.h` and `PropertyName.rc`
+- `CPP/7zip/UI/GUI/ExtractRes.h` and `Extract.rc`
 
-All 62 source/header/resource files and `License.txt` (from upstream `DOC/License.txt`)
+All 64 source/header/resource files and `License.txt` (from upstream `DOC/License.txt`)
 are retained byte for byte from the exact commit above.
 This provenance check does not establish runtime verification on all platforms.
 `.gitattributes` excludes unchanged vendored source from Git whitespace errors
 so upstream trailing spaces remain byte-for-byte intact. Local documentation,
 adapted source and tests keep the normal whitespace checks.
 
-PropertyName.rc is the authoritative English caption table. A build-time CMake
+PropertyName.rc and Extract.rc are authoritative English string tables. A build-time CMake
 adapter generates the portable resource entries without duplicating the table
 in tracked C++ code. ResourceString's Qt presentation adaptation lives under
 `src/CPP/Windows`; full language loading remains mandatory P1-14.
