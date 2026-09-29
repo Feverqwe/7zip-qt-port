@@ -8,6 +8,38 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2b3a — portable startup wait boundary (2026-09-29)
+
+Project baseline `e9908a5`. Exact upstream baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` in
+[ip7z/7zip](https://github.com/ip7z/7zip). Inspected
+`CPP/7zip/UI/FileManager/ProgressDialog2.cpp::CProgressDialog::Create`,
+`ProgressDialog2.h::WaitCreating`, `CPP/Windows/Thread.h`,
+`CPP/Windows/Synchronization.h`, `C/Threads.c` and `.h`.
+Original Windows startup waits for worker HANDLE index 0 or creation event index
+1 with kCreateDelay (500 ms). Portable CThread supplies create/detach/join, and
+CEvent supplies blocking wait; neither exposes timed worker completion or a
+multi-object wait. There is no usable POSIX implementation of that service.
+
+qtprogresswait.cpp/.h is new narrow portability glue, not a copied functional
+workflow. It provides latched requested/finished signals, finish precedence when
+both are set, mutex-protected predicate checks and a monotonic QDeadlineTimer
+condition wait that retains one deadline across wakeups. No GUI event processing,
+statistics, cancellation, thread creation or operation logic is added. Original
+Windows WaitForMultipleObjects and source native worker/events remain the planned
+owners; full integration is mandatory b3b. Portable fast completion must join,
+because Thread_Close detaches rather than proving worker exit.
+
+progress_wait checks zero/finite timeout before releasing an owned native
+CThread, requested/finished wakeup, latched idempotence and finish precedence in
+both signal orders. Native CManualResetEvent gates the worker, and RAII releases
+and joins it on all assertion paths. No production internals are exposed.
+No presentation changes or full dialog/workflow acceptance follow from this
+service prerequisite. Windows/Linux runtime remains unverified locally.
+Focused checks passed 3/3 in 0.56 s; full check.sh formatting/build/CTest passed
+96/96 in 63.43 s on macOS 2026-09-29. Source inventory stays 42 mirrored CPP
+(35 UI/seven support); root Qt/integration CPP becomes 42. Vendor bytes unchanged.
+
 ## P0-02.2b3c3b2b2b2b3b — source priority/default button (2026-09-29)
 
 Project baseline `ab289b9`; exact upstream baseline

@@ -48,8 +48,9 @@ Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https:/
 Текущие counts включают частичный Panel.cpp из P0-02.2a и ClassDefs.cpp из
 P0-02.2b3a, partial FSDrives.cpp из P0-02.2b3b2b3 и PropertyName.cpp
 из P0-02.2b3b3c2b2b, полный FormatUtils.cpp из P0-02.2b3c3b1,
-partial ProgressDialog2.cpp (complete sync + presentation subset)
-из P0-02.2b3c3b2a2/b2b2a2,
+partial ProgressDialog2.cpp (complete sync + presentation/taskbar/priority subset;
+full modal/thread/cancel remains mandatory)
+из P0-02.2b3c3b2a2/b2b2,
 helper-only OpenArchive.cpp/ExtractCallback.cpp
 из P0-02.2b3b3c2b2c;
 P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 missing.
@@ -65,10 +66,11 @@ P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 
 `CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/DLL.cpp`, `CPP/Windows/ResourceString.cpp`,
 `CPP/7zip/Common/MethodProps.cpp`.
 Всего в `src/CPP` — 42 `.cpp`.
-В корне `src/` — 41 `.cpp` Qt/integration; это не 41 неперенесённых компонентов:
+В корне `src/` — 42 `.cpp` Qt/integration; это не 42 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
 Отдельно есть Apple-only Objective-C++ `qttaskbarprogress_mac.mm`: narrow native
-Dock service, без принятой интеграции source progress dialog.
+Dock service с проверенными source state/value/cleanup вызовами; полный modal
+workflow и rendered/platform acceptance остаются обязательными.
 В `third_party/7zip` — 84 файла, побайтово совпадающих с теми же путями baseline,
 плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.
 Это зависимости и ресурсы, не 84 завершённых пользовательских функций.

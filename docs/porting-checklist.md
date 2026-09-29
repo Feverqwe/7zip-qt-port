@@ -370,7 +370,18 @@ Current chat owns the following prerequisites and complete modal implementation.
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b1 | Original GetTimeString and unchanged progress/control/operation resources, strict generator supports source brace-delimited tables; generated upstream view reference, duration/overflow/metadata and generator regressions; no dialog acceptance claim | P0-02.2b3c3b2a | done — audit § P0-02.2b3c3b2b1; pre-change generator regression failed, focused 4/4, check.sh 85/85, vendor bytes 82/82 and source function match; macOS 2026-09-29 |
 | P0-02.2b3c3b2b2 | Original CProgressDialog presentation/statistics/range/title/message/pause/background functional bodies and Qt widget/platform adapters; source grouping/order and text spec, normal/compact geometry/JSON with current source counter states; full omitted modal/worker lifecycle remains b3 | P0-02.2b3c3b2b1 | done — a/b bounded source presentation accepted, all 26 controls/20 current JSON reports; b3 full modal/worker lifecycle and final Windows/Linux platform acceptance remain mandatory |
-| P0-02.2b3c3b2b3 | Complete CProgressDialog Create/WaitCreating/finish/cancel/error lifecycle and original CProgressThreadVirt Process/Create, native workers/joins and required Qt platform services; modal success/failure/exception/cancel/pause/finish-during-prompt and combined view acceptance; split before code if needed | P0-02.2b3c3b2b2 | todo |
+| P0-02.2b3c3b2b3 | Complete CProgressDialog Create/WaitCreating/finish/cancel/error lifecycle and original CProgressThreadVirt Process/Create, native workers/joins and required Qt platform services; modal success/failure/exception/cancel/pause/finish-during-prompt and combined view acceptance; split before code if needed | P0-02.2b3c3b2b2 | active — a–c split below before code; native workers and original source flow retained |
+
+The current chat owns b3. Source Windows waits retain WaitForMultipleObjects;
+portable native CThread has no timed completion query. Supply a narrow monotonic
+start/finish wait boundary, preserve source events and join before retirement.
+No wait-service acceptance closes the full modal or update workflow.
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2b3a | Portable start-request/worker-finished wait service for the original 500 ms two-handle boundary where POSIX upstream lacks an implementation; finish precedence, latched events, monotonic timeout, native worker wake/join/ownership checks; no dialog/worker workflow acceptance yet | P0-02.2b3c3b2b2 | done — audit § P0-02.2b3c3b2b3a; focused 3/3 0.56 s, check.sh 96/96 63.43 s, native thread/event/join fixtures; macOS 2026-09-29; source modal integration b/c remains mandatory, Windows/Linux runtime unverified |
+| P0-02.2b3c3b2b3b | Copy complete source Create/WaitCreating/ProcessWasFinished/CheckNeedClose/OnMessage/OnExternalCloseMessage, CProgressCloser/MyThreadFunction/CProgressThreadVirt Process/Create and HResultToMessage; narrow Qt queued/modal/message services and native worker joins; delayed/fast success/error/exception, final/error-close states, normal/compact JSON and deterministic lifetime checks | P0-02.2b3c3b2b3a | todo — split additional source dependencies before code if required; cancel stays disabled until c |
+| P0-02.2b3c3b2b3c | Copy source OnCancel/OnButtonClicked cancel-pause-confirmation and finish-during-prompt branches; original YES/NO/CANCEL resource/text/focus, restore pre-prompt pause, joined cancellation and full modal combined acceptance through real deterministic workers/fixtures | P0-02.2b3c3b2b3b | todo — all required branches remain mandatory, no fake completed owner |
 
 B2 statistics/message presentation can be accepted independently of process
 priority/taskbar services; keep those mandatory and disable unfinished controls.

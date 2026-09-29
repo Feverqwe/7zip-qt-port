@@ -1,5 +1,10 @@
 # Regression strategy
 
+`progress_wait` checks the portable startup wait boundary with latched signals,
+finish precedence and zero/finite timeout; original native CThread/CManualResetEvent
+fixtures exercise request/completion wakeup and explicit join/RAII ownership.
+This prerequisite does not accept full modal/thread workflow integration.
+
 `progress_priority` checks real native process policy through the source
 Background/Foreground button, original default/focus/Enter and focused Pause
 Enter, title/caption restoration and normal/compact geometry/JSON. RAII restores

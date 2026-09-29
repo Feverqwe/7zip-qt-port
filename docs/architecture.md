@@ -9,6 +9,9 @@ are defined in [AGENTS.md](../AGENTS.md).
 CProgressDialog in mirrored ProgressDialog2 owns source presentation state and
 statistics/resize/title/message/pause bodies. qtprogresscontrols supplies only Qt
 widgets, native-style presentation APIs, font units, monotonic ticks and clipboard.
+qtprogresswait supplies only the portable monotonic startup request/completion
+wait boundary; native worker creation/events and source modal lifecycle remain
+the ProgressDialog2 owner's mandatory integration.
 The source dialog owns original taskbar state/target/value/cleanup call sites;
 guarded Qt targets become HWND only at the native Windows boundary.
 qttaskbarprogress_mac owns Cocoa native Dock objects behind an opaque interface. It exposes
