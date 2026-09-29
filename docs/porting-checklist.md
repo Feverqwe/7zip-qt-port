@@ -10,8 +10,10 @@
 - [ ] Проверить `git status`, current HEAD, indexed memory, audit/parity и код.
 - [ ] Выбрать первый открытый доступный ID по P0 → P1 → P2 → P3 и зависимостям.
 - [ ] Указать scope, upstream revision/symbols, owner и необходимые adapters.
-- [ ] Если пакет велик, записать подшаги с результатами до начала реализации.
-- [ ] Выполнить один шаг/подшаг, сохранив чужие незакоммиченные изменения.
+- [ ] Если пакет велик, записать несколько крупных интегрированных результатов
+  с простыми ID и одним уровнем подшагов; helpers/dependencies — внутренние задачи.
+- [ ] Выполнить целый компонент/сценарий вместе с consumers, адаптерами и UX,
+  сохранив чужие незакоммиченные изменения. За чат можно завершить несколько итераций.
 - [ ] Перенести исходные bodies; не считать rename или behavioral rewrite source port.
 - [ ] Закрыть UX того же scope: action/menu/shortcut, форму, focus, ошибки и Cancel.
 - [ ] Добавить осмысленные regressions; операции проверять success/failure/cancel.
@@ -25,12 +27,22 @@
 - [ ] Записать результат в таблицу ниже, полезный handoff в `.codex/notes/`,
   сохранить индекс других задач и указать следующий доступный ID.
 - [ ] По поручению пользователя от 2026-09-28 коммитить каждую завершённую
-  итерацию отдельно после проверок. Stage только свои файлы/hunks, сохранить
+  крупную итерацию отдельно после проверок; размер уточнён 2026-09-29 в плане.
+  Не коммитить каждый helper или запись промежуточной приёмки как отдельную
+  итерацию. Stage только свои файлы/hunks, сохранить
   чужие изменения; записать local commit в evidence. Push не выполнять.
 
 Эти checkboxes — повторяемый шаблон одного чата, не общий счётчик. Агент может
 копировать его в запись своего подшага; они не становятся один раз «готовыми
 навсегда». Не закрывать строку пакета до всех его подшагов и интеграции.
+
+При перезапуске применять раздел «Размер итерации и коммита» плана. Старые
+глубокие ID ниже сохраняются как evidence; новые уровни к ним не добавлять.
+Для оставшегося scope записать крупные результаты с простыми ID и ссылками
+на старые открытые строки, сохраняя их незавершённый статус до проверки результата.
+Работу соседних пакетов учитывать под их ID, с точными prerequisite-связями;
+не поглощать P0-04/P0-05/P0-10 цепочкой подшагов P0-02. Счётчик parent packages
+менять только при выполнении их критериев готовности.
 
 ## Правила статусов и счётчика
 
@@ -380,7 +392,7 @@ No wait-service acceptance closes the full modal or update workflow.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b2b3a | Portable start-request/worker-finished wait service for the original 500 ms two-handle boundary where POSIX upstream lacks an implementation; finish precedence, latched events, monotonic timeout, native worker wake/join/ownership checks; no dialog/worker workflow acceptance yet | P0-02.2b3c3b2b2 | done — audit § P0-02.2b3c3b2b3a; focused 3/3 0.56 s, check.sh 96/96 63.43 s, native thread/event/join fixtures; macOS 2026-09-29; source modal integration b/c remains mandatory, Windows/Linux runtime unverified |
-| P0-02.2b3c3b2b3b | Copy complete source Create/WaitCreating/ProcessWasFinished/CheckNeedClose/OnMessage/OnExternalCloseMessage, CProgressCloser/MyThreadFunction/CProgressThreadVirt Process/Create and HResultToMessage; narrow Qt queued/modal/message services and native worker joins; delayed/fast success/error/exception, final/error-close states, normal/compact JSON and deterministic lifetime checks | P0-02.2b3c3b2b3a | todo — split additional source dependencies before code if required; cancel stays disabled until c |
+| P0-02.2b3c3b2b3b | Copy complete source Create/WaitCreating/ProcessWasFinished/CheckNeedClose/OnMessage/OnExternalCloseMessage, CProgressCloser/MyThreadFunction/CProgressThreadVirt Process/Create and HResultToMessage; narrow Qt queued/modal/message services and native worker joins; delayed/fast success/error/exception, final/error-close states, normal/compact JSON and deterministic lifetime checks | P0-02.2b3c3b2b3a | active — original complete bodies/dependencies inspected; Windows original wait, POSIX completion context/join, atomic worker→GUI flags, explicit per-dialog question policy and queued/modal native presentation boundaries; active cancel stays disabled until c |
 | P0-02.2b3c3b2b3c | Copy source OnCancel/OnButtonClicked cancel-pause-confirmation and finish-during-prompt branches; original YES/NO/CANCEL resource/text/focus, restore pre-prompt pause, joined cancellation and full modal combined acceptance through real deterministic workers/fixtures | P0-02.2b3c3b2b3b | todo — all required branches remain mandatory, no fake completed owner |
 
 B2 statistics/message presentation can be accepted independently of process
