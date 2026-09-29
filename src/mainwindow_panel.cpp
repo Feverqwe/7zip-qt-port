@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
+#include "qtfilelisthover.h"
 
 void MainWindow::createFilePanel(QMenu *editMenu) {
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
@@ -52,11 +53,13 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
 void MainWindow::createFileTable(QWidget *central) {
     table_ = new FileTable(0, 7, central);
     auto *fileTable = static_cast<FileTable *>(table_);
+    fileTable->setFullRowHighlight(fileListSettings_.FullRow);
     fileTable->sourcePanel = &app_.GetFocusedPanel();
     fileTable->propertyIds = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
                               kpidMTime, kpidExtension, kpidNoProperty};
     fileTable->rawProperties.resize(7);
     table_->setObjectName("archiveTable");
+    table_->setAccessibleName(QStringLiteral("Список файлов"));
     table_->verticalHeader()->hide();
     table_->setHorizontalHeaderLabels(
         {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"});
@@ -83,6 +86,8 @@ void MainWindow::createFileTable(QWidget *central) {
             [this] { saveColumns(); });
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableHover_ = new QtFileListHover(*table_);
+    tableHover_->SetEnabled(fileListSettings_.SingleClick);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     table_->setSortingEnabled(true);
     table_->setDragEnabled(true);
@@ -314,11 +319,14 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
 void MainWindow::createIconList(QWidget *central) {
     iconList_ = new QListView(central);
     iconList_->setObjectName("iconList");
+    iconList_->setAccessibleName(QStringLiteral("Список файлов"));
     iconList_->setModel(table_->model());
     iconList_->setModelColumn(0);
     iconList_->setSelectionModel(table_->selectionModel());
     iconList_->setSelectionMode(QAbstractItemView::ExtendedSelection);
     iconList_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    iconHover_ = new QtFileListHover(*iconList_);
+    iconHover_->SetEnabled(fileListSettings_.SingleClick);
     iconList_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     iconList_->setUniformItemSizes(true);
     iconList_->setWordWrap(false);
@@ -345,6 +353,43 @@ void MainWindow::createIconList(QWidget *central) {
                                                            QItemSelectionModel::Rows);
         showItemContextMenu(iconList_->viewport()->mapToGlobal(pos));
     });
+}
+
+void MainWindow::appendParentEntry() {
+    if (!app_.GetFocusedPanel()._showDots || app_.GetFocusedPanel().IsRootFolder())
+        return;
+    const bool sorting = table_->isSortingEnabled();
+    table_->setSortingEnabled(false);
+    const int row = table_->rowCount();
+    table_->insertRow(row);
+    for (int column = 0; column < table_->columnCount(); ++column) {
+        auto *item = new ArchiveTableItem(column == 0 ? QStringLiteral("..") : QString());
+        item->setData(Qt::UserRole + 1, true);
+        item->setData(Qt::UserRole + 3, QStringLiteral(".."));
+        item->setData(Qt::UserRole + 6, quint32(-1));
+        if (column == 0) {
+            item->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirIcon));
+            item->setToolTip(QStringLiteral("Родительская папка"));
+        }
+        table_->setItem(row, column, item);
+    }
+    table_->setSortingEnabled(sorting);
+}
+
+void MainWindow::updateParentEntry() {
+    if (!table_)
+        return;
+    for (int row = 0; row < table_->rowCount(); ++row) {
+        if (table_->item(row, 0) &&
+            table_->item(row, 0)->data(Qt::UserRole + 6).toUInt() == UInt32(-1)) {
+            table_->removeRow(row);
+            break;
+        }
+    }
+    if (state_ != State::Namespace && state_ != State::Loading && state_ != State::Operating)
+        appendParentEntry();
+    applySortMode();
+    refreshActions();
 }
 
 void MainWindow::activateSingleClickedRow(int row) {

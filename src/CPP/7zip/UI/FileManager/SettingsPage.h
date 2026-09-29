@@ -10,9 +10,13 @@ class CSettingsPage : public QDialog {
     bool _initMode = true;
     CFmSettings _settings;
     QString _settingsPath;
+    QCheckBox *_showDots;
     QCheckBox *_showRealFileIcons;
+    QCheckBox *_fullRow;
     QCheckBox *_showGrid;
     QCheckBox *_singleClick;
+    QCheckBox *_alternativeSelection;
+    QCheckBox *_showSystemMenu;
     bool OnInit();
     void OnButtonClicked();
     void OnApply();

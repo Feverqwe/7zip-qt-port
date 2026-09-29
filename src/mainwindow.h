@@ -78,6 +78,8 @@
 #include <memory>
 #include <vector>
 
+class QtFileListHover;
+
 class MainWindow : public QMainWindow {
   public:
     explicit MainWindow(ArchiveBackend *backend = nullptr,
@@ -153,6 +155,8 @@ class MainWindow : public QMainWindow {
     void showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
     void renderRootFolder();
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
+    void appendParentEntry();
+    void updateParentEntry();
     QStringList selectedPaths() const;
     void selectPaths(const QStringList &paths);
     void refreshCurrent(const CSelectedState *preserved = nullptr);
@@ -323,6 +327,8 @@ class MainWindow : public QMainWindow {
     QAction *refresh_ = nullptr;
     QAction *settingsAction_ = nullptr;
     CFmSettings fileListSettings_;
+    QtFileListHover *tableHover_ = nullptr;
+    QtFileListHover *iconHover_ = nullptr;
     QAction *foldersHistory_ = nullptr;
     QAction *deselectAll_ = nullptr;
     QAction *invertSelection_ = nullptr;

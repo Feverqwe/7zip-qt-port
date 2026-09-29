@@ -8,7 +8,9 @@ class CPanel;
 
 class FileTable : public QTableWidget {
   public:
-    using QTableWidget::QTableWidget;
+    explicit FileTable(int rows, int columns, QWidget *parent = nullptr);
+    void setFullRowHighlight(bool enabled);
+    bool fullRowHighlight() const { return fullRowHighlight_; }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
     QVector<PROPID> propertyIds;
@@ -29,6 +31,9 @@ class FileTable : public QTableWidget {
 
   protected:
     QMimeData *mimeData(const QList<QTableWidgetItem *> &items) const override;
+
+  private:
+    bool fullRowHighlight_ = false;
 };
 
 class ArchiveTableItem : public QTableWidgetItem {

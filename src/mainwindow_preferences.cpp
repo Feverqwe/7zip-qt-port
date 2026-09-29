@@ -18,6 +18,18 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
         menu.addAction(create_);
         menu.addAction(createFolder_);
         menu.addAction(createFile_);
+        if (app_.ShowSystemMenu && hasSelection) {
+            const QStringList selected = selectedFilesystemPaths();
+            if (!selected.isEmpty()) {
+                menu.addSeparator();
+                menu.addAction(QStringLiteral("Открыть в системном файловом менеджере"), this,
+                               [path = selected.first()] {
+                                   const QFileInfo info(path);
+                                   const QString folder = info.isDir() ? path : info.absolutePath();
+                                   QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
+                               });
+            }
+        }
     } else {
         menu.addAction(add_);
         if (hasSelection)
@@ -200,8 +212,11 @@ void MainWindow::showSettings() {
     SettingsDialog dialog(toolbarSettingsPath(), this);
     if (dialog.exec() != QDialog::Accepted)
         return;
+    const bool showDotsChanged = fileListSettings_.ShowDots != dialog.settings().ShowDots;
     fileListSettings_ = dialog.settings();
     app_.SetListSettings();
+    if (showDotsChanged)
+        updateParentEntry();
     if (state_ == State::Filesystem)
         updateFilesystemIcons();
 }

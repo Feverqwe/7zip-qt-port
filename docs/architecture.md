@@ -337,6 +337,12 @@ and stops before window member teardown.
 `CSelectedState` and CPanel's selected-status vector own filesystem refresh
 selection and current-item snapshots. `QtPanelList` adapts the shared table/icon
 model and selection model; it supplies relative names and control operations.
+`CApp::SetListSettings` applies source `CFmSettings` to the active panel.
+`CSettingsPage` supplies the original list-option order; the Qt presentation
+maps ShowDots to a source-sentinel parent row, FullRow to a table paint delegate,
+and single-click track-select to one `QtFileListHover` per table/icon viewport.
+The hover adapter changes selection after dwell without invoking navigation.
+AlternativeSelection still needs the source marked-item state (P0-07.2).
 Normal refresh restores after loading/sorting; flat refresh holds a pending
 snapshot until scanner completion and discards it on navigation. Archive refresh,
 flat-mode changes and edit results use the same source state. Pending snapshots

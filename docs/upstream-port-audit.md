@@ -539,6 +539,60 @@ run was denied DBus socket creation and process-priority calls by the sandbox;
 the rerun with those system permissions passed. A later one-line action-state
 fix and selection assertion passed the affected build/focused CTest again.
 
+## P0-07.1 — source list settings and main-panel activation (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([source tree](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager)).
+Reviewed `CPP/7zip/UI/FileManager/SettingsPage2.rc` control order and
+`SettingsPage.cpp::{OnInit,OnButtonClicked,OnApply}` for all seven list flags;
+`RegistryUtils.cpp::CFmSettings::{Load,Save}` and `App.cpp::SetListSettings`
+were already source-derived. Reviewed `PanelItems.cpp::InitList` (`showDots`
+and `kParentIndex`), `PanelListNotify.cpp::OnNotifyList` (one-click activation,
+track-select and item changes), `PanelSort.cpp` parent-index ordering, and
+`PanelMenu.cpp::CreateFileMenu` (`ShowSystemMenu` only for filesystem).
+
+The Qt `CSettingsPage` now follows the original seven-control order and
+retains its source init/changed/apply policy. ShowDots, FullRow and
+ShowSystemMenu are read and written through the existing `CFmSettings` owner;
+cancel and an unchanged page do not write. AlternativeSelection is visible
+but disabled, retains any pre-existing stored value, and remains mandatory
+P0-07.2 because upstream uses an independent marked-item vector and
+Ctrl/Shift range policy. Large pages, extraction RAM, six-page Options,
+Help and language controls remain P1-12.
+
+The source `showDots`/`kParentIndex` rule is presented in the bound Qt table,
+including flat/normal filesystem and archive views; the virtual root omits it.
+The parent item keeps its source sentinel through sort and navigation. Qt
+preserves the source `FullRow` visual distinction with a delegate that paints
+only the Name cell's selection when the option is off, without changing the
+row-level selection model or source item indices. The `ShowSystemMenu` flag
+adds an OS file-manager action only in the filesystem context; native Windows
+shell verbs have no current cross-platform Qt equivalent and full context
+menu parity remains P0-09. System icons and grid keep their prior consumers.
+
+`qtfilelisthover.cpp` is new presentation glue for the source
+`LVS_EX_ONECLICKACTIVATE | LVS_EX_TRACKSELECT` policy on both table and icon
+views. It uses the already established 400 ms Qt dwell adapter, validates
+the persistent model index and cursor position after scroll/removal, and
+cancels on modifiers, drag, press and leave. It never opens on hover. Qt
+single-click activation remains guarded against Ctrl/Shift/Meta gestures.
+The fixed interval and platform file-manager action are explicit deviations.
+
+`fm_settings` and `list_settings_runtime` exercise seven-control order,
+disabled alternative mode, persistence/cancel, ShowDots on disk/archive/root,
+normal/reverse sort, system-menu visibility, full-row paint difference,
+single-click hover guards and selected-row retention. Current-build settings
+340×300/460×300 and list 640×400/980×620 JSON show visible controls and
+unclipped table/address. A targeted Qt screenshot confirmed the selection
+paint difference; rendered Windows parity and Windows/Linux runtime remain
+unverified. Source selection/range/alternative-mode acceptance remains P0-07.2.
+Focused direct-consumer CTest passes 8/8; `./scripts/check.sh` passes the full
+135/135 CTest gate on macOS arm64 in the unsandboxed environment required by
+AGENTS.md. A later localized tooltip and drag-guard test correction passed the
+affected build and focused CTest. The first optional screenshot fixture wrote
+inside its temporary directory and was corrected to use the build report
+directory; it is not part of the product path.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
@@ -4395,6 +4449,8 @@ FoldersHistory передаёт explicit SettingsPath, остальные выз
 Проверки list_activation покрывают single/double, modifiers, Alt/properties detail,
 hover on/off, leave и удаление row; прямые consumers — list_view_dialog,
 folder_history, properties, settings, fm_settings. Layout не изменён.
+Это evidence первоначального dialog adapter; основной table/icon hover
+подключён позднее в § P0-07.1 выше.
 
 ## Настройки файловых списков (2026-09-28)
 
@@ -4424,6 +4480,8 @@ Notice/лицензия сохранены; форматирование ада�
 сохранение пропущенных flags, отсутствие записи без изменений, геометрия),
 settings (применение и один щелчок в четырёх режимах disk/archive).
 Геометрия/JSON проверяют структуру Qt; Windows rendering не проверен.
+Это исторический partial scope; расширение страницы и текущих consumers
+описано в § P0-07.1 выше, AlternativeSelection остаётся P0-07.2.
 
 ## Запрос пароля и группировка Compress после сверки диалогов (2026-09-28)
 

@@ -169,12 +169,14 @@ Windows parity.
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/SettingsPage2.rc` and `SettingsPage.cpp`.
-The partial page keeps the resource order of supported controls: real file
-icons, grid lines, single click. OK/Cancel sit below them. The Qt dialog has
-no heading absent from the resource. Other controls and the property sheet
-are omitted; this does not establish full OptionsDialog parity.
-`fm_settings` checks unclipped labels and separated controls/footer
-at 460×180 and 340×180, writing settings JSON reports. Rendered Windows
+The Qt page follows the resource order: Show `..`, real file icons, full-row
+selection, grid lines, single click, alternative selection, system menu, then
+OK/Cancel. Alternative selection stays visible but disabled until P0-07.2
+ports its source mark policy. The page has no heading absent from the resource.
+Large-pages and extraction-memory controls and the six-page property sheet
+remain P1-12, so this does not establish full OptionsDialog parity.
+`fm_settings` checks unclipped labels, order and separated footer at 460×300
+and 340×300, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
 
 ## Folder history list

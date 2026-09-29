@@ -32,25 +32,30 @@ class FmSettingsTests : public QObject {
                 loaded.ShowSystemMenu && loaded.SingleClick);
         QVERIFY(!loaded.ShowGrid);
     }
-    void confirmCancelAndPreserveOmittedFlags() {
+    void confirmCancelAndPersistListFlags() {
         QTemporaryDir dir;
         const QString path = dir.filePath("fm.ini");
         CFmSettings st;
         st.Load(path);
-        st.ShowDots = st.AlternativeSelection = true;
         st.Save(path);
         for (bool confirm : {false, true}) {
             CSettingsPage page(path);
-            page.findChild<QCheckBox *>("gridOption")->setChecked(true);
-            page.findChild<QCheckBox *>("singleClickOption")->setChecked(true);
+            for (const char *name : {"showDotsOption", "realFileIconsOption", "fullRowOption",
+                                     "gridOption", "singleClickOption", "showSystemMenuOption"})
+                page.findChild<QCheckBox *>(name)->setChecked(true);
+            QVERIFY(!page.findChild<QCheckBox *>("alternativeSelectionOption")->isEnabled());
             if (confirm)
                 page.accept();
             else
                 page.reject();
             st.Load(path);
+            QCOMPARE(st.ShowDots, confirm);
+            QCOMPARE(st.ShowRealFileIcons, confirm);
+            QCOMPARE(st.FullRow, confirm);
             QCOMPARE(st.ShowGrid, confirm);
             QCOMPARE(st.SingleClick, confirm);
-            QVERIFY(st.ShowDots && st.AlternativeSelection);
+            QVERIFY(!st.AlternativeSelection);
+            QCOMPARE(st.ShowSystemMenu, confirm);
         }
         // Opening and confirming an unchanged page must not materialize defaults.
         const QString empty = dir.filePath("empty.ini");
@@ -62,12 +67,14 @@ class FmSettingsTests : public QObject {
         QTemporaryDir dir;
         for (int width : {460, 340}) {
             CSettingsPage page(dir.filePath("fm.ini"));
-            page.resize(width, 180);
+            page.resize(width, 300);
             page.show();
             QApplication::processEvents();
             auto *buttons = page.findChild<QDialogButtonBox *>("settingsButtons");
             QWidget *previous = nullptr;
-            for (const char *name : {"realFileIconsOption", "gridOption", "singleClickOption"}) {
+            for (const char *name :
+                 {"showDotsOption", "realFileIconsOption", "fullRowOption", "gridOption",
+                  "singleClickOption", "alternativeSelectionOption", "showSystemMenuOption"}) {
                 auto *control = page.findChild<QCheckBox *>(name);
                 QVERIFY(UiInspection::fullyVisible(*control, page));
                 QVERIFY(control->width() >= control->sizeHint().width());

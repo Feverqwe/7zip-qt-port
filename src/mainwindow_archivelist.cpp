@@ -29,6 +29,7 @@ void MainWindow::renderArchiveFolder() {
     app_.GetFocusedPanel().SetNewFolder(folderOwner);
     app_.GetFocusedPanel().LoadFullPath();
     configureColumns();
+    appendParentEntry();
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
         appendArchiveEntry(*archiveFolder, index, prefix, flat);
     table_->setSortingEnabled(true);

@@ -4,7 +4,40 @@
 
 #include <QHeaderView>
 #include <QMimeData>
+#include <QPainter>
+#include <QStyledItemDelegate>
 #include <QUrl>
+
+namespace {
+class FileRowDelegate final : public QStyledItemDelegate {
+  public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const override {
+        auto *table = static_cast<const FileTable *>(parent());
+        if (!table || table->fullRowHighlight() || index.column() == 0) {
+            QStyledItemDelegate::paint(painter, option, index);
+            return;
+        }
+        if (option.state.testFlag(QStyle::State_Selected))
+            painter->fillRect(option.rect, option.palette.base());
+        QStyleOptionViewItem narrowed(option);
+        narrowed.state &= ~QStyle::State_Selected;
+        QStyledItemDelegate::paint(painter, narrowed, index);
+    }
+};
+} // namespace
+
+FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows, columns, parent) {
+    setItemDelegate(new FileRowDelegate(this));
+}
+
+void FileTable::setFullRowHighlight(bool enabled) {
+    if (fullRowHighlight_ == enabled)
+        return;
+    fullRowHighlight_ = enabled;
+    viewport()->update();
+}
 
 QMimeData *FileTable::mimeData(const QList<QTableWidgetItem *> &items) const {
     auto *data = new QMimeData;
@@ -22,6 +55,16 @@ QMimeData *FileTable::mimeData(const QList<QTableWidgetItem *> &items) const {
 bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {
     // Qt reverses the whole comparison for descending order. Compensate only
     // the folder grouping: upstream reverses property order after this check.
+    const bool firstParent = data(Qt::UserRole + 6).toUInt() == UInt32(-1);
+    const bool secondParent = other.data(Qt::UserRole + 6).toUInt() == UInt32(-1);
+    if (firstParent || secondParent) {
+        if (firstParent == secondParent)
+            return false;
+        return !tableWidget() ||
+                       tableWidget()->horizontalHeader()->sortIndicatorOrder() == Qt::AscendingOrder
+                   ? firstParent
+                   : secondParent;
+    }
     const bool folder = data(Qt::UserRole + 1).toBool();
     if (folder != other.data(Qt::UserRole + 1).toBool() && tableWidget())
         return tableWidget()->horizontalHeader()->sortIndicatorOrder() == Qt::AscendingOrder

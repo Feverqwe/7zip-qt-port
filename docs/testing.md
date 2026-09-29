@@ -434,9 +434,16 @@ the list remains fully visible. `flat_view`, `panel_selected_state` and
 `root_navigation` are direct consumers of the same bound-folder row indices.
 
 `fm_settings` covers CFmSettings defaults and INI keys, invalid values,
-unchanged/confirmed/cancelled SettingsPage, preservation of omitted flags,
-and normal/compact geometry reports. `settings` exercises window consumers
-across disk/archive and all four view modes.
+unchanged/confirmed/cancelled SettingsPage, the disabled AlternativeSelection
+control and seven-control order in 340×300/460×300 geometry reports. `settings`
+exercises window single-click consumers across disk/archive and all four modes.
+`list_settings_runtime` checks ShowDots, parent navigation, sort and virtual
+root; FullRow's rendered selected-cell distinction; system file-manager menu;
+persisted toggles; table/icon hover without activation, modifier/leave/scroll
+guards and removal of a hovered row. It writes 640×400/980×620 window JSON.
+`SEVENZIP_CAPTURE_SCREENSHOTS=1` also saves only the affected FullRow
+table viewport to `build/dev/ui-screenshots/list-settings-*.png` when paint
+inspection is needed. The runtime evidence is macOS-local.
 `list_activation` covers settings-driven single/double-click in history,
 modified selection clicks, Alt/full-property detail, hover selection on/off,
 leaving the list and deleting a hovered row. Fixtures use a temporary INI.

@@ -90,6 +90,7 @@ void MainWindow::connectFilesystemScanner() {
                 panel.SetNewFolder(folder);
                 panel.LoadFullPath();
                 configureColumns();
+                appendParentEntry();
             });
     connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
             [this](const QFileInfoList &files, quint32 firstSourceIndex) {

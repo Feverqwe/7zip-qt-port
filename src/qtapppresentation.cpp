@@ -1,5 +1,6 @@
 #include "qtapppresentation.h"
 #include "mainwindow.h"
+#include "qtfilelisthover.h"
 
 void QtAppPresentation::Initialize(CApp &app) {
     // Preserve the existing single-panel preferences when introducing the
@@ -63,6 +64,12 @@ void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &setti
     window_.fileListSettings_ = settings;
     if (window_.table_)
         window_.table_->setShowGrid(settings.ShowGrid);
+    if (window_.table_)
+        static_cast<FileTable *>(window_.table_)->setFullRowHighlight(settings.FullRow);
+    if (window_.tableHover_)
+        window_.tableHover_->SetEnabled(settings.SingleClick);
+    if (window_.iconHover_)
+        window_.iconHover_->SetEnabled(settings.SingleClick);
 }
 
 void QtAppPresentation::ReloadToolbars(CApp &) { window_.updateToolbar(); }

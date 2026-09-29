@@ -903,6 +903,13 @@ if(BUILD_TESTING)
     add_test(NAME panel_auto_refresh COMMAND panel_auto_refresh_tests)
     set_tests_properties(panel_auto_refresh PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-auto-refresh-settings.ini")
+    qt_add_executable(list_settings_runtime_tests tests/list_settings_runtime_tests.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(list_settings_runtime_tests PRIVATE src tests)
+    target_link_libraries(list_settings_runtime_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(list_settings_runtime_tests PRIVATE src/mainwindow_filedelete.cpp src/mainwindow_selectionpaths.cpp)
+    add_test(NAME list_settings_runtime COMMAND list_settings_runtime_tests)
+    set_tests_properties(list_settings_runtime PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/list-settings-runtime.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(combine_name_tests tests/combine_name_tests.cpp ${panel_sort_sources})
     target_include_directories(combine_name_tests PRIVATE src)
     target_link_libraries(combine_name_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
@@ -994,7 +1001,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
             src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
-            src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)
+            src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h
+            src/qtfilelisthover.cpp src/qtfilelisthover.h)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp

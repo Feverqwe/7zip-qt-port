@@ -476,7 +476,7 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 | Extract, GUI/ExtractDialog.rc/.cpp | Destination, optional folder name, modes слева и password справа; name shown/hidden, 640×360/470×330, история/сохранение/отмена проверены. Отсутствуют абсолютные пути, ElimDup, NtSecurity и Help; Ask адаптирован к отказу при конфликте, а не callback. |
 | Create/Add, GUI/CompressDialog.rc/.cpp | Исправлены stacked layout и порядок основной формы: compression слева, encryption справа, source picker после archive/options. 760×720/640×480, 7z/ZIP, show/hide confirmation и reachability проверены. Это частичный порт: нет update/path modes, volumes, SFX, shared/delete options, parameters, CompressOptionsDialog и Help; Add не меняет compression options. |
 | Запрос пароля, PasswordDialog.rc/.cpp | QInputDialog заменён source port CPasswordDialog: восстановлен Show Password и исходный ReadControls/SetTextSpec/OnOK. Контракт проверяет все пять controls в masked/shown при 360×170/260×170; Qt integration проверяет reuse/reset/cancel. |
-| Настройки, OptionsDialog.cpp и SettingsPage2.rc | Частично перенесены CSettingsPage и CFmSettings: real icons/grid/single-click. Проверены defaults/persistence/confirm/cancel и geometry/JSON на двух размерах. Upstream имеет шесть страниц и дополнительные flags/memory controls; полный порт и ресурсный comparator отсутствуют. |
+| Настройки, OptionsDialog.cpp и SettingsPage2.rc | CSettingsPage показывает семь list flags в исходном порядке; ShowDots, icons, FullRow, grid, single-click и ShowSystemMenu подключены к текущей панели. AlternativeSelection виден, но выключен до P0-07.2. Defaults/persistence/confirm/cancel и 340×300/460×300 JSON проверены. Upstream имеет шесть страниц и memory controls; полный порт и ресурсный comparator отсутствуют. |
 | Прогресс/сообщения, ProgressDialog2.rc/2a.rc/.cpp, MessagesDialog.rc/.cpp | Qt показывает label, percent и Cancel, сообщения — в журнале. Нет upstream statistics, pause/background, embedded list и подтверждения отмены; journal не имеет Close footer исходного MessagesDialog. Это сохраняющийся долг переноса, не результат ресурсного comparator. |
 | Информация об архиве / F3/F4 | Archive Info остаётся отдельной QLabel-формой; F3/F4 — локальный UTF-8 viewer/editor, а upstream запускает настроенное внешнее приложение. Эти окна не подтверждены как порты upstream dialogs. |
 
@@ -512,7 +512,17 @@ Windows rendering недоступен, визуальная идентично�
 полный текст. Ctrl/Shift/Meta сохраняют выбор без открытия. Наведение в течение
 400ms выбирает всю строку без активации; leave/нажатие/модификаторы прекращают
 ожидание. Qt использует фиксированный interval вместо системного Win32 hover time.
-В основной файловой панели hover/track-select пока отсутствует.
+Основная файловая table/icon панель теперь использует тот же адаптированный
+hover/track-select: 400 ms, без открытия, с отменой при Ctrl/Shift, drag,
+leave и смене строки после scroll/removal. В 7zFM это системный Win32
+track-select interval, а Qt использует фиксированное ожидание.
+ShowDots добавляет исходный `..` в файловый и архивный список, но не в
+виртуальный root. FullRow в табличном виде переключает окраску всей строки
+либо только имени. На macOS/Linux ShowSystemMenu добавляет действие открытия
+каталога в системном файловом менеджере; это уже, чем Windows shell menu.
+Полная сверка контекстного меню остаётся P0-09, альтернативное выделение —
+P0-07.2. Визуальная проверка двух состояний FullRow выполнена на текущем Qt
+build; Windows rendered reference и Windows/Linux runtime не проверены.
 
 Полное значение свойства и Alt+Enter истории открывают просмотр текста;
 компоновка и взаимодействие описаны в [контракте](ui-layout-contracts.md#full-text-detail).

@@ -65,6 +65,7 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
         }
         if (result == S_OK) {
             configureColumns();
+            appendParentEntry();
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
             for (UInt32 i = 0; i < spec->Files.Size(); ++i)
                 appendFilesystemEntry(
@@ -121,6 +122,7 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
         item->setData(Qt::UserRole + 5, nativePrefix);
         item->setData(Qt::UserRole + 6, sourceIndex);
         if (col == 0) {
+            item->setToolTip(file.absoluteFilePath());
             if (fileListSettings_.ShowRealFileIcons) {
                 QFileIconProvider icons;
                 item->setIcon(icons.icon(file));
@@ -341,6 +343,10 @@ void MainWindow::navigateTo(const QString &path) {
 void MainWindow::activateRow(int row) {
     if (row < 0 || row >= table_->rowCount())
         return;
+    if (table_->item(row, 0)->data(Qt::UserRole + 6).toUInt() == UInt32(-1)) {
+        goParent();
+        return;
+    }
     if (!table_->selectionModel()->isRowSelected(row, QModelIndex()))
         table_->selectRow(row);
     table_->setCurrentCell(row, 0, QItemSelectionModel::NoUpdate);
