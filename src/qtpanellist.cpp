@@ -48,6 +48,14 @@ void QtPanelList::SelectItem(int row) {
     view_->selectionModel()->select(view_->model()->index(row, 0),
                                     QItemSelectionModel::Select | QItemSelectionModel::Rows);
 }
+void QtPanelList::SetItemState_Selected(int row, bool selected) {
+    if (!IsBound() || row < 0 || row >= GetItemCount())
+        return;
+    view_->selectionModel()->select(
+        view_->model()->index(row, 0),
+        (selected ? QItemSelectionModel::Select : QItemSelectionModel::Deselect) |
+            QItemSelectionModel::Rows);
+}
 void QtPanelList::SetFocusedItem(int row) {
     view_->selectionModel()->setCurrentIndex(view_->model()->index(row, 0),
                                              QItemSelectionModel::NoUpdate);

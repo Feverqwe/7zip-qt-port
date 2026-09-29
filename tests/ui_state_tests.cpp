@@ -137,6 +137,16 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
         applyMask("deselectMaskAction", "alpha.*");
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        const int focusedBeforeCancel = table(window)->currentRow();
+        QTimer::singleShot(0, [&] {
+            auto *dialog = window.findChild<QDialog *>("comboDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("comboValue")->setEditText("*");
+            dialog->reject();
+        });
+        action(window, "selectMaskAction")->trigger();
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table(window)->currentRow(), focusedBeforeCancel);
         table(window)->selectionModel()->setCurrentIndex(
             table(window)->model()->index(filesystemRow(window, "image.png"), 0),
             QItemSelectionModel::NoUpdate);

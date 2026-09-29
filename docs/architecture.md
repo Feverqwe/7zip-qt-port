@@ -394,13 +394,16 @@ menu actions use the original command IDs and `MyLoadMenu` dispatch; unchanged
 redraws those cells on level/UTC changes and persists the choice through
 QSettings; sort comparison continues to read typed folder properties.
 
-`CPanelSelection` consumes a snapshot of names, folder flags and selection
-states; `mainwindow_selection.cpp` publishes the result to Qt in one update.
+`CPanel::SelectSpec/SelectByType/SelectAll/InvertSelection` own the upstream
+indexed status vector and selection rules. `mainwindow_selection.cpp` keeps the
+Qt mask dialog and synchronizes current Qt selection before invoking those
+source methods; `QtPanelList` applies source indices back to the shared
+table/icon selection model while keeping the focused row and parent sentinel.
 `PanelSort.cpp` owns source typed-property, name/prefix and item-index sorting;
 `filetable.cpp` passes bound source indices and property IDs to the panel and
 adapts descending folder grouping and drag data to Qt. `PanelKey.cpp` dispatches
 list and address keys through the window event filter. Mouse and range
-selection remain owned by Qt.
+selection remain owned by Qt until the source mouse/range/mark model is ported.
 
 Nested archive navigation keeps the parent listing, folder, password and
 temporary directory on a stack. Returning to the parent or a listing failure

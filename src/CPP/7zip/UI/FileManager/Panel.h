@@ -385,6 +385,11 @@ class CPanel : public QObject {
     void SetFocusToPath();
     void SetFocusToLastRememberedItem();
     void AttachSelectionView(QAbstractItemView *view) { _selectionList.Attach(view); }
+    void UpdateSelection();
+    void SelectSpec(const UString &mask, bool selectMode);
+    void SelectByType(bool selectMode);
+    void SelectAll(bool selectMode);
+    void InvertSelection();
     void SaveSelectedState(CSelectedState &state);
     void GetSelectedNames(UStringVector &selectedNames);
     void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;

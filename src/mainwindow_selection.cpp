@@ -1,4 +1,3 @@
-#include "CPP/7zip/UI/FileManager/PanelSelect.h"
 #include "mainwindow.h"
 
 // Adapted from PanelKey.cpp::OnKeyDown(): VK_ADD, VK_SUBTRACT, VK_MULTIPLY.
@@ -27,62 +26,45 @@ bool MainWindow::handleSelectionKey(QKeyEvent *key) {
     return true;
 }
 
-namespace {
-CPanelSelection readSelection(const QTableWidget &table) {
-    CPanelSelection selection;
-    selection.Items.reserve(size_t(table.rowCount()));
-    for (int row = 0; row < table.rowCount(); ++row) {
-        const auto *item = table.item(row, 0);
-        selection.Items.push_back({item->data(Qt::UserRole + 3).toString(),
-                                   item->data(Qt::UserRole + 1).toBool(),
-                                   table.selectionModel()->isRowSelected(row, QModelIndex())});
-    }
-    return selection;
-}
-
-void UpdateSelection(QTableWidget &table, const CPanelSelection &selection) {
-    QItemSelection selected;
-    for (int row = 0; row < table.rowCount(); ++row)
-        if (selection.Items[size_t(row)].Selected)
-            selected.select(table.model()->index(row, 0),
-                            table.model()->index(row, table.columnCount() - 1));
-    table.selectionModel()->select(selected,
-                                   QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
-}
-} // namespace
-
 void MainWindow::SelectSpec(bool selectMode) {
     if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
     ComboDialog dialog(selectMode ? "Выделить" : "Снять выделение", "Маска:", "*", this);
     if (dialog.exec() != QDialog::Accepted)
         return;
-    auto selection = readSelection(*table_);
-    const QString mask = dialog.value();
-    selection.SelectSpec(QStringView(mask), selectMode);
-    UpdateSelection(*table_, selection);
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selected;
+    panel.SaveSelectedState(selected);
+    panel.SelectSpec(ToUString(dialog.value()), selectMode);
+    refreshActions();
 }
 
 void MainWindow::SelectByType(bool selectMode) {
     if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
-    auto selection = readSelection(*table_);
-    selection.SelectByType(table_->currentRow(), selectMode);
-    UpdateSelection(*table_, selection);
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selected;
+    panel.SaveSelectedState(selected);
+    panel.SelectByType(selectMode);
+    refreshActions();
 }
 
 void MainWindow::SelectAll(bool selectMode) {
     if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
-    auto selection = readSelection(*table_);
-    selection.SelectAll(selectMode);
-    UpdateSelection(*table_, selection);
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selected;
+    panel.SaveSelectedState(selected);
+    panel.SelectAll(selectMode);
+    refreshActions();
 }
 
 void MainWindow::InvertSelection() {
     if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
-    auto selection = readSelection(*table_);
-    selection.InvertSelection();
-    UpdateSelection(*table_, selection);
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selected;
+    panel.SaveSelectedState(selected);
+    panel.InvertSelection();
+    refreshActions();
 }

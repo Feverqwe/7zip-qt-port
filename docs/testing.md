@@ -496,7 +496,10 @@ See [upstream UI comparison](ui-reference.md) for commands and coverage limits.
 raw/empty text via accept/button, Cancel without committing Value,
 Dlg_CreateFolder default/Cancel/output, and geometry at 360/260 px for
 folder/file/mask prompts. `ui_state` covers creating/canceling folder and file
-and selection masks, while `panel_key` covers keyboard consumers. JSON reports
+and selection masks, including mask-dialog Cancel without changing selection or
+focus. `panel_selection` exercises the bound source panel's wildcard/type/all/
+invert loops, indexed rows and parent sentinel; `panel_key` covers keyboard
+consumers across the four view modes. JSON reports
 are generated for all six geometry states.
 
 `volume_dialog` проверяет исходные presets, подтверждение через кнопку и

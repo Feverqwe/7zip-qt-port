@@ -1,9 +1,40 @@
-#include "CPP/7zip/UI/FileManager/PanelSelect.h"
+#include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/Common/Wildcard.h"
+#include <QTableWidget>
 #include <QtTest>
 
 class PanelSelectionTests final : public QObject {
     Q_OBJECT
+
+    static CObjectVector<CPanelItem> items() {
+        CObjectVector<CPanelItem> result;
+        for (const auto &name : {QStringLiteral("a.tar.gz"), QStringLiteral("b.GZ"),
+                                 QStringLiteral("README"), QStringLiteral("folder.gz")}) {
+            CPanelItem item;
+            item.RelPath = name;
+            item.IsFolder = name == QStringLiteral("folder.gz");
+            result.Add(item);
+        }
+        return result;
+    }
+
+    static void populate(QTableWidget &view) {
+        view.setColumnCount(1);
+        view.setRowCount(5);
+        view.setSelectionBehavior(QAbstractItemView::SelectRows);
+        view.setSelectionMode(QAbstractItemView::ExtendedSelection);
+        for (int row = 0; row < 5; ++row) {
+            auto *item = new QTableWidgetItem(row == 0 ? QStringLiteral("..")
+                                                       : items()[unsigned(row - 1)].RelPath);
+            item->setData(Qt::UserRole + 6, row == 0 ? quint64(UInt32(-1)) : quint64(row - 1));
+            view.setItem(row, 0, item);
+        }
+    }
+
+    static bool selected(const QTableWidget &view, int row) {
+        return view.selectionModel()->isRowSelected(row, QModelIndex());
+    }
+
   private slots:
     void upstreamWildcardRules() {
         QVERIFY(DoesWildcardMatchName(u"", u""));
@@ -16,90 +47,47 @@ class PanelSelectionTests final : public QObject {
         QVERIFY(!DoesWildcardMatchName(u"*.txt", u"file.txt.bak"));
         QVERIFY(!DoesWildcardMatchName(u"*.*", u"README"));
         QVERIFY(DoesWildcardMatchName(u"АЛЬФА *.TXT", u"альфа файл.txt"));
-        // Windows 7zFM treats a supplementary character as two UTF-16 units.
         QVERIFY(!DoesWildcardMatchName(u"?", u"\U0001F600"));
         QVERIFY(DoesWildcardMatchName(u"??", u"\U0001F600"));
-        const QString mask = QStringLiteral("--*.TXT suffix");
-        const QString name = QStringLiteral("--file.txt suffix");
-        QVERIFY(DoesWildcardMatchName(QStringView(mask).mid(2, 5), QStringView(name).mid(2, 8)));
+        QVERIFY(DoesWildcardMatchName(UString(L"*.gz"), UString(L"b.GZ")));
     }
 
-    void maskPreservesUnmatchedSelection() {
-        CPanelSelection panel;
-        panel.Items = {{QStringLiteral("Альфа файл.txt"), false, false},
-                       {QStringLiteral("бета.TXT"), false, false},
-                       {"folder.txt", true, false},
-                       {"keep.bin", false, true}};
-        panel.SelectSpec(QStringView(u"*.txt"), true);
-        for (const auto &item : panel.Items)
-            QVERIFY(item.Selected);
-        panel.SelectSpec(QStringView(u"*.TXT"), false);
-        QVERIFY(!panel.Items[0].Selected);
-        QVERIFY(!panel.Items[1].Selected);
-        QVERIFY(!panel.Items[2].Selected);
-        QVERIFY(panel.Items[3].Selected);
-    }
+    void sourcePanelCommandsKeepIndexAndFocus() {
+        CPanel panel(QStringLiteral("/tmp/"), items());
+        QTableWidget view;
+        populate(view);
+        panel.AttachSelectionView(&view);
+        CSelectedState snapshot;
+        panel.SaveSelectedState(snapshot);
 
-    void typeUsesLastDotAndExcludesFolders() {
-        CPanelSelection panel;
-        panel.Items = {{"a.tar.gz", false, false},
-                       {"b.GZ", false, false},
-                       {"c.tar", false, true},
-                       {"folder.gz", true, false}};
-        panel.SelectByType(0, true);
-        QVERIFY(panel.Items[0].Selected);
-        QVERIFY(panel.Items[1].Selected);
-        QVERIFY(panel.Items[2].Selected);
-        QVERIFY(!panel.Items[3].Selected);
-        panel.SelectByType(1, false);
-        QVERIFY(!panel.Items[0].Selected);
-        QVERIFY(!panel.Items[1].Selected);
-        QVERIFY(panel.Items[2].Selected);
-    }
+        view.selectionModel()->setCurrentIndex(view.model()->index(1, 0),
+                                               QItemSelectionModel::NoUpdate);
+        panel.SelectByType(true);
+        QVERIFY(selected(view, 1));
+        QVERIFY(selected(view, 2));
+        QVERIFY(!selected(view, 3));
+        QVERIFY(!selected(view, 4));
+        QVERIFY(!selected(view, 0));
+        QCOMPARE(view.currentRow(), 1);
 
-    void foldersAndNamesWithoutExtensions() {
-        CPanelSelection panel;
-        panel.Items = {{"README", false, false},   {QStringLiteral("имя без точки"), false, false},
-                       {"directory", true, false}, {"directory.txt", true, false},
-                       {".hidden", false, false},  {"trailing.", false, false}};
-        panel.SelectByType(0, true);
-        QVERIFY(panel.Items[0].Selected);
-        QVERIFY(panel.Items[1].Selected);
-        for (size_t i = 2; i < panel.Items.size(); ++i)
-            QVERIFY(!panel.Items[i].Selected);
-        panel.SelectByType(3, true);
-        QVERIFY(panel.Items[2].Selected);
-        QVERIFY(panel.Items[3].Selected);
-        panel.SelectByType(2, false);
-        QVERIFY(!panel.Items[2].Selected);
-        QVERIFY(!panel.Items[3].Selected);
-        QVERIFY(panel.Items[0].Selected);
-        panel.SelectByType(4, true);
-        QVERIFY(panel.Items[4].Selected);
-        QVERIFY(!panel.Items[5].Selected);
-    }
-
-    void allInvertAndMissingFocus() {
-        CPanelSelection panel;
-        panel.Items = {{"one", false, true}, {"two", true, false}};
-        panel.SelectByType(-1, true);
-        panel.SelectByType(2, false);
-        QVERIFY(panel.Items[0].Selected);
-        QVERIFY(!panel.Items[1].Selected);
-        panel.InvertSelection();
-        QVERIFY(!panel.Items[0].Selected);
-        QVERIFY(panel.Items[1].Selected);
-        panel.SelectAll(true);
-        QVERIFY(panel.Items[0].Selected);
-        QVERIFY(panel.Items[1].Selected);
+        panel.SelectSpec(UString(L"README"), true);
+        QVERIFY(selected(view, 3));
         panel.SelectAll(false);
-        QVERIFY(!panel.Items[0].Selected);
-        QVERIFY(!panel.Items[1].Selected);
-        panel.Items.clear();
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 0);
         panel.InvertSelection();
-        panel.SelectByType(0, true);
-        QVERIFY(panel.Items.empty());
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 4);
+        QVERIFY(!selected(view, 0));
+        panel.SelectByType(false);
+        QVERIFY(!selected(view, 1));
+        QVERIFY(!selected(view, 2));
+        QVERIFY(selected(view, 3));
+        QVERIFY(selected(view, 4));
+
+        view.selectionModel()->setCurrentIndex(view.model()->index(0, 0),
+                                               QItemSelectionModel::NoUpdate);
+        panel.SelectByType(false);
+        QVERIFY(selected(view, 4));
     }
 };
-QTEST_GUILESS_MAIN(PanelSelectionTests)
+QTEST_MAIN(PanelSelectionTests)
 #include "panel_selection_tests.moc"

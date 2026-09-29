@@ -14,7 +14,7 @@ bool g_CaseSensitive =
 #ifdef _WIN32
     false;
 #elif defined(__APPLE__)
-#ifdef TARGET_OS_IPHONE
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
     true;
 #else
     false;

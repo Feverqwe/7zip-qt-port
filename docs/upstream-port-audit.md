@@ -556,7 +556,7 @@ retains its source init/changed/apply policy. ShowDots, FullRow and
 ShowSystemMenu are read and written through the existing `CFmSettings` owner;
 cancel and an unchanged page do not write. AlternativeSelection is visible
 but disabled, retains any pre-existing stored value, and remains mandatory
-P0-07.2 because upstream uses an independent marked-item vector and
+P0-07.3 because upstream uses an independent marked-item vector and
 Ctrl/Shift range policy. Large pages, extraction RAM, six-page Options,
 Help and language controls remain P1-12.
 
@@ -585,13 +585,54 @@ single-click hover guards and selected-row retention. Current-build settings
 340×300/460×300 and list 640×400/980×620 JSON show visible controls and
 unclipped table/address. A targeted Qt screenshot confirmed the selection
 paint difference; rendered Windows parity and Windows/Linux runtime remain
-unverified. Source selection/range/alternative-mode acceptance remains P0-07.2.
+unverified. Source selection/range/alternative-mode acceptance remains P0-07.2/.3.
 Focused direct-consumer CTest passes 8/8; `./scripts/check.sh` passes the full
 135/135 CTest gate on macOS arm64 in the unsandboxed environment required by
 AGENTS.md. A later localized tooltip and drag-guard test correction passed the
 affected build and focused CTest. The first optional screenshot fixture wrote
 inside its temporary directory and was corrected to use the build report
 directory; it is not part of the product path.
+
+## P0-07.2 — source selection commands (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([exact source](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelSelect.cpp)).
+`src/CPP/7zip/UI/FileManager/PanelSelect.cpp` now holds the source bodies and
+branch order of `CPanel::UpdateSelection`, `SelectSpec`, `SelectByType`,
+`SelectAll` and `InvertSelection`, using the existing upstream
+`CRecordVector<bool> _selectedStatusVector`, `GetRealItemIndex`,
+`GetItemName`, `IsItem_Folder` and source `Wildcard.cpp` matcher.
+The independent `CPanelSelection`/`QString` snapshot and second rule owner
+are removed. `Panel.h` retains the upstream method names and `QtPanelList`
+supplies one narrow selected-state setter and redraw adapter. Mask dialog
+creation remains in `mainwindow_selection.cpp`: Qt has no Win32
+`CComboDialog::Create`, so the accepted `UString` mask enters the source loop
+as an argument. `SaveSelectedState` synchronizes Qt's current selection before
+each command until the source item-notification/mark body is ported.
+The native `UString` wildcard overload exposed an existing macOS integration
+bug: Qt/AppKit headers define `TARGET_OS_IPHONE` as `0`, so the old `#ifdef`
+selected iPhone case sensitivity on desktop macOS. `Wildcard.cpp` now tests
+the macro value, retaining upstream's desktop case-insensitive rule and its
+source matcher instead of reverting to the Qt UTF-16 selection wrapper.
+
+The parent sentinel is skipped in selection projection and type commands;
+source folder indices remain stable across sorted table/icon views. Source
+`_enableItemChangeNotify` suppression maps to the existing `CDisableNotify`
+guard while Qt selection signals fire; this prevents command availability
+refresh from overwriting the source vector midway through a multirow command.
+The window refreshes command availability after the completed projection.
+`CPanel::KillSelection`, `OnLeftClick`,
+`OnArrowWithShift`, `OnShiftSelectMessage`, `OnInsert` and alternative-mark
+state remain P0-07.3. The old `OnUpWithShift`/`OnDownWithShift` bodies are
+commented out in the baseline and are not active omissions. Current tests
+cover the bound source vector, parent sentinel, mask cancellation, disk/archive
+mask/type and keypad actions in four views. Windows/Linux runtime and
+rendered Windows parity remain unverified. Focused direct consumers
+`panel_selection`, `panel_key`, `ui_state`, `panel_selected_state`,
+`archive_selection_runtime` and `filesystem_selection_runtime` pass 6/6;
+the full unsandboxed `./scripts/check.sh` gate passes on macOS arm64
+2026-09-29 (135/135 CTest). No layout or text changed in this iteration;
+the P0-07.1 normal/compact geometry evidence remains applicable.
 
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
