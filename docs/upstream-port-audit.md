@@ -503,6 +503,42 @@ CTest gate (133 tests registered) on macOS arm64. Windows/Linux runtime and
 rendered Windows menu parity remain unverified. Auto-refresh and full P0-06 acceptance
 remain mandatory P0-06.4.
 
+## P0-06.4 — source timer policy and portable filesystem refresh (2026-09-29)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([source tree](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager)).
+Reviewed `CPP/7zip/UI/FileManager/App.h` (`AutoRefresh_Mode`,
+`Change_AutoRefresh_Mode`, `SetPanels_AutoRefresh_Mode`), `Panel.h`/`Panel.cpp`
+(per-panel mode, one-second timer), `PanelItems.cpp`
+(`RefreshListCtrl_SaveFocused`, `OnReload`, `OnTimer`) and `FSFolder.cpp`
+(`CFSFolder::WasChanged`). The app/panel mode, source timer guards,
+`IFolderWasChanged` query and saved `CSelectedState` flow are copied into their
+existing modules. Qt owns timer delivery, a View-menu check action, persisted
+mode, and the callback that reloads the current filesystem view through the
+source panel and restores the visible top path/scroll position. Notification
+processing remains disabled during active operations and window teardown.
+
+The original Windows `CFSFolder::WasChanged` consumes a native change
+notification; its POSIX branch always returns false. The narrow Qt adapter
+polls metadata of the displayed folder and source-enumerated entries every
+second and marks the source panel changed. It skips active/flat scans, so it
+does not read a partially published list. A missing current directory clears
+stale visible rows and records its absent signature; recreation triggers a
+fresh bind. Archive folders do not implement `IFolderWasChanged` upstream, so
+archive refresh remains explicit. This does not port Win32 notification handles
+or claim archive auto-refresh. Large-tree polling cost remains part of P2-10.
+
+`panel_auto_refresh` checks Unicode file creation/removal, current item,
+selection/scroll, disabling and persisting the View option, manual refresh,
+and disappearing/reappearing folders on macOS. Earlier P0-05 flat scan
+cancel/stale-batch and P0-06.1–.3 sort/columns/time and four-view geometry
+evidence remains applicable. Windows/Linux runtime and rendered Windows visual
+parity remain unverified. Focused `panel_auto_refresh` and the full
+`./scripts/check.sh` gate pass (134/134 CTest) on macOS arm64. The first full
+run was denied DBus socket creation and process-priority calls by the sandbox;
+the rerun with those system permissions passed. A later one-line action-state
+fix and selection assertion passed the affected build/focused CTest again.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

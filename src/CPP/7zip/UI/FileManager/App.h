@@ -60,6 +60,7 @@ class CApp {
     unsigned NumPanels = 2;
     unsigned LastFocusedPanel = 0;
     bool ShowSystemMenu = false;
+    bool AutoRefresh_Mode = true;
     bool ShowStandardToolbar = true;
     bool ShowArchiveToolbar = true;
     bool ShowButtonsLables = true;
@@ -112,6 +113,15 @@ class CApp {
     void SetTimestampLevel(int level) {
         for (unsigned i = 0; i < kNumPanelsMax; i++)
             Panels[i]._timestampLevel = level;
+    }
+    bool Get_AutoRefresh_Mode() const { return AutoRefresh_Mode; }
+    void Change_AutoRefresh_Mode() {
+        AutoRefresh_Mode = !AutoRefresh_Mode;
+        SetPanels_AutoRefresh_Mode();
+    }
+    void SetPanels_AutoRefresh_Mode() {
+        for (unsigned i = 0; i < kNumPanelsMax; i++)
+            Panels[i].Set_AutoRefresh_Mode(AutoRefresh_Mode);
     }
 
   private:

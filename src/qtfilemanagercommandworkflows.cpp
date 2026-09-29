@@ -154,7 +154,12 @@ void QtFileManagerCommands::VerCtrl(unsigned) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Comment() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Link() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::OpenAltStreams() { Q_UNREACHABLE(); }
-void QtFileManagerCommands::Change_AutoRefresh_Mode() { Q_UNREACHABLE(); }
+void QtFileManagerCommands::Change_AutoRefresh_Mode() {
+    window_.app_.Change_AutoRefresh_Mode();
+    window_.autoRefreshAction_->setChecked(window_.app_.Get_AutoRefresh_Mode());
+    QSettings settings(MainWindow::toolbarSettingsPath(), QSettings::IniFormat);
+    settings.setValue(QStringLiteral("view/autoRefresh"), window_.app_.Get_AutoRefresh_Mode());
+}
 void QtFileManagerCommands::SwitchOnOffOnePanel() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::RedrawListItems_InPanels() {
     QSettings settings(MainWindow::toolbarSettingsPath(), QSettings::IniFormat);

@@ -8,6 +8,7 @@
 #include "qtarchivereopen.h"
 #include "qtlocationfolder.h"
 #include <QScopedValueRollback>
+#include <QScrollBar>
 
 void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound) {
     if (app_.QtOperations().closed())
@@ -30,6 +31,8 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     if (!sourceAlreadyBound)
         app_.GetFocusedPanel().CloseOpenFolders();
     directory_ = next;
+    autoRefreshSnapshot_.clear();
+    autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
     recordVisitedPath(directory_);
     archive_.clear();
     displayArchive_.clear();
@@ -79,6 +82,8 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
 }
 
 void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {
+    autoRefreshSnapshot_.insert(file.absoluteFilePath(),
+                                filesystemSignature(file.absoluteFilePath()));
     IFolderFolder *folder = app_.GetFocusedPanel().GetFolder();
     NWindows::NCOM::CPropVariant isDir, size, name, prefix;
     folder->GetProperty(sourceIndex, kpidIsDir, &isDir);
@@ -150,14 +155,17 @@ void MainWindow::selectPaths(const QStringList &paths) {
     }
 }
 
-void MainWindow::refreshCurrent() {
+void MainWindow::refreshCurrent(const CSelectedState *preserved) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ == State::Namespace) {
         auto &panel = app_.GetFocusedPanel();
         CSelectedState selection;
-        panel.SaveSelectedState(selection);
+        if (preserved)
+            selection = *preserved;
+        else
+            panel.SaveSelectedState(selection);
         renderRootFolder();
         panel.RefreshListCtrl(selection);
         refreshActions();
@@ -165,18 +173,25 @@ void MainWindow::refreshCurrent() {
     }
     if (state_ == State::Filesystem) {
         CSelectedState selection;
-        app_.GetFocusedPanel().SaveSelectedState(selection);
+        if (preserved)
+            selection = *preserved;
+        else
+            app_.GetFocusedPanel().SaveSelectedState(selection);
         showDirectory(directory_, false);
         if (scanningDisk_)
             scanSelectedState_ = selection;
         else {
             app_.GetFocusedPanel().RefreshListCtrl(selection);
+            restoreAutoRefreshViewport();
             refreshActions();
         }
     } else if (state_ == State::Viewing) {
         auto &panel = app_.GetFocusedPanel();
         CSelectedState selection;
-        panel.SaveSelectedState(selection);
+        if (preserved)
+            selection = *preserved;
+        else
+            panel.SaveSelectedState(selection);
         CMyComPtr<IFolderFolder> oldFolder = panel.GetFolder();
         auto *folder = dynamic_cast<CAgentFolder *>((IFolderFolder *)oldFolder);
         if (!folder)
@@ -207,6 +222,46 @@ void MainWindow::refreshCurrent() {
                     QStringLiteral("Не удалось обновить архив (%1).").arg(quint32(result), 0, 16));
         }
     }
+}
+
+MainWindow::FilesystemSignature MainWindow::filesystemSignature(const QString &path) const {
+    const QFileInfo info(path);
+    return {info.lastModified(), info.metadataChangeTime(), info.size(), info.exists(),
+            info.isDir()};
+}
+
+void MainWindow::pollAutoRefresh() {
+    if (state_ != State::Filesystem || scanningDisk_ || app_.QtOperations().active() ||
+        app_.QtOperations().closed())
+        return;
+    CPanel &panel = app_.GetFocusedPanel();
+    if (panel.AutoRefresh_Mode && !autoRefreshSnapshot_.isEmpty()) {
+        for (auto it = autoRefreshSnapshot_.cbegin(); it != autoRefreshSnapshot_.cend(); ++it) {
+            if (!(filesystemSignature(it.key()) == it.value())) {
+                panel.MarkPortableFolderChanged();
+                break;
+            }
+        }
+    }
+    panel.OnTimer();
+}
+
+void MainWindow::restoreAutoRefreshViewport() {
+    if (autoRefreshScrollValue_ < 0)
+        return;
+    int row = -1;
+    for (int i = 0; i < table_->rowCount(); ++i) {
+        if (table_->item(i, 1) && table_->item(i, 1)->text() == autoRefreshTopPath_) {
+            row = i;
+            break;
+        }
+    }
+    if (row >= 0)
+        table_->scrollToItem(table_->item(row, 0), QAbstractItemView::PositionAtTop);
+    else
+        table_->verticalScrollBar()->setValue(autoRefreshScrollValue_);
+    autoRefreshTopPath_.clear();
+    autoRefreshScrollValue_ = -1;
 }
 
 void MainWindow::createFolder() {

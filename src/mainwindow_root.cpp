@@ -22,6 +22,7 @@ void MainWindow::renderRootFolder() {
     archivePassword_.clear();
     archiveFolder_.clear();
     entries_.clear();
+    autoRefreshSnapshot_.clear();
     table_->clearSelection();
     table_->setSortingEnabled(false);
     table_->setRowCount(0);

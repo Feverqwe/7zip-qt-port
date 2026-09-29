@@ -201,6 +201,10 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     refresh_ = viewMenu->addAction("Обновить");
     refresh_->setObjectName("refreshAction");
     refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
+    autoRefreshAction_ = viewMenu->addAction(QStringLiteral("Автоматическое обновление"));
+    autoRefreshAction_->setObjectName(QStringLiteral("autoRefreshAction"));
+    autoRefreshAction_->setCheckable(true);
+    autoRefreshAction_->setChecked(app_.Get_AutoRefresh_Mode());
     foldersHistory_ = viewMenu->addAction("История папок…");
     foldersHistory_->setObjectName("foldersHistoryAction");
     foldersHistory_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_F12));

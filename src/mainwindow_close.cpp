@@ -15,6 +15,8 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
     }
     void Deactivate() override {
         window_.app_.QtOperations().Close();
+        if (window_.autoRefreshTimer_)
+            window_.autoRefreshTimer_->stop();
         for (auto &panel : window_.app_.Panels)
             panel.Disable_Processing_Timer_Notify_StatusBar();
         window_.setEnabled(false);

@@ -92,6 +92,7 @@ void QtFileManagerCommands::AttachPanelActions() {
 void QtFileManagerCommands::AttachViewActions() {
     auto &w = window_;
     Bind(w.refresh_, IDM_VIEW_REFRESH);
+    Bind(w.autoRefreshAction_, IDM_VIEW_AUTO_REFRESH);
     Bind(w.foldersHistory_, IDM_FOLDERS_HISTORY);
     Bind(w.root_, IDM_OPEN_ROOT_FOLDER);
     Bind(w.settingsAction_, IDM_OPTIONS);

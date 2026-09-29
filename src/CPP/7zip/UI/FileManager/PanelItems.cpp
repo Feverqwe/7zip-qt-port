@@ -385,6 +385,39 @@ void CPanel::RefreshListCtrl() {
     RefreshListCtrl(state);
 }
 
+HRESULT CPanel::RefreshListCtrl_SaveFocused(bool onTimer) {
+    CSelectedState state;
+    SaveSelectedState(state);
+    state.CalledFromTimer = onTimer;
+    return _reloadPresentation ? _reloadPresentation(state) : E_NOTIMPL;
+}
+
+void CPanel::OnReload(bool onTimer) {
+    const HRESULT result = RefreshListCtrl_SaveFocused(onTimer);
+    if (result != S_OK)
+        MessageBox_Error_HRESULT(result);
+}
+
+void CPanel::OnTimer() {
+    if (!_processTimer)
+        return;
+    if (!AutoRefresh_Mode)
+        return;
+    if (!_folder)
+        return;
+    CMyComPtr<IFolderWasChanged> folderWasChanged;
+    _folder.QueryInterface(IID_IFolderWasChanged, &folderWasChanged);
+    if (!folderWasChanged)
+        return;
+    Int32 wasChanged = 0;
+    if (folderWasChanged->WasChanged(&wasChanged) != S_OK)
+        return;
+    if (wasChanged == 0 && !_portableFolderChanged)
+        return;
+    _portableFolderChanged = false;
+    OnReload(true);
+}
+
 UInt64 CPanel::GetItem_UInt64Prop(UInt32 itemIndex, UInt32 propID) const {
     if (itemIndex == kParentIndex)
         return 0;

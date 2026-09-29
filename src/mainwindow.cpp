@@ -4,6 +4,7 @@
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include <QScrollBar>
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener)
     : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
@@ -27,6 +28,8 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
             app_.SetTimestampLevel(timestampLevel);
     }
     g_Timestamp_Show_UTC = viewSettings.value(QStringLiteral("view/timestampUTC"), false).toBool();
+    app_.AutoRefresh_Mode = viewSettings.value(QStringLiteral("view/autoRefresh"), true).toBool();
+    app_.SetPanels_AutoRefresh_Mode();
     appPresentation_ = std::make_unique<QtAppPresentation>(*this);
     connectFilesystemScanner();
     COpenResult opened;
@@ -37,8 +40,32 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
     commands_->AttachActions();
+    app_.GetFocusedPanel().AttachReloadPresentation([this](const CSelectedState &selection) {
+        if (state_ != State::Filesystem || app_.QtOperations().active())
+            return S_OK;
+        if (!QFileInfo(directory_).isDir()) {
+            autoRefreshSnapshot_.clear();
+            autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
+            table_->clearSelection();
+            table_->setRowCount(0);
+            statusBar()->showMessage(QStringLiteral("Папка не найдена: ") + directory_);
+            refreshActions();
+            return S_OK;
+        }
+        const int firstRow = table_->rowAt(0);
+        autoRefreshTopPath_ = firstRow >= 0 && table_->item(firstRow, 1)
+                                  ? table_->item(firstRow, 1)->text()
+                                  : QString();
+        autoRefreshScrollValue_ = table_->verticalScrollBar()->value();
+        refreshCurrent(&selection);
+        return S_OK;
+    });
     installEventFilter(this);
     renderBoundFolder();
+    autoRefreshTimer_ = new QTimer(this);
+    autoRefreshTimer_->setInterval(1000);
+    connect(autoRefreshTimer_, &QTimer::timeout, this, [this] { pollAutoRefresh(); });
+    autoRefreshTimer_->start();
     refreshActions();
     connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
         if (app_.GetFocusedPanel().ShouldProcessNotifications())
@@ -90,6 +117,7 @@ void MainWindow::connectFilesystemScanner() {
         if (scanSelectedState_)
             app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
         scanSelectedState_.reset();
+        restoreAutoRefreshViewport();
         setState(State::Filesystem);
         statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
     });
@@ -99,6 +127,8 @@ void MainWindow::connectFilesystemScanner() {
         QtAppOperationState::CallScope call(app_.QtOperations());
         scanningDisk_ = false;
         scanSelectedState_.reset();
+        autoRefreshTopPath_.clear();
+        autoRefreshScrollValue_ = -1;
         table_->clearSelection();
         table_->setRowCount(0);
         app_.GetFocusedPanel().ReleaseFolder();

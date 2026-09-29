@@ -896,6 +896,13 @@ if(BUILD_TESTING)
     add_test(NAME panel_columns COMMAND panel_columns_tests)
     set_tests_properties(panel_columns PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-columns-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(panel_auto_refresh_tests tests/panel_auto_refresh_tests.cpp ${panel_sort_sources})
+    target_include_directories(panel_auto_refresh_tests PRIVATE src tests)
+    target_link_libraries(panel_auto_refresh_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(panel_auto_refresh_tests PRIVATE src/mainwindow_filedelete.cpp src/mainwindow_selectionpaths.cpp)
+    add_test(NAME panel_auto_refresh COMMAND panel_auto_refresh_tests)
+    set_tests_properties(panel_auto_refresh PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-auto-refresh-settings.ini")
     qt_add_executable(combine_name_tests tests/combine_name_tests.cpp ${panel_sort_sources})
     target_include_directories(combine_name_tests PRIVATE src)
     target_link_libraries(combine_name_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)

@@ -22,6 +22,7 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QComboBox>
+#include <QDateTime>
 #include <QDesktopServices>
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -35,6 +36,7 @@
 #include <QFileInfo>
 #include <QFormLayout>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QKeyEvent>
@@ -153,7 +155,11 @@ class MainWindow : public QMainWindow {
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     QStringList selectedPaths() const;
     void selectPaths(const QStringList &paths);
-    void refreshCurrent();
+    void refreshCurrent(const CSelectedState *preserved = nullptr);
+    struct FilesystemSignature;
+    void pollAutoRefresh();
+    void restoreAutoRefreshViewport();
+    FilesystemSignature filesystemSignature(const QString &path) const;
     void createFolder();
     void createFile();
     void SelectAll(bool select);
@@ -227,11 +233,27 @@ class MainWindow : public QMainWindow {
     QAction *sortActions_[5]{};
     QAction *timeActions_[5]{};
     QAction *utcTimeAction_ = nullptr;
+    QAction *autoRefreshAction_ = nullptr;
     QAction *viewActions_[4]{};
     QAction *flatView_ = nullptr;
     bool flatDisk_ = false;
     bool flatArchive_ = false;
     bool scanningDisk_ = false;
+    struct FilesystemSignature {
+        QDateTime modified;
+        QDateTime metadataChanged;
+        qint64 size = 0;
+        bool exists = false;
+        bool directory = false;
+        bool operator==(const FilesystemSignature &other) const {
+            return modified == other.modified && metadataChanged == other.metadataChanged &&
+                   size == other.size && exists == other.exists && directory == other.directory;
+        }
+    };
+    QHash<QString, FilesystemSignature> autoRefreshSnapshot_;
+    QString autoRefreshTopPath_;
+    int autoRefreshScrollValue_ = -1;
+    QTimer *autoRefreshTimer_ = nullptr;
     FilesystemScanner *filesystemScanner_ = nullptr;
     std::optional<CSelectedState> scanSelectedState_;
     int viewMode_ = 3;

@@ -343,6 +343,11 @@ flat-mode changes and edit results use the same source state. Pending snapshots
 transport that state across asynchronous results; failed refresh clears it during
 navigation rollback, and a removed archive folder discards names belonging to
 the old location. Failed replacement retains the unchanged displayed state.
+The source `CPanel::OnTimer` and selected-state reload policy own filesystem
+auto-refresh. `MainWindow` supplies a one-second Qt timer and POSIX metadata
+signature adapter because upstream `CFSFolder::WasChanged` only observes native
+changes on Windows. A reload restores the top visible path or prior scroll
+value; the timer pauses while flat scanning or archive operations are active.
 Source-ported `CAppState` groups `CFolderHistory` and `CFastFolders` and reads
 both before the window builds menus or the address combo. Each window owns an
 independent instance on the GUI thread; QSettings paths are explicit adapters.

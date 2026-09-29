@@ -660,6 +660,14 @@ The existing `file_viewer` scenario also covers window destruction after
 visiting an archive folder: address signals are disconnected before Qt's
 focus teardown can trigger navigation into a partially destroyed window.
 
+`panel_auto_refresh` проверяет создание и удаление Unicode-файла во внешней
+файловой системе, сохранение текущего элемента и прокрутки, выключение и
+сохранение настройки, ручное обновление, исчезновение текущей папки и
+восстановление после её повторного создания. Таймер пропускает активные
+операции и незавершённый flat scan; их отмена и stale batches отдельно
+проверены в `flat_view`. На macOS это проверка метаданных, а не Windows
+change notification.
+
 `panel_sort` проверяет правила `PanelSort.cpp` (`0766b73`) через Qt-таблицу:
 папки перед файлами в обоих направлениях, повторный выбор свойства,
 размер и дата по убыванию при первом выборе, щелчок заголовка размера,

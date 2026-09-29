@@ -21,6 +21,7 @@ void MainWindow::renderArchiveFolder() {
     if (archiveFolder->LoadItems() != S_OK)
         return;
     static_cast<FileTable *>(table_)->filesystem = false;
+    autoRefreshSnapshot_.clear();
     if (!isNestedArchive())
         recordVisitedPath(archiveDisplayPath());
     const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';

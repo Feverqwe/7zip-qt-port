@@ -13,7 +13,7 @@
 #include "qtpanelfolder.h"
 #include <QWidget>
 
-CApp::CApp() : _qtOperations(Panels) {}
+CApp::CApp() : _qtOperations(Panels) { SetPanels_AutoRefresh_Mode(); }
 
 CApp::~CApp() { ReleaseApp(); }
 

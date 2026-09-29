@@ -237,7 +237,16 @@ class CPanel : public QObject {
     void AttachCreationPresentation(std::function<bool(CPanel &)> create) {
         _createPresentation = std::move(create);
     }
+    void AttachReloadPresentation(std::function<HRESULT(const CSelectedState &)> reload) {
+        _reloadPresentation = std::move(reload);
+    }
     bool PanelCreated = false;
+    bool AutoRefresh_Mode = true;
+    void Set_AutoRefresh_Mode(bool mode) { AutoRefresh_Mode = mode; }
+    void MarkPortableFolderChanged() { _portableFolderChanged = true; }
+    void OnTimer();
+    void OnReload(bool onTimer = false);
+    HRESULT RefreshListCtrl_SaveFocused(bool onTimer = false);
     UInt32 _listViewMode = 3;
     int _timestampLevel = kTimestampPrintLevel_MIN;
     int _xSize = 0;
@@ -441,6 +450,8 @@ class CPanel : public QObject {
     QPointer<QWidget> _mainWindow;
     QPointer<QWidget> _parentWindow;
     std::function<bool(CPanel &)> _createPresentation;
+    std::function<HRESULT(const CSelectedState &)> _reloadPresentation;
+    bool _portableFolderChanged = false;
     CAppState *_appState = nullptr;
     UINT _baseID = 0;
     UINT _comboBoxID = 0;

@@ -49,8 +49,13 @@ redraws date cells without reparsing displayed text for sorting. The choice
 survives reopening through Qt settings. Archive `7zz` local listing text is
 converted back to `FILETIME` at the metadata boundary. Windows 7zFM keeps the
 level across panels in memory; this Qt port also persists level and UTC between
-launches. Auto-refresh remains P0-06.4; Windows rendered reference and
-Windows/Linux runtime checks remain outstanding.
+launches. P0-06.4 adds the source View auto-refresh option and one-second
+timer policy. Windows uses `CFSFolder` change notifications; on macOS/Linux
+Qt polls the displayed filesystem folder and entries because upstream's POSIX
+`WasChanged` returns false. The current selection and top visible item survive
+refresh. Archive folders have no source `IFolderWasChanged`, so they require
+manual refresh. Windows rendered reference and Windows/Linux runtime checks
+remain outstanding.
 
 The View menu now opens the source RootFolder through `IDM_OPEN_ROOT_FOLDER`;
 backslash on the focused file list uses the same command. The Qt list presents
