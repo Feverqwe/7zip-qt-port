@@ -342,8 +342,24 @@ keep modal presentation/process services behind their narrow adapters.
 | Substep | Scope and acceptance | After | Status |
 | --- | --- | --- | --- |
 | P0-02.2b3c3b1 | Complete original FormatUtils NumberToString/MyFormatNew bodies and unchanged resource.h/resourceGui.h/resource.rc captions; strict generated STRINGTABLE boundary with explicit mixed-resource mode; numeric/Unicode/placeholder/resource and generator failure/idempotence checks | P0-02.2b3c3a | done — audit § P0-02.2b3c3b1; focused 3/3, check.sh 82/82, vendor bytes 70/70; macOS 2026-09-29 |
-| P0-02.2b3c3b2 | Original background CopyFromFile/OnOpenItemChanged service dependencies with Qt progress/cancel and ArchiveBackend update boundary; source indices/native paths, error/password/operation contracts and deterministic success/failure/cancel; subdivide before code as needed | P0-02.2b3c3b1 | todo |
+| P0-02.2b3c3b2 | Original background CopyFromFile/OnOpenItemChanged service dependencies with Qt progress/cancel and ArchiveBackend update boundary; source indices/native paths, error/password/operation contracts and deterministic success/failure/cancel | P0-02.2b3c3b1 | active — a–d split below before code |
 | P0-02.2b3c3b3 | Original OpenParentArchiveFolder changed-file prompt/update/cleanup body, Qt dialog services and source native stack prerequisite; YES/NO/CANCEL/missing/unchanged/update-error lifetime checks and required dialog text/geometry | P0-02.2b3c3b2 | todo |
+
+B2 source dependencies require native synchronization/error services, original
+progress state and thread lifecycle before the update callback consumers. Current
+chat owns all scopes; avoid independent Qt implementations of upstream state.
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2a | Original portable Windows/Synchronization/Thread/C Threads and ErrorMsg prerequisites; CProgressSync fields and full methods in mirrored ProgressDialog2, narrow platform sleep service; pause/resume/stop/null counters/unknown state/native errors/thread lifetime regressions | P0-02.2b3c3b1 | active — a1/a2 split below before code |
+| P0-02.2b3c3b2b | Original CProgressThreadVirt Process/Create and required CProgressDialog lifecycle/presentation adapted to Qt; modal background work, final error handling, cancel/pause and thread joins; original resource/text normal/compact geometry and deterministic failures | P0-02.2b3c3b2a | todo |
+| P0-02.2b3c3b2c | Original UpdateCallbackGUI2/UpdateCallback100Imp interfaces and full required callback bodies; progress/error/password/move/stop/reopen contracts through source synchronization, preserve remaining mandatory callback/engine owners | P0-02.2b3c3b2b | todo |
+| P0-02.2b3c3b2d | Original CThreadCopyFrom/OnOpenItemChanged with typed folder operation/ArchiveBackend boundary and update acceptance; source path/index/password handling, success/failure/cancel preserving temporary ownership before caller cleanup | P0-02.2b3c3b2c | todo |
+
+| Substep | Scope and acceptance | After | Status |
+| --- | --- | --- | --- |
+| P0-02.2b3c3b2a1 | Unchanged C/Threads.c, Windows Thread/Synchronization/Handle headers and complete ErrorMsg cpp/h; native threading link and deterministic event/lock/join/reuse/error formatting regressions, exact byte comparison | P0-02.2b3c3b1 | done — audit § P0-02.2b3c3b2a1; focused 4/4, check.sh 83/83, vendor bytes 76/76; macOS 2026-09-29 |
+| P0-02.2b3c3b2a2 | Complete original CProgressSync in mirrored ProgressDialog2, original native types/synchronization/error owners with narrow sleep adaptation; pause/resume/stop/counters/null/unknown/error/final-message checks and direct consumers; no full dialog acceptance claim | P0-02.2b3c3b2a1 | todo |
 
 P0-02.2b3a checks 2026-09-28 macOS: affected app/dependency/consumer targets build
 dev; `ctest --preset dev -R '^(folder_contract|app_state)$' --output-on-failure`

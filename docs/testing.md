@@ -1,5 +1,10 @@
 # Regression strategy
 
+`native_services` checks source native event/semaphore/critical-section/thread
+contracts, explicit joins and reuse, exact concurrent counts and native/unknown
+error formatting. Fixtures use local state and a bounded CTest timeout; full
+progress pause/stop/operation integration remains mandatory subsequent scope.
+
 `format_utils` checks original native numeric/placeholder functions, Unicode/space
 arguments, resource update/error captions and absent IDs. resource_strings_generator
 also checks explicit mixed-resource extraction, strict table failures and preserving

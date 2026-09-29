@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Threads REQUIRED)
 
 set(property_name_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/PropertyName.rc")
 set(extract_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GUI/Extract.rc")
@@ -21,6 +22,7 @@ add_custom_command(OUTPUT "${resource_strings_header}"
 qt_standard_project_setup()
 
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c
+    third_party/7zip/C/Threads.c third_party/7zip/CPP/Windows/ErrorMsg.cpp
     src/CPP/Windows/DLL.cpp src/CPP/Windows/DLL.h
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
@@ -36,6 +38,7 @@ set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
+target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 if(WIN32)
     target_link_libraries(sevenzip_common PUBLIC oleaut32 uuid)
 endif()
@@ -223,6 +226,10 @@ if(BUILD_TESTING)
     qt_add_executable(format_utils_tests tests/format_utils_tests.cpp)
     target_link_libraries(format_utils_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME format_utils COMMAND format_utils_tests)
+    qt_add_executable(native_services_tests tests/native_services_tests.cpp)
+    target_link_libraries(native_services_tests PRIVATE sevenzip_common Qt6::Test)
+    add_test(NAME native_services COMMAND native_services_tests)
+    set_tests_properties(native_services PROPERTIES TIMEOUT 10)
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests)

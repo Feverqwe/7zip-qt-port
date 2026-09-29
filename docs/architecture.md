@@ -57,6 +57,10 @@ Win32 menus/accelerators/bitmaps or included dialogs. Actual command/dialog port
 retain their feature owners, and full source language loading remains P1-14.
 
 sevenzip_common owns original native CLibrary loading/free and procedure lookup.
+It also builds unchanged native C Threads and ErrorMsg, exposing upstream
+Thread/Synchronization wrappers with one authoritative implementation and the
+platform Threads::Threads link. Source progress/update consumers reuse these
+owners; their modal UI/operation integration remains subsequent mandatory scope.
 POSIX parent-link transfer/copy guard uses the original Windows method bodies;
 there is one adapted DLL owner. This is a parent-stack lifetime dependency, not
 in-process archive engine integration. Module-path/resource services remain

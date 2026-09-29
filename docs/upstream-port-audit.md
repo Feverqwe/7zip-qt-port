@@ -8,6 +8,40 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P0-02.2b3c3b2a1 — unchanged native thread/synchronization/error services (2026-09-29)
+
+Project baseline `4644aae`; exact source ip7z/7zip
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` at https://github.com/ip7z/7zip.
+Vendor unchanged C/Threads.c and CPP/Windows/Synchronization.h, Thread.h,
+Handle.h, ErrorMsg.cpp/.h at original relative paths. Existing C/Threads.h,
+Precomp/Compiler/7zTypes/7zWindows/Common/WinDefs/StringConvert dependencies
+already match that baseline. Compile native Threads and ErrorMsg once in
+sevenzip_common, linking CMake Threads::Threads for the platform threading
+service. Preserve all native Windows/POSIX branches and source notices/bytes.
+No Qt mutex/thread/error formatting replaces their algorithms or ownership.
+
+These modules provide CProgressSync's original critical-section/error dependencies
+and CProgressThreadVirt's native worker/event join services. Full CProgressSync,
+modal progress/thread state, callbacks, archive update and parent-stack integration
+remain mandatory a2/b/c/d and their feature owners. Existing independent Qt error
+formatters in other modules are migration debt until those consumers are ported;
+this prerequisite does not claim their replacement or full platform acceptance.
+
+New native_services uses source manual/auto-reset events, semaphore, native
+critical-section lock and two workers incrementing shared state before explicit
+Wait_Close. It checks exact joined counts, thread reuse, empty-close idempotence,
+event reset/recreation, native error formatting and unknown-HRESULT hex fallback.
+Workers use local state only; a failed second create still releases/joins the
+first worker. CTest has a bounded timeout. Windows system text is not assumed
+English; POSIX HRESULT/errno behavior follows the exact source branch. No visible
+UI or archive operation changes. Validation macOS arm64, 2026-09-29: affected
+app/native-services/native-library/formatter/folder-link targets built; focused
+4/4 passed (0.80 s), mandatory check.sh format/build/83 CTest passed (49.01 s),
+git diff --check passed. Exact vendor source/resource/license bytes 76/76 with
+no differences, comprising 75 original dependencies/resources plus License.
+Mirrored CPP/UI/root counts are unchanged. Windows/Linux compilation/runtime
+remains unverified locally.
+
 ## P0-02.2b3c3b1 — complete FormatUtils and source caption bundle (2026-09-29)
 
 Project baseline `138f6db`; exact original ip7z/7zip

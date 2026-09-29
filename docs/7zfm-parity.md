@@ -7,6 +7,11 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-02.2b3c3b2a1 compiles unchanged upstream native thread/synchronization/error
+services needed by source progress/update state. No displayed behavior changes;
+modal progress, pause/cancel, update callbacks and parent integration remain open.
+Windows/Linux runtime is not inferred from the macOS native service tests.
+
 P0-02.2b3c3b1 compiles original FormatUtils and source caption bundle, preserving
 literal {0} substitution and update/error line breaks. Fixed Russian captions are
 available to upcoming update dialogs; no displayed dialog/layout changes yet.
