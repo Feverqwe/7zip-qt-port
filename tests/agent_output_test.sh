@@ -10,17 +10,24 @@ export TMPDIR="$fixture"
 compact_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash -c '
   source "$SEVENZIP_OUTPUT_HELPER"
   sevenzip_setup_output sample
-  printf "build details\n"
+  sevenzip_run_command 'printf build details' printf "build details\n"
 ')"
-[[ "$compact_success" == 'sample: OK' ]]
+[[ "$compact_success" == $'sample: running (output buffered; wait for exit)\nsample: OK' ]]
 [[ -z "$(find "$fixture" -type f -print -quit)" ]]
+
+delayed_output="$(CODEX_SESSION_ID=test SEVENZIP_PROGRESS_DELAY_SECONDS=0.02 bash -c '
+  source "$SEVENZIP_OUTPUT_HELPER"
+  sevenzip_setup_output sample
+  sevenzip_run_command "sleep 0.1" sleep 0.1
+')"
+[[ "$delayed_output" == $'sample: running (output buffered; wait for exit)\nsample: still running: sleep 0.1\nsample: OK' ]]
 
 forced_compact="$(CODEX_SESSION_ID= SEVENZIP_SCRIPT_OUTPUT=compact bash -c '
   source "$SEVENZIP_OUTPUT_HELPER"
   sevenzip_setup_output sample
   printf "build details\n"
 ')"
-[[ "$forced_compact" == 'sample: OK' ]]
+[[ "$forced_compact" == $'sample: running (output buffered; wait for exit)\nsample: OK' ]]
 
 verbose_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=verbose bash -c '
   source "$SEVENZIP_OUTPUT_HELPER"
@@ -49,6 +56,7 @@ else
   status="$?"
 fi
 [[ "$status" -eq 7 ]]
+[[ "$failure_output" == sample:\ running\ \(output\ buffered\;\ wait\ for\ exit\)* ]]
 [[ "$failure_output" == *'sample: FAILED (exit 7)'* ]]
 [[ "$failure_output" == *'line 90'* ]]
 [[ "$failure_output" != *'first detail'* ]]
@@ -69,7 +77,7 @@ export FAKE_CTEST_ARGS="$fixture/ctest-args"
 
 wrapper_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev -R '^agent_output$')"
-[[ "$wrapper_success" == "ctest --preset dev -R ^agent_output$: OK" ]]
+[[ "$wrapper_success" == $'ctest --preset dev -R ^agent_output$: running (output buffered; wait for exit)\nctest --preset dev -R ^agent_output$: OK' ]]
 [[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$' ]]
 
 if wrapper_failure="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto FAKE_CTEST_STATUS=9 bash \

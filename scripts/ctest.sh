@@ -6,4 +6,4 @@ cd "$project_root"
 
 source "$project_root/scripts/agent-output.sh"
 sevenzip_setup_output "ctest${*:+ $*}"
-ctest "$@"
+sevenzip_run_command "ctest${*:+ $*}" ctest "$@"

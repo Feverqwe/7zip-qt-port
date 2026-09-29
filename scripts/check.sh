@@ -15,21 +15,25 @@ esac
 source "$project_root/scripts/agent-output.sh"
 sevenzip_setup_output 'check.sh (format, build, CTest)'
 
-if ! command -v clang-format >/dev/null 2>&1; then
-  printf 'clang-format is required for the regression gate.\n' >&2
-  exit 1
-fi
-
-for source_dir in src tests; do
-  if [[ -d "$source_dir" ]]; then
-    while IFS= read -r -d '' source_file; do
-      clang-format --dry-run --Werror "$source_file"
-    done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \) -print0)
+check_formatting() {
+  if ! command -v clang-format >/dev/null 2>&1; then
+    printf 'clang-format is required for the regression gate.\n' >&2
+    return 1
   fi
-done
 
-git diff --check
-git diff --cached --check
+  for source_dir in src tests; do
+    if [[ -d "$source_dir" ]]; then
+      while IFS= read -r -d '' source_file; do
+        clang-format --dry-run --Werror "$source_file" || return
+      done < <(find "$source_dir" -type f \( -name '*.cpp' -o -name '*.mm' -o -name '*.h' -o -name '*.hpp' \) -print0)
+    fi
+  done
+
+  git diff --check || return
+  git diff --cached --check
+}
+
+sevenzip_run_command 'clang-format checks and git diff --check' check_formatting
 # The outer check.sh log already captures both commands in compact mode.
-SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/build.sh dev
-SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/ctest.sh --preset dev --output-on-failure
+sevenzip_run_command './scripts/build.sh dev' env SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/build.sh dev
+sevenzip_run_command './scripts/ctest.sh --preset dev --output-on-failure' env SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/ctest.sh --preset dev --output-on-failure

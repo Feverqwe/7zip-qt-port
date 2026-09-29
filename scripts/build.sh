@@ -47,19 +47,19 @@ if [[ "$(uname -s)" == Darwin ]]; then
   fi
 
   if [[ -z "${CMAKE_PREFIX_PATH:-}" ]] && command -v brew >/dev/null 2>&1 && brew list --versions qtbase >/dev/null 2>&1; then
-    configure -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
+    sevenzip_run_command "cmake --preset $preset" configure -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
   else
-    configure
+    sevenzip_run_command "cmake --preset $preset" configure
   fi
 else
-  configure
+  sevenzip_run_command "cmake --preset $preset" configure
 fi
 
 if [[ "$#" -gt 0 ]]; then
   shift
 fi
 if [[ "$#" -gt 0 ]]; then
-  cmake --build --preset "$preset" --target "$@"
+  sevenzip_run_command "cmake --build --preset $preset --target $*" cmake --build --preset "$preset" --target "$@"
 else
-  cmake --build --preset "$preset"
+  sevenzip_run_command "cmake --build --preset $preset" cmake --build --preset "$preset"
 fi
