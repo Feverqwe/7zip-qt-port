@@ -83,4 +83,13 @@ fi
 [[ "$wrapper_failure" == *'ctest --preset dev: FAILED (exit 9)'* ]]
 [[ "$wrapper_failure" == *'fixture CTest output'* ]]
 
+if sandbox_output="$(CODEX_SANDBOX=seatbelt bash "$repo_root/scripts/check.sh" 2>&1)"; then
+  printf 'The full check unexpectedly ran in a sandbox.\n' >&2
+  exit 1
+else
+  status="$?"
+fi
+[[ "$status" -eq 2 ]]
+[[ "$sandbox_output" == 'check.sh: full regression gate requires an unsandboxed run (CODEX_SANDBOX=seatbelt).' ]]
+
 printf 'Agent output keeps successes short and failures diagnosable.\n'

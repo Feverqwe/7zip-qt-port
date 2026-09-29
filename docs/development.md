@@ -28,6 +28,8 @@ sh .agents/skills/sz-setup/scripts/setup.sh
 
 `check.sh` checks formatting, builds with the development CMake preset, and runs CTest. For a release build, run `./scripts/build.sh release` and `./scripts/ctest.sh --preset release --output-on-failure`.
 
+`check.sh` exits before any work when `CODEX_SANDBOX` identifies an active sandbox. The complete suite needs an unsandboxed run: DBus socket creation and native process-priority tests fail with `Operation not permitted` in the Codex sandbox. Focused tests can still be run there when their required system calls are permitted.
+
 When `CODEX_SESSION_ID` is set, `build.sh`, `ctest.sh`, and `check.sh` show one summary line on success. On failure they show the last 30 log lines and the path to the full temporary log. Other invocations retain the normal output. Set `SEVENZIP_SCRIPT_OUTPUT=verbose` to see all output during an agent run, or `SEVENZIP_SCRIPT_OUTPUT=compact` to use compact output explicitly. The scripts remove successful logs and retain failed logs for diagnosis. `ctest.sh` passes its arguments directly to CTest; agents use it for both focused and full test runs.
 
 If `ccache` is installed, `build.sh` automatically uses it for C, C++ and Objective-C++ compilation, including builds started by `check.sh`. Install it with `brew install ccache` on macOS or your package manager on Linux. It speeds up recompilation after a clean build or branch switch; Ninja already skips unchanged files, and the full CTest suite still runs on every `check.sh` invocation.

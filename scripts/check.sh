@@ -4,6 +4,14 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 
+case "${CODEX_SANDBOX:-}" in
+  ''|none|off|disabled|0) ;;
+  *)
+    printf 'check.sh: full regression gate requires an unsandboxed run (CODEX_SANDBOX=%s).\n' "$CODEX_SANDBOX" >&2
+    exit 2
+    ;;
+esac
+
 source "$project_root/scripts/agent-output.sh"
 sevenzip_setup_output 'check.sh (format, build, CTest)'
 
