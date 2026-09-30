@@ -428,6 +428,13 @@ selected extraction, rename-existing/extracted и password retry/cancel.
 failure и cancellation без deadlock; UI отражает частичный результат и ограничения
 rollback. Tests backend и dialog consumers; история/Cancel не регрессируют.
 
+Рабочие результаты: P0-12.1 закрепил общий интерактивный Ask на `7zz` transport;
+P0-12.2 подключил незашифрованный root FullPaths FM consumer к исходным
+`CPanel::CopyTo`/`CAgentFolder::Extract`/`CheckExistFile` и проверил source UX.
+P0-12.3 завершает nested/encrypted/no-path, `ExtractGUI.cpp`/`Common/Extract.cpp`
+и parent приёмку. Точные критерии и evidence — в checklist; незавершённое не
+считается готовым из-за совпадения поведения одного маршрута.
+
 ## 4. P1 — основные сценарии и полноценный UX (16 шагов)
 
 ### P1-01. Copy/Move routing между диском, архивом и панелями

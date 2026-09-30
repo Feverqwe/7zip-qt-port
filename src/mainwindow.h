@@ -130,6 +130,8 @@ class MainWindow : public QMainWindow {
     void connectFilesystemScanner();
     void connectBackend();
     void backendFinished(bool ok, const QString &message, bool messageDisplayed = false);
+    bool extractWithSource(const QString &destination, bool onlySelected, const QString &password,
+                           const ExtractionOptions &options, const QStringList &names);
     bool startPendingHash(bool ok);
     bool startPendingArchiveMove(bool ok);
     bool finishArchiveState(bool ok);

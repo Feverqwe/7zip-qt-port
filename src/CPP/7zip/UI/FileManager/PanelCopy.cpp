@@ -90,19 +90,18 @@ HRESULT CPanelCopyThread::ProcessVirt() {
         // Mandatory P0-05/P1-02 dependency: native CopyFileSystemItems is not
         // connected yet. Archive opening uses the folder-operation branch below.
         return E_NOTIMPL;
-    } else if (options->testMode) {
+    } else if (options->testMode || options->extractMode) {
         CMyComPtr<IArchiveFolder> archiveFolder;
         FolderOperations.QueryInterface(IID_IArchiveFolder, &archiveFolder);
         if (!archiveFolder)
             return E_NOTIMPL;
         CMyComPtr<IFolderArchiveExtractCallback> extractCallback2;
         RINOK(ExtractCallback.QueryInterface(IID_IFolderArchiveExtractCallback, &extractCallback2))
-        NExtract::NPathMode::EEnum pathMode = NExtract::NPathMode::kCurPaths;
-        // NExtract::NPathMode::kFullPathnames;
+        NExtract::NPathMode::EEnum pathMode = options->pathMode;
         result2 = archiveFolder->Extract(
             Indices.ConstData(), Indices.Size(), BoolToInt(options->includeAltStreams),
-            BoolToInt(options->replaceAltStreamChars), pathMode, NExtract::NOverwriteMode::kAsk,
-            options->folder, BoolToInt(true), extractCallback2);
+            BoolToInt(options->replaceAltStreamChars), pathMode, options->overwriteMode,
+            options->folder, BoolToInt(options->testMode), extractCallback2);
     } else
         result2 = FolderOperations->CopyTo(BoolToInt(options->moveMode), Indices.ConstData(),
                                            Indices.Size(), BoolToInt(options->includeAltStreams),
@@ -244,6 +243,8 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
             UInt32 titleID = IDS_COPYING;
             if (options.moveMode)
                 titleID = IDS_MOVING;
+            else if (options.extractMode)
+                titleID = IDS_PROGRESS_EXTRACTING;
             else if (!options.hashMethods.IsEmpty() && options.streamMode) {
                 titleID = IDS_CHECKSUM_CALCULATING;
                 if (options.hashMethods.Size() == 1) {
@@ -264,7 +265,7 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
         extracter.MainTitle = progressWindowTitle;
         extracter.MainAddTitle = title + L' ';
 
-        extracter.ExtractCallbackSpec->OverwriteMode = NExtract::NOverwriteMode::kAsk;
+        extracter.ExtractCallbackSpec->OverwriteMode = options.overwriteMode;
         extracter.ExtractCallbackSpec->Init();
 
         extracter.CopyFrom_Paths = filePaths;

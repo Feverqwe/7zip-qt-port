@@ -77,6 +77,7 @@ struct CCopyToOptions {
     bool streamMode;
     bool moveMode;
     bool testMode;
+    bool extractMode;
     bool includeAltStreams;
     bool replaceAltStreamChars;
     bool showErrorMessages;
@@ -84,12 +85,16 @@ struct CCopyToOptions {
     NExtract::NZoneIdMode::EEnum ZoneIdMode;
     CByteBuffer ZoneBuf;
     UString folder;
+    NExtract::NPathMode::EEnum pathMode;
+    NExtract::NOverwriteMode::EEnum overwriteMode;
     UStringVector hashMethods;
     CVirtFileSystem *VirtFileSystemSpec;
     CCopyToOptions()
-        : streamMode(false), moveMode(false), testMode(false), includeAltStreams(true),
-          replaceAltStreamChars(false), showErrorMessages(false), NeedRegistryZone(true),
-          ZoneIdMode(NExtract::NZoneIdMode::kNone), VirtFileSystemSpec(NULL) {}
+        : streamMode(false), moveMode(false), testMode(false), extractMode(false),
+          includeAltStreams(true), replaceAltStreamChars(false), showErrorMessages(false),
+          NeedRegistryZone(true), ZoneIdMode(NExtract::NZoneIdMode::kNone),
+          pathMode(NExtract::NPathMode::kCurPaths), overwriteMode(NExtract::NOverwriteMode::kAsk),
+          VirtFileSystemSpec(NULL) {}
 };
 
 struct CPanelProperty {

@@ -263,6 +263,10 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
     return true;
 }
 
+bool ArchiveBackend::hasListedSourceArchive(const QString &archive) const {
+    return listed_ && !busy() && QFileInfo(archive).absoluteFilePath() == archive_;
+}
+
 void ArchiveBackend::extract(const QString &archive, const QString &destination,
                              const QStringList &selected, const QString &password,
                              const ExtractionOptions &options) {

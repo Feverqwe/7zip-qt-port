@@ -432,7 +432,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(old.open(QIODevice::WriteOnly));
         QCOMPARE(old.write("existing"), qint64(8));
         old.close();
+        QSignalSpy preflight(&backend, &ArchiveBackend::overwriteRequired);
         bool answered = false;
+        QByteArray choice("overwriteYes");
         QTimer answer;
         connect(&answer, &QTimer::timeout, &window, [&] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
@@ -440,7 +442,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                     dialog && dialog->isVisible()) {
                     answered = true;
                     QVERIFY(!dialog->findChild<QLabel *>("overwriteOldFile")->text().isEmpty());
-                    dialog->findChild<QPushButton *>("overwriteYes")->click();
+                    dialog->findChild<QPushButton *>(choice.constData())->click();
                 }
             }
         });
@@ -449,12 +451,47 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
         window.extractTo(temp.filePath("destination"), false, {}, options);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
-        answer.stop();
         QVERIFY(answered);
+        QCOMPARE(preflight.size(), 0); // The source callback owns this prompt.
         QVERIFY(finished.first().first().toBool());
         QFile result(target);
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), QByteArray("archive"));
+        result.close();
+
+        QVERIFY(old.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(old.write("preserved"), qint64(9));
+        old.close();
+        choice = "overwriteNo";
+        answered = false;
+        table(window)->selectRow(0);
+        window.extractTo(temp.filePath("destination"), true, {}, options);
+        QVERIFY(answered);
+        QVERIFY(old.open(QIODevice::ReadOnly));
+        QCOMPARE(old.readAll(), QByteArray("preserved"));
+        old.close();
+
+        choice = "overwriteRename";
+        answered = false;
+        window.extractTo(temp.filePath("destination"), true, {}, options);
+        QVERIFY(answered);
+        QStringList files =
+            QDir(temp.filePath("destination")).entryList(QDir::Files | QDir::NoDotAndDotDot);
+        QCOMPARE(files.size(), 2);
+        QVERIFY(files.removeOne(QStringLiteral("архивный файл.txt")));
+        const QString renamed = files.first();
+        QFile renamedFile(temp.filePath("destination/" + renamed));
+        QVERIFY(renamedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(renamedFile.readAll(), QByteArray("archive"));
+
+        choice = "overwriteCancel";
+        answered = false;
+        window.extractTo(temp.filePath("destination"), true, {}, options);
+        answer.stop();
+        QVERIFY(answered);
+        QCOMPARE(preflight.size(), 0);
+        QVERIFY(old.open(QIODevice::ReadOnly));
+        QCOMPARE(old.readAll(), QByteArray("preserved"));
     }
 
     void movesRealArchiveEntryToDirectory() {

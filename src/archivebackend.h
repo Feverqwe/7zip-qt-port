@@ -82,6 +82,10 @@ class ArchiveBackend : public QObject {
     virtual void extractSourceEntry(const QString &archive, const QString &entry,
                                     const QString &output, const QString &format,
                                     const QString &password);
+    bool hasListedSourceArchive(const QString &archive) const;
+    // Shared destination/path guard for the native archive callback transport.
+    bool validateExtraction(const QString &destination, const QStringList &selected,
+                            const ExtractionOptions &options, QString *error) const;
     static bool sourceUpdatePathIsSafe(const QString &path);
     virtual void cancel();
     // Native controls affect only this backend's live engine child.
@@ -127,8 +131,6 @@ class ArchiveBackend : public QObject {
     static QList<ArchiveEntry> parseListing(const QString &output);
     HRESULT listingFailureResult(int exitCode, QProcess::ExitStatus status) const;
     static bool safePath(const QString &path);
-    bool validateExtraction(const QString &destination, const QStringList &selected,
-                            const ExtractionOptions &options, QString *error) const;
     bool prepareAskExtraction(const QString &outputDirectory, const QStringList &selected,
                               ExtractionOptions::PathMode pathMode, QStringList *replaceEntries,
                               QStringList *renameEntries);

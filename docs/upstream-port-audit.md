@@ -1679,7 +1679,7 @@ moment of write; this adapter has a preflight-to-write race even after
 revalidation. 7zz writes directly, so failure/cancel may leave partial output;
 there is no transactional rollback. `ExtractGUI.cpp` and `Common/Extract.cpp`
 are not yet source-ported into runtime orchestration; their option precedence,
-batch/callback close semantics and relevant omitted branches remain P0-12.2.
+batch/callback close semantics and relevant omitted branches remain P0-12.3.
 The existing non-Ask RenameExisting/Extracted modes, selection validation and
 password prompt stay enabled. Filesystem symlink, type and unsafe-path guards
 remain in backend validation. P0-12 parent is open until the source integration
@@ -1693,6 +1693,52 @@ Unsandboxed `./scripts/check.sh` passed formatting, app build and 137/137
 CTest cases; after a localized cleanup/fixture edit,
 `extraction_options` was rebuilt and passed again. Windows/Linux runtime and
 rendered Windows parity are unverified.
+
+## P0-12.2 — root FM extraction through native callback (2026-09-30)
+
+Exact original source is
+[`ip7z/7zip` commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17):
+`CPP/7zip/UI/FileManager/PanelCopy.cpp::CPanel::CopyTo` and
+`CPanelCopyThread::ProcessVirt`, `CPP/7zip/UI/Agent/Agent.cpp::CAgentFolder::Extract`
+and `GetRealIndices`, `CPP/7zip/UI/Common/ArchiveExtractCallback.cpp::CheckExistFile`,
+`CPP/7zip/UI/FileManager/ExtractCallback.cpp::AskOverwrite` and
+`CPP/7zip/UI/GUI/ExtractGUI.cpp::ExtractGUI`. The first five source bodies were
+already copied under matching `src/` paths. This iteration connects the root
+file-manager Extract command to those bodies; `PanelCopy.cpp` retains its source
+thread/callback/error flow, with a narrow `CCopyToOptions::extractMode` branch
+that supplies the source `IArchiveFolder::Extract` path/overwrite parameters and
+uses the original Extract progress title. The external `7zz` still supplies
+archive bytes through `QtArchiveFileResource::AttachExtractService` and
+`ArchiveBackend::extractSourceEntry` (file-only CLI stdout staging), not an
+in-process codec. No upstream checkout file was changed; notices and license
+remain in the mirrored modules and `third_party/7zip/License.txt`.
+
+`MainWindow::extractWithSource` selects this route only for a listed, root,
+unencrypted file-backed archive and FullPaths/Ask. It passes source panel indices, or all
+root indices, through the native folder proxy; output validation and symlink/
+unsafe-name guards remain in `ArchiveBackend`. The source callback now asks at
+`GetStream` before each file, so the P0-12.1 preflight-to-write interval is
+removed for this route. Source progress owns the modal lifecycle and the
+existing backend completion owner ignores each staged stream completion until
+the native worker joins. The result then restores command state and journal.
+Real UI tests assert Yes, selected No, AutoRename and Cancel, source dialog
+metadata, preserved existing bytes and no `ArchiveBackend::overwriteRequired`
+preflight signal. Controlled backend consumers retain their async transport.
+
+This is a partial P0-12 port. Nested or encrypted archives, NoPaths and non-Ask
+modes still use the P0-12.1 backend path. `ExtractGUI.cpp::ExtractGUI`/
+`CThreadExtracting::ProcessVirt` and `Common/Extract.cpp::DecompressArchive`/
+`Extract` batch orchestration have been reviewed but not copied or wired;
+option precedence, multi-archive statistics, callback close/error composition,
+volume handling and related dependencies remain P0-12.3. Source callback writes
+directly; failure/cancel can leave partial output. Destination changes after
+validation remain a race, and rendered Windows plus Windows/Linux runtime parity
+are unverified.
+
+Focused `ui_operations`, `source_extract_backend` and `extraction_options`
+passed 3/3; after extending the UI decisions fixture, `ui_operations` passed
+again. The full unsandboxed `./scripts/check.sh` passed C++ format, app build
+and all 137 CTest cases on macOS arm64 with Qt 6.11.2 on 2026-09-30.
 
 ## P0-11 — filesystem overwrite decisions (2026-09-30)
 

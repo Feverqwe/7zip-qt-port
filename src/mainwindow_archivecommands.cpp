@@ -3,6 +3,7 @@
 #include "Windows/PropVariant.h"
 #include "archiveprogressoperation.h"
 #include "mainwindow.h"
+#include "qtarchivefileresource.h"
 #include <QScopedValueRollback>
 
 void MainWindow::calculateHash(const QString &method) {
@@ -172,11 +173,84 @@ void MainWindow::extractTo(const QString &destination, bool onlySelected, const 
         if (names.isEmpty())
             return;
     }
+    if (extractWithSource(destination, onlySelected, password, options, names))
+        return;
     previousState_ = state_;
     setState(State::Operating);
     begin("Извлечение", destination);
     backend_->extract(archive_, destination, names,
                       password.isEmpty() ? archivePassword_ : password, options);
+}
+
+bool MainWindow::extractWithSource(const QString &destination, bool onlySelected,
+                                   const QString &password, const ExtractionOptions &options,
+                                   const QStringList &names) {
+    CPanel &panel = app_.GetFocusedPanel();
+    auto *folder =
+        state_ == State::Viewing ? dynamic_cast<CAgentFolder *>(panel.GetFolder()) : nullptr;
+    auto *resource =
+        folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+    if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask ||
+        options.pathMode != ExtractionOptions::PathMode::FullPaths || !archiveFolder_.isEmpty() ||
+        isNestedArchive() || info_.encrypted || !resource || !resource->HasExtractService() ||
+        !backend_->hasListedSourceArchive(archive_))
+        return false;
+    {
+        QString validationError;
+        if (!backend_->validateExtraction(destination, names, options, &validationError)) {
+            QMessageBox::warning(this, QStringLiteral("Извлечение"), validationError);
+            return true;
+        }
+        const QString output = QFileInfo(destination).absoluteFilePath();
+        if (!QDir().mkpath(output) ||
+            !backend_->validateExtraction(output, names, options, &validationError)) {
+            QMessageBox::warning(
+                this, QStringLiteral("Извлечение"),
+                validationError.isEmpty()
+                    ? QStringLiteral("Не удалось создать папку назначения: %1").arg(destination)
+                    : validationError);
+            return true;
+        }
+        CRecordVector<UInt32> indices;
+        if (onlySelected)
+            indices = sourceOperatedIndices();
+        else {
+            UInt32 count = 0;
+            if (folder->GetNumberOfItems(&count) != S_OK)
+                return true;
+            for (UInt32 index = 0; index < count; ++index)
+                indices.Add(index);
+        }
+        if (indices.IsEmpty())
+            return true;
+        previousState_ = state_;
+        setState(State::Operating);
+        operationName_ = QStringLiteral("Извлечение");
+        appendJournal(operationName_ + QStringLiteral(": ") + output);
+        journalAction_->setEnabled(true);
+        CCopyToOptions sourceOptions;
+        sourceOptions.extractMode = true;
+        sourceOptions.folder = ToUString(output);
+        sourceOptions.pathMode = NExtract::NPathMode::kFullPaths;
+        sourceOptions.NeedRegistryZone = false;
+        sourceOptions.showErrorMessages = true;
+        bool usePassword = !password.isEmpty() || !archivePassword_.isEmpty();
+        UString sourcePassword = ToUString(password.isEmpty() ? archivePassword_ : password);
+        UStringVector messages;
+        HRESULT result;
+        {
+            QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+            result = panel.CopyTo(sourceOptions, indices, &messages, usePassword, sourcePassword);
+        }
+        const bool ok = result == S_OK && messages.IsEmpty();
+        QString message = ok                  ? QStringLiteral("Извлечение завершено.")
+                          : result == E_ABORT ? QStringLiteral("Операция отменена.")
+                                              : QString::fromWCharArray(HResultToMessage(result));
+        if (!messages.IsEmpty())
+            message = ToQString(messages[0]);
+        backendFinished(ok, message, !messages.IsEmpty());
+        return true;
+    }
 }
 
 void MainWindow::testArchive() {

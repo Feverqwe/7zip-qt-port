@@ -552,6 +552,16 @@ password and cancellation state continue across passes. The source in-process
 `CheckExistFile` callback cannot run inside the external `7zz` child, so this
 transport has a preflight-to-write race and the same direct-write partial-result
 limit as noninteractive extraction.
+For the root file-manager FullPaths/Ask command, `MainWindow` first reuses the
+backend destination guard, then calls the mirrored `CPanel::CopyTo` worker with
+explicit extract mode. `CAgentFolder::Extract` and
+`CArchiveExtractCallback::CheckExistFile` own per-item paths, overwrite decisions
+and the source dialog before each streamed file. `QtArchiveFileResource` asks
+`ArchiveBackend::extractSourceEntry` for each file's bytes through the official
+`7zz`; per-stream backend completions are hidden from the outer window until the
+source modal worker joins. Nested/encrypted/no-path extraction still uses the preflight
+transport above. Both routes write directly and retain the destination-change
+race after validation.
 
 Creation writes a temporary peer archive and publishes it after success.
 Mutations copy the existing archive, update that copy and replace the original
