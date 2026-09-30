@@ -39,15 +39,23 @@ void QtAppPresentation::Initialize(CApp &app) {
 }
 
 bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
-    // The one visible Qt panel is current scope. The second presentation and
-    // splitter are mandatory P0-08; both native owners are already independent.
-    if (index != window_.app_.GetFocusedPanelIndex() || window_.table_)
+    if (index >= kNumPanelsMax || window_.panelUi_[index].container)
         return false;
+    const unsigned previous = window_.projectedPanel_;
+    if (window_.panelUi_[previous].container)
+        window_.storePanelUi(previous);
+    window_.restorePanelUi(index);
+    window_.app_.SetFocusedPanel(index);
     panel.LoadFullPath();
     window_.flatArchive_ = panel.GetFlatModeForArc();
     panel.SetFlatModeForDisk(window_.flatDisk_);
-    window_.createFilePanel(editMenu_);
+    window_.createFilePanel(editMenu_, index);
     panel.AttachSelectionView(window_.table_);
+    window_.storePanelUi(index);
+    if (index != previous && window_.panelUi_[previous].container) {
+        window_.restorePanelUi(previous);
+        window_.app_.SetFocusedPanel(previous);
+    }
     return true;
 }
 
@@ -59,24 +67,29 @@ CPanelCallback *QtAppPresentation::PanelCallback(unsigned) {
 }
 
 void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &settings) {
-    if (index != window_.app_.GetFocusedPanelIndex())
+    if (index >= kNumPanelsMax)
         return;
     window_.fileListSettings_ = settings;
-    if (window_.table_)
-        window_.table_->setShowGrid(settings.ShowGrid);
-    if (window_.table_)
-        static_cast<FileTable *>(window_.table_)->setFullRowHighlight(settings.FullRow);
-    if (window_.tableHover_)
-        window_.tableHover_->SetEnabled(settings.SingleClick);
-    if (window_.iconHover_)
-        window_.iconHover_->SetEnabled(settings.SingleClick);
-    if (window_.iconList_)
-        window_.iconList_->setSelectionMode(settings.AlternativeSelection
-                                                ? QAbstractItemView::SingleSelection
-                                                : QAbstractItemView::ExtendedSelection);
+    const auto &ui = window_.panelUi_[index];
+    if (ui.table) {
+        ui.table->setShowGrid(settings.ShowGrid);
+        static_cast<FileTable *>(ui.table)->setFullRowHighlight(settings.FullRow);
+    }
+    if (ui.tableHover)
+        ui.tableHover->SetEnabled(settings.SingleClick);
+    if (ui.iconHover)
+        ui.iconHover->SetEnabled(settings.SingleClick);
+    if (ui.iconList)
+        ui.iconList->setSelectionMode(settings.AlternativeSelection
+                                          ? QAbstractItemView::SingleSelection
+                                          : QAbstractItemView::ExtendedSelection);
 }
 
 void QtAppPresentation::ReloadToolbars(CApp &) { window_.updateToolbar(); }
+void QtAppPresentation::ShowPanel(unsigned index, bool visible) {
+    if (index < kNumPanelsMax && window_.panelUi_[index].container)
+        window_.panelUi_[index].container->setVisible(visible);
+}
 void QtAppPresentation::MoveSubWindows() {
     if (window_.layout())
         window_.layout()->activate();

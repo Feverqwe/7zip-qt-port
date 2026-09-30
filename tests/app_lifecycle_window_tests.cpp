@@ -13,6 +13,7 @@ class ArchiveOwnerPresentation final : public IQtAppPresentation {
     }
     CPanelCallback *PanelCallback(unsigned) override { return nullptr; }
     void SetListSettings(unsigned, const CFmSettings &) override {}
+    void ShowPanel(unsigned, bool) override {}
 };
 } // namespace
 

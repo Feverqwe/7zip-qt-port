@@ -194,6 +194,12 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     flatView_->setObjectName("flatViewAction");
     flatView_->setCheckable(true);
     flatView_->setChecked(flatDisk_);
+    twoPanelsAction_ = viewMenu->addAction(QStringLiteral("Две панели"));
+    twoPanelsAction_->setObjectName("twoPanelsAction");
+    twoPanelsAction_->setCheckable(true);
+    twoPanelsAction_->setChecked(app_.NumPanels == 2);
+    twoPanelsAction_->setShortcut(QKeySequence(Qt::Key_F9));
+    connect(twoPanelsAction_, &QAction::triggered, this, [this] { togglePanels(); });
     viewMenu->addSeparator();
     createToolbarOptions(viewMenu);
     root_ = viewMenu->addAction("Открыть корневую папку");

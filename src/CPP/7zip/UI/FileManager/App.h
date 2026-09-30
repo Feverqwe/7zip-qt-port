@@ -49,6 +49,7 @@ class IQtAppPresentation {
     virtual bool CreatePanel(CPanel &panel, unsigned index) = 0;
     virtual CPanelCallback *PanelCallback(unsigned index) = 0;
     virtual void SetListSettings(unsigned index, const CFmSettings &settings) = 0;
+    virtual void ShowPanel(unsigned index, bool visible) = 0;
     virtual void ReloadToolbars(CApp &) {}
     virtual void MoveSubWindows() {}
 };
@@ -80,6 +81,7 @@ class CApp {
     void SaveToolbar();
     void ReloadToolbars();
     void MoveSubWindows();
+    HRESULT SwitchOnOffOnePanel();
     void SaveToolbarChanges();
     void SwitchStandardToolbar();
     void SwitchArchiveToolbar();

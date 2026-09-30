@@ -27,8 +27,12 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
     }
     void RevokeDropTarget() override {
         window_.setAcceptDrops(false);
-        window_.table_->setAcceptDrops(false);
-        window_.iconList_->setAcceptDrops(false);
+        for (const auto &ui : window_.panelUi_) {
+            if (ui.table)
+                ui.table->setAcceptDrops(false);
+            if (ui.iconList)
+                ui.iconList->setAcceptDrops(false);
+        }
     }
     void QuiesceOperations() override { window_.quiesceOperations(); }
     bool WindowWasCreated() const override { return window_.app_.Panels[0].PanelCreated; }
@@ -43,8 +47,8 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
         info.maximized = window_.isMaximized();
         info.numPanels = window_.app_.NumPanels;
         info.currentPanel = window_.app_.LastFocusedPanel;
-        // There is no visible splitter until P0-08. Preserve its native saved
-        // coordinate rather than overwriting it with a single-pane invention.
+        // Splitter restore is P0-08.2. Preserve the native saved coordinate
+        // until its QSplitter mapping is reviewed with mixed panel startup.
         if (!panelsDefined)
             info.splitterPos = window_.width() / 2;
         info.Save(MainWindow::toolbarSettingsPath());
@@ -60,8 +64,12 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::quiesceOperations() {
-    disconnect(pathCombo_, nullptr, this, nullptr);
-    disconnect(path_, nullptr, this, nullptr);
+    for (const auto &ui : panelUi_) {
+        if (ui.pathCombo)
+            disconnect(ui.pathCombo, nullptr, this, nullptr);
+        if (ui.path)
+            disconnect(ui.path, nullptr, this, nullptr);
+    }
     disconnect(backend_, nullptr, this, nullptr);
     disconnect(filesystemScanner_, nullptr, this, nullptr);
     filesystemScanner_->cancelAndWait();

@@ -19,6 +19,19 @@ Command availability comes from native menu policy plus transport restrictions.
 Screen-size menu filtering uses available monitor geometry and Qt system-font
 units, independently of the main window's compact resize fixture.
 
+### Two disk panels (P0-08.1)
+
+Reference: FM `App.cpp::SwitchOnOffOnePanel`, `FM.cpp::MoveSubWindows`,
+`PanelKey.cpp::OnKeyDown` and `resource.rc` View → 2 Panels (F9) at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. The panels sit left/right
+under the shared toolbar, with an address row above each file list. F9 hides
+the inactive panel and expands the active one; Tab moves list focus between
+visible panels. `panel_key` writes `two-panel-disk-table-640.json`,
+`two-panel-disk-980.json`, `two-panel-disk-640.json` and
+`one-panel-after-f9-640.json`. It checks both addresses and active lists are
+fully visible at 980×620 and 640×400. JSON confirms Qt structure and clipping
+only; rendered Windows parity remains unverified.
+
 ### Virtual root main window (P0-04.2)
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

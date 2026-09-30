@@ -680,6 +680,46 @@ row. Focused direct-consumer CTest passes 9/9 and the full unsandboxed
 `./scripts/check.sh` gate passes 135/135 on macOS arm64 2026-09-29.
 Windows/Linux runtime and rendered Windows visual parity remain unverified.
 
+## P0-08.1 — source panel switch and disk/disk Qt projection (2026-09-30)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([App.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/App.cpp),
+[App.h](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/App.h),
+[FM.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/FM.cpp),
+[PanelKey.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelKey.cpp),
+[resource.rc](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/resource.rc)).
+Copied `CApp::SwitchOnOffOnePanel` creation/show/hide/layout control flow
+into mirrored `App.cpp` and retained the original two `CPanel` owners, paths,
+list modes and focus callbacks. Qt's `IQtAppPresentation::ShowPanel` replaces
+Win32 `Enable`/`Show`; QSplitter replaces `FM.cpp::MoveSubWindows` HWND geometry.
+The Qt action presents the resource's View → 2 Panels F9 command. The list's
+Tab adapter calls original `CPanelCallbackImp::OnTab`; panel focus events still
+call `CApp::SetFocusedPanel`. On failed second creation, Qt rolls back NumPanels
+to one so a rejected widget cannot leave an invisible source owner active.
+
+Win32 has separate child controls for each panel. `mainwindow_twopanel.cpp`
+provides their Qt equivalent: each panel retains its own widgets, visible
+location/view/sort and refresh snapshot; the existing command presenter projects
+the active panel. The original `CPanel` still owns folders and source selection
+vectors. The Qt filesystem scanner is single-owner: switching during a flat
+scan cancels its generation and rebinds that panel when reactivated, preventing
+queued rows from reaching the other panel. The existing portable metadata poll
+now visits both visible disk panels. A missing provider during rebinding leaves
+source file commands disabled instead of entering `CreateFileMenu` with null.
+
+Scope is disk/disk including separate paths, view modes, selection, focus,
+normal/flat loading and inactive refresh. Archive/disk and archive/archive
+projection, Alt+F1/F2 target, startup splitter/layout restore and Copy/Move
+destination default remain P0-08.2; actual cross-panel transfer bodies remain
+P1-01. This is a partial port of the broader App/FM/Panel layout workflow, not
+acceptance of the P0-08 parent. Win32 splitter drawing, drag target and direct
+`HWND` messages are Qt presentation or later P1-16 adapters. Required project
+clang-format changes only formatting. `app_lifecycle` covers success/failure of
+the switch, while `panel_key` covers F9/Tab, active commands, path/view/selection,
+inactive refresh, flat scan and JSON normal/compact/hidden geometry. The full
+unsandboxed `./scripts/check.sh` gate passes 135/135 on macOS arm64 2026-09-30.
+Windows/Linux execution and rendered Windows parity remain unverified.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

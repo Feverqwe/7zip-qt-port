@@ -2,7 +2,7 @@
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
 
-void MainWindow::createFilePanel(QMenu *editMenu) {
+void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     auto *central = new QWidget(this);
     auto *layout = new QVBoxLayout(central);
@@ -29,15 +29,32 @@ void MainWindow::createFilePanel(QMenu *editMenu) {
     navigation->addWidget(pathCombo_);
     layout->addLayout(navigation);
     createFileTable(central);
-    createPanelActions(editMenu);
+    if (!panelSplitter_)
+        createPanelActions(editMenu);
     createIconList(central);
     viewStack_ = new QStackedWidget(central);
     viewStack_->setObjectName("fileViewStack");
     viewStack_->addWidget(table_);
     viewStack_->addWidget(iconList_);
     layout->addWidget(viewStack_);
+    connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this, index] {
+        if (projectedPanel_ == index && app_.Panels[index].ShouldProcessNotifications())
+            refreshActions();
+    });
+    connect(table_, &QTableWidget::currentCellChanged, this, [this, index] {
+        if (projectedPanel_ == index && app_.Panels[index].ShouldProcessNotifications())
+            refreshActions();
+    });
     setViewMode(static_cast<int>(app_.GetFocusedPanel().GetListViewMode()));
-    setCentralWidget(central);
+    if (!panelSplitter_) {
+        panelSplitter_ = new QSplitter(Qt::Horizontal, this);
+        panelSplitter_->setObjectName("filePanelSplitter");
+        panelSplitter_->setChildrenCollapsible(false);
+        setCentralWidget(panelSplitter_);
+    }
+    panelUi_[index].container = central;
+    central->setObjectName(QStringLiteral("filePanel%1").arg(index));
+    panelSplitter_->addWidget(central);
     statusBar()->showMessage("Готово");
     connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });
     connect(pathCombo_, &QComboBox::activated, this,

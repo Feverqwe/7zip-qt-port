@@ -60,6 +60,7 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSizePolicy>
+#include <QSplitter>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -74,6 +75,7 @@
 #include <QUuid>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <array>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -106,7 +108,12 @@ class MainWindow : public QMainWindow {
     void createViewOptions(QMenu *viewMenu);
     void createToolbarOptions(QMenu *viewMenu);
     void activateSingleClickedRow(int row);
-    void createFilePanel(QMenu *editMenu);
+    void createFilePanel(QMenu *editMenu, unsigned index);
+    void storePanelUi(unsigned index);
+    void restorePanelUi(unsigned index);
+    void activatePanelUi(unsigned index);
+    unsigned panelIndexFor(QObject *object) const;
+    void togglePanels();
     void createFileTable(QWidget *central);
     void configureColumns();
     void saveColumns();
@@ -241,6 +248,7 @@ class MainWindow : public QMainWindow {
     QAction *autoRefreshAction_ = nullptr;
     QAction *viewActions_[4]{};
     QAction *flatView_ = nullptr;
+    QAction *twoPanelsAction_ = nullptr;
     bool flatDisk_ = false;
     bool flatArchive_ = false;
     bool scanningDisk_ = false;
@@ -255,6 +263,39 @@ class MainWindow : public QMainWindow {
                    size == other.size && exists == other.exists && directory == other.directory;
         }
     };
+    struct PanelUiState {
+        QWidget *container = nullptr;
+        QLineEdit *path = nullptr;
+        QComboBox *pathCombo = nullptr;
+        QTableWidget *table = nullptr;
+        QListView *iconList = nullptr;
+        QStackedWidget *viewStack = nullptr;
+        QtFileListHover *tableHover = nullptr;
+        QtFileListHover *iconHover = nullptr;
+        QString directory;
+        QString returnDirectory;
+        QString archive;
+        QString displayArchive;
+        QString archivePassword;
+        QString archiveFolder;
+        QStringList history;
+        QList<ArchiveEntry> entries;
+        ArchiveInfo info;
+        State state = State::Filesystem;
+        SortMode sortMode = SortMode::Name;
+        int sortColumn = 0;
+        Qt::SortOrder sortOrder = Qt::AscendingOrder;
+        int viewMode = 3;
+        bool flatDisk = false;
+        bool flatArchive = false;
+        QHash<QString, FilesystemSignature> autoRefreshSnapshot;
+        QString autoRefreshTopPath;
+        int autoRefreshScrollValue = -1;
+        bool needsRescan = false;
+    };
+    std::array<PanelUiState, 2> panelUi_;
+    QSplitter *panelSplitter_ = nullptr;
+    unsigned projectedPanel_ = 0;
     QHash<QString, FilesystemSignature> autoRefreshSnapshot_;
     QString autoRefreshTopPath_;
     int autoRefreshScrollValue_ = -1;

@@ -186,7 +186,7 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
         navigating && hasFolder && !panel.IsRootFolder() &&
         (w.state_ == MainWindow::State::Viewing || panel.IsFSFolder());
     availability[IDM_VIEW_FLAT_VIEW] = navigating && (!hasFolder || !panel.IsRootFolder());
-    if (!navigating || w.scanningDisk_)
+    if (!navigating || w.scanningDisk_ || !hasFolder)
         return availability;
     const TransportCapabilities capabilities = ReadTransportCapabilities();
     QtFileMenuProjection menu;

@@ -1003,6 +1003,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
+            src/mainwindow_twopanel.cpp
             src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
             src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h
             src/qtfilelisthover.cpp src/qtfilelisthover.h)

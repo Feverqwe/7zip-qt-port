@@ -12,6 +12,7 @@ class Presentation final : public IQtAppPresentation {
     bool CreatePanel(CPanel &, unsigned) override { return true; }
     CPanelCallback *PanelCallback(unsigned) override { return nullptr; }
     void SetListSettings(unsigned, const CFmSettings &) override {}
+    void ShowPanel(unsigned, bool) override {}
     void ReloadToolbars(CApp &) override {
         events.append(QStringLiteral("reload:%1").arg(ReadToolbarsMask(path)));
     }

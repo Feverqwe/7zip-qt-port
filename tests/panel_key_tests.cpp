@@ -11,6 +11,184 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
 
   private slots:
     void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void twoPanelDiskSwitchKeepsIndependentViews() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString left = fixture.filePath("левая папка");
+        const QString right = fixture.filePath("правая папка");
+        QVERIFY(QDir().mkpath(left));
+        QVERIFY(QDir().mkpath(right));
+        QVERIFY(QDir().mkpath(QDir(right).filePath("nested")));
+        QFile leftFile(QDir(left).filePath("left.txt"));
+        QVERIFY(leftFile.open(QIODevice::WriteOnly));
+        leftFile.close();
+        QFile rightFile(QDir(right).filePath("right.txt"));
+        QVERIFY(rightFile.open(QIODevice::WriteOnly));
+        rightFile.close();
+        SavePanelPath(1, ToUString(right), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *leftPanel = window.findChild<QWidget *>("filePanel0");
+        QVERIFY(leftPanel);
+        auto *leftAddress = leftPanel->findChild<QLineEdit *>("archivePath");
+        auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
+        leftAddress->setText(left);
+        QTest::keyClick(leftAddress, Qt::Key_Return);
+        QTRY_VERIFY(leftTable->rowCount() > 0);
+        const int leftRows = leftTable->rowCount();
+        int leftFileRow = -1;
+        for (int row = 0; row < leftRows; ++row)
+            if (leftTable->item(row, 0)->text() == QStringLiteral("left.txt"))
+                leftFileRow = row;
+        QVERIFY(leftFileRow >= 0);
+        leftTable->selectRow(leftFileRow);
+        leftTable->setCurrentCell(leftFileRow, 0);
+        action(window, "twoPanelsAction")->trigger();
+        auto *rightPanel = window.findChild<QWidget *>("filePanel1");
+        QVERIFY(rightPanel);
+        QVERIFY(rightPanel->isVisible());
+        auto *rightAddress = rightPanel->findChild<QLineEdit *>("archivePath");
+        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        QCOMPARE(QFileInfo(rightAddress->text()).canonicalFilePath(),
+                 QFileInfo(right).canonicalFilePath());
+        QTRY_VERIFY(rightTable->rowCount() > 0);
+        int rightFileRow = -1;
+        for (int row = 0; row < rightTable->rowCount(); ++row)
+            if (rightTable->item(row, 0)->text() == QStringLiteral("right.txt"))
+                rightFileRow = row;
+        QVERIFY(rightFileRow >= 0);
+        rightTable->selectRow(rightFileRow);
+        const int rightRows = rightTable->rowCount();
+        QCOMPARE(leftTable->rowCount(), leftRows);
+        QCOMPARE(leftTable->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(rightTable->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(QFileInfo(leftAddress->text()).canonicalFilePath(),
+                 QFileInfo(left).canonicalFilePath());
+        QFile added(QDir(right).filePath("added while inactive.txt"));
+        QVERIFY(added.open(QIODevice::WriteOnly));
+        added.close();
+        QTRY_VERIFY_WITH_TIMEOUT(rightTable->rowCount() > rightRows, 4000);
+        QCOMPARE(leftTable->rowCount(), leftRows);
+        window.resize(640, 400);
+        QApplication::processEvents();
+        QCOMPARE(window.width(), 640);
+        QVERIFY(UiInspection::fullyVisible(*leftAddress, window));
+        QVERIFY(UiInspection::fullyVisible(*rightAddress, window));
+        QVERIFY(UiInspection::fullyVisible(*leftTable, window));
+        QVERIFY(UiInspection::fullyVisible(*rightTable, window));
+        QVERIFY(UiInspection::writeReport(window, QStringLiteral("two-panel-disk-table-640")));
+        action(window, "viewMode0Action")->trigger();
+        QCOMPARE(leftPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
+        QCOMPARE(rightPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 0);
+        auto *leftIcons = leftPanel->findChild<QListView *>("iconList");
+        auto *rightIcons = rightPanel->findChild<QListView *>("iconList");
+        leftIcons->setFocus();
+        QTest::keyClick(leftIcons, Qt::Key_Tab);
+        QTRY_VERIFY(rightTable->hasFocus());
+        QCOMPARE(QFileInfo(window.windowTitle()).canonicalFilePath(),
+                 QFileInfo(right).canonicalFilePath());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        action(window, "viewMode2Action")->trigger();
+        QCOMPARE(rightPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
+        QCOMPARE(rightTable->selectionModel()->selectedRows().size(), 1);
+        rightAddress->setText(QDir(right).filePath("nested"));
+        QTest::keyClick(rightAddress, Qt::Key_Return);
+        QCOMPARE(QFileInfo(rightAddress->text()).canonicalFilePath(),
+                 QFileInfo(QDir(right).filePath("nested")).canonicalFilePath());
+        QCOMPARE(QFileInfo(leftAddress->text()).canonicalFilePath(),
+                 QFileInfo(left).canonicalFilePath());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
+        rightIcons->setFocus();
+        QTest::keyClick(rightIcons, Qt::Key_Tab);
+        QTRY_VERIFY(leftIcons->hasFocus());
+        QCOMPARE(leftTable->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(rightTable->selectionModel()->selectedRows().size(), 0);
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QCOMPARE(QFileInfo(window.windowTitle()).canonicalFilePath(),
+                 QFileInfo(left).canonicalFilePath());
+        QTest::keyClick(leftIcons, Qt::Key_F9);
+        QVERIFY(!rightPanel->isVisible());
+        QApplication::processEvents();
+        QVERIFY(leftPanel->width() >= window.width() - 8);
+        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(rightPanel->isVisible());
+        QCOMPARE(QFileInfo(rightAddress->text()).canonicalFilePath(),
+                 QFileInfo(QDir(right).filePath("nested")).canonicalFilePath());
+        QCOMPARE(leftPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
+        QCOMPARE(rightPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
+        rightIcons->setFocus();
+        QTest::keyClick(rightIcons, Qt::Key_F9);
+        QApplication::processEvents();
+        QVERIFY(!leftPanel->isVisible());
+        QVERIFY(rightPanel->width() >= window.width() - 8);
+        QTest::keyClick(rightIcons, Qt::Key_F9);
+        QApplication::processEvents();
+        QVERIFY(leftPanel->isVisible());
+        leftIcons->setFocus();
+        for (int width : {980, 640}) {
+            window.resize(width, width == 980 ? 620 : 400);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*leftAddress, window));
+            QVERIFY(UiInspection::fullyVisible(*rightAddress, window));
+            QVERIFY(UiInspection::fullyVisible(*leftIcons, window));
+            QVERIFY(UiInspection::fullyVisible(*rightIcons, window));
+            QVERIFY(
+                UiInspection::writeReport(window, QStringLiteral("two-panel-disk-%1").arg(width)));
+        }
+        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(!rightPanel->isVisible());
+        QApplication::processEvents();
+        QVERIFY(leftPanel->width() >= window.width() - 8);
+        QVERIFY(UiInspection::writeReport(window, QStringLiteral("one-panel-after-f9-640")));
+        QVERIFY(window.close());
+    }
+
+    void switchingDuringFlatScanRestartsOnlyThatPanel() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString left = fixture.filePath("left");
+        const QString right = fixture.filePath("right");
+        QVERIFY(QDir().mkpath(left));
+        QVERIFY(QDir().mkpath(QDir(right).filePath("nested")));
+        QFile nested(QDir(right).filePath("nested/вложенный файл.txt"));
+        QVERIFY(nested.open(QIODevice::WriteOnly));
+        nested.close();
+        SavePanelPath(1, ToUString(right), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *leftPanel = window.findChild<QWidget *>("filePanel0");
+        auto *leftAddress = leftPanel->findChild<QLineEdit *>("archivePath");
+        leftAddress->setText(left);
+        QTest::keyClick(leftAddress, Qt::Key_Return);
+        action(window, "twoPanelsAction")->trigger();
+        auto *rightPanel = window.findChild<QWidget *>("filePanel1");
+        QVERIFY(rightPanel);
+        auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
+        auto *rightAddress = rightPanel->findChild<QLineEdit *>("archivePath");
+        rightAddress->setFocus();
+        QTRY_VERIFY(rightAddress->hasFocus());
+        QCOMPARE(QFileInfo(window.windowTitle()).canonicalFilePath(),
+                 QFileInfo(right).canonicalFilePath());
+        QVERIFY(action(window, "viewMode3Action")->isEnabled());
+        action(window, "viewMode3Action")->trigger();
+        QCOMPARE(rightPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 0);
+        QVERIFY(rightTable->isEnabled());
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
+        action(window, "flatViewAction")->setChecked(true);
+        leftAddress->setFocus();
+        QTRY_VERIFY(leftAddress->hasFocus());
+        rightAddress->setFocus();
+        QTRY_VERIFY(rightAddress->hasFocus());
+        QTRY_VERIFY_WITH_TIMEOUT(
+            !rightTable->findItems(QStringLiteral("nested/вложенный файл.txt"), Qt::MatchExactly)
+                 .isEmpty(),
+            4000);
+        QCOMPARE(QFileInfo(leftAddress->text()).canonicalFilePath(),
+                 QFileInfo(left).canonicalFilePath());
+    }
     void parentKey_data() { keypadSelection_data(); }
     void parentKey() {
         QFETCH(int, mode);

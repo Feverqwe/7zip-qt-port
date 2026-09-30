@@ -25,6 +25,10 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         }
         return false;
     }
+    if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
+        app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnTab();
+        return true;
+    }
     CPanel &panel = app_.GetFocusedPanel();
     if (panel._mySelectMode) {
         if (key->key() == Qt::Key_Shift) {

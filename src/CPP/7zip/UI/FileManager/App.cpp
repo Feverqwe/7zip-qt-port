@@ -242,6 +242,27 @@ HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &ar
     return S_OK;
 }
 
+HRESULT CApp::SwitchOnOffOnePanel() {
+    if (NumPanels == 1) {
+        NumPanels++;
+        COpenResult openRes;
+        const HRESULT result =
+            CreateOnePanel(1 - LastFocusedPanel, UString(), UString(), false, openRes);
+        if (result != S_OK) {
+            NumPanels--;
+            return result;
+        }
+        if (_presentation)
+            _presentation->ShowPanel(1 - LastFocusedPanel, true);
+    } else {
+        NumPanels--;
+        if (_presentation)
+            _presentation->ShowPanel(1 - LastFocusedPanel, false);
+    }
+    MoveSubWindows();
+    return S_OK;
+}
+
 void CApp::Save() {
     AppState.Save(_settingsPath);
     CListMode listMode;

@@ -13,6 +13,7 @@ namespace {
 class OwnerPresentation final : public IQtAppPresentation {
   public:
     QList<unsigned> created;
+    QList<QPair<unsigned, bool>> visibility;
     bool createResult = true;
     void Initialize(CApp &) override {}
     bool CreatePanel(CPanel &panel, unsigned index) override {
@@ -22,6 +23,7 @@ class OwnerPresentation final : public IQtAppPresentation {
     }
     CPanelCallback *PanelCallback(unsigned) override { return nullptr; }
     void SetListSettings(unsigned, const CFmSettings &) override {}
+    void ShowPanel(unsigned index, bool visible) override { visibility.append({index, visible}); }
 };
 
 class ReleaseObservedFolder final : public IFolderFolder, public CMyUnknownImp {
@@ -194,6 +196,55 @@ class AppLifecycleTests : public QObject {
         UString restored;
         QVERIFY(ReadPanelPath(1, restored, settings));
         QCOMPARE(ToQString(restored), ToQString(app.Panels[1].GetCurrentFolderPrefix()));
+        app.ReleaseApp();
+    }
+
+    void switchesPanelsWithIndependentSavedPaths() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir(fixture.path()).mkdir("вторая папка"));
+        const QString settings = fixture.filePath("settings.ini");
+        SavePanelPath(1, ToUString(fixture.filePath("вторая папка")), settings);
+        OwnerPresentation presentation;
+        CApp app;
+        app.NumPanels = 1;
+        int widths[2] = {250, 350};
+        COpenResult opened;
+        QCOMPARE(app.Create(nullptr, ToUString(fixture.path()), UString(), widths, false, opened,
+                            presentation, settings),
+                 S_OK);
+        QCOMPARE(app.SwitchOnOffOnePanel(), S_OK);
+        QCOMPARE(app.NumPanels, 2u);
+        QCOMPARE(presentation.created, QList<unsigned>({0, 1}));
+        QCOMPARE(presentation.visibility, (QList<QPair<unsigned, bool>>{{1, true}}));
+        QCOMPARE(QDir::cleanPath(ToQString(app.Panels[1].GetCurrentFolderPrefix())),
+                 fixture.filePath("вторая папка"));
+        app.SetFocusedPanel(1);
+        QCOMPARE(app.SwitchOnOffOnePanel(), S_OK);
+        QCOMPARE(app.NumPanels, 1u);
+        QCOMPARE(presentation.visibility.last(), (QPair<unsigned, bool>{0, false}));
+        QCOMPARE(app.SwitchOnOffOnePanel(), S_OK);
+        QCOMPARE(app.NumPanels, 2u);
+        QCOMPARE(presentation.created.size(), 2);
+        QCOMPARE(presentation.visibility.last(), (QPair<unsigned, bool>{0, true}));
+        app.ReleaseApp();
+    }
+
+    void failedSecondPanelCreationKeepsOnePanel() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        OwnerPresentation presentation;
+        CApp app;
+        app.NumPanels = 1;
+        int widths[2] = {250, 350};
+        COpenResult opened;
+        QCOMPARE(app.Create(nullptr, ToUString(fixture.path()), UString(), widths, false, opened,
+                            presentation, fixture.filePath("settings.ini")),
+                 S_OK);
+        presentation.createResult = false;
+        QCOMPARE(app.SwitchOnOffOnePanel(), E_FAIL);
+        QCOMPARE(app.NumPanels, 1u);
+        QVERIFY(presentation.visibility.isEmpty());
         app.ReleaseApp();
     }
 

@@ -233,19 +233,32 @@ MainWindow::FilesystemSignature MainWindow::filesystemSignature(const QString &p
 }
 
 void MainWindow::pollAutoRefresh() {
-    if (state_ != State::Filesystem || scanningDisk_ || app_.QtOperations().active() ||
-        app_.QtOperations().closed())
+    if (scanningDisk_ || app_.QtOperations().active() || app_.QtOperations().closed())
         return;
-    CPanel &panel = app_.GetFocusedPanel();
-    if (panel.AutoRefresh_Mode && !autoRefreshSnapshot_.isEmpty()) {
-        for (auto it = autoRefreshSnapshot_.cbegin(); it != autoRefreshSnapshot_.cend(); ++it) {
-            if (!(filesystemSignature(it.key()) == it.value())) {
-                panel.MarkPortableFolderChanged();
-                break;
+    const unsigned original = projectedPanel_;
+    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
+        if (!app_.IsPanelVisible(index) || !panelUi_[index].container)
+            continue;
+        if (index != projectedPanel_)
+            activatePanelUi(index);
+        if (state_ == State::Filesystem) {
+            CPanel &panel = app_.GetFocusedPanel();
+            if (panel.AutoRefresh_Mode && !autoRefreshSnapshot_.isEmpty()) {
+                for (auto it = autoRefreshSnapshot_.cbegin(); it != autoRefreshSnapshot_.cend();
+                     ++it) {
+                    if (!(filesystemSignature(it.key()) == it.value())) {
+                        panel.MarkPortableFolderChanged();
+                        break;
+                    }
+                }
             }
+            panel.OnTimer();
         }
+        if (app_.QtOperations().active())
+            break;
     }
-    panel.OnTimer();
+    if (original != projectedPanel_)
+        activatePanelUi(original);
 }
 
 void MainWindow::restoreAutoRefreshViewport() {

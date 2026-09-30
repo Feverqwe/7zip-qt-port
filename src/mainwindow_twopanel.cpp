@@ -1,0 +1,129 @@
+#include "mainwindow.h"
+
+// Qt keeps each panel's controls and presentation state while CPanel owns the
+// bound folder, selection and source navigation state. The active fields in
+// MainWindow are a projection used by existing command consumers.
+void MainWindow::storePanelUi(unsigned index) {
+    PanelUiState &ui = panelUi_[index];
+    ui.path = path_;
+    ui.pathCombo = pathCombo_;
+    ui.table = table_;
+    ui.iconList = iconList_;
+    ui.viewStack = viewStack_;
+    ui.tableHover = tableHover_;
+    ui.iconHover = iconHover_;
+    ui.directory = directory_;
+    ui.returnDirectory = returnDirectory_;
+    ui.archive = archive_;
+    ui.displayArchive = displayArchive_;
+    ui.archivePassword = archivePassword_;
+    ui.archiveFolder = archiveFolder_;
+    ui.history = history_;
+    ui.entries = entries_;
+    ui.info = info_;
+    ui.state = state_;
+    ui.sortMode = sortMode_;
+    ui.sortColumn = sortColumn_;
+    ui.sortOrder = sortOrder_;
+    ui.viewMode = viewMode_;
+    ui.flatDisk = flatDisk_;
+    ui.flatArchive = flatArchive_;
+    ui.autoRefreshSnapshot = autoRefreshSnapshot_;
+    ui.autoRefreshTopPath = autoRefreshTopPath_;
+    ui.autoRefreshScrollValue = autoRefreshScrollValue_;
+}
+
+void MainWindow::restorePanelUi(unsigned index) {
+    const PanelUiState &ui = panelUi_[index];
+    path_ = ui.path;
+    pathCombo_ = ui.pathCombo;
+    table_ = ui.table;
+    iconList_ = ui.iconList;
+    viewStack_ = ui.viewStack;
+    tableHover_ = ui.tableHover;
+    iconHover_ = ui.iconHover;
+    directory_ = ui.directory;
+    returnDirectory_ = ui.returnDirectory;
+    archive_ = ui.archive;
+    displayArchive_ = ui.displayArchive;
+    archivePassword_ = ui.archivePassword;
+    archiveFolder_ = ui.archiveFolder;
+    history_ = ui.history;
+    entries_ = ui.entries;
+    info_ = ui.info;
+    state_ = ui.state;
+    sortMode_ = ui.sortMode;
+    sortColumn_ = ui.sortColumn;
+    sortOrder_ = ui.sortOrder;
+    viewMode_ = ui.viewMode;
+    flatDisk_ = ui.flatDisk;
+    flatArchive_ = ui.flatArchive;
+    autoRefreshSnapshot_ = ui.autoRefreshSnapshot;
+    autoRefreshTopPath_ = ui.autoRefreshTopPath;
+    autoRefreshScrollValue_ = ui.autoRefreshScrollValue;
+}
+
+void MainWindow::activatePanelUi(unsigned index) {
+    if (index == projectedPanel_ || index >= kNumPanelsMax || !panelUi_[index].container)
+        return;
+    if (app_.QtOperations().blocking()) {
+        app_.SetFocusedPanel(projectedPanel_);
+        return;
+    }
+    if (scanningDisk_) {
+        filesystemScanner_->cancel();
+        scanningDisk_ = false;
+        scanSelectedState_.reset();
+        panelUi_[projectedPanel_].needsRescan = true;
+    }
+    storePanelUi(projectedPanel_);
+    restorePanelUi(index);
+    projectedPanel_ = index;
+    app_.SetFocusedPanel(index);
+    viewActions_[viewMode_]->setChecked(true);
+    flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
+    sortActions_[static_cast<int>(sortMode_)]->setChecked(true);
+    if (panelUi_[index].needsRescan) {
+        panelUi_[index].needsRescan = false;
+        refreshCurrent();
+    }
+    refreshActions();
+    app_.RefreshTitle(true);
+}
+
+void MainWindow::togglePanels() {
+    if (app_.QtOperations().closed() || app_.QtOperations().active() ||
+        (filesystemScanner_ && filesystemScanner_->isRunning())) {
+        twoPanelsAction_->setChecked(app_.NumPanels == 2);
+        return;
+    }
+    const unsigned other = 1 - app_.GetFocusedPanelIndex();
+    const bool created = app_.Panels[other].PanelCreated;
+    if (app_.SwitchOnOffOnePanel() != S_OK) {
+        twoPanelsAction_->setChecked(app_.NumPanels == 2);
+        return;
+    }
+    twoPanelsAction_->setChecked(app_.NumPanels == 2);
+    if (app_.NumPanels == 2 && !created) {
+        const unsigned active = projectedPanel_;
+        activatePanelUi(other);
+        renderBoundFolder();
+        activatePanelUi(active);
+    }
+    if (panelSplitter_ && app_.NumPanels == 2)
+        panelSplitter_->setSizes({panelSplitter_->width() / 2, panelSplitter_->width() / 2});
+    app_.GetFocusedPanel().SetFocusToList();
+}
+
+unsigned MainWindow::panelIndexFor(QObject *object) const {
+    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
+        const PanelUiState &ui = panelUi_[index];
+        if (!ui.container)
+            continue;
+        if (object == ui.path || object == ui.pathCombo || object == ui.table ||
+            object == ui.iconList || (ui.table && object == ui.table->viewport()) ||
+            (ui.iconList && object == ui.iconList->viewport()))
+            return index;
+    }
+    return kNumPanelsMax;
+}

@@ -236,19 +236,25 @@ void MainWindow::updateFilesystemIcons() {
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    if (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress ||
+        event->type() == QEvent::KeyPress) {
+        const unsigned panelIndex = panelIndexFor(watched);
+        if (panelIndex < kNumPanelsMax && panelIndex != projectedPanel_ && app_.NumPanels == 2)
+            activatePanelUi(panelIndex);
+    }
     // FM.cpp WM_SETFOCUS delegates to the application owner.
     if (watched == this && event->type() == QEvent::FocusIn) {
         app_.SetFocusToLastItem();
         return true;
     }
-    if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
-        event->type() == QEvent::MouseButtonPress) {
+    const bool listViewport = (table_ && watched == table_->viewport()) ||
+                              (iconList_ && watched == iconList_->viewport());
+    if (listViewport && event->type() == QEvent::MouseButtonPress) {
         const auto *mouse = static_cast<QMouseEvent *>(event);
         selectionClickModifiers_ = mouse->modifiers();
         selectionClickLeft_ = mouse->button() == Qt::LeftButton;
     }
-    if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
-        (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
+    if (listViewport && (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
         auto *drag = static_cast<QDragMoveEvent *>(event);
         if ((state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)) &&
             !drag->mimeData()->urls().isEmpty() && !backend_->busy()) {
@@ -257,8 +263,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
             return true;
         }
     }
-    if ((watched == table_->viewport() || (iconList_ && watched == iconList_->viewport())) &&
-        event->type() == QEvent::Drop) {
+    if (listViewport && event->type() == QEvent::Drop) {
         auto *drop = static_cast<QDropEvent *>(event);
         QStringList paths;
         for (const QUrl &url : drop->mimeData()->urls()) {

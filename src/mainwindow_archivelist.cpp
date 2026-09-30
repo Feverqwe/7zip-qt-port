@@ -129,9 +129,15 @@ void MainWindow::refreshActions() {
     refreshBookmarks();
     if (commands_)
         commands_->RefreshActions();
-    table_->setEnabled(idle);
-    iconList_->setEnabled(idle);
+    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
+        const auto &ui = panelUi_[index];
+        if (!ui.container || !ui.table || !ui.iconList || !ui.path)
+            continue;
+        const bool panelIdle = navigating && (index != projectedPanel_ || !scanningDisk_);
+        ui.table->setEnabled(panelIdle);
+        ui.iconList->setEnabled(panelIdle);
+        ui.path->setReadOnly(!navigating);
+    }
     table_->setDragEnabled(idle && state_ == State::Filesystem);
     iconList_->setDragEnabled(idle && state_ == State::Filesystem);
-    path_->setReadOnly(!navigating);
 }

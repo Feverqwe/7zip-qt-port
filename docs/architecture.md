@@ -96,18 +96,24 @@ through a joined modal bridge. CSelectedState carries deferred parent focus into
 Qt row presentation, then is consumed; provider count changes suppress stale row
 notifications. CApp now owns Create/CreateOnePanel/Save/ReleaseApp and its
 per-panel native focus callbacks. QtAppPresentation builds menus/toolbars and
-the one visible Qt panel, and migrates legacy preferences only when original
+per-panel Qt controls, and migrates legacy preferences only when original
 per-panel keys are absent. CPanel owns source binding/creation defaults and
 processing state. MainWindow renders the bound filesystem provider without
 releasing/rebinding it, quiesces its current workers, then saves and releases
 the app owner. ReleaseApp disables all panels before any ReleasePanel call.
+P0-08.1 projects each panel's Qt controls, location, view and sort through
+`mainwindow_twopanel.cpp`; QSplitter replaces Win32 `MoveSubWindows` geometry.
+The two CPanel instances remain authoritative for folder and selection. The
+single scanner cancels a pending flat scan on focus transfer and restarts it
+when that panel is active again. Disk auto-refresh polls both visible panels,
+and command availability uses only the active projection. Mixed archive state,
+startup splitter restore and cross-panel transfer remain P0-08.2/P1-01.
 P0-02.3 adds CApp-owned QtAppOperationState retaining native timer/notify guards
 through completion, and native FM WM_CLOSE through narrow Qt window services.
 Close stops callbacks and joins workers before folder release, saves native app/
 window records and becomes terminal; modal/live callers reject reentrant close.
-Owner/lifecycle acceptance passed P0-02.3; source command/title/drop
-routing, periodic model refresh and the second visible panel remain their
-mandatory P0-03/P0-05/P0-08 owners.
+Owner/lifecycle acceptance passed P0-02.3; mixed two-panel and drop routing
+remain mandatory P0-08.2/P1-16 work.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
 and archive paths. Expanded extraction requests use real indices and typed Path;

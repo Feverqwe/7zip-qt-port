@@ -50,6 +50,14 @@ MetaCalls without use-after-free and starts a fresh scan afterward.
 
 `app_lifecycle` checks the source Create/CreateOnePanel, per-panel settings/focus,
 creation failure, early non-archive return and all-panel disable-before-release.
+It also checks source `SwitchOnOffOnePanel` creation, hide/show without losing
+the second path, and rollback when second-panel creation fails. `panel_key`
+checks disk/disk F9 (menu and key), Tab/focus, independent paths, selection and
+view choices, active Copy availability, hidden-panel return, inactive-panel
+refresh and switching during a flat scan. Its `two-panel-disk-*` and
+`one-panel-after-f9-640` JSON reports cover 980×620 and 640×400 geometry.
+These tests do not accept disk/archive or archive/archive routing, cross-panel
+transfers, or Windows/Linux runtime behavior.
 `app_lifecycle_window` checks joined archive startup success/failure/cancel,
 legacy preference migration/source-key precedence and saving the outer archive
 parent. `application_starts` uses a build-local settings file so native CApp::Save

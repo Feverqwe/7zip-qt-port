@@ -87,7 +87,8 @@ Qt additionally joins asynchronous workers while their inputs still live.
 Close during a live native/modal open is ignored, like a disabled Win32 parent;
 ordinary asynchronous operation close cancels/joins and prevents late refresh.
 Binary Position/Panels storage follows ViewSettings; Qt logical coordinates replace
-WINDOWPLACEMENT. Full restore/visible splitter remains P0-08. No layout/text change;
+WINDOWPLACEMENT. Full restore of splitter position remains P0-08.2; visible
+disk/disk splitter was added in P0-08.1. No layout/text change in this historical step;
 Windows/Linux runtime and rendered Windows parity remain unverified.
 Focused consumers passed 8/8; full gate 122/122 (84.83 s), macOS arm64 2026-09-29.
 
@@ -476,7 +477,7 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 | Extract, GUI/ExtractDialog.rc/.cpp | Destination, optional folder name, modes слева и password справа; name shown/hidden, 640×360/470×330, история/сохранение/отмена проверены. Отсутствуют абсолютные пути, ElimDup, NtSecurity и Help; Ask адаптирован к отказу при конфликте, а не callback. |
 | Create/Add, GUI/CompressDialog.rc/.cpp | Исправлены stacked layout и порядок основной формы: compression слева, encryption справа, source picker после archive/options. 760×720/640×480, 7z/ZIP, show/hide confirmation и reachability проверены. Это частичный порт: нет update/path modes, volumes, SFX, shared/delete options, parameters, CompressOptionsDialog и Help; Add не меняет compression options. |
 | Запрос пароля, PasswordDialog.rc/.cpp | QInputDialog заменён source port CPasswordDialog: восстановлен Show Password и исходный ReadControls/SetTextSpec/OnOK. Контракт проверяет все пять controls в masked/shown при 360×170/260×170; Qt integration проверяет reuse/reset/cancel. |
-| Настройки, OptionsDialog.cpp и SettingsPage2.rc | CSettingsPage показывает семь list flags в исходном порядке; ShowDots, icons, FullRow, grid, single-click и ShowSystemMenu подключены к текущей панели. AlternativeSelection виден, но выключен до P0-07.2. Defaults/persistence/confirm/cancel и 340×300/460×300 JSON проверены. Upstream имеет шесть страниц и memory controls; полный порт и ресурсный comparator отсутствуют. |
+| Настройки, OptionsDialog.cpp и SettingsPage2.rc | CSettingsPage показывает семь list flags в исходном порядке; ShowDots, icons, FullRow, grid, single-click и ShowSystemMenu подключены к текущей панели. AlternativeSelection включён в P0-07.3. Defaults/persistence/confirm/cancel и 340×300/460×300 JSON проверены. Upstream имеет шесть страниц и memory controls; полный порт и ресурсный comparator отсутствуют. |
 | Прогресс/сообщения, ProgressDialog2.rc/2a.rc/.cpp, MessagesDialog.rc/.cpp | Qt показывает label, percent и Cancel, сообщения — в журнале. Нет upstream statistics, pause/background, embedded list и подтверждения отмены; journal не имеет Close footer исходного MessagesDialog. Это сохраняющийся долг переноса, не результат ресурсного comparator. |
 | Информация об архиве / F3/F4 | Archive Info остаётся отдельной QLabel-формой; F3/F4 — локальный UTF-8 viewer/editor, а upstream запускает настроенное внешнее приложение. Эти окна не подтверждены как порты upstream dialogs. |
 
@@ -636,7 +637,7 @@ pixel parity не подтверждена. Ограничение 10000 час�
 отклоняются. Корзина/системное удаление Windows не перенесены. Диалоги ввода
 имени пока остаются Qt-адаптацией, создание через UI принимает одно имя.
 
-1. Перед переносом двухпанельного режима выделить модель панели и навигации из `MainWindow`, затем повторить поведение F9 и операций между панелями из `App.cpp`.
+1. Для P0-08.1 перенесены disk/disk F9 и отдельные представления; mixed archive и назначения межпанельных операций из `App.cpp` остаются P0-08.2/P1-01.
 2. Доработать раскладку режимов просмотра, сортировку по свойствам и динамические столбцы по `PanelItems.cpp`, `PanelSort.cpp` и `resource.rc`; для очень больших деревьев вынести обход и сортировку из потока UI.
 3. Переносить команды File и контекстного меню с их состояниями доступности из `PanelMenu.cpp` и `MyLoadMenu.cpp`. Для Open Inside/Outside и обратной записи после внешнего редактирования определить безопасную временную распаковку и обновление архива.
 4. Расширить постоянную историю адресов, диалоги свойств и настроек. Платформенные отличия системных меню и интеграции проверять отдельно на Windows, macOS и Linux.
@@ -668,7 +669,8 @@ upstream. Адаптация Qt использует `KeypadModifier`, не пе
 Shift+F4 вызывает существующую CreateFile только при фокусе списка и
 доступности команды. Alt+F1/F2 из списка или адреса раскрывают историю,
 как `App.cpp::CPanelCallbackImp::SetFocusToPath()`; обе клавиши используют
-единственную панель, пока двухпанельный режим не перенесён. Tab из поля
+активную панель и в disk/disk P0-08.1; раздельный выбор левой/правой цели
+остаётся P0-08.2. Tab из поля
 адреса возвращает фокус в активный режим просмотра без навигации.
 Win32 ComboBox заменён редактируемым Qt ComboBox и его popup; модификаторы
 проверяются точно, чтобы не перехватывать другие сочетания.
@@ -1003,3 +1005,18 @@ reload, and retired workers cannot overwrite an opened archive. No layout or
 text changes. Focused 10/10 and full gate 64/64 passed on macOS 2026-09-29;
 Windows/Linux runtime remains unverified. Full consumer migration and source
 parent/path/interface/operation branches remain mandatory.
+
+## P0-08.1 — два дисковых окна и F9 (2026-09-30)
+
+Референс: `App.cpp::SwitchOnOffOnePanel`, `FM.cpp::MoveSubWindows`,
+`PanelKey.cpp::OnKeyDown` и пункт View → 2 Panels (`resource.rc`, F9) из
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Qt показывает две независимые
+дисковые панели слева/справа с общими меню и toolbar. F9 скрывает неактивную
+панель и раскрывает активную; Tab переносит фокус списка в другую видимую
+панель. Путь, выбор, режим просмотра и сортировка не переходят между панелями;
+команды используют активную панель. Опрашиваются оба видимых каталога; при
+смене панели во время плоского сканирования незавершённая порция отменяется и
+чтение возобновляется при возврате. QSplitter заменяет исходное положение HWND
+панелей. Проверены Qt JSON для двух размеров и скрытой панели; точная Windows
+отрисовка и Windows/Linux runtime ещё не проверены. Смешанные панели с архивами,
+Alt+F1/F2 и восстановление разделителя — P0-08.2, перенос файлов — P1-01.

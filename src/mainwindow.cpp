@@ -4,6 +4,7 @@
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include <QScopeGuard>
 #include <QScrollBar>
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener)
@@ -40,26 +41,39 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
     commands_->AttachActions();
-    app_.GetFocusedPanel().AttachReloadPresentation([this](const CSelectedState &selection) {
-        if (state_ != State::Filesystem || app_.QtOperations().active())
+    for (unsigned index = 0; index < kNumPanelsMax; ++index)
+        app_.Panels[index].AttachReloadPresentation([this, index](const CSelectedState &selection) {
+            if (!panelUi_[index].container || app_.QtOperations().active())
+                return S_OK;
+            const unsigned original = projectedPanel_;
+            const QString originalStatus = statusBar()->currentMessage();
+            if (index != original)
+                activatePanelUi(index);
+            const auto restore = qScopeGuard([&] {
+                if (index != original) {
+                    activatePanelUi(original);
+                    statusBar()->showMessage(originalStatus);
+                }
+            });
+            if (state_ != State::Filesystem)
+                return S_OK;
+            if (!QFileInfo(directory_).isDir()) {
+                autoRefreshSnapshot_.clear();
+                autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
+                table_->clearSelection();
+                table_->setRowCount(0);
+                statusBar()->showMessage(QStringLiteral("Папка не найдена: ") + directory_);
+                refreshActions();
+                return S_OK;
+            }
+            const int firstRow = table_->rowAt(0);
+            autoRefreshTopPath_ = firstRow >= 0 && table_->item(firstRow, 1)
+                                      ? table_->item(firstRow, 1)->text()
+                                      : QString();
+            autoRefreshScrollValue_ = table_->verticalScrollBar()->value();
+            refreshCurrent(&selection);
             return S_OK;
-        if (!QFileInfo(directory_).isDir()) {
-            autoRefreshSnapshot_.clear();
-            autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
-            table_->clearSelection();
-            table_->setRowCount(0);
-            statusBar()->showMessage(QStringLiteral("Папка не найдена: ") + directory_);
-            refreshActions();
-            return S_OK;
-        }
-        const int firstRow = table_->rowAt(0);
-        autoRefreshTopPath_ = firstRow >= 0 && table_->item(firstRow, 1)
-                                  ? table_->item(firstRow, 1)->text()
-                                  : QString();
-        autoRefreshScrollValue_ = table_->verticalScrollBar()->value();
-        refreshCurrent(&selection);
-        return S_OK;
-    });
+        });
     installEventFilter(this);
     renderBoundFolder();
     autoRefreshTimer_ = new QTimer(this);
@@ -67,15 +81,6 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     connect(autoRefreshTimer_, &QTimer::timeout, this, [this] { pollAutoRefresh(); });
     autoRefreshTimer_->start();
     refreshActions();
-    connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this] {
-        if (app_.GetFocusedPanel().ShouldProcessNotifications())
-            refreshActions();
-    });
-    connect(table_, &QTableWidget::currentCellChanged, this, [this] {
-        if (app_.GetFocusedPanel().ShouldProcessNotifications())
-            refreshActions();
-    });
-
     connectBackend();
 }
 
