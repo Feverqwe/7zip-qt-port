@@ -1,13 +1,167 @@
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
+
+namespace {
+class FakeTrashService final : public IQtTrashService {
+  public:
+    bool MoveToTrash(const QString &path) override {
+        moved << path;
+        if (failAfter >= 0 && moved.size() > failAfter)
+            return false;
+        return QFile::remove(path);
+    }
+    QStringList moved;
+    int failAfter = -1;
+};
+} // namespace
 
 class MainWindowOperationsTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
   private slots:
+    void inlineRenameCollisionRestoresSelection() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        for (const QString &name : {QStringLiteral("исходный.txt"), QStringLiteral("занято.txt")}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(name.toUtf8()), qint64(name.toUtf8().size()));
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        window.show();
+        QCoreApplication::processEvents();
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("исходный.txt")));
+        action(window, "renameAction")->trigger();
+        auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
+        QVERIFY(editor);
+        editor->setText(QStringLiteral("занято.txt"));
+        QTimer warningTimer;
+        bool answeredWarning = false;
+        connect(&warningTimer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                    answeredWarning = true;
+                    box->accept();
+                }
+        });
+        warningTimer.start(1);
+        QTest::keyClick(editor, Qt::Key_Return);
+        QTRY_VERIFY(answeredWarning);
+        warningTimer.stop();
+        QFile occupied(temp.filePath(QStringLiteral("занято.txt")));
+        QVERIFY(occupied.open(QIODevice::ReadOnly));
+        QCOMPARE(occupied.readAll(), QStringLiteral("занято.txt").toUtf8());
+        QVERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("исходный.txt"))));
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(table(window)
+                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
+                     ->text(),
+                 QStringLiteral("исходный.txt"));
+    }
+
+    void deleteRoutesTrashAndShiftPermanent() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        for (const QString &name : {QStringLiteral("в корзину.txt"), QStringLiteral("навсегда.txt"),
+                                    QStringLiteral("первый.txt"), QStringLiteral("второй.txt")}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write("keep"), qint64(4));
+        }
+        ControlledBackend backend;
+        FakeTrashService trash;
+        MainWindow window(&backend, {}, &trash);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        window.show();
+        QCoreApplication::processEvents();
+
+        QString confirmation;
+        bool approve = true;
+        QTimer dialogTimer;
+        connect(&dialogTimer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                auto *box = qobject_cast<QMessageBox *>(widget);
+                if (!box || !box->isVisible())
+                    continue;
+                if (box->button(QMessageBox::Yes)) {
+                    confirmation = box->text();
+                    box->button(approve ? QMessageBox::Yes : QMessageBox::No)->click();
+                } else
+                    box->accept();
+            }
+        });
+
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("в корзину.txt")));
+        dialogTimer.start(1);
+        action(window, "deleteAction")->trigger();
+        dialogTimer.stop();
+        QVERIFY(confirmation.contains(QStringLiteral("в корзину.txt")));
+        QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("в корзину.txt"))));
+        QCOMPARE(trash.moved.size(), 1);
+
+        QVERIFY(QDir(temp.path()).mkdir(QStringLiteral("папка для отказа")));
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка для отказа")));
+        approve = false;
+        confirmation.clear();
+        dialogTimer.start(1);
+        action(window, "deleteAction")->trigger();
+        dialogTimer.stop();
+        QVERIFY(confirmation.contains(QStringLiteral("папка для отказа")));
+        QVERIFY(QDir(temp.filePath(QStringLiteral("папка для отказа"))).exists());
+        approve = true;
+
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("навсегда.txt")));
+        table(window)->setFocus();
+        confirmation.clear();
+        dialogTimer.start(1);
+        QTest::keyClick(table(window), Qt::Key_Delete, Qt::ShiftModifier);
+        dialogTimer.stop();
+        QVERIFY(confirmation.contains(QStringLiteral("навсегда.txt")));
+        QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("навсегда.txt"))));
+        QCOMPARE(trash.moved.size(), 1);
+        QTest::keyRelease(table(window), Qt::Key_Shift);
+
+        trash.failAfter = 2;
+        table(window)->setSelectionMode(QAbstractItemView::ExtendedSelection);
+        const int firstRow = filesystemRow(window, QStringLiteral("первый.txt"));
+        const int secondRow = filesystemRow(window, QStringLiteral("второй.txt"));
+        QVERIFY(firstRow >= 0);
+        QVERIFY(secondRow >= 0);
+        QVERIFY(firstRow != secondRow);
+        QItemSelection selection;
+        selection.select(table(window)->model()->index(firstRow, 0),
+                         table(window)->model()->index(firstRow, table(window)->columnCount() - 1));
+        selection.select(
+            table(window)->model()->index(secondRow, 0),
+            table(window)->model()->index(secondRow, table(window)->columnCount() - 1));
+        table(window)->selectionModel()->select(selection, QItemSelectionModel::ClearAndSelect);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        confirmation.clear();
+        dialogTimer.start(1);
+        action(window, "deleteAction")->trigger();
+        dialogTimer.stop();
+        QVERIFY(!confirmation.isEmpty());
+        QVERIFY(confirmation.contains(QLatin1Char('2')));
+        QVERIFY2(QFileInfo::exists(temp.filePath(QStringLiteral("первый.txt"))) !=
+                     QFileInfo::exists(temp.filePath(QStringLiteral("второй.txt"))),
+                 qPrintable(QStringLiteral("first=%1 second=%2 moved=%3")
+                                .arg(QFileInfo::exists(temp.filePath(QStringLiteral("первый.txt"))))
+                                .arg(QFileInfo::exists(temp.filePath(QStringLiteral("второй.txt"))))
+                                .arg(trash.moved.size())));
+    }
+
     void sourceFilesystemCreateAndInlineRename() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -96,7 +250,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(file.write("original"), 8);
         file.close();
         ControlledBackend backend;
-        MainWindow window(&backend);
+        FakeTrashService trash;
+        MainWindow window(&backend, {}, &trash);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
@@ -260,19 +415,26 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         action(window, "deleteAction")->trigger();
         QVERIFY(QFileInfo::exists(renamed));
-        QTimer::singleShot(0, &window, [] {
+        QTimer deleteDialogTimer;
+        connect(&deleteDialogTimer, &QTimer::timeout, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
-                    box->button(QMessageBox::Yes)->click();
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                    if (auto *yes = box->button(QMessageBox::Yes))
+                        yes->click();
+                    else
+                        box->accept();
+                }
             }
         });
+        deleteDialogTimer.start(1);
         action(window, "deleteAction")->trigger();
-        auto *deleteProgress =
-            dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
-        QVERIFY(deleteProgress);
-        QVERIFY(!deleteProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
+        deleteDialogTimer.stop();
         QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QVERIFY(!QFileInfo::exists(renamed));
+        QCOMPARE(trash.moved.size(), 1);
+        QCOMPARE(QFileInfo(trash.moved.first()).canonicalPath(),
+                 QFileInfo(renamed).canonicalPath());
+        QCOMPARE(QFileInfo(trash.moved.first()).fileName(), QFileInfo(renamed).fileName());
         QVERIFY(QFileInfo::exists(copied));
 
         QFile movable(temp.filePath("move me.txt"));

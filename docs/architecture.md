@@ -138,7 +138,12 @@ LoadFullPath supplies the prefix for current root/nested/address/parent consumer
 Filesystem CreateFolder/CreateFile and inline Rename now call the mirrored
 PanelOperations.cpp worker and IFolderOperations; Qt owns only the combo editor,
 table editor, refresh and visible selection. BrowseDialog.cpp owns source path
-correction. Delete/recycle routing remains P1-03.2.
+correction.
+Filesystem Delete now follows the mirrored PanelOperations.cpp source
+confirmation and worker. `IQtTrashService` is the platform boundary for
+ordinary Delete; Shift+Delete uses source `IFolderOperations::Delete` and the
+ported progress callback. The independent application delete worker is gone;
+its deterministic FSFolder callback driver lives only in `tests/`.
 Source IsItem_Folder owns single-file eligibility. ArchiveBackend retains all
 operation transport and temporary-file handling. Remaining filesystem consumers,
 complete external-open and command/navigation acceptance remain mandatory.
@@ -509,8 +514,10 @@ archive-update request, keeping the temporary source alive until completion.
 
 `sevenzip_filesystem` owns `CFSFolder` mutations and the filesystem path snapshot.
 `FileDir.cpp` owns recursive removal without traversing symbolic links.
-`FileDeleteOperation` runs deletion on a worker; the window connects progress,
-cancellation and refresh. Destruction cancels and joins the worker.
+The mirrored `CPanel::DeleteItems` owns confirmation and source progress-worker
+lifecycle for permanent deletion. `IQtTrashService` delegates ordinary Delete
+to the desktop's Trash/Recycle Bin; Qt refreshes and restores source selection
+after each result. A test-only callback driver remains in `tests/`.
 
 `FileTransferOperation` owns copying/moving on a worker and the transaction
 wrapper that stages, publishes and rolls back targets. `CCopyState`,

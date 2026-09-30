@@ -493,7 +493,13 @@ Shift+Delete, подтверждение по числу/типу, platform recy
 повторно; archive mutations остаются P1-04.
 P1-03.1 принят 2026-09-30: source CreateFolder/CreateFile/inline Rename во всех
 четырёх режимах списка, составные пути, ошибка занятого имени и отмена;
-`check.sh` 137/137 на macOS arm64. P1-03.2 остаётся обязательным.
+`check.sh` 137/137 на macOS arm64.
+P1-03.2 и parent P1-03 приняты 2026-09-30: обычный Delete через native Trash
+adapter, Shift+Delete через исходный worker, подтверждение файла/папки/набора,
+частичный отказ и выбор после обновления; Unix read-only Create/Rename/Delete
+и ошибки занятого имени проверены. Полный `check.sh` 137/137 на macOS arm64;
+Windows/Linux, native Trash runtime и rendered Windows подтверждения локально
+не проверены. Следующий доступный шаг — P1-04.
 
 ### P1-04. Запись, Rename/Delete/CreateFolder и comment в архиве
 

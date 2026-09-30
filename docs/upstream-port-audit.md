@@ -41,6 +41,43 @@ is claimed on macOS/Linux. A directly selected symlink remains rejected by
 the existing Qt command policy; Windows and Linux runtime and rendered
 Windows inline appearance remain unverified.
 
+## P1-03.2 — filesystem Delete and native Trash (2026-09-30)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/PanelOperations.cpp::CPanel::DeleteItems`,
+`CThreadFolderOperations::ProcessVirt`/`DoOperation`, the existing
+`FSFolder.cpp::CFSFolder::Delete`, and
+`MyLoadMenu.cpp::WndProc` (`IDM_DELETE`, `!IsKeyDown(VK_SHIFT)`).
+The mirrored `DeleteItems` retains the source timer guard, operated-index
+collection, selected-state snapshot, single file/folder/multiple prompt choice,
+`CDisableNotify`, `FOLDER_TYPE_DELETE` dispatch, title refresh and partial
+result semantics. `MyLoadMenu` still supplies the bool for recycle versus
+permanent deletion; Qt's list key adapter now sends Shift+Delete through that
+same source command switch.
+
+The original `SHFileOperationW` Windows shell call is replaced by the narrow
+`IQtTrashService` boundary. Its production implementation delegates each
+selected path to `QFile::moveToTrash`, which uses the platform desktop's
+Trash/Recycle Bin. Qt does not present the source shell confirmation, so the
+source type/count prompt is used before both routes. The source permanent
+worker and `CUpdateCallback100Imp` run unchanged at the operation boundary;
+`CFSFolder::CheckBreak` is connected to its progress `CheckStop` for recursive
+cancellation. Qt reloads `FSFolder` and restores source selection after every
+accepted result, including partial failure/cancel; this replaces Win32 list
+refresh. The independent application delete worker was removed. Its test-only
+driver moved under `tests/` to retain deterministic FSFolder callback,
+recursive-cancel and partial-failure regressions. Directly selected symlinks
+remain rejected; nested links are unlinked without following their targets.
+Required `clang-format` formatting is separate from functional adaptation.
+
+Only filesystem deletion is included. Archive deletion remains P1-04.
+macOS test UI uses an injected Trash adapter to avoid modifying the user's
+actual Trash; native service behavior and Windows/Linux runtime remain
+unverified locally. No Win32 long-path shell limitation is claimed for Qt.
+Unix permission-denied CreateFile/Rename/Delete and occupied inline Rename
+are covered by focused regressions; the full macOS arm64 gate passed 137/137
+CTest cases on 2026-09-30.
+
 ## P0-03 — integrated command policy/dispatch (accepted, 2026-09-29)
 
 Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

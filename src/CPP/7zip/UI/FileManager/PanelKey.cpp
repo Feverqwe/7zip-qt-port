@@ -71,6 +71,10 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
     }
     if (handleSelectionKey(key))
         return true;
+    if (key->key() == Qt::Key_Delete && key->modifiers() == Qt::ShiftModifier) {
+        app_.ExecuteCommand(IDM_DELETE);
+        return true;
+    }
     if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 && key->modifiers() == Qt::AltModifier) {
         app_.ExecuteCommand(830 + key->key() - Qt::Key_0);
         return true;

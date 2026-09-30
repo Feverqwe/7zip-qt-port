@@ -3,6 +3,7 @@
 #include <QThread>
 #include <atomic>
 
+// Test driver for the native FSFolder callback/cancellation contract.
 class FileDeleteOperation : public QThread {
     Q_OBJECT
   public:

@@ -56,11 +56,9 @@ void QtFileManagerCommands::MoveTo() {
     if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_MOVE))
         window_.moveSelected();
 }
-void QtFileManagerCommands::Delete(bool) {
-    // Current deterministic filesystem transport permanently removes files;
-    // native recycle-bin integration remains mandatory P1-01/P2-09.
+void QtFileManagerCommands::Delete(bool toRecycleBin) {
     if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_ERROR_DELETING))
-        window_.deleteSelected();
+        window_.deleteSelected(toRecycleBin);
 }
 void QtFileManagerCommands::CalculateCrc(const char *method) {
     window_.calculateHash(QString::fromLatin1(method));

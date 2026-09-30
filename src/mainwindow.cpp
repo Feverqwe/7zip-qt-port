@@ -4,11 +4,19 @@
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include "qttrashservice.h"
 #include <QScopeGuard>
 #include <QScrollBar>
 
-MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener)
+MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener,
+                       IQtTrashService *trashService)
     : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
+    if (trashService)
+        trashService_ = trashService;
+    else {
+        nativeTrashService_ = std::make_unique<QtNativeTrashService>();
+        trashService_ = nativeTrashService_.get();
+    }
     backend_ = backend ? backend : new ArchiveBackend(this);
     setWindowTitle("Sevenzip Desktop");
     resize(980, 620);

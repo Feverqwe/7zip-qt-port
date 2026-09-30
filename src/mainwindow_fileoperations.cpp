@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
+#include "qttrashservice.h"
 
 namespace {
 NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
@@ -168,7 +169,7 @@ void MainWindow::transferSelected(bool move) {
     SaveCopyHistory(history, toolbarSettingsPath());
 }
 
-void MainWindow::deleteSelected() {
+void MainWindow::deleteSelected(bool toRecycleBin) {
     if (state_ == State::Viewing) {
         const QStringList paths = selectedArchivePaths();
         if (info_.encrypted || paths.isEmpty() ||
@@ -185,13 +186,15 @@ void MainWindow::deleteSelected() {
     }
     if (state_ != State::Filesystem)
         return;
-    const QStringList paths = selectedFilesystemPaths();
-    if (paths.isEmpty())
+    CPanel &panel = app_.GetFocusedPanel();
+    CSelectedState selection;
+    const HRESULT result = panel.DeleteItems(toRecycleBin, *trashService_, selection);
+    if (result == S_FALSE)
         return;
-    if (QMessageBox::question(this, "Удалить", "Удалить выбранные объекты из файловой системы?") !=
-        QMessageBox::Yes)
-        return;
-    startFileDelete(paths);
+    refreshCurrent(&selection);
+    if (result != S_OK && result != E_ABORT)
+        QMessageBox::warning(this, QStringLiteral("7-Zip"),
+                             QStringLiteral("Не удалось удалить все выбранные объекты."));
 }
 
 void MainWindow::renameSelected() {

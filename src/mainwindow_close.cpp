@@ -77,11 +77,6 @@ void MainWindow::quiesceOperations() {
     disconnect(filesystemScanner_, nullptr, this, nullptr);
     filesystemScanner_->cancelAndWait();
     backend_->cancelAndWait();
-    if (fileDelete_) {
-        disconnect(fileDelete_, nullptr, this, nullptr);
-        fileDelete_->cancel();
-        fileDelete_->wait();
-    }
     if (fileTransfer_) {
         disconnect(fileTransfer_, nullptr, this, nullptr);
         fileTransfer_->cancel();

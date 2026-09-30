@@ -9,7 +9,6 @@
 #include "copydialog.h"
 #include "createarchivedialog.h"
 #include "extractdialog.h"
-#include "filedeleteoperation.h"
 #include "filesystemscanner.h"
 #include "filetable.h"
 #include "filetransferoperation.h"
@@ -83,11 +82,13 @@ class QtFileListHover;
 class CProgressDialog;
 class CMessagesDialog;
 class IQtProgressTransport;
+class IQtTrashService;
 
 class MainWindow : public QMainWindow {
   public:
     explicit MainWindow(ArchiveBackend *backend = nullptr,
-                        std::function<bool(const QUrl &)> fileOpener = {});
+                        std::function<bool(const QUrl &)> fileOpener = {},
+                        IQtTrashService *trashService = nullptr);
 
     void openArchive(const QString &path);
 
@@ -226,8 +227,7 @@ class MainWindow : public QMainWindow {
     void moveSelected();
     void transferSelected(bool move);
     QString selectedCopyInfo();
-    void deleteSelected();
-    void startFileDelete(const QStringList &paths);
+    void deleteSelected(bool toRecycleBin);
     void renameSelected();
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);
@@ -237,6 +237,8 @@ class MainWindow : public QMainWindow {
     CRecordVector<UInt32> sourceOperatedIndices();
 
     ArchiveBackend *backend_ = nullptr;
+    std::unique_ptr<IQtTrashService> nativeTrashService_;
+    IQtTrashService *trashService_ = nullptr;
     CMyComPtr<IFolderManager> folderManager_;
     std::unique_ptr<class QtAssociatedFileServices> associatedFileServices_;
     std::unique_ptr<class QtAppPresentation> appPresentation_;
@@ -378,7 +380,6 @@ class MainWindow : public QMainWindow {
     FileTransferOperation *fileTransfer_ = nullptr;
     QPointer<QDialog> overwriteDialog_;
     quint64 fileTransferCompletedBytes_ = 0;
-    FileDeleteOperation *fileDelete_ = nullptr;
     QAction *viewFile_ = nullptr;
     QAction *editFile_ = nullptr;
     QAction *properties_ = nullptr;

@@ -1,8 +1,7 @@
 // PanelOperations.cpp
 // Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Filesystem Create/Rename portions; Delete and archive mutations remain
-// P1-03.2 and P1-04 respectively.
+// Filesystem Create/Rename/Delete portions; archive mutations remain P1-04.
 
 #include "7zip/UI/Common/StdAfx.h"
 
@@ -10,9 +9,15 @@
 #include "Common/StringConvert.h"
 
 #include "BrowseDialog.h"
+#include "FSFolder.h"
+#include "FormatUtils.h"
 #include "LangUtils.h"
 #include "Panel.h"
 #include "UpdateCallback100.h"
+#include "qttrashservice.h"
+
+#include <QFileInfo>
+#include <QMessageBox>
 
 #ifdef _WIN32
 #include "CPP/Windows/COM.h"
@@ -149,4 +154,77 @@ HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
     op.Index = realIndex;
     op.Name = newName;
     return op.DoOperation(*this, LangString(IDS_RENAMING), LangString(IDS_ERROR_RENAMING));
+}
+
+HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelectedState &state) {
+    CDisableTimerProcessing disableTimerProcessing(*this);
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_Operated(indices);
+    if (indices.IsEmpty())
+        return S_FALSE;
+    SaveSelectedState(state);
+
+    if (!CheckBeforeUpdate(IDS_ERROR_DELETING))
+        return E_ABORT;
+
+    UInt32 titleID, messageID;
+    UString messageParam;
+    if (indices.Size() == 1) {
+        const unsigned index = indices[0];
+        messageParam = GetItemRelPath2(index);
+        if (IsItem_Folder(index)) {
+            titleID = IDS_CONFIRM_FOLDER_DELETE;
+            messageID = IDS_WANT_TO_DELETE_FOLDER;
+        } else {
+            titleID = IDS_CONFIRM_FILE_DELETE;
+            messageID = IDS_WANT_TO_DELETE_FILE;
+        }
+    } else {
+        titleID = IDS_CONFIRM_ITEMS_DELETE;
+        messageID = IDS_WANT_TO_DELETE_ITEMS;
+        messageParam = NumberToString(indices.Size());
+    }
+    // The source shell branch presents the platform confirmation itself. Qt's
+    // native trash API does not, so use the same source prompt for both modes.
+    const QString title = ToQString(LangString(titleID));
+    const QString message = ToQString(MyFormatNew(messageID, messageParam));
+    if (QMessageBox::question(GetParent(), title, message,
+                              QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                              QMessageBox::No) != QMessageBox::Yes)
+        return E_ABORT;
+
+    HRESULT result = S_OK;
+    {
+        CDisableNotify disableNotify(*this);
+        if (toRecycleBin && IsFSFolder()) {
+            FOR_VECTOR(i, indices) {
+                const QString path = ToQString(GetItemFullPath(indices[i]));
+                if (QFileInfo(path).isSymLink()) {
+                    result = E_NOTIMPL;
+                    break;
+                }
+                if (!trash.MoveToTrash(path)) {
+                    result = E_FAIL;
+                    break;
+                }
+            }
+        } else {
+            CThreadFolderOperations op(FOLDER_TYPE_DELETE);
+            op.FolderOperations = _folderOperations;
+            op.Indices = indices;
+            auto *folder = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)_folder);
+            if (folder)
+                folder->CheckBreak = [&op](const QString &path) {
+                    op.Sync.Set_FilePath(path.toStdWString().c_str());
+                    return op.Sync.CheckStop() == S_OK;
+                };
+            result =
+                op.DoOperation(*this, LangString(IDS_DELETING), LangString(IDS_ERROR_DELETING));
+            if (folder)
+                folder->CheckBreak = {};
+        }
+    }
+    RefreshTitleAlways();
+    // The Qt presentation reloads FSFolder before restoring this source state.
+    return result;
 }

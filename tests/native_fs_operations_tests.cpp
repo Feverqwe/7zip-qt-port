@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include <QDir>
 #include <QFile>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -26,6 +27,32 @@ class Progress final : public IProgress, public CMyUnknownImp {
 class NativeFsOperationsTests : public QObject {
     Q_OBJECT
   private slots:
+#ifndef Q_OS_WIN
+    void readOnlyDirectoryRejectsFilesystemMutations() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QFile original(temp.filePath("original.txt"));
+        QVERIFY(original.open(QIODevice::WriteOnly));
+        QCOMPARE(original.write("protected"), qint64(9));
+        original.close();
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        CMyComPtr<IFolderOperations> operations;
+        QCOMPARE(folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
+        const QFileDevice::Permissions permissions = QFile::permissions(temp.path());
+        const auto restore = qScopeGuard([&] { QFile::setPermissions(temp.path(), permissions); });
+        QVERIFY(QFile::setPermissions(temp.path(), QFileDevice::ReadOwner | QFileDevice::ExeOwner));
+        if (QFileInfo(temp.path()).isWritable())
+            QSKIP("This test user can write to a read-only directory");
+        QVERIFY(operations->CreateFile(L"new.txt", nullptr) != S_OK);
+        QVERIFY(operations->Rename(0, L"renamed.txt", nullptr) != S_OK);
+        CMyComPtr<IProgress> progress = new Progress;
+        const UInt32 index = 0;
+        QVERIFY(operations->Delete(&index, 1, progress) != S_OK);
+        QVERIFY(QFileInfo::exists(original.fileName()));
+        QVERIFY(!QFileInfo::exists(temp.filePath("new.txt")));
+    }
+#endif
     void recursiveCancellationReturnsAbortAndPreservesPendingFiles() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

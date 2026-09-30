@@ -449,6 +449,7 @@ class CPanel : public QObject {
     HRESULT CreateFolder(const UString &enteredName, UString &createdName);
     HRESULT CreateFile(const UString &enteredName, UString &createdName);
     HRESULT OnEndLabelEdit(UInt32 realIndex, const UString &enteredName);
+    HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection);
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;

@@ -550,7 +550,7 @@ Delete: составной и абсолютный путь, Unicode/пробе�
 частичное удаление с ошибкой следующего объекта, отмену до запуска, между
 объектами и внутри дерева. Unix cases проверяют вложенные ссылки на папку,
 файл и отсутствующую цель без изменения внешнего файла. `ui_operations`
-проверяет подтверждение/отказ и обновление панели после worker; `ui_state`
+проверяет подтверждение/отказ, корзину/Shift+Delete и обновление панели после source worker; `ui_state`
 покрывает создание, `file_transfer` — прямого потребителя FSFolder.h.
 
 `copy_dialog` checks OK via both accept() and the button, Cancel, history order,
@@ -642,6 +642,18 @@ flat nested rename. Escape is checked in all four list modes at 700/400 px. The
 `native_fs_operations` covers occupied CreateFile/Rename and IFolderOperations
 failures. Windows/Linux interaction and rendered 7zFM inline pixels remain
 unverified locally.
+
+P1-03.2: `ui_operations` checks source file/folder/count confirmation,
+No/cancel, ordinary Delete through an injected Trash service, Shift+Delete
+through the source permanent worker, and a partial Trash failure with refresh.
+`native_fs_operations` checks `IFolderOperations::Delete` errors, cancellation
+and symlink behavior, plus denied CreateFile/Rename/Delete in a Unix directory
+without write permission. `ui_operations` also verifies that an occupied
+inline Rename preserves bytes and selection. `filesystem_operations` retains a test-only driver for
+callback progress, partial failure and recursive cancellation. The production
+Trash adapter delegates to Qt's native service; tests avoid the real user
+Trash. macOS native Trash, Windows/Linux runtime and rendered Windows prompts
+remain unverified locally.
 
 `extraction_options` additionally exercises Ask against real `.7z` and `.zip` archives: individual No/Yes/AutoRename, Yes/No for all, selected no-path extraction, cancellation at the prompt, an unavailable prompt consumer, and encrypted passes after wrong-password retry. `ui_operations` opens a real archive and checks root FullPaths/Ask through the native panel/agent callback: Yes, selected No, AutoRename and Cancel, original bytes and no preflight overwrite signal. These tests do not prove immunity to external destination changes after validation, and direct writes can leave partial output on failure or cancellation.
 The same UI suite checks root NoPaths/Ask with a selected ZIP folder and Unicode file: flattened bytes, a source overwrite prompt and absence of preflight. The source callback preserves an explicit directory entry as an empty folder; this differs from the earlier `7zz e` transport. Encrypted and nested selections continue to use the validated backend transport until their source adapters are complete.
