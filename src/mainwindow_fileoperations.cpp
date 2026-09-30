@@ -171,17 +171,18 @@ void MainWindow::transferSelected(bool move) {
 
 void MainWindow::deleteSelected(bool toRecycleBin) {
     if (state_ == State::Viewing) {
-        const QStringList paths = selectedArchivePaths();
-        if (info_.encrypted || paths.isEmpty() ||
-            QMessageBox::question(this, "Удалить",
-                                  "Удалить выбранные объекты из открытого архива?") !=
-                QMessageBox::Yes)
+        if (info_.encrypted || isNestedArchive() || !remove_->isEnabled())
             return;
-        previousState_ = state_;
-        updatingArchive_ = true;
-        setState(State::Operating);
-        begin("Удаление из архива", archive_);
-        backend_->remove(archive_, paths);
+        CSelectedState selection;
+        const HRESULT result =
+            app_.GetFocusedPanel().DeleteItems(toRecycleBin, *trashService_, selection);
+        if (result == S_FALSE || result == E_ABORT)
+            return;
+        renderBoundFolder();
+        app_.GetFocusedPanel().RefreshListCtrl(selection);
+        if (result != S_OK)
+            QMessageBox::warning(this, QStringLiteral("7-Zip"),
+                                 QStringLiteral("Не удалось удалить объекты из архива."));
         return;
     }
     if (state_ != State::Filesystem)
@@ -198,37 +199,15 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
 }
 
 void MainWindow::renameSelected() {
-    if (state_ == State::Viewing) {
-        if (!rename_->isEnabled())
-            return;
-        const QStringList paths = selectedArchiveItemsPaths();
-        if (paths.size() != 1)
-            return;
-        const QString oldPath = paths.first();
-        bool accepted = false;
-        const QString name =
-            QInputDialog::getText(this, "Переименовать", "Новое имя:", QLineEdit::Normal,
-                                  oldPath.section('/', -1), &accepted);
-        if (!accepted)
-            return;
-        if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-            name.contains('\\')) {
-            QMessageBox::warning(this, "Sevenzip Desktop", "Недопустимое имя файла.");
-            return;
-        }
-        const int slash = oldPath.lastIndexOf('/');
-        const QString newPath = (slash < 0 ? QString() : oldPath.left(slash + 1)) + name;
-        previousState_ = state_;
-        updatingArchive_ = true;
-        setState(State::Operating);
-        begin("Переименование в архиве", archive_);
-        backend_->renameEntry(archive_, oldPath, newPath);
+    if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
-    }
-    const QStringList paths = selectedFilesystemPaths();
+    const bool archive = state_ == State::Viewing;
+    if (!rename_->isEnabled() || (archive && (info_.encrypted || isNestedArchive())))
+        return;
+    const QStringList paths = archive ? selectedArchiveItemsPaths() : selectedFilesystemPaths();
     if (paths.size() != 1)
         return;
-    if (QFileInfo(paths.first()).isSymLink())
+    if (!archive && QFileInfo(paths.first()).isSymLink())
         return;
     const auto indices = sourceOperatedIndices();
     if (indices.Size() != 1)
@@ -253,20 +232,47 @@ void MainWindow::renameSelected() {
         const QModelIndex modelIndex = table_->model()->index(row, 0);
         iconList_->scrollTo(modelIndex);
         iconList_->edit(modelIndex);
+        if (archive)
+            if (auto *editor = iconList_->findChild<QLineEdit *>()) {
+                editor->setText(paths.first().section('/', -1));
+                editor->selectAll();
+            }
     } else {
         table_->scrollToItem(item);
         table_->editItem(item);
+        if (archive)
+            if (auto *editor = table_->findChild<QLineEdit *>()) {
+                editor->setText(paths.first().section('/', -1));
+                editor->selectAll();
+            }
     }
 }
 
 void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                         const QString &name) {
-    if (state_ != State::Filesystem ||
-        (QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_))
+    const bool archive = state_ == State::Viewing;
+    if (state_ != State::Filesystem && !archive)
         return;
+    if (!archive && QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_)
+        return;
+    if (archive && (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
+                    name.contains('\\'))) {
+        renderBoundFolder();
+        selectPaths({originalPath});
+        QMessageBox::warning(this, QStringLiteral("7-Zip"),
+                             QStringLiteral("Недопустимое имя файла."));
+        return;
+    }
     const HRESULT result = app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
     if (result != S_OK && result != E_ABORT)
         QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось переименовать объект.");
+    if (archive) {
+        renderBoundFolder();
+        const QString prefix = originalPath.section('/', 0, -2);
+        selectPaths(
+            {result == S_OK ? (prefix.isEmpty() ? name : prefix + '/' + name) : originalPath});
+        return;
+    }
     showDirectory(directory_, false);
     if (result == S_OK)
         selectPaths({QDir(QFileInfo(originalPath).absolutePath()).filePath(name)});

@@ -109,6 +109,56 @@ class CNativeUpdateWorker final : public CProgressThreadVirt {
         return _resourceSpec->CreateProgressTransport(*this);
     }
 };
+class CNativeMutationWorker final : public CProgressThreadVirt {
+    CMyComPtr<IUnknown> _resource;
+    QtArchiveFileResource *_resourceSpec;
+    QString _format;
+    HRESULT ProcessVirt() override {
+        CObjectVector<CPanelItem> items;
+        for (const QString &name :
+             {QStringLiteral("inside/имя с пробелом.bin"), QStringLiteral("keep.bin")}) {
+            CPanelItem item;
+            item.RelPath = name;
+            items.Add(item);
+        }
+        CMyComPtr<IFolderFolder> props =
+            new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
+        CMyComPtr2_Create<IUnknown, CAgent> agent;
+        RINOK(agent->Init({}, props, ToUString(_format), _resource))
+        CMyComPtr<IFolderFolder> root, inside;
+        RINOK(agent->BindToRootFolder(&root))
+        RINOK(root->BindToFolder(L"inside", &inside))
+        CMyComPtr<IFolderFolder> folder = RootFolder ? root : inside;
+        RINOK(folder->LoadItems())
+        CMyComPtr<IFolderOperations> operations;
+        RINOK(folder.QueryInterface(IID_IFolderOperations, &operations))
+        CMyComPtr2_Create<IFolderArchiveUpdateCallback, CUpdateCallback100Imp> ui;
+        ui->ProgressDialog = this;
+        ui->Init();
+        const UInt32 selected = 0;
+        switch (Operation) {
+        case ArchiveBackend::SourceMutation::Delete:
+            return operations->Delete(&selected, 1, ui);
+        case ArchiveBackend::SourceMutation::Rename:
+            return operations->Rename(selected, L"новое имя.bin", ui);
+        case ArchiveBackend::SourceMutation::CreateFolder:
+            return operations->CreateFolder(L"новая папка", ui);
+        }
+        return E_FAIL;
+    }
+
+  public:
+    ArchiveBackend::SourceMutation Operation = ArchiveBackend::SourceMutation::Delete;
+    bool RootFolder = false;
+    CNativeMutationWorker(ArchiveBackend &backend, const QString &archive, const QString &format)
+        : _resourceSpec(new QtArchiveFileResource(archive)), _format(format) {
+        _resource = _resourceSpec;
+        _resourceSpec->AttachUpdateService(backend, format);
+    }
+    std::unique_ptr<IQtProgressTransport> CreateProgressTransport() {
+        return _resourceSpec->CreateProgressTransport(*this);
+    }
+};
 } // namespace
 
 class SourceUpdateBackendTests final : public QObject {
@@ -317,6 +367,189 @@ class SourceUpdateBackendTests final : public QObject {
             !ArchiveBackend::sourceUpdatePathIsSafe(QStringLiteral("safe") + QChar(0) + "tail"));
         QVERIFY(
             ArchiveBackend::sourceUpdatePathIsSafe(QStringLiteral("inside/имя с пробелом.bin")));
+    }
+    void sourceMutationProducesSeparateArchive_data() {
+        QTest::addColumn<int>("operation");
+        QTest::newRow("delete") << int(ArchiveBackend::SourceMutation::Delete);
+        QTest::newRow("rename") << int(ArchiveBackend::SourceMutation::Rename);
+        QTest::newRow("create-folder") << int(ArchiveBackend::SourceMutation::CreateFolder);
+    }
+    void sourceMutationProducesSeparateArchive() {
+        QFETCH(int, operation);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original.zip");
+        const QString output = fixture.filePath("updated.zip");
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), "payload"));
+        QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside", "keep.bin"}));
+        const QByteArray original = readFile(archive);
+        QStringList paths;
+        QString workingDirectory;
+        const auto kind = ArchiveBackend::SourceMutation(operation);
+        if (kind == ArchiveBackend::SourceMutation::Delete)
+            paths = {entry};
+        else if (kind == ArchiveBackend::SourceMutation::Rename)
+            paths = {entry, QStringLiteral("inside/новое имя.bin")};
+        else {
+            paths = {QStringLiteral("inside/новая папка")};
+            workingDirectory = fixture.filePath("new-folder");
+            QVERIFY(QDir().mkpath(QDir(workingDirectory).filePath(paths.first())));
+        }
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.updateSourceMutation(archive, output, "zip", kind, paths, workingDirectory);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(readFile(archive), original);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", output}));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.bin")), QByteArray("keep"));
+        if (kind == ArchiveBackend::SourceMutation::Delete)
+            QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+        else if (kind == ArchiveBackend::SourceMutation::Rename) {
+            QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+            QCOMPARE(readFile(QDir(extracted).filePath(paths[1])), QByteArray("payload"));
+        } else {
+            QCOMPARE(readFile(QDir(extracted).filePath(entry)), QByteArray("payload"));
+            QVERIFY(QFileInfo(QDir(extracted).filePath(paths[0])).isDir());
+        }
+    }
+    void sourceFolderMutationPublishesAndReopens_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<int>("operation");
+        for (const QString &format : {QStringLiteral("zip"), QStringLiteral("7z")})
+            for (int kind = 0; kind < 3; ++kind)
+                QTest::newRow(qPrintable(format + QString::number(kind))) << format << kind;
+    }
+    void sourceFolderMutationPublishesAndReopens() {
+        QFETCH(QString, format);
+        QFETCH(int, operation);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original." + format);
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), "payload"));
+        QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
+        const QDateTime originalTime = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        QFile keep(QDir(root).filePath("keep.bin"));
+        QVERIFY(keep.open(QIODevice::ReadWrite));
+        QVERIFY(keep.setFileTime(originalTime, QFileDevice::FileModificationTime));
+        keep.close();
+        QVERIFY(runEngine(root, {"a", "-t" + format, "--", archive, "inside", "keep.bin"}));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeMutationWorker worker(backend, archive, format);
+        worker.Operation = ArchiveBackend::SourceMutation(operation);
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Source folder mutation", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QVERIFY(!backend.busy());
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.bin")), QByteArray("keep"));
+        QCOMPARE(QFileInfo(QDir(extracted).filePath("keep.bin")).lastModified().toSecsSinceEpoch(),
+                 originalTime.toSecsSinceEpoch());
+        if (worker.Operation == ArchiveBackend::SourceMutation::Delete)
+            QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+        else if (worker.Operation == ArchiveBackend::SourceMutation::Rename) {
+            QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+            QCOMPARE(readFile(QDir(extracted).filePath("inside/новое имя.bin")),
+                     QByteArray("payload"));
+        } else {
+            QCOMPARE(readFile(QDir(extracted).filePath(entry)), QByteArray("payload"));
+            QVERIFY(QFileInfo(QDir(extracted).filePath("inside/новая папка")).isDir());
+        }
+    }
+    void rejectedOrCancelledSourceMutationKeepsOriginal() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original.zip");
+        const QString output = fixture.filePath("updated.zip");
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), QByteArray(4 * 1024 * 1024, 'x')));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.updateSourceMutation(archive, output, "zip", ArchiveBackend::SourceMutation::Rename,
+                                     {entry, QStringLiteral("../escape")}, {});
+        QCOMPARE(finished.size(), 1);
+        QVERIFY(!finished[0][0].toBool());
+        QVERIFY(!QFile::exists(output));
+        QCOMPARE(readFile(archive), original);
+        connect(&backend, &ArchiveBackend::engineStarted, &backend,
+                [&backend] { backend.cancel(); });
+        backend.updateSourceMutation(archive, output, "zip", ArchiveBackend::SourceMutation::Delete,
+                                     {entry}, {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 2, 10000);
+        QCOMPARE(backend.lastResult(), E_ABORT);
+        QVERIFY(!QFile::exists(output));
+        QCOMPARE(readFile(archive), original);
+    }
+    void implicitFolderRenameAndDelete_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<int>("operation");
+        for (const QString &format : {QStringLiteral("zip"), QStringLiteral("7z")})
+            for (int kind = 0; kind < 2; ++kind)
+                QTest::newRow(qPrintable(format + QString::number(kind))) << format << kind;
+    }
+    void implicitFolderRenameAndDelete() {
+        QFETCH(QString, format);
+        QFETCH(int, operation);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original." + format);
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), "payload"));
+        QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-t" + format, "--", archive, entry, "keep.bin"}));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeMutationWorker worker(backend, archive, format);
+        worker.RootFolder = true;
+        worker.Operation = operation == 0 ? ArchiveBackend::SourceMutation::Delete
+                                          : ArchiveBackend::SourceMutation::Rename;
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Source folder rename/delete", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.bin")), QByteArray("keep"));
+        QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+        if (operation == 1)
+            QCOMPARE(readFile(QDir(extracted).filePath(
+                         QStringLiteral("новое имя.bin/имя с пробелом.bin"))),
+                     QByteArray("payload"));
+    }
+    void cancelledSourceDeleteKeepsArchive() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original.zip");
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), QByteArray(4 * 1024 * 1024, 'x')));
+        QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, entry, "keep.bin"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeMutationWorker worker(backend, archive, "zip");
+        worker.Operation = ArchiveBackend::SourceMutation::Delete;
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
+        connect(&backend, &ArchiveBackend::engineStarted, &backend,
+                [&worker] { worker.Sync.Set_Stopped(true); });
+        QCOMPARE(worker.Create(L"Cancel source delete", nullptr), S_OK);
+        QCOMPARE(worker.Result, E_ABORT);
+        QCOMPARE(started.size(), 1);
+        QCOMPARE(readFile(archive), original);
+        QVERIFY(!backend.busy());
     }
     void cancellationAndFailedStartPreserveOriginal() {
         QTemporaryDir fixture;

@@ -87,8 +87,9 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P0-08.2 (2026-09-30): **8/44 закрыты, 36 остаётся**;
-P0: 8/12, P1: 0/16, P2: 0/10, P3: 0/6. Остальные mandatory workflow
+Текущий счёт после P1-03 (2026-09-30): **13/44 закрыты, 31 остаётся**;
+P0: 12/12, P1: 1/16, P2: 0/10, P3: 0/6. Подшаги P1-04 не увеличивают
+счёт до закрытия parent. Остальные mandatory workflow
 owners сохраняются в чеклисте.
 
 Нельзя честно вывести процент полного source port из числа файлов: размеры,
@@ -518,6 +519,16 @@ capability prerequisite, а не самостоятельное изменени
 имеет доказательство и статус; операции/refresh и prompts проверены.
 Этот шаг доступен раньше P1-01 и предоставляет ему archive-write capability;
 не ждать завершения transfer routing для реализации самих архивных мутаций.
+
+Крупные результаты: P1-04.1 переносит целый unencrypted CreateFolder/Rename/
+Delete workflow через исходные `AgentOut`/`ArchiveFolderOut` selection/update
+bodies, source `PanelOperations` consumers, transactional ArchiveBackend adapter,
+progress/error/refresh и UX. P1-04.2 добавляет защищённые верхние архивы к
+тем же операциям и проверяет пароль, ciphertext/metadata, ошибки и отмену.
+P1-04.3 переносит `ChangeComment`/`SetProperty` только после подтверждённой
+writer capability формата/handler; если внешний `7zz` не предоставляет её,
+результат остаётся открытым с точным prerequisite для in-process source writer.
+Archive Add/path modes и nested update остаются P1-05/P1-09.
 
 ### P1-05. Полные update/path modes Add to Archive
 

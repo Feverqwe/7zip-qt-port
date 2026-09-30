@@ -1111,3 +1111,16 @@ submenu требуют отдельных платформенных services и
 QFileIconProvider. Цвет/форма иконок зависят от ОС. `panel_shell` фиксирует
 normal/compact Qt JSON и disk/archive popup, но Windows rendered reference,
 Windows/Linux runtime и полноценные shell/namespace icons ещё не проверены.
+
+## P1-04.1 — изменение незашифрованного архива (2026-09-30)
+
+F7, F2 и Delete/Shift+Delete в верхнем 7z/ZIP теперь идут через те же
+`CPanel` и `CAgentFolder`, что и исходный 7zFM. F2 редактирует базовое имя
+прямо в списке; flat prefix остаётся только частью отображения. Исходные
+тип/количество в подтверждении удаления, прогресс, отмена, ошибки и
+восстановление папки подключены к Qt. После операции исходный native ReOpen
+предшествует перерисовке, чтобы удалённое выделение не открывало архив дважды.
+Отдельный Qt `QInputDialog` для архивного F2 удалён. Protected/nested write
+commands остаются отключёнными до P1-04.2/P1-09. Проверены macOS arm64,
+реальные ZIP/7z и current-build Qt UX; Windows/Linux runtime и rendered
+Windows 7zFM parity не проверены.

@@ -261,7 +261,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "moveAction")->isEnabled());
         QVERIFY(action(window, "deleteAction")->isEnabled());
-        QVERIFY(action(window, "renameAction")->isEnabled());
+        QTRY_VERIFY(action(window, "renameAction")->isEnabled());
         const QScopedPointer<QMimeData> outbound(
             table(window)->model()->mimeData(table(window)->selectionModel()->selectedIndexes()));
         QVERIFY(outbound->hasUrls());
@@ -1004,77 +1004,65 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(extractedFile.readAll(), QByteArray("archive move"));
     }
     void stage7ArchiveMutations() {
-        ControlledBackend backend;
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("исходный файл.txt"));
+        QFile input(source);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("payload"), qint64(7));
+        input.close();
+        const QString archive = temp.filePath("mutate.7z");
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
         MainWindow window(&backend);
-        openListedArchive(window, backend, "mutate.7z",
-                          {ArchiveEntry{QStringLiteral("папка/file.txt"), 4, 4}});
-        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
-        QVERIFY(action(window, "deleteAction")->isEnabled());
-        QVERIFY(action(window, "renameAction")->isEnabled());
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
-                    dialog && dialog->isVisible()) {
-                    dialog->setTextValue(QStringLiteral("новая папка"));
-                    dialog->accept();
-                }
-            }
+        window.openArchive(archive);
+        window.show();
+        QCoreApplication::processEvents();
+        QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
+        QTimer::singleShot(0, &window, [&window] {
+            auto *dialog = window.findChild<CComboDialog *>("comboDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("comboValue")
+                ->setCurrentText(QStringLiteral("новая папка"));
+            dialog->accept();
         });
+        action(window, "createFolderAction")->trigger();
+        const auto archiveRow = [&window](const QString &name) {
+            for (int row = 0; row < table(window)->rowCount(); ++row)
+                if (table(window)->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+                    name.normalized(QString::NormalizationForm_C))
+                    return row;
+            return -1;
+        };
+        QTRY_VERIFY(archiveRow(QStringLiteral("новая папка")) >= 0);
+        table(window)->selectRow(archiveRow(QStringLiteral("исходный файл.txt")));
+        QTRY_VERIFY(action(window, "renameAction")->isEnabled());
         action(window, "renameAction")->trigger();
-        QCOMPARE(backend.lastRenameOld, QStringLiteral("папка"));
-        QCOMPARE(backend.lastRenameNew, QStringLiteral("новая папка"));
-        backend.cancel();
+        auto *editor = table(window)->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        editor->setFocus();
+        editor->setText(QStringLiteral("новое имя.txt"));
+        QTest::keyClick(editor, Qt::Key_Return);
+        QTRY_VERIFY(archiveRow(QStringLiteral("новое имя.txt")) >= 0);
+        table(window)->selectRow(archiveRow(QStringLiteral("новое имя.txt")));
         QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
+            for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
                     box->button(QMessageBox::No)->click();
-            }
         });
         action(window, "deleteAction")->trigger();
-        QCOMPARE(backend.removeCalls, 0);
+        QVERIFY(archiveRow(QStringLiteral("новое имя.txt")) >= 0);
         QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
+            for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
                     box->button(QMessageBox::Yes)->click();
-            }
         });
         action(window, "deleteAction")->trigger();
-        QCOMPARE(backend.removeCalls, 1);
-        QCOMPARE(backend.lastRemoved, QStringList({QStringLiteral("папка/file.txt")}));
-        QVERIFY(!action(window, "deleteAction")->isEnabled());
-        backend.cancel();
-        QVERIFY(action(window, "deleteAction")->isEnabled());
-        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка")));
-        openRow(window, filesystemRow(window, QStringLiteral("папка")));
-        table(window)->selectRow(filesystemRow(window, QStringLiteral("file.txt")));
-        QVERIFY(action(window, "renameAction")->isEnabled());
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
-                    dialog && dialog->isVisible()) {
-                    dialog->setTextValue(QStringLiteral("новый.txt"));
-                    dialog->accept();
-                }
-            }
-        });
-        action(window, "renameAction")->trigger();
-        QCOMPARE(backend.renameCalls, 2);
-        QCOMPARE(backend.lastRenameOld, QStringLiteral("папка/file.txt"));
-        QCOMPARE(backend.lastRenameNew, QStringLiteral("папка/новый.txt"));
-        backend.queueListAction([&] {
-            const auto finish = qScopeGuard([&] {
-                backend.completeList({ArchiveEntry{QStringLiteral("папка/новый.txt"), 4, 4}});
-            });
-            QVERIFY(!action(window, "renameAction")->isEnabled());
-        });
-        backend.completeAdd();
-        QCOMPARE(backend.listCalls, 2);
-        QVERIFY(!action(window, "renameAction")->isEnabled());
-        QVERIFY(window.findChild<QLineEdit *>("archivePath")
-                    ->text()
-                    .endsWith(QStringLiteral(" / папка")));
-        table(window)->selectRow(filesystemRow(window, QStringLiteral("новый.txt")));
-        QVERIFY(action(window, "renameAction")->isEnabled());
+        QTRY_VERIFY(archiveRow(QStringLiteral("новое имя.txt")) < 0);
+        QVERIFY(archiveRow(QStringLiteral("новая папка")) >= 0);
     }
     void addToOpenArchiveState() {
         QTemporaryDir temp;

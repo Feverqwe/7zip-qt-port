@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/Agent/ArchiveFolderOut.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Native CopyFromFile transaction; other update command branches remain mandatory.
+// Native transaction and CopyFromFile/Delete/CreateFolder/Rename branches;
+// other update command branches remain mandatory.
 #include "../../../Windows/FileDir.h"
 #include "../Common/WorkDir.h"
 #include "7zip/Common/FileStreams.h"
@@ -129,13 +130,14 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
 
             switch ((int)operation) {
             case AGENT_OP_Delete:
-                result = E_NOTIMPL /* mandatory AgentOut operation not yet connected */;
+                result = _agentSpec->DeleteItems(tailStream, indices, numItems, updateCallback100);
                 break;
             case AGENT_OP_CreateFolder:
-                result = E_NOTIMPL /* mandatory AgentOut operation not yet connected */;
+                result = _agentSpec->CreateFolder(tailStream, newItemName, updateCallback100);
                 break;
             case AGENT_OP_Rename:
-                result = E_NOTIMPL /* mandatory AgentOut operation not yet connected */;
+                result = _agentSpec->RenameItem(tailStream, indices, numItems, newItemName,
+                                                updateCallback100);
                 break;
             case AGENT_OP_Comment:
                 result = E_NOTIMPL /* mandatory AgentOut operation not yet connected */;
@@ -337,5 +339,33 @@ Z7_COM7F_IMF(CAgentFolder::CopyFromFile(UInt32 destIndex, const wchar_t *itemPat
     COM_TRY_BEGIN
     return CommonUpdateOperation(AGENT_OP_CopyFromFile, false, itemPath,
                                  &NUpdateArchive::k_ActionSet_Add, &destIndex, 1, progress);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgentFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress *progress)) {
+    COM_TRY_BEGIN
+    return CommonUpdateOperation(AGENT_OP_Delete, false, NULL, &NUpdateArchive::k_ActionSet_Delete,
+                                 indices, numItems, progress);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgentFolder::CreateFolder(const wchar_t *name, IProgress *progress)) {
+    COM_TRY_BEGIN
+    if (_isAltStreamFolder)
+        return E_NOTIMPL;
+    if (_proxy2) {
+        if (_proxy2->IsThere_SubDir(_proxyDirIndex, name))
+            return ERROR_ALREADY_EXISTS;
+    } else {
+        if (_proxy->FindSubDir(_proxyDirIndex, name) != -1)
+            return ERROR_ALREADY_EXISTS;
+    }
+    return CommonUpdateOperation(AGENT_OP_CreateFolder, false, name, NULL, NULL, 0, progress);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgentFolder::Rename(UInt32 index, const wchar_t *newName, IProgress *progress)) {
+    COM_TRY_BEGIN
+    return CommonUpdateOperation(AGENT_OP_Rename, false, newName, NULL, &index, 1, progress);
     COM_TRY_END
 }

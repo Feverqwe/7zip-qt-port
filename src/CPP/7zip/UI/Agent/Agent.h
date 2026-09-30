@@ -152,6 +152,13 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
     HRESULT SetFolder(IFolderFolder *folder);
     HRESULT CommonUpdate(ISequentialOutStream *outArchiveStream, unsigned numUpdateItems,
                          IArchiveUpdateCallback *updateCallback);
+    HRESULT DeleteItems(ISequentialOutStream *outArchiveStream, const UInt32 *indices,
+                        UInt32 numItems, IFolderArchiveUpdateCallback *updateCallback100);
+    HRESULT CreateFolder(ISequentialOutStream *outArchiveStream, const wchar_t *folderName,
+                         IFolderArchiveUpdateCallback *updateCallback100);
+    HRESULT RenameItem(ISequentialOutStream *outArchiveStream, const UInt32 *indices,
+                       UInt32 numItems, const wchar_t *newItemName,
+                       IFolderArchiveUpdateCallback *updateCallback100);
     HRESULT UpdateOneFile(ISequentialOutStream *outArchiveStream, const UInt32 *indices,
                           UInt32 numItems, const wchar_t *diskFilePath,
                           IFolderArchiveUpdateCallback *updateCallback100);

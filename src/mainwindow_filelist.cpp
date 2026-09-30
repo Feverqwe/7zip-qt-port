@@ -283,7 +283,10 @@ void MainWindow::restoreAutoRefreshViewport() {
 }
 
 void MainWindow::createFolder() {
-    if (state_ != State::Filesystem)
+    if (state_ != State::Filesystem && state_ != State::Viewing)
+        return;
+    const bool archive = state_ == State::Viewing;
+    if (archive && (info_.encrypted || isNestedArchive() || !createFolder_->isEnabled()))
         return;
     QString name;
     if (!Dlg_CreateFolder(this, name))
@@ -294,6 +297,10 @@ void MainWindow::createFolder() {
         return;
     if (result != S_OK) {
         QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку.");
+        return;
+    }
+    if (archive) {
+        renderBoundFolder();
         return;
     }
     showDirectory(directory_, false);

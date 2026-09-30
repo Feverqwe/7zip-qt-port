@@ -30,12 +30,8 @@ bool CAgentFolder::CanCopyTo() const {
     return resource && resource->HasExtractService();
 }
 
-// Mandatory operation bodies remain with their source owners. These unavailable
-// capabilities cannot silently fall back to independently written Qt workflows.
-Z7_COM7F_IMF(CAgentFolder::CreateFolder(const wchar_t *, IProgress *)) { return E_NOTIMPL; }
+// Remaining unavailable operation bodies stay with their source owners.
 Z7_COM7F_IMF(CAgentFolder::CreateFile(const wchar_t *, IProgress *)) { return E_NOTIMPL; }
-Z7_COM7F_IMF(CAgentFolder::Rename(UInt32, const wchar_t *, IProgress *)) { return E_NOTIMPL; }
-Z7_COM7F_IMF(CAgentFolder::Delete(const UInt32 *, UInt32, IProgress *)) { return E_NOTIMPL; }
 Z7_COM7F_IMF(CAgentFolder::CopyFrom(Int32, const wchar_t *, const wchar_t *const *, UInt32,
                                     IProgress *)) {
     return E_NOTIMPL;

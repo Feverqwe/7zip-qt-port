@@ -962,3 +962,11 @@ P0-12.5: `source_extract_backend` проверяет исходный `ExtractGU
 и отсутствие backend overwrite preflight. `extract_dialog` проверяет приоритет
 сохранённых и принудительных режимов с паролем; диалог остаётся тем же Qt
 представлением исходных групп и combo modes из `ExtractDialog.rc`.
+
+P1-04.1: `source_update_backend` проверяет исходные Agent/ArchiveFolderOut
+Delete/Rename/CreateFolder в реальных ZIP/7z, отдельный output, публикацию,
+переоткрытие, неявные папки, Unicode/пробелы, неизменные файлы, отказ
+небезопасного пути и отмену без изменения оригинала. `ui_operations`
+проверяет F7 → F2 inline → Delete с отказом/подтверждением и восстановление
+списка; `archive_selection_runtime` проверяет flat basename редактора и
+отмену. Эти наборы используют временные файлы, не пользовательские архивы.

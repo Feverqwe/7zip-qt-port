@@ -248,6 +248,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_RENAME:
         return c.one && c.selected && (c.filesystem || c.writable);
     case IDM_CREATE_FOLDER:
+        return c.filesystem || c.writable;
     case IDM_CREATE_FILE:
         return c.filesystem;
     case IDM_SPLIT:

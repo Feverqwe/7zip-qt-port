@@ -13,6 +13,7 @@
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
 #include <QDir>
+#include <QSet>
 #include <QTemporaryDir>
 
 namespace {
@@ -96,6 +97,110 @@ HRESULT FindChangedItem(IInArchive *metadata, UInt32 count, IArchiveUpdateCallba
     return changed == UInt32(-1) ? E_NOTIMPL : S_OK;
 }
 
+struct CMutationPlan {
+    ArchiveBackend::SourceMutation Operation = ArchiveBackend::SourceMutation::Delete;
+    QStringList Paths;
+};
+
+HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path) {
+    NWindows::NCOM::CPropVariant value;
+    RINOK(metadata->GetProperty(index, kpidPath, &value))
+    if (value.vt != VT_BSTR)
+        return E_NOTIMPL;
+    path = QString::fromWCharArray(value.bstrVal);
+    return ArchiveBackend::sourceUpdatePathIsSafe(path) ? S_OK : E_NOTIMPL;
+}
+
+HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &path) {
+    NWindows::NCOM::CPropVariant value;
+    RINOK(callback->GetProperty(index, kpidPath, &value))
+    if (value.vt != VT_BSTR)
+        return E_NOTIMPL;
+    path = QString::fromWCharArray(value.bstrVal);
+    return ArchiveBackend::sourceUpdatePathIsSafe(path) ? S_OK : E_NOTIMPL;
+}
+
+HRESULT FindMutationPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *callback,
+                         CMutationPlan &plan) {
+    UInt32 originalCount;
+    RINOK(metadata->GetNumberOfItems(&originalCount))
+    if (count > originalCount + 1)
+        return E_NOTIMPL;
+    QSet<UInt32> kept;
+    QList<QPair<QString, QString>> renamed;
+    QString created;
+    for (UInt32 i = 0; i < count; ++i) {
+        Int32 newData, newProps;
+        UInt32 index;
+        RINOK(callback->GetUpdateItemInfo(i, &newData, &newProps, &index))
+        if (index == UInt32(-1)) {
+            if (i != originalCount || count != originalCount + 1 || !newData || !newProps)
+                return E_NOTIMPL;
+            NWindows::NCOM::CPropVariant isDir;
+            RINOK(callback->GetProperty(i, kpidIsDir, &isDir))
+            if (isDir.vt != VT_BOOL || isDir.boolVal != VARIANT_TRUE)
+                return E_NOTIMPL;
+            RINOK(ReadNewPath(callback, i, created))
+            continue;
+        }
+        if (index >= originalCount || kept.contains(index) || newData)
+            return E_NOTIMPL;
+        kept.insert(index);
+        if (newProps) {
+            QString oldPath, newPath;
+            RINOK(ReadPath(metadata, index, oldPath))
+            RINOK(ReadNewPath(callback, i, newPath))
+            if (oldPath == newPath)
+                return E_NOTIMPL;
+            renamed.append({oldPath, newPath});
+        }
+    }
+    if (!created.isEmpty()) {
+        if (kept.size() != int(originalCount) || !renamed.isEmpty())
+            return E_NOTIMPL;
+        plan.Operation = ArchiveBackend::SourceMutation::CreateFolder;
+        plan.Paths = {created};
+        return S_OK;
+    }
+    if (!renamed.isEmpty()) {
+        if (count != originalCount || kept.size() != int(originalCount))
+            return E_NOTIMPL;
+        const QStringList oldParts = renamed.first().first.split('/');
+        const QStringList newParts = renamed.first().second.split('/');
+        if (oldParts.size() != newParts.size())
+            return E_NOTIMPL;
+        int changed = -1;
+        for (int i = 0; i < oldParts.size(); ++i)
+            if (oldParts[i] != newParts[i]) {
+                if (changed != -1)
+                    return E_NOTIMPL;
+                changed = i;
+            }
+        if (changed < 0)
+            return E_NOTIMPL;
+        const QString oldRoot = oldParts.mid(0, changed + 1).join('/');
+        const QString newRoot = newParts.mid(0, changed + 1).join('/');
+        for (const auto &item : renamed)
+            if (item.first != oldRoot && !item.first.startsWith(oldRoot + '/') ||
+                item.second != newRoot + item.first.mid(oldRoot.size()))
+                return E_NOTIMPL;
+        plan.Operation = ArchiveBackend::SourceMutation::Rename;
+        plan.Paths = {oldRoot, newRoot};
+        return S_OK;
+    }
+    if (count >= originalCount || kept.size() != int(count))
+        return E_NOTIMPL;
+    for (UInt32 i = 0; i < originalCount; ++i) {
+        if (kept.contains(i))
+            continue;
+        QString path;
+        RINOK(ReadPath(metadata, i, path))
+        plan.Paths.append(path);
+    }
+    plan.Operation = ArchiveBackend::SourceMutation::Delete;
+    return plan.Paths.isEmpty() ? E_NOTIMPL : S_OK;
+}
+
 HRESULT StageCallbackStream(const QString &root, const QString &name, UInt32 index,
                             IArchiveUpdateCallback *callback) {
     const QString path = QDir(root).filePath(name);
@@ -132,14 +237,21 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         (offset.vt == VT_UI8 && offset.uhVal.QuadPart != 0) ||
         (offset.vt != VT_EMPTY && offset.vt != VT_I8 && offset.vt != VT_UI8))
         return E_NOTIMPL;
-    UInt32 changed;
-    QString name;
-    RINOK(FindChangedItem(metadata, count, callback, changed, name))
     QTemporaryDir stage;
     if (!stage.isValid())
         return E_FAIL;
+    UInt32 changed;
+    QString name;
+    const HRESULT fileUpdate = FindChangedItem(metadata, count, callback, changed, name);
+    CMutationPlan mutation;
+    if (fileUpdate != S_OK)
+        RINOK(FindMutationPlan(metadata, count, callback, mutation))
     const QString sourceRoot = stage.filePath("source");
-    RINOK(StageCallbackStream(sourceRoot, name, changed, callback))
+    if (fileUpdate == S_OK)
+        RINOK(StageCallbackStream(sourceRoot, name, changed, callback))
+    else if (mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder &&
+             !QDir().mkpath(QDir(sourceRoot).filePath(mutation.Paths.front())))
+        return E_FAIL;
     CMyComPtr<ICryptoGetTextPassword2> crypto;
     callback->QueryInterface(IID_ICryptoGetTextPassword2, (void **)&crypto);
     QString password;
@@ -151,12 +263,24 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
             password = QString::fromWCharArray(value);
     }
     const QString result = stage.filePath("result." + format);
-    RINOK(RunArchiveBackendRequest(
-        backend,
-        [&backend, archive, name, sourceRoot, result, format, password] {
-            backend.updateSourceFile(archive, name, sourceRoot, result, format, password);
-        },
-        callback, sync))
+    if (fileUpdate == S_OK) {
+        RINOK(RunArchiveBackendRequest(
+            backend,
+            [&backend, archive, name, sourceRoot, result, format, password] {
+                backend.updateSourceFile(archive, name, sourceRoot, result, format, password);
+            },
+            callback, sync))
+    } else {
+        RINOK(RunArchiveBackendRequest(
+            backend,
+            [&backend, archive, result, format, mutation, sourceRoot] {
+                backend.updateSourceMutation(
+                    archive, result, format, mutation.Operation, mutation.Paths,
+                    mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder ? sourceRoot
+                                                                                       : QString());
+            },
+            callback, sync))
+    }
     auto *inputSpec = new CInFileStream;
     CMyComPtr<ISequentialInStream> input = inputSpec;
     if (!inputSpec->Open(us2fs(result.toStdWString().c_str())))

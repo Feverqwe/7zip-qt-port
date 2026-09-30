@@ -6048,3 +6048,39 @@ kpidSize до FolderStat_Defined. Missing-size свойства архивных
 раз, не добавляя QWidget-зависимость к sevenzip_common. clang-format меняет
 оформление. Предыдущий конструктор имён оставлен как compatibility fallback;
 рабочие F5/F6 теперь всегда получают перенесённую сводку.
+
+## P1-04.1 — незашифрованные архивные CreateFolder/Rename/Delete (2026-09-30)
+
+Точная база: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/Agent/AgentOut.cpp::CAgent::DeleteItems/CreateFolder/RenameItem`,
+`CPP/7zip/UI/Agent/ArchiveFolderOut.cpp::CAgentFolder::Delete/CreateFolder/Rename`
+и `CommonUpdateOperation`, `CPP/7zip/UI/FileManager/PanelOperations.cpp::
+CPanel::CreateFolder/OnEndLabelEdit/DeleteItems` и `CThreadFolderOperations`.
+Сохранены исходные пары `CUpdatePair2`, real-index expansion (включая
+содержимое папки и альтернативные потоки), `DeleteOperation`, проверка
+совпадения имени папки, перенос имени потомков, `CArchiveUpdateCallback`
+и порядок temp → close → MoveToOriginal → ReOpen → восстановление папки.
+Последний FM owner был перенесён в P1-03; в этой итерации подключены его
+архивные consumers и source progress/cancel/confirmation.
+
+`qtarchivesourceupdate.cpp` адаптирует только внешний `IOutArchive` transport:
+проверяет исходный callback-план и имена через source `Correct_FsPath`, выводит
+Delete/Rename/CreateFolder и передаёт их `ArchiveBackend::updateSourceMutation`.
+Backend копирует исходный архив в отдельный output и применяет `7zz` с
+`-spd`, не публикуя копию; публикация и откат остаются в оригинальном
+`CAgentFolder::CommonUpdateOperation`. Empty directory создаётся во временном
+source root. Original ZIP/7z writer исполнялся бы in-process; такой внешний
+file-only adapter обязателен для текущего engine boundary. `SetAsDir` и
+`GetCurUtc_FiTime` заменяют Win32-only поля `Attrib`/`FILETIME` на переносимые
+исходные типы. Обязательный clang-format меняет только оформление.
+
+Qt F7, F2 inline и Delete/Shift+Delete теперь вызывают source CPanel;
+после native ReOpen список перерисовывается без второго ReOpen, сохраняются
+выбор/фокус и путь папки. Flat editor показывает source basename, а не
+отображаемый prefix. Существующий `ArchiveBackend::remove` пока нужен
+архивному Move/transfer P1-01; `add`/CopyFrom, comment/SetProperty,
+зашифрованные и вложенные архивы, общий SetProperties и handler writer
+capabilities остаются открытыми P1-04.2/.3, P1-05/P1-09. Это частичный
+порт файлов AgentOut/ArchiveFolderOut; зеркальные имена не означают
+готовность остальных функций. Original notices сохранены, лицензия:
+`third_party/7zip/License.txt`.

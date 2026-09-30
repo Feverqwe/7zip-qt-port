@@ -44,7 +44,8 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             processPause_.ResetAfterExit();
             if (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete ||
                 job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd ||
-                job_ == Job::SourceUpdate || job_ == Job::SourceExtract)
+                job_ == Job::SourceUpdate || job_ == Job::SourceMutation ||
+                job_ == Job::SourceExtract)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
             extractQueue_.clear();
@@ -67,7 +68,7 @@ ArchiveBackend::~ArchiveBackend() {
     if (process_.state() == QProcess::NotRunning &&
         (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete || job_ == Job::Rename ||
          job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd || job_ == Job::SourceUpdate ||
-         job_ == Job::SourceExtract))
+         job_ == Job::SourceMutation || job_ == Job::SourceExtract))
         QFile::remove(createTemporary_);
 }
 
@@ -432,7 +433,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
-            completed == Job::SourceExtract)
+            completed == Job::SourceMutation || completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
@@ -445,7 +446,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
-            completed == Job::SourceExtract)
+            completed == Job::SourceMutation || completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
         const bool wrongPassword =
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);

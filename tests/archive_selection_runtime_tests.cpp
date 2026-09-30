@@ -100,9 +100,11 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         action(window, "flatViewAction")->setChecked(false);
     }
 
-    void renameUsesSourcePathAndOriginalNameHint() {
+    void renameUsesSourceNameHintAndIgnoresForgedPath() {
         ControlledBackend backend;
         MainWindow window(&backend);
+        window.show();
+        QCoreApplication::processEvents();
         action(window, "flatViewAction")->setChecked(false);
         openListedArchive(window, backend, "source-rename.zip",
                           {{"a/same.txt", 3, 1}, {"b/same.txt", 7, 3}});
@@ -111,28 +113,13 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         QVERIFY(row >= 0);
         selectOnly(window, row);
         corruptPresentationPath(window, row);
-        QString hint;
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
-            if (!dialog)
-                return;
-            hint = dialog->textValue();
-            dialog->setTextValue(QStringLiteral("новое й.txt"));
-            dialog->accept();
-        });
         action(window, "renameAction")->trigger();
-        QCOMPARE(hint, QString("same.txt"));
-        QCOMPARE(backend.renameCalls, 1);
-        QCOMPARE(backend.lastRenameOld, QString("b/same.txt"));
-        QCOMPARE(backend.lastRenameNew, QStringLiteral("b/новое й.txt"));
-        backend.cancel();
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = qobject_cast<QInputDialog *>(QApplication::activeModalWidget());
-            if (dialog)
-                dialog->reject();
-        });
-        action(window, "renameAction")->trigger();
-        QCOMPARE(backend.renameCalls, 1);
+        auto *editor = table(window)->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        editor->setFocus();
+        QCOMPARE(editor->text(), QString("same.txt"));
+        QTest::keyClick(editor, Qt::Key_Escape);
+        QCOMPARE(backend.renameCalls, 0);
         action(window, "flatViewAction")->setChecked(false);
     }
 

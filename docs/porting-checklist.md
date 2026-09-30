@@ -58,10 +58,9 @@ N/A отдельной ветки не закрывает весь пакет, �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **4/44 завершённых пакетов; 40 остаётся** (2026-09-29).
-P0: 4/12; P1: 0/16; P2: 0/10; P3: 0/6. P0-01 закрыт как inventory, P0-02 как owners/lifecycle,
-P0-03 как integrated command policy/dispatch, P0-04 как native navigation;
-обязательные функциональные порты не закрыты этим аудитом.
+Текущий счёт: **13/44 завершённых пакетов; 31 остаётся** (2026-09-30).
+P0: 12/12; P1: 1/16; P2: 0/10; P3: 0/6. P0-01–P0-12 и P1-03
+закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
 Это счётчик выполнения плана, не процент исходных строк upstream.
@@ -150,7 +149,10 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [x] | P1-03 | Inline Rename/Create/Delete/корзина | P0-03, P0-10, P0-11 | done — P1-03.1/.2; macOS arm64 2026-09-30, source create/rename/delete, native Trash adapter, focused success/failure/cancel/permissions/partial tests и `check.sh` 137/137; Windows/Linux/rendered Windows/native Trash runtime не проверены |
 | [x] | P1-03.1 | Целый filesystem CreateFolder/CreateFile/inline Rename: исходные PanelOperations/BrowseDialog path/name/selection/refresh bodies, текущие Qt consumers, составные пути, success/failure/Cancel и normal/compact UX | P0-03, P0-10, P0-11; FSFolder и ComboDialog source prerequisites уже приняты | done — audit § P1-03.1; macOS arm64 2026-09-30; focused `ui_operations`/`combo_dialog`/`native_fs_operations`/`panel_selected_state` и `flat_view`/`ui_state` прошли, `check.sh` 137/137; Windows/Linux/rendered Windows reference не проверены |
 | [x] | P1-03.2 | Целый Delete/Shift+Delete: исходное подтверждение и worker lifecycle, platform recycle adapter, permanent-delete/partial/cancel/symlink guards, выбор и parent P1-03 acceptance | P1-03.1; archive mutations P1-04 отдельно | done — audit § P1-03.2; `ui_operations`, `filesystem_operations`, `native_fs_operations`, `panel_key`, `command_policy_runtime`, `filesystem_selection_runtime` прошли; `check.sh` 137/137 macOS arm64 2026-09-30; native Trash runtime и Windows/Linux остаются unverified |
-| [ ] | P1-04 | Archive mutations, encrypted writes и comments по capabilities | P0-03, P0-10, P0-11, P1-03 | todo |
+| [ ] | P1-04 | Archive mutations, encrypted writes и comments по capabilities | P0-03, P0-10, P0-11, P1-03 | todo — три интегрированных результата .1/.2/.3; старые частичные Agent/ArchiveFolderOut тела сохраняются evidence |
+| [x] | P1-04.1 | Целый unencrypted archive CreateFolder/Rename/Delete workflow: source AgentOut/ArchiveFolderOut selection/update, FM consumers, transactional adapter, progress/error/refresh и UX | P1-03; existing Agent/ArchiveFolderOut partial prerequisites | done — audit § P1-04.1; ZIP/7z source callback + separate-output/native publish/reopen, implicit folder, bytes/mtime, unsafe/failure/cancel и F7/F2 inline/Delete UI; focused `source_update_backend`, `ui_operations`, `archive_selection_runtime`, `command_policy_runtime` прошли; `check.sh` 137/137 macOS arm64 Qt 6.11.2 2026-09-30, после локального metadata-test правки повторно прошёл `source_update_backend`; Windows/Linux/runtime и rendered Windows parity не проверены |
+| [ ] | P1-04.2 | Защищённые верхние архивы: source update/password flow и 7zz capability, bytes/metadata/ciphertext, success/failure/cancel | P1-04.1 | todo |
+| [ ] | P1-04.3 | ChangeComment/SetProperty по доказанной writer capability handler: source FM/Agent path, UX/error/refresh и validation; неподдержанная обязательная ветка остаётся открытой с prerequisite | P1-04.1, P1-04.2 | todo |
 | [ ] | P1-05 | Update/path modes и полное Add workflow | P1-04 | todo |
 | [ ] | P1-06 | Архивные тома create/open/test/extract | P1-05 | todo |
 | [ ] | P1-07 | Advanced options/time/parameters/memory prompts | P1-05, P0-10 | todo |

@@ -120,15 +120,22 @@ void MainWindow::createFileTable(QWidget *central) {
     tableHover_->SetEnabled(fileListSettings_.SingleClick);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     connect(table_, &QTableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
-        if (item != renameEditingItem_ || state_ != State::Filesystem)
+        if (item != renameEditingItem_ || (state_ != State::Filesystem && state_ != State::Viewing))
             return;
         const QString name = item->text();
         const QString path = renameOriginalPath_;
         const quint32 sourceIndex = renameSourceIndex_;
         renameEditingItem_ = nullptr;
         renameOriginalPath_.clear();
-        if (name == QFileInfo(path).fileName())
+        if (name ==
+            (state_ == State::Viewing ? path.section('/', -1) : QFileInfo(path).fileName())) {
+            if (state_ == State::Viewing && flatView_->isChecked())
+                QTimer::singleShot(0, this, [this, path] {
+                    renderBoundFolder();
+                    selectPaths({path});
+                });
             return;
+        }
         QTimer::singleShot(0, this, [this, sourceIndex, path, name] {
             finishFilesystemRename(sourceIndex, path, name);
             renameActivationPending_ = false;
