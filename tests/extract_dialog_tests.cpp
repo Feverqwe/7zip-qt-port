@@ -125,6 +125,7 @@ class ExtractDialogTests final : public QObject {
         QCOMPARE(path(dialog)->itemText(0), QString("/legacy/"));
         QCOMPARE(pathMode(dialog)->currentIndex(), 0);
         QCOMPARE(overwrite(dialog)->currentIndex(), 0);
+        QCOMPARE(dialog.options().overwriteMode, ExtractionOptions::OverwriteMode::Ask);
         dialog.accept();
         QSettings settings(settings_, QSettings::IniFormat);
         QCOMPARE(settings.value("Toolbar/labels").toBool(), false);

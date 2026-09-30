@@ -24,22 +24,6 @@ NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
     }
     return info;
 }
-int overwriteAnswer(INT_PTR button) {
-    switch (button) {
-    case IDYES:
-        return NOverwriteAnswer::kYes;
-    case IDB_YES_TO_ALL:
-        return NOverwriteAnswer::kYesToAll;
-    case IDNO:
-        return NOverwriteAnswer::kNo;
-    case IDB_NO_TO_ALL:
-        return NOverwriteAnswer::kNoToAll;
-    case IDB_AUTO_RENAME:
-        return NOverwriteAnswer::kAutoRename;
-    default:
-        return NOverwriteAnswer::kCancel;
-    }
-}
 } // namespace
 
 QString MainWindow::selectedCopyInfo() {
@@ -79,7 +63,7 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                     operation->submitOverwriteAnswer(NOverwriteAnswer::kCancel);
                     return;
                 }
-                const int answer = overwriteAnswer(dialog.Create(this));
+                const int answer = NOverwriteDialog::MapButtonResult(dialog.Create(this));
                 overwriteDialog_ = nullptr;
                 operation->submitOverwriteAnswer(answer);
             });

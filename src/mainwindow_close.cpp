@@ -72,6 +72,8 @@ void MainWindow::quiesceOperations() {
             disconnect(ui.path, nullptr, this, nullptr);
     }
     disconnect(backend_, nullptr, this, nullptr);
+    if (overwriteDialog_)
+        overwriteDialog_->reject();
     disconnect(filesystemScanner_, nullptr, this, nullptr);
     filesystemScanner_->cancelAndWait();
     backend_->cancelAndWait();
@@ -81,8 +83,6 @@ void MainWindow::quiesceOperations() {
         fileDelete_->wait();
     }
     if (fileTransfer_) {
-        if (overwriteDialog_)
-            overwriteDialog_->reject();
         disconnect(fileTransfer_, nullptr, this, nullptr);
         fileTransfer_->cancel();
         fileTransfer_->wait();

@@ -408,6 +408,55 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(backend.listCalls, 2);
         QVERIFY(!action(window, "moveAction")->isEnabled());
     }
+    void extractAskUsesSourceOverwriteDialog() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        const QString source = temp.filePath(QStringLiteral("архивный файл.txt"));
+        QFile incoming(source);
+        QVERIFY(incoming.open(QIODevice::WriteOnly));
+        QCOMPARE(incoming.write("archive"), qint64(7));
+        incoming.close();
+        const QString archive = temp.filePath("ask.7z");
+        const QString target = temp.filePath(QStringLiteral("destination/архивный файл.txt"));
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        finished.clear();
+        QFile old(target);
+        QVERIFY(old.open(QIODevice::WriteOnly));
+        QCOMPARE(old.write("existing"), qint64(8));
+        old.close();
+        bool answered = false;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    answered = true;
+                    QVERIFY(!dialog->findChild<QLabel *>("overwriteOldFile")->text().isEmpty());
+                    dialog->findChild<QPushButton *>("overwriteYes")->click();
+                }
+            }
+        });
+        answer.start(1);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        window.extractTo(temp.filePath("destination"), false, {}, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
+        answer.stop();
+        QVERIFY(answered);
+        QVERIFY(finished.first().first().toBool());
+        QFile result(target);
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(result.readAll(), QByteArray("archive"));
+    }
+
     void movesRealArchiveEntryToDirectory() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

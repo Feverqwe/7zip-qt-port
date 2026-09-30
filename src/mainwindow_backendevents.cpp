@@ -1,9 +1,43 @@
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
 #include <QCoreApplication>
 
 void MainWindow::connectBackend() {
+    connect(backend_, &ArchiveBackend::overwriteRequired, this,
+            [this](const QString &existing, const ArchiveEntry &incoming) {
+                if (app_.QtOperations().closed() || sourceArchiveProgress_) {
+                    backend_->provideOverwriteAnswer(NOverwriteAnswer::kCancel);
+                    return;
+                }
+                COverwriteDialog dialog(this);
+                overwriteDialog_ = &dialog;
+                const QFileInfo old(existing);
+                dialog.OldFileInfo.Path = ToUString(existing);
+                dialog.OldFileInfo.Is_FileSystemFile = true;
+                dialog.OldFileInfo.SetSize(UInt64(old.size()));
+                dialog.NewFileInfo.Path = ToUString(incoming.path);
+                dialog.NewFileInfo.SetSize(UInt64(qMax<qint64>(0, incoming.size)));
+                const auto setTime = [](NOverwriteDialog::CFileInfo &info, const QDateTime &date) {
+                    if (!date.isValid())
+                        return;
+                    const qint64 ticks = (date.toMSecsSinceEpoch() + 11644473600000LL) * 10000;
+                    FILETIME time{};
+                    time.dwLowDateTime = DWORD(quint64(ticks));
+                    time.dwHighDateTime = DWORD(quint64(ticks) >> 32);
+                    info.SetTime(time);
+                };
+                setTime(dialog.OldFileInfo, old.lastModified());
+                setTime(dialog.NewFileInfo,
+                        QDateTime::fromString(incoming.modified, "yyyy-MM-dd HH:mm:ss"));
+                connect(backend_, &ArchiveBackend::dismissOverwriteRequested, &dialog,
+                        &QDialog::reject, Qt::QueuedConnection);
+                const int answer = NOverwriteDialog::MapButtonResult(dialog.Create(this));
+                overwriteDialog_ = nullptr;
+                backend_->provideOverwriteAnswer(answer);
+            });
     connect(backend_, &ArchiveBackend::infoReady, this, [this](const ArchiveInfo &info) {
         if (!app_.QtOperations().closed() && !sourceArchiveProgress_)
             info_ = info;

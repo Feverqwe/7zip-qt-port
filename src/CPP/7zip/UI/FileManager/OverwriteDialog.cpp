@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "OverwriteDialog.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "Common/IntToString.h"
 #include "FormatUtils.h"
 #include "LangUtils.h"
@@ -15,6 +16,23 @@
 
 using namespace NWindows;
 static const unsigned kCurrentFileNameSizeLimit = 72;
+
+int NOverwriteDialog::MapButtonResult(INT_PTR button) {
+    switch (button) {
+    case IDYES:
+        return NOverwriteAnswer::kYes;
+    case IDB_YES_TO_ALL:
+        return NOverwriteAnswer::kYesToAll;
+    case IDNO:
+        return NOverwriteAnswer::kNo;
+    case IDB_NO_TO_ALL:
+        return NOverwriteAnswer::kNoToAll;
+    case IDB_AUTO_RENAME:
+        return NOverwriteAnswer::kAutoRename;
+    default:
+        return NOverwriteAnswer::kCancel;
+    }
+}
 
 void COverwriteDialog::ReduceString(UString &s) {
     const unsigned size = kCurrentFileNameSizeLimit;

@@ -9,6 +9,7 @@
 #include <QHash>
 
 namespace NOverwriteDialog {
+int MapButtonResult(INT_PTR button);
 struct CFileInfo {
     bool Size_IsDefined;
     bool Time_IsDefined;

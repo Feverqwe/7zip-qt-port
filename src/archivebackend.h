@@ -37,6 +37,7 @@ struct CompressionOptions : NCompressDialog::CInfo {
 struct ExtractionOptions {
     enum class PathMode { FullPaths, NoPaths };
     enum class OverwriteMode {
+        Ask,
         RejectExisting,
         SkipExisting,
         OverwriteExisting,
@@ -89,6 +90,7 @@ class ArchiveBackend : public QObject {
     // Stop the transport before callers release its source/destination resources.
     void cancelAndWait();
     void providePassword(const QString &password);
+    void provideOverwriteAnswer(int answer);
 
   signals:
     void entriesReady(const QList<ArchiveEntry> &entries);
@@ -97,6 +99,8 @@ class ArchiveBackend : public QObject {
     void outputReceived(const QString &text);
     void finished(bool success, const QString &message);
     void passwordRequired();
+    void overwriteRequired(const QString &existing, const ArchiveEntry &incoming);
+    void dismissOverwriteRequested();
     void engineStarted();
 
   private:
@@ -125,6 +129,9 @@ class ArchiveBackend : public QObject {
     static bool safePath(const QString &path);
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error) const;
+    bool prepareAskExtraction(const QString &outputDirectory, const QStringList &selected,
+                              ExtractionOptions::PathMode pathMode, QStringList *replaceEntries,
+                              QStringList *renameEntries);
     bool prepareMutation(const QString &archive);
     void startListing(const QString &archive, const QString &password, const QString &format);
 
@@ -148,4 +155,7 @@ class ArchiveBackend : public QObject {
     bool encrypted_ = false;
     QStringList extractArguments_;
     QString extractPassword_;
+    QList<QStringList> extractQueue_;
+    bool overwritePromptActive_ = false;
+    int overwriteAnswer_ = -1;
 };

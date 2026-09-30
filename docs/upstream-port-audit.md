@@ -1643,6 +1643,57 @@ scope correction to the progress resource contract, its targeted
 `ui_parity_progress` fixture passed unsandboxed (5/5 including dependencies);
 the sandboxed native-priority fixture cannot exercise this macOS service.
 
+## P0-12.1 — interactive Ask through the 7zz transport (2026-09-30)
+
+Exact source baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+from [ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Reviewed `CPP/7zip/UI/GUI/ExtractDialog.cpp/.rc`,
+`ExtractGUI.cpp::ExtractGUI`/`CThreadExtracting::ProcessVirt`,
+`UI/FileManager/ExtractCallback.cpp::AskOverwrite`/`AskWrite`,
+`UI/Common/ArchiveExtractCallback.cpp::CheckExistFile`, and
+`UI/Common/Extract.cpp::DecompressArchive`/`Extract`. The existing source
+mirrors retain `CExtractDialog` mode ordering/persistence,
+`CExtractCallbackImp::AskOverwrite` answer mapping, and the complete original
+`CArchiveExtractCallback::CheckExistFile` decision body. P0-12.1 connects the
+same `COverwriteDialog` to the user-facing extraction path, sharing the
+original native-button-ID→`NOverwriteAnswer` conversion with filesystem
+Copy/Move. Qt file metadata is translated to source `CFileInfo` and the
+source dialog owns presentation. No upstream file was modified.
+
+The local official `7zz` 26.03 process exposes overwrite interaction only as
+English text on stdout plus stdin answers in a disposable conflict probe;
+its documented CLI has `-ao{a|s|t|u}` and `-y`, but no structured per-file
+callback. Parsing prompt wording or translated paths is unsafe. The necessary
+`ArchiveBackend` adapter therefore validates the listed entries, asks for
+decisions before extraction, then runs `-aos` for unoccupied entries and
+targeted `-aoa`/`-aou` passes for accepted conflicts. `No` leaves an occupied
+file untouched; Yes/No to All and AutoRename update per-operation state in the
+same order as source `CheckExistFile`. The callback lives in the GUI event
+loop; cancellation closes the source dialog and aborts before any pass. Each
+subsequent pass keeps password/cancellation state, and an error stops the queue.
+This CLI selection/queue is integration code, not claimed as copied source
+algorithm or an in-process invocation of `CheckExistFile`.
+
+Differences and remaining mandatory scope: source `CheckExistFile` asks at the
+moment of write; this adapter has a preflight-to-write race even after
+revalidation. 7zz writes directly, so failure/cancel may leave partial output;
+there is no transactional rollback. `ExtractGUI.cpp` and `Common/Extract.cpp`
+are not yet source-ported into runtime orchestration; their option precedence,
+batch/callback close semantics and relevant omitted branches remain P0-12.2.
+The existing non-Ask RenameExisting/Extracted modes, selection validation and
+password prompt stay enabled. Filesystem symlink, type and unsafe-path guards
+remain in backend validation. P0-12 parent is open until the source integration
+scope and final acceptance are checked.
+
+Focused `extraction_options`, `ui_operations`, `extract_dialog`,
+`ui_archive_states`, `file_transfer`, `archive_backend` passed 6/6 on macOS
+arm64, Qt 6.11.2; real 7z/ZIP Ask, Unicode, NoPaths selected, wrong-password
+retry, occupied auto-rename target, unavailable dialog and cancel are covered.
+Unsandboxed `./scripts/check.sh` passed formatting, app build and 137/137
+CTest cases; after a localized cleanup/fixture edit,
+`extraction_options` was rebuilt and passed again. Windows/Linux runtime and
+rendered Windows parity are unverified.
+
 ## P0-11 — filesystem overwrite decisions (2026-09-30)
 
 Exact source baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

@@ -254,6 +254,9 @@ ExtractionOptions CExtractDialog::options() const {
     if (kPathModeButtonsVals[_pathMode->currentData().toUInt()] == NExtract::NPathMode::kNoPaths)
         result.pathMode = ExtractionOptions::PathMode::NoPaths;
     switch (kOverwriteButtonsVals[_overwriteMode->currentData().toUInt()]) {
+    case NExtract::NOverwriteMode::kAsk:
+        result.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        break;
     case NExtract::NOverwriteMode::kOverwrite:
         result.overwriteMode = ExtractionOptions::OverwriteMode::OverwriteExisting;
         break;

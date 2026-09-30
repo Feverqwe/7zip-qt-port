@@ -542,6 +542,16 @@ also checks flattened names. Existing output files are checked against the
 chosen overwrite mode. Overwrite writes directly to the destination; failure
 or cancellation can leave changed files. Preflight checks cannot prevent
 concurrent external changes between validation and process writes.
+For interactive Ask, `ArchiveBackend` emits each listed file collision to the
+window's source `COverwriteDialog` before starting `7zz`. The user decisions
+are retained for this extraction. The backend first runs a skip-existing pass
+for unoccupied files, then targeted overwrite or auto-rename passes for accepted
+conflicts. It uses the documented `-aos`, `-aoa` and `-aou` modes, never parses
+the CLI's localized prompt. Each pass remains an official-engine process;
+password and cancellation state continue across passes. The source in-process
+`CheckExistFile` callback cannot run inside the external `7zz` child, so this
+transport has a preflight-to-write race and the same direct-write partial-result
+limit as noninteractive extraction.
 
 Creation writes a temporary peer archive and publishes it after success.
 Mutations copy the existing archive, update that copy and replace the original

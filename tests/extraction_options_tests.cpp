@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "archivebackend.h"
 
 #include <QCoreApplication>
@@ -35,6 +36,181 @@ class ExtractionOptionsTests : public QObject {
     }
 
   private slots:
+    void askDecisions_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+
+    void askDecisions() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("источник с пробелом"));
+        const QString output = temp.filePath("output");
+        QVERIFY(QDir().mkpath(source));
+        QVERIFY(QDir().mkpath(output + QStringLiteral("/источник с пробелом")));
+        for (const QString &name :
+             {QStringLiteral("α.txt"), QStringLiteral("β.txt"), QStringLiteral("γ.txt")}) {
+            writeFile(source + "/" + name, "new");
+            writeFile(output + QStringLiteral("/источник с пробелом/") + name, "old");
+        }
+        writeFile(output + QStringLiteral("/источник с пробелом/γ_1.txt"), "occupied rename");
+        const QString archive = temp.filePath("fixture." + format);
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+
+        QList<int> answers{NOverwriteAnswer::kNo, NOverwriteAnswer::kYes,
+                           NOverwriteAnswer::kAutoRename};
+        QSignalSpy requested(&backend, &ArchiveBackend::overwriteRequired);
+        connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
+                [&backend, &answers](const QString &, const ArchiveEntry &) {
+                    backend.provideOverwriteAnswer(answers.takeFirst());
+                });
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        backend.extract(archive, output, {}, {}, options);
+        await(backend, true);
+        QCOMPARE(requested.size(), 3);
+        QCOMPARE(readFile(output + QStringLiteral("/источник с пробелом/α.txt")),
+                 QByteArray("old"));
+        QCOMPARE(readFile(output + QStringLiteral("/источник с пробелом/β.txt")),
+                 QByteArray("new"));
+        QCOMPARE(readFile(output + QStringLiteral("/источник с пробелом/γ.txt")),
+                 QByteArray("old"));
+        const QStringList names = QDir(output + QStringLiteral("/источник с пробелом"))
+                                      .entryList(QDir::Files | QDir::NoDotAndDotDot);
+        QCOMPARE(names.size(), 5);
+        QCOMPARE(readFile(output + QStringLiteral("/источник с пробелом/γ_1.txt")),
+                 QByteArray("occupied rename"));
+        for (const QString &name : names)
+            if (name != QStringLiteral("α.txt") && name != QStringLiteral("β.txt") &&
+                name != QStringLiteral("γ.txt") && name != QStringLiteral("γ_1.txt"))
+                QCOMPARE(readFile(output + QStringLiteral("/источник с пробелом/") + name),
+                         QByteArray("new"));
+
+        const QString flat = temp.filePath("flat output");
+        QVERIFY(QDir().mkpath(flat));
+        writeFile(flat + QStringLiteral("/β.txt"), "flat old");
+        ExtractionOptions flatOptions;
+        flatOptions.pathMode = ExtractionOptions::PathMode::NoPaths;
+        flatOptions.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        answers = {NOverwriteAnswer::kYes};
+        backend.extract(archive, flat, {QStringLiteral("источник с пробелом/β.txt")}, {},
+                        flatOptions);
+        await(backend, true);
+        QCOMPARE(readFile(flat + QStringLiteral("/β.txt")), QByteArray("new"));
+        QVERIFY(!QFileInfo::exists(flat + QStringLiteral("/α.txt")));
+    }
+
+    void askAllAndCancel() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source");
+        QVERIFY(QDir().mkpath(source));
+        for (const QString &name : {QStringLiteral("one"), QStringLiteral("two")})
+            writeFile(source + "/" + name, "new");
+        const QString archive = temp.filePath("fixture.7z");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        for (const int answer :
+             {NOverwriteAnswer::kNoToAll, NOverwriteAnswer::kYesToAll, NOverwriteAnswer::kCancel}) {
+            const QString output = temp.filePath(QStringLiteral("output-%1").arg(answer));
+            QVERIFY(QDir().mkpath(output + "/source"));
+            writeFile(output + "/source/one", "old");
+            writeFile(output + "/source/two", "old");
+            QSignalSpy requested(&backend, &ArchiveBackend::overwriteRequired);
+            QSignalSpy finished(&backend, &ArchiveBackend::finished);
+            const auto connection =
+                connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
+                        [&backend, answer](const QString &, const ArchiveEntry &) {
+                            if (answer == NOverwriteAnswer::kCancel)
+                                backend.cancel();
+                            else
+                                backend.provideOverwriteAnswer(answer);
+                        });
+            backend.extract(archive, output, {}, {}, options);
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
+            QCOMPARE(finished.first().first().toBool(), answer != NOverwriteAnswer::kCancel);
+            QCOMPARE(requested.size(), 1);
+            QCOMPARE(readFile(output + "/source/one"),
+                     answer == NOverwriteAnswer::kYesToAll ? QByteArray("new") : QByteArray("old"));
+            QCOMPARE(readFile(output + "/source/two"),
+                     answer == NOverwriteAnswer::kYesToAll ? QByteArray("new") : QByteArray("old"));
+            disconnect(connection);
+        }
+    }
+
+    void encryptedAskQueue_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+
+    void encryptedAskQueue() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("secret.txt");
+        const QString output = temp.filePath("output");
+        QVERIFY(QDir().mkpath(output));
+        writeFile(source, "new secret");
+        writeFile(output + "/secret.txt", "old secret");
+        const QString archive = temp.filePath("encrypted." + format);
+        const QString password = QStringLiteral("test-only-password");
+        ArchiveBackend backend;
+        backend.create(archive, {source}, password);
+        await(backend, true);
+        backend.list(archive, password);
+        await(backend, true);
+        connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
+                [&backend](const QString &, const ArchiveEntry &) {
+                    backend.provideOverwriteAnswer(NOverwriteAnswer::kYes);
+                });
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        QSignalSpy rejected(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, output, {}, QStringLiteral("incorrect-test-password"), options);
+        QTRY_COMPARE_WITH_TIMEOUT(rejected.size(), 1, 30000);
+        QVERIFY(!rejected.takeFirst().first().toBool());
+        QCOMPARE(readFile(output + "/secret.txt"), QByteArray("old secret"));
+        backend.extract(archive, output, {}, password, options);
+        await(backend, true);
+        QCOMPARE(readFile(output + "/secret.txt"), QByteArray("new secret"));
+    }
+
+    void askWithoutConsumerFailsBeforeEngineWrite() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("file.txt");
+        const QString archive = temp.filePath("fixture.7z");
+        const QString output = temp.filePath("output");
+        QVERIFY(QDir().mkpath(output));
+        writeFile(source, "new");
+        writeFile(output + "/file.txt", "old");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, output, {}, {}, options);
+        QCOMPARE(finished.size(), 1);
+        QVERIFY(!finished.first().first().toBool());
+        QVERIFY(!backend.busy());
+        QCOMPARE(readFile(output + "/file.txt"), QByteArray("old"));
+    }
+
     void modes_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QStringLiteral("7z");

@@ -1,4 +1,5 @@
 #include "archivebackend.h"
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "processpriority.h"
 
 #include <QDir>
@@ -46,6 +47,8 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
                 job_ == Job::SourceUpdate || job_ == Job::SourceExtract)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
+            extractQueue_.clear();
+            extractArguments_.clear();
             pendingPassword_.clear();
             extractPassword_.clear();
             emit finished(
@@ -68,7 +71,7 @@ ArchiveBackend::~ArchiveBackend() {
         QFile::remove(createTemporary_);
 }
 
-bool ArchiveBackend::busy() const { return job_ != Job::None; }
+bool ArchiveBackend::busy() const { return job_ != Job::None || overwritePromptActive_; }
 
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
@@ -114,6 +117,11 @@ void ArchiveBackend::providePassword(const QString &password) {
     if (job_ == Job::ExtractCheck)
         extractPassword_ = password;
     process_.write(password.toUtf8() + '\n');
+}
+
+void ArchiveBackend::provideOverwriteAnswer(int answer) {
+    if (overwritePromptActive_)
+        overwriteAnswer_ = answer;
 }
 
 void ArchiveBackend::consumeLine(const QByteArray &line) {
@@ -200,6 +208,61 @@ void ArchiveBackend::startListing(const QString &archive, const QString &passwor
     start(Job::List, arguments);
 }
 
+bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
+                                          const QStringList &selected,
+                                          ExtractionOptions::PathMode pathMode,
+                                          QStringList *replaceEntries, QStringList *renameEntries) {
+    enum class Mode { Ask, Skip, Overwrite, Rename };
+    Mode mode = Mode::Ask;
+    for (const ArchiveEntry &entry : entries_) {
+        if (entry.directory || (!selected.isEmpty() && !selected.contains(entry.path)))
+            continue;
+        const QString relative = pathMode == ExtractionOptions::PathMode::NoPaths
+                                     ? entry.path.section('/', -1)
+                                     : entry.path;
+        const QString target = QDir(outputDirectory).filePath(relative);
+        if (!QFileInfo::exists(target))
+            continue;
+        if (mode == Mode::Ask) {
+            overwritePromptActive_ = true;
+            overwriteAnswer_ = -1;
+            emit overwriteRequired(target, entry);
+            overwritePromptActive_ = false;
+            if (cancelled_ || overwriteAnswer_ == NOverwriteAnswer::kCancel) {
+                cancelled_ = false;
+                lastResult_ = E_ABORT;
+                emit finished(false, QStringLiteral("Операция отменена."));
+                return false;
+            }
+            switch (overwriteAnswer_) {
+            case NOverwriteAnswer::kNo:
+                continue;
+            case NOverwriteAnswer::kNoToAll:
+                mode = Mode::Skip;
+                continue;
+            case NOverwriteAnswer::kYes:
+                *replaceEntries << entry.path;
+                continue;
+            case NOverwriteAnswer::kYesToAll:
+                mode = Mode::Overwrite;
+                break;
+            case NOverwriteAnswer::kAutoRename:
+                mode = Mode::Rename;
+                break;
+            default:
+                lastResult_ = E_FAIL;
+                emit finished(false, QStringLiteral("Решение о замене недоступно."));
+                return false;
+            }
+        }
+        if (mode == Mode::Overwrite)
+            *replaceEntries << entry.path;
+        else if (mode == Mode::Rename)
+            *renameEntries << entry.path;
+    }
+    return true;
+}
+
 void ArchiveBackend::extract(const QString &archive, const QString &destination,
                              const QStringList &selected, const QString &password,
                              const ExtractionOptions &options) {
@@ -235,6 +298,18 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                        : validationError);
         return;
     }
+    extractQueue_.clear();
+    QStringList replaceEntries;
+    QStringList renameEntries;
+    if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask) {
+        if (!prepareAskExtraction(outputDirectory, selected, options.pathMode, &replaceEntries,
+                                  &renameEntries))
+            return;
+        if (!validateExtraction(destination, selected, options, &validationError)) {
+            emit finished(false, validationError);
+            return;
+        }
+    }
     QStringList arguments = {options.pathMode == ExtractionOptions::PathMode::NoPaths ? "e" : "x",
                              "-y",
                              "-bsp1",
@@ -243,7 +318,8 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                              "-o" + outputDirectory,
                              "--",
                              QFileInfo(archive).absoluteFilePath()};
-    if (options.overwriteMode == ExtractionOptions::OverwriteMode::SkipExisting)
+    if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask ||
+        options.overwriteMode == ExtractionOptions::OverwriteMode::SkipExisting)
         arguments.insert(2, "-aos");
     else if (options.overwriteMode == ExtractionOptions::OverwriteMode::OverwriteExisting)
         arguments.insert(2, "-aoa");
@@ -252,6 +328,19 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
     else if (options.overwriteMode == ExtractionOptions::OverwriteMode::RenameExisting)
         arguments.insert(2, "-aot");
     arguments += selected;
+    if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask) {
+        const auto addConflictPass = [&](const QString &mode, const QStringList &entries) {
+            if (entries.isEmpty())
+                return;
+            QStringList pass = arguments;
+            pass.replace(2, mode);
+            pass.erase(pass.end() - selected.size(), pass.end());
+            pass += entries;
+            extractQueue_.append(pass);
+        };
+        addConflictPass("-aoa", replaceEntries);
+        addConflictPass("-aou", renameEntries);
+    }
     pendingPassword_ = password;
     if (encrypted_) {
         extractArguments_ = arguments;
@@ -305,7 +394,11 @@ void ArchiveBackend::cancel() {
         return;
     cancelled_ = true;
     pendingPassword_.clear();
-    process_.kill();
+    if (overwritePromptActive_)
+        emit dismissOverwriteRequested();
+    extractQueue_.clear();
+    if (process_.state() != QProcess::NotRunning)
+        process_.kill();
 }
 
 void ArchiveBackend::cancelAndWait() {
@@ -331,6 +424,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (cancelled_) {
         lastResult_ = E_ABORT;
         extractPassword_.clear();
+        extractQueue_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
@@ -343,6 +437,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         if (completed == Job::List)
             lastResult_ = listingFailureResult(exitCode, status);
         extractPassword_.clear();
+        extractQueue_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
@@ -359,11 +454,18 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     }
     if (completed == Job::ExtractCheck) {
         pendingPassword_ = extractPassword_;
-        extractPassword_.clear();
         start(Job::Extract, extractArguments_);
         extractArguments_.clear();
         return;
     }
+    if (completed == Job::Extract && !extractQueue_.isEmpty()) {
+        pendingPassword_ = extractPassword_;
+        const QStringList next = extractQueue_.takeFirst();
+        start(Job::Extract, next);
+        return;
+    }
+    if (completed == Job::Extract)
+        extractPassword_.clear();
     if (completed == Job::ReplaceDelete) {
         start(Job::ReplaceAdd,
               {"a", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, replacementEntry_},
