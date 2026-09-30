@@ -60,3 +60,6 @@ git clone https://github.com/ip7z/7zip.git ../7zip-upstream
 ```
 
 Keep upstream updates separate from UI commits. Record the upstream version or commit in a release note when packaging.
+Use [the pinned baseline and update review procedure](upstream-update.md) to
+verify the exact borrowed files and compare old/new source before transferring
+changes into adapted Qt modules. The original sibling checkout stays read-only.

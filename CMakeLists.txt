@@ -317,6 +317,10 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME upstream_baseline COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/upstream_baseline_tests.py)
+    add_test(NAME upstream_inventory COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/upstream_baseline.py inventory)
     qt_add_executable(app_state_tests tests/app_state_tests.cpp)
     target_link_libraries(app_state_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME app_state COMMAND app_state_tests)

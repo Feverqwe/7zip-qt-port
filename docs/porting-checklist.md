@@ -58,8 +58,8 @@ N/A отдельной ветки не закрывает весь пакет, �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **14/44 завершённых пакетов; 30 остаётся** (2026-09-30).
-P0: 12/12; P1: 2/16; P2: 0/10; P3: 0/6. P0-01–P0-12, P1-03 и P1-11
+Текущий счёт: **15/44 завершённых пакетов; 29 остаётся** (2026-09-30).
+P0: 12/12; P1: 2/16; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-03, P1-11 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -188,7 +188,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
-| [ ] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | todo |
+| [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |
 | [ ] | P3-02 | Сквозная regression/security traceability | P0/P1; relevant P2 rows | todo |
 | [ ] | P3-03 | CI и реальные Windows/macOS/Linux checks | можно начать рано; final после P2 | todo |
 | [ ] | P3-04 | Engine/Qt/resources/packages/licenses | P2-01, P2-02, P1-14, P1-15, P3-03 | todo |

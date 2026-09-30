@@ -999,3 +999,10 @@ P1-11.3: `network_folder` подставляет сетевой mount с Unicode
 `volume_mount`/`panel_path` проверяют shared navigation. Live network и
 credentials в тестах не используются; Windows/Linux runtime остаётся
 непроверенным.
+
+P3-01: `upstream_baseline` проверяет exact-byte отказ и old→new report для
+адаптированного и неизменённого модуля в локальных временных Git fixtures.
+`upstream_inventory` сверяет каждый tracked borrowed path с manifest на
+каждом CTest прогоне, не требуя checkout upstream. Полная byte-проверка
+`python3 scripts/upstream_baseline.py verify --upstream <snapshot>` запускается
+отдельно на snapshot точного commit; см. `docs/upstream-update.md`.

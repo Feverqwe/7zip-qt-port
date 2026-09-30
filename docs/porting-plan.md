@@ -39,41 +39,34 @@ Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https:/
 
 | Область upstream | Всего `.cpp` | Есть соответствующий `.cpp` в `src/` | Нет соответствующего файла в `src/` |
 | --- | ---: | ---: | ---: |
-| `CPP/7zip/UI/FileManager` | 67 | 29 | 38 |
-| `CPP/7zip/UI/Agent` | 7 | 2 | 5 |
-| `CPP/7zip/UI/GUI` | 10 | 2 | 8 |
-| `CPP/7zip/UI/Common` | 25 | 2 | 23 |
-| **Всего** | **109** | **35** | **74** |
+| `CPP/7zip/UI/FileManager` | 67 | 45 | 22 |
+| `CPP/7zip/UI/Agent` | 7 | 6 | 1 |
+| `CPP/7zip/UI/GUI` | 10 | 5 | 5 |
+| `CPP/7zip/UI/Common` | 25 | 10 | 15 |
+| **Всего** | **109** | **66** | **43** |
 
-Текущие counts включают частичный Panel.cpp из P0-02.2a и ClassDefs.cpp из
-P0-02.2b3a, partial FSDrives.cpp из P0-02.2b3b2b3 и PropertyName.cpp
-из P0-02.2b3b3c2b2b, полный FormatUtils.cpp из P0-02.2b3c3b1,
-partial ProgressDialog2.cpp (complete sync + presentation/taskbar/priority subset;
-full modal/thread/cancel remains mandatory)
-из P0-02.2b3c3b2a2/b2b2,
-helper-only OpenArchive.cpp/ExtractCallback.cpp
-из P0-02.2b3b3c2b2c;
-P0-01 inventory зафиксировал прежний snapshot 27 mirrored/82 missing.
-Все 35 совпадения путей
+Текущие counts пересчитаны на 2026-09-30 после P1-11.3; P0-01 inventory
+зафиксировал исторический snapshot 27 mirrored/82 missing. Все 66 совпадений путей
 требуют проверки пропущенных функций/веток. Нельзя считать их полностью
-завершёнными модулями. Из 74 отсутствующих файлов часть
+завершёнными модулями. Из 43 отсутствующих файлов часть
 содержит необходимую логику, часть обслуживает Win32 presentation или запуск
 отдельной 7zG/console-программы. Они должны получить явное решение о переносе,
 адаптации или неприменимости, а не автоматически копироваться целиком.
 
-Дополнительно есть 7 зеркальных `.cpp` вне этой таблицы:
-`CPP/Common/Wildcard.cpp`, `CPP/Windows/FileDir.cpp`,
-`CPP/Windows/FileName.cpp`, `CPP/Windows/FileLink.cpp`, `CPP/Windows/DLL.cpp`, `CPP/Windows/ResourceString.cpp`,
-`CPP/7zip/Common/MethodProps.cpp`.
-Всего в `src/CPP` — 42 `.cpp`.
-В корне `src/` — 42 `.cpp` Qt/integration; это не 42 неперенесённых компонентов:
+Дополнительно есть 10 зеркальных `.cpp` вне этой таблицы, включая
+`CPP/Common/Wildcard.cpp`, `CPP/Windows/FileDir.cpp`, `FileName.cpp`,
+`FileLink.cpp`, `DLL.cpp`, `ResourceString.cpp` и
+`CPP/7zip/Common/MethodProps.cpp`. Всего в `src/CPP` — 76 `.cpp`.
+В корне `src/` — 69 `.cpp` Qt/integration; это не 69 неперенесённых компонентов:
 часть является необходимой обвязкой, часть содержит миграционный долг.
 Отдельно есть Apple-only Objective-C++ `qttaskbarprogress_mac.mm`: narrow native
 Dock service с проверенными source state/value/cleanup вызовами; полный modal
 workflow и rendered/platform acceptance остаются обязательными.
-В `third_party/7zip` — 84 файла, побайтово совпадающих с теми же путями baseline,
-плюс локальный README и License.txt, скопированный из upstream `DOC/License.txt`.
-Это зависимости и ресурсы, не 84 завершённых пользовательских функций.
+В `third_party/7zip` — 192 файла, побайтово совпадающих с baseline,
+включая License.txt из upstream `DOC/License.txt`, плюс локальный README.
+Точный реестр и проверка — `docs/upstream-baseline.json` и
+`scripts/upstream_baseline.py`. Это зависимости и ресурсы, не 192 завершённые
+пользовательские функции.
 В таблице учитываются только файлы `src/`: переносимый `UI/Common/PropIDUtils.cpp`
 собирается без изменений из `third_party/7zip` и входит в счётчик зависимостей.
 Его дальнейшая runtime-интеграция и Windows-проверки остаются обязательными;
@@ -87,8 +80,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-11 (2026-09-30): **14/44 закрыты, 30 остаётся**;
-P0: 12/12, P1: 2/16, P2: 0/10, P3: 0/6. Подшаги P1-04 не увеличивают
+Текущий счёт после P3-01 (2026-09-30): **15/44 закрыты, 29 остаётся**;
+P0: 12/12, P1: 2/16, P2: 0/10, P3: 1/6. Подшаги P1-04 не увеличивают
 счёт до закрытия parent. Остальные mandatory workflow
 owners сохраняются в чеклисте.
 
@@ -887,6 +880,12 @@ omissions, dependency revision и adaptation record. Подготовить во
 **Готово:** baseline извлекается без старого локального checkout; borrowed modules
 не имеют неизвестного происхождения/двух authoritative implementations;
 демонстрация update review одного adapted и одного unchanged модуля.
+
+Текущий baseline закреплён в `docs/upstream-baseline.json`; проверка и
+old→new report реализованы в `scripts/upstream_baseline.py`, процедура —
+`docs/upstream-update.md`. P3-01 принят для текущего checkout и пополняется при
+каждом следующем переносе; synthetic update review не является фактическим
+обновлением 7-Zip.
 
 ### P3-02. Сквозная regression и security матрица
 
