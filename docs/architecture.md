@@ -529,10 +529,12 @@ to the desktop's Trash/Recycle Bin; Qt refreshes and restores source selection
 after each result. A test-only callback driver remains in `tests/`.
 
 `FileTransferOperation` owns copying/moving on a worker and the transaction
-wrapper that stages, publishes and rolls back targets. `CCopyState`,
-`CopyFolder` and `CopyFile_Ask` in `FSFolderCopy.cpp` own recursive copying;
-`CCopyStateIO::MyCopyFile` owns byte transfer. Progress callbacks have no widget
-dependency. Move tries rename and a separate link-validation traversal. When
+wrapper that stages, publishes and rolls back targets. `CFSFolder::CopyTo`,
+`CopyFileSystemItems`, `CCopyState`, `CopyFolder` and `CopyFile_Ask` in
+`FSFolderCopy.cpp` own source copy/move control flow and callbacks;
+`CCopyStateIO::MyCopyFile` is the portable byte-transfer branch.
+`CFileTransferCopyCallback` adapts AskWrite/progress to the transaction without
+owning widgets. Move tries rename and a separate link-validation traversal. When
 source-to-stage rename fails, the worker copies through source `CopyFolder`/
 `CopyFile_Ask` and defers source removal until every staged target is
 published. A narrow filesystem adapter supplies source rename and deletion
@@ -547,8 +549,11 @@ transaction holds replaced files/directories as backups until all selected
 sources publish, and restores them on precommit cancellation or failure.
 AutoRename
 uses the unchanged upstream `FilePathAutoRename` implementation. Current
-directory conflicts replace or skip the whole directory; source recursive
-merge remains a later filesystem port.
+directory conflicts merge through the same source CopyFolder body. The worker
+copies the old directory into a stage, applies per-file AskWrite decisions,
+then publishes the merged tree. For Move, only accepted source files are
+removed; skipped files remain. Cancellation before deletion restores the old
+tree, while deletion failure keeps published bytes and reports a partial move.
 
 `VolumeOperation` owns Split/Combine path validation, temporary outputs,
 publication and rollback. `PanelSplitFile.cpp` owns naming and the

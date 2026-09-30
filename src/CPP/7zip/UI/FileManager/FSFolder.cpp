@@ -70,6 +70,8 @@ HRESULT CFsFolderStat::Enumerate() {
 #ifdef _WIN32
     NWindows::NFile::NFind::CDirEntry fi;
     while (enumerator.Next(fi)) {
+        if (QFileInfo(QtPath(Path + fi.Name)).isSymLink())
+            return E_NOTIMPL;
         if (fi.IsDir()) {
             NumFolders++;
             Path.DeleteFrom(len);
@@ -91,6 +93,8 @@ HRESULT CFsFolderStat::Enumerate() {
         NWindows::NFile::NFind::CFileInfo fi;
         if (!enumerator.Fill_FileInfo(entry, fi, false))
             return E_FAIL;
+        if (QFileInfo(QtPath(Path + fi.Name)).isSymLink())
+            return E_NOTIMPL;
         if (fi.IsDir()) {
             NumFolders++;
             Path.DeleteFrom(len);
@@ -743,13 +747,7 @@ Z7_COM7F_IMF(CFSFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress
     return S_OK;
 }
 
-// Partial interface: full CopyTo/SetProperty consumers are mandatory P1-03/
-// P1-04. The current Qt transport continues to own those workflows; native
-// callers receive an explicit unavailable result instead of a fake success.
-Z7_COM7F_IMF(CFSFolder::CopyTo(Int32, const UInt32 *, UInt32, Int32, Int32, const wchar_t *,
-                               IFolderOperationsExtractCallback *)) {
-    return E_NOTIMPL;
-}
+// CopyTo is implemented with the upstream copy state in FSFolderCopy.cpp.
 Z7_COM7F_IMF(CFSFolder::SetProperty(UInt32, PROPID, const PROPVARIANT *, IProgress *)) {
     return E_NOTIMPL;
 }

@@ -254,7 +254,7 @@ class FileTransferTests : public QObject {
         QCOMPARE(originalSource.readAll(), QByteArray("again"));
     }
 
-    void directoryConflictCanSkipOrReplace() {
+    void directoryConflictMergesAndAsksForNestedFile() {
         for (const int answer : {NOverwriteAnswer::kNo, NOverwriteAnswer::kYes}) {
             QTemporaryDir temp;
             QVERIFY(temp.isValid());
@@ -264,10 +264,18 @@ class FileTransferTests : public QObject {
             QVERIFY(incoming.open(QIODevice::WriteOnly));
             incoming.write("new");
             incoming.close();
+            QFile incomingConflict(temp.filePath("incoming/folder/same"));
+            QVERIFY(incomingConflict.open(QIODevice::WriteOnly));
+            incomingConflict.write("incoming");
+            incomingConflict.close();
             QFile existing(temp.filePath("destination/folder/old"));
             QVERIFY(existing.open(QIODevice::WriteOnly));
             existing.write("old");
             existing.close();
+            QFile existingConflict(temp.filePath("destination/folder/same"));
+            QVERIFY(existingConflict.open(QIODevice::WriteOnly));
+            existingConflict.write("existing");
+            existingConflict.close();
             FileTransferOperation copy({temp.filePath("incoming/folder")},
                                        temp.filePath("destination"), false);
             QSignalSpy result(&copy, &FileTransferOperation::result);
@@ -281,11 +289,152 @@ class FileTransferTests : public QObject {
             QVERIFY(copy.wait(30000));
             QTRY_COMPARE(result.size(), 1);
             QVERIFY(result.first().first().toBool());
-            QCOMPARE(QFile::exists(temp.filePath("destination/folder/old")),
-                     answer == NOverwriteAnswer::kNo);
-            QCOMPARE(QFile::exists(temp.filePath("destination/folder/new")),
-                     answer == NOverwriteAnswer::kYes);
+            QVERIFY(QFile::exists(temp.filePath("destination/folder/old")));
+            QVERIFY(QFile::exists(temp.filePath("destination/folder/new")));
+            QFile merged(temp.filePath("destination/folder/same"));
+            QVERIFY(merged.open(QIODevice::ReadOnly));
+            QCOMPARE(merged.readAll(), answer == NOverwriteAnswer::kYes ? QByteArray("incoming")
+                                                                        : QByteArray("existing"));
         }
+    }
+
+    void directoryMoveMergeKeepsSkippedSourceFile() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir().mkpath(temp.filePath("incoming/folder/sub")));
+        QVERIFY(QDir().mkpath(temp.filePath("destination/folder/sub")));
+        QFile sourceConflict(temp.filePath("incoming/folder/sub/same"));
+        QVERIFY(sourceConflict.open(QIODevice::WriteOnly));
+        QCOMPARE(sourceConflict.write("incoming"), qint64(8));
+        sourceConflict.close();
+        QFile sourceNew(temp.filePath("incoming/folder/sub/new"));
+        QVERIFY(sourceNew.open(QIODevice::WriteOnly));
+        QCOMPARE(sourceNew.write("new"), qint64(3));
+        sourceNew.close();
+        QFile targetConflict(temp.filePath("destination/folder/sub/same"));
+        QVERIFY(targetConflict.open(QIODevice::WriteOnly));
+        QCOMPARE(targetConflict.write("existing"), qint64(8));
+        targetConflict.close();
+        FileTransferOperation move({temp.filePath("incoming/folder")}, temp.filePath("destination"),
+                                   true);
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        connect(
+            &move, &FileTransferOperation::overwriteRequested, &move,
+            [&move](const QString &, const QString &) {
+                move.submitOverwriteAnswer(NOverwriteAnswer::kNo);
+            },
+            Qt::DirectConnection);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(result.first().first().toBool());
+        QFile destinationNew(temp.filePath("destination/folder/sub/new"));
+        QVERIFY(destinationNew.open(QIODevice::ReadOnly));
+        QCOMPARE(destinationNew.readAll(), QByteArray("new"));
+        QFile destinationOld(temp.filePath("destination/folder/sub/same"));
+        QVERIFY(destinationOld.open(QIODevice::ReadOnly));
+        QCOMPARE(destinationOld.readAll(), QByteArray("existing"));
+        QVERIFY(!QFileInfo::exists(sourceNew.fileName()));
+        QVERIFY(QFileInfo::exists(sourceConflict.fileName()));
+    }
+
+    void directoryMergeAutoRenamesNestedConflict() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir().mkpath(temp.filePath("incoming/folder")));
+        QVERIFY(QDir().mkpath(temp.filePath("destination/folder")));
+        QFile source(temp.filePath("incoming/folder/same.txt"));
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write("incoming"), qint64(8));
+        source.close();
+        QFile target(temp.filePath("destination/folder/same.txt"));
+        QVERIFY(target.open(QIODevice::WriteOnly));
+        QCOMPARE(target.write("existing"), qint64(8));
+        target.close();
+        FileTransferOperation copy({temp.filePath("incoming/folder")}, temp.filePath("destination"),
+                                   false);
+        QSignalSpy result(&copy, &FileTransferOperation::result);
+        connect(
+            &copy, &FileTransferOperation::overwriteRequested, &copy,
+            [&copy](const QString &, const QString &) {
+                copy.submitOverwriteAnswer(NOverwriteAnswer::kAutoRename);
+            },
+            Qt::DirectConnection);
+        copy.start();
+        QVERIFY(copy.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(result.first().first().toBool());
+        QVERIFY(target.open(QIODevice::ReadOnly));
+        QCOMPARE(target.readAll(), QByteArray("existing"));
+        const QStringList names =
+            QDir(temp.filePath("destination/folder")).entryList(QDir::Files | QDir::NoDotAndDotDot);
+        QCOMPARE(names.size(), 2);
+        for (const QString &name : names) {
+            if (name == QStringLiteral("same.txt"))
+                continue;
+            QFile renamed(temp.filePath("destination/folder/" + name));
+            QVERIFY(renamed.open(QIODevice::ReadOnly));
+            QCOMPARE(renamed.readAll(), QByteArray("incoming"));
+        }
+    }
+
+    void directoryMergeCancelRestoresOriginalTree() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir().mkpath(temp.filePath("incoming/folder")));
+        QVERIFY(QDir().mkpath(temp.filePath("destination/folder")));
+        QFile source(temp.filePath("incoming/folder/same"));
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write("new"), qint64(3));
+        source.close();
+        QFile target(temp.filePath("destination/folder/same"));
+        QVERIFY(target.open(QIODevice::WriteOnly));
+        QCOMPARE(target.write("old"), qint64(3));
+        target.close();
+        FileTransferOperation move({temp.filePath("incoming/folder")}, temp.filePath("destination"),
+                                   true);
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        connect(
+            &move, &FileTransferOperation::overwriteRequested, &move,
+            [&move](const QString &, const QString &) { move.cancel(); }, Qt::DirectConnection);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QCOMPARE(source.readAll(), QByteArray("new"));
+        QVERIFY(target.open(QIODevice::ReadOnly));
+        QCOMPARE(target.readAll(), QByteArray("old"));
+        QCOMPARE(
+            QDir(temp.filePath("destination")).entryList(QDir::NoDotAndDotDot | QDir::AllEntries),
+            QStringList({QStringLiteral("folder")}));
+    }
+
+    void directoryMergeDeleteFailureRetainsPublishedBytes() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir().mkpath(temp.filePath("incoming/folder")));
+        QVERIFY(QDir().mkpath(temp.filePath("destination/folder")));
+        QFile source(temp.filePath("incoming/folder/new"));
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write("new bytes"), qint64(9));
+        source.close();
+        QFile original(temp.filePath("destination/folder/old"));
+        QVERIFY(original.open(QIODevice::WriteOnly));
+        QCOMPARE(original.write("old bytes"), qint64(9));
+        original.close();
+        FileTransferOperation::FileSystemAdapter adapter;
+        adapter.removeSource = [](const QString &) { return false; };
+        FileTransferOperation move({temp.filePath("incoming/folder")}, temp.filePath("destination"),
+                                   true, nullptr, adapter);
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        QVERIFY(QFileInfo::exists(source.fileName()));
+        QVERIFY(QFileInfo::exists(temp.filePath("destination/folder/new")));
+        QVERIFY(QFileInfo::exists(original.fileName()));
     }
 
     void noToAllAndCancelDuringPromptLeaveSourcesUntouched() {
@@ -431,7 +580,7 @@ class FileTransferTests : public QObject {
         QVERIFY(QFile::exists(temp.filePath(QStringLiteral("destination/имя с пробелом.txt"))));
     }
 
-    void rejectsOccupiedTargetAndDestinationInsideSource() {
+    void mergesOccupiedDirectoryAndRejectsDestinationInsideSource() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         QVERIFY(QDir(temp.path()).mkpath("source/child"));
@@ -450,8 +599,9 @@ class FileTransferTests : public QObject {
         collision.start();
         QVERIFY(collision.wait(30000));
         QTRY_COMPARE(occupied.size(), 1);
-        QVERIFY(!occupied.first().first().toBool());
-        QVERIFY(QDir(source).exists());
+        QVERIFY(occupied.first().first().toBool());
+        QVERIFY(!QDir(source).exists());
+        QVERIFY(QDir(temp.filePath("destination/source/child")).exists());
     }
 
     void cancellationLeavesNoPublishedOrStagedFile() {

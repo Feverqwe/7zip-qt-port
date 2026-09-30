@@ -3,11 +3,14 @@
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "Common/StringConvert.h"
+#include "qtfiletransfercopycallback.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QUuid>
+#include <algorithm>
 
 FileTransferOperation::FileTransferOperation(QStringList sources, QString destination, bool move,
                                              QObject *parent, FileSystemAdapter adapter)
@@ -78,17 +81,18 @@ bool FileTransferOperation::validateEntry(const QString &source, QString *error)
     return true;
 }
 
-bool FileTransferOperation::copyEntry(const QString &source, const QString &target,
-                                      QString *error) {
+bool FileTransferOperation::copyEntry(const QString &source, const QString &target, QString *error,
+                                      bool reportProgress) {
     NFsFolder::CCopyState state;
     quint64 previous = 0;
-    state.Progress = [this, &previous](quint64 completed) {
-        if (completed != previous)
+    state.Progress = [this, &previous, reportProgress](quint64 completed) {
+        if (reportProgress && completed != previous)
             emit advanced(qint64(completed - previous));
         previous = completed;
         return !canceled_;
     };
-    state.CurrentFile = [this](const QString &path) { emit currentFile(path); };
+    if (reportProgress)
+        state.CurrentFile = [this](const QString &path) { emit currentFile(path); };
     if (!state.CallProgress()) {
         *error = state.ErrorMessage;
         return false;
@@ -100,6 +104,91 @@ bool FileTransferOperation::copyEntry(const QString &source, const QString &targ
     return copied;
 }
 
+bool FileTransferOperation::mergeEntry(
+    const QString &source, const QString &stage, const QString &target,
+    const std::function<int(const QString &, const QString &)> &answer, QStringList *writtenSources,
+    QString *error) {
+    CFileTransferCopyCallback callback(
+        [this, &answer, &stage, &target](const QString &incoming, const QString &requested,
+                                         QString &effective, bool &write) -> HRESULT {
+            if (canceled_)
+                return E_ABORT;
+            const QFileInfo existing(requested);
+            if (existing.isSymLink() || (existing.exists() && !existing.isFile()))
+                return E_ABORT;
+            if (existing.exists()) {
+                const QString visible = target + requested.mid(stage.size());
+                const int decision = answer(visible, incoming);
+                if (decision == NOverwriteAnswer::kNo || decision == NOverwriteAnswer::kNoToAll) {
+                    write = false;
+                    return S_OK;
+                }
+                if (decision == NOverwriteAnswer::kAutoRename) {
+                    FString renamed = us2fs(requested.toStdWString().c_str());
+                    if (!AutoRenamePath(renamed))
+                        return E_ABORT;
+                    effective = QString::fromWCharArray(fs2us(renamed));
+                } else if (decision == NOverwriteAnswer::kYes ||
+                           decision == NOverwriteAnswer::kYesToAll) {
+                    if (!QFile::remove(requested))
+                        return E_ABORT;
+                } else {
+                    return E_ABORT;
+                }
+            }
+            write = true;
+            return S_OK;
+        },
+        [this](quint64 delta) {
+            if (delta)
+                emit advanced(qint64(delta));
+            return !canceled_;
+        },
+        [this](const QString &path) { emit currentFile(path); });
+    NFsFolder::CCopyState state;
+    state.Callback = &callback;
+    const bool merged = NFsFolder::CopyFolder(state, source, stage);
+    *writtenSources = callback.writtenSources;
+    *error = !state.ErrorMessage.isEmpty() ? state.ErrorMessage : callback.errorMessage;
+    if (!merged && error->isEmpty())
+        *error = QStringLiteral("Не удалось слить папки: %1").arg(target);
+    return merged;
+}
+
+bool FileTransferOperation::removeMergedSource(const QString &source,
+                                               const QStringList &writtenSources, QString *error) {
+    for (const QString &path : writtenSources) {
+        if (canceled_) {
+            *error = QStringLiteral("Операция отменена.");
+            return false;
+        }
+        if (!adapter_.removeSource(path)) {
+            *error = QStringLiteral("Не удалось удалить источник после копирования: %1").arg(path);
+            return false;
+        }
+    }
+    QStringList directories;
+    QDirIterator iterator(source, QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+                          QDirIterator::Subdirectories);
+    while (iterator.hasNext()) {
+        if (canceled_) {
+            *error = QStringLiteral("Операция отменена.");
+            return false;
+        }
+        directories << iterator.next();
+    }
+    std::sort(directories.begin(), directories.end(),
+              [](const QString &a, const QString &b) { return a.size() > b.size(); });
+    for (const QString &directory : directories)
+        QDir().rmdir(directory);
+    QDir().rmdir(source); // Skipped files intentionally keep the source folder.
+    if (canceled_) {
+        *error = QStringLiteral("Операция отменена.");
+        return false;
+    }
+    return true;
+}
+
 void FileTransferOperation::run() {
     struct Completed {
         QString source;
@@ -107,9 +196,28 @@ void FileTransferOperation::run() {
         QString backup;
         bool copiedMove = false;
         bool sourceDeleted = false;
+        bool merged = false;
+        QStringList writtenSources;
     };
     enum class OverwriteMode { Ask, Skip, Overwrite, Rename };
     OverwriteMode overwriteMode = OverwriteMode::Ask;
+    auto nestedAnswer = [this, &overwriteMode](const QString &existing,
+                                               const QString &incoming) -> int {
+        if (overwriteMode == OverwriteMode::Skip)
+            return NOverwriteAnswer::kNo;
+        if (overwriteMode == OverwriteMode::Overwrite)
+            return NOverwriteAnswer::kYes;
+        if (overwriteMode == OverwriteMode::Rename)
+            return NOverwriteAnswer::kAutoRename;
+        const int answer = askOverwrite(existing, incoming);
+        if (answer == NOverwriteAnswer::kNoToAll)
+            overwriteMode = OverwriteMode::Skip;
+        else if (answer == NOverwriteAnswer::kYesToAll)
+            overwriteMode = OverwriteMode::Overwrite;
+        else if (answer == NOverwriteAnswer::kAutoRename)
+            overwriteMode = OverwriteMode::Rename;
+        return answer;
+    };
     QString error;
     const QFileInfo destinationInfo(destination_);
     const QString canonicalDestination = destinationInfo.canonicalFilePath();
@@ -139,13 +247,16 @@ void FileTransferOperation::run() {
         bool mayReplace = false;
         const QFileInfo sourceInfo(source);
         const QFileInfo existingInfo(target);
+        const bool merge = existingInfo.isDir() && sourceInfo.isDir();
         if (existingInfo.exists()) {
             if (existingInfo.isDir() != sourceInfo.isDir()) {
                 error =
                     QStringLiteral("Нельзя заменить файл папкой или папку файлом: %1").arg(target);
                 break;
             }
-            if (overwriteMode == OverwriteMode::Ask) {
+            if (merge) {
+                mayReplace = true;
+            } else if (overwriteMode == OverwriteMode::Ask) {
                 const int answer = askOverwrite(target, source);
                 switch (answer) {
                 case NOverwriteAnswer::kNo:
@@ -168,16 +279,16 @@ void FileTransferOperation::run() {
             }
             if (!error.isEmpty())
                 break;
-            if (overwriteMode == OverwriteMode::Skip)
+            if (!merge && overwriteMode == OverwriteMode::Skip)
                 continue;
-            if (overwriteMode == OverwriteMode::Rename) {
+            if (!merge && overwriteMode == OverwriteMode::Rename) {
                 FString renamed = us2fs(target.toStdWString().c_str());
                 if (!AutoRenamePath(renamed)) {
                     error = QStringLiteral("Не удалось подобрать свободное имя: %1").arg(target);
                     break;
                 }
                 target = QString::fromWCharArray(fs2us(renamed));
-            } else {
+            } else if (!merge) {
                 mayReplace = true;
             }
         }
@@ -185,11 +296,16 @@ void FileTransferOperation::run() {
             QStringLiteral(".sevenzip-%1").arg(QUuid::createUuid().toString(QUuid::Id128));
         const QString stage = target + suffix;
         QString backup;
+        QStringList writtenSources;
         emit currentFile(sources_[i]);
         const bool valid = !move_ || validateEntry(source, &error);
-        const bool renamed = valid && move_ && adapter_.trySourceRename(source, stage);
+        const bool renamed = valid && move_ && !merge && adapter_.trySourceRename(source, stage);
         const bool copiedMove = valid && move_ && !renamed;
-        const bool staged = valid && (renamed || copyEntry(source, stage, &error));
+        const bool staged =
+            valid &&
+            (merge ? (copyEntry(target, stage, &error, false) &&
+                      mergeEntry(source, stage, target, nestedAnswer, &writtenSources, &error))
+                   : (renamed || copyEntry(source, stage, &error)));
         if (!staged && error.isEmpty())
             error = QStringLiteral("Не удалось переместить объект: %1").arg(sources_[i]);
         if (error.isEmpty() && canceled_)
@@ -215,7 +331,8 @@ void FileTransferOperation::run() {
                 QDir().rename(backup, target);
             break;
         }
-        completed.append({source, target, backup, copiedMove, move_ && !copiedMove});
+        completed.append(
+            {source, target, backup, copiedMove, move_ && !copiedMove, merge, writtenSources});
     }
     if (!error.isEmpty()) {
         for (qsizetype i = completed.size(); i > 0; --i) {
@@ -236,12 +353,14 @@ void FileTransferOperation::run() {
                 error = QStringLiteral("Операция отменена.");
                 break;
             }
-            if (!adapter_.removeSource(entry.source)) {
+            if (entry.merged ? !removeMergedSource(entry.source, entry.writtenSources, &error)
+                             : !adapter_.removeSource(entry.source)) {
                 // Recursive deletion can fail after removing some children.
                 // Retain the published copy so the remaining bytes stay available.
                 entry.sourceDeleted = true;
-                error = QStringLiteral("Не удалось удалить источник после копирования: %1")
-                            .arg(entry.source);
+                if (error.isEmpty())
+                    error = QStringLiteral("Не удалось удалить источник после копирования: %1")
+                                .arg(entry.source);
                 break;
             }
             entry.sourceDeleted = true;
@@ -264,7 +383,13 @@ void FileTransferOperation::run() {
         for (const Completed &entry : completed)
             if (!entry.backup.isEmpty())
                 removeEntry(entry.backup);
-        emit result(true, QStringLiteral("Объекты перемещены."));
+        const bool retainedSource =
+            std::any_of(completed.cbegin(), completed.cend(), [](const Completed &entry) {
+                return entry.merged && QFileInfo::exists(entry.source);
+            });
+        emit result(true, retainedSource
+                              ? QStringLiteral("Часть файлов пропущена; источники сохранены.")
+                              : QStringLiteral("Объекты перемещены."));
     } else {
         for (const Completed &entry : completed)
             if (!entry.backup.isEmpty())

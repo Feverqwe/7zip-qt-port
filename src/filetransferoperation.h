@@ -32,7 +32,13 @@ class FileTransferOperation : public QThread {
     void run() override;
 
   private:
-    bool copyEntry(const QString &source, const QString &target, QString *error);
+    bool copyEntry(const QString &source, const QString &target, QString *error,
+                   bool reportProgress = true);
+    bool mergeEntry(const QString &source, const QString &stage, const QString &target,
+                    const std::function<int(const QString &, const QString &)> &answer,
+                    QStringList *writtenSources, QString *error);
+    bool removeMergedSource(const QString &source, const QStringList &writtenSources,
+                            QString *error);
     bool validateEntry(const QString &source, QString *error);
     static bool removeEntry(const QString &path);
     int askOverwrite(const QString &existing, const QString &incoming);

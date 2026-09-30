@@ -3294,3 +3294,43 @@ AskWrite per-entry callback, прямое имя цели и recursive merge н�
 F5/F6 UI consumers проходят. Полный unsandboxed `./scripts/check.sh`
 прошёл 142/142 CTest на macOS arm64/Qt 6.11.2, 2026-10-01.
 Windows/Linux runtime и реальный второй том не проверены.
+
+## P1-02.2 — full FSFolderCopy callback and directory merge (принято, 2026-10-01)
+
+База: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/FSFolderCopy.cpp::{CCopyState,CopyFile_Ask,
+CopyFolder,CFSFolder::CopyTo,CopyFileSystemItems}` и `FSFolder.h`;
+consumers `PanelCopy.cpp::CPanelCopyThread::ProcessVirt`,
+`ExtractCallback.cpp::CExtractCallbackImp::AskWrite`. Эти исходные symbol,
+обход/подсчёт, AskWrite→copy/move→progress, рекурсия и direct-path ветка
+остаются в зеркальном модуле. `CFSFolder::CopyTo` перенесён из `FSFolder.cpp`
+stub в `FSFolderCopy.cpp`; этот файл теперь единожды компилируется в
+`sevenzip_filesystem`. `CopyFrom/CopyFromFile` остаются оригинальными
+`E_NOTIMPL`.
+
+Адаптации: `CFSFolder` собирает полный путь как `_path + GetRelPath(fi)`
+вместо ещё не восстановленного исходного `GetFullPath`. Portable
+`CFsFolderStat` принимает путь в конструкторе. Windows `CopyFile_Sys`
+использует исходный `CopyFileExW` callback; POSIX не имеет его и использует
+перенесённый `CCopyStateIO::MyCopyFile`. `MoveFile_Sys` делегирует в
+адаптированный source `MyMoveFile_with_Progress`; для каталога Qt rename
+возвращает управление исходной recursive ветке при отказе, поскольку POSIX
+FileDir EXDEV fallback копирует только обычные файлы. POSIX `CEnumerator`
+заполняет `CFileInfo` через `Fill_FileInfo`; решение AskWrite для stage
+передаёт узкий `CFileTransferCopyCallback`, без widget в source module.
+Исходный `CExtractCallbackImp::AskWrite` остаётся COM consumer для
+`CPanel::CopyTo`. MainWindow F5/F6 сохраняет транзакционный Qt worker:
+для занятого каталога он копирует прежнее дерево в stage, применяет тот же
+`CopyFolder` с per-file AskWrite и публикует результат. F6 удаляет только
+записанные исходные файлы; пропущенные остаются. Ошибка/отмена до удаления
+откатывает stage, а отказ удаления после публикации сохраняет целевые байты
+и сообщает частичный результат.
+
+Alternate streams и ссылки явно отклоняются до переноса (P2-05/P2-06);
+metadata и Windows super-path ветки требуют отдельных platform проверок.
+Прямое имя цели проверено через native `CFSFolder::CopyTo`, но Shift+F5/F6
+Qt consumer относится к P1-01.4. Проверены `fs_folder_copy`, `fs_folder`,
+`file_transfer`, прямой two-panel filesystem UI consumer и normal/compact
+`main_shell`/`panel_shell` JSON; полный unsandboxed `check.sh` прошёл 143/143
+CTest на macOS arm64/Qt 6.11.2, 2026-10-01. Реальный второй том,
+Windows/Linux runtime и rendered Windows reference локально не проверены.

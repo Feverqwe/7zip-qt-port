@@ -612,6 +612,12 @@ directory bytes, occupied target contents before overwrite approval, deletion
 only after publication, cancellation rollback and an injected deletion failure
 with explicit partial result. Direct two-panel filesystem UI consumers remain
 covered by `ui_operations`; real second-volume runtime is unverified locally.
+`fs_folder_copy` calls source `CFSFolder::CopyTo` for direct filename,
+directory merge, directory Move, cancellation and `CopyFileSystemItems` with
+Unicode paths. `file_transfer` exercises staged nested AskWrite skip/replace/
+auto-rename, Move with skipped source files, cancellation rollback and deletion
+failure after publication. The normal/compact main and panel shell reports
+check that status bars remain visible for the updated operation message.
 
 `extraction_options` checks both rename-on-conflict modes against disposable 7z and ZIP archives with a Unicode filename and spaces. It verifies that the original filename has the requested contents and both versions survive under separate names. `ui_layout` checks that the Extract dialog exposes both modes. Their actual filename suffixes are chosen by `7zz`. `archive_backend` checks creation of a nested Unicode destination and rejection of a linked ancestor.
 

@@ -40,8 +40,8 @@ struct CFsFolderStat {
     HRESULT Enumerate();
 };
 
-// Partial source folder owner. Runtime panel loading is integrated separately;
-// mutations retain their Qt service boundary and existing callbacks.
+// Source folder owner. Runtime panel loading and destructive mutations use
+// narrow Qt/platform services; CopyTo retains the upstream callback contract.
 class CFSFolder final : public IFolderFolder,
                         public IFolderCalcItemFullSize,
                         public IFolderClone,
@@ -110,16 +110,28 @@ struct CCopyStateIO {
 };
 bool IsDestChild(const QString &src, const QString &dest);
 
-// Read/write branch of upstream CCopyState. The transaction owner retains
-// move/rollback; this state copies into an unpublished destination only.
 struct CCopyState {
     quint64 StartPos = 0;
+    quint64 TotalSize = 0;
+    quint64 FileSize = 0;
+    HRESULT ProgressResult = S_OK;
     QString ErrorMessage;
     std::function<bool(quint64)> Progress;
     std::function<void(const QString &)> CurrentFile;
+    IFolderOperationsExtractCallback *Callback = nullptr;
+    bool MoveMode = false;
+    bool UseReadWriteMode = false;
+    bool IsAltStreamsDest = false;
+    bool CopyFile_Sys(const QString &oldFile, const QString &newFile,
+                      QFileDevice::Permissions attrib);
+    bool MoveFile_Sys(const QString &oldFile, const QString &newFile,
+                      QFileDevice::Permissions attrib);
+    DWORD ReportSystemProgress(UInt64 total, UInt64 current);
     bool CallProgress();
 };
 bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &srcFileInfo,
                   const QString &destPath);
 bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPath);
+HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &destDirPrefix,
+                            bool moveMode, IFolderOperationsExtractCallback *callback);
 } // namespace NFsFolder
