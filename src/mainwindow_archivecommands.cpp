@@ -191,9 +191,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
     if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask ||
-        options.pathMode != ExtractionOptions::PathMode::FullPaths || !archiveFolder_.isEmpty() ||
-        isNestedArchive() || info_.encrypted || !resource || !resource->HasExtractService() ||
-        !backend_->hasListedSourceArchive(archive_))
+        !archiveFolder_.isEmpty() || isNestedArchive() || info_.encrypted || !resource ||
+        !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
         return false;
     {
         QString validationError;
@@ -231,7 +230,9 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         CCopyToOptions sourceOptions;
         sourceOptions.extractMode = true;
         sourceOptions.folder = ToUString(output);
-        sourceOptions.pathMode = NExtract::NPathMode::kFullPaths;
+        sourceOptions.pathMode = options.pathMode == ExtractionOptions::PathMode::NoPaths
+                                     ? NExtract::NPathMode::kNoPaths
+                                     : NExtract::NPathMode::kFullPaths;
         sourceOptions.NeedRegistryZone = false;
         sourceOptions.showErrorMessages = true;
         bool usePassword = !password.isEmpty() || !archivePassword_.isEmpty();

@@ -431,7 +431,8 @@ rollback. Tests backend и dialog consumers; история/Cancel не регр
 Рабочие результаты: P0-12.1 закрепил общий интерактивный Ask на `7zz` transport;
 P0-12.2 подключил незашифрованный root FullPaths FM consumer к исходным
 `CPanel::CopyTo`/`CAgentFolder::Extract`/`CheckExistFile` и проверил source UX.
-P0-12.3 завершает nested/encrypted/no-path, `ExtractGUI.cpp`/`Common/Extract.cpp`
+P0-12.3 подключил root NoPaths/Ask с выбранной папкой к тому же source callback;
+P0-12.4 завершает nested/encrypted, `ExtractGUI.cpp`/`Common/Extract.cpp`
 и parent приёмку. Точные критерии и evidence — в checklist; незавершённое не
 считается готовым из-за совпадения поведения одного маршрута.
 

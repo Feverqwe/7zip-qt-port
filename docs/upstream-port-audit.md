@@ -1730,7 +1730,7 @@ modes still use the P0-12.1 backend path. `ExtractGUI.cpp::ExtractGUI`/
 `CThreadExtracting::ProcessVirt` and `Common/Extract.cpp::DecompressArchive`/
 `Extract` batch orchestration have been reviewed but not copied or wired;
 option precedence, multi-archive statistics, callback close/error composition,
-volume handling and related dependencies remain P0-12.3. Source callback writes
+volume handling and related dependencies remain P0-12.4. Source callback writes
 directly; failure/cancel can leave partial output. Destination changes after
 validation remain a race, and rendered Windows plus Windows/Linux runtime parity
 are unverified.
@@ -1739,6 +1739,47 @@ Focused `ui_operations`, `source_extract_backend` and `extraction_options`
 passed 3/3; after extending the UI decisions fixture, `ui_operations` passed
 again. The full unsandboxed `./scripts/check.sh` passed C++ format, app build
 and all 137 CTest cases on macOS arm64 with Qt 6.11.2 on 2026-09-30.
+
+## P0-12.3 — root NoPaths through source FM callback (2026-09-30)
+
+Exact baseline:
+[`ip7z/7zip` commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/Common/ArchiveExtractCallback.cpp::GetStream` path-mode switch,
+`CPP/7zip/UI/Agent/Agent.cpp::CAgentFolder::Extract`, and
+`CPP/7zip/UI/FileManager/PanelCopy.cpp::CPanelCopyThread::ProcessVirt`.
+These source bodies remain in their existing mirrored paths. The Qt command
+adapter now passes the dialog's NoPaths mode into the already connected native
+`IArchiveFolder::Extract` route for a listed, unencrypted root archive. No
+algorithm was rewritten and no upstream file modified. `ArchiveBackend` still
+validates all selected entries, destination ancestry, link/type hazards and
+flattened name collisions before the native worker starts. A real ZIP/Unicode
+selected-folder test confirms the flattened file, source Ask at write time,
+replacement bytes and absence of the P0-12.1 preflight signal. The source
+callback retains an explicit archive directory entry as an empty folder in
+NoPaths mode; this comes from its own path-mode body and is recorded as a
+visible difference from the earlier CLI `e` transport.
+
+Two related paths were investigated and remain P0-12.4. For an encrypted
+archive, the file-only `7zz -so` adapter redirects stdout as binary and only
+parses stderr for prompts; a real UI source-extract test timed out waiting for
+password handling. The current transport has no verified structured prompt.
+The source callback can also open or replace the output before password
+verification. Encrypted user extraction therefore stays on the existing
+preflight/test path until an authenticated stream contract prevents a hang and
+wrong-password data loss. For selection inside a bound archive subfolder,
+`CAgentFolder::Extract` passes current-folder path parts to the source callback,
+which strips that prefix even with FullPaths; a real selected-item test found
+the expected full destination conflict was not asked. The established backend
+route is retained until the source root/batch owner supplies the correct path
+base. `GUI/ExtractGUI.cpp` and `Common/Extract.cpp` remain mandatory source
+orchestration, along with nested/encrypted acceptance. No unverified behavior
+is marked complete.
+
+Focused `ui_operations`, `archive_selection_runtime`, `ui_archive_states`
+and `extraction_options` passed 4/4. The full unsandboxed
+`./scripts/check.sh` passed formatting, app build and all 137 CTest cases on
+macOS arm64 with Qt 6.11.2 on 2026-09-30. Windows/Linux runtime and rendered
+Windows parity remain unverified.
 
 ## P0-11 — filesystem overwrite decisions (2026-09-30)
 

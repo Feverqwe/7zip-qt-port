@@ -494,6 +494,60 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(old.readAll(), QByteArray("preserved"));
     }
 
+    void sourceNoPathsAskFlattensSelectedFolder() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("folder with space"));
+        const QString name = QStringLiteral("δ name.txt");
+        QVERIFY(QDir().mkpath(source));
+        QFile input(QDir(source).filePath(name));
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("new bytes"), qint64(9));
+        input.close();
+        const QString archive = temp.filePath("flat.zip");
+        const QString output = temp.filePath("output");
+        QVERIFY(QDir().mkpath(output));
+        QFile occupied(QDir(output).filePath(name));
+        QVERIFY(occupied.open(QIODevice::WriteOnly));
+        QCOMPARE(occupied.write("old bytes"), qint64(9));
+        occupied.close();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        table(window)->selectRow(0);
+        QSignalSpy preflight(&backend, &ArchiveBackend::overwriteRequired);
+        bool answered = false;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    answered = true;
+                    dialog->findChild<QPushButton *>("overwriteYes")->click();
+                }
+            }
+        });
+        answer.start(1);
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::NoPaths;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        window.extractTo(output, true, {}, options);
+        answer.stop();
+        QVERIFY(answered);
+        QCOMPARE(preflight.size(), 0);
+        QVERIFY(occupied.open(QIODevice::ReadOnly));
+        QCOMPARE(occupied.readAll(), QByteArray("new bytes"));
+        // The source callback retains the explicit archive directory as empty.
+        const QDir explicitDirectory(QDir(output).filePath("folder with space"));
+        QVERIFY(explicitDirectory.exists());
+        QVERIFY(explicitDirectory.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
+    }
+
     void movesRealArchiveEntryToDirectory() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
