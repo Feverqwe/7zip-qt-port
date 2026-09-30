@@ -262,6 +262,18 @@ void CArchiveLink::Release() {
         Arcs.DeleteBack();
 }
 
+HRESULT CArchiveLink::Open2(COpenOptions &op, IOpenCallbackUI *callbackUI) {
+    return op.QtOpenService ? op.QtOpenService->Open(*this, op, callbackUI) : E_NOTIMPL;
+}
+
+HRESULT CArchiveLink::Open3(COpenOptions &op, IOpenCallbackUI *callbackUI) {
+    HRESULT res = Open2(op, callbackUI);
+    if (callbackUI) {
+        RINOK(callbackUI->Open_Finished())
+    }
+    return res;
+}
+
 HRESULT Archive_GetItemBoolProp(IInArchive *arc, UInt32 index, PROPID propID,
                                 bool &result) throw() {
     NCOM::CPropVariant prop;

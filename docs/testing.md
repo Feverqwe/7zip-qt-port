@@ -929,3 +929,14 @@ OK. Наборы compression_order/dictionary/memory/solid теперь ожид
 словаря, сохранность слова/потоков и специальных solid 0/64. Cancel оставляет
 INI неизменным. Снимки Store 7z/ZIP после смены уровня:
 `level-reset-{7z,zip}-{760,640}.png` в build/dev/ui-screenshots.
+
+P0-12.5: `source_extract_backend` проверяет исходный `ExtractGUI`/`Extract`
+на двух ZIP с одинаковым Unicode-путём и решениями Yes/Cancel, а также на
+многотомном `.7z.001` с пропуском следующих частей и точным сравнением байтов.
+`nested_archive::opensRealNestedArchive` проверяет Ask и итоговые байты при
+извлечении целого вложенного архива через batch и выбранного элемента через
+текущую исходную FM-папку. `ui_operations` проверяет root batch, шифрованные
+7z/ZIP с неверным и затем верным паролем, текущую папку, отказ до перезаписи
+и отсутствие backend overwrite preflight. `extract_dialog` проверяет приоритет
+сохранённых и принудительных режимов с паролем; диалог остаётся тем же Qt
+представлением исходных групп и combo modes из `ExtractDialog.rc`.

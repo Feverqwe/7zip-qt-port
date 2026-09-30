@@ -76,6 +76,29 @@ class ExtractDialogTests final : public QObject {
         QCOMPARE(pathMode(afterCancel)->currentIndex(), 1);
         QCOMPARE(overwrite(afterCancel)->currentIndex(), 4);
     }
+    void sourceOptionsRespectForcedAndSavedModes() {
+        NExtract::CInfo saved;
+        saved.PathMode = NExtract::NPathMode::kNoPaths;
+        saved.PathMode_Force = true;
+        saved.OverwriteMode = NExtract::NOverwriteMode::kSkip;
+        saved.OverwriteMode_Force = true;
+        saved.Save(settings_);
+        CExtractDialog dialog(dir_.path(), {}, false);
+        dialog.SetInitialOptions(NExtract::NPathMode::kFullPaths, NExtract::NOverwriteMode::kAsk,
+                                 QStringLiteral("пароль с пробелом"));
+        QCOMPARE(pathMode(dialog)->currentIndex(), 1);
+        QCOMPARE(overwrite(dialog)->currentIndex(), 2);
+        QCOMPARE(dialog.findChild<QLineEdit *>("extractPassword")->text(),
+                 QStringLiteral("пароль с пробелом"));
+        CExtractDialog forced(dir_.path(), {}, false);
+        forced.PathMode_Force = true;
+        forced.OverwriteMode_Force = true;
+        forced.SetInitialOptions(NExtract::NPathMode::kFullPaths, NExtract::NOverwriteMode::kAsk,
+                                 QString());
+        QCOMPARE(pathMode(forced)->currentIndex(), 0);
+        QCOMPARE(overwrite(forced)->currentIndex(), 0);
+        QVERIFY(forced.findChild<QLineEdit *>("extractPassword")->text().isEmpty());
+    }
     void originalHistoryRules() {
         QStringList history;
         for (int i = 0; i < 20; i++)

@@ -1,0 +1,90 @@
+#include "qtarchivebatchopen.h"
+#include "7zip/IPassword.h"
+#include "7zip/IProgress.h"
+#include "CPP/7zip/UI/Agent/Agent.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "Common/ComTry.h"
+#include "Common/StringConvert.h"
+#include "qtarchivefileresource.h"
+#include "qtarchivefoldermanager.h"
+#include <QDir>
+#include <QFileInfo>
+
+namespace {
+class CBatchOpenProgress final : public IProgress,
+                                 public ICryptoGetTextPassword,
+                                 public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IProgress, ICryptoGetTextPassword)
+    IOpenCallbackUI *_callback;
+
+  public:
+    explicit CBatchOpenProgress(IOpenCallbackUI *callback) : _callback(callback) {}
+    Z7_COM7F_IMF(SetTotal(UInt64 total)) override {
+        return _callback ? _callback->Open_SetTotal(nullptr, &total) : S_OK;
+    }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *completed)) override {
+        return _callback ? _callback->Open_SetCompleted(nullptr, completed) : S_OK;
+    }
+    Z7_COM7F_IMF(CryptoGetTextPassword(BSTR *password)) override {
+        return _callback ? _callback->Open_CryptoGetTextPassword(password) : E_NOINTERFACE;
+    }
+};
+} // namespace
+
+QtArchiveBatchOpen::QtArchiveBatchOpen(ArchiveBackend &backend)
+    : _backend(backend), _manager(new QtArchiveFolderManager(backend)) {}
+
+HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options,
+                                 IOpenCallbackUI *callback) {
+    COM_TRY_BEGIN
+    if (options.stdInMode || options.stream || options.filePath.IsEmpty())
+        return E_NOTIMPL;
+    CMyComPtr<IProgress> progress = new CBatchOpenProgress(callback);
+    CMyComPtr<IFolderFolder> folder;
+    const HRESULT result =
+        _manager->OpenFolderFile(nullptr, options.filePath, nullptr, &folder, progress);
+    if (result != S_OK)
+        return result;
+    auto *agent = dynamic_cast<CAgentFolder *>(folder.Interface());
+    auto *resource =
+        agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
+    if (!resource || !agent->GetArchiveProperties())
+        return E_FAIL;
+    CArc &arc = link.Arcs.AddNew();
+    arc.Archive = agent->GetArchiveProperties();
+    arc.FormatIndex = -1; // The external engine has no in-process CCodecs index.
+    arc.DefaultName = QFileInfo(QString::fromWCharArray(options.filePath))
+                          .completeBaseName()
+                          .toStdWString()
+                          .c_str();
+    RINOK(resource->ConfigureArc(arc))
+    if (resource->Info.volumeCount > 1) {
+        const QFileInfo first(QString::fromWCharArray(options.filePath));
+        const QString name = first.fileName();
+        if (!name.endsWith(QStringLiteral(".001")) || resource->Info.volumeCount > 10000)
+            return E_NOTIMPL;
+        const QString prefix = name.left(name.size() - 3);
+        qint64 total = first.size();
+        for (int number = 2; number <= resource->Info.volumeCount; ++number) {
+            const QFileInfo volume(first.dir().filePath(
+                prefix + QStringLiteral("%1").arg(number, 3, 10, QLatin1Char('0'))));
+            if (!volume.isFile())
+                return E_FAIL;
+            const QString absolute = volume.absoluteFilePath();
+            link.VolumePaths.Add(UString(absolute.toStdWString().c_str()));
+            link.VolumesSize += UInt64(volume.size());
+            total += volume.size();
+        }
+        if (resource->Info.totalPhysicalSize >= 0 && total != resource->Info.totalPhysicalSize)
+            return E_FAIL;
+    }
+    link.IsOpen = true;
+    return S_OK;
+    COM_TRY_END
+}
+
+std::unique_ptr<IQtProgressTransport>
+QtArchiveBatchOpen::CreateProgressTransport(CProgressDialog &dialog) {
+    auto *services = dynamic_cast<IQtProgressServices *>(_manager.Interface());
+    return services ? services->CreateProgressTransport(dialog) : nullptr;
+}

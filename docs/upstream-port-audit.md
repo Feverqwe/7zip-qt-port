@@ -1817,15 +1817,64 @@ are recorded in the P0-12.4 checklist row: focused 5/5, five repeated
 with 137/137 CTest cases. Windows/Linux runtime and rendered
 Windows appearance are unverified.
 
-This is still a partial P0-12 port. Nested archive engine resources and
+At the P0-12.4 commit this was still a partial P0-12 port. Nested archive engine resources and
 `CPP/7zip/UI/GUI/ExtractGUI.cpp::ExtractGUI`/
 `CPP/7zip/UI/Common/Extract.cpp::Extract`/`DecompressArchive` multi-archive
-orchestration remain P0-12.5. Those upstream files are under local, uncommitted
-development in their mirrored `src/` paths for the next iteration; the P0-12.4
-commit does not include or accept them. The source `CArchiveLink::Open3` codec opener is absent;
-the batch result needs a narrow file-only 7zz opener rather than pretending the
-copy compiles into a working batch path. Existing P0-12.1 backend fallback
+orchestration remained P0-12.5 and were excluded from that commit. Their
+integrated port is recorded below. The existing P0-12.1 backend fallback
 continues for unsupported routes and non-Ask modes.
+
+## P0-12.5 — source batch extraction and nested archives (2026-09-30)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/Common/Extract.cpp/.h::Extract`/`DecompressArchive`,
+`CPP/7zip/UI/GUI/ExtractGUI.cpp/.h::ExtractGUI`/`CThreadExtracting`,
+`CPP/7zip/UI/Common/OpenArchive.cpp/.h::CArchiveLink::Open2`/`Open3`,
+`CPP/7zip/UI/GUI/resource2.h` and existing `ExtractDialog.cpp/.h`.
+The complete `Extract.cpp` archive loop and file selection/decompression bodies
+are copied into their mirrored paths; `ExtractGUI.cpp` retains its thread,
+options, result and progress sequence. Include paths, Qt dialog/message calls,
+language resource lookup and the new file-only opener/progress arguments are
+adapted. Required `clang-format` changes are mechanical and are not upstream
+functional changes. `ExtractDialog::SetInitialOptions` maps upstream forced
+options and persisted defaults to the existing Qt combo controls and password.
+`resource2.h` supplies source IDs for archive-count text.
+
+The full upstream `CArchiveLink::Open2` codec detection and recursive stream
+opener cannot run with the external `7zz` engine. Its mirrored body is a narrow
+delegation to `IQtArchiveOpenService`; `Open3` keeps the source `Open2` then
+`Open_Finished` ordering. `QtArchiveBatchOpen` lists one file at a time through
+`QtArchiveFolderManager`, creates source `CArc` metadata and preserves the
+source `Extract` loop, wildcard censor, archive result callback, overwrite
+state, cancellation, password and close. `QtArchiveBatchExtract` only converts
+confirmed Qt options and archive paths to source arguments. The whole-root
+`MainWindow` Ask consumer uses this route after the existing destination guard;
+selected/current-folder Ask keeps `CPanel::CopyTo`. Nested resources now use
+the same split. Backend signals for each `7zz` child remain hidden from the
+outer window until the source modal worker joins. Source callback errors are
+not reported as success when the upstream return HRESULT is `S_OK`.
+
+For split `.001` archives the external `7zz -slt` listing reports `Volumes` and
+`Total Physical Size`. The narrow adapter records those part paths and sizes in
+source `CArchiveLink::VolumePaths`/`VolumesSize` and supplies the combined
+logical stream length to `CArc::ReadBasicProps`. `-t7z` is omitted on the
+file-only stream request so `7zz` can open the outer Split handler. The source
+loop then skips later volumes and maintains total progress. The current adapter
+supports numeric `.001` naming and rejects unsupported naming or missing parts;
+the full in-process codec/volume opener and broader format handling remain
+P3-05 migration debt, not a claimed port. Non-Ask extraction and additional
+Extract modes/metadata remain P2-07.
+
+Real macOS fixtures cover two ZIP archives with a shared Unicode/space path
+and source overwrite Yes/Cancel, a split multi-volume 7z with one list/open and
+exact extracted bytes, nested whole and selected archive Ask with source
+overwrite, encrypted 7z/ZIP wrong-password preservation then correct retry,
+and forced-versus-saved dialog modes. These are structural and behavioral
+checks on macOS arm64/Qt 6.11.2; they do not establish rendered Windows parity
+or Windows/Linux runtime behavior. Focused `extract_dialog`,
+`source_extract_backend`, `nested_archive` and `ui_operations` passed 4/4;
+the required full `./scripts/check.sh` passed formatting, app build and
+137/137 CTest cases on 2026-09-30.
 
 ## P0-11 — filesystem overwrite decisions (2026-09-30)
 

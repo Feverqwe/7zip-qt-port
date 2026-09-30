@@ -37,6 +37,8 @@ class CExtractDialog : public QDialog {
     QString destination() const;
     QString password() const { return _passwordControl->text(); }
     ExtractionOptions options() const;
+    void SetInitialOptions(NExtract::NPathMode::EEnum pathMode,
+                           NExtract::NOverwriteMode::EEnum overwriteMode, const QString &password);
   public slots:
     void accept() override { OnOK(); }
 };

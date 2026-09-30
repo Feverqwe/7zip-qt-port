@@ -120,10 +120,19 @@ struct COpenOptions {
 
     bool stdInMode;
     UString filePath;
+    class IQtArchiveOpenService *QtOpenService;
 
     COpenOptions()
         : codecs(NULL), types(NULL), excludedFormats(NULL), stream(NULL), seqStream(NULL),
-          callback(NULL), callbackSpec(NULL), stdInMode(false) {}
+          callback(NULL), callbackSpec(NULL), stdInMode(false), QtOpenService(NULL) {}
+};
+
+struct CArchiveLink;
+class IQtArchiveOpenService {
+  public:
+    virtual ~IQtArchiveOpenService() = default;
+    virtual HRESULT Open(CArchiveLink &link, const COpenOptions &options,
+                         IOpenCallbackUI *callback) = 0;
 };
 
 UInt32 GetOpenArcErrorFlags(const NWindows::NCOM::CPropVariant &prop, bool *isDefinedProp = NULL);

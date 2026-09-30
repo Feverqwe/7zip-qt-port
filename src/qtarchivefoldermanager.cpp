@@ -51,7 +51,10 @@ QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backe
                     resource->Info = request->Info;
                     resource->SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
                     resource->AttachReopenService(_backend, request->Info.format);
-                    resource->AttachExtractService(_backend, request->Info.format);
+                    // A split archive opens through the outer Split handler before its
+                    // contained format; forcing -t7z on .001 bypasses that handler.
+                    resource->AttachExtractService(
+                        _backend, request->Info.volumeCount > 1 ? QString() : request->Info.format);
                     if (request->Info.format == "zip" || request->Info.format == "7z")
                         resource->AttachUpdateService(_backend, request->Info.format);
                 }

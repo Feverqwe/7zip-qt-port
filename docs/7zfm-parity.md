@@ -7,15 +7,18 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
-P0-12.4 routes Ask extraction from an encrypted root archive or the current
-archive folder through the source FM callback, overwrite dialog and progress
-dialog. A wrong password is checked before any occupied target is opened; a
-later correct attempt can replace it. Extraction from a viewed subfolder uses
-paths relative to that folder, as `CAgentFolder::Extract` does upstream. The
-earlier 7zz backend route remains for nested archives and non-Ask modes until
-P0-12.5 completes batch/source orchestration. Real 7z/ZIP and subfolder flows
-were checked on macOS; Windows/Linux runtime and rendered Windows dialog parity
-remain unverified.
+P0-12 Ask extraction uses the source `COverwriteDialog` and progress dialog.
+Whole root archives, including encrypted and nested ones, use the original
+`GUI/ExtractGUI` → `Common/Extract` archive loop. Selected items and a viewed
+subfolder use `CPanel::CopyTo`/`CAgentFolder::Extract`; subfolder paths remain
+relative to that folder. The file-only `7zz` service supplies bytes. A wrong
+password is checked before an occupied target is opened; a correct retry can
+replace it. Batch archives share one source overwrite decision state. Split
+`.001` volumes are opened through the outer Split handler, and subsequent
+parts are skipped in the source archive loop. Non-Ask modes still use the
+backend extraction path. Real 7z/ZIP, nested and split fixtures were checked
+on macOS; Windows/Linux runtime and rendered Windows dialog parity remain
+unverified.
 
 P0-05.1 filesystem rows now display the bound source folder's name and flat
 prefix; Qt normalizes visible Unicode to NFC while retaining raw source names
@@ -485,7 +488,7 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 | Split/Combine, SplitDialog.rc/.cpp и PanelSplitFile.cpp | Destination/Browse → volume size → footer; error/normal и 2/3/5 частей, normal/compact проверены. Inline error заменяет MessageBox, папка выбирается native Qt dialog. |
 | История/свойства, ListViewDialog.rc/.cpp | Один/два столбца, header, footer, Copy/Delete/Enter/detail и 540×360/360×240 проверены. Перенесена settings-driven one-click/hover ветка через Qt adapter; набор свойств ограничен snapshot. |
 | Полное значение, EditDialog.rc/.cpp | Read-only multiline, без wrap, обе прокрутки, Enter в edit, Close; 480×320/320×240 проверены. |
-| Extract, GUI/ExtractDialog.rc/.cpp | Destination, optional folder name, modes слева и password справа; name shown/hidden, 640×360/470×330, история/сохранение/отмена проверены. Ask открывает исходный OverwriteDialog с Yes/No/All/AutoRename/Cancel. В корне архива при полных путях и «Без путей» исходный FM callback спрашивает перед записью каждого файла, а `7zz` поставляет байты через адаптер. Явная запись каталога в «Без путей» остаётся пустой папкой по исходному callback. Вложенный или зашифрованный архив пока использует предварительные решения и отдельные проходы CLI. Отсутствуют абсолютные пути, ElimDup, NtSecurity и Help. |
+| Extract, GUI/ExtractDialog.rc/.cpp | Destination, optional folder name, modes слева и password справа; name shown/hidden, 640×360/470×330, история/сохранение/отмена проверены. Ask открывает исходный OverwriteDialog с Yes/No/All/AutoRename/Cancel. Целый root, включая вложенный или зашифрованный архив, проходит source `ExtractGUI`/`Extract`; выбранные элементы и текущая папка — source FM callback. `7zz` поставляет байты через узкий адаптер. Явная запись каталога в «Без путей» остаётся пустой папкой по исходному callback. Отсутствуют абсолютные пути, ElimDup, NtSecurity и Help. |
 | Create/Add, GUI/CompressDialog.rc/.cpp | Исправлены stacked layout и порядок основной формы: compression слева, encryption справа, source picker после archive/options. 760×720/640×480, 7z/ZIP, show/hide confirmation и reachability проверены. Это частичный порт: нет update/path modes, volumes, SFX, shared/delete options, parameters, CompressOptionsDialog и Help; Add не меняет compression options. |
 | Запрос пароля, PasswordDialog.rc/.cpp | QInputDialog заменён source port CPasswordDialog: восстановлен Show Password и исходный ReadControls/SetTextSpec/OnOK. Контракт проверяет все пять controls в masked/shown при 360×170/260×170; Qt integration проверяет reuse/reset/cancel. |
 | Настройки, OptionsDialog.cpp и SettingsPage2.rc | CSettingsPage показывает семь list flags в исходном порядке; ShowDots, icons, FullRow, grid, single-click и ShowSystemMenu подключены к текущей панели. AlternativeSelection включён в P0-07.3. Defaults/persistence/confirm/cancel и 340×300/460×300 JSON проверены. Upstream имеет шесть страниц и memory controls; полный порт и ресурсный comparator отсутствуют. |

@@ -433,6 +433,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(old.write("existing"), qint64(8));
         old.close();
         QSignalSpy preflight(&backend, &ArchiveBackend::overwriteRequired);
+        QSignalSpy batchOpen(&backend, &ArchiveBackend::entriesReady);
         bool answered = false;
         QByteArray choice("overwriteYes");
         QTimer answer;
@@ -450,10 +451,11 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
         window.extractTo(temp.filePath("destination"), false, {}, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
+        QVERIFY(finished.size() >= 1);
         QVERIFY(answered);
+        QCOMPARE(batchOpen.size(), 1);
         QCOMPARE(preflight.size(), 0); // The source callback owns this prompt.
-        QVERIFY(finished.first().first().toBool());
+        QVERIFY(finished.last().first().toBool());
         QFile result(target);
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), QByteArray("archive"));
@@ -690,6 +692,21 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                         }
                     }
                     message->accept();
+                }
+            }
+            auto *progress = window.findChild<QDialog *>("progressDialog");
+            auto *close = progress ? progress->findChild<QPushButton *>("IDCANCEL") : nullptr;
+            if (close && close->text().contains(QStringLiteral("Закрыть"))) {
+                sawFailure = true;
+                if (!closeScheduled) {
+                    closeScheduled = true;
+                    QTimer::singleShot(50, &window, [&window] {
+                        auto *progress = window.findChild<QDialog *>("progressDialog");
+                        auto *close =
+                            progress ? progress->findChild<QPushButton *>("IDCANCEL") : nullptr;
+                        if (close && close->text().contains(QStringLiteral("Закрыть")))
+                            close->click();
+                    });
                 }
             }
         });

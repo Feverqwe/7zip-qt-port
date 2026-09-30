@@ -518,6 +518,16 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                 const qint64 size = line.mid(16).toLongLong(&valid);
                 if (valid)
                     info.physicalSize = size;
+            } else if (line.startsWith(QStringLiteral("Total Physical Size = "))) {
+                bool valid = false;
+                const qint64 size = line.mid(22).toLongLong(&valid);
+                if (valid)
+                    info.totalPhysicalSize = size;
+            } else if (line.startsWith(QStringLiteral("Volumes = "))) {
+                bool valid = false;
+                const int count = line.mid(10).toInt(&valid);
+                if (valid && count > 0)
+                    info.volumeCount = count;
             } else if (line.startsWith(QStringLiteral("Offset = "))) {
                 bool valid = false;
                 const qint64 offset = line.mid(9).toLongLong(&valid);

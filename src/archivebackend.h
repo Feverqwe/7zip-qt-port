@@ -19,6 +19,8 @@ struct ArchiveEntry {
 struct ArchiveInfo {
     QString format;
     qint64 physicalSize = -1;
+    qint64 totalPhysicalSize = -1;
+    int volumeCount = 1;
     qint64 offset = 0;
     qint64 unpackedSize = 0;
     int files = 0;

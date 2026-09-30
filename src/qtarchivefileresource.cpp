@@ -43,7 +43,11 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc) const {
     if (!file.isFile())
         return E_FAIL;
     arc.Path = EnginePath.toStdWString().c_str();
-    arc.FileSize = UInt64(file.size());
+    // 7zz reports the logical stream across all split parts; source
+    // ReadBasicProps compares kpidPhySize with that combined stream size.
+    arc.FileSize = UInt64(Info.volumeCount > 1 && Info.totalPhysicalSize >= file.size()
+                              ? Info.totalPhysicalSize
+                              : file.size());
     arc.ArcStreamOffset = 0;
     return arc.ReadBasicProps(arc.Archive, 0, S_OK);
 }

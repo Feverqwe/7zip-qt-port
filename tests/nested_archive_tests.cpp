@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "mainwindow.h"
 
 #include <QAction>
@@ -5,6 +6,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QProcess>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTableWidget>
@@ -256,6 +258,47 @@ class NestedArchiveTests : public QObject {
         QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
                     table->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
                         QStringLiteral("δ с пробелом.txt"));
+        const QString output = dir.filePath("extracted");
+        QVERIFY(QDir().mkpath(output));
+        QFile existing(QDir(output).filePath(QFileInfo(source).fileName()));
+        QVERIFY(existing.open(QIODevice::WriteOnly));
+        QCOMPARE(existing.write("old data"), qint64(8));
+        existing.close();
+        QSignalSpy batchOpen(&backend, &ArchiveBackend::entriesReady);
+        bool answered = false;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                if (!dialog || !dialog->isVisible())
+                    continue;
+                answered = true;
+                dialog->findChild<QPushButton *>("overwriteYes")->click();
+            }
+        });
+        answer.start(1);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        window.extractTo(output, false, {}, options);
+        answer.stop();
+        QVERIFY(answered);
+        QCOMPARE(batchOpen.size(), 1);
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("nested data"));
+        existing.close();
+        QVERIFY(existing.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(existing.write("old data"), qint64(8));
+        existing.close();
+        answered = false;
+        table->selectRow(0);
+        answer.start(1);
+        window.extractTo(output, true, {}, options);
+        answer.stop();
+        QVERIFY(answered);
+        QCOMPARE(batchOpen.size(), 1); // Selected items use the bound source FM folder.
+        QVERIFY(existing.open(QIODevice::ReadOnly));
+        QCOMPARE(existing.readAll(), QByteArray("nested data"));
+        existing.close();
         back->trigger();
         QCOMPARE(table->item(0, 0)->text().normalized(QString::NormalizationForm_C),
                  QStringLiteral("вложенный архив.zip"));

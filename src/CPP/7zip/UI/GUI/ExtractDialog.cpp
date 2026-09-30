@@ -124,6 +124,26 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     OnInit(history);
 }
 
+void CExtractDialog::SetInitialOptions(NExtract::NPathMode::EEnum pathMode,
+                                       NExtract::NOverwriteMode::EEnum overwriteMode,
+                                       const QString &password) {
+    if (!PathMode_Force && _info.PathMode_Force)
+        pathMode = _info.PathMode;
+    if (!OverwriteMode_Force && _info.OverwriteMode_Force)
+        overwriteMode = _info.OverwriteMode;
+    PathMode = pathMode;
+    OverwriteMode = overwriteMode;
+    for (int index = 0; index < _pathMode->count(); ++index)
+        if (kPathModeButtonsVals[_pathMode->itemData(index).toUInt()] ==
+            (pathMode == NExtract::NPathMode::kCurPaths ? NExtract::NPathMode::kFullPaths
+                                                        : pathMode))
+            _pathMode->setCurrentIndex(index);
+    for (int index = 0; index < _overwriteMode->count(); ++index)
+        if (kOverwriteButtonsVals[_overwriteMode->itemData(index).toUInt()] == overwriteMode)
+            _overwriteMode->setCurrentIndex(index);
+    _passwordControl->setText(password);
+}
+
 QString CExtractDialog::settingsPath() {
     const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
     if (!overridden.isEmpty())

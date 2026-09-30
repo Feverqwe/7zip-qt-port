@@ -3,6 +3,7 @@
 #include "Windows/PropVariant.h"
 #include "archiveprogressoperation.h"
 #include "mainwindow.h"
+#include "qtarchivebatchextract.h"
 #include "qtarchivefileresource.h"
 #include <QScopedValueRollback>
 
@@ -190,8 +191,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         state_ == State::Viewing ? dynamic_cast<CAgentFolder *>(panel.GetFolder()) : nullptr;
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
-    if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask || isNestedArchive() ||
-        !resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
+    if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask || !resource ||
+        !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
         return false;
     {
         QString validationError;
@@ -207,6 +208,28 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                 validationError.isEmpty()
                     ? QStringLiteral("Не удалось создать папку назначения: %1").arg(destination)
                     : validationError);
+            return true;
+        }
+        if (!onlySelected && archiveFolder_.isEmpty()) {
+            previousState_ = state_;
+            setState(State::Operating);
+            operationName_ = QStringLiteral("Извлечение");
+            appendJournal(operationName_ + QStringLiteral(": ") + output);
+            journalAction_->setEnabled(true);
+            QtArchiveBatchResult result;
+            {
+                QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+                result = RunQtArchiveBatchExtract(*backend_, {archive_}, output,
+                                                  password.isEmpty() ? archivePassword_ : password,
+                                                  options, this);
+            }
+            const bool ok = result.Result == S_OK && result.CallbackOK;
+            const QString message =
+                ok                         ? QStringLiteral("Извлечение завершено.")
+                : result.Result == E_ABORT ? QStringLiteral("Операция отменена.")
+                : result.Result == S_OK ? QStringLiteral("Извлечение завершено с ошибками.")
+                                        : QString::fromWCharArray(HResultToMessage(result.Result));
+            backendFinished(ok, message, result.MessageWasDisplayed);
             return true;
         }
         CRecordVector<UInt32> indices;

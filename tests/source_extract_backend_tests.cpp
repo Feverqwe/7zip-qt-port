@@ -1,20 +1,25 @@
 #include "7zip/Common/StreamObjects.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/ExtractCallback.h"
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivebackend.h"
 #include "qtarchivebackendrequest.h"
+#include "qtarchivebatchextract.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include "qtpanelfolder.h"
 #include "source_extract_fixture.h"
 #include <QDir>
 #include <QFile>
+#include <QMessageBox>
 #include <QProcess>
+#include <QPushButton>
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <QtTest>
 
 namespace {
@@ -273,6 +278,107 @@ class SourceExtractBackendTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY(finished.front().front().toBool());
         QCOMPARE(readFile(output), bytes);
+    }
+    void sourceBatchExtractsTwoArchivesWithAsk() {
+        QTemporaryDir first, second, output;
+        QVERIFY(first.isValid());
+        QVERIFY(second.isValid());
+        QVERIFY(output.isValid());
+        const QString one = makeArchive(first.path(), "first bytes");
+        const QString two = makeArchive(second.path(), "second bytes");
+        QVERIFY(!one.isEmpty());
+        QVERIFY(!two.isEmpty());
+        ArchiveBackend backend;
+        bool answered = false;
+        QByteArray choice("overwriteYes");
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &backend, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    answered = true;
+                    dialog->findChild<QPushButton *>(choice.constData())->click();
+                }
+            }
+        });
+        answer.start(1);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        const QtArchiveBatchResult result =
+            RunQtArchiveBatchExtract(backend, {one, two}, output.path(), {}, options, nullptr);
+        QCOMPARE(result.Result, S_OK);
+        QVERIFY(result.CallbackOK);
+        QVERIFY(answered);
+        QCOMPARE(readFile(output.filePath(kName)), QByteArray("second bytes"));
+        QVERIFY(!backend.busy());
+        choice = "overwriteCancel";
+        answered = false;
+        const QtArchiveBatchResult cancelled =
+            RunQtArchiveBatchExtract(backend, {one, two}, output.path(), {}, options, nullptr);
+        answer.stop();
+        QCOMPARE(cancelled.Result, E_ABORT);
+        QVERIFY(answered);
+        QCOMPARE(readFile(output.filePath(kName)), QByteArray("second bytes"));
+        QVERIFY(!backend.busy());
+    }
+    void sourceBatchSkipsFollowingVolumes() {
+        QTemporaryDir directory, output;
+        QVERIFY(directory.isValid());
+        QVERIFY(output.isValid());
+        QByteArray bytes;
+        quint32 state = 0x12345678;
+        for (int i = 0; i < 8192; ++i) {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            bytes.append(char(state & 0xff));
+        }
+        QVERIFY(writeFile(directory.filePath(kName), bytes));
+        QProcess process;
+        process.setWorkingDirectory(directory.path());
+        process.start(QStandardPaths::findExecutable("7zz"),
+                      {"a", "-t7z", "-v2k", "split.7z", kName});
+        QVERIFY(process.waitForFinished(30000));
+        QCOMPARE(process.exitCode(), 0);
+        QStringList volumes;
+        for (int number = 1;; ++number) {
+            const QString path = directory.filePath(
+                QStringLiteral("split.7z.%1").arg(number, 3, 10, QLatin1Char('0')));
+            if (!QFileInfo::exists(path))
+                break;
+            volumes.append(path);
+        }
+        QVERIFY(volumes.size() > 1);
+        ArchiveBackend backend;
+        QSignalSpy opened(&backend, &ArchiveBackend::entriesReady);
+        QTimer dismissError;
+        bool closeScheduled = false;
+        connect(&dismissError, &QTimer::timeout, &backend, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *message = qobject_cast<QMessageBox *>(widget);
+                    message && message->isVisible())
+                    message->accept();
+                auto *progress = qobject_cast<QDialog *>(widget);
+                auto *close = progress && progress->objectName() == "progressDialog"
+                                  ? progress->findChild<QPushButton *>("IDCANCEL")
+                                  : nullptr;
+                if (close && close->text().contains(QStringLiteral("Закрыть")) && !closeScheduled) {
+                    closeScheduled = true;
+                    QTimer::singleShot(50, progress, [close] { close->click(); });
+                }
+            }
+        });
+        dismissError.start(1);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        const QtArchiveBatchResult result =
+            RunQtArchiveBatchExtract(backend, volumes, output.path(), {}, options, nullptr);
+        dismissError.stop();
+        QCOMPARE(result.Result, S_OK);
+        QVERIFY(result.CallbackOK);
+        QCOMPARE(opened.size(), 1);
+        QCOMPARE(readFile(output.filePath(kName)), bytes);
+        QVERIFY(!backend.busy());
     }
 };
 QTEST_MAIN(SourceExtractBackendTests)

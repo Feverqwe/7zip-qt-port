@@ -478,8 +478,10 @@ destination history through QSettings.
 `CExtractDialog` owns extraction input and confirmation. `NExtract::CInfo`
 stores destination history and mode preferences in the Extraction INI group.
 `MainWindow` consumes the confirmed result; `ArchiveBackend` validates it,
-creates a missing destination and selects process arguments. Passwords are
-never persisted.
+creates a missing destination and selects process arguments for non-Ask modes.
+For Ask, the source extraction owners choose overwrite outcomes while
+`ArchiveBackend` supplies only listing, validation, password checks and file
+bytes. Passwords are never persisted.
 
 Compression and archive-path rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
 The partial `CCompressDialog` owns name/extension transitions, path resolution
@@ -542,8 +544,9 @@ also checks flattened names. Existing output files are checked against the
 chosen overwrite mode. Overwrite writes directly to the destination; failure
 or cancellation can leave changed files. Preflight checks cannot prevent
 concurrent external changes between validation and process writes.
-For interactive Ask, `ArchiveBackend` emits each listed file collision to the
-window's source `COverwriteDialog` before starting `7zz`. The user decisions
+For an Ask route without a source extract service, the backend fallback emits
+each listed file collision to the window's source `COverwriteDialog` before
+starting `7zz`. The user decisions
 are retained for this extraction. The backend first runs a skip-existing pass
 for unoccupied files, then targeted overwrite or auto-rename passes for accepted
 conflicts. It uses the documented `-aos`, `-aoa` and `-aou` modes, never parses
@@ -552,15 +555,20 @@ password and cancellation state continue across passes. The source in-process
 `CheckExistFile` callback cannot run inside the external `7zz` child, so this
 transport has a preflight-to-write race and the same direct-write partial-result
 limit as noninteractive extraction.
-For the root file-manager FullPaths/NoPaths Ask commands, `MainWindow` first reuses the
-backend destination guard, then calls the mirrored `CPanel::CopyTo` worker with
-explicit extract mode. `CAgentFolder::Extract` and
-`CArchiveExtractCallback::CheckExistFile` own per-item paths, overwrite decisions
-and the source dialog before each streamed file. `QtArchiveFileResource` asks
-`ArchiveBackend::extractSourceEntry` for each file's bytes through the official
-`7zz`; per-stream backend completions are hidden from the outer window until the
-source modal worker joins. Nested/encrypted extraction still uses the preflight
-transport above. Both routes write directly and retain the destination-change
+For selected items or a viewed archive folder, `MainWindow` reuses the backend
+destination guard, then calls mirrored `CPanel::CopyTo` with explicit extract
+mode. `CAgentFolder::Extract` and `CArchiveExtractCallback::CheckExistFile` own
+per-item paths, overwrite decisions and the source dialog. Whole root archives,
+including nested archives, enter mirrored `GUI/ExtractGUI.cpp` and
+`Common/Extract.cpp`: the source archive loop, wildcard censor, callback close,
+result composition and multi-archive progress remain intact. `QtArchiveBatchOpen`
+is the file-only `CArchiveLink::Open2` service while the in-process codec opener
+is absent. It uses `QtArchiveFolderManager` to list each archive and fills source
+`CArc`; for split files it records the additional `.002`... paths and combined
+size so the source loop skips those entries. `QtArchiveFileResource` asks
+`ArchiveBackend::extractSourceEntry` for bytes through official `7zz`; the
+source modal worker owns completion while backend signals are suppressed for the
+outer window. Both Ask routes write directly and retain the destination-change
 race after validation.
 
 Creation writes a temporary peer archive and publishes it after success.
