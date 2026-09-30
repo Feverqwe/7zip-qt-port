@@ -359,6 +359,8 @@ class CPanel : public QObject {
     HRESULT CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &indices,
                    UStringVector *messages, bool &usePassword, UString &password,
                    const UStringVector *filePaths = NULL);
+    HRESULT CopyFrom(bool moveMode, const UString &folderPrefix, const UStringVector &filePaths,
+                     bool showErrorMessages, UStringVector *messages);
     void SetNewFolder(IFolderFolder *folder);
     void AttachFolderManager(IFolderManager *manager, const QString &settingsPath) {
         _folderManager = manager;

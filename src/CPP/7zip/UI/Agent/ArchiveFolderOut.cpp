@@ -150,7 +150,9 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
                 Byte actionSetByte[NUpdateArchive::NPairState::kNumValues];
                 for (unsigned i = 0; i < NUpdateArchive::NPairState::kNumValues; i++)
                     actionSetByte[i] = (Byte)actionSet->StateActions[i];
-                result = E_NOTIMPL /* mandatory AgentOut operation not yet connected */;
+                result =
+                    _agentSpec->DoOperation(&requestedPaths, &processedPaths, NULL, -1, tailStream,
+                                            actionSetByte, NULL, updateCallback100);
                 break;
             }
             default:
@@ -333,6 +335,20 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
         throw;
     }
 }
+
+// clang-format off: preserve 7-Zip's COM_TRY/RINOK macro statement boundaries.
+HRESULT CAgentFolder::CopyFrom(Int32 moveMode, const wchar_t *fromFolderPath,
+                               const wchar_t *const *itemsPaths, UInt32 numItems,
+                               IProgress *progress) throw() {
+    COM_TRY_BEGIN
+    {
+        RINOK(_agentSpec->SetFiles(fromFolderPath, itemsPaths, numItems))
+        return CommonUpdateOperation(AGENT_OP_Uni, (moveMode != 0), NULL,
+                                     &NUpdateArchive::k_ActionSet_Add, NULL, 0, progress);
+    }
+    COM_TRY_END
+}
+// clang-format on
 
 Z7_COM7F_IMF(CAgentFolder::CopyFromFile(UInt32 destIndex, const wchar_t *itemPath,
                                         IProgress *progress)) {

@@ -130,6 +130,10 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
     bool _isHashHandler = false;
     CAgentFolder *_agentFolder;
     UString ArchiveType;
+    FStringVector _names;
+    FString _folderPrefix; // for new files from disk
+    CObjectVector<UString> m_PropNames;
+    CObjectVector<NWindows::NCOM::CPropVariant> m_PropValues;
     UString _archiveFilePath;
     // INVALID_FILE_ATTRIBUTES has no non-Windows header definition.
     DWORD _attrib = (DWORD)-1;
@@ -150,6 +154,11 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
     HRESULT Close();
     void KeepModeForNextOpen() { _archiveLink.KeepModeForNextOpen(); }
     HRESULT SetFolder(IFolderFolder *folder);
+    HRESULT SetFiles(const wchar_t *folderPrefix, const wchar_t *const *names, UInt32 numNames);
+    HRESULT DoOperation(FStringVector *requestedPaths, FStringVector *processedPaths,
+                        CCodecs *codecs, int formatIndex, ISequentialOutStream *outArchiveStream,
+                        const Byte *stateActions, const wchar_t *sfxModule,
+                        IFolderArchiveUpdateCallback *updateCallback100) throw();
     HRESULT CommonUpdate(ISequentialOutStream *outArchiveStream, unsigned numUpdateItems,
                          IArchiveUpdateCallback *updateCallback);
     HRESULT DeleteItems(ISequentialOutStream *outArchiveStream, const UInt32 *indices,

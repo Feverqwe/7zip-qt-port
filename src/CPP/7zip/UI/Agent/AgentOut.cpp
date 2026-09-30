@@ -3,10 +3,20 @@
 // Source SetFolder/CommonUpdate and file, delete, folder, rename update plans.
 // Other mandatory operations remain recorded in the audit.
 #include "../../../Common/Wildcard.h"
+#include "../../../Windows/FileDir.h"
 #include "7zip/Archive/Common/ItemNameUtils.h"
+#include "7zip/Common/FileStreams.h"
+#include "7zip/Compress/CopyCoder.h"
+#include "7zip/UI/Common/UpdatePair.h"
+#include "7zip/UI/Common/UpdateProduce.h"
 #include "Agent.h"
 #include "UpdateCallbackAgent.h"
+#include "Windows/FileName.h"
+#include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
+
+using namespace NWindows;
+using namespace NCOM;
 
 HRESULT CAgent::SetFolder(IFolderFolder *folder) {
     _updatePathPrefix.Empty();
@@ -29,6 +39,148 @@ HRESULT CAgent::SetFolder(IFolderFolder *folder) {
     return S_OK;
 }
 
+HRESULT CAgent::SetFiles(const wchar_t *folderPrefix, const wchar_t *const *names,
+                         UInt32 numNames) {
+    _folderPrefix = us2fs(folderPrefix);
+    _names.ClearAndReserve(numNames);
+    for (UInt32 i = 0; i < numNames; i++)
+        _names.AddInReserved(us2fs(names[i]));
+    return S_OK;
+}
+
+static HRESULT EnumerateArchiveItems(const CAgent *agent, CObjectVector<CArcItem> &arcItems) {
+    CUIntVector vec;
+    CArcItem ai;
+    ai.Censored = true; // test it
+    unsigned prefixLen = 0;
+    unsigned dirIndex = k_Proxy_RootDirIndex; // 0
+    unsigned i = 0;
+    for (;;) {
+        const CProxyDir &dir = agent->_proxy->Dirs[dirIndex];
+
+        if (i == dir.SubDirs.Size()) // we fill SubFiles after SubDirs
+        {
+            ai.IsDir = false;
+            FOR_VECTOR(k, dir.SubFiles) {
+                const unsigned arcIndex = dir.SubFiles[k];
+                ai.IndexInServer = arcIndex;
+                RINOK(agent->GetArc().GetItem_MTime(arcIndex, ai.MTime))
+                RINOK(agent->GetArc().GetItem_Size(arcIndex, ai.Size, ai.Size_Defined))
+                RINOK(Archive_IsItem_AltStream(agent->GetArc().Archive, arcIndex, ai.IsAltStream))
+                ai.Name.DeleteFrom(prefixLen);
+                const CProxyFile &file = agent->_proxy->Files[arcIndex];
+                ai.Name += file.Name;
+                arcItems.Add(ai);
+            }
+
+            const unsigned num = vec.Size();
+            if (num < 3)
+                return S_OK;
+            prefixLen = vec[num - 3];
+            dirIndex = vec[num - 2];
+            i = vec[num - 1];
+            vec.DeleteFrom(num - 3);
+            continue;
+        }
+
+        const unsigned subDirIndex = dir.SubDirs[i];
+        i++;
+        const CProxyDir &subDir = agent->_proxy->Dirs[subDirIndex];
+        ai.Name.DeleteFrom(prefixLen);
+        ai.Name += subDir.Name;
+        if (subDir.IsLeaf()) {
+            ai.IndexInServer = (unsigned)subDir.ArcIndex;
+            RINOK(agent->GetArc().GetItem_MTime((unsigned)subDir.ArcIndex, ai.MTime))
+            ai.IsDir = true;
+            ai.IsAltStream = false;
+            ai.Size_Defined = false;
+            ai.Size = 0;
+            arcItems.Add(ai);
+        }
+
+        vec.Add(prefixLen);
+        vec.Add(dirIndex);
+        vec.Add(i);
+        ai.Name.Add_PathSepar();
+        prefixLen = ai.Name.Len();
+        if (prefixLen >= (1 << 15) /* || vec.Size() >= (3 << 14) */) // NTFS limit
+            return E_NOTIMPL;
+        dirIndex = subDirIndex;
+        i = 0;
+    }
+}
+
+static HRESULT EnumerateArchiveItems2(const CAgent *agent, unsigned dirIndex, const UString &prefix,
+                                      CObjectVector<CArcItem> &arcItems) {
+    CUIntVector vec;
+    CArcItem ai;
+    ai.Censored = true; // test it
+    ai.Name = prefix;
+    unsigned prefixLen = ai.Name.Len();
+    unsigned i = 0;
+    for (;;) {
+        const CProxyDir2 &dir = agent->_proxy2->Dirs[dirIndex];
+        if (i == dir.Items.Size()) {
+            const unsigned num = vec.Size();
+            if (num < 3)
+                return S_OK;
+            prefixLen = vec[num - 3];
+            dirIndex = vec[num - 2];
+            i = vec[num - 1];
+            vec.DeleteFrom(num - 3);
+            continue;
+        }
+
+        const unsigned arcIndex = dir.Items[i];
+        i++;
+        ai.Name.DeleteFrom(prefixLen);
+        const CProxyFile2 &file = agent->_proxy2->Files[arcIndex];
+        ai.Name += file.Name;
+        // v23.03: we normalize slashes:
+        NArchive::NItemName::NormalizeSlashes_in_FileName_for_OsPath(
+            ai.Name.Ptr_non_const() + (ai.Name.Len() - file.NameLen), file.NameLen);
+        ai.IndexInServer = arcIndex;
+        RINOK(agent->GetArc().GetItem_MTime(arcIndex, ai.MTime))
+        ai.Size = 0;
+        ai.Size_Defined = false;
+        ai.IsAltStream = file.IsAltStream;
+        ai.IsDir = file.IsDir();
+        if (!file.IsDir())
+            RINOK(agent->GetArc().GetItem_Size(arcIndex, ai.Size, ai.Size_Defined))
+
+        arcItems.Add(ai);
+
+        if (file.AltDirIndex != -1)
+            RINOK(
+                EnumerateArchiveItems2(agent, (unsigned)file.AltDirIndex, ai.Name + L':', arcItems))
+
+        if (file.IsDir()) {
+            vec.Add(prefixLen);
+            vec.Add(dirIndex);
+            vec.Add(i);
+            ai.Name.Add_PathSepar();
+            prefixLen = ai.Name.Len();
+            if (prefixLen >= (1 << 15) /* || vec.Size() >= (3 << 14) */) // NTFS limit
+                return E_NOTIMPL;
+            dirIndex = (unsigned)file.DirIndex;
+            i = 0;
+        }
+    }
+}
+
+struct CAgUpCallbackImp Z7_final : public IUpdateProduceCallback {
+    const CObjectVector<CArcItem> *_arcItems;
+    IFolderArchiveUpdateCallback *_callback;
+
+    CAgUpCallbackImp(const CObjectVector<CArcItem> *a, IFolderArchiveUpdateCallback *callback)
+        : _arcItems(a), _callback(callback) {}
+    HRESULT ShowDeleteFile(unsigned arcIndex) Z7_override;
+};
+
+HRESULT CAgUpCallbackImp::ShowDeleteFile(unsigned arcIndex) {
+    return _callback->DeleteOperation((*_arcItems)[arcIndex].Name);
+}
+
 static void SetInArchiveInterfaces(CAgent *agent, CArchiveUpdateCallback *upd) {
     if (agent->_archiveLink.Arcs.IsEmpty())
         return;
@@ -45,6 +197,204 @@ HRESULT CAgent::CommonUpdate(ISequentialOutStream *outArchiveStream, unsigned nu
     CMyComPtr<IOutArchive> outArchive;
     RINOK(GetArchive()->QueryInterface(IID_IOutArchive, (void **)&outArchive))
     return outArchive->UpdateItems(outArchiveStream, numUpdateItems, updateCallback);
+}
+
+struct CDirItemsCallback_AgentOut Z7_final : public IDirItemsCallback {
+    CMyComPtr<IFolderScanProgress> FolderScanProgress;
+    IFolderArchiveUpdateCallback *FolderArchiveUpdateCallback;
+    HRESULT ErrorCode;
+
+    CDirItemsCallback_AgentOut() : FolderArchiveUpdateCallback(NULL), ErrorCode(S_OK) {}
+
+    HRESULT ScanError(const FString &name, DWORD systemError) Z7_override {
+        const HRESULT hres = HRESULT_FROM_WIN32(systemError);
+        if (FolderArchiveUpdateCallback)
+            return FolderScanProgress->ScanError(fs2us(name), hres);
+        ErrorCode = hres;
+        return ErrorCode;
+    }
+
+    HRESULT ScanProgress(const CDirItemsStat &st, const FString &path, bool isDir) Z7_override {
+        if (FolderScanProgress)
+            return FolderScanProgress->ScanProgress(st.NumDirs, st.NumFiles + st.NumAltStreams,
+                                                    st.GetTotalBytes(), fs2us(path),
+                                                    BoolToInt(isDir));
+        if (FolderArchiveUpdateCallback)
+            return FolderArchiveUpdateCallback->SetNumFiles(st.NumFiles);
+        return S_OK;
+    }
+};
+
+Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *processedPaths,
+                                 CCodecs *codecs, int formatIndex,
+                                 ISequentialOutStream *outArchiveStream, const Byte *stateActions,
+                                 const wchar_t *sfxModule,
+                                 IFolderArchiveUpdateCallback *updateCallback100)) {
+    if (!CanUpdate())
+        return E_NOTIMPL;
+
+    NUpdateArchive::CActionSet actionSet;
+    {
+        for (unsigned i = 0; i < NUpdateArchive::NPairState::kNumValues; i++)
+            actionSet.StateActions[i] = (NUpdateArchive::NPairAction::EEnum)stateActions[i];
+    }
+
+    CDirItemsCallback_AgentOut enumCallback;
+    if (updateCallback100) {
+        enumCallback.FolderArchiveUpdateCallback = updateCallback100;
+        updateCallback100->QueryInterface(IID_IFolderScanProgress,
+                                          (void **)&enumCallback.FolderScanProgress);
+    }
+
+    CDirItems dirItems;
+    dirItems.Callback = &enumCallback;
+
+    {
+        FString folderPrefix = _folderPrefix;
+        NFile::NName::NormalizeDirPathPrefix(folderPrefix);
+
+        RINOK(dirItems.EnumerateItems2(folderPrefix, _updatePathPrefix, _names, requestedPaths))
+
+        if (_updatePathPrefix_is_AltFolder) {
+            // The current portable CDirItem has no alt-stream flag.
+            return E_NOTIMPL;
+        }
+    }
+
+    CMyComPtr<IOutArchive> outArchive;
+
+    if (GetArchive()) {
+        RINOK(GetArchive()->QueryInterface(IID_IOutArchive, (void **)&outArchive))
+    } else {
+        // New archive creation belongs to the separate Qt/7zz create operation.
+        return E_NOTIMPL;
+    }
+
+    NFileTimeType::EEnum fileTimeType = NFileTimeType::kNotDefined;
+    UInt32 value;
+    RINOK(outArchive->GetFileTimeType(&value))
+    // we support any future fileType here.
+    // 22.00:
+    fileTimeType = (NFileTimeType::EEnum)value;
+    /*
+    switch (value)
+    {
+      case NFileTimeType::kWindows:
+      case NFileTimeType::kDOS:
+      case NFileTimeType::kUnix:
+        fileTimeType = NFileTimeType::EEnum(value);
+        break;
+      default:
+      {
+        return E_FAIL;
+      }
+    }
+    */
+
+    CObjectVector<CArcItem> arcItems;
+    if (GetArchive()) {
+        RINOK(ReadItems())
+        if (_proxy2) {
+            RINOK(EnumerateArchiveItems2(this, k_Proxy2_RootDirIndex, L"", arcItems))
+            RINOK(EnumerateArchiveItems2(this, k_Proxy2_AltRootDirIndex, L":", arcItems))
+        } else {
+            RINOK(EnumerateArchiveItems(this, arcItems))
+        }
+    }
+
+    CRecordVector<CUpdatePair2> updatePairs2;
+
+    {
+        CRecordVector<CUpdatePair> updatePairs;
+        GetUpdatePairInfoList(dirItems, arcItems, fileTimeType, updatePairs);
+        CAgUpCallbackImp upCallback(&arcItems, updateCallback100);
+        UpdateProduce(updatePairs, actionSet, updatePairs2, &upCallback);
+    }
+
+    UInt32 numFiles = 0;
+    {
+        FOR_VECTOR(i, updatePairs2)
+        if (updatePairs2[i].NewData)
+            numFiles++;
+    }
+
+    if (updateCallback100) {
+        RINOK(updateCallback100->SetNumFiles(numFiles))
+    }
+
+    CUpdateCallbackAgent updateCallbackAgent;
+    updateCallbackAgent.SetCallback(updateCallback100);
+    CMyComPtr2_Create<IArchiveUpdateCallback, CArchiveUpdateCallback> updateCallback;
+
+    updateCallback->DirItems = &dirItems;
+    updateCallback->ArcItems = &arcItems;
+    updateCallback->UpdatePairs = &updatePairs2;
+
+    SetInArchiveInterfaces(this, updateCallback.ClsPtr());
+
+    updateCallback->Callback = &updateCallbackAgent;
+
+    CByteBuffer processedItems;
+    if (processedPaths) {
+        unsigned num = dirItems.Items.Size();
+        processedItems.Alloc(num);
+        for (unsigned i = 0; i < num; i++)
+            processedItems[i] = 0;
+        updateCallback->ProcessedItemsStatuses = processedItems;
+    }
+
+    Z7_DECL_CMyComPtr_QI_FROM(ISetProperties, setProperties, outArchive) if (setProperties) {
+        if (m_PropNames.Size() == 0) {
+            RINOK(setProperties->SetProperties(NULL, NULL, 0))
+        } else {
+            CRecordVector<const wchar_t *> names;
+            FOR_VECTOR(i, m_PropNames)
+            names.Add((const wchar_t *)m_PropNames[i]);
+
+            CPropVariant *propValues = new CPropVariant[m_PropValues.Size()];
+            try {
+                FOR_VECTOR(i, m_PropValues)
+                propValues[i] = m_PropValues[i];
+                RINOK(setProperties->SetProperties(names.ConstData(), propValues, names.Size()))
+            } catch (...) {
+                delete[] propValues;
+                return E_FAIL;
+            }
+            delete[] propValues;
+        }
+    }
+    m_PropNames.Clear();
+    m_PropValues.Clear();
+
+    if (sfxModule != NULL) {
+        CMyComPtr2_Create<IInStream, CInFileStream> sfxStream;
+        if (!sfxStream->Open(us2fs(sfxModule)))
+            return E_FAIL;
+        // throw "Can't open sfx module";
+        RINOK(NCompress::CopyStream(sfxStream, outArchiveStream, NULL))
+    }
+
+    const HRESULT res =
+        outArchive->UpdateItems(outArchiveStream, updatePairs2.Size(), updateCallback);
+    if (res == S_OK && processedPaths) {
+        {
+            /* OutHandler for 7z archives doesn't report compression operation for empty files.
+               So we must include these files manually */
+            FOR_VECTOR(i, updatePairs2) {
+                const CUpdatePair2 &up = updatePairs2[i];
+                if (up.DirIndex != -1 && up.NewData) {
+                    const CDirItem &di = dirItems.Items[(unsigned)up.DirIndex];
+                    if (!di.IsDir() && di.Size == 0)
+                        processedItems[(unsigned)up.DirIndex] = 1;
+                }
+            }
+        }
+
+        FOR_VECTOR(i, dirItems.Items)
+        if (processedItems[i] != 0)
+            processedPaths->Add(dirItems.GetPhyPath(i));
+    }
+    return res;
 }
 
 HRESULT CAgent::DeleteItems(ISequentialOutStream *outArchiveStream, const UInt32 *indices,

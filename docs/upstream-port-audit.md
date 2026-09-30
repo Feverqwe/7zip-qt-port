@@ -3157,3 +3157,57 @@ macOS arm64; Copy/Move dialog JSON 440×250 и 340×220 просмотрены. 
 `./scripts/check.sh` (format, app build, все CTest) прошёл на macOS arm64,
 Qt 6.11.2, 2026-09-30. Windows/Linux runtime и rendered Windows parity
 не проверены для этого изменения.
+
+## P1-01.2 — disk→archive через исходный CopyFrom/update (2026-09-30)
+
+База: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Исходные владельцы: `CPP/7zip/UI/Agent/Agent.h`,
+`AgentOut.cpp::CAgent::SetFiles/DoOperation`, его
+`EnumerateArchiveItems/EnumerateArchiveItems2/CAgUpCallbackImp/CDirItemsCallback_AgentOut`,
+`ArchiveFolderOut.cpp::CAgentFolder::CopyFrom` и ветка `AGENT_OP_Uni`,
+`CPP/7zip/UI/FileManager/Panel.h`, `PanelCopy.cpp::CPanel::CopyFrom/CThreadUpdate`,
+`CPP/7zip/UI/Common/UpdatePair.cpp::GetUpdatePairInfoList` и
+`UpdateProduce.cpp::UpdateProduce`. Тела исходных SetFiles, CopyFrom,
+DoOperation и helper обхода/выбора пар перенесены в зеркальные пути;
+`UpdateProduce.cpp` скопирован без изменений в `third_party/7zip`.
+`UpdatePair.cpp` скопирован в `src/CPP/7zip/UI/Common` с изменёнными
+include путями и проектным форматированием; её алгоритм сравнения времени,
+сортировки и формирования пар сохранён.
+
+Необходимые адаптации: `CAgent::DoOperation` принимает только уже открытый
+архив, поскольку создание нового архива принадлежит отдельной операции
+Qt/`ArchiveBackend`; его branch создания `IOutArchive` через `CCodecs`
+возвращает `E_NOTIMPL`. Запись alternate streams в переносимом `CDirItem`
+недоступна и явно возвращает `E_NOTIMPL`. Source property plan остаётся в
+теле, но текущий UI не задаёт `m_PropNames/m_PropValues`. Исходный
+`CThreadUpdate` адаптирован к имеющемуся `CProgressThreadVirt` и
+`IQtProgressServices`, сохранив вызов `IFolderOperations::CopyFrom`, пароль
+верхнего архива, сообщения и progress/cancel. `qtarchivesourceupdate.cpp`
+проверяет source callback plan, готовит файлы/папки во временном каталоге,
+переносит время через `SetDirTime` и передаёт набор в
+`ArchiveBackend::updateSourceAdd`. Backend отвергает опасные пути и ссылки,
+использует официальный `7zz` с исходным Add action set
+`p1q1r2x2y2z2w2`, отдельным output и паролем; native
+`CommonUpdateOperation` публикует результат через WorkDir, повторно
+открывает архив и для F6 только после успешной публикации удаляет
+обработанные исходники. Это узкая граница вместо недоступного встроенного
+writer, не новая реализация архива.
+
+Qt F5/F6 из filesystem панели маршрутизирует выбор в текущую папку
+противоположной открытой ZIP/7z панели, используя исходные относительные
+имена, `CCopyDialog` и путь второй панели по умолчанию. После успеха
+обновляются обе панели; отказ, вложенный архив и произвольный другой
+archive destination не объявлены поддержанными. Дерево папок, Unicode,
+пробелы, байты, время файла, защищённый верхний 7z, F6 после публикации,
+отмена и небезопасный путь проверяются в `source_update_backend`; сквозной
+F5/F6 с двумя панелями и refresh проверяется в `ui_operations`. Полный
+`CApp::OnCopy` dispatch, archive→archive staging и остальные destination
+варианты остаются P1-01.3; filesystem `FSFolderCopy` — P1-02,
+ADS/links/metadata completeness — P2-05/P2-06. Исходные notices и лицензия
+сохранены в `third_party/7zip/License.txt`.
+
+Проверка: `./scripts/build.sh dev sevenzip_desktop source_update_backend_tests
+ui_operations_tests`, адресные `source_update_backend` и `ui_operations`
+прошли; полный unsandboxed `./scripts/check.sh` (форматирование, сборка,
+все CTest) прошёл на macOS arm64, Qt 6.11.2, 2026-09-30.
+Windows/Linux runtime и rendered Windows parity для этого пакета не проверены.

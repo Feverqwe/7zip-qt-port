@@ -567,6 +567,15 @@ archive→disk. `extraction_options` checks that CurrentPaths validation catches
 an occupied relative output and rejects entries outside the current archive
 folder. `copy_dialog` checks normal and compact Copy/Move text and geometry.
 
+P1-01.2: `source_update_backend` exercises source `CopyFrom` for a selected
+Unicode file, multiple files including an empty file, a directory tree with
+an empty folder, F6 disk-source removal after publication, cancellation before
+publication, protected top 7z, file mtime and unsafe/dangling-output paths.
+`ui_operations` opens two real panels and verifies F5/F6 into an opposite ZIP,
+default CopyDialog path, output bytes, source lifetime and both-panel refresh.
+The new UI fixture uses its own settings file so the following suites keep
+their original panel state. The backend uses disposable archives and `7zz`.
+
 `panel_copy_info` checks copied decimal formatting through UInt64 maximum,
 mixed file/folder size properties, undefined-size propagation, defined zero,
 selection order, relative Unicode names, five-name cutoff and full-selection

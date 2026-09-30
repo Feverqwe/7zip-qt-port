@@ -231,6 +231,8 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
     src/CPP/7zip/UI/Common/SortUtils.cpp
     third_party/7zip/CPP/7zip/UI/Common/UpdateAction.cpp
+    src/CPP/7zip/UI/Common/UpdatePair.cpp
+    third_party/7zip/CPP/7zip/UI/Common/UpdateProduce.cpp
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/qtarchiveproperties.cpp src/qtarchiveproperties.h
     src/qtarchivefoldermanager.cpp src/qtarchivefoldermanager.h

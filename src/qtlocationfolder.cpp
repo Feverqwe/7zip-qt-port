@@ -32,10 +32,6 @@ bool CAgentFolder::CanCopyTo() const {
 
 // Remaining unavailable operation bodies stay with their source owners.
 Z7_COM7F_IMF(CAgentFolder::CreateFile(const wchar_t *, IProgress *)) { return E_NOTIMPL; }
-Z7_COM7F_IMF(CAgentFolder::CopyFrom(Int32, const wchar_t *, const wchar_t *const *, UInt32,
-                                    IProgress *)) {
-    return E_NOTIMPL;
-}
 Z7_COM7F_IMF(CAgentFolder::SetProperty(UInt32, PROPID, const PROPVARIANT *, IProgress *)) {
     return E_NOTIMPL;
 }

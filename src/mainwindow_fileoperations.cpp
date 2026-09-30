@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 #include "qttrashservice.h"
+#include <QScopedValueRollback>
 
 namespace {
 NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
@@ -213,13 +214,55 @@ void MainWindow::transferSelected(bool move) {
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();
-    transferFiles(sources, destination, move);
-    if (!QFileInfo(destination).isDir())
-        return;
     AddUniqueStringToHeadOfList(history, destination);
     while (history.size() > 20)
         history.removeLast();
     SaveCopyHistory(history, toolbarSettingsPath());
+    if (!transferToArchivePanel(destination, move))
+        transferFiles(sources, destination, move);
+}
+
+bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
+    if (app_.NumPanels != 2 || state_ != State::Filesystem)
+        return false;
+    const unsigned sourceIndex = app_.GetFocusedPanelIndex();
+    const unsigned destinationIndex = 1 - sourceIndex;
+    CPanel &source = app_.Panels[sourceIndex];
+    CPanel &target = app_.Panels[destinationIndex];
+    if (panelUi_[destinationIndex].state != State::Viewing ||
+        QDir::cleanPath(destination) != QDir::cleanPath(ToQString(target.GetFsPath())))
+        return false;
+    auto *folder = dynamic_cast<CAgentFolder *>(target.GetFolder());
+    if (!folder || target.GetParentFolders().Size() != 1 ||
+        !ArchiveFormats::canModify(panelUi_[destinationIndex].archive)) {
+        QMessageBox::warning(this, QStringLiteral("Копирование"),
+                             QStringLiteral("Запись в эту папку архива недоступна."));
+        return true;
+    }
+    CRecordVector<UInt32> indices = sourceOperatedIndices();
+    UStringVector names;
+    FOR_VECTOR(i, indices) names.Add(source.GetItemRelPath(indices[i]));
+    if (names.IsEmpty())
+        return true;
+    UStringVector messages;
+    HRESULT result;
+    {
+        QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+        result = target.CopyFrom(move, source.GetFsPath(), names, true, &messages);
+    }
+    if (result == S_OK) {
+        activatePanelUi(destinationIndex);
+        refreshCurrent();
+        activatePanelUi(sourceIndex);
+        if (move)
+            refreshCurrent();
+        statusBar()->showMessage(move ? QStringLiteral("Объекты перемещены в архив.")
+                                      : QStringLiteral("Объекты скопированы в архив."));
+    } else if (result != E_ABORT) {
+        QMessageBox::warning(this, QStringLiteral("Копирование"),
+                             QString::fromWCharArray(HResultToMessage(result).Ptr()));
+    }
+    return true;
 }
 
 void MainWindow::deleteSelected(bool toRecycleBin) {

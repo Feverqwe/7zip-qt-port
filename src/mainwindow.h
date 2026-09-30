@@ -119,6 +119,7 @@ class MainWindow : public QMainWindow {
     unsigned panelIndexFor(QObject *object) const;
     void togglePanels();
     QString copyDefaultDestination() const;
+    bool transferToArchivePanel(const QString &destination, bool move);
     void rememberTransferDestination(const QString &path);
     void refreshTransferDestination(unsigned index);
     void createFileTable(QWidget *central);

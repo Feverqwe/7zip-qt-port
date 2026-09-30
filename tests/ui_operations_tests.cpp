@@ -3,7 +3,9 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
+#include <QProcess>
 #include <QScopeGuard>
+#include <QStandardPaths>
 
 namespace {
 class FakeTrashService final : public IQtTrashService {
@@ -476,6 +478,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(copyProgress->findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled());
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        QVERIFY(!settings.value("CopyHistory").toStringList().isEmpty());
         QCOMPARE(settings.value("CopyHistory").toStringList().first(), destination);
         QFile copiedFile(copied);
         QVERIFY(copiedFile.open(QIODevice::ReadOnly));
@@ -575,7 +578,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(QFileInfo::exists(renamed));
         QVERIFY(!QFileInfo::exists(source));
 
+        QTRY_VERIFY(filesystemRow(window, QStringLiteral("новое имя.txt")) >= 0);
         table(window)->selectRow(filesystemRow(window, QStringLiteral("новое имя.txt")));
+        QTRY_VERIFY(!table(window)->selectionModel()->selectedRows().isEmpty());
         table(window)
             ->item(table(window)->selectionModel()->selectedRows().first().row(), 1)
             ->setText(temp.filePath("forged-delete.txt"));
@@ -615,7 +620,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         movable.close();
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(filesystemRow(window, "move me.txt") >= 0);
         table(window)->selectRow(filesystemRow(window, "move me.txt"));
+        QTRY_VERIFY(!table(window)->selectionModel()->selectedRows().isEmpty());
         table(window)
             ->item(table(window)->selectionModel()->selectedRows().first().row(), 1)
             ->setText(temp.filePath("forged-move.txt"));
@@ -712,6 +719,139 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(backend.addCalls, 1);
         QVERIFY(cancelRequested);
         QVERIFY(action(window, "copyAction")->isEnabled());
+    }
+
+    void diskPanelCopiesIntoOppositeArchive() {
+        const QString engine = QStandardPaths::findExecutable("7zz");
+        QVERIFY2(!engine.isEmpty(), "7zz required for disk-to-archive fixture");
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const bool hadSettings = qEnvironmentVariableIsSet("SEVENZIP_SETTINGS_PATH");
+        const QByteArray previousSettings = qgetenv("SEVENZIP_SETTINGS_PATH");
+        const auto restoreSettings = qScopeGuard([hadSettings, previousSettings] {
+            if (hadSettings)
+                qputenv("SEVENZIP_SETTINGS_PATH", previousSettings);
+            else
+                qunsetenv("SEVENZIP_SETTINGS_PATH");
+        });
+        qputenv("SEVENZIP_SETTINGS_PATH", fixture.filePath("transfer-settings.ini").toUtf8());
+        const QString disk = fixture.filePath("disk");
+        const QString seed = fixture.filePath("seed");
+        QVERIFY(QDir().mkpath(disk));
+        QVERIFY(QDir().mkpath(seed));
+        const QString archive = fixture.filePath("target.zip");
+        const QString source = QDir(disk).filePath(QStringLiteral("новый файл.txt"));
+        QFile incoming(source);
+        QVERIFY(incoming.open(QIODevice::WriteOnly));
+        QCOMPARE(incoming.write("source bytes"), qint64(12));
+        incoming.close();
+        QFile keep(QDir(seed).filePath("keep.txt"));
+        QVERIFY(keep.open(QIODevice::WriteOnly));
+        QCOMPARE(keep.write("keep"), qint64(4));
+        keep.close();
+        QProcess create;
+        create.setWorkingDirectory(seed);
+        create.start(engine, {"a", "-tzip", "--", archive, "keep.txt"});
+        QVERIFY(create.waitForFinished(10000));
+        QCOMPARE(create.exitCode(), 0);
+
+        ArchiveBackend backend(nullptr, engine);
+        MainWindow window(&backend);
+        window.show();
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        auto *leftAddress = left->findChild<QLineEdit *>("archivePath");
+        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        leftAddress->setText(disk);
+        QTest::keyClick(leftAddress, Qt::Key_Return);
+        int sourceRow = -1;
+        QTRY_VERIFY_WITH_TIMEOUT(([&] {
+                                     for (int row = 0; row < leftTable->rowCount(); ++row)
+                                         if (leftTable->item(row, 0)->text() ==
+                                             QStringLiteral("новый файл.txt")) {
+                                             sourceRow = row;
+                                             return true;
+                                         }
+                                     return false;
+                                 })(),
+                                 10000);
+        action(window, "twoPanelsAction")->trigger();
+        QVERIFY(action(window, "twoPanelsAction")->isChecked());
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        QVERIFY(right);
+        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        window.activateWindow();
+        QApplication::processEvents();
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
+        window.openArchive(archive);
+        QTRY_VERIFY_WITH_TIMEOUT(([&] {
+                                     for (int row = 0; row < rightTable->rowCount(); ++row)
+                                         if (rightTable->item(row, 0)->text() == "keep.txt")
+                                             return true;
+                                     return false;
+                                 })(),
+                                 10000);
+        window.activateWindow();
+        QApplication::processEvents();
+        leftTable->setFocus();
+        QTRY_VERIFY(leftTable->hasFocus());
+        QVERIFY(sourceRow >= 0);
+        leftTable->setFocus();
+        leftTable->selectRow(sourceRow);
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            QCOMPARE(QDir::cleanPath(dialog->destination()), QDir::cleanPath(archive));
+            dialog->accept();
+        });
+        action(window, "copyAction")->trigger();
+        QFile copied(source);
+        QVERIFY(copied.open(QIODevice::ReadOnly));
+        QCOMPARE(copied.readAll(), QByteArray("source bytes"));
+        const QString extracted = fixture.filePath("extracted");
+        QProcess extract;
+        extract.start(engine, {"x", "-y", "-o" + extracted, "--", archive});
+        QVERIFY(extract.waitForFinished(10000));
+        QCOMPARE(extract.exitCode(), 0);
+        QFile archived(QDir(extracted).filePath(QStringLiteral("новый файл.txt")));
+        QVERIFY(archived.open(QIODevice::ReadOnly));
+        QCOMPARE(archived.readAll(), QByteArray("source bytes"));
+        QTRY_VERIFY(rightTable->rowCount() > 1);
+
+        const QString movedSource = QDir(disk).filePath(QStringLiteral("move me.txt"));
+        QFile moving(movedSource);
+        QVERIFY(moving.open(QIODevice::WriteOnly));
+        QCOMPARE(moving.write("move bytes"), qint64(10));
+        moving.close();
+        action(window, "refreshAction")->trigger();
+        int moveRow = -1;
+        QTRY_VERIFY_WITH_TIMEOUT(([&] {
+                                     for (int row = 0; row < leftTable->rowCount(); ++row)
+                                         if (leftTable->item(row, 0)->text() == "move me.txt") {
+                                             moveRow = row;
+                                             return true;
+                                         }
+                                     return false;
+                                 })(),
+                                 10000);
+        leftTable->selectRow(moveRow);
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            QCOMPARE(QDir::cleanPath(dialog->destination()), QDir::cleanPath(archive));
+            dialog->accept();
+        });
+        action(window, "moveAction")->trigger();
+        QVERIFY(!QFileInfo::exists(movedSource));
+        const QString movedExtracted = fixture.filePath("moved-extracted");
+        QProcess verifyMove;
+        verifyMove.start(engine, {"x", "-y", "-o" + movedExtracted, "--", archive});
+        QVERIFY(verifyMove.waitForFinished(10000));
+        QCOMPARE(verifyMove.exitCode(), 0);
+        QFile moved(QDir(movedExtracted).filePath("move me.txt"));
+        QVERIFY(moved.open(QIODevice::ReadOnly));
+        QCOMPARE(moved.readAll(), QByteArray("move bytes"));
+        QTRY_VERIFY(rightTable->rowCount() > 2);
     }
 
     void stage7ArchiveCommandStates() {

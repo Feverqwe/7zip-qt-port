@@ -598,8 +598,14 @@ destination guard check the actual relative output path. F6 uses that copy
 stage before the existing `ArchiveBackend::remove` stage because upstream
 `CAgentFolder::CopyTo(moveMode)` returns `E_NOTIMPL`. An accepted transfer
 refreshes the source panel and a matching filesystem destination panel.
-The complete native `CApp::OnCopy` decision body and archive destinations
-remain P1-01.2/.3; filesystem copy internals remain P1-02.
+For disk→archive, the opposite bound `CPanel::CopyFrom` calls source
+`CAgentFolder::CopyFrom`/`CAgent::DoOperation`; source `UpdatePair` and
+`UpdateProduce` choose the archive update plan. `QtArchiveFileResource` stages
+callback bytes and timestamps, and `ArchiveBackend::updateSourceAdd` asks
+`7zz` to write a separate output. Native `CommonUpdateOperation` publishes
+the result and only then removes disk sources for F6. The UI refreshes both
+panels after success. The complete native `CApp::OnCopy` dispatch and
+archive→archive staging remain P1-01.3; filesystem copy internals remain P1-02.
 
 Creation writes a temporary peer archive and publishes it after success.
 Mutations copy the existing archive, update that copy and replace the original

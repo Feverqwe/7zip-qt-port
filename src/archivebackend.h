@@ -80,6 +80,9 @@ class ArchiveBackend : public QObject {
     virtual void updateSourceFile(const QString &archive, const QString &entry,
                                   const QString &sourceRoot, const QString &output,
                                   const QString &format, const QString &password);
+    virtual void updateSourceAdd(const QString &archive, const QStringList &entries,
+                                 const QString &sourceRoot, const QString &output,
+                                 const QString &format, const QString &password);
     enum class SourceMutation { Delete, Rename, CreateFolder };
     virtual void updateSourceMutation(const QString &archive, const QString &output,
                                       const QString &format, SourceMutation operation,

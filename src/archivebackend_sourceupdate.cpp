@@ -51,6 +51,46 @@ void ArchiveBackend::updateSourceFile(const QString &archive, const QString &ent
           sourceRoot);
 }
 
+void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &entries,
+                                     const QString &sourceRoot, const QString &output,
+                                     const QString &format, const QString &password) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    lastResult_ = E_FAIL;
+    const QFileInfo input(archive);
+    const QFileInfo result(output);
+    const QFileInfo root(sourceRoot);
+    if ((format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||
+        result.exists() || result.isSymLink() || !root.isDir() || root.isSymLink() ||
+        entries.isEmpty()) {
+        emit finished(false, QStringLiteral("Недопустимый запрос на добавление в архив."));
+        return;
+    }
+    for (const QString &entry : entries) {
+        if (!sourceUpdatePathIsSafe(entry) || entry.contains('*') || entry.contains('?') ||
+            entry.startsWith('@')) {
+            emit finished(false, QStringLiteral("Небезопасный путь добавления в архив."));
+            return;
+        }
+        const QFileInfo staged(QDir(root.absoluteFilePath()).filePath(entry));
+        if ((!staged.isFile() && !staged.isDir()) || staged.isSymLink() ||
+            !staged.canonicalFilePath().startsWith(root.canonicalFilePath() + QDir::separator())) {
+            emit finished(false, QStringLiteral("Файл добавления не подготовлен."));
+            return;
+        }
+    }
+    archive_ = input.absoluteFilePath();
+    createTemporary_ = result.absoluteFilePath();
+    pendingPassword_ = password;
+    QStringList args = {"u",    "-y",          "-bsp1", "-bb1",
+                        "-spd", "-t" + format, "-u-",   "-up1q1r2x2y2z2w2!" + createTemporary_,
+                        "--",   archive_};
+    args += entries;
+    start(Job::SourceUpdate, args, root.absoluteFilePath());
+}
+
 void ArchiveBackend::updateSourceMutation(const QString &archive, const QString &output,
                                           const QString &format, SourceMutation operation,
                                           const QStringList &paths, const QString &sourceRoot,

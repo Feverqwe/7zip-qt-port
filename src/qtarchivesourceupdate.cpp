@@ -4,15 +4,18 @@
 #include "7zip/Compress/CopyCoder.h"
 #include "7zip/IPassword.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "CPP/Windows/FileDir.h"
 #include "Common/ComTry.h"
 #include "Common/MyCom.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
+#include "Windows/TimeUtils.h"
 #include "archivebackend.h"
 #include "archiveprogresstransport.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
 #include <QDir>
+#include <QFileInfo>
 #include <QSet>
 #include <QTemporaryDir>
 
@@ -101,6 +104,60 @@ struct CMutationPlan {
     ArchiveBackend::SourceMutation Operation = ArchiveBackend::SourceMutation::Delete;
     QStringList Paths;
 };
+
+HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path);
+HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &path);
+
+struct CAddedItem {
+    UInt32 Index = 0;
+    QString Path;
+    bool Directory = false;
+};
+
+HRESULT FindAddPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *callback,
+                    QList<CAddedItem> &items) {
+    UInt32 originalCount;
+    RINOK(metadata->GetNumberOfItems(&originalCount))
+    QSet<UInt32> kept;
+    QSet<QString> names;
+    for (UInt32 i = 0; i < count; ++i) {
+        Int32 newData, newProps;
+        UInt32 index;
+        RINOK(callback->GetUpdateItemInfo(i, &newData, &newProps, &index))
+        if (index != UInt32(-1)) {
+            if (index >= originalCount || kept.contains(index))
+                return E_NOTIMPL;
+            kept.insert(index);
+        }
+        if (!newData && !newProps) {
+            if (index == UInt32(-1))
+                return E_NOTIMPL;
+            continue;
+        }
+        if (!newData || !newProps)
+            return E_NOTIMPL;
+        QString path;
+        RINOK(ReadNewPath(callback, i, path))
+        if (path.contains('*') || path.contains('?') || path.startsWith('@'))
+            return E_NOTIMPL;
+        if (index != UInt32(-1)) {
+            QString original;
+            RINOK(ReadPath(metadata, index, original))
+            if (original != path)
+                return E_NOTIMPL;
+        }
+        const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
+        if (names.contains(key))
+            return E_NOTIMPL;
+        names.insert(key);
+        NWindows::NCOM::CPropVariant directory;
+        RINOK(callback->GetProperty(i, kpidIsDir, &directory))
+        if (directory.vt != VT_BOOL)
+            return E_NOTIMPL;
+        items.append({i, path, directory.boolVal == VARIANT_TRUE});
+    }
+    return kept.size() == int(originalCount) && !items.isEmpty() ? S_OK : E_NOTIMPL;
+}
 
 HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path) {
     NWindows::NCOM::CPropVariant value;
@@ -218,6 +275,41 @@ HRESULT StageCallbackStream(const QString &root, const QString &name, UInt32 ind
     RINOK(NCompress::CopyStream(input, output, progress))
     return file->Close();
 }
+
+HRESULT StageAddedItems(const QString &root, const QList<CAddedItem> &items,
+                        IArchiveUpdateCallback *callback, QStringList &names) {
+    QList<QPair<QString, CFiTime>> directories;
+    for (const CAddedItem &item : items) {
+        const QString path = QDir(root).filePath(item.Path);
+        if (item.Directory) {
+            if (!QDir().mkpath(path))
+                return E_FAIL;
+        } else
+            RINOK(StageCallbackStream(root, item.Path, item.Index, callback))
+        NWindows::NCOM::CPropVariant modified;
+        RINOK(callback->GetProperty(item.Index, kpidMTime, &modified))
+        if (modified.vt == VT_FILETIME) {
+            CFiTime time;
+#ifdef _WIN32
+            time = modified.filetime;
+#else
+            if (!FILETIME_To_timespec(modified.filetime, time))
+                return E_FAIL;
+#endif
+            if (item.Directory)
+                directories.append({path, time});
+            else if (!NWindows::NFile::NDir::SetDirTime(us2fs(path.toStdWString().c_str()), nullptr,
+                                                        nullptr, &time))
+                return E_FAIL;
+        }
+        names.append(item.Path);
+    }
+    for (auto it = directories.crbegin(); it != directories.crend(); ++it)
+        if (!NWindows::NFile::NDir::SetDirTime(us2fs(it->first.toStdWString().c_str()), nullptr,
+                                               nullptr, &it->second))
+            return E_FAIL;
+    return S_OK;
+}
 } // namespace
 
 HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archive,
@@ -244,11 +336,22 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
     QString name;
     const HRESULT fileUpdate = FindChangedItem(metadata, count, callback, changed, name);
     CMutationPlan mutation;
-    if (fileUpdate != S_OK)
-        RINOK(FindMutationPlan(metadata, count, callback, mutation))
+    QList<CAddedItem> added;
+    HRESULT mutationResult = E_NOTIMPL;
+    if (fileUpdate == E_NOTIMPL)
+        mutationResult = FindMutationPlan(metadata, count, callback, mutation);
+    else if (fileUpdate != S_OK)
+        return fileUpdate;
+    if (fileUpdate != S_OK && mutationResult == E_NOTIMPL)
+        RINOK(FindAddPlan(metadata, count, callback, added))
+    else if (mutationResult != S_OK && fileUpdate != S_OK)
+        return mutationResult;
     const QString sourceRoot = stage.filePath("source");
+    QStringList addedNames;
     if (fileUpdate == S_OK)
         RINOK(StageCallbackStream(sourceRoot, name, changed, callback))
+    else if (!added.isEmpty())
+        RINOK(StageAddedItems(sourceRoot, added, callback, addedNames))
     else if (mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder &&
              !QDir().mkpath(QDir(sourceRoot).filePath(mutation.Paths.front())))
         return E_FAIL;
@@ -268,6 +371,13 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
             backend,
             [&backend, archive, name, sourceRoot, result, format, password] {
                 backend.updateSourceFile(archive, name, sourceRoot, result, format, password);
+            },
+            callback, sync))
+    } else if (!added.isEmpty()) {
+        RINOK(RunArchiveBackendRequest(
+            backend,
+            [&backend, archive, addedNames, sourceRoot, result, format, password] {
+                backend.updateSourceAdd(archive, addedNames, sourceRoot, result, format, password);
             },
             callback, sync))
     } else {

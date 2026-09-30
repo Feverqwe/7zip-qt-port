@@ -13,6 +13,7 @@
 #include "qtarchivefoldermanager.h"
 #include "qtarchivesourceupdate.h"
 #include "qtpanelfolder.h"
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QProcess>
@@ -20,6 +21,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <vector>
 
 namespace {
 QString enginePath() { return QStandardPaths::findExecutable("7zz"); }
@@ -164,6 +166,63 @@ class CNativeMutationWorker final : public CProgressThreadVirt {
         return _resourceSpec->CreateProgressTransport(*this);
     }
 };
+
+class CNativeAddWorker final : public CProgressThreadVirt {
+    QString _source, _format;
+    CMyComPtr<IUnknown> _resource;
+    QtArchiveFileResource *_resourceSpec;
+    HRESULT ProcessVirt() override {
+        CObjectVector<CPanelItem> items;
+        CPanelItem keep;
+        keep.RelPath = QStringLiteral("inside/keep.bin");
+        keep.SizeDefined = true;
+        keep.Size = 4;
+        items.Add(keep);
+        CMyComPtr<IFolderFolder> props =
+            new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
+        CMyComPtr2_Create<IUnknown, CAgent> agent;
+        RINOK(agent->Init({}, props, ToUString(_format), _resource))
+        CMyComPtr<IFolderFolder> root, inside;
+        RINOK(agent->BindToRootFolder(&root))
+        RINOK(root->BindToFolder(L"inside", &inside))
+        RINOK(inside->LoadItems())
+        CMyComPtr<IFolderOperations> operations;
+        RINOK(inside.QueryInterface(IID_IFolderOperations, &operations))
+        CMyComPtr2_Create<IFolderArchiveUpdateCallback, CUpdateCallback100Imp> ui;
+        ui->ProgressDialog = this;
+        ui->Init();
+        if (!Password.isEmpty()) {
+            ui->PasswordIsDefined = true;
+            ui->Password = ToUString(Password);
+        }
+        const QStringList sources = Sources.isEmpty() ? QStringList{_source} : Sources;
+        const std::wstring parent = QFileInfo(sources.first()).absolutePath().toStdWString();
+        std::vector<std::wstring> names;
+        names.reserve(size_t(sources.size()));
+        for (const QString &source : sources)
+            names.push_back(QFileInfo(source).fileName().toStdWString());
+        std::vector<const wchar_t *> pointers;
+        pointers.reserve(names.size());
+        for (const std::wstring &name : names)
+            pointers.push_back(name.c_str());
+        return operations->CopyFrom(MoveMode, parent.c_str(), pointers.data(),
+                                    UInt32(pointers.size()), ui);
+    }
+
+  public:
+    bool MoveMode = false;
+    QString Password;
+    QStringList Sources;
+    CNativeAddWorker(ArchiveBackend &backend, const QString &archive, const QString &source,
+                     const QString &format)
+        : _source(source), _format(format), _resourceSpec(new QtArchiveFileResource(archive)) {
+        _resource = _resourceSpec;
+        _resourceSpec->AttachUpdateService(backend, format);
+    }
+    std::unique_ptr<IQtProgressTransport> CreateProgressTransport() {
+        return _resourceSpec->CreateProgressTransport(*this);
+    }
+};
 } // namespace
 
 class SourceUpdateBackendTests final : public QObject {
@@ -198,6 +257,186 @@ class SourceUpdateBackendTests final : public QObject {
         QVERIFY(!backend.busy());
         QVERIFY(QFile::exists(output));
         QCOMPARE(readFile(archive), original);
+    }
+    void nativeCopyFromAddsToCurrentFolder() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString archive = fixture.filePath("original.zip");
+        const QString source = fixture.filePath(QStringLiteral("новый файл.bin"));
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside/keep.bin"}));
+        QVERIFY(writeFile(source, "new bytes"));
+        QFile timestamped(source);
+        QVERIFY(timestamped.open(QIODevice::ReadWrite));
+        const QDateTime modified = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        QVERIFY(timestamped.setFileTime(modified, QFileDevice::FileModificationTime));
+        timestamped.close();
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, "zip");
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Copy into archive", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath("inside/keep.bin")), QByteArray("keep"));
+        QCOMPARE(readFile(QDir(extracted).filePath(QStringLiteral("inside/новый файл.bin"))),
+                 QByteArray("new bytes"));
+        const qint64 difference =
+            qAbs(QFileInfo(QDir(extracted).filePath(QStringLiteral("inside/новый файл.bin")))
+                     .lastModified()
+                     .toSecsSinceEpoch() -
+                 modified.toSecsSinceEpoch());
+        QVERIFY(difference <= 2);
+        QCOMPARE(readFile(source), QByteArray("new bytes"));
+    }
+    void nativeCopyFromAddsDirectoryTree() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString archive = fixture.filePath("original.zip");
+        const QString source = fixture.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside/keep.bin"}));
+        QVERIFY(
+            writeFile(QDir(source).filePath(QStringLiteral("вложенная/файл.txt")), "tree bytes"));
+        QVERIFY(QDir().mkpath(QDir(source).filePath("empty")));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, "zip");
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Copy directory into archive", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath(
+                     QStringLiteral("inside/папка с пробелом/вложенная/файл.txt"))),
+                 QByteArray("tree bytes"));
+        QVERIFY(QFileInfo(QDir(extracted).filePath(QStringLiteral("inside/папка с пробелом/empty")))
+                    .isDir());
+    }
+    void nativeCopyFromAddsMultipleSelectedFiles() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString archive = fixture.filePath("original.zip");
+        const QString first = fixture.filePath(QStringLiteral("первый.bin"));
+        const QString empty = fixture.filePath("empty file.bin");
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside/keep.bin"}));
+        QVERIFY(writeFile(first, "first bytes"));
+        QVERIFY(writeFile(empty, {}));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, first, "zip");
+        worker.Sources = {first, empty};
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Copy selected files", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath(QStringLiteral("inside/первый.bin"))),
+                 QByteArray("first bytes"));
+        QVERIFY(QFileInfo(QDir(extracted).filePath("inside/empty file.bin")).isFile());
+        QCOMPARE(readFile(QDir(extracted).filePath("inside/empty file.bin")), QByteArray());
+    }
+    void nativeMovePublishesBeforeDeletingDiskSource() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString archive = fixture.filePath("original.zip");
+        const QString source = fixture.filePath(QStringLiteral("переместить.txt"));
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside/keep.bin"}));
+        QVERIFY(writeFile(source, "move bytes"));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, "zip");
+        worker.MoveMode = true;
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Move into archive", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QVERIFY(!QFileInfo::exists(source));
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath(QStringLiteral("inside/переместить.txt"))),
+                 QByteArray("move bytes"));
+    }
+    void cancelledMoveLeavesDiskSourceAndArchiveIntact() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString archive = fixture.filePath("original.zip");
+        const QString source = fixture.filePath("large move.bin");
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside/keep.bin"}));
+        const QByteArray before = readFile(archive);
+        QVERIFY(writeFile(source, QByteArray(8 * 1024 * 1024, 'x')));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, "zip");
+        worker.MoveMode = true;
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
+        connect(&backend, &ArchiveBackend::engineStarted, &backend,
+                [&worker] { worker.Sync.Set_Stopped(true); });
+        QCOMPARE(worker.Create(L"Cancel archive move", nullptr), S_OK);
+        QCOMPARE(worker.Result, E_ABORT);
+        QCOMPARE(started.count(), 1);
+        QCOMPARE(readFile(archive), before);
+        QCOMPARE(QFileInfo(source).size(), qint64(8 * 1024 * 1024));
+    }
+    void protectedTopArchiveAcceptsCopyFrom() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString archive = fixture.filePath("original.7z");
+        const QString source = fixture.filePath(QStringLiteral("секретное имя.txt"));
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root,
+                          {"a", "-t7z", "-psecret", "-mhe=on", "--", archive, "inside/keep.bin"}));
+        QVERIFY(writeFile(source, "protected bytes"));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, "7z");
+        worker.Password = "secret";
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Copy into protected archive", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(
+            runEngine(fixture.path(), {"x", "-y", "-psecret", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath(QStringLiteral("inside/секретное имя.txt"))),
+                 QByteArray("protected bytes"));
+        QCOMPARE(readFile(QDir(extracted).filePath("inside/keep.bin")), QByteArray("keep"));
+    }
+    void sourceAddRejectsUnsafePathWithoutChangingArchive() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("original");
+        const QString staged = fixture.filePath("staged");
+        const QString archive = fixture.filePath("original.zip");
+        const QString output = fixture.filePath("updated.zip");
+        QVERIFY(writeFile(QDir(root).filePath("inside/keep.bin"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "inside/keep.bin"}));
+        QVERIFY(writeFile(QDir(staged).filePath("inside/safe.bin"), "safe"));
+        const QByteArray before = readFile(archive);
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.updateSourceAdd(archive, {"../outside.bin"}, staged, output, "zip", {});
+        QCOMPARE(finished.count(), 1);
+        QVERIFY(!finished[0][0].toBool());
+        QVERIFY(!QFileInfo::exists(output));
+        QCOMPARE(readFile(archive), before);
+        const QString outside = fixture.filePath("outside.zip");
+        if (QFile::link(outside, output)) {
+            backend.updateSourceAdd(archive, {"inside/safe.bin"}, staged, output, "zip", {});
+            QCOMPARE(finished.count(), 2);
+            QVERIFY(!finished[1][0].toBool());
+            QVERIFY(!QFileInfo::exists(outside));
+            QCOMPARE(readFile(archive), before);
+        }
     }
     void nativeCallbackKeepsArchiveNameAndClosesInputStreams_data() {
         QTest::addColumn<bool>("publish");

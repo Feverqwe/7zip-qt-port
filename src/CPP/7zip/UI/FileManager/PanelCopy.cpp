@@ -296,3 +296,71 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
     RefreshTitleAlways();
     return res;
 }
+
+class CThreadUpdate final : public CProgressThreadVirt {
+    HRESULT ProcessVirt() override {
+        return FolderOperations->CopyFrom(MoveMode, FolderPrefix, FileNamePointers.ConstData(),
+                                          FileNamePointers.Size(), UpdateCallback);
+    }
+
+  public:
+    CMyComPtr<IFolderOperations> FolderOperations;
+    UString FolderPrefix;
+    UStringVector FileNames;
+    CRecordVector<const wchar_t *> FileNamePointers;
+    CMyComPtr<IFolderArchiveUpdateCallback> UpdateCallback;
+    CUpdateCallback100Imp *UpdateCallbackSpec = nullptr;
+    bool MoveMode = false;
+};
+
+HRESULT CPanel::CopyFrom(bool moveMode, const UString &folderPrefix, const UStringVector &filePaths,
+                         bool showErrorMessages, UStringVector *messages) {
+    if (IsHashFolder() && moveMode)
+        return E_NOTIMPL;
+
+    HRESULT res;
+    if (!_folderOperations)
+        res = E_NOINTERFACE;
+    else {
+        CThreadUpdate updater;
+        updater.MoveMode = moveMode;
+        updater.UpdateCallbackSpec = new CUpdateCallback100Imp;
+        updater.UpdateCallback = updater.UpdateCallbackSpec;
+        updater.UpdateCallbackSpec->Init();
+        updater.UpdateCallbackSpec->ProgressDialog = &updater;
+        updater.MainWindow = GetParent();
+        updater.MainTitle = L"7-Zip";
+        const UString title = LangString(IDS_COPYING);
+        updater.MainAddTitle = title + L' ';
+        if (!_parentFolders.IsEmpty()) {
+            const CFolderLink &fl = _parentFolders.Back();
+            updater.UpdateCallbackSpec->PasswordIsDefined = fl.UsePassword;
+            updater.UpdateCallbackSpec->Password = fl.Password;
+        }
+        updater.FolderOperations = _folderOperations;
+        updater.FolderPrefix = folderPrefix;
+        updater.FileNames.ClearAndReserve(filePaths.Size());
+        FOR_VECTOR(i, filePaths) updater.FileNames.AddInReserved(filePaths[i]);
+        updater.FileNamePointers.ClearAndReserve(updater.FileNames.Size());
+        FOR_VECTOR(i, updater.FileNames)
+        updater.FileNamePointers.AddInReserved(updater.FileNames[i]);
+        std::unique_ptr<IQtProgressTransport> transport;
+        if (auto *services =
+                dynamic_cast<IQtProgressServices *>((IFolderOperations *)_folderOperations))
+            transport = services->CreateProgressTransport(updater);
+        RINOK(updater.Create(title, GetParent()))
+        if (messages)
+            *messages = updater.Sync.Messages;
+        res = updater.Result;
+    }
+    if (res == E_NOINTERFACE) {
+        const UString errorMessage = LangString(IDS_OPERATION_IS_NOT_SUPPORTED);
+        if (showErrorMessages)
+            MessageBox_Error(errorMessage);
+        else if (messages)
+            messages->Add(errorMessage);
+        return E_ABORT;
+    }
+    RefreshTitleAlways();
+    return res;
+}
