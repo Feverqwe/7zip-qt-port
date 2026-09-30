@@ -7,7 +7,8 @@
 void MainWindow::renderRootFolder() {
     auto &panel = app_.GetFocusedPanel();
     const bool drives = panel.IsFSDrivesFolder();
-    if ((!panel.IsRootFolder() && !drives) || !panel.GetFolder())
+    const bool network = panel.IsNetFolder();
+    if ((!panel.IsRootFolder() && !drives && !network) || !panel.GetFolder())
         return;
     IFolderFolder *folder = panel.GetFolder();
     UInt32 count = 0;
@@ -28,7 +29,7 @@ void MainWindow::renderRootFolder() {
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
     static_cast<FileTable *>(table_)->filesystem = false;
-    if (drives)
+    if (drives || network)
         path_->setText(QString::fromWCharArray(GetFolderPath(folder)));
     else
         path_->clear(); // The source root's current folder prefix is empty.
@@ -47,9 +48,11 @@ void MainWindow::renderRootFolder() {
             item->setData(Qt::UserRole + 1, true);
             if (column == 0) {
                 item->setText(nativeName.normalized(QString::NormalizationForm_C));
-                item->setIcon(QApplication::style()->standardIcon(
-                    drives ? QStyle::SP_DriveHDIcon : QStyle::SP_ComputerIcon));
-            } else if (drives || column >= 7)
+                item->setIcon(QApplication::style()->standardIcon(drives ? QStyle::SP_DriveHDIcon
+                                                                  : network
+                                                                      ? QStyle::SP_DirIcon
+                                                                      : QStyle::SP_ComputerIcon));
+            } else if (drives || network || column >= 7)
                 item->setText(sourceColumnText(index, column));
             table_->setItem(row, column, item);
         }

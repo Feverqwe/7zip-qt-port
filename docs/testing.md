@@ -991,3 +991,11 @@ consumers проверяются `copy_dialog`, `extract_dialog`, `volume_operat
 `compression`, `ui_navigation` и `ui_operations`; modal tests используют
 `QT_QPA_PLATFORM=offscreen`, без обращения к пользовательским файлам.
 Нативное оформление и Windows super/device path требуют проверки на ОС.
+
+P1-11.3: `network_folder` подставляет сетевой mount с Unicode/пробелами,
+проверяет source `CNetFolder` properties/binding и отказ для исчезнувшего
+или недоступного пути. `root_navigation` проходит root → «Сеть» → Back,
+проверяет доступность Parent и пишет normal/compact widget JSON. Соседние
+`volume_mount`/`panel_path` проверяют shared navigation. Live network и
+credentials в тестах не используются; Windows/Linux runtime остаётся
+непроверенным.

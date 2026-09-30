@@ -75,8 +75,9 @@ backslash on the focused file list uses the same command. The Qt list presents
 the provider's original item names and indices. On macOS, Computer opens `/`,
 Parent from `/` returns to the virtual root, and Back returns through the prior
 filesystem location. Typed relative and Unicode paths bind through CPanel.
-The original Windows root has Computer, Documents, Network and Volumes; their
-complete Windows providers and system icons remain P1-11/P0-09. Root read-only
+The original Windows root has Computer, Documents, Network and Volumes; source
+network enumeration is integrated, while Windows runtime/system icons remain
+unverified. Root read-only
 commands stay available while mutations are disabled. Current Qt geometry was
 checked at 980×620 and 640×400; no rendered Windows comparison or Windows/Linux
 runtime verification is claimed.
@@ -1146,7 +1147,7 @@ F7, F2 и Delete/Shift+Delete доступны в открытом верхне�
 Неисчезнувший корень `/` показан даже при пустом ответе системного mount API;
 исчезнувший или недоступный том нельзя открыть из устаревшего списка.
 Верхнее меню, toolbar, адрес и status остаются видимыми на 980×620/640×400.
-Native network namespace и Browse dialogs ещё открыты P1-11.2; Windows/Linux
+Network namespace и Browse dialogs перенесены в P1-11.3/.2; Windows/Linux
 runtime и rendered Windows reference не проверены.
 
 ## P1-11.2 — выбор файла и папки (2026-09-30)
@@ -1159,4 +1160,16 @@ Cancel не меняет редактируемый путь, выбор Unicode
 своему исходному workflow. В upstream desktop используются native folder/file
 dialogs; `BrowseDialog.rc` для custom fallback не доказывает их pixel parity.
 Windows super/device path fallback и runtime Windows/Linux остаются
-непроверенными, сетевой namespace — P1-11.3.
+непроверенными; сетевой namespace перенесён в P1-11.3.
+
+## P1-11.3 — сетевые папки (2026-09-30)
+
+Windows «Сеть» открывает исходный `CNetFolder` и перечисляет ресурсы через
+`NWindows::NNet`; на macOS/Linux тот же пункт показывает уже смонтированные
+SMB/NFS/AFP/SSH/WebDAV ресурсы из системного списка томов. Подключение нового
+сервера и запрос credentials не выполняются: это ограничение platform service,
+а не скрытая команда UI. Путь и provider берутся из source folder properties,
+назад и родитель возвращают к виртуальному корню, stale/нечитаемую share
+открыть нельзя. Menu, toolbar, address, list и status проверены на 980×620 и
+640×400 в current-build JSON на macOS arm64. Реальные remote services,
+Windows/Linux runtime и rendered Windows visual parity не проверены.

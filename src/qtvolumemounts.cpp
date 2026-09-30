@@ -20,6 +20,10 @@ QList<QtVolumeMount> QtSystemVolumeMounts() {
         mount.path = path;
         mount.name = volume.displayName().isEmpty() ? path : volume.displayName();
         mount.fileSystem = QString::fromUtf8(volume.fileSystemType());
+        const QString type = mount.fileSystem.toLower();
+        mount.network = type == "smbfs" || type == "cifs" || type == "nfs" || type == "nfs4" ||
+                        type == "afpfs" || type == "sshfs" || type == "davfs" ||
+                        type == "fuse.sshfs" || type == "fuse.smb";
         mount.totalBytes = volume.bytesTotal();
         mount.availableBytes = volume.bytesAvailable();
         result.append(mount);

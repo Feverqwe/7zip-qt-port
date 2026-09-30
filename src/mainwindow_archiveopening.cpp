@@ -70,7 +70,7 @@ void MainWindow::renderBoundFolder() {
     auto &panel = app_.GetFocusedPanel();
     const auto selection = panel.TakeRefreshSelection();
     panel.LoadFullPath();
-    if (panel.IsRootFolder() || panel.IsFSDrivesFolder()) {
+    if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder()) {
         renderRootFolder();
         if (selection)
             panel.RefreshListCtrl(*selection);
@@ -174,7 +174,8 @@ void MainWindow::openNestedArchive(const QString &entry) {
 void MainWindow::goBack() {
     if (state_ == State::Loading || state_ == State::Operating)
         return;
-    if (state_ == State::Viewing)
+    if (state_ == State::Viewing ||
+        (state_ == State::Namespace && !app_.GetFocusedPanel().IsRootFolder()))
         goParent();
     else if (!history_.isEmpty()) {
         const QString previous = history_.takeLast();
@@ -194,9 +195,10 @@ void MainWindow::goParent() {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Viewing && state_ != State::Filesystem)
-        return;
     auto &panel = app_.GetFocusedPanel();
+    if (state_ != State::Viewing && state_ != State::Filesystem &&
+        (state_ != State::Namespace || panel.IsRootFolder()))
+        return;
     if (!panel.GetFolder())
         return;
     setState(State::Operating);

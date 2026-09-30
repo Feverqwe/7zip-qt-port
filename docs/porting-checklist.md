@@ -58,8 +58,8 @@ N/A отдельной ветки не закрывает весь пакет, �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **13/44 завершённых пакетов; 31 остаётся** (2026-09-30).
-P0: 12/12; P1: 1/16; P2: 0/10; P3: 0/6. P0-01–P0-12 и P1-03
+Текущий счёт: **14/44 завершённых пакетов; 30 остаётся** (2026-09-30).
+P0: 12/12; P1: 2/16; P2: 0/10; P3: 0/6. P0-01–P0-12, P1-03 и P1-11
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -152,17 +152,17 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [ ] | P1-04 | Archive mutations, encrypted writes и comments по capabilities | P0-03, P0-10, P0-11, P1-03 | todo — три интегрированных результата .1/.2/.3; старые частичные Agent/ArchiveFolderOut тела сохраняются evidence |
 | [x] | P1-04.1 | Целый unencrypted archive CreateFolder/Rename/Delete workflow: source AgentOut/ArchiveFolderOut selection/update, FM consumers, transactional adapter, progress/error/refresh и UX | P1-03; existing Agent/ArchiveFolderOut partial prerequisites | done — audit § P1-04.1; ZIP/7z source callback + separate-output/native publish/reopen, implicit folder, bytes/mtime, unsafe/failure/cancel и F7/F2 inline/Delete UI; focused `source_update_backend`, `ui_operations`, `archive_selection_runtime`, `command_policy_runtime` прошли; `check.sh` 137/137 macOS arm64 Qt 6.11.2 2026-09-30, после локального metadata-test правки повторно прошёл `source_update_backend`; Windows/Linux/runtime и rendered Windows parity не проверены |
 | [x] | P1-04.2 | Защищённые верхние архивы: source update/password flow и 7zz capability, bytes/metadata/ciphertext, success/failure/cancel | P1-04.1 | done — audit § P1-04.2; 7z header encryption/ZIP AES, retained password through source mutation and ReOpen, protected bytes/mtime, wrong password/cancel exact-original, F7/F2/Delete with one password prompt; focused/full gate macOS arm64; Windows/Linux runtime and rendered reference unverified |
-| [ ] | P1-04.3 | ChangeComment/SetProperty по доказанной writer capability handler: source FM/Agent path, UX/error/refresh и validation; неподдержанная обязательная ветка остаётся открытой с prerequisite | P1-04.1, P1-04.2 | blocked — audit § P1-04.3: установленный 7zz 26.03 не имеет команды записи per-item ZIP comment; нужен source in-process ZIP IOutArchive/ZipHandlerOut writer и его зависимости через ArchiveBackend до подключения FM UX. Обязательная ветка не готова; независимый P1-11 доступен |
+| [ ] | P1-04.3 | ChangeComment/SetProperty по доказанной writer capability handler: source FM/Agent path, UX/error/refresh и validation; неподдержанная обязательная ветка остаётся открытой с prerequisite | P1-04.1, P1-04.2 | blocked — audit § P1-04.3: установленный 7zz 26.03 не имеет команды записи per-item ZIP comment; нужен source in-process ZIP IOutArchive/ZipHandlerOut writer и его зависимости через ArchiveBackend до подключения FM UX. Обязательная ветка не готова |
 | [ ] | P1-05 | Update/path modes и полное Add workflow | P1-04 | todo |
 | [ ] | P1-06 | Архивные тома create/open/test/extract | P1-05 | todo |
 | [ ] | P1-07 | Advanced options/time/parameters/memory prompts | P1-05, P0-10 | todo |
 | [ ] | P1-08 | External viewer/editor/diff и changed-temp update | P0-04, P1-04 | todo |
 | [ ] | P1-09 | Обновление цепочки вложенных архивов | P1-04, P1-08 | todo |
 | [ ] | P1-10 | Полные properties/raw values/formatting | P0-06, P1-04 | todo |
-| [ ] | P1-11 | Root/drives/network/Browse | P0-04, P0-05 | partial — mounts/root P1-11.1, Browse P1-11.2; network P1-11.3 remains |
+| [x] | P1-11 | Root/drives/network/Browse | P0-04, P0-05 | done — P1-11.1/.2/.3; source root/mount/network and Browse flows, disappearance/unreadable/cancel/history fixtures, current-build JSON, focused/full gate macOS arm64 2026-09-30; Windows/Linux runtime and rendered Windows reference unverified; device imaging remains P2-05/P3-05 |
 | [x] | P1-11.1 | Целый root→mounted volume→filesystem workflow: source RootFolder/FSDrives owner, Qt mount adapter, disappearance/unreadable, navigation/history and normal/compact UX | P0-04, P0-05 | done — audit § P1-11.1; fake mount disappearance/unreadable, current-build root→mount UI, focused tests and macOS arm64 full gate; Windows/Linux native mounts unverified |
 | [x] | P1-11.2 | Целые folder/file picker Browse flows: source entry points, Qt native service, all current Copy/Split/Extract/Create/Open consumers, Cancel/path/filter/history UX and tests | P1-11.1 | done — audit § P1-11.2; focused `browse_dialog`, `copy_dialog`, `extract_dialog`, `volume_operations`, `compression`, `ui_navigation`, `ui_operations`; macOS full gate; Windows/Linux picker runtime unverified |
-| [ ] | P1-11.3 | Network namespace: source CNetFolder traversal/properties/bind, Windows service and portable mounted-share capability, fake fixtures and UX | P1-11.1 | todo — real network services/credentials excluded from tests; parent P1-11 open |
+| [x] | P1-11.3 | Network namespace: source CNetFolder traversal/properties/bind, Windows service and portable mounted-share capability, fake fixtures and UX | P1-11.1 | done — audit § P1-11.3; fake mounted-share Unicode/space, unreadable/disappeared binding, network root/Back/Parent, normal/compact JSON; focused/full gate macOS arm64 2026-09-30; live remote service and Windows/Linux runtime unverified |
 | [ ] | P1-12 | 6-page Options container, Apply/Cancel, Settings/Folders | P0-07, P0-08, P1-07 | todo |
 | [ ] | P1-13 | Работающие страницы Edit/Menu | P1-08, P1-12 | todo |
 | [ ] | P1-14 | Language и все app captions/fallbacks | P0-09, P1-12 | todo |

@@ -429,6 +429,7 @@ class CPanel : public QObject {
     bool IsRootFolder() const;
     bool IsFSFolder() const;
     bool IsFSDrivesFolder() const;
+    bool IsNetFolder() const;
     bool IsAltStreamsFolder() const;
     bool IsArcFolder() const;
     bool IsHashFolder() const;

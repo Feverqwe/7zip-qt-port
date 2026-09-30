@@ -6,6 +6,37 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
     Q_OBJECT
   private slots:
 #ifndef _WIN32
+    void networkNamespaceOpensWithoutRemoteServices() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        auto *view = table(window);
+        action(window, "openRootAction")->trigger();
+        int networkRow = -1;
+        for (int row = 0; row < view->rowCount(); ++row)
+            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 2u)
+                networkRow = row;
+        QVERIFY(networkRow >= 0);
+        view->selectRow(networkRow);
+        action(window, "openItemAction")->trigger();
+        QVERIFY(!address->text().isEmpty());
+        QVERIFY(!action(window, "createFolderAction")->isEnabled());
+        QVERIFY(action(window, "backAction")->isEnabled());
+        QVERIFY(action(window, "parentFolderAction")->isEnabled());
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            window.show();
+            QCoreApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*address, window));
+            QVERIFY(UiInspection::fullyVisible(*view, window));
+            QVERIFY(UiInspection::writeReport(
+                window, QSysInfo::productType() +
+                            QStringLiteral("-network-%1x%2").arg(size.width()).arg(size.height())));
+        }
+        action(window, "backAction")->trigger();
+        QCOMPARE(view->rowCount(), 3);
+    }
+
     void mountedVolumesOpenThroughNativeRoot() {
         ControlledBackend backend;
         MainWindow window(&backend);
@@ -55,7 +86,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
 #ifdef _WIN32
         QCOMPARE(view->rowCount(), 4);
 #else
-        QCOMPARE(view->rowCount(), 2);
+        QCOMPARE(view->rowCount(), 3);
 #endif
         int computerRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
@@ -73,7 +104,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
 #ifdef _WIN32
                  4);
 #else
-                 2);
+                 3);
 #endif
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);

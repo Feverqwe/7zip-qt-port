@@ -10,6 +10,7 @@ struct QtVolumeMount {
     QString fileSystem;
     qint64 totalBytes = -1;
     qint64 availableBytes = -1;
+    bool network = false;
 };
 
 using QtVolumeMountProvider = std::function<QList<QtVolumeMount>()>;

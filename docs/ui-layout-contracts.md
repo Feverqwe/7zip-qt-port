@@ -99,6 +99,18 @@ toolbar, address, table and panel status are fully visible; hidden optional
 status segments are not counted as clipping. Windows drive/resource layout
 still needs runtime verification.
 
+### Network namespace (P1-11.3)
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`RootFolder.cpp`/`NetFolder.cpp` source hierarchy. On macOS/Linux «Сеть» is
+the third root entry and lists already mounted network shares. The menu →
+toolbar → address → list → status order remains. Back and Parent are enabled
+inside this namespace; mutation commands are disabled. `root_navigation`
+writes `macos-network-980x620.json` and `macos-network-640x400.json` and
+checks address and list visibility at both sizes. These reports establish Qt
+geometry, not Windows pixel appearance; live shares and Windows rendering
+remain unverified.
+
 ### Source extraction prompts (P0-04.1 prerequisite)
 
 `extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with

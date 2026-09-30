@@ -9,6 +9,7 @@
 #include "FSDrives.h"
 #include "FSFolder.h"
 #include "LangUtils.h"
+#include "NetFolder.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include <QCoreApplication>
@@ -22,7 +23,7 @@ static const unsigned kNumRootFolderItems =
 #ifdef USE_WIN_PATHS
     4;
 #else
-    2;
+    3;
 #endif
 static const Byte kProps[] = {kpidName};
 enum {
@@ -34,7 +35,8 @@ enum {
     ROOT_INDEX_VOLUMES
 #else
     ,
-    ROOT_INDEX_MOUNTS
+    ROOT_INDEX_MOUNTS,
+    ROOT_INDEX_NETWORK
 #endif
 };
 #ifdef USE_WIN_PATHS
@@ -56,6 +58,8 @@ void CRootFolder::Init() {
     const auto mounts = QCoreApplication::translate("SevenzipDesktop", "Тома").toStdWString();
     _names[ROOT_INDEX_MOUNTS] = mounts.c_str();
     _iconIndices[ROOT_INDEX_MOUNTS] = -1;
+    _names[ROOT_INDEX_NETWORK] = LangString(IDS_NETWORK);
+    _iconIndices[ROOT_INDEX_NETWORK] = -1;
 #endif
 }
 Z7_COM7F_IMF(CRootFolder::LoadItems()) {
@@ -97,8 +101,9 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(UInt32 index, IFolderFolder **resultFolde
         subFolder = fsDrivesSpec;
         fsDrivesSpec->Init(index == ROOT_INDEX_VOLUMES);
     } else if (index == ROOT_INDEX_NETWORK) {
-        // Required CNetFolder dependency belongs to the full namespace port P1-11.
-        return E_NOTIMPL;
+        CNetFolder *network = new CNetFolder;
+        subFolder = network;
+        network->Init(NULL, NULL, _names[ROOT_INDEX_NETWORK] + WCHAR_PATH_SEPARATOR);
     } else if (index == ROOT_INDEX_DOCUMENTS) {
         UString s = GetMyDocsPath();
         if (!s.IsEmpty()) {
@@ -116,6 +121,10 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(UInt32 index, IFolderFolder **resultFolde
         CFSDrives *mounts = new CFSDrives;
         subFolder = mounts;
         mounts->Init();
+    } else if (index == ROOT_INDEX_NETWORK) {
+        CNetFolder *network = new CNetFolder;
+        subFolder = network;
+        network->Init(_names[ROOT_INDEX_NETWORK] + WCHAR_PATH_SEPARATOR);
     }
 #endif
     else

@@ -6185,3 +6185,32 @@ Cancel и индекс выбранного фильтра. Qt `QFileDialog` з�
 при подтверждении такого Windows workflow. `BrowseDialog2` Delete Temporary
 Files остаётся P1-15. Original notices сохранены, лицензия —
 `third_party/7zip/License.txt`.
+
+## P1-11.3 — сетевой namespace (2026-09-30)
+
+Точная база: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/NetFolder.cpp/.h::CNetFolder::Init/LoadItems/
+GetProperty/BindToFolder/BindToParentFolder/GetFolderProperty`,
+`CPP/Windows/Net.cpp/.h::NWindows::NNet` и
+`CPP/7zip/UI/FileManager/RootFolder.cpp::CRootFolder::BindToFolder`.
+`CPP/Windows/Net.cpp/.h` скопированы без функциональных изменений в
+`third_party/7zip/CPP/Windows/`, собираются только на Windows с `mpr`.
+Windows тела `CNetFolder` сохранены под `_WIN32`, включая исходное перечисление
+ресурсов, свойства, binding и родительскую иерархию; Qt presentation
+использует тот же `IFolderFolder`. Исходные имена, границы модуля и порядок
+операций сохранены; clang-format изменил только оформление.
+
+На macOS/Linux Win32 `WNet*` не доступен. Узкий `QStorageInfo` service помечает
+известные сетевые файловые системы; POSIX ветка `CNetFolder` сохраняет
+source-интерфейс и свойства `Name`/`Provider`, выдаёт только уже
+смонтированные ресурсы и передаёт открытие в source `CFSFolder`. Перед
+binding повторно проверяются mount, тип пути и читаемость: stale/исчезнувший
+или недоступный ресурс не открывается. `CRootFolder` добавляет «Сеть» после
+«Тома», а `CPanel::OpenParentFolder` остаётся owner возврата; Qt command
+availability и Back разрешены для дочернего namespace. Это намеренное
+отклонение от Windows browse: обнаружение новых серверов, подключение,
+credentials и remote discovery не заявлены на POSIX; тесты не обращаются к
+сети. Иконки/детали provider зависят от Qt/ОС, Windows rendered reference и
+runtime Windows/Linux не проверены. Device-image части `FSDrives` остаются
+P2-05/P3-05. Source notices сохранены, лицензия —
+`third_party/7zip/License.txt`.

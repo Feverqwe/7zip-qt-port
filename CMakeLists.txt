@@ -156,6 +156,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/ComboDialog.cpp src/CPP/7zip/UI/FileManager/ComboDialog.h
     src/CPP/7zip/UI/FileManager/PasswordDialog.cpp src/CPP/7zip/UI/FileManager/PasswordDialog.h
     src/CPP/7zip/UI/FileManager/BrowseDialog.cpp src/CPP/7zip/UI/FileManager/BrowseDialog.h
+    src/CPP/7zip/UI/FileManager/NetFolder.cpp src/CPP/7zip/UI/FileManager/NetFolder.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
 qt_add_resources(sevenzip_panel upstream_progress_icons
@@ -206,7 +207,9 @@ add_library(sevenzip_filesystem STATIC
     third_party/7zip/CPP/Windows/FileIO.cpp
     third_party/7zip/CPP/Windows/TimeUtils.cpp)
 if(WIN32)
-    target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp)
+    target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp
+        third_party/7zip/CPP/Windows/Net.cpp third_party/7zip/CPP/Windows/Net.h)
+    target_link_libraries(sevenzip_filesystem PUBLIC mpr)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
@@ -587,6 +590,10 @@ if(BUILD_TESTING)
     qt_add_executable(volume_mount_tests tests/volume_mount_tests.cpp)
     target_link_libraries(volume_mount_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME volume_mount COMMAND volume_mount_tests)
+    qt_add_executable(network_folder_tests tests/network_folder_tests.cpp)
+    target_link_libraries(network_folder_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME network_folder COMMAND network_folder_tests)
+    set_tests_properties(network_folder PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(native_fs_operations_tests tests/native_fs_operations_tests.cpp)
     target_link_libraries(native_fs_operations_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME native_fs_operations COMMAND native_fs_operations_tests)

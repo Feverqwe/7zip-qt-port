@@ -432,8 +432,10 @@ folder, source metadata and indices. Uncalculated directory sizes remain absent;
 POSIX links expose their own lstat metadata. `CPanel::InitColumns` owns the
 source property catalog and per-folder-type column settings; `MainWindow`
 projects it into the shared Qt header. The external `7zz` adapter still needs
-binary raw property support in P1-10; network namespace capabilities remain
-P1-11.
+binary raw property support in P1-10. `CNetFolder` owns the network namespace:
+Windows uses upstream `NWindows::NNet`, while POSIX lists already mounted
+network shares through `qtvolumemounts` and binds them to source `CFSFolder`.
+Qt command availability enables Parent/Back for the virtual child folder.
 `CPanel::_timestampLevel` and `CApp` carry the source time-level state. Qt View
 menu actions use the original command IDs and `MyLoadMenu` dispatch; unchanged
 `PropIDUtils`/`PropVariantConv` format typed `FILETIME` cells. `MainWindow`

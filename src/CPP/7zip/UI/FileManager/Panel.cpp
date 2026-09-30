@@ -129,6 +129,7 @@ bool CPanel::IsFolderTypeEqTo(const char *s) const {
 bool CPanel::IsRootFolder() const { return IsFolderTypeEqTo("RootFolder"); }
 bool CPanel::IsFSFolder() const { return IsFolderTypeEqTo("FSFolder"); }
 bool CPanel::IsFSDrivesFolder() const { return IsFolderTypeEqTo("FSDrives"); }
+bool CPanel::IsNetFolder() const { return IsFolderTypeEqTo("NetFolder"); }
 bool CPanel::IsAltStreamsFolder() const { return IsFolderTypeEqTo("AltStreamsFolder"); }
 bool CPanel::IsArcFolder() const { return GetFolderTypeID().IsPrefixedBy_Ascii_NoCase("7-Zip"); }
 
