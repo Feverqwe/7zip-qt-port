@@ -37,7 +37,7 @@ struct CompressionOptions : NCompressDialog::CInfo {
 };
 
 struct ExtractionOptions {
-    enum class PathMode { FullPaths, NoPaths };
+    enum class PathMode { FullPaths, NoPaths, CurrentPaths };
     enum class OverwriteMode {
         Ask,
         RejectExisting,
@@ -47,6 +47,7 @@ struct ExtractionOptions {
         RenameExisting
     };
     PathMode pathMode = PathMode::FullPaths;
+    QString currentFolder;
     OverwriteMode overwriteMode = OverwriteMode::RejectExisting;
 };
 

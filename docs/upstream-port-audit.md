@@ -3119,3 +3119,41 @@ P2-05/P3-05. Source notices сохранены, лицензия —
 условия остаются в соответствующих файлах и `third_party/7zip/License.txt`.
 `upstream_baseline`/`upstream_inventory` и полный `check.sh` 142/142 прошли
 на macOS arm64 2026-09-30; Windows/Linux runtime не проверялся.
+
+## P1-01.1 — F5/F6 между filesystem и диском назначения (2026-09-30)
+
+База: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/App.cpp::CApp::OnCopy`,
+`PanelItems.cpp::CPanel::Get_ItemIndices_All/Get_ItemIndices_OperSmart`,
+`PanelCopy.cpp::CPanel::CopyTo`, `CopyDialog.cpp/.h/.rc` и
+`CPP/7zip/UI/Agent/ArchiveFolder.cpp::CAgentFolder::CopyTo`.
+`Get_ItemIndices_All/Get_ItemIndices_OperSmart` перенесены из оригинала с
+исходными именами и порядком. Уже перенесённый `CPanel::CopyTo` теперь
+используется F5/F6 из верхнего архива, а оригинальный `CAgentFolder::CopyTo`
+выбирает `kCurPaths` для текущей папки. Для F6 это стадия копирования:
+upstream `CAgentFolder::CopyTo(moveMode)` возвращает `E_NOTIMPL`, поэтому
+существующий Qt/`ArchiveBackend` двухстадийный Extract → Delete остаётся
+узкой функциональной адаптацией; исходные записи удаляются только после
+успешной стадии копирования. Ошибка/отмена не запускают Delete.
+
+Qt `MainWindow` передаёт F5 из архива общему `CCopyDialog`, выставляет
+`CurrentPaths` для исходного `CopyTo`, сохраняет source summary/history и
+обновляет активную и вторую filesystem панели после копирования/перемещения.
+Проверка `ArchiveBackend::validateExtraction` отнимает текущий префикс перед
+проверкой конфликтов в папке назначения и отвергает записи вне текущей папки.
+В корне архива прежний `7zz` fallback эквивалентен по путям, если source
+extract service отсутствует; в подпапке при отсутствии service операция
+отклоняется. Filesystem worker и его overwrite/cancel остаются интеграционным
+долгом P1-02; исходное `App.cpp::CApp::OnCopy` управление destination,
+temp staging и `CopyFrom` ещё не перенесено и входит в P1-01.2/.3.
+Ссылки/ADS, внешние handlers и вложенные архивы остаются у P2-05/P2-06,
+P2-02 и P1-09. Никакой исходный модуль не объявлен полностью закрытым только
+по этому сценарию. Исходные notices сохранены; лицензия —
+`third_party/7zip/License.txt`.
+
+Focused `ui_operations`, `archive_selection_runtime`, `extraction_options`,
+`source_extract_backend`, `copy_dialog`, `ui_layout`, `panel_key` прошли на
+macOS arm64; Copy/Move dialog JSON 440×250 и 340×220 просмотрены. Полный
+`./scripts/check.sh` (format, app build, все CTest) прошёл на macOS arm64,
+Qt 6.11.2, 2026-09-30. Windows/Linux runtime и rendered Windows parity
+не проверены для этого изменения.

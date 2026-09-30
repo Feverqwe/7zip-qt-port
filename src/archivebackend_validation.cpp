@@ -73,7 +73,16 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         }
         QString relative = entry.path;
         relative.replace('\\', '/');
-        if (options.pathMode == ExtractionOptions::PathMode::NoPaths)
+        if (options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
+            !options.currentFolder.isEmpty()) {
+            const QString prefix = options.currentFolder + '/';
+            if (!relative.startsWith(prefix)) {
+                *error =
+                    QStringLiteral("Объект находится вне текущей папки архива: %1").arg(entry.path);
+                return false;
+            }
+            relative.remove(0, prefix.size());
+        } else if (options.pathMode == ExtractionOptions::PathMode::NoPaths)
             relative = relative.section('/', -1);
         const QString key = relative.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (names.contains(key)) {

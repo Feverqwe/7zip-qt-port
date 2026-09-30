@@ -560,6 +560,12 @@ Copy/Move geometry at 440×250 and 340×220. A forty-item Unicode selection
 exercises the upstream eleven-line summary and scrolling. Current-build JSON
 is in `build/dev/ui-reports/`.
 `ui_operations` also checks the persisted `CopyHistory` after actual F5 copying.
+Its P1-01.1 cases copy and move Unicode/space names from a real ZIP subfolder
+through F5/F6, check output bytes and source deletion order, cancel overwrite
+without changing either side, and verify both panels refresh for disk→disk and
+archive→disk. `extraction_options` checks that CurrentPaths validation catches
+an occupied relative output and rejects entries outside the current archive
+folder. `copy_dialog` checks normal and compact Copy/Move text and geometry.
 
 `panel_copy_info` checks copied decimal formatting through UInt64 maximum,
 mixed file/folder size properties, undefined-size propagation, defined zero,

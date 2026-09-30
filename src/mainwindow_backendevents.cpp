@@ -96,6 +96,8 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
     }
     if (startPendingArchiveMove(ok))
         return;
+    const std::optional<unsigned> transferDestination = transferDestinationPanel_;
+    transferDestinationPanel_.reset();
     QString resultMessage = message;
     if (archiveMoveStage_ == ArchiveMoveStage::Removing)
         resultMessage = ok ? QStringLiteral("Объекты перемещены из архива.")
@@ -117,7 +119,10 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
     if (hadProgress && !ok && resultMessage != QStringLiteral("Операция отменена."))
         progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(resultMessage);
     closeProgressDialog(true);
-    if (finishArchiveState(ok))
+    const bool finishedArchiveState = finishArchiveState(ok);
+    if (transferDestination)
+        refreshTransferDestination(*transferDestination);
+    if (finishedArchiveState)
         return;
     finishViewExtraction(ok);
     statusBar()->showMessage(resultMessage);

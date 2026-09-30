@@ -119,6 +119,8 @@ class MainWindow : public QMainWindow {
     unsigned panelIndexFor(QObject *object) const;
     void togglePanels();
     QString copyDefaultDestination() const;
+    void rememberTransferDestination(const QString &path);
+    void refreshTransferDestination(unsigned index);
     void createFileTable(QWidget *central);
     void configureColumns();
     void saveColumns();
@@ -325,6 +327,7 @@ class MainWindow : public QMainWindow {
     enum class ArchiveMoveStage { None, Extracting, Removing };
     ArchiveMoveStage archiveMoveStage_ = ArchiveMoveStage::None;
     QStringList archiveMovePaths_;
+    std::optional<unsigned> transferDestinationPanel_;
     QList<ArchiveEntry> entries_;
     ArchiveInfo info_;
     QLineEdit *path_ = nullptr;

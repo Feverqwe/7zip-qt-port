@@ -23,6 +23,12 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     Q_OBJECT
 
   private slots:
+    void initTestCase() {
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        if (!settings.isEmpty())
+            QFile::remove(settings);
+    }
+
     void inlineRenameCollisionRestoresSelection() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -238,6 +244,172 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(editor, Qt::Key_Escape);
         QVERIFY(QDir(path).exists());
         QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("переименовано"))));
+    }
+
+    void twoPanelFilesystemCopyRefreshesDestination() {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        QVERIFY(QDir(root.path()).mkdir(QStringLiteral("источник")));
+        QVERIFY(QDir(root.path()).mkdir(QStringLiteral("назначение")));
+        const QString sourceDir = root.filePath(QStringLiteral("источник"));
+        const QString destinationDir = root.filePath(QStringLiteral("назначение"));
+        QFile original(QDir(sourceDir).filePath(QStringLiteral("файл с пробелом.txt")));
+        QVERIFY(original.open(QIODevice::WriteOnly));
+        QCOMPARE(original.write("source bytes"), qint64(12));
+        original.close();
+
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        QVERIFY(left);
+        auto *leftPath = left->findChild<QLineEdit *>("archivePath");
+        leftPath->setFocus();
+        leftPath->setText(sourceDir);
+        QTest::keyClick(leftPath, Qt::Key_Return);
+        window.show();
+        QCoreApplication::processEvents();
+        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        QTRY_VERIFY(leftTable->rowCount() > 0);
+
+        action(window, "twoPanelsAction")->trigger();
+        const auto restorePanels = qScopeGuard([&] {
+            if (action(window, "twoPanelsAction")->isChecked())
+                action(window, "twoPanelsAction")->trigger();
+        });
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        QVERIFY(right);
+        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        QVERIFY(rightTable);
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
+        auto *rightPath = right->findChild<QLineEdit *>("archivePath");
+        rightPath->setFocus();
+        rightPath->setText(destinationDir);
+        QTest::keyClick(rightPath, Qt::Key_Return);
+        QTRY_COMPARE(QFileInfo(rightPath->text()).canonicalFilePath(),
+                     QFileInfo(destinationDir).canonicalFilePath());
+        QTRY_COMPARE(rightTable->rowCount(), 0);
+
+        leftTable->selectRow(0);
+        leftTable->setFocus();
+        QCoreApplication::processEvents();
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QString dialogDefault;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            auto *destination = dialog->findChild<QComboBox *>("copyDestination");
+            QVERIFY(destination);
+            dialogDefault = destination->currentText();
+            dialog->accept();
+        });
+        action(window, "copyAction")->trigger();
+        QCOMPARE(QFileInfo(dialogDefault).canonicalFilePath(),
+                 QFileInfo(destinationDir).canonicalFilePath());
+        QTRY_VERIFY(action(window, "copyAction")->isEnabled());
+        const QString copied = QDir(destinationDir).filePath(QStringLiteral("файл с пробелом.txt"));
+        QFile result(copied);
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(result.readAll(), QByteArray("source bytes"));
+        QTRY_COMPARE(rightTable->rowCount(), 1);
+        QCOMPARE(rightTable->item(0, 0)->text(), QStringLiteral("файл с пробелом.txt"));
+        QCOMPARE(leftTable->rowCount(), 1);
+        QVERIFY(QFileInfo::exists(original.fileName()));
+    }
+
+    void twoPanelArchiveCopyRefreshesFilesystemDestination() {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        QVERIFY(QDir(root.path()).mkdir(QStringLiteral("назначение")));
+        const QString destination = root.filePath(QStringLiteral("назначение"));
+        const QString source = root.filePath(QStringLiteral("архивный файл.txt"));
+        QFile input(source);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("archive bytes"), qint64(13));
+        input.close();
+        const QString movedSource = root.filePath(QStringLiteral("для перемещения.txt"));
+        QFile moveInput(movedSource);
+        QVERIFY(moveInput.open(QIODevice::WriteOnly));
+        QCOMPARE(moveInput.write("move bytes"), qint64(10));
+        moveInput.close();
+        const QString archive = root.filePath("source.zip");
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source, movedSource});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        window.show();
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        QVERIFY(left);
+        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        QTRY_COMPARE(leftTable->rowCount(), 2);
+        action(window, "twoPanelsAction")->trigger();
+        const auto restorePanels = qScopeGuard([&] {
+            if (action(window, "twoPanelsAction")->isChecked())
+                action(window, "twoPanelsAction")->trigger();
+        });
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        QVERIFY(right);
+        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
+        auto *rightPath = right->findChild<QLineEdit *>("archivePath");
+        rightPath->setText(destination);
+        QTest::keyClick(rightPath, Qt::Key_Return);
+        QTRY_COMPARE(rightTable->rowCount(), 0);
+
+        const auto leftRow = [leftTable](const QString &name) {
+            for (int row = 0; row < leftTable->rowCount(); ++row)
+                if (leftTable->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+                    name.normalized(QString::NormalizationForm_C))
+                    return row;
+            return -1;
+        };
+        const int copyRow = leftRow(QFileInfo(source).fileName());
+        QStringList leftNames;
+        for (int row = 0; row < leftTable->rowCount(); ++row)
+            leftNames << leftTable->item(row, 0)->text();
+        QVERIFY2(copyRow >= 0, qPrintable(leftNames.join(QStringLiteral(", "))));
+        leftTable->selectRow(copyRow);
+        leftTable->setFocus();
+        QCoreApplication::processEvents();
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            QCOMPARE(QFileInfo(dialog->destination()).canonicalFilePath(),
+                     QFileInfo(destination).canonicalFilePath());
+            dialog->accept();
+        });
+        action(window, "copyAction")->trigger();
+        const QString copied = QDir(destination).filePath(QFileInfo(source).fileName());
+        QFile result(copied);
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(result.readAll(), QByteArray("archive bytes"));
+        QTRY_COMPARE(rightTable->rowCount(), 1);
+        QCOMPARE(rightTable->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+                 QFileInfo(source).fileName().normalized(QString::NormalizationForm_C));
+        QCOMPARE(leftTable->rowCount(), 2);
+
+        const int moveRow = leftRow(QFileInfo(movedSource).fileName());
+        QVERIFY(moveRow >= 0);
+        leftTable->selectRow(moveRow);
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            dialog->accept();
+        });
+        action(window, "moveAction")->trigger();
+        QTRY_COMPARE(rightTable->rowCount(), 2);
+        QFile moved(QDir(destination).filePath(QFileInfo(movedSource).fileName()));
+        QVERIFY(moved.open(QIODevice::ReadOnly));
+        QCOMPARE(moved.readAll(), QByteArray("move bytes"));
+        QTRY_COMPARE(leftTable->rowCount(), 1);
+        QCOMPARE(leftTable->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+                 QFileInfo(source).fileName().normalized(QString::NormalizationForm_C));
     }
 
     void stage7FilesystemCommands() {
@@ -490,11 +662,13 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const int row = filesystemRow(window, "nested");
         QVERIFY(row >= 0);
         table(window)->selectRow(row);
-        QTimer::singleShot(0, &window, [&temp] {
+        QString copyInfo;
+        QTimer::singleShot(0, &window, [&temp, &copyInfo] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<QDialog *>(widget); dialog && dialog->isVisible()) {
-                    if (auto *destination = dialog->findChild<QComboBox *>("extractDestination")) {
-                        dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
+                    if (auto *destination = dialog->findChild<QComboBox *>("copyDestination")) {
+                        copyInfo =
+                            dialog->findChild<QPlainTextEdit *>("copySelectionInfo")->toPlainText();
                         destination->setCurrentText(temp.filePath("out"));
                         dialog->accept();
                     }
@@ -502,7 +676,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "copyAction")->trigger();
+        QVERIFY(copyInfo.contains(QStringLiteral("nested/")));
         QCOMPARE(backend.extractCalls, 1);
+        QCOMPARE(backend.lastExtractionOptions.pathMode, ExtractionOptions::PathMode::CurrentPaths);
         QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("nested/file.txt")}));
         QVERIFY(!action(window, "copyAction")->isEnabled());
         backend.cancel();
@@ -852,6 +1028,61 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(occupied.open(QIODevice::ReadOnly));
         QCOMPARE(occupied.readAll(), QByteArray("new bytes"));
         QVERIFY(!QFileInfo::exists(QDir(output).filePath(folderName + '/' + fileName)));
+
+        const QString copyOutput = temp.filePath(QStringLiteral("F5 назначение"));
+        QVERIFY(QDir().mkpath(copyOutput));
+        table(window)->selectRow(filesystemRow(window, fileName));
+        QString summary;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            summary = dialog->findChild<QPlainTextEdit *>("copySelectionInfo")->toPlainText();
+            dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(copyOutput);
+            dialog->accept();
+        });
+        action(window, "copyAction")->trigger();
+        QVERIFY(summary.contains(fileName));
+        QFile copied(QDir(copyOutput).filePath(fileName));
+        QVERIFY(copied.open(QIODevice::ReadOnly));
+        QCOMPARE(copied.readAll(), QByteArray("new bytes"));
+        QVERIFY(!QFileInfo::exists(QDir(copyOutput).filePath(folderName + '/' + fileName)));
+
+        const QString moveOutput = temp.filePath(QStringLiteral("F6 назначение"));
+        QVERIFY(QDir().mkpath(moveOutput));
+        QFile moveConflict(QDir(moveOutput).filePath(fileName));
+        QVERIFY(moveConflict.open(QIODevice::WriteOnly));
+        QCOMPARE(moveConflict.write("keep bytes"), qint64(10));
+        moveConflict.close();
+        QTimer cancelPrompt;
+        connect(&cancelPrompt, &QTimer::timeout, &window, [&] {
+            if (auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+                dialog && dialog->isVisible()) {
+                dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(moveOutput);
+                dialog->accept();
+            }
+            if (auto *dialog = dynamic_cast<COverwriteDialog *>(QApplication::activeModalWidget()))
+                dialog->findChild<QPushButton *>("overwriteCancel")->click();
+        });
+        cancelPrompt.start(1);
+        action(window, "moveAction")->trigger();
+        cancelPrompt.stop();
+        QVERIFY(moveConflict.open(QIODevice::ReadOnly));
+        QCOMPARE(moveConflict.readAll(), QByteArray("keep bytes"));
+        moveConflict.close();
+        QVERIFY(!table(window)->findItems(fileName, Qt::MatchExactly).isEmpty());
+        QVERIFY(QFile::remove(moveConflict.fileName()));
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(moveOutput);
+            dialog->accept();
+        });
+        action(window, "moveAction")->trigger();
+        QFile moved(QDir(moveOutput).filePath(fileName));
+        QVERIFY(moved.open(QIODevice::ReadOnly));
+        QCOMPARE(moved.readAll(), QByteArray("new bytes"));
+        QVERIFY(!QFileInfo::exists(QDir(moveOutput).filePath(folderName + '/' + fileName)));
+        QTRY_VERIFY(table(window)->findItems(fileName, Qt::MatchExactly).isEmpty());
     }
 
     void encryptedAskUsesSourceCallback() {

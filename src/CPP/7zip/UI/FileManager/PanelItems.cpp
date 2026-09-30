@@ -269,6 +269,23 @@ void CPanel::Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const {
     }
 }
 
+void CPanel::Get_ItemIndices_All(CRecordVector<UInt32> &indices) const {
+    indices.Clear();
+    UInt32 numItems;
+    if (_folder->GetNumberOfItems(&numItems) != S_OK)
+        return;
+    indices.ClearAndSetSize(numItems);
+    UInt32 *vec = indices.NonConstData();
+    for (UInt32 i = 0; i < numItems; i++)
+        vec[i] = i;
+}
+
+void CPanel::Get_ItemIndices_OperSmart(CRecordVector<UInt32> &indices) const {
+    Get_ItemIndices_Operated(indices);
+    if (indices.IsEmpty() || (indices.Size() == 1 && indices[0] == (UInt32)(Int32)-1))
+        Get_ItemIndices_All(indices);
+}
+
 void CPanel::SaveSelectedState(CSelectedState &s) {
     // Native marks are independent of focused-row selection in alternative mode.
     if (!_mySelectMode) {

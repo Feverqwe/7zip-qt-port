@@ -191,6 +191,15 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         state_ == State::Viewing ? dynamic_cast<CAgentFolder *>(panel.GetFolder()) : nullptr;
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+    if (options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
+        (!resource || !resource->HasExtractService() ||
+         !backend_->hasListedSourceArchive(archive_))) {
+        if (options.currentFolder.isEmpty())
+            return false; // At archive root, the existing full-path transport is equivalent.
+        QMessageBox::warning(this, QStringLiteral("Копирование"),
+                             QStringLiteral("Исходное извлечение для этого архива недоступно."));
+        return true;
+    }
     if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask || !resource ||
         !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
         return false;
@@ -250,7 +259,7 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         appendJournal(operationName_ + QStringLiteral(": ") + output);
         journalAction_->setEnabled(true);
         CCopyToOptions sourceOptions;
-        sourceOptions.extractMode = true;
+        sourceOptions.extractMode = options.pathMode != ExtractionOptions::PathMode::CurrentPaths;
         sourceOptions.folder = ToUString(output);
         sourceOptions.pathMode = options.pathMode == ExtractionOptions::PathMode::NoPaths
                                      ? NExtract::NPathMode::kNoPaths

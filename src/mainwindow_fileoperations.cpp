@@ -33,7 +33,7 @@ QString MainWindow::selectedCopyInfo() {
     // Synchronize Qt selection until the complete source OnNotify port is connected.
     panel.SaveSelectedState(selection);
     CRecordVector<UInt32> indices;
-    panel.Get_ItemIndices_Operated(indices);
+    panel.Get_ItemIndices_OperSmart(indices);
     panel.LoadFullPath();
     return panel.GetItemsInfoString(indices);
 }
@@ -93,22 +93,34 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 if (success)
                     statusBar()->showMessage(message);
             });
-    connect(operation, &QThread::finished, this, [this, operation, sources] {
-        if (app_.QtOperations().closed())
-            return;
-        operation->deleteLater();
-        if (fileTransfer_ == operation)
-            fileTransfer_ = nullptr;
-        showDirectory(directory_, false);
-        selectPaths(sources);
-    });
+    const unsigned sourcePanel = app_.GetFocusedPanelIndex();
+    const unsigned destinationPanel = 1 - sourcePanel;
+    const bool refreshDestination =
+        app_.NumPanels == 2 && panelUi_[destinationPanel].state == State::Filesystem &&
+        QDir::cleanPath(panelUi_[destinationPanel].directory) == QDir::cleanPath(destination);
+    connect(operation, &QThread::finished, this,
+            [this, operation, sources, sourcePanel, destinationPanel, refreshDestination] {
+                if (app_.QtOperations().closed())
+                    return;
+                operation->deleteLater();
+                if (fileTransfer_ == operation)
+                    fileTransfer_ = nullptr;
+                showDirectory(directory_, false);
+                selectPaths(sources);
+                if (refreshDestination && app_.NumPanels == 2 &&
+                    app_.GetFocusedPanelIndex() == sourcePanel) {
+                    activatePanelUi(destinationPanel);
+                    refreshCurrent();
+                    activatePanelUi(sourcePanel);
+                }
+            });
     setState(State::Operating);
     fileTransfer_->start();
 }
 
 void MainWindow::copySelected() {
     if (state_ == State::Viewing) {
-        extract(true);
+        transferSelected(false);
         return;
     }
     if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
@@ -129,16 +141,32 @@ void MainWindow::moveSelected() {
         if (dialog.exec() != QDialog::Accepted)
             return;
         const QString destination = dialog.destination();
-        if (!QFileInfo(destination).isDir() || QFileInfo(destination).isSymLink()) {
-            QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
-            return;
-        }
         AddUniqueStringToHeadOfList(history, destination);
         while (history.size() > 20)
             history.removeLast();
         SaveCopyHistory(history, toolbarSettingsPath());
         archiveMovePaths_ = paths;
         archiveMoveStage_ = ArchiveMoveStage::Extracting;
+        rememberTransferDestination(destination);
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+        options.currentFolder = archiveFolder_;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        if (extractWithSource(destination, true, archivePassword_, options, paths)) {
+            if (state_ != State::Operating) {
+                archiveMoveStage_ = ArchiveMoveStage::None;
+                archiveMovePaths_.clear();
+                transferDestinationPanel_.reset();
+            }
+            return;
+        }
+        if (!QFileInfo(destination).isDir() || QFileInfo(destination).isSymLink()) {
+            archiveMoveStage_ = ArchiveMoveStage::None;
+            archiveMovePaths_.clear();
+            transferDestinationPanel_.reset();
+            QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
+            return;
+        }
         previousState_ = state_;
         setState(State::Operating);
         begin("Перемещение из архива", destination);
@@ -151,6 +179,31 @@ void MainWindow::moveSelected() {
 }
 
 void MainWindow::transferSelected(bool move) {
+    if (state_ == State::Viewing && !move) {
+        const QStringList sources = selectedArchiveItemsPaths();
+        if (sources.isEmpty())
+            return;
+        QStringList history;
+        ReadCopyHistory(history, toolbarSettingsPath());
+        CopyDialog dialog(false, copyDefaultDestination(), sources, history, this,
+                          selectedCopyInfo());
+        if (dialog.exec() != QDialog::Accepted)
+            return;
+        const QString destination = dialog.destination();
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+        options.currentFolder = archiveFolder_;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        rememberTransferDestination(destination);
+        extractTo(destination, true, archivePassword_, options);
+        if (state_ != State::Operating)
+            transferDestinationPanel_.reset();
+        AddUniqueStringToHeadOfList(history, destination);
+        while (history.size() > 20)
+            history.removeLast();
+        SaveCopyHistory(history, toolbarSettingsPath());
+        return;
+    }
     const QStringList sources = selectedFilesystemPaths();
     if (state_ != State::Filesystem || sources.isEmpty())
         return;

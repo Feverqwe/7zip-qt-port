@@ -781,3 +781,20 @@ SMB/NFS/AFP/SSH/WebDAV ресурсы из системного списка т�
 открыть нельзя. Menu, toolbar, address, list и status проверены на 980×620 и
 640×400 в current-build JSON на macOS arm64. Реальные remote services,
 Windows/Linux runtime и rendered Windows visual parity не проверены.
+
+## P1-01.1 — F5/F6 между двумя панелями и из архива (2026-09-30)
+
+F5 в открытом архиве теперь показывает тот же CopyDialog, что и файловая
+система: путь второй панели по умолчанию, исходная сводка выделения,
+история и кнопка выбора папки. Для текущей папки архива `CPanel::CopyTo`
+использует `kCurPaths`: файл попадает прямо в указанную папку, без повторения
+внутреннего пути архива. F6 из архива выполняет эту же копию и удаляет
+исходную запись только после её успеха. Отмена overwrite оставляет исходную
+запись и старые байты назначения. Вторая filesystem панель обновляется после
+F5/F6; disk→disk F5/F6 также обновляет обе панели. Исходный
+`CAgentFolder::CopyTo(moveMode)` сам возвращает `E_NOTIMPL`, поэтому
+двухстадийный F6 — локальная адаптация, а полный `CApp::OnCopy` и
+archive destination остаются P1-01.2/.3. Отдельная команда Extract сохраняет
+свой ExtractDialog и параметры. CopyDialog resource order/тексты проверены
+на 440×250 и 340×220 в current-build JSON; Windows rendered parity и
+runtime Windows/Linux не проверены.

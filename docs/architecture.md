@@ -591,6 +591,16 @@ source modal worker owns completion while backend signals are suppressed for the
 outer window. Both Ask routes write directly and retain the destination-change
 race after validation.
 
+F5 from an archive uses the shared `CCopyDialog` and calls the source
+`CPanel::CopyTo` through `CAgentFolder::CopyTo`, which selects `kCurPaths` for
+the current folder. `ExtractionOptions::CurrentPaths` makes the backend
+destination guard check the actual relative output path. F6 uses that copy
+stage before the existing `ArchiveBackend::remove` stage because upstream
+`CAgentFolder::CopyTo(moveMode)` returns `E_NOTIMPL`. An accepted transfer
+refreshes the source panel and a matching filesystem destination panel.
+The complete native `CApp::OnCopy` decision body and archive destinations
+remain P1-01.2/.3; filesystem copy internals remain P1-02.
+
 Creation writes a temporary peer archive and publishes it after success.
 Mutations copy the existing archive, update that copy and replace the original
 through a backup/rollback sequence. Failed rollback retains the backup.

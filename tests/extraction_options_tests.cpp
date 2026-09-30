@@ -36,6 +36,39 @@ class ExtractionOptionsTests : public QObject {
     }
 
   private slots:
+    void currentFolderValidationUsesOutputRelativePath() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(QDir().mkpath(source));
+        writeFile(QDir(source).filePath(QStringLiteral("δ.txt")), "archive bytes");
+        const QString other = temp.filePath(QStringLiteral("другая папка"));
+        QVERIFY(QDir().mkpath(other));
+        writeFile(QDir(other).filePath(QStringLiteral("δ.txt")), "other bytes");
+        const QString archive = temp.filePath("fixture.zip");
+        ArchiveBackend backend;
+        backend.create(archive, {source, other});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+
+        const QString output = temp.filePath("output");
+        QVERIFY(QDir().mkpath(output + QStringLiteral("/δ.txt")));
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+        options.currentFolder = QStringLiteral("папка с пробелом");
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        QString error;
+        QVERIFY(!backend.validateExtraction(output, {QStringLiteral("папка с пробелом/δ.txt")},
+                                            options, &error));
+        QVERIFY(error.contains(QStringLiteral("δ.txt")));
+
+        error.clear();
+        QVERIFY(!backend.validateExtraction(output, {QStringLiteral("другая папка/δ.txt")}, options,
+                                            &error));
+        QVERIFY(error.contains(QStringLiteral("вне текущей папки")));
+    }
+
     void askDecisions_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QStringLiteral("7z");

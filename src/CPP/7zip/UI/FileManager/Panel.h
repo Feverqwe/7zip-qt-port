@@ -422,6 +422,8 @@ class CPanel : public QObject {
     void GetSelectedNames(UStringVector &selectedNames);
     void Get_ItemIndices_Selected(CRecordVector<UInt32> &indices) const;
     void Get_ItemIndices_Operated(CRecordVector<UInt32> &indices) const;
+    void Get_ItemIndices_All(CRecordVector<UInt32> &indices) const;
+    void Get_ItemIndices_OperSmart(CRecordVector<UInt32> &indices) const;
     // Fixture-only snapshot prefix; production consumers use LoadFullPath.
     void SetCurrentFolderPrefix(const QString &prefix) { _currentFolderPrefix = ToUString(prefix); }
     UString GetFolderTypeID() const;
