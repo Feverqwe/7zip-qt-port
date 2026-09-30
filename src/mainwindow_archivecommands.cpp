@@ -112,7 +112,7 @@ void MainWindow::extract(bool onlySelected) {
         return;
     if (onlySelected && sourceOperatedIndices().IsEmpty())
         return;
-    ExtractDialog dialog(returnDirectory_, {}, onlySelected, this);
+    ExtractDialog dialog(copyDefaultDestination(), {}, onlySelected, this);
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();

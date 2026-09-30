@@ -23,13 +23,13 @@ this is a dialog-resource reader, not a universal Win32 UI converter.
 
 ```sh
 ./scripts/build.sh dev copy_dialog_tests
-ctest --preset dev -R '^ui_parity_(tool|copy)$' --output-on-failure
+./scripts/ctest.sh --preset dev -R '^ui_parity_(tool|copy)$' --output-on-failure
 
 ./scripts/build.sh dev password_dialog_tests
-ctest --preset dev -R '^ui_parity_password$' --output-on-failure
+./scripts/ctest.sh --preset dev -R '^ui_parity_password$' --output-on-failure
 
 ./scripts/build.sh dev progress_dialog_tests
-ctest --preset dev -R '^ui_parity_progress$' --output-on-failure
+./scripts/ctest.sh --preset dev -R '^ui_parity_progress$' --output-on-failure
 ```
 
 CTest's `ui_reference_copy` fixture runs `copy_dialog` first, even with this

@@ -19,6 +19,7 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
 
   private slots:
     void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove(QStringLiteral("view/autoRefresh"));
     }

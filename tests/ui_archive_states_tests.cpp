@@ -8,6 +8,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     Q_OBJECT
 
   private slots:
+    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void extractionDestinationAndCancellation() {
         ControlledBackend backend;
         MainWindow window(&backend);

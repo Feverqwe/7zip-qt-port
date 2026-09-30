@@ -56,8 +56,12 @@ checks disk/disk F9 (menu and key), Tab/focus, independent paths, selection and
 view choices, active Copy availability, hidden-panel return, inactive-panel
 refresh and switching during a flat scan. Its `two-panel-disk-*` and
 `one-panel-after-f9-640` JSON reports cover 980×620 and 640×400 geometry.
-These tests do not accept disk/archive or archive/archive routing, cross-panel
-transfers, or Windows/Linux runtime behavior.
+`panel_key` also checks disk/archive and archive/archive projection, Alt+F1/F2
+target, opposite-panel Copy/Move/Extract dialog defaults, startup panel count,
+focus/path/view/splitter restoration and hidden left-panel path survival. Its
+`two-panel-archive-*`, `two-panel-restored`, `archive-hidden-panel` and
+`hidden-left-restored` JSON reports cover mixed normal/compact/hidden layouts.
+Full cross-panel transfers and Windows/Linux runtime remain unverified.
 `app_lifecycle_window` checks joined archive startup success/failure/cancel,
 legacy preference migration/source-key precedence and saving the outer archive
 parent. `application_starts` uses a build-local settings file so native CApp::Save

@@ -99,6 +99,8 @@ void MainWindow::togglePanels() {
     }
     const unsigned other = 1 - app_.GetFocusedPanelIndex();
     const bool created = app_.Panels[other].PanelCreated;
+    if (app_.NumPanels == 2 && panelSplitter_)
+        splitterPos_ = panelSplitter_->sizes().value(0);
     if (app_.SwitchOnOffOnePanel() != S_OK) {
         twoPanelsAction_->setChecked(app_.NumPanels == 2);
         return;
@@ -110,8 +112,11 @@ void MainWindow::togglePanels() {
         renderBoundFolder();
         activatePanelUi(active);
     }
-    if (panelSplitter_ && app_.NumPanels == 2)
-        panelSplitter_->setSizes({panelSplitter_->width() / 2, panelSplitter_->width() / 2});
+    if (panelSplitter_ && app_.NumPanels == 2) {
+        const int width = panelSplitter_->width();
+        const int left = qBound(1, splitterPos_, width - 1);
+        panelSplitter_->setSizes({left, width - left});
+    }
     app_.GetFocusedPanel().SetFocusToList();
 }
 
@@ -126,4 +131,13 @@ unsigned MainWindow::panelIndexFor(QObject *object) const {
             return index;
     }
     return kNumPanelsMax;
+}
+
+QString MainWindow::copyDefaultDestination() const {
+    if (app_.NumPanels == 2) {
+        const QString other = ToQString(app_.Panels[1 - app_.GetFocusedPanelIndex()].GetFsPath());
+        if (!other.isEmpty())
+            return other;
+    }
+    return state_ == State::Viewing ? returnDirectory_ : directory_;
 }

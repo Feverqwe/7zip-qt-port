@@ -114,6 +114,7 @@ class MainWindow : public QMainWindow {
     void activatePanelUi(unsigned index);
     unsigned panelIndexFor(QObject *object) const;
     void togglePanels();
+    QString copyDefaultDestination() const;
     void createFileTable(QWidget *central);
     void configureColumns();
     void saveColumns();
@@ -296,6 +297,7 @@ class MainWindow : public QMainWindow {
     std::array<PanelUiState, 2> panelUi_;
     QSplitter *panelSplitter_ = nullptr;
     unsigned projectedPanel_ = 0;
+    int splitterPos_ = 0;
     QHash<QString, FilesystemSignature> autoRefreshSnapshot_;
     QString autoRefreshTopPath_;
     int autoRefreshScrollValue_ = -1;

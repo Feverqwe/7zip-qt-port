@@ -720,6 +720,44 @@ inactive refresh, flat scan and JSON normal/compact/hidden geometry. The full
 unsandboxed `./scripts/check.sh` gate passes 135/135 on macOS arm64 2026-09-30.
 Windows/Linux execution and rendered Windows parity remain unverified.
 
+## P0-08.2 — mixed panels, source path focus and restored layout (2026-09-30)
+
+Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+([App.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/App.cpp),
+[PanelKey.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/PanelKey.cpp),
+[ViewSettings.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/ViewSettings.cpp),
+[FM.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/FM.cpp),
+[Panel.cpp](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/Panel.cpp),
+[resource.rc](https://github.com/ip7z/7zip/blob/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17/CPP/7zip/UI/FileManager/resource.rc)).
+The existing mirrored `CPanelCallbackImp::SetFocusToPath` retains the source
+one/two-panel target rule; the `PanelKey.cpp` Qt key adapter now calls it for
+Alt+F1/F2. The existing `CWindowInfo::Read/Save` byte layout remains upstream;
+`MainWindow` uses its panel count/current index/splitter coordinate at startup
+and close, while Qt's QSplitter provides geometry. The startup presenter
+temporarily projects each CPanel when it creates controls and restores the
+requested active panel after widgets enter the Qt event loop. Both bound
+filesystem and archive folders render into their own Qt panel state; archive
+metadata, folder path, list entries and view state remain with that projection.
+
+The Qt Copy/Move/Extract dialog adapter takes the default from the source
+`CApp::OnCopy` opposite-panel rule and `CPanel::GetFsPath`. It keeps the current
+one-panel destination when only one panel is visible. Real cross-panel transfer
+to a target archive and full F5/F6 operation routing remain P1-01; accepting a
+non-directory target in the current filesystem transfer rejects it safely.
+`CApp::Save` skips an uncreated hidden panel so its previously saved path/view
+and flat mode survive one-panel sessions. Source `CApp::Save` writes both slots;
+the difference is needed because this Qt application defaults to one visible
+panel rather than 7zFM's two.
+
+Focused `panel_key`, `app_lifecycle`, `app_lifecycle_window`, `panel_focus`,
+`panel_runtime`, `native_navigation`, and `binding_lifecycle` CTest consumers
+passed on macOS arm64. The new mixed disk/archive, archive/archive,
+Alt+F1/F2, dialog defaults, restored/hidden-panel tests and normal/compact
+widget JSON establish the Qt scope. The full unsandboxed `./scripts/check.sh`
+gate passes 135/135 registered CTest cases on macOS arm64, 2026-09-30. P0-08
+parent is accepted; Windows/Linux runtime and rendered Windows visual parity
+remain unverified.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

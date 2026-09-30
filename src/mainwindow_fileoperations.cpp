@@ -84,7 +84,7 @@ void MainWindow::moveSelected() {
             return;
         QStringList history;
         ReadCopyHistory(history, toolbarSettingsPath());
-        CopyDialog dialog(true, returnDirectory_, paths, history, this, selectedCopyInfo());
+        CopyDialog dialog(true, copyDefaultDestination(), paths, history, this, selectedCopyInfo());
         if (dialog.exec() != QDialog::Accepted)
             return;
         const QString destination = dialog.destination();
@@ -115,7 +115,7 @@ void MainWindow::transferSelected(bool move) {
         return;
     QStringList history;
     ReadCopyHistory(history, toolbarSettingsPath());
-    CopyDialog dialog(move, directory_, sources, history, this, selectedCopyInfo());
+    CopyDialog dialog(move, copyDefaultDestination(), sources, history, this, selectedCopyInfo());
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();

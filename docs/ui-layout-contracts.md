@@ -32,6 +32,17 @@ visible panels. `panel_key` writes `two-panel-disk-table-640.json`,
 fully visible at 980×620 and 640×400. JSON confirms Qt structure and clipping
 only; rendered Windows parity remains unverified.
 
+### Mixed and restored panels (P0-08.2)
+
+The same 7zFM panel structure applies when either side displays an archive.
+`panel_key` writes `two-panel-archive-980.json`,
+`two-panel-archive-640.json`, `archive-hidden-panel.json`,
+`two-panel-restored.json` and `hidden-left-restored.json`. Geometry checks
+require both visible address rows and lists to fit at 980×620 and 640×400,
+and check the saved splitter coordinate after reopening. A compact QSplitter
+clamps its coordinate to the panels' minimum sizes. JSON covers Qt grouping
+and clipping; rendered Windows parity remains unverified.
+
 ### Virtual root main window (P0-04.2)
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

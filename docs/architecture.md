@@ -106,14 +106,18 @@ P0-08.1 projects each panel's Qt controls, location, view and sort through
 The two CPanel instances remain authoritative for folder and selection. The
 single scanner cancels a pending flat scan on focus transfer and restarts it
 when that panel is active again. Disk auto-refresh polls both visible panels,
-and command availability uses only the active projection. Mixed archive state,
-startup splitter restore and cross-panel transfer remain P0-08.2/P1-01.
+and command availability uses only the active projection. P0-08.2 extends this
+projection to mixed disk/archive and archive/archive, restores the CWindowInfo
+panel count/focus and QSplitter coordinate, and uses the opposite
+CPanel::GetFsPath as the Copy/Move/Extract dialog default. An uncreated hidden
+panel keeps its persisted path across close. Full cross-panel transfer remains
+P1-01.
 P0-02.3 adds CApp-owned QtAppOperationState retaining native timer/notify guards
 through completion, and native FM WM_CLOSE through narrow Qt window services.
 Close stops callbacks and joins workers before folder release, saves native app/
 window records and becomes terminal; modal/live callers reject reentrant close.
-Owner/lifecycle acceptance passed P0-02.3; mixed two-panel and drop routing
-remain mandatory P0-08.2/P1-16 work.
+Owner/lifecycle acceptance passed P0-02.3; cross-panel transfer and drop routing
+remain mandatory P1-01/P1-16 work.
 
 mainwindow_selectionpaths.cpp is the Qt boundary for source operated indices
 and archive paths. Expanded extraction requests use real indices and typed Path;

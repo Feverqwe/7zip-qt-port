@@ -12,9 +12,8 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         return false;
     if ((key->key() == Qt::Key_F1 || key->key() == Qt::Key_F2) &&
         key->modifiers() == Qt::AltModifier) {
-        // In one-panel mode both upstream shortcuts target the active panel.
-        pathCombo_->setFocus(Qt::ShortcutFocusReason);
-        pathCombo_->showPopup();
+        app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].SetFocusToPath(
+            key->key() == Qt::Key_F1 ? 0 : 1);
         return true;
     }
     if (address) {

@@ -13,7 +13,7 @@ class SettingsTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
   private slots:
-    void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
     void cleanup() {
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);

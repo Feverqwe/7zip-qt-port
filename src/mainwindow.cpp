@@ -12,7 +12,17 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     backend_ = backend ? backend : new ArchiveBackend(this);
     setWindowTitle("Sevenzip Desktop");
     resize(980, 620);
-    app_.NumPanels = 1;
+    CWindowInfo windowInfo{};
+    bool windowPositionDefined = false;
+    bool panelsDefined = false;
+    windowInfo.Read(windowPositionDefined, panelsDefined, toolbarSettingsPath());
+    app_.NumPanels =
+        panelsDefined && windowInfo.numPanels >= 1 && windowInfo.numPanels <= kNumPanelsMax
+            ? windowInfo.numPanels
+            : 1;
+    app_.LastFocusedPanel =
+        panelsDefined && windowInfo.currentPanel < kNumPanelsMax ? windowInfo.currentPanel : 0;
+    splitterPos_ = panelsDefined ? static_cast<int>(windowInfo.splitterPos) : width() / 2;
     folderManager_ = new QtArchiveFolderManager(*backend_);
     associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(fileOpener_);
     for (auto &panel : app_.Panels) {
@@ -35,8 +45,9 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     connectFilesystemScanner();
     COpenResult opened;
     int widths[2] = {width() / 2, width() - width() / 2};
-    const HRESULT result = app_.Create(this, ToUString(QDir::currentPath()), UString(), widths,
-                                       false, opened, *appPresentation_, toolbarSettingsPath());
+    const HRESULT result =
+        app_.Create(this, panelsDefined ? UString() : ToUString(QDir::currentPath()), UString(),
+                    widths, false, opened, *appPresentation_, toolbarSettingsPath());
     if (result != S_OK)
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
@@ -75,7 +86,32 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
             return S_OK;
         });
     installEventFilter(this);
-    renderBoundFolder();
+    const unsigned focusedPanel =
+        panelsDefined && windowInfo.currentPanel < kNumPanelsMax ? windowInfo.currentPanel : 0;
+    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
+        if (!app_.Panels[index].PanelCreated)
+            continue;
+        if (index != projectedPanel_)
+            activatePanelUi(index);
+        app_.SetFocusedPanel(index);
+        renderBoundFolder();
+    }
+    if (focusedPanel != projectedPanel_)
+        activatePanelUi(focusedPanel);
+    app_.SetFocusedPanel(focusedPanel);
+    if (panelsDefined)
+        QTimer::singleShot(0, this, [this, focusedPanel] {
+            if (focusedPanel != projectedPanel_)
+                activatePanelUi(focusedPanel);
+            app_.SetFocusedPanel(focusedPanel);
+            app_.Panels[focusedPanel].SetFocusToList();
+            app_.RefreshTitle(true);
+            if (app_.NumPanels != 2 || !panelSplitter_)
+                return;
+            const int width = panelSplitter_->width();
+            const int left = qBound(1, splitterPos_, width - 1);
+            panelSplitter_->setSizes({left, width - left});
+        });
     autoRefreshTimer_ = new QTimer(this);
     autoRefreshTimer_->setInterval(1000);
     connect(autoRefreshTimer_, &QTimer::timeout, this, [this] { pollAutoRefresh(); });

@@ -42,8 +42,10 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
     if (index >= kNumPanelsMax || window_.panelUi_[index].container)
         return false;
     const unsigned previous = window_.projectedPanel_;
-    if (window_.panelUi_[previous].container)
+    const bool hadPrevious = window_.panelUi_[previous].container;
+    if (hadPrevious)
         window_.storePanelUi(previous);
+    window_.projectedPanel_ = index;
     window_.restorePanelUi(index);
     window_.app_.SetFocusedPanel(index);
     panel.LoadFullPath();
@@ -52,8 +54,9 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
     window_.createFilePanel(editMenu_, index);
     panel.AttachSelectionView(window_.table_);
     window_.storePanelUi(index);
-    if (index != previous && window_.panelUi_[previous].container) {
+    if (hadPrevious && index != previous) {
         window_.restorePanelUi(previous);
+        window_.projectedPanel_ = previous;
         window_.app_.SetFocusedPanel(previous);
     }
     return true;

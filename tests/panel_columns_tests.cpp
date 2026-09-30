@@ -98,6 +98,7 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
 
   private slots:
     void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove("Columns");
         settings.remove("view/timestampLevel");

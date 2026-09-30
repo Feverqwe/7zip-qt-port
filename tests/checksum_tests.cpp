@@ -13,6 +13,7 @@ class ChecksumTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void backendHashesFileAndRejectsInvalidMethod() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());

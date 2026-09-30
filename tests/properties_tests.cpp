@@ -31,6 +31,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void selectedFilesAndFolderShowSummary() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());

@@ -35,7 +35,9 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
         }
     }
     void QuiesceOperations() override { window_.quiesceOperations(); }
-    bool WindowWasCreated() const override { return window_.app_.Panels[0].PanelCreated; }
+    bool WindowWasCreated() const override {
+        return window_.app_.Panels[0].PanelCreated || window_.app_.Panels[1].PanelCreated;
+    }
     void SaveWindowInfo() override {
         CWindowInfo info{};
         bool positionDefined = false, panelsDefined = false;
@@ -47,10 +49,9 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
         info.maximized = window_.isMaximized();
         info.numPanels = window_.app_.NumPanels;
         info.currentPanel = window_.app_.LastFocusedPanel;
-        // Splitter restore is P0-08.2. Preserve the native saved coordinate
-        // until its QSplitter mapping is reviewed with mixed panel startup.
-        if (!panelsDefined)
-            info.splitterPos = window_.width() / 2;
+        if (window_.app_.NumPanels == 2 && window_.panelSplitter_)
+            window_.splitterPos_ = window_.panelSplitter_->sizes().value(0);
+        info.splitterPos = static_cast<UInt32>(qMax(1, window_.splitterPos_));
         info.Save(MainWindow::toolbarSettingsPath());
     }
 };

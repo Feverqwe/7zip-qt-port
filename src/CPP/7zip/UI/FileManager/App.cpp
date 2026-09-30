@@ -266,8 +266,11 @@ HRESULT CApp::SwitchOnOffOnePanel() {
 void CApp::Save() {
     AppState.Save(_settingsPath);
     CListMode listMode;
+    listMode.Read(_settingsPath);
     for (unsigned i = 0; i < kNumPanelsMax; i++) {
         const CPanel &panel = Panels[i];
+        if (!panel.PanelCreated)
+            continue;
         UString path;
         if (panel._parentFolders.IsEmpty())
             path = panel._currentFolderPrefix;
