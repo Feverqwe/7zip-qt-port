@@ -13,9 +13,10 @@
 #include <algorithm>
 
 FileTransferOperation::FileTransferOperation(QStringList sources, QString destination, bool move,
-                                             QObject *parent, FileSystemAdapter adapter)
+                                             QObject *parent, FileSystemAdapter adapter,
+                                             DestinationKind destinationKind)
     : QThread(parent), sources_(std::move(sources)), destination_(std::move(destination)),
-      move_(move), adapter_(std::move(adapter)) {
+      move_(move), destinationKind_(destinationKind), adapter_(std::move(adapter)) {
     if (!adapter_.trySourceRename)
         adapter_.trySourceRename = [](const QString &source, const QString &stage) {
             return QDir().rename(source, stage);
@@ -219,18 +220,28 @@ void FileTransferOperation::run() {
         return answer;
     };
     QString error;
-    const QFileInfo destinationInfo(destination_);
+    const bool directPath = destinationKind_ == DestinationKind::DirectPath;
+    const QString destinationDirectory =
+        directPath ? QFileInfo(destination_).absolutePath() : destination_;
+    const QFileInfo destinationInfo(destinationDirectory);
     const QString canonicalDestination = destinationInfo.canonicalFilePath();
     QStringList targets;
-    if (!destinationInfo.isDir() || destinationInfo.isSymLink() || sources_.isEmpty())
+    if (!destinationInfo.isDir() || destinationInfo.isSymLink() || sources_.isEmpty() ||
+        (directPath && sources_.size() != 1))
         error = QStringLiteral("Папка назначения недоступна.");
     for (const QString &source : sources_) {
         if (!error.isEmpty())
             break;
         const QFileInfo info(source);
-        const QString target = QDir(destination_).filePath(info.fileName());
+        const QString target =
+            directPath ? destination_ : QDir(destinationDirectory).filePath(info.fileName());
+        const QFileInfo targetInfo(target);
+        const bool samePath =
+            QDir::cleanPath(info.absoluteFilePath()) ==
+                QDir::cleanPath(targetInfo.absoluteFilePath()) ||
+            (targetInfo.exists() && info.canonicalFilePath() == targetInfo.canonicalFilePath());
         if (!info.exists() || info.isSymLink() || (!info.isFile() && !info.isDir()) ||
-            QFileInfo(target).isSymLink() || targets.contains(target) ||
+            targetInfo.isSymLink() || samePath || targets.contains(target) ||
             (info.isDir() &&
              NFsFolder::IsDestChild(info.canonicalFilePath(), canonicalDestination)))
             error = QStringLiteral("Источник или назначение недоступны либо имя уже занято.");

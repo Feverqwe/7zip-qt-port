@@ -66,8 +66,8 @@ capabilities, а не только по старой ссылке на parent; �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **16/45 завершённых пакетов; 29 остаётся** (2026-09-30).
-P0: 12/12; P1: 3/17; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-03, P1-04, P1-11 и P3-01
+Текущий счёт: **17/45 завершённых пакетов; 28 остаётся** (2026-10-01).
+P0: 12/12; P1: 4/17; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-01, P1-03, P1-04, P1-11 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -112,8 +112,8 @@ P0: 12/12; P1: 3/17; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-03, P1-04, P1-11 и P3
 | P0-12.5 | Завершить P0-12: nested archive и batch paths через исходную `ExtractGUI.cpp`/`Common/Extract.cpp` orchestration, option precedence, callback close/results, multi-archive/volume handling, failure/cancel/password, backend security, UX и итоговую parent приёмку | После .4; in-process `CArchiveLink::Open3` отсутствует в текущем порте, нужен узкий 7zz opener, сохраняющий source Extract loop; уже скопированные незавершённые модули не считаются готовыми | done — audit § P0-12.5; root/nested whole Ask через source ExtractGUI/Common, selected nested через FM, 2 ZIP с общим Unicode-путём и Yes/Cancel, split `.001` с пропуском следующих томов, encrypted wrong→correct, forced/saved modes; focused 4/4, полный `check.sh` 137/137 macOS arm64/Qt 6.11.2 2026-09-30; Windows/Linux runtime и rendered Windows parity непроверены |
 
 После P1-03 был выполнен P1-04.1/.2; ZIP comment выделен в P1-17.
-Текущий следующий доступный результат — P1-01.4 после принятого P1-02;
-parent P1-01 остаётся открыт до этой ветки. Исторический порядок prerequisites
+P1-01.4 принят после P1-02; parent P1-01 закрыт. Следующий доступный
+результат по обязательному порядку — P1-05. Исторический порядок prerequisites
 P0-10.1 → P0-04.1 → P0-02.2 → P0-02.3 → P0-03 уже подтверждён выше.
 P0-04/P0-05/P0-10 приняты после перечисленных parent критериев; их
 отдельные дальнейшие функциональные ветви сохраняются под собственными ID.
@@ -154,11 +154,11 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
-| [ ] | P1-01 | Routing F5/F6 между panels/disk/archive | P0-08, P0-11, P0-12, P1-04 | todo |
+| [x] | P1-01 | Routing F5/F6 между panels/disk/archive | P0-08, P0-11, P0-12, P1-04 | done — P1-01.1–.4; audit § P1-01.1–.4, все disk/archive маршруты, Shift focused branch и direct destination; полный `check.sh` 145/145 macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime и rendered Windows reference не проверены |
 | [x] | P1-01.1 | F5/F6 disk↔disk и archive→disk: исходные OperSmart/Agent CopyTo, общий CopyDialog, обе панели, success/failure/cancel и byte-level fixtures | P0-08, P0-11, P0-12 | done — audit § P1-01.1; focused 7/7, byte-level root/current-folder copy+move and cancel, both-panel refresh, CopyDialog 440×250/340×220 JSON, полный `check.sh` PASS macOS arm64/Qt 6.11.2 2026-09-30. Обычный `CApp::OnCopy` dispatch остаётся P1-01.3, Shift branch — P1-01.4, FSFolderCopy — P1-02; Windows/Linux runtime unverified |
 | [x] | P1-01.2 | Disk→archive: исходный CopyFrom/SetFiles/update, transaction, защищённый верхний архив, UX и tests | P1-01.1, P1-04 | done — audit § P1-01.2; source update plan, transactional 7zz adapter, F5/F6 two-panel routing, Unicode/empty directory/protected archive/cancel/unsafe path tests; focused tests and full unsandboxed `check.sh` PASS macOS arm64 2026-09-30. Archive→archive и обычный dispatch остаются P1-01.3, Shift branch — P1-01.4; Windows/Linux runtime unverified |
 | [x] | P1-01.3 | Archive→archive через source temp staging, обычные F5/F6 ветки `CApp::OnCopy`: rollback, refresh обеих панелей, nested/encrypted capability gates и сквозная приёмка этих маршрутов | P1-01.1, P1-01.2 | done — audit § P1-01.3; real ZIP/7z two-panel copy/move/cancel/nested bytes, backend two-list Test/Extract/Add/stale, direct 10/10 affected UI, focused backend/source/progress tests, baseline 193 exact/136 adapted/3 local; полный unsandboxed `check.sh` PASS 142/142 macOS arm64/Qt 6.11.2 2026-10-01. Parent P1-01 остаётся открыт до P1-01.4; Windows/Linux runtime unverified |
-| [ ] | P1-01.4 | Shift+F5/F6 `copyToSame`, одиночный destination filename/rename, исходный `PanelKey` consumer и окончательная parent P1-01 приёмка | P1-01.3, P1-02 | todo — настоящая исходная ветка `PanelKey.cpp:141,150`; требует FSFolderCopy destination branches, не считается N/A |
+| [x] | P1-01.4 | Shift+F5/F6 `copyToSame`, одиночный destination filename/rename, исходный `PanelKey` consumer и окончательная parent P1-01 приёмка | P1-01.3, P1-02 | done — audit § P1-01.4; source focused `OnCopy`, direct filesystem target, archive focused extraction/move, occupied/self/child tests; `file_transfer_direct`, `ui_copy_same` и полный `check.sh` 145/145 macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime unverified |
 | [x] | P1-02 | Cross-volume move и полные FSFolderCopy branches | P1-01.3 | done — P1-02.1/.2; исходные CopyTo/CopyFileSystemItems и AskWrite, staged cross-volume/merge, focused и полный `check.sh` 143/143 macOS arm64/Qt 6.11.2 2026-10-01; Shift consumer P1-01.4, ссылки/metadata P2-05/P2-06, Windows/Linux runtime остаются обязательными |
 | [x] | P1-02.1 | Целый F6 cross-volume staging fallback: исходные FSFolderCopy copy bodies, публикация до удаления, occupied/Unicode/tree, cancel rollback, delete failure/partial set, инъекция файлового adapter | P1-01.3 | done — audit § P1-02.1; forced fallback/overwrite/cancel/delete failure и disk-panel consumers, полный unsandboxed `check.sh` PASS 142/142 macOS arm64/Qt 6.11.2 2026-10-01; настоящий второй том и Windows/Linux runtime не проверены |
 | [x] | P1-02.2 | Полные `FSFolderCopy.cpp::CFSFolder::CopyTo`/`CCopyState` move/callback branches и parent приёмка: direct filename/new folder, recursive merge/AskWrite, source errors/progress/cancel и platform adapters | P1-02.1 | done — audit § P1-02.2; direct filename/new folder/file Move/cancel/invalid, Unicode CopyFileSystemItems, staged nested skip/replace/rename, F6 retained source/cancel/delete failure; `fs_folder_copy`/`file_transfer`/`fs_folder`, direct two-panel UI и normal/compact JSON; полный unsandboxed `check.sh` 143/143 macOS arm64/Qt 6.11.2 2026-10-01. Windows/Linux runtime/rendered Windows parity не проверены |

@@ -29,16 +29,23 @@ NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
 }
 } // namespace
 
-void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
+void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move,
+                               bool directPath) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Filesystem || !QFileInfo(destination).isDir() ||
-        QFileInfo(destination).isSymLink() || sources.isEmpty()) {
+    const QString destinationDirectory =
+        directPath ? QFileInfo(destination).absolutePath() : destination;
+    if (state_ != State::Filesystem || !QFileInfo(destinationDirectory).isDir() ||
+        QFileInfo(destinationDirectory).isSymLink() || sources.isEmpty() ||
+        (directPath && sources.size() != 1)) {
         QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
         return;
     }
-    fileTransfer_ = new FileTransferOperation(sources, destination, move, this);
+    fileTransfer_ =
+        new FileTransferOperation(sources, destination, move, this, {},
+                                  directPath ? FileTransferOperation::DestinationKind::DirectPath
+                                             : FileTransferOperation::DestinationKind::Directory);
     auto *operation = fileTransfer_;
     connect(operation, &FileTransferOperation::overwriteRequested, this,
             [this, operation](const QString &existing, const QString &incoming) {
@@ -87,9 +94,10 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
             });
     const unsigned sourcePanel = app_.GetFocusedPanelIndex();
     const unsigned destinationPanel = 1 - sourcePanel;
-    const bool refreshDestination =
-        app_.NumPanels == 2 && panelUi_[destinationPanel].state == State::Filesystem &&
-        QDir::cleanPath(panelUi_[destinationPanel].directory) == QDir::cleanPath(destination);
+    const bool refreshDestination = app_.NumPanels == 2 &&
+                                    panelUi_[destinationPanel].state == State::Filesystem &&
+                                    QDir::cleanPath(panelUi_[destinationPanel].directory) ==
+                                        QDir::cleanPath(destinationDirectory);
     connect(operation, &QThread::finished, this,
             [this, operation, sources, sourcePanel, destinationPanel, refreshDestination] {
                 if (app_.QtOperations().closed())
@@ -119,15 +127,14 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
     if (sourceIndex != app_.GetFocusedPanelIndex() || indices.IsEmpty() ||
         (state_ != State::Viewing && state_ != State::Filesystem))
         return;
-    if (copyToSame) {
-        QMessageBox::warning(this, QStringLiteral("Копирование"),
-                             QStringLiteral("Копирование с новым именем пока недоступно."));
-        return;
-    }
+    const bool directPath = indices.Size() == 1 && !destination.endsWith('/') &&
+                            !QFileInfo(destination).isDir() && !useDestPanel;
     if (state_ == State::Viewing) {
         if (useDestPanel && useTemp && transferBetweenArchivePanels(destination, move))
             return;
-        const QStringList paths = move ? selectedArchivePaths() : selectedArchiveItemsPaths();
+        const QStringList paths = copyToSame ? archivePathsForIndices(indices)
+                                  : move     ? selectedArchivePaths()
+                                             : selectedArchiveItemsPaths();
         if (paths.isEmpty())
             return;
         ExtractionOptions options;
@@ -135,6 +142,24 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         options.currentFolder = archiveFolder_;
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
         rememberTransferDestination(destination);
+        if (copyToSame) {
+            if (move) {
+                archiveMovePaths_ = paths;
+                archiveMoveStage_ = ArchiveMoveStage::Extracting;
+            }
+            const bool handled =
+                extractWithSource(destination, true, archivePassword_, options, paths, &indices);
+            if (!handled || state_ != State::Operating) {
+                archiveMoveStage_ = ArchiveMoveStage::None;
+                archiveMovePaths_.clear();
+                transferDestinationPanel_.reset();
+                if (!handled)
+                    QMessageBox::warning(
+                        this, QStringLiteral("Копирование"),
+                        QStringLiteral("Исходное извлечение для этого архива недоступно."));
+            }
+            return;
+        }
         if (!move) {
             extractTo(destination, true, archivePassword_, options);
             if (state_ != State::Operating)
@@ -164,12 +189,14 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         backend_->extract(archive_, destination, paths, archivePassword_);
         return;
     }
-    const QStringList sources = selectedFilesystemPaths();
+    const QStringList sources =
+        copyToSame ? QStringList{ToQString(app_.Panels[sourceIndex].GetItemFullPath(indices[0]))}
+                   : selectedFilesystemPaths();
     if (sources.isEmpty())
         return;
     if (useDestPanel && transferToArchivePanel(destination, move))
         return;
-    transferFiles(sources, destination, move);
+    transferFiles(sources, destination, move, directPath);
 }
 
 bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {

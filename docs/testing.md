@@ -585,8 +585,15 @@ that leaves target bytes unchanged. The affected direct UI cases passed 10/10;
 `archive_progress` and `extraction_options` helper fixtures now create a
 disposable listed file for the backend snapshot guard. Full unsandboxed
 `check.sh` passed 142/142 CTest on macOS arm64, Qt 6.11.2, 2026-10-01.
-Parent P1-01 also requires the Shift+F5/F6 destination branch in P1-01.4
-after P1-02.
+P1-01.4: `file_transfer_direct` checks exact-target Unicode copy, directory
+move, occupied target Yes/No, self-copy and recursive child rejection.
+`ui_copy_same` exercises Shift+F5/F6 filesystem rename, ordinary F5 with a
+single filename and a new parent directory, and Shift+F5/F6 on a real ZIP with
+the focused archive item distinct from selection. Archive Shift F6 checks that
+only the moved entry is removed after extraction. Agent interprets an archive
+destination as an extraction directory. Parent P1-01 is accepted with these
+focused checks and the full unsandboxed `./scripts/check.sh` gate (145/145
+CTest, macOS arm64 / Qt 6.11.2, 2026-10-01).
 
 `panel_copy_info` checks copied decimal formatting through UInt64 maximum,
 mixed file/folder size properties, undefined-size propagation, defined zero,

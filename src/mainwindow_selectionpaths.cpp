@@ -42,13 +42,16 @@ QStringList MainWindow::selectedFilesystemPaths() {
 }
 
 QStringList MainWindow::selectedArchivePaths() {
+    return archivePathsForIndices(sourceOperatedIndices());
+}
+
+QStringList MainWindow::archivePathsForIndices(const CRecordVector<UInt32> &indices) {
     QStringList paths;
     if (state_ != State::Viewing)
         return paths;
     CPanel &panel = app_.GetFocusedPanel();
     if (!panel.GetFolder())
         return paths;
-    const auto indices = sourceOperatedIndices();
     auto *folder = static_cast<CAgentFolder *>(panel.GetFolder());
     CUIntVector realIndices;
     // Preserve the 7zz selected-directory transport policy until source Extract

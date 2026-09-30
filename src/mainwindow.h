@@ -136,7 +136,8 @@ class MainWindow : public QMainWindow {
     void connectBackend();
     void backendFinished(bool ok, const QString &message, bool messageDisplayed = false);
     bool extractWithSource(const QString &destination, bool onlySelected, const QString &password,
-                           const ExtractionOptions &options, const QStringList &names);
+                           const ExtractionOptions &options, const QStringList &names,
+                           const CRecordVector<UInt32> *explicitIndices = nullptr);
     bool startPendingHash(bool ok);
     bool startPendingArchiveMove(bool ok);
     bool finishArchiveState(bool ok);
@@ -226,7 +227,8 @@ class MainWindow : public QMainWindow {
                        const CompressionOptions &options = {});
     void addDialog();
     QStringList selectedFilesystemPaths();
-    void transferFiles(const QStringList &sources, const QString &destination, bool move);
+    void transferFiles(const QStringList &sources, const QString &destination, bool move,
+                       bool directPath = false);
     void executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
                                 const QString &destination, const CRecordVector<UInt32> &indices,
                                 bool useDestPanel, bool useTemp);
@@ -236,6 +238,7 @@ class MainWindow : public QMainWindow {
                                 const QString &name);
     void addSources(const QStringList &sources);
     QStringList selectedArchivePaths();
+    QStringList archivePathsForIndices(const CRecordVector<UInt32> &indices);
     QStringList selectedArchiveItemsPaths();
     CRecordVector<UInt32> sourceOperatedIndices();
 

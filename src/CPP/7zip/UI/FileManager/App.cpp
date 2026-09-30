@@ -139,7 +139,23 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
         destPath = srcPanel.GetFsPath();
     destPath += correctName;
 
-    const QString output = QDir::cleanPath(ToQString(destPath));
+    // The source direct-path branch creates the parent before CopyTo.
+    if (indices.Size() == 1 && !destPath.IsEmpty() && !IsPathSepar(destPath.Back())) {
+        const int separator = destPath.ReverseFind_PathSepar();
+        if (separator < 0) {
+            srcPanel.MessageBox_Error_UnsupportOperation();
+            return;
+        }
+        const UString parent = destPath.Left(unsigned(separator + 1));
+        if (!NWindows::NFile::NDir::CreateComplexDir(us2fs(parent))) {
+            srcPanel.MessageBox_Error_HRESULT(GetLastError_noZero_HRESULT());
+            return;
+        }
+    }
+
+    QString output = QDir::cleanPath(ToQString(destPath));
+    if (!destPath.IsEmpty() && IsPathSepar(destPath.Back()) && !output.endsWith('/'))
+        output += '/';
     if (CompareFileNames(destPath, destPanel.GetFsPath()) == 0) {
         if (NumPanels == 1 || CompareFileNames(destPath, srcPanel.GetFsPath()) == 0) {
             srcPanel.MessageBox_Error(L"Cannot copy files onto itself");

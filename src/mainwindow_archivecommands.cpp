@@ -185,7 +185,8 @@ void MainWindow::extractTo(const QString &destination, bool onlySelected, const 
 
 bool MainWindow::extractWithSource(const QString &destination, bool onlySelected,
                                    const QString &password, const ExtractionOptions &options,
-                                   const QStringList &names) {
+                                   const QStringList &names,
+                                   const CRecordVector<UInt32> *explicitIndices) {
     CPanel &panel = app_.GetFocusedPanel();
     auto *folder =
         state_ == State::Viewing ? dynamic_cast<CAgentFolder *>(panel.GetFolder()) : nullptr;
@@ -243,7 +244,7 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         }
         CRecordVector<UInt32> indices;
         if (onlySelected)
-            indices = sourceOperatedIndices();
+            indices = explicitIndices ? *explicitIndices : sourceOperatedIndices();
         else {
             UInt32 count = 0;
             if (folder->GetNumberOfItems(&count) != S_OK)

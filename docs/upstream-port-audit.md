@@ -3334,3 +3334,42 @@ Qt consumer относится к P1-01.4. Проверены `fs_folder_copy`, 
 `main_shell`/`panel_shell` JSON; полный unsandboxed `check.sh` прошёл 143/143
 CTest на macOS arm64/Qt 6.11.2, 2026-10-01. Реальный второй том,
 Windows/Linux runtime и rendered Windows reference локально не проверены.
+
+## P1-01.4 — Shift+F5/F6 и прямое имя назначения (принято, 2026-10-01)
+
+База: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/PanelKey.cpp::OnKeyDown` (Shift+F5/F6 →
+`OnCopy(..., shift)`), `App.cpp::CApp::Copy` (focused index, default name,
+`CorrectFsPath`, direct destination/parent creation), `PanelCopy.cpp::CopyTo`,
+`FSFolderCopy.cpp::CFSFolder::CopyTo` и
+`CPP/7zip/UI/Agent/ArchiveFolder.cpp::CAgentFolder::CopyTo`/
+`Agent.cpp::CAgentFolder::Extract`. Исходные `App.cpp` и `PanelKey.cpp`
+сохраняют зеркальные пути и symbols; изменены только Qt presentation/dispatch
+части. Исходный `FSFolderCopy.cpp` и Agent bodies остаются единственными
+реализациями в своих модулях.
+
+`PanelKey` теперь передаёт Shift в source `OnCopy`, независимо от обычной
+selection-gated доступности QAction: исходная ветка выбирает именно элемент
+под фокусом. `App.cpp` сохраняет признак завершающего разделителя и создаёт
+родительский каталог для одиночного прямого пути. В Qt transaction adapter
+`FileTransferOperation` передаётся точный target вместо папки для одного
+файла/каталога; staging, исходный `FSFolderCopy` AskWrite, backup/rollback и
+F6 publication/delete остаются общими. Для обычного F5/F6 один новый путь
+без завершающего разделителя тоже является прямым именем, а существующая
+папка остаётся папкой назначения. Самокопирование и вложенная цель каталога
+отклоняются до изменения данных.
+
+Для archive source Shift направляет explicit focused index в исходный Agent
+`CopyTo`; F6 удаляет этот index после успешного извлечения. Это не переименование
+записи архива: исходный `CAgentFolder::Extract` нормализует destination как
+каталог, поэтому абсолютный путь извлекает элемент в указанную папку. Если
+source extract service недоступен, Shift показывает отказ без fallback на
+текущий selection. Запись под новым именем внутри архива относится к иному
+source update workflow, а не к этой ветке `CopyTo`.
+
+Проверены `file_transfer_direct` (Unicode direct file, directory move,
+occupied Yes/No, self/child refusal), `ui_copy_same` (Shift F5/F6 filesystem,
+обычный F5 direct filename и parent creation, Shift F5/F6 с настоящим ZIP
+и отличающимся выделением). Полный unsandboxed `./scripts/check.sh`
+прошёл 145/145 CTest на macOS arm64/Qt 6.11.2, 2026-10-01.
+Windows/Linux runtime и rendered Windows reference локально не проверены.

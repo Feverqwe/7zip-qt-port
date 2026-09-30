@@ -59,6 +59,13 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
             createFile_->trigger();
         return true;
     }
+    if ((key->key() == Qt::Key_F5 || key->key() == Qt::Key_F6) &&
+        key->modifiers() == Qt::ShiftModifier) {
+        const bool move = key->key() == Qt::Key_F6;
+        if (state_ == State::Filesystem || state_ == State::Viewing)
+            app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnCopy(move, true);
+        return true;
+    }
     // PanelKey.cpp handles VK_BACK without testing Alt, Ctrl or Shift.
     if (key->key() == Qt::Key_Backspace) {
         if (parent_->isEnabled())

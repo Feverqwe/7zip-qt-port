@@ -11,12 +11,14 @@ class FileTransferOperation : public QThread {
     Q_OBJECT
 
   public:
+    enum class DestinationKind { Directory, DirectPath };
     struct FileSystemAdapter {
         std::function<bool(const QString &, const QString &)> trySourceRename;
         std::function<bool(const QString &)> removeSource;
     };
     FileTransferOperation(QStringList sources, QString destination, bool move,
-                          QObject *parent = nullptr, FileSystemAdapter adapter = {});
+                          QObject *parent = nullptr, FileSystemAdapter adapter = {},
+                          DestinationKind destinationKind = DestinationKind::Directory);
     void cancel();
     void submitOverwriteAnswer(int answer);
     bool isCanceled() const { return canceled_; }
@@ -46,6 +48,7 @@ class FileTransferOperation : public QThread {
     QStringList sources_;
     QString destination_;
     bool move_;
+    DestinationKind destinationKind_;
     FileSystemAdapter adapter_;
     std::atomic_bool canceled_{false};
     QMutex overwriteMutex_;
