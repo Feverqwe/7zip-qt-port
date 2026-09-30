@@ -6107,3 +6107,27 @@ AES поддержаны 7zz, новый пустой ZIP folder entry сам п
 шифруемых данных. Add/Edit/Move, nested updates и comment/SetProperty этим
 частичным портом не покрыты. Source notices и лицензия сохранены в
 `third_party/7zip/License.txt`.
+
+## P1-04.3 — prerequisite для ZIP item comment (2026-09-30)
+
+Точная база исследования: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/PanelOperations.cpp::CPanel::ChangeComment`,
+`CPP/7zip/UI/Agent/ArchiveFolderOut.cpp::CAgentFolder::SetProperty` и
+`CommonUpdateOperation(AGENT_OP_Comment)`, `AgentOut.cpp::CAgent::CommentItem`,
+`CPP/7zip/Archive/Zip/ZipHandlerOut.cpp::CHandler::UpdateItems`.
+Исходный FM получает `kpidComment`, открывает ComboDialog, затем передаёт
+`VT_BSTR` в SetProperty; Agent помечает `NewProps` одного real index и отдаёт
+`CommentIndex`/`Comment` исходному ZIP writer. Другие форматы SetProperty
+отклоняет.
+
+Установленный `7zz` 26.03 на macOS arm64 имеет CLI команды a/d/e/h/i/l/rn/
+t/u/x и перечисленные в `7zz -h` ключи без операции изменения ZIP item
+comment. Текущий проект не содержит исходный `ZipHandlerOut.cpp` и его
+in-process writer dependencies; file-only `QtArchiveFileResource::Update`
+не может выполнить `CommentIndex`/`Comment`. Не заменяем ZIP-структуры своей
+реализацией и не называем операцию готовой. Prerequisite: портировать ZIP
+`IOutArchive` handler и необходимые исходные зависимости в ArchiveBackend,
+сохранив транзакционную публикацию, затем подключить исходные Agent/FM bodies
+и Qt диалог, success/failure/cancel, Unicode и сохранность данных/пароля.
+Никакие исходные bodies в этом исследовании не скопированы; parent P1-04
+остаётся открытым.

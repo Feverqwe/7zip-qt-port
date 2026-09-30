@@ -536,6 +536,13 @@ native ReOpen без повторного запроса, проверены byt
 отмена и сохранность исходного архива. Parent P1-04 остаётся открытым до
 P1-04.3 (comment/SetProperty capability); P1-05/P1-09 не объявлены готовыми.
 
+P1-04.3 заблокирован текущим file-only `7zz` 26.03: его команды/ключи не
+записывают комментарий отдельного ZIP-элемента. Исходный writer —
+`ZipHandlerOut.cpp` через `IOutArchive` и `CAgent::CommentItem`; его нужно
+портировать in-process с зависимостями, сохранив ArchiveBackend границей.
+До этого P1-04/P1-05 и зависящие шаги остаются открытыми. P1-11 доступен
+независимо.
+
 ### P1-05. Полные update/path modes Add to Archive
 
 **После:** P1-04. **Источники:** GUI `CompressDialog.cpp/.h/.rc`, `UpdateGUI.cpp`,
