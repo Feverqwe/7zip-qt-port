@@ -7,6 +7,16 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P0-12.4 routes Ask extraction from an encrypted root archive or the current
+archive folder through the source FM callback, overwrite dialog and progress
+dialog. A wrong password is checked before any occupied target is opened; a
+later correct attempt can replace it. Extraction from a viewed subfolder uses
+paths relative to that folder, as `CAgentFolder::Extract` does upstream. The
+earlier 7zz backend route remains for nested archives and non-Ask modes until
+P0-12.5 completes batch/source orchestration. Real 7z/ZIP and subfolder flows
+were checked on macOS; Windows/Linux runtime and rendered Windows dialog parity
+remain unverified.
+
 P0-05.1 filesystem rows now display the bound source folder's name and flat
 prefix; Qt normalizes visible Unicode to NFC while retaining raw source names
 and indices for operations. Hidden files and empty directories remain listed.

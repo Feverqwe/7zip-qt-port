@@ -2,6 +2,7 @@
 #include "7zip/Archive/IArchive.h"
 #include "7zip/Common/FileStreams.h"
 #include "7zip/Compress/CopyCoder.h"
+#include "7zip/IPassword.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
@@ -30,9 +31,21 @@ class CExtractStreamProgress final : public ICompressProgressInfo, public CMyUnk
 
 HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QString &format,
                      IInArchive *metadata, const UInt32 *indices, UInt32 count, Int32 testMode,
-                     IArchiveExtractCallback *callback, CProgressSync *sync) {
+                     IArchiveExtractCallback *callback, CProgressSync *sync, bool encrypted) {
     if (!metadata || !callback || (count != UInt32(-1) && count && !indices))
         return E_INVALIDARG;
+    QString password;
+    if (encrypted) {
+        CMyComPtr<ICryptoGetTextPassword> crypto;
+        RINOK(callback->QueryInterface(IID_ICryptoGetTextPassword, (void **)&crypto))
+        CMyComBSTR value;
+        RINOK(crypto->CryptoGetTextPassword(&value))
+        password = QString::fromWCharArray(value);
+        // Source GetStream can replace an existing file. Verify the password
+        // before invoking that callback, as the 7zz file transport opens later.
+        RINOK(RunArchiveBackendRequest(
+            backend, [&] { backend.test(archive, password); }, callback, sync))
+    }
     UInt32 total;
     RINOK(metadata->GetNumberOfItems(&total))
     if (count == UInt32(-1)) {
@@ -91,7 +104,8 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
         if (directory.boolVal == VARIANT_FALSE) {
             const QString streamPath = staging.filePath(QString::number(n));
             result = RunArchiveBackendRequest(
-                backend, [&] { backend.extractSourceEntry(archive, name, streamPath, format, {}); },
+                backend,
+                [&] { backend.extractSourceEntry(archive, name, streamPath, format, password); },
                 callback, sync);
             if (result == S_OK && output) {
                 CMyComPtr2<ISequentialInStream, CInFileStream> input;
@@ -130,7 +144,7 @@ void QtArchiveFileResource::AttachExtractService(ArchiveBackend &backend, const 
                                         Int32 testMode, IArchiveExtractCallback *callback) {
         COM_TRY_BEGIN
         return ExtractItems(backend, EnginePath, format, metadata, indices, count, testMode,
-                            callback, _sync);
+                            callback, _sync, Info.encrypted);
         COM_TRY_END
     };
 }

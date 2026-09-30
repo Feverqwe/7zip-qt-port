@@ -548,6 +548,167 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(explicitDirectory.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
     }
 
+    void encryptedAskUsesSourceCallback_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("7z") << QStringLiteral("7z");
+        QTest::newRow("zip") << QStringLiteral("zip");
+    }
+
+    void nestedFolderAskUsesSourceRelativePath() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString folderName = QStringLiteral("внутренняя папка");
+        const QString fileName = QStringLiteral("δ name.txt");
+        const QString source = temp.filePath(folderName);
+        const QString archive = temp.filePath("nested.zip");
+        const QString output = temp.filePath("output");
+        const QString target = QDir(output).filePath(fileName);
+        QVERIFY(QDir().mkpath(source));
+        QVERIFY(QDir().mkpath(output));
+        QFile input(QDir(source).filePath(fileName));
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("new bytes"), qint64(9));
+        input.close();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        QTRY_VERIFY(table(window)->rowCount() >= 1);
+        int folderRow = -1;
+        for (int row = 0; row < table(window)->rowCount(); ++row)
+            if (table(window)->item(row, 0)->text() == folderName)
+                folderRow = row;
+        QVERIFY(folderRow >= 0);
+        table(window)->selectRow(folderRow);
+        action(window, "openItemAction")->trigger();
+        QTRY_VERIFY(!table(window)->findItems(fileName, Qt::MatchExactly).isEmpty());
+        QFile occupied(target);
+        QVERIFY(occupied.open(QIODevice::WriteOnly));
+        QCOMPARE(occupied.write("old bytes"), qint64(9));
+        occupied.close();
+        QSignalSpy preflight(&backend, &ArchiveBackend::overwriteRequired);
+        bool answered = false;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    answered = true;
+                    dialog->findChild<QPushButton *>("overwriteYes")->click();
+                }
+            }
+        });
+        answer.start(1);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        window.extractTo(output, false, {}, options);
+        answer.stop();
+        QVERIFY(answered);
+        QCOMPARE(preflight.size(), 0);
+        QVERIFY(occupied.open(QIODevice::ReadOnly));
+        QCOMPARE(occupied.readAll(), QByteArray("new bytes"));
+        QVERIFY(!QFileInfo::exists(QDir(output).filePath(folderName + '/' + fileName)));
+    }
+
+    void encryptedAskUsesSourceCallback() {
+        QFETCH(QString, format);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("секрет с пробелом.txt"));
+        const QString archive = temp.filePath("encrypted." + format);
+        const QString output = temp.filePath("output");
+        const QString target = QDir(output).filePath(QFileInfo(source).fileName());
+        const QString password = QStringLiteral("test-only-password");
+        QVERIFY(QDir().mkpath(output));
+        QFile input(source);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("new secret"), qint64(10));
+        input.close();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source}, password);
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        QTimer openPassword;
+        connect(&openPassword, &QTimer::timeout, &window, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            if (!dialog || dialog->objectName() != "passwordDialog")
+                return;
+            auto *edit = dialog->findChild<QLineEdit *>("passwordEdit");
+            QVERIFY(edit);
+            edit->setText(password);
+            dialog->accept();
+        });
+        openPassword.start(1);
+        window.openArchive(archive);
+        openPassword.stop();
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        finished.clear();
+        QFile occupied(target);
+        QVERIFY(occupied.open(QIODevice::WriteOnly));
+        QCOMPARE(occupied.write("old secret"), qint64(10));
+        occupied.close();
+        QSignalSpy preflight(&backend, &ArchiveBackend::overwriteRequired);
+        bool answered = false;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    answered = true;
+                    dialog->findChild<QPushButton *>("overwriteYes")->click();
+                }
+            }
+        });
+        answer.start(1);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        bool sawFailure = false;
+        bool closeScheduled = false;
+        QTimer dismissFailure;
+        connect(&dismissFailure, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (!widget->isVisible())
+                    continue;
+                if (auto *message = qobject_cast<QMessageBox *>(widget)) {
+                    if (message->objectName() == "progressFinalMessage") {
+                        sawFailure = true;
+                        if (!closeScheduled) {
+                            closeScheduled = true;
+                            QTimer::singleShot(50, &window, [&window] {
+                                auto *progress = window.findChild<QDialog *>("progressDialog");
+                                auto *close = progress
+                                                  ? progress->findChild<QPushButton *>("IDCANCEL")
+                                                  : nullptr;
+                                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                                    close->click();
+                            });
+                        }
+                    }
+                    message->accept();
+                }
+            }
+        });
+        dismissFailure.start(1);
+        window.extractTo(output, false, QStringLiteral("wrong-password"), options);
+        dismissFailure.stop();
+        QVERIFY(sawFailure);
+        QVERIFY(!answered);
+        QVERIFY(occupied.open(QIODevice::ReadOnly));
+        QCOMPARE(occupied.readAll(), QByteArray("old secret"));
+        occupied.close();
+        window.extractTo(output, false, password, options);
+        answer.stop();
+        QVERIFY(answered);
+        QCOMPARE(preflight.size(), 0);
+        QVERIFY(occupied.open(QIODevice::ReadOnly));
+        QCOMPARE(occupied.readAll(), QByteArray("new secret"));
+    }
+
     void movesRealArchiveEntryToDirectory() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

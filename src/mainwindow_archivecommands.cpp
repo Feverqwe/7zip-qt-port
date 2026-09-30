@@ -190,9 +190,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         state_ == State::Viewing ? dynamic_cast<CAgentFolder *>(panel.GetFolder()) : nullptr;
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
-    if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask ||
-        !archiveFolder_.isEmpty() || isNestedArchive() || info_.encrypted || !resource ||
-        !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
+    if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask || isNestedArchive() ||
+        !resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
         return false;
     {
         QString validationError;

@@ -1781,6 +1781,52 @@ and `extraction_options` passed 4/4. The full unsandboxed
 macOS arm64 with Qt 6.11.2 on 2026-09-30. Windows/Linux runtime and rendered
 Windows parity remain unverified.
 
+## P0-12.4 — encrypted root and current archive folder (2026-09-30)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/Agent/Agent.cpp::CAgentFolder::Extract`,
+`CPP/7zip/UI/Common/ArchiveExtractCallback.cpp::GetStream`/`CheckExistFile`,
+`CPP/7zip/UI/FileManager/PanelCopy.cpp::CPanel::CopyTo` and
+`ExtractCallback.cpp::CryptoGetTextPassword`/`AskOverwrite`. Their previously
+copied bodies and source control flow stay authoritative. The Qt command adapter
+now uses them for an encrypted root archive and for the current bound archive
+folder. The source folder deliberately strips its current prefix for FullPaths:
+the target is relative to the viewed folder, matching its original path policy.
+
+`QtArchiveFileResource::ExtractItems` is only the external engine service. For
+an encrypted archive it requests the source callback password, runs the already
+listed archive through `ArchiveBackend::test`, then calls source `GetStream`.
+This ordering prevents an invalid password from opening or replacing an
+existing target. The same password is supplied to every file-only `7zz -so`
+request before the process starts, avoiding the unhandled stdout prompt found
+in P0-12.3. This is a narrow process-boundary adaptation, not a replacement
+extraction algorithm. The backend still owns process arguments, validation,
+path/symlink checks and cancellation. Wrong password returns through source
+progress/error UX; the user can retry extraction with a new password. As with
+the upstream direct writer, a later failure/cancel can leave already extracted
+files; no atomic rollback is promised.
+
+Real UI fixtures cover encrypted 7z and ZIP with Unicode/space names and
+occupied output: wrong password preserves old bytes and never reaches overwrite;
+the next correct attempt invokes `COverwriteDialog` and writes new bytes. A
+bound ZIP subfolder fixture confirms source Ask at its relative destination and
+no backend preflight. Native folder navigation, existing root NoPaths and
+backend consumers remain separately covered. Local macOS arm64/Qt 6.11.2 checks
+are recorded in the P0-12.4 checklist row: focused 5/5, five repeated
+`ui_state`/`ui_operations` checks, and an unsandboxed full `./scripts/check.sh`
+with 137/137 CTest cases. Windows/Linux runtime and rendered
+Windows appearance are unverified.
+
+This is still a partial P0-12 port. Nested archive engine resources and
+`CPP/7zip/UI/GUI/ExtractGUI.cpp::ExtractGUI`/
+`CPP/7zip/UI/Common/Extract.cpp::Extract`/`DecompressArchive` multi-archive
+orchestration remain P0-12.5. Those upstream files are under local, uncommitted
+development in their mirrored `src/` paths for the next iteration; the P0-12.4
+commit does not include or accept them. The source `CArchiveLink::Open3` codec opener is absent;
+the batch result needs a narrow file-only 7zz opener rather than pretending the
+copy compiles into a working batch path. Existing P0-12.1 backend fallback
+continues for unsupported routes and non-Ask modes.
+
 ## P0-11 — filesystem overwrite decisions (2026-09-30)
 
 Exact source baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

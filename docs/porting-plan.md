@@ -432,8 +432,10 @@ rollback. Tests backend и dialog consumers; история/Cancel не регр
 P0-12.2 подключил незашифрованный root FullPaths FM consumer к исходным
 `CPanel::CopyTo`/`CAgentFolder::Extract`/`CheckExistFile` и проверил source UX.
 P0-12.3 подключил root NoPaths/Ask с выбранной папкой к тому же source callback;
-P0-12.4 завершает nested/encrypted, `ExtractGUI.cpp`/`Common/Extract.cpp`
-и parent приёмку. Точные критерии и evidence — в checklist; незавершённое не
+P0-12.4 подключает зашифрованный root и текущую папку архива к source callback
+с проверкой пароля до записи. P0-12.5 завершает вложенные архивы,
+`ExtractGUI.cpp`/`Common/Extract.cpp` и parent приёмку. Точные критерии и
+evidence — в checklist; незавершённое не
 считается готовым из-за совпадения поведения одного маршрута.
 
 ## 4. P1 — основные сценарии и полноценный UX (16 шагов)
