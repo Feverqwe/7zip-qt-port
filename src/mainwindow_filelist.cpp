@@ -44,6 +44,8 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
         flatView_->setChecked(flatDisk_);
     }
     entries_.clear();
+    renameEditingItem_ = nullptr;
+    renameOriginalPath_.clear();
     table_->clearSelection();
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
@@ -286,17 +288,16 @@ void MainWindow::createFolder() {
     QString name;
     if (!Dlg_CreateFolder(this, name))
         return;
-    const QString target = QDir(directory_).filePath(name);
-    NFsFolder::CFSFolder folder(directory_);
-    if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-        name.contains('\\') || name.contains(QRegularExpression("[<>:\"|?*]")) ||
-        name.endsWith(' ') || name.endsWith('.') || QFileInfo::exists(target) ||
-        QFileInfo(target).isSymLink() || !folder.CreateFolder(name)) {
+    UString createdName;
+    const HRESULT result = app_.GetFocusedPanel().CreateFolder(ToUString(name), createdName);
+    if (result == E_ABORT)
+        return;
+    if (result != S_OK) {
         QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку.");
         return;
     }
     showDirectory(directory_, false);
-    selectPaths({target});
+    selectPaths({QDir(directory_).filePath(QDir::fromNativeSeparators(name).section('/', 0, 0))});
 }
 
 void MainWindow::createFile() {
@@ -306,19 +307,15 @@ void MainWindow::createFile() {
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString name = dialog.value();
-    const QString target = QDir(directory_).filePath(name);
-    if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-        name.contains('\\') || name.contains(QRegularExpression("[<>:\"|?*]")) ||
-        name.endsWith(' ') || name.endsWith('.') || QFileInfo::exists(target) ||
-        QFileInfo(target).isSymLink()) {
-        QMessageBox::warning(this, "Создать файл", "Недопустимое имя или файл уже существует.");
+    UString createdName;
+    const HRESULT result = app_.GetFocusedPanel().CreateFile(ToUString(name), createdName);
+    if (result == E_ABORT)
         return;
-    }
-    NFsFolder::CFSFolder folder(directory_);
-    if (!folder.CreateFile(name)) {
+    if (result != S_OK) {
         QMessageBox::warning(this, "Создать файл", "Не удалось создать файл.");
         return;
     }
+    const QString target = QDir(directory_).filePath(ToQString(createdName));
     showDirectory(directory_, false);
     selectPaths({target});
 }
@@ -355,6 +352,8 @@ void MainWindow::navigateTo(const QString &path) {
 }
 
 void MainWindow::activateRow(int row) {
+    if (renameActivationPending_)
+        return;
     if (row < 0 || row >= table_->rowCount())
         return;
     if (table_->item(row, 0)->data(Qt::UserRole + 6).toUInt() == UInt32(-1)) {

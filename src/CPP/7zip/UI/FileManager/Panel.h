@@ -445,6 +445,10 @@ class CPanel : public QObject {
     bool IsThereReadOnlyFolder() const;
     bool DoesItSupportOperations() const { return _folderOperations != NULL; }
     bool CheckBeforeUpdate(UINT resourceID);
+    bool CorrectFsPath(const UString &path, UString &result);
+    HRESULT CreateFolder(const UString &enteredName, UString &createdName);
+    HRESULT CreateFile(const UString &enteredName, UString &createdName);
+    HRESULT OnEndLabelEdit(UInt32 realIndex, const UString &enteredName);
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
@@ -481,6 +485,7 @@ class CPanel : public QObject {
 
   private:
     friend class CApp;
+    friend class CThreadFolderOperations;
     QPointer<QWidget> _mainWindow;
     QPointer<QWidget> _parentWindow;
     std::function<bool(CPanel &)> _createPresentation;

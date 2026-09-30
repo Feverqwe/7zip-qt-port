@@ -149,17 +149,14 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(nestedRow >= 0);
         QCOMPARE(table(window)->item(nestedRow, 1)->text(), QFileInfo(nested).canonicalFilePath());
         table(window)->selectRow(nestedRow);
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget);
-                    dialog && dialog->isVisible()) {
-                    dialog->setTextValue(QStringLiteral("новое имя.txt"));
-                    dialog->accept();
-                }
-            }
-        });
+        window.show();
+        QCoreApplication::processEvents();
         action(window, "renameAction")->trigger();
-        QVERIFY(QFileInfo::exists(QDir(folder).filePath(QStringLiteral("новое имя.txt"))));
+        auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
+        QVERIFY(editor);
+        editor->setText(QStringLiteral("новое имя.txt"));
+        QTest::keyClick(editor, Qt::Key_Return);
+        QTRY_VERIFY(QFileInfo::exists(QDir(folder).filePath(QStringLiteral("новое имя.txt"))));
         QVERIFY(!QFileInfo::exists(nested));
         QTRY_COMPARE(table(window)->rowCount(), 2);
         openListedArchive(window, backend, temp.filePath("other.7z"),

@@ -147,6 +147,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/LangUtils.h src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
     "${resource_strings_header}"
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
+    src/CPP/7zip/UI/FileManager/PanelOperations.cpp
     src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h
     src/qtlistview.cpp src/qtlistview.h
     src/CPP/7zip/UI/FileManager/AppState.h

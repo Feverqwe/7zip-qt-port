@@ -6,6 +6,11 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
   private slots:
+    void initTestCase() {
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.clear();
+    }
+
     void numericNameSortMatchesFileManager() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -93,19 +98,21 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         });
         action(window, "createFileAction")->trigger();
         QVERIFY(!QFileInfo::exists(temp.filePath("cancelled.txt")));
+        QTimer warningTimer;
+        connect(&warningTimer, &QTimer::timeout, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+        });
+        warningTimer.start(1);
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("comboDialog");
             QVERIFY(dialog);
             dialog->findChild<QComboBox *>("comboValue")->setEditText(name);
             dialog->accept();
-            QTimer::singleShot(0, [] {
-                for (QWidget *widget : QApplication::topLevelWidgets()) {
-                    if (auto *box = qobject_cast<QMessageBox *>(widget))
-                        box->accept();
-                }
-            });
         });
         action(window, "createFileAction")->trigger();
+        warningTimer.stop();
         QFile existing(temp.filePath(name));
         QVERIFY(existing.open(QIODevice::ReadOnly));
         QCOMPARE(existing.readAll(), QByteArray("protected"));

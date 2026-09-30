@@ -8,6 +8,39 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-03.1 — filesystem CreateFolder/CreateFile/inline Rename (2026-09-30)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/PanelOperations.cpp::CThreadFolderOperations`,
+`IsCorrectFsName`, `CPanel::CorrectFsPath`, `CreateFolder`, `CreateFile`,
+`OnEndLabelEdit`, `RenameFile`; `BrowseDialog.cpp::CorrectFsPath`; already
+accepted `FSFolder.cpp::CFSFolder::CreateFolder/CreateFile/Rename` and
+`ComboDialog.cpp`.
+
+The mirrored `PanelOperations.cpp` copies source operation enum, worker dispatch,
+`CUpdateCallback100Imp` lifecycle, name validation and source path correction.
+The `CREATE_FILE` worker branch is a local adaptation: upstream calls
+`IFolderOperations::CreateFile` directly, while this Qt port keeps filesystem
+mutations on the source progress thread. Source `OnEndLabelEdit` label control,
+real-index/selection/reload sequence is adapted to `QTableWidget`: F2 begins
+inline editing in all four view modes, Qt commits on Enter and cancels on Escape,
+and `MainWindow`
+reloads and selects the resulting path. `CreateFolder`/`CreateFile` use the
+ported `ComboDialog` presentation. The path name is passed to source
+`IFolderOperations`; creation of nested directories and existing-parent file
+paths comes from the original FSFolder body. The Windows `CorrectFsPath` loop
+is copied from BrowseDialog, and its POSIX passthrough branch is retained.
+Qt replaces Win32 list control, HWND, messages and presentation state;
+`CheckBeforeUpdate`, source symbols and module boundaries remain. Required
+`clang-format` changed formatting, not functional bodies.
+
+This is a partial `PanelOperations.cpp` port: `DeleteItems`, recycle-bin shell
+path and confirmation, archive changes and `ChangeComment` remain P1-03.2/
+P1-04. No source label-edit control or Windows shell recycle implementation
+is claimed on macOS/Linux. A directly selected symlink remains rejected by
+the existing Qt command policy; Windows and Linux runtime and rendered
+Windows inline appearance remain unverified.
+
 ## P0-03 — integrated command policy/dispatch (accepted, 2026-09-29)
 
 Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

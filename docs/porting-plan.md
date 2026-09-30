@@ -483,6 +483,18 @@ occupied target, cancel между copy и delete, частично выполн
 read-only/permissions, корзина vs permanent delete и partial failure проверены.
 Archive mutation ветки передаются owner P1-04, не пишут `7zz` syntax в panel.
 
+Крупные результаты: P1-03.1 переносит цельный filesystem Create/Rename
+с `PanelOperations.cpp` и `BrowseDialog.cpp::CorrectFsPath`, исходным
+`IFolderOperations`, inline F2, составным путём, сохранением выбора,
+ошибками/Cancel и нормальной/compact UX-проверкой. P1-03.2 переносит Delete и
+Shift+Delete, подтверждение по числу/типу, platform recycle adapter,
+постоянное удаление, частичный результат/отмену и завершает parent приёмку.
+Уже принятые FSFolder Create/Rename/Delete bodies и ComboDialog не копируются
+повторно; archive mutations остаются P1-04.
+P1-03.1 принят 2026-09-30: source CreateFolder/CreateFile/inline Rename во всех
+четырёх режимах списка, составные пути, ошибка занятого имени и отмена;
+`check.sh` 137/137 на macOS arm64. P1-03.2 остаётся обязательным.
+
 ### P1-04. Запись, Rename/Delete/CreateFolder и comment в архиве
 
 **После:** P0-03, P0-10, P0-11, P1-03. **Источники:** FM `PanelOperations.cpp::ChangeComment`,

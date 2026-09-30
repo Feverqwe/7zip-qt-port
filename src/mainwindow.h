@@ -229,6 +229,8 @@ class MainWindow : public QMainWindow {
     void deleteSelected();
     void startFileDelete(const QStringList &paths);
     void renameSelected();
+    void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
+                                const QString &name);
     void addSources(const QStringList &sources);
     QStringList selectedArchivePaths();
     QStringList selectedArchiveItemsPaths();
@@ -366,6 +368,10 @@ class MainWindow : public QMainWindow {
     QAction *move_ = nullptr;
     QAction *remove_ = nullptr;
     QAction *rename_ = nullptr;
+    QTableWidgetItem *renameEditingItem_ = nullptr;
+    QString renameOriginalPath_;
+    quint32 renameSourceIndex_ = 0;
+    bool renameActivationPending_ = false;
     QAction *split_ = nullptr;
     QAction *combine_ = nullptr;
     VolumeOperation *volumeOperation_ = nullptr;

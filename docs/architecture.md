@@ -135,6 +135,10 @@ Filesystem selected paths use source GetItemFullPath with the native folder's
 normalized prefix and OS conversion at the Qt boundary. Copy/Move/Delete/Rename,
 hash, split/combine, View/Edit and Create input share this owner. Native
 LoadFullPath supplies the prefix for current root/nested/address/parent consumers.
+Filesystem CreateFolder/CreateFile and inline Rename now call the mirrored
+PanelOperations.cpp worker and IFolderOperations; Qt owns only the combo editor,
+table editor, refresh and visible selection. BrowseDialog.cpp owns source path
+correction. Delete/recycle routing remains P1-03.2.
 Source IsItem_Folder owns single-file eligibility. ArchiveBackend retains all
 operation transport and temporary-file handling. Remaining filesystem consumers,
 complete external-open and command/navigation acceptance remain mandatory.

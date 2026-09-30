@@ -147,7 +147,9 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | --- | --- | --- | --- | --- |
 | [ ] | P1-01 | Routing F5/F6 между panels/disk/archive | P0-08, P0-11, P0-12, P1-04 | todo |
 | [ ] | P1-02 | Cross-volume move и полные FSFolderCopy branches | P1-01 | todo |
-| [ ] | P1-03 | Inline Rename/Create/Delete/корзина | P0-03, P0-10, P0-11 | todo |
+| [ ] | P1-03 | Inline Rename/Create/Delete/корзина | P0-03, P0-10, P0-11 | todo — два интегрированных результата .1/.2, ранее перенесённые FSFolder/ComboDialog bodies остаются evidence |
+| [x] | P1-03.1 | Целый filesystem CreateFolder/CreateFile/inline Rename: исходные PanelOperations/BrowseDialog path/name/selection/refresh bodies, текущие Qt consumers, составные пути, success/failure/Cancel и normal/compact UX | P0-03, P0-10, P0-11; FSFolder и ComboDialog source prerequisites уже приняты | done — audit § P1-03.1; macOS arm64 2026-09-30; focused `ui_operations`/`combo_dialog`/`native_fs_operations`/`panel_selected_state` и `flat_view`/`ui_state` прошли, `check.sh` 137/137; Windows/Linux/rendered Windows reference не проверены |
+| [ ] | P1-03.2 | Целый Delete/Shift+Delete: исходное подтверждение и worker lifecycle, platform recycle adapter, permanent-delete/partial/cancel/symlink guards, выбор и parent P1-03 acceptance | P1-03.1; archive mutations P1-04 отдельно | todo |
 | [ ] | P1-04 | Archive mutations, encrypted writes и comments по capabilities | P0-03, P0-10, P0-11, P1-03 | todo |
 | [ ] | P1-05 | Update/path modes и полное Add workflow | P1-04 | todo |
 | [ ] | P1-06 | Архивные тома create/open/test/extract | P1-05 | todo |

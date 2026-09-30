@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 
 #include <QHeaderView>
+#include <QKeyEvent>
 #include <QMimeData>
 #include <QPainter>
 #include <QStyledItemDelegate>
@@ -12,9 +13,20 @@ namespace {
 class FileRowDelegate final : public QStyledItemDelegate {
   public:
     using QStyledItemDelegate::QStyledItemDelegate;
+    bool eventFilter(QObject *editor, QEvent *event) override {
+        if (event->type() == QEvent::KeyPress) {
+            const auto *key = static_cast<QKeyEvent *>(event);
+            if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+                emit commitData(static_cast<QWidget *>(editor));
+                emit closeEditor(static_cast<QWidget *>(editor));
+                return true;
+            }
+        }
+        return QStyledItemDelegate::eventFilter(editor, event);
+    }
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override {
-        auto *table = static_cast<const FileTable *>(parent());
+        auto *table = dynamic_cast<const FileTable *>(parent());
         if (!table || table->fullRowHighlight() || index.column() == 0) {
             QStyledItemDelegate::paint(painter, option, index);
             return;
@@ -28,8 +40,12 @@ class FileRowDelegate final : public QStyledItemDelegate {
 };
 } // namespace
 
+QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent) {
+    return new FileRowDelegate(parent);
+}
+
 FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows, columns, parent) {
-    setItemDelegate(new FileRowDelegate(this));
+    setItemDelegate(CreateFileRowDelegate(this));
 }
 
 void FileTable::setFullRowHighlight(bool enabled) {

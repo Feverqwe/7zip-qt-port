@@ -225,18 +225,48 @@ void MainWindow::renameSelected() {
     const QStringList paths = selectedFilesystemPaths();
     if (paths.size() != 1)
         return;
-    const QFileInfo source(paths.first());
-    bool accepted = false;
-    const QString name = QInputDialog::getText(
-        this, "Переименовать", "Новое имя:", QLineEdit::Normal, source.fileName(), &accepted);
-    if (!accepted)
+    if (QFileInfo(paths.first()).isSymLink())
         return;
-    const QString target = QDir(source.absolutePath()).filePath(name);
-    NFsFolder::CFSFolder folder(directory_);
-    folder.AddPath(paths.first());
-    if (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-        name.contains('\\') || source.isSymLink() || QFileInfo::exists(target) ||
-        !folder.Rename(0, name))
+    const auto indices = sourceOperatedIndices();
+    if (indices.Size() != 1)
+        return;
+    int row = -1;
+    for (int i = 0; i < table_->rowCount(); ++i)
+        if (table_->item(i, 0) &&
+            table_->item(i, 0)->data(Qt::UserRole + 6).toUInt() == indices[0]) {
+            row = i;
+            break;
+        }
+    if (row < 0)
+        return;
+    auto *item = table_->item(row, 0);
+    if (!item || item->data(Qt::UserRole + 6).isNull())
+        return;
+    renameEditingItem_ = item;
+    renameOriginalPath_ = paths.first();
+    renameSourceIndex_ = item->data(Qt::UserRole + 6).toUInt();
+    renameActivationPending_ = true;
+    if (viewStack_->currentWidget() == iconList_) {
+        const QModelIndex modelIndex = table_->model()->index(row, 0);
+        iconList_->scrollTo(modelIndex);
+        iconList_->edit(modelIndex);
+    } else {
+        table_->scrollToItem(item);
+        table_->editItem(item);
+    }
+}
+
+void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
+                                        const QString &name) {
+    if (state_ != State::Filesystem ||
+        (QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_))
+        return;
+    const HRESULT result = app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
+    if (result != S_OK && result != E_ABORT)
         QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось переименовать объект.");
     showDirectory(directory_, false);
+    if (result == S_OK)
+        selectPaths({QDir(QFileInfo(originalPath).absolutePath()).filePath(name)});
+    else
+        selectPaths({originalPath});
 }

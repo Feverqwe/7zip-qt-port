@@ -633,6 +633,16 @@ The Copy/Move dialog layout test checks the editable destination history, folder
 
 `file_transfer` checks filesystem F5/F6 worker behavior with nested Unicode paths, occupied destinations, a destination inside the source, and cancellation cleanup. It also checks Yes/No/All/AutoRename/Cancel, directory replacement/skip, byte progress and rollback after a later conflict. `ui_operations` waits for F5/F6 completion and checks that commands are disabled while the transfer runs. `extract_prompt` writes normal/compact JSON for file and directory overwrite wording and checks unclipped controls. These checks run locally on macOS; Windows and Linux remain for CI.
 
+P1-03.1: `ui_operations` invokes the source `CPanel` filesystem CreateFolder/
+CreateFile/inline Rename workflow. It checks a nested Unicode/space folder,
+file creation under existing parents, an occupied filename, combo cancellation,
+Enter commit and Escape cancellation, including a forged table path and
+flat nested rename. Escape is checked in all four list modes at 700/400 px. The
+`combo_dialog` geometry contract covers both Create dialogs at 360/260 px;
+`native_fs_operations` covers occupied CreateFile/Rename and IFolderOperations
+failures. Windows/Linux interaction and rendered 7zFM inline pixels remain
+unverified locally.
+
 `extraction_options` additionally exercises Ask against real `.7z` and `.zip` archives: individual No/Yes/AutoRename, Yes/No for all, selected no-path extraction, cancellation at the prompt, an unavailable prompt consumer, and encrypted passes after wrong-password retry. `ui_operations` opens a real archive and checks root FullPaths/Ask through the native panel/agent callback: Yes, selected No, AutoRename and Cancel, original bytes and no preflight overwrite signal. These tests do not prove immunity to external destination changes after validation, and direct writes can leave partial output on failure or cancellation.
 The same UI suite checks root NoPaths/Ask with a selected ZIP folder and Unicode file: flattened bytes, a source overwrite prompt and absence of preflight. The source callback preserves an explicit directory entry as an empty folder; this differs from the earlier `7zz e` transport. Encrypted and nested selections continue to use the validated backend transport until their source adapters are complete.
 

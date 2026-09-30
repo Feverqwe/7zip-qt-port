@@ -119,6 +119,27 @@ void MainWindow::createFileTable(QWidget *central) {
     tableHover_ = new QtFileListHover(*table_);
     tableHover_->SetEnabled(fileListSettings_.SingleClick);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    connect(table_, &QTableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
+        if (item != renameEditingItem_ || state_ != State::Filesystem)
+            return;
+        const QString name = item->text();
+        const QString path = renameOriginalPath_;
+        const quint32 sourceIndex = renameSourceIndex_;
+        renameEditingItem_ = nullptr;
+        renameOriginalPath_.clear();
+        if (name == QFileInfo(path).fileName())
+            return;
+        QTimer::singleShot(0, this, [this, sourceIndex, path, name] {
+            finishFilesystemRename(sourceIndex, path, name);
+            renameActivationPending_ = false;
+        });
+    });
+    connect(table_->itemDelegate(), &QAbstractItemDelegate::closeEditor, this,
+            [this](QWidget *, QAbstractItemDelegate::EndEditHint) {
+                renameEditingItem_ = nullptr;
+                renameOriginalPath_.clear();
+                QTimer::singleShot(0, this, [this] { renameActivationPending_ = false; });
+            });
     table_->setSortingEnabled(true);
     table_->setDragEnabled(true);
     table_->setAcceptDrops(true);
@@ -356,6 +377,7 @@ void MainWindow::createIconList(QWidget *central) {
     iconList_->setObjectName("iconList");
     iconList_->setAccessibleName(QStringLiteral("Список файлов"));
     iconList_->setModel(table_->model());
+    iconList_->setItemDelegate(CreateFileRowDelegate(iconList_));
     iconList_->setModelColumn(0);
     iconList_->setSelectionModel(table_->selectionModel());
     iconList_->setSelectionMode(fileListSettings_.AlternativeSelection
@@ -365,6 +387,12 @@ void MainWindow::createIconList(QWidget *central) {
     iconHover_ = new QtFileListHover(*iconList_);
     iconHover_->SetEnabled(fileListSettings_.SingleClick);
     iconList_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    connect(iconList_->itemDelegate(), &QAbstractItemDelegate::closeEditor, this,
+            [this](QWidget *, QAbstractItemDelegate::EndEditHint) {
+                renameEditingItem_ = nullptr;
+                renameOriginalPath_.clear();
+                QTimer::singleShot(0, this, [this] { renameActivationPending_ = false; });
+            });
     iconList_->setUniformItemSizes(true);
     iconList_->setWordWrap(false);
     iconList_->setDragEnabled(true);

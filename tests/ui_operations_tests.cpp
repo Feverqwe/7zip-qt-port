@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "window_state_support.h"
@@ -7,6 +8,84 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     Q_OBJECT
 
   private slots:
+    void sourceFilesystemCreateAndInlineRename() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        window.show();
+        QCoreApplication::processEvents();
+
+        const auto answer = [&window](const char *actionName, const QString &name, bool accept) {
+            QTimer::singleShot(0, &window, [&window, name, accept] {
+                auto *dialog = window.findChild<CComboDialog *>("comboDialog");
+                QVERIFY(dialog);
+                if (accept) {
+                    dialog->findChild<QComboBox *>("comboValue")->setCurrentText(name);
+                    dialog->accept();
+                } else
+                    dialog->reject();
+            });
+            action(window, actionName)->trigger();
+        };
+        answer("createFolderAction", QStringLiteral("папка с пробелом/child"), true);
+        QVERIFY(QDir(temp.filePath(QStringLiteral("папка с пробелом/child"))).exists());
+        answer("createFileAction", QStringLiteral("папка с пробелом/child/файл.txt"), true);
+        QVERIFY(
+            QFileInfo::exists(temp.filePath(QStringLiteral("папка с пробелом/child/файл.txt"))));
+        QTimer warningTimer;
+        connect(&warningTimer, &QTimer::timeout, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->accept();
+        });
+        warningTimer.start(1);
+        answer("createFileAction", QStringLiteral("папка с пробелом/child/файл.txt"), true);
+        warningTimer.stop();
+        QVERIFY(
+            QFileInfo::exists(temp.filePath(QStringLiteral("папка с пробелом/child/файл.txt"))));
+        answer("createFolderAction", QStringLiteral("отмена"), false);
+        QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("отмена"))));
+    }
+
+    void inlineRenameCancel_data() {
+        QTest::addColumn<int>("mode");
+        QTest::addColumn<int>("width");
+        for (int width : {700, 400})
+            for (int mode = 0; mode < 4; ++mode)
+                QTest::newRow(qPrintable(QStringLiteral("mode-%1-width-%2").arg(mode).arg(width)))
+                    << mode << width;
+    }
+
+    void inlineRenameCancel() {
+        QFETCH(int, mode);
+        QFETCH(int, width);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString path = temp.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(QDir(temp.path()).mkdir(QStringLiteral("папка с пробелом")));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        window.resize(width, 380);
+        window.show();
+        QCoreApplication::processEvents();
+        action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("папка с пробелом")));
+        action(window, "renameAction")->trigger();
+        auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
+        QVERIFY(editor);
+        editor->setText(QStringLiteral("переименовано"));
+        QTest::keyClick(editor, Qt::Key_Escape);
+        QVERIFY(QDir(path).exists());
+        QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("переименовано"))));
+    }
+
     void stage7FilesystemCommands() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -155,20 +234,18 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(QFileInfo::exists(source));
         QVERIFY(QFileInfo::exists(copied));
 
+        window.show();
+        QCoreApplication::processEvents();
         const int copiedRow = filesystemRow(window, QStringLiteral("имя с пробелом.txt"));
         table(window)->selectRow(copiedRow);
         table(window)->item(copiedRow, 1)->setText(temp.filePath("forged-rename.txt"));
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets()) {
-                if (auto *dialog = qobject_cast<QInputDialog *>(widget)) {
-                    dialog->setTextValue(QStringLiteral("новое имя.txt"));
-                    dialog->accept();
-                }
-            }
-        });
         action(window, "renameAction")->trigger();
+        auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
+        QVERIFY(editor);
+        editor->setText(QStringLiteral("новое имя.txt"));
+        QTest::keyClick(editor, Qt::Key_Return);
         const QString renamed = temp.filePath(QStringLiteral("новое имя.txt"));
-        QVERIFY(QFileInfo::exists(renamed));
+        QTRY_VERIFY(QFileInfo::exists(renamed));
         QVERIFY(!QFileInfo::exists(source));
 
         table(window)->selectRow(filesystemRow(window, QStringLiteral("новое имя.txt")));

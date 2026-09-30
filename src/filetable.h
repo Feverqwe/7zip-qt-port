@@ -5,6 +5,7 @@
 #include <QTableWidget>
 #include <QVector>
 class CPanel;
+QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent);
 
 class FileTable : public QTableWidget {
   public:
