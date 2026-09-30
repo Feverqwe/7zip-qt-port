@@ -82,7 +82,8 @@ class ArchiveBackend : public QObject {
     enum class SourceMutation { Delete, Rename, CreateFolder };
     virtual void updateSourceMutation(const QString &archive, const QString &output,
                                       const QString &format, SourceMutation operation,
-                                      const QStringList &paths, const QString &sourceRoot);
+                                      const QStringList &paths, const QString &sourceRoot,
+                                      const QString &password = {});
     // Binary stdout is isolated from progress/password/error text. Native
     // callbacks own the final output stream and filesystem presentation.
     virtual void extractSourceEntry(const QString &archive, const QString &entry,

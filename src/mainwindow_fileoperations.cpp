@@ -171,7 +171,7 @@ void MainWindow::transferSelected(bool move) {
 
 void MainWindow::deleteSelected(bool toRecycleBin) {
     if (state_ == State::Viewing) {
-        if (info_.encrypted || isNestedArchive() || !remove_->isEnabled())
+        if (isNestedArchive() || !remove_->isEnabled())
             return;
         CSelectedState selection;
         const HRESULT result =
@@ -202,7 +202,7 @@ void MainWindow::renameSelected() {
     if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
     const bool archive = state_ == State::Viewing;
-    if (!rename_->isEnabled() || (archive && (info_.encrypted || isNestedArchive())))
+    if (!rename_->isEnabled() || (archive && isNestedArchive()))
         return;
     const QStringList paths = archive ? selectedArchiveItemsPaths() : selectedFilesystemPaths();
     if (paths.size() != 1)

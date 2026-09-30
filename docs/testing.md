@@ -970,3 +970,10 @@ Delete/Rename/CreateFolder в реальных ZIP/7z, отдельный output
 проверяет F7 → F2 inline → Delete с отказом/подтверждением и восстановление
 списка; `archive_selection_runtime` проверяет flat basename редактора и
 отмену. Эти наборы используют временные файлы, не пользовательские архивы.
+
+P1-04.2: `source_update_backend` проверяет реальные защищённые 7z (header
+encryption) и ZIP AES для CreateFolder/Rename/Delete: верный/неверный пароль,
+сохранность bytes и mtime, отмену и побайтово исходный архив при ошибке.
+`ui_operations` проходит F7, F2 и Delete в защищённом 7z и считает запросы
+пароля: один при открытии, без повторов после операций. Прямое сравнение
+rendered Windows диалога и runtime Windows/Linux остаются открытыми.

@@ -76,6 +76,12 @@ HRESULT CThreadFolderOperations::DoOperation(CPanel &panel, const UString &progr
     Sync.FinalMessage.ErrorMessage.Title = titleError;
     UpdateCallbackSpec->Init();
 
+    if (!panel.GetParentFolders().IsEmpty()) {
+        const CFolderLink &folderLink = panel.GetParentFolders().Back();
+        UpdateCallbackSpec->PasswordIsDefined = folderLink.UsePassword;
+        UpdateCallbackSpec->Password = folderLink.Password;
+    }
+
     MainWindow = panel.GetParent();
     MainTitle = "7-Zip";
     MainAddTitle = progressTitle + L' ';

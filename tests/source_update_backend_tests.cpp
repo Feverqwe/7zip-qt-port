@@ -135,6 +135,10 @@ class CNativeMutationWorker final : public CProgressThreadVirt {
         CMyComPtr2_Create<IFolderArchiveUpdateCallback, CUpdateCallback100Imp> ui;
         ui->ProgressDialog = this;
         ui->Init();
+        if (!Password.isEmpty()) {
+            ui->PasswordIsDefined = true;
+            ui->Password = ToUString(Password);
+        }
         const UInt32 selected = 0;
         switch (Operation) {
         case ArchiveBackend::SourceMutation::Delete:
@@ -150,6 +154,7 @@ class CNativeMutationWorker final : public CProgressThreadVirt {
   public:
     ArchiveBackend::SourceMutation Operation = ArchiveBackend::SourceMutation::Delete;
     bool RootFolder = false;
+    QString Password;
     CNativeMutationWorker(ArchiveBackend &backend, const QString &archive, const QString &format)
         : _resourceSpec(new QtArchiveFileResource(archive)), _format(format) {
         _resource = _resourceSpec;
@@ -550,6 +555,92 @@ class SourceUpdateBackendTests final : public QObject {
         QCOMPARE(started.size(), 1);
         QCOMPARE(readFile(archive), original);
         QVERIFY(!backend.busy());
+    }
+    void encryptedSourceMutationPreservesProtection_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<int>("operation");
+        for (const QString &format : {QStringLiteral("zip"), QStringLiteral("7z")})
+            for (int kind = 0; kind < 3; ++kind)
+                QTest::newRow(qPrintable(format + QString::number(kind))) << format << kind;
+    }
+    void encryptedSourceMutationPreservesProtection() {
+        QFETCH(QString, format);
+        QFETCH(int, operation);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("protected." + format);
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), "protected payload"));
+        QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
+        const QDateTime originalTime = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        QFile keep(QDir(root).filePath("keep.bin"));
+        QVERIFY(keep.open(QIODevice::ReadWrite));
+        QVERIFY(keep.setFileTime(originalTime, QFileDevice::FileModificationTime));
+        keep.close();
+        QStringList args = {"a", "-t" + format, "-pfixture123"};
+        args << (format == "7z" ? "-mhe=on" : "-mem=AES256") << "--" << archive << entry
+             << "keep.bin";
+        QVERIFY(runEngine(root, args));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeMutationWorker worker(backend, archive, format);
+        worker.Password = "fixture123";
+        worker.Operation = ArchiveBackend::SourceMutation(operation);
+        auto transport = worker.CreateProgressTransport();
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Protected source mutation", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QVERIFY(!backend.busy());
+        QVERIFY(!runEngine(fixture.path(), {"t", "-pwrong", "--", archive}));
+        QVERIFY(runEngine(fixture.path(), {"t", "-pfixture123", "--", archive}));
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(),
+                          {"x", "-y", "-pfixture123", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.bin")), QByteArray("keep"));
+        QCOMPARE(QFileInfo(QDir(extracted).filePath("keep.bin")).lastModified().toSecsSinceEpoch(),
+                 originalTime.toSecsSinceEpoch());
+        if (operation == 0)
+            QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+        else if (operation == 1) {
+            QVERIFY(!QFile::exists(QDir(extracted).filePath(entry)));
+            QCOMPARE(readFile(QDir(extracted).filePath("inside/новое имя.bin")),
+                     QByteArray("protected payload"));
+        } else {
+            QCOMPARE(readFile(QDir(extracted).filePath(entry)), QByteArray("protected payload"));
+            QVERIFY(QFileInfo(QDir(extracted).filePath("inside/новая папка")).isDir());
+        }
+    }
+    void wrongPasswordAndCancellationKeepProtectedArchive() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("protected.7z");
+        const QString entry = QStringLiteral("inside/имя с пробелом.bin");
+        QVERIFY(writeFile(QDir(root).filePath(entry), QByteArray(4 * 1024 * 1024, 'x')));
+        QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
+        QVERIFY(runEngine(
+            root, {"a", "-t7z", "-pfixture123", "-mhe=on", "--", archive, entry, "keep.bin"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeMutationWorker wrong(backend, archive, "7z");
+        wrong.DisableUserQuestions = true;
+        wrong.Password = "wrong";
+        wrong.Operation = ArchiveBackend::SourceMutation::Delete;
+        auto wrongTransport = wrong.CreateProgressTransport();
+        QVERIFY(wrongTransport);
+        QCOMPARE(wrong.Create(L"Wrong protected password", nullptr), S_OK);
+        QVERIFY(wrong.Result != S_OK);
+        QCOMPARE(readFile(archive), original);
+        CNativeMutationWorker cancelled(backend, archive, "7z");
+        cancelled.Password = "fixture123";
+        cancelled.Operation = ArchiveBackend::SourceMutation::Delete;
+        auto cancelTransport = cancelled.CreateProgressTransport();
+        QVERIFY(cancelTransport);
+        connect(&backend, &ArchiveBackend::engineStarted, &backend,
+                [&cancelled] { cancelled.Sync.Set_Stopped(true); });
+        QCOMPARE(cancelled.Create(L"Cancel protected mutation", nullptr), S_OK);
+        QCOMPARE(cancelled.Result, E_ABORT);
+        QCOMPARE(readFile(archive), original);
     }
     void cancellationAndFailedStartPreserveOriginal() {
         QTemporaryDir fixture;

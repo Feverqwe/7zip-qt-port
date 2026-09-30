@@ -273,11 +273,12 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
     } else {
         RINOK(RunArchiveBackendRequest(
             backend,
-            [&backend, archive, result, format, mutation, sourceRoot] {
+            [&backend, archive, result, format, mutation, sourceRoot, password] {
                 backend.updateSourceMutation(
                     archive, result, format, mutation.Operation, mutation.Paths,
                     mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder ? sourceRoot
-                                                                                       : QString());
+                                                                                       : QString(),
+                    password);
             },
             callback, sync))
     }

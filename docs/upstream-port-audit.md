@@ -6084,3 +6084,26 @@ capabilities остаются открытыми P1-04.2/.3, P1-05/P1-09. Это
 порт файлов AgentOut/ArchiveFolderOut; зеркальные имена не означают
 готовность остальных функций. Original notices сохранены, лицензия:
 `third_party/7zip/License.txt`.
+
+## P1-04.2 — пароль при source archive mutation (2026-09-30)
+
+Точная база: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/PanelOperations.cpp::CThreadFolderOperations::DoOperation`:
+возвращены исходные строки наследования `UsePassword`/`Password` из
+`_parentFolders.Back()` после `CUpdateCallback100Imp::Init`. Остальные
+исходные тела `CAgentFolder::CommonUpdateOperation` и
+`CUpdateCallback100Imp::CryptoGetTextPassword2` сохраняются от P1-04.1.
+Отклонение — `GetParentFolders()` вместо прямого доступа к частному полю Qt
+панели; clang-format меняет оформление.
+
+Новый file-only adapter передаёт пароль из `ICryptoGetTextPassword2` в
+`ArchiveBackend::updateSourceMutation` и stdin 7zz. При повторном открытии
+оригинальный `COpenCallbackImp::ReOpenCallback` несёт update callback;
+`QtArchiveFileResource` извлекает из него уже определённый пароль до
+`openFolder`, сохраняя исходный порядок publish → ReOpen. Если пароль не
+определён, прежний callback-путь запрашивает его. Win32/in-process 7-Zip
+writer здесь заменён внешним file-only сервисом; 7z header encryption и ZIP
+AES поддержаны 7zz, новый пустой ZIP folder entry сам по себе не содержит
+шифруемых данных. Add/Edit/Move, nested updates и comment/SetProperty этим
+частичным портом не покрыты. Source notices и лицензия сохранены в
+`third_party/7zip/License.txt`.

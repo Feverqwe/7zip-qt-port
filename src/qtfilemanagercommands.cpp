@@ -160,8 +160,9 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.root = panel.GetFolder() && panel.IsRootFolder();
     c.archive = panel.GetFolder() && panel.IsArcFolder();
     c.nested = w.isNestedArchive();
-    c.writable = c.archive && !panel.IsThereReadOnlyFolder() &&
-                 ArchiveFormats::canModify(w.archive_) && !w.info_.encrypted && !c.nested;
+    c.mutationWritable = c.archive && !panel.IsThereReadOnlyFolder() &&
+                         ArchiveFormats::canModify(w.archive_) && !c.nested;
+    c.writable = c.mutationWritable && !w.info_.encrypted;
     c.entries = !w.entries_.isEmpty();
     c.rows = w.table_->rowCount() > 0;
     c.foldersHistory = w.pathCombo_->count() > 0;
@@ -243,12 +244,13 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_PROPERTIES:
         return c.selected && !c.root;
     case IDM_MOVE_TO:
-    case IDM_DELETE:
         return c.selected && (c.filesystem || c.writable);
+    case IDM_DELETE:
+        return c.selected && (c.filesystem || c.mutationWritable);
     case IDM_RENAME:
-        return c.one && c.selected && (c.filesystem || c.writable);
+        return c.one && c.selected && (c.filesystem || c.mutationWritable);
     case IDM_CREATE_FOLDER:
-        return c.filesystem || c.writable;
+        return c.filesystem || c.mutationWritable;
     case IDM_CREATE_FILE:
         return c.filesystem;
     case IDM_SPLIT:

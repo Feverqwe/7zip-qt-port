@@ -530,6 +530,12 @@ writer capability формата/handler; если внешний `7zz` не п�
 результат остаётся открытым с точным prerequisite для in-process source writer.
 Archive Add/path modes и nested update остаются P1-05/P1-09.
 
+P1-04.1 завершён для незашифрованных верхних ZIP/7z. P1-04.2 завершён для
+защищённых верхних ZIP AES/7z: сохранённый пароль передаётся source update и
+native ReOpen без повторного запроса, проверены bytes/mtime, неверный пароль,
+отмена и сохранность исходного архива. Parent P1-04 остаётся открытым до
+P1-04.3 (comment/SetProperty capability); P1-05/P1-09 не объявлены готовыми.
+
 ### P1-05. Полные update/path modes Add to Archive
 
 **После:** P1-04. **Источники:** GUI `CompressDialog.cpp/.h/.rc`, `UpdateGUI.cpp`,

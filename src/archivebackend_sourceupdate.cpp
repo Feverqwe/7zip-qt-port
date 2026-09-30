@@ -53,7 +53,8 @@ void ArchiveBackend::updateSourceFile(const QString &archive, const QString &ent
 
 void ArchiveBackend::updateSourceMutation(const QString &archive, const QString &output,
                                           const QString &format, SourceMutation operation,
-                                          const QStringList &paths, const QString &sourceRoot) {
+                                          const QStringList &paths, const QString &sourceRoot,
+                                          const QString &password) {
     if (busy()) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
@@ -61,7 +62,7 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
     lastResult_ = E_FAIL;
     const QFileInfo input(archive);
     const QFileInfo result(output);
-    if (encrypted_ || (format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||
+    if ((format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||
         result.exists() || paths.isEmpty()) {
         emit finished(false, QStringLiteral("Недопустимый запрос на изменение архива."));
         return;
@@ -89,6 +90,7 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
         return;
     }
     createTemporary_ = result.absoluteFilePath();
+    pendingPassword_ = password;
     QStringList args;
     switch (operation) {
     case SourceMutation::Delete:

@@ -1064,6 +1064,73 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(archiveRow(QStringLiteral("новое имя.txt")) < 0);
         QVERIFY(archiveRow(QStringLiteral("новая папка")) >= 0);
     }
+    void encryptedArchiveMutationReusesSourcePassword() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("секретный файл.txt"));
+        const QString archive = temp.filePath("protected.7z");
+        const QString password = QStringLiteral("fixture-only-password");
+        QFile input(source);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("payload"), qint64(7));
+        input.close();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source}, password, true);
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        int passwordPrompts = 0;
+        QTimer passwordAnswer;
+        connect(&passwordAnswer, &QTimer::timeout, &window, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            if (!dialog || dialog->objectName() != "passwordDialog")
+                return;
+            ++passwordPrompts;
+            dialog->findChild<QLineEdit *>("passwordEdit")->setText(password);
+            dialog->accept();
+        });
+        passwordAnswer.start(1);
+        window.openArchive(archive);
+        window.show();
+        QCoreApplication::processEvents();
+        QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
+        QTimer::singleShot(0, &window, [&window] {
+            auto *dialog = window.findChild<CComboDialog *>("comboDialog");
+            QVERIFY(dialog);
+            dialog->findChild<QComboBox *>("comboValue")
+                ->setCurrentText(QStringLiteral("закрытая папка"));
+            dialog->accept();
+        });
+        action(window, "createFolderAction")->trigger();
+        const auto archiveRow = [&window](const QString &name) {
+            for (int row = 0; row < table(window)->rowCount(); ++row)
+                if (table(window)->item(row, 0)->text().normalized(QString::NormalizationForm_C) ==
+                    name.normalized(QString::NormalizationForm_C))
+                    return row;
+            return -1;
+        };
+        QTRY_VERIFY(archiveRow(QStringLiteral("закрытая папка")) >= 0);
+        table(window)->selectRow(archiveRow(QStringLiteral("секретный файл.txt")));
+        QTRY_VERIFY(action(window, "renameAction")->isEnabled());
+        action(window, "renameAction")->trigger();
+        auto *editor = table(window)->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        editor->setFocus();
+        editor->setText(QStringLiteral("новый секрет.txt"));
+        QTest::keyClick(editor, Qt::Key_Return);
+        QTRY_VERIFY(archiveRow(QStringLiteral("новый секрет.txt")) >= 0);
+        table(window)->selectRow(archiveRow(QStringLiteral("новый секрет.txt")));
+        QTimer::singleShot(0, &window, [] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
+                    box->button(QMessageBox::Yes)->click();
+        });
+        action(window, "deleteAction")->trigger();
+        QTRY_VERIFY(archiveRow(QStringLiteral("новый секрет.txt")) < 0);
+        QCOMPARE(passwordPrompts, 1);
+        passwordAnswer.stop();
+    }
     void addToOpenArchiveState() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

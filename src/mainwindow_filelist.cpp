@@ -286,7 +286,7 @@ void MainWindow::createFolder() {
     if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
     const bool archive = state_ == State::Viewing;
-    if (archive && (info_.encrypted || isNestedArchive() || !createFolder_->isEnabled()))
+    if (archive && (isNestedArchive() || !createFolder_->isEnabled()))
         return;
     QString name;
     if (!Dlg_CreateFolder(this, name))

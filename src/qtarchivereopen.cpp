@@ -1,6 +1,7 @@
 // Reopen the file-only engine metadata without creating another archive owner.
 #include "qtarchivereopen.h"
 #include "7zip/Archive/IArchive.h"
+#include "7zip/IPassword.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
@@ -102,9 +103,30 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             &backend, &ArchiveBackend::entriesReady, &backend,
             [request](const QList<ArchiveEntry> &value) { request->Entries = value; }));
         const QString path = EnginePath;
+        QString password;
+        CMyComPtr<ICryptoGetTextPassword2> crypto;
+        if (callback)
+            callback->QueryInterface(IID_ICryptoGetTextPassword2, (void **)&crypto);
+        if (!crypto) {
+            if (auto *open = dynamic_cast<COpenCallbackImp *>(callback);
+                open && open->ReOpenCallback)
+                open->ReOpenCallback->QueryInterface(IID_ICryptoGetTextPassword2, (void **)&crypto);
+        }
+        if (crypto) {
+            Int32 defined = 0;
+            CMyComBSTR value;
+            RINOK(crypto->CryptoGetTextPassword2(&defined, &value))
+            if (defined)
+                password = QString::fromWCharArray(value);
+        } else if (auto *open = dynamic_cast<COpenCallbackImp *>(callback)) {
+            if (auto *ui = dynamic_cast<COpenArchiveCallback *>(open->Callback);
+                ui && ui->PasswordIsDefined)
+                password = QString::fromWCharArray(ui->Password);
+        }
         RINOK(RunArchiveBackendRequest(
-            backend, [&backend, path, format] { backend.openFolder(path, format, {}); }, callback,
-            _sync))
+            backend,
+            [&backend, path, format, password] { backend.openFolder(path, format, password); },
+            callback, _sync))
         RINOK(CreateArchiveMetadata(request->Entries, metadata))
         Info = request->Info;
         SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);

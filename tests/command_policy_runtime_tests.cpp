@@ -37,7 +37,7 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("encrypted");
         QTest::newRow("reader-without-writer") << QStringLiteral("rar") << false;
-        QTest::newRow("encrypted-transport-limitation") << QStringLiteral("7z") << true;
+        QTest::newRow("encrypted-source-mutations") << QStringLiteral("7z") << true;
     }
     void typedReadOnlyAndEncryptedMetadataCannotBeBypassed() {
         QFETCH(QString, format);
@@ -57,13 +57,15 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         });
         window.openArchive(archive);
         table(window)->selectRow(0);
-        for (const char *name : {"moveAction", "deleteAction", "renameAction", "addArchiveAction",
-                                 "toolbarAddAction", "editFileAction"}) {
+        for (const char *name :
+             {"moveAction", "addArchiveAction", "toolbarAddAction", "editFileAction"}) {
             auto *command = action(window, name);
             QVERIFY(!command->isEnabled());
             command->setEnabled(true);
             command->trigger();
         }
+        for (const char *name : {"deleteAction", "renameAction", "createFolderAction"})
+            QCOMPARE(action(window, name)->isEnabled(), encrypted);
         QCOMPARE(backend.removeCalls, 0);
         QCOMPARE(backend.renameCalls, 0);
         QCOMPARE(backend.addCalls, 0);
