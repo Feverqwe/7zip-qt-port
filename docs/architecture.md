@@ -532,12 +532,20 @@ after each result. A test-only callback driver remains in `tests/`.
 wrapper that stages, publishes and rolls back targets. `CCopyState`,
 `CopyFolder` and `CopyFile_Ask` in `FSFolderCopy.cpp` own recursive copying;
 `CCopyStateIO::MyCopyFile` owns byte transfer. Progress callbacks have no widget
-dependency. Move uses rename and a separate link-validation traversal.
+dependency. Move tries rename and a separate link-validation traversal. When
+source-to-stage rename fails, the worker copies through source `CopyFolder`/
+`CopyFile_Ask` and defers source removal until every staged target is
+published. A narrow filesystem adapter supplies source rename and deletion
+steps for deterministic cross-volume tests. Cancellation before deletion rolls
+back staged targets; deletion failure after partial commit keeps published
+bytes and reports a partial result.
+
 An occupied target requests a source `NOverwriteAnswer` through a queued
 window callback; the worker waits on a condition and cancellation wakes it.
 The source `COverwriteDialog` maps native button IDs before answering. The
 transaction holds replaced files/directories as backups until all selected
-sources publish, and restores them on cancellation or failure. AutoRename
+sources publish, and restores them on precommit cancellation or failure.
+AutoRename
 uses the unchanged upstream `FilePathAutoRename` implementation. Current
 directory conflicts replace or skip the whole directory; source recursive
 merge remains a later filesystem port.

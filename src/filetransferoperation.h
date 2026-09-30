@@ -5,13 +5,18 @@
 #include <QThread>
 #include <QWaitCondition>
 #include <atomic>
+#include <functional>
 
 class FileTransferOperation : public QThread {
     Q_OBJECT
 
   public:
+    struct FileSystemAdapter {
+        std::function<bool(const QString &, const QString &)> trySourceRename;
+        std::function<bool(const QString &)> removeSource;
+    };
     FileTransferOperation(QStringList sources, QString destination, bool move,
-                          QObject *parent = nullptr);
+                          QObject *parent = nullptr, FileSystemAdapter adapter = {});
     void cancel();
     void submitOverwriteAnswer(int answer);
     bool isCanceled() const { return canceled_; }
@@ -29,12 +34,13 @@ class FileTransferOperation : public QThread {
   private:
     bool copyEntry(const QString &source, const QString &target, QString *error);
     bool validateEntry(const QString &source, QString *error);
-    static void removeEntry(const QString &path);
+    static bool removeEntry(const QString &path);
     int askOverwrite(const QString &existing, const QString &incoming);
 
     QStringList sources_;
     QString destination_;
     bool move_;
+    FileSystemAdapter adapter_;
     std::atomic_bool canceled_{false};
     QMutex overwriteMutex_;
     QWaitCondition overwriteCondition_;

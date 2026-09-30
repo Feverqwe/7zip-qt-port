@@ -10,9 +10,16 @@
 #include <QUuid>
 
 FileTransferOperation::FileTransferOperation(QStringList sources, QString destination, bool move,
-                                             QObject *parent)
+                                             QObject *parent, FileSystemAdapter adapter)
     : QThread(parent), sources_(std::move(sources)), destination_(std::move(destination)),
-      move_(move) {}
+      move_(move), adapter_(std::move(adapter)) {
+    if (!adapter_.trySourceRename)
+        adapter_.trySourceRename = [](const QString &source, const QString &stage) {
+            return QDir().rename(source, stage);
+        };
+    if (!adapter_.removeSource)
+        adapter_.removeSource = removeEntry;
+}
 
 void FileTransferOperation::cancel() {
     canceled_ = true;
@@ -44,11 +51,10 @@ int FileTransferOperation::askOverwrite(const QString &existing, const QString &
     return answer;
 }
 
-void FileTransferOperation::removeEntry(const QString &path) {
+bool FileTransferOperation::removeEntry(const QString &path) {
     if (QFileInfo(path).isDir())
-        QDir(path).removeRecursively();
-    else
-        QFile::remove(path);
+        return QDir(path).removeRecursively();
+    return QFile::remove(path);
 }
 
 bool FileTransferOperation::validateEntry(const QString &source, QString *error) {
@@ -99,6 +105,8 @@ void FileTransferOperation::run() {
         QString source;
         QString target;
         QString backup;
+        bool copiedMove = false;
+        bool sourceDeleted = false;
     };
     enum class OverwriteMode { Ask, Skip, Overwrite, Rename };
     OverwriteMode overwriteMode = OverwriteMode::Ask;
@@ -179,8 +187,9 @@ void FileTransferOperation::run() {
         QString backup;
         emit currentFile(sources_[i]);
         const bool valid = !move_ || validateEntry(source, &error);
-        const bool staged =
-            valid && (move_ ? QDir().rename(source, stage) : copyEntry(source, stage, &error));
+        const bool renamed = valid && move_ && adapter_.trySourceRename(source, stage);
+        const bool copiedMove = valid && move_ && !renamed;
+        const bool staged = valid && (renamed || copyEntry(source, stage, &error));
         if (!staged && error.isEmpty())
             error = QStringLiteral("Не удалось переместить объект: %1").arg(sources_[i]);
         if (error.isEmpty() && canceled_)
@@ -198,7 +207,7 @@ void FileTransferOperation::run() {
         if (error.isEmpty() && !QDir().rename(stage, target))
             error = QStringLiteral("Не удалось завершить перенос: %1").arg(target);
         if (!error.isEmpty()) {
-            if (move_ && staged)
+            if (renamed)
                 QDir().rename(stage, source);
             else
                 removeEntry(stage);
@@ -206,12 +215,12 @@ void FileTransferOperation::run() {
                 QDir().rename(backup, target);
             break;
         }
-        completed.append({source, target, backup});
+        completed.append({source, target, backup, copiedMove, move_ && !copiedMove});
     }
     if (!error.isEmpty()) {
         for (qsizetype i = completed.size(); i > 0; --i) {
             const Completed &entry = completed[i - 1];
-            if (move_)
+            if (move_ && !entry.copiedMove)
                 QDir().rename(entry.target, entry.source);
             else
                 removeEntry(entry.target);
@@ -219,11 +228,47 @@ void FileTransferOperation::run() {
                 QDir().rename(entry.backup, entry.target);
         }
         emit result(false, error);
+    } else if (move_) {
+        for (Completed &entry : completed) {
+            if (!entry.copiedMove)
+                continue;
+            if (canceled_) {
+                error = QStringLiteral("Операция отменена.");
+                break;
+            }
+            if (!adapter_.removeSource(entry.source)) {
+                // Recursive deletion can fail after removing some children.
+                // Retain the published copy so the remaining bytes stay available.
+                entry.sourceDeleted = true;
+                error = QStringLiteral("Не удалось удалить источник после копирования: %1")
+                            .arg(entry.source);
+                break;
+            }
+            entry.sourceDeleted = true;
+        }
+        if (!error.isEmpty()) {
+            for (qsizetype i = completed.size(); i > 0; --i) {
+                const Completed &entry = completed[i - 1];
+                if (entry.sourceDeleted) {
+                    if (!entry.backup.isEmpty())
+                        removeEntry(entry.backup);
+                    continue;
+                }
+                removeEntry(entry.target);
+                if (!entry.backup.isEmpty())
+                    QDir().rename(entry.backup, entry.target);
+            }
+            emit result(false, error + QStringLiteral(" Часть объектов могла быть перемещена."));
+            return;
+        }
+        for (const Completed &entry : completed)
+            if (!entry.backup.isEmpty())
+                removeEntry(entry.backup);
+        emit result(true, QStringLiteral("Объекты перемещены."));
     } else {
         for (const Completed &entry : completed)
             if (!entry.backup.isEmpty())
                 removeEntry(entry.backup);
-        emit result(true, move_ ? QStringLiteral("Объекты перемещены.")
-                                : QStringLiteral("Объекты скопированы."));
+        emit result(true, QStringLiteral("Объекты скопированы."));
     }
 }

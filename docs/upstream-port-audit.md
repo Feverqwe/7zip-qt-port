@@ -3262,3 +3262,35 @@ reference не проверены. Реальные ZIP/7z UI фикстуры �
 `panel_folder`, `copy_dialog`, прямой набор UI 10/10 и baseline verifier
 193 exact/136 adapted/3 local. Полный unsandboxed `./scripts/check.sh`
 прошёл 142/142 CTest на macOS arm64/Qt 6.11.2, 2026-10-01.
+
+## P1-02.1 — cross-volume F6 staged fallback (принято, 2026-10-01)
+
+База: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CopyFolder/CopyFile_Ask`,
+`CCopyStateIO::MyCopyFile`, `CCopyState::CallProgress` и исходная ветка
+`CopyFolder` «MoveFile_Sys, затем recursive copy/delete при отказе».
+Эти тела были частично перенесены ранее в зеркальный `FSFolderCopy.cpp`:
+recursive copy и чтение/запись уже используются `FileTransferOperation`.
+В этом результате добавлена необходимая cross-volume ветка в Qt transaction
+adapter, а не заявлен перенос ещё отсутствующих `CFSFolder::CopyTo` и
+`CCopyState::MoveFile_Sys`; они входят в P1-02.2.
+
+Причина адаптации: исходный MoveMode удаляет файлы при копировании, а текущий
+Qt worker публикует весь набор транзакционно и должен откатить его при ошибке
+до удаления. Поэтому F6 сначала пробует rename в stage; если файловая система
+отказывает (включая границу томов), тот же source `CopyFolder`/
+`CopyFile_Ask` копирует в stage без удаления. После публикации всех целей
+worker удаляет скопированные источники. Узкий `FileSystemAdapter` позволяет
+детерминированно вызвать отказ rename и отказ удаления без второго диска.
+До фазы удаления отмена и ошибка откатывают цели и сохраняют исходники.
+Если удаление уже началось и завершилось частично, worker оставляет
+опубликованные байты, сообщает неуспех и частичный результат; обещание
+полной атомарности было бы ложным. Исходные Windows MoveFileWithProgress,
+AskWrite per-entry callback, прямое имя цели и recursive merge не включены
+и остаются P1-02.2. Ссылки и полные метаданные — P2-05/P2-06.
+
+Тесты forced fallback с Unicode/пробелами, деревом, занятой целью,
+отменой и частичным удалением проходят в `file_transfer`; прямые disk-panel
+F5/F6 UI consumers проходят. Полный unsandboxed `./scripts/check.sh`
+прошёл 142/142 CTest на macOS arm64/Qt 6.11.2, 2026-10-01.
+Windows/Linux runtime и реальный второй том не проверены.

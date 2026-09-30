@@ -495,6 +495,14 @@ occupied target, cancel между copy и delete, частично выполн
 Тестировать fallback инъекцией файлового adapter и отдельно реальными томами
 на доступных ОС; не требовать второй физический диск для CTest.
 
+P1-02.1 принимает целый F6 cross-volume сценарий через уже перенесённые
+`FSFolderCopy.cpp::CopyFolder/CopyFile_Ask` и транзакционный Qt staging worker:
+инъекция отказа rename, публикация перед удалением, rollback до удаления и
+явный частичный результат при ошибке удаления. P1-02.2 завершает исходные
+`CFSFolder::CopyTo`, `CCopyState` move/callback bodies, прямое имя назначения,
+создание папки и recursive merge; parent закрывается только после обоих
+результатов. Shift+F5/F6 consumer принимается отдельно в P1-01.4.
+
 ### P1-03. Полные Create/Rename/Delete и корзина
 
 **После:** P0-03, P0-10, P0-11. **Источники:** FM `PanelOperations.cpp`,

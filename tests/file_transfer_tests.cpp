@@ -12,6 +12,126 @@ class FileTransferTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void crossVolumeMovePublishesBeforeDeletingSource() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkpath(QStringLiteral("вложенная папка")));
+        QVERIFY(QDir(temp.path()).mkdir(QStringLiteral("назначение")));
+        const QString file = temp.filePath(QStringLiteral("δ файл с пробелом.txt"));
+        const QString folder = temp.filePath(QStringLiteral("вложенная папка"));
+        QFile input(file);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("file bytes"), qint64(10));
+        input.close();
+        QFile nested(QDir(folder).filePath(QStringLiteral("внутри.txt")));
+        QVERIFY(nested.open(QIODevice::WriteOnly));
+        QCOMPARE(nested.write("nested bytes"), qint64(12));
+        nested.close();
+        FileTransferOperation::FileSystemAdapter adapter;
+        adapter.trySourceRename = [](const QString &, const QString &) { return false; };
+        const QString destination = temp.filePath(QStringLiteral("назначение"));
+        const QString occupied = QDir(destination).filePath(QFileInfo(file).fileName());
+        QFile previous(occupied);
+        QVERIFY(previous.open(QIODevice::WriteOnly));
+        QCOMPARE(previous.write("old bytes"), qint64(9));
+        previous.close();
+        FileTransferOperation move({file, folder}, destination, true, nullptr, adapter);
+        QSignalSpy overwrite(&move, &FileTransferOperation::overwriteRequested);
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        bool oldPreservedAtPrompt = false;
+        bool sourcePresentAtPrompt = false;
+        connect(
+            &move, &FileTransferOperation::overwriteRequested, &move,
+            [&move, file, occupied, &oldPreservedAtPrompt,
+             &sourcePresentAtPrompt](const QString &, const QString &) {
+                QFile old(occupied);
+                oldPreservedAtPrompt =
+                    old.open(QIODevice::ReadOnly) && old.readAll() == QByteArray("old bytes");
+                sourcePresentAtPrompt = QFileInfo::exists(file);
+                move.submitOverwriteAnswer(NOverwriteAnswer::kYes);
+            },
+            Qt::DirectConnection);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(result.first().first().toBool());
+        QCOMPARE(overwrite.size(), 1);
+        QVERIFY(oldPreservedAtPrompt);
+        QVERIFY(sourcePresentAtPrompt);
+        QVERIFY(!QFileInfo::exists(file));
+        QVERIFY(!QFileInfo::exists(folder));
+        QFile movedFile(QDir(destination).filePath(QFileInfo(file).fileName()));
+        QVERIFY(movedFile.open(QIODevice::ReadOnly));
+        QCOMPARE(movedFile.readAll(), QByteArray("file bytes"));
+        QFile movedNested(QDir(destination).filePath(QStringLiteral("вложенная папка/внутри.txt")));
+        QVERIFY(movedNested.open(QIODevice::ReadOnly));
+        QCOMPARE(movedNested.readAll(), QByteArray("nested bytes"));
+    }
+
+    void crossVolumeDeleteFailureReportsPartialMove() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        const QString first = temp.filePath("first.txt");
+        const QString second = temp.filePath("second.txt");
+        for (const QString &path : {first, second}) {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(path.toUtf8()), qint64(path.toUtf8().size()));
+        }
+        FileTransferOperation::FileSystemAdapter adapter;
+        adapter.trySourceRename = [](const QString &, const QString &) { return false; };
+        adapter.removeSource = [first](const QString &path) {
+            return path == first ? QFile::remove(path) : false;
+        };
+        const QString destination = temp.filePath("destination");
+        FileTransferOperation move({first, second}, destination, true, nullptr, adapter);
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        QVERIFY(result.first().at(1).toString().contains(QStringLiteral("Не удалось удалить")));
+        QVERIFY(!QFileInfo::exists(first));
+        QVERIFY(QFileInfo::exists(second));
+        for (const QString &path : {first, second}) {
+            QFile published(QDir(destination).filePath(QFileInfo(path).fileName()));
+            QVERIFY(published.open(QIODevice::ReadOnly));
+            QCOMPARE(published.readAll(), path.toUtf8());
+        }
+    }
+
+    void crossVolumeCancelBeforeDeleteRollsBackPublishedTargets() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        const QString first = temp.filePath("first.txt");
+        const QString second = temp.filePath("second.txt");
+        for (const QString &path : {first, second}) {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write("keep"), qint64(4));
+        }
+        FileTransferOperation *operation = nullptr;
+        FileTransferOperation::FileSystemAdapter adapter;
+        adapter.trySourceRename = [&operation, second](const QString &source, const QString &) {
+            if (source == second)
+                operation->cancel();
+            return false;
+        };
+        const QString destination = temp.filePath("destination");
+        FileTransferOperation move({first, second}, destination, true, nullptr, adapter);
+        operation = &move;
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        QVERIFY(QFileInfo::exists(first));
+        QVERIFY(QFileInfo::exists(second));
+        QCOMPARE(QDir(destination).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).size(), 0);
+    }
+
     void conflictAnswersPreserveAndReplace() {
         for (const int answer :
              {NOverwriteAnswer::kNo, NOverwriteAnswer::kYes, NOverwriteAnswer::kAutoRename}) {
