@@ -44,7 +44,7 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
         // Source GetStream can replace an existing file. Verify the password
         // before invoking that callback, as the 7zz file transport opens later.
         RINOK(RunArchiveBackendRequest(
-            backend, [&] { backend.test(archive, password); }, callback, sync))
+            backend, [&] { backend.testSourceArchive(archive, password); }, callback, sync))
     }
     UInt32 total;
     RINOK(metadata->GetNumberOfItems(&total))

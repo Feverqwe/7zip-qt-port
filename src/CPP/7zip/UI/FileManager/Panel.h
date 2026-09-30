@@ -458,6 +458,7 @@ class CPanel : public QObject {
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
+    UString GetItemName_for_Copy(unsigned index) const;
     UString GetItemRelPath(unsigned index) const;
     UString GetItemRelPath2(unsigned index) const;
     UString GetItemFullPath(unsigned index) const;

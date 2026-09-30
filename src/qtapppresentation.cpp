@@ -69,6 +69,20 @@ CPanelCallback *QtAppPresentation::PanelCallback(unsigned) {
     return nullptr;
 }
 
+QString QtAppPresentation::DefaultCopyDestination(unsigned) const {
+    return window_.copyDefaultDestination();
+}
+
+void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceIndex,
+                                    const QString &destination,
+                                    const CRecordVector<UInt32> &indices, bool useDestPanel,
+                                    bool useTemp) {
+    window_.executeCopyDestination(move, copyToSame, sourceIndex, destination, indices,
+                                   useDestPanel, useTemp);
+    if (window_.state_ != MainWindow::State::Operating && sourceIndex < kNumPanelsMax)
+        window_.app_.Panels[sourceIndex].SetFocusToList();
+}
+
 void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &settings) {
     if (index >= kNumPanelsMax)
         return;

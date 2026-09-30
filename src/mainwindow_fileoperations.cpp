@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 #include "qttrashservice.h"
+#include <QFile>
 #include <QScopedValueRollback>
 
 namespace {
@@ -28,16 +29,6 @@ NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
 }
 } // namespace
 
-QString MainWindow::selectedCopyInfo() {
-    CPanel &panel = app_.GetFocusedPanel();
-    CSelectedState selection;
-    // Synchronize Qt selection until the complete source OnNotify port is connected.
-    panel.SaveSelectedState(selection);
-    CRecordVector<UInt32> indices;
-    panel.Get_ItemIndices_OperSmart(indices);
-    panel.LoadFullPath();
-    return panel.GetItemsInfoString(indices);
-}
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move) {
     if (app_.QtOperations().closed())
         return;
@@ -114,45 +105,44 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                     refreshCurrent();
                     activatePanelUi(sourcePanel);
                 }
+                if (app_.GetFocusedPanelIndex() == sourcePanel)
+                    app_.Panels[sourcePanel].SetFocusToList();
             });
     setState(State::Operating);
     fileTransfer_->start();
 }
 
-void MainWindow::copySelected() {
-    if (state_ == State::Viewing) {
-        transferSelected(false);
+void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
+                                        const QString &destination,
+                                        const CRecordVector<UInt32> &indices, bool useDestPanel,
+                                        bool useTemp) {
+    if (sourceIndex != app_.GetFocusedPanelIndex() || indices.IsEmpty() ||
+        (state_ != State::Viewing && state_ != State::Filesystem))
+        return;
+    if (copyToSame) {
+        QMessageBox::warning(this, QStringLiteral("Копирование"),
+                             QStringLiteral("Копирование с новым именем пока недоступно."));
         return;
     }
-    if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
-        return;
-    transferSelected(false);
-}
-
-void MainWindow::moveSelected() {
     if (state_ == State::Viewing) {
-        if (!move_->isEnabled())
+        if (useDestPanel && useTemp && transferBetweenArchivePanels(destination, move))
             return;
-        const QStringList paths = selectedArchivePaths();
+        const QStringList paths = move ? selectedArchivePaths() : selectedArchiveItemsPaths();
         if (paths.isEmpty())
             return;
-        QStringList history;
-        ReadCopyHistory(history, toolbarSettingsPath());
-        CopyDialog dialog(true, copyDefaultDestination(), paths, history, this, selectedCopyInfo());
-        if (dialog.exec() != QDialog::Accepted)
-            return;
-        const QString destination = dialog.destination();
-        AddUniqueStringToHeadOfList(history, destination);
-        while (history.size() > 20)
-            history.removeLast();
-        SaveCopyHistory(history, toolbarSettingsPath());
-        archiveMovePaths_ = paths;
-        archiveMoveStage_ = ArchiveMoveStage::Extracting;
-        rememberTransferDestination(destination);
         ExtractionOptions options;
         options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
         options.currentFolder = archiveFolder_;
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        rememberTransferDestination(destination);
+        if (!move) {
+            extractTo(destination, true, archivePassword_, options);
+            if (state_ != State::Operating)
+                transferDestinationPanel_.reset();
+            return;
+        }
+        archiveMovePaths_ = paths;
+        archiveMoveStage_ = ArchiveMoveStage::Extracting;
         if (extractWithSource(destination, true, archivePassword_, options, paths)) {
             if (state_ != State::Operating) {
                 archiveMoveStage_ = ArchiveMoveStage::None;
@@ -174,52 +164,12 @@ void MainWindow::moveSelected() {
         backend_->extract(archive_, destination, paths, archivePassword_);
         return;
     }
-    if (state_ != State::Filesystem || selectedFilesystemPaths().isEmpty())
-        return;
-    transferSelected(true);
-}
-
-void MainWindow::transferSelected(bool move) {
-    if (state_ == State::Viewing && !move) {
-        const QStringList sources = selectedArchiveItemsPaths();
-        if (sources.isEmpty())
-            return;
-        QStringList history;
-        ReadCopyHistory(history, toolbarSettingsPath());
-        CopyDialog dialog(false, copyDefaultDestination(), sources, history, this,
-                          selectedCopyInfo());
-        if (dialog.exec() != QDialog::Accepted)
-            return;
-        const QString destination = dialog.destination();
-        ExtractionOptions options;
-        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
-        options.currentFolder = archiveFolder_;
-        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
-        rememberTransferDestination(destination);
-        extractTo(destination, true, archivePassword_, options);
-        if (state_ != State::Operating)
-            transferDestinationPanel_.reset();
-        AddUniqueStringToHeadOfList(history, destination);
-        while (history.size() > 20)
-            history.removeLast();
-        SaveCopyHistory(history, toolbarSettingsPath());
-        return;
-    }
     const QStringList sources = selectedFilesystemPaths();
-    if (state_ != State::Filesystem || sources.isEmpty())
+    if (sources.isEmpty())
         return;
-    QStringList history;
-    ReadCopyHistory(history, toolbarSettingsPath());
-    CopyDialog dialog(move, copyDefaultDestination(), sources, history, this, selectedCopyInfo());
-    if (dialog.exec() != QDialog::Accepted)
+    if (useDestPanel && transferToArchivePanel(destination, move))
         return;
-    const QString destination = dialog.destination();
-    AddUniqueStringToHeadOfList(history, destination);
-    while (history.size() > 20)
-        history.removeLast();
-    SaveCopyHistory(history, toolbarSettingsPath());
-    if (!transferToArchivePanel(destination, move))
-        transferFiles(sources, destination, move);
+    transferFiles(sources, destination, move);
 }
 
 bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {

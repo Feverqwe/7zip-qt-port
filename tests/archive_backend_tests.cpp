@@ -4,6 +4,46 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     Q_OBJECT
 
   private slots:
+    void commandsUseTheirListedArchiveAcrossTwoPanels() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString firstSource = temp.filePath(QStringLiteral("δ first file.txt"));
+        const QString secondSource = temp.filePath(QStringLiteral("second file.txt"));
+        const QString addedSource = temp.filePath(QStringLiteral("added file.txt"));
+        const QString firstArchive = temp.filePath(QStringLiteral("first.zip"));
+        const QString secondArchive = temp.filePath(QStringLiteral("second.zip"));
+        const QString destination = temp.filePath(QStringLiteral("extracted"));
+        writeFile(firstSource, "first contents");
+        writeFile(secondSource, "second contents");
+        writeFile(addedSource, "added contents");
+        QVERIFY(QDir().mkpath(destination));
+        ArchiveBackend backend;
+        backend.create(firstArchive, {firstSource});
+        await(backend, true);
+        backend.create(secondArchive, {secondSource});
+        await(backend, true);
+        backend.list(firstArchive);
+        await(backend, true);
+        backend.list(secondArchive);
+        await(backend, true);
+
+        backend.test(firstArchive);
+        await(backend, true);
+        backend.extract(firstArchive, destination, {QStringLiteral("δ first file.txt")});
+        await(backend, true);
+        QFile extracted(QDir(destination).filePath(QStringLiteral("δ first file.txt")));
+        QVERIFY(extracted.open(QIODevice::ReadOnly));
+        QCOMPARE(extracted.readAll(), QByteArray("first contents"));
+
+        backend.add(firstArchive, {addedSource});
+        await(backend, true);
+        QSignalSpy stale(&backend, &ArchiveBackend::finished);
+        backend.test(firstArchive);
+        QCOMPARE(stale.size(), 1);
+        QVERIFY(!stale.takeFirst().at(0).toBool());
+        backend.test(secondArchive);
+        await(backend, true);
+    }
     void roundTrip_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QString("7z");
@@ -174,7 +214,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         corrupt.write("broken");
         corrupt.close();
         backend.test(archive);
-        QVERIFY(result.wait(30000));
+        QCOMPARE(result.size(), 1);
         QVERIFY(!result.takeFirst().at(0).toBool());
     }
     void selectedExtractionIgnoresUnselectedCollision() {
@@ -209,6 +249,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(temp.isValid());
         qputenv("SEVENZIP_TEST_HELPER", "listing");
         qputenv("SEVENZIP_TEST_LISTING", "Path = δ space.txt\nSize = 1\n\n");
+        writeFile(temp.path() + "/archive.7z", "test fixture");
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
         backend.list(temp.path() + "/archive.7z");
         await(backend, true);

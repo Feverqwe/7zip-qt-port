@@ -120,6 +120,7 @@ class MainWindow : public QMainWindow {
     void togglePanels();
     QString copyDefaultDestination() const;
     bool transferToArchivePanel(const QString &destination, bool move);
+    bool transferBetweenArchivePanels(const QString &destination, bool move);
     void rememberTransferDestination(const QString &path);
     void refreshTransferDestination(unsigned index);
     void createFileTable(QWidget *central);
@@ -226,10 +227,9 @@ class MainWindow : public QMainWindow {
     void addDialog();
     QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move);
-    void copySelected();
-    void moveSelected();
-    void transferSelected(bool move);
-    QString selectedCopyInfo();
+    void executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
+                                const QString &destination, const CRecordVector<UInt32> &indices,
+                                bool useDestPanel, bool useTemp);
     void deleteSelected(bool toRecycleBin);
     void renameSelected();
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,

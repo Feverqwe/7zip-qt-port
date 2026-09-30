@@ -472,9 +472,18 @@ selected/focused items, disk↔disk, archive→disk, disk→archive и archive�
 failure/cancel не удаляют source и не выдают partial copy за успешный Move.
 Routing matrix tests и byte-level integration fixtures.
 
+Итерации P1-01.1/.2/.3 проверяют обычные F5/F6 по всем маршрутам и исходный
+`CApp::OnCopy` selection/dialog/panel/temp dispatch. Исходный
+`PanelKey.cpp` вызывает `OnCopy(..., shift)` для Shift+F5/F6;
+`copyToSame`/одиночный destination filename остаются обязательным P1-01.4.
+Эта ветка использует отсутствующие полные `FSFolderCopy` destination branches
+из P1-02. Поэтому P1-02 начинается после проверенных обычных маршрутов
+P1-01.3, а parent P1-01 принимается только после P1-01.4. Исторические
+P1-01.1/.2 и их доказательства не меняются.
+
 ### P1-02. Cross-volume move и завершение FSFolderCopy
 
-**После:** P1-01. **Источники:** FM `FSFolderCopy.cpp`, `FSFolder.cpp`,
+**После:** P1-01.3. **Источники:** FM `FSFolderCopy.cpp`, `FSFolder.cpp`,
 `PanelCopy.cpp`; Windows FileIO/FileDir/FileName adapters.
 
 Довести исходные move/rename/copy-delete branches, overwrite и callback semantics.

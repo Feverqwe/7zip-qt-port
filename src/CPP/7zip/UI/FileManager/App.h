@@ -48,6 +48,9 @@ class IQtAppPresentation {
     virtual void Initialize(CApp &app) = 0;
     virtual bool CreatePanel(CPanel &panel, unsigned index) = 0;
     virtual CPanelCallback *PanelCallback(unsigned index) = 0;
+    virtual QString DefaultCopyDestination(unsigned) const { return {}; }
+    virtual void ExecuteCopy(bool, bool, unsigned, const QString &, const CRecordVector<UInt32> &,
+                             bool, bool) {}
     virtual void SetListSettings(unsigned index, const CFmSettings &settings) = 0;
     virtual void ShowPanel(unsigned index, bool visible) = 0;
     virtual void ReloadToolbars(CApp &) {}
@@ -94,6 +97,8 @@ class CApp {
     // Existing Qt command consumers remain behind this routing boundary until
     // their full application command bodies are ported in P0-03/P0-08.
     void OnCopy(bool move, bool copyToSame, unsigned index);
+    HRESULT CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
+                                 UStringVector *messages);
     void OnSetSameFolder(unsigned index);
     void OnSetSubFolder(unsigned index);
     void DragBegin(unsigned index);

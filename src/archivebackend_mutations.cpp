@@ -214,6 +214,10 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
     }
+    if (!restoreListedArchive(archive)) {
+        emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
+        return;
+    }
     if (encrypted_) {
         emit finished(false, QStringLiteral("Добавление в защищённый архив пока недоступно."));
         return;
@@ -321,8 +325,8 @@ bool ArchiveBackend::prepareMutation(const QString &archive) {
     }
     const QFileInfo target(archive);
     const QString suffix = target.suffix().toLower();
-    if (!listed_ || archive_ != target.absoluteFilePath() || !target.isFile() ||
-        target.isSymLink() || encrypted_ || (suffix != "7z" && suffix != "zip")) {
+    if (!restoreListedArchive(archive) || !target.isFile() || target.isSymLink() || encrypted_ ||
+        (suffix != "7z" && suffix != "zip")) {
         emit finished(false, QStringLiteral("Откройте незашифрованный архив .7z или .zip."));
         return false;
     }
@@ -342,6 +346,10 @@ bool ArchiveBackend::prepareMutation(const QString &archive) {
 void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
     if (paths.isEmpty())
         return;
+    if (!restoreListedArchive(archive)) {
+        emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
+        return;
+    }
     QSet<QString> known;
     for (const ArchiveEntry &entry : entries_)
         known.insert(entry.path);
@@ -361,6 +369,10 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
 
 void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
                                  const QString &newPath) {
+    if (!restoreListedArchive(archive)) {
+        emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
+        return;
+    }
     bool found = false;
     bool directory = false;
     for (const ArchiveEntry &entry : entries_) {
@@ -416,6 +428,10 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
 
 void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
                                   const QString &sourceRoot) {
+    if (!restoreListedArchive(archive)) {
+        emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
+        return;
+    }
     bool found = false;
     for (const ArchiveEntry &item : entries_)
         found |= item.path == entry && !item.directory && !item.link;

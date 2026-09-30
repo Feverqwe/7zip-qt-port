@@ -48,13 +48,16 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
     void ownedEnginePasswordCallback() {
         QFETCH(bool, accept);
         QFETCH(bool, empty);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString archive = temp.filePath(QStringLiteral("fixture.7z"));
+        writeFile(archive, "test fixture");
         qputenv("SEVENZIP_TEST_HELPER", "listing");
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
-        backend.list(QStringLiteral("fixture.7z"));
+        backend.list(archive);
         await(backend, true);
         qputenv("SEVENZIP_TEST_HELPER", empty ? "progress-password-empty" : "progress-password");
-        ArchiveProgressOperation operation(backend,
-                                           [&] { backend.test(QStringLiteral("fixture.7z")); });
+        ArchiveProgressOperation operation(backend, [&] { backend.test(archive); });
         bool observed = false;
         QTimer responder;
         responder.setInterval(5);

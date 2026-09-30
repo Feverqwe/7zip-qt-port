@@ -198,6 +198,7 @@ void ArchiveBackend::startListing(const QString &archive, const QString &passwor
         return;
     }
     archive_ = QFileInfo(archive).absoluteFilePath();
+    listedSourceArchives_.remove(archive_);
     entries_.clear();
     listed_ = false;
     encrypted_ = false;
@@ -265,7 +266,25 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
 }
 
 bool ArchiveBackend::hasListedSourceArchive(const QString &archive) const {
-    return listed_ && !busy() && QFileInfo(archive).absoluteFilePath() == archive_;
+    if (busy())
+        return false;
+    const QFileInfo file(archive);
+    const auto found = listedSourceArchives_.constFind(file.absoluteFilePath());
+    return found != listedSourceArchives_.cend() && file.isFile() && !file.isSymLink() &&
+           file.size() == found->Size && file.lastModified() == found->Modified &&
+           file.metadataChangeTime() == found->MetadataChanged;
+}
+
+bool ArchiveBackend::restoreListedArchive(const QString &archive) {
+    if (!hasListedSourceArchive(archive))
+        return false;
+    const QString path = QFileInfo(archive).absoluteFilePath();
+    const ListedSourceSnapshot &snapshot = listedSourceArchives_.constFind(path).value();
+    archive_ = path;
+    entries_ = snapshot.Entries;
+    encrypted_ = snapshot.Encrypted;
+    listed_ = true;
+    return true;
 }
 
 void ArchiveBackend::extract(const QString &archive, const QString &destination,
@@ -275,7 +294,7 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
     }
-    if (!listed_ || QFileInfo(archive).absoluteFilePath() != archive_) {
+    if (!restoreListedArchive(archive)) {
         emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
         return;
     }
@@ -360,10 +379,26 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
         emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
         return;
     }
-    if (!listed_ || QFileInfo(archive).absoluteFilePath() != archive_) {
+    if (!restoreListedArchive(archive)) {
         emit finished(false, QStringLiteral("Сначала откройте архив и проверьте его содержимое."));
         return;
     }
+    pendingPassword_ = password;
+    start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
+}
+
+void ArchiveBackend::testSourceArchive(const QString &archive, const QString &password) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    const QFileInfo file(archive);
+    if (!file.isFile() || file.isSymLink()) {
+        lastResult_ = E_INVALIDARG;
+        emit finished(false, QStringLiteral("Исходный архив недоступен."));
+        return;
+    }
+    archive_ = file.absoluteFilePath();
     pendingPassword_ = password;
     start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
 }
@@ -505,6 +540,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         QFile::remove(addBackup_);
         listed_ = false;
         entries_.clear();
+        listedSourceArchives_.remove(createTarget_);
     }
     if (completed == Job::List) {
         entries_ = parseListing(output_);
@@ -547,6 +583,10 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         info.encrypted = output_.contains(QStringLiteral("Encrypted = +")) ||
                          header.contains(QStringLiteral("7zAES"));
         encrypted_ = info.encrypted;
+        const QFileInfo listedFile(archive_);
+        listedSourceArchives_.insert(archive_,
+                                     {listedFile.size(), listedFile.lastModified(),
+                                      listedFile.metadataChangeTime(), entries_, encrypted_});
         emit infoReady(info);
         emit entriesReady(entries_);
     }

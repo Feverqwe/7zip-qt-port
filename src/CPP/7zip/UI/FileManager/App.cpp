@@ -3,14 +3,21 @@
 // GetItemsInfoString and its helpers retain upstream control flow. Qt resource
 // strings adapt language access; IFolder and variant ownership stay upstream.
 #include "App.h"
+#include "../../../Windows/FileDir.h"
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "AppState.h"
+#include "CPP/Common/Wildcard.h"
 #include "CopyDialog.h"
 #include "Panel.h"
+#include "ViewSettings.h"
+#include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtpanelfolder.h"
+#include <QDir>
+#include <QFileInfo>
 #include <QWidget>
 
 CApp::CApp() : _qtOperations(Panels) { SetPanels_AutoRefresh_Mode(); }
@@ -67,10 +74,137 @@ void CApp::RefreshTitlePanel(unsigned index, bool always) {
     RefreshTitle(always);
 }
 
-void CApp::OnCopy(bool move, bool copyToSame, unsigned index) {
-    if (_presentation)
-        if (auto *callback = _presentation->PanelCallback(index))
-            callback->OnCopy(move, copyToSame);
+void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
+    if (!_presentation || srcPanelIndex >= kNumPanelsMax)
+        return;
+    const unsigned destPanelIndex = (NumPanels <= 1) ? srcPanelIndex : (1 - srcPanelIndex);
+    CPanel &srcPanel = Panels[srcPanelIndex];
+    CPanel &destPanel = Panels[destPanelIndex];
+    CPanel::CDisableTimerProcessing disableTimerProcessing1(destPanel);
+    CPanel::CDisableTimerProcessing disableTimerProcessing2(srcPanel);
+
+    if (move) {
+        if (!srcPanel.CheckBeforeUpdate(IDS_MOVE))
+            return;
+    } else if (!srcPanel.DoesItSupportOperations()) {
+        srcPanel.MessageBox_Error_UnsupportOperation();
+        return;
+    }
+
+    CRecordVector<UInt32> indices;
+    UString destPath;
+    bool useDestPanel = false;
+    {
+        CSelectedState selection;
+        srcPanel.SaveSelectedState(selection); // Sync the Qt list before source selection.
+        if (copyToSame) {
+            const int focusedItem = srcPanel._selectionList.GetFocusedItem();
+            if (focusedItem < 0)
+                return;
+            const unsigned realIndex = srcPanel.GetRealItemIndex(focusedItem);
+            if (realIndex == UInt32(-1))
+                return;
+            indices.Add(realIndex);
+            destPath = srcPanel.GetItemName(realIndex);
+        } else {
+            srcPanel.Get_ItemIndices_OperSmart(indices);
+            if (indices.IsEmpty())
+                return;
+            destPath = ToUString(_presentation->DefaultCopyDestination(srcPanelIndex));
+        }
+    }
+
+    QStringList copyFolders;
+    ReadCopyHistory(copyFolders, _settingsPath);
+    QStringList sourcePaths;
+    FOR_VECTOR(i, indices)
+    sourcePaths << ToQString(srcPanel.GetItemFullPath(indices[i]));
+    CCopyDialog copyDialog(move, ToQString(destPath), sourcePaths, copyFolders, _window,
+                           srcPanel.GetItemsInfoString(indices));
+    if (copyDialog.exec() != QDialog::Accepted)
+        return;
+    destPath = ToUString(copyDialog.destination());
+    if (destPath.IsEmpty()) {
+        srcPanel.MessageBox_Error_UnsupportOperation();
+        return;
+    }
+    UString correctName;
+    if (!srcPanel.CorrectFsPath(destPath, correctName)) {
+        srcPanel.MessageBox_Error_HRESULT(E_INVALIDARG);
+        return;
+    }
+    if (QDir::isAbsolutePath(ToQString(destPath)))
+        destPath.Empty();
+    else
+        destPath = srcPanel.GetFsPath();
+    destPath += correctName;
+
+    const QString output = QDir::cleanPath(ToQString(destPath));
+    if (CompareFileNames(destPath, destPanel.GetFsPath()) == 0) {
+        if (NumPanels == 1 || CompareFileNames(destPath, srcPanel.GetFsPath()) == 0) {
+            srcPanel.MessageBox_Error(L"Cannot copy files onto itself");
+            return;
+        }
+        if (destPanel.DoesItSupportOperations())
+            useDestPanel = true;
+    }
+    if (useDestPanel && (destPanel.IsFSDrivesFolder() || destPanel.IsRootFolder())) {
+        srcPanel.MessageBox_Error_UnsupportOperation();
+        return;
+    }
+    AddUniqueStringToHeadOfList(copyFolders, output);
+    while (copyFolders.size() > 20)
+        copyFolders.removeLast();
+    SaveCopyHistory(copyFolders, _settingsPath);
+
+    const bool useSrcPanel = !useDestPanel || !srcPanel.IsFSFolder();
+    const bool useTemp = useSrcPanel && useDestPanel;
+    _presentation->ExecuteCopy(move, copyToSame, srcPanelIndex, output, indices, useDestPanel,
+                               useTemp);
+}
+
+HRESULT CApp::CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
+                                   UStringVector *messages) {
+    if (NumPanels != 2 || srcPanelIndex >= kNumPanelsMax || indices.IsEmpty())
+        return E_INVALIDARG;
+    const unsigned destPanelIndex = 1 - srcPanelIndex;
+    CPanel &srcPanel = Panels[srcPanelIndex];
+    CPanel &destPanel = Panels[destPanelIndex];
+    CPanel::CDisableTimerProcessing disableTimerProcessing1(destPanel);
+    CPanel::CDisableTimerProcessing disableTimerProcessing2(srcPanel);
+
+    NWindows::NFile::NDir::CTempDir tempDirectory;
+    if (!tempDirectory.Create(FTEXT("7zO")))
+        return E_FAIL;
+    FString tempDirPrefix = tempDirectory.GetPath();
+    NWindows::NFile::NName::NormalizeDirPathPrefix(tempDirPrefix);
+
+    CCopyToOptions options;
+    options.folder = fs2us(tempDirPrefix);
+    // CAgentFolder::CopyTo returns E_NOTIMPL for move. The caller deletes the
+    // source only after the destination transaction commits.
+    options.moveMode = false;
+    options.includeAltStreams = false;
+    options.replaceAltStreamChars = false;
+    options.showErrorMessages = true;
+    options.NeedRegistryZone = false;
+    bool usePassword = false;
+    UString password;
+    if (!srcPanel.GetParentFolders().IsEmpty()) {
+        const CFolderLink &folder = srcPanel.GetParentFolders().Back();
+        usePassword = folder.UsePassword;
+        password = folder.Password;
+    }
+    HRESULT result = srcPanel.CopyTo(options, indices, messages, usePassword, password);
+
+    if (result == S_OK && (!messages || messages->IsEmpty())) {
+        UStringVector filePaths;
+        filePaths.ClearAndReserve(indices.Size());
+        FOR_VECTOR(i, indices)
+        filePaths.AddInReserved(srcPanel.GetItemName_for_Copy(indices[i]));
+        result = destPanel.CopyFrom(false, fs2us(tempDirPrefix), filePaths, true, messages);
+    }
+    return result;
 }
 
 void CApp::OnSetSameFolder(unsigned index) {

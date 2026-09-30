@@ -576,6 +576,18 @@ default CopyDialog path, output bytes, source lifetime and both-panel refresh.
 The new UI fixture uses its own settings file so the following suites keep
 their original panel state. The backend uses disposable archives and `7zz`.
 
+P1-01.3: `archive_backend` lists two real ZIP archives, then tests,
+extracts and adds to the first after the second was listed; it checks source
+bytes and rejects stale context after mutation. `ui_operations` has real
+two-ZIP F5/F6 fixtures for copy bytes, cancel rollback and move, a protected
+two-7z transfer with saved passwords, and a nested-source capability refusal
+that leaves target bytes unchanged. The affected direct UI cases passed 10/10;
+`archive_progress` and `extraction_options` helper fixtures now create a
+disposable listed file for the backend snapshot guard. Full unsandboxed
+`check.sh` passed 142/142 CTest on macOS arm64, Qt 6.11.2, 2026-10-01.
+Parent P1-01 also requires the Shift+F5/F6 destination branch in P1-01.4
+after P1-02.
+
 `panel_copy_info` checks copied decimal formatting through UInt64 maximum,
 mixed file/folder size properties, undefined-size propagation, defined zero,
 selection order, relative Unicode names, five-name cutoff and full-selection

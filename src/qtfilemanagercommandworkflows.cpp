@@ -51,10 +51,11 @@ void QtFileManagerCommands::Rename() {
     if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_ERROR_RENAMING))
         window_.renameSelected();
 }
-void QtFileManagerCommands::CopyTo() { window_.copySelected(); }
+void QtFileManagerCommands::CopyTo() {
+    window_.app_.OnCopy(false, false, window_.app_.GetFocusedPanelIndex());
+}
 void QtFileManagerCommands::MoveTo() {
-    if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_MOVE))
-        window_.moveSelected();
+    window_.app_.OnCopy(true, false, window_.app_.GetFocusedPanelIndex());
 }
 void QtFileManagerCommands::Delete(bool toRecycleBin) {
     if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_ERROR_DELETING))

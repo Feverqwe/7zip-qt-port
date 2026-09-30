@@ -3211,3 +3211,54 @@ ui_operations_tests`, адресные `source_update_backend` и `ui_operations
 прошли; полный unsandboxed `./scripts/check.sh` (форматирование, сборка,
 все CTest) прошёл на macOS arm64, Qt 6.11.2, 2026-09-30.
 Windows/Linux runtime и rendered Windows parity для этого пакета не проверены.
+
+## P1-01.3 — archive→archive и исходная маршрутизация Copy/Move (принято, 2026-10-01)
+
+Точная база: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Исходные тела и зависимости: `CPP/7zip/UI/FileManager/App.cpp::CApp::OnCopy`
+и `CPanelCallbackImp::OnCopy`,
+`PanelItems.cpp::CPanel::GetItemName_for_Copy`, уже перенесённые
+`PanelCopy.cpp::CPanel::CopyTo/CopyFrom`, `Agent/ArchiveFolder.cpp::CopyTo` и
+`Agent/ArchiveFolderOut.cpp::CopyFrom`. Функциональное ядро `OnCopy` сохранено
+в зеркальном `App.cpp`: проверка источника, OperSmart/focused selection,
+исходный `CCopyDialog` с summary/history, `CorrectFsPath`, выбор второй
+панели и условий временного переноса. `CopyArchiveToArchive` сохраняет исходный
+`CTempDir` → `CPanel::CopyTo` → имена `GetItemName_for_Copy` →
+`CPanel::CopyFrom`. `PanelItems.cpp` использует исходное свойство `kpidOutName`
+и коррекцию имени. Notices и лицензия остаются в зеркальных файлах и
+`third_party/7zip/License.txt`; проектное `clang-format` учитывается отдельно.
+`CopyDialog.cpp/.h` собираются один раз в `sevenzip_panel`, поскольку исходный
+`CApp::OnCopy` стал непосредственным потребителем диалога; отдельные Qt-цели
+связываются с этой библиотекой.
+
+Qt-адаптация: `IQtAppPresentation::DefaultCopyDestination/ExecuteCopy`
+связывает исходную маршрутизацию с панелями и текущими асинхронными
+filesystem/ArchiveBackend операциями. Временная папка и публикация целевого
+архива принадлежат исходным `CopyTo/CopyFrom` и транзакционному backend.
+F6 удаляет источник только после успешной публикации; перед удалением Qt
+сохраняет байты целевого архива и восстанавливает их при отказе/отмене.
+Обновление обеих панелей, сохранение фокуса и сообщения остаются узкой Qt
+границей. Для двух одновременно открытых архивов backend хранит отдельный
+проверенный снимок списка (путь, размер, времена, entries, encryption),
+восстанавливает нужный контекст перед Test/Extract/мутацией и сбрасывает
+снимок после записи. Шифрованная исходная extraction callback вызывает
+`testSourceArchive`, поскольку уже владеет исходными метаданными независимо
+от последнего отображённого списка.
+
+Это частичный перенос `OnCopy`: исходная ветка Shift+F5/F6 `copyToSame`,
+переименование одной цели, создание произвольного filesystem destination и
+полные `FSFolderCopy.cpp` copy/move branches пока не подключены; исходный
+`PanelKey.cpp` вызывает `OnCopy(..., shift)` и этот consumer нельзя считать
+неприменимым. Ветка зафиксирована как обязательный P1-01.4 после P1-02;
+parent P1-01 до неё не принимается. Windows-specific alternate streams, links и
+metadata остаются P2-05/P2-06. Windows/Linux runtime и rendered Windows
+reference не проверены. Реальные ZIP/7z UI фикстуры проверяют F5/F6 между
+двумя панелями, байты, отмену с точным откатом, зашифрованный источник,
+невозможность записи из вложенного архива и обновление панелей. Backend
+тестирует Test/Extract/Add по первому архиву после listing второго и отказ
+для устаревшего снимка; фиктивные helper-тесты используют существующий
+временный файл. Проверены `archive_backend`, `source_extract_backend`,
+`source_update_backend`, `archive_progress`, `extraction_options`,
+`panel_folder`, `copy_dialog`, прямой набор UI 10/10 и baseline verifier
+193 exact/136 adapted/3 local. Полный unsandboxed `./scripts/check.sh`
+прошёл 142/142 CTest на macOS arm64/Qt 6.11.2, 2026-10-01.

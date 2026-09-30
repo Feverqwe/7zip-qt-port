@@ -414,6 +414,7 @@ class ExtractionOptionsTests : public QObject {
         const QString archive = temp.filePath("fake.zip");
         const QString destination = temp.filePath("output");
         QVERIFY(QDir().mkpath(destination));
+        writeFile(archive, "test fixture");
         qputenv("SEVENZIP_EXTRACTION_HELPER", "1");
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
         backend.list(archive);

@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // IFolder/variant property bodies retain upstream control flow. Qt list rows
 // remain a presentation snapshot pending the full folder-load port.
+#include "../Common/ExtractingFilePath.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "Panel.h"
@@ -532,6 +533,24 @@ UString CPanel::GetItemName(unsigned itemIndex) const {
     if (prop.vt != VT_BSTR)
         throw 2723401;
     return prop.bstrVal;
+}
+
+UString CPanel::GetItemName_for_Copy(unsigned itemIndex) const {
+    if (itemIndex == kParentIndex)
+        return L"..";
+    UString s;
+    {
+        NWindows::NCOM::CPropVariant prop;
+        if (_folder->GetProperty(itemIndex, kpidOutName, &prop) == S_OK) {
+            if (prop.vt == VT_BSTR)
+                s = prop.bstrVal;
+            else if (prop.vt != VT_EMPTY)
+                throw 2723401;
+        }
+        if (s.IsEmpty())
+            s = GetItemName(itemIndex);
+    }
+    return Get_Correct_FsFile_Name(s);
 }
 
 UString CPanel::GetItemPrefix(unsigned itemIndex) const {

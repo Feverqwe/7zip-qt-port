@@ -604,8 +604,15 @@ For disk→archive, the opposite bound `CPanel::CopyFrom` calls source
 callback bytes and timestamps, and `ArchiveBackend::updateSourceAdd` asks
 `7zz` to write a separate output. Native `CommonUpdateOperation` publishes
 the result and only then removes disk sources for F6. The UI refreshes both
-panels after success. The complete native `CApp::OnCopy` dispatch and
-archive→archive staging remain P1-01.3; filesystem copy internals remain P1-02.
+panels after success. P1-01.3 now routes normal F5/F6 selection, destination
+dialog and panel classification through mirrored `CApp::OnCopy`; the Qt
+presentation adapter dispatches into filesystem, archive-source extraction
+and archive-destination operations. Archive→archive uses source `CopyTo` to a
+temporary folder and target `CopyFrom`; Qt owns F6 delete ordering, byte
+rollback and both-panel refresh. `ArchiveBackend` restores per-archive listed
+entries/encryption for the active panel before Test/Extract/mutation. The
+Shift+F5/F6 `copyToSame` branch and filesystem copy internals remain open
+through P1-01.3/P1-02.
 
 Creation writes a temporary peer archive and publishes it after success.
 Mutations copy the existing archive, update that copy and replace the original
