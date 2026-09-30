@@ -1,5 +1,6 @@
 #include "createarchivedialog.h"
 
+#include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include <QScrollArea>
 
@@ -142,9 +143,8 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
         browse->setEnabled(false);
     }
     connect(browse, &QPushButton::clicked, this, [this] {
-        const QString path =
-            QFileDialog::getExistingDirectory(this, "Место сохранения", destination_->text());
-        if (!path.isEmpty())
+        QString path;
+        if (MyBrowseForFolder(this, "Место сохранения", destination_->text(), path))
             destination_->setText(path);
     });
     connect(format_, &QComboBox::currentTextChanged, this, [this] {

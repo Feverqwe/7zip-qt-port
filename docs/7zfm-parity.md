@@ -1148,3 +1148,15 @@ F7, F2 и Delete/Shift+Delete доступны в открытом верхне�
 Верхнее меню, toolbar, адрес и status остаются видимыми на 980×620/640×400.
 Native network namespace и Browse dialogs ещё открыты P1-11.2; Windows/Linux
 runtime и rendered Windows reference не проверены.
+
+## P1-11.2 — выбор файла и папки (2026-09-30)
+
+Кнопки обзора в Copy/Move, Split, Extract и Create Archive, а также команда
+Open Archive теперь проходят через source `MyBrowseForFolder` или
+`CBrowseInfo::BrowseForFile`. Системный Qt picker сохраняет привычный OS UX;
+Cancel не меняет редактируемый путь, выбор Unicode/пробелов возвращает тот
+же путь и сохранённый индекс фильтра. Copy/Split оставляют конечный `/` по
+своему исходному workflow. В upstream desktop используются native folder/file
+dialogs; `BrowseDialog.rc` для custom fallback не доказывает их pixel parity.
+Windows super/device path fallback и runtime Windows/Linux остаются
+непроверенными, сетевой namespace — P1-11.3.

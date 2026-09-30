@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Common/StringConvert.h"
@@ -101,10 +102,12 @@ void MainWindow::startProgressDialog(const QString &label, const QString &detail
 }
 
 void MainWindow::openDialog() {
-    const QString file =
-        QFileDialog::getOpenFileName(this, "Открыть архив", {}, ArchiveFormats::openDialogFilter());
-    if (!file.isEmpty())
-        openArchive(file);
+    CBrowseInfo browse;
+    browse.Owner = this;
+    browse.Title = "Открыть архив";
+    browse.Filters = ArchiveFormats::openDialogFilter();
+    if (browse.BrowseForFile())
+        openArchive(browse.FilePath);
 }
 
 void MainWindow::openFileViewer(const QString &path, bool editable) {

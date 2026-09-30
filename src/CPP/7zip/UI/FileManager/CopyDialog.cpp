@@ -3,11 +3,11 @@
 // Qt layouts replace Win32 OnSize/control attachment. Folder browsing uses
 // the native Qt dialog; the upstream normalization and selection reset remain.
 #include "CopyDialog.h"
+#include "BrowseDialog.h"
 
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -85,8 +85,8 @@ bool CCopyDialog::OnInit() {
 
 void CCopyDialog::OnButtonSetPath() {
     const QString currentPath = _path->currentText();
-    QString resultPath = QFileDialog::getExistingDirectory(this, "Папка назначения", currentPath);
-    if (resultPath.isEmpty())
+    QString resultPath;
+    if (!MyBrowseForFolder(this, "Папка назначения", currentPath, resultPath))
         return;
     resultPath = QDir::fromNativeSeparators(resultPath);
     if (!resultPath.endsWith('/'))

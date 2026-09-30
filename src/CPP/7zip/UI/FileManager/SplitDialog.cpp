@@ -3,11 +3,11 @@
 // Qt layouts/native folder browsing replace Win32 controls/OnSize; functional
 // OnInit/OnOK/OnButtonSetPath retain upstream flow and public result members.
 #include "SplitDialog.h"
+#include "BrowseDialog.h"
 #include "SplitUtils.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
-#include <QFileDialog>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -78,8 +78,8 @@ bool CSplitDialog::OnInit() {
 
 void CSplitDialog::OnButtonSetPath() {
     const QString currentPath = _pathCombo->currentText();
-    QString resultPath = QFileDialog::getExistingDirectory(this, "Папка назначения", currentPath);
-    if (resultPath.isEmpty())
+    QString resultPath;
+    if (!MyBrowseForFolder(this, "Папка назначения", currentPath, resultPath))
         return;
     resultPath = QDir::fromNativeSeparators(resultPath);
     if (!resultPath.endsWith('/'))

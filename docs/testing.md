@@ -984,3 +984,10 @@ P1-11.1: `volume_mount` подставляет одноразовый том с 
 системный mount → назад и пишет current-build normal/compact JSON; `fs_folder`
 и `panel_path` проверяют соседние native routing paths. Список mounts от
 `QStorageInfo` и реальные сетевые ресурсы требуют проверки на каждой ОС.
+
+P1-11.2: `browse_dialog` проверяет Cancel и Unicode/пробелы для folder/file
+picker, восстановление исходного FilePath и выбранного фильтра. Прямые
+consumers проверяются `copy_dialog`, `extract_dialog`, `volume_operations`,
+`compression`, `ui_navigation` и `ui_operations`; modal tests используют
+`QT_QPA_PLATFORM=offscreen`, без обращения к пользовательским файлам.
+Нативное оформление и Windows super/device path требуют проверки на ОС.

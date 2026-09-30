@@ -645,12 +645,14 @@ Remote credentials/real services не использовать в tests.
 не ломают панель. Fake mounts/network adapter fixtures; native поведение
 проверяется на соответствующей ОС и отражается в parity.
 
-P1-11 разделён на два интегрированных результата. P1-11.1 проводит source
+P1-11 разделён на три интегрированных результата. P1-11.1 проводит source
 `CRootFolder` → `CFSDrives` → filesystem через системные mount roots на
 macOS/Linux, включая исчезновение/недоступность, history и normal/compact UX.
-P1-11.2 переносит network namespace и Browse workflows с platform services.
+P1-11.2 переносит source Browse entry points и все текущие folder/file picker
+consumers с Qt/native service. P1-11.3 переносит network namespace с Windows
+service и portable mounted-share capability.
 Device imaging из `FSDrives.cpp` остаётся в P2-05/P3-05, не считается
-завершённым от просмотра списка томов. P1-11 parent открыт до P1-11.2.
+завершённым от просмотра списка томов. P1-11 parent открыт до P1-11.3.
 
 ### P1-12. Полный OptionsDialog, Settings и Folders
 

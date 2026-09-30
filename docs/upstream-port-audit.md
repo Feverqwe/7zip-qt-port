@@ -6155,7 +6155,33 @@ P0-04/P0-05. В этой итерации non-Windows root получает вт
 Qt списке, показывает source свойства томов и блокирует mutation commands.
 
 Не перенесены Windows `CNetFolder`, browse navigation и device-image
-`CopyFileSpec/CopyTo` из `FSDrives.cpp`: первые имеют owner P1-11.2, image
+`CopyFileSpec/CopyTo` из `FSDrives.cpp`: network owner P1-11.3, Browse entry
+points owner P1-11.2, image
 операции — P2-05/P3-05. Системный `QStorageInfo` на macOS не доказывает
 Windows/Linux mount behavior; фактические сети/credentials не тестируются.
 Оригинальные notices сохранены, лицензия — `third_party/7zip/License.txt`.
+
+## P1-11.2 — source Browse entry points и picker consumers (2026-09-30)
+
+Точная база: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/BrowseDialog.cpp/.h::MyBrowseForFolder`,
+`CBrowseInfo::BrowseForFile`, уже перенесённые `Dlg_CreateFolder` и
+`CorrectFsPath`; consumers `CopyDialog.cpp::OnButtonSetPath`,
+`SplitDialog.cpp::OnButtonSetPath`, GUI `ExtractDialog.cpp::OnButtonSetPath`.
+Сохранены имена entry points, очистка результата до вызова folder picker,
+разделение исходного FilePath на каталог/имя, возврат прежнего значения при
+Cancel и индекс выбранного фильтра. Qt `QFileDialog` заменяет Win32
+`NShell::BrowseForFolder`/`CommonDlg_BrowseForFile`; его native OS picker
+управляет контролами, а `CBrowseInfo` остаётся владельцем пути и результата.
+Текущие CreateArchive и MainWindow Open Archive используют те же входы.
+
+Существующие статические Qt filters передаются presentation-адаптеру;
+исходное построение filters из handler registry остаётся P2-01. Win32
+`CommDlgExtendedError`/super-path fallback не переносится на Qt/Unix picker;
+для Windows длинных путей это непроверенная ветка. Внутренний
+`CBrowseDialog` tree/list/Reload/OnItemEnter/FinishOnOK (USE_MY_BROWSE_DIALOG)
+не строится: в текущем upstream desktop используется системный picker,
+а визуальный custom fallback для super/device paths остаётся обязательным
+при подтверждении такого Windows workflow. `BrowseDialog2` Delete Temporary
+Files остаётся P1-15. Original notices сохранены, лицензия —
+`third_party/7zip/License.txt`.

@@ -2,9 +2,9 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ExtractDialog.h"
 #include "../../../Common/Wildcard.h"
+#include "../FileManager/BrowseDialog.h"
 #include <QDialogButtonBox>
 #include <QDir>
-#include <QFileDialog>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -198,9 +198,8 @@ void CExtractDialog::UpdatePasswordControl() {
                                                           : QLineEdit::Password);
 }
 void CExtractDialog::OnButtonSetPath() {
-    const QString path =
-        QFileDialog::getExistingDirectory(this, "Папка для извлечения", _path->currentText());
-    if (!path.isEmpty())
+    QString path;
+    if (MyBrowseForFolder(this, "Папка для извлечения", _path->currentText(), path))
         _path->setEditText(path);
 }
 

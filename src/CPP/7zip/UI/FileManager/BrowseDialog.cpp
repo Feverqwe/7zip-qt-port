@@ -1,12 +1,15 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/BrowseDialog.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Dlg_CreateFolder and CorrectFsPath are ported. Qt/localized strings replace
-// HWND/LangString; other browsing remains with native Qt filesystem dialogs.
+// Dlg_CreateFolder, CorrectFsPath, MyBrowseForFolder and BrowseForFile are ported.
+// Qt/localized strings replace HWND/LangString and native platform pickers.
 #include "BrowseDialog.h"
 #include "ComboDialog.h"
 #include "Common/StringConvert.h"
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
+#include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
 
 using namespace NWindows;
 using namespace NFile;
@@ -18,6 +21,40 @@ bool Dlg_CreateFolder(QWidget *wnd, QString &destName) {
     if (dlg.exec() != QDialog::Accepted)
         return false;
     destName = dlg.Value;
+    return true;
+}
+
+bool MyBrowseForFolder(QWidget *owner, const QString &title, const QString &path,
+                       QString &resultPath) {
+    resultPath.clear();
+    const QString selected = QFileDialog::getExistingDirectory(owner, title, path);
+    if (selected.isEmpty())
+        return false;
+    resultPath = QDir::cleanPath(selected);
+    return true;
+}
+
+bool CBrowseInfo::BrowseForFile() {
+    const QString storedPath = FilePath;
+    const QFileInfo initial(FilePath);
+    QFileDialog dialog(Owner, Title, initial.absolutePath(), Filters);
+    dialog.setFileMode(SaveMode ? QFileDialog::AnyFile : QFileDialog::ExistingFile);
+    dialog.setAcceptMode(SaveMode ? QFileDialog::AcceptSave : QFileDialog::AcceptOpen);
+    if (FilterIndex >= 0 && FilterIndex < dialog.nameFilters().size())
+        dialog.selectNameFilter(dialog.nameFilters()[FilterIndex]);
+    if (!FilePath.isEmpty())
+        dialog.selectFile(initial.fileName());
+    if (dialog.exec() != QDialog::Accepted) {
+        FilePath = storedPath;
+        return false;
+    }
+    const QStringList selected = dialog.selectedFiles();
+    if (selected.isEmpty()) {
+        FilePath = storedPath;
+        return false;
+    }
+    FilePath = selected.front();
+    FilterIndex = dialog.nameFilters().indexOf(dialog.selectedNameFilter());
     return true;
 }
 

@@ -359,6 +359,10 @@ if(BUILD_TESTING)
     target_include_directories(combo_dialog_tests PRIVATE tests)
     target_link_libraries(combo_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME combo_dialog COMMAND combo_dialog_tests)
+    qt_add_executable(browse_dialog_tests tests/browse_dialog_tests.cpp)
+    target_link_libraries(browse_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME browse_dialog COMMAND browse_dialog_tests)
+    set_tests_properties(browse_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
     set_tests_properties(combo_dialog PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(volume_dialog_tests tests/volume_dialog_tests.cpp tests/layout_inspection.cpp
@@ -741,6 +745,12 @@ if(BUILD_TESTING)
     target_include_directories(compression_solid_tests PRIVATE src)
     target_link_libraries(compression_solid_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_solid COMMAND compression_solid_tests)
+    foreach(target IN ITEMS compression_tests compression_path_tests compression_encryption_tests
+        compression_order_tests compression_dictionary_tests compression_memory_tests
+        compression_limit_tests compression_preferences_tests compression_resource_tests
+        compression_solid_tests)
+        target_link_libraries(${target} PRIVATE sevenzip_panel)
+    endforeach()
     set_tests_properties(compression_solid PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
     set_tests_properties(compression_order PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

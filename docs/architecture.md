@@ -26,6 +26,10 @@ into Qt cells with source indices; the address is empty at the native root.
 On macOS/Linux the root also binds a `CFSDrives` mount view. `qtvolumemounts`
 supplies OS mount metadata; `CFSDrives` retains source property/binding ownership
 and rechecks a mount before entering it. The Qt list only presents those items.
+`BrowseDialog.cpp` owns the source file/folder picker entry points and result
+state; `QFileDialog` is its platform presentation service. Copy, Split, Extract,
+Create Archive and Open Archive call those entries instead of opening their own
+picker implementations.
 Qt Back history marks this empty prefix explicitly. Typed relative paths and
 Parent call the native binding/parent owner, including the POSIX `/` to root
 transition. Read-only root command policy prevents filesystem mutations.
