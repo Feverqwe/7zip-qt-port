@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "layout_inspection.h"
 #include "qtprogresscontrols.h"
 #include "window_state_support.h"
 #include <QProgressBar>
@@ -6,6 +8,13 @@
 
 class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+
+    static QString messageText(const QTreeWidget *list) {
+        QString text;
+        for (int i = 0; i < list->topLevelItemCount(); ++i)
+            text += list->topLevelItem(i)->text(1) + '\n';
+        return text;
+    }
 
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
@@ -166,9 +175,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
         action(window, "operationJournalAction")->trigger();
-        auto *log = window.findChild<QPlainTextEdit *>("operationJournalText");
+        auto *log = window.findChild<QTreeWidget *>("IDL_MESSAGE");
         QVERIFY(log);
-        QVERIFY(log->toPlainText().contains(QStringLiteral("Операция отменена.")));
+        QVERIFY(messageText(log).contains(QStringLiteral("Операция отменена.")));
         openListedArchive(window, backend, "after-cancel.zip", {});
         QCOMPARE(backend.listCalls, 2);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
@@ -191,11 +200,17 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.extractTo("/temporary/destination");
         QCOMPARE(backend.listCalls, 1);
         QCOMPARE(backend.extractCalls, 1);
-        auto *progress = window.findChildren<QProgressDialog *>().last();
+        auto *progress =
+            dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
         QVERIFY(progress);
-        progress->show();
-        auto *button = progress->findChild<QPushButton *>();
+        auto *button = progress->findChild<QPushButton *>("IDCANCEL");
         QVERIFY(button);
+        QTimer::singleShot(0, &window, [] {
+            auto *question = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            QVERIFY(question);
+            QCOMPARE(question->objectName(), QStringLiteral("progressCancelQuestion"));
+            question->button(QMessageBox::Yes)->click();
+        });
         button->click();
         QCOMPARE(backend.cancelCalls, 1);
         QCOMPARE(table(window)->rowCount(), 1);
@@ -329,13 +344,26 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.openArchive("first.7z");
         journal->trigger();
         QCoreApplication::processEvents();
-        auto *text = window.findChild<QPlainTextEdit *>("operationJournalText");
+        auto *text = window.findChild<QTreeWidget *>("IDL_MESSAGE");
         QVERIFY(text);
-        QVERIFY(text->toPlainText().contains(QStringLiteral("Открытие архива: ")));
-        QVERIFY(text->toPlainText().contains(QStringLiteral("42% + папка/имя с пробелом.txt")));
-        QVERIFY(text->toPlainText().contains(QStringLiteral("Результат: Архив открыт.")));
-        auto *dialog = window.findChild<QDialog *>("operationJournalDialog");
+        QVERIFY(messageText(text).contains(QStringLiteral("Открытие архива: ")));
+        QVERIFY(messageText(text).contains(QStringLiteral("42% + папка/имя с пробелом.txt")));
+        QVERIFY(messageText(text).contains(QStringLiteral("Результат: Архив открыт.")));
+        auto *dialog = window.findChild<QDialog *>("operationMessagesDialog");
         QVERIFY(dialog);
+        auto *close = dialog->findChild<QPushButton *>("IDOK");
+        QVERIFY(close);
+        for (const QSize size : {QSize(760, 450), QSize(640, 380)}) {
+            dialog->resize(size);
+            QCoreApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*text, *dialog));
+            QVERIFY(UiInspection::fullyVisible(*close, *dialog));
+            QVERIFY(UiInspection::separate(*text, *close, *dialog));
+            QVERIFY(close->sizeHint().width() <= close->width());
+            QVERIFY(close->sizeHint().height() <= close->height());
+            QVERIFY(UiInspection::writeReport(
+                *dialog, QStringLiteral("messages-%1x%2").arg(size.width()).arg(size.height())));
+        }
         const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
         if (!screenshotDir.isEmpty()) {
             QVERIFY(QDir().mkpath(screenshotDir));
@@ -354,9 +382,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         });
         window.openArchive("second.zip");
         warningResponder.stop();
-        QVERIFY(text->toPlainText().contains(QStringLiteral("ERROR: повреждённый архив")));
-        QVERIFY(text->toPlainText().contains(QStringLiteral("Ошибка: 7zz завершился с кодом 2.")));
-        QVERIFY(!text->toPlainText().contains(QStringLiteral("42% +")));
+        QVERIFY(messageText(text).contains(QStringLiteral("ERROR: повреждённый архив")));
+        QVERIFY(messageText(text).contains(QStringLiteral("Ошибка: 7zz завершился с кодом 2.")));
+        QVERIFY(!messageText(text).contains(QStringLiteral("42% +")));
         QVERIFY(journal->isEnabled());
     }
 

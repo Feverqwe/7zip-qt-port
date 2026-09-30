@@ -91,8 +91,4 @@ void MainWindow::quiesceOperations() {
         volumeOperation_->wait();
     }
     closeProgressDialog();
-    if (fileTransferProgress_)
-        fileTransferProgress_->close();
-    if (volumeProgress_)
-        volumeProgress_->close();
 }

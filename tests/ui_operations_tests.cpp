@@ -62,6 +62,11 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(copyInfo.endsWith(QStringLiteral("  имя с пробелом.txt")));
         const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
         QVERIFY(!action(window, "copyAction")->isEnabled());
+        auto *copyProgress =
+            dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
+        QVERIFY(copyProgress);
+        QVERIFY(!copyProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
+        QVERIFY(copyProgress->findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled());
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         QCOMPARE(settings.value("CopyHistory").toStringList().first(), destination);
@@ -141,6 +146,10 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "deleteAction")->trigger();
+        auto *deleteProgress =
+            dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
+        QVERIFY(deleteProgress);
+        QVERIFY(!deleteProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
         QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QVERIFY(!QFileInfo::exists(renamed));
         QVERIFY(QFileInfo::exists(copied));

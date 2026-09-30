@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "layout_inspection.h"
+#include "qtcallbackprogresstransport.h"
 #include <QMessageBox>
 #include <QPushButton>
 #include <QThread>
@@ -51,6 +52,40 @@ void Reply(QMessageBox &box, int answer) {
 class ProgressCancelTests : public QObject {
     Q_OBJECT
   private slots:
+    void callbackWorkerHasHonestPauseAndConfirmedCancel() {
+        CProgressDialog dialog;
+        unsigned cancellations = 0;
+        QtCallbackProgressTransport transport([&] { ++cancellations; });
+        dialog.AttachTransport(&transport);
+        QVERIFY(dialog.OnInit());
+        dialog.show();
+        auto *pause = dialog.findChild<QPushButton *>("IDB_PAUSE");
+        auto *background = dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND");
+        auto *cancel = dialog.findChild<QPushButton *>("IDCANCEL");
+        QVERIFY(pause && background && cancel);
+        QVERIFY(!pause->isEnabled());
+        QVERIFY(background->isEnabled());
+        QTimer::singleShot(0, &dialog, [] {
+            auto *question = Question();
+            QVERIFY(question);
+            question->button(QMessageBox::No)->click();
+        });
+        cancel->click();
+        QCOMPARE(cancellations, 0u);
+        QVERIFY(!dialog.Sync.Get_Stopped());
+        QTimer::singleShot(0, &dialog, [] {
+            auto *question = Question();
+            QVERIFY(question);
+            question->button(QMessageBox::Yes)->click();
+        });
+        cancel->click();
+        QCOMPARE(cancellations, 1u);
+        QVERIFY(dialog.Sync.Get_Stopped());
+        dialog.ProcessWasFinished();
+        QTRY_VERIFY(!dialog.isVisible());
+        dialog.AttachTransport(nullptr);
+    }
+
     void sourcePromptRestoresPauseAndStopsOnlyOnYes_data() {
         QTest::addColumn<bool>("paused");
         QTest::addColumn<int>("answer");

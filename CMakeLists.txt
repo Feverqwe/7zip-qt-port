@@ -125,8 +125,11 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/RootFolder.cpp src/CPP/7zip/UI/FileManager/RootFolder.h
     src/archiveprogressoperation.cpp src/archiveprogressoperation.h
     src/archiveprogresstransport.cpp src/archiveprogresstransport.h src/qtprogresstransport.h
+    src/qtcallbackprogresstransport.cpp src/qtcallbackprogresstransport.h
     src/CPP/7zip/UI/FileManager/FormatUtils.cpp src/CPP/7zip/UI/FileManager/FormatUtils.h
     src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp src/CPP/7zip/UI/FileManager/ProgressDialog2.h
+    src/CPP/7zip/UI/FileManager/MessagesDialog.cpp src/CPP/7zip/UI/FileManager/MessagesDialog.h
+    src/CPP/7zip/UI/FileManager/MessagesDialogRes.h
     src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.cpp src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.h
     src/CPP/7zip/UI/FileManager/UpdateCallback100.cpp src/CPP/7zip/UI/FileManager/UpdateCallback100.h
     src/qtcallbackpassword.cpp src/qtcallbackpassword.h
@@ -610,6 +613,7 @@ if(BUILD_TESTING)
     target_include_directories(ui_operations_tests PRIVATE src tests)
     target_include_directories(ui_navigation_tests PRIVATE src tests)
     target_include_directories(ui_archive_states_tests PRIVATE src tests)
+    target_sources(ui_archive_states_tests PRIVATE tests/layout_inspection.cpp)
     target_link_libraries(ui_state_tests PRIVATE Qt6::Widgets Qt6::Test)
     target_link_libraries(ui_operations_tests PRIVATE Qt6::Widgets Qt6::Test)
     target_link_libraries(ui_navigation_tests PRIVATE Qt6::Widgets Qt6::Test)

@@ -151,9 +151,10 @@ First real ArchiveBackend consumer and process-control propagation are connected
 current 24-report contract/JSON review and full 101/101 gate passed on macOS.
 No rendered Windows reference or Windows/Linux runtime verification is available.
 Qt message-box button order follows the platform; source Yes default and
-Cancel/Escape semantics are retained. Add/drop is the first modal consumer;
-other progress/journal owners remain P0-10.2. External percentages update only
-bar/title; unavailable byte/file totals stay empty. Native pause/background
+Cancel/Escape semantics are retained. Add/drop was the first modal consumer;
+P0-10.2 connects the other current archive/filesystem/volume consumers.
+External percentages update only bar/title; unavailable byte/file totals stay
+empty. Native pause/background
 failure is reported with state/policy rollback. A launch exception after process
 start first quiesces the child, then uses source error composition.
 
@@ -478,7 +479,7 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 | Create/Add, GUI/CompressDialog.rc/.cpp | Исправлены stacked layout и порядок основной формы: compression слева, encryption справа, source picker после archive/options. 760×720/640×480, 7z/ZIP, show/hide confirmation и reachability проверены. Это частичный порт: нет update/path modes, volumes, SFX, shared/delete options, parameters, CompressOptionsDialog и Help; Add не меняет compression options. |
 | Запрос пароля, PasswordDialog.rc/.cpp | QInputDialog заменён source port CPasswordDialog: восстановлен Show Password и исходный ReadControls/SetTextSpec/OnOK. Контракт проверяет все пять controls в masked/shown при 360×170/260×170; Qt integration проверяет reuse/reset/cancel. |
 | Настройки, OptionsDialog.cpp и SettingsPage2.rc | CSettingsPage показывает семь list flags в исходном порядке; ShowDots, icons, FullRow, grid, single-click и ShowSystemMenu подключены к текущей панели. AlternativeSelection включён в P0-07.3. Defaults/persistence/confirm/cancel и 340×300/460×300 JSON проверены. Upstream имеет шесть страниц и memory controls; полный порт и ресурсный comparator отсутствуют. |
-| Прогресс/сообщения, ProgressDialog2.rc/2a.rc/.cpp, MessagesDialog.rc/.cpp | Qt показывает label, percent и Cancel, сообщения — в журнале. Нет upstream statistics, pause/background, embedded list и подтверждения отмены; journal не имеет Close footer исходного MessagesDialog. Это сохраняющийся долг переноса, не результат ресурсного comparator. |
+| Прогресс/сообщения, ProgressDialog2.rc/2a.rc/.cpp, MessagesDialog.rc/.cpp | Текущие архивные, файловые и томовые операции показывают исходный ProgressDialog со статистикой, ошибками, подтверждением отмены и Background. Pause реально управляет 7zz; для файловых/томовых workers отключена. Последние сообщения отображает исходный MessagesDialog с двумя колонками и Close; File menu открывает его modelessly как Qt-адаптацию. Геометрия 760×450/640×380 проверена на macOS, Windows rendered parity не подтверждена. |
 | Информация об архиве / F3/F4 | Archive Info остаётся отдельной QLabel-формой; F3/F4 — локальный UTF-8 viewer/editor, а upstream запускает настроенное внешнее приложение. Эти окна не подтверждены как порты upstream dialogs. |
 
 Copy и Password проверяются ресурсными контрактами с current-build fixture.

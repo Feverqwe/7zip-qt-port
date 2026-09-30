@@ -2,15 +2,22 @@
 
 #include <QCryptographicHash>
 #include <QFile>
-#include <QPlainTextEdit>
 #include <QSignalSpy>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QThread>
+#include <QTreeWidget>
 #include <QtTest>
 
 class ChecksumTests : public QObject {
     Q_OBJECT
+
+    static QString messageText(const QTreeWidget *list) {
+        QString text;
+        for (int i = 0; i < list->topLevelItemCount(); ++i)
+            text += list->topLevelItem(i)->text(1) + '\n';
+        return text;
+    }
 
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
@@ -91,11 +98,11 @@ class ChecksumTests : public QObject {
         action->trigger();
         QVERIFY(finished.wait(30000));
         QVERIFY(finished.takeFirst().first().toBool());
-        QTRY_VERIFY(window.findChild<QPlainTextEdit *>("operationJournalText"));
-        auto *journal = window.findChild<QPlainTextEdit *>("operationJournalText");
+        QTRY_VERIFY(window.findChild<QTreeWidget *>("IDL_MESSAGE"));
+        auto *journal = window.findChild<QTreeWidget *>("IDL_MESSAGE");
         const QString digest = QString::fromLatin1(
             QCryptographicHash::hash("content", QCryptographicHash::Sha256).toHex());
-        QVERIFY(journal->toPlainText().contains(digest));
+        QVERIFY(messageText(journal).contains(digest));
 
         window.openArchive(archive);
         QCOMPARE(finished.size(), 1); // Source modal opening has already joined its worker.
@@ -109,7 +116,7 @@ class ChecksumTests : public QObject {
         if (finished.isEmpty())
             QVERIFY(finished.wait(30000)); // Hashing.
         QVERIFY(finished.takeFirst().first().toBool());
-        QTRY_VERIFY(journal->toPlainText().contains(digest));
+        QTRY_VERIFY(messageText(journal).contains(digest));
         QVERIFY(QDir::setCurrent(original));
     }
 };

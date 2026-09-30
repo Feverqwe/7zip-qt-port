@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
@@ -26,9 +27,9 @@ void MainWindow::openArchive(const QString &path) {
         returnDirectory_ = directory_;
     auto &panel = app_.GetFocusedPanel();
     operationName_ = QStringLiteral("Открытие архива");
-    journalText_.clear();
-    if (journalView_)
-        journalView_->clear();
+    journalMessages_.Clear();
+    if (journalDialog_)
+        journalDialog_->ResetMessages();
     appendJournal(operationName_ + ": " + file.absoluteFilePath());
     journalAction_->setEnabled(true);
     QString message;

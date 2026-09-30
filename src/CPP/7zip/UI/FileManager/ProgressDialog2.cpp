@@ -397,6 +397,8 @@ bool CProgressDialog::OnInit() {
     SetText(_title);
     SetPauseText();
     SetPriorityText();
+    if (_transport && !_transport->CanPause())
+        GetItem(IDB_PAUSE)->setEnabled(false);
     _messageList.InsertColumn(0, L"", 40);
     _messageList.InsertColumn(1, L"", 460);
     _messageList.SetColumnWidthAuto(0);
@@ -992,7 +994,11 @@ bool CProgressDialog::OnNotify(QKeyEvent *key) {
     return false;
 }
 void CProgressDialog::OnOK() {}
-void CProgressDialog::OnCancel() { Sync.Set_Stopped(true); }
+void CProgressDialog::OnCancel() {
+    Sync.Set_Stopped(true);
+    if (_transport)
+        _transport->Cancel();
+}
 void CProgressDialog::accept() { OnOK(); }
 void CProgressDialog::reject() { OnButtonClicked(IDCANCEL); }
 
@@ -1105,14 +1111,15 @@ bool CProgressDialog::OnButtonClicked(unsigned buttonID) {
             return true;
         {
             const bool paused = Sync.Get_Paused();
-            if (!paused)
+            const bool canPause = !_transport || _transport->CanPause();
+            if (!paused && canPause)
                 OnPauseButton();
             _inCancelMessageBox = true;
             const int res = AskCancel(this, LangString(IDS_PROGRESS_ASK_CANCEL), _title);
             _inCancelMessageBox = false;
             if (res == IDYES)
                 _cancelWasPressed = true;
-            if (Sync.Get_Paused() != paused)
+            if (canPause && Sync.Get_Paused() != paused)
                 OnPauseButton();
             if (_externalCloseMessageWasReceived) {
                 OnExternalCloseMessage();

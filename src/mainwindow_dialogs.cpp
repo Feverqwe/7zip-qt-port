@@ -1,27 +1,23 @@
+#include "CPP/7zip/UI/FileManager/MessagesDialog.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "Common/StringConvert.h"
+#include "archiveprogresstransport.h"
 #include "mainwindow.h"
+#include "qtcallbackprogresstransport.h"
 
 void MainWindow::appendJournal(const QString &line) {
-    journalText_ += line + '\n';
-    if (journalView_)
-        journalView_->appendPlainText(line);
+    const UString message = ToUString(line);
+    journalMessages_.Add(message);
+    if (journalDialog_)
+        journalDialog_->AppendMessage(message);
 }
 
 void MainWindow::showJournal() {
     if (!journalDialog_) {
-        journalDialog_ = new QDialog(this);
-        journalDialog_->setObjectName("operationJournalDialog");
-        journalDialog_->setWindowTitle("Журнал последней операции");
-        journalDialog_->resize(700, 440);
-        auto *layout = new QVBoxLayout(journalDialog_);
-        journalView_ = new QPlainTextEdit(journalDialog_);
-        journalView_->setObjectName("operationJournalText");
-        journalView_->setReadOnly(true);
-        journalView_->setPlainText(journalText_);
-        layout->addWidget(journalView_);
+        journalDialog_ = new CMessagesDialog(this);
+        journalDialog_->Messages = &journalMessages_;
     }
-    journalDialog_->show();
-    journalDialog_->raise();
-    journalDialog_->activateWindow();
+    journalDialog_->Create(this);
 }
 
 void MainWindow::showInfo() {
@@ -71,17 +67,37 @@ void MainWindow::begin(const QString &label, const QString &detail, bool preserv
     operationName_ = label;
     currentDetail_ = detail;
     if (!preserveJournal) {
-        journalText_.clear();
-        if (journalView_)
-            journalView_->clear();
+        journalMessages_.Clear();
+        if (journalDialog_)
+            journalDialog_->ResetMessages();
     }
     appendJournal(label + ": " + detail);
     journalAction_->setEnabled(true);
-    progress_ = new QProgressDialog(label + "\n" + detail, "Отмена", 0, 100, this);
-    progress_->setWindowModality(Qt::NonModal);
-    progress_->setMinimumDuration(0);
-    progress_->setValue(0);
-    connect(progress_, &QProgressDialog::canceled, backend_, &ArchiveBackend::cancel);
+    startProgressDialog(label, detail);
+    progressTransport_ = std::make_unique<ArchiveProgressTransport>(*progress_, *backend_);
+    progress_->OnInit();
+    progress_->show();
+}
+
+void MainWindow::beginWorkerProgress(const QString &label, const QString &detail,
+                                     std::function<void()> cancel) {
+    startProgressDialog(label, detail);
+    progress_->CompressingMode = false;
+    progress_->ShowCompressionInfo = false;
+    progressTransport_ = std::make_unique<QtCallbackProgressTransport>(std::move(cancel));
+    progress_->AttachTransport(progressTransport_.get());
+    progress_->OnInit();
+    progress_->show();
+}
+
+void MainWindow::startProgressDialog(const QString &label, const QString &detail) {
+    closeProgressDialog();
+    auto *dialog = new CProgressDialog(this, ToUString(label));
+    dialog->MainWindow = this;
+    dialog->setWindowModality(Qt::ApplicationModal);
+    dialog->Sync.Set_Status(ToUString(label));
+    dialog->Sync.Set_FilePath(detail.toStdWString().c_str());
+    progress_ = dialog;
 }
 
 void MainWindow::openDialog() {

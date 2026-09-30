@@ -182,7 +182,7 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     const bool navigating = !w.app_.QtOperations().blocking();
     auto &panel = w.app_.GetFocusedPanel();
     const bool hasFolder = panel.GetFolder() != nullptr;
-    availability[Journal] = !w.journalText_.isEmpty();
+    availability[Journal] = !w.journalMessages_.IsEmpty();
     availability[Back] =
         navigating && (w.state_ == MainWindow::State::Viewing || !w.history_.isEmpty());
     availability[IDM_OPEN_PARENT_FOLDER] =

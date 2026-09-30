@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "Windows/PropVariant.h"
 #include "archiveprogressoperation.h"
 #include "mainwindow.h"
@@ -201,9 +202,9 @@ void MainWindow::addSources(const QStringList &sources) {
     updatingArchive_ = true;
     setState(State::Operating);
     operationName_ = QStringLiteral("Добавление в архив");
-    journalText_.clear();
-    if (journalView_)
-        journalView_->clear();
+    journalMessages_.Clear();
+    if (journalDialog_)
+        journalDialog_->ResetMessages();
     appendJournal(operationName_ + ": " + archive_);
     journalAction_->setEnabled(true);
     bool success = false;

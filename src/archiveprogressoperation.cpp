@@ -57,7 +57,7 @@ HRESULT ArchiveProgressOperation::ProcessVirt() {
             if (_completed) {
                 if (_startException)
                     std::rethrow_exception(_startException);
-                if (cancelled)
+                if (cancelled || Sync.Get_Stopped())
                     return E_ABORT;
                 if (!_success) {
                     GetMessagePair(true).Message = _message.toStdWString().c_str();

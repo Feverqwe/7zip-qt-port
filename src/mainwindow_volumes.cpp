@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "mainwindow.h"
@@ -105,30 +106,27 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
                                     ? path
                                     : QDir(path).filePath(sequence.GetCombinedName());
     volumeOperation_ = new VolumeOperation(mode, paths.first(), destination, sizes, this);
-    volumeProgress_ = new QProgressDialog(
-        mode == VolumeOperation::Mode::Split ? "Разделение файла…" : "Объединение файлов…",
-        "Отмена", 0, 0, this);
-    volumeProgress_->setObjectName("volumeProgress");
-    volumeProgress_->setWindowModality(Qt::NonModal);
-    volumeProgress_->setMinimumDuration(0);
-    connect(volumeProgress_, &QProgressDialog::canceled, volumeOperation_,
-            &VolumeOperation::cancel);
+    beginWorkerProgress(mode == VolumeOperation::Mode::Split ? QStringLiteral("Разделение файла")
+                                                             : QStringLiteral("Объединение файлов"),
+                        paths.first(), [operation = volumeOperation_] { operation->cancel(); });
+    progress_->Sync.Set_NumBytesTotal(
+        quint64(mode == VolumeOperation::Mode::Split ? source.size() : parts.totalSize));
+    connect(volumeOperation_, &VolumeOperation::advanced, this, [this](qint64 bytes) {
+        if (progress_)
+            progress_->Sync.Set_NumBytesCur(quint64(qMax<qint64>(0, bytes)));
+    });
     connect(volumeOperation_, &VolumeOperation::result, this,
             [this](bool success, const QString &message) {
                 if (app_.QtOperations().closed())
                     return;
-                if (volumeProgress_) {
-                    volumeProgress_->close();
-                    volumeProgress_->deleteLater();
-                    volumeProgress_ = nullptr;
-                }
+                if (!success && message != QStringLiteral("Операция отменена.") && progress_)
+                    progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(message);
+                closeProgressDialog(true);
                 if (success) {
                     showDirectory(directory_, false);
                     statusBar()->showMessage(message);
                 } else {
                     setState(State::Filesystem);
-                    if (message != "Операция отменена.")
-                        QMessageBox::warning(this, "Sevenzip Desktop", message);
                 }
             });
     auto *operation = volumeOperation_;
@@ -140,6 +138,5 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             volumeOperation_ = nullptr;
     });
     setState(State::Operating);
-    volumeProgress_->show();
     volumeOperation_->start();
 }

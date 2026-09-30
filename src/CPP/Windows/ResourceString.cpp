@@ -10,6 +10,7 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "7zip/UI/GUI/resource3.h"
+#include "CPP/7zip/UI/FileManager/MessagesDialogRes.h"
 
 namespace NWindows {
 
@@ -21,6 +22,7 @@ struct ResourceStringEntry {
 #include "ResourceStrings.h"
 
 static const ResourceStringEntry kLocalizedStrings[] = {
+    {IDS_MESSAGE, L"Сообщение"},
     {IDS_MESSAGE_NO_ERRORS, L"Ошибок нет"},
     {IDS_PROGRESS_TESTING, L"Проверка"},
     {IDS_MOVING, L"Перемещение"},

@@ -175,6 +175,6 @@
     "CProgressDialog::OnInit": "sourceIconIDAndEmbeddedFrames: conditional default/source/invalid ID and native embedded image frames; sourceLayoutStates covers normal/compact states",
     "CProgressDialog::OnExternalCloseMessage": "sourceErrorListCloseState: native completion, normal/compact Close geometry/default/Enter, hidden Pause/Background; source modal results, final messages and worker exception composition",
     "CProgressDialog::OnButtonClicked": "progress_cancel: YES/NO/CANCEL/Escape, prior pause restoration and native finish deferred while the confirmation is open",
-    "scope": "Integrated source modal/worker/cancel/callback component and first ArchiveBackend Add/drop consumer are accepted in P0-10.1; all remaining consumers/messages acceptance stays P0-10.2. Geometry and decoded icon frames are not Windows pixel parity."
+    "scope": "Integrated source modal/worker/cancel/callback component and first ArchiveBackend Add/drop consumer were accepted in P0-10.1. P0-10.2 connects the remaining current archive/filesystem/volume consumers and source MessagesDialog. Geometry and decoded icon frames are not Windows pixel parity."
   }
 }

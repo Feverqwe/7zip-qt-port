@@ -486,8 +486,19 @@ pausing and restoring prior pause. Native completion while the question is open
 is deferred until the answer; completed errors hide Pause/Background and focus
 the default Close button. Native message boxes use plain text. Their Qt platform
 layout is checked separately from the 26-control source resource; macOS ignores
-message-box window titles. Add in an open archive is the first operation consumer
-under P0-10.1 validation. Other consumers remain mandatory P0-10.2 work.
+message-box window titles. Add in an open archive was the first operation consumer
+under P0-10.1. P0-10.2 connects the other current archive, filesystem and volume
+operations. Filesystem/volume workers expose cancellation and real background
+priority, but Pause is disabled because they have no worker pause capability.
+
+MessagesDialog.rc (`IDD_MESSAGES`) uses a two-column numbered/message list and
+Close footer. The Qt source port preserves AddMessageDirect/AddMessage and the
+OnInit/OnSize control flow; `IDL_MESSAGE` is above `IDOK` at 760×450 and
+640×380. Current-build JSON confirms both controls are visible, separated and
+within the dialog. The File menu reopens this source view modelessly for the
+last operation; this is an explicit Qt workflow adaptation. Font-DLU scaling
+may enlarge the Close button to its Qt size hint. Windows rendered appearance
+remains unverified.
 No Windows rendered reference; geometry does not establish pixel parity.
 The original IconID branch loads the exact FM.ico through a Qt ID/resource
 service, including native 16/32/48 frames; default negative IDs preserve the

@@ -1,5 +1,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
+#include <QCoreApplication>
 
 void MainWindow::connectBackend() {
     connect(backend_, &ArchiveBackend::infoReady, this, [this](const ArchiveInfo &info) {
@@ -19,17 +21,20 @@ void MainWindow::connectBackend() {
         backend_->providePassword(dialog.Password);
     });
     connect(backend_, &ArchiveBackend::outputReceived, this, [this](const QString &line) {
-        if (!app_.QtOperations().closed())
+        if (!app_.QtOperations().closed()) {
             appendJournal(line);
+            if (progress_ && (line.startsWith(QStringLiteral("ERROR:"), Qt::CaseInsensitive) ||
+                              line.startsWith(QStringLiteral("WARNING:"), Qt::CaseInsensitive)))
+                progress_->Sync.AddError_Message(line.toStdWString().c_str());
+        }
     });
     connect(backend_, &ArchiveBackend::progress, this, [this](int percent, const QString &detail) {
         if (app_.QtOperations().closed() || !progress_)
             return;
-        if (percent >= 0)
-            progress_->setValue(percent);
+        progress_->SetTransportPercent(percent);
         if (!detail.isEmpty()) {
             currentDetail_ = detail;
-            progress_->setLabelText(operationName_ + "\n" + currentDetail_);
+            progress_->Sync.Set_FilePath(detail.toStdWString().c_str());
             statusBar()->showMessage(operationName_ + ": " + currentDetail_);
         }
     });
@@ -74,12 +79,15 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
             if (!app_.QtOperations().closed())
                 showJournal();
         });
-    closeProgressDialog();
+    const bool hadProgress = progress_;
+    if (hadProgress && !ok && resultMessage != QStringLiteral("Операция отменена."))
+        progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(resultMessage);
+    closeProgressDialog(true);
     if (finishArchiveState(ok))
         return;
     finishViewExtraction(ok);
     statusBar()->showMessage(resultMessage);
-    if (!ok && !messageDisplayed && resultMessage != "Операция отменена.")
+    if (!ok && !hadProgress && !messageDisplayed && resultMessage != "Операция отменена.")
         QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
 }
 
@@ -166,12 +174,25 @@ void MainWindow::finishViewExtraction(bool ok) {
     }
 }
 
-void MainWindow::closeProgressDialog() {
+void MainWindow::closeProgressDialog(bool finished) {
     if (!progress_)
         return;
-    QProgressDialog *completed = progress_;
+    CProgressDialog *completed = progress_;
     progress_ = nullptr;
-    completed->disconnect(backend_);
-    completed->close();
-    completed->deleteLater();
+    completed->AttachTransport(nullptr);
+    progressTransport_.reset();
+    if (finished) {
+        completed->setObjectName("completedProgressDialog");
+        connect(completed, &QDialog::finished, completed, &QObject::deleteLater);
+        completed->ProcessWasFinished();
+        // ArchiveBackend and Qt workers finish on the GUI event loop. Deliver
+        // the source close/final-message transition before commands become
+        // available for the next operation.
+        QCoreApplication::sendPostedEvents(completed, QEvent::MetaCall);
+    } else {
+        // QDialog::close routes through the source reject/cancel confirmation.
+        // An already completed stage must be dismissed without a new prompt.
+        completed->done(0);
+        completed->deleteLater();
+    }
 }

@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 
@@ -23,32 +24,30 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
         return;
     }
     fileTransfer_ = new FileTransferOperation(sources, destination, move, this);
-    fileTransferProgress_ = new QProgressDialog(
-        move ? "Перемещение файлов…" : "Копирование файлов…", "Отмена", 0, 0, this);
-    fileTransferProgress_->setObjectName("fileTransferProgress");
-    fileTransferProgress_->setWindowModality(Qt::NonModal);
-    fileTransferProgress_->setMinimumDuration(0);
-    connect(fileTransferProgress_, &QProgressDialog::canceled, fileTransfer_,
-            &FileTransferOperation::cancel);
+    fileTransferCompletedBytes_ = 0;
+    beginWorkerProgress(move ? QStringLiteral("Перемещение файлов")
+                             : QStringLiteral("Копирование файлов"),
+                        destination, [operation = fileTransfer_] { operation->cancel(); });
     connect(fileTransfer_, &FileTransferOperation::currentFile, this, [this](const QString &path) {
         if (app_.QtOperations().closed())
             return;
-        if (fileTransferProgress_)
-            fileTransferProgress_->setLabelText(QFileInfo(path).fileName());
+        if (progress_)
+            progress_->Sync.Set_FilePath(path.toStdWString().c_str());
+    });
+    connect(fileTransfer_, &FileTransferOperation::advanced, this, [this](qint64 bytes) {
+        fileTransferCompletedBytes_ += quint64(qMax<qint64>(0, bytes));
+        if (progress_)
+            progress_->Sync.Set_NumBytesCur(fileTransferCompletedBytes_);
     });
     connect(fileTransfer_, &FileTransferOperation::result, this,
             [this](bool success, const QString &message) {
                 if (app_.QtOperations().closed())
                     return;
-                if (fileTransferProgress_) {
-                    fileTransferProgress_->close();
-                    fileTransferProgress_->deleteLater();
-                    fileTransferProgress_ = nullptr;
-                }
+                if (!success && message != QStringLiteral("Операция отменена.") && progress_)
+                    progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(message);
+                closeProgressDialog(true);
                 if (success)
                     statusBar()->showMessage(message);
-                else if (message != "Операция отменена.")
-                    QMessageBox::warning(this, "Sevenzip Desktop", message);
             });
     auto *operation = fileTransfer_;
     connect(operation, &QThread::finished, this, [this, operation, sources] {
@@ -61,7 +60,6 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
         selectPaths(sources);
     });
     setState(State::Operating);
-    fileTransferProgress_->show();
     fileTransfer_->start();
 }
 

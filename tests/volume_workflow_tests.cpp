@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
 #include "window_state_support.h"
 
@@ -39,6 +40,10 @@ class VolumeWorkflowTests : public QObject, protected MainWindowTestSupport {
             dialog->accept();
         });
         action(window, "splitFileAction")->trigger();
+        auto *splitProgress =
+            dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
+        QVERIFY(splitProgress);
+        QVERIFY(!splitProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
         QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QCOMPARE(QDir(destination).entryList(QDir::Files).size(), 5);
         QByteArray restored;
@@ -60,6 +65,10 @@ class VolumeWorkflowTests : public QObject, protected MainWindowTestSupport {
             dialog->accept();
         });
         action(window, "combineFilesAction")->trigger();
+        auto *combineProgress =
+            dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
+        QVERIFY(combineProgress);
+        QVERIFY(!combineProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
         QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QCOMPARE(read(QDir(combined).filePath(name)), bytes);
         QCOMPARE(QDir(destination).entryList(QDir::Files).size(), 5);

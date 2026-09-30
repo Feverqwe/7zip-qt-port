@@ -54,7 +54,6 @@
 #include <QPainter>
 #include <QPlainTextEdit>
 #include <QPointer>
-#include <QProgressDialog>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QSettings>
@@ -81,6 +80,9 @@
 #include <vector>
 
 class QtFileListHover;
+class CProgressDialog;
+class CMessagesDialog;
+class IQtProgressTransport;
 
 class MainWindow : public QMainWindow {
   public:
@@ -132,7 +134,9 @@ class MainWindow : public QMainWindow {
     bool startPendingArchiveMove(bool ok);
     bool finishArchiveState(bool ok);
     void finishViewExtraction(bool ok);
-    void closeProgressDialog();
+    void closeProgressDialog(bool finished = false);
+    void beginWorkerProgress(const QString &label, const QString &detail,
+                             std::function<void()> cancel);
 
     enum class State { Filesystem, Namespace, Loading, Viewing, Operating };
     enum class SortMode { Name, Type, Date, Size, Unsorted };
@@ -201,6 +205,7 @@ class MainWindow : public QMainWindow {
     void showSelectedProperties();
     void calculateHash(const QString &method);
     void begin(const QString &label, const QString &detail, bool preserveJournal = false);
+    void startProgressDialog(const QString &label, const QString &detail);
     void openDialog();
     void openFileViewer(const QString &path, bool editable);
     bool openLocalFile(const QString &path);
@@ -327,13 +332,13 @@ class MainWindow : public QMainWindow {
     bool selectionClickLeft_ = false;
     bool selectionShiftSequence_ = false;
     QStackedWidget *viewStack_ = nullptr;
-    QProgressDialog *progress_ = nullptr;
+    QPointer<CProgressDialog> progress_;
+    std::unique_ptr<IQtProgressTransport> progressTransport_;
     bool sourceArchiveProgress_ = false;
-    QDialog *journalDialog_ = nullptr;
+    QPointer<CMessagesDialog> journalDialog_;
     QPointer<QDialog> infoDialog_;
-    QPlainTextEdit *journalView_ = nullptr;
     QAction *journalAction_ = nullptr;
-    QString journalText_;
+    UStringVector journalMessages_;
     QString operationName_;
     QString currentDetail_;
     QAction *open_ = nullptr;
@@ -362,10 +367,9 @@ class MainWindow : public QMainWindow {
     QAction *split_ = nullptr;
     QAction *combine_ = nullptr;
     VolumeOperation *volumeOperation_ = nullptr;
-    QProgressDialog *volumeProgress_ = nullptr;
     FileTransferOperation *fileTransfer_ = nullptr;
+    quint64 fileTransferCompletedBytes_ = 0;
     FileDeleteOperation *fileDelete_ = nullptr;
-    QProgressDialog *fileTransferProgress_ = nullptr;
     QAction *viewFile_ = nullptr;
     QAction *editFile_ = nullptr;
     QAction *properties_ = nullptr;

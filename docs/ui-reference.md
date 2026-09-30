@@ -70,9 +70,12 @@ reviewed contract is checked during comparison. Compare a new extraction with
 the stored reference before updating either baseline or contract.
 
 `progress-dialog.reference.json` records the exact desktop IDD_PROGRESS resource,
-its shared inputs and reviewed handler navigation index. It is a source reference
-prerequisite; Qt mapping/state contracts and current-build reports follow the full
-progress view port. Its presence alone proves no rendering or workflow parity.
+its shared inputs and reviewed handler navigation index. Its maintained contract
+checks the 26-control Qt progress presentation in selected states. P0-10.2 also
+ports MessagesDialog.rc's two controls and source message handlers; normal and
+compact current-build JSON is reviewed in `ui_archive_states`, while a maintained
+resource comparator for that dialog remains future parity tooling. No JSON
+report establishes rendered Windows pixel parity.
 
 The maintained baseline is upstream
 [`ip7z/7zip` at `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

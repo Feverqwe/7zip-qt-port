@@ -167,8 +167,15 @@ archive on missing-source failure, GUI start exception composition, owned engine
 password accept/empty/cancel, pause/background failure rollback and completion
 while paused. It also produces normal/compact control/error-close JSON.
 `ui_operations` checks Add/drop modal consumer state and refresh/selection flow.
-These are current-component tests; acceptance of all progress/journal consumers
-remains P0-10.2 and Windows/Linux runtime needs its own evidence.
+P0-10.2 additionally checks the shared source dialog in filesystem copy/delete
+and volume Split/Combine, including disabled unsupported Pause, native Background
+availability, completion/errors and partial-result refresh. `progress_cancel`
+checks the generic worker callback after No/Yes and keeps the source prompt
+geometry and finish-during-question races. `ui_archive_states` checks the
+source MessagesDialog's two controls, result/error reset and 760×450/640×380
+current-build JSON. `checksum` checks the last-operation digest through its
+source message list. `app_lifecycle_window` exercises joined window teardown.
+Windows/Linux runtime needs its own evidence.
 
 `progress_statistics_helpers` compiles the authoritative progress module in a
 separate test translation unit to preserve original file-local helper visibility.

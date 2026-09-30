@@ -34,6 +34,8 @@ HRESULT ArchiveProgressTransport::SetPaused(bool paused) {
     return _completed ? S_OK : E_FAIL;
 }
 
+void ArchiveProgressTransport::Cancel() { _backend.cancel(); }
+
 HRESULT ArchiveProgressTransport::SetBackground(bool background) {
     bool previous;
     HRESULT result = NProcessPriority::GetBackground(0, previous);

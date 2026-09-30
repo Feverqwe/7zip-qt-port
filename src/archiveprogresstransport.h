@@ -14,4 +14,5 @@ class ArchiveProgressTransport final : public QObject, public IQtProgressTranspo
     ~ArchiveProgressTransport() override;
     HRESULT SetPaused(bool paused) override;
     HRESULT SetBackground(bool background) override;
+    void Cancel() override;
 };

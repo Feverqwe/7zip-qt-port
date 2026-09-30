@@ -1582,6 +1582,67 @@ Native confirmation and password behavior/geometry are covered separately.
 Windows/Linux runtime and rendered Windows parity remain unverified and mandatory;
 all remaining progress/journal consumers and parent P0-10 acceptance stay P0-10.2.
 
+## P0-10.2 — all current progress/message consumers (2026-09-30)
+
+Source baseline for each borrowed module:
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from
+[ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+The upstream `CPP/7zip/UI/FileManager/MessagesDialog.h/.cpp/.rc` and
+`MessagesDialogRes.h` supply `CMessagesDialog::AddMessageDirect`, `AddMessage`,
+`OnInit`, `OnSize`, two-column numbered messages and the Close footer. The
+functional message-splitting/numbering loops are copied under the original
+paths. Win32 `CModalDialog`/`CListView`/DLU services become a narrow Qt
+`QDialog`/`CQtProgressListView` presentation; resource IDs and original 456×176
+dialog units are retained. Font metrics may enlarge the Close control. The
+File menu's local last-operation action reopens the dialog modelessly, so a
+completed hash result stays inspectable; this action is a project extension.
+The original source's `Create` modal dispatch is not reused for this local
+menu workflow. `ResourceString` supplies the Russian `IDS_MESSAGE` caption.
+
+All other current archive operations now use the existing source
+`CProgressDialog` via `ArchiveProgressTransport`; filesystem copy/delete and
+Split/Combine use it through `QtCallbackProgressTransport`. Their existing
+`FileTransferOperation`, `FileDeleteOperation` and `VolumeOperation` workers
+remain operation owners; this iteration replaces only the former
+`QProgressDialog`/custom journal presentation. The generic transport forwards
+confirmed source cancellation to the worker and applies the real native
+process-priority service. Those workers have no cooperative pause mechanism,
+so the source Pause button is disabled for them. Volume reports actual total
+and completed bytes; file deletion reports total/completed items; file
+transfer reports accumulated completed bytes, while its total and ETA remain
+unknown rather than fabricated. The 7zz process transport retains true child
+pause/background controls and the percent-only fallback from P0-10.1.
+
+`CProgressDialog::OnCancel` invokes the narrow transport after the original
+YES/NO/CANCEL decision. Unsupported pause is skipped during the source's
+temporary cancel-question pause; its normal body and restoration remain.
+`ArchiveProgressOperation::ProcessVirt` treats a confirmed stop as E_ABORT even
+when synchronous backend completion wins the latch, avoiding a false final
+error after cancellation. GUI-thread async consumers initialize source
+controls before showing even when their parent window is hidden. Stage handoff
+uses `QDialog::done` so a finished stage cannot be mistaken for a new cancel
+request. The source close/final message is delivered before command
+re-enablement; worker quiescence and partial deletion refresh remain under
+the existing operation-state owner. Backend diagnostics and final errors feed
+source `CProgressSync`; a single UStringVector retains last-operation messages
+for the source MessagesDialog, with no independent QPlainTextEdit owner.
+
+Omitted from this package: source FileManager drag-error caller branches outside
+the current workflows, new pause capabilities in filesystem/volume workers,
+full language-file loading (P1-14), future P1–P3 operations, rendered Windows
+pixel comparison and Windows/Linux runtime checks. Those are not counted as
+implemented by the P0-10 parent. Qt 6.11.2/macOS arm64 current-build
+normal/compact MessagesDialog JSON reports show both controls fully visible,
+ordered and separated, with a fitting Close caption. Focused direct consumers
+`progress_cancel`, `checksum`, `ui_operations`, `ui_archive_states`,
+`app_lifecycle_window`, `volume_workflow` passed 6/6 in 11.65 s. The final
+unsandboxed `./scripts/check.sh` passed formatting, app build and all 137/137
+CTest cases on macOS arm64, Qt 6.11.2, 2026-09-30. No Windows/Linux runtime
+or rendered Windows reference was available locally. After a documentation-only
+scope correction to the progress resource contract, its targeted
+`ui_parity_progress` fixture passed unsandboxed (5/5 including dependencies);
+the sandboxed native-priority fixture cannot exercise this macOS service.
+
 ## P0-02.2b3c3b2b3a — portable startup wait boundary (2026-09-29)
 
 Project baseline `e9908a5`. Exact upstream baseline

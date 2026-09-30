@@ -73,7 +73,7 @@ P0-03 как integrated command policy/dispatch, P0-04 как native navigation;
 открытые строки, перечисленные в карте, **входят в новые результаты**, а не
 закрываются сменой структуры. Их дочерние строки — внутренний список работ;
 отдельных новых завершений или коммитов для helpers/методов/ресурсов не будет.
-У всех текущих итераций owner — этот чат. После P0-09 счёт parent packages — 9/44.
+У всех текущих итераций owner — этот чат. После P0-10 счёт parent packages — 10/44.
 
 | Рабочий ID | Целый результат и критерий приёмки | Точные prerequisites / исторический открытый scope | Статус |
 | --- | --- | --- | --- |
@@ -96,13 +96,13 @@ P0-03 как integrated command policy/dispatch, P0-04 как native navigation;
 | P0-08.2 | Целый mixed-panel scenario и parent приёмка: disk/archive, archive/archive, Alt+F1/F2 history/path focus, Copy/Move destination readiness, commands/toolbar active target, restore splitter/layout/location/view/selection и compact/hidden JSON | После P0-08.1; transfer bodies остаются P1-01, но destination default должен быть проверяем | done — audit § P0-08.2; disk/archive + archive/archive state, Alt+F1/F2, Copy/Move/Extract opposite destination, persisted count/focus/path/view/splitter and hidden-left path, 5 Qt JSON reports; focused direct consumers and full unsandboxed check.sh 135/135 macOS arm64 2026-09-30; P1-01 transfer and Windows/Linux runtime remain |
 | P0-09.1 | Целая оболочка main menu/toolbar: исходный `resource.rc` command/order/grouping/shortcuts, `MyLoadMenu`/`FM` dispatch/checks, toolbar flags и исходные bitmaps через Qt; все текущие команды привязаны к active panel, отсутствующие явно disabled, normal/compact меню/toolbar JSON и keyboard tests | done — audit § P0-09.1; source menu order/IDs/shortcuts, 14 exact BMPs, Qt active panel routing and disabled missing commands; main_shell normal/compact window + File/View JSON, focused 8/8 and full unsandboxed check.sh 136/136 macOS arm64 2026-09-30. Context/status/system icons and parent — .2; Windows/Linux runtime and rendered Windows parity unverified |
 | P0-09.2 | Целый panel context/status scenario и parent приёмка: `PanelMenu` policy/группы по выбору и типу папки, `PanelListNotify::Refresh_StatusBar` totals/selection/details, `SysIconUtils` platform adapter, two-panel active state, full source/resource UI contract и normal/compact JSON | done — audit § P0-09.2; source context projection, per-panel 4-part status and source icon cache with Qt lookup; disk/archive + keyboard/two-panel normal/compact JSON, focused direct consumers 11/11 and full unsandboxed check.sh 137/137 macOS arm64 2026-09-30. Shell extension/system verbs P1-02/P2-09/P3-05 remain disabled/mandatory; Windows/Linux runtime and rendered Windows parity unverified |
-| P0-10.2 | Общий progress/messages для всех archive/filesystem/volume consumers: удалить разрозненные progress/journal owners, сохранить сообщения/partial results и destruction/cancel races; полная P0-10 приёмка и актуальные geometry/contracts | После P0-10.1, P0-02/P0-03 и требуемых model consumers; необходимые transport/callback dependencies — внутренние работы результата, engine не переписывается | todo |
+| P0-10.2 | Общий progress/messages для всех archive/filesystem/volume consumers: удалить разрозненные progress/journal owners, сохранить сообщения/partial results и destruction/cancel races; полная P0-10 приёмка и актуальные geometry/contracts | После P0-10.1, P0-02/P0-03 и требуемых model consumers; необходимые transport/callback dependencies — внутренние работы результата, engine не переписывается | done — audit § P0-10.2; source progress для всех текущих archive/filesystem/volume consumers, source MessagesDialog вместо journal, настоящий background и disabled Pause у workers без capability, backend/worker error + partial-result lifecycle, normal/compact JSON; focused 6/6 11.65 с, unsandboxed check.sh 137/137, parity fixture 5/5 macOS arm64/Qt 6.11.2 2026-09-30; Windows/Linux runtime и rendered parity не проверены |
 
-После принятия P0-09 следующий доступный результат — P0-10.2
+После принятия P0-10 следующий доступный результат — P0-11
 по приоритету и зависимостям. Исторический порядок prerequisites
 P0-10.1 → P0-04.1 → P0-02.2 → P0-02.3 → P0-03 уже подтверждён выше.
-P0-04 целиком закрывается только после своей command/navigation приёмки с P0-03;
-P0-05 и P0-10 целиком — только после перечисленных parent критериев.
+P0-04/P0-05/P0-10 приняты после перечисленных parent критериев; их
+отдельные дальнейшие функциональные ветви сохраняются под собственными ID.
 Все остальные открытые P0/P1/P2/P3 строки остаются крупными рабочими пакетами
 с прежними ID и зависимостями. Если понадобится несколько результатов, допустим
 только один уровень .1/.2, каждый с подключённым компонентом/сценарием и UX.
@@ -132,7 +132,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [x] | P0-07 | Mouse/keyboard selection и полные list settings/hover | P0-03, P0-05 | done — .1/.2/.3 integrated settings/hover, source commands and alternative marks with disk/archive/root/flat/four-view keyboard/mouse UX; 33 JSON, targeted table/icon paint, focused 9/9 and full check.sh 135/135 macOS arm64 2026-09-29; Windows/Linux runtime and Windows rendered parity unverified |
 | [x] | P0-08 | Две панели, F9/Tab/Alt+F1/F2, persistence | P0-02, P0-03, P0-04, P0-07 | done — .1 disk/disk и .2 disk/archive + archive/archive, active command target, destination default, Alt+F1/F2, count/focus/path/view/splitter restore and hidden path; audit § P0-08.1/.2, Qt normal/compact/hidden JSON, full check.sh 135/135 macOS arm64 2026-09-30; actual cross-panel transfer P1-01, Windows/Linux runtime and rendered Windows parity unverified |
 | [x] | P0-09 | Исходные menus/toolbar/context/status и UI contracts | P0-03, P0-06, P0-08 | done — audit § P0-09.1/.2; исходный порядок/dispatch/toolbar BMP, context policy, per-panel status и icon cache, normal/compact JSON; focused 11/11 and full check.sh 137/137 macOS arm64 2026-09-30. Shell verbs P1-02/P2-09/P3-05, язык P1-14 и Windows/Linux/rendered parity остаются обязательными |
-| [ ] | P0-10 | Общий progress/messages, cancel-confirm, pause/background | P0-02, P0-03 | active — P0-10.1 accepted integrated prerequisite для P0-04.1; P0-10.2 и полная parent приёмка обязательны |
+| [x] | P0-10 | Общий progress/messages, cancel-confirm, pause/background | P0-02, P0-03 | done — audit § P0-10.1/.2; source dialog + callbacks, archive/file/volume consumers, source diagnostic list, реальные cancel/background/7zz Pause и disabled unsupported worker Pause; full check.sh 137/137 macOS arm64 2026-09-30; Windows/Linux runtime и rendered Windows parity остаются непроверенными |
 | [ ] | P0-11 | OverwriteDialog и решения конфликта Copy/Move | P0-10 | todo |
 | [ ] | P0-12 | Настоящий Ask при Extract через общий callback | P0-11 | todo |
 

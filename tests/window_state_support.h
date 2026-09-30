@@ -20,7 +20,6 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPlainTextEdit>
-#include <QProgressDialog>
 #include <QPushButton>
 #include <QScopedPointer>
 #include <QSettings>
