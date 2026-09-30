@@ -81,6 +81,8 @@ void MainWindow::quiesceOperations() {
         fileDelete_->wait();
     }
     if (fileTransfer_) {
+        if (overwriteDialog_)
+            overwriteDialog_->reject();
         disconnect(fileTransfer_, nullptr, this, nullptr);
         fileTransfer_->cancel();
         fileTransfer_->wait();

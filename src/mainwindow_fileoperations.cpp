@@ -1,8 +1,46 @@
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
+
+namespace {
+NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
+    const QFileInfo source(path);
+    NOverwriteDialog::CFileInfo info;
+    info.Path = ToUString(path);
+    info.Is_FileSystemFile = true;
+    info.Is_Directory = source.isDir();
+    if (source.isFile())
+        info.SetSize(UInt64(source.size()));
+    const qint64 ticks = (source.lastModified().toMSecsSinceEpoch() + 11644473600000LL) * 10000;
+    if (ticks > 0) {
+        FILETIME time{};
+        time.dwLowDateTime = DWORD(quint64(ticks));
+        time.dwHighDateTime = DWORD(quint64(ticks) >> 32);
+        info.SetTime(time);
+    }
+    return info;
+}
+int overwriteAnswer(INT_PTR button) {
+    switch (button) {
+    case IDYES:
+        return NOverwriteAnswer::kYes;
+    case IDB_YES_TO_ALL:
+        return NOverwriteAnswer::kYesToAll;
+    case IDNO:
+        return NOverwriteAnswer::kNo;
+    case IDB_NO_TO_ALL:
+        return NOverwriteAnswer::kNoToAll;
+    case IDB_AUTO_RENAME:
+        return NOverwriteAnswer::kAutoRename;
+    default:
+        return NOverwriteAnswer::kCancel;
+    }
+}
+} // namespace
 
 QString MainWindow::selectedCopyInfo() {
     CPanel &panel = app_.GetFocusedPanel();
@@ -24,6 +62,27 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
         return;
     }
     fileTransfer_ = new FileTransferOperation(sources, destination, move, this);
+    auto *operation = fileTransfer_;
+    connect(operation, &FileTransferOperation::overwriteRequested, this,
+            [this, operation](const QString &existing, const QString &incoming) {
+                if (app_.QtOperations().closed() || operation->isCanceled()) {
+                    operation->submitOverwriteAnswer(NOverwriteAnswer::kCancel);
+                    return;
+                }
+                COverwriteDialog dialog(this);
+                overwriteDialog_ = &dialog;
+                dialog.OldFileInfo = overwriteFileInfo(existing);
+                dialog.NewFileInfo = overwriteFileInfo(incoming);
+                connect(operation, &FileTransferOperation::dismissOverwriteRequested, &dialog,
+                        &QDialog::reject, Qt::QueuedConnection);
+                if (operation->isCanceled()) {
+                    operation->submitOverwriteAnswer(NOverwriteAnswer::kCancel);
+                    return;
+                }
+                const int answer = overwriteAnswer(dialog.Create(this));
+                overwriteDialog_ = nullptr;
+                operation->submitOverwriteAnswer(answer);
+            });
     fileTransferCompletedBytes_ = 0;
     beginWorkerProgress(move ? QStringLiteral("Перемещение файлов")
                              : QStringLiteral("Копирование файлов"),
@@ -49,7 +108,6 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 if (success)
                     statusBar()->showMessage(message);
             });
-    auto *operation = fileTransfer_;
     connect(operation, &QThread::finished, this, [this, operation, sources] {
         if (app_.QtOperations().closed())
             return;

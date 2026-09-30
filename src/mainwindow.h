@@ -368,6 +368,7 @@ class MainWindow : public QMainWindow {
     QAction *combine_ = nullptr;
     VolumeOperation *volumeOperation_ = nullptr;
     FileTransferOperation *fileTransfer_ = nullptr;
+    QPointer<QDialog> overwriteDialog_;
     quint64 fileTransferCompletedBytes_ = 0;
     FileDeleteOperation *fileDelete_ = nullptr;
     QAction *viewFile_ = nullptr;

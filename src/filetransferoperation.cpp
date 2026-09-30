@@ -1,5 +1,8 @@
 #include "filetransferoperation.h"
+#include "7zip/Common/FilePathAutoRename.h"
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
+#include "Common/StringConvert.h"
 
 #include <QDir>
 #include <QFile>
@@ -11,7 +14,35 @@ FileTransferOperation::FileTransferOperation(QStringList sources, QString destin
     : QThread(parent), sources_(std::move(sources)), destination_(std::move(destination)),
       move_(move) {}
 
-void FileTransferOperation::cancel() { canceled_ = true; }
+void FileTransferOperation::cancel() {
+    canceled_ = true;
+    overwriteCondition_.wakeAll();
+    emit dismissOverwriteRequested();
+}
+
+void FileTransferOperation::submitOverwriteAnswer(int answer) {
+    QMutexLocker lock(&overwriteMutex_);
+    if (!overwriteWaiting_)
+        return;
+    overwriteAnswer_ = answer;
+    overwriteCondition_.wakeAll();
+}
+
+int FileTransferOperation::askOverwrite(const QString &existing, const QString &incoming) {
+    QMutexLocker lock(&overwriteMutex_);
+    if (canceled_ || receivers(SIGNAL(overwriteRequested(QString, QString))) == 0)
+        return NOverwriteAnswer::kCancel;
+    overwriteWaiting_ = true;
+    overwriteAnswer_ = -1;
+    lock.unlock();
+    emit overwriteRequested(existing, incoming);
+    lock.relock();
+    while (overwriteAnswer_ < 0 && !canceled_)
+        overwriteCondition_.wait(&overwriteMutex_);
+    const int answer = canceled_ ? NOverwriteAnswer::kCancel : overwriteAnswer_;
+    overwriteWaiting_ = false;
+    return answer;
+}
 
 void FileTransferOperation::removeEntry(const QString &path) {
     if (QFileInfo(path).isDir())
@@ -64,6 +95,13 @@ bool FileTransferOperation::copyEntry(const QString &source, const QString &targ
 }
 
 void FileTransferOperation::run() {
+    struct Completed {
+        QString source;
+        QString target;
+        QString backup;
+    };
+    enum class OverwriteMode { Ask, Skip, Overwrite, Rename };
+    OverwriteMode overwriteMode = OverwriteMode::Ask;
     QString error;
     const QFileInfo destinationInfo(destination_);
     const QString canonicalDestination = destinationInfo.canonicalFilePath();
@@ -76,52 +114,115 @@ void FileTransferOperation::run() {
         const QFileInfo info(source);
         const QString target = QDir(destination_).filePath(info.fileName());
         if (!info.exists() || info.isSymLink() || (!info.isFile() && !info.isDir()) ||
-            QFileInfo::exists(target) || QFileInfo(target).isSymLink() ||
-            targets.contains(target) ||
+            QFileInfo(target).isSymLink() || targets.contains(target) ||
             (info.isDir() &&
              NFsFolder::IsDestChild(info.canonicalFilePath(), canonicalDestination)))
             error = QStringLiteral("Источник или назначение недоступны либо имя уже занято.");
         targets << target;
     }
-    QStringList completed;
+    QList<Completed> completed;
     for (qsizetype i = 0; i < sources_.size() && error.isEmpty(); ++i) {
         if (canceled_) {
             error = QStringLiteral("Операция отменена.");
             break;
         }
-        const QString stage =
-            targets[i] +
+        const QString source = sources_[i];
+        QString target = targets[i];
+        bool mayReplace = false;
+        const QFileInfo sourceInfo(source);
+        const QFileInfo existingInfo(target);
+        if (existingInfo.exists()) {
+            if (existingInfo.isDir() != sourceInfo.isDir()) {
+                error =
+                    QStringLiteral("Нельзя заменить файл папкой или папку файлом: %1").arg(target);
+                break;
+            }
+            if (overwriteMode == OverwriteMode::Ask) {
+                const int answer = askOverwrite(target, source);
+                switch (answer) {
+                case NOverwriteAnswer::kNo:
+                    continue;
+                case NOverwriteAnswer::kNoToAll:
+                    overwriteMode = OverwriteMode::Skip;
+                    continue;
+                case NOverwriteAnswer::kYes:
+                    break;
+                case NOverwriteAnswer::kYesToAll:
+                    overwriteMode = OverwriteMode::Overwrite;
+                    break;
+                case NOverwriteAnswer::kAutoRename:
+                    overwriteMode = OverwriteMode::Rename;
+                    break;
+                default:
+                    error = QStringLiteral("Операция отменена.");
+                    break;
+                }
+            }
+            if (!error.isEmpty())
+                break;
+            if (overwriteMode == OverwriteMode::Skip)
+                continue;
+            if (overwriteMode == OverwriteMode::Rename) {
+                FString renamed = us2fs(target.toStdWString().c_str());
+                if (!AutoRenamePath(renamed)) {
+                    error = QStringLiteral("Не удалось подобрать свободное имя: %1").arg(target);
+                    break;
+                }
+                target = QString::fromWCharArray(fs2us(renamed));
+            } else {
+                mayReplace = true;
+            }
+        }
+        const QString suffix =
             QStringLiteral(".sevenzip-%1").arg(QUuid::createUuid().toString(QUuid::Id128));
+        const QString stage = target + suffix;
+        QString backup;
         emit currentFile(sources_[i]);
-        const bool valid = !move_ || validateEntry(sources_[i], &error);
-        const bool staged = valid && (move_ ? QDir().rename(sources_[i], stage)
-                                            : copyEntry(sources_[i], stage, &error));
+        const bool valid = !move_ || validateEntry(source, &error);
+        const bool staged =
+            valid && (move_ ? QDir().rename(source, stage) : copyEntry(source, stage, &error));
         if (!staged && error.isEmpty())
             error = QStringLiteral("Не удалось переместить объект: %1").arg(sources_[i]);
         if (error.isEmpty() && canceled_)
             error = QStringLiteral("Операция отменена.");
-        if (error.isEmpty() &&
-            (QFileInfo::exists(targets[i]) || QFileInfo(targets[i]).isSymLink() ||
-             !QDir().rename(stage, targets[i])))
-            error = QStringLiteral("Не удалось завершить перенос: %1").arg(targets[i]);
+        if (error.isEmpty() && QFileInfo(target).isSymLink())
+            error = QStringLiteral("Назначение изменилось во время переноса: %1").arg(target);
+        if (error.isEmpty() && QFileInfo::exists(target) && !mayReplace)
+            error = QStringLiteral("Назначение изменилось во время переноса: %1").arg(target);
+        if (error.isEmpty() && QFileInfo::exists(target)) {
+            // Keep the old entry until every source has published successfully.
+            backup = target + suffix + QStringLiteral("-backup");
+            if (!QDir().rename(target, backup))
+                error = QStringLiteral("Не удалось сохранить прежний объект: %1").arg(target);
+        }
+        if (error.isEmpty() && !QDir().rename(stage, target))
+            error = QStringLiteral("Не удалось завершить перенос: %1").arg(target);
         if (!error.isEmpty()) {
             if (move_ && staged)
-                QDir().rename(stage, sources_[i]);
+                QDir().rename(stage, source);
             else
                 removeEntry(stage);
+            if (!backup.isEmpty())
+                QDir().rename(backup, target);
             break;
         }
-        completed << targets[i];
+        completed.append({source, target, backup});
     }
     if (!error.isEmpty()) {
         for (qsizetype i = completed.size(); i > 0; --i) {
+            const Completed &entry = completed[i - 1];
             if (move_)
-                QDir().rename(completed[i - 1], sources_[i - 1]);
+                QDir().rename(entry.target, entry.source);
             else
-                removeEntry(completed[i - 1]);
+                removeEntry(entry.target);
+            if (!entry.backup.isEmpty())
+                QDir().rename(entry.backup, entry.target);
         }
         emit result(false, error);
     } else {
+        for (const Completed &entry : completed)
+            if (!entry.backup.isEmpty())
+                removeEntry(entry.backup);
         emit result(true, move_ ? QStringLiteral("Объекты перемещены.")
                                 : QStringLiteral("Объекты скопированы."));
     }

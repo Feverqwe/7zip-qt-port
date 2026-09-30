@@ -170,6 +170,26 @@ class ExtractPromptTests final : public QObject {
     }
     void geometry() {
         for (int width : {700, 560}) {
+            {
+                COverwriteDialog directory;
+                directory.OldFileInfo.Path = L"/назначение/папка с пробелом";
+                directory.NewFileInfo.Path = L"/источник/папка с пробелом";
+                directory.OldFileInfo.Is_Directory = true;
+                directory.NewFileInfo.Is_Directory = true;
+                directory.OnInit();
+                directory.resize(width, 440);
+                directory.show();
+                QApplication::processEvents();
+                QCOMPARE(directory.findChild<QLabel *>("overwriteHeader")->text(),
+                         QStringLiteral("Папка назначения уже содержит такую папку."));
+                for (auto *label : directory.findChildren<QLabel *>())
+                    if (label->isVisible()) {
+                        QVERIFY(UiInspection::fullyVisible(*label, directory));
+                        QVERIFY(UiInspection::labelFits(*label));
+                    }
+                QVERIFY(UiInspection::writeReport(directory,
+                                                  QString("overwrite-folder-%1").arg(width)));
+            }
             for (bool extra : {true, false}) {
                 COverwriteDialog dialog;
                 dialog.ShowExtraButtons = extra;

@@ -1643,6 +1643,53 @@ scope correction to the progress resource contract, its targeted
 `ui_parity_progress` fixture passed unsandboxed (5/5 including dependencies);
 the sandboxed native-priority fixture cannot exercise this macOS service.
 
+## P0-11 — filesystem overwrite decisions (2026-09-30)
+
+Exact source baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`
+from [ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Reviewed `CPP/7zip/UI/FileManager/OverwriteDialog.cpp/.h/.rc`,
+`FSFolderCopy.cpp::CopyFile_Ask`/`CopyFolder`,
+`ExtractCallback.cpp::AskOverwrite`/`AskWrite`,
+`UpdateCallback100.cpp`, and `CPP/7zip/Common/FilePathAutoRename.cpp/.h`.
+The existing mirrored `COverwriteDialog` source `CFileInfo`, `ReduceString`,
+`SetFileInfoControl`, `OnInit`, `OnButtonClicked` and original button IDs remain
+the sole presentation implementation. Its native icon/control services are Qt
+adapters; P0-11 adds directory-specific wording, since a whole-folder collision
+now uses this prompt. `FilePathAutoRename.cpp` remains an unchanged, single
+vendored implementation. The existing mirrored `CExtractCallbackImp::AskOverwrite`
+switch supplies the exact Win32 button-ID to `NOverwriteAnswer` mapping reused
+by the filesystem GUI adapter. The per-operation Ask/Skip/Overwrite/Rename
+state and rename path follow its `AskWrite` decision branch; the worker's
+transaction stages output before publication and keeps displaced entries as
+backup until the complete source set succeeds. The backup/rollback, Qt
+condition-variable request and worker ownership are local integration code,
+not claimed as copied 7-Zip bodies.
+
+`FileTransferOperation` now sends immutable source/destination paths to the
+GUI; its worker waits without touching widgets. Cancel wakes the waiter,
+closes an active source dialog and rolls back staged/published work. The same
+source decisions cover files and whole directories. Whole-directory replacement
+is an explicit transaction adaptation; upstream `CopyFolder` can merge a
+directory recursively through `AskWrite` for each contained file. This
+different merge workflow remains P1-02 along with native MoveFile/CopyTo,
+cross-volume moves, and any nested source callback not used by current
+stage-copy targets. Archive extraction Ask and `7zz` protocol remain P0-12;
+this work does not mark them implemented. Symlinks and mixed file/directory
+types remain rejected. A race that occupies an intended new/renamed target
+before publication fails instead of replacing that new entry. Failed rollback
+must be reported with its surviving backup; that hardening remains under the
+filesystem transaction owner.
+
+`file_transfer` covers Yes/No/YesAll/NoAll/AutoRename/Cancel, repeated
+conflicts, occupied rename target, Unicode, file/directory conflict, byte
+progress and replacement rollback. `ui_operations` covers F5/F6 dialog
+integration, AutoRename, No and cancellation. `extract_prompt` and
+`ui_parity_overwrite` cover source controls and file/directory text at 700×440
+and 560×440; current-build folder JSON was inspected. Focused 4/4 passed on
+macOS arm64, Qt 6.11.2. Unsandboxed `./scripts/check.sh` passed formatting,
+app build and all 137/137 CTest cases on 2026-09-30.
+Windows/Linux runtime and rendered Windows pixel parity are unverified.
+
 ## P0-02.2b3c3b2b3a — portable startup wait boundary (2026-09-29)
 
 Project baseline `e9908a5`. Exact upstream baseline

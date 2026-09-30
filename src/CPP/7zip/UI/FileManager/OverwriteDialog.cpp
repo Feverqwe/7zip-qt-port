@@ -158,6 +158,13 @@ void COverwriteDialog::SetItemText(unsigned id, const UString &text) {
 bool COverwriteDialog::OnInit() {
     if (_controls.isEmpty())
         BuildPresentation();
+    if (OldFileInfo.Is_Directory && NewFileInfo.Is_Directory) {
+        static_cast<QLabel *>(_controls.value(IDT_OVERWRITE_HEADER))
+            ->setText("Папка назначения уже содержит такую папку.");
+        static_cast<QLabel *>(_controls.value(IDT_OVERWRITE_QUESTION_BEGIN))
+            ->setText("Заменить существующую папку");
+        static_cast<QLabel *>(_controls.value(IDT_OVERWRITE_QUESTION_END))->setText("этой папкой?");
+    }
     SetFileInfoControl(OldFileInfo, IDT_OVERWRITE_OLD_FILE_SIZE_TIME, IDI_OVERWRITE_OLD_FILE,
                        IDI_OVERWRITE_OLD_FILE_2);
     SetFileInfoControl(NewFileInfo, IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE,

@@ -91,6 +91,9 @@ prompt resources. Their current-build producer is `extract_prompt`; comparisons
 are `ui_parity_overwrite` and `ui_parity_mem`. Both use normal/compact reports,
 with extra overwrite actions and memory editing state varied. These dependencies
 are included in the integrated P0-04.1 prerequisite and its full gate.
+P0-11 also inspects `overwrite-folder-700.json` and
+`overwrite-folder-560.json` for its directory-conflict wording; the source RC
+contains only file wording, so this Qt text is a recorded workflow adaptation.
 
 The real C preprocessor expands local includes, object/function macros and
 conditional branches with `RC_INVOKED` defined and `UNDER_CE` undefined.

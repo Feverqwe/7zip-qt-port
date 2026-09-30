@@ -511,6 +511,14 @@ wrapper that stages, publishes and rolls back targets. `CCopyState`,
 `CopyFolder` and `CopyFile_Ask` in `FSFolderCopy.cpp` own recursive copying;
 `CCopyStateIO::MyCopyFile` owns byte transfer. Progress callbacks have no widget
 dependency. Move uses rename and a separate link-validation traversal.
+An occupied target requests a source `NOverwriteAnswer` through a queued
+window callback; the worker waits on a condition and cancellation wakes it.
+The source `COverwriteDialog` maps native button IDs before answering. The
+transaction holds replaced files/directories as backups until all selected
+sources publish, and restores them on cancellation or failure. AutoRename
+uses the unchanged upstream `FilePathAutoRename` implementation. Current
+directory conflicts replace or skip the whole directory; source recursive
+merge remains a later filesystem port.
 
 `VolumeOperation` owns Split/Combine path validation, temporary outputs,
 publication and rollback. `PanelSplitFile.cpp` owns naming and the

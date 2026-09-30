@@ -13,6 +13,7 @@ struct CFileInfo {
     bool Size_IsDefined;
     bool Time_IsDefined;
     bool Is_FileSystemFile;
+    bool Is_Directory;
     UInt64 Size;
     FILETIME Time;
     UString Path;
@@ -36,7 +37,9 @@ struct CFileInfo {
         else
             SetSize(*size);
     }
-    CFileInfo() : Size_IsDefined(false), Time_IsDefined(false), Is_FileSystemFile(false) {}
+    CFileInfo()
+        : Size_IsDefined(false), Time_IsDefined(false), Is_FileSystemFile(false),
+          Is_Directory(false) {}
 };
 } // namespace NOverwriteDialog
 

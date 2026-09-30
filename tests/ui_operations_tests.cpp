@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -75,23 +76,63 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(copiedFile.readAll(), QByteArray("original"));
         copiedFile.close();
         QTimer warningTimer;
-        connect(&warningTimer, &QTimer::timeout, &window, [destination] {
+        bool renameAnswered = false;
+        QString finalMessage;
+        connect(&warningTimer, &QTimer::timeout, &window,
+                [destination, &renameAnswered, &finalMessage] {
+                    for (QWidget *widget : QApplication::topLevelWidgets()) {
+                        if (auto *dialog = qobject_cast<CopyDialog *>(widget);
+                            dialog && dialog->isVisible()) {
+                            dialog->findChild<QComboBox *>("copyDestination")
+                                ->setCurrentText(destination);
+                            dialog->accept();
+                        }
+                        if (auto *box = qobject_cast<QMessageBox *>(widget);
+                            box && box->isVisible()) {
+                            finalMessage = box->text() + box->informativeText();
+                            box->accept();
+                        }
+                        if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                            dialog && dialog->isVisible()) {
+                            renameAnswered = true;
+                            dialog->findChild<QPushButton *>("overwriteRename")->click();
+                        }
+                    }
+                });
+        warningTimer.start(1);
+        action(window, "copyAction")->trigger();
+        QTRY_VERIFY(action(window, "copyAction")->isEnabled());
+        warningTimer.stop();
+        QVERIFY(renameAnswered);
+        QVERIFY(QFileInfo::exists(source));
+        QVERIFY(QFileInfo::exists(copied));
+        QVERIFY2(
+            QFileInfo::exists(QDir(destination).filePath(QStringLiteral("имя с пробелом_1.txt"))),
+            qPrintable(
+                finalMessage + " :: " +
+                QDir(destination).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join(',')));
+        QTimer cancelTimer;
+        bool cancelAnswered = false;
+        connect(&cancelTimer, &QTimer::timeout, &window, [destination, &cancelAnswered] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<CopyDialog *>(widget);
                     dialog && dialog->isVisible()) {
                     dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(destination);
                     dialog->accept();
                 }
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
-                    box->accept();
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible()) {
+                    cancelAnswered = true;
+                    dialog->findChild<QPushButton *>("overwriteCancel")->click();
+                }
             }
         });
-        warningTimer.start(1);
+        cancelTimer.start(1);
         action(window, "copyAction")->trigger();
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
-        warningTimer.stop();
+        cancelTimer.stop();
+        QVERIFY(cancelAnswered);
         QVERIFY(QFileInfo::exists(source));
-        QVERIFY(QFileInfo::exists(copied));
         QTimer moveErrorTimer;
         connect(&moveErrorTimer, &QTimer::timeout, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
@@ -102,6 +143,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 }
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
                     box->accept();
+                if (auto *dialog = dynamic_cast<COverwriteDialog *>(widget);
+                    dialog && dialog->isVisible())
+                    dialog->findChild<QPushButton *>("overwriteNo")->click();
             }
         });
         moveErrorTimer.start(1);
