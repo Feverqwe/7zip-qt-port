@@ -4,6 +4,7 @@
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyCom.h"
 #include "Common/MyString.h"
+#include "qtvolumemounts.h"
 
 struct CDriveInfo {
     FString Name;
@@ -24,6 +25,8 @@ class CFSDrives final : public IFolderFolder, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IFolderFolder)
   public:
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    explicit CFSDrives(QtVolumeMountProvider mountProvider = QtSystemVolumeMounts)
+        : _mountProvider(std::move(mountProvider)) {}
     void Init(bool volMode = false, bool superMode = false) {
         _volumeMode = volMode;
         _superMode = superMode;
@@ -33,6 +36,7 @@ class CFSDrives final : public IFolderFolder, public CMyUnknownImp {
     CObjectVector<CDriveInfo> _drives;
     bool _volumeMode = false;
     bool _superMode = false;
+    QtVolumeMountProvider _mountProvider;
     HRESULT BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder);
     void AddExt(FString &s, unsigned index) const;
 };

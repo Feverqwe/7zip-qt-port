@@ -159,7 +159,9 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [ ] | P1-08 | External viewer/editor/diff и changed-temp update | P0-04, P1-04 | todo |
 | [ ] | P1-09 | Обновление цепочки вложенных архивов | P1-04, P1-08 | todo |
 | [ ] | P1-10 | Полные properties/raw values/formatting | P0-06, P1-04 | todo |
-| [ ] | P1-11 | Root/drives/network/Browse | P0-04, P0-05 | todo |
+| [ ] | P1-11 | Root/drives/network/Browse | P0-04, P0-05 | partial — P1-11.1 mounts/root; network/Browse P1-11.2 remains |
+| [x] | P1-11.1 | Целый root→mounted volume→filesystem workflow: source RootFolder/FSDrives owner, Qt mount adapter, disappearance/unreadable, navigation/history and normal/compact UX | P0-04, P0-05 | done — audit § P1-11.1; fake mount disappearance/unreadable, current-build root→mount UI, focused tests and macOS arm64 full gate; Windows/Linux native mounts unverified |
+| [ ] | P1-11.2 | Network namespace and Browse dialog flows with source bodies, platform services and UX | P1-11.1 | todo — Windows CNetFolder and native Browse/portable picker; no remote credentials in tests |
 | [ ] | P1-12 | 6-page Options container, Apply/Cancel, Settings/Folders | P0-07, P0-08, P1-07 | todo |
 | [ ] | P1-13 | Работающие страницы Edit/Menu | P1-08, P1-12 | todo |
 | [ ] | P1-14 | Language и все app captions/fallbacks | P0-09, P1-12 | todo |

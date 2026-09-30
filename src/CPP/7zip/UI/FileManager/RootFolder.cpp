@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/RootFolder.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Ordinary filesystem binding prerequisite for PanelFolderChange.
-// Full network/ADS/volume namespace and icon presentation remain P1-11/P0-07/P0-09.
+// Network/ADS/device-image namespace and icon presentation remain P1-11.2/P0-07/P0-09.
 #include "RootFolder.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
@@ -11,6 +11,7 @@
 #include "LangUtils.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
+#include <QCoreApplication>
 #include <QStandardPaths>
 
 using namespace NWindows;
@@ -21,7 +22,7 @@ static const unsigned kNumRootFolderItems =
 #ifdef USE_WIN_PATHS
     4;
 #else
-    1;
+    2;
 #endif
 static const Byte kProps[] = {kpidName};
 enum {
@@ -31,6 +32,9 @@ enum {
     ROOT_INDEX_DOCUMENTS,
     ROOT_INDEX_NETWORK,
     ROOT_INDEX_VOLUMES
+#else
+    ,
+    ROOT_INDEX_MOUNTS
 #endif
 };
 #ifdef USE_WIN_PATHS
@@ -47,6 +51,11 @@ void CRootFolder::Init() {
     _iconIndices[ROOT_INDEX_DOCUMENTS] = -1;
     _iconIndices[ROOT_INDEX_NETWORK] = -1;
     _iconIndices[ROOT_INDEX_VOLUMES] = -1;
+#endif
+#ifndef USE_WIN_PATHS
+    const auto mounts = QCoreApplication::translate("SevenzipDesktop", "Тома").toStdWString();
+    _names[ROOT_INDEX_MOUNTS] = mounts.c_str();
+    _iconIndices[ROOT_INDEX_MOUNTS] = -1;
 #endif
 }
 Z7_COM7F_IMF(CRootFolder::LoadItems()) {
@@ -103,6 +112,10 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(UInt32 index, IFolderFolder **resultFolde
         NFsFolder::CFSFolder *fsFolder = new NFsFolder::CFSFolder;
         subFolder = fsFolder;
         fsFolder->InitToRoot();
+    } else if (index == ROOT_INDEX_MOUNTS) {
+        CFSDrives *mounts = new CFSDrives;
+        subFolder = mounts;
+        mounts->Init();
     }
 #endif
     else

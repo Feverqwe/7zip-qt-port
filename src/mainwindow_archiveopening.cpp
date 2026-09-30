@@ -70,7 +70,7 @@ void MainWindow::renderBoundFolder() {
     auto &panel = app_.GetFocusedPanel();
     const auto selection = panel.TakeRefreshSelection();
     panel.LoadFullPath();
-    if (panel.IsRootFolder()) {
+    if (panel.IsRootFolder() || panel.IsFSDrivesFolder()) {
         renderRootFolder();
         if (selection)
             panel.RefreshListCtrl(*selection);

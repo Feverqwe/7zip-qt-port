@@ -23,6 +23,9 @@ model, two-panel, mutation and shell workflows retain their separate plan owners
 For virtual root navigation, CRootFolder and CPanel own names, item binding and
 parent resolution. `mainwindow_root.cpp` only renders the bound `IFolderFolder`
 into Qt cells with source indices; the address is empty at the native root.
+On macOS/Linux the root also binds a `CFSDrives` mount view. `qtvolumemounts`
+supplies OS mount metadata; `CFSDrives` retains source property/binding ownership
+and rechecks a mount before entering it. The Qt list only presents those items.
 Qt Back history marks this empty prefix explicitly. Typed relative paths and
 Parent call the native binding/parent owner, including the POSIX `/` to root
 transition. Read-only root command policy prevents filesystem mutations.

@@ -197,6 +197,7 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
     src/CPP/7zip/UI/FileManager/TextPairs.cpp
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
+    src/qtvolumemounts.cpp src/qtvolumemounts.h
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
     src/CPP/Windows/FileName.cpp
     src/CPP/Windows/FileLink.cpp
@@ -579,6 +580,9 @@ if(BUILD_TESTING)
     qt_add_executable(fs_folder_tests tests/fs_folder_tests.cpp)
     target_link_libraries(fs_folder_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME fs_folder COMMAND fs_folder_tests)
+    qt_add_executable(volume_mount_tests tests/volume_mount_tests.cpp)
+    target_link_libraries(volume_mount_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME volume_mount COMMAND volume_mount_tests)
     qt_add_executable(native_fs_operations_tests tests/native_fs_operations_tests.cpp)
     target_link_libraries(native_fs_operations_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME native_fs_operations COMMAND native_fs_operations_tests)

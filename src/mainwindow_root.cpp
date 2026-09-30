@@ -2,11 +2,12 @@
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 
-// RootFolder owns item names, order and binding. This file presents its
-// IFolderFolder items in the same list used by disk and archive views.
+// RootFolder and FSDrives own item names, order and binding. This file presents
+// their IFolderFolder items in the same list used by disk and archive views.
 void MainWindow::renderRootFolder() {
     auto &panel = app_.GetFocusedPanel();
-    if (!panel.IsRootFolder() || !panel.GetFolder())
+    const bool drives = panel.IsFSDrivesFolder();
+    if ((!panel.IsRootFolder() && !drives) || !panel.GetFolder())
         return;
     IFolderFolder *folder = panel.GetFolder();
     UInt32 count = 0;
@@ -27,7 +28,10 @@ void MainWindow::renderRootFolder() {
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
     static_cast<FileTable *>(table_)->filesystem = false;
-    path_->clear(); // The source root's current folder prefix is empty.
+    if (drives)
+        path_->setText(QString::fromWCharArray(GetFolderPath(folder)));
+    else
+        path_->clear(); // The source root's current folder prefix is empty.
     configureColumns();
     for (UInt32 index = 0; index < count; ++index) {
         NWindows::NCOM::CPropVariant name;
@@ -43,8 +47,9 @@ void MainWindow::renderRootFolder() {
             item->setData(Qt::UserRole + 1, true);
             if (column == 0) {
                 item->setText(nativeName.normalized(QString::NormalizationForm_C));
-                item->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
-            } else if (column >= 7)
+                item->setIcon(QApplication::style()->standardIcon(
+                    drives ? QStyle::SP_DriveHDIcon : QStyle::SP_ComputerIcon));
+            } else if (drives || column >= 7)
                 item->setText(sourceColumnText(index, column));
             table_->setItem(row, column, item);
         }

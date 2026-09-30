@@ -6131,3 +6131,31 @@ in-process writer dependencies; file-only `QtArchiveFileResource::Update`
 и Qt диалог, success/failure/cancel, Unicode и сохранность данных/пароля.
 Никакие исходные bodies в этом исследовании не скопированы; parent P1-04
 остаётся открытым.
+
+## P1-11.1 — корень и смонтированные тома (2026-09-30)
+
+Точная база: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/RootFolder.cpp/.h::CRootFolder::Init/LoadItems/
+BindToFolder/GetProperty`, `FSDrives.cpp/.h::CFSDrives::LoadItems/GetProperty/
+BindToFolder`, `FSFolder.cpp::CFSFolder::Init`. Исходные body структуры
+`CRootFolder`/`CFSDrives` и перечисление/свойства Windows-дисков сохранены из
+P0-04/P0-05. В этой итерации non-Windows root получает второй виртуальный
+элемент «Тома», который привязывает `CFSDrives`; исходный «Компьютер» → `/`
+сохранён. Это намеренная platform adaptation: 7zFM Win32 показывает drives,
+а прежний non-Windows branch исходника только `/`.
+
+`qtvolumemounts.cpp` — узкий platform service на `QStorageInfo`, передающий
+путь, отображаемое имя, файловую систему и доступные размеры в source
+`CDriveInfo`; корень `/` остаётся доступен, даже если ОС не вернула его в
+перечне. `CFSDrives::BindToFolderSpec` заново проверяет присутствие mount и
+доступность каталога до source `CFSFolder::Init`, чтобы исчезнувший или
+нечитаемый том не открыл устаревший путь. Инъекция provider на экземпляр
+нужна для локальных deterministic fixtures, без глобального состояния.
+`MainWindow::renderRootFolder` представляет два исходных folder type в одном
+Qt списке, показывает source свойства томов и блокирует mutation commands.
+
+Не перенесены Windows `CNetFolder`, browse navigation и device-image
+`CopyFileSpec/CopyTo` из `FSDrives.cpp`: первые имеют owner P1-11.2, image
+операции — P2-05/P3-05. Системный `QStorageInfo` на macOS не доказывает
+Windows/Linux mount behavior; фактические сети/credentials не тестируются.
+Оригинальные notices сохранены, лицензия — `third_party/7zip/License.txt`.

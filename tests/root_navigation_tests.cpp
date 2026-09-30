@@ -5,6 +5,40 @@
 class RootNavigationTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+#ifndef _WIN32
+    void mountedVolumesOpenThroughNativeRoot() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        auto *view = table(window);
+        action(window, "openRootAction")->trigger();
+        int mountsRow = -1;
+        for (int row = 0; row < view->rowCount(); ++row)
+            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 1u)
+                mountsRow = row;
+        QVERIFY(mountsRow >= 0);
+        view->selectRow(mountsRow);
+        action(window, "openItemAction")->trigger();
+        QVERIFY(window.windowTitle().contains(QStringLiteral("Тома")));
+        QVERIFY(view->rowCount() > 0);
+        QVERIFY(!action(window, "createFolderAction")->isEnabled());
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            window.show();
+            QCoreApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*address, window));
+            QVERIFY(UiInspection::fullyVisible(*view, window));
+            QVERIFY(UiInspection::writeReport(
+                window, QSysInfo::productType() +
+                            QStringLiteral("-mounts-%1x%2").arg(size.width()).arg(size.height())));
+        }
+        view->selectRow(0);
+        action(window, "openItemAction")->trigger();
+        QVERIFY(QFileInfo(address->text()).isDir());
+        action(window, "backAction")->trigger();
+        QVERIFY(view->rowCount() > 0);
+    }
+#endif
     void sourceRootRendersAndRoundTripsThroughComputer() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -21,7 +55,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
 #ifdef _WIN32
         QCOMPARE(view->rowCount(), 4);
 #else
-        QCOMPARE(view->rowCount(), 1);
+        QCOMPARE(view->rowCount(), 2);
 #endif
         int computerRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
@@ -39,7 +73,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
 #ifdef _WIN32
                  4);
 #else
-                 1);
+                 2);
 #endif
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);

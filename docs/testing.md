@@ -977,3 +977,10 @@ encryption) и ZIP AES для CreateFolder/Rename/Delete: верный/неве�
 `ui_operations` проходит F7, F2 и Delete в защищённом 7z и считает запросы
 пароля: один при открытии, без повторов после операций. Прямое сравнение
 rendered Windows диалога и runtime Windows/Linux остаются открытыми.
+
+P1-11.1: `volume_mount` подставляет одноразовый том с Unicode/пробелом,
+проверяет исходные свойства и переход в `CFSFolder`, исчезновение и
+недоступность пути до binding. `root_navigation` проходит Qt root → «Тома» →
+системный mount → назад и пишет current-build normal/compact JSON; `fs_folder`
+и `panel_path` проверяют соседние native routing paths. Список mounts от
+`QStorageInfo` и реальные сетевые ресурсы требуют проверки на каждой ОС.

@@ -1,6 +1,6 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/FSDrives.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Read-only logical-drive branch; physical-volume operations remain required.
+// Read-only logical-drive/mount branch; physical-volume operations remain required.
 #include "FSDrives.h"
 #include "7zip/PropID.h"
 #include "Common/ComTry.h"
@@ -11,6 +11,7 @@
 #include "Windows/FileSystem.h"
 #include "Windows/PropVariant.h"
 #include <QCoreApplication>
+#include <QFileInfo>
 
 using namespace NWindows;
 using namespace NFile;
@@ -58,8 +59,28 @@ Z7_COM7F_IMF(CFSDrives::LoadItems()) {
     }
     return S_OK;
 #else
-    // CFSFolder exposes the POSIX filesystem root directly, not Windows drives.
-    return E_NOTIMPL;
+    for (const QtVolumeMount &mount : _mountProvider()) {
+        const std::wstring path = mount.path.toStdWString();
+        const std::wstring name = mount.name.toStdWString();
+        const std::wstring fileSystem = mount.fileSystem.toStdWString();
+        CDriveInfo di;
+        di.FullSystemName = us2fs(path.c_str());
+        di.Name = us2fs(name.c_str());
+        di.VolumeName = name.c_str();
+        di.FileSystemName = fileSystem.c_str();
+        di.DriveType = 3;
+        di.ClusterSize = 0;
+        if (mount.totalBytes >= 0) {
+            di.DriveSize = UInt64(mount.totalBytes);
+            di.KnownSize = true;
+        }
+        if (mount.availableBytes >= 0) {
+            di.FreeSpace = UInt64(mount.availableBytes);
+            di.KnownSizes = true;
+        }
+        _drives.Add(di);
+    }
+    return S_OK;
 #endif
     COM_TRY_END
 }
@@ -120,6 +141,17 @@ HRESULT CFSDrives::BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder) {
     *resultFolder = NULL;
     if (_volumeMode)
         return S_OK;
+#ifndef _WIN32
+    const QString mountPath = QString::fromWCharArray(fs2us(name));
+    bool mounted = false;
+    for (const QtVolumeMount &mount : _mountProvider())
+        if (mount.path == mountPath) {
+            mounted = true;
+            break;
+        }
+    if (!mounted || !QFileInfo(mountPath).isDir() || !QFileInfo(mountPath).isReadable())
+        return E_FAIL;
+#endif
     NFsFolder::CFSFolder *fsFolderSpec = new NFsFolder::CFSFolder;
     CMyComPtr<IFolderFolder> subFolder = fsFolderSpec;
     FString path;
@@ -162,6 +194,12 @@ IMP_IFolderFolder_Props(CFSDrives)
         prop = "FSDrives";
         break;
     case kpidPath:
+#ifndef _WIN32
+    {
+        const auto name = QCoreApplication::translate("SevenzipDesktop", "Тома").toStdWString();
+        prop = UString(name.c_str()) + WCHAR_PATH_SEPARATOR;
+    } break;
+#endif
         if (_volumeMode)
             prop = kVolPrefix;
         else if (_superMode)

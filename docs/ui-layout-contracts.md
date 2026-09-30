@@ -88,6 +88,17 @@ writes `macos-root-980x620.json`/`macos-root-640x400.json` on the checked host.
 The JSON verifies Qt structure/usability; source resources establish grouping,
 not Windows pixel appearance. Windows runtime capture is still unverified.
 
+### Mounted volumes (P1-11.1)
+
+On macOS/Linux the virtual root adds «Тома» after «Компьютер». The mounted
+volume list has the source `CFSDrives` name/properties, the normal menu → toolbar
+→ address → list → status order, and disables filesystem mutations until a
+volume opens. `root_navigation` writes current-build
+`macos-mounts-980x620.json` and `macos-mounts-640x400.json`. At 640×400 the
+toolbar, address, table and panel status are fully visible; hidden optional
+status segments are not counted as clipping. Windows drive/resource layout
+still needs runtime verification.
+
 ### Source extraction prompts (P0-04.1 prerequisite)
 
 `extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with
