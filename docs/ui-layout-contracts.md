@@ -35,6 +35,22 @@ for both sizes. Qt QMenu may scroll when its source command list exceeds the
 available screen; JSON records its geometry and action tests cover non-widget
 QActions. The Windows rendered menu is not yet available for pixel comparison.
 
+### Per-panel context and status (P0-09.2)
+
+Reference: `Panel.cpp::Create/OnSize` gives every panel a status strip below
+its list with four parts (`{220, 320, 420, -1}` Win32 boundaries), while
+`PanelListNotify.cpp::Refresh_StatusBar` supplies selected/total, selected
+size, focused size and focused date. `PanelMenu.cpp::OnContextMenu` calls
+`CreateFileMenu(programMenu=false)` and anchors keyboard invocation to the
+focused item. Qt uses four labels inside each panel status bar, with adaptive
+widths for compact two-panel layout; the main-window bar displays operation
+messages. `panel_shell` checks all four labels visible and independent at
+980×620 and 640×400 and writes `panel-shell-*.json`. It also writes disk and
+archive context popup JSON at normal/compact sizes; QActions are non-widget
+objects, so their order/enabled state is asserted separately. Disabled shell
+groups are explicit pending integrations. The upstream Win32 resource/source
+establishes structure, not rendered pixel dimensions on macOS.
+
 ### Two disk panels (P0-08.1)
 
 Reference: FM `App.cpp::SwitchOnOffOnePanel`, `FM.cpp::MoveSubWindows`,

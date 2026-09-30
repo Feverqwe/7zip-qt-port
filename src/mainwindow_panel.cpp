@@ -37,6 +37,19 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     viewStack_->addWidget(table_);
     viewStack_->addWidget(iconList_);
     layout->addWidget(viewStack_);
+    auto *panelStatus = new QStatusBar(central);
+    panelStatus->setObjectName("panelStatusBar");
+    panelStatus->setSizeGripEnabled(false);
+    const char *statusNames[] = {"selectedItemsStatus", "selectedSizeStatus", "focusedSizeStatus",
+                                 "focusedDateStatus"};
+    for (unsigned part = 0; part < 4; ++part) {
+        auto *label = new QLabel(panelStatus);
+        label->setObjectName(statusNames[part]);
+        label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        panelStatus->addPermanentWidget(label, part == 0 ? 1 : 0);
+        panelUi_[index].statusLabels[part] = label;
+    }
+    layout->addWidget(panelStatus);
     connect(table_->selectionModel(), &QItemSelectionModel::selectionChanged, this, [this, index] {
         if (projectedPanel_ == index && app_.Panels[index].ShouldProcessNotifications())
             refreshActions();
@@ -136,10 +149,14 @@ void MainWindow::createFileTable(QWidget *central) {
             [this](int row, int) { handleSelectionClick(row); });
     table_->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(table_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
-        const int row = table_->rowAt(pos.y());
+        const bool keyboard = pos.x() < 0 && pos.y() < 0;
+        const int row = keyboard ? table_->currentRow() : table_->rowAt(pos.y());
         if (row >= 0 && !table_->selectionModel()->isRowSelected(row, QModelIndex()))
             table_->selectRow(row);
-        showItemContextMenu(table_->viewport()->mapToGlobal(pos));
+        const QPoint anchor = keyboard && row >= 0
+                                  ? table_->visualItemRect(table_->item(row, 0)).center()
+                                  : (keyboard ? QPoint(0, 0) : pos);
+        showItemContextMenu(table_->viewport()->mapToGlobal(anchor));
     });
 }
 
@@ -368,12 +385,15 @@ void MainWindow::createIconList(QWidget *central) {
     connect(iconList_, &QListView::clicked, this,
             [this](const QModelIndex &index) { activateSingleClickedRow(index.row()); });
     connect(iconList_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
-        const QModelIndex index = iconList_->indexAt(pos);
+        const bool keyboard = pos.x() < 0 && pos.y() < 0;
+        const QModelIndex index = keyboard ? iconList_->currentIndex() : iconList_->indexAt(pos);
         if (index.isValid() &&
             !iconList_->selectionModel()->isRowSelected(index.row(), QModelIndex()))
             iconList_->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect |
                                                            QItemSelectionModel::Rows);
-        showItemContextMenu(iconList_->viewport()->mapToGlobal(pos));
+        const QPoint anchor = keyboard && index.isValid() ? iconList_->visualRect(index).center()
+                                                          : (keyboard ? QPoint(0, 0) : pos);
+        showItemContextMenu(iconList_->viewport()->mapToGlobal(anchor));
     });
 }
 

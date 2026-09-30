@@ -78,7 +78,8 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
             QVERIFY(menu);
             bool found = false;
             for (QAction *item : menu->actions())
-                found |= item->text() == QStringLiteral("Открыть в системном файловом менеджере");
+                found |= item->objectName() == QStringLiteral("systemContextGroup") &&
+                         !item->isEnabled();
             QVERIFY(found);
             menu->close();
         });

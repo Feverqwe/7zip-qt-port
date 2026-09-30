@@ -97,6 +97,14 @@ struct CPanelProperty {
     UString Value;
 };
 
+// Four source status-bar parts; Qt presents them below the owning panel.
+struct CPanelStatus {
+    QString selectedItems;
+    QString selectedSize;
+    QString focusedSize;
+    QString focusedDate;
+};
+
 struct CPanelItem {
     QString RelPath;
     bool IsFolder = false;
@@ -428,6 +436,7 @@ class CPanel : public QObject {
     bool IsFolder_with_FsItems() const;
     int FindDir_InOperatedList(const CRecordVector<UInt32> &indices) const;
     void CreateFileMenu(class IQtFileMenuServices &menu, bool programMenu);
+    CPanelStatus Refresh_StatusBar() const;
     bool IsThereReadOnlyFolder() const;
     bool DoesItSupportOperations() const { return _folderOperations != NULL; }
     bool CheckBeforeUpdate(UINT resourceID);

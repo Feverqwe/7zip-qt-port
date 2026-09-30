@@ -1,47 +1,74 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
+#include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "mainwindow.h"
+#include "qtdialogscreenservices.h"
+#include "qtfilemenuprojection.h"
 #include "qtlocationfolder.h"
 #include <QBitmap>
 #include <QMouseEvent>
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
-    const bool hasSelection = !table_->selectionModel()->selectedRows().isEmpty();
-    if (hasSelection) {
-        for (QAction *action : {openItem_, openInside_, openOutside_, viewFile_, editFile_, rename_,
-                                copy_, move_, remove_, split_, combine_})
-            menu.addAction(action);
-        menu.addSeparator();
-        menu.addAction(properties_);
+    menu.setObjectName("panelContextMenu");
+    QtFileMenuProjection projection;
+    QtDialogScreenServices screen(this);
+    projection.screenServices = &screen;
+    QHash<unsigned, QAction *> actions;
+    auto *sourceFile = findChild<QMenu *>("fileMenu");
+    for (QAction *action : sourceFile->actions()) {
+        if (action == open_)
+            break; // Qt archive workflow group is not in resource.rc.
+        const bool separator = action->isSeparator();
+        const unsigned id = action->menu() ? 0u : action->property("nativeCommandID").toUInt();
+        projection.sourceItems.append({id, ToUString(action->text()), separator});
+        if (!separator && !action->menu())
+            actions.insert(id, action);
+    }
+    projection.sourceItems.append({8, ToUString(exitAction_->text()), false});
+    app_.GetFocusedPanel().CreateFileMenu(projection, false);
+
+    CRecordVector<UInt32> operated;
+    app_.GetFocusedPanel().Get_ItemIndices_Operated(operated);
+    if (!operated.IsEmpty() && state_ == State::Filesystem) {
+        // Shell COM/7-Zip extension menus require their own platform service.
+        // Keep their source grouping visible until that integration is ready.
+        if (app_.ShowSystemMenu) {
+            auto *system = menu.addAction(QStringLiteral("Система"));
+            system->setObjectName("systemContextGroup");
+            system->setEnabled(false);
+        }
+        auto *sevenZip = menu.addAction(QStringLiteral("7-Zip"));
+        sevenZip->setObjectName("sevenZipContextGroup");
+        sevenZip->setEnabled(false);
         menu.addSeparator();
     }
-    if (state_ == State::Filesystem) {
-        menu.addAction(create_);
-        menu.addAction(createFolder_);
-        menu.addAction(createFile_);
-        if (app_.ShowSystemMenu && hasSelection) {
-            const QStringList selected = selectedFilesystemPaths();
-            if (!selected.isEmpty()) {
-                menu.addSeparator();
-                menu.addAction(QStringLiteral("Открыть в системном файловом менеджере"), this,
-                               [path = selected.first()] {
-                                   const QFileInfo info(path);
-                                   const QString folder = info.isDir() ? path : info.absolutePath();
-                                   QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
-                               });
-            }
+    for (const auto &entry : projection.items) {
+        if (entry.source.IsSeparator()) {
+            menu.addSeparator();
+            continue;
         }
-    } else {
+        if (entry.source.wID == 0) {
+            auto *hash = menu.addMenu(QStringLiteral("CRC"));
+            hash->setObjectName("contextHashMenu");
+            for (QAction *action : findChild<QMenu *>("hashMenu")->actions())
+                hash->addAction(action);
+            continue;
+        }
+        QAction *action = actions.value(entry.source.wID, nullptr);
+        if (!action)
+            continue;
+        menu.addAction(action);
+        action->setEnabled(action->isEnabled() && entry.enabled);
+    }
+    if (state_ == State::Viewing) {
+        menu.addSeparator();
         menu.addAction(add_);
-        if (hasSelection)
-            menu.addAction(selected_);
+        menu.addAction(selected_);
         menu.addAction(extract_);
         menu.addAction(test_);
         menu.addAction(infoAction_);
     }
-    menu.addSeparator();
-    menu.addAction(refresh_);
     menu.exec(globalPos);
 }
 
@@ -187,12 +214,13 @@ void MainWindow::showSettings() {
 }
 
 void MainWindow::updateFilesystemIcons() {
-    QFileIconProvider icons;
     for (int row = 0; row < table_->rowCount(); ++row) {
         const QFileInfo file(table_->item(row, 1)->text());
         table_->item(row, 0)->setIcon(
             fileListSettings_.ShowRealFileIcons
-                ? icons.icon(file)
+                ? g_Ext_to_Icon_Map.GetIcon(file.isDir() ? FILE_ATTRIBUTE_DIRECTORY
+                                                         : FILE_ATTRIBUTE_ARCHIVE,
+                                            file.fileName())
                 : QApplication::style()->standardIcon(file.isDir() ? QStyle::SP_DirIcon
                                                                    : QStyle::SP_FileIcon));
     }

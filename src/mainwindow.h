@@ -194,6 +194,7 @@ class MainWindow : public QMainWindow {
     void appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix, bool flat);
     void setState(State state);
     void refreshActions();
+    void refreshPanelStatus();
     void appendJournal(const QString &line);
     void showJournal();
     void showInfo();
@@ -272,6 +273,7 @@ class MainWindow : public QMainWindow {
         QTableWidget *table = nullptr;
         QListView *iconList = nullptr;
         QStackedWidget *viewStack = nullptr;
+        std::array<QLabel *, 4> statusLabels{};
         QtFileListHover *tableHover = nullptr;
         QtFileListHover *iconHover = nullptr;
         QString directory;

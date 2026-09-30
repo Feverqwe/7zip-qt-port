@@ -1,0 +1,39 @@
+// Adapted from 7-Zip CPP/7zip/UI/FileManager/SysIconUtils.h (0766b73).
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+// The source cache/index policy remains; Qt provides platform icons.
+#pragma once
+
+#include "Common/MyString.h"
+#include "Common/MyVector.h"
+#include "Common/MyWindows.h"
+#include <QIcon>
+#include <QString>
+#include <QVector>
+
+struct CExtIconPair {
+    UString Ext;
+    int IconIndex;
+};
+
+struct CAttribIconPair {
+    DWORD Attrib;
+    int IconIndex;
+};
+
+struct CExtToIconMap {
+    CRecordVector<CAttribIconPair> _attribMap;
+    CObjectVector<CExtIconPair> _extMap_Normal;
+    CObjectVector<CExtIconPair> _extMap_Compressed;
+    int SplitIconIndex = -1;
+    int SplitIconIndex_Defined = false;
+
+    void Clear();
+    int GetIconIndex(DWORD attrib, const wchar_t *fileName);
+    QIcon GetIcon(DWORD attrib, const QString &fileName);
+
+  private:
+    int QueryIconIndex(DWORD attrib, const QString &fileName);
+    QVector<QIcon> _icons;
+};
+
+extern CExtToIconMap g_Ext_to_Icon_Map;

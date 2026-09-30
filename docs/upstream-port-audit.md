@@ -800,6 +800,63 @@ JSON описывают текущую Qt геометрию. Focused 8/8 и п�
 `./scripts/check.sh` 136/136 прошли 2026-09-30. Проверена только macOS arm64;
 Windows/Linux runtime ещё не проверен.
 
+## P0-09.2 — per-panel context/status и системные иконки (2026-09-30)
+
+Точный baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Исходные пути и символы: `CPP/7zip/UI/FileManager/PanelMenu.cpp::CPanel::CreateFileMenu`,
+`OnContextMenu`; `MyLoadMenu.cpp::CFileMenu::Load` и `ExecuteFileCommand`;
+`PanelListNotify.cpp::CPanel::Refresh_StatusBar`, `ConvertSizeToString`;
+`Panel.cpp::Create`, `OnSize` (четыре части status, под списком);
+`SysIconUtils.cpp/.h::CExtToIconMap::GetIconIndex`, `FindInSorted_Attrib`,
+`FindInSorted_Ext`; `resource.rc::IDM_MENU`.
+
+Сохранённый ранее `CPanel::CreateFileMenu` содержит source policy для
+operated indices, read-only, FS/hash/alt-stream folders и вызывает
+`CFileMenu::Load`. В этой итерации контекстный Qt popup передаёт ему полный
+source File action sequence с `programMenu=false` и строит результат по
+исходному порядку и enabled состоянию. Win32 `OnContextMenu` служит
+референсом позиционирования с клавиатуры: `(-1,-1)` заменяется центром
+текущего элемента. Qt mouse/keyboard events и `QMenu::exec` заменяют HWND,
+`TrackPopupMenu`. Отдельная Qt группа archive Add/Extract/Test/Info остаётся
+после source file commands до переноса полного archive/context workflow.
+`CreateSevenZipMenu` и `CreateSystemMenu` требуют Win32 COM/Explorer/extension
+services; их группы на диске показаны disabled, системная — только при
+ShowSystemMenu. Они остаются обязательными владельцам P1-02/P2-09/P3-05,
+без объявления ready/N/A. Встроенная прежняя Qt команда открытия в системном
+файловом менеджере удалена из context, так как подменяла source shell group.
+
+Тело `CPanel::Refresh_StatusBar` скопировано в зеркальный `PanelListNotify.cpp`
+в исходном порядке: operated/total, сумма выбранных размеров, размер и mtime
+текущего выбранного элемента. `GetItemSize`, `GetRealItemIndex` и исходный
+`ConvertPropertyToShortString2` остаются авторитетными; Qt адаптация меняет
+только `_statusBar.SetText` на возвращаемые четыре `QString` поля и добавляет
+переведённый префикс счётчика до P1-14. Каждый Qt panel размещает четыре
+QLabel под списком; общий MainWindow QStatusBar несёт сообщения сканирования
+и операций. Ранее разрозненная строка с числом объектов больше не является
+единственным per-panel status.
+
+В зеркальный `src/CPP/7zip/UI/FileManager/SysIconUtils.cpp/.h` перенесены
+имена структур/класса, sorted binary searches, циклы attribute/extension
+cache, лимит 65536 и shortcut числовых split-суффиксов. Win32
+`SHGetFileInfo`/CSIDL/HIMAGELIST вместо копирования на macOS/Linux заменены
+узким `QFileIconProvider` → `QIcon` adapter; исходные `Shell_GetFileInfo*`
+функции остаются Windows-only и не вызываются Qt consumers. Диск и архив
+запрашивают одну кэшированную карту при включённом ShowRealFileIcons; при
+выключенном флаге остаются стандартные Qt значки. Источник сам комментирует
+часть image-list integration в `PanelListNotify`; текущий Qt adapter
+использует активную cache policy, но пиксельный вид системных иконок зависит
+от ОС. Для особых provider icons (network/drive/shell namespace) нужны
+P1-11/P2-10/P3-05.
+
+`panel_shell` и прямые consumers проверяют disk/archive context, keyboard
+anchor, status size/date/count и независимость двух панелей, кэш extension/
+split и Qt JSON при 980×620/640×400. Первый полный gate выявил устаревшее
+ожидание `ui_archive_states` о Refresh в контексте и скрытии disabled Rename;
+тест обновлён по source меню, focused проверка прошла. После этого focused
+direct consumers 11/11 и полный unsandboxed `./scripts/check.sh` 137/137
+прошли на macOS arm64 2026-09-30. P0-09 parent принят; рендеринг Windows и
+Windows/Linux runtime не подтверждены.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

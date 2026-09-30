@@ -7,6 +7,13 @@ plugin release ordering; `command_policy_runtime` checks actual QAction routing,
 focused versus selected indices, canonical Unicode/space paths, typed missing
 writer/encryption restrictions and stale busy/closed actions. `native_toolbar_state`
 checks native mask/default/legacy precedence and save-before-reload ordering.
+`main_shell` checks the resource-derived six menus, command order/IDs, disabled
+entries, shortcuts, upstream BMP/mask and active-panel routing; it writes
+normal/compact window and File/View menu JSON. `panel_shell` checks source
+context policy on disk/archive and keyboard invocation, four source status
+fields per panel, two-panel independence, icon caching and normal/compact
+status/context JSON. `list_settings_runtime` verifies the optional system group
+stays visibly disabled while its native shell owner is pending.
 `native_fs_operations` checks real IFolderOperations, new-only creation,
 no-replacement rename, deletion progress and cancellation before/inside recursion.
 `root_navigation` checks source RootFolder item identity, View-menu and list-key
@@ -645,9 +652,9 @@ When a bug is found, first capture it with a focused regression test when practi
 
 Для режимов просмотра `ui_layout` переключает все четыре пункта, проверяет общую модель и выделение, размер значков и восстановление выбора из настроек. Для диалога Extract он проверяет редактируемую историю назначения, доступные режимы путей и перезаписи, пароль и переключатель его видимости. `ui_state` проверяет отмену и передачу параметров извлечения в backend. `extraction_options` проверяет режим без путей, отказ, пропуск и перезапись существующего файла на одноразовых `.7z` и `.zip`, отклонение совпадающих имён, ссылку в назначении и отмену процесса. Компоновка значков и drag-and-drop в реальных файловых менеджерах других ОС требуют отдельной ручной проверки.
 
-`ui_layout` запускает настоящее окно через Qt Test в режиме `offscreen` и проверяет размеры 980×620, 720×480 и 640×400. Тест проверяет видимость панели, адресной строки, таблицы и строки состояния, расположение без наложений и доступность столбцов. При каждом запуске сохраняет PNG в `build/dev/ui-screenshots/` с именем платформы и размера. `ui_state` сохраняет там же снимки открытой папки архива в тех же размерах, диалога создания и журнала. Эти снимки доступны для визуального осмотра. Сравнения с эталонными снимками и автоматического сообщения об изменении картинки пока нет.
+`ui_layout` запускает настоящее окно через Qt Test в режиме `offscreen` и проверяет размеры 980×620, 720×480 и 640×400. Тест проверяет видимость панели, адресной строки, таблицы и строки состояния, расположение без наложений и доступность столбцов. Текущие layout-тесты записывают JSON в `build/dev/ui-reports/`; PNG включаются только при `SEVENZIP_CAPTURE_SCREENSHOTS=1`, когда нужен осмотр особенностей отрисовки. Сравнения с эталонными снимками и автоматического сообщения об изменении картинки пока нет.
 
-После изменения видимой части окна или диалога нужно открыть собранный интерфейс и визуально проверить результат на доступной ОС при обычном и компактном размере. Просмотреть существующие снимки затронутого экрана или сделать новые, если их нет; для условных полей проверить состояния, в которых они появляются и скрываются. Сравнивать группировку и порядок элементов с 7zFM, проверять выравнивание, отступы, ширину подписей и полей, расположение кнопок, обрезание текста и поведение при изменении размера. Снимок надо действительно просмотреть: успешный `ui_layout` подтверждает наличие и часть геометрии элементов, но не качество компоновки. Найденные визуальные дефекты исправлять до завершения задачи; недоступные экраны и платформы перечислять в результате.
+После изменения видимой части окна или диалога нужно сверить его text specification, normal/compact geometry и текущие JSON-отчёты: группировку, порядок, размеры и обрезание. Для шрифтов, цветов, иконок и необъяснимых дефектов использовать снимок только затронутого экрана по правилам `AGENTS.md`. Исходные Win32 ресурсы подтверждают структуру, но не pixel parity; недоступные экраны и платформы перечислять в результате.
 
 `flat_view` проверяет плоский просмотр вложенных файлов и папок с Unicode и пробелами, совпадающие имена файлов в разных папках архива, сохранение точного пути при выбранном извлечении, сохранение выделения при переключении, переход в папку и обновление архива. Отдельно проверяется независимость настроек плоского просмотра файловой системы и архива. Каталог с 1500 файлами проверяет частичное наполнение списка и отмену обхода до завершения. Перечисление очень большого дерева и поведение платформенных ссылок требуют отдельной проверки.
 

@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Common/Defs.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
@@ -99,8 +100,12 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
             item->setData(Qt::UserRole + 4, childDir);
         item->setToolTip(entry.path);
         if (col == 0)
-            item->setIcon(QApplication::style()->standardIcon(
-                entry.directory ? QStyle::SP_DirIcon : QStyle::SP_FileIcon));
+            item->setIcon(
+                fileListSettings_.ShowRealFileIcons
+                    ? g_Ext_to_Icon_Map.GetIcon(
+                          entry.directory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_ARCHIVE, name)
+                    : QApplication::style()->standardIcon(entry.directory ? QStyle::SP_DirIcon
+                                                                          : QStyle::SP_FileIcon));
         if (!entry.directory && (col == 2 || col == 3))
             item->setData(Qt::UserRole + 2, col == 2 ? sizeValue : packedValue);
         if (col == 6)
@@ -129,6 +134,8 @@ void MainWindow::refreshActions() {
     refreshBookmarks();
     if (commands_)
         commands_->RefreshActions();
+    if (commands_ && !scanningDisk_)
+        refreshPanelStatus();
     for (unsigned index = 0; index < kNumPanelsMax; ++index) {
         const auto &ui = panelUi_[index];
         if (!ui.container || !ui.table || !ui.iconList || !ui.path)
@@ -140,4 +147,15 @@ void MainWindow::refreshActions() {
     }
     table_->setDragEnabled(idle && state_ == State::Filesystem);
     iconList_->setDragEnabled(idle && state_ == State::Filesystem);
+}
+
+void MainWindow::refreshPanelStatus() {
+    const CPanelStatus status = app_.GetFocusedPanel().Refresh_StatusBar();
+    const auto &labels = panelUi_[projectedPanel_].statusLabels;
+    if (!labels[0])
+        return;
+    labels[0]->setText(QStringLiteral("Выбрано: ") + status.selectedItems);
+    labels[1]->setText(status.selectedSize);
+    labels[2]->setText(status.focusedSize);
+    labels[3]->setText(status.focusedDate);
 }

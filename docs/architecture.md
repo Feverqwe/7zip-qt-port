@@ -12,6 +12,10 @@ the copied dispatch and CFileMenu capability policy. QtFileManagerCommands binds
 actions and projects one capability snapshot per refresh; every execution takes
 a fresh snapshot before effects. It adds only current transport restrictions and
 delegates operations to existing owners. QAction enabled state is presentation.
+The panel context popup feeds resource-derived File actions into native
+`CPanel::CreateFileMenu`/`CFileMenu::Load` with `programMenu=false`; Qt renders
+the returned order and enabled state. OS shell and 7-Zip extension groups stay
+disabled until their separate platform command owners are ported.
 Native CApp owns toolbar flags, persistence ordering and focused-folder title;
 QtAppPresentation supplies toolbar reload/layout services. Dialog.cpp retains
 the source dialog-unit size predicate with Qt font/work-area services. Complete
@@ -331,18 +335,25 @@ The implementation is divided by responsibility:
 | Files | Responsibility |
 | --- | --- |
 | `mainwindow.cpp` | Construction and scanner initialization |
-| `mainwindow_menus.cpp`, `mainwindow_panel.cpp` | Actions, toolbar, address and file views |
+| `mainwindow_menus.cpp`, `mainwindow_panel.cpp` | Resource-ordered actions, toolbar, address, file views and per-panel status presentation |
 | `mainwindow_filelist.cpp`, `mainwindow_archivelist.cpp` | Listing, navigation and command state |
 | `mainwindow_archiveopening.cpp` | Archive opening and nested archive lifetime |
 | `mainwindow_archivecommands.cpp`, `mainwindow_backendevents.cpp` | Archive requests and result handling |
 | `mainwindow_fileoperations.cpp`, `mainwindow_filedelete.cpp`, `mainwindow_volumes.cpp` | Filesystem and volume operation coordination |
 | `mainwindow_selection.cpp`, `mainwindow_preferences.cpp`, `mainwindow_dialogs.cpp` | Selection adapter, settings and dialog integration |
 
+`CPanel::Refresh_StatusBar` in mirrored `PanelListNotify.cpp` computes four
+source fields from operated indices and typed folder properties. Each panel
+has its own Qt status strip beneath the list; the main-window status bar
+carries operation/scanner messages. Mirrored `SysIconUtils.cpp` keeps the source
+attribute/extension/split-number cache and asks Qt's platform icon provider
+for images. Widgets receive `QIcon` values rather than owning the cache.
+
 `CApp` now owns `CAppState` and two independent `CPanel` instances. The window
 binds the visible panel's list/address widgets through QPointer presentation
 handles; `CPanel` owns remembered focus and `CApp` delegates focus restoration.
-Current UI uses one panel; location and full lifecycle ownership remain
-in migration below. Top-level focus filtering begins after panel construction
+The UI can show both panels and restores their location/focus state; other
+folder providers and full shell integration remain in migration below. Top-level focus filtering begins after panel construction
 and stops before window member teardown.
 `CSelectedState` and CPanel's selected-status vector own filesystem refresh
 selection and current-item snapshots. `QtPanelList` adapts the shared table/icon

@@ -1054,3 +1054,25 @@ Archive Add/Extract/Test и Standard Copy/Move/Delete/Info, сохранённы
 JSON для окна и File/View popup. Отчёты не доказывают пиксельное совпадение:
 отрисованный Windows 7zFM reference и Windows/Linux runtime не проверены.
 Контекст/статус/system icons остаются P0-09.2.
+
+## P0-09.2 — контекст, status и иконки панели (2026-09-30)
+
+Контекстный popup использует `CPanel::CreateFileMenu`/
+`CFileMenu::Load(programMenu=false)` для исходного порядка и доступности
+File-команд по выбору, типу папки и read-only состоянию. Клавиатурный вызов
+размещается у текущего элемента. Win32 7-Zip extension и системный shell
+submenu требуют отдельных платформенных services и видны отключёнными для
+выбранных дисковых элементов (системная группа зависит от ShowSystemMenu).
+При открытом архиве Qt сохраняет отдельную группу Add/Extract/Test/Info;
+это отличие до полного переноса archive context. Прежняя Qt команда открытия
+системного менеджера удалена из этого popup.
+
+Как в `Panel.cpp` и `PanelListNotify.cpp`, под списком каждой панели находятся
+четыре поля: выбранное/всего, суммарный размер выбранного, размер и дата
+текущего выделенного элемента. Qt сохраняет отдельную общую строку для
+сообщений сканирования/операций. При двух панелях значения независимы.
+Кэш `SysIconUtils::CExtToIconMap` сохраняет source правила для атрибутов,
+расширений и `.001`/`.002`; Qt берёт само изображение из системного
+QFileIconProvider. Цвет/форма иконок зависят от ОС. `panel_shell` фиксирует
+normal/compact Qt JSON и disk/archive popup, но Windows rendered reference,
+Windows/Linux runtime и полноценные shell/namespace icons ещё не проверены.

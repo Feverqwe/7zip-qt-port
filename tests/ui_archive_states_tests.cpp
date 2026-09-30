@@ -373,12 +373,15 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QTest::keyClick(window.findChild<QLineEdit *>("archivePath"), Qt::Key_Return);
         auto *view = table(window);
         QStringList commands;
+        QHash<QString, bool> enabled;
         auto capture = [&] {
             QTimer::singleShot(0, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
                 QVERIFY(menu);
-                for (QAction *item : menu->actions())
+                for (QAction *item : menu->actions()) {
                     commands << item->text();
+                    enabled.insert(item->text(), item->isEnabled());
+                }
                 menu->close();
             });
         };
@@ -388,7 +391,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(commands.contains("Переименовать…"));
         QVERIFY(commands.contains("Копировать"));
         QVERIFY(commands.contains("Создать папку…"));
-        QVERIFY(commands.contains("Обновить"));
+        QVERIFY(enabled.value(QStringLiteral("Переименовать…")));
+        QVERIFY(!commands.contains("Обновить"));
         QStringList properties;
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
@@ -408,9 +412,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         capture();
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->height() - 5))));
-        QVERIFY(!commands.contains("Переименовать…"));
+        QVERIFY(commands.contains("Переименовать…"));
+        QVERIFY(!enabled.value(QStringLiteral("Переименовать…")));
         QVERIFY(commands.contains("Создать папку…"));
-        QVERIFY(commands.contains("Обновить"));
+        QVERIFY(enabled.value(QStringLiteral("Создать папку…")));
 
         openListedArchive(window, backend, "menu.7z",
                           {ArchiveEntry{QStringLiteral("папка/файл.txt"), 1, 1}});
@@ -420,7 +425,6 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
                                           Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
         QVERIFY(commands.contains("Извлечь выбранное…"));
         QVERIFY(commands.contains("Добавить в открытый архив…"));
-        QVERIFY(!commands.contains("Создать папку…"));
         QVERIFY(commands.contains("Свойства…"));
     }
 

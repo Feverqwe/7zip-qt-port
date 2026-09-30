@@ -87,6 +87,39 @@ bool IsSizeProp(UINT propID) noexcept {
     return false;
 }
 
+CPanelStatus CPanel::Refresh_StatusBar() const {
+    // Preserve PanelListNotify.cpp's four-part calculation. Qt owns the
+    // controls, so return the parts instead of calling Win32 SetText.
+    CPanelStatus status;
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_Operated(indices);
+
+    status.selectedItems =
+        QStringLiteral("%1 / %2").arg(indices.Size()).arg(_selectedStatusVector.Size());
+    if (!indices.IsEmpty()) {
+        UInt64 totalSize = 0;
+        FOR_VECTOR(i, indices)
+        totalSize += GetItemSize(indices[i]);
+        status.selectedSize = ConvertSizeToString(totalSize);
+    }
+
+    const int focusedItem = _selectionList.GetFocusedItem();
+    if (focusedItem >= 0 && _selectionList.GetSelectedCount() > 0) {
+        const unsigned realIndex = GetRealItemIndex(focusedItem);
+        if (realIndex != UInt32(-1) && _folder) {
+            status.focusedSize = ConvertSizeToString(GetItemSize(realIndex));
+            NWindows::NCOM::CPropVariant prop;
+            if (_folder->GetProperty(realIndex, kpidMTime, &prop) == S_OK) {
+                char dateString[64];
+                dateString[0] = 0;
+                ConvertPropertyToShortString2(dateString, prop, kpidMTime);
+                status.focusedDate = QString::fromLatin1(dateString);
+            }
+        }
+    }
+    return status;
+}
+
 QString CPanel::GetItemText(UInt32 itemIndex, const CPropColumn &property) const {
     const PROPID propID = property.ID;
     if (!_folder || itemIndex == UInt32(-1))

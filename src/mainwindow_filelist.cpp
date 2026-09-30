@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
+#include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtarchivereopen.h"
@@ -124,8 +125,8 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
         if (col == 0) {
             item->setToolTip(file.absoluteFilePath());
             if (fileListSettings_.ShowRealFileIcons) {
-                QFileIconProvider icons;
-                item->setIcon(icons.icon(file));
+                item->setIcon(g_Ext_to_Icon_Map.GetIcon(
+                    directory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_ARCHIVE, nativeName));
             } else
                 item->setIcon(QApplication::style()->standardIcon(directory ? QStyle::SP_DirIcon
                                                                             : QStyle::SP_FileIcon));
