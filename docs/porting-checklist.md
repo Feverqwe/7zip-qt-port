@@ -9,6 +9,9 @@
 - [ ] Прочитать `AGENTS.md`, этот чеклист и нужный раздел плана.
 - [ ] Проверить `git status`, current HEAD, indexed memory, audit/parity и код.
 - [ ] Выбрать первый открытый доступный ID по P0 → P1 → P2 → P3 и зависимостям.
+- [ ] Если отдельная функция заблокирована, проверить зависимости других сценариев,
+  вынести её в собственный ID и продолжить первый доступный результат; правило —
+  в [плане](porting-plan.md#блокировка-отдельной-функции-и-продолжение-плана).
 - [ ] Указать scope, upstream revision/symbols, owner и необходимые adapters.
 - [ ] Если пакет велик, записать несколько крупных интегрированных результатов
   с простыми ID и одним уровнем подшагов; helpers/dependencies — внутренние задачи.
@@ -52,14 +55,19 @@
 `done` — выполнен scope и приложены доказательства;
 `N/A` — только доказанная неприменимость платформенной/entrypoint ветки.
 N/A отдельной ветки не закрывает весь пакет, содержащий применимые функции.
+`blocked` относится к своему ID, а не ко всему плану. Не выбирать его повторно
+автоматически; возвращаться при новой capability или отдельной итерации по
+снятию prerequisite. Следующий шаг определять по фактическим
+capabilities, а не только по старой ссылке на parent; изменение зависимости
+фиксировать в плане и строке пакета.
 
 Ставить `[x]` только при `done`. В результате указать audit section, tests с
 датой/ОС/result и применимую ревизию; unverified platforms перечислить явно.
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **15/44 завершённых пакетов; 29 остаётся** (2026-09-30).
-P0: 12/12; P1: 2/16; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-03, P1-11 и P3-01
+Текущий счёт: **16/45 завершённых пакетов; 29 остаётся** (2026-09-30).
+P0: 12/12; P1: 3/17; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-03, P1-04, P1-11 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -102,8 +110,8 @@ P0: 12/12; P1: 2/16; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-03, P1-11 и P3-01
 | P0-12.4 | Целый encrypted-root/current-folder Ask сценарий через source FM callback: проверка пароля до GetStream/перезаписи, реальные 7z/ZIP wrong/correct, повторный запуск, текущая папка и относительный путь назначения, Unicode/пробелы, source progress/overwrite, backend guards и focused/full gate | После .3; исходные `CAgentFolder::Extract`, `CArchiveExtractCallback`, `CPanel::CopyTo`, file-only 7zz adapter; вложенный архив и batch GUI/Common остаются .5 | done — audit § P0-12.4; реальные encrypted 7z/ZIP wrong→correct без потери старых байтов, nested-folder ZIP Ask, source overwrite и нулевой backend preflight; focused 5/5, modal-race repeat 5/5, полный unsandboxed check.sh 137/137 на macOS arm64/Qt 6.11.2 2026-09-30; P0-12 parent, Windows/Linux runtime и rendered Windows parity остаются обязательными |
 | P0-12.5 | Завершить P0-12: nested archive и batch paths через исходную `ExtractGUI.cpp`/`Common/Extract.cpp` orchestration, option precedence, callback close/results, multi-archive/volume handling, failure/cancel/password, backend security, UX и итоговую parent приёмку | После .4; in-process `CArchiveLink::Open3` отсутствует в текущем порте, нужен узкий 7zz opener, сохраняющий source Extract loop; уже скопированные незавершённые модули не считаются готовыми | done — audit § P0-12.5; root/nested whole Ask через source ExtractGUI/Common, selected nested через FM, 2 ZIP с общим Unicode-путём и Yes/Cancel, split `.001` с пропуском следующих томов, encrypted wrong→correct, forced/saved modes; focused 4/4, полный `check.sh` 137/137 macOS arm64/Qt 6.11.2 2026-09-30; Windows/Linux runtime и rendered Windows parity непроверены |
 
-После P1-03 следующий доступный результат — P1-04
-по приоритету и зависимостям: P1-01 ждёт P1-04. Исторический порядок prerequisites
+После P1-03 был выполнен P1-04.1/.2; ZIP comment выделен в P1-17.
+Текущий следующий доступный результат — P1-01. Исторический порядок prerequisites
 P0-10.1 → P0-04.1 → P0-02.2 → P0-02.3 → P0-03 уже подтверждён выше.
 P0-04/P0-05/P0-10 приняты после перечисленных parent критериев; их
 отдельные дальнейшие функциональные ветви сохраняются под собственными ID.
@@ -149,10 +157,9 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [x] | P1-03 | Inline Rename/Create/Delete/корзина | P0-03, P0-10, P0-11 | done — P1-03.1/.2; macOS arm64 2026-09-30, source create/rename/delete, native Trash adapter, focused success/failure/cancel/permissions/partial tests и `check.sh` 137/137; Windows/Linux/rendered Windows/native Trash runtime не проверены |
 | [x] | P1-03.1 | Целый filesystem CreateFolder/CreateFile/inline Rename: исходные PanelOperations/BrowseDialog path/name/selection/refresh bodies, текущие Qt consumers, составные пути, success/failure/Cancel и normal/compact UX | P0-03, P0-10, P0-11; FSFolder и ComboDialog source prerequisites уже приняты | done — audit § P1-03.1; macOS arm64 2026-09-30; focused `ui_operations`/`combo_dialog`/`native_fs_operations`/`panel_selected_state` и `flat_view`/`ui_state` прошли, `check.sh` 137/137; Windows/Linux/rendered Windows reference не проверены |
 | [x] | P1-03.2 | Целый Delete/Shift+Delete: исходное подтверждение и worker lifecycle, platform recycle adapter, permanent-delete/partial/cancel/symlink guards, выбор и parent P1-03 acceptance | P1-03.1; archive mutations P1-04 отдельно | done — audit § P1-03.2; `ui_operations`, `filesystem_operations`, `native_fs_operations`, `panel_key`, `command_policy_runtime`, `filesystem_selection_runtime` прошли; `check.sh` 137/137 macOS arm64 2026-09-30; native Trash runtime и Windows/Linux остаются unverified |
-| [ ] | P1-04 | Archive mutations, encrypted writes и comments по capabilities | P0-03, P0-10, P0-11, P1-03 | todo — три интегрированных результата .1/.2/.3; старые частичные Agent/ArchiveFolderOut тела сохраняются evidence |
+| [x] | P1-04 | Archive CreateFolder/Rename/Delete для обычных и защищённых верхних ZIP/7z; source update и transactional publish через ArchiveBackend | P0-03, P0-10, P0-11, P1-03 | done — P1-04.1/.2 и audit § P1-04.1/.2; focused/full gate macOS arm64 2026-09-30 по строкам ниже. Исторический P1-04.3 вынесен в P1-17: comment не входит в эту приёмку; Windows/Linux runtime не проверены |
 | [x] | P1-04.1 | Целый unencrypted archive CreateFolder/Rename/Delete workflow: source AgentOut/ArchiveFolderOut selection/update, FM consumers, transactional adapter, progress/error/refresh и UX | P1-03; existing Agent/ArchiveFolderOut partial prerequisites | done — audit § P1-04.1; ZIP/7z source callback + separate-output/native publish/reopen, implicit folder, bytes/mtime, unsafe/failure/cancel и F7/F2 inline/Delete UI; focused `source_update_backend`, `ui_operations`, `archive_selection_runtime`, `command_policy_runtime` прошли; `check.sh` 137/137 macOS arm64 Qt 6.11.2 2026-09-30, после локального metadata-test правки повторно прошёл `source_update_backend`; Windows/Linux/runtime и rendered Windows parity не проверены |
 | [x] | P1-04.2 | Защищённые верхние архивы: source update/password flow и 7zz capability, bytes/metadata/ciphertext, success/failure/cancel | P1-04.1 | done — audit § P1-04.2; 7z header encryption/ZIP AES, retained password through source mutation and ReOpen, protected bytes/mtime, wrong password/cancel exact-original, F7/F2/Delete with one password prompt; focused/full gate macOS arm64; Windows/Linux runtime and rendered reference unverified |
-| [ ] | P1-04.3 | ChangeComment/SetProperty по доказанной writer capability handler: source FM/Agent path, UX/error/refresh и validation; неподдержанная обязательная ветка остаётся открытой с prerequisite | P1-04.1, P1-04.2 | blocked — audit § P1-04.3: установленный 7zz 26.03 не имеет команды записи per-item ZIP comment; нужен source in-process ZIP IOutArchive/ZipHandlerOut writer и его зависимости через ArchiveBackend до подключения FM UX. Обязательная ветка не готова |
 | [ ] | P1-05 | Update/path modes и полное Add workflow | P1-04 | todo |
 | [ ] | P1-06 | Архивные тома create/open/test/extract | P1-05 | todo |
 | [ ] | P1-07 | Advanced options/time/parameters/memory prompts | P1-05, P0-10 | todo |
@@ -168,6 +175,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [ ] | P1-14 | Language и все app captions/fallbacks | P0-09, P1-12 | todo |
 | [ ] | P1-15 | F1/Help/About/Delete Temporary Files | P0-09, P1-08, P1-14 | todo |
 | [ ] | P1-16 | Drag/drop между панелями и наружу из архива | P1-01, P1-09, P0-07 | todo |
+| [ ] | P1-17 | ZIP per-item comment: исходный in-process writer, ChangeComment/SetProperty, ArchiveBackend adapter, UX/error/refresh и tests | P1-04 | blocked — прежний P1-04.3; audit § P1-04.3 сохраняет доказательство блокера. `7zz` 26.03 не записывает per-item ZIP comment; нужен source `ZipHandlerOut.cpp::UpdateItems` с `ZipUpdate.cpp`, `ZipOut.cpp`, codec/crypto/stream dependencies. Не prerequisite для P1-01/05/08/09/10; обязателен для полной P3-приёмки |
 
 ## P2 — расширенные функции и платформенная интеграция
 
@@ -189,10 +197,10 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |
-| [ ] | P3-02 | Сквозная regression/security traceability | P0/P1; relevant P2 rows | todo |
+| [ ] | P3-02 | Сквозная regression/security traceability | Принятые P0/P1 scenarios; relevant P2 rows; P1-17 для полной приёмки | todo — матрицу принятого scope можно собирать до P1-17 |
 | [ ] | P3-03 | CI и реальные Windows/macOS/Linux checks | можно начать рано; final после P2 | todo |
 | [ ] | P3-04 | Engine/Qt/resources/packages/licenses | P2-01, P2-02, P1-14, P1-15, P3-03 | todo |
-| [ ] | P3-05 | Полная сверка omitted scope/dependency closure | P0–P2, P3-01 | todo |
+| [ ] | P3-05 | Полная сверка omitted scope/dependency closure | Принятый scope P0–P2, P3-01; P1-17 для полной приёмки | todo — аудит принятого scope можно начать до P1-17 |
 | [ ] | P3-06 | Итоговая source/workflow/UX/platform приёмка | все обязательные пакеты | todo |
 
 ## Подшаги, блокировки и handoff

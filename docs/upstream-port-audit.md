@@ -6108,7 +6108,7 @@ AES поддержаны 7zz, новый пустой ZIP folder entry сам п
 частичным портом не покрыты. Source notices и лицензия сохранены в
 `third_party/7zip/License.txt`.
 
-## P1-04.3 — prerequisite для ZIP item comment (2026-09-30)
+## P1-04.3 — prerequisite для ZIP item comment (2026-09-30; перенесён в P1-17)
 
 Точная база исследования: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
 `CPP/7zip/UI/FileManager/PanelOperations.cpp::CPanel::ChangeComment`,
@@ -6129,8 +6129,9 @@ in-process writer dependencies; file-only `QtArchiveFileResource::Update`
 `IOutArchive` handler и необходимые исходные зависимости в ArchiveBackend,
 сохранив транзакционную публикацию, затем подключить исходные Agent/FM bodies
 и Qt диалог, success/failure/cancel, Unicode и сохранность данных/пароля.
-Никакие исходные bodies в этом исследовании не скопированы; parent P1-04
-остаётся открытым.
+Никакие исходные bodies в этом исследовании не скопированы. Это историческое
+исследование P1-04.3 теперь принадлежит самостоятельному blocked пакету P1-17;
+parent P1-04 принят по ранее проверенным .1/.2 и не включает ZIP comment.
 
 ## P1-11.1 — корень и смонтированные тома (2026-09-30)
 

@@ -72,7 +72,7 @@ workflow и rendered/platform acceptance остаются обязательны
 Его дальнейшая runtime-интеграция и Windows-проверки остаются обязательными;
 создавать вторую реализацию под `src/` не требуется.
 
-**Оставшуюся работу планируем как 44 пакета**: P0 — 12, P1 — 16,
+**Оставшуюся работу планируем как 45 пакетов**: P0 — 12, P1 — 17,
 P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID и отдельный результат.
 Часть пакетов завершает частичный перенос; часть добавляет отсутствующие
 модули; P3 закрывает обновляемость, проверки и поставку. Это не утверждение,
@@ -80,9 +80,10 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P3-01 (2026-09-30): **15/44 закрыты, 29 остаётся**;
-P0: 12/12, P1: 2/16, P2: 0/10, P3: 1/6. Подшаги P1-04 не увеличивают
-счёт до закрытия parent. Остальные mandatory workflow
+Текущий счёт после выделения ZIP comment в P1-17 (2026-09-30):
+**16/45 закрыты, 29 остаётся**; P0: 12/12, P1: 3/17, P2: 0/10, P3: 1/6.
+P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
+под самостоятельным ID P1-17. Остальные mandatory workflow
 owners сохраняются в чеклисте.
 
 Нельзя честно вывести процент полного source port из числа файлов: размеры,
@@ -165,6 +166,28 @@ P3-03. Наличие проверок macOS в истории не подтве
 переписываются без обнаруженной ошибки. Если требуются части другого пакета,
 сначала выделить минимальный prerequisite и зафиксировать его подшагом;
 не устраивать скрытую переработку половины приложения.
+
+### Блокировка отдельной функции и продолжение плана
+
+Если часть комплексного результата упирается в подтверждённое ограничение,
+записать конкретную функцию, доказательство, prerequisite и критерий повторной
+проверки. Проверить по исходным bodies и текущим consumers, кому именно нужна
+эта функция. Если остальной результат имеет самостоятельный проверяемый контракт,
+вынести блокированную функцию в отдельный ID со статусом `blocked`, сохранить
+прежний ID и evidence как историю и принять основной результат только по его
+точно указанному, проверенному scope. Счётчик обновить при добавлении пакета.
+Обязательность вынесенной функции не исчезает; `blocked` и `N/A` не заменяют
+`done`.
+
+Заменить широкие зависимости на конкретную готовую capability там, где
+consumer обходится без заблокированной функции. Для остальных сохранить
+точный prerequisite. Продолжить первый доступный шаг по приоритету и ID;
+не выбирать блокер повторно автоматически. Вернуться к нему при новой capability
+или когда отдельная итерация явно берёт работу по снятию prerequisite.
+Если оставшаяся часть пакета без функции не имеет самостоятельной приёмки,
+оставить parent `partial`/`blocked`, но продолжить другие независимые пакеты.
+P3 может собрать матрицу готового scope; полную приёмку нельзя закрыть, пока
+обязательная вынесенная функция остаётся заблокированной.
 
 ### Размер итерации и коммита (уточнение 2026-09-29)
 
@@ -432,7 +455,7 @@ P0-12.4 подключил зашифрованный root и текущую п�
 parent приёмку. Точные критерии и evidence — в checklist; прочие режимы
 Extract и метаданные остаются P2-07.
 
-## 4. P1 — основные сценарии и полноценный UX (16 шагов)
+## 4. P1 — основные сценарии и полноценный UX (17 шагов)
 
 ### P1-01. Copy/Move routing между диском, архивом и панелями
 
@@ -495,17 +518,16 @@ adapter, Shift+Delete через исходный worker, подтвержден
 Windows/Linux, native Trash runtime и rendered Windows подтверждения локально
 не проверены. Следующий доступный шаг — P1-04.
 
-### P1-04. Запись, Rename/Delete/CreateFolder и comment в архиве
+### P1-04. Запись, Rename/Delete/CreateFolder в архиве
 
-**После:** P0-03, P0-10, P0-11, P1-03. **Источники:** FM `PanelOperations.cpp::ChangeComment`,
+**После:** P0-03, P0-10, P0-11, P1-03. **Источники:** FM `PanelOperations.cpp`,
 `PanelCopy.cpp`; Agent `AgentOut.cpp`, `ArchiveFolderOut.cpp`, `UpdateCallbackAgent.cpp`;
 GUI `UpdateGUI.cpp`, Common `Update*.cpp`, `SetProperties.cpp`.
 
 Перенести relevant update orchestration/validation/selection recovery, включая
 защищённые верхние архивы при наличии capabilities. Сохранить transactional
-replacement за ArchiveBackend. Comment доступен только формату/handler, реально
-поддерживающему свойства: если `7zz` не даёт нужной записи, нужен documented
-capability prerequisite, а не самостоятельное изменение формата.
+replacement за ArchiveBackend. Запись ZIP comment вынесена в P1-17 с отдельным
+writer prerequisite.
 
 **Готово:** все поддержанные действия сохраняют bytes/metadata/пароль и исходный
 архив при ошибке; busy и nested ограничения видимы. Unsupported handler branch
@@ -518,23 +540,19 @@ Delete workflow через исходные `AgentOut`/`ArchiveFolderOut` select
 bodies, source `PanelOperations` consumers, transactional ArchiveBackend adapter,
 progress/error/refresh и UX. P1-04.2 добавляет защищённые верхние архивы к
 тем же операциям и проверяет пароль, ciphertext/metadata, ошибки и отмену.
-P1-04.3 переносит `ChangeComment`/`SetProperty` только после подтверждённой
-writer capability формата/handler; если внешний `7zz` не предоставляет её,
-результат остаётся открытым с точным prerequisite для in-process source writer.
-Archive Add/path modes и nested update остаются P1-05/P1-09.
+Исторический P1-04.3 — исследование capability и источник evidence для P1-17;
+он больше не является подшагом приёмки P1-04. Archive Add/path modes и nested
+update остаются P1-05/P1-09.
 
 P1-04.1 завершён для незашифрованных верхних ZIP/7z. P1-04.2 завершён для
 защищённых верхних ZIP AES/7z: сохранённый пароль передаётся source update и
 native ReOpen без повторного запроса, проверены bytes/mtime, неверный пароль,
-отмена и сохранность исходного архива. Parent P1-04 остаётся открытым до
-P1-04.3 (comment/SetProperty capability); P1-05/P1-09 не объявлены готовыми.
+отмена и сохранность исходного архива. Parent P1-04 принят по проверенному
+mutation scope .1/.2; P1-05/P1-09 ещё не выполнены.
 
-P1-04.3 заблокирован текущим file-only `7zz` 26.03: его команды/ключи не
-записывают комментарий отдельного ZIP-элемента. Исходный writer —
-`ZipHandlerOut.cpp` через `IOutArchive` и `CAgent::CommentItem`; его нужно
-портировать in-process с зависимостями, сохранив ArchiveBackend границей.
-До этого P1-04/P1-05 и зависящие шаги остаются открытыми. Независимый
-P1-11 завершён; следующий доступный результат выбирается по зависимостям.
+Следующий доступный пакет по приоритету — P1-01. Зависимости P1-01/P1-05/
+P1-08/P1-09/P1-10 от P1-04 относятся к принятой archive-write capability;
+ни одному из этих consumers запись ZIP comment не нужна.
 
 ### P1-05. Полные update/path modes Add to Archive
 
@@ -719,6 +737,25 @@ Mouse hover/single-click не открывает файл во время drag.
 и lifetime temp тестированы fake recipient; native file managers отдельно
 на доступных ОС. Unsupported native promise branch остаётся documented partial.
 
+### P1-17. ZIP per-item comment и запись свойства
+
+**После:** P1-04. **Исторический ID:** P1-04.3; его исследование и provenance
+сохранены в audit § P1-04.3. **Статус:** blocked, 2026-09-30.
+
+Текущий file-only `7zz` 26.03 не записывает комментарий отдельного ZIP-элемента.
+Портировать исходный `ZipHandlerOut.cpp::CHandler::UpdateItems` через
+`IOutArchive`, `ZipUpdate.cpp`, `ZipOut.cpp` и необходимые codec/crypto/stream
+зависимости за ArchiveBackend. Затем подключить `CAgent::CommentItem`,
+`CAgentFolder::SetProperty`, `CPanel::ChangeComment`, Qt dialog, capability/
+error/refresh и tests. Не писать новый ZIP writer вместо upstream bodies.
+
+**Разблокировка:** исходный in-process ZIP writer и adapter проверены на
+per-item comment round-trip, отказе, отмене, сохранности bytes/metadata и
+неизменности исходного архива при ошибке. До появления этой capability статус
+остаётся `blocked`; другие пакеты выполняются по их зависимостям. P3-02/05
+могут проверить и документировать остальной scope, но полная приёмка P3-06
+требует закрытия P1-17.
+
 ## 5. P2 — расширенная функциональность и платформы (10 шагов)
 
 ### P2-01. Форматы, codec capabilities и Open Inside */#
@@ -889,8 +926,11 @@ old→new report реализованы в `scripts/upstream_baseline.py`, пр�
 
 ### P3-02. Сквозная regression и security матрица
 
-**После:** P0/P1; advanced rows после соответствующих P2. Проверки каждой функции
-уже должны существовать. Собрать traceability scenario→owner→CTest и закрыть
+**После:** проверенные P0/P1 scenarios; advanced rows после соответствующих P2.
+Матрицу можно собирать при blocked P1-17, обозначая comment как непроверенный
+обязательный scope; итоговую приёмку P3-02 завершить после P1-17. Проверки
+каждой принятой функции уже должны существовать.
+Собрать traceability scenario→owner→CTest и закрыть
 пробелы: success/failure/cancel, wrong password, temp lifetime, interrupted
 update/rollback, traversal/absolute/links/case/Unicode collision, process errors,
 close-window races. Fixtures local/deterministic, без реальных архивов/сервисов.
@@ -925,7 +965,8 @@ packages/deployment Qt/plugins/lang/help/resources для трёх ОС и smoke
 
 ### P3-05. Закрытие omitted modules, branches и интеграционного долга
 
-**После:** P0–P2, P3-01. Повторить полную инвентаризацию 109 `.cpp`, headers,
+**После:** принятый scope P0–P2, P3-01; blocked P1-17 записать отдельно и
+выполнить до итоговой приёмки P3-05. Повторить полную инвентаризацию 109 `.cpp`, headers,
 resources и фактически добавленных dependencies. Для omitted `ProgressDialog`
 legacy/CE, standalone GUI/console entrypoints, ClassDefs/StdAfx и Win32 adapters
 нужен documented scope/N/A, а не «файл не нужен потому что пока не используем».
@@ -945,7 +986,7 @@ normal layout, оба языка, accessibility/focus, prompts/error/progress/he
 
 **Готово:** опубликована матрица checked/partial/unverified/N/A с доказательствами
 по ОС и source scope; README не обещает лишнего; счётчик checklist актуален.
-Только реальные закрытые обязательные пакеты дают 44/44 (или новое честное число
+Только реальные закрытые обязательные пакеты дают 45/45 (или новое честное число
 после decomposition/additions). Известные обязательные пробелы не объявляются
 «полным портом» ради завершения плана.
 
@@ -982,6 +1023,7 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 | P1-14 | `LangPage.cpp`, `LangUtils.cpp`, `TextPairs.cpp`, `StringUtils.cpp` |
 | P1-15 | `HelpUtils.cpp`, `AboutDialog.cpp`, `ProgramLocation.cpp` |
 | P1-16 | `PanelDrag.cpp`, `EnumFormatEtc.cpp` |
+| P1-17 | `PanelOperations.cpp::ChangeComment`, `AgentOut.cpp::CommentItem`, `ArchiveFolderOut.cpp::SetProperty`, `ZipHandlerOut.cpp`, `ZipUpdate.cpp`, `ZipOut.cpp` |
 | P2-01 | `FilePlugins.cpp`, `FileFolderPluginOpen.cpp`, `RegistryPlugins.cpp` |
 | P2-03 | `PanelCrc.cpp` |
 | P2-05 | `LinkDialog.cpp` |
