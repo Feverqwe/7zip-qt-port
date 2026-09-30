@@ -95,32 +95,6 @@ Qt widgets/icons and unavailable source commands remain the P0-09/P2-09 scope;
 full source mutation/edit workflows remain P1-01/P1-03/P1-04/P1-08. Windows
 rendered parity and Windows/Linux execution remain unverified locally.
 
-P0-02.3 uses the pinned FM.cpp WM_CLOSE reference: soft external
-exit, revoke drop, save CApp, release panels, save window info, hard exit.
-Qt additionally joins asynchronous workers while their inputs still live.
-Close during a live native/modal open is ignored, like a disabled Win32 parent;
-ordinary asynchronous operation close cancels/joins and prevents late refresh.
-Binary Position/Panels storage follows ViewSettings; Qt logical coordinates replace
-WINDOWPLACEMENT. Full restore of splitter position remains P0-08.2; visible
-disk/disk splitter was added in P0-08.1. No layout/text change in this historical step;
-Windows/Linux runtime and rendered Windows parity remain unverified.
-Focused consumers passed 8/8; full gate 122/122 (84.83 s), macOS arm64 2026-09-29.
-
-P0-02.2 owner integration now creates the visible panel through source CApp/CPanel
-and restores per-panel ListMode/FlatViewArc settings. Original keys take precedence
-over migrated legacy Qt keys. Focus changes route through the panel's native
-CPanelCallbackImp; app instances retain separate state. Saving an open archive
-stores its outer containing directory. Shutdown disables every panel before any
-folder owner is released, after existing Qt workers quiesce. The concrete Windows
-reference is App.cpp Create/CreateOnePanel/Save/ReleaseApp and Panel.cpp
-Create/OnCreate/ReleasePanel at the audit baseline. Qt child-control construction
-retains the existing layout. Full operation-state, command/title/drop routing,
-second-panel presentation and rendered Windows acceptance remain mandatory.
-P0-02.2 owner iteration passes check.sh 121/121, 85.30 s on macOS arm64
-(2026-09-29); 16 current normal/compact archive JSON reports retain visible address
-and active lists in all normal/flat modes. P0-02.3/full parent acceptance and
-Windows/Linux/rendered Windows verification remain mandatory.
-
 P0-04.1 is accepted as an integrated prerequisite. Native component tests on macOS exercise PanelCopy into
 disk/CVirtFileSystem, nested ZIP opening in memory and return to the same parent
 folder, all-items extraction with cumulative progress, and changed-file update
@@ -172,306 +146,7 @@ empty. Native pause/background
 failure is reported with state/policy rollback. A launch exception after process
 start first quiesces the child, then uses source error composition.
 
-P0-02.2b3c3b2b2b2b3b restores original Background/Foreground transition and
-caption/title flow. Background is the source default button and initial focus;
-Enter on focused Pause toggles pause. Actual native failure rolls back the toggle
-and reports an error, a necessary difference from the original ignored API failure.
-Darwin owned-child external policy tests exercise refusal and successful retry.
-Normal/compact JSON/geometry covers both captions. Process priority persists
-as upstream; full modal/worker/cancel and 7zz child propagation remain mandatory.
-Windows/Linux native runtime and rendered Windows reference remain unverified.
-
-P0-02.2b3c3b2b2b2b3a restores original ProgressDialog2 taskbar target/state/value
-and cleanup calls. Source pause takes precedence over first-error state, and
-resuming restores error state while counters continue. Actual Cocoa API checks
-cover badge state and cleanup, including a destroyed target; its process-wide
-badge does not establish per-window or rendered Windows fidelity. No layout,
-visible text or control availability changes. Background/default-button and full
-modal/worker/cancel integration remain mandatory; Windows/Linux runtime remains
-unverified.
-
-P0-02.2b3c3b2b2b2b2b wires the Linux native adapter to Qt GUI ownership, real
-session selection and the application's sevenzip_desktop entry identity. Owned
-private-bus child tests on macOS verify its portable boundary and cleanup. No
-descriptor is installed yet; P3-05 packaging and actual Linux launcher rendering
-remain mandatory. Source taskbar/background/default button integration is still open.
-
-P0-02.2b3c3b2b2b2b2a supplies native launcher Update/Query transport and replay,
-verified through an owned private DBus on macOS. Compatible Linux launchers use
-progress/visibility/urgency; their protocol has no native colored paused/error bar
-or indeterminate property. Source pause/title/error UI remains mandatory integration.
-Linux identity/session adapter and actual desktop rendering remain unverified/open;
-private transport success does not establish visual parity or a live launcher.
-
-P0-02.2b3c3b2b2b2b1 supplies the Cocoa native Dock progress prerequisite. Apple's
-process-wide badge displays percentage/indeterminate and pause/error markers;
-this differs from the Windows per-window colored taskbar bar. Native API state
-and cleanup are verified on macOS, including preservation of another badge owner;
-rendered Dock appearance remains unverified. Original source target/state policy,
-Windows taskbar, Linux service and Background button integration remain mandatory.
-
-P0-02.2b3c3b2b2b2a supplies reversible native process background policy: Windows
-uses the original idle/normal process classes, Darwin process background policy,
-Linux all-thread OTHER/BATCH scheduling. These are platform scheduling adaptations,
-not identical scheduler guarantees. macOS native self/child/worker transitions
-are verified; Windows/Linux remain unverified. The source Background button and
-7zz child propagation remain mandatory and disabled/unintegrated at this stage.
-
-P0-02.2b3c3b2b2b1 restores the source IconID conditional using the exact original
-FM.ico embedded in Qt; default/invalid IDs and real 16/32/48 frames are tested.
-Taskbar SDK definitions are copied unchanged for the upcoming native services.
-No rendered Windows icon/pixel fidelity or Windows SDK compilation is claimed
-from macOS checks. Taskbar/background and complete modal/update remain mandatory.
-
-P0-02.2b3c3b2b2a2 ports the source progress presentation subset and manual resize
-flow. Native statistics, file/byte modes, title/path shortening, error numbering,
-selected-or-all copy and pause rendering are tested with 26 mapped controls in
-16 normal/compact JSON reports. Russian text, Qt font units and macOS Meta
-shortcuts are explicit adaptations. Background/Cancel stay disabled until their
-mandatory platform/modal-worker services; the current app progress owner is
-not replaced yet. Source taskbar/icon/priority and full cancel/finish/update remain
-mandatory. No Windows rendered reference; pixel parity and Windows/Linux runtime
-remain unverified.
-
-P0-02.2b3c3b2b2a1 copies source progress statistic helper bodies, including the
-original truncation and overflow approximation. These prerequisites do not change
-the displayed progress view; complete statistics/pause/message/layout acceptance
-and native modal/cancel/thread/platform integration remain mandatory a2/b/b3.
-
-P0-02.2b3c3b2b1 ports original progress duration formatting/resources and extracts
-the exact desktop progress resource reference. Source control order/grouping is
-recorded; no displayed view has changed or passed full progress acceptance yet.
-Qt geometry/state and Windows rendered parity remain unverified for that view.
-
-P0-02.2b3c3b2a2 compiles complete original CProgressSync native pause/stop/counter/
-error state. POSIX pause waits use the same 100 ms interval through a Qt platform
-sleep service. No displayed progress UI changes yet; original modal progress,
-callbacks and parent update workflows remain mandatory subsequent scope.
-
-P0-02.2b3c3b2a1 compiles unchanged upstream native thread/synchronization/error
-services needed by source progress/update state. No displayed behavior changes;
-modal progress, pause/cancel, update callbacks and parent integration remain open.
-Windows/Linux runtime is not inferred from the macOS native service tests.
-
-P0-02.2b3c3b1 compiles original FormatUtils and source caption bundle, preserving
-literal {0} substitution and update/error line breaks. Fixed Russian captions are
-available to upcoming update dialogs; no displayed dialog/layout changes yet.
-Complete modified-nested-file prompt/progress/cancel/update remains mandatory.
-
-P0-02.2b3c3a restores original processing guards around source selection restoration.
-Qt selection callbacks defer command refresh during intermediate restore state
-and resume afterward. No visible text/layout changes. Full native notification/
-timer/status dispatch and nested update/parent-stack workflows remain mandatory.
-
-P0-02.2b3c2 copies original CTempFileInfo/CFolderLink cleanup/change/lifetime
-records. Native time comparison retains upstream FILETIME/timespec precision;
-cleanup only deletes an explicitly owned file and then its empty parent directory.
-No displayed behavior/layout changes. Full root/nested close/pop/update/runtime
-integration, memory-archive/password/zone workflows remain mandatory later scope.
-
-P0-02.2b3c1b compiles original CLibrary lifetime/loading and extends POSIX with
-original Windows parent-link transfer/copy guard. No displayed behavior changes;
-native parent-stack integration follows. Module-path/resource services and
-Windows/Linux runtime remain mandatory, unverified local scopes.
-
-P0-02.2b3c1a restores original native single-item cleanup and Windows readonly
-attribute handling under the Qt path wrapper. POSIX remove() accepts an empty
-directory whereas Windows DeleteFile rejects it; current UI directory commands
-still route through their directory owner. No layout/text change. Native parent
-stack and complete filesystem/reparse/alternate-stream workflows remain mandatory.
-
-P0-02.2b3b3c3c3 accepts the bounded owned-provider/selected-consumer lifecycle
-prerequisite. Full native parent/path/navigation, all-panel release, operation
-state and platform acceptance remain open; no runtime/text/layout change is made.
-
-P0-02.2b3b3c3c2 stops the 7zz transport before window temporary paths are released
-and disconnects callbacks before cancellation. Window destruction cannot leave
-that operation writing into a removed temporary directory or reopen UI through
-completion callbacks. No dialog/layout change. Full native panel/parent-stack
-release and Windows/Linux runtime remain mandatory.
-
-P0-02.2b3b3c3c1 verifies selected consumers across archive replacement, cancelled
-extraction and failed/cancelled listing back to filesystem. Loading disables
-selected commands; requests follow the current source owner and temporary hash
-extraction cleanup completes. No layout/text change; full native navigation,
-outer stack and operation teardown remain mandatory.
-
-P0-02.2b3b3c3b3e verifies selected versus unselected focus and replacement empty-folder
-owner at the Create input boundary. No layout/text change. The audit lists every
-remaining focused open/navigation, selection restoration, drag/icon and duplicate
-context consumer with its mandatory owner; selected-consumer acceptance does not
-close those workflows or the source parent/path stack.
-
-P0-02.2b3b3c3b3d routes filesystem selected-operation paths through original
-CPanel full-path helpers and the bound native folder prefix. Sorting, flat mode
-and preceding Properties cannot substitute paths from presentation rows. Existing
-dialogs and cancellation remain unchanged. Create input follows source operated
-selection: an unselected focused item is excluded. This consumer integration
-does not complete native operation control flow, focused open/navigation or the
-source parent/path stack. Windows/Linux runtime remains unverified.
-
-P0-02.2b3b3c3b3c binds archive Rename/View/Edit and logical hash-result targets
-to original source names/full prefixes/operated indices. Source folder metadata
-also controls single-file eligibility and the existing viewer size limit.
-Failure/cancel return to an operable selection without trusting row path/type
-roles. Dialogs, control order and displayed text are unchanged. Full native
-open/edit/hash workflows, filesystem consumers and parent/path stack stay open;
-Windows/Linux runtime and rendered Windows parity remain unverified.
-
-P0-02.2b3b3c3b3b restores original UString panel path helpers and source
-folder-type/drive-prefix rules. Relative/full paths come from the bound source
-folder, with no ownerless row fallback. Complete source full-prefix stack setup,
-actual drive/alternate-stream providers and remaining path consumers stay open;
-helper tests do not claim their workflows or cross-platform runtime parity.
-Displayed UI is unchanged.
-
-P0-02.2b3b3c3b3a adds original archive item names and full root-relative prefix
-helpers in normal/flat modes, including bound nonroot folders. Displayed commands
-are unchanged; remaining single-item/hash-result path consumers still require
-binding to these helpers. Alternate-stream/proxy2 branches remain mandatory.
-
-P0-02.2b3b3c3b2 routes selected archive extraction/Copy/Move/hash extraction
-paths through source operated and real indices plus the owner's full Path
-metadata. Display roles cannot substitute paths; requests follow source archive
-order and deduplicate overlap at the 7zz boundary. The current selected-folder
-expansion policy remains true in flat mode, explicitly differing from native
-engine Extract's false flag until mandatory P0-12 integration. Remaining
-single-item/filesystem/hash-result consumers and full operation acceptance stay
-open. Visible UI is unchanged.
-
-P0-02.2b3b3c3b1 adds the original normal/flat real-index mapping and unchanged
-HeapSort dependency. Normal directory selection expands descendants; flat
-mapping distinguishes explicit archive entries and implicit folders and retains
-the source caller's expansion flag. The current 7zz selection caller still
-expands selected folders; original engine Extract uses a different flag. This
-caller adaptation and source operation port stay explicit, with no complete
-Extract or alternate-stream parity claim. Visible UI is unchanged.
-
-P0-02.2b3b3c3a removes the test-only external-proxy compatibility lifecycle.
-Initialized archive folders and their children/parents always retain the source
-CAgent; catalogs use its source expansion/remapping. Default unbound calls fail
-without publishing undefined counts. Runtime presentation is unchanged;
-remaining consumer migration and outer/native path-stack scope stay mandatory.
-
-P0-02.2b3b3c2cc verifies source Properties in normal/flat and all four views
-through filesystem/archive transitions and Refresh. Native loaded size/cache,
-duplicate Unicode names/prefixes, directory counts/flat absence and missing/zero
-archive values retain their source semantics. File/directory/summary dialogs
-keep visible list/header/footer at normal and compact sizes; Cancel performs no
-archive operation. These macOS Qt checks leave the previously recorded complete
-metadata, native time parsing, raw/archive-level/shell and lifecycle scopes open.
-
-P0-02.2b3b3c2cb binds window Properties to the current source folder and operated
-indices. It displays source catalogs instead of synthesized Type/item-Path rows;
-the current-location footer remains the existing full Qt location until
-LoadFullPath/outer-stack migration. Filesystem packed size is now shown as source
-Properties requires. Loaded size and primed packed cache are preserved after
-external file changes; archive display-cell edits cannot change source values.
-Unknown sizes/counts remain absent and zero stays defined. Existing supplied
-archive Modified text retains fractional digits as explicitly unparsed BSTR
-compatibility data; native FILETIME/timezone/precision remains mandatory
-P0-03/P0-04. Raw/archive-level/shell Properties remain their mandatory owners.
-Normal/compact Qt list structure uses ListViewDialog.cpp/.rc; no rendered Windows
-reference or cross-platform runtime claim is made.
-
-P0-02.2b3b3c2ca2 uses the original owned CAgentFolder catalog expansion: Path
-becomes Name, descendant count descriptors are added, Prefix appears only in
-flat mode and Name is inserted when the transport has no Path. Directory counts
-come from the source proxy; file count values unsupported by the transport stay
-absent. Catalog errors prevent root publication and allow retry. The legacy
-external-proxy compatibility branch remains lifecycle migration, and full
-handler metadata remains mandatory. Live window Properties binding follows;
-no current displayed dialog or rendered Windows parity is claimed here.
-
-P0-02.2b3b3c2ca1 makes the archive transport provider's Path/Size/PackSize
-catalog explicit, with native source types and no fabricated absent values.
-This prerequisite changes no displayed dialog; source folder catalog expansion
-and live Properties integration follow. Full engine metadata remains mandatory
-P0-03/P0-04/P1-10. It does not establish a complete Properties workflow or
-Windows rendered/runtime parity.
-
-P0-02.2b3b3c2b3 replaces the Properties BSTR-only formatting restriction with
-original PanelMenu typed branches, including defined zero versus absence,
-grouped sizes/counts, CRC/boolean/time formatting, error flags and expected-type
-warning. Aggregate counts above 999 now use the same source grouping. Original
-warning literals remain English pending full language work. Properties window
-still receives legacy snapshots; live owner binding and filesystem packed-size
-visibility remain mandatory c2c, not N/A. Raw/archive-level/shell capabilities
-remain P0-03/P0-04/P1-10/P2-09. The reference is PanelMenu.cpp and
-ListViewDialog.cpp/.rc; normal/compact Qt geometry cannot verify rendered Windows
-parity without a Windows runtime reference.
-
-P0-02.2b3b3c2b2c adds original archive error-property conversion and message
-branches: source bit ordering, encrypted-header password hint, and unknown bits
-preserved as hexadecimal. Source ExtractRes.h/Extract.rc IDs/texts back the
-current fixed Russian presentation overrides. No displayed dialog changes yet;
-PanelMenu integration follows. Full archive open/extract callbacks remain
-mandatory operation owners, and rendered Windows parity is unverified.
-
-P0-02.2b3b3c2b2b adds original PropertyName priority and source resource IDs.
-The current fixed Russian presentation captions override corresponding native
-English resource text; other captions retain exact source English fallback.
-This dependency changes no displayed dialog yet. Full language selection/loading
-remains mandatory P1-14, and PanelMenu/live Properties integration follows.
-The reference is PropertyName.cpp, PropertyNameRes.h/.rc and LangUtils.h at the
-pinned source revision, not a rendered Windows reference.
-
-P0-02.2b3b3c2a compiles the original typed property formatters and portable
-reparse parsers; it changes no current dialog text or layout. PropertyName/
-PanelMenu formatting and live Properties binding remain the next mandatory
-substeps. Portable binary fixtures do not establish Windows link/ACL workflow
-parity. Windows native link operations retained in FileLink require additional
-FileDir services and remain disabled/open; they are not N/A.
-Focused 10/10, ASan 1/1 and full gate 65/65 passed on macOS 2026-09-29.
-Windows/Linux runtime and Windows native reparse/ACL workflow acceptance remain
-unverified; no rendered parity is claimed.
-
-P0-02.2b3b3c2b1 replaces FSFolder's packed-size E_NOTIMPL placeholder with the
-original cached GetProperty branch and Windows native compressed-size helper.
-POSIX retains the original logical-size fallback because that Windows API is
-unavailable; this does not establish compressed-allocation parity. Directory
-Size is absent until calculated while the source packed fallback is zero.
-Current window/dialog layout and visible text are unchanged; live Properties
-binding follows. Windows native behavior remains unverified locally.
-
 ## Аудит диалогов (2026-09-28)
-
-P0-02.2b3b2b1 (2026-09-29) добавляет source filesystem services, без изменения
-видимого workflow. Upstream FileFind сохраняет native enumeration и POSIX
-no-follow metadata; FileName — dot/absolute/Windows path bodies. Детерминированные
-проверки выполнены на macOS; Windows reparse/drive/UNC runtime acceptance
-обязательна и не считается подтверждённой этой проверкой.
-
-P0-02.2b3b2b2 переносит CFSFolder normal/flat enumeration и typed properties.
-Ошибка перечисления распространяется наружу и очищает partial/stale snapshot;
-исходный bool-only loop мог скрыть ошибку. Runtime окна и видимые controls пока
-не меняются. Binding, comments, compressed allocation, link/raw properties
-и optional interfaces остаются обязательными.
-
-P0-02.2b3b2b3 переносит binding/parent/notification CFSFolder и read-only logical
-drive CFSDrives. POSIX root `/` возвращает null parent, missing/file bind сразу
-отклоняется native stat adapter. Windows drive-root возвращает CFSDrives по
-исходной ветке; проверка Windows/UNC/device workflows остаётся обязательной.
-Physical imaging, icons и COM operations этого модуля ещё не перенесены.
-Runtime окна не меняется до P0-02.2b3b3.
-
-P0-02.2b3b2c1 переносит source CAgent proxy ownership/root binding и strong agent
-reference у папок. Для текущего 7zz metadata adapter listing immutable: новый
-listing получает нового владельца. Open/ReOpen/Close и остальные engine contracts
-ещё обязательны. Время жизни descendants/ancestors проверяется после release
-root и внешних references; runtime окна пока использует прежнюю lexical ветку.
-
-P0-02.2b3b2c2 добавляет folder factories для следующей runtime integration.
-Archive unknown size/packed size остаётся VT_EMPTY, defined zero — числом zero;
-source GetSize не добавляет negative sentinel к unsigned directory totals.
-Parser presence/type/range и full Properties catalog ещё обязательны P0-03/04.
-Видимый workflow не меняется этой фабрикой.
-
-P0-02.2b3b3a переносит GetRealItemIndex через item parameter вместо предположения,
-что sorted row равен folder index. Selection/property consumers сохраняют
-правильный source item после сортировки, focus остаётся отдельным row cursor.
-Layout/text не меняется; fixture parent sentinel проверяется без добавления
-dots row в приложение. Full RefreshListCtrl/OnNotify scope ещё обязателен.
 
 Сверка выполнена с upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Qt на macOS, checkout до изменений `66ecb5e78bede4a9573918afb1af95f9439db4f7`.
@@ -568,15 +243,11 @@ F5/F6 показывает перенесённую `CPanel::GetItemsInfoString`
 а в flat размер папки отсутствует по исходному GetProperty. Числа группируются пробелами
 по оригинальному ConvertSizeToString из `PanelListNotify.cpp`.
 
-P0-02.2b3b3c1 removes the Copy/Move row-property snapshot: the active source folder
-and original Get_ItemIndices_Operated/GetItemsInfoString provide names and totals.
-The prior Qt adapter incorrectly supplied directory totals in flat archive mode;
-source VT_EMPTY now leaves that size absent. Missing file sizes remain unknown,
-defined zero remains defined, and Cancel dispatches no operation. The Qt display
-prefix is temporary glue until source LoadFullPath/parent-stack integration.
-Focused 8/8 and full gate 64/64 passed on macOS 2026-09-29. Sixteen normal/compact
-source summary reports inspected; Windows/Linux runtime and Windows rendered
-parity remain unverified.
+Copy/Move summary reads the active source folder through original operated
+indices and GetItemsInfoString. Missing sizes stay unknown, defined zero stays
+defined, and flat archive folder totals remain absent. Cancel dispatches no operation.
+Source summary structure was checked in 16 normal/compact reports on macOS;
+Windows/Linux runtime and rendered Windows parity remain unverified.
 
 Диалог F5/F6 перенесён из `CopyDialog.cpp/.h`: назначения выбираются из
 редактируемой истории, Browse нормализует конечный разделитель, Cancel
@@ -931,116 +602,52 @@ level/method/dictionary/order/solid/threads/memory сопоставлен с
 `CPP/7zip/UI/GUI/CompressDialog.rc`. Отрисованный Windows-эталон недоступен:
 это проверка структуры и читаемости Qt, визуальная идентичность не подтверждена.
 
-## P0-02.1 application navigation data owner (2026-09-28)
+## P0-02 — owners, selection and lifetime
 
-History and favorites now live together in upstream CAppState; both are loaded
-before menu/address construction. Qt INI storage and immediate confirmed-edit
-persistence remain the platform adaptation. GUI-thread ownership replaces
-upstream critical sections; no global shared instance. Visible controls, keyboard,
-confirmation and cancellation flows are unchanged. This does not close CApp/
-CPanel lifecycle or two-panel workflow; Windows/Linux runtime parity unverified.
+P0-02 принят: приложение хранит history/favorites в CAppState, а CApp/CPanel
+владеют независимыми settings, focus, selection и folder lifetime. Референс —
+AppState.h, App.cpp/.h, Panel.cpp/.h, PanelItems.cpp и FM.cpp WM_CLOSE из
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+[Source audit](upstream-port-audit.md#p0-02--accepted-owners-and-state) и
+[исторические записи](history/p0-02-source-port.md) сохраняют происхождение и checks.
 
-## P0-02.2a remembered panel focus (2026-09-28)
+- Source keys имеют приоритет над migrated Qt preferences. Focus отделён от
+  selection; refresh сохраняет source имена/indices и выбирает surviving row,
+  если прежний current item исчез. Normal/flat views используют bound native owner.
+- Properties/Copy summary читают source catalogs и operated indices: absent size
+  остаётся пустым, defined zero — нулём; flat archive folder size не выдумывается.
+  Typed properties сохраняют исходное форматирование и error-bit ordering.
+  POSIX packed size использует upstream logical-size fallback.
+- Qt worker/batch delivery сохраняет отзывчивость и отбрасывает stale results.
+  Metadata остаются immutable до reload; display names нормализуются в NFC,
+  raw names/indices сохраняются для операций. POSIX symlinks используют lstat;
+  flat scan не следует directory links. Windows traversal guard предотвращает
+  junction cycles; его Windows runtime остаётся непроверенным.
+- Close сохраняет source soft-exit/revoke/save/release/window-save/hard-exit order.
+  Qt дополнительно отменяет и joins asynchronous workers до удаления inputs/temp;
+  каждый panel отключает notifications до освобождения первого folder owner.
+  Native/modal open блокирует close; ordinary async close отменяет операцию.
+  QSettings заменяет Registry, logical Qt geometry — WINDOWPLACEMENT.
+- Background/Foreground, source default focus/Enter, statistics/resize/errors/copy
+  и exact FM.ico сохраняются. Native priority failure откатывает состояние и
+  показывает ошибку, которую upstream игнорировал. Windows idle/normal, Darwin
+  background и Linux OTHER/BATCH — разные platform scheduling services.
+- Windows taskbar — per-window; Cocoa — process-wide Dock badge с сохранением
+  чужого badge; Linux Update/Query — progress/visibility/urgency без colored
+  pause/error или indeterminate. sevenzip_desktop identity не закрывает packaging.
+- Native temp cleanup удаляет owned file, затем пустой parent; POSIX remove()
+  принимает empty directory, Windows DeleteFile — нет. POSIX library transfer
+  переиспользует Windows Attach/Detach и loaded-copy guard. Qt font units,
+  fixed Russian captions, macOS Meta и progress clamp — явные адаптации.
 
-Source FM.cpp WM_SETFOCUS returns focus through CApp to the last list/address
-control remembered by CPanel. Qt uses FocusIn events and current table/icon/list
-presentation handles; address Tab routes through the same owner. One visible
-panel remains; no layout/control changes. Reference is Panel.cpp focus methods,
-CMyListView focus notification and PanelFolderChange combo edit notification.
-Windows/Linux native focus behavior and rendered pixel parity remain unverified.
-
-## P0-02.2b1 filesystem refresh focus (2026-09-28)
-
-Reference: PanelItems.cpp SaveSelectedState and RefreshListCtrl selection/focus
-portion at 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Filesystem refresh retains
-the current item separately from selected files, including flat relative paths.
-If the current file disappears, the original row-position fallback chooses a
-surviving current item without selecting it. Sorting is already applied by Qt
-before this partial restoration; current presentation has a parent toolbar
-button and no dots row. Archive refresh and full source list loading remain open.
-No layout/text changes; Windows/Linux runtime and rendered parity unverified.
-
-## P0-02.2b2 archive and edit selection (2026-09-28)
-
-Archive refresh and flat-mode changes now preserve current separately from
-selected items through the source CSelectedState. Reference: Panel.cpp
-ChangeFlatMode and PanelItems.cpp selection bodies at 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
-When the current folder disappears, names from it are not selected in the parent.
-Reference edit bracket: PanelItemOpen.cpp OnOpenItemChanged captures selection
-before updating and restores it afterward. Successful Qt/backend replacement
-does so after asynchronous relisting; failure/cancel retains displayed state
-because the backend updates a temporary archive. Local edit also uses the same
-refresh state. Full source module/lifecycle ports remain open; no layout/text
-changes. Windows/Linux runtime and rendered parity unverified.
-
-P0-02.2b3a connects unchanged portable upstream folder/stream/progress interfaces
-and property ownership dependencies. It changes no visible workflow or layout;
-actual folder binding and navigation/parent-stack bodies remain open. Dependency
-tests on macOS do not establish Windows/Linux runtime or rendered parity.
-
-P0-02.2b3b1 replaces the panel property owner with upstream IFolderFolder and
-variant property helpers. Copy summary and Properties keep their current visible
-values through a read-only Qt metadata adapter; full raw/non-string/archive-level
-formatting and actual location binding remain open. Reference: App.cpp summary
-and PanelItems/PanelMenu/PanelFolderChange property bodies at the pinned revision.
-No text/layout changes; Windows/Linux runtime and rendered parity unverified.
-
-P0-02.2b3b2a ports Agent.cpp _proxy binding and path/property subset behind the
-upstream folder interface. Current window enumeration keeps its visible behavior;
-long-lived runtime binding waits for owned context. Reference: Agent.cpp folder
-bind/parent/prefix/property bodies at the pinned revision. _proxy2, raw/CRC/engine
-catalog and operations remain open. No text/layout changes; Windows/Linux runtime
-and rendered parity unverified.
-
-P0-02.2b3b3b1 connects owned CAgent/CAgentFolder to the archive window and source
-CPanel indices. Archive listing/flat navigation/refresh and nested return share
-one source proxy. Source GetProperty VT_EMPTY now leaves size/packed cells empty;
-defined zero displays 0, consistent with source PanelListNotify variant formatting.
-Grouping, columns and view controls are unchanged. Normal/compact four-view JSON
-inspection passed (16 reports); focused 9/9 and full gate 62/62 passed macOS
-2026-09-29. Full filesystem runtime, BindToPath/LoadFullPath,
-CFolderLink and operation/interface/catalog branches remain mandatory; this
-partial owner binding does not establish full module or Windows visual parity.
-
-P0-02.2b3b3b2b replaces the independent recursive Qt iterator with source
-CFSFolder loading in a worker. Unlike synchronous source RefreshListCtrl loading,
-Qt remains responsive, reports scan counts, then shows rows in bounded batches
-after ownership transfer. Cancel/navigation can interrupt either phase. The list
-remains disabled until complete; stale results never replace the new location.
-Native POSIX names use QFile::decodeName at the Qt boundary, preserving macOS
-path/selection behavior without changing source metadata. Progress status now
-distinguishes scanned/shown counts; unreadable-folder failure reenables the list.
-Four normal/compact progress reports inspected; focused 5/5, ASan 1/1 and full
-gate 63/63 passed macOS 2026-09-29. Full CPanel
-filesystem binding/normal loading remain mandatory P0-02.2b3b3b2c; Windows/Linux
-runtime and Windows rendered parity remain unverified.
-
-P0-02.2b3b3b2c binds normal and flat filesystem runtime to CFSFolder/CPanel and
-renders the source item indices and typed sizes; the remaining QDir normal
-enumeration is removed. Reference: source FSFolder LoadItems/LoadSubItems and
-PanelItems RefreshListCtrl/GetItemName at the pinned revision. Refresh selection
-compares source-owned names while Qt display/path conversion retains macOS NFC.
-Uncalculated directory size stays blank. POSIX symbolic links now show their own
-lstat size/type, whereas the previous QFileInfo view followed target metadata;
-explicit path navigation can still resolve a directory link. Flat loading never
-follows POSIX directory links. Windows source directory reparse entries keep
-their directory flag, but a narrow traversal guard preserves the Qt no-follow
-policy and prevents junction cycles. This is an intentional integration difference
-from unguarded upstream flat recursion, requiring Windows runtime acceptance.
-Columns, control order and layout are unchanged. Full property formatting,
-BindToPath/LoadFullPath, parent stack and operation branches remain mandatory.
-Focused checks passed 11/11 and full gate 63/63 on macOS 2026-09-29. Four fresh
-normal/compact filesystem runtime JSON reports show the path controls, active list
-and status bar fully visible. Windows/Linux runtime and Windows rendered parity
-remain unverified.
-
-P0-02.2b3b3b3 confirms readonly runtime integration across filesystem/archive
-transitions in normal/flat and all four views: source indices survive sorting,
-selection does not leak across owners, loaded metadata stays immutable until
-reload, and retired workers cannot overwrite an opened archive. No layout or
-text changes. Focused 10/10 and full gate 64/64 passed on macOS 2026-09-29;
-Windows/Linux runtime remains unverified. Full consumer migration and source
-parent/path/interface/operation branches remain mandatory.
+Navigation/update приняты в P0-04.1/.2, model в P0-05, list state в P0-06/07,
+два panel в P0-08, shell в P0-09, modal progress и consumers в P0-10.1/.2.
+Старые записи о disabled Background/Cancel или Qt ArchiveParent описывали
+промежуточный код и не являются текущими ограничениями. Полные editor, language,
+raw/ADS/reparse, shell/engine и packaging остаются у своих feature owners.
+Исторические macOS arm64 gates: P0-02.1 54/54, .2 121/121, .3 122/122;
+progress contract — 26 controls/24 JSON states, navigation — 16 reports.
+Windows/Linux runtime, rendered Windows/Dock и реальный Linux launcher не проверены.
 
 ## P0-08.1 — два дисковых окна и F9 (2026-09-30)
 
