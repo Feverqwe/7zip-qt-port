@@ -1037,3 +1037,20 @@ Alt+F1/F2 и восстановление разделителя — P0-08.2, п
 Qt ограничивает положение разделителя минимальными размерами контролов в
 компактном окне. Проверены normal/compact и hidden Qt JSON; рендеринг Windows
 и Windows/Linux runtime не проверены.
+
+## P0-09.1 — главное меню и toolbar (2026-09-30)
+
+`resource.rc` задаёт шесть верхних меню File/Edit/View/Favorites/Tools/Help,
+группы команд и разделители. Qt повторяет их порядок, сохраняет исходные
+shortcut команды через общий dispatch и показывает недоступные пункты
+отключёнными. Существующие Qt Open/Create/Add/Extract Selected/Journal вынесены
+в отдельную группу File, чтобы архивные сценарии оставались доступны; это
+временное различие до source port их входов. Подписи пока русские из текущего
+Qt слоя; Language P1-14 ещё обязателен. Toolbar повторяет исходный порядок
+Archive Add/Extract/Test и Standard Copy/Move/Delete/Info, сохранённые
+переключатели, размеры 24×24/48×36 и magenta mask исходных BMP. Общие QAction
+передают команды активной панели при двухпанельном режиме. `main_shell`
+проверяет группировку, сочетания, disabled пункты, BMP и normal/compact Qt
+JSON для окна и File/View popup. Отчёты не доказывают пиксельное совпадение:
+отрисованный Windows 7zFM reference и Windows/Linux runtime не проверены.
+Контекст/статус/system icons остаются P0-09.2.

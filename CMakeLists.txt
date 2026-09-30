@@ -154,7 +154,21 @@ set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
 qt_add_resources(sevenzip_panel upstream_progress_icons
     PREFIX "/upstream/7zip/UI/FileManager"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
-    FILES third_party/7zip/CPP/7zip/UI/FileManager/FM.ico)
+    FILES third_party/7zip/CPP/7zip/UI/FileManager/FM.ico
+          third_party/7zip/CPP/7zip/UI/FileManager/Add.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Add2.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Extract.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Extract2.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Test.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Test2.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Copy.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Copy2.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Move.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Move2.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Delete.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Delete2.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Info.bmp
+          third_party/7zip/CPP/7zip/UI/FileManager/Info2.bmp)
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
@@ -921,6 +935,13 @@ if(BUILD_TESTING)
     target_include_directories(panel_key_tests PRIVATE src)
     target_link_libraries(panel_key_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME panel_key COMMAND panel_key_tests)
+    qt_add_executable(main_shell_tests tests/main_shell_tests.cpp tests/layout_inspection.cpp
+        ${panel_sort_sources})
+    target_include_directories(main_shell_tests PRIVATE src)
+    target_link_libraries(main_shell_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
+    add_test(NAME main_shell COMMAND main_shell_tests)
+    set_tests_properties(main_shell PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/main-shell-test-settings.ini" TIMEOUT 30)
     set_tests_properties(panel_key PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-key-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(panel_sort PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-sort-settings.ini;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots")
     qt_add_executable(panel_selection_tests tests/panel_selection_tests.cpp
@@ -1023,7 +1044,7 @@ endif()
 foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests
-    panel_key_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
+    panel_key_tests main_shell_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_location sevenzip_folder_loader)
         target_sources(${target} PRIVATE src/mainwindow_selectionpaths.cpp)
@@ -1032,7 +1053,7 @@ endforeach()
 
 foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
-    checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests volume_workflow_tests)
+    checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests main_shell_tests volume_workflow_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_panel)
         target_link_libraries(${target} PRIVATE sevenzip_filesystem)

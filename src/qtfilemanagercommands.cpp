@@ -57,6 +57,8 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.test_, kMenuCmdID_Toolbar_Test);
     Bind(w.openItem_, IDM_OPEN);
     Bind(w.openInside_, IDM_OPEN_INSIDE);
+    Bind(w.openInsideOne_, IDM_OPEN_INSIDE_ONE);
+    Bind(w.openInsideParser_, IDM_OPEN_INSIDE_PARSER);
     Bind(w.openOutside_, IDM_OPEN_OUTSIDE);
     Bind(w.viewFile_, IDM_FILE_VIEW);
     Bind(w.editFile_, IDM_FILE_EDIT);
@@ -69,6 +71,7 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.properties_, IDM_PROPERTIES);
     Bind(w.createFolder_, IDM_CREATE_FOLDER);
     Bind(w.createFile_, IDM_CREATE_FILE);
+    Bind(w.exitAction_, 8);
     const unsigned hashIDs[] = {IDM_CRC32,    IDM_CRC64,    IDM_XXH64,   IDM_MD5,
                                 IDM_SHA1,     IDM_SHA256,   IDM_SHA384,  IDM_SHA512,
                                 IDM_SHA3_256, IDM_BLAKE2SP, IDM_HASH_ALL};
@@ -186,6 +189,8 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
         navigating && hasFolder && !panel.IsRootFolder() &&
         (w.state_ == MainWindow::State::Viewing || panel.IsFSFolder());
     availability[IDM_VIEW_FLAT_VIEW] = navigating && (!hasFolder || !panel.IsRootFolder());
+    availability[8] = !w.app_.QtOperations().callActive() && !w.sourceArchiveProgress_ &&
+                      !QApplication::activeModalWidget();
     if (!navigating || w.scanningDisk_ || !hasFolder)
         return availability;
     const TransportCapabilities capabilities = ReadTransportCapabilities();
@@ -227,6 +232,8 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_OPEN_OUTSIDE:
         return c.operated && !c.root;
     case IDM_OPEN_INSIDE:
+    case IDM_OPEN_INSIDE_ONE:
+    case IDM_OPEN_INSIDE_PARSER:
         return c.focused;
     case IDM_FILE_VIEW:
         return c.oneFile;

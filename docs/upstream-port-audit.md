@@ -758,6 +758,48 @@ gate passes 135/135 registered CTest cases on macOS arm64, 2026-09-30. P0-08
 parent is accepted; Windows/Linux runtime and rendered Windows visual parity
 remain unverified.
 
+## P0-09.1 — главное меню и toolbar 7zFM (2026-09-30)
+
+Точный baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Источники: `CPP/7zip/UI/FileManager/resource.rc` (`IDM_MENU`, порядок,
+разделители, сочетания, `IDB_*`), `MyLoadMenu.cpp::CFileMenu::Load`,
+`ExecuteFileCommand`, `App.cpp::g_ArchiveButtons/g_StandardButtons`,
+`FM.cpp::OnCommand` и `ViewSettings.cpp::Read/SaveToolbarsMask`.
+`MyLoadMenu.cpp` и application command/toolbar-state bodies уже перенесены в
+предыдущих P0-03/P0-08 итерациях; текущая итерация подключает их к общему
+Qt QAction меню. `resource.rc` ранее скопирован в `third_party/7zip`.
+
+Без изменений скопированы 14 bitmap-файлов из того же каталога и commit:
+`Add[2].bmp`, `Extract[2].bmp`, `Test[2].bmp`, `Copy[2].bmp`, `Move[2].bmp`,
+`Delete[2].bmp`, `Info[2].bmp` (каждая пара означает исходный большой и малый
+ресурс). Проверено байтовое совпадение с baseline checkout; применимая
+лицензия — `third_party/7zip/License.txt`. В Qt `mainwindow_menus.cpp`
+собирает группы/порядок из `IDM_MENU`, а `qtfilemanagercommands.cpp` связывает
+Open Inside `*`/`#` и Exit с уже перенесённым исходным dispatch и общим
+active-panel policy. `QMenu`/`QAction` заменяют Win32 HMENU/accelerators;
+`mainwindow_preferences.cpp` выбирает оба размера BMP и применяет исходный
+magenta mask вместо прежних нарисованных Qt иконок. Это presentation adapter,
+а не независимый functional command switch. Русские подписи остаются текущим
+Qt переводом до полного source language port P1-14.
+
+Comment, Diff, Link, Alternate Streams, Benchmark, Delete Temporary Files,
+Help Contents и About показаны как disabled source пункты: их functional/UI
+owners ещё открыты (P1-08/P1-15/P2-09/P3-05). Действующие Qt Open/Create/Add/
+Extract Selected/Journal оставлены отдельной группой File для доступа к
+архивным сценариям до переноса их исходного входа. Исходный File menu в
+компактном Qt окне может прокручиваться по правилам QMenu/монитора; исходная
+Win32 small-screen фильтрация уже перенесена в `CFileMenu::Load`, но menu
+presentation пока показывает disabled пункты явно по требованию плана.
+Контекстное меню, status totals и system icons остаются P0-09.2;
+ни полный P0-09, ни rendered Windows parity эта итерация не закрывает.
+
+`main_shell` проверяет source order/ID/недоступные команды/shortcuts,
+байтово скопированные BMP в Qt и active-panel меню после переключения/Tab.
+Отчёты `main-shell-980x620`, `main-shell-640x400` и отдельные file/view menu
+JSON описывают текущую Qt геометрию. Focused 8/8 и полный unsandboxed
+`./scripts/check.sh` 136/136 прошли 2026-09-30. Проверена только macOS arm64;
+Windows/Linux runtime ещё не проверен.
+
 ## P0-04.2 — root/address/parent window integration (2026-09-29)
 
 Baseline: ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`

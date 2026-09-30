@@ -19,6 +19,22 @@ Command availability comes from native menu policy plus transport restrictions.
 Screen-size menu filtering uses available monitor geometry and Qt system-font
 units, independently of the main window's compact resize fixture.
 
+### Main menu and toolbar (P0-09.1)
+
+Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
+`App.cpp::g_ArchiveButtons/g_StandardButtons` and `MyLoadMenu.cpp` at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Six top-level menus follow
+File/Edit/View/Favorites/Tools/Help. File follows the RC command groups, then
+one Qt archive-workflow group before Exit. Unsupported source commands remain
+visible disabled. Archive and Standard toolbar groups use the seven exact
+large/small BMP pairs and source mask; text/size/visibility derive from the
+native toolbar flags. `main_shell` asserts menu action order, IDs, shortcuts,
+enabled state, active-panel routing and resource icons, then writes
+`main-shell-980x620.json`, `main-shell-640x400.json` and File/View popup reports
+for both sizes. Qt QMenu may scroll when its source command list exceeds the
+available screen; JSON records its geometry and action tests cover non-widget
+QActions. The Windows rendered menu is not yet available for pixel comparison.
+
 ### Two disk panels (P0-08.1)
 
 Reference: FM `App.cpp::SwitchOnOffOnePanel`, `FM.cpp::MoveSubWindows`,

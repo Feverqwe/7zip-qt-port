@@ -107,6 +107,7 @@ class MainWindow : public QMainWindow {
     void createFavoritesMenu(QMenu *favoritesMenu);
     void createViewOptions(QMenu *viewMenu);
     void createToolbarOptions(QMenu *viewMenu);
+    void rebuildSourceMenus();
     void activateSingleClickedRow(int row);
     void createFilePanel(QMenu *editMenu, unsigned index);
     void storePanelUi(unsigned index);
@@ -346,7 +347,10 @@ class MainWindow : public QMainWindow {
     QAction *root_ = nullptr;
     QAction *openItem_ = nullptr;
     QAction *openInside_ = nullptr;
+    QAction *openInsideOne_ = nullptr;
+    QAction *openInsideParser_ = nullptr;
     QAction *openOutside_ = nullptr;
+    QAction *exitAction_ = nullptr;
     QAction *parent_ = nullptr;
     QAction *selectAll_ = nullptr;
     QAction *copy_ = nullptr;

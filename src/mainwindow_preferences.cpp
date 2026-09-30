@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 #include "qtlocationfolder.h"
+#include <QBitmap>
 #include <QMouseEvent>
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
@@ -68,59 +69,21 @@ void MainWindow::applySortMode() {
 }
 
 QIcon MainWindow::toolbarIcon(int kind) {
-    QPixmap pixmap(24, 24);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(Qt::black, 1));
-    if (kind == 0) {
-        painter.setBrush(QColor("#28dc11"));
-        painter.drawPolygon(QPolygonF{{10, 3},
-                                      {14, 3},
-                                      {14, 10},
-                                      {21, 10},
-                                      {21, 14},
-                                      {14, 14},
-                                      {14, 21},
-                                      {10, 21},
-                                      {10, 14},
-                                      {3, 14},
-                                      {3, 10},
-                                      {10, 10}});
-    } else if (kind == 1) {
-        painter.setBrush(QColor("#0099ff"));
-        painter.drawRect(3, 10, 18, 5);
-    } else if (kind == 2) {
-        painter.setBrush(QColor("#22e5ce"));
-        painter.drawPolygon(QPolygonF{{2, 11}, {7, 8}, {11, 13}, {19, 4}, {22, 7}, {11, 20}});
-    } else if (kind == 3 || kind == 4) {
-        painter.setBrush(kind == 3 ? QColor("#21d426") : QColor("#2367e6"));
-        painter.drawPolygon(
-            QPolygonF{{5, 9}, {13, 9}, {13, 4}, {22, 12}, {13, 20}, {13, 15}, {5, 15}});
-        if (kind == 3) {
-            painter.setBrush(QColor("#ae42df"));
-            painter.drawRect(2, 10, 3, 4);
-        }
-    } else if (kind == 5) {
-        painter.setBrush(QColor("#ef2834"));
-        painter.drawPolygon(QPolygonF{{5, 3},
-                                      {12, 9},
-                                      {19, 3},
-                                      {22, 6},
-                                      {15, 12},
-                                      {22, 18},
-                                      {19, 21},
-                                      {12, 15},
-                                      {5, 21},
-                                      {2, 18},
-                                      {9, 12},
-                                      {2, 6}});
-    } else {
-        painter.setBrush(QColor("#f7e51e"));
-        painter.drawEllipse(QRectF(10, 2, 4, 4));
-        painter.drawRect(QRectF(10, 9, 4, 12));
+    // App.cpp's g_ArchiveButtons/g_StandardButtons use the large bitmap first
+    // and the small *2 bitmap second. Magenta is the source image-list mask.
+    static const char *const names[] = {"Add", "Extract", "Test", "Copy", "Move", "Delete", "Info"};
+    if (kind < 0 || kind >= int(std::size(names)))
+        return {};
+    QIcon icon;
+    for (const QString &suffix : {QStringLiteral("2"), QString()}) {
+        QPixmap pixmap(QStringLiteral(":/upstream/7zip/UI/FileManager/%1%2.bmp")
+                           .arg(QString::fromLatin1(names[kind]), suffix));
+        if (pixmap.isNull())
+            continue;
+        pixmap.setMask(pixmap.createMaskFromColor(Qt::magenta, Qt::MaskInColor));
+        icon.addPixmap(pixmap);
     }
-    return QIcon(pixmap);
+    return icon;
 }
 
 QString MainWindow::toolbarSettingsPath() { return FmSettingsPath(); }

@@ -308,8 +308,6 @@ void MainWindow::redrawTimestampColumns() {
 }
 
 void MainWindow::createPanelActions(QMenu *editMenu) {
-    openItem_ = new QAction(table_);
-    openItem_->setObjectName("openItemAction");
     table_->addAction(openItem_);
     parent_ = new QAction(table_);
     parent_->setObjectName("parentFolderAction");
@@ -333,6 +331,7 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
     selectType_->setObjectName("selectTypeAction");
     deselectType_ = editMenu->addAction("Снять выделение по типу");
     deselectType_->setObjectName("deselectTypeAction");
+    rebuildSourceMenus();
 }
 
 void MainWindow::createIconList(QWidget *central) {
