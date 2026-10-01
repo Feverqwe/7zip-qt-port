@@ -66,8 +66,8 @@ capabilities, а не только по старой ссылке на parent; �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **22/46 завершённых пакетов; 24 остаётся** (2026-10-01).
-P0: 12/12; P1: 9/18; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-01–P1-08, P1-11 и P3-01
+Текущий счёт: **23/46 завершённых пакетов; 23 остаётся** (2026-10-01).
+P0: 12/12; P1: 10/18; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-01–P1-09, P1-11 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -183,7 +183,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [x] | P1-08.1 | Целый disk View/Edit/Diff: source command/settings/launch, EditPage UX Apply/Cancel/Browse, keyboard consumers, controlled process и normal/compact checks | P0-04, P1-04 | done — audit § P1-08.1; native launch/Diff/EditPage, F3/F4 focused-file и extra text commands; focused9/9 2.18 s, check.sh151/151 45.16 s, Editor JSON640×390/520×350; macOS arm64 Qt6.11.2 2026-10-01; Windows/Linux runtime unverified |
 | [x] | P1-08.2 | Archive external View/Edit: source known/child-process wait, changed-temp prompt/update, read-only/error/cancel/cleanup | P1-08.1 | done — audit § P1-08.2; source child/worker + OS/queued GUI adapters, real F3/F4 Yes/No/Escape, orphan child/short-long unchanged/wait error, close/pending/busy/stale/other-panel, extraction/update failure/cancel/read-only, protected ZIP AES/7z; focused8/8 4.85 s, check.sh154/154 48.27 s; normal/compact prompt JSON980×620/640×400; macOS arm64 Qt6.11.2 2026-10-01; Windows/Linux runtime unverified, parent open |
 | [x] | P1-08.3 | Source VerCtrl Edit/Commit/Revert/Diff, backup/metadata, platform services и parent integration | P1-08.1/.2 | done — audit § P1-08.3; whole source VerCtrl, native dynamic File/context commands, 7vc persistence, backup001/002/mtime/readonly, Revert Yes/No/Escape/errors/limit/config/selection; focused7/7 2.32 s, final geometry1/1 0.63 s, check.sh155/155 49.53 s; Revert JSON700×440/560×440, window980×620/640×400; macOS arm64 Qt6.11.2 2026-10-01; parent accepted, Windows/Linux runtime unverified |
-| [ ] | P1-09 | Обновление цепочки вложенных архивов | P1-04, P1-08 | todo |
+| [x] | P1-09 | Обновление цепочки вложенных архивов | P1-04, P1-08 | done — audit § P1-09; real nested source F4/mutations, protected levels, failure/cancel/No/Escape, wrong password, readonly chain, bytes/cleanup/parent focus и normal/compact JSON; final check.sh156/156 54.56 s macOS arm64 Qt6.11.2 2026-10-01, focused11/11 7.70 s; Windows/Linux runtime unverified |
 | [ ] | P1-10 | Полные properties/raw values/formatting и source F3 folder-size | P0-06, P1-04 | todo — включает CalcItemFullSize ветку PanelItems::EditItem(bool), пока folder F3 disabled |
 | [x] | P1-11 | Root/drives/network/Browse | P0-04, P0-05 | done — P1-11.1/.2/.3; source root/mount/network and Browse flows, disappearance/unreadable/cancel/history fixtures, current-build JSON, focused/full gate macOS arm64 2026-09-30; Windows/Linux runtime and rendered Windows reference unverified; device imaging remains P2-05/P3-05 |
 | [x] | P1-11.1 | Целый root→mounted volume→filesystem workflow: source RootFolder/FSDrives owner, Qt mount adapter, disappearance/unreadable, navigation/history and normal/compact UX | P0-04, P0-05 | done — audit § P1-11.1; fake mount disappearance/unreadable, current-build root→mount UI, focused tests and macOS arm64 full gate; Windows/Linux native mounts unverified |

@@ -1,5 +1,14 @@
 # Regression strategy
 
+`nested_edit_chain` drives real nested 7z-in-ZIP source opening, native F4 and
+Rename/Delete/CreateFolder, then parent-link publication. It checks bytes before
+and after publication, inner/outer failure and cancellation, protected levels,
+wrong/cancelled inner password, parent No/Escape, read-only parent/child TAR,
+retained recovery files and restored parent focus. Parent prompt default Yes,
+escape Cancel, visible controls and fitting text are checked in normal/compact
+owner windows, with current-build JSON. `external_launch` covers rejected
+memory-probe fallback; `archive_opening` covers unowned private spool lifetime.
+
 `file_menu_policy` covers native read-only/hash/FS capability and compact menu
 filtering, version-control attributes and source dialog-unit/work-area bounds.
 `native_command_dispatch` checks typed open/hash parameters, Shift delete and

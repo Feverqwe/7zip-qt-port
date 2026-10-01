@@ -244,7 +244,7 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
 
 void MainWindow::deleteSelected(bool toRecycleBin) {
     if (state_ == State::Viewing) {
-        if (isNestedArchive() || !remove_->isEnabled())
+        if (!remove_->isEnabled())
             return;
         CSelectedState selection;
         const HRESULT result =
@@ -275,7 +275,7 @@ void MainWindow::renameSelected() {
     if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
     const bool archive = state_ == State::Viewing;
-    if (!rename_->isEnabled() || (archive && isNestedArchive()))
+    if (!rename_->isEnabled())
         return;
     const QStringList paths = archive ? selectedArchiveItemsPaths() : selectedFilesystemPaths();
     if (paths.size() != 1)

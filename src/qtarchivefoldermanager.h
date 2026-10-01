@@ -2,6 +2,7 @@
 #pragma once
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyCom.h"
+#include "qtarchivestreamopen.h"
 #include "qtprogresstransport.h"
 #include <QObject>
 #include <memory>
@@ -10,6 +11,7 @@ class ArchiveBackend;
 class QtArchiveFolderManager final : public QObject,
                                      public IFolderManager,
                                      public IQtProgressServices,
+                                     public IQtArchiveStreamOpenServices,
                                      public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IFolderManager)
     struct CRequest;
@@ -17,10 +19,14 @@ class QtArchiveFolderManager final : public QObject,
     std::shared_ptr<CRequest> _request;
     void Start(const std::shared_ptr<CRequest> &request, const QString &path, const QString &format,
                const QString &password);
+    HRESULT OpenFolderFileImpl(IInStream *stream, const wchar_t *path, const wchar_t *format,
+                               IFolderFolder **folder, IProgress *progress, bool ownedStreamFile);
 
   public:
     explicit QtArchiveFolderManager(ArchiveBackend &backend);
     ~QtArchiveFolderManager() override;
     Z7_IFACE_COM7_IMP(IFolderManager)
+    HRESULT OpenOwnedStreamFile(IInStream *stream, const wchar_t *path, const wchar_t *format,
+                                IFolderFolder **folder, IProgress *progress) override;
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog) override;
 };

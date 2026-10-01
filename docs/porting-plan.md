@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-08 (2026-10-01):
-**22/46 закрыты, 24 остаётся**; P0: 12/12, P1: 9/18, P2: 0/10, P3: 1/6.
+Текущий счёт после P1-09 (2026-10-01):
+**23/46 закрыты, 23 остаётся**; P0: 12/12, P1: 10/18, P2: 0/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -686,6 +686,17 @@ prompt/password handling и удержание temp chain. Capabilities кажд
 **Готово:** two-level update, ошибка внутренней/внешней записи, wrong password,
 отмена prompt и возврат в родителя не уничтожают исходный внешний archive.
 Проверить bytes на всех уровнях и восстановление listing/selection.
+
+**Принято 2026-10-01:** source parent-link/update bodies интегрированы с
+source-owned materialization nested memory stream; F4 и Rename/Delete/CreateFolder
+проверены на реальном inner7z/outerZIP, включая protected levels, ошибки/отмену
+обеих записей, wrong/cancel inner password, No/Escape и read-only parent/child.
+Исходный внешний архив сохраняется при отказе; изменённый temp остаётся при
+ошибке записи. Listing/focus и normal/compact prompt JSON проверены.
+Focused11/11 PASS7.70 s; final unsandboxed check.sh156/156 PASS54.56 s,
+macOS arm64 Qt6.11.2. Сверка baseline197 exact/145 adapted/3 local PASS.
+Windows/Linux runtime и rendered Windows parity не проверены; file-only
+adaptations и omitted codec opening scope записаны в audit § P1-09.
 
 ### P1-10. Полные свойства и исходное форматирование значений
 

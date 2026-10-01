@@ -7,6 +7,21 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-09: исходный `PanelItemOpen.cpp::OpenParentArchiveFolder` предлагает обновить
+изменённый внутренний архив при возврате в родителя. Yes записывает через
+исходный OnOpenItemChanged; No и Cancel удаляют временную копию без записи.
+При ошибке сохраняются внешний архив и изменённая временная копия. Native F4,
+Rename/Delete/CreateFolder используют тот же parent-link path; каждый уровень
+должен иметь update capability. TAR/GZip/tar.gz и тома не перепаковываются.
+Маленький nested memory stream материализуется в source-owned файл из-за
+file-only `7zz`; это дополнительный disk I/O относительно upstream memory path.
+Дополнительный built-in text editor во вложенном архиве остаётся disabled.
+Upstream reference — source Yes/No/Cancel MessageBox и parent-link bodies,
+не rendered Windows screenshot. Current-build prompt386×116 с unclipped text
+и тремя кнопками проверен при owner980×620/640×400, default Yes/escape Cancel,
+parent address/list/focus восстановлены. Проверено macOS arm64 Qt6.11.2;
+Windows/Linux runtime и pixel parity не проверены.
+
 P1-07.1 Add exposes the native Parameters field, Options button and summary in
 the source resource order after volumes. Options follows CompressOptionsDialog.rc
 grouping with the original precision/capability state transitions: ZIP Windows,

@@ -15,6 +15,8 @@ struct CFfpOpen {
     // out:
     bool Encrypted;
     UString Password;
+    bool OwnedStreamFile = false;
+    bool MaterializedStreamFile = false;
 
     NWindows::NDLL::CLibrary Library;
     CMyComPtr<IFolderFolder> Folder;

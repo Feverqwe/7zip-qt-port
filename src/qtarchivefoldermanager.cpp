@@ -5,9 +5,11 @@
 #include "archiveprogresstransport.h"
 #include "qtarchivefileresource.h"
 #include "qtlocationfolder.h"
+#include <QFile>
 #include <QMetaObject>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QScopeGuard>
 #include <QThread>
 #include <atomic>
 
@@ -102,6 +104,19 @@ Z7_COM7F_IMF(QtArchiveFolderManager::OpenFolderFile(IInStream *inStream, const w
                                                     const wchar_t *arcFormat,
                                                     IFolderFolder **resultFolder,
                                                     IProgress *progress)) {
+    return OpenFolderFileImpl(inStream, filePath, arcFormat, resultFolder, progress, false);
+}
+
+HRESULT QtArchiveFolderManager::OpenOwnedStreamFile(IInStream *stream, const wchar_t *path,
+                                                    const wchar_t *format, IFolderFolder **folder,
+                                                    IProgress *progress) {
+    return OpenFolderFileImpl(stream, path, format, folder, progress, true);
+}
+
+HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wchar_t *filePath,
+                                                   const wchar_t *arcFormat,
+                                                   IFolderFolder **resultFolder,
+                                                   IProgress *progress, bool ownedStreamFile) {
     COM_TRY_BEGIN
     if (!resultFolder)
         return E_INVALIDARG;
@@ -115,13 +130,23 @@ Z7_COM7F_IMF(QtArchiveFolderManager::OpenFolderFile(IInStream *inStream, const w
     const auto request = std::make_shared<CRequest>();
     auto *resource = new QtArchiveFileResource(QString::fromWCharArray(filePath));
     request->Resource = resource;
+    QString ownedPath;
+    bool keepOwnedPath = false;
+    const auto cleanup = qScopeGuard([&] {
+        if (!keepOwnedPath && !ownedPath.isEmpty())
+            QFile::remove(ownedPath);
+    });
     const QString format = QString::fromWCharArray(arcFormat);
     auto *callback = dynamic_cast<COpenCallbackImp *>(progress);
     auto *ui = callback ? dynamic_cast<COpenArchiveCallback *>(callback->Callback) : nullptr;
     if (ui)
         ui->ProgressDialog.WaitCreating();
     if (inStream) {
-        RINOK(resource->Spool(inStream, progress))
+        if (ownedStreamFile) {
+            RINOK(resource->SpoolToOwnedFile(inStream, QString::fromWCharArray(filePath), progress))
+            ownedPath = QString::fromWCharArray(filePath);
+        } else
+            RINOK(resource->Spool(inStream, progress))
     }
     const QString path = resource->EnginePath;
     const QString password =
@@ -137,8 +162,10 @@ Z7_COM7F_IMF(QtArchiveFolderManager::OpenFolderFile(IInStream *inStream, const w
             if (request->Completed) {
                 if (stopResult != S_OK)
                     return stopResult;
-                if (request->Result == S_OK)
+                if (request->Result == S_OK) {
                     *resultFolder = request->Folder.Detach();
+                    keepOwnedPath = true;
+                }
                 return request->Result;
             }
         }

@@ -95,7 +95,7 @@ class CNativeExtractWorker final : public CProgressThreadVirt {
 class SourceExtractBackendTests final : public QObject {
     Q_OBJECT
   private slots:
-    void nativeNestedOpenUsesMemoryAndRestoresParent() {
+    void nativeNestedOpenMaterializesOwnedStreamAndRestoresParent() {
         QTemporaryDir inner, outer;
         const QByteArray contents("nested contents\0bytes", 21);
         const auto innerArchive = makeArchive(inner.path(), contents);
@@ -114,9 +114,10 @@ class SourceExtractBackendTests final : public QObject {
         QCOMPARE(parent->LoadItems(), S_OK);
         panel.OpenItemInArchive(0, true, false, false, false, L"zip");
         QCOMPARE(panel.GetParentFolders().Size(), 2u);
-        QVERIFY(panel.GetParentFolders().Back().IsVirtual);
+        QVERIFY(!panel.GetParentFolders().Back().IsVirtual);
         QVERIFY(panel.GetParentFolders().Back().NeedDelete);
-        QVERIFY(!QFileInfo::exists(ToQString(fs2us(panel.GetParentFolders().Back().FilePath))));
+        const QString ownedPath = ToQString(fs2us(panel.GetParentFolders().Back().FilePath));
+        QCOMPARE(readFile(ownedPath), readFile(innerArchive));
         QCOMPARE(panel.GetParentFolders().Back().ParentFolder, parent);
         QVERIFY(!backend.busy());
         QCOMPARE(panel.GetFolder()->LoadItems(), S_OK);
@@ -124,6 +125,7 @@ class SourceExtractBackendTests final : public QObject {
         QCOMPARE(panel.GetFolder()->GetNumberOfItems(&items), S_OK);
         QCOMPARE(items, 1u); // Native proxy owns the inner archive's "inside" directory.
         panel.OpenParentFolder();
+        QVERIFY(!QFileInfo::exists(ownedPath));
         QCOMPARE(panel.GetParentFolders().Size(), 1u);
         QCOMPARE(panel.GetFolder(), parent);
         panel.CloseOpenFolders();

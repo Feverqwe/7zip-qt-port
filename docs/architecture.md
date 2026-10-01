@@ -105,7 +105,15 @@ CExitEventLauncher and joins before panel member release. Unchanged files are
 deleted at owner exit, changed files are retained. This does not substitute for
 the mandatory known/child-process/editor service or complete window-close owner.
 MainWindow root/nested/address/parent navigation now uses the native panel parent
-stack. Its duplicate ArchiveParent/temp stack is removed. The presenter reads the
+stack. Its duplicate ArchiveParent/temp stack is removed.
+P1-09 materializes source-owned nested memory streams at the CTempFileInfo
+parent-link path through IQtArchiveStreamOpenServices inside the existing open
+worker. CTempFileInfo owns cleanup; the file-only engine resource retains only
+the path. Successful materialization captures source FileInfo and clears IsVirtual.
+Failed probes remove their owned copy before source FlushToDisk fallback. Source
+OpenParentArchiveFolder/OnOpenItemChanged publishes each changed level on return;
+IsThereReadOnlyFolder checks the complete parent chain before mutation.
+The presenter reads the
 current CAgentFolder and engine resource; the resource stores ArchiveInfo beside
 its metadata transport. Native ReOpen/GetPathParts restore ordinary folder paths
 through a joined modal bridge. CSelectedState carries deferred parent focus into

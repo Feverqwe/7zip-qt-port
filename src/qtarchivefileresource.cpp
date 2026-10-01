@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
 #include <QTemporaryFile>
 
 namespace {
@@ -121,4 +122,27 @@ HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {
     EnginePath = path;
     temporary.setAutoRemove(false);
     return S_OK;
+}
+
+HRESULT QtArchiveFileResource::SpoolToOwnedFile(IInStream *stream, const QString &path,
+                                                IProgress *progress) {
+    if (!stream || !_temporary.isEmpty() || !QDir::isAbsolutePath(path))
+        return E_INVALIDARG;
+    auto *outputSpec = new COutFileStream;
+    CMyComPtr<ISequentialOutStream> output = outputSpec;
+    if (!outputSpec->Create_NEW(us2fs(path.toStdWString().c_str())))
+        return GetLastError_noZero_HRESULT();
+    bool completed = false;
+    const auto cleanup = qScopeGuard([&] {
+        outputSpec->Close();
+        if (!completed)
+            QFile::remove(path);
+    });
+    RINOK(InStream_SeekToBegin(stream))
+    CMyComPtr<ICompressProgressInfo> copyProgress = new CSpoolProgress(progress);
+    RINOK(NCompress::CopyStream(stream, output, copyProgress))
+    RINOK(outputSpec->Close())
+    EnginePath = path;
+    completed = true;
+    return S_OK; // The source CTempFileInfo owns cleanup of this file.
 }

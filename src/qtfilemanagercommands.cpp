@@ -168,8 +168,8 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.root = panel.GetFolder() && panel.IsRootFolder();
     c.archive = panel.GetFolder() && panel.IsArcFolder();
     c.nested = w.isNestedArchive();
-    c.mutationWritable = c.archive && !panel.IsThereReadOnlyFolder() &&
-                         ArchiveFormats::canModify(w.archive_) && !c.nested;
+    c.mutationWritable =
+        c.archive && !panel.IsThereReadOnlyFolder() && ArchiveFormats::canModify(w.archive_);
     c.writable = c.mutationWritable && !w.info_.encrypted;
     c.entries = !w.entries_.isEmpty();
     c.rows = w.table_->rowCount() > 0;
@@ -255,7 +255,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case TextView:
         return c.oneFile;
     case TextEdit:
-        return c.oneFile && (c.filesystem || c.writable);
+        return c.oneFile && (c.filesystem || (c.writable && !c.nested));
     case IDM_DIFF:
         return c.filesystem;
     case IDM_VER_EDIT:

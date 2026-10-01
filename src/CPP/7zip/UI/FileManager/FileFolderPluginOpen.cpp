@@ -20,6 +20,7 @@
 #include "LangUtils.h"
 #include "OpenCallback.h"
 #include "PropertyName.h"
+#include "qtarchivestreamopen.h"
 
 using namespace NWindows;
 
@@ -29,6 +30,8 @@ struct CThreadArchiveOpen {
     CMyComPtr<IInStream> InStream;
     CMyComPtr<IFolderManager> FolderManager;
     CMyComPtr<IProgress> OpenCallbackProgress;
+    bool OwnedStreamFile = false;
+    bool MaterializedStreamFile = false;
 
     COpenArchiveCallback *OpenCallbackSpec;
     /*
@@ -44,8 +47,15 @@ struct CThreadArchiveOpen {
     void Process() {
         try {
             CProgressCloser closer(OpenCallbackSpec->ProgressDialog);
-            Result = FolderManager->OpenFolderFile(InStream, Path, ArcFormat, &Folder,
-                                                   OpenCallbackProgress);
+            auto *services =
+                dynamic_cast<IQtArchiveStreamOpenServices *>((IFolderManager *)FolderManager);
+            if (InStream && OwnedStreamFile && services) {
+                Result = services->OpenOwnedStreamFile(InStream, Path, ArcFormat, &Folder,
+                                                       OpenCallbackProgress);
+                MaterializedStreamFile = Result == S_OK;
+            } else
+                Result = FolderManager->OpenFolderFile(InStream, Path, ArcFormat, &Folder,
+                                                       OpenCallbackProgress);
         } catch (...) {
             Result = E_FAIL;
         }
@@ -315,6 +325,7 @@ HRESULT CFfpOpen::OpenFileFolderPlugin(IInStream *inStream, const FString &path,
     }
 
     t.InStream = inStream;
+    t.OwnedStreamFile = OwnedStreamFile;
     t.Path = fs2us(path);
     t.ArcFormat = arcFormat;
 
@@ -342,6 +353,7 @@ HRESULT CFfpOpen::OpenFileFolderPlugin(IInStream *inStream, const FString &path,
       from each volume object (CInFileStreamVol) will be closed (when archive will be closed).
     */
     t.OpenCallbackProgress.Release();
+    MaterializedStreamFile = t.MaterializedStreamFile;
 
     if (t.Result != S_FALSE && t.Result != S_OK)
         return t.Result;

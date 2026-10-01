@@ -343,8 +343,8 @@ class NestedArchiveTests : public QObject {
         QVERIFY(QFileInfo::exists(backend.listed.last()));
         QVERIFY(address->text().endsWith("outer.7z/folder/вложенный архив.zip"));
         table->selectRow(0);
-        QVERIFY(!add->isEnabled());
-        QVERIFY(!remove->isEnabled());
+        QVERIFY(add->isEnabled());
+        QVERIFY(remove->isEnabled());
         back->trigger();
         QCOMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
         QVERIFY(!QFileInfo::exists(backend.listed.last()));

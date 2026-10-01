@@ -45,6 +45,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     explicit QtArchiveFileResource(const QString &path) : EnginePath(path) {}
     ~QtArchiveFileResource();
     HRESULT Spool(IInStream *stream, IProgress *progress);
+    HRESULT SpoolToOwnedFile(IInStream *stream, const QString &path, IProgress *progress);
     void SetArchiveMetadata(qint64 physicalSize, qint64 offset) {
         _physicalSize = physicalSize;
         _offset = offset;

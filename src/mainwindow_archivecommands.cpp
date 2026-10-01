@@ -166,7 +166,7 @@ void MainWindow::addDialog() {
 void MainWindow::updateArchiveFromDialog(const QStringList &sources,
                                          const CompressionOptions &options) {
     if (app_.QtOperations().closed() || state_ != State::Viewing || sources.isEmpty() ||
-        isNestedArchive() || !ArchiveFormats::canModify(archive_))
+        !ArchiveFormats::canModify(archive_))
         return;
     CPanel &panel = app_.GetFocusedPanel();
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());

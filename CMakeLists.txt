@@ -257,6 +257,7 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/qtarchiveproperties.cpp src/qtarchiveproperties.h
     src/qtarchivefoldermanager.cpp src/qtarchivefoldermanager.h
+    src/qtarchivestreamopen.h
     src/qtarchivefileresource.cpp src/qtarchivefileresource.h
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
@@ -685,6 +686,13 @@ if(BUILD_TESTING)
     target_include_directories(verctrl_tests PRIVATE src tests)
     target_link_libraries(verctrl_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME verctrl COMMAND verctrl_tests -silent)
+    qt_add_executable(nested_edit_chain_tests tests/nested_edit_chain_tests.cpp
+        tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${copy_same_window_sources})
+    target_include_directories(nested_edit_chain_tests PRIVATE src tests)
+    target_link_libraries(nested_edit_chain_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME nested_edit_chain COMMAND nested_edit_chain_tests -silent)
+    set_tests_properties(nested_edit_chain PROPERTIES TIMEOUT 120 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/nested_edit_chain.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(verctrl PROPERTIES TIMEOUT 90 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/verctrl.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(archive_external_edit_tests tests/archive_external_edit_tests.cpp
@@ -1154,7 +1162,7 @@ if(BUILD_TESTING)
     )
 endif()
 
-foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests archive_external_edit_tests archive_external_security_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests file_viewer_tests nested_archive_tests volume_operations_tests)
+foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests file_viewer_tests nested_archive_tests volume_operations_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_common)
     endif()
@@ -1200,7 +1208,7 @@ if(TARGET flat_view_tests)
     set_property(TEST flat_view APPEND PROPERTY ENVIRONMENT
         "SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 endif()
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests archive_external_edit_tests archive_external_security_tests
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests
     panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
@@ -1238,7 +1246,7 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     endif()
 endforeach()
 
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests archive_external_edit_tests archive_external_security_tests
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests)
     if(TARGET ${target})
