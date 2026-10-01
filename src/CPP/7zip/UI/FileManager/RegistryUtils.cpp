@@ -32,6 +32,14 @@ void ReadRegEditor(bool useEditor, UString &path, const QString &settingsPath) {
     ReadCuString(settingsPath, useEditor ? "Editor" : "Viewer", path);
 }
 
+void SaveRegDiff(const UString &path, const QString &settingsPath) {
+    SaveCuString(settingsPath, "Diff", path);
+}
+
+void ReadRegDiff(UString &path, const QString &settingsPath) {
+    ReadCuString(settingsPath, "Diff", path);
+}
+
 QString FmSettingsPath() {
     const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
     if (!overridden.isEmpty())

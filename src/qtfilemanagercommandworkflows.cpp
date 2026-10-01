@@ -46,7 +46,13 @@ void QtFileManagerCommands::OpenNative(bool internal, bool external, const wchar
 void QtFileManagerCommands::OpenItem() { OpenNative(true, true, nullptr); }
 void QtFileManagerCommands::OpenItemInside(const wchar_t *type) { OpenNative(true, false, type); }
 void QtFileManagerCommands::OpenItemOutside() { OpenNative(false, true, nullptr); }
-void QtFileManagerCommands::EditItem(bool editor) { window_.viewSelectedFile(editor); }
+void QtFileManagerCommands::EditItem(bool editor) {
+    auto &panel = window_.app_.GetFocusedPanel();
+    CSelectedState selection;
+    panel.SaveSelectedState(selection);
+    panel.EditItem(editor);
+}
+void QtFileManagerCommands::DiffFiles() { window_.app_.DiffFiles(); }
 void QtFileManagerCommands::Rename() {
     if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_ERROR_RENAMING))
         window_.renameSelected();
@@ -106,6 +112,10 @@ bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
     case Journal:
         window_.showJournal();
         break;
+    case TextView:
+    case TextEdit:
+        window_.viewSelectedFile(id == TextEdit);
+        break;
     default:
         return false;
     }
@@ -148,7 +158,6 @@ void QtFileManagerCommands::SetBookmark(unsigned index) { window_.saveBookmark(i
 // them before dispatch. Never expose a functioning-looking placeholder action.
 void QtFileManagerCommands::InvokePluginCommand(unsigned) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::ReleasePluginMenus() { Q_UNREACHABLE(); }
-void QtFileManagerCommands::DiffFiles() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::VerCtrl(unsigned) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Comment() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Link() { Q_UNREACHABLE(); }

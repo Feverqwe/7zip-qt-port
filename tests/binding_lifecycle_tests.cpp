@@ -177,7 +177,8 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         backend.cancel();
         QVERIFY(!QFileInfo::exists(oldTemporary));
         QVERIFY(action(window, "hashSHA256Action")->isEnabled());
-        QVERIFY(action(window, "viewFileAction")->isEnabled());
+        QVERIFY(action(window, "builtinTextViewAction")->isEnabled());
+        QVERIFY(!action(window, "viewFileAction")->isEnabled());
         window.extractTo(destination.path(), true);
         QCOMPARE(backend.lastSelected, QStringList{oldPath});
         backend.cancel();

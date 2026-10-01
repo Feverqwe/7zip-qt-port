@@ -12,6 +12,7 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
     menu.setObjectName("panelContextMenu");
     QtFileMenuProjection projection;
+    ReadRegDiff(projection.diffPath, toolbarSettingsPath());
     QtDialogScreenServices screen(this);
     projection.screenServices = &screen;
     QHash<unsigned, QAction *> actions;
@@ -201,10 +202,13 @@ void MainWindow::updateToolbar() {
 
 void MainWindow::showSettings() {
     SettingsDialog dialog(toolbarSettingsPath(), this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const bool showDotsChanged = fileListSettings_.ShowDots != dialog.settings().ShowDots;
-    fileListSettings_ = dialog.settings();
+    dialog.Applied = [this](const CFmSettings &settings) { applyFileListSettings(settings); };
+    dialog.exec();
+}
+
+void MainWindow::applyFileListSettings(const CFmSettings &settings) {
+    const bool showDotsChanged = fileListSettings_.ShowDots != settings.ShowDots;
+    fileListSettings_ = settings;
     app_.SetListSettings();
     refreshActions();
     if (showDotsChanged)

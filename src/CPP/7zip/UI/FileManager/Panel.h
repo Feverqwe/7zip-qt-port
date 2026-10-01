@@ -62,6 +62,11 @@ class IQtExternalFileServices {
   public:
     virtual ~IQtExternalFileServices() = default;
     virtual HRESULT StartApplication(const UString &dir, const UString &path, QWidget *window) = 0;
+    // Qt keeps base parameters and file paths separate at the process boundary.
+    virtual HRESULT CreateProcess(const UString &, const UString &, const UStringVector &,
+                                  QWidget *) {
+        return E_NOTIMPL;
+    }
 };
 
 class CPanelCallback {
@@ -396,6 +401,9 @@ class CPanel : public QObject {
     void OpenItem(unsigned index, bool tryInternal, bool tryExternal, const wchar_t *type = NULL);
     void OpenFocusedItemAsInternal(const wchar_t *type);
     void OpenSelectedItems(bool tryInternal);
+    void EditItem(unsigned index, bool useEditor);
+    void EditItem(bool useEditor);
+    bool IsFocusedFile() const { return GetFocusedFileIndex() != (UInt32)-1; }
     void OpenItemInArchive(unsigned index, bool tryInternal, bool tryExternal, bool editMode,
                            bool useEditor, const wchar_t *type = NULL);
     bool IsVirus_Message(const UString &name);
@@ -564,6 +572,7 @@ class CPanel : public QObject {
     UString GetItemName(unsigned index) const;
     UString GetItemPrefix(unsigned index) const;
     unsigned GetRealItemIndex(int indexInListView) const;
+    UInt32 GetFocusedFileIndex() const;
     UInt32 GetFolderItemCount() const;
     void EnsureSelectionVectorSize();
     void SetFocusedSelectedItem(int index, bool select);

@@ -6,9 +6,11 @@
 #include <QDialogButtonBox>
 #include <QVBoxLayout>
 
-CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent)
+CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool embedded)
     : QDialog(parent), _settingsPath(settingsPath) {
-    setObjectName("settingsDialog");
+    setObjectName(embedded ? "settingsPage" : "settingsDialog");
+    if (embedded)
+        setWindowFlags(Qt::Widget);
     setWindowTitle("Настройки");
     auto *layout = new QVBoxLayout(this);
     _showDots = new QCheckBox(QStringLiteral("Показывать элемент «..»"), this);
@@ -30,11 +32,13 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent)
         layout->addWidget(control);
         connect(control, &QCheckBox::toggled, this, &CSettingsPage::OnButtonClicked);
     }
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->setObjectName("settingsButtons");
-    layout->addWidget(buttons);
-    connect(buttons, &QDialogButtonBox::accepted, this, &CSettingsPage::accept);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    if (!embedded) {
+        auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+        buttons->setObjectName("settingsButtons");
+        layout->addWidget(buttons);
+        connect(buttons, &QDialogButtonBox::accepted, this, &CSettingsPage::accept);
+        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    }
     OnInit();
 }
 
@@ -54,8 +58,10 @@ bool CSettingsPage::OnInit() {
 }
 
 void CSettingsPage::OnButtonClicked() {
-    if (!_initMode)
+    if (!_initMode) {
         _wasChanged = true;
+        Changed();
+    }
 }
 
 void CSettingsPage::OnApply() {

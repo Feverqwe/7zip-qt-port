@@ -316,7 +316,8 @@ void MainWindow::rebuildSourceMenus() {
     file->addAction(properties_);
     unavailable(file, QStringLiteral("Комментарий…"), "commentAction", IDM_COMMENT);
     file->addMenu(hash);
-    unavailable(file, QStringLiteral("Сравнить"), "diffAction", IDM_DIFF);
+    diffFiles_ = file->addAction(QStringLiteral("&Сравнить"));
+    diffFiles_->setObjectName("diffAction");
     file->addSeparator();
     file->addAction(createFolder_);
     file->addAction(createFile_);
@@ -328,6 +329,10 @@ void MainWindow::rebuildSourceMenus() {
     // Qt integration group until their source 7zFM entry points are ported.
     for (QAction *action : {open_, create_, add_, selected_, journalAction_})
         file->addAction(action);
+    auto *textView = file->addAction("Просмотреть текст…");
+    textView->setObjectName("builtinTextViewAction");
+    auto *textEdit = file->addAction("Редактировать текст…");
+    textEdit->setObjectName("builtinTextEditAction");
     file->addSeparator();
     file->addAction(exitAction_);
 

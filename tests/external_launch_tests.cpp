@@ -4,6 +4,8 @@
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QMessageBox>
 #include <QProcess>
 #include <QSettings>
@@ -16,10 +18,19 @@ namespace {
 class CAssociationService final : public IQtExternalFileServices {
   public:
     QString Opened;
+    UString Program, Parameters;
+    UStringVector Paths;
     HRESULT Result = S_OK;
     HRESULT StartApplication(const UString &, const UString &path, QWidget *) override {
         Opened = ToQString(path);
         return Result; // Fake association with no handle; never starts a user application.
+    }
+    HRESULT CreateProcess(const UString &program, const UString &parameters,
+                          const UStringVector &paths, QWidget *) override {
+        Program = program;
+        Parameters = parameters;
+        Paths = paths;
+        return Result;
     }
 };
 bool write(const QString &path, const QByteArray &bytes) {
@@ -31,6 +42,74 @@ bool write(const QString &path, const QByteArray &bytes) {
 class ExternalLaunchTests final : public QObject {
     Q_OBJECT
   private slots:
+    void nativeDiskEditUsesIndependentProgramsAndOriginalPath() {
+        QTemporaryDir fixture;
+        const QString name = QStringLiteral("текст с пробелом.txt");
+        QVERIFY(write(fixture.filePath(name), "contents"));
+        const QString settings = fixture.filePath("settings.ini");
+        SaveRegEditor(true, UString(L"\"/editor path/editor\" --edit"), settings);
+        SaveRegEditor(false, UString(L"\"/viewer path/viewer\" --readonly"), settings);
+        ArchiveBackend backend;
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CAssociationService service;
+        CPanel panel;
+        panel.AttachFolderManager(manager, settings);
+        panel.AttachExternalFileServices(&service);
+        COpenResult result;
+        QCOMPARE(panel.BindToPath(ToUString(fixture.path()), UString(), result), S_OK);
+        QCOMPARE(panel.GetFolder()->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(panel.GetFolder()->GetNumberOfItems(&count), S_OK);
+        UInt32 index = count;
+        for (UInt32 i = 0; i < count; ++i)
+            if (QFileInfo(ToQString(panel.GetItemFullPath(i)))
+                    .fileName()
+                    .normalized(QString::NormalizationForm_C) == name)
+                index = i;
+        QVERIFY(index < count);
+        const UString fullPath = panel.GetItemFullPath(index);
+        panel.EditItem(index, true);
+        QCOMPARE(ToQString(service.Program), QString("/editor path/editor"));
+        QCOMPARE(ToQString(service.Parameters), QString("--edit"));
+        QCOMPARE(service.Paths.Size(), 1u);
+        QVERIFY(service.Paths[0] == fullPath);
+        panel.EditItem(index, false);
+        QCOMPARE(ToQString(service.Program), QString("/viewer path/viewer"));
+        QCOMPARE(ToQString(service.Parameters), QString("--readonly"));
+        QCOMPARE(service.Paths.Size(), 1u);
+        QVERIFY(service.Paths[0] == fullPath);
+    }
+    void detachedProcessPreservesArgumentsAndFailsWithoutExecutable() {
+        QTemporaryDir fixture;
+        const QString program = fixture.filePath(QStringLiteral("приложение с пробелом"))
+#ifdef Q_OS_WIN
+                                + ".exe"
+#endif
+            ;
+        QVERIFY(QFile::copy(QCoreApplication::applicationFilePath(), program));
+        const QString output = fixture.filePath("arguments.json");
+        const QString first = fixture.filePath(QStringLiteral("первый файл.txt"));
+        const QString second = fixture.filePath(QStringLiteral("second ; $() file.txt"));
+        UStringVector paths;
+        paths.Add(ToUString(first));
+        paths.Add(ToUString(second));
+        QtAssociatedFileServices service({});
+        const UString parameters = ToUString(
+            QString("--external-fixture \"%1\" --readonly \"parameter space\"").arg(output));
+        QCOMPARE(service.CreateProcess(ToUString(program), parameters, paths, nullptr), S_OK);
+        QTRY_VERIFY(QFileInfo(output).size() > 0);
+        QFile result(output);
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        const QJsonArray arguments = QJsonDocument::fromJson(result.readAll()).array();
+        const QStringList expected = {"--readonly", "parameter space", first, second};
+        QCOMPARE(arguments.size(), expected.size());
+        for (qsizetype i = 0; i < expected.size(); ++i)
+            QCOMPARE(arguments[i].toString().normalized(QString::NormalizationForm_C),
+                     expected[i].normalized(QString::NormalizationForm_C));
+        QCOMPARE(service.CreateProcess(ToUString(fixture.filePath("missing")), parameters, paths,
+                                       nullptr),
+                 E_FAIL);
+    }
     void associationAdapterPreservesPathAndReportsFailure() {
         const UString path(L"/папка с пробелом/имя <b>файла</b>.txt");
         QUrl seen;
@@ -144,6 +223,12 @@ class ExternalLaunchTests final : public QObject {
         QVERIFY(command == editor);
         ReadRegEditor(false, command, path);
         QVERIFY(command == viewer);
+        const UString diff(L"\"/папка diff/tool\" --compare");
+        SaveRegDiff(diff, path);
+        ReadRegDiff(command, path);
+        QVERIFY(command == diff);
+        ReadRegEditor(false, command, path);
+        QVERIFY(command == viewer);
         SaveRegEditor(true, UString(), path);
         ReadRegEditor(true, command, path);
         QVERIFY(command.IsEmpty());
@@ -151,5 +236,18 @@ class ExternalLaunchTests final : public QObject {
         QVERIFY(command == viewer);
     }
 };
-QTEST_MAIN(ExternalLaunchTests)
+int main(int argc, char **argv) {
+    if (argc >= 3 && QByteArray(argv[1]) == "--external-fixture") {
+        QCoreApplication app(argc, argv);
+        QFile output(app.arguments()[2]);
+        if (!output.open(QIODevice::WriteOnly))
+            return 1;
+        const QByteArray bytes =
+            QJsonDocument(QJsonArray::fromStringList(app.arguments().mid(3))).toJson();
+        return output.write(bytes) == bytes.size() ? 0 : 2;
+    }
+    QApplication app(argc, argv);
+    ExternalLaunchTests tests;
+    return QTest::qExec(&tests, argc, argv);
+}
 #include "external_launch_tests.moc"

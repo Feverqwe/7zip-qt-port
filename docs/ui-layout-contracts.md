@@ -317,8 +317,9 @@ The Qt page follows the resource order: Show `..`, real file icons, full-row
 selection, grid lines, single click, alternative selection, system menu, then
 OK/Cancel. Alternative selection is enabled and persists the source mark mode.
 The page has no heading absent from the resource.
-Large-pages and extraction-memory controls and the six-page property sheet
-remain P1-12, so this does not establish full OptionsDialog parity.
+Large-pages/extraction-memory controls and Folders remain P1-12. The partial
+six-page property sheet has Editor/Settings enabled and four pages disabled;
+this does not establish full OptionsDialog parity.
 `fm_settings` checks unclipped labels, order and separated footer at 460×300
 and 340×300, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
@@ -326,6 +327,19 @@ parity remains unverified.
 modes, disk/archive and flat/normal folders, writing 980×620 and 640×400
 window JSON reports. The parent sentinel stays unmarked. These reports establish
 Qt geometry, not Windows pixel parity.
+
+## External editor settings
+
+Reference: the same pinned revision, `EditPage2.rc`, `EditPage.cpp` and
+`OptionsDialog.cpp`. Editor presents Viewer, Editor, Diff in source order, each
+label above a command field and Browse button. The property-sheet footer is
+OK/Cancel/Apply; Apply is initially disabled, tracks source modified flags and
+resets after applying. Cancel after Apply retains committed values. Browse Cancel
+preserves the command; selecting a program replaces it and drops old parameters.
+`external_editors_ui` checks unclipped fields/buttons, separated controls and
+footer at 640×390/520×350 and writes external-editor-options widget JSON.
+These reports validate Qt geometry and resource structure; rendered Windows
+parity remains unverified.
 
 ## Folder history list
 

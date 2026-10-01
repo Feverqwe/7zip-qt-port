@@ -61,6 +61,8 @@ class MainShellTests final : public QObject {
                                                   "addArchiveAction",
                                                   "extractSelectedAction",
                                                   "operationJournalAction",
+                                                  "builtinTextViewAction",
+                                                  "builtinTextEditAction",
                                                   "|",
                                                   "exitAction"}));
         QCOMPARE(actionNames(*edit),

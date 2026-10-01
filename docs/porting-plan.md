@@ -39,15 +39,15 @@ Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https:/
 
 | Область upstream | Всего `.cpp` | Есть соответствующий `.cpp` в `src/` | Нет соответствующего файла в `src/` |
 | --- | ---: | ---: | ---: |
-| `CPP/7zip/UI/FileManager` | 67 | 45 | 22 |
+| `CPP/7zip/UI/FileManager` | 67 | 47 | 20 |
 | `CPP/7zip/UI/Agent` | 7 | 6 | 1 |
 | `CPP/7zip/UI/GUI` | 10 | 5 | 5 |
 | `CPP/7zip/UI/Common` | 25 | 11 | 14 |
-| **Всего** | **109** | **67** | **42** |
+| **Всего** | **109** | **69** | **40** |
 
 Текущие counts пересчитаны на 2026-10-01 после partial Common/Update.cpp P1-07.2;
 P0-01 inventory зафиксировал исторический snapshot 27 mirrored/82 missing.
-Все 67 совпадений путей
+Все 69 совпадений путей
 требуют проверки пропущенных функций/веток. Нельзя считать их полностью
 завершёнными модулями. Из 42 отсутствующих файлов часть
 содержит необходимую логику, часть обслуживает Win32 presentation или запуск
@@ -665,6 +665,14 @@ external workflow. Command templates/quoting не проходят через sh
 accept/reject update, cancel и lifetime temp проверены controlled process fixture.
 Editor/viewer/diff settings применяются и доступны с клавиатуры.
 
+Интегрированные результаты: P1-08.1 — весь disk View/Edit/Diff со settings,
+EditPage/Browse/Apply/Cancel, source launch и реальными controlled-process
+проверками. P1-08.2 — archive external editing с исходным process wait,
+changed-temp prompt/update и cleanup/lifetime. P1-08.3 — исходный VerCtrl
+Edit/Commit/Revert/Diff с backup/file metadata и platform adapters; это отдельный
+целый workflow из обязательного scope, а не helper. Parent закрывается после всех.
+Helper переноса запуска сам по себе не принимается и не коммитится отдельно.
+
 ### P1-09. Обратное обновление цепочки вложенных архивов
 
 **После:** P1-04, P1-08. **Источники:** FM `PanelItemOpen.cpp`, `PanelFolderChange.cpp`,
@@ -689,6 +697,8 @@ Agent `AgentProxy.cpp`, `ArchiveFolder.cpp`; Common `PropIDUtils.cpp`.
 formatting, CRC, totals и full-value display. Snapshot process listing дополняется
 только теми данными, которые реально даёт engine adapter; отсутствие raw values
 не заполнять выдуманными значениями. Решение CProxyArc2 оформить по provenance.
+Сюда входит исходная ветка F3 для выбранных папок: CalcItemFullSize и обновление
+статистики/свойств PanelItems::EditItem(bool). До её переноса F3 папок disabled.
 
 **Готово:** undefined/zero/UInt64, Unicode, multi-selection и explicit/implicit
 folders отображаются правильно; clipboard и detail не обрезают данные.
@@ -728,6 +738,8 @@ Apply/OK/Cancel, changed-state и перечитывание обеих пане
 Settings/Folders: temp/work folder, large-pages/RAM flags и relevant paths.
 Остальные страницы имеют owners P1-13/P1-14/P2-08/P2-09; их неполные controls
 явно disabled. Не маркировать весь Options завершённым до этих шагов.
+P1-08.1 переносит prerequisite оболочку с Editor и существующей Settings;
+это partial P1-12, остальные страницы и memory controls остаются обязательными.
 
 **Готово:** изменённые страницы применяются, Cancel не пишет pending values,
 Apply затем Cancel сохраняет уже применённое; temp settings реально используются.

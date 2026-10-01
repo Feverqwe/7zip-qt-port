@@ -13,8 +13,9 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-08 после принятого P1-07 (Advanced Options/time/parameters/lifecycle и
-compression memory retry/cancel). ZIP comment P1-17 и реальные decoder RAM
+P1-08.2 после принятого P1-08.1 (disk external View/Edit/Diff и Editor settings,
+focused9/9 и full gate151/151). Archive process/lifetime .2 и VerCtrl .3
+обязательны до parent P1-08. ZIP comment P1-17 и реальные decoder RAM
 prompts P1-18 заблокированы отдельно до source writer/decoder capability;
 обе функции обязательны для полной итоговой приёмки.
 Работай крупными итерациями: целый интегрированный компонент или пользовательский

@@ -10,4 +10,6 @@ class QtAssociatedFileServices final : public IQtExternalFileServices {
   public:
     explicit QtAssociatedFileServices(std::function<bool(const QUrl &)> opener);
     HRESULT StartApplication(const UString &dir, const UString &path, QWidget *window) override;
+    HRESULT CreateProcess(const UString &program, const UString &parameters,
+                          const UStringVector &paths, QWidget *window) override;
 };

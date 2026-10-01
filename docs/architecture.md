@@ -466,10 +466,12 @@ Address signals are disconnected before window teardown.
 
 ## Dialogs and preferences
 
-`CSettingsPage` presents supported list options and commits changed values
-through source-ported `CFmSettings` in the FM INI group. Omitted flags are
-preserved but do not affect Qt views yet. `settingsdialog.h` is a compatibility
-alias. `MainWindow` applies accepted values and supplies
+`QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the partial native
+six-page property sheet. Editor and Settings are functional; four unavailable
+pages are disabled. CEditPage retains source modified-state and Browse/OnApply,
+while CSettingsPage can be embedded or shown standalone. Apply/OK commit source
+FM INI values; Cancel discards only pending changes. `settingsdialog.h` aliases
+the container. `MainWindow` applies committed list flags immediately and supplies
 filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies the
 current operated indices to its bound `CPanel::Properties`, which owns enumeration
 and totals through the source folder interface.
@@ -478,6 +480,13 @@ the dialog never reads the file table or backend itself.
 `CListViewDialog` reads CFmSettings for single-click activation and delegates
 hover selection to the Qt CListView adapter. Its persistent hover index and
 owned timer prevent access to deleted rows; hovering does not confirm a path.
+
+Disk F3/F4 dispatch CPanel::EditItem using focused native indices; CApp::DiffFiles
+owns pair/opposite-panel/fallback path choice. IQtExternalFileServices supplies
+process creation with parsed program/base parameters and literal path argv;
+QtAssociatedFileServices detaches disk launches. Archive known/child-process
+lifetime needs a separate waitable service in P1-08.2. The built-in text dialog
+has explicit extra menu actions and remains independent of native F3/F4.
 `FmSettingsPath` supplies the shared INI location outside MainWindow; callers
 may supply an explicit path to history dialogs.
 `CEditDialog` presents full list values; `FileViewerDialog` owns file viewing/editing.

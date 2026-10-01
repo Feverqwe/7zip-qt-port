@@ -62,6 +62,9 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.openOutside_, IDM_OPEN_OUTSIDE);
     Bind(w.viewFile_, IDM_FILE_VIEW);
     Bind(w.editFile_, IDM_FILE_EDIT);
+    Bind(w.diffFiles_, IDM_DIFF);
+    Bind(w.findChild<QAction *>("builtinTextViewAction"), TextView);
+    Bind(w.findChild<QAction *>("builtinTextEditAction"), TextEdit);
     Bind(w.rename_, IDM_RENAME);
     Bind(w.copy_, IDM_COPY_TO);
     Bind(w.move_, IDM_MOVE_TO);
@@ -155,6 +158,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.one = operated.Size() == 1;
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;
+    c.focusedFile = panel.IsFocusedFile();
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
     c.root = panel.GetFolder() && panel.IsRootFolder();
@@ -198,6 +202,7 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
         return availability;
     const TransportCapabilities capabilities = ReadTransportCapabilities();
     QtFileMenuProjection menu;
+    ReadRegDiff(menu.diffPath, MainWindow::toolbarSettingsPath());
     QtDialogScreenServices screen(&w);
     menu.screenServices = &screen;
     // Only command IDs are needed for capability projection; rendered strings
@@ -239,9 +244,14 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_OPEN_INSIDE_PARSER:
         return c.focused;
     case IDM_FILE_VIEW:
-        return c.oneFile;
     case IDM_FILE_EDIT:
+        return c.focusedFile && c.filesystem;
+    case TextView:
+        return c.oneFile;
+    case TextEdit:
         return c.oneFile && (c.filesystem || c.writable);
+    case IDM_DIFF:
+        return c.filesystem;
     case IDM_COPY_TO:
     case IDM_PROPERTIES:
         return c.selected && !c.root;
@@ -299,6 +309,9 @@ void QtFileManagerCommands::RefreshActions() {
         for (QAction *action : it.value())
             action->setEnabled(enabled);
     }
+    UString diffCommand;
+    ReadRegDiff(diffCommand, MainWindow::toolbarSettingsPath());
+    window_.diffFiles_->setVisible(!diffCommand.IsEmpty());
     for (unsigned i = 0; i < 4; ++i) {
         const QSignalBlocker block(window_.viewActions_[i]);
         window_.viewActions_[i]->setChecked(i == window_.app_.GetFocusedPanel().GetListViewMode());

@@ -17,7 +17,9 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
         ExtractSelected,
         ArchiveInformation,
         Back,
-        Journal
+        Journal,
+        TextView,
+        TextEdit
     };
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
@@ -86,6 +88,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
         bool filesystem = false, archive = false, writable = false, mutationWritable = false;
         bool nested = false, root = false;
         bool selected = false, one = false, oneFile = false, operated = false, focused = false;
+        bool focusedFile = false;
         bool split = false, combine = false, entries = false, rows = false, foldersHistory = false;
     };
     TransportCapabilities ReadTransportCapabilities();

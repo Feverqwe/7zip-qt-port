@@ -109,6 +109,8 @@ class CApp {
         _qtCommandServices = services;
     }
     bool ExecuteCommand(unsigned id);
+    void DiffFiles();
+    void DiffFiles(const UString &path1, const UString &path2);
     QtAppOperationState &QtOperations() { return _qtOperations; }
     const QtAppOperationState &QtOperations() const { return _qtOperations; }
 

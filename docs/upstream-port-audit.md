@@ -8,6 +8,77 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-08.1 — integrated disk View/Edit/Diff (2026-10-01)
+
+Same pinned baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, source repository
+https://github.com/ip7z/7zip.git. Inspected FM PanelItemOpen.cpp helpers
+StartAppWithParams/StartEditApplication/EditItem (697–833), CApp::DiffFiles,
+known/child-process worker (1133–1328), EditPage.cpp/.h/.rc/EditPage2.rc,
+OptionsDialog.cpp six-page order, RegistryUtils Diff keys, VerCtrl.cpp and
+Common/TempFiles.cpp. Existing no-handle association and native update bodies
+remain authoritative, rather than being replaced by the built-in text editor.
+
+Copied disk CPanel::EditItem and StartEditApplication bodies into the mirrored
+PanelItemOpen.cpp. Native UString, SplitCmdLineSmart, program/parameter ordering,
+per-mode settings and Windows directory/notepad default remain. CProcess Create
+is a narrow injected Qt service; StartAppWithParams sends original parsed base
+parameters and separate path vector instead of serializing path argv on POSIX.
+Windows service retains native parameter string and original quoted path loop;
+POSIX QProcess splits base arguments and appends literal paths, without shell.
+Disk launches detach as source disk CProcess destructor closes its handle without
+waiting. This service is explicitly unsuitable for archive known-process editing.
+POSIX has no upstream WindowsDir/notepad default: an unconfigured viewer uses the
+OS association, while Edit requires configuration and reports source launch error.
+RegistryUtils adds copied SaveRegDiff/ReadRegDiff through existing FM INI service.
+
+Copied CApp::DiffFiles overloads preserve selected-pair order, one-selected-item
+opposite-panel selection and relative fallback, including flat-to-normal basename.
+Copied PanelItems EditItem(bool) focused-file branch uses the native selection
+owner; GetFocusedFileIndex shares its guards with Qt availability. F3/F4 now
+route to native disk EditItem; configured Diff uses native menu projection and
+is hidden when its command is empty. The existing limited text viewer/editor
+remains an explicit extra File menu feature without F3/F4 shortcuts.
+
+New mirrored EditPage.cpp/.h retains CEditPageCtrl, three controls, OnInit,
+WasChanged/OnCommand/OnApply and Browse flow. QLineEdit signals project EN_CHANGE;
+CBrowseInfo replaces Win32 file picking. Browse replaces the whole command,
+including discarding old parameters as upstream does. POSIX uses an all-file
+application filter; Windows retains exe/all-files. EditPageRes.h is copied
+unchanged. All use the same pinned baseline above and are in the manifest.
+
+OptionsDialog.cpp is a partial P1-12 prerequisite: original six-page order and
+IDs are retained, with Editor and existing Settings functional, four unavailable
+pages disabled. QtFmOptionsDialog names the presentation container to avoid the
+existing GUI COptionsDialog class. Qt property-sheet services supply modified
+state/Apply/OK/Cancel and call each source OnApply. CSettingsPage can be embedded
+without its standalone footer; MainWindow applies committed list flags immediately.
+Help, System/Menu/Folders/Language bodies and Settings memory/large-pages branches
+remain with P1-12/13/14/15/P2-08. This is not a full OptionsDialog source-port claim.
+
+Still omitted: archive known/child-process wait and complete changed-temp flow
+(P1-08.2); VerCtrl.cpp workflow (P1-08.3); source F3 selected-folder
+CalcItemFullSize branch (P1-10). Archive F3/F4 and folder F3 remain disabled.
+Source process and property dependencies must be ported before those consumers
+are enabled; no-handle association does not validate them. Parent remains open.
+
+Focused current-tree build and external_launch PASS 1/1, 0.73 s macOS arm64,
+Qt 6.11.2. Tests cover native disk EditItem with separate Viewer/Editor settings
+and exact source path vector, real owned test executable at Unicode/space path,
+literal argv including `$()`/semicolon, launch failure and Diff key independence.
+macOS Qt process argument encoding yields decomposed Unicode; semantic fixture
+comparison uses NFC, while the native injected service test checks exact UString.
+Integrated external_editors_ui checks Apply/Cancel/Browse, F3/F4 focused-file
+launch, pair/opposite/fallback Diff and normal/flat paths, plus launch failure.
+Editor options geometry and reviewed current-build JSON cover 640×390 and
+520×350 against EditPage2.rc grouping/order. Final focused 9/9 PASS, 2.18 s;
+unsandboxed check.sh 151/151 PASS, 45.16 s on macOS arm64 Qt 6.11.2.
+Initial gate exposed binding_lifecycle's old archive F3 assertion; it now
+checks extra text-view availability and disabled archive native F3 separately.
+Inventory PASS; exact baseline verification: 196 exact, 144 adapted, 3 local
+paths across the pinned revision. No Windows/Linux runtime or rendered Windows
+parity verification. P1-08.1 accepted; parent P1-08 remains open.
+Windows/Linux runtime remain unverified.
+
 ## P1-07.2 — source lifecycle integration (2026-10-01)
 
 Baseline remains `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from

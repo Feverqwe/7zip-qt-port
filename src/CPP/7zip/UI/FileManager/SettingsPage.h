@@ -6,6 +6,7 @@
 
 class QCheckBox;
 class CSettingsPage : public QDialog {
+    Q_OBJECT
     bool _wasChanged = false;
     bool _initMode = true;
     CFmSettings _settings;
@@ -19,10 +20,15 @@ class CSettingsPage : public QDialog {
     QCheckBox *_showSystemMenu;
     bool OnInit();
     void OnButtonClicked();
-    void OnApply();
 
   public:
-    explicit CSettingsPage(const QString &settingsPath, QWidget *parent = nullptr);
+    explicit CSettingsPage(const QString &settingsPath, QWidget *parent = nullptr,
+                           bool embedded = false);
+    void OnApply();
     void accept() override;
     CFmSettings settings() const { return _settings; }
+    bool IsModified() const { return _wasChanged; }
+
+  signals:
+    void Changed();
 };

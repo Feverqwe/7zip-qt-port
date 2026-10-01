@@ -15,6 +15,24 @@
 
 static const UInt32 kParentIndex = (UInt32)-1;
 
+UInt32 CPanel::GetFocusedFileIndex() const {
+    const int focusedItem = _selectionList.GetFocusedItem();
+    if (focusedItem < 0)
+        return kParentIndex;
+    const unsigned realIndex = GetRealItemIndex(focusedItem);
+    if (realIndex == kParentIndex || IsItem_Folder(realIndex))
+        return kParentIndex;
+    return realIndex;
+}
+
+void CPanel::EditItem(bool useEditor) {
+    // Source focused-file branch. F3 folder statistics belongs to P1-10;
+    // the Qt command capability does not expose that omitted branch yet.
+    const UInt32 realIndex = GetFocusedFileIndex();
+    if (realIndex != kParentIndex)
+        EditItem(realIndex, useEditor);
+}
+
 static bool GetColumnVisible(PROPID propID, bool isFsFolder) {
     if (isFsFolder) {
         switch (propID) {

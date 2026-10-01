@@ -169,6 +169,7 @@ class MainWindow : public QMainWindow {
     void updateToolbar();
     void applyFlatView(bool enabled);
     void showSettings();
+    void applyFileListSettings(const CFmSettings &settings);
     void updateFilesystemIcons();
     bool eventFilter(QObject *watched, QEvent *event) override;
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
@@ -390,6 +391,7 @@ class MainWindow : public QMainWindow {
     quint64 fileTransferCompletedBytes_ = 0;
     QAction *viewFile_ = nullptr;
     QAction *editFile_ = nullptr;
+    QAction *diffFiles_ = nullptr;
     QAction *properties_ = nullptr;
     QAction *hashActions_[11]{};
     bool pendingHashExtraction_ = false;

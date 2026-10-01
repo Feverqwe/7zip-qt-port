@@ -232,6 +232,8 @@ target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
+    src/CPP/7zip/UI/FileManager/EditPage.cpp src/CPP/7zip/UI/FileManager/EditPage.h
+    src/CPP/7zip/UI/FileManager/OptionsDialog.cpp src/qtfmoptionsdialog.h
     src/qtarchivebatchopen.cpp src/qtarchivebatchopen.h
     src/qtarchivebatchextract.cpp src/qtarchivebatchextract.h
     src/qtarchivebackendrequest.cpp src/qtarchivebackendrequest.h
@@ -666,6 +668,13 @@ if(BUILD_TESTING)
     target_include_directories(ui_update_modes_tests PRIVATE src tests)
     target_link_libraries(ui_update_modes_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME ui_update_modes COMMAND ui_update_modes_tests -silent)
+    qt_add_executable(external_editors_ui_tests tests/external_editors_ui_tests.cpp
+        tests/layout_inspection.cpp ${copy_same_window_sources})
+    target_include_directories(external_editors_ui_tests PRIVATE src tests)
+    target_link_libraries(external_editors_ui_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME external_editors_ui COMMAND external_editors_ui_tests -silent)
+    set_tests_properties(external_editors_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/external-editors-ui-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(ui_archive_volumes_tests tests/ui_archive_volumes_tests.cpp ${copy_same_window_sources})
     target_include_directories(ui_archive_volumes_tests PRIVATE src tests)
     target_link_libraries(ui_archive_volumes_tests PRIVATE Qt6::Widgets Qt6::Test)
@@ -1108,7 +1117,7 @@ if(BUILD_TESTING)
     )
 endif()
 
-foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests file_viewer_tests nested_archive_tests volume_operations_tests)
+foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests file_viewer_tests nested_archive_tests volume_operations_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_common)
     endif()
@@ -1154,7 +1163,7 @@ if(TARGET flat_view_tests)
     set_property(TEST flat_view APPEND PROPERTY ENVIRONMENT
         "SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 endif()
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests
     panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
@@ -1192,7 +1201,7 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     endif()
 endforeach()
 
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests)
     if(TARGET ${target})

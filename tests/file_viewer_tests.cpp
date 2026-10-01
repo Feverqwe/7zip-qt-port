@@ -134,8 +134,8 @@ class FileViewerTests : public QObject {
         QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
         window.openArchive(dir.filePath("test.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");
-        auto *view = window.findChild<QAction *>("viewFileAction");
-        auto *edit = window.findChild<QAction *>("editFileAction");
+        auto *view = window.findChild<QAction *>("builtinTextViewAction");
+        auto *edit = window.findChild<QAction *>("builtinTextEditAction");
         QVERIFY(table && view && edit);
         QTRY_COMPARE(table->rowCount(), 1);
         QTRY_VERIFY(table->item(0, 0)->data(Qt::UserRole + 1).toBool());
@@ -185,7 +185,7 @@ class FileViewerTests : public QObject {
         QVERIFY(backend.prepareArchiveFixture(dir.filePath("test.7z")));
         window.openArchive(dir.filePath("test.7z"));
         auto *table = window.findChild<QTableWidget *>("archiveTable");
-        auto *edit = window.findChild<QAction *>("editFileAction");
+        auto *edit = window.findChild<QAction *>("builtinTextEditAction");
         QVERIFY(table && edit);
         QTRY_COMPARE(table->rowCount(), 1);
         emit table->cellDoubleClicked(0, 0);
@@ -325,7 +325,7 @@ class FileViewerTests : public QObject {
         window.show();
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *table = window.findChild<QTableWidget *>("archiveTable");
-        auto *edit = window.findChild<QAction *>("editFileAction");
+        auto *edit = window.findChild<QAction *>("builtinTextEditAction");
         QVERIFY(address && table && edit);
         address->setText(dir.path());
         emit address->returnPressed();
