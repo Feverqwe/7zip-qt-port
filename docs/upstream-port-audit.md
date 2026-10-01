@@ -8,6 +8,80 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-12.1 — Settings/Folders, work-dir и обе панели (2026-10-01)
+
+Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, repository
+https://github.com/ip7z/7zip.git. Скопированы и адаптированы
+`CPP/7zip/UI/FileManager/FoldersPage.cpp/.h`: CFoldersPage, m_WorkDirInfo,
+GetWorkMode/MyEnableControls/GetWorkDir/ModifiedEvent/OnButtonClicked/
+OnFoldersWorkButtonPath/OnApply. Сохранены native CInfo/mode order, init/needSave
+и apply flow; Win32 property-page controls заменены Qt, EN_CHANGE — textChanged,
+Browse — существующий MyBrowseForFolder. FoldersPageRes.h скопирован без изменений.
+Source help/lang services ещё не подключены; owners P1-15/P1-14. Только Windows
+WorkDir поддерживает source removable-drive branch; POSIX checkbox disabled,
+stored value сохранён, native device integration остаётся P2-05.
+
+Partial OptionsDialog подключает Folders на source page index2/ID2400,
+modified-state и Apply. Source WorkDir::CreateTempFile получает FmSettingsPath
+по умолчанию вместо пустого settings path, чтобы существующий source update
+consumer реально использовал сохранённую рабочую папку. Explicit settings path
+по-прежнему доступен deterministic fixtures; GetWorkDir algorithm не изменён.
+
+`SettingsPage.cpp/.h` возвращают исходные _largePages_wasChanged,
+_memx_wasChanged, EnableSpin, RAM GB rounding/range и OnApply branches
+(original111–267,271–320,417–478), включая native UString/ConvertStringToUInt32,
+порядок general→large pages→memory save, UINT32(-1) для unset и source max1<<30.
+Zero принимается исходным validation, но следующее OnInit трактует его как
+unset. Commented legacy MemLimit combo/UnderCE/help/lang paths не объявлены
+перенесёнными. QtMemoryLimitSpin заменяет Win32 edit/up-down: raw text до Apply
+не исправляется, стрелки ограничены вычисленным source RAM range. QMessageBox
+и возврат PSNRET_INVALID заменяют ShowErrorMessage/property-sheet notification;
+Options остаётся открытым и выбирает Settings/input focus при неверном вводе.
+
+`FM.cpp::IsLargePageSupported` (original486–503) добавлен к существующим
+WM_COMMAND/WM_CLOSE bodies без их удаления. Source Windows capability сохранена,
+POSIX возвращает false; большие страницы в Qt Settings disabled там, где нет
+этой Windows privilege capability. RegistryUtils::ReadLockMemoryEnable/
+SaveLockMemoryEnable используют прежние default/defined branches и Options INI
+вместо Windows base registry. Gui EnablePrivilege_LockMemory заменён backend
+передачей `-slp` в официальный engine: `Common/ArchiveCommandLine.cpp1124–1245`
+проверяет risk и включает privilege внутри child process. Allocator/privilege
+engine здесь не переписаны; Windows runtime не проверен локально.
+
+`GUI/UpdateGUI.cpp::ShowDialog` working-dir block529–539 скопирован в прежний
+partial module и минимально извлечён в GetCompressionWorkingDir: возвращается
+WorkingDir field вместо ещё отсутствующего CUpdateOptions. Mode/current branch,
+MyGetFullPathName, GetWorkDir/CreateComplexDir сохранены. Backend Create stages
+передают actual source path через `-w`; native Console/Common Update owns temporary
+archive prefix, final publication остаётся в существующей backend transaction.
+FM update использует единственный CWorkDirTempFile. Его build ownership перенесён
+из sevenzip_location в sevenzip_filesystem, чтобы GUI create и Agent update
+использовали один модуль без library cycle; filename/path/functional body те же.
+
+`App.h::RefreshAllPanels` (original172–181) скопирован с NumPanels/
+LastFocusedPanel/OnReload loop. Applied consumer перечитывает source list flags
+и обе видимые панели. Qt reload presentation для archive теперь LoadItems/
+projection/selected-state restore; filesystem сохраняет прежний scanner owner.
+
+Focused options_dialog/work_dir/external_editors_ui3/3 PASS1.26 s macOS arm64
+Qt6.11.2. Folders geometry/JSON640×390/520×350 просмотрены: source radio order,
+path/Browse row, removable checkbox, отдельный footer без clipping.
+Проверены Cancel/Apply-then-Cancel, invalid config defaults и actual Unicode
+temporary file/cleanup. Final normal640×390/compact520×380 Folders/Settings JSON
+проверены; compact height выросла из350 из-за actual Settings minimum361.
+Focused8/8 PASS5.72 s (options_window/options_dialog/fm_settings/settings/
+panel_auto_refresh/archive_opening/external_editors_ui/work_dir), поздние
+options_dialog/archive_backend2/2 PASS1.03 s. Actual Create с Unicode work dir
+и отказ occupied work path, archive_mutation cancellation consumers проверены.
+Первый gate160/160 PASS56.85 s предшествовал GUI Create consumer. Следующий
+gate159/160 выявил test focus assertion: offscreen hasFocus зависит от foreground,
+но pending input widget в dialog.focusWidget правильный. Проверка input focus
+исправлена; focused options_dialog1/1 PASS0.45 s. Final unsandboxed check.sh
+formatting/build/160 из160 CTest PASS55.99 s, macOS arm64 Qt6.11.2,2026-10-01.
+P1-12.1 принят; следующий доступный ID P1-13.
+Parent P1-12 остаётся открыт до .2 и остальных page owners; три pages disabled.
+Windows/Linux runtime/rendered Windows parity не проверены.
+
 ## P1-10.2 — полный Properties flow и доступная metadata (2026-10-01)
 
 Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, repository

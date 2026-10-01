@@ -3,6 +3,7 @@
 #include <QDialog>
 #include <functional>
 class CEditPage;
+class CFoldersPage;
 class CSettingsPage;
 class QDialogButtonBox;
 
@@ -10,6 +11,7 @@ class QDialogButtonBox;
 class QtFmOptionsDialog final : public QDialog {
     Q_OBJECT
     CEditPage *_editPage;
+    CFoldersPage *_foldersPage;
     CSettingsPage *_settingsPage;
     QDialogButtonBox *_buttons;
     void updateApplyButton();

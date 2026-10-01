@@ -7,6 +7,18 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-12.1: Options сохраняет source порядок шести страниц и Apply/OK/Cancel.
+Folders/Editor/Settings активны, System/Menu/Language disabled до своих owners.
+Source RAM range/validation и working directory используются в consumers;
+неверный ввод выбирает Settings/input, Apply обновляет обе панели с selection.
+POSIX removable-only и Windows large-page privilege controls без capability
+disabled. Child Windows engine получает large-page request, Create получает
+working-directory path; исходный engine решает поддержку/ошибки операции.
+Source FoldersPage2.rc/SettingsPage2.rc, normal640×390/compact520×380 widget JSON
+и geometry проверены на macOS arm64 Qt6.11.2; прежняя compact height350 увеличена
+для новых Settings controls. Windows/Linux runtime и rendered parity не проверены.
+Parent Options acceptance остаётся P1-12.2 после остальных страниц.
+
 P1-10.2: Properties показывает исходные item/raw/folder/archive levels,
 MainItemProperty и ошибки non-open уровня. Undefined item value не подменяется
 нулём; после separator отдельно идут folder totals. CRC/checksum форматируются

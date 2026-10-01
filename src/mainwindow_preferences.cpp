@@ -218,6 +218,7 @@ void MainWindow::applyFileListSettings(const CFmSettings &settings) {
     const bool showDotsChanged = fileListSettings_.ShowDots != settings.ShowDots;
     fileListSettings_ = settings;
     app_.SetListSettings();
+    app_.RefreshAllPanels();
     refreshActions();
     if (showDotsChanged)
         updateParentEntry();

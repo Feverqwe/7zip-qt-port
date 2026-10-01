@@ -5,10 +5,13 @@
 #include <QDialog>
 
 class QCheckBox;
+class QtMemoryLimitSpin;
 class CSettingsPage : public QDialog {
     Q_OBJECT
     bool _wasChanged = false;
     bool _initMode = true;
+    bool _largePages_wasChanged = false;
+    bool _memx_wasChanged = false;
     CFmSettings _settings;
     QString _settingsPath;
     QCheckBox *_showDots;
@@ -18,16 +21,20 @@ class CSettingsPage : public QDialog {
     QCheckBox *_singleClick;
     QCheckBox *_alternativeSelection;
     QCheckBox *_showSystemMenu;
+    QCheckBox *_largePages;
+    QCheckBox *_memSet;
+    QtMemoryLimitSpin *_memSpin;
+    void EnableSpin(bool enable);
     bool OnInit();
     void OnButtonClicked();
 
   public:
     explicit CSettingsPage(const QString &settingsPath, QWidget *parent = nullptr,
                            bool embedded = false);
-    void OnApply();
+    long OnApply();
     void accept() override;
     CFmSettings settings() const { return _settings; }
-    bool IsModified() const { return _wasChanged; }
+    bool IsModified() const { return _wasChanged || _largePages_wasChanged || _memx_wasChanged; }
 
   signals:
     void Changed();

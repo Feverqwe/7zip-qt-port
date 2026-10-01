@@ -777,9 +777,24 @@ P1-08.1 переносит prerequisite оболочку с Editor и сущес
 Apply затем Cancel сохраняет уже применённое; temp settings реально используются.
 Page switching/focus и normal/compact JSON, invalid config и round-trip tests.
 
+**Крупные результаты:** P1-12.1 — цельный Settings/Folders scenario: исходные
+state/apply/RAM/work-dir bodies, Qt controls, creation/update consumers, refresh
+обеих панелей и проверка UX/config/normal/compact. P1-12.2 — итоговая интеграция
+всех шести страниц после P1-13/P1-14/P2-08/P2-09 и приёмка Options parent.
+Остальные owners могут использовать capability .1 до закрытия parent; это
+устраняет зависимость по кругу без объявления недоступных pages завершёнными.
+
+**P1-12.1 принято 2026-10-01:** source Settings/Folders state, RAM validation,
+working directory в native FM update и GUI Create, Windows large-page request,
+source RefreshAllPanels интегрированы. Normal640×390/compact520×380 JSON,
+Cancel/Apply-then-Cancel/invalid config/input focus/real work-dir failure и обе
+панели проверены. Final unsandboxed check.sh160/160 PASS55.99 s macOS arm64
+Qt6.11.2; Windows/Linux runtime и rendered parity unverified. Parent остаётся
+открыт, счёт24/46 не меняется. Следующий доступный ID P1-13.
+
 ### P1-13. Страницы Edit и Menu
 
-**После:** P1-08, P1-12. **Источники:** FM `EditPage.*`, `MenuPage.*`,
+**После:** P1-08, P1-12.1 capability. **Источники:** FM `EditPage.*`, `MenuPage.*`,
 `RegistryUtils.cpp`, `MyLoadMenu.cpp`; Explorer `RegistryContextMenu.*` для dependency.
 
 Перенести viewer/editor/diff configuration и menu policies/flags. System-shell

@@ -480,11 +480,16 @@ Address signals are disconnected before window teardown.
 ## Dialogs and preferences
 
 `QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the partial native
-six-page property sheet. Editor and Settings are functional; four unavailable
+six-page property sheet. Folders, Editor and Settings are functional; three unavailable
 pages are disabled. CEditPage retains source modified-state and Browse/OnApply,
 while CSettingsPage can be embedded or shown standalone. Apply/OK commit source
-FM INI values; Cancel discards only pending changes. `settingsdialog.h` aliases
-the container. `MainWindow` applies committed list flags immediately and supplies
+FM INI values; Cancel discards only pending changes. Source CSettingsPage owns RAM
+limit validation and capability-gated large pages; QtMemoryLimitSpin adapts only
+edit/arrows. Backend transports `-slp` to the Windows engine process. CFoldersPage
+owns NWorkDir::CInfo; source WorkDir in sevenzip_filesystem serves both FM update
+temporary files and the UpdateGUI Create working-dir block, transported via `-w`.
+`settingsdialog.h` aliases the container. `MainWindow` applies committed list flags
+and source RefreshAllPanels immediately and supplies
 filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies the
 current operated indices to its bound `CPanel::Properties`, which owns enumeration
 and totals through the source folder interface.

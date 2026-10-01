@@ -57,6 +57,13 @@ inline int backendTestMain(int argc, char **argv, QObject *tests) {
             writeOutput(qgetenv("SEVENZIP_TEST_LISTING"));
             return 0;
         }
+        if (mode == "memoryoption") {
+            const bool requested = QCoreApplication::arguments().contains("-slp");
+            writeOutput("Type = zip\nPhysical Size = 1\nLargePagesRequested = " +
+                        QByteArray(requested ? "1" : "0") +
+                        "\n----------\nPath = payload.txt\nSize = 1\n\n");
+            return 0;
+        }
         if (mode == "createpartial" || mode == "createfail") {
             const QStringList arguments = QCoreApplication::arguments();
             const int separator = arguments.indexOf("--");

@@ -80,6 +80,14 @@ class CApp {
     HRESULT CreateOnePanel(unsigned panelIndex, const UString &mainPath, const UString &arcFormat,
                            bool needOpenArc, COpenResult &openRes);
     void SetListSettings();
+    void RefreshAllPanels() {
+        for (unsigned i = 0; i < NumPanels; i++) {
+            unsigned index = i;
+            if (NumPanels == 1)
+                index = LastFocusedPanel;
+            Panels[index].OnReload();
+        }
+    }
     void ReadToolbar(bool smallScreen = false);
     void SaveToolbar();
     void ReloadToolbars();

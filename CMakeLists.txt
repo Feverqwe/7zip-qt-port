@@ -153,6 +153,8 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtpanelfolder.cpp src/qtpanelfolderraw.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
     src/CPP/7zip/UI/FileManager/SettingsPage.cpp src/CPP/7zip/UI/FileManager/SettingsPage.h
+    src/qtmemorylimitspin.cpp src/qtmemorylimitspin.h
+    src/CPP/7zip/UI/FileManager/FoldersPage.cpp src/CPP/7zip/UI/FileManager/FoldersPage.h
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/SysIconUtils.cpp src/CPP/7zip/UI/FileManager/SysIconUtils.h
@@ -202,6 +204,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/CPP/7zip/UI/Common/Update.cpp src/CPP/7zip/UI/Common/Update.h
     src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
     src/CPP/7zip/UI/Common/SortUtils.cpp
@@ -254,7 +257,6 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp src/CPP/7zip/UI/Agent/UpdateCallbackAgent.h
     src/CPP/7zip/UI/Common/UpdatePair.cpp
     third_party/7zip/CPP/7zip/UI/Common/UpdateProduce.cpp
-    src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/qtarchiveproperties.cpp src/qtarchiveproperties.h
     src/qtarchivefoldermanager.cpp src/qtarchivefoldermanager.h
     src/qtarchivestreamopen.h
@@ -1284,4 +1286,23 @@ if(BUILD_TESTING)
     set_tests_properties(source_properties PROPERTIES TIMEOUT 90
         RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/source_properties.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+endif()
+
+if(BUILD_TESTING)
+    qt_add_executable(options_dialog_tests tests/options_dialog_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(options_dialog_tests PRIVATE src tests)
+    target_link_libraries(options_dialog_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME options_dialog COMMAND options_dialog_tests -silent)
+    set_tests_properties(options_dialog PROPERTIES TIMEOUT 60
+        RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    get_target_property(options_window_sources settings_tests SOURCES)
+    list(REMOVE_ITEM options_window_sources tests/settings_tests.cpp)
+    get_target_property(options_window_libraries settings_tests LINK_LIBRARIES)
+    qt_add_executable(options_window_tests tests/options_window_tests.cpp ${options_window_sources})
+    target_include_directories(options_window_tests PRIVATE src tests)
+    target_link_libraries(options_window_tests PRIVATE ${options_window_libraries})
+    add_test(NAME options_window COMMAND options_window_tests -silent)
+    set_tests_properties(options_window PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/options_window.ini")
 endif()

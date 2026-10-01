@@ -6,6 +6,9 @@
 
 // Shared Qt configuration-path adapter for callers of registry-ported modules.
 QString FmSettingsPath();
+bool IsLargePageSupported();
+bool ReadLockMemoryEnable(const QString &settingsPath);
+void SaveLockMemoryEnable(bool enable, const QString &settingsPath);
 void SaveFlatView(UInt32 panelIndex, bool enable, const QString &settingsPath);
 bool ReadFlatView(UInt32 panelIndex, const QString &settingsPath);
 void SaveRegEditor(bool useEditor, const UString &path, const QString &settingsPath);

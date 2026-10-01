@@ -84,6 +84,14 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
                     statusBar()->showMessage(originalStatus);
                 }
             });
+            if (state_ == State::Viewing) {
+                const HRESULT loaded = app_.Panels[index].GetFolder()->LoadItems();
+                if (loaded != S_OK)
+                    return loaded;
+                renderBoundFolder();
+                app_.Panels[index].RefreshListCtrl(selection);
+                return S_OK;
+            }
             if (state_ != State::Filesystem)
                 return S_OK;
             if (!QFileInfo(directory_).isDir()) {

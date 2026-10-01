@@ -1,5 +1,15 @@
 # Regression strategy
 
+`options_dialog` checks source Settings RAM parse/range/zero/unset, invalid input
+and pending focus, Apply-then-Cancel, Folders mode/path/Browse Cancel, corrupt
+config and actual Unicode WorkDir temp files. Normal/compact Settings/Folders
+widget JSON verify resource grouping and unclipped controls. `options_window`
+changes both filesystem directories while Options is open; Apply must reload
+both lists and preserve selection/focus. `archive_backend` covers the actual
+Create working directory, unavailable-path failure and platform-gated large-page
+request observed inside the child process. `archive_mutation`, `work_dir`,
+`settings`, `fm_settings` and `external_editors_ui` remain direct consumers.
+
 `source_properties` opens actual local ZIP and SHA-256 manifest fixtures through
 the native source open owner, checks CRC/raw checksum and sparse values, then
 drives source folder/arc/MainItemProperty/non-open enumeration. A controlled

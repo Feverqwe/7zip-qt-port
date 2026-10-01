@@ -314,14 +314,25 @@ Windows parity.
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/SettingsPage2.rc` and `SettingsPage.cpp`.
 The Qt page follows the resource order: Show `..`, real file icons, full-row
-selection, grid lines, single click, alternative selection, system menu, then
-OK/Cancel. Alternative selection is enabled and persists the source mark mode.
+selection, grid lines, single click, alternative selection, system menu, large
+pages, extraction-memory label and checkbox/edit/arrows/RAM row, then OK/Cancel.
+Alternative selection is enabled and persists the source mark mode.
 The page has no heading absent from the resource.
-Large-pages/extraction-memory controls and Folders remain P1-12. The partial
-six-page property sheet has Editor/Settings enabled and four pages disabled;
+Large pages are capability-gated Windows controls; source extraction-memory
+edit validation preserves raw input until Apply. The partial
+six-page property sheet has Folders/Editor/Settings enabled and three pages disabled;
 this does not establish full OptionsDialog parity.
-`fm_settings` checks unclipped labels, order and separated footer at 460×300
-and 340×300, writing current-build settings JSON reports. Rendered Windows
+Folders follows pinned FoldersPage2.rc: working-folder label, system/current/
+specified radios, path/Browse row, removable-only checkbox. Path and Browse are
+enabled only for specified mode. POSIX removable-only is disabled until the
+platform owner supplies drive-type support. `options_dialog` checks640×390 and
+520×380 JSON/geometry, native mode order and separated footer. The height grows
+from350 because Settings now has minimum361 with its additional source controls.
+`options_dialog` also checks Settings memory row grouping and input focus after
+invalid Apply, writes options-settings JSON at both sizes. Full six-page
+integration remains P1-12.2.
+`fm_settings` checks unclipped labels, order and separated footer at 460×390
+and 340×390, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
 `panel_key` checks red marks and single focused selection across four view
 modes, disk/archive and flat/normal folders, writing 980×620 and 640×400
@@ -337,7 +348,7 @@ OK/Cancel/Apply; Apply is initially disabled, tracks source modified flags and
 resets after applying. Cancel after Apply retains committed values. Browse Cancel
 preserves the command; selecting a program replaces it and drops old parameters.
 `external_editors_ui` checks unclipped fields/buttons, separated controls and
-footer at 640×390/520×350 and writes external-editor-options widget JSON.
+footer at 640×390/520×380 and writes external-editor-options widget JSON.
 These reports validate Qt geometry and resource structure; rendered Windows
 parity remains unverified.
 

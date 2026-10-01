@@ -13,12 +13,13 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-12 после принятого P1-10.1/.2 и parent P1-10: source F3 и Properties
-item/raw/folder/archive levels, actual UInt64/CRC/checksum/SHA transport,
-full detail/clipboard; final gate158/158, focused6/6. Счёт24/46, остаётся22.
-Следующий scope — source OptionsDialog/Settings/Folders, Apply/OK/Cancel,
-рабочая/temp папка, RAM/large-pages по platform capabilities и обе панели.
-Другие страницы сохраняют owners P1-13/P1-14/P2-08/P2-09 и disabled controls.
+P1-13 после принятого P1-12.1: source Settings/Folders/RAM/work-dir,
+UpdateGUI Create и FM update consumers, Windows large-pages request и source
+RefreshAllPanels; final gate160/160, focused8/8 и final input1/1. Счёт24/46,
+остаётся22: parent P1-12 открыт до .2 и интеграции остальных page owners.
+Следующий scope — source Edit/Menu policies с реальными consumers и capability
+границей system shell P2-09. Другие страницы сохраняют owners P1-14/P2-08/P2-09
+и disabled controls. Parent .2 не блокирует реальные capabilities .1.
 ZIP comment P1-17 и реальные decoder RAM
 prompts P1-18 заблокированы отдельно до source writer/decoder capability;
 обе функции обязательны для полной итоговой приёмки.

@@ -50,8 +50,8 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(pages->count(), 6);
             QCOMPARE(pages->tabText(3), QString("Редактор"));
             QCOMPARE(pages->widget(3)->property("sourcePageID").toUInt(), 2103u);
-            QVERIFY(pages->isTabEnabled(3) && pages->isTabEnabled(4));
-            for (int index : {0, 1, 2, 5})
+            QVERIFY(pages->isTabEnabled(2) && pages->isTabEnabled(3) && pages->isTabEnabled(4));
+            for (int index : {0, 1, 5})
                 QVERIFY(!pages->isTabEnabled(index));
             pages->setCurrentIndex(3);
             dialog.findChild<QLineEdit *>("viewerCommand")->setText("new viewer");
@@ -59,7 +59,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             dialog.findChild<QLineEdit *>("diffCommand")->setText("diff --compare");
             QVERIFY(applyButton->isEnabled());
             dialog.show();
-            for (QSize size : {QSize(640, 390), QSize(520, 350)}) {
+            for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
                 QCOMPARE(dialog.size(), size);

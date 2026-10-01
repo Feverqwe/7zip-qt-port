@@ -68,17 +68,23 @@ class FmSettingsTests : public QObject {
         QTemporaryDir dir;
         for (int width : {460, 340}) {
             CSettingsPage page(dir.filePath("fm.ini"));
-            page.resize(width, 300);
+            page.resize(width, 390);
             page.show();
             QApplication::processEvents();
+            QCOMPARE(page.size(), QSize(width, 390));
             auto *buttons = page.findChild<QDialogButtonBox *>("settingsButtons");
             QWidget *previous = nullptr;
             for (const char *name :
                  {"showDotsOption", "realFileIconsOption", "fullRowOption", "gridOption",
-                  "singleClickOption", "alternativeSelectionOption", "showSystemMenuOption"}) {
-                auto *control = page.findChild<QCheckBox *>(name);
+                  "singleClickOption", "alternativeSelectionOption", "showSystemMenuOption",
+                  "largePagesOption", "extractMemoryLabel", "extractMemorySpin"}) {
+                auto *control = page.findChild<QWidget *>(name);
+                QVERIFY(control);
                 QVERIFY(UiInspection::fullyVisible(*control, page));
-                QVERIFY(control->width() >= control->sizeHint().width());
+                if (qobject_cast<QCheckBox *>(control))
+                    QVERIFY(control->width() >= control->sizeHint().width());
+                else
+                    QVERIFY(control->width() >= control->minimumSizeHint().width());
                 QVERIFY(control->height() >= control->sizeHint().height());
                 if (previous)
                     QVERIFY(UiInspection::bounds(*previous, page).bottom() <

@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Partial property-sheet container: native page order; unavailable pages disabled.
 #include "EditPage.h"
+#include "FoldersPage.h"
 #include "SettingsPage.h"
 #include "qtfmoptionsdialog.h"
 #include <QDialogButtonBox>
@@ -17,11 +18,12 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     auto *pages = new QTabWidget(this);
     pages->setObjectName("optionsPages");
     _editPage = new CEditPage(settingsPath, pages);
+    _foldersPage = new CFoldersPage(settingsPath, pages);
     _settingsPage = new CSettingsPage(settingsPath, pages, true);
     // OptionsDialog's pageIDs/pagePointers, retaining source order and IDs.
-    // Four missing page bodies remain mandatory under P1-12/P1-13/P2-08.
+    // Three missing page bodies remain mandatory under P1-13/P1-14/P2-08.
     const unsigned pageIDs[] = {2200, 2300, 2400, 2103, 2500, 2101};
-    QWidget *pagePointers[] = {nullptr, nullptr, nullptr, _editPage, _settingsPage, nullptr};
+    QWidget *pagePointers[] = {nullptr, nullptr, _foldersPage, _editPage, _settingsPage, nullptr};
     const QString titles[] = {"Система", "Меню", "Папки", "Редактор", "Настройки", "Язык"};
     for (unsigned i = 0; i < 6; i++) {
         auto *page = pagePointers[i] ? pagePointers[i] : new QWidget(pages);
@@ -41,6 +43,7 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
             &QtFmOptionsDialog::apply);
     connect(_editPage, &CEditPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     connect(_settingsPage, &CSettingsPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
+    connect(_foldersPage, &CFoldersPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     updateApplyButton();
     resize(640, 390);
 }
@@ -48,16 +51,24 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
 CFmSettings QtFmOptionsDialog::settings() const { return _settingsPage->settings(); }
 void QtFmOptionsDialog::apply() {
     _editPage->OnApply();
-    _settingsPage->OnApply();
+    _foldersPage->OnApply();
+    if (_settingsPage->OnApply() != 0) {
+        findChild<QTabWidget *>("optionsPages")->setCurrentWidget(_settingsPage);
+        _settingsPage->setFocus();
+        updateApplyButton();
+        return;
+    }
     if (Applied)
         Applied(settings());
     updateApplyButton();
 }
 void QtFmOptionsDialog::updateApplyButton() {
     _buttons->button(QDialogButtonBox::Apply)
-        ->setEnabled(_editPage->IsModified() || _settingsPage->IsModified());
+        ->setEnabled(_editPage->IsModified() || _foldersPage->IsModified() ||
+                     _settingsPage->IsModified());
 }
 void QtFmOptionsDialog::accept() {
     apply();
-    QDialog::accept();
+    if (!_settingsPage->IsModified())
+        QDialog::accept();
 }

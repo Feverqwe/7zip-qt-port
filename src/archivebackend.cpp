@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "processpriority.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivevolumeoutput.h"
@@ -127,6 +128,8 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
     process_.setStandardOutputFile(job == Job::SourceExtract ? createTemporary_ : QString());
     QStringList processArguments = arguments;
     processArguments.insert(1, "-sccUTF-8");
+    if (IsLargePageSupported() && ReadLockMemoryEnable(FmSettingsPath()))
+        processArguments.insert(1, "-slp");
     process_.setArguments(processArguments);
     process_.start();
     if (!pendingPassword_.isEmpty())

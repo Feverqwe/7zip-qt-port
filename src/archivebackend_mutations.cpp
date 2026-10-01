@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/Common/Update.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
@@ -267,6 +268,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         }
     }
     createTarget_ = target.absoluteFilePath();
+    const FString workDir = NCompressDialog::GetCompressionWorkingDir(
+        UString(createTarget_.toStdWString().c_str()), FmSettingsPath());
+    if (!workDir.IsEmpty())
+        compressionArguments.append("-w" + QString::fromWCharArray(fs2us(workDir)));
     createTemporary_ = target.absolutePath() + "/.sevenzip-" +
                        QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
     bool firstStage = true;

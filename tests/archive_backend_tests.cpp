@@ -1,9 +1,82 @@
+#include "CPP/7zip/UI/Common/ZipRegistry.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "Common/StringConvert.h"
 #include "archive_backend_test_support.h"
+#include <QScopeGuard>
 
 class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport {
     Q_OBJECT
 
   private slots:
+    void creationUsesWorkingDirectoryAndRejectsUnavailablePath() {
+        QTemporaryDir fixture;
+        const QString settings = fixture.filePath("working.ini");
+        const QByteArray original = qgetenv("SEVENZIP_SETTINGS_PATH");
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
+        const auto restore = qScopeGuard([&] {
+            if (original.isNull())
+                qunsetenv("SEVENZIP_SETTINGS_PATH");
+            else
+                qputenv("SEVENZIP_SETTINGS_PATH", original);
+        });
+        const QString source = fixture.filePath("источник с пробелом.txt");
+        writeFile(source, "contents");
+        const QString work = fixture.filePath("рабочая папка");
+        NWorkDir::CInfo info;
+        info.SetDefault();
+        info.Mode = NWorkDir::NMode::kSpecified;
+        info.ForRemovableOnly = false;
+        info.Path = us2fs(work.toStdWString().c_str());
+        info.Save(settings);
+        QVERIFY(!QFileInfo::exists(work));
+        ArchiveBackend backend;
+        const QString archive = fixture.filePath("created.zip");
+        backend.create(archive, {source});
+        await(backend, true);
+        QVERIFY(QFileInfo::exists(archive));
+        QVERIFY(QFileInfo(work).isDir());
+        QVERIFY(QDir(work).entryList(QDir::Files | QDir::Hidden).isEmpty());
+        const QString blocked = fixture.filePath("occupied-file");
+        writeFile(blocked, "occupied");
+        info.Path = us2fs((blocked + "/child").toStdWString().c_str());
+        info.Save(settings);
+        const QString failed = fixture.filePath("failed.zip");
+        backend.create(failed, {source});
+        await(backend, false);
+        QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(failed));
+        QVERIFY(
+            QDir(fixture.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
+        QFile unchanged(source);
+        QVERIFY(unchanged.open(QIODevice::ReadOnly));
+        QCOMPARE(unchanged.readAll(), QByteArray("contents"));
+    }
+    void largePagesSettingReachesEngineOnlyWithPlatformCapability() {
+        QTemporaryDir fixture;
+        const QString settings = fixture.filePath("memory.ini");
+        const QByteArray originalSettings = qgetenv("SEVENZIP_SETTINGS_PATH");
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
+        qputenv("SEVENZIP_TEST_HELPER", "memoryoption");
+        const auto restore = qScopeGuard([&] {
+            if (originalSettings.isNull())
+                qunsetenv("SEVENZIP_SETTINGS_PATH");
+            else
+                qputenv("SEVENZIP_SETTINGS_PATH", originalSettings);
+            qunsetenv("SEVENZIP_TEST_HELPER");
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QString requested;
+        connect(&backend, &ArchiveBackend::infoReady, this, [&](const ArchiveInfo &info) {
+            requested = info.properties.value("LargePagesRequested");
+        });
+        for (bool enable : {false, true, false}) {
+            SaveLockMemoryEnable(enable, settings);
+            QCOMPARE(ReadLockMemoryEnable(settings), enable);
+            backend.list(fixture.filePath("fixture.zip"));
+            await(backend, true);
+            QCOMPARE(requested, QString(IsLargePageSupported() && enable ? "1" : "0"));
+        }
+    }
     void commandsUseTheirListedArchiveAcrossTwoPanels() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

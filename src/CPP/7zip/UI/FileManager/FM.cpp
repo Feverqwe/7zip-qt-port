@@ -1,8 +1,9 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/FM.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Partial port: WM_CLOSE and WM_COMMAND/toolbar dispatch. Full startup/window
-// placement/drop presentation retain their mandatory plan owners.
+// Partial port: WM_CLOSE, WM_COMMAND/toolbar dispatch and IsLargePageSupported.
+// Full startup/window placement/drop retain their mandatory plan owners.
 #include "App.h"
+#include "Common/MyWindows.h"
 #include "MyLoadMenu.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemanagerwindowservices.h"
@@ -71,4 +72,21 @@ bool WndProc(QtFileManagerMessage message, CApp &app, IQtFileManagerWindowServic
     }
     }
     return false;
+}
+
+bool IsLargePageSupported() {
+#ifdef _WIN32
+#ifdef _WIN64
+    return true;
+#else
+    DWORD v = GetVersion();
+    // low byte is major version:
+    // next byte is minor version:
+    v = ((v & 0xff) << 8) | ((v >> 8) & 0xFF);
+    return (v > 0x501);
+#endif
+#else
+    // The source FM privilege/large-page command is Windows-only.
+    return false;
+#endif
 }

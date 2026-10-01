@@ -84,6 +84,20 @@ static QString GetFlatViewName(UInt32 panelIndex) {
     return QStringLiteral("FlatViewArc") + QString::number(panelIndex);
 }
 
+void SaveLockMemoryEnable(bool enable, const QString &settingsPath) {
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.beginGroup("Options");
+    SaveOption(key, "LargePages", enable);
+}
+
+bool ReadLockMemoryEnable(const QString &settingsPath) {
+    bool enabled = false;
+    QSettings key(settingsPath, QSettings::IniFormat);
+    key.beginGroup("Options");
+    ReadOption(key, "LargePages", enabled);
+    return enabled;
+}
+
 void SaveFlatView(UInt32 panelIndex, bool enable, const QString &settingsPath) {
     QSettings key(settingsPath, QSettings::IniFormat);
     key.beginGroup("FM");

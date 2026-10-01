@@ -7,6 +7,7 @@
 #include "CompressDialog.h"
 
 namespace NCompressDialog {
+FString GetCompressionWorkingDir(const UString &arcPath, const QString &settingsPath);
 const NUpdateArchive::CActionSet *FindUpdateActionSet(NUpdateMode::EEnum mode);
 CObjectVector<CProperty> GetCompressionProperties(const CInfo &info, bool is7z);
 } // namespace NCompressDialog

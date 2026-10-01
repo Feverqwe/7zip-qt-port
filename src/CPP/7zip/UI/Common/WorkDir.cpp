@@ -7,6 +7,7 @@
 #include "Windows/FileName.h"
 #include "Windows/FileSystem.h"
 
+#include "../FileManager/RegistryUtils.h"
 #include "WorkDir.h"
 
 using namespace NWindows;
@@ -58,7 +59,7 @@ FString GetWorkDir(const NWorkDir::CInfo &workDirInfo, const FString &path, FStr
 
 HRESULT CWorkDirTempFile::CreateTempFile(const FString &originalPath, const QString &settingsPath) {
     NWorkDir::CInfo workDirInfo;
-    workDirInfo.Load(settingsPath);
+    workDirInfo.Load(settingsPath.isEmpty() ? FmSettingsPath() : settingsPath);
     FString namePart;
     FString path = GetWorkDir(workDirInfo, originalPath, namePart);
     CreateComplexDir(path);

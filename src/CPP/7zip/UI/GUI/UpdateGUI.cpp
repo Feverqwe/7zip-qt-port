@@ -1,8 +1,26 @@
 // Adapted from 7-Zip CPP/7zip/UI/GUI/UpdateGUI.cpp at 0766b73.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "UpdateGUI.h"
+#include "../Common/WorkDir.h"
 
 #include "Common/StringToInt.h"
+
+// Source ShowDialog working-directory block; return the field instead of the
+// unavailable in-process CUpdateOptions owner. The engine consumes it via -w.
+FString NCompressDialog::GetCompressionWorkingDir(const UString &arcPath,
+                                                  const QString &settingsPath) {
+    NWorkDir::CInfo workDirInfo;
+    workDirInfo.Load(settingsPath);
+    FString workingDir;
+    if (workDirInfo.Mode != NWorkDir::NMode::kCurrent) {
+        FString fullPath;
+        NWindows::NFile::NDir::MyGetFullPathName(us2fs(arcPath), fullPath);
+        FString namePart;
+        workingDir = GetWorkDir(workDirInfo, fullPath, namePart);
+        NWindows::NFile::NDir::CreateComplexDir(workingDir);
+    }
+    return workingDir;
+}
 
 static void AddProp_UString(CObjectVector<CProperty> &properties, const char *name,
                             const UString &value) {
