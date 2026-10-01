@@ -13,13 +13,15 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-13 после принятого P1-12.1: source Settings/Folders/RAM/work-dir,
-UpdateGUI Create и FM update consumers, Windows large-pages request и source
-RefreshAllPanels; final gate160/160, focused8/8 и final input1/1. Счёт24/46,
-остаётся22: parent P1-12 открыт до .2 и интеграции остальных page owners.
-Следующий scope — source Edit/Menu policies с реальными consumers и capability
-границей system shell P2-09. Другие страницы сохраняют owners P1-14/P2-08/P2-09
-и disabled controls. Parent .2 не блокирует реальные capabilities .1.
+P1-14 после принятого P1-13.1: source MenuPage/Options/Zone scenario, native
+flags/resource fallback, source persistence с сохранением unchanged BoolPairs,
+реальный FM→Agent extraction consumer; focused5/5 1.87 s, full gate161/161
+57.27 s macOS arm64 Qt6.11.2. Source English Menu captions и hardcoded Russian
+forms требуют Language owner. Счёт24/46, остаётся22. P1-13 parent открыт до .2:
+source shell policies/flags/registration требуют P2-09 consumer, controls disabled
+с причиной. P2-09 зависит от P1-13.1 capability, не от открытого parent.
+P1-12 parent открыт до .2 всех page owners; .1 capabilities не блокируют Language
+и System. Windows ADS/runtime и Windows/Linux rendered parity не проверены.
 ZIP comment P1-17 и реальные decoder RAM
 prompts P1-18 заблокированы отдельно до source writer/decoder capability;
 обе функции обязательны для полной итоговой приёмки.

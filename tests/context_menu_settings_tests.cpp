@@ -37,6 +37,19 @@ class ContextMenuSettingsTests final : public QObject {
         QCOMPARE(restored.WriteZone, UInt32(NExtract::NZoneIdMode::kAll));
         QVERIFY(restored.Flags_Def);
         QCOMPARE(restored.Flags, 123u); // Undefined Save preserves existing flags.
+        CContextMenuInfo zoneOnly;
+        zoneOnly.Load(path);
+        zoneOnly.Cascaded.Def = false;
+        zoneOnly.MenuIcons.Def = false;
+        zoneOnly.ElimDup.Def = false;
+        zoneOnly.Flags_Def = false;
+        zoneOnly.WriteZone = NExtract::NZoneIdMode::kOffice;
+        zoneOnly.Save(path);
+        restored.Load(path);
+        QVERIFY(restored.Cascaded.Def && !restored.Cascaded.Val);
+        QVERIFY(restored.MenuIcons.Def && restored.MenuIcons.Val);
+        QCOMPARE(restored.Flags, 123u);
+        QCOMPARE(restored.WriteZone, UInt32(NExtract::NZoneIdMode::kOffice));
         QSettings key(path, QSettings::IniFormat);
         QCOMPARE(key.value("unrelated/setting").toString(), QString("preserved"));
         key.setValue("Options/WriteZoneIdExtract", "invalid");

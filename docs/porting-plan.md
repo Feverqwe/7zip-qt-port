@@ -805,9 +805,27 @@ Qt6.11.2; Windows/Linux runtime и rendered parity unverified. Parent остаё
 path/templates и Cancel/Apply обработаны; menu flags дают наблюдаемый результат.
 Для platform-only controls — explicit capability state и tests.
 
+Два крупных результата сохраняют parent scope:
+
+- **P1-13.1** — интегрированный source MenuPage/Options/Zone scenario с source
+  persistence и реальным FM extraction consumer; accepted Edit P1-08 используется
+  без повторного переноса. Shell controls явно disabled до своего consumer.
+- **P1-13.2** — наблюдаемые source shell policies/flags/registration вместе с
+  P2-09; parent остаётся открыт до их проверки. Текущий Explorer/ContextMenu.cpp
+  содержит только FindExt, не QueryContextMenu. Source Menu ElimDup не является
+  FM extraction default, поэтому подмена consumer недопустима.
+
+P1-13.1 принят2026-10-01: source Menu bodies/flags и resource fallback,
+BoolPair unchanged preservation, реальный PanelCopy/Agent extraction consumer,
+explicit disabled shell/POSIX Zone controls. Normal640×390/compact520×380 JSON
+просмотрены; focused5/5 1.87 s, full unsandboxed check.sh161/161 57.27 s macOS
+arm64 Qt6.11.2. Baseline203 exact/149 adapted/3 local verified. Windows ADS,
+Windows/Linux runtime и rendered parity unverified. Parent остаётся открыт;
+счёт24/46 прежний, следующий доступный P1-14.
+
 ### P1-14. Language и локализация всего интерфейса
 
-**После:** P0-09, P1-12. **Источники:** FM `LangPage.*`, `LangUtils.*`,
+**После:** P0-09, P1-12.1 capability. **Источники:** FM `LangPage.*`, `LangUtils.*`,
 `TextPairs.*`, `StringUtils.*`; Common `Lang.*` и upstream language resources.
 
 Перенести выбор/чтение language files, fallback IDs, смену меню/toolbar/dialogs
@@ -992,7 +1010,7 @@ failure/cancel и partial writes. Differences исходного Windows и Unix
 
 ### P2-08. System page и file associations
 
-**После:** P1-12, P2-01. **Источники:** FM `SystemPage.*`,
+**После:** P1-12.1 capability, P2-01. **Источники:** FM `SystemPage.*`,
 `RegistryAssociations.*`, `ProgramLocation.*`; platform registration adapter.
 
 Перенести formats/association state, current-user/all-users distinction и
@@ -1006,7 +1024,7 @@ external association changes; geometry страницы и typed adapter tests.
 
 ### P2-09. Shell/context integration и завершение Menu page
 
-**После:** P1-13, P2-08. **Источники:** upstream
+**После:** P1-13.1, P2-08. **Источники:** upstream
 `CPP/7zip/UI/Explorer/ContextMenu.*`, `RegistryContextMenu.*`, `MyMessages.*`,
 FM `MenuPage.*`, `MyLoadMenu.*`.
 

@@ -26,13 +26,14 @@ set(progress_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/
 set(update_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GUI/resource3.rc")
 set(overwrite_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/OverwriteDialog.rc")
 set(gui_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.rc")
+set(explorer_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/Explorer/resource2.rc")
 set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
 add_custom_command(OUTPUT "${resource_strings_header}"
-    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource}"
-        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource}"
+    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource};${explorer_resource}"
+        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource};${explorer_resource}"
         "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
     DEPENDS "${property_name_resource}" "${extract_resource}" "${file_manager_resource}"
-        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" scripts/rc_strings.cmake
+        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" scripts/rc_strings.cmake
     VERBATIM)
 
 qt_standard_project_setup()
@@ -243,6 +244,7 @@ target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
     src/CPP/7zip/UI/FileManager/EditPage.cpp src/CPP/7zip/UI/FileManager/EditPage.h
+    src/CPP/7zip/UI/FileManager/MenuPage.cpp src/CPP/7zip/UI/FileManager/MenuPage.h
     src/CPP/7zip/UI/FileManager/OptionsDialog.cpp src/qtfmoptionsdialog.h
     src/qtarchivebatchopen.cpp src/qtarchivebatchopen.h
     src/qtarchivebatchextract.cpp src/qtarchivebatchextract.h
@@ -1289,6 +1291,13 @@ if(BUILD_TESTING)
 endif()
 
 if(BUILD_TESTING)
+    qt_add_executable(menu_page_tests tests/menu_page_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(menu_page_tests PRIVATE src tests)
+    target_link_libraries(menu_page_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME menu_page COMMAND menu_page_tests -silent)
+    set_tests_properties(menu_page PROPERTIES TIMEOUT 60
+        RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(options_dialog_tests tests/options_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(options_dialog_tests PRIVATE src tests)
     target_link_libraries(options_dialog_tests PRIVATE sevenzip_location Qt6::Test)

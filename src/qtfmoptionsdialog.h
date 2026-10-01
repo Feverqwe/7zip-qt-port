@@ -5,6 +5,7 @@
 class CEditPage;
 class CFoldersPage;
 class CSettingsPage;
+class CMenuPage;
 class QDialogButtonBox;
 
 // Qt property-sheet services for the partial native OptionsDialog container.
@@ -13,6 +14,7 @@ class QtFmOptionsDialog final : public QDialog {
     CEditPage *_editPage;
     CFoldersPage *_foldersPage;
     CSettingsPage *_settingsPage;
+    CMenuPage *_menuPage;
     QDialogButtonBox *_buttons;
     void updateApplyButton();
 

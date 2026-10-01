@@ -480,8 +480,12 @@ Address signals are disconnected before window teardown.
 ## Dialogs and preferences
 
 `QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the partial native
-six-page property sheet. Folders, Editor and Settings are functional; three unavailable
-pages are disabled. CEditPage retains source modified-state and Browse/OnApply,
+six-page property sheet. Folders, Editor, Settings and 7-Zip are available; System
+and Language remain disabled. CMenuPage preserves source list/state/apply bodies;
+only Zone propagation has a current consumer, through PanelCopy, Agent and the
+Windows ArchiveExtractCallback. Shell controls are disabled until P2-09 ports
+QueryContextMenu and registration. They do not alter the FM File/context menu.
+CEditPage retains source modified-state and Browse/OnApply,
 while CSettingsPage can be embedded or shown standalone. Apply/OK commit source
 FM INI values; Cancel discards only pending changes. Source CSettingsPage owns RAM
 limit validation and capability-gated large pages; QtMemoryLimitSpin adapts only

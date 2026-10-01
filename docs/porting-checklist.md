@@ -194,7 +194,9 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [ ] | P1-12 | 6-page Options container, Apply/Cancel, Settings/Folders | P0-07, P0-08, P1-07 | in progress — .1 integrated Settings/Folders принят; .2 full six-page acceptance после остальных page owners; source prerequisite P1-08.1 сохранён |
 | [x] | P1-12.1 | Цельный Settings/Folders scenario, working/temp/RAM/large-pages, Apply/OK/Cancel, обе панели и UX | P0-07, P0-08, P1-07 | done — audit § P1-12.1; source Settings/Folders/App refresh/UpdateGUI work-dir bodies, Qt controls и native WorkDir/CLI consumers; actual Create success/work-path failure/cancel, two panels selection/focus, normal640×390/compact520×380 JSON; final check.sh160/160 55.99 s macOS arm64 Qt6.11.2 2026-10-01; focused8/8 5.72 s и final input1/1 0.45 s; Windows/Linux runtime unverified, parent open |
 | [ ] | P1-12.2 | Итоговая интеграция шести страниц и приёмка Options parent | P1-12.1, P1-13, P1-14, P2-08, P2-09 | todo — unavailable page controls disabled до соответствующих capabilities |
-| [ ] | P1-13 | Работающие страницы Edit/Menu | P1-08, P1-12.1 | todo |
+| [ ] | P1-13 | Работающие страницы Edit/Menu | P1-08, P1-12.1 | in progress — Edit accepted P1-08; Menu .1 accepted; parent остаётся открыт до .2 source shell consumer |
+| [x] | P1-13.1 | Source MenuPage/Options/Zone scenario, persistence, capability state и реальный FM extraction consumer | P1-08, P1-12.1 | done — audit § P1-13.1; source Menu bodies/flags/resource fallback, unchanged BoolPair preservation, real PanelCopy/Agent extraction consumer, explicit unavailable shell/POSIX Zone controls, JSON640×390/520×380 inspected; focused5/5 1.87 s, full unsandboxed check.sh161/161 57.27 s macOS arm64 Qt6.11.2 2026-10-01; baseline203 exact/149 adapted/3 local verified; Windows ADS/Windows/Linux runtime/rendering unverified; parent open, next P1-14 |
+| [ ] | P1-13.2 | Source shell policies/flags/registration и итоговая Edit/Menu приёмка | P1-13.1; P2-09 adapter | deferred — QueryContextMenu и registry/OS consumer пока не перенесены; disabled controls не закрывают mandatory scope |
 | [ ] | P1-14 | Language и все app captions/fallbacks | P0-09, P1-12.1 | todo |
 | [ ] | P1-15 | F1/Help/About/Delete Temporary Files | P0-09, P1-08, P1-14 | todo |
 | [ ] | P1-16 | Drag/drop между панелями и наружу из архива | P1-01, P1-09, P0-07 | todo |
@@ -212,8 +214,8 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [ ] | P2-05 | Links/junctions и FS metadata | P1-02, P1-03 | todo |
 | [ ] | P2-06 | ADS/streams/CProxyArc2 по platform capabilities | P1-10, P2-05 | todo |
 | [ ] | P2-07 | Extract ElimDup/absolute/security/metadata | P0-12, P2-05, P2-06 | todo |
-| [ ] | P2-08 | System page/file associations | P1-12, P2-01 | todo |
-| [ ] | P2-09 | Shell integration и оставшаяся Menu page | P1-13, P2-08 | todo |
+| [ ] | P2-08 | System page/file associations | P1-12.1, P2-01 | todo |
+| [ ] | P2-09 | Shell integration и оставшаяся Menu page | P1-13.1, P2-08 | todo — проверка реальных policies/flags также закрывает P1-13.2; parent dependency не создаёт цикл |
 | [ ] | P2-10 | Большие списки/операции без GUI blocking | P0-05, P0-06, P0-10, P1-09, P1-16 | todo |
 
 ## P3 — приёмка, обновления и поставка

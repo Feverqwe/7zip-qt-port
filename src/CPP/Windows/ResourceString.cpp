@@ -3,6 +3,7 @@
 // Win32 LoadString/HINSTANCE storage is replaced by compiled source STRINGTABLE
 // strings and the existing fixed Russian UI captions. Language files: P1-14.
 #include "ResourceString.h"
+#include "7zip/UI/Explorer/resource.h"
 #include "7zip/UI/FileManager/OverwriteDialogRes.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"

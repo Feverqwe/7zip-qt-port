@@ -7,8 +7,18 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-13.1: Options page2300 называется 7-Zip и сохраняет source MenuPage2.rc order:
+две регистрации shell, Cascaded, Icons, ElimDup, Zone и 14 items. Только Zone
+имеет настоящий FM consumer; Windows разрешает выбор No/Yes/Office/custom,
+POSIX показывает disabled с причиной. Shell controls disabled на всех ОС до
+P2-09; ElimDup не подменяет обычные FM extract defaults. Apply/Cancel и source
+persistence сохраняют не изменённые shell values. Parent P1-13 остаётся открыт.
+Normal640×390/compact520×380 JSON и geometry проверяются `menu_page`; Windows
+ADS/runtime и rendered parity требуют отдельной проверки на Windows.
+
 P1-12.1: Options сохраняет source порядок шести страниц и Apply/OK/Cancel.
-Folders/Editor/Settings активны, System/Menu/Language disabled до своих owners.
+Folders/Editor/Settings активны, System/Language disabled до своих owners;
+текущий Menu scope указан в P1-13.1 выше.
 Source RAM range/validation и working directory используются в consumers;
 неверный ввод выбирает Settings/input, Apply обновляет обе панели с selection.
 POSIX removable-only и Windows large-page privilege controls без capability
@@ -440,7 +450,7 @@ reference не проверены. Open/test/extract приёмка остаёт
 | Диалог Extract | `../GUI/ExtractDialog.rc`, `ExtractDialog.cpp`; `../GUI/Extract.rc` | Перенесены поле назначения с историей из 16 путей, кнопка выбора папки, полные пути или режим без путей, отказ от перезаписи, пропуск, перезапись и оба режима переименования при конфликте, поле пароля с показом. Новая папка назначения создаётся после проверки существующих родителей. Совпадающие имена при извлечении без путей отклоняются до запуска. В upstream доступны также абсолютные пути и запрос решения при конфликте; здесь они ещё не реализованы. Имя подпапки включается отдельным флажком и сохраняется; устранение дублирования корневой папки и восстановление прав пока отсутствуют. |
 | Разбить файл / объединить части | `PanelSplitFile.cpp`, `SplitDialog.rc` | Нумерация частей использует перенесённый `CVolSeqName` и `SplitUtils.cpp` (`ParseVolumeSizes`, `GetNumberOfVolumes`, `AddVolumeItems`) в `src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp`. В обычной папке доступны команды для одного файла. Диалог Split содержит папку назначения и редактируемый размер тома; как `CSplitDialog::OnOK()` и `CThreadSplit::ProcessVirt()`, принимает последовательность размеров, применяет их по порядку и повторяет последний для оставшихся частей; Combine принимает первую часть по исходному `CVolSeqName::ParseName` — суффикс `01` с любым числом ведущих нулей, с точкой или без неё, проверяет непрерывность и собирает файл в выбранную папку. Операции идут в рабочем потоке с отменой и временными файлами; файлы с существующими именами не заменяются. Диалог Combine показывает число частей, общий размер в байтах, исходную папку, первые две и последнюю часть, как `CApp::Combine()`. Проверку списка и суммы выполняет `VolumeOperation::inspectParts`; рабочий поток повторно проверяет части перед сборкой. |
 | Диалог Copy/Move | `CopyDialog.rc`, `CopyDialog.cpp`; `App.cpp`, `Copy()` | F5/F6 открывают общий диалог с редактируемой историей назначения до 20 путей, выбором папки и именами объектов. Рабочий поток показывает текущий файл, принимает отмену и сохраняет прежнюю цель до публикации. Обычный `CApp::OnCopy` маршрутизирует операции между двумя файловыми или верхними архивными панелями, включая disk↔archive и archive↔archive; F6 из архива удаляет источник после успешной записи цели. При отказе rename F6 копирует во временную цель и удаляет источник после публикации, сообщая о частичном результате при ошибке удаления. Совпадающие дисковые папки сливаются с отдельными решениями по вложенным файлам. Одиночный новый filename и Shift+F5/F6 для элемента под фокусом поддержаны. Вложенные и защищённые архивы имеют явные ограничения. |
-| Сервис → Настройки | `resource.rc`, `OptionsDialog.cpp`, `SettingsPage2.rc`, `EditPage2.rc` | Partial six-page container сохраняет source order/IDs; Editor/Settings доступны, System/Menu/Folders/Language disabled. Apply/OK пишут изменённые source values, Cancel сохраняет только уже применённое. Viewer/Editor/Diff и Browse подключены к disk commands. Memory/Folders и остальные страницы остаются обязательными P1-12/13/14/P2-08. |
+| Сервис → Настройки | `resource.rc`, `OptionsDialog.cpp`, `SettingsPage2.rc`, `EditPage2.rc`, `FoldersPage2.rc`, `MenuPage2.rc` | Partial six-page container сохраняет source order/IDs; Folders/Editor/Settings и 7-Zip доступны, System/Language disabled. Apply/OK пишут изменённые source values, Cancel сохраняет уже применённое. WorkDir/RAM, external editors и Windows Zone имеют consumers. Shell controls остаются disabled до P2-09; полная интеграция страниц остаётся P1-12.2/P1-13.2/P1-14/P2-08. |
 
 ## Следующие крупные блоки
 

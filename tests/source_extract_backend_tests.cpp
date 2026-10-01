@@ -1,6 +1,7 @@
 #include "7zip/Common/StreamObjects.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/ExtractCallback.h"
+#include "CPP/7zip/UI/FileManager/MenuPage.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
@@ -11,6 +12,7 @@
 #include "qtarchivefoldermanager.h"
 #include "qtpanelfolder.h"
 #include "source_extract_fixture.h"
+#include <QComboBox>
 #include <QDir>
 #include <QFile>
 #include <QMessageBox>
@@ -158,6 +160,15 @@ class SourceExtractBackendTests final : public QObject {
         QCOMPARE(root->BindToFolder(L"inside", &inside), S_OK);
         QCOMPARE(inside->LoadItems(), S_OK);
         CPanel panel(inside);
+        const QString settings = directory.filePath("zone options.ini");
+        panel.AttachFolderManager(nullptr, settings);
+        CMenuPage menu(settings, nullptr, true); // Portable presentation service fixture.
+        menu.findChild<QComboBox *>("menuZone")->setCurrentIndex(1);
+        QCOMPARE(menu.OnApply(), 0L);
+#ifdef _WIN32
+        const QByteArray zone("[ZoneTransfer]\r\nZoneId=3\r\n");
+        QVERIFY(writeFile(archive + ":Zone.Identifier", zone));
+#endif
         CRecordVector<UInt32> selected;
         selected.Add(0);
         bool usePassword = false;
@@ -168,7 +179,6 @@ class SourceExtractBackendTests final : public QObject {
             CCopyToOptions options;
             options.folder = ToUString(output.path() + "/");
             options.streamMode = memory;
-            options.NeedRegistryZone = false;
             CMyComPtr2<ISequentialOutStream, CVirtFileSystem> virtualFiles;
             if (memory) {
                 virtualFiles.Create_if_Empty();
@@ -177,6 +187,7 @@ class SourceExtractBackendTests final : public QObject {
                 options.VirtFileSystemSpec = virtualFiles.ClsPtr();
             }
             QCOMPARE(panel.CopyTo(options, selected, &messages, usePassword, password), S_OK);
+            QCOMPARE(options.ZoneIdMode, NExtract::NZoneIdMode::kAll);
             QVERIFY(messages.IsEmpty());
             QVERIFY(!backend.busy());
             if (memory) {
@@ -188,6 +199,11 @@ class SourceExtractBackendTests final : public QObject {
                     bytes);
             } else {
                 QCOMPARE(readFile(output.filePath(QStringLiteral("密碼 с пробелом.bin"))), bytes);
+#ifdef _WIN32
+                QCOMPARE(readFile(output.filePath(
+                             QStringLiteral("密碼 с пробелом.bin:Zone.Identifier"))),
+                         zone);
+#endif
             }
         }
     }

@@ -15,13 +15,14 @@ void CContextMenuInfo::Save(const QString &path) const {
     const auto setPair = [&key](const QString &name, const CBoolPair &pair) {
         if (pair.Def)
             key.setValue(name, pair.Val);
-        else
-            key.remove(name);
     };
     setPair("CascadedMenu", Cascaded);
     setPair("MenuIcons", MenuIcons);
     setPair("ElimDupExtract", ElimDup);
-    key.setValue("WriteZoneIdExtract", WriteZone);
+    if (WriteZone == (UInt32)(Int32)-1)
+        key.remove("WriteZoneIdExtract");
+    else
+        key.setValue("WriteZoneIdExtract", WriteZone);
     if (Flags_Def)
         key.setValue("ContextMenu", Flags);
 }

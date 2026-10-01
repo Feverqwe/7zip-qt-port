@@ -1,5 +1,14 @@
 # Regression strategy
 
+`menu_page` checks source defaults and 14 flag rows, custom Zone values,
+Apply/Cancel, capability-gated controls and 640×390/520×380 Options geometry/JSON.
+`context_menu_settings` verifies that a Zone-only apply preserves unchanged
+BoolPair values and flags. `source_extract_backend` applies CMenuPage's Zone
+setting and observes the actual PanelCopy → Agent extraction consumer on local
+Unicode/spaced ZIP fixtures. Windows additionally asserts the output ADS bytes;
+that conditional branch requires Windows runtime and is not verified on macOS.
+Synthetic capability fixtures do not establish shell support; P1-13.2/P2-09 remain.
+
 `options_dialog` checks source Settings RAM parse/range/zero/unset, invalid input
 and pending focus, Apply-then-Cancel, Folders mode/path/Browse Cancel, corrupt
 config and actual Unicode WorkDir temp files. Normal/compact Settings/Folders

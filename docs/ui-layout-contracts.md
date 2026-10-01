@@ -12,6 +12,23 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Menu page (P1-13.1)
+
+Reference: pinned `FileManager/MenuPage.cpp`, `MenuPage2.rc` and
+`Explorer/ContextMenuFlags.h`. Options page 2300 is titled 7-Zip and keeps source
+order: two shell registration checkboxes, Cascaded, Icons, Eliminate duplication,
+Zone label/combo, Context menu items label and the 14-row checkable list.
+Registration, Cascaded/Icons/ElimDup and list controls are disabled with an explicit
+capability reason until the real Explorer consumer is ported by P2-09. Zone is
+enabled on Windows; on POSIX it is disabled with a Windows-only explanation.
+The source default is `* No`; existing custom integer values remain selectable.
+Qt scrolls the list and uses a persistent OK/Cancel/Apply footer.
+
+`menu_page` writes `options-menu-640/520.json` at 640×390 and 520×380; checkboxes
+fit their text, grouping/order and Zone label/combo separation are checked, and
+the list and footer remain exposed. No rendered Windows reference is available;
+geometry checks establish Qt structure/usability on the locally tested OS only.
+
 ### Advanced compression options (P1-07.1)
 
 Reference: pinned `GUI/CompressOptionsDialog.rc`, `CompressDialog.rc` parameter
