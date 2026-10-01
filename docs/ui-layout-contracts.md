@@ -12,6 +12,28 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Advanced compression options (P1-07.1)
+
+Reference: pinned `GUI/CompressOptionsDialog.rc`, `CompressDialog.rc` parameter
+and Options rows, and `CompressDialog.cpp::COptionsDialog`. Add shows Parameters
+after volumes, then an Options button with the native summary. At 760×720 and
+640×480 the form scrolls to these controls while the confirmation footer remains
+visible. `compression_advanced` writes `archive-advanced-760/640.json`.
+
+Options keeps resource grouping/order: optional NTFS controls, format time info,
+Time group with explicit/default precision and modification/creation/access/time
+of archive rows, preserve-access checkbox, then OK/Cancel/Help. Explicit/default
+checkboxes have accessible names. Native capability policy hides unsupported NTFS
+controls; ZIP UNIX/DOS precision hides creation/access rows. Preserve access,
+archive mtime and Help are disabled until their owners are implemented.
+
+`compression-options-{zip|7z}-{520|440}.json` covers actual 520×400 and 440×340
+sizes, exposed controls and footer. Current Qt reports show small explicit-value
+checkboxes beside their labels, no clipping and separate confirmation buttons.
+Source visibility is applied before Qt computes minimum size so hidden NTFS
+controls cannot enlarge the compact dialog. No rendered Windows reference was
+available; these checks establish structure and usability on macOS only.
+
 ### Archive volume creation (P1-06.1)
 
 Reference: pinned `GUI/CompressDialog.rc::IDC_COMPRESS_VOLUME` and source

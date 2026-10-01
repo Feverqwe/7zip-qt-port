@@ -3,6 +3,7 @@
 #pragma once
 
 #include "../Common/ZipRegistry.h"
+#include "7zip/UI/Common/LoadCodecs.h"
 #include "CPP/Common/Wildcard.h"
 #include "Common/MyTypes.h"
 #include <QStringList>
@@ -79,6 +80,20 @@ bool GetOrderMode(EMethodID methodID);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 struct CInfo {
     CRecordVector<UInt64> VolumeSizes;
+    UInt32 Level = UInt32(-1);
+    UString Method;
+    UInt64 Dict64 = UInt64(-1);
+    bool OrderMode = false;
+    UInt32 Order = UInt32(-1);
+    UString Options;
+    UInt32 NumThreads = UInt32(-1);
+    bool EncryptHeadersIsAllowed = false;
+    bool EncryptHeaders = false;
+    UInt32 TimePrec = UInt32(-1);
+    CBoolPair MTime;
+    CBoolPair CTime;
+    CBoolPair ATime;
+    CBoolPair SetArcMTime;
     NUpdateMode::EEnum UpdateMode = NUpdateMode::kAdd;
     NWildcard::ECensorPathMode PathMode = NWildcard::k_RelatPath;
     bool SolidIsSpecified = false;
@@ -127,8 +142,39 @@ QStringList GetMethodNames(QStringView name);
 
 // Source-ported archive-path and encryption portions of CCompressDialog. Qt presentation
 // supplies the editable combo text and directory; codec/SFX branches are omitted.
+struct CBool1 {
+    bool Val;
+    bool Supported;
+    CBool1() : Val(false), Supported(false) {}
+    void Init() {
+        Val = false;
+        Supported = false;
+    }
+    void SetTrueTrue() {
+        Val = true;
+        Supported = true;
+    }
+    void SetVal_as_Supported(bool val) {
+        Val = val;
+        Supported = true;
+    }
+};
+
 class CCompressDialog {
   public:
+    CBool1 SymLinks;
+    CBool1 HardLinks;
+    CBool1 AltStreams;
+    CBool1 NtSecurity;
+    CBool1 PreserveATime;
+    CArcInfoEx ArcInfo;
+    NCompression::CFormatOptions *FormatOptions = nullptr;
+    UString OptionsString;
+    void ShowOptionsString();
+    int MethodID = NCompressDialog::kLZMA2;
+    const CArcInfoEx &Get_ArcInfoEx() const { return ArcInfo; }
+    NCompression::CFormatOptions &Get_FormatOptions() { return *FormatOptions; }
+    int GetMethodID() const { return MethodID; }
     enum EVolumeResult { kVolumeOK, kIncorrectVolumeSize, kConfirmSmallVolume };
     static EVolumeResult OnOK(const QString &volumeText, NCompressDialog::CInfo &Info);
     QString DirPrefix;

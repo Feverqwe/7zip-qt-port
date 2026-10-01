@@ -64,6 +64,25 @@ void CContextMenuInfo::Load(const QString &path) {
     }
 }
 
+// Registry BoolPair services adapted to the same explicit QSettings key.
+static void Key_Set_BoolPair_Delete_IfNotDef(QSettings &key, const char *name,
+                                             const CBoolPair &pair) {
+    if (pair.Def)
+        key.setValue(QLatin1String(name), pair.Val);
+    else
+        key.remove(QLatin1String(name));
+}
+static void Key_Get_BoolPair(QSettings &key, const char *name, CBoolPair &pair) {
+    pair.Def = false;
+    pair.Val = false;
+    bool ok;
+    const UInt32 value = key.value(QLatin1String(name)).toUInt(&ok);
+    if (ok) {
+        pair.Def = true;
+        pair.Val = value != 0;
+    }
+}
+
 namespace NWorkDir {
 void CInfo::Save(const QString &path) const {
     if (path.isEmpty())
@@ -217,6 +236,7 @@ void CInfo::Save(const QString &path) const {
         const CFormatOptions &fo = Formats[i];
         optionsKey.beginGroup(fo.FormatID);
         optionsKey.setValue("Method", fo.Method);
+        optionsKey.setValue("Options", QString::fromWCharArray(fo.Options.Ptr()));
         optionsKey.setValue("EncryptionMethod", fo.EncryptionMethod);
         optionsKey.setValue(QLatin1String(kMemUse), fo.MemUse);
         Key_Set_UInt32(optionsKey, "Level", fo.Level);
@@ -224,6 +244,11 @@ void CInfo::Save(const QString &path) const {
         Key_Set_UInt32(optionsKey, "Order", fo.Order);
         Key_Set_UInt32(optionsKey, "BlockSize", fo.BlockLogSize);
         Key_Set_UInt32(optionsKey, "NumThreads", fo.NumThreads);
+        Key_Set_UInt32(optionsKey, "TimePrec", fo.TimePrec);
+        Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "MTime", fo.MTime);
+        Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "ATime", fo.ATime);
+        Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "CTime", fo.CTime);
+        Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "SetArcMTime", fo.SetArcMTime);
         optionsKey.endGroup();
     }
 }
@@ -248,6 +273,7 @@ void CInfo::Load(const QString &path) {
         fo.FormatID = formatIDs[i];
         optionsKey.beginGroup(fo.FormatID);
         fo.Method = optionsKey.value("Method").toString();
+        fo.Options = optionsKey.value("Options").toString().toStdWString().c_str();
         fo.EncryptionMethod = optionsKey.value("EncryptionMethod").toString();
         fo.MemUse = optionsKey.value(QLatin1String(kMemUse)).toString();
         Key_Get_UInt32(optionsKey, "Level", fo.Level);
@@ -255,6 +281,11 @@ void CInfo::Load(const QString &path) {
         Key_Get_UInt32(optionsKey, "Order", fo.Order);
         Key_Get_UInt32(optionsKey, "BlockSize", fo.BlockLogSize);
         Key_Get_UInt32(optionsKey, "NumThreads", fo.NumThreads);
+        Key_Get_UInt32(optionsKey, "TimePrec", fo.TimePrec);
+        Key_Get_BoolPair(optionsKey, "MTime", fo.MTime);
+        Key_Get_BoolPair(optionsKey, "ATime", fo.ATime);
+        Key_Get_BoolPair(optionsKey, "CTime", fo.CTime);
+        Key_Get_BoolPair(optionsKey, "SetArcMTime", fo.SetArcMTime);
         Formats.Add(fo);
         optionsKey.endGroup();
     }

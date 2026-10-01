@@ -35,6 +35,10 @@ NCompression::CFormatOptions &CreateArchiveDialog::Get_FormatOptions() {
 void CreateArchiveDialog::SaveOptionsInMem() {
     // Upstream saves the format that was selected before FormatChanged.
     NCompression::CFormatOptions &fo = Get_FormatOptions();
+    if (parameters_) {
+        fo.Options = parameters_->text().toStdWString().c_str();
+        fo.Options.Trim();
+    }
     fo.Level = level_->currentData().toUInt();
     {
         // Qt Auto uses 0; upstream uses the all-ones sentinel.
@@ -79,6 +83,9 @@ void CreateArchiveDialog::FormatChanged() {
     const QSignalBlocker levelBlock(level_), methodBlock(method_), dictBlock(dictionary_),
         orderBlock(wordSize_), solidBlock(solidBlock_), threadsBlock(threads_);
     const NCompression::CFormatOptions fo = Get_FormatOptions();
+    if (parameters_)
+        parameters_->setText(QString::fromWCharArray(fo.Options.Ptr()));
+    updateAdvancedSummary();
     SetMemUseCombo();
     SetLevel2();
     method_->clear();

@@ -7,6 +7,19 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-07.1 Add exposes the native Parameters field, Options button and summary in
+the source resource order after volumes. Options follows CompressOptionsDialog.rc
+grouping with the original precision/capability state transitions: ZIP Windows,
+UNIX and DOS; 7z Windows precision. Unsupported NTFS flags are hidden; explicit
+UNIX/DOS ZIP precision hides creation/access controls. Profiles retain parameters,
+precision and explicit time flags separately by format. Options Cancel discards
+its copy; Add Cancel does not persist changes. The native property parser handles
+method overrides; invalid and unsupported properties fail before publication.
+Real mtime round-trips and normal/compact widget reports were checked on macOS.
+Preserve access, archive mtime and RAM/lifecycle workflows remain P1-07.2, with
+unfinished controls disabled. Help remains P1-15. Windows/Linux runtime and
+rendered Windows Options parity are unverified.
+
 P0-12 Ask extraction uses the source `COverwriteDialog` and progress dialog.
 Whole root archives, including encrypted and nested ones, use the original
 `GUI/ExtractGUI` → `Common/Extract` archive loop. Selected items and a viewed

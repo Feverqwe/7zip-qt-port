@@ -8,6 +8,59 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-07.1 — source Advanced Options и параметры (2026-10-01)
+
+Baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Copied the complete OPTIONS section of `CPP/7zip/UI/GUI/CompressDialog.cpp`:
+`COptionsDialog` Bool1/BoolBox helpers, precision construction, time capability
+states, `OnInit/OnCommand/OnButtonClicked/OnOK`, and the original
+`CCompressDialog::ShowOptionsString` helpers/body. Original names, native
+CBoolPair/UString/CFormatOptions and control flow remain in the mirrored CPP.
+`CompressDialog.h` receives original CBool1 and CInfo property fields/defaults.
+The adapted COptionsDialog declaration is in `qtcompressoptionsdialog.h` because
+the mirrored DTO header also serves Core-only engine consumers. This avoids
+adding a Widgets dependency to those consumers; it is not a second implementation.
+
+Copied `GUI/UpdateGUI.cpp`'s entire property-helper block: `AddProp_*`,
+`SplitOptionsToStrings`, `IsThereMethodOverride`, `ParseAndAddPropertires`,
+`SetOutProperties`. `GetCompressionProperties` is the narrow adapter for the
+original ShowDialog call order. Native CObjectVector<CProperty> is projected
+to individual `-m` argv entries by ArchiveBackend, replacing its independent
+property construction. The existing QString encryption field needs a conversion
+overload and `isEmpty`; other added fields retain native types. Widgets do not
+parse parameters or construct engine switches. `UpdateGUI` and its original
+UpdateAction dependency now compile once in sevenzip_panel so backend consumers
+and sevenzip_location share the same authoritative body.
+
+`Common/ZipRegistry.h/.cpp` gains original Options/TimePrec/CBoolPair profile
+fields and their Save/Load order. Native registry DWORD operations use QSettings;
+undefined pairs remove the key. The GUI resource header is an exact unchanged
+copy at `third_party/7zip/CPP/7zip/UI/GUI/CompressDialogRes.h`, inventoried in the
+pinned manifest. Source notices and license remain; formatting is clang-format.
+
+`qtcompressoptionscontrols.*` supplies Qt controls and original control service
+names; `createarchivedialog_advanced.cpp` projects pinned `7zRegister.cpp` and
+`ZipRegister.cpp` time flags into the original CArcInfoEx owner. Qt applies
+OnInit visibility before calculating minimum size. Resources
+`CompressOptionsDialog.rc` and `CompressDialog.rc` establish grouping/order.
+Options OK updates a temporary per-format profile; Cancel discards it, and Add
+Cancel never writes INI. The source summary accompanies the Options button.
+
+Partial scope remains explicit: no complete CompressDialog/ShowDialog/UpdateGUI
+port is claimed. Shared writing, preserve access time, archive mtime,
+delete-after-compress and memory retry/cancel remain P1-07.2; unsupported lifecycle
+controls are disabled and SetArcMTime is rejected by the adapter. NTFS/link flags
+are unsupported in this owner and hidden by native capability policy; their
+functional owners remain P2-05. Retained tar/gzip Options branches are not exposed
+by the current ZIP/7z Add form. Help remains disabled pending P1-15.
+
+`compression_advanced` checks normal/compact geometry, source capability states,
+Cancel and per-format persistence, method override, real ZIP/7z mtime precision
+round-trips, omitted mtime, invalid/unsupported properties and cancellation with
+no partial output. DOS rounding follows source TimeUtils on POSIX; Windows native
+rounding is not locally verified. Focused seven-suite gate passed on macOS arm64,
+Qt 6.11.2 (7/7, 4.06 s). Full gate evidence is recorded in the checklist.
+
 ## P1-05.4 — directory callback plans и приёмка Add (2026-10-01)
 
 Baseline remains [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

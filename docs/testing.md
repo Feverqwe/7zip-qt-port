@@ -655,6 +655,15 @@ checks replacement bytes and Store compression. `compression` checks update
 dialog normal/compact scroll geometry and verifies Cancel leaves the saved
 compression profile unchanged.
 
+P1-07.1: `compression_advanced` exercises ZIP/7z Options states at normal/compact
+sizes, parameter/summary reachability in Add, per-format time and raw parameter
+persistence, Options/Add Cancel, real method overrides and mtime extraction
+round-trips (Windows precision, ZIP UNIX/DOS). It also verifies omitted mtime,
+unknown properties, unsupported 7z precision, and cancellation without publishing
+an archive or leaving staging files. Fixtures use Unicode/spaces and isolated INI.
+Creation/access metadata restoration and lifecycle/RAM workflows remain P1-07.2;
+no cross-platform result is inferred from the macOS run.
+
 P1-06.1: `archive_volume_creation` creates real ZIP/7z numbered archives using
 variable 64/128 KiB sizes, two source roots and Unicode/space names. Official
 engine test/extract validates round-trip bytes; protected cases check wrong

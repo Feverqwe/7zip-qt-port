@@ -515,6 +515,14 @@ the backend validates encryption settings before staging and owns 7zz arguments.
 QSettings. `CMemUse` parses memory limits. `CompressionOptions` carries confirmed
 values to the backend, which repeats validation before starting the operation.
 
+`createarchivedialog_advanced.cpp` binds the original COptionsDialog to an
+in-memory format profile and exposes the native parameter field and summary.
+`qtcompressoptionscontrols.*` owns Qt presentation; the source precision and
+capability bodies remain in GUI/CompressDialog.cpp. Native UpdateGUI property
+helpers produce CProperty records, and ArchiveBackend alone projects them to
+engine argv. Options Cancel discards its profile copy; only confirmed Add saves
+INI. Lifecycle flags and RAM retry dialogs remain P1-07.2.
+
 `createarchivedialog_volumes.cpp` binds the original volume parser and small-size
 confirmation to the Add form. Confirmed native `CRecordVector<UInt64>` sizes cross
 the `ArchiveBackend` boundary. `archivebackend_volumes.cpp` owns target checks

@@ -122,6 +122,7 @@
     "third_party/7zip/CPP/7zip/UI/FileManager/resource.rc",
     "third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.h",
     "third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.rc",
+    "third_party/7zip/CPP/7zip/UI/GUI/CompressDialogRes.h",
     "third_party/7zip/CPP/7zip/UI/GUI/Extract.rc",
     "third_party/7zip/CPP/7zip/UI/GUI/ExtractRes.h",
     "third_party/7zip/CPP/7zip/UI/GUI/resource3.h",

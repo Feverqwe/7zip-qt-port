@@ -40,19 +40,27 @@ struct CMemUse {
     void Parse(const QString &s);
 };
 
-// Compression/encryption controls ported from upstream; time/options remain pending.
+// Source format profile fields; QString fields are Qt persistence adapters.
 struct CFormatOptions {
     UInt32 Level;
     UInt32 Dictionary;
     UInt32 Order;
     UInt32 BlockLogSize;
     UInt32 NumThreads;
+    UInt32 TimePrec = UInt32(-1);
+    CBoolPair MTime;
+    CBoolPair ATime;
+    CBoolPair CTime;
+    CBoolPair SetArcMTime;
     QString FormatID;
     QString Method;
     QString MemUse;
+    UString Options;
     QString EncryptionMethod;
 
     void Reset_BlockLogSize() { BlockLogSize = (UInt32)(Int32)-1; }
+    void Reset_TimePrec() { TimePrec = (UInt32)(Int32)-1; }
+    bool IsSet_TimePrec() const { return TimePrec != (UInt32)(Int32)-1; }
     void ResetForLevelChange() {
         BlockLogSize = NumThreads = Level = Dictionary = Order = (UInt32)(Int32)-1;
         Method.clear();

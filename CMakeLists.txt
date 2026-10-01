@@ -105,6 +105,10 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/qtcompressoptionscontrols.cpp src/qtcompressoptionscontrols.h
+    src/qtcompressoptionsdialog.h
+    src/CPP/7zip/UI/GUI/UpdateGUI.cpp src/CPP/7zip/UI/GUI/UpdateGUI.h
+    third_party/7zip/CPP/7zip/UI/Common/UpdateAction.cpp
     src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h
     src/CPP/7zip/UI/FileManager/CopyDialog.cpp src/CPP/7zip/UI/FileManager/CopyDialog.h
     src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
@@ -236,8 +240,6 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp src/CPP/7zip/UI/Agent/UpdateCallbackAgent.h
     src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
     src/CPP/7zip/UI/Common/SortUtils.cpp
-    third_party/7zip/CPP/7zip/UI/Common/UpdateAction.cpp
-    src/CPP/7zip/UI/GUI/UpdateGUI.cpp src/CPP/7zip/UI/GUI/UpdateGUI.h
     src/CPP/7zip/UI/Common/UpdatePair.cpp
     third_party/7zip/CPP/7zip/UI/Common/UpdateProduce.cpp
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
@@ -735,6 +737,13 @@ if(BUILD_TESTING)
     add_test(NAME compression COMMAND compression_tests -silent)
     get_target_property(compression_order_sources compression_tests SOURCES)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
+    qt_add_executable(compression_advanced_tests tests/compression_advanced_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
+    target_include_directories(compression_advanced_tests PRIVATE src tests)
+    target_link_libraries(compression_advanced_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_panel)
+    add_test(NAME compression_advanced COMMAND compression_advanced_tests -silent)
+    set_tests_properties(compression_advanced PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(archive_volume_creation_tests tests/archive_volume_creation_tests.cpp
         tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(archive_volume_creation_tests PRIVATE src tests)
@@ -1122,7 +1131,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
-        target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp)
+        target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp
+            src/createarchivedialog_advanced.cpp)
     endif()
 endforeach()
 

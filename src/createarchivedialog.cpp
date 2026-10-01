@@ -147,6 +147,7 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
         form->addRow(columns);
     }
     createVolumeOptions(form);
+    createAdvancedOptions(form);
     auto *destinationRow = new QHBoxLayout;
     destination_ = new QLineEdit(currentDirectory_, this);
     destination_->setObjectName("archiveDestination");
@@ -279,6 +280,19 @@ void CreateArchiveDialog::validateAndAccept() {
 
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
+    if (parameters_) {
+        options.Options = parameters_->text().toStdWString().c_str();
+        options.Options.Trim();
+    }
+    const int index = FindRegistryFormat(registryFormat_);
+    if (index >= 0) {
+        const auto &fo = m_RegistryInfo.Formats[index];
+        options.TimePrec = fo.TimePrec;
+        options.MTime = fo.MTime;
+        options.CTime = fo.CTime;
+        options.ATime = fo.ATime;
+        options.SetArcMTime = fo.SetArcMTime;
+    }
     if (volume_ && volume_->isEnabled())
         CCompressDialog::OnOK(volume_->currentText(), options);
     if (updateMode_)

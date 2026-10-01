@@ -637,6 +637,14 @@ parser. Опции уровня ОС доступны по capability с объ�
 memory retry/cancel и profile persistence не теряют настройку. UI contracts
 advanced/memory dialogs, tests success/failure/cancel.
 
+Интегрированные результаты: P1-07.1 переносит целую source Options форму,
+time/capability states, parameter field с исходным parser/SetOutProperties,
+backend effect/validation, format profiles и normal/compact UX. P1-07.2
+завершает lifecycle shared/preserve access/archive mtime/delete-after-compress
+и memory retry/cancel через source checks и текущие multi-stage/volume consumers;
+parent принимается после обоих результатов. NTFS/link controls сохраняют
+исходную capability policy; функциональные links/ADS/security owners — P2-05.
+
 ### P1-08. Внешние viewer/editor/diff и возврат изменённого файла
 
 **После:** P0-04, P1-04. **Источники:** FM `PanelItemOpen.cpp`, `PanelItems.cpp`,
@@ -1136,5 +1144,6 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 отдельно после проверок, включая только свои изменения. Сохранять чужие hunks,
 записывать local commit как evidence; push и публикация не разрешены.
 
-Следующий доступный результат — **P1-07** после принятого parent P1-06; далее по приоритету и
+Следующий доступный результат — **P1-07.2** после принятого P1-07.1; parent P1-07
+остаётся открытым до lifecycle/memory приёмки. Далее по приоритету и
 зависимостям. UX идёт вместе с каждым пакетом.

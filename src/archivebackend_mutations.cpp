@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
+#include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
 
 #include <QDir>
@@ -13,6 +14,10 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
                                          bool encryptHeaders, const CompressionOptions &options,
                                          QStringList *switches, QString *error) {
     const auto &formatInfo = NCompressDialog::GetFormatInfo(suffix);
+    if (options.SetArcMTime.Def) {
+        *error = QStringLiteral("Изменение времени архива пока недоступно.");
+        return false;
+    }
     const QStringList methods = NCompressDialog::GetMethodNames(suffix);
     if (options.level < 0 || options.level > 9 ||
         !(formatInfo.LevelsMask & (UInt32(1) << options.level)) || options.threads < 0 ||
@@ -105,37 +110,30 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
                 : QStringLiteral("Для ZIP используйте пароль из ASCII без управляющих символов.");
         return false;
     }
-    *switches = {"-mx=" + QString::number(options.level)};
-    if (options.level != 0) {
-        QString methodArgument = "-m0=" + method;
-        if (options.dictionaryBytes)
-            methodArgument +=
-                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
-                     ? ":mem="
-                     : ":d=") +
-                QString::number(options.dictionaryBytes) + "b";
-        if (options.wordSize)
-            methodArgument +=
-                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
-                     ? ":o="
-                     : ":fb=") +
-                QString::number(options.wordSize);
-        switches->append(methodArgument);
+    // Qt request fields become the original GUI property DTO. Source
+    // SetOutProperties/parser owns method selection, overrides and time props.
+    NCompressDialog::CInfo info = options;
+    info.Level = UInt32(options.level);
+    info.Method = options.level ? UString(method.toStdWString().c_str()) : UString();
+    info.Dict64 = options.dictionaryBytes ? UInt64(options.dictionaryBytes) : UInt64(-1);
+    info.OrderMode = NCompressDialog::GetOrderMode(methodID);
+    info.Order = options.wordSize ? UInt32(options.wordSize) : UInt32(-1);
+    info.NumThreads = options.threads ? UInt32(options.threads) : UInt32(-1);
+    info.EncryptHeadersIsAllowed = !password.isEmpty() && suffix == "7z";
+    info.EncryptHeaders = encryptHeaders;
+    if (password.isEmpty())
+        info.EncryptionMethod.clear();
+    switches->clear();
+    const auto properties = NCompressDialog::GetCompressionProperties(info, suffix == "7z");
+    FOR_VECTOR(i, properties) {
+        const CProperty &property = properties[i];
+        QString argument = "-m" + QString::fromWCharArray(property.Name.Ptr());
+        if (!property.Value.IsEmpty())
+            argument += '=' + QString::fromWCharArray(property.Value.Ptr());
+        switches->append(argument);
     }
-    if (options.threads > 0)
-        switches->append("-mmt=" + QString::number(options.threads));
-    if (options.MemUsage.IsDefined)
-        switches->append("-mmemuse=" + QString::number(options.MemUsage.Val) +
-                         (options.MemUsage.IsPercent ? "%" : "b"));
-    if (options.SolidIsSpecified)
-        switches->append("-ms=" + QString::number(options.SolidBlockSize) + "b");
-    if (!password.isEmpty()) {
+    if (!password.isEmpty())
         switches->append("-p");
-        if (suffix == "7z")
-            switches->append(encryptHeaders ? "-mhe=on" : "-mhe=off");
-        else if (!options.EncryptionMethod.isEmpty())
-            switches->append("-mem=" + options.EncryptionMethod);
-    }
     return true;
 }
 
