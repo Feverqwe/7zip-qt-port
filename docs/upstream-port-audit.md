@@ -8,6 +8,74 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-08.2 — archive external-process integration (2026-10-01)
+
+Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, source repository
+https://github.com/ip7z/7zip.git. Copied PanelItemOpen.cpp CChildProcesses
+(284–431) and known-process MyThreadFunction (1133–1328) into the authoritative
+mirrored module. Original containers, sorted PID set, parent/same-name discovery,
+firstPass, 60-handle limit, two-second fallback, changed/unchanged checks,
+read-only error, Yes update, No/Cancel cleanup and failed-update retention remain.
+Handles and Win32 wait/snapshot calls use narrow IQtProcessServices adapters;
+CSnapshotProcess is exported to the service header because both boundaries need
+its record. QElapsedTimer supplies the monotonic GetTickCount interval.
+
+QtNativeProcessServices supplies OS operations only. Windows reuses unchanged
+Windows/ProcessUtils.cpp CProcess::Create (same pinned source), with Unicode
+build selection, Toolhelp snapshots and waitable process handles. Supported Qt
+Windows versions use QueryFullProcessImageNameW rather than legacy dynamic PSAPI.
+POSIX uses posix_spawnp with literal argv, waitpid for owned children, and process
+identity stamps for opened PIDs (macOS libproc start time, Linux proc start time).
+Closing a live owned POSIX handle leaves the app running and starts a PID-only
+reaper; it does not retain UI/archive objects. No shell is involved. A fresh
+process group retains child lineage after POSIX orphan reparenting; snapshot
+ParentId projects that group to the source-known PID set. Descendants that
+deliberately leave the group still require observed native parent/same-name
+capability; a controlled child surviving its parent verifies inherited lineage
+on the local macOS runtime. Windows/Linux runtime remains unverified.
+Platform references: [POSIX spawn](https://www.man7.org/linux/man-pages/man3/posix_spawn.3p.html),
+[wait](https://www.man7.org/linux/man-pages/man3/wait.3p.html), macOS SDK libproc.h /
+sys/proc_info.h and [Apple libproc implementation](https://github.com/apple-oss-distributions/xnu/blob/main/libsyscall/wrappers/libproc/libproc.c).
+
+QtExternalGuiCall projects MessageBox/SendMessage through a queued, cancellable
+request. Pending or checking calls keep worker records alive; GUI close sets the
+panel-owned exit flag before joining. A delivered modal call retains its record
+through completion and uses existing CanCloseNow. MainWindow defers requests
+until backend/operation/modal owners are free; runExternalArchiveUpdate marks
+source progress/operation ownership, suppresses ordinary backend completions and
+refreshes the edited panel with source selection before restoring the active one.
+StartEditApplication now obtains a known handle for archive launches; disk
+detached launch and no-handle association remain distinct. Archive F3/F4 are
+connected, including source read-only edit/error semantics. Wait handles expose
+Running/Exited/Error separately, preserving source wait-error retention instead
+of interpreting failed OS waits as normal process exit.
+
+Real fixtures cover ZIP Yes/No/Escape-Cancel, F3/F4, metadata/selection refresh,
+active-process and pending-request window close, failed/cancelled update,
+read-only TAR preservation, busy deferral, stale location and another focused
+panel. Native lifetime fixtures cover orphan child discovery, short/long unchanged
+cleanup, launch failure and injected wait failure. Extraction failure/cancel and
+password cancellation leave originals intact. Protected ZIP AES and 7z headers
+are checked with correct and wrong passwords after updates.
+
+The ZIP regression exposed an existing CLI adapter omission: input password
+delivery alone did not define output encryption for newly compressed data.
+Inspected pinned ZipHandlerOut.cpp 392–430 (CryptoGetTextPassword2,
+Password_Defined, inherited AES mode), ZipUpdate.cpp SetEncrypted and CLI password
+callback. ArchiveBackend::updateSourceFile now adds bare `-p` for protected ZIP;
+the password stays on stdin. Existing 7z inherited encryption is retained.
+This is a transport adaptation, not a new format implementation. The fixture's
+ZIP password is ASCII because upstream rejects non-ASCII ZIP passwords;
+7z uses a Unicode/space password. Existing no-handle and direct consumers pass.
+Prompt text/geometry JSON reviewed at normal/compact owner sizes 980×620/640×400;
+all labels/buttons fit. Focused 8/8 PASS, 4.85 s macOS arm64 Qt6.11.2.
+Unsandboxed check.sh PASS154/154, 48.27 s; format/build and inventory PASS.
+Exact baseline verify PASS197 exact/144 adapted/3 local paths. P1-08.2 accepted;
+P1-08.3 VerCtrl and parent acceptance remain mandatory. Old Windows CE branches,
+debug traces and legacy runtime API lookup are omitted for Qt-supported systems;
+the original functional discovery/wait/update bodies remain authoritative.
+Windows/Linux runtime and rendered Windows visual parity unverified.
+
 ## P1-08.1 — integrated disk View/Edit/Diff (2026-10-01)
 
 Same pinned baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, source repository

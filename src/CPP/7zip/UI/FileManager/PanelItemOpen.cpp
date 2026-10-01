@@ -3,6 +3,7 @@
 // Source archive-link/update bodies; Qt presentation and typed manager boundary.
 #include "../Common/ExtractingFilePath.h"
 #include "7zip/Common/StreamObjects.h"
+#include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "App.h"
@@ -20,8 +21,12 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/System.h"
+#include "qtexternalguicall.h"
+#include <QElapsedTimer>
 #include <QMessageBox>
 #include <QWidget>
+#include <chrono>
+#include <thread>
 
 using namespace NWindows;
 using namespace NFile;
@@ -33,6 +38,7 @@ void CExitEventLauncher::Exit(bool hardExit) {
     // Native event/owned-thread lifecycle. Always join on POSIX/Qt: detaching
     // after the source Windows 100 ms hard-exit timeout could outlive this owner.
     (void)hardExit;
+    _exiting.store(true);
     if (_needExit) {
         _exitEvent.Set();
         _needExit = false;
@@ -49,11 +55,99 @@ void CExitEventLauncher::Exit(bool hardExit) {
     }
 }
 
+// Source CChildProcesses; only OS handles/snapshot/process services are adapted.
+class CChildProcesses {
+    CRecordVector<UInt32> _ids;
+
+  public:
+    IQtProcessServices *Services = nullptr;
+    CRecordVector<IQtProcessHandle *> Handles;
+    CRecordVector<bool> NeedWait;
+    UString Path;
+    ~CChildProcesses() { CloseAll(); }
+    void DisableWait(unsigned index) { NeedWait[index] = false; }
+    void CloseAll() {
+        FOR_VECTOR(i, Handles) {
+            IQtProcessHandle *h = Handles[i];
+            if (h != nullptr)
+                delete h;
+        }
+        Handles.Clear();
+        NeedWait.Clear();
+        _ids.Clear();
+    }
+    void SetMainProcess(IQtProcessHandle *h) {
+        const UInt32 id = h->Id();
+        if (id != 0)
+            _ids.AddToUniqueSorted(id);
+        Path = h->FileName();
+        Handles.Add(h);
+        NeedWait.Add(true);
+    }
+    void Update(bool needFindProcessByPath) {
+        if (!Services)
+            return;
+        CObjectVector<CSnapshotProcess> sps;
+        Services->GetSnapshot(sps, _ids);
+        const int separ = Path.ReverseFind_PathSepar();
+        const UString mainName = Path.Ptr((unsigned)(separ + 1));
+        if (mainName.IsEmpty())
+            needFindProcessByPath = false;
+        const UInt32 currentProcessId = Services->CurrentProcessId();
+        for (;;) {
+            bool wasAdded = false;
+            FOR_VECTOR(i, sps) {
+                const CSnapshotProcess &sp = sps[i];
+                const UInt32 id = sp.Id;
+                if (id == currentProcessId)
+                    continue;
+                if (_ids.FindInSorted(id) >= 0)
+                    continue;
+                bool isSameName = false;
+                const UString &name = sp.Name;
+                if (needFindProcessByPath)
+                    isSameName = mainName.IsEqualTo_NoCase(name);
+                bool needAdd = false;
+                if (isSameName || _ids.FindInSorted(sp.ParentId) >= 0)
+                    needAdd = true;
+                if (needAdd) {
+                    IQtProcessHandle *hProcess = Services->OpenProcess(id);
+                    if (hProcess) {
+                        _ids.AddToUniqueSorted(id);
+                        Handles.Add(hProcess);
+                        NeedWait.Add(true);
+                        wasAdded = true;
+                    }
+                }
+            }
+            if (!wasAdded)
+                break;
+        }
+    }
+};
+
+static int WaitForProcesses(const CRecordVector<IQtProcessHandle *> &handles,
+                            CExitEventLauncher &launcher) {
+    for (;;) {
+        if (launcher.Exiting())
+            return int(handles.Size());
+        FOR_VECTOR(i, handles) {
+            const QtProcessStatus status = handles[i]->Status();
+            if (status == QtProcessStatus::Error)
+                return int(handles.Size()) + 1;
+            if (status == QtProcessStatus::Exited)
+                return int(i);
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    }
+}
+
 struct CTmpProcessInfo : public CTempFileInfo {
-    // No-handle association subset. Known/child-process tracking remains
-    // mandatory; metadata fields stay compatible with the source update sender.
+    CChildProcesses Processes;
     CExitEventLauncher *Launcher;
     CPanel *Window;
+    QWidget *Parent;
+    IQtExternalFileServices *ExternalServices;
     UString FullPathFolderPrefix;
     bool UsePassword;
     UString Password;
@@ -75,13 +169,129 @@ class CTmpProcessInfoRelease {
 
 static THREAD_FUNC_DECL MyThreadFunction(void *param) {
     CMyUniquePtr<CTmpProcessInfo> tpi((CTmpProcessInfo *)param);
-    // Source mainProcessWasSet == false path: an association may launch with
-    // no waitable handle, so file lifetime continues until the exit event.
+    CChildProcesses &processes = tpi->Processes;
+    const bool mainProcessWasSet = !processes.Handles.IsEmpty();
+    bool isComplexMode = true;
+    if (!processes.Handles.IsEmpty()) {
+        QElapsedTimer timer;
+        timer.start();
+        bool firstPass = true;
+        for (;;) {
+            CRecordVector<IQtProcessHandle *> handles;
+            CUIntVector indices;
+            FOR_VECTOR(i, processes.Handles) {
+                if (handles.Size() > 60)
+                    break;
+                if (processes.NeedWait[i]) {
+                    handles.Add(processes.Handles[i]);
+                    indices.Add(i);
+                }
+            }
+            bool needFindProcessByPath = false;
+            if (handles.IsEmpty()) {
+                if (!firstPass)
+                    break;
+            } else {
+                const int waitResult = WaitForProcesses(handles, *tpi->Launcher);
+                if (waitResult >= int(handles.Size())) {
+                    processes.CloseAll();
+                    return (THREAD_FUNC_RET_TYPE)(uintptr_t)(waitResult > int(handles.Size()) ? 1
+                                                                                              : 0);
+                }
+                if (firstPass && indices.Size() == 1) {
+                    const UInt32 curTime = UInt32(timer.elapsed());
+                    needFindProcessByPath = (curTime < 2 * 1000);
+                    if (needFindProcessByPath) {
+                        NFind::CFileInfo newFileInfo;
+                        if (newFileInfo.Find(tpi->FilePath))
+                            if (tpi->WasChanged_from_TempFileInfo(newFileInfo))
+                                needFindProcessByPath = false;
+                    }
+                }
+                processes.DisableWait(indices[(unsigned)waitResult]);
+            }
+            firstPass = false;
+            processes.Update(needFindProcessByPath);
+        }
+        const UInt32 curTime = UInt32(timer.elapsed());
+        processes.CloseAll();
+        isComplexMode = (curTime < 2 * 1000);
+    }
     bool needCheckTimestamp = true;
     for (;;) {
         NFind::CFileInfo newFileInfo;
         if (!newFileInfo.Find(tpi->FilePath))
             break;
+        if (mainProcessWasSet) {
+            if (tpi->WasChanged_from_TempFileInfo(newFileInfo)) {
+                const auto ready = [&] { return tpi->ExternalServices->CanHandleExternalUpdate(); };
+                const UString m = MyFormatNew(IDS_CANNOT_UPDATE_FILE, fs2us(tpi->FilePath));
+                if (tpi->ReadOnly) {
+                    UString error = m;
+                    error.Add_LF();
+                    AddLangString(error, IDS_PROP_READ_ONLY);
+                    error.Add_LF();
+                    error += tpi->FullPathFolderPrefix;
+                    QtExternalGuiCall(
+                        tpi->Parent, *tpi->Launcher,
+                        [&] {
+                            QMessageBox box(QMessageBox::Critical, QStringLiteral("7-Zip"),
+                                            ToQString(error), QMessageBox::Ok, tpi->Parent);
+                            box.setObjectName("externalUpdateError");
+                            box.setTextFormat(Qt::PlainText);
+                            return box.exec();
+                        },
+                        ready);
+                    return 0;
+                }
+                const UString message = MyFormatNew(IDS_WANT_UPDATE_MODIFIED_FILE, tpi->RelPath);
+                const int answer = QtExternalGuiCall(
+                    tpi->Parent, *tpi->Launcher,
+                    [&] {
+                        QMessageBox box(
+                            QMessageBox::Question, QStringLiteral("7-Zip"), ToQString(message),
+                            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, tpi->Parent);
+                        box.setObjectName("externalUpdatePrompt");
+                        box.setTextFormat(Qt::PlainText);
+                        return box.exec();
+                    },
+                    ready);
+                if (tpi->Launcher->Exiting())
+                    return 0;
+                if (answer == QMessageBox::Yes) {
+                    if (QtExternalGuiCall(
+                            tpi->Parent, *tpi->Launcher,
+                            [&] {
+                                return tpi->ExternalServices->RunArchiveUpdate(
+                                           *tpi->Window,
+                                           [&] {
+                                               return tpi->Window->OnOpenItemChanged(
+                                                   *tpi, tpi->FullPathFolderPrefix,
+                                                   tpi->UsePassword, tpi->Password);
+                                           })
+                                           ? 1
+                                           : 0;
+                            },
+                            ready) != 1) {
+                        QtExternalGuiCall(
+                            tpi->Parent, *tpi->Launcher,
+                            [&] {
+                                QMessageBox box(QMessageBox::Critical, QStringLiteral("7-Zip"),
+                                                ToQString(m), QMessageBox::Ok, tpi->Parent);
+                                box.setObjectName("externalUpdateError");
+                                box.setTextFormat(Qt::PlainText);
+                                return box.exec();
+                            },
+                            ready);
+                        return 0;
+                    }
+                }
+                needCheckTimestamp = false;
+                break;
+            }
+            if (!isComplexMode)
+                break;
+        }
         const WRes waitResult = tpi->Launcher->_exitEvent.Lock();
         if (waitResult == 0)
             break;
@@ -359,18 +569,21 @@ void SplitCmdLineSmart(const UString &cmd, UString &prg, UString &params) {
 }
 
 static HRESULT StartAppWithParams(const UString &cmd, const UStringVector &paramVector,
-                                  IQtExternalFileServices &process, QWidget *window) {
+                                  IQtExternalFileServices &process, QWidget *window,
+                                  IQtProcessHandle **knownProcess = nullptr) {
     UString param;
     UString prg;
     SplitCmdLineSmart(cmd, prg, param);
     param.Trim();
     // The source appends quoted paths to this string. The process service keeps
     // them as argv entries on POSIX and retains native quoting on Windows.
-    return process.CreateProcess(prg, param, paramVector, window);
+    return knownProcess ? process.CreateKnownProcess(prg, param, paramVector, window, *knownProcess)
+                        : process.CreateProcess(prg, param, paramVector, window);
 }
 
 static HRESULT StartEditApplication(const UString &path, bool useEditor, QWidget *window,
-                                    IQtExternalFileServices &process, const QString &settingsPath) {
+                                    IQtExternalFileServices &process, const QString &settingsPath,
+                                    IQtProcessHandle **knownProcess = nullptr) {
     UString command;
     ReadRegEditor(useEditor, command, settingsPath);
     if (command.IsEmpty()) {
@@ -385,12 +598,14 @@ static HRESULT StartEditApplication(const UString &path, bool useEditor, QWidget
         // There is no upstream POSIX default text editor. View uses the system
         // association; Edit requires a configured executable.
         if (!useEditor)
-            return process.StartApplication(UString(), path, window);
+            return knownProcess
+                       ? process.StartApplicationKnown(UString(), path, window, *knownProcess)
+                       : process.StartApplication(UString(), path, window);
 #endif
     }
     UStringVector params;
     params.Add(path);
-    const HRESULT res = StartAppWithParams(command, params, process, window);
+    const HRESULT res = StartAppWithParams(command, params, process, window, knownProcess);
     if (res != S_OK) {
         QMessageBox box(QMessageBox::Critical, QStringLiteral("7-Zip"),
                         QString::fromWCharArray(LangString(IDS_CANNOT_START_EDITOR).Ptr()),
@@ -814,8 +1029,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     if (!tryExternal)
         return;
 
-    if (!_externalFileServices || editMode) {
-        // Known-process/editor transport remains mandatory P0-04/P1-08 work.
+    if (!_externalFileServices) {
         MessageBox_Error_UnsupportOperation();
         return;
     }
@@ -836,16 +1050,25 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     // Allocate tracking before launch/thread creation; Add must not throw while
     // the worker already owns this temp record.
     _exitEventLauncher->_threads.ReserveOnePosition();
-    const HRESULT res = _externalFileServices->StartApplication(fs2us(tempDirNorm),
-                                                                fs2us(tempFilePath), GetParent());
+    IQtProcessHandle *process = nullptr;
+    const HRESULT res = editMode
+                            ? StartEditApplication(fs2us(tempFilePath), useEditor, GetParent(),
+                                                   *_externalFileServices, _settingsPath, &process)
+                            : _externalFileServices->StartApplicationKnown(
+                                  fs2us(tempDirNorm), fs2us(tempFilePath), GetParent(), process);
     // No handle never proves completion of a successful association launch.
     if (res != S_OK)
         return;
     tpi->Window = this;
+    tpi->Parent = GetParent();
+    tpi->ExternalServices = _externalFileServices;
     tpi->FullPathFolderPrefix = _currentFolderPrefix;
     tpi->FileIndex = index;
     tpi->RelPath = relPath;
     tpi->Launcher = _exitEventLauncher.get();
+    tpi->Processes.Services = _externalFileServices->ProcessServices();
+    if (process)
+        tpi->Processes.SetMainProcess(process);
     ::CThread th;
     Thread_CONSTRUCT(&th) if (Thread_Create(&th, MyThreadFunction, tpi.get()) != 0) throw 271824;
     _exitEventLauncher->_threads.AddInReserved(th);

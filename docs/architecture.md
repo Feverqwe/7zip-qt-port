@@ -484,8 +484,18 @@ owned timer prevent access to deleted rows; hovering does not confirm a path.
 Disk F3/F4 dispatch CPanel::EditItem using focused native indices; CApp::DiffFiles
 owns pair/opposite-panel/fallback path choice. IQtExternalFileServices supplies
 process creation with parsed program/base parameters and literal path argv;
-QtAssociatedFileServices detaches disk launches. Archive known/child-process
-lifetime needs a separate waitable service in P1-08.2. The built-in text dialog
+QtAssociatedFileServices detaches disk launches. Archive launches return a
+waitable IQtProcessHandle through QtNativeProcessServices; the source
+CChildProcesses/MyThreadFunction own discovery, waiting and temporary-file
+decisions. OS services supply snapshots, identity and process handles only.
+QtExternalGuiCall defers source prompts/updates until the GUI operation owner is
+idle, cancels pending delivery before panel teardown and keeps delivered records
+alive through modal completion. MainWindow's external-update runner owns source
+progress and refreshes the edited panel/selection while retaining the active panel.
+Source password callbacks reach the writer through ArchiveBackend; protected ZIP
+file updates enable CLI encryption explicitly, without password argv. POSIX
+launch groups preserve ordinary child lineage after orphan reparenting; deliberate
+daemon/session separation can prevent discovery. The built-in text dialog
 has explicit extra menu actions and remains independent of native F3/F4.
 `FmSettingsPath` supplies the shared INI location outside MainWindow; callers
 may supply an explicit path to history dialogs.

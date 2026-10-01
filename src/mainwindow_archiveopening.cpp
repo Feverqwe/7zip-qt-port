@@ -5,7 +5,41 @@
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtarchivefileresource.h"
+#include <QScopeGuard>
 #include <QScopedValueRollback>
+
+bool MainWindow::canHandleExternalUpdate() const {
+    return !app_.QtOperations().active() && !app_.QtOperations().closed() &&
+           !sourceArchiveProgress_ && !backend_->busy() && !QApplication::activeModalWidget();
+}
+
+bool MainWindow::runExternalArchiveUpdate(CPanel &panel, const std::function<bool()> &body) {
+    if (!canHandleExternalUpdate())
+        return false;
+    CSelectedState selection;
+    panel.SaveSelectedState(selection);
+    bool result;
+    {
+        QScopedValueRollback<bool> owner(sourceArchiveProgress_, true);
+        app_.QtOperations().Begin(QtAppOperationState::Kind::Operation);
+        const auto finish = qScopeGuard([&] { app_.QtOperations().End(); });
+        result = body();
+    }
+    if (result) {
+        const unsigned previous = projectedPanel_;
+        unsigned index = 0;
+        while (index < kNumPanelsMax && &app_.Panels[index] != &panel)
+            ++index;
+        if (index < kNumPanelsMax) {
+            activatePanelUi(index);
+            renderBoundFolder();
+            panel.RefreshListCtrl(selection);
+            activatePanelUi(previous);
+        }
+    }
+    refreshActions();
+    return result;
+}
 
 void MainWindow::openArchive(const QString &path) {
     if (app_.QtOperations().closed())

@@ -813,6 +813,15 @@ F3/F4 disk launches через собственный fixture-процесс, fo
 selected, source Diff pair/opposite/fallback в normal/flat списках, ошибку запуска,
 Editor Browse/Apply/Cancel и normal/compact JSON. `external_launch` проверяет
 literal argv с пробелами/Unicode/метасимволами без shell и source parser.
+`archive_external_edit` проверяет реальные ZIP F3/F4, Yes/No/Escape-Cancel,
+размер и selection после обновления, busy deferral, pending close, смену location
+и второй активной панели, failure/cancel и read-only TAR с сохранением правки.
+`archive_external_lifetime` проверяет дочерний процесс после выхода родителя,
+короткий/долгий неизменённый файл, ошибку запуска и wait error с retained copy.
+`archive_external_security` проверяет extraction failure/cancel, password cancel,
+ZIP AES и 7z encrypted headers, обновлённые bytes и отказ с неверным паролем.
+Fixtures запускают собственный управляемый executable, не пользовательский editor.
+Prompt JSON/geometry проверяются при окне 980×620 и 640×400.
 `archive_mutation` проверяет реальную замену файла в `.7z` и `.zip` и отказ от
 небезопасного пути без изменения архива. Windows/Linux runtime не проверен локально.
 

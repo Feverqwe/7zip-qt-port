@@ -341,6 +341,15 @@ footer at 640×390/520×350 and writes external-editor-options widget JSON.
 These reports validate Qt geometry and resource structure; rendered Windows
 parity remains unverified.
 
+Archive changed-file prompt reference: the pinned `PanelItemOpen.cpp`
+`MyThreadFunction`, `IDS_WANT_UPDATE_MODIFIED_FILE` and Yes/No/Cancel MessageBox.
+Qt uses plain text, the relative filename and three source answers. Source No
+and Cancel both discard the temporary copy without updating; read-only or failed
+update retains it. `archive_external_edit` checks fully visible labels/buttons,
+text fit and actual Yes/No/Escape at normal/compact owner sizes 980×620/640×400,
+writing `external-update-prompt-*` JSON. Qt chooses message-box sizing; these
+reports establish usable geometry, not rendered Windows pixel parity.
+
 ## Folder history list
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

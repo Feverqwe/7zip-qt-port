@@ -103,6 +103,8 @@ class MainWindow : public QMainWindow {
     friend class QtFileManagerCommands;
     void closeEvent(QCloseEvent *event) override;
     void quiesceOperations();
+    bool canHandleExternalUpdate() const;
+    bool runExternalArchiveUpdate(CPanel &panel, const std::function<bool()> &body);
     QMenu *createMenusAndToolbar();
     void createFileActions(QMenu *menu, QToolBar *toolbar);
     void createFileExtras(QMenu *menu, QToolBar *toolbar);

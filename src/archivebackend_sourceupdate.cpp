@@ -127,10 +127,16 @@ void ArchiveBackend::updateSourceFile(const QString &archive, const QString &ent
     // ArchiveCommandLine.cpp ParseUpdateCommandString: '-' suppresses modification
     // of the input; '!' selects the separate output. All matching states compress
     // the source file, preserving the native UpdateOneFile NewData/NewProps choice.
-    start(Job::SourceUpdate,
-          {"u", "-y", "-bsp1", "-bb1", "-spd", "-t" + format, "-u-",
-           "-up1q1r2x2y2z2w2!" + createTemporary_, "--", archive_, entry},
-          sourceRoot);
+    QStringList arguments = {
+        "u",    "-y",          "-bsp1", "-bb1",
+        "-spd", "-t" + format, "-u-",   "-up1q1r2x2y2z2w2!" + createTemporary_};
+    // ZipHandlerOut.cpp uses the update callback's PasswordIsDefined for new
+    // data. CLI reading credentials alone do not enable encryption of that data.
+    // The existing 7z handler inherits encryption from the opened archive.
+    if (format == "zip" && !password.isEmpty())
+        arguments.append("-p");
+    arguments += QStringList{"--", archive_, entry};
+    start(Job::SourceUpdate, arguments, sourceRoot);
 }
 
 void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &entries,

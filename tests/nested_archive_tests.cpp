@@ -190,7 +190,8 @@ class NestedArchiveTests : public QObject {
         QVERIFY(!remove->isEnabled());
         QVERIFY(!rename->isEnabled());
         QVERIFY(!move->isEnabled());
-        QVERIFY(!edit->isEnabled());
+        QVERIFY(edit->isEnabled());
+        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction")->isEnabled());
 
         const QString destination = dir.filePath("output");
         QVERIFY(QDir().mkdir(destination));

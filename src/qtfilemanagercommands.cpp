@@ -245,7 +245,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return c.focused;
     case IDM_FILE_VIEW:
     case IDM_FILE_EDIT:
-        return c.focusedFile && c.filesystem;
+        return c.focusedFile && (c.filesystem || c.archive);
     case TextView:
         return c.oneFile;
     case TextEdit:

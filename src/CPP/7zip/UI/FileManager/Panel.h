@@ -21,10 +21,12 @@
 #include "Windows/PropVariantConv.h"
 #include "Windows/Synchronization.h"
 #include "Windows/TimeUtils.h"
+#include "qtexternalprocess.h"
 #include "qtpanellist.h"
 #include <QObject>
 #include <QPointer>
 #include <QString>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -33,6 +35,7 @@ class CFolderHistory;
 struct CAppState;
 class CFastFolders;
 class CListViewDialog;
+class CPanel;
 class QWidget;
 class CVirtFileSystem;
 namespace NUpdateArchive {
@@ -41,6 +44,7 @@ struct CActionSet;
 
 // Native launcher owner, scoped to this panel rather than a process-wide global.
 struct CExitEventLauncher {
+    std::atomic_bool _exiting{false};
     NWindows::NSynchronization::CManualResetEvent _exitEvent;
     bool _needExit;
     unsigned _numActiveThreads;
@@ -54,6 +58,7 @@ struct CExitEventLauncher {
     }
     ~CExitEventLauncher() { Exit(true); }
     void Exit(bool hardExit);
+    bool Exiting() const { return _exiting.load(); }
 };
 
 // Default OS associations can successfully launch without a process handle.
@@ -66,6 +71,19 @@ class IQtExternalFileServices {
     virtual HRESULT CreateProcess(const UString &, const UString &, const UStringVector &,
                                   QWidget *) {
         return E_NOTIMPL;
+    }
+    virtual IQtProcessServices *ProcessServices() { return nullptr; }
+    virtual bool CanHandleExternalUpdate() const { return true; }
+    virtual bool RunArchiveUpdate(CPanel &, const std::function<bool()> &body) { return body(); }
+    virtual HRESULT CreateKnownProcess(const UString &, const UString &, const UStringVector &,
+                                       QWidget *, IQtProcessHandle *&process) {
+        process = nullptr;
+        return E_NOTIMPL;
+    }
+    virtual HRESULT StartApplicationKnown(const UString &dir, const UString &path, QWidget *window,
+                                          IQtProcessHandle *&process) {
+        process = nullptr;
+        return StartApplication(dir, path, window);
     }
 };
 

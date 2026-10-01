@@ -8,8 +8,26 @@ namespace {
 bool OpenAssociation(const QUrl &url) { return QDesktopServices::openUrl(url); }
 } // namespace
 
-QtAssociatedFileServices::QtAssociatedFileServices(std::function<bool(const QUrl &)> opener)
-    : _opener(opener ? std::move(opener) : OpenAssociation) {}
+QtAssociatedFileServices::QtAssociatedFileServices(
+    std::function<bool(const QUrl &)> opener,
+    std::function<bool(CPanel &, const std::function<bool()> &)> updateRunner,
+    std::function<bool()> updateReady)
+    : _opener(opener ? std::move(opener) : OpenAssociation), _updateRunner(std::move(updateRunner)),
+      _updateReady(std::move(updateReady)) {}
+
+bool QtAssociatedFileServices::CanHandleExternalUpdate() const {
+    return !_updateReady || _updateReady();
+}
+bool QtAssociatedFileServices::RunArchiveUpdate(CPanel &panel, const std::function<bool()> &body) {
+    return _updateRunner ? _updateRunner(panel, body) : body();
+}
+
+HRESULT QtAssociatedFileServices::CreateKnownProcess(const UString &program,
+                                                     const UString &parameters,
+                                                     const UStringVector &paths, QWidget *,
+                                                     IQtProcessHandle *&process) {
+    return _processServices.Create(program, parameters, paths, process);
+}
 
 HRESULT QtAssociatedFileServices::CreateProcess(const UString &program, const UString &parameters,
                                                 const UStringVector &paths, QWidget *) {

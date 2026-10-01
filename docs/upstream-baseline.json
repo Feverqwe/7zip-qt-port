@@ -184,6 +184,7 @@
     "third_party/7zip/CPP/Windows/Handle.h",
     "third_party/7zip/CPP/Windows/Net.cpp",
     "third_party/7zip/CPP/Windows/Net.h",
+    "third_party/7zip/CPP/Windows/ProcessUtils.cpp",
     "third_party/7zip/CPP/Windows/ProcessUtils.h",
     "third_party/7zip/CPP/Windows/PropVariant.cpp",
     "third_party/7zip/CPP/Windows/PropVariant.h",

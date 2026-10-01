@@ -32,7 +32,12 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         panelsDefined && windowInfo.currentPanel < kNumPanelsMax ? windowInfo.currentPanel : 0;
     splitterPos_ = panelsDefined ? static_cast<int>(windowInfo.splitterPos) : width() / 2;
     folderManager_ = new QtArchiveFolderManager(*backend_);
-    associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(fileOpener_);
+    associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(
+        fileOpener_,
+        [this](CPanel &panel, const std::function<bool()> &body) {
+            return runExternalArchiveUpdate(panel, body);
+        },
+        [this] { return canHandleExternalUpdate(); });
     for (auto &panel : app_.Panels) {
         panel.AttachFolderManager(folderManager_, toolbarSettingsPath());
         panel.AttachExternalFileServices(associatedFileServices_.get());

@@ -57,7 +57,8 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         });
         window.openArchive(archive);
         table(window)->selectRow(0);
-        for (const char *name : {"moveAction", "editFileAction"}) {
+        QVERIFY(action(window, "editFileAction")->isEnabled());
+        for (const char *name : {"moveAction", "builtinTextEditAction"}) {
             auto *command = action(window, name);
             QVERIFY(!command->isEnabled());
             command->setEnabled(true);
