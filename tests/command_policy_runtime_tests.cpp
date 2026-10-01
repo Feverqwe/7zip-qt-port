@@ -57,12 +57,19 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         });
         window.openArchive(archive);
         table(window)->selectRow(0);
-        for (const char *name :
-             {"moveAction", "addArchiveAction", "toolbarAddAction", "editFileAction"}) {
+        for (const char *name : {"moveAction", "editFileAction"}) {
             auto *command = action(window, name);
             QVERIFY(!command->isEnabled());
             command->setEnabled(true);
             command->trigger();
+        }
+        for (const char *name : {"addArchiveAction", "toolbarAddAction"}) {
+            auto *command = action(window, name);
+            QCOMPARE(command->isEnabled(), encrypted);
+            if (!encrypted) {
+                command->setEnabled(true);
+                command->trigger();
+            }
         }
         for (const char *name : {"deleteAction", "renameAction", "createFolderAction"})
             QCOMPARE(action(window, name)->isEnabled(), encrypted);

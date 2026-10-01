@@ -648,6 +648,13 @@ checks replacement bytes and Store compression. `compression` checks update
 dialog normal/compact scroll geometry and verifies Cancel leaves the saved
 compression profile unchanged.
 
+P1-05.3: `source_update_backend` checks protected ZIP AES and 7z header
+Add through the source Agent and transactional backend. It verifies old/new
+Unicode file bytes and encryption, wrong-password rollback and cancellation
+without altering the original archive. `ui_update_modes` checks Add on an
+opened protected 7z with one password prompt and refreshed listing. Existing
+archive encryption options remain inherited from the opened archive.
+
 P1-05.2: `source_update_backend` creates and updates real ZIP/7z archives
 with Relative, Full and Absolute names. It checks source `CCensor` enumeration,
 Unicode nested and empty directories, a multi-root Relative archive, Absolute
@@ -656,7 +663,7 @@ rejected traversal rename. `ui_update_modes` exercises Full and Absolute from
 the existing-archive dialog. `compression` checks the path-mode control and
 scroll reachability in current-build normal/compact reports. Absolute entries
 are listable but extraction remains guarded by `ArchiveBackend` until P2-07;
-protected Add and directory filtering remain P1-05.3.
+protected Add is covered by P1-05.3; directory filtering remains P1-05.4.
 
 `compression` checks the upstream level masks (0–9 for 7z; 0, 1, 3, 5, 7, 9 for ZIP), ZIP PPMd archive creation, and that changing the 7z/ZIP format updates available methods, password visibility and confirmation controls, and that mismatched passwords prevent submission. It checks method-dependent dictionary, word-size and solid-block controls, creates disposable archives with these options, lists their Unicode filenames and checks the reported method from `7zz l -slt`. Invalid or incompatible options must fail before creating a target. A compact creation dialog must keep confirmation buttons visible and allow scrolling to the password fields. These checks run locally on macOS; the options and dialog layout still need Windows and Linux verification.
 `properties` checks mixed filesystem selection, archive packed sizes, recursive

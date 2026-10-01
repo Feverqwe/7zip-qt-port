@@ -220,9 +220,9 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case CreateArchive:
         return c.filesystem;
     case AddSources:
-        return c.writable;
+        return c.mutationWritable;
     case kMenuCmdID_Toolbar_Add:
-        return c.filesystem || c.writable;
+        return c.filesystem || c.mutationWritable;
     case kMenuCmdID_Toolbar_Extract:
         return c.archive && c.entries;
     case kMenuCmdID_Toolbar_Test:

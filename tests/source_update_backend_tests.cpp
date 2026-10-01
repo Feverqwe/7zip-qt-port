@@ -1263,6 +1263,89 @@ class SourceUpdateBackendTests final : public QObject {
             for (int kind = 0; kind < 3; ++kind)
                 QTest::newRow(qPrintable(format + QString::number(kind))) << format << kind;
     }
+    void protectedGuiAddPreservesEncryption_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("zip-aes") << QStringLiteral("zip");
+        QTest::newRow("7z-header") << QStringLiteral("7z");
+    }
+    void protectedGuiAddPreservesEncryption() {
+        QFETCH(QString, format);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("protected." + format);
+        const QString source = QDir(root).filePath(QStringLiteral("новый файл.txt"));
+        QVERIFY(writeFile(QDir(root).filePath("keep.txt"), "protected old"));
+        QVERIFY(writeFile(source, "protected new"));
+        QStringList args = {"a", "-t" + format, "-pfixture123"};
+        args << (format == "7z" ? "-mhe=on" : "-mem=AES256") << "--" << archive << "keep.txt";
+        QVERIFY(runEngine(root, args));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, format);
+        worker.RootFolder = true;
+        worker.ArchivePaths = {"keep.txt"};
+        worker.ActionSet = &NUpdateArchive::k_ActionSet_Add;
+        worker.PathMode = NWildcard::k_RelatPath;
+        worker.Password = "fixture123";
+        worker.DisableUserQuestions = true;
+        auto transport = worker.CreateProgressTransport();
+        QCOMPARE(worker.Create(L"Protected path-mode Add", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QProcess listProcess;
+        listProcess.start(enginePath(), {"l", "-slt", "-pfixture123", "--", archive});
+        QVERIFY(listProcess.waitForFinished(10000));
+        QCOMPARE(listProcess.exitCode(), 0);
+        const QByteArray listing = listProcess.readAllStandardOutput();
+        QVERIFY(listing.contains("Path = keep.txt"));
+        const QString listingText =
+            QString::fromUtf8(listing).normalized(QString::NormalizationForm_C);
+        QVERIFY(listingText.contains(QStringLiteral("Path = новый файл.txt")));
+        QCOMPARE(listing.count("Encrypted = +"), 2);
+        if (format == "zip")
+            QCOMPARE(listing.count("Method = AES-256"), 2);
+        else
+            QVERIFY(!runEngine(fixture.path(), {"l", "-slt", "-pwrong", "--", archive}));
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine(fixture.path(),
+                          {"x", "-y", "-pfixture123", "-o" + extracted, "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.txt")), QByteArray("protected old"));
+        const QString addedPath = QDir(extracted).filePath(QStringLiteral("новый файл.txt"));
+        QCOMPARE(readFile(addedPath), QByteArray("protected new"));
+    }
+    void protectedPlanWrongPasswordAndCancelKeepOriginal() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("protected.7z");
+        const QString output = fixture.filePath("updated.7z");
+        QVERIFY(writeFile(QDir(root).filePath("keep.txt"), "old"));
+        QVERIFY(writeFile(QDir(root).filePath("added.txt"), QByteArray(4 * 1024 * 1024, 'a')));
+        QVERIFY(
+            runEngine(root, {"a", "-t7z", "-pfixture123", "-mhe=on", "--", archive, "keep.txt"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend::SourceUpdatePlan plan;
+        plan.allowProtected = true;
+        plan.fileRoot = root;
+        plan.files = {"added.txt"};
+        CompressionOptions options;
+        ArchiveBackend wrong(nullptr, enginePath());
+        QSignalSpy wrongFinished(&wrong, &ArchiveBackend::finished);
+        wrong.updateSourcePlan(archive, plan, output, "7z", "wrong", options);
+        QTRY_COMPARE_WITH_TIMEOUT(wrongFinished.count(), 1, 10000);
+        QVERIFY(!wrongFinished.takeFirst().first().toBool());
+        QVERIFY(!QFileInfo::exists(output));
+        QCOMPARE(readFile(archive), original);
+
+        ArchiveBackend cancelled(nullptr, enginePath());
+        QSignalSpy cancelledFinished(&cancelled, &ArchiveBackend::finished);
+        connect(&cancelled, &ArchiveBackend::engineStarted, &cancelled, &ArchiveBackend::cancel);
+        cancelled.updateSourcePlan(archive, plan, output, "7z", "fixture123", options);
+        QTRY_COMPARE_WITH_TIMEOUT(cancelledFinished.count(), 1, 10000);
+        QVERIFY(!cancelledFinished.takeFirst().first().toBool());
+        QCOMPARE(cancelled.lastResult(), E_ABORT);
+        QVERIFY(!QFileInfo::exists(output));
+        QCOMPARE(readFile(archive), original);
+    }
     void encryptedSourceMutationPreservesProtection() {
         QFETCH(QString, format);
         QFETCH(int, operation);

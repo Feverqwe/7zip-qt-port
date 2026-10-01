@@ -96,6 +96,7 @@ class ArchiveBackend : public QObject {
         QStringList directories;
         QList<QPair<QString, QString>> renames;
         bool allowAbsolute = false;
+        bool allowProtected = false;
         QString fileRoot;
         QString directoryRoot;
     };

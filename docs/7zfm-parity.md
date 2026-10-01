@@ -747,6 +747,19 @@ QFileIconProvider. Цвет/форма иконок зависят от ОС. `p
 normal/compact Qt JSON и disk/archive popup, но Windows rendered reference,
 Windows/Linux runtime и полноценные shell/namespace icons ещё не проверены.
 
+## P1-05.3 — Add в защищённый архив (2026-10-01)
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/PanelCopy.cpp::CPanel::CopyFrom` and
+`CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp::CryptoGetTextPassword2`.
+Add is available on a writable protected top-level ZIP/7z. The Qt dialog
+uses the password already entered to open the archive and preserves ZIP AES
+or 7z header encryption for newly added files. It does not expose a separate
+password or encryption-method field for an existing archive. Wrong-password
+and cancelled updates leave the original archive intact. macOS arm64 source
+and UI fixtures establish this workflow; Windows/Linux runtime and rendered
+Windows appearance remain unverified. Directory filtering remains P1-05.4.
+
 ## P1-05.2 — режимы путей в Add (2026-10-01)
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
@@ -762,9 +775,9 @@ and scroll area remain Qt adaptations.
 
 The `compression` normal/compact JSON reports at 760×720 and 640×480 show
 the path-mode row and accessible footer on macOS. Rendered Windows appearance
-and Windows/Linux runtime remain unverified. Existing-archive protected Add
-and directory filtering with a kept descendant remain P1-05.3. Absolute
-entries can be listed, but safe extraction currently rejects them; P2-07
+and Windows/Linux runtime remain unverified. Existing-archive protected
+Add is covered by P1-05.3; directory filtering with a kept descendant remains
+P1-05.4. Absolute entries can be listed, but safe extraction currently rejects them; P2-07
 owns the extraction policy.
 
 ## P1-05.1 — Add в существующий ZIP/7z (2026-10-01)

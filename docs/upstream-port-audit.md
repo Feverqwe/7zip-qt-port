@@ -8,6 +8,43 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-05.3 — защищённый Add в существующий архив (2026-10-01)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Original paths and symbols: `CPP/7zip/UI/FileManager/PanelCopy.cpp`
+`CPanel::CopyFrom`, `CPP/7zip/UI/Agent/AgentOut.cpp`
+`CAgent::DoOperation`, `CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp`
+`CUpdateCallbackAgent::CryptoGetTextPassword2`, and
+`CPP/7zip/UI/GUI/UpdateGUI.cpp` `FindUpdateMode`.
+The source panel and Agent still produce the Add action plan and forward the
+opened archive password through the original update callback. No functional
+source body is replaced in this iteration.
+
+The local `QtArchiveFileResource` callback adapter marks a plan protected
+only when its callback supplies a password. `ArchiveBackend` keeps its
+transactional copy and rejects an unmarked password-bearing plan. For 7z it
+lets the existing archive's encryption and header mode carry through the
+`7zz` update; explicitly passing `-p` would trigger a second password prompt
+after opening the protected header, while `-mhe=off` would change the header
+mode. For ZIP AES, `-p` is retained so added items are encrypted; the engine
+retains the existing AES method. These switches and process details have no
+portable upstream counterpart because the project uses the official CLI
+engine as its update transport.
+
+Qt command availability permits Add on a writable protected top-level
+archive, and the dialog reuses its opened password without requesting it
+again. Direct source tests verify encrypted old and Unicode new file bytes,
+ZIP AES, 7z encrypted headers, wrong-password failure and cancellation
+rollback. The UI test verifies one password prompt and successful protected
+Add. The existing-target dialog still does not offer a separate password or
+encryption-method control; it preserves the opened archive's protection.
+Directory filtering with a retained descendant and remaining Add branches
+are P1-05.4. Windows/Linux runtime and rendered Windows appearance remain
+unverified. On macOS arm64/Qt 6.11.2, affected targets built, focused
+`source_update_backend`, `ui_update_modes`, `ui_operations`, `app_state` and
+`command_policy_runtime` passed after updating the policy expectation, and
+the full unsandboxed `./scripts/check.sh` passed on 2026-10-01.
+
 ## P1-05.2 — режимы путей нового и существующего архива (2026-10-01)
 
 Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
@@ -43,11 +80,11 @@ the project bridges the original in-process callback to `7zz`.
 Port scope: ZIP and 7z, new and existing archives, files and simple directory
 trees including empty directories. `FindSourceUpdatePlan` still declines an
 omitted explicit directory that contains an otherwise kept child; the CLI
-`7zz d` command removes that child too. Protected Add remains guarded, pending
-encryption-preserving update handling. Absolute archive entries are listed but
-the current safe extraction path rejects them; extraction policy belongs to
+`7zz d` command removes that child too. Protected Add is covered by
+P1-05.3. Absolute archive entries are listed but the current safe extraction
+path rejects them; extraction policy belongs to
 P2-07. Full path root/UNC behavior needs Windows runtime validation. These
-branches and protected Add belong to P1-05.3 before parent acceptance.
+directory branches belong to P1-05.4 before parent acceptance.
 `clang-format` affects only the edited portions of mirrored C++ files; source
 notices remain. The baseline inventory now lists the two `UpdateGUI` files
 introduced in P1-05.1. On macOS arm64/Qt 6.11.2 the full unsandboxed gate

@@ -188,8 +188,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         emit finished(false, QStringLiteral("Недопустимый запрос на обновление архива."));
         return;
     }
-    if (!password.isEmpty()) {
-        emit finished(false, QStringLiteral("Обновление защищённого архива пока недоступно."));
+    if (!password.isEmpty() && !plan.allowProtected) {
+        emit finished(false, QStringLiteral("Обновление защищённого архива не подтверждено."));
         return;
     }
     const QDir fileRoot(plan.fileRoot);
@@ -242,6 +242,10 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         if (!compressionSwitches(format, password, false, *options, &switches, &error)) {
             emit finished(false, error);
             return;
+        }
+        if (!password.isEmpty() && format == "7z") {
+            switches.removeAll("-p");
+            switches.removeAll("-mhe=off");
         }
     }
     if (!QFile::copy(input.absoluteFilePath(), result.absoluteFilePath())) {

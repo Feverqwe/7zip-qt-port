@@ -155,11 +155,6 @@ void MainWindow::createArchive(const QString &target, const QStringList &sources
 void MainWindow::addDialog() {
     if (state_ != State::Viewing)
         return;
-    if (info_.encrypted) {
-        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
-                             QStringLiteral("Обновление защищённого архива пока недоступно."));
-        return;
-    }
     CreateArchiveDialog dialog(returnDirectory_, {}, this, archive_);
     if (dialog.exec() != QDialog::Accepted)
         return;
@@ -173,11 +168,6 @@ void MainWindow::updateArchiveFromDialog(const QStringList &sources,
     if (app_.QtOperations().closed() || state_ != State::Viewing || sources.isEmpty() ||
         isNestedArchive() || !ArchiveFormats::canModify(archive_))
         return;
-    if (info_.encrypted) {
-        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
-                             QStringLiteral("Обновление защищённого архива пока недоступно."));
-        return;
-    }
     CPanel &panel = app_.GetFocusedPanel();
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
     auto *resource =

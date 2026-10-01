@@ -597,7 +597,8 @@ Compress resource geometry включает новые controls и compact scrol
 существующих верхних ZIP/7z с относительными именами, исходный callback plan,
 настройки сжатия и транзакционный backend; P1-05.2 — исходные Relative/Full/
 Absolute path modes для нового и существующего ZIP/7z и простых каталогов;
-P1-05.3 — защищённый Add, сложные directory branches и полная parent приёмка.
+P1-05.3 — защищённый Add; P1-05.4 — сложные directory branches и
+полная parent приёмка.
 Промежуточные результаты не закрывают P1-05.
 
 ### P1-06. Многотомные архивы и связанные диалоги

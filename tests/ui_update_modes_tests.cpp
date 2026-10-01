@@ -23,6 +23,75 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
+    void protectedAddUsesOpenedArchivePassword() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("protected.7z");
+        const QString added = QDir(root).filePath("added.txt");
+        QVERIFY(QDir().mkpath(root));
+        QFile keep(QDir(root).filePath("keep.txt"));
+        QVERIFY(keep.open(QIODevice::WriteOnly));
+        QCOMPARE(keep.write("old"), qint64(3));
+        keep.close();
+        QVERIFY(
+            runEngine(root, {"a", "-t7z", "-pfixture123", "-mhe=on", "--", archive, "keep.txt"}));
+        QFile source(added);
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write("new"), qint64(3));
+        source.close();
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        int passwordPrompts = 0;
+        QTimer passwordAnswer;
+        connect(&passwordAnswer, &QTimer::timeout, &window, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            if (!dialog || dialog->objectName() != "passwordDialog")
+                return;
+            ++passwordPrompts;
+            dialog->findChild<QLineEdit *>("passwordEdit")->setText("fixture123");
+            dialog->accept();
+        });
+        passwordAnswer.start(1);
+        window.openArchive(archive);
+        window.show();
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        bool accepted = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            if (!dialog)
+                return;
+            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
+            auto *available = dialog->findChild<QListWidget *>("availableSources");
+            if (!directory || !available) {
+                dialog->reject();
+                return;
+            }
+            directory->setText(root);
+            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
+            for (int row = 0; row < available->count(); ++row)
+                if (QFileInfo(available->item(row)->data(Qt::UserRole).toString()).fileName() ==
+                    "added.txt")
+                    available->item(row)->setSelected(true);
+            if (available->selectedItems().size() != 1) {
+                dialog->reject();
+                return;
+            }
+            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+            dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            accepted = dialog->result() == QDialog::Accepted;
+        });
+        action(window, "addArchiveAction")->trigger();
+        QVERIFY(accepted);
+        QTRY_COMPARE(table(window)->rowCount(), 2);
+        QCOMPARE(passwordPrompts, 1);
+        passwordAnswer.stop();
+        QByteArray listing;
+        QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-pfixture123", "--", archive}, &listing));
+        QVERIFY(listing.contains("Path = added.txt"));
+        QCOMPARE(listing.count("Encrypted = +"), 2);
+    }
+
     void addDialogUpdatesExistingEntryWithSelectedCompression() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

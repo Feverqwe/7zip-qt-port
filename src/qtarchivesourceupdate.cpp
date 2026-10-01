@@ -476,6 +476,7 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         if (defined)
             password = QString::fromWCharArray(value);
     }
+    sourcePlanBackend.allowProtected = !password.isEmpty();
     const QString result = stage.filePath("result." + format);
     if (fileUpdate == S_OK) {
         RINOK(RunArchiveBackendRequest(
