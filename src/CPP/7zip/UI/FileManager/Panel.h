@@ -577,12 +577,16 @@ class CPanel : public QObject {
     CListViewInfo _listViewInfo;
     CPropColumns _columns;
     CPropColumns _visibleColumns;
+
+  public:
     QWidget *GetParent() const;
     void MessageBox_Error(const UString &message) const;
     void MessageBox_Error_LangID(UINT resourceID) const;
     void MessageBox_Error_HRESULT(HRESULT result) const;
     void MessageBox_LastError() const;
     void MessageBox_Error_UnsupportOperation() const;
+
+  private:
     CMyComPtr<IFolderGetItemName> _folderGetItemName;
     CRecordVector<bool> _isDirVector;
     UString _currentFolderPrefix;

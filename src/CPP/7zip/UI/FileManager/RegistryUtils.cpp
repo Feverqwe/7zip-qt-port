@@ -40,6 +40,10 @@ void ReadRegDiff(UString &path, const QString &settingsPath) {
     ReadCuString(settingsPath, "Diff", path);
 }
 
+void ReadReg_VerCtrlPath(UString &path, const QString &settingsPath) {
+    ReadCuString(settingsPath, "7vc", path);
+}
+
 QString FmSettingsPath() {
     const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
     if (!overridden.isEmpty())

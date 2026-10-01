@@ -501,6 +501,14 @@ has explicit extra menu actions and remains independent of native F3/F4.
 may supply an explicit path to history dialogs.
 `CEditDialog` presents full list values; `FileViewerDialog` owns file viewing/editing.
 
+`CApp::VerCtrl` owns source file comparison, numbered backup history and
+Edit/Commit/Revert/Diff. `QtVerCtrlFileServices` projects unavailable POSIX Win32
+file metadata/methods through upstream FileIO/time conversion; Windows uses
+original types directly. Source `CFileMenu` determines dynamic VerCtrl command
+visibility and names from Diff plus `FM/7vc` and selected file attributes. Qt
+binds those native IDs and refreshes selection/availability after execution.
+The source advanced `7vc` setting has no setup UI; it remains an INI key.
+
 `CPasswordDialog` owns the archive password prompt and show/hide state, preserving
 upstream ReadControls/SetTextSpec/OnOK. `MainWindow` submits accepted passwords
 to ArchiveBackend and cancels a rejected or empty request. It does not persist

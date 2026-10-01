@@ -8,6 +8,50 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-08.3 — VerCtrl source workflow (2026-10-01)
+
+Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, source repository
+https://github.com/ip7z/7zip.git. Copied the complete FileManager/VerCtrl.cpp
+into its mirrored path: ConvertPath_to_Ctrl, CFileDataInfo::Read, 256 MiB buffer
+limit, ParseNumberString, CreateComplexDir_for_File, WriteFile, FILETIME helpers
+and CApp::VerCtrl. Original CByteBuffer, comparisons, branch order, readonly
+guards, `_7vc/<filename>/001...` history enumeration/rename, Commit precision
+loop, Revert default-No overwrite and Diff order remain. Source WriteFile's
+void/error and partial-write semantics remain; this is not an atomic version store.
+Formatting is the repository clang-format adaptation, separate from behavior.
+
+Windows uses original BY_HANDLE_FILE_INFORMATION/CInFile/COutFile/CEnumerator
+and SetFileAttrib. New QtVerCtrl file services project only unavailable POSIX
+Win32 methods: upstream FileIO fstat/read_full/write_full/create/time APIs,
+upstream FILETIME conversions and POSIX enumeration's explicit found output.
+POSIX preserves high permission bits; readonly removes write permissions, and
+clearing readonly restores owner-write. macOS birth time supplies creation time;
+other POSIX uses stat ctime, and upstream POSIX SetTime cannot promise Windows
+creation-time restoration. mtime/atime use upstream FILETIME precision. Windows
+CE/legacy presentation is outside the Qt-supported targets. CPanel error/parent
+methods regain upstream public visibility for the source WriteFile helper.
+
+Copied RegistryUtils ReadReg_VerCtrlPath uses source `7vc` key through shared
+FM INI. Upstream has no UI writer for this advanced setting; no new setup dialog
+is invented. CFileMenu remains the only owner of Diff/7vc/one-file/readonly
+visibility, names and ordering. Qt builds appended actions, binds native IDs,
+reads 7vc for program/context projections and refreshes source selection and
+availability after execution. Released/unbound panels produce no projection;
+direct-consumer tests exposed and fixed an initially unguarded refresh call.
+
+`verctrl` fixtures cover two backup versions, readonly/mtime preservation,
+exact hour rounding, controlled Diff argv, identical Edit and timestamp-only
+Revert, Yes/No/Escape, missing backup, timestamp disagreement, unavailable backup
+root, source buffer limit, absent configuration and multiple selection. Revert
+uses original OverwriteDialog with default No and hidden extra buttons; normal
+700×440 / compact560×440 JSON and main-window980×620 / 640×400 geometry reviewed.
+Focused7/7 PASS2.32 s; final compact/default-No assertions pass1/1, 0.63 s.
+Unsandboxed check.sh PASS155/155, 49.53 s, format/build/inventory PASS;
+baseline verify PASS197 exact/145 adapted/3 local. P1-08.3 and parent P1-08
+accepted with integrated .1 disk/settings/Diff and .2 archive process/update
+consumers in that gate. No omitted VerCtrl functional branch;
+Windows/Linux runtime and rendered Windows visual parity remain unverified.
+
 ## P1-08.2 — archive external-process integration (2026-10-01)
 
 Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, source repository

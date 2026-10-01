@@ -64,7 +64,11 @@ class MainShellTests final : public QObject {
                                                   "builtinTextViewAction",
                                                   "builtinTextEditAction",
                                                   "|",
-                                                  "exitAction"}));
+                                                  "exitAction",
+                                                  "verEditAction",
+                                                  "verCommitAction",
+                                                  "verRevertAction",
+                                                  "verDiffAction"}));
         QCOMPARE(actionNames(*edit),
                  QStringList({"selectAllAction", "deselectAllAction", "invertSelectionAction",
                               "selectMaskAction", "deselectMaskAction", "|", "selectTypeAction",

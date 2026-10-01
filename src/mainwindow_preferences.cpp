@@ -1,3 +1,4 @@
+#include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
@@ -13,6 +14,7 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     menu.setObjectName("panelContextMenu");
     QtFileMenuProjection projection;
     ReadRegDiff(projection.diffPath, toolbarSettingsPath());
+    ReadReg_VerCtrlPath(projection.versionControlPath, toolbarSettingsPath());
     QtDialogScreenServices screen(this);
     projection.screenServices = &screen;
     QHash<unsigned, QAction *> actions;
@@ -22,11 +24,17 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
             break; // Qt archive workflow group is not in resource.rc.
         const bool separator = action->isSeparator();
         const unsigned id = action->menu() ? 0u : action->property("nativeCommandID").toUInt();
-        projection.sourceItems.append({id, ToUString(action->text()), separator});
+        if (id < IDM_VER_EDIT || id > IDM_VER_DIFF)
+            projection.sourceItems.append({id, ToUString(action->text()), separator});
         if (!separator && !action->menu())
             actions.insert(id, action);
     }
     projection.sourceItems.append({8, ToUString(exitAction_->text()), false});
+    for (QAction *action : sourceFile->actions()) {
+        const unsigned id = action->property("nativeCommandID").toUInt();
+        if (id >= IDM_VER_EDIT && id <= IDM_VER_DIFF)
+            actions.insert(id, action);
+    }
     app_.GetFocusedPanel().CreateFileMenu(projection, false);
 
     CRecordVector<UInt32> operated;

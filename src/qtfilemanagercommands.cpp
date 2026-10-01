@@ -63,6 +63,10 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.viewFile_, IDM_FILE_VIEW);
     Bind(w.editFile_, IDM_FILE_EDIT);
     Bind(w.diffFiles_, IDM_DIFF);
+    const char *verCtrlNames[] = {"verEditAction", "verCommitAction", "verRevertAction",
+                                  "verDiffAction"};
+    for (unsigned i = 0; i < 4; ++i)
+        Bind(w.findChild<QAction *>(QString::fromLatin1(verCtrlNames[i])), IDM_VER_EDIT + i);
     Bind(w.findChild<QAction *>("builtinTextViewAction"), TextView);
     Bind(w.findChild<QAction *>("builtinTextEditAction"), TextEdit);
     Bind(w.rename_, IDM_RENAME);
@@ -203,12 +207,14 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     const TransportCapabilities capabilities = ReadTransportCapabilities();
     QtFileMenuProjection menu;
     ReadRegDiff(menu.diffPath, MainWindow::toolbarSettingsPath());
+    ReadReg_VerCtrlPath(menu.versionControlPath, MainWindow::toolbarSettingsPath());
     QtDialogScreenServices screen(&w);
     menu.screenServices = &screen;
     // Only command IDs are needed for capability projection; rendered strings
     // and HMENU ownership remain Qt presentation, not a second functional menu.
     for (auto it = actions_.cbegin(); it != actions_.cend(); ++it)
-        menu.sourceItems.append({it.key(), UString(), false});
+        if (it.key() < IDM_VER_EDIT || it.key() > IDM_VER_DIFF)
+            menu.sourceItems.append({it.key(), UString(), false});
     w.app_.GetFocusedPanel().CreateFileMenu(menu, true);
     for (auto it = actions_.cbegin(); it != actions_.cend(); ++it) {
         if (!availability.contains(it.key()))
@@ -252,6 +258,11 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return c.oneFile && (c.filesystem || c.writable);
     case IDM_DIFF:
         return c.filesystem;
+    case IDM_VER_EDIT:
+    case IDM_VER_COMMIT:
+    case IDM_VER_REVERT:
+    case IDM_VER_DIFF:
+        return c.filesystem && c.oneFile;
     case IDM_COPY_TO:
     case IDM_PROPERTIES:
         return c.selected && !c.root;
@@ -312,6 +323,19 @@ void QtFileManagerCommands::RefreshActions() {
     UString diffCommand;
     ReadRegDiff(diffCommand, MainWindow::toolbarSettingsPath());
     window_.diffFiles_->setVisible(!diffCommand.IsEmpty());
+    QtFileMenuProjection versionMenu;
+    versionMenu.diffPath = diffCommand;
+    ReadReg_VerCtrlPath(versionMenu.versionControlPath, MainWindow::toolbarSettingsPath());
+    if (!window_.app_.QtOperations().closed() && window_.app_.GetFocusedPanel().GetFolder())
+        window_.app_.GetFocusedPanel().CreateFileMenu(versionMenu, true);
+    for (unsigned id = IDM_VER_EDIT; id <= IDM_VER_DIFF; ++id) {
+        for (QAction *action : actions_.value(id)) {
+            action->setVisible(versionMenu.IsEnabled(id));
+            for (const auto &item : versionMenu.items)
+                if (item.source.wID == id)
+                    action->setText(ToQString(item.source.StringValue));
+        }
+    }
     for (unsigned i = 0; i < 4; ++i) {
         const QSignalBlocker block(window_.viewActions_[i]);
         window_.viewActions_[i]->setChecked(i == window_.app_.GetFocusedPanel().GetListViewMode());

@@ -111,6 +111,7 @@ class CApp {
     bool ExecuteCommand(unsigned id);
     void DiffFiles();
     void DiffFiles(const UString &path1, const UString &path2);
+    void VerCtrl(unsigned id);
     QtAppOperationState &QtOperations() { return _qtOperations; }
     const QtAppOperationState &QtOperations() const { return _qtOperations; }
 

@@ -320,6 +320,7 @@
     "src/CPP/7zip/UI/FileManager/TextPairs.h",
     "src/CPP/7zip/UI/FileManager/UpdateCallback100.cpp",
     "src/CPP/7zip/UI/FileManager/UpdateCallback100.h",
+    "src/CPP/7zip/UI/FileManager/VerCtrl.cpp",
     "src/CPP/7zip/UI/FileManager/ViewSettings.cpp",
     "src/CPP/7zip/UI/FileManager/ViewSettings.h",
     "src/CPP/7zip/UI/GUI/CompressDialog.cpp",

@@ -350,6 +350,17 @@ text fit and actual Yes/No/Escape at normal/compact owner sizes 980×620/640×40
 writing `external-update-prompt-*` JSON. Qt chooses message-box sizing; these
 reports establish usable geometry, not rendered Windows pixel parity.
 
+## VerCtrl commands and Revert
+
+VerCtrl reference: pinned `VerCtrl.cpp`, `MyLoadMenu.cpp` dynamic Zvc IDs and
+`OverwriteDialog.rc/.cpp`. Commands append after the File menu's resource items
+and use original names/mnemonics; Diff and `FM/7vc` must be configured. Readonly
+files show Ver Edit; writable files show Commit/Revert/Diff. Revert changes
+OverwriteDialog's default to No and hides Yes All/No All/Auto Rename. `verctrl`
+checks actual Yes/No/Escape, default/visibility and unclipped geometry at
+700×440/560×440 and writes current-build dialog and owner-window JSON.
+Rendered Windows parity remains unverified.
+
 ## Folder history list
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

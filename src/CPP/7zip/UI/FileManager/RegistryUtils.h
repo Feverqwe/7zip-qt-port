@@ -12,6 +12,7 @@ void SaveRegEditor(bool useEditor, const UString &path, const QString &settingsP
 void ReadRegEditor(bool useEditor, UString &path, const QString &settingsPath);
 void SaveRegDiff(const UString &path, const QString &settingsPath);
 void ReadRegDiff(UString &path, const QString &settingsPath);
+void ReadReg_VerCtrlPath(UString &path, const QString &settingsPath);
 
 struct CFmSettings {
     bool ShowDots;

@@ -822,6 +822,12 @@ literal argv с пробелами/Unicode/метасимволами без she
 ZIP AES и 7z encrypted headers, обновлённые bytes и отказ с неверным паролем.
 Fixtures запускают собственный управляемый executable, не пользовательский editor.
 Prompt JSON/geometry проверяются при окне 980×620 и 640×400.
+`verctrl` проверяет source backup001/002, Edit/Commit и точное округление mtime,
+readonly/metadata, literal Diff argv через свой executable, Revert Yes/No/Escape,
+identical Edit и timestamp-only Revert, missing backup, одинаковые данные с
+другим временем, недоступный backup root и исходный лимит256 MiB. Проверяются
+отсутствующие Diff/7vc и multiple selection. Revert geometry/JSON:700×440 и
+560×440, default No, скрытые extra buttons; window JSON980×620/640×400.
 `archive_mutation` проверяет реальную замену файла в `.7z` и `.zip` и отказ от
 небезопасного пути без изменения архива. Windows/Linux runtime не проверен локально.
 

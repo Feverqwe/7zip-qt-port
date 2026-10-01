@@ -158,7 +158,18 @@ void QtFileManagerCommands::SetBookmark(unsigned index) { window_.saveBookmark(i
 // them before dispatch. Never expose a functioning-looking placeholder action.
 void QtFileManagerCommands::InvokePluginCommand(unsigned) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::ReleasePluginMenus() { Q_UNREACHABLE(); }
-void QtFileManagerCommands::VerCtrl(unsigned) { Q_UNREACHABLE(); }
+void QtFileManagerCommands::VerCtrl(unsigned id) {
+    auto &w = window_;
+    CSelectedState selection;
+    w.app_.GetFocusedPanel().SaveSelectedState(selection);
+    w.app_.VerCtrl(id);
+    w.showDirectory(w.directory_, false);
+    if (w.scanningDisk_)
+        w.scanSelectedState_ = selection;
+    else
+        w.app_.GetFocusedPanel().RefreshListCtrl(selection);
+    w.refreshActions();
+}
 void QtFileManagerCommands::Comment() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Link() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::OpenAltStreams() { Q_UNREACHABLE(); }

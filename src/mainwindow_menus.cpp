@@ -335,6 +335,14 @@ void MainWindow::rebuildSourceMenus() {
     textEdit->setObjectName("builtinTextEditAction");
     file->addSeparator();
     file->addAction(exitAction_);
+    const char *verCtrlNames[] = {"verEditAction", "verCommitAction", "verRevertAction",
+                                  "verDiffAction"};
+    for (unsigned i = 0; i < 4; ++i) {
+        auto *action = file->addAction(QString());
+        action->setObjectName(QString::fromLatin1(verCtrlNames[i]));
+        action->setProperty("nativeCommandID", IDM_VER_EDIT + i);
+        action->setVisible(false);
+    }
 
     auto *edit = findChild<QMenu *>("editMenu");
     reset(edit);
