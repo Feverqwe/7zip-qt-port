@@ -12,6 +12,9 @@ class CMemDialog final : public QDialog {
     QHash<unsigned, QWidget *> _controls;
     UInt32 _spinMin = 1;
     UInt32 _spinMax = 64;
+    UInt32 _messageRam_GB = 0;
+    void ReloadInfoMessage(const UInt32 *ramSize_GB);
+    void changeEvent(QEvent *event) override;
     void BuildPresentation();
     void EnableSpin(bool enable);
     void SetItemText(unsigned id, const UString &text);

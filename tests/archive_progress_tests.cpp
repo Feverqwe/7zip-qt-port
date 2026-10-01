@@ -115,7 +115,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 pause->click();
                 QVERIFY(!operation.Sync.Get_Paused());
                 QVERIFY(!backend.Paused);
-                QCOMPARE(pause->text(), QStringLiteral("&Пауза"));
+                QCOMPARE(pause->text(), QStringLiteral("&Pause"));
                 backend.PauseResult = S_OK;
                 pause->click();
                 QVERIFY(operation.Sync.Get_Paused());

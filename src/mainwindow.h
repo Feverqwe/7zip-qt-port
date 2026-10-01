@@ -139,7 +139,8 @@ class MainWindow : public QMainWindow {
     void createIconList(QWidget *central);
     void connectFilesystemScanner();
     void connectBackend();
-    void backendFinished(bool ok, const QString &message, bool messageDisplayed = false);
+    void backendFinished(bool ok, const QString &message, HRESULT result,
+                         bool messageDisplayed = false);
     bool extractWithSource(const QString &destination, bool onlySelected, const QString &password,
                            const ExtractionOptions &options, const QStringList &names,
                            const CRecordVector<UInt32> *explicitIndices = nullptr);

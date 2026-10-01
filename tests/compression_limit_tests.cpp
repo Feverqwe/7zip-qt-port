@@ -1,3 +1,5 @@
+#include "7zip/UI/FileManager/resourceGui.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -27,7 +29,7 @@ class CompressionLimitTests final : public QObject {
     void originalChoices() {
         const auto choices = NCompressDialog::SetMemUseCombo();
         QCOMPARE(choices.first().Spec, QString());
-        QCOMPARE(choices.first().User, QStringLiteral("Автоматически: 80%"));
+        QCOMPARE(choices.first().User, QStringLiteral("*  80%"));
         for (int i = 1; i <= 10; i++)
             QCOMPARE(choices[i].Spec, QString::number(i * 10) + "%");
         QCOMPARE(choices[11].Spec, QString("256M"));
@@ -103,7 +105,8 @@ class CompressionLimitTests final : public QObject {
         QTimer::singleShot(0, &dialog, [&] {
             auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
             if (message) {
-                rejectedForMemory = message->text().contains(QStringLiteral("лимит"));
+                rejectedForMemory = message->text().contains(
+                    QString::fromWCharArray(LangString(IDS_MEM_USAGE_LIMIT_SET_BY_7ZIP).Ptr()));
                 message->accept();
             }
         });
@@ -149,7 +152,8 @@ class CompressionLimitTests final : public QObject {
         QTimer::singleShot(0, &dialog, [&] {
             auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
             if (message) {
-                rejected = message->text().contains(QStringLiteral("лимит"));
+                rejected = message->text().contains(
+                    QString::fromWCharArray(LangString(IDS_MEM_USAGE_LIMIT_SET_BY_7ZIP).Ptr()));
                 message->accept();
             }
         });
@@ -208,7 +212,8 @@ class CompressionLimitTests final : public QObject {
         backend.create(dir.filePath("rejected." + format), {source}, {}, false, options);
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains(QStringLiteral("лимит")));
+        QVERIFY(done.first()[1].toString().contains(
+            QString::fromWCharArray(LangString(IDS_MEM_USAGE_LIMIT_SET_BY_7ZIP).Ptr())));
         QVERIFY(!QFileInfo::exists(dir.filePath("rejected." + format)));
         done.clear();
         options.MemUsage.Parse(spec);

@@ -24,7 +24,7 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
     setObjectName("foldersPage");
     auto *layout = new QGridLayout(this);
     auto *workingLabel = new QLabel(this);
-    QtBindLangText(workingLabel, IDT_FOLDERS_WORKING_FOLDER, "&Working folder");
+    QtBindResourceText(workingLabel, IDT_FOLDERS_WORKING_FOLDER, "&Working folder");
     layout->addWidget(workingLabel, 0, 0, 1, 2);
     _workModes = new QButtonGroup(this);
     const QString labels[] = {"&System temp folder", "&Current", "Specified:"};
@@ -33,7 +33,7 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
         auto *button = new QRadioButton(labels[i], this);
         button->setObjectName(names[i]);
         button->setProperty("sourceControlID", kWorkModeButtons[i]);
-        QtBindLangText(button, kWorkModeButtons[i], labels[i]);
+        QtBindResourceText(button, kWorkModeButtons[i], labels[i]);
         _workModes->addButton(button, int(kWorkModeButtons[i]));
         layout->addWidget(button, int(i) + 1, 0, 1, 2);
     }
@@ -48,13 +48,15 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
     layout->addWidget(m_WorkPath, 4, 0);
     layout->addWidget(_workBrowse, 4, 1);
     _forRemovable = new QCheckBox(this);
-    QtBindLangText(_forRemovable, IDX_FOLDERS_WORK_FOR_REMOVABLE, "Use for removable drives only");
+    QtBindResourceText(_forRemovable, IDX_FOLDERS_WORK_FOR_REMOVABLE,
+                       "Use for removable drives only");
     _forRemovable->setObjectName("workRemovableOnly");
 #ifndef _WIN32
     // Existing source WorkDir drive-type branch is Windows-only. Keep its value
     // without offering an inactive command on POSIX; platform owner P2-05.
     _forRemovable->setEnabled(false);
-    _forRemovable->setToolTip("Определение сменных носителей доступно в Windows");
+    QtBindLocalToolTip(_forRemovable, "Removable-drive detection is available on Windows.",
+                       "Определение сменных носителей доступно в Windows.");
 #endif
     layout->addWidget(_forRemovable, 5, 0, 1, 2);
     layout->setColumnStretch(0, 1);

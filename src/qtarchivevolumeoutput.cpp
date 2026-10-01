@@ -4,6 +4,7 @@
 #include "7zip/Compress/CopyCoder.h"
 #include "Common/StringConvert.h"
 #include "Windows/FileFind.h"
+#include "qtlanguageservices.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -83,7 +84,9 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
         const QString suffix = QString::number(i).rightJustified(3, '0');
         const QString destination = target_ + '.' + suffix;
         if (QFileInfo::exists(destination) || QFileInfo(destination).isSymLink()) {
-            Error = QStringLiteral("Том уже существует: %1").arg(destination);
+            Error =
+                QtLocalText("Volume already exists: %1", QStringLiteral("Том уже существует: %1"))
+                    .arg(destination);
             return E_FAIL;
         }
     }
@@ -92,7 +95,9 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
         const QString suffix = QString::number(i).rightJustified(3, '0');
         const QString destination = target_ + '.' + suffix;
         if (!QFile::rename(prefix + suffix, destination)) {
-            Error = QStringLiteral("Не удалось сохранить том: %1").arg(destination);
+            Error = QtLocalText("Could not save volume: %1",
+                                QStringLiteral("Не удалось сохранить том: %1"))
+                        .arg(destination);
             return E_FAIL;
         }
         PublishedPaths.append(destination);
@@ -111,7 +116,9 @@ void QtArchiveVolumeOutput::run() {
             QFile::remove(path);
         PublishedPaths.clear();
         if (Error.isEmpty())
-            Error = Result == E_ABORT ? QStringLiteral("Операция отменена.")
-                                      : QStringLiteral("Не удалось создать архивные тома.");
+            Error = Result == E_ABORT
+                        ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                        : QtLocalText("Could not create archive volumes.",
+                                      QStringLiteral("Не удалось создать архивные тома."));
     }
 }

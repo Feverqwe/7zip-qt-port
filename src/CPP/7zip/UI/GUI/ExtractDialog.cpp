@@ -3,8 +3,12 @@
 #include "ExtractDialog.h"
 #include "../../../Common/Wildcard.h"
 #include "../FileManager/BrowseDialog.h"
+#include "7zip/UI/GUI/ExtractDialogRes.h"
+#include "7zip/UI/GUI/ExtractRes.h"
+#include "qtlangcontrols.h"
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QEvent>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -18,13 +22,19 @@ static const int kOverwriteButtonsVals[] = {
     NExtract::NOverwriteMode::kAsk, NExtract::NOverwriteMode::kOverwrite,
     NExtract::NOverwriteMode::kSkip, NExtract::NOverwriteMode::kRename,
     NExtract::NOverwriteMode::kRenameExisting};
+static const UInt32 kPathMode_IDs[] = {IDS_EXTRACT_PATHS_FULL, IDS_EXTRACT_PATHS_NO,
+                                       IDS_EXTRACT_PATHS_ABS};
+static const UInt32 kOverwriteMode_IDs[] = {
+    IDS_EXTRACT_OVERWRITE_ASK, IDS_EXTRACT_OVERWRITE_WITHOUT_PROMPT,
+    IDS_EXTRACT_OVERWRITE_SKIP_EXISTING, IDS_EXTRACT_OVERWRITE_RENAME,
+    IDS_EXTRACT_OVERWRITE_RENAME_EXISTING};
 static const unsigned kHistorySize = 16;
 
-static void AddComboItems(QComboBox &combo, const QStringList &labels, const int *values,
-                          int curVal) {
+static void AddComboItems(QComboBox &combo, const UInt32 *langIDs, unsigned numItems,
+                          const int *values, int curVal) {
     unsigned curSel = 0;
-    for (unsigned i = 0; i < unsigned(labels.size()); i++) {
-        QString s = labels[int(i)];
+    for (unsigned i = 0; i < numItems; i++) {
+        QString s = QtLangText(langIDs[i]);
         s.remove('&');
         combo.addItem(s, i);
         if (values[i] == curVal)
@@ -54,20 +64,27 @@ static void NormalizeDirPathPrefix(QString &dirPath) {
 CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &history,
                                bool selected, QWidget *parent)
     : QDialog(parent), DirPath(initialPath) {
+    Q_UNUSED(selected);
     setObjectName("extractDialog");
-    setWindowTitle(selected ? "Извлечь выбранное" : "Извлечь");
+    QtBindResourceText(this, IDD_EXTRACT, "Extract");
     resize(470, 330);
     auto *layout = new QVBoxLayout(this);
-    layout->addWidget(new QLabel("Извлечь в:", this));
+    auto *destinationLabel = new QLabel(this);
+    destinationLabel->setObjectName("extractDestinationLabel");
+    QtBindResourceText(destinationLabel, IDT_EXTRACT_EXTRACT_TO, "E&xtract to:");
+    layout->addWidget(destinationLabel);
     auto *pathRow = new QHBoxLayout;
     _path = new QComboBox(this);
     _path->setObjectName("extractDestination");
+    QtBindLangText(_path, IDT_EXTRACT_EXTRACT_TO, "Extract to:", true);
+    destinationLabel->setBuddy(_path);
     _path->setEditable(true);
     _path->setInsertPolicy(QComboBox::NoInsert);
 
     pathRow->addWidget(_path, 1);
     auto *browse = new QPushButton("…", this);
     browse->setObjectName("extractBrowseButton");
+    QtBindLangText(browse, IDS_EXTRACT_SET_FOLDER, {}, true);
     pathRow->addWidget(browse);
     layout->addLayout(pathRow);
 
@@ -76,41 +93,55 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     auto *nameRow = new QHBoxLayout;
     _nameEnable = new QCheckBox(this);
     _nameEnable->setObjectName("extractNameEnable");
-    _nameEnable->setAccessibleName("Добавить имя папки назначения");
-    _nameEnable->setToolTip("Добавить имя папки назначения");
+    _nameEnable->setProperty("languageToolTip", true);
+    QtBindLocalText(_nameEnable, "Append destination folder name", "Добавить имя папки назначения",
+                    true);
     _pathName = new QLineEdit(this);
     _pathName->setObjectName("extractPathName");
-    _pathName->setAccessibleName("Имя папки назначения");
-    _pathName->setPlaceholderText("Имя папки назначения");
+    _pathName->setProperty("languagePlaceholder", true);
+    QtBindLocalText(_pathName, "Destination folder name", "Имя папки назначения", true);
     nameRow->addWidget(_nameEnable);
     nameRow->addWidget(_pathName, 1);
     modeColumn->addLayout(nameRow);
-    modeColumn->addWidget(new QLabel("Пути:", this));
+    auto *pathLabel = new QLabel(this);
+    pathLabel->setObjectName("extractPathModeLabel");
+    QtBindResourceText(pathLabel, IDT_EXTRACT_PATH_MODE, "Path mode:");
+    modeColumn->addWidget(pathLabel);
     _pathMode = new QComboBox(this);
     _pathMode->setObjectName("extractPathMode");
+    QtBindLangText(_pathMode, IDT_EXTRACT_PATH_MODE, "Path mode", true);
+    pathLabel->setBuddy(_pathMode);
 
     modeColumn->addWidget(_pathMode);
-    modeColumn->addWidget(new QLabel("Перезапись:", this));
+    auto *overwriteLabel = new QLabel(this);
+    overwriteLabel->setObjectName("extractOverwriteModeLabel");
+    QtBindResourceText(overwriteLabel, IDT_EXTRACT_OVERWRITE_MODE, "Overwrite mode:");
+    modeColumn->addWidget(overwriteLabel);
     _overwriteMode = new QComboBox(this);
     _overwriteMode->setObjectName("extractOverwriteMode");
+    QtBindLangText(_overwriteMode, IDT_EXTRACT_OVERWRITE_MODE, "Overwrite mode", true);
+    overwriteLabel->setBuddy(_overwriteMode);
     modeColumn->addWidget(_overwriteMode);
     options->addLayout(modeColumn, 1);
 
-    auto *passwordGroup = new QGroupBox("Пароль", this);
+    auto *passwordGroup = new QGroupBox(this);
+    QtBindResourceText(passwordGroup, IDG_PASSWORD, "Password");
     auto *passwordLayout = new QVBoxLayout(passwordGroup);
     _passwordControl = new QLineEdit(passwordGroup);
     _passwordControl->setObjectName("extractPassword");
+    QtBindLangText(_passwordControl, IDG_PASSWORD, "Password", true);
     _passwordControl->setEchoMode(QLineEdit::Password);
     passwordLayout->addWidget(_passwordControl);
-    _showPassword = new QCheckBox("Показать пароль", passwordGroup);
+    _showPassword = new QCheckBox(passwordGroup);
+    QtBindResourceText(_showPassword, IDX_PASSWORD_SHOW, "Show Password");
     _showPassword->setObjectName("extractShowPassword");
     passwordLayout->addWidget(_showPassword);
     options->addWidget(passwordGroup, 1, Qt::AlignTop);
     layout->addLayout(options);
-    auto *hint = new QLabel("Папка назначения будет создана при необходимости. При выборе "
-                            "«Без путей» файлы с одинаковыми именами из разных папок не "
-                            "извлекаются.",
-                            this);
+    auto *hint = new QLabel(this);
+    hint->setObjectName("extractDestinationHint");
+    QtBindLocalText(hint, "The destination folder will be created if needed.",
+                    "Папка назначения будет создана при необходимости.");
     hint->setWordWrap(true);
     layout->addWidget(hint);
     layout->addStretch();
@@ -185,12 +216,21 @@ void CExtractDialog::OnInit(const QStringList &history) {
     // Qt addItem selects the first item in an editable empty combo. Restore typed text.
     _path->setCurrentIndex(-1);
     _path->setEditText(pathPrefix);
-    AddComboItems(*_pathMode, {"Полные пути", "Без путей"}, kPathModeButtonsVals, PathMode);
-    AddComboItems(*_overwriteMode,
-                  {"Не перезаписывать существующие файлы", "Перезаписывать существующие файлы",
-                   "Пропускать существующие файлы", "Переименовывать извлекаемые файлы",
-                   "Переименовывать существующие файлы"},
+    AddComboItems(*_pathMode, kPathMode_IDs, 2, kPathModeButtonsVals, PathMode);
+    AddComboItems(*_overwriteMode, kOverwriteMode_IDs, Z7_ARRAY_SIZE(kOverwriteMode_IDs),
                   kOverwriteButtonsVals, OverwriteMode);
+}
+
+void CExtractDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && _pathMode && _overwriteMode) {
+        for (auto pair :
+             {qMakePair(_pathMode, kPathMode_IDs), qMakePair(_overwriteMode, kOverwriteMode_IDs)})
+            for (int index = 0; index < pair.first->count(); ++index)
+                pair.first->setItemText(
+                    index,
+                    QtLangText(pair.second[pair.first->itemData(index).toUInt()]).remove('&'));
+    }
+    QDialog::changeEvent(event);
 }
 
 void CExtractDialog::UpdatePasswordControl() {
@@ -199,7 +239,7 @@ void CExtractDialog::UpdatePasswordControl() {
 }
 void CExtractDialog::OnButtonSetPath() {
     QString path;
-    if (MyBrowseForFolder(this, "Папка для извлечения", _path->currentText(), path))
+    if (MyBrowseForFolder(this, QtLangText(IDS_EXTRACT_SET_FOLDER), _path->currentText(), path))
         _path->setEditText(path);
 }
 

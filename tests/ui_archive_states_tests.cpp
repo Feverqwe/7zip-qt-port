@@ -173,11 +173,11 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
-        QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Операция отменена."));
+        QCOMPARE(window.statusBar()->currentMessage(), QString("Operation canceled."));
         action(window, "operationJournalAction")->trigger();
         auto *log = window.findChild<QTreeWidget *>("IDL_MESSAGE");
         QVERIFY(log);
-        QVERIFY(messageText(log).contains(QStringLiteral("Операция отменена.")));
+        QVERIFY(messageText(log).contains(QString("Operation canceled.")));
         openListedArchive(window, backend, "after-cancel.zip", {});
         QCOMPARE(backend.listCalls, 2);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
@@ -282,7 +282,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.testArchive();
         QCOMPARE(backend.lastTestPassword, password);
         QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-        backend.fail(QStringLiteral("Операция отменена."));
+        backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
         QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         openListedArchive(window, backend, "empty.zip", {});
@@ -346,9 +346,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QCoreApplication::processEvents();
         auto *text = window.findChild<QTreeWidget *>("IDL_MESSAGE");
         QVERIFY(text);
-        QVERIFY(messageText(text).contains(QStringLiteral("Открытие архива: ")));
+        QVERIFY(messageText(text).contains(QStringLiteral("Opening...: ")));
         QVERIFY(messageText(text).contains(QStringLiteral("42% + папка/имя с пробелом.txt")));
-        QVERIFY(messageText(text).contains(QStringLiteral("Результат: Архив открыт.")));
+        QVERIFY(messageText(text).contains(QStringLiteral("Result: Архив открыт.")));
         auto *dialog = window.findChild<QDialog *>("operationMessagesDialog");
         QVERIFY(dialog);
         auto *close = dialog->findChild<QPushButton *>("IDOK");
@@ -383,7 +383,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.openArchive("second.zip");
         warningResponder.stop();
         QVERIFY(messageText(text).contains(QStringLiteral("ERROR: повреждённый архив")));
-        QVERIFY(messageText(text).contains(QStringLiteral("Ошибка: 7zz завершился с кодом 2.")));
+        QVERIFY(messageText(text).contains(QStringLiteral("Error: 7zz завершился с кодом 2.")));
         QVERIFY(!messageText(text).contains(QStringLiteral("42% +")));
         QVERIFY(journal->isEnabled());
     }
@@ -452,7 +452,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
         QVERIFY(commands.contains(action(window, "extractSelectedAction")->text()));
-        QVERIFY(commands.contains("Добавить в открытый архив…"));
+        QVERIFY(commands.contains("Add to open archive…"));
         QVERIFY(commands.contains("P&roperties"));
     }
 

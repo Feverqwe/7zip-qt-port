@@ -13,14 +13,21 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-14.2 после принятого P1-14.1: native Lang/LangPage/LangUtils, original EN/RU
-assets, source menu/toolbar/headers/status и Options hot switch/Apply/Cancel/
-restart/fallback с сохранением input/action/selection. Final focused4/4 7.63 s,
-Progress contract fixtures5/5 10.33 s, full gate163/16358.87 s macOS arm64
-Qt6.11.2; baseline207 exact/152 adapted/3 local. Fixed RU ResourceString table
-удалена, fallback — source English. Остальные forms/messages/local captions,
-backend message context и whole-app EN/RU geometry/accelerators/long labels
-обязательны в .2; P1-14 parent открыт. Счёт24/46, остаётся22. P1-13 parent открыт до .2:
+P1-15: source F1/context Help/About и Delete Temporary Files вместе с настоящими
+consumers, offline/unavailable errors, version/license и safe owned-temp lifetime.
+P1-14.1/.2 и parent приняты: все текущие forms/messages/local context EN/RU,
+static RC/dynamic LangString fallbacks, hot switch/restart/pending state, source
+RAM/size/Auto/bookmarks, geometry normal/compact и keyboard/buddy/collision checks.
+Full unsandboxed check.sh170/170PASS63.11s macOS arm64 Qt6.11.2 2026-10-01;
+baseline210 exact/152 adapted/3 local verified. Final gate failure fixtures13/13
+PASS3.00s, isolated modal consumers2/2PASS1.04s. Qt platform standard buttons/
+macOS mnemonic policy сохранены, Windows/Linux runtime/rendered parity unverified.
+Core language services — sevenzip_filesystem, widgets — sevenzip_panel; cancelled
+result определяется HRESULT/typed completion, partial-move warning сохраняется.
+Source baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Счёт25/46, остаётся21.
+Для cleanup исследовать actual BrowseDialog2::MyBrowseForTempFolder/OnDelete;
+PanelItemOpen::DeleteOldTempFiles закомментирован и не действующий owner.
+P1-13 parent открыт до .2:
 source shell policies/flags/registration требуют P2-09 consumer, controls disabled
 с причиной. P2-09 зависит от P1-13.1 capability, не от открытого parent.
 P1-12 parent открыт до .2 всех page owners; .1 capabilities не блокируют Language

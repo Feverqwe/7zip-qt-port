@@ -181,7 +181,7 @@ class ExtractPromptTests final : public QObject {
                 directory.show();
                 QApplication::processEvents();
                 QCOMPARE(directory.findChild<QLabel *>("overwriteHeader")->text(),
-                         QStringLiteral("Папка назначения уже содержит такую папку."));
+                         QStringLiteral("Destination folder already contains processed file."));
                 for (auto *label : directory.findChildren<QLabel *>())
                     if (label->isVisible()) {
                         QVERIFY(UiInspection::fullyVisible(*label, directory));

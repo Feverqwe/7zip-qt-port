@@ -8,6 +8,7 @@
 #include "Windows/PropVariantConv.h"
 #include "mainwindow.h"
 #include "qtfilemanagercommands.h"
+#include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
 
 void MainWindow::renderArchiveFolder() {
@@ -37,7 +38,8 @@ void MainWindow::renderArchiveFolder() {
     table_->setSortingEnabled(true);
     applySortMode();
     path_->setText(archiveDisplayPath());
-    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(archiveFolder->GetNumberOfItems()));
+    statusBar()->showMessage(
+        QtLocalText("%1 items", "%1 объектов").arg(archiveFolder->GetNumberOfItems()));
     refreshActions();
 }
 

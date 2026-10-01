@@ -98,7 +98,7 @@
       "reports": ["progress-priority-760-foreground.json", "progress-priority-640-foreground.json"],
       "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnPriorityButton", "requirement": "Foreground restores native policy and initial caption without hiding errors."}],
       "assert": [
-        {"id": "IDB_PROGRESS_BACKGROUND", "property": "text", "equals": "В &фоновый режим"},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "text", "equals": "&Background"},
         {"id": "IDB_PROGRESS_BACKGROUND", "property": "fullyVisible", "equals": true}
       ]
     },
@@ -115,7 +115,7 @@
         {"id": "IDCANCEL", "property": "enabled", "equals": true},
         {"id": "IDB_PAUSE", "property": "enabled", "equals": true},
         {"id": "IDB_PAUSE", "property": "fullyVisible", "equals": true},
-        {"id": "IDB_PAUSE", "property": "text", "equals": "&Пауза"}
+        {"id": "IDB_PAUSE", "property": "text", "equals": "&Pause"}
       ]
     },
     {

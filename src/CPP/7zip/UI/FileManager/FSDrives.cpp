@@ -3,14 +3,16 @@
 // Read-only logical-drive/mount branch; physical-volume operations remain required.
 #include "FSDrives.h"
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "Common/ComTry.h"
 #include "Common/Defs.h"
 #include "Common/StringConvert.h"
 #include "FSFolder.h"
+#include "LangUtils.h"
 #include "Windows/FileName.h"
 #include "Windows/FileSystem.h"
 #include "Windows/PropVariant.h"
-#include <QCoreApplication>
+#include "qtlanguageservices.h"
 #include <QFileInfo>
 
 using namespace NWindows;
@@ -196,7 +198,7 @@ IMP_IFolderFolder_Props(CFSDrives)
     case kpidPath:
 #ifndef _WIN32
     {
-        const auto name = QCoreApplication::translate("SevenzipDesktop", "Тома").toStdWString();
+        const auto name = QtLocalText("Volumes", "Тома").toStdWString();
         prop = UString(name.c_str()) + WCHAR_PATH_SEPARATOR;
     } break;
 #endif
@@ -204,11 +206,8 @@ IMP_IFolderFolder_Props(CFSDrives)
             prop = kVolPrefix;
         else if (_superMode)
             prop = kSuperPrefix;
-        else {
-            const auto name =
-                QCoreApplication::translate("SevenzipDesktop", "Компьютер").toStdWString();
-            prop = UString(name.c_str()) + WCHAR_PATH_SEPARATOR;
-        }
+        else
+            prop = (UString)LangString(IDS_COMPUTER) + WCHAR_PATH_SEPARATOR;
         break;
     }
     prop.Detach(value);

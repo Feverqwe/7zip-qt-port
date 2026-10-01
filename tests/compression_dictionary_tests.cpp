@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -33,26 +34,25 @@ class CompressionDictionaryTests final : public QObject {
         for (int i = 0; i < dictionary->count(); ++i)
             actual.append(dictionary->itemData(i).toULongLong());
         QCOMPARE(actual, expected);
-        QVERIFY(dictionary->itemText(0).contains("32 МиБ"));
+        QVERIFY(dictionary->itemText(0).contains("32 MB"));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(3 << 20))));
         level->setCurrentIndex(level->findData(9u));
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
-        QVERIFY(dictionary->itemText(0).contains(sizeof(size_t) == 8 ? "256 МиБ" : "64 МиБ"));
+        QVERIFY(dictionary->itemText(0).contains(sizeof(size_t) == 8 ? "256 MB" : "64 MB"));
         level->setCurrentIndex(level->findData(1u));
-        QVERIFY(dictionary->itemText(0).contains("256 КиБ"));
+        QVERIFY(dictionary->itemText(0).contains("256 KB"));
         method->setCurrentText("LZMA");
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
             QApplication::processEvents();
             dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
                 ->ensureWidgetVisible(dictionary, 0, 80);
             QApplication::processEvents();
-            QVERIFY(dialog.grab().save(
-                screenshots + QString("/compression-dictionary-%1.png").arg(size.width())));
+            QVERIFY(UiInspection::fullyVisible(*dictionary, dialog));
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("compression-dictionary-%1").arg(size.width())));
         }
         level->setCurrentIndex(level->findData(0u));
         QVERIFY(!dictionary->isEnabled());
@@ -113,7 +113,8 @@ class CompressionDictionaryTests final : public QObject {
         backend.cancel();
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains("отменена"));
+        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

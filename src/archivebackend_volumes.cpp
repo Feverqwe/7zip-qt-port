@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "qtarchivevolumeoutput.h"
+#include "qtlanguageservices.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -12,7 +13,9 @@ bool ArchiveBackend::checkVolumeTargets(const QString &archive, QString *error) 
     for (const QString &name : target.dir().entryList(QDir::AllEntries | QDir::Hidden |
                                                       QDir::System | QDir::NoDotAndDotDot))
         if (pattern.match(name).hasMatch()) {
-            *error = QStringLiteral("Том уже существует: %1").arg(target.dir().filePath(name));
+            *error =
+                QtLocalText("Volume already exists: %1", QStringLiteral("Том уже существует: %1"))
+                    .arg(target.dir().filePath(name));
             return false;
         }
     return true;
@@ -28,12 +31,14 @@ void ArchiveBackend::startVolumeOutput() {
             this,
             [this, percent] {
                 if (job_ == Job::CreateVolumes)
-                    emit progress(percent, QStringLiteral("Создание архивных томов"));
+                    emit progress(percent, QtLocalText("Creating archive volumes",
+                                                       QStringLiteral("Создание архивных томов")));
             },
             Qt::QueuedConnection);
     };
     connect(volumeOutput_.get(), &QThread::finished, this, &ArchiveBackend::finishVolumeOutput);
-    emit progress(0, QStringLiteral("Создание архивных томов"));
+    emit progress(
+        0, QtLocalText("Creating archive volumes", QStringLiteral("Создание архивных томов")));
     if (volumeOutput_)
         volumeOutput_->start();
 }
@@ -45,13 +50,17 @@ void ArchiveBackend::finishVolumeOutput() {
     lastResult_ = volumeOutput_->Result;
     if (cancelled_)
         lastResult_ = E_ABORT;
-    const QString error = cancelled_ ? QStringLiteral("Операция отменена.") : volumeOutput_->Error;
+    const QString error =
+        cancelled_ ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                   : volumeOutput_->Error;
     volumeOutput_.reset();
     QFile::remove(createTemporary_);
     createVolumeSizes_.Clear();
     job_ = Job::None;
     if (lastResult_ == S_OK && startCreationDeletion())
         return;
-    emit finished(lastResult_ == S_OK,
-                  lastResult_ == S_OK ? QStringLiteral("Архивные тома созданы.") : error);
+    emit finished(lastResult_ == S_OK, lastResult_ == S_OK
+                                           ? QtLocalText("Archive volumes created.",
+                                                         QStringLiteral("Архивные тома созданы."))
+                                           : error);
 }

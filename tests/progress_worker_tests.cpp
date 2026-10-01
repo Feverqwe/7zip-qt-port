@@ -179,13 +179,26 @@ class ProgressWorkerTests : public QObject {
         bool inspected = false;
         bool geometry = false;
         bool closeDefault = false;
+        QString closeState;
+        int focusAttempts = 0;
         QTimer timer;
         connect(&timer, &QTimer::timeout, &worker, [&] {
             auto *close = worker.findChild<QPushButton *>("IDCANCEL");
             if (close->text() != QStringLiteral("&Close"))
                 return;
+            // A worker can finish before the modal window's activation event.
+            // Observe its settled focus before sending Enter; keep a bounded
+            // failure path so a real focus regression still closes and fails.
+            if (!close->hasFocus() && ++focusAttempts < 50)
+                return;
             inspected = true;
             closeDefault = close->isEnabled() && close->isDefault() && close->hasFocus();
+            closeState = QString("enabled=%1 default=%2 focus=%3 owner=%4")
+                             .arg(close->isEnabled())
+                             .arg(close->isDefault())
+                             .arg(close->hasFocus())
+                             .arg(worker.focusWidget() ? worker.focusWidget()->objectName()
+                                                       : QString("none"));
             geometry = worker.size() == size && UiInspection::fullyVisible(*close, worker) &&
                        close->sizeHint().width() <= close->width() &&
                        !worker.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isVisible() &&
@@ -199,7 +212,7 @@ class ProgressWorkerTests : public QObject {
         QCOMPARE(worker.Create(L"Ошибки обновления"), S_OK);
         QVERIFY(inspected);
         QVERIFY(geometry);
-        QVERIFY(closeDefault);
+        QVERIFY2(closeDefault, qPrintable(closeState));
         QVERIFY(worker.ThreadFinishedOK);
         QCOMPARE(worker.Result, S_OK);
         QVERIFY(worker.MessagesDisplayed);

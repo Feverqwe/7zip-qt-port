@@ -66,7 +66,7 @@ class ExtractionOptionsTests : public QObject {
         error.clear();
         QVERIFY(!backend.validateExtraction(output, {QStringLiteral("другая папка/δ.txt")}, options,
                                             &error));
-        QVERIFY(error.contains(QStringLiteral("вне текущей папки")));
+        QVERIFY(error.contains("outside the current archive folder"));
     }
 
     void askDecisions_data() {

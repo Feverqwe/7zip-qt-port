@@ -3,8 +3,13 @@
 // Qt layouts/native folder browsing replace Win32 controls/OnSize; functional
 // OnInit/OnOK/OnButtonSetPath retain upstream flow and public result members.
 #include "SplitDialog.h"
+#include "7zip/UI/FileManager/CopyDialogRes.h"
+#include "7zip/UI/FileManager/SplitDialogRes.h"
+#include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "BrowseDialog.h"
 #include "SplitUtils.h"
+#include "qtlangcontrols.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
@@ -22,18 +27,19 @@ CSplitDialog::CSplitDialog(const QString &filePath, const QString &path, QWidget
 
 bool CSplitDialog::OnInit() {
     setObjectName("splitDialog");
-    setWindowTitle("Разбить файл");
     if (!FilePath.isEmpty())
-        setWindowTitle(windowTitle() + ' ' + FilePath);
+        setProperty("languageSuffix", ' ' + FilePath);
+    QtBindResourceText(this, IDD_SPLIT, "Split File");
     resize(480, 240);
     auto *layout = new QVBoxLayout(this);
-    auto *pathLabel = new QLabel("Разбить в:", this);
+    auto *pathLabel = new QLabel(this);
+    QtBindResourceText(pathLabel, IDT_SPLIT_PATH, "&Split to:");
     pathLabel->setObjectName("splitPathLabel");
     layout->addWidget(pathLabel);
     auto *row = new QHBoxLayout;
     _pathCombo = new QComboBox(this);
     _pathCombo->setObjectName("volumeDestination");
-    _pathCombo->setAccessibleName(pathLabel->text());
+    QtBindLangText(_pathCombo, IDT_SPLIT_PATH, "Split to:", true);
     _pathCombo->setEditable(true);
     _pathCombo->setInsertPolicy(QComboBox::NoInsert);
     _pathCombo->setMinimumContentsLength(12);
@@ -42,15 +48,16 @@ bool CSplitDialog::OnInit() {
     row->addWidget(_pathCombo, 1);
     auto *browse = new QPushButton("…", this);
     browse->setObjectName("volumeBrowse");
-    browse->setAccessibleName("Папка назначения");
+    QtBindLangText(browse, IDT_SPLIT_PATH, "Split to:", true);
     row->addWidget(browse);
     layout->addLayout(row);
-    auto *volumeLabel = new QLabel("Размер тома, байт:", this);
+    auto *volumeLabel = new QLabel(this);
+    QtBindResourceText(volumeLabel, IDT_SPLIT_VOLUME, "Split to &volumes,  bytes:");
     volumeLabel->setObjectName("splitVolumeLabel");
     layout->addWidget(volumeLabel);
     _volumeCombo = new QComboBox(this);
     _volumeCombo->setObjectName("volumeSize");
-    _volumeCombo->setAccessibleName(volumeLabel->text());
+    QtBindLangText(_volumeCombo, IDT_SPLIT_VOLUME, "Split to volumes, bytes:", true);
     _volumeCombo->setEditable(true);
     _volumeCombo->setInsertPolicy(QComboBox::NoInsert);
     volumeLabel->setBuddy(_volumeCombo);
@@ -79,7 +86,7 @@ bool CSplitDialog::OnInit() {
 void CSplitDialog::OnButtonSetPath() {
     const QString currentPath = _pathCombo->currentText();
     QString resultPath;
-    if (!MyBrowseForFolder(this, "Папка назначения", currentPath, resultPath))
+    if (!MyBrowseForFolder(this, QtLangText(IDS_SET_FOLDER), currentPath, resultPath))
         return;
     resultPath = QDir::fromNativeSeparators(resultPath);
     if (!resultPath.endsWith('/'))
@@ -103,7 +110,7 @@ void CSplitDialog::OnOK() {
         VolumeSizes.Add(value);
     }
     if (!valid) {
-        error_->setText("Укажите положительные размеры томов (например, 10M или 10M 20M).");
+        QtBindLangText(error_, IDS_INCORRECT_VOLUME_SIZE);
         error_->show();
         return;
     }

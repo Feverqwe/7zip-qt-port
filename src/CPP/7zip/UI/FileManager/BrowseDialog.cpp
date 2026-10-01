@@ -3,10 +3,12 @@
 // Dlg_CreateFolder, CorrectFsPath, MyBrowseForFolder and BrowseForFile are ported.
 // Qt/localized strings replace HWND/LangString and native platform pickers.
 #include "BrowseDialog.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "ComboDialog.h"
 #include "Common/StringConvert.h"
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
+#include "qtlangcontrols.h"
 #include <QDir>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -17,7 +19,9 @@ using namespace NName;
 
 bool Dlg_CreateFolder(QWidget *wnd, QString &destName) {
     destName.clear();
-    CComboDialog dlg("Создать папку", "Имя папки:", "Новая папка", wnd);
+    CComboDialog dlg(QtLangText(IDS_CREATE_FOLDER), QtLangText(IDS_CREATE_FOLDER_NAME),
+                     QtLangText(IDS_CREATE_FOLDER_DEFAULT_NAME), wnd);
+    dlg.BindLanguage(IDS_CREATE_FOLDER, IDS_CREATE_FOLDER_NAME);
     if (dlg.exec() != QDialog::Accepted)
         return false;
     destName = dlg.Value;

@@ -9,7 +9,11 @@
 #include <QStringList>
 #include <QStringView>
 
+void SetErrorMessage_MemUsage(UString &s, UInt64 reqSize, UInt64 ramSize, UInt64 ramLimit,
+                              const UString &usageString);
+
 namespace NCompressDialog {
+QString Modify_Auto(const QString &text);
 namespace NUpdateMode {
 enum EEnum { kAdd, kUpdate, kFresh, kSync };
 }

@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -44,7 +46,15 @@ class ArchiveVolumeCreationTests final : public QObject {
         settings_ = preferences_.filePath("options.ini");
         qputenv("SEVENZIP_SETTINGS_PATH", settings_.toUtf8());
     }
-    void init() { QFile::remove(settings_); }
+    void init() {
+        QFile::remove(settings_);
+        SaveRegLang(UString("-"), settings_);
+        ReloadLang(settings_);
+    }
+    void cleanup() {
+        SaveRegLang(UString("-"), settings_);
+        ReloadLang(settings_);
+    }
     void cleanupTestCase() {
         if (previousSettings_.isNull())
             qunsetenv("SEVENZIP_SETTINGS_PATH");
@@ -54,14 +64,21 @@ class ArchiveVolumeCreationTests final : public QObject {
     void createVariableVolumes_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("protectedArchive");
-        for (const QString &format : {QString("zip"), QString("7z")}) {
-            QTest::newRow(qPrintable(format)) << format << false;
-            QTest::newRow(qPrintable(format + "-protected")) << format << true;
-        }
+        QTest::addColumn<bool>("russian");
+        for (bool russian : {false, true})
+            for (const QString &format : {QString("zip"), QString("7z")}) {
+                const QString suffix = russian ? "-ru" : "-en";
+                QTest::newRow(qPrintable(format + suffix)) << format << false << russian;
+                QTest::newRow(qPrintable(format + "-protected" + suffix))
+                    << format << true << russian;
+            }
     }
     void createVariableVolumes() {
         QFETCH(QString, format);
         QFETCH(bool, protectedArchive);
+        QFETCH(bool, russian);
+        SaveRegLang(UString(russian ? "ru" : "-"), settings_);
+        ReloadLang(settings_);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString first = fixture.filePath("source-a/first.bin");
@@ -83,6 +100,8 @@ class ArchiveVolumeCreationTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
         const auto result = finished.takeFirst();
         QVERIFY2(result.first().toBool(), qPrintable(result.at(1).toString()));
+        QCOMPARE(result.at(1).toString(), russian ? QStringLiteral("Архивные тома созданы.")
+                                                  : QString("Archive volumes created."));
         QVERIFY(!backend.busy());
         QVERIFY(!QFileInfo::exists(target));
         const QStringList volumes =
@@ -129,11 +148,15 @@ class ArchiveVolumeCreationTests final : public QObject {
     }
     void occupiedAndCancelledStagesLeaveNoOutputs_data() {
         QTest::addColumn<int>("mode");
-        QTest::newRow("occupied-preflight") << 0;
-        QTest::newRow("occupied-after-compression") << 1;
-        QTest::newRow("cancel-compression") << 2;
-        QTest::newRow("cancel-volume-worker") << 3;
-        QTest::newRow("pause-cancel-and-join") << 4;
+        QTest::addColumn<bool>("russian");
+        const char *names[] = {"occupied-preflight", "occupied-after-compression",
+                               "cancel-compression", "cancel-volume-worker",
+                               "pause-cancel-and-join"};
+        for (bool russian : {false, true})
+            for (int mode = 0; mode < 5; ++mode)
+                QTest::newRow(
+                    qPrintable(QString::fromLatin1(names[mode]) + (russian ? "-ru" : "-en")))
+                    << mode << russian;
     }
     void invalidSizesAndMissingEngineProduceNoVolumes() {
         QTemporaryDir fixture;
@@ -162,6 +185,9 @@ class ArchiveVolumeCreationTests final : public QObject {
     }
     void occupiedAndCancelledStagesLeaveNoOutputs() {
         QFETCH(int, mode);
+        QFETCH(bool, russian);
+        SaveRegLang(UString(russian ? "ru" : "-"), settings_);
+        ReloadLang(settings_);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString source = fixture.filePath(QStringLiteral("источник с пробелом.bin"));
@@ -181,7 +207,8 @@ class ArchiveVolumeCreationTests final : public QObject {
             connect(&backend, &ArchiveBackend::engineStarted, &backend, &ArchiveBackend::cancel);
         bool handled = false;
         connect(&backend, &ArchiveBackend::progress, &backend, [&](int, const QString &detail) {
-            if (handled || detail != QStringLiteral("Создание архивных томов"))
+            if (handled || detail != (russian ? QStringLiteral("Создание архивных томов")
+                                              : QString("Creating archive volumes")))
                 return;
             handled = true;
             if (mode == 1)
@@ -195,7 +222,14 @@ class ArchiveVolumeCreationTests final : public QObject {
         });
         backend.create(target, {source}, {}, false, options);
         QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
-        QVERIFY(!finished.takeFirst().first().toBool());
+        const auto result = finished.takeFirst();
+        QVERIFY(!result.first().toBool());
+        QCOMPARE(result.at(1).toString(), mode < 2
+                                              ? (russian ? QStringLiteral("Том уже существует: %1")
+                                                         : QString("Volume already exists: %1"))
+                                                    .arg(occupied)
+                                              : (russian ? QStringLiteral("Операция отменена.")
+                                                         : QString("Operation canceled.")));
         QVERIFY(!backend.busy());
         QCOMPARE(readFile(source), bytes);
         QVERIFY(!QFileInfo::exists(target));

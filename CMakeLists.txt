@@ -161,12 +161,8 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/SysIconUtils.cpp src/CPP/7zip/UI/FileManager/SysIconUtils.h
     src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
-    src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
-    src/qtlanguageservices.cpp src/qtlanguageservices.h
     src/qtlangcontrols.cpp src/qtlangcontrols.h
     src/qtstatuslabel.cpp src/qtstatuslabel.h
-    src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
-    "${resource_strings_header}"
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
     src/CPP/7zip/UI/FileManager/PanelOperations.cpp
     src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h
@@ -180,9 +176,6 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/NetFolder.cpp src/CPP/7zip/UI/FileManager/NetFolder.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
-qt_add_resources(sevenzip_panel upstream_languages PREFIX "/upstream/7zip/Lang"
-    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
-    FILES resources/7zip/Lang/en.ttt resources/7zip/Lang/ru.txt)
 qt_add_resources(sevenzip_panel upstream_progress_icons
     PREFIX "/upstream/7zip/UI/FileManager"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
@@ -214,6 +207,10 @@ endif()
 
 add_library(sevenzip_filesystem STATIC
     third_party/7zip/CPP/Common/Lang.cpp
+    src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
+    src/qtlanguageservices.cpp src/qtlanguageservices.h
+    src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
+    "${resource_strings_header}"
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/CPP/7zip/UI/Common/Update.cpp src/CPP/7zip/UI/Common/Update.h
     src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
@@ -241,12 +238,16 @@ add_library(sevenzip_filesystem STATIC
     third_party/7zip/CPP/Windows/FileFind.cpp
     third_party/7zip/CPP/Windows/FileIO.cpp
     third_party/7zip/CPP/Windows/TimeUtils.cpp)
+qt_add_resources(sevenzip_filesystem upstream_languages PREFIX "/upstream/7zip/Lang"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
+    FILES resources/7zip/Lang/en.ttt resources/7zip/Lang/ru.txt)
 if(WIN32)
     target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp
         third_party/7zip/CPP/Windows/Net.cpp third_party/7zip/CPP/Windows/Net.h)
     target_link_libraries(sevenzip_filesystem PUBLIC mpr)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
+target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
@@ -408,7 +409,7 @@ if(BUILD_TESTING)
     target_link_libraries(browse_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME browse_dialog COMMAND browse_dialog_tests -silent)
     set_tests_properties(browse_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
-    set_tests_properties(combo_dialog PROPERTIES ENVIRONMENT
+    set_tests_properties(combo_dialog PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(volume_dialog_tests tests/volume_dialog_tests.cpp tests/layout_inspection.cpp
         src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitUtils.cpp
@@ -507,6 +508,20 @@ if(BUILD_TESTING)
     set_tests_properties(hash_results PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     qt_add_executable(extract_prompt_tests tests/extract_prompt_tests.cpp tests/layout_inspection.cpp)
+    qt_add_executable(language_dialog_tests tests/language_dialog_tests.cpp tests/layout_inspection.cpp
+        src/CPP/7zip/UI/FileManager/SplitDialog.cpp)
+    target_include_directories(language_dialog_tests PRIVATE src tests)
+    target_link_libraries(language_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME language_dialog COMMAND language_dialog_tests -silent)
+    qt_add_executable(language_viewer_tests tests/language_viewer_tests.cpp
+        tests/layout_inspection.cpp src/fileviewerdialog.cpp)
+    target_include_directories(language_viewer_tests PRIVATE src tests)
+    target_link_libraries(language_viewer_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME language_viewer COMMAND language_viewer_tests -silent)
+    set_tests_properties(language_viewer PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
+    set_tests_properties(language_dialog PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     target_link_libraries(extract_prompt_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME extract_prompt COMMAND extract_prompt_tests -silent)
     set_tests_properties(extract_prompt PROPERTIES FIXTURES_SETUP ui_reference_extract_prompts)
@@ -524,12 +539,13 @@ if(BUILD_TESTING)
     target_include_directories(context_menu_settings_tests PRIVATE src)
     target_link_libraries(context_menu_settings_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME context_menu_settings COMMAND context_menu_settings_tests -silent)
-    qt_add_executable(external_launch_tests tests/external_launch_tests.cpp
+    qt_add_executable(external_launch_tests tests/external_launch_tests.cpp tests/layout_inspection.cpp
         src/archivebackend.cpp src/archivebackend_listing.cpp src/archivebackend_validation.cpp
         src/archivebackend_mutations.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp)
     target_link_libraries(external_launch_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME external_launch COMMAND external_launch_tests -silent)
-    set_tests_properties(external_launch PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(external_launch PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(panel_navigation_tests tests/panel_navigation_tests.cpp)
     target_link_libraries(panel_navigation_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME panel_navigation COMMAND panel_navigation_tests -silent)
@@ -845,16 +861,20 @@ if(BUILD_TESTING)
     target_include_directories(compression_order_tests PRIVATE src)
     target_link_libraries(compression_order_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_order COMMAND compression_order_tests -silent)
-    qt_add_executable(compression_dictionary_tests tests/compression_dictionary_tests.cpp ${compression_order_sources})
+    qt_add_executable(compression_dictionary_tests tests/compression_dictionary_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_dictionary_tests PRIVATE src)
     target_link_libraries(compression_dictionary_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_dictionary COMMAND compression_dictionary_tests -silent)
-    set_tests_properties(compression_dictionary PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    qt_add_executable(compression_memory_tests tests/compression_memory_tests.cpp ${compression_order_sources})
+    set_tests_properties(compression_dictionary PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(compression_memory_tests tests/compression_memory_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_memory_tests PRIVATE src)
     target_link_libraries(compression_memory_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_memory COMMAND compression_memory_tests -silent)
-    set_tests_properties(compression_memory PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(compression_memory PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(memory_limit_tests tests/memory_limit_tests.cpp)
     target_include_directories(memory_limit_tests PRIVATE src)
     target_link_libraries(memory_limit_tests PRIVATE Qt6::Test sevenzip_common)
@@ -876,7 +896,8 @@ if(BUILD_TESTING)
     target_link_libraries(compression_resource_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_resources COMMAND compression_resource_tests -silent)
     set_tests_properties(compression_resources PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
-    qt_add_executable(compression_solid_tests tests/compression_solid_tests.cpp ${compression_order_sources})
+    qt_add_executable(compression_solid_tests tests/compression_solid_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_solid_tests PRIVATE src)
     target_link_libraries(compression_solid_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_solid COMMAND compression_solid_tests -silent)
@@ -886,7 +907,8 @@ if(BUILD_TESTING)
         compression_solid_tests)
         target_link_libraries(${target} PRIVATE sevenzip_panel)
     endforeach()
-    set_tests_properties(compression_solid PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(compression_solid PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 
     set_tests_properties(compression_order PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
 
@@ -898,7 +920,7 @@ if(BUILD_TESTING)
     target_include_directories(file_viewer_tests PRIVATE src)
     target_link_libraries(file_viewer_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME file_viewer COMMAND file_viewer_tests -silent)
-    set_tests_properties(file_viewer PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/file-viewer-settings.ini")
+    set_tests_properties(file_viewer PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/file-viewer-settings.ini")
     qt_add_executable(nested_archive_tests tests/nested_archive_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp src/CPP/7zip/UI/FileManager/PanelSort.cpp src/CPP/7zip/UI/FileManager/PanelSort.h src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/fileviewerdialog.cpp src/fileviewerdialog.h src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(nested_archive_tests PRIVATE src)
     target_link_libraries(nested_archive_tests PRIVATE Qt6::Widgets Qt6::Test)
@@ -922,6 +944,12 @@ if(BUILD_TESTING)
     target_include_directories(file_transfer_direct_tests PRIVATE src)
     target_link_libraries(file_transfer_direct_tests PRIVATE Qt6::Test sevenzip_filesystem)
     add_test(NAME file_transfer_direct COMMAND file_transfer_direct_tests -silent)
+    qt_add_executable(language_file_transfer_tests tests/language_file_transfer_tests.cpp
+        src/filetransferoperation.cpp src/filetransferoperation.h)
+    target_include_directories(language_file_transfer_tests PRIVATE src)
+    target_link_libraries(language_file_transfer_tests PRIVATE Qt6::Test sevenzip_filesystem)
+    add_test(NAME language_file_transfer COMMAND language_file_transfer_tests -silent)
+    set_tests_properties(language_file_transfer PROPERTIES TIMEOUT 60)
     qt_add_executable(fs_folder_copy_tests tests/fs_folder_copy_tests.cpp)
     target_include_directories(fs_folder_copy_tests PRIVATE src)
     target_link_libraries(fs_folder_copy_tests PRIVATE sevenzip_filesystem Qt6::Test)
@@ -1054,12 +1082,13 @@ if(BUILD_TESTING)
     add_test(NAME resource_strings_generator COMMAND "${CMAKE_COMMAND}"
         "-DPROJECT_ROOT=${CMAKE_CURRENT_SOURCE_DIR}" "-DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/resource-strings-tests"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/rc_strings_tests.cmake")
-    qt_add_executable(volume_workflow_tests tests/volume_workflow_tests.cpp ${panel_sort_sources})
+    qt_add_executable(volume_workflow_tests tests/volume_workflow_tests.cpp
+        tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(volume_workflow_tests PRIVATE src tests)
     target_link_libraries(volume_workflow_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME volume_workflow COMMAND volume_workflow_tests -silent)
     set_tests_properties(volume_workflow PROPERTIES ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/volume-workflow-settings.ini")
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/volume-workflow-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(panel_sort_tests tests/panel_sort_tests.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(panel_sort_tests PRIVATE src)
     target_link_libraries(panel_sort_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
@@ -1229,6 +1258,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
+        target_sources(${engine_consumer} PRIVATE src/createarchivedialog_language.cpp)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp
             src/createarchivedialog_advanced.cpp)
     endif()
@@ -1246,34 +1276,6 @@ foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_opera
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_location sevenzip_folder_loader)
         target_sources(${target} PRIVATE src/mainwindow_selectionpaths.cpp)
-    endif()
-endforeach()
-
-# Parallel CTest runs share these generated artifact directories. Keep their
-# writers separate while allowing independent tests to run concurrently.
-get_property(sevenzip_registered_tests DIRECTORY PROPERTY TESTS)
-foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
-    # MainWindow opens the current directory before a test navigates to its
-    # fixture. Keep that startup input separate from hundreds of build outputs.
-    # Each suite owns its directory so parallel runs cannot populate each other.
-    if(TARGET ${sevenzip_test}_tests)
-        get_target_property(sevenzip_test_sources ${sevenzip_test}_tests SOURCES)
-        if("src/mainwindow.cpp" IN_LIST sevenzip_test_sources)
-            set(sevenzip_test_startup_dir "${CMAKE_BINARY_DIR}/test-startup/${sevenzip_test}")
-            file(MAKE_DIRECTORY "${sevenzip_test_startup_dir}")
-            set_tests_properties(${sevenzip_test} PROPERTIES
-                WORKING_DIRECTORY "${sevenzip_test_startup_dir}")
-            # Saved panel paths outlive a QTemporaryDir fixture. Upstream
-            # navigation then opens its parent, which must also be test-owned.
-            set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT
-                "TMPDIR=${sevenzip_test_startup_dir}"
-                "TMP=${sevenzip_test_startup_dir}"
-                "TEMP=${sevenzip_test_startup_dir}")
-        endif()
-    endif()
-    get_property(sevenzip_test_environment TEST ${sevenzip_test} PROPERTY ENVIRONMENT)
-    if(sevenzip_test_environment MATCHES "SEVENZIP_UI_REPORT_DIR|SEVENZIP_SCREENSHOT_DIR")
-        set_property(TEST ${sevenzip_test} APPEND PROPERTY RESOURCE_LOCK sevenzip_ui_artifacts)
     endif()
 endforeach()
 
@@ -1302,6 +1304,15 @@ endif()
 
 if(BUILD_TESTING)
     qt_add_executable(language_tests tests/language_tests.cpp tests/layout_inspection.cpp)
+    get_target_property(language_backend_sources archive_backend_tests SOURCES)
+    list(REMOVE_ITEM language_backend_sources tests/archive_backend_tests.cpp)
+    get_target_property(language_backend_libraries archive_backend_tests LINK_LIBRARIES)
+    qt_add_executable(language_source_update_tests tests/language_source_update_tests.cpp
+        ${language_backend_sources})
+    target_include_directories(language_source_update_tests PRIVATE src)
+    target_link_libraries(language_source_update_tests PRIVATE ${language_backend_libraries})
+    add_test(NAME language_source_update COMMAND language_source_update_tests -silent)
+    set_tests_properties(language_source_update PROPERTIES TIMEOUT 60)
     target_include_directories(language_tests PRIVATE src tests)
     target_link_libraries(language_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME language COMMAND language_tests -silent)
@@ -1337,6 +1348,29 @@ if(BUILD_TESTING)
     add_test(NAME language_ui COMMAND language_ui_tests -silent)
     set_tests_properties(language_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(language_main_dialog_tests tests/language_main_dialog_tests.cpp
+        tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(language_main_dialog_tests PRIVATE src tests)
+    target_link_libraries(language_main_dialog_tests PRIVATE ${options_window_libraries})
+    add_test(NAME language_main_dialog COMMAND language_main_dialog_tests -silent)
+    set_tests_properties(language_main_dialog PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language_main_dialog.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(language_archive_command_tests tests/language_archive_command_tests.cpp
+        tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(language_archive_command_tests PRIVATE src tests)
+    target_link_libraries(language_archive_command_tests PRIVATE ${options_window_libraries})
+    add_test(NAME language_archive_command COMMAND language_archive_command_tests -silent)
+    set_tests_properties(language_archive_command PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language_archive_command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    get_target_property(language_focus_sources compression_tests SOURCES)
+    list(REMOVE_ITEM language_focus_sources tests/compression_tests.cpp)
+    get_target_property(language_focus_libraries compression_tests LINK_LIBRARIES)
+    qt_add_executable(language_focus_tests tests/language_focus_tests.cpp ${language_focus_sources})
+    target_include_directories(language_focus_tests PRIVATE src tests)
+    target_link_libraries(language_focus_tests PRIVATE ${language_focus_libraries})
+    add_test(NAME language_focus COMMAND language_focus_tests -silent)
+    set_tests_properties(language_focus PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language_focus.ini")
 endif()
 
 # Every current window consumer uses the same language presentation adapter.
@@ -1345,5 +1379,34 @@ foreach(language_consumer IN LISTS language_consumers)
     get_target_property(language_consumer_sources ${language_consumer} SOURCES)
     if("src/mainwindow.cpp" IN_LIST language_consumer_sources)
         target_sources(${language_consumer} PRIVATE src/mainwindow_language.cpp)
+    endif()
+endforeach()
+
+# Apply startup isolation after registering every consumer, including Language.
+# Parallel CTest runs share these generated artifact directories. Keep their
+# writers separate while allowing independent tests to run concurrently.
+get_property(sevenzip_registered_tests DIRECTORY PROPERTY TESTS)
+foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
+    # MainWindow opens the current directory before a test navigates to its
+    # fixture. Keep that startup input separate from hundreds of build outputs.
+    # Each suite owns its directory so parallel runs cannot populate each other.
+    if(TARGET ${sevenzip_test}_tests)
+        get_target_property(sevenzip_test_sources ${sevenzip_test}_tests SOURCES)
+        if("src/mainwindow.cpp" IN_LIST sevenzip_test_sources)
+            set(sevenzip_test_startup_dir "${CMAKE_BINARY_DIR}/test-startup/${sevenzip_test}")
+            file(MAKE_DIRECTORY "${sevenzip_test_startup_dir}")
+            set_tests_properties(${sevenzip_test} PROPERTIES
+                WORKING_DIRECTORY "${sevenzip_test_startup_dir}")
+            # Saved panel paths outlive a QTemporaryDir fixture. Upstream
+            # navigation then opens its parent, which must also be test-owned.
+            set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT
+                "TMPDIR=${sevenzip_test_startup_dir}"
+                "TMP=${sevenzip_test_startup_dir}"
+                "TEMP=${sevenzip_test_startup_dir}")
+        endif()
+    endif()
+    get_property(sevenzip_test_environment TEST ${sevenzip_test} PROPERTY ENVIRONMENT)
+    if(sevenzip_test_environment MATCHES "SEVENZIP_UI_REPORT_DIR|SEVENZIP_SCREENSHOT_DIR")
+        set_property(TEST ${sevenzip_test} APPEND PROPERTY RESOURCE_LOCK sevenzip_ui_artifacts)
     endif()
 endforeach()

@@ -7,6 +7,8 @@
 #include "FormatUtils.h"
 #include "LangUtils.h"
 #include "Windows/PropVariantConv.h"
+#include "qtlangcontrols.h"
+#include <QEvent>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QGridLayout>
@@ -111,7 +113,7 @@ void COverwriteDialog::SetFileInfoControl(const NOverwriteDialog::CFileInfo &fil
 
 void COverwriteDialog::BuildPresentation() {
     setObjectName("overwriteDialog");
-    setWindowTitle("Подтверждение замены файла");
+    QtBindResourceText(this, IDD_OVERWRITE, "Confirm File Replace");
     resize(700, 440);
     auto *layout = new QVBoxLayout(this);
     const auto label = [&](unsigned id, const char *name, const QString &text) {
@@ -120,12 +122,15 @@ void COverwriteDialog::BuildPresentation() {
         control->setTextFormat(Qt::PlainText);
         control->setWordWrap(true);
         _controls.insert(id, control);
+        if (id == IDT_OVERWRITE_HEADER || id == IDT_OVERWRITE_QUESTION_BEGIN ||
+            id == IDT_OVERWRITE_QUESTION_END)
+            QtBindResourceText(control, id, text);
         return control;
     };
     layout->addWidget(label(IDT_OVERWRITE_HEADER, "overwriteHeader",
-                            "Папка назначения уже содержит такой файл."));
+                            "Destination folder already contains processed file."));
     layout->addWidget(label(IDT_OVERWRITE_QUESTION_BEGIN, "overwriteQuestionBegin",
-                            "Заменить существующий файл"));
+                            "Would you like to replace the existing file"));
     const auto fileRow = [&](unsigned textID, unsigned iconID, unsigned secondID,
                              const char *name) {
         auto *row = new QHBoxLayout;
@@ -141,7 +146,7 @@ void COverwriteDialog::BuildPresentation() {
     };
     fileRow(IDT_OVERWRITE_OLD_FILE_SIZE_TIME, IDI_OVERWRITE_OLD_FILE, IDI_OVERWRITE_OLD_FILE_2,
             "overwriteOldFile");
-    layout->addWidget(label(IDT_OVERWRITE_QUESTION_END, "overwriteQuestionEnd", "этим файлом?"));
+    layout->addWidget(label(IDT_OVERWRITE_QUESTION_END, "overwriteQuestionEnd", "with this one?"));
     fileRow(IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE, IDI_OVERWRITE_NEW_FILE_2,
             "overwriteNewFile");
     layout->addStretch();
@@ -153,14 +158,19 @@ void COverwriteDialog::BuildPresentation() {
         int Row;
         int Column;
     };
-    for (const auto &spec : {Button{IDYES, "overwriteYes", "&Да", 0, 0},
-                             Button{IDB_YES_TO_ALL, "overwriteYesAll", "Да для &всех", 0, 1},
-                             Button{IDB_AUTO_RENAME, "overwriteRename", "&Переименовать", 0, 2},
-                             Button{IDNO, "overwriteNo", "&Нет", 1, 0},
-                             Button{IDB_NO_TO_ALL, "overwriteNoAll", "Нет для в&сех", 1, 1},
-                             Button{IDCANCEL, "overwriteCancel", "&Отмена", 1, 2}}) {
+    for (const auto &spec : {Button{IDYES, "overwriteYes", "&Yes", 0, 0},
+                             Button{IDB_YES_TO_ALL, "overwriteYesAll", "Yes to &All", 0, 1},
+                             Button{IDB_AUTO_RENAME, "overwriteRename", "A&uto Rename", 0, 2},
+                             Button{IDNO, "overwriteNo", "&No", 1, 0},
+                             Button{IDB_NO_TO_ALL, "overwriteNoAll", "No to A&ll", 1, 1},
+                             Button{IDCANCEL, "overwriteCancel", "&Cancel", 1, 2}}) {
         auto *button = new QPushButton(QString::fromUtf8(spec.Text), this);
         button->setObjectName(spec.Name);
+        const unsigned langID = spec.Id == IDYES      ? 406
+                                : spec.Id == IDNO     ? 407
+                                : spec.Id == IDCANCEL ? 402
+                                                      : spec.Id;
+        QtBindResourceText(button, langID, QString::fromUtf8(spec.Text));
         _controls.insert(spec.Id, button);
         buttons->addWidget(button, spec.Row, spec.Column);
         connect(button, &QPushButton::clicked, this,
@@ -176,13 +186,6 @@ void COverwriteDialog::SetItemText(unsigned id, const UString &text) {
 bool COverwriteDialog::OnInit() {
     if (_controls.isEmpty())
         BuildPresentation();
-    if (OldFileInfo.Is_Directory && NewFileInfo.Is_Directory) {
-        static_cast<QLabel *>(_controls.value(IDT_OVERWRITE_HEADER))
-            ->setText("Папка назначения уже содержит такую папку.");
-        static_cast<QLabel *>(_controls.value(IDT_OVERWRITE_QUESTION_BEGIN))
-            ->setText("Заменить существующую папку");
-        static_cast<QLabel *>(_controls.value(IDT_OVERWRITE_QUESTION_END))->setText("этой папкой?");
-    }
     SetFileInfoControl(OldFileInfo, IDT_OVERWRITE_OLD_FILE_SIZE_TIME, IDI_OVERWRITE_OLD_FILE,
                        IDI_OVERWRITE_OLD_FILE_2);
     SetFileInfoControl(NewFileInfo, IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE,
@@ -220,6 +223,16 @@ INT_PTR COverwriteDialog::Create(QWidget *parent) {
         setParent(parent, windowFlags());
     OnInit();
     return exec();
+}
+
+void COverwriteDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && !_controls.isEmpty()) {
+        SetFileInfoControl(OldFileInfo, IDT_OVERWRITE_OLD_FILE_SIZE_TIME, IDI_OVERWRITE_OLD_FILE,
+                           IDI_OVERWRITE_OLD_FILE_2);
+        SetFileInfoControl(NewFileInfo, IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE,
+                           IDI_OVERWRITE_NEW_FILE_2);
+    }
+    QDialog::changeEvent(event);
 }
 
 void COverwriteDialog::reject() { done(IDCANCEL); }

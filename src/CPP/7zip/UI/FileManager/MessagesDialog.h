@@ -23,6 +23,7 @@ class CMessagesDialog : public QDialog {
     bool OnInit();
     bool OnSize(int xSize, int ySize);
     void resizeEvent(QResizeEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
   public:
     const UStringVector *Messages = nullptr;

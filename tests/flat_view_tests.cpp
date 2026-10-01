@@ -1,5 +1,7 @@
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "qtlangcontrols.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 
@@ -201,7 +203,7 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         bool nativeReportWritten = false;
         connect(window.statusBar(), &QStatusBar::messageChanged, &window,
                 [&](const QString &message) {
-                    if (!nativeReportWritten && message.startsWith(QStringLiteral("Сканирование:")))
+                    if (!nativeReportWritten && message.startsWith(QtLangText(IDS_SCANNING)))
                         nativeReportWritten = UiInspection::writeReport(
                             window, QString("filesystem-native-scan-%1").arg(size.width()));
                 });

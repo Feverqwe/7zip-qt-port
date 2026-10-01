@@ -5,6 +5,7 @@
 #include "PanelSplitFile.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "Panel.h"
+#include "qtlanguageservices.h"
 #include <QFile>
 #include <QFileInfo>
 
@@ -74,7 +75,9 @@ QString CVolSeqName::GetNextName() {
 bool CThreadCombine::ProcessVirt(QString *error) {
     QFile outFile(OutputPath);
     if (!outFile.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
-        *error = QStringLiteral("Не удалось создать файл: %1").arg(OutputPath);
+        *error =
+            QtLocalText("Could not create file: %1", QStringLiteral("Не удалось создать файл: %1"))
+                .arg(OutputPath);
         return false;
     }
     const qint64 kBufSize = 1 << 20;
@@ -82,7 +85,7 @@ bool CThreadCombine::ProcessVirt(QString *error) {
     char *buffer = bufferObject.data();
     qint64 pos = 0;
     if (!Set_NumBytesCur(pos)) {
-        *error = QStringLiteral("Операция отменена.");
+        *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
         return false;
     }
     for (qsizetype i = 0; i < Names.size(); ++i) {
@@ -90,7 +93,9 @@ bool CThreadCombine::ProcessVirt(QString *error) {
         QFile inFile(nextName);
         const QFileInfo info(nextName);
         if (!info.isFile() || info.isSymLink() || !inFile.open(QIODevice::ReadOnly)) {
-            *error = QStringLiteral("Часть файла недоступна: %1").arg(nextName);
+            *error = QtLocalText("File part is unavailable: %1",
+                                 QStringLiteral("Часть файла недоступна: %1"))
+                         .arg(nextName);
             return false;
         }
         const qint64 expectedSize = info.size();
@@ -98,7 +103,9 @@ bool CThreadCombine::ProcessVirt(QString *error) {
         for (;;) {
             qint64 processedSize = inFile.read(buffer, kBufSize);
             if (processedSize < 0) {
-                *error = QStringLiteral("Ошибка чтения файла: %1").arg(nextName);
+                *error =
+                    QtLocalText("Error reading file: %1", QStringLiteral("Ошибка чтения файла: %1"))
+                        .arg(nextName);
                 return false;
             }
             if (processedSize == 0)
@@ -106,27 +113,34 @@ bool CThreadCombine::ProcessVirt(QString *error) {
             const qint64 needSize = processedSize;
             processedSize = outFile.write(buffer, needSize);
             if (processedSize < 0) {
-                *error = QStringLiteral("Ошибка записи файла: %1").arg(OutputPath);
+                *error =
+                    QtLocalText("Error writing file: %1", QStringLiteral("Ошибка записи файла: %1"))
+                        .arg(OutputPath);
                 return false;
             }
             if (needSize != processedSize) {
-                *error = QStringLiteral("Неполная запись файла: %1").arg(OutputPath);
+                *error = QtLocalText("Incomplete file write: %1",
+                                     QStringLiteral("Неполная запись файла: %1"))
+                             .arg(OutputPath);
                 return false;
             }
             pos += processedSize;
             partSize += processedSize;
             if (!Set_NumBytesCur(pos)) {
-                *error = QStringLiteral("Операция отменена.");
+                *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
                 return false;
             }
         }
         if (partSize != expectedSize || inFile.size() != expectedSize) {
-            *error = QStringLiteral("Часть файла изменилась: %1").arg(nextName);
+            *error =
+                QtLocalText("File part changed: %1", QStringLiteral("Часть файла изменилась: %1"))
+                    .arg(nextName);
             return false;
         }
     }
     if (!outFile.flush()) {
-        *error = QStringLiteral("Не удалось записать объединённый файл.");
+        *error = QtLocalText("Could not write combined file.",
+                             QStringLiteral("Не удалось записать объединённый файл."));
         return false;
     }
     return true;
@@ -167,11 +181,12 @@ bool CThreadSplit::ProcessVirt(QString *error) {
         outFile.close();
         Written = 0;
         if (!ok)
-            *error = QStringLiteral("Не удалось записать часть файла.");
+            *error = QtLocalText("Could not write file part.",
+                                 QStringLiteral("Не удалось записать часть файла."));
         return ok;
     };
     if (!Set_NumBytesCur(pos)) {
-        *error = QStringLiteral("Операция отменена.");
+        *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
         return false;
     }
     for (;;) {
@@ -190,14 +205,18 @@ bool CThreadSplit::ProcessVirt(QString *error) {
             if (!Close())
                 return false;
             if (pos != TotalSize || inFile.size() != TotalSize) {
-                *error = QStringLiteral("Исходный файл изменился во время разделения.");
+                *error =
+                    QtLocalText("Source file changed while splitting.",
+                                QStringLiteral("Исходный файл изменился во время разделения."));
                 return false;
             }
             return true;
         }
         if (Written == 0) {
             if (numFiles >= OutputPaths.size()) {
-                *error = QStringLiteral("Исходный файл изменился во время разделения.");
+                *error =
+                    QtLocalText("Source file changed while splitting.",
+                                QStringLiteral("Исходный файл изменился во время разделения."));
                 return false;
             }
             outFile.setFileName(OutputPaths[numFiles]);
@@ -209,7 +228,8 @@ bool CThreadSplit::ProcessVirt(QString *error) {
         const qint64 readSize = processedSize;
         processedSize = outFile.write(buffer.constData(), readSize);
         if (processedSize != readSize) {
-            *error = QStringLiteral("Ошибка записи части файла.");
+            *error = QtLocalText("Error writing file part.",
+                                 QStringLiteral("Ошибка записи части файла."));
             return false;
         }
         Written += processedSize;
@@ -223,7 +243,7 @@ bool CThreadSplit::ProcessVirt(QString *error) {
         }
         if (pos - prev >= (qint64(1) << 22) || Written == 0) {
             if (!Set_NumBytesCur(pos)) {
-                *error = QStringLiteral("Операция отменена.");
+                *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
                 return false;
             }
             prev = pos;

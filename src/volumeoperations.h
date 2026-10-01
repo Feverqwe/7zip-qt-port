@@ -19,6 +19,7 @@ class VolumeOperation : public QThread {
     VolumeOperation(Mode mode, QString source, QString destination, QList<qint64> volumeSizes,
                     QObject *parent = nullptr);
     void cancel();
+    bool isCanceled() const { return canceled_.load(); }
     static QList<qint64> parseSizes(const QString &text);
     static qint64 parseSize(const QString &text);
     static VolumeParts inspectParts(const QString &firstPart, QString *error);

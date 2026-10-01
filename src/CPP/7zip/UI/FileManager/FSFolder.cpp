@@ -15,6 +15,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
+#include "qtlanguageservices.h"
 #include <QDir>
 #include <QFile>
 #ifndef _WIN32
@@ -609,7 +610,8 @@ bool CFSFolder::CreateFolder(const QString &name) {
         return true;
     QString absPath;
     GetAbsPath(name, absPath);
-    ErrorMessage = QStringLiteral("Не удалось создать папку: %1").arg(absPath);
+    ErrorMessage =
+        QtLocalText("Could not create folder: %1", "Не удалось создать папку: %1").arg(absPath);
     return false;
 }
 
@@ -617,7 +619,8 @@ bool CFSFolder::CreateFile(const QString &name) {
     if (CreateFile(name.toStdWString().c_str(), nullptr) != S_OK) {
         QString absPath;
         GetAbsPath(name, absPath);
-        ErrorMessage = QStringLiteral("Не удалось создать файл: %1").arg(absPath);
+        ErrorMessage =
+            QtLocalText("Could not create file: %1", "Не удалось создать файл: %1").arg(absPath);
         return false;
     }
     return true;
@@ -625,7 +628,9 @@ bool CFSFolder::CreateFile(const QString &name) {
 
 bool CFSFolder::Rename(UInt32 index, const QString &newName) {
     if (Rename(index, newName.toStdWString().c_str(), nullptr) != S_OK) {
-        ErrorMessage = QStringLiteral("Не удалось переименовать объект: %1").arg(newName);
+        ErrorMessage =
+            QtLocalText("Could not rename item: %1", "Не удалось переименовать объект: %1")
+                .arg(newName);
         return false;
     }
     return true;
@@ -652,7 +657,8 @@ bool CFSFolder::Delete(const UInt32 *indices, UInt32 numItems) {
     if (Delete(indices, numItems, progress) == S_OK)
         return true;
     if (ErrorMessage.isEmpty())
-        ErrorMessage = QStringLiteral("Не удалось удалить выбранные объекты.");
+        ErrorMessage = QtLocalText("Could not delete selected items.",
+                                   "Не удалось удалить выбранные объекты.");
     return false;
 }
 
@@ -737,8 +743,8 @@ Z7_COM7F_IMF(CFSFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress
                 result = NWindows::NFile::NDir::DeleteFileAlways(path);
         }
         if (!result) {
-            ErrorMessage =
-                QStringLiteral("Не удалось удалить: ") + QtPath(_path + GetRelPath(Files[index]));
+            ErrorMessage = QtLocalText("Could not delete: ", "Не удалось удалить: ") +
+                           QtPath(_path + GetRelPath(Files[index]));
             return GetLastError_noZero_HRESULT();
         }
         const UInt64 completed = i;

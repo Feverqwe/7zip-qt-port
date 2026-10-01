@@ -3,12 +3,14 @@
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
 #include "mainwindow.h"
+#include "qtlangcontrols.h"
 
 QMenu *MainWindow::createMenusAndToolbar() {
     auto *menu = menuBar()->addMenu("Файл");
     menu->setObjectName("fileMenu");
     auto *toolbar = addToolBar("Архив");
     toolbar->setObjectName("archiveToolbar");
+    QtBindLocalText(toolbar, "Archive", QStringLiteral("Архив"));
     toolbar->setMovable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     toolbar->setIconSize(QSize(24, 24));
@@ -35,12 +37,14 @@ QMenu *MainWindow::createMenusAndToolbar() {
 void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     back_ = new QAction("Назад", this);
     back_->setObjectName("backAction");
+    QtBindLocalText(back_, "Back", QStringLiteral("Назад"));
     up_ = new QAction("Вверх", this);
     up_->setObjectName("upAction");
     openItem_ = new QAction("Открыть", this);
     openItem_->setObjectName("openItemAction");
     open_ = menu->addAction("Открыть…");
     open_->setObjectName("openArchiveAction");
+    QtBindLocalText(open_, "Open archive…", QStringLiteral("Открыть архив…"));
     open_->setShortcut(QKeySequence::Open);
     openInside_ = menu->addAction("Открыть внутри");
     openInside_->setObjectName("openInsideAction");
@@ -54,16 +58,21 @@ void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     openOutside_->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Return));
     create_ = menu->addAction("Создать архив…");
     create_->setObjectName("createArchiveAction");
+    QtBindLocalText(create_, "Create archive…", QStringLiteral("Создать архив…"));
     add_ = menu->addAction("Добавить в открытый архив…");
     add_->setObjectName("addArchiveAction");
+    QtBindLocalText(add_, "Add to open archive…", QStringLiteral("Добавить в открытый архив…"));
     toolbarAdd_ = toolbar->addAction("Добавить");
     toolbarAdd_->setObjectName("toolbarAddAction");
     extract_ = toolbar->addAction("Извлечь");
     extract_->setObjectName("extractArchiveAction");
     selected_ = menu->addAction("Извлечь выбранное…");
     selected_->setObjectName("extractSelectedAction");
+    QtBindLocalText(selected_, "Extract selected…", QStringLiteral("Извлечь выбранное…"));
     journalAction_ = menu->addAction("Журнал последней операции…");
     journalAction_->setObjectName("operationJournalAction");
+    QtBindLocalText(journalAction_, "Last operation log…",
+                    QStringLiteral("Журнал последней операции…"));
     journalAction_->setEnabled(false);
     test_ = toolbar->addAction("Тест");
     test_->setObjectName("testArchiveAction");
@@ -331,8 +340,10 @@ void MainWindow::rebuildSourceMenus() {
         file->addAction(action);
     auto *textView = file->addAction("Просмотреть текст…");
     textView->setObjectName("builtinTextViewAction");
+    QtBindLocalText(textView, "View text…", QStringLiteral("Просмотреть текст…"));
     auto *textEdit = file->addAction("Редактировать текст…");
     textEdit->setObjectName("builtinTextEditAction");
+    QtBindLocalText(textEdit, "Edit text…", QStringLiteral("Редактировать текст…"));
     file->addSeparator();
     file->addAction(exitAction_);
     const char *verCtrlNames[] = {"verEditAction", "verCommitAction", "verRevertAction",

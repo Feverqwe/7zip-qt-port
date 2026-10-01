@@ -189,7 +189,7 @@ HRESULT ExtractGUI(
         if (showDialog) {
             FString outputDirFull;
             if (!MyGetFullPathName(outputDir, outputDirFull)) {
-                QMessageBox::warning(hwndParent, QStringLiteral("Извлечение"),
+                QMessageBox::warning(hwndParent, QStringLiteral("7-Zip"),
                                      QString::fromWCharArray(kIncorrectOutDir));
                 messageWasDisplayed = true;
                 return E_FAIL;
@@ -222,7 +222,7 @@ HRESULT ExtractGUI(
 #endif
         }
         if (!MyGetFullPathName(outputDir, options.OutputDir)) {
-            QMessageBox::warning(hwndParent, QStringLiteral("Извлечение"),
+            QMessageBox::warning(hwndParent, QStringLiteral("7-Zip"),
                                  QString::fromWCharArray(kIncorrectOutDir));
             messageWasDisplayed = true;
             return E_FAIL;

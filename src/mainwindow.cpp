@@ -1,10 +1,13 @@
 #include "mainwindow.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Windows/PropVariantConv.h"
 #include "qtapppresentation.h"
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include "qtlangcontrols.h"
+#include "qtlanguageservices.h"
 #include "qttrashservice.h"
 #include <QScopeGuard>
 #include <QScrollBar>
@@ -101,7 +104,8 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
                 autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
                 table_->clearSelection();
                 table_->setRowCount(0);
-                statusBar()->showMessage(QStringLiteral("Папка не найдена: ") + directory_);
+                statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") +
+                                         directory_);
                 refreshActions();
                 return S_OK;
             }
@@ -162,21 +166,23 @@ void MainWindow::connectFilesystemScanner() {
                 configureColumns();
                 appendParentEntry();
             });
-    connect(filesystemScanner_, &FilesystemScanner::batchReady, this,
-            [this](const QFileInfoList &files, quint32 firstSourceIndex) {
-                if (app_.QtOperations().closed())
-                    return;
-                QtAppOperationState::CallScope call(app_.QtOperations());
-                quint32 sourceIndex = firstSourceIndex;
-                for (const QFileInfo &file : files)
-                    appendFilesystemEntry(file, sourceIndex++);
-                statusBar()->showMessage(
-                    QStringLiteral("Показано: %1 объектов…").arg(table_->rowCount()));
-            });
+    connect(
+        filesystemScanner_, &FilesystemScanner::batchReady, this,
+        [this](const QFileInfoList &files, quint32 firstSourceIndex) {
+            if (app_.QtOperations().closed())
+                return;
+            QtAppOperationState::CallScope call(app_.QtOperations());
+            quint32 sourceIndex = firstSourceIndex;
+            for (const QFileInfo &file : files)
+                appendFilesystemEntry(file, sourceIndex++);
+            statusBar()->showMessage(
+                QtLocalText("Shown: %1 items…", "Показано: %1 объектов…").arg(table_->rowCount()));
+        });
     connect(filesystemScanner_, &FilesystemScanner::advanced, this, [this](quint64 count) {
         if (app_.QtOperations().closed())
             return;
-        statusBar()->showMessage(QStringLiteral("Сканирование: %1 объектов…").arg(count));
+        statusBar()->showMessage(QtLangText(IDS_SCANNING) +
+                                 QtLocalText(" %1 items", " %1 объектов").arg(count));
     });
     connect(filesystemScanner_, &FilesystemScanner::completed, this, [this] {
         if (app_.QtOperations().closed())
@@ -190,7 +196,7 @@ void MainWindow::connectFilesystemScanner() {
         scanSelectedState_.reset();
         restoreAutoRefreshViewport();
         setState(State::Filesystem);
-        statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
+        statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
     });
     connect(filesystemScanner_, &FilesystemScanner::failed, this, [this](qint32) {
         if (app_.QtOperations().closed())
@@ -205,6 +211,7 @@ void MainWindow::connectFilesystemScanner() {
         app_.GetFocusedPanel().ReleaseFolder();
         table_->setSortingEnabled(true);
         setState(State::Filesystem);
-        statusBar()->showMessage(QStringLiteral("Не удалось прочитать папку."));
+        statusBar()->showMessage(
+            QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
     });
 }

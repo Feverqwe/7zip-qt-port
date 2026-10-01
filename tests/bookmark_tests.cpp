@@ -1,9 +1,44 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "qtlangcontrols.h"
 #include "window_state_support.h"
 
 class BookmarkTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void sourceMenuCaptionsHotSwitchAndLongPaths() {
+        const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settingsPath);
+        const QString longPath =
+            "/" + QString(60, 'a') + QStringLiteral("/目录/") + QString(60, 'z');
+        {
+            QSettings settings(settingsPath, QSettings::IniFormat);
+            settings.setValue("FolderShortcuts", QStringList{longPath});
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *open = action(window, "openBookmark0Action");
+        auto *empty = action(window, "openBookmark1Action");
+        auto *save = action(window, "saveBookmark0Action");
+        const QKeySequence openShortcut = open->shortcut(), saveShortcut = save->shortcut();
+        const QString caption = longPath.left(50) + " ... " + longPath.right(50) + "\tAlt+0";
+        for (const char *lang : {"-", "ru", "-"}) {
+            SaveRegLang(UString(lang), settingsPath);
+            ReloadLang(settingsPath);
+            QtNotifyLanguageChanged();
+            QCOMPARE(action(window, "openBookmark0Action"), open);
+            QCOMPARE(action(window, "saveBookmark0Action"), save);
+            QCOMPARE(open->text(), caption);
+            QCOMPARE(open->toolTip(), longPath);
+            QCOMPARE(empty->text(), QString("-\tAlt+1"));
+            QCOMPARE(save->text(), QString(lang) == "ru" ? QStringLiteral("Закладка 0\tAlt+Shift+0")
+                                                         : QString("Bookmark 0\tAlt+Shift+0"));
+            QCOMPARE(open->shortcut(), openShortcut);
+            QCOMPARE(save->shortcut(), saveShortcut);
+            QCOMPARE(backend.listCalls, 0);
+        }
+    }
     void upstreamSparseSlotsAndPersistence() {
         QTemporaryDir temp;
         const QString path = temp.filePath("favorites.ini");

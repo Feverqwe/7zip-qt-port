@@ -3,6 +3,7 @@
 // Qt layouts replace Win32 OnSize/control attachment; QString/QStringList
 // replace strings at the presentation boundary. OnOK keeps the raw value.
 #include "ComboDialog.h"
+#include "qtlangcontrols.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QLabel>
@@ -58,6 +59,12 @@ void CComboDialog::OnOK() {
 }
 
 void CComboDialog::accept() { OnOK(); }
+
+void CComboDialog::BindLanguage(UInt32 titleID, UInt32 promptID) {
+    QtBindLangText(this, titleID, Title);
+    QtBindLangText(findChild<QLabel *>("comboPrompt"), promptID, Static);
+    QtBindLangText(_comboBox, promptID, Static, true);
+}
 
 QString CComboDialog::value() const {
     return result() == QDialog::Accepted ? Value : _comboBox->currentText();

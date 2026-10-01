@@ -1,5 +1,6 @@
 #include "qtassociatedfileservices.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtlanguageservices.h"
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QProcess>
@@ -66,9 +67,10 @@ HRESULT QtAssociatedFileServices::StartApplication(const UString &, const UStrin
     }
     if (opened)
         return S_OK;
-    QMessageBox box(QMessageBox::Warning, QStringLiteral("Открыть файл"),
-                    QStringLiteral("Не удалось открыть файл: %1").arg(ToQString(path)),
-                    QMessageBox::Ok, window);
+    QMessageBox box(
+        QMessageBox::Warning, QtLocalText("Open file", "Открыть файл"),
+        QtLocalText("Could not open file: %1", "Не удалось открыть файл: %1").arg(ToQString(path)),
+        QMessageBox::Ok, window);
     box.setObjectName("externalFileOpenError");
     box.setTextFormat(Qt::PlainText);
     box.exec();

@@ -7,15 +7,53 @@
 #include "../FileManager/PropertyName.h"
 #include "../FileManager/SplitUtils.h"
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
+#include "7zip/UI/GUI/ExtractRes.h"
 #include "Common/MyString.h"
 #include "Common/StringConvert.h"
 #include "Windows/System.h"
 #include "qtcompressoptionsdialog.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QLabel>
 
 static const unsigned kHistorySize = 20;
+static const char *const k_Auto_Prefix = "*  ";
+
+static void Modify_Auto(AString &s) { s.Insert(0, k_Auto_Prefix); }
+
+static void AddSize_MB(UString &s, UInt64 size) {
+    s.Add_LF();
+    const UInt64 v2 = size + ((UInt32)1 << 20) - 1;
+    if (size < v2)
+        size = v2;
+    s.Add_UInt64(size >> 20);
+    s += " MB : ";
+}
+
+static void AddSize_MB_id(UString &s, UInt64 size, UInt32 id) {
+    AddSize_MB(s, size);
+    AddLangString(s, id);
+}
+
+void SetErrorMessage_MemUsage(UString &s, UInt64 reqSize, UInt64 ramSize, UInt64 ramLimit,
+                              const UString &usageString) {
+    AddLangString(s, IDS_MEM_OPERATION_BLOCKED);
+    s.Add_LF();
+    AddLangString(s, IDS_MEM_REQUIRES_BIG_MEM);
+    s.Add_LF();
+    AddSize_MB(s, reqSize);
+    s += usageString;
+    AddSize_MB_id(s, ramSize, IDS_MEM_RAM_SIZE);
+    // if (ramLimit != 0)
+    {
+        AddSize_MB_id(s, ramLimit, IDS_MEM_USAGE_LIMIT_SET_BY_7ZIP);
+    }
+    s.Add_LF();
+    s.Add_LF();
+    AddLangString(s, IDS_MEM_ERROR);
+}
 
 static bool IsAsciiString(const UString &s) {
     for (unsigned i = 0; i < s.Len(); i++) {
@@ -223,6 +261,12 @@ void CCompressDialog::OnOK(NCompression::CInfo &registry) const {
 }
 
 namespace NCompressDialog {
+QString Modify_Auto(const QString &text) {
+    const QByteArray ascii = text.toLatin1();
+    AString s(ascii.constData());
+    ::Modify_Auto(s);
+    return QString::fromLatin1(s.Ptr());
+}
 static const UInt32 kLzmaMaxDictSize = (UInt32)15 << 28;
 static const UInt32 kSolidLog_NoSolid = 0;
 static const UInt32 kSolidLog_FullSolid = 64;
@@ -475,18 +519,24 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
     }
     return options;
 }
-// Unit selection from Combo_AddDict2; Qt formats the visible text.
+// Source Combo_AddDict2 text body; the Qt caller owns item insertion and data.
 QString Combo_AddDict2(quint64 sizeShow) {
+    char c = 0;
     unsigned moveBits = 0;
-    QString unit = QStringLiteral("Б");
     if ((sizeShow & 0xFFFFF) == 0) {
         moveBits = 20;
-        unit = QStringLiteral("МиБ");
+        c = 'M';
     } else if ((sizeShow & 0x3FF) == 0) {
         moveBits = 10;
-        unit = QStringLiteral("КиБ");
+        c = 'K';
     }
-    return QString::number(sizeShow >> moveBits) + QLatin1Char(' ') + unit;
+    AString s;
+    s.Add_UInt64(sizeShow >> moveBits);
+    s.Add_Space();
+    if (c != 0)
+        s.Add_Char(c);
+    s.Add_Char('B');
+    return QString::fromLatin1(s.Ptr());
 }
 
 // LZMA, Deflate and PPMd branches copied from CCompressDialog::SetOrder2 (0766b73).
@@ -589,20 +639,30 @@ static UInt64 Get_Lzma2_ChunkSize(UInt64 dict) {
     return cs;
 }
 
-QString Add_Size(UInt64 val) {
+static void Add_Size(AString &s, UInt64 val) {
     unsigned moveBits = 0;
-    QString unit = QStringLiteral("Б");
+    char c = 0;
     if ((val & 0x3FFFFFFF) == 0) {
         moveBits = 30;
-        unit = QStringLiteral("ГиБ");
+        c = 'G';
     } else if ((val & 0xFFFFF) == 0) {
         moveBits = 20;
-        unit = QStringLiteral("МиБ");
+        c = 'M';
     } else if ((val & 0x3FF) == 0) {
         moveBits = 10;
-        unit = QStringLiteral("КиБ");
+        c = 'K';
     }
-    return QString::number(val >> moveBits) + QLatin1Char(' ') + unit;
+    s.Add_UInt64(val >> moveBits);
+    s.Add_Space();
+    if (moveBits != 0)
+        s.Add_Char(c);
+    s.Add_Char('B');
+}
+
+QString Add_Size(UInt64 val) {
+    AString s;
+    Add_Size(s, val);
+    return QString::fromLatin1(s.Ptr());
 }
 
 CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId,
@@ -1005,7 +1065,7 @@ static int AddMemComboItem(QList<CMemComboItem> &items, UInt64 val, bool isPerce
         s += QString::number(val);
         s += '%';
         if (isDefault)
-            sUser = QStringLiteral("Автоматически: ");
+            sUser = QStringLiteral("*  "); // Source k_Auto_Prefix.
         else
             sRegistry = s;
         sUser += s;
@@ -1198,7 +1258,7 @@ static void AddTimeOption(UString &s, UInt32 val, const UString &unit, const cha
     }
 }
 
-int COptionsDialog::AddPrec(unsigned prec, bool isDefault) {
+int COptionsDialog::AddPrec(unsigned prec, bool isDefault, UString *textOnly) {
     UString s;
     UInt32 writePrec = prec;
     if (isDefault) {
@@ -1222,7 +1282,30 @@ int COptionsDialog::AddPrec(unsigned prec, bool isDefault) {
         AddTimeOption(s, d, NsString);
     } else
         s.Add_UInt32(prec);
+    if (textOnly) {
+        *textOnly = s;
+        return 0;
+    }
     return (int)m_Prec.AddString_SetItemData(s, (qintptr)writePrec);
+}
+
+void COptionsDialog::OnLanguageChange() {
+    LangString(IDS_COMPRESS_SEC, SecString);
+    if (SecString.IsEmpty())
+        SecString = "sec";
+    LangString(IDS_COMPRESS_NS, NsString);
+    if (NsString.IsEmpty())
+        NsString = "ns";
+    for (int i = 0; i < m_Prec.GetCount(); ++i) {
+        UString text;
+        AddPrec(m_Prec.GetItemData(i), false, &text);
+        m_Prec.SetItemText(i, text);
+    }
+    // The existing format/method suffix is data, not translated UI text.
+    auto *info = static_cast<QLabel *>(GetItem(IDT_COMPRESS_TIME_INFO));
+    const QString suffix = info->text().mid(info->text().indexOf(':'));
+    SetItemText(IDT_COMPRESS_TIME_INFO,
+                GetNameOfProperty(kpidType, L"type") + UString(suffix.toStdWString().c_str()));
 }
 
 void COptionsDialog::SetPrec() {

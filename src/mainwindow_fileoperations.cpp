@@ -1,3 +1,5 @@
+#include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
@@ -5,6 +7,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
+#include "qtlangcontrols.h"
 #include "qttrashservice.h"
 #include <QFile>
 #include <QScopedValueRollback>
@@ -39,7 +42,9 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
     if (state_ != State::Filesystem || !QFileInfo(destinationDirectory).isDir() ||
         QFileInfo(destinationDirectory).isSymLink() || sources.isEmpty() ||
         (directPath && sources.size() != 1)) {
-        QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
+        QMessageBox::warning(
+            this, "Sevenzip Desktop",
+            QtLocalText("The destination folder is unavailable.", "Папка назначения недоступна."));
         return;
     }
     fileTransfer_ =
@@ -68,9 +73,8 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 operation->submitOverwriteAnswer(answer);
             });
     fileTransferCompletedBytes_ = 0;
-    beginWorkerProgress(move ? QStringLiteral("Перемещение файлов")
-                             : QStringLiteral("Копирование файлов"),
-                        destination, [operation = fileTransfer_] { operation->cancel(); });
+    beginWorkerProgress(QtLangText(move ? IDS_MOVING : IDS_COPYING), destination,
+                        [operation = fileTransfer_] { operation->cancel(); });
     connect(fileTransfer_, &FileTransferOperation::currentFile, this, [this](const QString &path) {
         if (app_.QtOperations().closed())
             return;
@@ -83,10 +87,12 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
             progress_->Sync.Set_NumBytesCur(fileTransferCompletedBytes_);
     });
     connect(fileTransfer_, &FileTransferOperation::result, this,
-            [this](bool success, const QString &message) {
+            [this, operation](bool success, const QString &message) {
                 if (app_.QtOperations().closed())
                     return;
-                if (!success && message != QStringLiteral("Операция отменена.") && progress_)
+                if (!success &&
+                    operation->resultKind() != FileTransferOperation::ResultKind::Canceled &&
+                    progress_)
                     progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(message);
                 closeProgressDialog(true);
                 if (success)
@@ -155,8 +161,9 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
                 transferDestinationPanel_.reset();
                 if (!handled)
                     QMessageBox::warning(
-                        this, QStringLiteral("Копирование"),
-                        QStringLiteral("Исходное извлечение для этого архива недоступно."));
+                        this, QtLangText(IDS_COPYING),
+                        QtLocalText("Source extraction is unavailable for this archive.",
+                                    "Исходное извлечение для этого архива недоступно."));
             }
             return;
         }
@@ -180,12 +187,14 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
             archiveMoveStage_ = ArchiveMoveStage::None;
             archiveMovePaths_.clear();
             transferDestinationPanel_.reset();
-            QMessageBox::warning(this, "Sevenzip Desktop", "Папка назначения недоступна.");
+            QMessageBox::warning(this, "Sevenzip Desktop",
+                                 QtLocalText("The destination folder is unavailable.",
+                                             "Папка назначения недоступна."));
             return;
         }
         previousState_ = state_;
         setState(State::Operating);
-        begin("Перемещение из архива", destination);
+        begin(QtLangText(IDS_MOVING), destination);
         backend_->extract(archive_, destination, paths, archivePassword_);
         return;
     }
@@ -212,8 +221,9 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
     auto *folder = dynamic_cast<CAgentFolder *>(target.GetFolder());
     if (!folder || target.GetParentFolders().Size() != 1 ||
         !ArchiveFormats::canModify(panelUi_[destinationIndex].archive)) {
-        QMessageBox::warning(this, QStringLiteral("Копирование"),
-                             QStringLiteral("Запись в эту папку архива недоступна."));
+        QMessageBox::warning(this, QtLangText(IDS_COPYING),
+                             QtLocalText("Writing to this archive folder is unavailable.",
+                                         "Запись в эту папку архива недоступна."));
         return true;
     }
     CRecordVector<UInt32> indices = sourceOperatedIndices();
@@ -233,10 +243,11 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
         activatePanelUi(sourceIndex);
         if (move)
             refreshCurrent();
-        statusBar()->showMessage(move ? QStringLiteral("Объекты перемещены в архив.")
-                                      : QStringLiteral("Объекты скопированы в архив."));
+        statusBar()->showMessage(
+            move ? QtLocalText("Items moved into the archive.", "Объекты перемещены в архив.")
+                 : QtLocalText("Items copied into the archive.", "Объекты скопированы в архив."));
     } else if (result != E_ABORT) {
-        QMessageBox::warning(this, QStringLiteral("Копирование"),
+        QMessageBox::warning(this, QtLangText(IDS_COPYING),
                              QString::fromWCharArray(HResultToMessage(result).Ptr()));
     }
     return true;
@@ -255,7 +266,8 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
         app_.GetFocusedPanel().RefreshListCtrl(selection);
         if (result != S_OK)
             QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                                 QStringLiteral("Не удалось удалить объекты из архива."));
+                                 QtLocalText("Could not delete items from the archive.",
+                                             "Не удалось удалить объекты из архива."));
         return;
     }
     if (state_ != State::Filesystem)
@@ -268,7 +280,8 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
     refreshCurrent(&selection);
     if (result != S_OK && result != E_ABORT)
         QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                             QStringLiteral("Не удалось удалить все выбранные объекты."));
+                             QtLocalText("Could not delete all selected items.",
+                                         "Не удалось удалить все выбранные объекты."));
 }
 
 void MainWindow::renameSelected() {
@@ -333,12 +346,14 @@ void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &orig
         renderBoundFolder();
         selectPaths({originalPath});
         QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                             QStringLiteral("Недопустимое имя файла."));
+                             QtLocalText("Invalid file name.", "Недопустимое имя файла."));
         return;
     }
     const HRESULT result = app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
     if (result != S_OK && result != E_ABORT)
-        QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось переименовать объект.");
+        QMessageBox::warning(
+            this, "Sevenzip Desktop",
+            QtLocalText("Could not rename the item.", "Не удалось переименовать объект."));
     if (archive) {
         renderBoundFolder();
         const QString prefix = originalPath.section('/', 0, -2);

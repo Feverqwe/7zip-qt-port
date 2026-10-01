@@ -68,6 +68,8 @@
         "within": "memButtons",
         "class": "QPushButton",
         "text": [
+          "Continue",
+          "&Continue",
           "&Продолжить"
         ]
       },

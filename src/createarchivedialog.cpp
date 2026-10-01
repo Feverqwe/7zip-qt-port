@@ -1,7 +1,10 @@
 #include "createarchivedialog.h"
 
+#include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/GUI/CompressDialogRes.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
+#include "qtlangcontrols.h"
 #include <QScrollArea>
 
 CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
@@ -10,7 +13,6 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     : QDialog(parent), currentDirectory_(directory), StartDirPrefix(directory),
       existingTarget_(existingTarget) {
     setObjectName("createArchiveDialog");
-    setWindowTitle(existingTarget_.isEmpty() ? "Создать архив" : "Добавить в архив");
     resize(760, 720);
     auto *layout = new QVBoxLayout(this);
     auto *scroll = new QScrollArea(this);
@@ -26,6 +28,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     scroll->setWidget(content);
     layout->addWidget(scroll);
     createFooter(layout);
+    BindLanguage();
     showDirectory(currentDirectory_);
     updateTargetPreview();
     for (const QString &source : initialSources)
@@ -33,29 +36,44 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
 }
 
 void CreateArchiveDialog::createSourcePicker(QVBoxLayout *layout) {
-    layout->addWidget(new QLabel(existingTarget_.isEmpty()
-                                     ? "Выберите файлы и папки для нового архива"
-                                     : "Выберите файлы и папки для открытого архива"));
+    auto *prompt = new QLabel(this);
+    prompt->setObjectName("sourcePickerPrompt");
+    QtBindLocalText(prompt,
+                    existingTarget_.isEmpty() ? "Choose files and folders for the new archive"
+                                              : "Choose files and folders for the open archive",
+                    existingTarget_.isEmpty() ? "Выберите файлы и папки для нового архива"
+                                              : "Выберите файлы и папки для открытого архива");
+    layout->addWidget(prompt);
     auto *navigation = new QHBoxLayout;
     auto *up = new QPushButton("Вверх", this);
     up->setObjectName("sourceUpButton");
+    QtBindLangText(up, IDM_OPEN_PARENT_FOLDER, "Up One Level");
     navigation->addWidget(up);
     sourcePath_ = new QLineEdit(currentDirectory_, this);
     sourcePath_->setObjectName("sourceDirectory");
+    QtBindLocalText(sourcePath_, "Source folder", "Папка источников", true);
     navigation->addWidget(sourcePath_);
     layout->addLayout(navigation);
     available_ = new QListWidget(this);
     available_->setObjectName("availableSources");
+    QtBindLocalText(available_, "Available files and folders", "Доступные файлы и папки", true);
     available_->setSelectionMode(QAbstractItemView::ExtendedSelection);
     layout->addWidget(available_);
     auto *add = new QPushButton("Добавить выбранное", this);
     add->setObjectName("selectSourcesButton");
+    QtBindLocalText(add, "Add selected", "Добавить выбранное");
     layout->addWidget(add);
-    layout->addWidget(new QLabel("Источники архива"));
+    auto *selectedLabel = new QLabel(this);
+    selectedLabel->setObjectName("selectedSourcesLabel");
+    QtBindLocalText(selectedLabel, "Archive sources", "Источники архива");
+    layout->addWidget(selectedLabel);
     sources_ = new QListWidget(this);
     sources_->setObjectName("selectedSources");
+    QtBindLocalText(sources_, "Archive sources", "Источники архива", true);
     layout->addWidget(sources_);
     auto *remove = new QPushButton("Убрать выбранное", this);
+    remove->setObjectName("removeSourcesButton");
+    QtBindLocalText(remove, "Remove selected", "Убрать выбранное");
     layout->addWidget(remove);
     connect(up, &QPushButton::clicked, this, [this] {
         QDir parent(currentDirectory_);
@@ -151,8 +169,12 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     destination_->setObjectName("archiveDestination");
     destinationRow->addWidget(destination_);
     auto *browse = new QPushButton("Обзор…", this);
+    browse->setObjectName("archiveDestinationBrowse");
+    QtBindLocalText(browse, "Browse…", "Обзор…");
     destinationRow->addWidget(browse);
     form->addRow("Место сохранения:", destinationRow);
+    QtBindLocalText(form->labelForField(destinationRow), "Save in:", "Место сохранения:");
+    QtBindLocalText(destination_, "Save in", "Место сохранения", true);
     layout->addLayout(form);
     if (!existingTarget_.isEmpty()) {
         const QFileInfo target(existingTarget_);
@@ -166,7 +188,8 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     }
     connect(browse, &QPushButton::clicked, this, [this] {
         QString path;
-        if (MyBrowseForFolder(this, "Место сохранения", destination_->text(), path))
+        if (MyBrowseForFolder(this, QtLocalText("Save in", "Место сохранения"),
+                              destination_->text(), path))
             destination_->setText(path);
     });
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
@@ -196,7 +219,6 @@ void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
     buttons_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons_->button(QDialogButtonBox::Ok)
         ->setText(existingTarget_.isEmpty() ? "Создать" : "Добавить");
-    buttons_->button(QDialogButtonBox::Cancel)->setText("Отмена");
     layout->addWidget(buttons_);
 
     connect(name_, &QLineEdit::textChanged, this, &CreateArchiveDialog::updateTargetPreview);
@@ -208,8 +230,10 @@ void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
 }
 
 void CreateArchiveDialog::updateTargetPreview() {
-    preview_->setText(existingTarget_.isEmpty() ? "Новый архив: " + archivePath()
-                                                : "Добавить в открытый архив: " + existingTarget_);
+    preview_->setText(existingTarget_.isEmpty()
+                          ? QtLocalText("New archive: ", "Новый архив: ") + archivePath()
+                          : QtLocalText("Add to open archive: ", "Добавить в открытый архив: ") +
+                                existingTarget_);
 }
 
 QString CreateArchiveDialog::archivePath() const {
@@ -228,13 +252,10 @@ void CreateArchiveDialog::validateAndAccept() {
             password_->text(), passwordConfirmation_->text(), showPassword_->isChecked(),
             format_->currentText(), GetEncryptionMethodSpec());
         if (error != CCompressDialog::kPasswordOK) {
-            const QString message =
-                error == CCompressDialog::kPasswordUseAscii
-                    ? "Для ZIP используйте пароль из ASCII без управляющих символов."
-                : error == CCompressDialog::kPasswordTooLong
-                    ? "Пароль ZIP AES не должен превышать 99 символов."
-                    : "Введённые пароли не совпадают.";
-            QMessageBox::warning(this, "Создать архив", message);
+            const UInt32 id = error == CCompressDialog::kPasswordUseAscii  ? IDS_PASSWORD_USE_ASCII
+                              : error == CCompressDialog::kPasswordTooLong ? IDS_PASSWORD_TOO_LONG
+                                                                           : IDS_PASSWORD_NOT_MATCH;
+            QMessageBox::warning(this, windowTitle(), QtLangText(id));
             return;
         }
     }
@@ -249,20 +270,26 @@ void CreateArchiveDialog::validateAndAccept() {
          (base.isEmpty() || archivePath().isEmpty() || !destination.isDir() ||
           QFileInfo(archivePath()).suffix().compare(format_->currentText(), Qt::CaseInsensitive) !=
               0))) {
-        QMessageBox::warning(this, "Создать архив",
-                             "Выберите источники, имя и существующую папку сохранения.");
+        QMessageBox::warning(
+            this, windowTitle(),
+            QtLocalText("Choose sources, an archive name and an existing destination folder.",
+                        "Выберите источники, имя и существующую папку сохранения."));
         return;
     }
     for (const QString &source : selected_) {
         if (!QFileInfo::exists(source)) {
-            QMessageBox::warning(this, "Создать архив", "Источник не найден: " + source);
+            QMessageBox::warning(this, windowTitle(),
+                                 QtLocalText("Source not found: ", "Источник не найден: ") +
+                                     source);
             return;
         }
     }
     target_ = existingTarget_.isEmpty() ? archivePath() : existingTarget_;
     if (existingTarget_.isEmpty() &&
         (QFileInfo(target_).exists() || QFileInfo(target_).isSymLink())) {
-        QMessageBox::warning(this, "Создать архив", "Архив уже существует: " + target_);
+        QMessageBox::warning(this, windowTitle(),
+                             QtLocalText("Archive already exists: ", "Архив уже существует: ") +
+                                 target_);
         return;
     }
     SaveOptionsInMem();

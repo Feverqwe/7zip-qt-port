@@ -99,7 +99,7 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QFile::remove(folder + QStringLiteral("/old.txt")));
         QVERIFY(QDir().rmdir(folder));
         QTRY_COMPARE_WITH_TIMEOUT(table(window)->rowCount(), 0, 3500);
-        QVERIFY(window.statusBar()->currentMessage().contains(QStringLiteral("Папка не найдена")));
+        QVERIFY(window.statusBar()->currentMessage().contains(QStringLiteral("Folder not found")));
 
         QVERIFY(QDir().mkpath(folder));
         QVERIFY(writeFile(folder + QStringLiteral("/new.txt")));

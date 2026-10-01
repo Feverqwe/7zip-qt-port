@@ -1,10 +1,47 @@
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include "window_state_support.h"
 
 class RootNavigationTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void sourceRootHotSwitchPreservesItemsAndSelection() {
+        const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(UString("-"), settingsPath);
+        ReloadLang(settingsPath);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "openRootAction")->trigger();
+        auto *view = table(window);
+        QTableWidgetItem *computer = nullptr;
+        for (int row = 0; row < view->rowCount(); ++row)
+            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 0u)
+                computer = view->item(row, 0);
+        QVERIFY(computer);
+        view->selectRow(computer->row());
+        const int count = view->rowCount();
+        for (const char *lang : {"ru", "-"}) {
+            SaveRegLang(UString(lang), settingsPath);
+            ReloadLang(settingsPath);
+            QtNotifyLanguageChanged();
+            QCOMPARE(view->rowCount(), count);
+            QCOMPARE(view->item(computer->row(), 0), computer);
+            QVERIFY(computer->isSelected());
+            QCOMPARE(computer->text(), QString::fromWCharArray(LangString(IDS_COMPUTER)));
+            QCOMPARE(computer->data(Qt::UserRole + 3).toString(), computer->text());
+            QCOMPARE(backend.listCalls, 0);
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                window.resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*view, window));
+                QVERIFY(UiInspection::writeReport(
+                    window, QString("language-root-%1-%2").arg(lang).arg(size.width())));
+            }
+        }
+    }
 #ifndef _WIN32
     void networkNamespaceOpensWithoutRemoteServices() {
         ControlledBackend backend;
@@ -50,7 +87,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         QVERIFY(mountsRow >= 0);
         view->selectRow(mountsRow);
         action(window, "openItemAction")->trigger();
-        QVERIFY(window.windowTitle().contains(QStringLiteral("Тома")));
+        QVERIFY(window.windowTitle().contains(QStringLiteral("Volumes")));
         QVERIFY(view->rowCount() > 0);
         QVERIFY(!action(window, "createFolderAction")->isEnabled());
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

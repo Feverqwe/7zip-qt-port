@@ -46,7 +46,7 @@
         {"source": "CPP/7zip/UI/FileManager/CopyDialog.cpp", "symbol": "CCopyDialog::OnSize", "requirement": "Path and summary resize; Browse and confirmation buttons remain reachable."}
       ],
       "assert": [
-        {"id": "IDT_COPY", "property": "text", "equals": "Копировать в:"},
+        {"id": "IDT_COPY", "property": "text", "equals": "Copy to:"},
         {"id": "IDT_COPY", "property": "labelFits", "equals": true},
         {"id": "IDC_COPY", "property": "enabled", "equals": true},
         {"id": "IDC_COPY", "property": "fullyVisible", "equals": true},
@@ -64,7 +64,7 @@
         {"source": "CPP/7zip/UI/FileManager/CopyDialog.cpp", "symbol": "CCopyDialog::OnSize", "requirement": "Same resizing constraints apply to Move."}
       ],
       "assert": [
-        {"id": "IDT_COPY", "property": "text", "equals": "Переместить в:"},
+        {"id": "IDT_COPY", "property": "text", "equals": "Move to:"},
         {"id": "IDT_COPY", "property": "labelFits", "equals": true},
         {"id": "IDC_COPY", "property": "enabled", "equals": true},
         {"id": "IDC_COPY", "property": "fullyVisible", "equals": true},

@@ -122,7 +122,7 @@ class CompressionOrderTests final : public QObject {
                                   : value == 7        ? 16
                                   : value == 5        ? 6
                                                       : 4;
-            QCOMPARE(word->itemText(0), QStringLiteral("Автоматически (%1)").arg(autoOrder));
+            QCOMPARE(word->itemText(0), QStringLiteral("*  %1").arg(autoOrder));
             QCOMPARE(dialog.compressionOptions().wordSize, 0);
         }
         word->setCurrentIndex(word->findData(expected.last()));
@@ -217,7 +217,8 @@ class CompressionOrderTests final : public QObject {
         backend.cancel();
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains("отменена"));
+        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

@@ -1,4 +1,5 @@
 #include "qtlanguageservices.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Common/Lang.h"
 #include <QCoreApplication>
 #include <QDir>
@@ -42,3 +43,9 @@ QString QtLanguageDirectory() {
 }
 
 UString QtEnglishLanguageString(UInt32 id) { return BundledFiles().english(id); }
+
+QString QtLocalText(const QString &english, const QString &russian) {
+    UString language;
+    LangString_OnlyFromLangFile(1, language);
+    return language == L"Russian" ? russian : english;
+}

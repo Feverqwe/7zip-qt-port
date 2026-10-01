@@ -24,7 +24,7 @@ CEditPage::CEditPage(const QString &settingsPath, QWidget *parent)
     for (unsigned i = 0; i < 3; ++i) {
         auto *label = new QLabel(labels[i], this);
         label->setProperty("languageColon", i == 0);
-        QtBindLangText(label, labelIDs[i], labels[i]);
+        QtBindResourceText(label, labelIDs[i], labels[i]);
         auto &c = _ctrls[i];
         c.Ctrl = edits[i];
         c.Button = buttons[i];

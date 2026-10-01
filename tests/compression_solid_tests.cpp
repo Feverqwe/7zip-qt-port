@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -31,8 +32,6 @@ class CompressionSolidTests final : public QObject {
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(-1));
         dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         for (UInt32 mode : {UInt32(-1), UInt32(0), UInt32(64)}) {
             block->setCurrentIndex(block->findData(mode));
             for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
@@ -41,8 +40,9 @@ class CompressionSolidTests final : public QObject {
                 dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
                     ->ensureWidgetVisible(block, 0, 80);
                 QApplication::processEvents();
-                QVERIFY(dialog.grab().save(
-                    screenshots + QString("/solid-mode-%1-%2.png").arg(mode).arg(size.width())));
+                QVERIFY(UiInspection::fullyVisible(*block, dialog));
+                QVERIFY(UiInspection::writeReport(
+                    dialog, QString("solid-mode-%1-%2").arg(mode).arg(size.width())));
             }
         }
         block->setCurrentIndex(block->findData(0u));
@@ -64,23 +64,23 @@ class CompressionSolidTests final : public QObject {
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (8 ГиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  8 GB"));
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (16 ГиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  16 GB"));
         method->setCurrentText("LZMA");
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (4 ГиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  4 GB"));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (128 МиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  128 MB"));
         method->setCurrentText("LZMA2");
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (256 МиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  256 MB"));
         method->setCurrentText("PPMd");
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (128 МиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  128 MB"));
         method->setCurrentText("BZip2");
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (112500 КиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  112500 KB"));
         dictionary->setCurrentIndex(1);
-        QCOMPARE(block->itemText(0), QStringLiteral("Автоматически (16 МиБ)"));
+        QCOMPARE(block->itemText(0), QStringLiteral("*  16 MB"));
         QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
     }
     void createsWithBlockModes_data() {
@@ -175,7 +175,8 @@ class CompressionSolidTests final : public QObject {
         backend.cancel();
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains("отменена"));
+        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

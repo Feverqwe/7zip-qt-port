@@ -12,6 +12,59 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Live dialog language consumers (P1-14.2)
+
+References are pinned Password/Copy/Split/Overwrite/Mem/Messages RC/source,
+GUI ExtractDialog.rc and CompressDialog/CompressOptionsDialog resources.
+`language_dialog` writes EN/RU normal/compact `language-*` JSON: password360/260,
+copy/split/folder480/300, overwrite/memory/messages700/560, extract600/470.
+It verifies text bounds and pending state across hot switch. `language_ui` adds
+Add760×720/640×480 and advanced520×400/440×340. Add content uses its existing
+scroll viewport; the footer remains exposed. Advanced archive-time checkbox
+uses Qt text wrapping for the original long source words at compact width.
+Reachability of all scrolling Add controls, current message forms and source
+accelerator/buddy review form the accepted P1-14.2 scope. The final full gate
+passed170/170 on macOS; these reports do not establish rendered Windows parity.
+Progress reports cover EN/RU760×450/640×380 paused/background state and retain
+source two-column grouping. Properties reports cover540×360/360×240 with the
+existing table, rows and selection. Built-in viewer/editor reports cover760×560/
+420×300 while preserving pending content; editable text is omitted from JSON.
+Split confirmation reference: pinned PanelSplitFile.cpp's IDs7304/7305 and
+MB_YESNOCANCEL. `volume_workflow` checks original EN/RU100-part text and decisions
+with normal1100×640/compact640×380 main windows. Twelve
+`language-split-confirm-{en|ru}-{1100|640}-{1|2|3}.json` reports show the Qt managed
+400×116 popup with full message and Yes/No/Cancel exposed on macOS. QMessageBox
+ignores its title on macOS; Windows/Linux retain the title check but their
+runtime and rendered parity remain unverified.
+Archive preview-limit is a local bounded-viewer integration message, with no
+equivalent native bounded-editor resource. `language_archive_command` checks
+EN→RU→EN text/buttons at main-window1100×640/640×380; four
+`language-archive-preview-*.json` reports show a complete400×116 Qt popup.
+It also retains selected rows and verifies no extraction or listing restart.
+
+Compression RAM rejection references the original CompressDialog.cpp
+SetErrorMessage_MemUsage body rather than a separate resource dialog.
+`language_archive_command` checks zero-limit rejection EN→RU→EN at Add760×720/
+640×480, retaining pending values. Four `language-compress-memory-*.json`
+reports show English400×226/Russian400×256 with full message/buttons. Dictionary,
+memory and solid geometry tests expose their affected controls and write current
+760×720/640×480 JSON with source B/KB/MB/GB and `*  ` values; other Add controls
+retain the scrolling reachability requirement. Association error reports check
+local EN/RU plaintext paths and full400×116 message/buttons. Progress cancellation
+uses Qt platform standard button captions with original Yes/No/Cancel decisions.
+No rendered Windows reference or cross-platform verification is claimed.
+
+Add's language test now exposes every named atomic control by scrolling at both
+sizes and checks full exposure, label/button widths and persistent footer.
+`language-add-*.json` records its final bottom position; controls above the
+viewport are verified at their own scroll positions. `language_focus` checks the
+source RU Show-password/Parameters collision and composite CPU/RAM label buddies:
+Tab reaches both controls, mnemonic cycling is checked when enabled by the OS,
+and focus proxies reach the real inputs. Source RC fallback retains original
+English accelerator positions when a translation is missing. Root language
+reports at980×620/640×400 retain the same table/items/selection and source names;
+the isolated `root_navigation` startup directory contains their current JSON.
+
 ### Menu page (P1-13.1)
 
 Reference: pinned `FileManager/MenuPage.cpp`, `MenuPage2.rc` and

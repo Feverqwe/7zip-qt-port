@@ -1,5 +1,7 @@
+#include "7zip/UI/GUI/CompressDialogRes.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "createarchivedialog.h"
+#include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     auto *compression = new QGroupBox("Параметры сжатия", this);
@@ -33,6 +35,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     hardwareThreads_->setObjectName("compressionHardwareThreads");
     cpuLayout->addWidget(threads_, 1);
     cpuLayout->addWidget(hardwareThreads_);
+    cpuRow->setFocusProxy(threads_);
     compressionForm->addRow("Потоки CPU:", cpuRow);
     memoryUsage_ = new QLabel(compression);
     memoryUsage_->setObjectName("compressionMemoryUsage");
@@ -45,6 +48,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     SetMemUseCombo();
     memoryLayout->addWidget(memoryUsage_);
     memoryLayout->addWidget(memUse_, 1);
+    memoryRow->setFocusProxy(memUse_);
     compressionForm->addRow("Память для сжатия:", memoryRow);
     decompressionMemory_ = new QLabel(compression);
     decompressionMemory_->setObjectName("compressionDecompressionMemory");
@@ -99,15 +103,10 @@ void CreateArchiveDialog::SetLevel2() {
     }
     level_->clear();
     const auto &fi = NCompressDialog::GetFormatInfo(format_->currentText());
-    const QString labels[] = {"Без сжатия", "Быстрое",      {}, "Быстро", {}, "Обычное",
-                              {},           "Максимальное", {}, "Ультра"};
     for (unsigned i = 0; i < sizeof(UInt32) * 8; i++) {
         const UInt32 mask = fi.LevelsMask >> i;
         if (mask & 1) {
-            QString text = QString::number(i);
-            if (i < Z7_ARRAY_SIZE(labels) && !labels[i].isEmpty())
-                text += " - " + labels[i];
-            level_->addItem(text, i);
+            level_->addItem(LevelText(i), i);
         }
     }
     for (int i = level_->count() - 1; i >= 0; i--)
@@ -125,9 +124,9 @@ void CreateArchiveDialog::SetOrder2() {
         NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
     const auto options = NCompressDialog::SetOrder2(method, level_->currentData().toUInt());
     wordSize_->clear();
-    wordSize_->addItem(options.Values.isEmpty()
-                           ? QStringLiteral("Автоматически")
-                           : QStringLiteral("Автоматически (%1)").arg(options.AutoOrder),
+    wordSize_->addItem(NCompressDialog::Modify_Auto(options.Values.isEmpty()
+                                                        ? QString()
+                                                        : QString::number(options.AutoOrder)),
                        0);
     for (int order : options.Values)
         wordSize_->addItem(QString::number(order), order);
@@ -141,11 +140,10 @@ void CreateArchiveDialog::SetDictionary2() {
         NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
     const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
     dictionary_->clear();
-    dictionary_->addItem(options.AutoDict == 0
-                             ? QStringLiteral("Автоматически")
-                             : QStringLiteral("Автоматически (%1)")
-                                   .arg(NCompressDialog::Combo_AddDict2(options.AutoDict)),
-                         QVariant::fromValue(quint64(0)));
+    dictionary_->addItem(
+        NCompressDialog::Modify_Auto(
+            options.AutoDict == 0 ? QString() : NCompressDialog::Combo_AddDict2(options.AutoDict)),
+        QVariant::fromValue(quint64(0)));
     for (quint64 size : options.Values)
         dictionary_->addItem(NCompressDialog::Combo_AddDict2(size), QVariant::fromValue(size));
     const int index = dictionary_->findData(QVariant::fromValue(previous));
@@ -160,14 +158,13 @@ void CreateArchiveDialog::SetSolidBlockSize2() {
     const auto options = NCompressDialog::SetSolidBlockSize2(
         format_->currentText(), level_->currentData().toUInt(), method, GetDict2());
     solidBlock_->clear();
-    solidBlock_->addItem(options.Values.isEmpty()
-                             ? QStringLiteral("Автоматически")
-                             : QStringLiteral("Автоматически (%1)")
-                                   .arg(NCompressDialog::Add_Size(options.AutoSolid)),
-                         UInt32(-1));
+    solidBlock_->addItem(
+        NCompressDialog::Modify_Auto(
+            options.Values.isEmpty() ? QString() : NCompressDialog::Add_Size(options.AutoSolid)),
+        UInt32(-1));
     for (UInt32 log : options.Values) {
-        const QString label = log == 0    ? QStringLiteral("Без непрерывного блока")
-                              : log == 64 ? QStringLiteral("Непрерывный (все файлы)")
+        const QString label = log == 0    ? QtLangText(IDS_COMPRESS_NON_SOLID)
+                              : log == 64 ? QtLangText(IDS_COMPRESS_SOLID)
                                           : NCompressDialog::Add_Size(UInt64(1) << log);
         solidBlock_->addItem(label, log);
     }

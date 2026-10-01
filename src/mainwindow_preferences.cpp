@@ -1,10 +1,12 @@
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/FileManager/MyLoadMenu.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "mainwindow.h"
 #include "qtdialogscreenservices.h"
 #include "qtfilemenuprojection.h"
+#include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
 #include <QBitmap>
 #include <QMouseEvent>
@@ -43,7 +45,7 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
         // Shell COM/7-Zip extension menus require their own platform service.
         // Keep their source grouping visible until that integration is ready.
         if (app_.ShowSystemMenu) {
-            auto *system = menu.addAction(QStringLiteral("Система"));
+            auto *system = menu.addAction(QtLocalText("System", "Система"));
             system->setObjectName("systemContextGroup");
             system->setEnabled(false);
         }
@@ -154,16 +156,7 @@ void MainWindow::showFoldersHistory() {
     else
         refreshActions();
 }
-void MainWindow::refreshBookmarks() {
-    for (int index = 0; index < 10; ++index) {
-        const QString path = ToQString(app_.AppState.FastFolders.GetString((unsigned)index));
-        const QString label = path.isEmpty()
-                                  ? QString::number(index) + QStringLiteral(" — пусто")
-                                  : QString::number(index) + QStringLiteral(" — ") + path;
-        openBookmarks_[index]->setText(label);
-        openBookmarks_[index]->setToolTip(label);
-    }
-}
+void MainWindow::refreshBookmarks() { MyLoadBookmarks(openBookmarks_, saveBookmarks_, app_); }
 
 void MainWindow::saveBookmark(int index) {
     if (index < 0 || index >= 10 || (state_ != State::Filesystem && state_ != State::Viewing) ||

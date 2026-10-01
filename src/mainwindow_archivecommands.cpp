@@ -1,11 +1,17 @@
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/FileManager/resourceGui.h"
+#include "7zip/UI/GUI/CompressDialogRes.h"
+#include "7zip/UI/GUI/ExtractRes.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
+#include "CPP/7zip/UI/GUI/resource2.h"
 #include "Windows/PropVariant.h"
 #include "archiveprogressoperation.h"
 #include "mainwindow.h"
 #include "qtarchivebatchextract.h"
 #include "qtarchivefileresource.h"
+#include "qtlangcontrols.h"
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 
@@ -24,7 +30,7 @@ void MainWindow::calculateHash(const QString &method) {
             return;
         hashing_ = true;
         setState(State::Operating);
-        begin(QStringLiteral("Расчёт контрольных сумм"), method);
+        begin(QtLangText(IDS_CHECKSUM_CALCULATING), method);
         backend_->hash(paths, method);
         return;
     }
@@ -35,13 +41,16 @@ void MainWindow::calculateHash(const QString &method) {
     hashTemporary_ = std::make_unique<QTemporaryDir>();
     if (!hashTemporary_->isValid()) {
         hashTemporary_.reset();
-        QMessageBox::warning(this, QStringLiteral("Контрольные суммы"),
-                             QStringLiteral("Не удалось создать временную папку."));
+        QMessageBox::warning(this, QtLangText(IDS_CHECKSUM_INFORMATION),
+                             QtLocalText("Could not create temporary folder.",
+                                         QStringLiteral("Не удалось создать временную папку.")));
         return;
     }
     pendingHashExtraction_ = true;
     setState(State::Operating);
-    begin(QStringLiteral("Извлечение для расчёта контрольных сумм"), archive_);
+    begin(QtLocalText("Extracting for checksum calculation",
+                      QStringLiteral("Извлечение для расчёта контрольных сумм")),
+          archive_);
     backend_->extract(archive_, hashTemporary_->path(), entries, archivePassword_);
 }
 
@@ -52,8 +61,9 @@ void MainWindow::openArchiveFile(const QString &entry) {
     viewTemporary_ = std::make_unique<QTemporaryDir>();
     if (!viewTemporary_->isValid()) {
         viewTemporary_.reset();
-        QMessageBox::warning(this, QStringLiteral("Открыть файл"),
-                             QStringLiteral("Не удалось создать временную папку."));
+        QMessageBox::warning(this, QtLocalText("Open file", QStringLiteral("Открыть файл")),
+                             QtLocalText("Could not create temporary folder.",
+                                         QStringLiteral("Не удалось создать временную папку.")));
         return;
     }
     pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
@@ -61,7 +71,7 @@ void MainWindow::openArchiveFile(const QString &entry) {
     pendingExternalOpen_ = true;
     previousState_ = state_;
     setState(State::Operating);
-    begin(QStringLiteral("Открытие файла"), entry);
+    begin(QtLangText(IDS_OPENNING), entry);
     backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
 }
 
@@ -91,14 +101,18 @@ void MainWindow::viewSelectedFile(bool editable) {
     NWindows::NCOM::CPropVariant size;
     app_.GetFocusedPanel().GetFolder()->GetProperty(indices[0], kpidSize, &size);
     if (size.vt == VT_UI8 && size.uhVal.QuadPart > 16 * 1024 * 1024) {
-        QMessageBox::information(this, "Просмотр",
-                                 "Файл больше 16 МиБ. Просмотр текста недоступен.");
+        QMessageBox::information(
+            this, QtLocalText("Viewer", QStringLiteral("Просмотр")),
+            QtLocalText("File is larger than 16 MiB. Text preview is unavailable.",
+                        QStringLiteral("Файл больше 16 МиБ. Просмотр текста недоступен.")));
         return;
     }
     viewTemporary_ = std::make_unique<QTemporaryDir>();
     if (!viewTemporary_->isValid()) {
         viewTemporary_.reset();
-        QMessageBox::warning(this, "Просмотр", "Не удалось создать временную папку.");
+        QMessageBox::warning(this, QtLocalText("Viewer", QStringLiteral("Просмотр")),
+                             QtLocalText("Could not create temporary folder.",
+                                         QStringLiteral("Не удалось создать временную папку.")));
         return;
     }
     pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
@@ -108,7 +122,9 @@ void MainWindow::viewSelectedFile(bool editable) {
     pendingEditEntry_ = editable ? entry : QString();
     previousState_ = state_;
     setState(State::Operating);
-    begin(editable ? "Редактирование файла" : "Просмотр файла", entry);
+    begin(editable ? QtLocalText("Editing file", QStringLiteral("Редактирование файла"))
+                   : QtLocalText("Viewing file", QStringLiteral("Просмотр файла")),
+          entry);
     backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
 }
 
@@ -148,7 +164,7 @@ void MainWindow::createArchive(const QString &target, const QStringList &sources
     previousState_ = state_;
     creating_ = true;
     setState(State::Operating);
-    begin("Создание архива", target);
+    begin(QtLangText(IDS_PROGRESS_COMPRESSING), target);
     backend_->create(target, sources, password, encryptHeaders, options);
 }
 
@@ -174,14 +190,16 @@ void MainWindow::updateArchiveFromDialog(const QStringList &sources,
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
     const auto *actionSet = NCompressDialog::FindUpdateActionSet(options.UpdateMode);
     if (!resource || !resource->HasUpdateService() || !actionSet) {
-        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
-                             QStringLiteral("Исходное обновление этого архива недоступно."));
+        QMessageBox::warning(
+            this, QtLangText(IDD_COMPRESS),
+            QtLocalText("Source update is unavailable for this archive.",
+                        QStringLiteral("Исходное обновление этого архива недоступно.")));
         return;
     }
     QString root, error;
     QStringList relativePaths;
     if (!ArchiveBackend::prepareSourceSelection(archive_, sources, &root, &relativePaths, &error)) {
-        QMessageBox::warning(this, QStringLiteral("Добавление в архив"), error);
+        QMessageBox::warning(this, QtLangText(IDD_COMPRESS), error);
         return;
     }
     UStringVector names;
@@ -201,9 +219,10 @@ void MainWindow::updateArchiveFromDialog(const QStringList &sources,
     }
     if (result == S_OK && messages.IsEmpty()) {
         refreshCurrent(&selection);
-        statusBar()->showMessage(QStringLiteral("Архив обновлён."));
+        statusBar()->showMessage(
+            QtLocalText("Archive updated.", QStringLiteral("Архив обновлён.")));
     } else if (result != E_ABORT) {
-        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
+        QMessageBox::warning(this, QtLangText(IDD_COMPRESS),
                              messages.IsEmpty()
                                  ? QString::fromWCharArray(HResultToMessage(result).Ptr())
                                  : ToQString(messages[0]));
@@ -227,7 +246,7 @@ void MainWindow::extractTo(const QString &destination, bool onlySelected, const 
         return;
     previousState_ = state_;
     setState(State::Operating);
-    begin("Извлечение", destination);
+    begin(QtLangText(IDS_PROGRESS_EXTRACTING), destination);
     backend_->extract(archive_, destination, names,
                       password.isEmpty() ? archivePassword_ : password, options);
 }
@@ -246,8 +265,10 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
          !backend_->hasListedSourceArchive(archive_))) {
         if (options.currentFolder.isEmpty())
             return false; // At archive root, the existing full-path transport is equivalent.
-        QMessageBox::warning(this, QStringLiteral("Копирование"),
-                             QStringLiteral("Исходное извлечение для этого архива недоступно."));
+        QMessageBox::warning(
+            this, QtLangText(IDS_COPYING),
+            QtLocalText("Source extraction is unavailable for this archive.",
+                        QStringLiteral("Исходное извлечение для этого архива недоступно.")));
         return true;
     }
     if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask || !resource ||
@@ -256,23 +277,25 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
     {
         QString validationError;
         if (!backend_->validateExtraction(destination, names, options, &validationError)) {
-            QMessageBox::warning(this, QStringLiteral("Извлечение"), validationError);
+            QMessageBox::warning(this, QtLangText(IDS_PROGRESS_EXTRACTING), validationError);
             return true;
         }
         const QString output = QFileInfo(destination).absoluteFilePath();
         if (!QDir().mkpath(output) ||
             !backend_->validateExtraction(output, names, options, &validationError)) {
             QMessageBox::warning(
-                this, QStringLiteral("Извлечение"),
+                this, QtLangText(IDS_PROGRESS_EXTRACTING),
                 validationError.isEmpty()
-                    ? QStringLiteral("Не удалось создать папку назначения: %1").arg(destination)
+                    ? QtLocalText("Could not create destination folder: %1",
+                                  QStringLiteral("Не удалось создать папку назначения: %1"))
+                          .arg(destination)
                     : validationError);
             return true;
         }
         if (!onlySelected && archiveFolder_.isEmpty()) {
             previousState_ = state_;
             setState(State::Operating);
-            operationName_ = QStringLiteral("Извлечение");
+            operationName_ = QtLangText(IDS_PROGRESS_EXTRACTING);
             appendJournal(operationName_ + QStringLiteral(": ") + output);
             journalAction_->setEnabled(true);
             QtArchiveBatchResult result;
@@ -284,11 +307,14 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             }
             const bool ok = result.Result == S_OK && result.CallbackOK;
             const QString message =
-                ok                         ? QStringLiteral("Извлечение завершено.")
-                : result.Result == E_ABORT ? QStringLiteral("Операция отменена.")
-                : result.Result == S_OK ? QStringLiteral("Извлечение завершено с ошибками.")
-                                        : QString::fromWCharArray(HResultToMessage(result.Result));
-            backendFinished(ok, message, result.MessageWasDisplayed);
+                ok ? QtLocalText("Extraction completed.", QStringLiteral("Извлечение завершено."))
+                : result.Result == E_ABORT
+                    ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                : result.Result == S_OK
+                    ? QtLocalText("Extraction completed with errors.",
+                                  QStringLiteral("Извлечение завершено с ошибками."))
+                    : QString::fromWCharArray(HResultToMessage(result.Result));
+            backendFinished(ok, message, result.Result, result.MessageWasDisplayed);
             return true;
         }
         CRecordVector<UInt32> indices;
@@ -305,7 +331,7 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             return true;
         previousState_ = state_;
         setState(State::Operating);
-        operationName_ = QStringLiteral("Извлечение");
+        operationName_ = QtLangText(IDS_COPYING); // PanelCopy::CopyTo title owner
         appendJournal(operationName_ + QStringLiteral(": ") + output);
         journalAction_->setEnabled(true);
         CCopyToOptions sourceOptions;
@@ -325,12 +351,14 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             result = panel.CopyTo(sourceOptions, indices, &messages, usePassword, sourcePassword);
         }
         const bool ok = result == S_OK && messages.IsEmpty();
-        QString message = ok                  ? QStringLiteral("Извлечение завершено.")
-                          : result == E_ABORT ? QStringLiteral("Операция отменена.")
-                                              : QString::fromWCharArray(HResultToMessage(result));
+        QString message =
+            ok ? QtLocalText("Extraction completed.", QStringLiteral("Извлечение завершено."))
+            : result == E_ABORT
+                ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                : QString::fromWCharArray(HResultToMessage(result));
         if (!messages.IsEmpty())
             message = ToQString(messages[0]);
-        backendFinished(ok, message, !messages.IsEmpty());
+        backendFinished(ok, message, result, !messages.IsEmpty());
         return true;
     }
 }
@@ -348,7 +376,7 @@ void MainWindow::testArchive() {
     if (resource && resource->HasExtractService() && backend_->hasListedSourceArchive(archive_)) {
         previousState_ = state_;
         setState(State::Operating);
-        operationName_ = QStringLiteral("Проверка архива");
+        operationName_ = QtLangText(IDS_PROGRESS_TESTING);
         {
             QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
             panel.TestArchives();
@@ -358,7 +386,7 @@ void MainWindow::testArchive() {
     }
     previousState_ = state_;
     setState(State::Operating);
-    begin("Проверка архива", archive_);
+    begin(QtLangText(IDS_PROGRESS_TESTING), archive_);
     backend_->test(archive_, archivePassword_);
 }
 
@@ -372,7 +400,7 @@ void MainWindow::addSources(const QStringList &sources) {
     previousState_ = state_;
     updatingArchive_ = true;
     setState(State::Operating);
-    operationName_ = QStringLiteral("Добавление в архив");
+    operationName_ = QtLangText(IDS_PROGRESS_COMPRESSING);
     journalMessages_.Clear();
     if (journalDialog_)
         journalDialog_->ResetMessages();
@@ -381,18 +409,21 @@ void MainWindow::addSources(const QStringList &sources) {
     bool success = false;
     bool messageDisplayed = false;
     QString message;
+    HRESULT result;
     {
         QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
         ArchiveProgressOperation operation(*backend_,
                                            [this, sources] { backend_->add(archive_, sources); });
         operation.MainWindow = this;
-        const HRESULT result = operation.Create(ToUString(operationName_), this);
+        result = operation.Create(ToUString(operationName_), this);
         success = result == S_OK && operation.succeeded();
         message = result == S_OK ? operation.resultMessage()
                                  : QString::fromWCharArray(HResultToMessage(result).Ptr());
         messageDisplayed = operation.MessagesDisplayed;
+        if (result == S_OK)
+            result = operation.Result;
     }
     // This update's messages/errors were displayed by the source dialog.
     // Existing state completion still owns refresh/selection restoration.
-    backendFinished(success, message, messageDisplayed);
+    backendFinished(success, message, result, messageDisplayed);
 }

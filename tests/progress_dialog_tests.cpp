@@ -178,7 +178,7 @@ class ProgressDialogTests : public QObject {
         QCOMPARE(text(dialog, "IDT_PROGRESS_ELAPSED_VAL"), elapsed);
         pause(dialog)->click();
         QVERIFY(!dialog.Sync.Get_Paused());
-        QCOMPARE(pause(dialog)->text(), QStringLiteral("&Пауза"));
+        QCOMPARE(pause(dialog)->text(), QStringLiteral("&Pause"));
         QTRY_COMPARE(text(dialog, "IDT_PROGRESS_STATUS"), QStringLiteral("Пока приостановлено"));
         QCOMPARE(text(dialog, "IDT_PROGRESS_ELAPSED_VAL"), elapsed);
     }

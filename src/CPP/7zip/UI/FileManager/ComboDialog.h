@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ComboDialog.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
+#include "Common/MyTypes.h"
 #include <QDialog>
 #include <QStringList>
 
@@ -16,6 +17,7 @@ class CComboDialog : public QDialog {
     QString Value;
     QStringList Strings;
     QString value() const;
+    void BindLanguage(UInt32 titleID, UInt32 promptID);
     void accept() override;
 
   private:

@@ -101,7 +101,8 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(!backend.busy());
             QCOMPARE(finished.size(), iteration + 1);
             QVERIFY(!finished.last().at(0).toBool());
-            QCOMPARE(finished.last().at(1).toString(), QStringLiteral("Операция отменена."));
+            QCOMPARE(finished.last().at(1).toString(), QString("Operation canceled."));
+            QCOMPARE(backend.lastResult(), E_ABORT);
             backend.cancelAndWait();
             QCOMPARE(finished.size(), iteration + 1);
         }

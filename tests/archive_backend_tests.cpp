@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/StringConvert.h"
 #include "archive_backend_test_support.h"
@@ -8,6 +9,65 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     Q_OBJECT
 
   private slots:
+    void extractionValidationLanguagePreservesRawPath() {
+        QTemporaryDir fixture;
+        const QString languageSettings = fixture.filePath("language.ini");
+        const QString entry = QStringLiteral("../путь с пробелом 密碼.txt");
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\n\n").toLocal8Bit());
+        const auto restore = qScopeGuard([&] {
+            qunsetenv("SEVENZIP_TEST_LISTING");
+            qunsetenv("SEVENZIP_TEST_HELPER");
+            SaveRegLang(UString("-"), languageSettings);
+            ReloadLang(languageSettings);
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        const QString archive = fixture.filePath("fixture.zip");
+        writeFile(archive, "local listing fixture");
+        backend.list(archive);
+        await(backend, true);
+        for (const char *language : {"-", "ru", "-"}) {
+            SaveRegLang(UString(language), languageSettings);
+            ReloadLang(languageSettings);
+            qputenv("SEVENZIP_TEST_HELPER", "listing");
+            QSignalSpy listed(&backend, &ArchiveBackend::finished);
+            backend.list(archive);
+            QVERIFY(listed.wait(30000));
+            const auto opened = listed.takeFirst();
+            QVERIFY(opened.at(0).toBool());
+            QCOMPARE(opened.at(1).toString(), QString(language) == "ru"
+                                                  ? QStringLiteral("Архив открыт.")
+                                                  : QString("Archive opened."));
+            QSignalSpy result(&backend, &ArchiveBackend::finished);
+            backend.extract(archive, QString());
+            QCOMPARE(result.size(), 1);
+            const auto empty = result.takeFirst();
+            QVERIFY(!empty.at(0).toBool());
+            QCOMPARE(empty.at(1).toString(), QString(language) == "ru"
+                                                 ? QStringLiteral("Укажите папку назначения.")
+                                                 : QString("Specify a destination folder."));
+            backend.extract(archive, fixture.path());
+            QCOMPARE(result.size(), 1);
+            const auto unsafe = result.takeFirst();
+            QVERIFY(!unsafe.at(0).toBool());
+            QCOMPARE(unsafe.at(1).toString(),
+                     (QString(language) == "ru"
+                          ? QStringLiteral("Архив содержит небезопасный путь или ссылку: ")
+                          : QString("Archive contains an unsafe path or link: ")) +
+                         entry);
+            QVERIFY(!backend.busy());
+            QVERIFY(!QFileInfo::exists(fixture.filePath("путь с пробелом 密碼.txt")));
+            qputenv("SEVENZIP_TEST_HELPER", "fragment");
+            backend.list(archive);
+            QVERIFY(result.wait(30000));
+            const auto failed = result.takeFirst();
+            QVERIFY(!failed.at(0).toBool());
+            QVERIFY(failed.at(1).toString().startsWith(
+                QString(language) == "ru" ? QStringLiteral("7zz завершился с кодом 2. ")
+                                          : QString("7zz exited with code 2. ")));
+            QVERIFY(failed.at(1).toString().endsWith("ERROR: incomplete tail"));
+        }
+    }
     void creationUsesWorkingDirectoryAndRejectsUnavailablePath() {
         QTemporaryDir fixture;
         const QString settings = fixture.filePath("working.ini");
@@ -218,7 +278,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(wrong.wait(30000));
         const auto failure = wrong.takeFirst();
         QVERIFY(!failure.at(0).toBool());
-        QVERIFY(failure.at(1).toString().contains(QStringLiteral("Неверный пароль")));
+        QVERIFY(failure.at(1).toString().contains(QStringLiteral("Wrong password")));
         QVERIFY(!failure.at(1).toString().contains(fixturePassword));
         backend.test(archive, fixturePassword);
         await(backend, true);
@@ -455,9 +515,22 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
             QVERIFY(!QFileInfo::exists(occupied + "/новая папка"));
         }
     }
+    void cancellation_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("English") << QString("-");
+        QTest::newRow("Russian") << QString("ru");
+    }
     void cancellation() {
+        QFETCH(QString, language);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
+        const QString settings = temp.filePath("language.ini");
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+        const auto restore = qScopeGuard([&] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
         const QString source = temp.path() + "/large.bin";
         writeFile(source, QByteArray(8 * 1024 * 1024, 'x'));
         ArchiveBackend backend;
@@ -468,7 +541,9 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(spy.wait(30000));
         const auto result = spy.takeFirst();
         QVERIFY(!result.at(0).toBool());
-        QVERIFY(result.at(1).toString().contains("отменена"));
+        QCOMPARE(result.at(1).toString(), language == "ru" ? QStringLiteral("Операция отменена.")
+                                                           : QString("Operation canceled."));
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!backend.busy());
         QVERIFY(!QFileInfo::exists(temp.path() + "/cancel.7z"));
         QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());

@@ -2,6 +2,8 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Qt controls replace Win32 attachment/messages; functional handler flow stays.
 #include "PasswordDialog.h"
+#include "7zip/UI/FileManager/PasswordDialogRes.h"
+#include "qtlangcontrols.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QLabel>
@@ -22,17 +24,20 @@ void CPasswordDialog::SetTextSpec() {
 
 bool CPasswordDialog::OnInit() {
     setObjectName("passwordDialog");
-    setWindowTitle("Введите пароль");
+    QtBindResourceText(this, IDD_PASSWORD, "Enter password");
     resize(360, 170);
     auto *layout = new QVBoxLayout(this);
-    auto *label = new QLabel("Введите пароль:", this);
+    auto *label = new QLabel(this);
+    QtBindResourceText(label, IDT_PASSWORD_ENTER, "&Enter password:");
     label->setObjectName("passwordPrompt");
     layout->addWidget(label);
     _passwordEdit = new QLineEdit(this);
     _passwordEdit->setObjectName("passwordEdit");
+    QtBindLangText(_passwordEdit, IDT_PASSWORD_ENTER, "Enter password:", true);
     label->setBuddy(_passwordEdit);
     layout->addWidget(_passwordEdit);
-    _showPassword = new QCheckBox("Показать пароль", this);
+    _showPassword = new QCheckBox(this);
+    QtBindResourceText(_showPassword, IDX_PASSWORD_SHOW, "&Show password");
     _showPassword->setObjectName("passwordShow");
     layout->addWidget(_showPassword);
     _showPassword->setChecked(ShowPassword);

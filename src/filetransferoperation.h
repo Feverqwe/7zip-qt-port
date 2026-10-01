@@ -12,6 +12,7 @@ class FileTransferOperation : public QThread {
 
   public:
     enum class DestinationKind { Directory, DirectPath };
+    enum class ResultKind { Success, Failure, Canceled };
     struct FileSystemAdapter {
         std::function<bool(const QString &, const QString &)> trySourceRename;
         std::function<bool(const QString &)> removeSource;
@@ -22,6 +23,7 @@ class FileTransferOperation : public QThread {
     void cancel();
     void submitOverwriteAnswer(int answer);
     bool isCanceled() const { return canceled_; }
+    ResultKind resultKind() const { return resultKind_; }
 
   signals:
     void currentFile(const QString &path);
@@ -51,6 +53,7 @@ class FileTransferOperation : public QThread {
     DestinationKind destinationKind_;
     FileSystemAdapter adapter_;
     std::atomic_bool canceled_{false};
+    std::atomic<ResultKind> resultKind_{ResultKind::Failure};
     QMutex overwriteMutex_;
     QWaitCondition overwriteCondition_;
     bool overwriteWaiting_ = false;

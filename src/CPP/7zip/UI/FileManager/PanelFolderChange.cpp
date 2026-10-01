@@ -3,14 +3,17 @@
 // Source binding/parent-stack bodies. History still uses an explicit app-state
 // service; the remaining list-load/presentation stage is recorded in the audit.
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "AppState.h"
 #include "CPP/Common/Wildcard.h"
 #include "Common/StringConvert.h"
+#include "LangUtils.h"
 #include "ListViewDialog.h"
 #include "Panel.h"
 #include "RootFolder.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
+#include "qtlangcontrols.h"
 
 static const UInt32 kParentIndex = (UInt32)-1;
 
@@ -425,9 +428,10 @@ QString CPanel::FoldersHistory(CFolderHistory &history, const QString &settingsP
     listViewDialog.SettingsPath = settingsPath;
     listViewDialog.DeleteIsAllowed = true;
     listViewDialog.SelectFirst = true;
-    listViewDialog.Title = ToUString(QStringLiteral("История папок"));
+    listViewDialog.Title = LangString(IDS_FOLDERS_HISTORY);
     history.GetList(listViewDialog.Strings);
     listViewDialog.OnInit();
+    QtBindLangText(&listViewDialog, IDS_FOLDERS_HISTORY);
     if (listViewDialog.exec() != QDialog::Accepted)
         return QString();
     UString selectString;

@@ -1,6 +1,8 @@
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -860,7 +862,13 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(rightTable->rowCount() > 2);
     }
 
+    void archivePanelsCopyAndMoveThroughStaging_data() {
+        QTest::addColumn<bool>("russian");
+        QTest::newRow("en") << false;
+        QTest::newRow("ru") << true;
+    }
     void archivePanelsCopyAndMoveThroughStaging() {
+        QFETCH(bool, russian);
         const QString engine = QStandardPaths::findExecutable("7zz");
         QVERIFY2(!engine.isEmpty(), "7zz required for archive transfer fixture");
         QTemporaryDir fixture;
@@ -873,7 +881,13 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             else
                 qunsetenv("SEVENZIP_SETTINGS_PATH");
         });
-        qputenv("SEVENZIP_SETTINGS_PATH", fixture.filePath("transfer-settings.ini").toUtf8());
+        const QString settings = fixture.filePath("transfer-settings.ini");
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
+        SaveRegLang(UString(russian ? "ru" : "-"), settings);
+        const auto restoreLanguage = qScopeGuard([settings] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
         const QString sourceDir = fixture.filePath("source");
         const QString targetDir = fixture.filePath("target");
         QVERIFY(QDir().mkpath(sourceDir));
@@ -940,6 +954,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             dialog->accept();
         });
         action(window, "copyAction")->trigger();
+        QCOMPARE(window.statusBar()->currentMessage(),
+                 russian ? QStringLiteral("Объекты скопированы в архив.")
+                         : QString("Items copied into the archive."));
         QProcess verifyCopy;
         const QString copyOutput = fixture.filePath("copy-output");
         verifyCopy.start(engine, {"x", "-y", "-o" + copyOutput, "--", targetArchive});
@@ -984,6 +1001,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         action(window, "moveAction")->trigger();
         answerDelete.stop();
+        QCOMPARE(window.statusBar()->currentMessage(),
+                 russian ? QStringLiteral("Объекты перемещены между архивами.")
+                         : QString("Items moved between archives."));
         const QString movedOutput = fixture.filePath("move-output");
         QProcess verifyMove;
         verifyMove.start(engine, {"x", "-y", "-o" + movedOutput, "--", targetArchive});
@@ -1196,7 +1216,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         action(window, "copyAction")->trigger();
         answerWarning.stop();
-        QVERIFY(warning.contains(QStringLiteral("недоступен")));
+        QCOMPARE(warning, QString("Transfer between these archives is unavailable."));
         QFile after(targetArchive);
         QVERIFY(after.open(QIODevice::ReadOnly));
         QCOMPARE(after.readAll(), originalTarget);
@@ -1293,8 +1313,10 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTimer::singleShot(0, &window, [] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
-                    QVERIFY(box->text().contains("Файлы извлечены, но не удалены"));
+                    const bool expectedText =
+                        box->text().contains("Files extracted but not deleted");
                     box->accept();
+                    QVERIFY(expectedText);
                 }
             }
         });
@@ -1999,7 +2021,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
 
         chooseSources();
         QCOMPARE(backend.createCalls, 2);
-        backend.fail(QStringLiteral("Операция отменена."));
+        backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
         openListedArchive(window, backend, temp.filePath("empty.7z"), {});
         QVERIFY(!action(window, "createArchiveAction")->isEnabled());
@@ -2010,7 +2032,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "createArchiveAction")->isEnabled());
         chooseSources();
         QCOMPARE(backend.createCalls, 3);
-        backend.fail(QStringLiteral("Операция отменена."));
+        backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
         chooseSources();
         QCOMPARE(backend.createCalls, 4);
         QFile created(backend.lastCreateTarget);

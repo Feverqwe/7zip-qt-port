@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "qtarchivecreationlifecycle.h"
+#include "qtlanguageservices.h"
 
 void ArchiveBackend::finishCreationLifecycle() {
     if (!creationLifecycle_ || (job_ != Job::CreatePrepare && job_ != Job::CreateDeleteInputs))
@@ -10,7 +11,8 @@ void ArchiveBackend::finishCreationLifecycle() {
     if (cancelled_)
         lastResult_ = E_ABORT;
     const QString error =
-        cancelled_ ? QStringLiteral("Операция отменена.") : creationLifecycle_->Error;
+        cancelled_ ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                   : creationLifecycle_->Error;
     job_ = Job::None;
     if (lastResult_ != S_OK) {
         creationLifecycle_.reset();
@@ -25,7 +27,7 @@ void ArchiveBackend::finishCreationLifecycle() {
         start(Job::Create, first.arguments, first.directory);
     } else {
         creationLifecycle_.reset();
-        emit finished(true, QStringLiteral("Архив создан."));
+        emit finished(true, QtLocalText("Archive created.", QStringLiteral("Архив создан.")));
     }
 }
 
@@ -35,7 +37,11 @@ bool ArchiveBackend::startCreationDeletion() {
     job_ = Job::CreateDeleteInputs;
     creationLifecycle_->Progress = [this](const QString &path, bool) {
         QMetaObject::invokeMethod(
-            this, [this, path] { emit progress(100, QStringLiteral("Удаление: %1").arg(path)); },
+            this,
+            [this, path] {
+                emit progress(
+                    100, QtLocalText("Deleting: %1", QStringLiteral("Удаление: %1")).arg(path));
+            },
             Qt::QueuedConnection);
     };
     creationLifecycle_->beginDeletion();

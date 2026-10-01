@@ -47,12 +47,12 @@ class ProgressPriorityTests : public QObject {
         QVERIFY(background->isEnabled());
         QVERIFY(background->isDefault());
         QCOMPARE(dialog.focusWidget(), background);
-        QCOMPARE(background->text(), QStringLiteral("В &фоновый режим"));
+        QCOMPARE(background->text(), QStringLiteral("&Background"));
         QTest::keyClick(background, Qt::Key_Return);
         QVERIFY(NativeBackground());
         QCOMPARE(background->text(), QStringLiteral("&Foreground"));
-        QVERIFY(dialog.windowTitle().contains(QStringLiteral("В фоновый режим")));
-        QVERIFY(main.windowTitle().contains(QStringLiteral("В фоновый режим")));
+        QVERIFY(dialog.windowTitle().contains(QStringLiteral("Background")));
+        QVERIFY(main.windowTitle().contains(QStringLiteral("Background")));
         QVERIFY(background->sizeHint().width() <= background->width());
         QVERIFY(UiInspection::fullyVisible(*background, dialog));
         QVERIFY(UiInspection::writeReport(
@@ -67,9 +67,9 @@ class ProgressPriorityTests : public QObject {
         background->setFocus();
         QTest::keyClick(background, Qt::Key_Return);
         QVERIFY(!NativeBackground());
-        QCOMPARE(background->text(), QStringLiteral("В &фоновый режим"));
-        QVERIFY(!dialog.windowTitle().contains(QStringLiteral("В фоновый режим")));
-        QVERIFY(!main.windowTitle().contains(QStringLiteral("В фоновый режим")));
+        QCOMPARE(background->text(), QStringLiteral("&Background"));
+        QVERIFY(!dialog.windowTitle().contains(QStringLiteral("Background")));
+        QVERIFY(!main.windowTitle().contains(QStringLiteral("Background")));
         QCOMPARE(dialog.Sync.Messages.Size(), 0u);
         QVERIFY(UiInspection::writeReport(
             dialog, QString("progress-priority-%1-foreground").arg(size.width())));

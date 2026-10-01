@@ -5,7 +5,9 @@
 #include "Common/IntToString.h"
 #include "LangUtils.h"
 #include "MessagesDialogRes.h"
+#include "qtlangcontrols.h"
 #include "qtlistview.h"
+#include <QEvent>
 #include <QFontMetricsF>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -61,7 +63,7 @@ bool CMessagesDialog::OnSize(int xSize, int ySize) {
 
 CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("operationMessagesDialog");
-    setWindowTitle(QStringLiteral("7-Zip: Диагностические сообщения"));
+    QtBindResourceText(this, IDD_MESSAGES, "7-Zip: Diagnostic messages");
     const QFontMetricsF metrics(font());
     _unitX = metrics.horizontalAdvance(
                  QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) /
@@ -71,7 +73,8 @@ CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
     _list->setObjectName("IDL_MESSAGE");
     _list->setColumnCount(2);
     _list->setHeaderHidden(false);
-    _close = new QPushButton(QStringLiteral("&Закрыть"), this);
+    _close = new QPushButton(this);
+    QtBindResourceText(_close, IDS_CLOSE, "&Close");
     _close->setObjectName("IDOK");
     _close->setDefault(true);
     connect(_close, &QPushButton::clicked, this, &QDialog::accept);
@@ -106,4 +109,14 @@ void CMessagesDialog::resizeEvent(QResizeEvent *event) {
     if (_initialized)
         OnSize(event->size().width(), event->size().height());
     QDialog::resizeEvent(event);
+}
+
+void CMessagesDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && _initialized) {
+        _list->headerItem()->setText(1, QtLangText(IDS_MESSAGE));
+        _close->resize(qMax(int(std::round(64 * _unitX)), _close->sizeHint().width()),
+                       qMax(int(std::round(16 * _unitY)), _close->sizeHint().height()));
+        OnSize(width(), height());
+    }
+    QDialog::changeEvent(event);
 }

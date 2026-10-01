@@ -44,10 +44,8 @@ class ExtractDialogTests final : public QObject {
     void originalModesAndPersistence() {
         {
             CExtractDialog dialog(dir_.path(), {}, false);
-            QCOMPARE(overwrite(dialog)->itemText(1),
-                     QStringLiteral("Перезаписывать существующие файлы"));
-            QCOMPARE(overwrite(dialog)->itemText(2),
-                     QStringLiteral("Пропускать существующие файлы"));
+            QCOMPARE(overwrite(dialog)->itemText(1), QStringLiteral("Overwrite without prompt"));
+            QCOMPARE(overwrite(dialog)->itemText(2), QStringLiteral("Skip existing files"));
             pathMode(dialog)->setCurrentIndex(1);
             overwrite(dialog)->setCurrentIndex(4);
             dialog.findChild<QCheckBox *>("extractShowPassword")->setChecked(true);

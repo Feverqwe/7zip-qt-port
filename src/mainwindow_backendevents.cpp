@@ -1,8 +1,10 @@
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
+#include "qtlangcontrols.h"
 #include <QCoreApplication>
 
 void MainWindow::connectBackend() {
@@ -72,11 +74,13 @@ void MainWindow::connectBackend() {
             statusBar()->showMessage(operationName_ + ": " + currentDetail_);
         }
     });
-    connect(backend_, &ArchiveBackend::finished, this,
-            [this](bool ok, const QString &message) { backendFinished(ok, message); });
+    connect(backend_, &ArchiveBackend::finished, this, [this](bool ok, const QString &message) {
+        backendFinished(ok, message, backend_->lastResult());
+    });
 }
 
-void MainWindow::backendFinished(bool ok, const QString &message, bool messageDisplayed) {
+void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result,
+                                 bool messageDisplayed) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
@@ -100,15 +104,20 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
     transferDestinationPanel_.reset();
     QString resultMessage = message;
     if (archiveMoveStage_ == ArchiveMoveStage::Removing)
-        resultMessage = ok ? QStringLiteral("Объекты перемещены из архива.")
-                           : QStringLiteral("Файлы извлечены, но не удалены из архива. ") + message;
+        resultMessage =
+            ok ? QtLocalText("Items moved out of archive.",
+                             QStringLiteral("Объекты перемещены из архива."))
+               : QtLocalText("Files extracted but not deleted from archive. ",
+                             QStringLiteral("Файлы извлечены, но не удалены из архива. ")) +
+                     message;
     if (archiveMoveStage_ != ArchiveMoveStage::None) {
         archiveMoveStage_ = ArchiveMoveStage::None;
         archiveMovePaths_.clear();
     }
     if (!ok)
         archivePassword_.clear();
-    appendJournal((ok ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
+    appendJournal((ok ? QtLocalText("Result: ", QStringLiteral("Результат: "))
+                      : QtLocalText("Error: ", QStringLiteral("Ошибка: "))) +
                   resultMessage);
     if (hashFinished && ok)
         QTimer::singleShot(0, this, [this] {
@@ -116,7 +125,8 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
                 showJournal();
         });
     const bool hadProgress = progress_;
-    if (hadProgress && !ok && resultMessage != QStringLiteral("Операция отменена."))
+    const bool canceled = result == E_ABORT;
+    if (hadProgress && !ok && !canceled)
         progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(resultMessage);
     closeProgressDialog(true);
     const bool finishedArchiveState = finishArchiveState(ok);
@@ -126,7 +136,7 @@ void MainWindow::backendFinished(bool ok, const QString &message, bool messageDi
         return;
     finishViewExtraction(ok);
     statusBar()->showMessage(resultMessage);
-    if (!ok && !hadProgress && !messageDisplayed && resultMessage != "Операция отменена.")
+    if (!ok && !hadProgress && !messageDisplayed && !canceled)
         QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
 }
 
@@ -138,7 +148,7 @@ bool MainWindow::startPendingHash(bool ok) {
             files << QDir(hashTemporary_->path()).filePath(entry);
         hashSelection_.clear();
         closeProgressDialog();
-        begin(QStringLiteral("Расчёт контрольных сумм"), hashMethod_, true);
+        begin(QtLangText(IDS_CHECKSUM_CALCULATING), hashMethod_, true);
         hashing_ = true;
         backend_->hash(files, hashMethod_);
         return true;
@@ -148,11 +158,15 @@ bool MainWindow::startPendingHash(bool ok) {
 
 bool MainWindow::startPendingArchiveMove(bool ok) {
     if (archiveMoveStage_ == ArchiveMoveStage::Extracting && ok) {
-        appendJournal(QStringLiteral("Извлечение завершено. Удаление исходных записей."));
+        appendJournal(
+            QtLocalText("Extraction completed. Deleting source entries.",
+                        QStringLiteral("Извлечение завершено. Удаление исходных записей.")));
         archiveMoveStage_ = ArchiveMoveStage::Removing;
         updatingArchive_ = true;
         closeProgressDialog();
-        begin("Удаление перемещённых записей", archive_, true);
+        begin(
+            QtLocalText("Deleting moved entries", QStringLiteral("Удаление перемещённых записей")),
+            archive_, true);
         backend_->remove(archive_, archiveMovePaths_);
         return true;
     }

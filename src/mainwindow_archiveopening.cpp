@@ -1,10 +1,12 @@
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtarchivefileresource.h"
+#include "qtlangcontrols.h"
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 
@@ -49,7 +51,8 @@ void MainWindow::openArchive(const QString &path) {
         return;
     const QFileInfo file(path);
     if (!file.isFile() || file.isSymLink()) {
-        statusBar()->showMessage(QStringLiteral("Файл не найден: ") + path);
+        statusBar()->showMessage(
+            QtLocalText("File not found: ", QStringLiteral("Файл не найден: ")) + path);
         return;
     }
     filesystemScanner_->cancel();
@@ -60,7 +63,7 @@ void MainWindow::openArchive(const QString &path) {
     if (state_ == State::Filesystem)
         returnDirectory_ = directory_;
     auto &panel = app_.GetFocusedPanel();
-    operationName_ = QStringLiteral("Открытие архива");
+    operationName_ = QtLangText(IDS_OPENNING);
     journalMessages_.Clear();
     if (journalDialog_)
         journalDialog_->ResetMessages();
@@ -82,11 +85,12 @@ void MainWindow::openArchive(const QString &path) {
     else
         showDirectory(returnDirectory_, false);
     if (result == E_ABORT)
-        message = QStringLiteral("Операция отменена.");
+        message = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
     else if (message.isEmpty())
-        message =
-            result == S_OK ? QStringLiteral("Архив открыт.") : ToQString(HResultToMessage(result));
-    appendJournal((result == S_OK ? QStringLiteral("Результат: ") : QStringLiteral("Ошибка: ")) +
+        message = result == S_OK ? QtLocalText("Archive opened.", QStringLiteral("Архив открыт."))
+                                 : ToQString(HResultToMessage(result));
+    appendJournal((result == S_OK ? QtLocalText("Result: ", QStringLiteral("Результат: "))
+                                  : QtLocalText("Error: ", QStringLiteral("Ошибка: "))) +
                   message);
     statusBar()->showMessage(message);
     if (result != S_OK && result != E_ABORT)

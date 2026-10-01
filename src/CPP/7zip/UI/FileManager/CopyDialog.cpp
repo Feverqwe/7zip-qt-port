@@ -3,7 +3,10 @@
 // Qt layouts replace Win32 OnSize/control attachment. Folder browsing uses
 // the native Qt dialog; the upstream normalization and selection reset remain.
 #include "CopyDialog.h"
+#include "7zip/UI/FileManager/CopyDialogRes.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "BrowseDialog.h"
+#include "qtlangcontrols.h"
 
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -24,8 +27,8 @@ CCopyDialog::CCopyDialog(const QString &title, const QString &label, const QStri
 
 CCopyDialog::CCopyDialog(bool move, const QString &initialPath, const QStringList &sources,
                          const QStringList &history, QWidget *parent, const QString &info)
-    : QDialog(parent), Title(move ? "Переместить" : "Копировать"),
-      Static(move ? "Переместить в:" : "Копировать в:"), Value(initialPath), Info(info),
+    : QDialog(parent), Title(QtLangText(move ? IDS_MOVE : IDS_COPY)),
+      Static(QtLangText(move ? IDS_MOVE_TO : IDS_COPY_TO)), Value(initialPath), Info(info),
       Strings(history) {
     // The Qt caller supplies filenames, rather than IFolder property indices.
     if (Info.isNull())
@@ -35,6 +38,14 @@ CCopyDialog::CCopyDialog(bool move, const QString &initialPath, const QStringLis
             Info += QFileInfo(source).fileName();
         }
     OnInit();
+    BindLanguage(move ? IDS_MOVE : IDS_COPY, move ? IDS_MOVE_TO : IDS_COPY_TO);
+}
+
+void CCopyDialog::BindLanguage(UInt32 titleID, UInt32 promptID, const QString &titleSuffix) {
+    setProperty("languageSuffix", titleSuffix);
+    QtBindLangText(this, titleID, Title);
+    QtBindLangText(findChild<QLabel *>("copyDestinationLabel"), promptID, Static);
+    QtBindLangText(_path, promptID, Static, true);
 }
 
 bool CCopyDialog::OnInit() {
@@ -60,14 +71,14 @@ bool CCopyDialog::OnInit() {
     pathRow->addWidget(_path, 1);
     auto *browse = new QPushButton("…", this);
     browse->setObjectName("copyBrowseButton");
-    browse->setAccessibleName("Папка назначения");
+    QtBindLangText(browse, IDS_SET_FOLDER, "Select folder", true);
     pathRow->addWidget(browse);
     layout->addLayout(pathRow);
     // Native SS_LEFTNOWORDWRAP shows a bounded summary. Qt scrolling keeps long
     // Unicode filenames and large selections reachable at compact sizes.
     auto *info = new QPlainTextEdit(Info, this);
     info->setObjectName("copySelectionInfo");
-    info->setAccessibleName("Выбранные объекты");
+    QtBindLangText(info, IDS_PROPERTIES, "Properties", true);
     info->setReadOnly(true);
     info->setFrameShape(QFrame::NoFrame);
     info->setLineWrapMode(QPlainTextEdit::NoWrap);
@@ -86,7 +97,7 @@ bool CCopyDialog::OnInit() {
 void CCopyDialog::OnButtonSetPath() {
     const QString currentPath = _path->currentText();
     QString resultPath;
-    if (!MyBrowseForFolder(this, "Папка назначения", currentPath, resultPath))
+    if (!MyBrowseForFolder(this, QtLangText(IDS_SET_FOLDER), currentPath, resultPath))
         return;
     resultPath = QDir::fromNativeSeparators(resultPath);
     if (!resultPath.endsWith('/'))

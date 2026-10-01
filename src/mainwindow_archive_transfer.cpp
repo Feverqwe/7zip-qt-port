@@ -1,6 +1,9 @@
+#include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
+#include "qtlangcontrols.h"
 #include "qttrashservice.h"
 #include <QSaveFile>
 #include <QScopedValueRollback>
@@ -18,8 +21,9 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     if (source.GetParentFolders().Size() != 1 || target.GetParentFolders().Size() != 1 ||
         QDir::cleanPath(archive_) == QDir::cleanPath(panelUi_[destinationIndex].archive) ||
         !ArchiveFormats::canModify(panelUi_[destinationIndex].archive)) {
-        QMessageBox::warning(this, QStringLiteral("Копирование"),
-                             QStringLiteral("Перенос между этими архивами недоступен."));
+        QMessageBox::warning(this, QtLangText(IDS_COPYING),
+                             QtLocalText("Transfer between these archives is unavailable.",
+                                         "Перенос между этими архивами недоступен."));
         return true;
     }
     const CRecordVector<UInt32> indices = sourceOperatedIndices();
@@ -31,8 +35,9 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     const QString destinationArchive = panelUi_[destinationIndex].archive;
     const QString backup = rollback.filePath(QStringLiteral("archive-backup"));
     if (move && (!rollback.isValid() || !QFile::copy(destinationArchive, backup))) {
-        QMessageBox::warning(this, QStringLiteral("Перемещение"),
-                             QStringLiteral("Не удалось сохранить целевой архив для отката."));
+        QMessageBox::warning(this, QtLangText(IDS_MOVING),
+                             QtLocalText("Could not save destination archive for rollback.",
+                                         "Не удалось сохранить целевой архив для отката."));
         return true;
     }
     {
@@ -62,9 +67,11 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             refreshCurrent();
             activatePanelUi(sourceIndex);
             if (!restored) {
-                QMessageBox::warning(this, QStringLiteral("Перемещение"),
-                                     QStringLiteral("Не удалось откатить целевой архив. "
-                                                    "Проверьте оба архива."));
+                QMessageBox::warning(this, QtLangText(IDS_MOVING),
+                                     QtLocalText("Could not roll back destination archive. "
+                                                 "Check both archives.",
+                                                 "Не удалось откатить целевой архив. "
+                                                 "Проверьте оба архива."));
                 return true;
             }
         }
@@ -73,10 +80,12 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
         activatePanelUi(destinationIndex);
         refreshCurrent();
         activatePanelUi(sourceIndex);
-        statusBar()->showMessage(move ? QStringLiteral("Объекты перемещены между архивами.")
-                                      : QStringLiteral("Объекты скопированы в архив."));
+        statusBar()->showMessage(
+            move
+                ? QtLocalText("Items moved between archives.", "Объекты перемещены между архивами.")
+                : QtLocalText("Items copied into the archive.", "Объекты скопированы в архив."));
     } else if (result != E_ABORT) {
-        QMessageBox::warning(this, QStringLiteral("Копирование"),
+        QMessageBox::warning(this, QtLangText(IDS_COPYING),
                              QString::fromWCharArray(HResultToMessage(result).Ptr()));
     }
     return true;

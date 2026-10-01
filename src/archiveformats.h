@@ -1,5 +1,6 @@
 #pragma once
 
+#include "qtlanguageservices.h"
 #include <QFileInfo>
 #include <QString>
 #include <QStringList>
@@ -17,7 +18,9 @@ inline bool canModify(const QString &path) {
 }
 
 inline QString openDialogFilter() {
-    return QStringLiteral("Архивы (*.7z *.zip *.rar *.tar *.gz *.gzip *.tgz *.bz2 *.bzip2 *.xz "
-                          "*.txz *.zst *.cab *.iso *.wim *.001);;Все файлы (*)");
+    return QtLocalText("Archives", "Архивы") +
+           QStringLiteral(" (*.7z *.zip *.rar *.tar *.gz *.gzip *.tgz *.bz2 *.bzip2 *.xz "
+                          "*.txz *.zst *.cab *.iso *.wim *.001);;") +
+           QtLocalText("All files", "Все файлы") + QStringLiteral(" (*)");
 }
 } // namespace ArchiveFormats

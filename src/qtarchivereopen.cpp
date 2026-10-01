@@ -2,7 +2,9 @@
 #include "qtarchivereopen.h"
 #include "7zip/Archive/IArchive.h"
 #include "7zip/IPassword.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
@@ -80,7 +82,7 @@ HRESULT ReOpenArchiveFolder(CAgentFolder &folder, const QString &settingsPath, Q
     const WRes started = thread.Create(CThreadArchiveReOpen::Run, &request);
     if (started != 0)
         return HRESULT_FROM_WIN32(started);
-    request.UI.StartProgressDialog(UString(L"Обновление архива"), thread);
+    request.UI.StartProgressDialog(LangString(IDS_OPENNING), thread);
     if (request.Result == S_OK)
         *resultFolder = request.ResultFolder.Detach();
     return request.Result;

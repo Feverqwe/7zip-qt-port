@@ -19,6 +19,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "qtfilemenuservices.h"
+#include "qtlangcontrols.h"
 
 void CPanel::CreateFileMenu(IQtFileMenuServices &menu, bool programMenu) {
     CRecordVector<UInt32> operatedIndices;
@@ -152,6 +153,7 @@ static void AddPropertyString(PROPID propID, const wchar_t *nameBSTR,
                 AddPropertyPair(L"Open WARNING:", L"Cannot open the file as expected archive type",
                                 dialog);
             AddPropertyPair(GetNameOfProperty(propID, nameBSTR), val, dialog);
+            dialog.QtBindPropertyName(dialog.Strings.Size() - 1, propID, nameBSTR);
         }
     }
 }
@@ -343,5 +345,6 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
         }
     }
     message.Title = LangString(IDS_PROPERTIES);
+    QtBindLangText(&message, IDS_PROPERTIES);
     message.NumColumns = 2;
 }

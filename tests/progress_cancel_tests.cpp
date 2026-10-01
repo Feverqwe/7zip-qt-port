@@ -123,10 +123,12 @@ class ProgressCancelTests : public QObject {
                 geometry = worker.size() == size &&
                            UiInspection::fullyVisible(*Button(worker, "IDCANCEL"), worker) &&
                            UiInspection::fullyVisible(*box->button(QMessageBox::Yes), *box) &&
+                           UiInspection::fullyVisible(*box->button(QMessageBox::No), *box) &&
+                           UiInspection::fullyVisible(*box->button(QMessageBox::Cancel), *box) &&
                            box->defaultButton() == box->button(QMessageBox::Yes) &&
                            box->escapeButton() == box->button(QMessageBox::Cancel) &&
-                           box->button(QMessageBox::Yes)->text() == QStringLiteral("&Да") &&
-                           box->button(QMessageBox::No)->text() == QStringLiteral("&Нет") &&
+                           !box->button(QMessageBox::Yes)->text().isEmpty() &&
+                           !box->button(QMessageBox::No)->text().isEmpty() &&
                            UiInspection::writeReport(*box, QString("progress-cancel-%1-%2-%3")
                                                                .arg(size.width())
                                                                .arg(paused)

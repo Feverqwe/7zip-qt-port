@@ -33,7 +33,7 @@ class MainWindowLayoutTests : public QObject {
     void copyDialogMatches7zfmControls() {
         CopyDialog dialog(false, "/initial", {"/tmp/имя с пробелом.txt"}, {"/previous", "/older"});
         QCOMPARE(dialog.objectName(), QString("copyDialog"));
-        QCOMPARE(dialog.windowTitle(), QString("Копировать"));
+        QCOMPARE(dialog.windowTitle(), QString("Copy"));
         auto *destination = dialog.findChild<QComboBox *>("copyDestination");
         QVERIFY(destination);
         QVERIFY(destination->isEditable());
@@ -46,7 +46,7 @@ class MainWindowLayoutTests : public QObject {
         destination->setCurrentText("/changed");
         QCOMPARE(dialog.destination(), QString("/changed"));
         CopyDialog moveDialog(true, "/initial", {}, {});
-        QCOMPARE(moveDialog.windowTitle(), QString("Переместить"));
+        QCOMPARE(moveDialog.windowTitle(), QString("Move"));
     }
 
     void splitAndCombineCommandsFollowSelection() {
@@ -90,7 +90,7 @@ class MainWindowLayoutTests : public QObject {
     void extractDialogMatches7zfmControls() {
         ExtractDialog dialog("/initial", {"/previous", "/older"}, true);
         QCOMPARE(dialog.objectName(), QString("extractDialog"));
-        QCOMPARE(dialog.windowTitle(), QString("Извлечь выбранное"));
+        QCOMPARE(dialog.windowTitle(), QString("Extract"));
         auto *destination = dialog.findChild<QComboBox *>("extractDestination");
         QVERIFY(destination);
         QVERIFY(destination->isEditable());
@@ -101,7 +101,7 @@ class MainWindowLayoutTests : public QObject {
         auto *pathMode = dialog.findChild<QComboBox *>("extractPathMode");
         auto *overwriteMode = dialog.findChild<QComboBox *>("extractOverwriteMode");
         QVERIFY(pathMode && overwriteMode);
-        QCOMPARE(pathMode->currentText(), QString("Полные пути"));
+        QCOMPARE(pathMode->currentText(), QString("Full pathnames"));
         QVERIFY(pathMode->isEnabled());
         QVERIFY(overwriteMode->isEnabled());
         QCOMPARE(pathMode->count(), 2);

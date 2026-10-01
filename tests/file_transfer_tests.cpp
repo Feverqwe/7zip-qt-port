@@ -91,7 +91,8 @@ class FileTransferTests : public QObject {
         QVERIFY(move.wait(30000));
         QTRY_COMPARE(result.size(), 1);
         QVERIFY(!result.first().first().toBool());
-        QVERIFY(result.first().at(1).toString().contains(QStringLiteral("Не удалось удалить")));
+        QVERIFY(result.first().at(1).toString().contains(QStringLiteral("Could not delete")));
+        QCOMPARE(move.resultKind(), FileTransferOperation::ResultKind::Failure);
         QVERIFY(!QFileInfo::exists(first));
         QVERIFY(QFileInfo::exists(second));
         for (const QString &path : {first, second}) {

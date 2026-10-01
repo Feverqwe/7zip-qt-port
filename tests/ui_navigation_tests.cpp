@@ -378,8 +378,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         action(window, "archiveInfoAction")->trigger();
         QPointer<QLabel> info = window.findChild<QLabel *>("archiveInfoText");
         QVERIFY(info);
-        QVERIFY(info->text().contains(QStringLiteral("Формат: 7z")));
-        QVERIFY(info->text().contains(QStringLiteral("Размер архива: 120 байт")));
+        QVERIFY(info->text().contains(QStringLiteral("Format: 7z")));
+        QVERIFY(info->text().contains(QStringLiteral("Archive size: 120 bytes")));
         action(window, "testArchiveAction")->trigger();
         QCOMPARE(backend.testCalls, 1);
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
@@ -403,10 +403,10 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                 emptyInfo = dialog->findChild<QLabel *>("archiveInfoText");
         }
         QVERIFY(emptyInfo);
-        QVERIFY(emptyInfo->text().contains(QStringLiteral("Формат: zip")));
+        QVERIFY(emptyInfo->text().contains(QStringLiteral("Format: zip")));
         action(window, "testArchiveAction")->trigger();
         QCOMPARE(backend.testCalls, 2);
-        backend.fail(QStringLiteral("Операция отменена."));
+        backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
     }
 };

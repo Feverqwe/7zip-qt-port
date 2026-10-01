@@ -12,6 +12,8 @@ class CQtCompressCombo {
     void Attach(QWidget *widget);
     int GetCount() const;
     quint32 GetItemData_of_CurSel() const;
+    quint32 GetItemData(int index) const;
+    void SetItemText(int index, const UString &text);
     int AddString_SetItemData(const UString &text, qintptr value);
     void ResetContent();
     void SetCurSel(int index);
@@ -21,6 +23,7 @@ class CQtCompressOptionsDialog : public QDialog {
     QHash<unsigned, QWidget *> controls_;
     bool initialized_ = false;
     void buildControls();
+    void changeEvent(QEvent *event) override;
 
   protected:
     static constexpr unsigned CBN_SELCHANGE = 1;
@@ -32,6 +35,7 @@ class CQtCompressOptionsDialog : public QDialog {
     void SetItemText(unsigned id, const UString &text);
     void NormalizePosition();
     virtual bool OnInit() { return true; }
+    virtual void OnLanguageChange() {}
     virtual bool OnCommand(unsigned, unsigned, qintptr) { return false; }
     virtual bool OnButtonClicked(unsigned id, QWidget *);
     virtual void OnOK() { QDialog::accept(); }

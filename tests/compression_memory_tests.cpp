@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -46,25 +47,23 @@ class CompressionMemoryTests final : public QObject {
             actual.append(dictionary->itemData(i).toULongLong());
         QCOMPARE(actual, expected);
         const bool bzip = methodName == "BZip2";
-        QCOMPARE(dictionary->itemText(0), bzip ? QStringLiteral("Автоматически (900 КиБ)")
-                                               : QStringLiteral("Автоматически (16 МиБ)"));
+        QCOMPARE(dictionary->itemText(0),
+                 bzip ? QStringLiteral("*  900 KB") : QStringLiteral("*  16 MB"));
         dictionary->setCurrentIndex(1);
         level->setCurrentIndex(level->findData(9u));
         method->setCurrentText(methodName);
-        QCOMPARE(dictionary->itemText(0), bzip ? QStringLiteral("Автоматически (900 КиБ)")
-                                               : QStringLiteral("Автоматически (256 МиБ)"));
+        QCOMPARE(dictionary->itemText(0),
+                 bzip ? QStringLiteral("*  900 KB") : QStringLiteral("*  256 MB"));
         if (bzip) {
             level->setCurrentIndex(level->findData(1u));
             method->setCurrentText(methodName);
-            QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (100 КиБ)"));
+            QCOMPARE(dictionary->itemText(0), QStringLiteral("*  100 KB"));
             level->setCurrentIndex(level->findData(3u));
             method->setCurrentText(methodName);
-            QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (500 КиБ)"));
+            QCOMPARE(dictionary->itemText(0), QStringLiteral("*  500 KB"));
         }
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         dictionary->setCurrentIndex(0);
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -72,9 +71,9 @@ class CompressionMemoryTests final : public QObject {
             dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
                 ->ensureWidgetVisible(dictionary, 0, 80);
             QApplication::processEvents();
-            QVERIFY(dialog.grab().save(
-                screenshots +
-                QString("/memory-%1-%2-%3.png").arg(methodName, formatName).arg(size.width())));
+            QVERIFY(UiInspection::fullyVisible(*dictionary, dialog));
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("memory-%1-%2-%3").arg(methodName, formatName).arg(size.width())));
         }
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         level->setCurrentIndex(level->findData(0u));
@@ -84,8 +83,8 @@ class CompressionMemoryTests final : public QObject {
     void fixedDictionary_data() {
         QTest::addColumn<QString>("methodName");
         QTest::addColumn<QString>("sizeText");
-        QTest::newRow("Deflate") << QString("Deflate") << QString("32 КиБ");
-        QTest::newRow("Deflate64") << QString("Deflate64") << QString("64 КиБ");
+        QTest::newRow("Deflate") << QString("Deflate") << QString("32 KB");
+        QTest::newRow("Deflate64") << QString("Deflate64") << QString("64 KB");
     }
     void fixedDictionary() {
         QFETCH(QString, methodName);
@@ -99,11 +98,11 @@ class CompressionMemoryTests final : public QObject {
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         QCOMPARE(dictionary->count(), 1);
         QVERIFY(!dictionary->isEnabled());
-        QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (%1)").arg(sizeText));
+        QCOMPARE(dictionary->itemText(0), QStringLiteral("*  %1").arg(sizeText));
         for (int value : {1, 3, 5, 7, 9}) {
             level->setCurrentIndex(level->findData(unsigned(value)));
             method->setCurrentText(methodName);
-            QCOMPARE(dictionary->itemText(0), QStringLiteral("Автоматически (%1)").arg(sizeText));
+            QCOMPARE(dictionary->itemText(0), QStringLiteral("*  %1").arg(sizeText));
             QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
         }
         dialog.show();
@@ -184,7 +183,8 @@ class CompressionMemoryTests final : public QObject {
         backend.cancel();
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains("отменена"));
+        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!QFileInfo::exists(invalid));
         QVERIFY(QFileInfo::exists(target));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());

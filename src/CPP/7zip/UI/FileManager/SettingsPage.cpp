@@ -23,29 +23,30 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
     setObjectName(embedded ? "settingsPage" : "settingsDialog");
     if (embedded)
         setWindowFlags(Qt::Widget);
-    QtBindLangText(this, IDD_SETTINGS, "Settings");
+    QtBindResourceText(this, IDD_SETTINGS, "Settings");
     auto *layout = new QVBoxLayout(this);
     _showDots = new QCheckBox(this);
-    QtBindLangText(_showDots, IDX_SETTINGS_SHOW_DOTS, "Show \"..\" item");
+    QtBindResourceText(_showDots, IDX_SETTINGS_SHOW_DOTS, "Show \"..\" item");
     _showDots->setObjectName(QStringLiteral("showDotsOption"));
     _showRealFileIcons = new QCheckBox(this);
-    QtBindLangText(_showRealFileIcons, IDX_SETTINGS_SHOW_REAL_FILE_ICONS, "Show real file &icons");
+    QtBindResourceText(_showRealFileIcons, IDX_SETTINGS_SHOW_REAL_FILE_ICONS,
+                       "Show real file &icons");
     _showRealFileIcons->setObjectName("realFileIconsOption");
     _fullRow = new QCheckBox(this);
-    QtBindLangText(_fullRow, IDX_SETTINGS_FULL_ROW, "&Full row select");
+    QtBindResourceText(_fullRow, IDX_SETTINGS_FULL_ROW, "&Full row select");
     _fullRow->setObjectName(QStringLiteral("fullRowOption"));
     _showGrid = new QCheckBox(this);
-    QtBindLangText(_showGrid, IDX_SETTINGS_SHOW_GRID, "Show &grid lines");
+    QtBindResourceText(_showGrid, IDX_SETTINGS_SHOW_GRID, "Show &grid lines");
     _showGrid->setObjectName("gridOption");
     _singleClick = new QCheckBox(this);
-    QtBindLangText(_singleClick, IDX_SETTINGS_SINGLE_CLICK, "&Single-click to open an item");
+    QtBindResourceText(_singleClick, IDX_SETTINGS_SINGLE_CLICK, "&Single-click to open an item");
     _singleClick->setObjectName("singleClickOption");
     _alternativeSelection = new QCheckBox(this);
-    QtBindLangText(_alternativeSelection, IDX_SETTINGS_ALTERNATIVE_SELECTION,
-                   "&Alternative selection mode");
+    QtBindResourceText(_alternativeSelection, IDX_SETTINGS_ALTERNATIVE_SELECTION,
+                       "&Alternative selection mode");
     _alternativeSelection->setObjectName(QStringLiteral("alternativeSelectionOption"));
     _showSystemMenu = new QCheckBox(this);
-    QtBindLangText(_showSystemMenu, IDX_SETTINGS_SHOW_SYSTEM_MENU, "Show system &menu");
+    QtBindResourceText(_showSystemMenu, IDX_SETTINGS_SHOW_SYSTEM_MENU, "Show system &menu");
     _showSystemMenu->setObjectName(QStringLiteral("showSystemMenuOption"));
     for (auto *control : {_showDots, _showRealFileIcons, _fullRow, _showGrid, _singleClick,
                           _alternativeSelection, _showSystemMenu}) {
@@ -53,7 +54,7 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
         connect(control, &QCheckBox::toggled, this, &CSettingsPage::OnButtonClicked);
     }
     _largePages = new QCheckBox(this);
-    QtBindLangText(_largePages, IDX_SETTINGS_LARGE_PAGES, "Use &large memory pages");
+    QtBindResourceText(_largePages, IDX_SETTINGS_LARGE_PAGES, "Use &large memory pages");
     _largePages->setObjectName("largePagesOption");
     layout->addWidget(_largePages);
     connect(_largePages, &QCheckBox::toggled, this, [this] {
@@ -63,8 +64,8 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
         }
     });
     auto *memoryLabel = new QLabel(this);
-    QtBindLangText(memoryLabel, IDT_MEM_USAGE_EXTRACT,
-                   "Maximum amount of RAM memory usage allowed to unpack archives:");
+    QtBindResourceText(memoryLabel, IDT_MEM_USAGE_EXTRACT,
+                       "Maximum amount of RAM memory usage allowed to unpack archives:");
     memoryLabel->setObjectName("extractMemoryLabel");
     memoryLabel->setWordWrap(true);
     layout->addWidget(memoryLabel);

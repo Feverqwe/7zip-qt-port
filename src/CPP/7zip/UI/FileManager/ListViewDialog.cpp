@@ -3,8 +3,10 @@
 // Qt replaces Win32 controls/clipboard/OnSize and activation notifications.
 #include "ListViewDialog.h"
 #include "EditDialog.h"
+#include "PropertyName.h"
 #include "RegistryUtils.h"
 #include "ViewSettings.h"
+#include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
@@ -13,6 +15,9 @@
 #include <QVBoxLayout>
 
 static const unsigned kOneStringMaxSize = 1024;
+static constexpr int kPropertyIDRole = Qt::UserRole + 14;
+static constexpr int kPropertyFallbackRole = Qt::UserRole + 15;
+static constexpr int kPropertyHasFallbackRole = Qt::UserRole + 16;
 
 static void ListView_GetSelected(CListView &listView, CUIntVector &vector) {
     vector.Clear();
@@ -48,6 +53,13 @@ bool CListViewDialog::OnInit() {
     UString s;
     FOR_VECTOR(i, Strings) {
         _listView->InsertItem(i, Strings[i]);
+        const auto binding = _propertyNameBindings.constFind(i);
+        if (binding != _propertyNameBindings.cend()) {
+            auto *item = _listView->topLevelItem(int(i));
+            item->setData(0, kPropertyIDRole, binding->ID);
+            item->setData(0, kPropertyFallbackRole, ToQString(binding->Fallback));
+            item->setData(0, kPropertyHasFallbackRole, binding->HasFallback);
+        }
         if (NumColumns > 1 && i < Values.Size()) {
             s = Values[i];
             if (s.Len() > kOneStringMaxSize) {
@@ -81,6 +93,31 @@ bool CListViewDialog::OnInit() {
         connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
     _listView->setFocus();
     return true;
+}
+
+void CListViewDialog::QtBindPropertyName(unsigned row, UInt32 id, const wchar_t *fallback) {
+    _propertyNameBindings.insert(
+        row, {id, fallback ? UString(fallback) : UString(), fallback != nullptr});
+}
+
+void CListViewDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && _listView) {
+        for (int i = 0; i < _listView->topLevelItemCount(); ++i) {
+            auto *item = _listView->topLevelItem(i);
+            const QVariant id = item->data(0, kPropertyIDRole);
+            if (!id.isValid())
+                continue;
+            const UString fallback = ToUString(item->data(0, kPropertyFallbackRole).toString());
+            const UString text = GetNameOfProperty(
+                id.toUInt(),
+                item->data(0, kPropertyHasFallbackRole).toBool() ? fallback.Ptr() : nullptr);
+            if (unsigned(i) < Strings.Size())
+                Strings[unsigned(i)] = text;
+            item->setText(0, ToQString(text));
+        }
+        _listView->SetColumnWidthAuto(0);
+    }
+    QDialog::changeEvent(event);
 }
 
 void CListViewDialog::CopyToClipboard() {
@@ -123,6 +160,12 @@ void CListViewDialog::ShowItemInfo() {
         dlg.Text.Replace(L"\n", L"\r\n");
 #endif
     dlg.OnInit();
+    if (NumColumns > 1) {
+        auto *item = _listView->topLevelItem(int(index));
+        const QVariant id = item->data(0, kPropertyIDRole);
+        if (id.isValid() && id.toUInt() < 1000)
+            QtBindLangText(&dlg, 1000 + id.toUInt(), ToQString(Strings[index]));
+    }
     dlg.setObjectName("listItemInfoDialog");
     dlg.exec();
 }

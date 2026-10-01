@@ -169,6 +169,12 @@ MainWindow disconnects backend/scanner/file/volume callbacks before invoking it;
 completion retains operation-specific cancellation cleanup. Ordinary cancel remains
 asynchronous. Source CApp/panel/parent-stack release is connected; complete
 operation-state and window-close consumers passed P0-02.3 acceptance.
+MainWindow completion receives an explicit HRESULT from each operation owner:
+backend signals use lastResult(), source batch/PanelCopy use their own returned
+result, and ArchiveProgressOperation uses the joined worker Result after a
+successful modal Create. E_ABORT suppresses error presentation independently
+of translated message text. The modal Create result alone does not represent
+the worker's operation result.
 
 The owned-provider/selected-consumer lifecycle is a prerequisite for native stack
 integration. Broader runtime acceptance stays open until original parent/path
@@ -500,12 +506,31 @@ and totals through the source folder interface.
 CLangPage owns the source language list/info/apply state. LangUtils is the native
 CLang lookup/reload owner, with source registry helpers on the explicit FM INI
 adapter. Immutable English fallback comes from source STRINGTABLE/en.ttt; bundled
-assets use pinned official release provenance and native-file staging. Qt text
+assets use pinned official release provenance and native-file staging. Language
+loading, LangUtils and ResourceString belong to Core-only sevenzip_filesystem
+alongside CLang and file I/O, so filesystem/transaction workers can resolve
+local message context without linking Widgets. Qt widget bindings remain in
+sevenzip_panel. FileTransferOperation publishes a typed completion kind before
+its result signal; MainWindow suppresses fully rolled-back cancellation and
+retains partial-move failures independently of translated message text. Qt text
 bindings and mainwindow_language.cpp supply presentation updates only, retaining
 existing QAction objects, editable fields, table rows and column state. Successful
 Language Apply sends Qt LanguageChange before the existing list-settings callback;
-invalid Settings input keeps the language pending. Other forms and local Qt
-messages remain P1-14.2; this does not establish whole-app localization acceptance.
+invalid Settings input keeps the language pending. Current dialog and local
+operation-message consumers are integrated by accepted P1-14.2; new capability
+owners must reuse these presentation services and retain native language IDs.
+The mirrored GUI/CompressDialog module owns the copied memory-error and size/
+automatic display bodies. Its narrow public formatter declaration serves both
+compression UI and backend preflight, avoiding a second message implementation;
+the existing RAM calculation and engine boundary remain unchanged. Qt adapters
+convert native UString/AString output for presentation only. Real decoder RAM
+callbacks remain a separate required capability in P1-18.
+QtBindResourceText preserves the native static-control RC fallback independently
+of LangString's dynamic-message fallback. Language bindings update presentation
+without reinitializing inputs; composite CPU/RAM rows use Qt focus proxies to
+their real combo controls. Original ambiguous Add mnemonics retain Qt platform
+behavior and unconditional Tab access. No native parser/lookup API was changed
+to support empty captions: source language blank lines skip IDs.
 `CListViewDialog` presents the result through the shared Qt list adapter;
 the dialog never reads the file table or backend itself.
 `CListViewDialog` reads CFmSettings for single-click activation and delegates

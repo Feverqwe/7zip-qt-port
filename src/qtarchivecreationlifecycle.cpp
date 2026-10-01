@@ -1,6 +1,7 @@
 #include "qtarchivecreationlifecycle.h"
 #include "CPP/7zip/UI/Common/EnumDirItems.h"
 #include "Common/StringConvert.h"
+#include "qtlanguageservices.h"
 #include <QMutexLocker>
 
 namespace {
@@ -62,8 +63,10 @@ HRESULT QtArchiveCreationLifecycle::scan() {
         return result;
     FOR_VECTOR(i, inputs_.DirItems.Items) {
         if (inputs_.DirItems.Items[i].AreReparseData()) {
-            Error =
-                QStringLiteral("Удаление после сжатия для источников со ссылками пока недоступно.");
+            Error = QtLocalText(
+                "Deleting inputs after compression is unavailable for sources containing links.",
+                QStringLiteral(
+                    "Удаление после сжатия для источников со ссылками пока недоступно."));
             return E_NOTIMPL;
         }
     }
@@ -90,6 +93,8 @@ void QtArchiveCreationLifecycle::run() {
         Result = E_OUTOFMEMORY;
     }
     if (Result != S_OK && Error.isEmpty())
-        Error = Result == E_ABORT ? QStringLiteral("Операция отменена.")
-                                  : QStringLiteral("Не удалось обработать исходные файлы.");
+        Error = Result == E_ABORT
+                    ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                    : QtLocalText("Could not process input files.",
+                                  QStringLiteral("Не удалось обработать исходные файлы."));
 }

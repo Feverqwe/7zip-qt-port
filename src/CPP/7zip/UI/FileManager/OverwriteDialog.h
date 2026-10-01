@@ -52,6 +52,7 @@ class COverwriteDialog final : public QDialog {
     void ReduceString(UString &text);
     bool OnButtonClicked(unsigned buttonID, QWidget *button);
     void BuildPresentation();
+    void changeEvent(QEvent *event) override;
 
   public:
     bool ShowExtraButtons;

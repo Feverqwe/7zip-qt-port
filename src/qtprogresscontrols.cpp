@@ -76,15 +76,15 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
         AddControl(id, name, label, x, y, width, height);
     };
 #define LABEL(id, text, x, y) addLabel(id, #id, QStringLiteral(text), x, y, 90, 8, false)
-    LABEL(IDT_PROGRESS_ELAPSED, "Прошло времени:", 8, 8);
-    LABEL(IDT_PROGRESS_REMAINING, "Осталось времени:", 8, 19);
-    LABEL(IDT_PROGRESS_FILES, "Файлы:", 8, 30);
-    LABEL(IDT_PROGRESS_ERRORS, "Ошибки:", 8, 52);
-    LABEL(IDT_PROGRESS_TOTAL, "Общий размер:", 206, 8);
-    LABEL(IDT_PROGRESS_SPEED, "Скорость:", 206, 19);
-    LABEL(IDT_PROGRESS_PROCESSED, "Обработано:", 206, 30);
-    LABEL(IDT_PROGRESS_PACKED, "Сжатый размер:", 206, 41);
-    LABEL(IDT_PROGRESS_RATIO, "Степень сжатия:", 206, 52);
+    LABEL(IDT_PROGRESS_ELAPSED, "Elapsed time:", 8, 8);
+    LABEL(IDT_PROGRESS_REMAINING, "Remaining time:", 8, 19);
+    LABEL(IDT_PROGRESS_FILES, "Files:", 8, 30);
+    LABEL(IDT_PROGRESS_ERRORS, "Errors:", 8, 52);
+    LABEL(IDT_PROGRESS_TOTAL, "Total size:", 206, 8);
+    LABEL(IDT_PROGRESS_SPEED, "Speed:", 206, 19);
+    LABEL(IDT_PROGRESS_PROCESSED, "Processed:", 206, 30);
+    LABEL(IDT_PROGRESS_PACKED, "Compressed size:", 206, 41);
+    LABEL(IDT_PROGRESS_RATIO, "Compression ratio:", 206, 52);
 #undef LABEL
 #define VALUE(id, x, y) addLabel(id, #id, QString(), x, y, 72, 8, true)
     VALUE(IDT_PROGRESS_ELAPSED_VAL, 98, 8);
@@ -110,14 +110,14 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     messages->setColumnCount(2);
     messages->setTextElideMode(Qt::ElideNone);
     AddControl(IDL_PROGRESS_MESSAGES, "IDL_PROGRESS_MESSAGES", messages, 8, 124, 360, 48);
-    auto *background = new QPushButton(QStringLiteral("В &фоновый режим"), this);
+    auto *background = new QPushButton(QStringLiteral("&Background"), this);
     background->setAutoDefault(true);
     background->setDefault(true); // Source DEFPUSHBUTTON.
     AddControl(IDB_PROGRESS_BACKGROUND, "IDB_PROGRESS_BACKGROUND", background, 112, 180, 80, 16);
-    auto *pause = new QPushButton(QStringLiteral("&Пауза"), this);
+    auto *pause = new QPushButton(QStringLiteral("&Pause"), this);
     pause->setAutoDefault(true);
     AddControl(IDB_PAUSE, "IDB_PAUSE", pause, 200, 180, 80, 16);
-    auto *cancel = new QPushButton(QStringLiteral("Отмена"), this);
+    auto *cancel = new QPushButton(QStringLiteral("Cancel"), this);
     cancel->setAutoDefault(true);
     AddControl(kCancelID, "IDCANCEL", cancel, 288, 180, 80, 16);
     setTabOrder(messages, background);
@@ -157,9 +157,6 @@ int CQtProgressDialog::AskCancel(QWidget *parent, const UString &message, const 
                     QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, parent);
     box.setObjectName("progressCancelQuestion");
     box.setTextFormat(Qt::PlainText);
-    box.button(QMessageBox::Yes)->setText(QStringLiteral("&Да"));
-    box.button(QMessageBox::No)->setText(QStringLiteral("&Нет"));
-    box.button(QMessageBox::Cancel)->setText(QStringLiteral("Отмена"));
     box.setDefaultButton(QMessageBox::Yes);
     box.setEscapeButton(QMessageBox::Cancel);
     const int result = box.exec();

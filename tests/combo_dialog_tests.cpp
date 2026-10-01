@@ -59,16 +59,18 @@ class ComboDialogTests : public QObject {
         QCOMPARE(dialog.Value, QStringLiteral("before"));
         QWidget parent;
         QString name = "previous";
+        QString initialName;
         bool found = false;
         QTimer::singleShot(0, &parent, [&] {
             if (auto *folder = parent.findChild<CComboDialog *>("comboDialog")) {
                 found = true;
-                QCOMPARE(folder->Value, QStringLiteral("Новая папка"));
+                initialName = folder->Value;
                 folder->reject();
             }
         });
         QVERIFY(!Dlg_CreateFolder(&parent, name));
         QVERIFY(found);
+        QCOMPARE(initialName, QString("New Folder"));
         QVERIFY(name.isEmpty());
         QTimer::singleShot(0, &parent, [&] {
             if (auto *folder = parent.findChild<CComboDialog *>("comboDialog")) {

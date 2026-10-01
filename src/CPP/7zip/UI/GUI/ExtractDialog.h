@@ -22,6 +22,7 @@ class CExtractDialog : public QDialog {
     void OnOK();
     void UpdatePasswordControl();
     void OnButtonSetPath();
+    void changeEvent(QEvent *event) override;
     static QString settingsPath();
     bool IsShowPasswordChecked() const { return _showPassword->isChecked(); }
 

@@ -1,5 +1,8 @@
+#include "7zip/UI/GUI/CompressDialogRes.h"
+#include "CPP/7zip/UI/FileManager/FormatUtils.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "createarchivedialog.h"
+#include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createVolumeOptions(QFormLayout *form) {
     volume_ = new QComboBox(this);
@@ -9,7 +12,8 @@ void CreateArchiveDialog::createVolumeOptions(QFormLayout *form) {
     AddVolumeItems(*volume_);
     volume_->setCurrentIndex(-1);
     volume_->setEnabled(existingTarget_.isEmpty());
-    volume_->setToolTip("Например: 10M или 10M 20M. Пустое поле — один архив.");
+    QtBindLocalToolTip(volume_, "For example: 10M or 10M 20M. Leave empty for a single archive.",
+                       "Например: 10M или 10M 20M. Пустое поле — один архив.");
     form->addRow("Разбить на тома, байт:", volume_);
 }
 
@@ -19,15 +23,15 @@ bool CreateArchiveDialog::checkVolumeSizes() {
     NCompressDialog::CInfo info;
     const auto result = CCompressDialog::OnOK(volume_->currentText(), info);
     if (result == CCompressDialog::kIncorrectVolumeSize) {
-        QMessageBox::warning(this, "7-Zip", "Неверный размер тома.");
+        QMessageBox::warning(this, "7-Zip", QtLangText(IDS_INCORRECT_VOLUME_SIZE));
         volume_->setFocus();
         return false;
     }
     if (result == CCompressDialog::kConfirmSmallVolume)
         return QMessageBox::question(
                    this, "7-Zip",
-                   QStringLiteral("Указан размер тома: %1 байт.\nРазбить архив на такие тома?")
-                       .arg(info.VolumeSizes.Back()),
+                   QString::fromWCharArray(
+                       MyFormatNew(IDS_SPLIT_CONFIRM, NumberToString(info.VolumeSizes.Back()))),
                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel) == QMessageBox::Yes;
     return true;
 }

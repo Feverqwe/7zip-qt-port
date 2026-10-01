@@ -12,7 +12,7 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
         QString error;
         for (const QString &name : {"part.1", "part.002", "part10", "part"}) {
             QVERIFY(VolumeOperation::discoverParts(dir.filePath(name), &error).isEmpty());
-            QVERIFY(error.contains("суффиксом 01"));
+            QVERIFY(error.contains("Cannot detect file"));
         }
         for (const QString &name : {"part01", "part02", "part04"}) {
             QFile file(dir.filePath(name));
@@ -20,7 +20,7 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
             QCOMPARE(file.write("data"), qint64(4));
         }
         QVERIFY(VolumeOperation::discoverParts(dir.filePath("part01"), &error).isEmpty());
-        QVERIFY(error.contains("пропуск"));
+        QCOMPARE(error, QString("A part is missing from the sequence."));
     }
     void upstreamFirstPartNames_data() {
         QTest::addColumn<QString>("first");

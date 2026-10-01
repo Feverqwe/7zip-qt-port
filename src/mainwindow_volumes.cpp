@@ -1,3 +1,6 @@
+#include "7zip/UI/FileManager/SplitDialogRes.h"
+#include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/FileManager/FormatUtils.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
@@ -6,6 +9,7 @@
 #include "qtapppresentation.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include "qtlangcontrols.h"
 #include "qttrashservice.h"
 #include <QCloseEvent>
 
@@ -58,11 +62,14 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             return;
         source.refresh();
         if (!source.isFile() || source.isSymLink()) {
-            QMessageBox::warning(this, "Разбить файл", "Исходный файл недоступен.");
+            QMessageBox::warning(this, QtLangText(IDD_SPLIT),
+                                 QtLocalText("Source file is unavailable.",
+                                             QStringLiteral("Исходный файл недоступен.")));
             return;
         }
         if (quint64(source.size()) <= dialog.VolumeSizes.FrontItem()) {
-            QMessageBox::warning(this, "Разбить файл", "Размер тома должен быть меньше файла.");
+            QMessageBox::warning(this, QtLangText(IDD_SPLIT),
+                                 QtLangText(IDS_SPLIT_VOL_MUST_BE_SMALLER));
             return;
         }
         CRecordVector<UInt64> volumeSizes;
@@ -73,9 +80,11 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
         }
         const UInt64 numVolumes = GetNumberOfVolumes(quint64(source.size()), volumeSizes);
         if (numVolumes >= 100 &&
-            QMessageBox::question(
-                this, "Разбить файл", QStringLiteral("Создать %1 частей?").arg(numVolumes),
-                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel) != QMessageBox::Yes)
+            QMessageBox::question(this, QtLangText(IDS_SPLIT_CONFIRM_TITLE),
+                                  QString::fromWCharArray(MyFormatNew(IDS_SPLIT_CONFIRM_MESSAGE,
+                                                                      NumberToString(numVolumes))),
+                                  QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel) !=
+                QMessageBox::Yes)
             return;
         path = dialog.Path;
     } else {
@@ -84,8 +93,9 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
         combiner.TotalSize = quint64(parts.totalSize);
         for (const QString &part : parts.paths)
             combiner.Names << QFileInfo(part).fileName();
-        CCopyDialog dialog("Объединить файлы " + itemRelPath, "Объединить в:", path,
-                           combiner.GetInfo(), this);
+        CCopyDialog dialog(QtLangText(IDS_COMBINE) + ' ' + itemRelPath, QtLangText(IDS_COMBINE_TO),
+                           path, combiner.GetInfo(), this);
+        dialog.BindLanguage(IDS_COMBINE, IDS_COMBINE_TO, ' ' + itemRelPath);
         dialog.setObjectName("combineDialog");
         if (dialog.exec() != QDialog::Accepted)
             return;
@@ -97,7 +107,9 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
     // Upstream creates a missing destination only after the dialog and the
     // large-part-count confirmation. Keep the adapter's symlink prohibition.
     if (QFileInfo(QDir::cleanPath(path)).isSymLink() || !QDir().mkpath(path)) {
-        QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку назначения.");
+        QMessageBox::warning(this, "Sevenzip Desktop",
+                             QtLocalText("Could not create destination folder.",
+                                         QStringLiteral("Не удалось создать папку назначения.")));
         return;
     }
     CVolSeqName sequence;
@@ -107,9 +119,9 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
                                     ? path
                                     : QDir(path).filePath(sequence.GetCombinedName());
     volumeOperation_ = new VolumeOperation(mode, paths.first(), destination, sizes, this);
-    beginWorkerProgress(mode == VolumeOperation::Mode::Split ? QStringLiteral("Разделение файла")
-                                                             : QStringLiteral("Объединение файлов"),
-                        paths.first(), [operation = volumeOperation_] { operation->cancel(); });
+    beginWorkerProgress(
+        QtLangText(mode == VolumeOperation::Mode::Split ? IDS_SPLITTING : IDS_COMBINING),
+        paths.first(), [operation = volumeOperation_] { operation->cancel(); });
     progress_->Sync.Set_NumBytesTotal(
         quint64(mode == VolumeOperation::Mode::Split ? source.size() : parts.totalSize));
     connect(volumeOperation_, &VolumeOperation::advanced, this, [this](qint64 bytes) {
@@ -117,10 +129,10 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             progress_->Sync.Set_NumBytesCur(quint64(qMax<qint64>(0, bytes)));
     });
     connect(volumeOperation_, &VolumeOperation::result, this,
-            [this](bool success, const QString &message) {
+            [this, operation = volumeOperation_](bool success, const QString &message) {
                 if (app_.QtOperations().closed())
                     return;
-                if (!success && message != QStringLiteral("Операция отменена.") && progress_)
+                if (!success && !operation->isCanceled() && progress_)
                     progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(message);
                 closeProgressDialog(true);
                 if (success) {

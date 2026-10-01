@@ -90,7 +90,7 @@ class CompressionResourceTests final : public QObject {
         auto *hardware = dialog.findChild<QLabel *>("compressionHardwareThreads");
         QVERIFY(threads && memory && decompress && hardware);
         QVERIFY(hardware->text().startsWith("/ "));
-        QVERIFY(threads->itemText(0).startsWith(QStringLiteral("Автоматически (")));
+        QVERIFY(threads->itemText(0).startsWith("*  "));
         threads->setCurrentIndex(threads->findData(2u));
         QCOMPARE(dialog.compressionOptions().threads, 2);
         method->setCurrentText("BZip2");
@@ -189,7 +189,8 @@ class CompressionResourceTests final : public QObject {
         backend.cancel();
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY(!done.first()[0].toBool());
-        QVERIFY(done.first()[1].toString().contains("отменена"));
+        QCOMPARE(done.first()[1].toString(), QString("Operation canceled."));
+        QCOMPARE(backend.lastResult(), E_ABORT);
         QVERIFY(!QFileInfo::exists(invalid));
         QVERIFY(QDir(dir.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());
     }

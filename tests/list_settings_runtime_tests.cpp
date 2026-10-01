@@ -1,5 +1,8 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "filetable.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include "window_state_support.h"
 
 #include <QCheckBox>
@@ -53,8 +56,22 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         QCOMPARE(files->rowCount(), 2);
         QCOMPARE(files->item(0, 0)->text(), QStringLiteral(".."));
         QCOMPARE(files->item(0, 0)->data(Qt::UserRole + 6).toUInt(), quint32(-1));
-        QCOMPARE(files->item(0, 0)->toolTip(), QStringLiteral("Родительская папка"));
+        QCOMPARE(files->item(0, 0)->toolTip(), QStringLiteral("Parent folder"));
+        QCOMPARE(files->accessibleName(), QStringLiteral("File list"));
+        auto *parent = files->item(0, 0);
+        const QString languageSettings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(UString("ru"), languageSettings);
+        ReloadLang(languageSettings);
+        QtNotifyLanguageChanged();
+        QCOMPARE(files->item(0, 0), parent);
+        QCOMPARE(files->rowCount(), 2);
+        QCOMPARE(parent->toolTip(), QStringLiteral("Родительская папка"));
         QCOMPARE(files->accessibleName(), QStringLiteral("Список файлов"));
+        SaveRegLang(UString("-"), languageSettings);
+        ReloadLang(languageSettings);
+        QtNotifyLanguageChanged();
+        QCOMPARE(parent->toolTip(), QString("Parent folder"));
+        QCOMPARE(files->accessibleName(), QString("File list"));
         QCOMPARE(files->item(1, 0)->toolTip(),
                  QFileInfo(temp.filePath(QStringLiteral("child.txt"))).canonicalFilePath());
         files->sortItems(0, Qt::DescendingOrder);
@@ -137,7 +154,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         window.show();
         auto *files = table(window);
         auto *icons = window.findChild<QListView *>("iconList");
-        QCOMPARE(icons->accessibleName(), QStringLiteral("Список файлов"));
+        QCOMPARE(icons->accessibleName(), QStringLiteral("File list"));
         const QString path = window.findChild<QLineEdit *>("archivePath")->text();
         for (int mode : {3, 0}) {
             action(window, mode == 3 ? "viewMode3Action" : "viewMode0Action")->trigger();

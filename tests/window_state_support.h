@@ -148,9 +148,9 @@ class ControlledBackend : public ArchiveBackend {
         emit entriesReady(entries);
         emit finished(true, QStringLiteral("Архив открыт."));
     }
-    void fail(const QString &message) {
+    void fail(const QString &message, HRESULT result = E_FAIL) {
         busy_ = false;
-        result_ = E_FAIL;
+        result_ = result;
         emit finished(false, message);
     }
     void completeCreate() {

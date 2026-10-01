@@ -5,10 +5,13 @@
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "Common/StringToInt.h"
 #include "LangUtils.h"
+#include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtlangcontrols.h"
 #include <QAbstractButton>
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
@@ -20,7 +23,7 @@
 
 void CMemDialog::BuildPresentation() {
     setObjectName("memDialog");
-    setWindowTitle("Запрос использования памяти");
+    QtBindResourceText(this, IDD_MEM, "Memory usage request");
     resize(680, 460);
     auto *layout = new QVBoxLayout(this);
     auto *message = new QLabel(this);
@@ -29,7 +32,8 @@ void CMemDialog::BuildPresentation() {
     message->setWordWrap(true);
     _controls.insert(IDT_MEM_MESSAGE, message);
     layout->addWidget(message);
-    auto *save = new QCheckBox("Изменить лимит для следующих операций", this);
+    auto *save = new QCheckBox(this);
+    QtBindResourceText(save, IDX_MEM_SAVE_LIMIT, "Change allowed limit for next operations");
     save->setObjectName("memSaveLimit");
     _controls.insert(IDX_MEM_SAVE_LIMIT, save);
     layout->addWidget(save);
@@ -37,6 +41,7 @@ void CMemDialog::BuildPresentation() {
     auto *row = new QHBoxLayout;
     auto *edit = new QLineEdit(this);
     edit->setObjectName("memLimit");
+    QtBindLangText(edit, IDS_MEM_CURRENT_MEM_LIMIT, "Current allowed limit", true);
     edit->setMaximumWidth(130);
     _controls.insert(IDE_MEM_SPIN_EDIT, edit);
     row->addWidget(edit);
@@ -61,18 +66,22 @@ void CMemDialog::BuildPresentation() {
     row->addWidget(gb);
     row->addStretch();
     layout->addLayout(row);
-    auto *group = new QGroupBox("Действие", this);
+    auto *group = new QGroupBox(this);
+    QtBindResourceText(group, IDG_MEM_ACTION, "Action");
     group->setObjectName("memAction");
     auto *actions = new QVBoxLayout(group);
-    auto *allow = new QRadioButton("&Разрешить распаковку архива", group);
-    auto *skip = new QRadioButton("&Пропустить распаковку архива", group);
+    auto *allow = new QRadioButton(group);
+    auto *skip = new QRadioButton(group);
+    QtBindResourceText(allow, IDR_MEM_ACTION_ALLOW, "&Allow archive unpacking");
+    QtBindResourceText(skip, IDR_MEM_ACTION_SKIP_ARC, "&Skip archive unpacking");
     allow->setObjectName("memAllow");
     skip->setObjectName("memSkip");
     _controls.insert(IDR_MEM_ACTION_ALLOW, allow);
     _controls.insert(IDR_MEM_ACTION_SKIP_ARC, skip);
     actions->addWidget(allow);
     actions->addWidget(skip);
-    auto *remember = new QCheckBox("Повторять выбранное действие для текущей операции", group);
+    auto *remember = new QCheckBox(group);
+    QtBindResourceText(remember, IDX_MEM_REMEMBER, "&Repeat selected action for current operation");
     remember->setObjectName("memRemember");
     _controls.insert(IDX_MEM_REMEMBER, remember);
     actions->addWidget(remember);
@@ -80,7 +89,7 @@ void CMemDialog::BuildPresentation() {
     layout->addStretch();
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("memButtons");
-    buttons->button(QDialogButtonBox::Ok)->setText("&Продолжить");
+    QtBindResourceText(buttons->button(QDialogButtonBox::Ok), 411, "Continue");
     connect(buttons, &QDialogButtonBox::accepted, this, &CMemDialog::OnContinue);
     connect(buttons, &QDialogButtonBox::rejected, this, &CMemDialog::reject);
     layout->addWidget(buttons);
@@ -163,21 +172,10 @@ bool CMemDialog::OnInit() {
     if (ramSize_GB == 0)
         ramSize_GB = 1;
     const bool is_Allowed = (!ramSize_defined || ramSize > ((UInt64)Required_GB << 30));
+    _messageRam_GB = is_Allowed ? 0 : ramSize_GB;
+    ReloadInfoMessage(is_Allowed ? NULL : &ramSize_GB);
     {
-        UString s;
-        if (!is_Allowed) {
-            AddLangString(s, IDS_MEM_ERROR);
-            s.Add_LF();
-        }
-        AddInfoMessage_To_String(s, is_Allowed ? NULL : &ramSize_GB);
-        if (!ArcPath.IsEmpty()) {
-            s.Add_LF();
-            AddLangString(s, TestMode ? IDS_PROGRESS_TESTING : IDS_PROGRESS_EXTRACTING);
-            s += ": ";
-            s += ArcPath;
-        }
-        SetItemText(IDT_MEM_MESSAGE, s);
-        s = "GB";
+        UString s("GB");
         if (ramSize_defined) {
             s += " / ";
             s.Add_UInt32(ramSize_GB);
@@ -210,6 +208,28 @@ bool CMemDialog::OnInit() {
     return true;
 }
 
+void CMemDialog::ReloadInfoMessage(const UInt32 *ramSize_GB) {
+    UString s;
+    if (ramSize_GB) {
+        AddLangString(s, IDS_MEM_ERROR);
+        s.Add_LF();
+    }
+    AddInfoMessage_To_String(s, ramSize_GB);
+    if (!ArcPath.IsEmpty()) {
+        s.Add_LF();
+        AddLangString(s, TestMode ? IDS_PROGRESS_TESTING : IDS_PROGRESS_EXTRACTING);
+        s += ": ";
+        s += ArcPath;
+    }
+    SetItemText(IDT_MEM_MESSAGE, s);
+}
+
+void CMemDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && !_controls.isEmpty())
+        ReloadInfoMessage(_messageRam_GB ? &_messageRam_GB : nullptr);
+    QDialog::changeEvent(event);
+}
+
 void CMemDialog::OnContinue() {
     Remember = IsButtonCheckedBool(IDX_MEM_REMEMBER);
     NeedSave = IsButtonCheckedBool(IDX_MEM_SAVE_LIMIT);
@@ -220,7 +240,9 @@ void CMemDialog::OnContinue() {
         const wchar_t *end;
         const UInt32 val = ConvertStringToUInt32(s.Ptr(), &end);
         if (s.IsEmpty() || *end != 0 || val > (1u << 30)) {
-            QMessageBox::critical(this, windowTitle(), "Неверный параметр.");
+            QMessageBox::critical(
+                this, windowTitle(),
+                QString::fromWCharArray(NWindows::NError::MyFormatMessage(E_INVALIDARG)));
             return;
         }
         Limit_GB = val;

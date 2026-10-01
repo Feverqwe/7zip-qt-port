@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/CopyDialog.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
+#include "Common/MyTypes.h"
 
 #include <QDialog>
 #include <QStringList>
@@ -25,6 +26,7 @@ class CCopyDialog : public QDialog {
     QStringList Strings;
 
     QString destination() const;
+    void BindLanguage(UInt32 titleID, UInt32 promptID, const QString &titleSuffix = {});
     void accept() override;
 
   private:

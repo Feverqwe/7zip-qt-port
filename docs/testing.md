@@ -1,12 +1,113 @@
 # Regression strategy
 
+`language_dialog` checks live source Password/Copy/Split/Create-folder/Overwrite/
+Mem/Messages/Extract captions, raw pending Unicode values, secret redaction,
+history, focus/selection, modal decisions and existing diagnostic rows. It writes
+normal/compact widget JSON under `language-*.json`. These checks form the accepted
+P1-14.2 regression scope; the final full gate passed170/170 on macOS arm64.
+It also checks paused/background Progress and finished Close hot switch without
+transport requests. Progress's direct consumers/resource contracts are checked
+separately by the existing worker/priority/cancel/archive suites. `language_ui`
+checks actual Properties rows/values/selection in EN/RU; `language_viewer`
+checks pending built-in editor contents/cursor/document state and read-only
+diagnostics. Local viewer messages have no corresponding upstream editor owner.
+Main-window local File commands and toolbar title also switch EN/RU in place;
+`language-main-{en|ru}-{1100|640}.json` checks actual1100×640/640×380 exposure.
+`archive_backend` checks EN→RU→EN extraction preflight rejection, empty destination,
+raw malicious Unicode/spaced path and absence of output effects. The fixture
+includes an actual file for the existing listed-archive identity guard; engine
+listing tokens and arguments are unchanged by this presentation work.
+`language_main_dialog` checks a live archive summary in EN→RU→EN, unchanged
+metadata and backend call counts, and420×240/300×180 widget JSON. Its English
+artifact language token is `-` (native English selection), Russian is `ru`.
+Its cancellation regression uses E_ABORT with arbitrary translated text, and
+requires a warning for E_FAIL even when the text matches a cancellation caption.
+`archive_backend` checks actual EN/RU Create cancellation and E_ABORT, localized
+listing success/exit context and unchanged raw engine tail. Native source
+overwrite Cancel is covered by `ui_operations`, with its own result forwarded
+to MainWindow rather than inferred from the last backend result.
+`archive_volume_creation` runs actual variable ZIP/7z volume success with/without
+passwords in EN/RU, plus occupied preflight/post-compression destinations and
+compression/volume/pause-and-join cancellation in both languages. It asserts
+exact local message context, preserved input bytes and cleanup. `language_main_dialog`
+also runs source Open cancellation EN→RU→EN and checks source opening title,
+selected-language result context and journal without rewriting raw backend text.
+`volume_operations` checks EN/RU Split/Combine completion and transactional
+failures/cancellation with raw Unicode paths, payload equality and cleanup.
+`volume_workflow` checks selected-language completion through actual MainWindow,
+and EN/RU100-part dialog/confirmation Yes/No/Cancel at normal/compact main-window
+sizes. It writes `language-split-confirm-{en|ru}-{1100|640}-{1|2|3}.json` and
+checks the complete message/button geometry. QMessageBox suppresses its window
+title on macOS; the platform conditional does not omit message/decision checks.
+`language_archive_command` checks the actual selected archive item's local
+16-MiB preview limit in EN→RU→EN, preserved selection/backend counts, and complete
+message/button geometry at normal/compact main-window sizes. Its four
+`language-archive-preview-*.json` reports use native `-` for English.
+`language_file_transfer` checks Core-only worker EN/RU Copy/Move success, real
+failure, source error with raw Unicode paths, overwrite Cancel and complete
+rollback. Partial-move cancellation remains a Failure with its warning and
+published bytes retained; MainWindow uses typed completion rather than text.
+`file_transfer`, `file_transfer_direct`, `fs_folder_copy`, `ui_operations` and
+language UI/dialog suites are direct consumers. Core language/resource loading
+is linked by sevenzip_filesystem, so these tests also catch Widgets dependency
+or missing static-resource registration in standalone filesystem workers.
+`ui_operations` runs actual ZIP archive-to-archive Copy/Move and declined
+source deletion in EN/RU, checking completion context, extracted bytes and
+destination rollback. `language_source_update` runs actual ZIP update/no-op/
+cancel plus unsafe-add/protected-policy rejection in both languages. It checks
+HRESULT, raw Unicode/spaced paths, unchanged input archive, output cleanup and
+retained source bytes. `source_update_backend` and `archive_backend` are direct
+consumers of the changed source-update adapter context.
+
+Compression/mutation rejection also checks EN/RU source password errors,
+invalid method, raw Unicode source paths, source-extract rejection and no engine
+or output effects. `language_archive_command` checks the original full
+CompressDialog RAM error with zero limit EN→RU→EN, pending input and complete
+popup geometry (`language-compress-memory-*.json`). This checks compression
+preflight; actual decoder callback acceptance remains mandatory P1-18.
+`external_launch` checks EN/RU association failure, plaintext path/HRESULT and
+complete message/button JSON. `language_file_transfer` additionally checks
+occupied Unicode CreateFolder/CreateFile targets with retained bytes.
+`compression_dictionary`, `compression_memory` and `compression_solid` now
+write normal/compact JSON after exposing the affected fields, replacing their
+unconditional screenshots; opt-in PNG is provided by layout_inspection. Display
+expectations use the original B/KB/MB/GB and `*  ` prefix, while cancellation
+requires exact English context and E_ABORT. `language_ui` additionally preserves
+real directory tooltips/row identity/selection and pending address input across
+hot switch, and checks localized address placeholder/accessibility.
+Its Add test scrolls to each named atomic control at both EN/RU sizes while
+checking label/button fit and persistent footer. `bookmarks` checks original
+empty/dynamic/long-path captions and hot-switch action/shortcut identity.
+`root_navigation` checks source RootFolder hot switch without replacing items,
+selection or starting backend requests, with EN/RU normal/compact reports.
+Language checks also assert initial auxiliary Path/Order captions and the EN/RU
+disabled removable-drive tooltip; direct consumers include Options and source
+panel-column persistence. Original RU Add mnemonic `П` is shared by Show password
+and Parameters. `language_focus` checks actual Tab reachability and, where the
+platform enables mnemonics, ambiguous-shortcut focus cycling without toggling the
+password checkbox. It also checks CPU/RAM composite-label focus proxies and
+accessible combo names EN→RU→EN, plus partial/blank-ID/malformed language files
+in the actual Add form with pending names, secrets and combo data retained.
+Static captions use native RC fallback, while dynamic messages keep LangString
+fallback; empty source language lines skip an ID rather than define empty text.
+macOS native mnemonic suppression is preserved; Windows/Linux runtime remains
+unverified. Progress completion checks Cancel→Close binding across hot switch.
+`browse_dialog` exercises EN/RU Open archive filter captions and actual Unicode
+`.001` selection with unchanged masks and FilterIndex. `combo_dialog` observes
+the native New Folder default before rejecting, asserts after modal return and
+has a30 s timeout so a failed caption assertion cannot leave the suite hanging.
+Modal viewer responders wait for the actual visible dialog instead of a30 ms
+deadline. All MainWindow consumers, including late Language targets, use isolated
+startup/TMP directories; Language command/window tests reset only their private
+settings fixtures, preventing stale PanelPath from scanning a shared temp tree.
+
 `language` checks native CLang escapes/signature/program/ID ordering/size and
 missing/traversal fallback, original bundled RU and source Language page
 Apply/Cancel/restart. `language_ui` checks actual Options/MainWindow hot switch,
 persistence/restart, partial-language menu */#/tab/reset behavior, pending input,
 invalid Settings with deferred Language Apply, action/shortcut/list/selection
 state, and five available Options pages' English/Russian geometry/reports at
-640×390/520×380. Remaining forms/messages are mandatory P1-14.2; Windows/Linux
+640×390/520×380. Remaining current forms/messages are covered by accepted P1-14.2; Windows/Linux
 runtime and rendered-reference parity are not established by macOS reports.
 
 `menu_page` checks source defaults and 14 flag rows, custom Zone values,

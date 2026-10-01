@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Common/ExtractingFilePath.h"
 #include "CPP/Common/Wildcard.h"
 #include "archivebackend.h"
+#include "qtlanguageservices.h"
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -76,7 +77,9 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
             QDir::isAbsolutePath(relative) || !sourceUpdatePathIsSafe(relative) ||
             relative.contains('*') || relative.contains('?') || relative.startsWith('@') ||
             info.absoluteFilePath() == target.absoluteFilePath()) {
-            *error = QStringLiteral("Недоступный источник обновления: %1").arg(source);
+            *error =
+                QtLocalText("Update source unavailable: %1", "Недоступный источник обновления: %1")
+                    .arg(source);
             return false;
         }
         if (info.isDir()) {
@@ -84,7 +87,8 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
                 QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
             if (nested == "." ||
                 (nested != ".." && !nested.startsWith("../") && !QDir::isAbsolutePath(nested))) {
-                *error = QStringLiteral("Архив находится внутри выбранной папки.");
+                *error = QtLocalText("The archive is inside the selected folder.",
+                                     "Архив находится внутри выбранной папки.");
                 return false;
             }
             QDirIterator iterator(info.absoluteFilePath(),
@@ -94,7 +98,8 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
             while (iterator.hasNext()) {
                 iterator.next();
                 if (iterator.fileInfo().isSymLink()) {
-                    *error = QStringLiteral("Источники не должны содержать ссылки: %1")
+                    *error = QtLocalText("Sources must not contain links: %1",
+                                         "Источники не должны содержать ссылки: %1")
                                  .arg(iterator.filePath());
                     return false;
                 }
@@ -111,14 +116,16 @@ void ArchiveBackend::updateSourceFile(const QString &archive, const QString &ent
                                       const QString &sourceRoot, const QString &output,
                                       const QString &format, const QString &password) {
     if (busy()) {
-        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
         return;
     }
     lastResult_ = E_FAIL;
     if ((format != "7z" && format != "zip") || !sourceUpdatePathIsSafe(entry) ||
         !QFileInfo(archive).isFile() || !QFileInfo(QDir(sourceRoot).filePath(entry)).isFile() ||
         output.isEmpty() || QFileInfo::exists(output)) {
-        emit finished(false, QStringLiteral("Недопустимый файл или путь обновления архива."));
+        emit finished(false, QtLocalText("Invalid archive update file or path.",
+                                         "Недопустимый файл или путь обновления архива."));
         return;
     }
     archive_ = QFileInfo(archive).absoluteFilePath();
@@ -143,7 +150,8 @@ void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &
                                      const QString &sourceRoot, const QString &output,
                                      const QString &format, const QString &password) {
     if (busy()) {
-        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
         return;
     }
     lastResult_ = E_FAIL;
@@ -153,19 +161,22 @@ void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &
     if ((format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||
         result.exists() || result.isSymLink() || !root.isDir() || root.isSymLink() ||
         entries.isEmpty()) {
-        emit finished(false, QStringLiteral("Недопустимый запрос на добавление в архив."));
+        emit finished(false, QtLocalText("Invalid archive add request.",
+                                         "Недопустимый запрос на добавление в архив."));
         return;
     }
     for (const QString &entry : entries) {
         if (!sourceUpdatePathIsSafe(entry) || entry.contains('*') || entry.contains('?') ||
             entry.startsWith('@')) {
-            emit finished(false, QStringLiteral("Небезопасный путь добавления в архив."));
+            emit finished(false, QtLocalText("Unsafe archive add path.",
+                                             "Небезопасный путь добавления в архив."));
             return;
         }
         const QFileInfo staged(QDir(root.absoluteFilePath()).filePath(entry));
         if ((!staged.isFile() && !staged.isDir()) || staged.isSymLink() ||
             !staged.canonicalFilePath().startsWith(root.canonicalFilePath() + QDir::separator())) {
-            emit finished(false, QStringLiteral("Файл добавления не подготовлен."));
+            emit finished(false, QtLocalText("The added file has not been prepared.",
+                                             "Файл добавления не подготовлен."));
             return;
         }
     }
@@ -184,23 +195,27 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
                                       const QString &password,
                                       const std::optional<CompressionOptions> &options) {
     if (busy()) {
-        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
         return;
     }
     lastResult_ = E_FAIL;
     if (options && !options->VolumeSizes.IsEmpty()) {
-        emit finished(false, QStringLiteral("Обновление архивных томов не поддерживается."));
+        emit finished(false, QtLocalText("Updating archive volumes is not supported.",
+                                         "Обновление архивных томов не поддерживается."));
         return;
     }
     const QFileInfo input(archive);
     const QFileInfo result(output);
     if ((format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||
         result.exists() || result.isSymLink()) {
-        emit finished(false, QStringLiteral("Недопустимый запрос на обновление архива."));
+        emit finished(false, QtLocalText("Invalid archive update request.",
+                                         "Недопустимый запрос на обновление архива."));
         return;
     }
     if (!password.isEmpty() && !plan.allowProtected) {
-        emit finished(false, QStringLiteral("Обновление защищённого архива не подтверждено."));
+        emit finished(false, QtLocalText("Protected archive update has not been confirmed.",
+                                         "Обновление защищённого архива не подтверждено."));
         return;
     }
     const QDir fileRoot(plan.fileRoot);
@@ -208,34 +223,39 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
     if ((!plan.files.isEmpty() && (!fileRoot.exists() || QFileInfo(plan.fileRoot).isSymLink())) ||
         (!plan.directories.isEmpty() &&
          (!directoryRoot.exists() || QFileInfo(plan.directoryRoot).isSymLink()))) {
-        emit finished(false, QStringLiteral("Подготовленные источники недоступны."));
+        emit finished(false, QtLocalText("Prepared sources are unavailable.",
+                                         "Подготовленные источники недоступны."));
         return;
     }
     for (const QString &path : plan.removed + plan.removedDirectories + plan.retainedPaths)
         if (!sourceUpdatePathIsSafe(path, plan.allowAbsolute) || path.contains('*') ||
             path.contains('?') || path.startsWith('@')) {
-            emit finished(false, QStringLiteral("Небезопасный путь обновления архива."));
+            emit finished(false, QtLocalText("Unsafe archive update path.",
+                                             "Небезопасный путь обновления архива."));
             return;
         }
     for (const QStringList *group : {&plan.files, &plan.directories})
         for (const QString &path : *group)
             if (!sourceUpdatePathIsSafe(path) || path.contains('*') || path.contains('?') ||
                 path.startsWith('@')) {
-                emit finished(false, QStringLiteral("Небезопасный путь обновления архива."));
+                emit finished(false, QtLocalText("Unsafe archive update path.",
+                                                 "Небезопасный путь обновления архива."));
                 return;
             }
     for (const auto &rename : plan.renames)
         if (!sourceUpdatePathIsSafe(rename.first) ||
             !sourceUpdatePathIsSafe(rename.second, plan.allowAbsolute) ||
             (!plan.files.contains(rename.first) && !plan.directories.contains(rename.first))) {
-            emit finished(false, QStringLiteral("Небезопасное переименование обновления."));
+            emit finished(false, QtLocalText("Unsafe update rename.",
+                                             "Небезопасное переименование обновления."));
             return;
         }
     for (const QString &path : plan.files) {
         const QFileInfo staged(fileRoot.filePath(path));
         if (!staged.isFile() || staged.isSymLink() ||
             !staged.canonicalFilePath().startsWith(fileRoot.canonicalPath() + '/')) {
-            emit finished(false, QStringLiteral("Файл обновления не подготовлен."));
+            emit finished(false, QtLocalText("The update file has not been prepared.",
+                                             "Файл обновления не подготовлен."));
             return;
         }
     }
@@ -243,7 +263,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         const QFileInfo staged(directoryRoot.filePath(path));
         if (!staged.isDir() || staged.isSymLink() ||
             !staged.canonicalFilePath().startsWith(directoryRoot.canonicalPath() + '/')) {
-            emit finished(false, QStringLiteral("Папка обновления не подготовлена."));
+            emit finished(false, QtLocalText("The update folder has not been prepared.",
+                                             "Папка обновления не подготовлена."));
             return;
         }
     }
@@ -260,7 +281,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         }
     }
     if (!QFile::copy(input.absoluteFilePath(), result.absoluteFilePath())) {
-        emit finished(false, QStringLiteral("Не удалось подготовить копию архива."));
+        emit finished(false, QtLocalText("Could not prepare a copy of the archive.",
+                                         "Не удалось подготовить копию архива."));
         return;
     }
     archive_ = input.absoluteFilePath();
@@ -284,7 +306,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
     else {
         lastResult_ = S_OK;
         sourcePlanPassword_.clear();
-        emit finished(true, QStringLiteral("Архив не требует обновления."));
+        emit finished(true, QtLocalText("The archive does not need updating.",
+                                        "Архив не требует обновления."));
     }
 }
 
@@ -335,7 +358,8 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
                                           const QStringList &paths, const QString &sourceRoot,
                                           const QString &password) {
     if (busy()) {
-        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
         return;
     }
     lastResult_ = E_FAIL;
@@ -343,29 +367,34 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
     const QFileInfo result(output);
     if ((format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||
         result.exists() || paths.isEmpty()) {
-        emit finished(false, QStringLiteral("Недопустимый запрос на изменение архива."));
+        emit finished(false, QtLocalText("Invalid archive mutation request.",
+                                         "Недопустимый запрос на изменение архива."));
         return;
     }
     for (const QString &path : paths) {
         if (!sourceUpdatePathIsSafe(path) || path.contains('*') || path.contains('?') ||
             path.startsWith('@')) {
-            emit finished(false, QStringLiteral("Небезопасный путь в архиве."));
+            emit finished(false,
+                          QtLocalText("Unsafe archive path.", "Небезопасный путь в архиве."));
             return;
         }
     }
     if ((operation == SourceMutation::Rename && paths.size() != 2) ||
         (operation == SourceMutation::CreateFolder && paths.size() != 1) ||
         (operation != SourceMutation::CreateFolder && !sourceRoot.isEmpty())) {
-        emit finished(false, QStringLiteral("Недопустимый план изменения архива."));
+        emit finished(false, QtLocalText("Invalid archive mutation plan.",
+                                         "Недопустимый план изменения архива."));
         return;
     }
     if (operation == SourceMutation::CreateFolder &&
         !QFileInfo(QDir(sourceRoot).filePath(paths.front())).isDir()) {
-        emit finished(false, QStringLiteral("Новая папка не подготовлена."));
+        emit finished(false, QtLocalText("The new folder has not been prepared.",
+                                         "Новая папка не подготовлена."));
         return;
     }
     if (!QFile::copy(input.absoluteFilePath(), result.absoluteFilePath())) {
-        emit finished(false, QStringLiteral("Не удалось подготовить копию архива."));
+        emit finished(false, QtLocalText("Could not prepare a copy of the archive.",
+                                         "Не удалось подготовить копию архива."));
         return;
     }
     createTemporary_ = result.absoluteFilePath();

@@ -1,4 +1,6 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "volumeoperations.h"
 
 #include <QDir>
@@ -11,8 +13,16 @@
 
 class VolumeOperationsTests : public QObject {
     Q_OBJECT
+    QTemporaryDir languageDirectory;
+    void language(bool russian) {
+        const QString path = languageDirectory.filePath("language.ini");
+        SaveRegLang(UString(russian ? "ru" : "-"), path);
+        ReloadLang(path);
+    }
 
   private slots:
+    void init() { language(false); }
+    void cleanup() { language(false); }
     void parsesSizes() {
         QCOMPARE(VolumeOperation::parseSize("10M"), qint64(10) << 20);
         QCOMPARE(VolumeOperation::parseSize("650M - CD"), qint64(650) << 20);
@@ -81,7 +91,14 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(QDir(invalidDestination).entryList(QDir::Files | QDir::Hidden).isEmpty());
     }
 
+    void splitsAndCombinesUnicodeFile_data() {
+        QTest::addColumn<bool>("russian");
+        QTest::newRow("English") << false;
+        QTest::newRow("Russian") << true;
+    }
     void splitsAndCombinesUnicodeFile() {
+        QFETCH(bool, russian);
+        language(russian);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString source = dir.filePath("архив space.bin");
@@ -96,6 +113,8 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(split.wait());
         QCOMPARE(splitResult.size(), 1);
         QVERIFY(splitResult.first().first().toBool());
+        QCOMPARE(splitResult.first()[1].toString(),
+                 russian ? QStringLiteral("Файл разделён.") : QString("File split."));
         const QString first = source + ".001";
         QString error;
         QCOMPARE(VolumeOperation::discoverParts(first, &error).size(), 3);
@@ -105,11 +124,16 @@ class VolumeOperationsTests : public QObject {
         combine.start();
         QVERIFY(combine.wait());
         QVERIFY(combineResult.first().first().toBool());
+        QCOMPARE(combineResult.first()[1].toString(),
+                 russian ? QStringLiteral("Файлы объединены.") : QString("Files combined."));
         QFile result(output);
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), bytes);
     }
+    void rejectsCollisionAndMissingPart_data() { splitsAndCombinesUnicodeFile_data(); }
     void rejectsCollisionAndMissingPart() {
+        QFETCH(bool, russian);
+        language(russian);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString source = dir.filePath("source.bin");
@@ -126,6 +150,7 @@ class VolumeOperationsTests : public QObject {
         split.start();
         QVERIFY(split.wait());
         QVERIFY(!spy.first().first().toBool());
+        QVERIFY(spy.first()[1].toString().contains(source + ".001"));
         QVERIFY(collision.open(QIODevice::ReadOnly));
         QCOMPARE(collision.readAll(), QByteArray("existing"));
         collision.close();
@@ -140,9 +165,13 @@ class VolumeOperationsTests : public QObject {
         third.close();
         QString error;
         QVERIFY(VolumeOperation::discoverParts(source + ".001", &error).isEmpty());
-        QVERIFY(error.contains("пропуск"));
+        QCOMPARE(error, russian ? QStringLiteral("В последовательности частей есть пропуск.")
+                                : QString("A part is missing from the sequence."));
     }
+    void cancellationRemovesPartialOutput_data() { splitsAndCombinesUnicodeFile_data(); }
     void cancellationRemovesPartialOutput() {
+        QFETCH(bool, russian);
+        language(russian);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString source = dir.filePath("large.bin");
@@ -163,18 +192,27 @@ class VolumeOperationsTests : public QObject {
         split.start();
         QVERIFY(split.wait());
         QVERIFY(!spy.first().first().toBool());
+        QVERIFY(split.isCanceled());
+        QCOMPARE(spy.first()[1].toString(),
+                 russian ? QStringLiteral("Операция отменена.") : QString("Operation canceled."));
         QVERIFY(!QFileInfo::exists(source + ".001"));
         QCOMPARE(QDir(dir.path()).entryList({"*.sevenzip-*"}, QDir::Files).size(), 0);
     }
     void combineRollback_data() {
         QTest::addColumn<int>("failure");
-        QTest::newRow("cancel") << 0;
-        QTest::newRow("remove-next-part") << 1;
-        QTest::newRow("grow-current-part") << 2;
-        QTest::newRow("occupied-output") << 3;
+        QTest::addColumn<bool>("russian");
+        const char *names[] = {"cancel", "remove-next-part", "grow-current-part",
+                               "occupied-output"};
+        for (bool russian : {false, true})
+            for (int failure = 0; failure < 4; ++failure)
+                QTest::newRow(
+                    qPrintable(QString::fromLatin1(names[failure]) + (russian ? "-ru" : "-en")))
+                    << failure << russian;
     }
     void combineRollback() {
         QFETCH(int, failure);
+        QFETCH(bool, russian);
+        language(russian);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString base = dir.filePath(QStringLiteral("части с пробелом.bin"));
@@ -215,7 +253,19 @@ class VolumeOperationsTests : public QObject {
         if (failure == 1 || failure == 2)
             QVERIFY(changed);
         if (failure == 0)
-            QCOMPARE(result.first()[1].toString(), QStringLiteral("Операция отменена."));
+            QCOMPARE(result.first()[1].toString(), russian ? QStringLiteral("Операция отменена.")
+                                                           : QString("Operation canceled."));
+        QCOMPARE(combine.isCanceled(), failure == 0);
+        if (failure == 1)
+            QCOMPARE(result.first()[1].toString(),
+                     (russian ? QStringLiteral("Часть файла недоступна: %1")
+                              : QString("File part is unavailable: %1"))
+                         .arg(base + ".002"));
+        if (failure == 2)
+            QCOMPARE(result.first()[1].toString(),
+                     (russian ? QStringLiteral("Часть файла изменилась: %1")
+                              : QString("File part changed: %1"))
+                         .arg(base + ".001"));
         if (failure == 3) {
             QFile occupied(base);
             QVERIFY(occupied.open(QIODevice::ReadOnly));
@@ -227,11 +277,16 @@ class VolumeOperationsTests : public QObject {
 
     void splitRejectsSourceChange_data() {
         QTest::addColumn<bool>("grow");
-        QTest::newRow("shrink") << false;
-        QTest::newRow("grow") << true;
+        QTest::addColumn<bool>("russian");
+        for (bool russian : {false, true}) {
+            QTest::newRow(russian ? "shrink-ru" : "shrink-en") << false << russian;
+            QTest::newRow(russian ? "grow-ru" : "grow-en") << true << russian;
+        }
     }
     void splitRejectsSourceChange() {
         QFETCH(bool, grow);
+        QFETCH(bool, russian);
+        language(russian);
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         const QString source = dir.filePath(QStringLiteral("изменённый источник.bin"));
@@ -257,7 +312,9 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(changed);
         QCOMPARE(result.size(), 1);
         QVERIFY(!result.first().first().toBool());
-        QVERIFY(result.first()[1].toString().contains("изменился"));
+        QCOMPARE(result.first()[1].toString(),
+                 russian ? QStringLiteral("Исходный файл изменился во время разделения.")
+                         : QString("Source file changed while splitting."));
         QCOMPARE(QDir(dir.path()).entryList(QDir::Files | QDir::Hidden),
                  QStringList{QFileInfo(source).fileName()});
     }
@@ -291,7 +348,7 @@ class VolumeOperationsTests : public QObject {
         QVERIFY(!QFileInfo::exists(base));
         QVERIFY(QFile::remove(base + ".003"));
         QVERIFY(VolumeOperation::inspectParts(base + ".001", &error).paths.isEmpty());
-        QVERIFY(error.contains("пропуск"));
+        QCOMPARE(error, QString("A part is missing from the sequence."));
     }
 };
 

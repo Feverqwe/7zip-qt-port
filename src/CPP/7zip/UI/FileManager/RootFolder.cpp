@@ -12,7 +12,7 @@
 #include "NetFolder.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
-#include <QCoreApplication>
+#include "qtlanguageservices.h"
 #include <QStandardPaths>
 
 using namespace NWindows;
@@ -55,7 +55,7 @@ void CRootFolder::Init() {
     _iconIndices[ROOT_INDEX_VOLUMES] = -1;
 #endif
 #ifndef USE_WIN_PATHS
-    const auto mounts = QCoreApplication::translate("SevenzipDesktop", "Тома").toStdWString();
+    const auto mounts = QtLocalText("Volumes", "Тома").toStdWString();
     _names[ROOT_INDEX_MOUNTS] = mounts.c_str();
     _iconIndices[ROOT_INDEX_MOUNTS] = -1;
     _names[ROOT_INDEX_NETWORK] = LangString(IDS_NETWORK);

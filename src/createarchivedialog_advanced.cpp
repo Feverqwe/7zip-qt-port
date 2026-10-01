@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "createarchivedialog.h"
 #include "qtcompressoptionsdialog.h"
+#include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     // CompressDialog.rc: right-hand Options group, Shared then Delete,
@@ -12,8 +13,8 @@ void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     sharedFiles_->setObjectName("archiveSharedFiles");
 #ifndef Q_OS_WIN
     sharedFiles_->setEnabled(false);
-    sharedFiles_->setToolTip(
-        "Ограничение совместного доступа к файлам используется только в Windows.");
+    QtBindLocalToolTip(sharedFiles_, "File sharing restrictions apply only on Windows.",
+                       "Ограничение совместного доступа к файлам используется только в Windows.");
 #endif
     layout->addWidget(sharedFiles_);
     deleteAfterCompressing_ = new QCheckBox("Удалить файлы после сжатия", group);
@@ -25,7 +26,9 @@ void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
             const bool supported =
                 updateMode_->currentData().toInt() == NCompressDialog::NUpdateMode::kAdd;
             deleteAfterCompressing_->setEnabled(supported);
-            deleteAfterCompressing_->setToolTip(
+            QtBindLocalToolTip(
+                deleteAfterCompressing_,
+                supported ? QString() : "Available only when adding and replacing files.",
                 supported ? QString() : "Доступно только при добавлении и замене файлов.");
         };
         connect(updateMode_, &QComboBox::currentIndexChanged, this, update);
@@ -37,7 +40,8 @@ void CreateArchiveDialog::createAdvancedOptions(QFormLayout *form) {
     parameters_ = new QLineEdit(this);
     parameters_->setObjectName("archiveParameters");
     parameters_->setText(QString::fromWCharArray(Get_FormatOptions().Options.Ptr()));
-    parameters_->setToolTip("Параметры метода, например: tm=off или mt=2.");
+    QtBindLocalToolTip(parameters_, "Method parameters, for example: tm=off or mt=2.",
+                       "Параметры метода, например: tm=off или mt=2.");
     form->addRow("Параметры:", parameters_);
     advanced_ = new QPushButton("Параметры…", this);
     advanced_->setObjectName("archiveAdvancedOptions");

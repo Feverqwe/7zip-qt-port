@@ -59,7 +59,7 @@ class COptionsDialog : public CQtCompressOptionsDialog {
     UInt32 GetPrec() { return GetComboValue(m_Prec, 0); }
 
     // void OnButton_TimeDefault();
-    int AddPrec(unsigned prec, bool isDefault);
+    int AddPrec(unsigned prec, bool isDefault, UString *textOnly = nullptr);
     void SetPrec();
     void SetTimeMAC();
 
@@ -67,6 +67,7 @@ class COptionsDialog : public CQtCompressOptionsDialog {
     void On_CheckBoxSet_Clicked(const CBoolBox &bb);
 
     virtual bool OnInit() override;
+    void OnLanguageChange() override;
     virtual bool OnCommand(unsigned code, unsigned itemID, qintptr lParam) override;
     virtual bool OnButtonClicked(unsigned buttonID, QWidget *buttonHWND) override;
     virtual void OnOK() override;

@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
+#include "qtlanguageservices.h"
 
 // RootFolder and FSDrives own item names, order and binding. This file presents
 // their IFolderFolder items in the same list used by disk and archive views.
@@ -13,7 +14,8 @@ void MainWindow::renderRootFolder() {
     IFolderFolder *folder = panel.GetFolder();
     UInt32 count = 0;
     if (folder->LoadItems() != S_OK || folder->GetNumberOfItems(&count) != S_OK) {
-        statusBar()->showMessage(QStringLiteral("Не удалось прочитать корневую папку."));
+        statusBar()->showMessage(
+            QtLocalText("Could not read root folder.", "Не удалось прочитать корневую папку."));
         return;
     }
     filesystemScanner_->cancel();
@@ -60,7 +62,7 @@ void MainWindow::renderRootFolder() {
     table_->setSortingEnabled(true);
     applySortMode();
     setState(State::Namespace);
-    statusBar()->showMessage(QStringLiteral("%1 объектов").arg(table_->rowCount()));
+    statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
 }
 
 void MainWindow::goRoot(bool remember) {

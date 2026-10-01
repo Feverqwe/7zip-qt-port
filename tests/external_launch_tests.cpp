@@ -1,13 +1,18 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
+#include "layout_inspection.h"
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
+#include <QAbstractButton>
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QLabel>
 #include <QMessageBox>
 #include <QProcess>
+#include <QScopeGuard>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -110,7 +115,21 @@ class ExternalLaunchTests final : public QObject {
                                        nullptr),
                  E_FAIL);
     }
+    void associationAdapterPreservesPathAndReportsFailure_data() {
+        QTest::addColumn<bool>("russian");
+        QTest::newRow("en") << false;
+        QTest::newRow("ru") << true;
+    }
     void associationAdapterPreservesPathAndReportsFailure() {
+        QFETCH(bool, russian);
+        QTemporaryDir settings;
+        const QString settingsPath = settings.filePath("language.ini");
+        SaveRegLang(UString(russian ? "ru" : "-"), settingsPath);
+        ReloadLang(settingsPath);
+        const auto restoreLanguage = qScopeGuard([settingsPath] {
+            SaveRegLang(UString("-"), settingsPath);
+            ReloadLang(settingsPath);
+        });
         const UString path(L"/папка с пробелом/имя <b>файла</b>.txt");
         QUrl seen;
         QtAssociatedFileServices success([&](const QUrl &url) {
@@ -120,17 +139,31 @@ class ExternalLaunchTests final : public QObject {
         QCOMPARE(success.StartApplication(UString(), path, nullptr), S_OK);
         QVERIFY(seen.isLocalFile());
         QCOMPARE(seen.toLocalFile(), ToQString(path));
-        bool plain = false;
+        bool plain = false, geometry = false, reported = false;
+        QString message;
         QTimer::singleShot(0, qApp, [&] {
             auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
             if (box) {
                 plain = box->textFormat() == Qt::PlainText && box->text().contains(ToQString(path));
+                message = box->text();
+                auto *label = box->findChild<QLabel *>("qt_msgbox_label");
+                geometry = label && UiInspection::fullyVisible(*label, *box) &&
+                           UiInspection::labelFits(*label);
+                for (auto *button : box->buttons())
+                    geometry = geometry && UiInspection::fullyVisible(*button, *box);
+                reported =
+                    UiInspection::writeReport(*box, russian ? "language-association-error-ru"
+                                                            : "language-association-error-en");
                 box->accept();
             }
         });
         QtAssociatedFileServices failure([](const QUrl &) -> bool { throw 1; });
         QCOMPARE(failure.StartApplication(UString(), path, nullptr), E_FAIL);
         QVERIFY(plain);
+        QVERIFY(geometry && reported);
+        QCOMPARE(message, (russian ? QStringLiteral("Не удалось открыть файл: %1")
+                                   : QString("Could not open file: %1"))
+                              .arg(ToQString(path)));
     }
     void associationWithoutHandleRetainsFileUntilOwnerExit_data() {
         QTest::addColumn<bool>("changed");

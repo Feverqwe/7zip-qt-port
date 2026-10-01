@@ -149,17 +149,17 @@ class FileViewerTests : public QObject {
         table->item(0, 0)->setData(Qt::UserRole + 1, true);
 
         bool displayed = false;
-        QTimer::singleShot(0, &window, [&] {
-            QTimer::singleShot(30, &window, [&] {
-                auto *dialog = window.findChild<FileViewerDialog *>("fileViewerDialog");
-                if (dialog) {
-                    displayed =
-                        dialog->findChild<QPlainTextEdit *>("fileViewerText")->toPlainText() ==
-                        "hello\n";
-                    dialog->close();
-                }
-            });
+        QTimer viewerAnswer;
+        connect(&viewerAnswer, &QTimer::timeout, &window, [&] {
+            auto *dialog = window.findChild<FileViewerDialog *>("fileViewerDialog");
+            if (dialog && dialog->isVisible()) {
+                viewerAnswer.stop();
+                displayed = dialog->findChild<QPlainTextEdit *>("fileViewerText")->toPlainText() ==
+                            "hello\n";
+                dialog->close();
+            }
         });
+        viewerAnswer.start(10);
         view->trigger();
         QTRY_VERIFY(displayed);
         QCOMPARE(backend.extracted, QStringList({"folder/имя с пробелом.txt"}));
@@ -211,17 +211,24 @@ class FileViewerTests : public QObject {
             }
         });
         answer.start(10);
-        QTimer::singleShot(30, &window, [&] {
+        bool edited = false;
+        QTimer editorAnswer;
+        connect(&editorAnswer, &QTimer::timeout, &window, [&] {
             auto *dialog = window.findChild<FileViewerDialog *>("fileViewerDialog");
-            QVERIFY(dialog);
+            if (!dialog || !dialog->isVisible())
+                return;
+            editorAnswer.stop();
             auto *text = dialog->findChild<QPlainTextEdit *>("fileViewerText");
             text->selectAll();
             text->insertPlainText(QStringLiteral("новый текст\n"));
             dialog->findChild<QPushButton *>("fileViewerSave")->click();
+            edited = true;
             dialog->accept();
         });
+        editorAnswer.start(10);
         edit->trigger();
         QTRY_COMPARE(backend.replaced, QStringLiteral("folder/имя с пробелом.txt"));
+        QVERIFY(edited);
         QTRY_VERIFY(edit->isEnabled());
         answer.stop();
         QCOMPARE(backend.replacement, QStringLiteral("новый текст\n").toUtf8());

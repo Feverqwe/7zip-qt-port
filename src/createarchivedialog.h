@@ -67,6 +67,10 @@ class CreateArchiveDialog : public QDialog {
     void SetMemUseCombo();
     static QString compressionSettingsPath();
     void createFooter(QVBoxLayout *layout);
+    void BindLanguage();
+    void ReloadLanguageItems();
+    static QString LevelText(unsigned level);
+    void changeEvent(QEvent *event) override;
     void updateTargetPreview();
     void validateAndAccept();
     void addSource(const QString &path);

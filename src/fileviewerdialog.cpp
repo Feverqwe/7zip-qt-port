@@ -1,24 +1,27 @@
 #include "fileviewerdialog.h"
+#include "qtlangcontrols.h"
 
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSaveFile>
+#include <QTextCursor>
 #include <QVBoxLayout>
 
 FileViewerDialog::FileViewerDialog(const QString &path, bool editable, QWidget *parent)
     : QDialog(parent), path_(path), editable_(editable) {
     setObjectName("fileViewerDialog");
-    setWindowTitle(QStringLiteral("%1 — %2").arg(editable ? QStringLiteral("Редактор")
-                                                          : QStringLiteral("Просмотр"),
-                                                 QFileInfo(path).fileName()));
+    setProperty("languageSuffix", QStringLiteral(" — ") + QFileInfo(path).fileName());
+    QtBindLocalText(this, editable ? "Editor" : "Viewer", editable ? "Редактор" : "Просмотр");
     resize(760, 560);
     auto *layout = new QVBoxLayout(this);
     text_ = new QPlainTextEdit(this);
     text_->setObjectName("fileViewerText");
+    QtBindLocalText(text_, "File contents", "Содержимое файла", true);
     text_->setLineWrapMode(QPlainTextEdit::NoWrap);
     layout->addWidget(text_);
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
@@ -32,8 +35,8 @@ FileViewerDialog::FileViewerDialog(const QString &path, bool editable, QWidget *
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        text_->setPlainText(QStringLiteral("Не удалось открыть файл: %1").arg(file.errorString()));
-        text_->setReadOnly(true);
+        setReadOnlyMessage("Cannot open file: %1", "Не удалось открыть файл: %1",
+                           file.errorString());
         if (auto *saveButton = buttons->button(QDialogButtonBox::Save))
             saveButton->setEnabled(false);
         return;
@@ -41,24 +44,23 @@ FileViewerDialog::FileViewerDialog(const QString &path, bool editable, QWidget *
     // Avoid loading an unbounded archive member into the GUI process.
     constexpr qint64 limit = 16 * 1024 * 1024;
     if (file.size() > limit) {
-        text_->setPlainText(QStringLiteral("Файл больше 16 МиБ. Просмотр текста недоступен."));
-        text_->setReadOnly(true);
+        setReadOnlyMessage("The file exceeds 16 MiB. Text preview is unavailable.",
+                           "Файл больше 16 МиБ. Просмотр текста недоступен.");
         if (auto *saveButton = buttons->button(QDialogButtonBox::Save))
             saveButton->setEnabled(false);
         return;
     }
     original_ = file.read(limit + 1);
     if (original_.size() > limit) {
-        text_->setPlainText(QStringLiteral("Файл больше 16 МиБ. Просмотр текста недоступен."));
-        text_->setReadOnly(true);
+        setReadOnlyMessage("The file exceeds 16 MiB. Text preview is unavailable.",
+                           "Файл больше 16 МиБ. Просмотр текста недоступен.");
         if (auto *saveButton = buttons->button(QDialogButtonBox::Save))
             saveButton->setEnabled(false);
         return;
     }
     const QString decoded = QString::fromUtf8(original_);
     if (original_.contains('\0') || decoded.contains(QChar::ReplacementCharacter)) {
-        text_->setPlainText(QStringLiteral("Файл не является текстом UTF-8."));
-        text_->setReadOnly(true);
+        setReadOnlyMessage("The file is not UTF-8 text.", "Файл не является текстом UTF-8.");
         if (auto *saveButton = buttons->button(QDialogButtonBox::Save))
             saveButton->setEnabled(false);
         return;
@@ -72,18 +74,19 @@ void FileViewerDialog::save() {
         return;
     QFile current(path_);
     if (!current.open(QIODevice::ReadOnly) || current.readAll() != original_) {
-        QMessageBox::warning(this, QStringLiteral("Редактор"),
-                             QStringLiteral("Файл изменился на диске. Сохранение отменено."));
+        QMessageBox::warning(this, windowTitle(),
+                             QtLocalText("The file changed on disk. Saving was cancelled.",
+                                         "Файл изменился на диске. Сохранение отменено."));
         return;
     }
     QSaveFile output(path_);
     if (!output.open(QIODevice::WriteOnly)) {
-        QMessageBox::warning(this, QStringLiteral("Редактор"), output.errorString());
+        QMessageBox::warning(this, windowTitle(), output.errorString());
         return;
     }
     const QByteArray bytes = text_->toPlainText().toUtf8();
     if (output.write(bytes) != bytes.size() || !output.commit()) {
-        QMessageBox::warning(this, QStringLiteral("Редактор"), output.errorString());
+        QMessageBox::warning(this, windowTitle(), output.errorString());
         return;
     }
     original_ = bytes;
@@ -93,9 +96,36 @@ void FileViewerDialog::save() {
 
 void FileViewerDialog::reject() {
     if (editable_ && text_->document()->isModified() &&
-        QMessageBox::question(this, QStringLiteral("Редактор"),
-                              QStringLiteral("Закрыть файл без сохранения изменений?")) !=
+        QMessageBox::question(this, windowTitle(),
+                              QtLocalText("Close the file without saving changes?",
+                                          "Закрыть файл без сохранения изменений?")) !=
             QMessageBox::Yes)
         return;
     QDialog::reject();
+}
+
+void FileViewerDialog::setReadOnlyMessage(const QString &english, const QString &russian,
+                                          const QString &detail) {
+    messageEnglish_ = english;
+    messageRussian_ = russian;
+    messageDetail_ = detail;
+    QString message = QtLocalText(english, russian);
+    if (message.contains("%1"))
+        message = message.arg(detail);
+    text_->setPlainText(message);
+    text_->setReadOnly(true);
+}
+
+void FileViewerDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && text_ && !messageEnglish_.isEmpty()) {
+        const int anchor = text_->textCursor().anchor();
+        const int position = text_->textCursor().position();
+        setReadOnlyMessage(messageEnglish_, messageRussian_, messageDetail_);
+        QTextCursor cursor = text_->textCursor();
+        const int end = text_->document()->characterCount() - 1;
+        cursor.setPosition(qMin(anchor, end));
+        cursor.setPosition(qMin(position, end), QTextCursor::KeepAnchor);
+        text_->setTextCursor(cursor);
+    }
+    QDialog::changeEvent(event);
 }

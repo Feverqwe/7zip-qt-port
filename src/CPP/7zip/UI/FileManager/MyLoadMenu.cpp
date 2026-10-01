@@ -131,6 +131,37 @@ void MyLoadMenu(QMenuBar &menu, bool needResetMenu) {
         MyChangeMenu(menu.actions(), 0, 0, 0);
 }
 
+// Source OnMenuActivating bookmark branch; keep the existing Qt actions.
+void MyLoadBookmarks(QAction *const *openActions, QAction *const *setActions, CApp &app) {
+    unsigned i;
+    for (i = 0; i < 10; i++) {
+        UString s = LangString(IDS_BOOKMARK);
+        s.Add_Space();
+        const char c = (char)(L'0' + i);
+        s.Add_Char(c);
+        s += "\tAlt+Shift+";
+        s.Add_Char(c);
+        setActions[i]->setText(QString::fromWCharArray(s));
+    }
+    for (i = 0; i < 10; i++) {
+        UString s = app.AppState.FastFolders.GetString(i);
+        const int kMaxSize = 100;
+        const int kFirstPartSize = kMaxSize / 2;
+        if (s.Len() > kMaxSize) {
+            s.Delete(kFirstPartSize, s.Len() - kMaxSize);
+            s.Insert(kFirstPartSize, L" ... ");
+        }
+        if (s.IsEmpty())
+            s = '-';
+        s += "\tAlt+";
+        s.Add_Char((char)('0' + i));
+        openActions[i]->setText(QString::fromWCharArray(s));
+        const UString fullPath = app.AppState.FastFolders.GetString(i);
+        openActions[i]->setToolTip(fullPath.IsEmpty() ? QString("-")
+                                                      : QString::fromWCharArray(fullPath));
+    }
+}
+
 void CFileMenu::Load(IQtFileMenuServices &destMenu, unsigned startPos) {
     UString diffPath;
     destMenu.ReadRegDiff(diffPath);

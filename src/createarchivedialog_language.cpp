@@ -1,0 +1,116 @@
+// Qt presentation bindings for CompressDialog.cpp/CompressDialog.rc (0766b733).
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+#include "7zip/UI/GUI/CompressDialogRes.h"
+#include "7zip/UI/GUI/ExtractRes.h"
+#include "createarchivedialog.h"
+#include "qtlangcontrols.h"
+#include <QEvent>
+#include <QSignalBlocker>
+
+void CreateArchiveDialog::BindLanguage() {
+    QtBindResourceText(this, IDD_COMPRESS, "Add to Archive");
+    const auto row = [this](QWidget *field, UInt32 id, const QString &caption) {
+        if (!field)
+            return;
+        QtBindResourceText(field, id, caption, true);
+        for (auto *form : findChildren<QFormLayout *>())
+            if (QWidget *label = form->labelForField(field))
+                QtBindResourceText(label, id, caption);
+    };
+    row(archivePath_, IDT_COMPRESS_ARCHIVE, "&Archive:");
+    row(format_, IDT_COMPRESS_FORMAT, "Archive &format:");
+    row(updateMode_, IDT_COMPRESS_UPDATE_MODE, "&Update mode:");
+    row(pathMode_, IDT_COMPRESS_PATH_MODE, "Path mode:");
+    row(level_, IDT_COMPRESS_LEVEL, "Compression &level:");
+    row(method_, IDT_COMPRESS_METHOD, "Compression &method:");
+    row(dictionary_, IDT_COMPRESS_DICTIONARY, "&Dictionary size:");
+    row(wordSize_, IDT_COMPRESS_ORDER, "&Word size:");
+    row(solidBlock_, IDT_COMPRESS_SOLID, "&Solid Block size:");
+    row(threads_->parentWidget(), IDT_COMPRESS_THREADS, "Number of CPU &threads:");
+    row(memoryUsage_->parentWidget(), IDT_COMPRESS_MEMORY, "Memory usage for Compressing:");
+    QtBindResourceText(threads_, IDT_COMPRESS_THREADS, "Number of CPU &threads:", true);
+    QtBindResourceText(memUse_, IDT_COMPRESS_MEMORY, "Memory usage for Compressing:", true);
+    row(decompressionMemory_, IDT_COMPRESS_MEMORY_DE, "Memory usage for Decompressing:");
+    row(parameters_, IDT_COMPRESS_PARAMETERS, "Parameters:");
+    row(volume_, IDT_SPLIT_TO_VOLUMES, "Split to &volumes, bytes:");
+    row(password_, IDT_PASSWORD_ENTER, "Enter &password:");
+    row(passwordConfirmation_, IDT_PASSWORD_REENTER, "Reenter password:");
+    row(encryption_, IDT_COMPRESS_ENCRYPTION_METHOD, "&Encryption method:");
+    QtBindResourceText(advanced_, IDB_COMPRESS_OPTIONS, "Options");
+    QtBindResourceText(sharedFiles_, IDX_COMPRESS_SHARED, "Compress shared files");
+    QtBindResourceText(deleteAfterCompressing_, IDX_COMPRESS_DEL, "Delete files after compression");
+    QtBindResourceText(findChild<QGroupBox *>("archiveLifecycleOptions"), IDG_COMPRESS_OPTIONS,
+                       "Options");
+    QtBindLocalText(findChild<QGroupBox *>("archiveCompressionGroup"), "Compression",
+                    "Параметры сжатия");
+    if (password_) {
+        QtBindResourceText(findChild<QGroupBox *>("archiveEncryptionGroup"),
+                           IDG_COMPRESS_ENCRYPTION, "Encryption");
+        QtBindResourceText(showPassword_, IDX_PASSWORD_SHOW, "Show Password");
+        QtBindResourceText(encryptHeaders_, IDX_COMPRESS_ENCRYPT_FILE_NAMES, "Encrypt file &names");
+    }
+    // The additional picker/footer are local Qt integration, absent from 7zFM.
+    QtBindLocalText(buttons_->button(QDialogButtonBox::Ok),
+                    existingTarget_.isEmpty() ? "Create" : "Add",
+                    existingTarget_.isEmpty() ? "Создать" : "Добавить");
+    ReloadLanguageItems();
+}
+
+QString CreateArchiveDialog::LevelText(unsigned level) {
+    // Source SetLevel2 uses these language IDs beside the unchanged numeric level.
+    const UInt32 levels[] = {IDS_METHOD_STORE,
+                             IDS_METHOD_FASTEST,
+                             0,
+                             IDS_METHOD_FAST,
+                             0,
+                             IDS_METHOD_NORMAL,
+                             0,
+                             IDS_METHOD_MAXIMUM,
+                             0,
+                             IDS_METHOD_ULTRA};
+    QString text = QString::number(level);
+    if (level < Z7_ARRAY_SIZE(levels) && levels[level])
+        text += " - " + QtLangText(levels[level]);
+    return text;
+}
+
+void CreateArchiveDialog::ReloadLanguageItems() {
+    const QSignalBlocker levelBlock(level_), pathBlock(pathMode_);
+    for (int i = 0; i < level_->count(); ++i)
+        level_->setItemText(i, LevelText(level_->itemData(i).toUInt()));
+    const UInt32 paths[] = {IDS_PATH_MODE_RELAT, IDS_EXTRACT_PATHS_FULL, IDS_EXTRACT_PATHS_ABS};
+    for (int i = 0; i < pathMode_->count(); ++i)
+        pathMode_->setItemText(i, QtLangText(paths[i]).remove('&'));
+    {
+        const QSignalBlocker block(solidBlock_);
+        for (int i = 1; i < solidBlock_->count(); ++i) {
+            const UInt32 log = solidBlock_->itemData(i).toUInt();
+            if (log == 0 || log == 64)
+                solidBlock_->setItemText(
+                    i, QtLangText(log == 0 ? IDS_COMPRESS_NON_SOLID : IDS_COMPRESS_SOLID));
+        }
+    }
+    {
+        const QSignalBlocker block(memUse_);
+        int selected;
+        const auto items = NCompressDialog::SetMemUseCombo(Get_FormatOptions().MemUse, &selected);
+        if (!items.isEmpty() && memUse_->count())
+            memUse_->setItemText(0, items.first().User);
+    }
+    if (updateMode_) {
+        const QSignalBlocker updateBlock(updateMode_);
+        const UInt32 ids[] = {IDS_COMPRESS_UPDATE_MODE_ADD, IDS_COMPRESS_UPDATE_MODE_UPDATE,
+                              IDS_COMPRESS_UPDATE_MODE_FRESH, IDS_COMPRESS_UPDATE_MODE_SYNC};
+        for (int i = 0; i < updateMode_->count(); ++i)
+            updateMode_->setItemText(i, QtLangText(ids[i]).remove('&'));
+    }
+}
+
+void CreateArchiveDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && buttons_) {
+        ReloadLanguageItems();
+        SetMemoryUsage();
+        updateTargetPreview();
+    }
+    QDialog::changeEvent(event);
+}

@@ -26,7 +26,7 @@ CLangPage::CLangPage(const QString &settingsPath, QWidget *parent, const QString
     auto *label = new QLabel("Language:", this);
     label->setObjectName("languageLabel");
     label->setProperty("sourceControlID", IDT_LANG_LANG);
-    QtBindLangText(label, IDT_LANG_LANG, "Language:");
+    QtBindResourceText(label, IDT_LANG_LANG, "Language:");
     layout->addWidget(label);
     _langCombo = new QComboBox(this);
     _langCombo->setObjectName("languageChoice");

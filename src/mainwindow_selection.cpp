@@ -1,4 +1,6 @@
+#include "7zip/UI/FileManager/resource.h"
 #include "mainwindow.h"
+#include "qtlangcontrols.h"
 
 void MainWindow::handleSelectionClick(int row) {
     if (!selectionClickLeft_ || row < 0 || !app_.GetFocusedPanel()._mySelectMode)
@@ -36,7 +38,9 @@ bool MainWindow::handleSelectionKey(QKeyEvent *key) {
 void MainWindow::SelectSpec(bool selectMode) {
     if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
-    ComboDialog dialog(selectMode ? "Выделить" : "Снять выделение", "Маска:", "*", this);
+    const UInt32 titleID = selectMode ? IDS_SELECT : IDS_DESELECT;
+    ComboDialog dialog(QtLangText(titleID), QtLangText(IDS_SELECT_MASK), "*", this);
+    dialog.BindLanguage(titleID, IDS_SELECT_MASK);
     if (dialog.exec() != QDialog::Accepted)
         return;
     CPanel &panel = app_.GetFocusedPanel();

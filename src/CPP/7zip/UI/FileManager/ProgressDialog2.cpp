@@ -8,9 +8,12 @@
 #include "LangUtils.h"
 #include "ViewSettings.h"
 #include "processpriority.h"
+#include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QApplication>
+#include <QEvent>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QMetaObject>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -31,6 +34,11 @@ static const unsigned IDYES = 6;
 #endif
 
 static const DWORD kPauseSleepTime = 100;
+
+static const UInt32 kLangIDs[] = {IDT_PROGRESS_ELAPSED, IDT_PROGRESS_REMAINING,  IDT_PROGRESS_TOTAL,
+                                  IDT_PROGRESS_SPEED,   IDT_PROGRESS_PROCESSED,  IDT_PROGRESS_RATIO,
+                                  IDT_PROGRESS_ERRORS,  IDB_PROGRESS_BACKGROUND, IDB_PAUSE};
+static const UInt32 kLangIDs_Colon[] = {IDT_PROGRESS_PACKED, IDT_PROGRESS_FILES};
 
 #define UNDEFINED_VAL ((UInt64)(Int64) - 1)
 #define INIT_AS_UNDEFINED(v) v = UNDEFINED_VAL;
@@ -363,6 +371,19 @@ void CProgressDialog::EnableErrorsControls(bool enable) {
 }
 
 bool CProgressDialog::OnInit() {
+    for (UInt32 id : kLangIDs) {
+        if (auto *label = qobject_cast<QLabel *>(GetItem(id)))
+            QtBindResourceText(label, id, label->text());
+        else
+            QtBindLangText(GetItem(id), id);
+    }
+    for (UInt32 id : kLangIDs_Colon) {
+        GetItem(id)->setProperty("languageColon", true);
+        QString caption = static_cast<QLabel *>(GetItem(id))->text();
+        caption.chop(1); // RC already includes the colon retained without a translation.
+        QtBindResourceText(GetItem(id), id, caption);
+    }
+    QtBindResourceText(GetItem(IDCANCEL), 402, "Cancel");
     _hwndForTaskbar = MainWindow;
     if (!_hwndForTaskbar)
         _hwndForTaskbar = parentWidget();
@@ -953,6 +974,21 @@ void CProgressDialog::resizeEvent(QResizeEvent *event) {
         OnSize(event->size().width(), event->size().height());
     CQtProgressDialog::resizeEvent(event);
 }
+void CProgressDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && _wasCreated) {
+        LangString(IDB_PROGRESS_BACKGROUND, _background_String);
+        _backgrounded_String = _background_String;
+        _backgrounded_String.RemoveChar(L'&');
+        LangString(IDB_PAUSE, _pause_String);
+        LangString(IDS_PROGRESS_FOREGROUND, _foreground_String);
+        LangString(IDS_CONTINUE, _continue_String);
+        LangString(IDS_PROGRESS_PAUSED, _paused_String);
+        SetPauseText();
+        SetPriorityText();
+        OnSize(width(), height());
+    }
+    CQtProgressDialog::changeEvent(event);
+}
 void CProgressDialog::timerEvent(QTimerEvent *event) {
     if (event->timerId() == _timer) {
         OnTimer();
@@ -1044,6 +1080,7 @@ bool CProgressDialog::OnExternalCloseMessage() {
     SetTaskbarProgressState(TBPF_NOPROGRESS);
     UpdateStatInfo(true);
     SetItemText(IDCANCEL, LangString(IDS_CLOSE));
+    QtBindLangText(GetItem(IDCANCEL), IDS_CLOSE);
     SetDefaultButton(IDCANCEL);
     HideItem(IDB_PROGRESS_BACKGROUND);
     HideItem(IDB_PAUSE);

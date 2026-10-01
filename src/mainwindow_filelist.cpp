@@ -1,5 +1,6 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
@@ -7,6 +8,8 @@
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtarchivereopen.h"
+#include "qtlangcontrols.h"
+#include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
 #include <QScopedValueRollback>
 #include <QScrollBar>
@@ -17,7 +20,7 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     QtAppOperationState::CallScope call(app_.QtOperations());
     const QFileInfo info(path);
     if (!info.isDir()) {
-        statusBar()->showMessage("Папка не найдена: " + path);
+        statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") + path);
         path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
         return;
     }
@@ -54,7 +57,7 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     if (flatDisk_) {
         scanningDisk_ = true;
         setState(State::Filesystem);
-        statusBar()->showMessage("Сканирование вложенных папок…");
+        statusBar()->showMessage(QtLangText(IDS_SCANNING));
         filesystemScanner_->start(directory_);
     } else {
         COpenResult opened;
@@ -79,9 +82,9 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
         table_->setSortingEnabled(true);
         applySortMode();
         setState(State::Filesystem);
-        statusBar()->showMessage(result == S_OK
-                                     ? QStringLiteral("%1 объектов").arg(table_->rowCount())
-                                     : QStringLiteral("Не удалось прочитать папку."));
+        statusBar()->showMessage(
+            result == S_OK ? QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount())
+                           : QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
     }
 }
 
@@ -224,7 +227,8 @@ void MainWindow::refreshCurrent(const CSelectedState *preserved) {
             if (result != E_ABORT)
                 QMessageBox::warning(
                     this, QStringLiteral("7-Zip"),
-                    QStringLiteral("Не удалось обновить архив (%1).").arg(quint32(result), 0, 16));
+                    QtLocalText("Could not update archive (%1).", "Не удалось обновить архив (%1).")
+                        .arg(quint32(result), 0, 16));
         }
     }
 }
@@ -354,7 +358,7 @@ void MainWindow::navigateTo(const QString &path) {
         }
         renderBoundFolder();
         if (result != S_OK && result != E_ABORT)
-            statusBar()->showMessage(QStringLiteral("Путь не найден: ") + path);
+            statusBar()->showMessage(QtLocalText("Path not found: ", "Путь не найден: ") + path);
     }
 }
 

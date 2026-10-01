@@ -1,6 +1,8 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
+#include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
+#include "qtlangcontrols.h"
 #include "qtstatuslabel.h"
 
 void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
@@ -38,7 +40,8 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     path_->setObjectName("archivePath");
     path_->installEventFilter(this);
     pathCombo_->installEventFilter(this);
-    path_->setPlaceholderText("Путь к папке или архиву");
+    path_->setProperty("languagePlaceholder", true);
+    QtBindLocalText(path_, "Path to folder or archive", "Путь к папке или архиву", true);
     refreshPathHistory();
     navigation->addWidget(pathCombo_);
     layout->addLayout(navigation);
@@ -103,7 +106,7 @@ void MainWindow::createFileTable(QWidget *central) {
                               kpidMTime, kpidExtension, kpidNoProperty};
     fileTable->rawProperties.resize(7);
     table_->setObjectName("archiveTable");
-    table_->setAccessibleName(QStringLiteral("Список файлов"));
+    QtBindLocalText(table_, "File list", "Список файлов", true);
     table_->verticalHeader()->hide();
     table_->setHorizontalHeaderLabels(
         {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"});
@@ -221,7 +224,10 @@ void MainWindow::configureColumns() {
     fileTable->propertyIds = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
                               kpidMTime, kpidExtension, kpidNoProperty};
     fileTable->rawProperties.fill(false, 7 + extraCount);
-    QStringList labels = {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"};
+    QStringList labels;
+    for (PROPID id : fileTable->propertyIds)
+        labels << (id == kpidNoProperty ? QtLocalText("Order", "Порядок")
+                                        : QString::fromWCharArray(GetNameOfProperty(id, nullptr)));
     int next = 7;
     FOR_VECTOR(i, columns) {
         const CPropColumn &prop = columns[i];
@@ -396,7 +402,7 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
 void MainWindow::createIconList(QWidget *central) {
     iconList_ = new QListView(central);
     iconList_->setObjectName("iconList");
-    iconList_->setAccessibleName(QStringLiteral("Список файлов"));
+    QtBindLocalText(iconList_, "File list", "Список файлов", true);
     iconList_->setModel(table_->model());
     iconList_->setItemDelegate(CreateFileRowDelegate(iconList_));
     iconList_->setModelColumn(0);
@@ -460,7 +466,7 @@ void MainWindow::appendParentEntry() {
         item->setData(Qt::UserRole + 6, quint32(-1));
         if (column == 0) {
             item->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirIcon));
-            item->setToolTip(QStringLiteral("Родительская папка"));
+            item->setToolTip(QtLocalText("Parent folder", "Родительская папка"));
         }
         table_->setItem(row, column, item);
     }

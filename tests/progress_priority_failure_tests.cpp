@@ -92,7 +92,7 @@ class ProgressPriorityFailureTests : public QObject {
         QCOMPARE(NProcessPriority::GetBackground(pid, nativeBackground), S_OK);
         QVERIFY(nativeBackground);
         QCOMPARE(NProcessPriority::SetBackground(pid, false), S_OK);
-        QCOMPARE(Click(child.process), QStringLiteral("0\t0\t1\t1\tВ &фоновый режим").toUtf8());
+        QCOMPARE(Click(child.process), QStringLiteral("0\t0\t1\t1\t&Background").toUtf8());
         child.process.write("x\n");
         QVERIFY(child.process.waitForFinished(3000));
         QCOMPARE(child.process.exitStatus(), QProcess::NormalExit);
