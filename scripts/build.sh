@@ -5,9 +5,6 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
 
-source "$project_root/scripts/agent-output.sh"
-sevenzip_setup_output "build.sh ${*:-dev}"
-
 compiler_cache=""
 if command -v ccache >/dev/null 2>&1; then
   compiler_cache="$(command -v ccache)"
@@ -47,19 +44,19 @@ if [[ "$(uname -s)" == Darwin ]]; then
   fi
 
   if [[ -z "${CMAKE_PREFIX_PATH:-}" ]] && command -v brew >/dev/null 2>&1 && brew list --versions qtbase >/dev/null 2>&1; then
-    sevenzip_run_command "cmake --preset $preset" configure -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
+    configure -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
   else
-    sevenzip_run_command "cmake --preset $preset" configure
+    configure
   fi
 else
-  sevenzip_run_command "cmake --preset $preset" configure
+  configure
 fi
 
 if [[ "$#" -gt 0 ]]; then
   shift
 fi
 if [[ "$#" -gt 0 ]]; then
-  sevenzip_run_command "cmake --build --preset $preset --target $*" cmake --build --preset "$preset" --target "$@"
+  cmake --build --preset "$preset" --target "$@" -- --quiet
 else
-  sevenzip_run_command "cmake --build --preset $preset" cmake --build --preset "$preset"
+  cmake --build --preset "$preset" -- --quiet
 fi

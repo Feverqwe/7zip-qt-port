@@ -47,7 +47,7 @@ Design each port for later upstream updates while implementing it. Preserved pat
 - Use Python or other scripts for data processing, generators, or bulk transformations when they provide a clear benefit over a patch. Validate expected matches before writing and make repeated execution safe, so it cannot silently duplicate code or overwrite unrelated changes. Inspect the resulting diff after scripted edits.
 - After editing C++ files, run `clang-format -i` on the files owned by the task and inspect the diff. Do not run a separate `clang-format --dry-run` during iteration merely to discover formatting that can be fixed immediately. Avoid formatting unrelated files or another agent's edits; use a narrow changed-line range when whole-file formatting would obscure an upstream source comparison. Keep the read-only formatting check in `scripts/check.sh` as the final repository-wide gate.
 - Reuse existing project scripts for recurring operations. Put reusable automation in `scripts/` when needed; do not turn a one-off source edit into a permanent script.
-- The compact `build.sh`, `ctest.sh`, and `check.sh` modes print a start line and report a command only if it runs longer than 15 seconds. They buffer detailed output until the process exits. Wait on the running process; silence before a delayed command notice is expected. Do not search for or read temporary logs during a normal run. Read the path printed by the script only if it fails.
+- `build.sh` uses Ninja `--quiet`: compilation errors appear as soon as Ninja reports them, while successful progress lines are hidden. `ctest.sh` streams CTest results. The formatting phase of `check.sh` buffers output and shows its log on failure; wait for it to exit before diagnosing that phase.
 
 ## Code organization
 
