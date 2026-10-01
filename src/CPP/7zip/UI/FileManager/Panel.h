@@ -360,6 +360,18 @@ class CPanel : public QObject {
     }
     void RefreshTitleAlways() { RefreshTitle(true); }
     void Get_ZoneId_Stream_from_ParentFolders(CByteBuffer &buf);
+    void TestArchives();
+    HRESULT CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &indices,
+                   UStringVector *messages) {
+        bool usePassword = false;
+        UString password;
+        if (!_parentFolders.IsEmpty()) {
+            const CFolderLink &fl = _parentFolders.Back();
+            usePassword = fl.UsePassword;
+            password = fl.Password;
+        }
+        return CopyTo(options, indices, messages, usePassword, password);
+    }
     HRESULT CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &indices,
                    UStringVector *messages, bool &usePassword, UString &password,
                    const UStringVector *filePaths = NULL);

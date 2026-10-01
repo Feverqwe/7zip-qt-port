@@ -66,7 +66,7 @@ capabilities, а не только по старой ссылке на parent; �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **18/45 завершённых пакетов; 27 остаётся** (2026-10-01).
+Текущий счёт: **19/45 завершённых пакетов; 26 остаётся** (2026-10-01).
 P0: 12/12; P1: 4/17; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-01, P1-03, P1-04, P1-11 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
@@ -173,9 +173,9 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [x] | P1-05.2 | Relative/Full/Absolute path modes нового и существующего ZIP/7z, простые каталоги и транзакционный Add | P1-05.1 | done — audit § P1-05.2; source CCensor/EnumerateItems, Qt path control, staged rename для Absolute; реальные ZIP/7z, Unicode/empty directory, отмена второго create stage, traversal guard, normal/compact JSON; полный gate 145/146 из-за прежнего пропуска в inventory, после поправки focused inventory/baseline PASS macOS arm64/Qt 6.11.2 2026-10-01. Protected Add — P1-05.3, directory filtering и platform runtime — P1-05.4 |
 | [x] | P1-05.3 | Защищённый Add для верхнего ZIP AES/7z, reuse password, rollback и UI | P1-05.2 | done — audit § P1-05.3; ZIP AES/7z header encryption, исходный callback password, source/UI success, wrong-password/cancel rollback; focused consumers и полный unsandboxed `check.sh` PASS macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime и rendered Windows reference unverified |
 | [x] | P1-05.4 | Сложные ветки каталогов и полная приёмка P1-05 | P1-05.3 | done — audit § P1-05.4; source Full-path Synchronize ZIP/7z сохраняет дочерние bytes без omitted directory records; kept subtree/removed nested directory, Unicode/space, unsafe rejection и second-stage cancel rollback. Focused 7/7 16.00 с, полный unsandboxed `check.sh` PASS 146/146 61.96 с macOS arm64/Qt 6.11.2 2026-10-01; UI startup/temp fixtures isolated after stale-path performance timeout. Windows/Linux runtime/rendered Windows reference unverified |
-| [ ] | P1-06 | Архивные тома create/open/test/extract | P1-05 | partial — P1-06.1 принято 2026-10-01; parent после P1-06.2 |
+| [x] | P1-06 | Архивные тома create/open/test/extract | P1-05 | done — P1-06.1/.2; исходный CMultiOutStream creation, source open/list/TestArchives/Ask extract, occupied/missing/corrupt/password/cancel и UX; focused 9/9 6.14 с, полный unsandboxed check.sh 148/148 40.58 с macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime и rendered Windows parity непроверены, обновление volumes отключено |
 | [x] | P1-06.1 | Целое создание архивных томов ZIP/7z: исходные volume control/parser/confirmation/CMultiOutStream, transactional output, password/failure/cancel и UX | P1-05 | done — audit § P1-06.1; variable-size protected ZIP/7z, occupied/failure/cancel/pause, normal/compact JSON; focused 8/8 3.86 с, unsandboxed check.sh 147/147 41.04 с macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime и rendered Windows parity непроверены |
-| [ ] | P1-06.2 | Open/list/test/extract архивных томов, missing/corrupt/password/cancel и parent приёмка | P1-06.1 | todo |
+| [x] | P1-06.2 | Open/list/test/extract архивных томов, missing/corrupt/password/cancel и parent приёмка | P1-06.1 | done — audit § P1-06.2; source TestArchives archive branch/CopyTo saved-password overload, `.001` picker и source panel/Agent/GUI consumers; focused 9/9 6.14 с, check.sh 148/148 40.58 с macOS arm64/Qt 6.11.2 2026-10-01; filesystem batch entrypoint остаётся mandatory P3-05, Windows/Linux runtime непроверены |
 | [ ] | P1-07 | Advanced options/time/parameters/memory prompts | P1-05, P0-10 | todo |
 | [ ] | P1-08 | External viewer/editor/diff и changed-temp update | P0-04, P1-04 | todo |
 | [ ] | P1-09 | Обновление цепочки вложенных архивов | P1-04, P1-08 | todo |

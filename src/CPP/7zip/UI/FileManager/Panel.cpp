@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/Panel.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "Panel.h"
+#include "../Agent/IFolderArchive.h"
 #include "7zip/PropID.h"
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
@@ -182,6 +183,30 @@ void CPanel::AttachPresentation(QWidget *list, QWidget *address) {
         _listView->installEventFilter(this);
     if (_headerComboBox)
         _headerComboBox->installEventFilter(this);
+}
+
+// Source Panel.cpp::TestArchives archive-folder branch. Filesystem batch
+// entry point remains outside the currently exposed open-archive command.
+void CPanel::TestArchives() {
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_OperSmart(indices);
+    CMyComPtr<IArchiveFolder> archiveFolder;
+    _folder.QueryInterface(IID_IArchiveFolder, &archiveFolder);
+    if (archiveFolder) {
+        CCopyToOptions options;
+        options.streamMode = true;
+        options.showErrorMessages = true;
+        options.testMode = true;
+
+        UStringVector messages;
+        HRESULT res = CopyTo(options, indices, &messages);
+        if (res != S_OK) {
+            if (res != E_ABORT)
+                MessageBox_Error_HRESULT(res);
+        }
+        return;
+    }
+    MessageBox_Error_UnsupportOperation();
 }
 
 bool CPanel::eventFilter(QObject *watched, QEvent *event) {

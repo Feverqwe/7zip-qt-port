@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
+#include "archiveformats.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -32,6 +33,31 @@ class BrowseDialogTests final : public QObject {
         QCOMPARE(result, selected);
     }
 
+    void firstArchiveVolumeUsesDefaultArchiveFilter() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString selected = fixture.filePath(QStringLiteral("архив с пробелом.7z.001"));
+        QFile file(selected);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        CBrowseInfo browse;
+        browse.Title = "Открыть архив";
+        browse.Filters = ArchiveFormats::openDialogFilter();
+        browse.FilePath = fixture.path() + '/';
+        bool answered = false;
+        QTimer::singleShot(0, [&] {
+            if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget())) {
+                answered = true;
+                QVERIFY(dialog->selectedNameFilter().contains("*.001"));
+                dialog->selectFile(selected);
+                QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+            }
+        });
+        QVERIFY(browse.BrowseForFile());
+        QVERIFY(answered);
+        QCOMPARE(browse.FilePath, selected);
+        QCOMPARE(browse.FilterIndex, 0);
+    }
     void fileCancelRestoresPathThenSelectsUnicodeFile() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

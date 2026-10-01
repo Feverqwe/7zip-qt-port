@@ -3517,6 +3517,46 @@ Qt consumer относится к P1-01.4. Проверены `fs_folder_copy`, 
 CTest на macOS arm64/Qt 6.11.2, 2026-10-01. Реальный второй том,
 Windows/Linux runtime и rendered Windows reference локально не проверены.
 
+## P1-06.2 — source consumers томов (принято, 2026-10-01)
+
+Та же точная база `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Из `CPP/7zip/UI/FileManager/Panel.cpp::TestArchives` скопирована archive-folder
+ветка: `Get_ItemIndices_OperSmart`, QueryInterface `IArchiveFolder`, исходные
+`CCopyToOptions::{streamMode,showErrorMessages,testMode}`, `CopyTo` и error/abort
+ветви. В `Panel.h` скопирован исходный трёхаргументный `CopyTo` overload,
+который берёт пароль последнего `_parentFolders` и вызывает общий consumer.
+Win32 presentation заменена существующим Qt service; архивная ветка не
+переписана. Filesystem `::TestArchives(paths)` batch entry point и upstream
+закомментированный старый `CThreadTest` сюда не перенесены: текущая команда
+доступна в открытом архиве; filesystem entrypoint остаётся mandatory omitted
+scope P3-05 для `Panel.cpp`, а не считается неприменимым.
+
+MainWindow связывает production test command с этим source consumer; источник
+без extract service сохраняет прежний transport fallback. Source `PanelCopy`,
+Agent `ArchiveFolder/Agent`, `Common/Extract`, `GUI/ExtractGUI` и callbacks
+переиспользуются. `QtArchiveFolderManager`/`QtArchiveBatchOpen` уже передают
+`7zz` listing, embedded format и numbered VolumePaths в исходные владельцы:
+внешний engine открывает Split handler, поэтому для extract `.001` нельзя
+принудительно задавать inner `-t7z`. Native Common Extract loop исключает
+следующие VolumePaths из повторного batch извлечения. Полные in-process
+codec opening bodies `OpenArchive::Open/Open2` не подменяются claims этого
+шага; их прежний omitted scope сохраняется в общем audit/P2-01/P3-05.
+
+Новый integration тест создаёт тома через принятый source stream, затем открывает
+их через `BindToPath`/`FileFolderPluginOpen`, проверяет исходный smart selection,
+test callback и root Ask extraction. Пароль проверяется до overwrite GetStream;
+missing/corrupt volumes показывают source errors. Cancel открытия, теста и byte
+извлечения освобождает backend и возвращает commands. Существующие тома не
+изменяются. Qt native picker получает `*.001` в локальном archive filter;
+upstream Windows filesystem batch presentation остаётся отдельным scope.
+
+Проверки: focused 9/9 6.14 с; unsandboxed `./scripts/check.sh` — formatting,
+build и 148/148 CTest, 40.58 с, macOS arm64/Qt 6.11.2 2026-10-01.
+Parent P1-06 принят; Windows/Linux runtime и rendered Windows reference
+не проверены. Source creation Add normal/compact JSON принят в P1-06.1;
+nonvisual test routing переиспользует прежний source progress, picker filter
+проверен через native-service Qt fixture без заявления геометрии OS dialog.
+
 ## P1-06.1 — создание архивных томов (2026-10-01)
 
 База: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

@@ -297,6 +297,20 @@ P2-05/P2-06. Normal/compact main и panel status JSON, прямой двухпа
 UI consumer и полный `check.sh` 143/143 прошли на macOS arm64/Qt 6.11.2.
 Windows/Linux runtime и rendered Windows reference не проверены.
 
+## P1-06.2 — открытие, тест и извлечение томов
+
+Первый `.001` доступен в стандартном archive filter и открывается исходным
+panel binding workflow. Список показывает содержимое архива. «Тест» теперь
+использует source `CPanel::TestArchives`: выбранные элементы либо все при
+пустом выборе, пароль последнего archive link, общий source progress/results.
+Ask extraction использует source GUI/Common callbacks; следующие тома batch
+не извлекаются повторно. Неверный пароль проверяется до замены destination.
+Отсутствующий том, повреждённые данные и отмена показываются в существующих
+source error/progress views. Тома доступны для чтения; изменение набора
+не поддерживается официальным CLI adapter и commands отключены.
+Пауза/отмена и формат source progress не менялись. Native picker фильтр проверен
+через Qt dialog; Windows/Linux runtime и rendered Windows reference непроверены.
+
 ## P1-06.1 — создание архивных томов (2026-10-01)
 
 Add to Archive предлагает editable «Разбить на тома, байт» с исходными девятью

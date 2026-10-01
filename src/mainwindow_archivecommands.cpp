@@ -341,6 +341,21 @@ void MainWindow::testArchive() {
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ != State::Viewing)
         return;
+    auto &panel = app_.GetFocusedPanel();
+    auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
+    auto *resource =
+        folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+    if (resource && resource->HasExtractService() && backend_->hasListedSourceArchive(archive_)) {
+        previousState_ = state_;
+        setState(State::Operating);
+        operationName_ = QStringLiteral("Проверка архива");
+        {
+            QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+            panel.TestArchives();
+        }
+        setState(State::Viewing);
+        return;
+    }
     previousState_ = state_;
     setState(State::Operating);
     begin("Проверка архива", archive_);

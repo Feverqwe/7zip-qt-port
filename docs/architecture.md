@@ -524,6 +524,14 @@ files. It supports pause/cancel and removes its own partial outputs. This CLI
 integration needs a full temporary archive plus staged volumes; widgets never
 construct split commands. Existing multivolume updates are rejected.
 
+Open-archive Test dispatch uses native `CPanel::TestArchives` and `CopyTo(testMode)`
+when the production extract service exists. Native smart selection and saved
+archive-link password determine the request; `QtArchiveFileResource` supplies
+official engine bytes to the source test callbacks. Split `.001` keeps automatic
+outer handler detection instead of forcing its inner codec. Source batch Extract
+uses VolumePaths to skip repeated numbered inputs. Filesystem batch TestArchives
+is not yet exposed by this command.
+
 `FileViewerDialog` reads bounded UTF-8 text and saves through `QSaveFile` after
 checking for external changes. `MainWindow` owns extraction and the subsequent
 archive-update request, keeping the temporary source alive until completion.

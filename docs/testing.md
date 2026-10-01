@@ -665,6 +665,18 @@ outputs. Dialog checks cover presets, small-size No/Cancel/Yes before persistenc
 existing-target disabled state and normal/compact JSON. These CLI checks do not
 replace P1-06.2 source UI open/list/test/extract acceptance.
 
+P1-06.2: `ui_archive_volumes` opens newly created ZIP/7z `.001` through the native
+panel binding/Agent owners, checks source smart-selection TestArchives, and
+round-trips both Unicode/space and ordinary files through root Ask extraction.
+Encrypted ZIP and header-encrypted 7z check password UI and wrong-password
+refusal before replacing an existing destination. Missing second volume,
+corrupted second-volume data, and cancel during open/test/byte extraction restore
+command availability and quiesce backend. Read-only mutation commands stay disabled.
+`browse_dialog` selects `.001` with the standard archive filter.
+`source_extract_backend` checks the native batch loop skips following VolumePaths.
+The test autoanswerer acts only on the active modal widget: clicking underlying
+progress Close during its final message can invoke nested Cancel and hang the test.
+
 P1-05.4: `source_update_backend` checks the source Full-path Synchronize callback
 with omitted explicit directory records and retained newer archive children on
 ZIP/7z, including Unicode and spaces. Backend cases retain a subtree, delete its

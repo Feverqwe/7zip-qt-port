@@ -18,6 +18,6 @@ inline bool canModify(const QString &path) {
 
 inline QString openDialogFilter() {
     return QStringLiteral("Архивы (*.7z *.zip *.rar *.tar *.gz *.gzip *.tgz *.bz2 *.bzip2 *.xz "
-                          "*.txz *.zst *.cab *.iso *.wim);;Все файлы (*)");
+                          "*.txz *.zst *.cab *.iso *.wim *.001);;Все файлы (*)");
 }
 } // namespace ArchiveFormats
