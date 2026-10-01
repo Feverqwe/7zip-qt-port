@@ -11,18 +11,16 @@ if command -v ccache >/dev/null 2>&1; then
   if [[ -z "${CCACHE_DIR:-}" && "$(uname -s)" == Darwin ]]; then
     export CCACHE_DIR=/private/tmp/sevenzip-desktop-ccache
   fi
-  printf 'Using compiler cache: %s\n' "$compiler_cache"
-  printf 'Compiler cache directory: %s\n' "$(ccache --get-config cache_dir)"
 fi
 
 configure() {
   if [[ -n "$compiler_cache" ]]; then
-    cmake --preset "$preset" \
+    cmake --preset "$preset" --log-level=WARNING \
       "-DCMAKE_C_COMPILER_LAUNCHER=$compiler_cache" \
       "-DCMAKE_CXX_COMPILER_LAUNCHER=$compiler_cache" \
-      "-DCMAKE_OBJCXX_COMPILER_LAUNCHER=$compiler_cache" "$@"
+      "-DCMAKE_OBJCXX_COMPILER_LAUNCHER=$compiler_cache" "$@" >/dev/null
   else
-    cmake --preset "$preset" "$@"
+    cmake --preset "$preset" --log-level=WARNING "$@" >/dev/null
   fi
 }
 
@@ -40,7 +38,6 @@ if [[ "$(uname -s)" == Darwin ]]; then
       exit 1
     fi
     export CPLUS_INCLUDE_PATH="$sdk_cxx_headers${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
-    printf 'Using C++ headers from %s\n' "$sdk_cxx_headers"
   fi
 
   if [[ -z "${CMAKE_PREFIX_PATH:-}" ]] && command -v brew >/dev/null 2>&1 && brew list --versions qtbase >/dev/null 2>&1; then

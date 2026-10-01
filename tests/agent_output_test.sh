@@ -68,28 +68,62 @@ mkdir -p "$fixture/bin"
 cat > "$fixture/bin/ctest" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$FAKE_CTEST_ARGS"
+printf '%s\n' "${CTEST_PARALLEL_LEVEL:-}" > "$FAKE_CTEST_PARALLEL_LEVEL"
+printf '    Start 1: sample\n'
+printf '1/2 Test #1: sample ......................   Passed    0.01 sec\n'
 printf 'fixture CTest output\n'
+if [[ "${FAKE_CTEST_STATUS:-0}" != 0 ]]; then
+  printf '2/2 Test #2: failure ..................... ***Failed    0.02 sec\n'
+  printf 'failure details\n' >&2
+fi
+if [[ -n "${FAKE_CTEST_RELEASE:-}" ]]; then
+  while [[ ! -f "$FAKE_CTEST_RELEASE" ]]; do sleep 0.02; done
+fi
 exit "${FAKE_CTEST_STATUS:-0}"
 EOF
 chmod +x "$fixture/bin/ctest"
 export PATH="$fixture/bin:$PATH"
 export FAKE_CTEST_ARGS="$fixture/ctest-args"
+export FAKE_CTEST_PARALLEL_LEVEL="$fixture/ctest-parallel-level"
 
-wrapper_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
+ctest_success="$(CTEST_PARALLEL_LEVEL= CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev -R '^agent_output$')"
-[[ "$wrapper_success" == $'ctest --preset dev -R ^agent_output$: running (output buffered; wait for exit)\nctest --preset dev -R ^agent_output$: OK' ]]
+[[ "$ctest_success" == 'fixture CTest output' ]]
 [[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$' ]]
+[[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 4 ]]
 
-if wrapper_failure="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto FAKE_CTEST_STATUS=9 bash \
+CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
+  "$repo_root/scripts/ctest.sh" --preset dev --parallel 3 >/dev/null
+[[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 2 ]]
+[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n--parallel\n3' ]]
+
+CTEST_PARALLEL_LEVEL=5 SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
+  "$repo_root/scripts/ctest.sh" --preset dev >/dev/null
+[[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 5 ]]
+
+if ctest_failure="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto FAKE_CTEST_STATUS=9 bash \
   "$repo_root/scripts/ctest.sh" --preset dev 2>&1)"; then
-  printf 'A failed CTest wrapper unexpectedly succeeded.\n' >&2
+  printf 'A failed CTest unexpectedly succeeded.\n' >&2
   exit 1
 else
   status="$?"
 fi
 [[ "$status" -eq 9 ]]
-[[ "$wrapper_failure" == *'ctest --preset dev: FAILED (exit 9)'* ]]
-[[ "$wrapper_failure" == *'fixture CTest output'* ]]
+[[ "$ctest_failure" == *'fixture CTest output'* ]]
+[[ "$ctest_failure" == *'***Failed'* ]]
+[[ "$ctest_failure" == *'failure details'* ]]
+[[ "$ctest_failure" != *'Start 1:'* && "$ctest_failure" != *'Passed    0.01 sec'* ]]
+
+FAKE_CTEST_RELEASE="$fixture/release-ctest" bash "$repo_root/scripts/ctest.sh" --preset dev \
+  >"$fixture/live-output" &
+ctest_pid="$!"
+for attempt in {1..250}; do
+  if grep -q '^fixture CTest output$' "$fixture/live-output"; then break; fi
+  sleep 0.02
+done
+touch "$fixture/release-ctest"
+wait "$ctest_pid"
+[[ "$attempt" -lt 250 ]]
 
 if sandbox_output="$(CODEX_SANDBOX=seatbelt bash "$repo_root/scripts/check.sh" 2>&1)"; then
   printf 'The full check unexpectedly ran in a sandbox.\n' >&2

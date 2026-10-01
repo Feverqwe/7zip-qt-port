@@ -13,4 +13,8 @@ if [[ -z "${CTEST_PARALLEL_LEVEL:-}" ]]; then
   export CTEST_PARALLEL_LEVEL="$ctest_jobs"
 fi
 
-exec ctest "$@"
+ctest "$@" | awk '
+  /^[[:space:]]*Start[[:space:]]+[0-9]+:/ { next }
+  /^[[:space:]]*[0-9]+\/[0-9]+[[:space:]]+Test[[:space:]]+#?[[:space:]]*[0-9]+:.*[[:space:]]Passed[[:space:]]+[0-9.]+[[:space:]]+sec[[:space:]]*$/ { next }
+  { print; fflush() }
+'
