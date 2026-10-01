@@ -12,6 +12,23 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Delete Temporary Files (P1-15.2)
+
+Reference: pinned BrowseDialog2.cpp/rc (dialog93), six Name/MTime/Size/Files/
+Folders/Name-2 columns. Controls retain Delete/Refresh, Parent/read-only path,
+list, disabled filter, Help/Close ordering. Owned membership replaces upstream's
+7z* convention; active or unconfirmed external entries remain visible with an
+explanatory tooltip and disabled Delete. Enter navigates, Backspace returns,
+Delete confirms eligible deletion, F5 refreshes, F1 opens fm/temp.htm, Escape
+and Close exit without deletion. No push button is an Enter default.
+
+temp_cleanup writes EN/RU900×580/500×320 temp-cleanup-*.json; footer/path/filter
+stay exposed, and the six-column list scrolls horizontally at compact width.
+Geometry and source structure are checked; rendered Windows parity is unverified.
+All four current reports were reviewed at acceptance: named controls are fully
+visible at both sizes. Integrated P1-15 check.sh passed175/175 on macOS arm64;
+Windows/Linux runtime remains unverified.
+
 ### Offline Help and About (P1-15.1)
 
 References: pinned HelpUtils/MyLoadMenu/CompressDialog topic calls and exact
@@ -26,7 +43,7 @@ help_ui checks actual Contents/F1/modal About, source Options page callbacks and
 Add/Extract button/F1 without applying pending state; compression_advanced checks
 original Options Help. Existing Add760/640, Extract600/470 and Options640/520
 geometry reports cover the added Help footer. Current Qt usability is checked;
-rendered Windows parity and complete P1-15 acceptance remain open.
+rendered Windows parity remains unverified; P1-15 acceptance includes cleanup above.
 
 ### Live dialog language consumers (P1-14.2)
 

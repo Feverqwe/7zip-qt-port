@@ -24,9 +24,18 @@
 #include "FileDir.h"
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
+#include "qtownedtempregistry.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+
+static void SetTempRegistrationError() {
+#ifdef _WIN32
+    SetLastError(ERROR_ACCESS_DENIED);
+#else
+    errno = EACCES;
+#endif
+}
 
 #ifndef _UNICODE
 extern bool g_IsNT;
@@ -759,14 +768,10 @@ bool MyGetTempPath(FString &path) {
 
 #else // !_WIN32
 
-    // FIXME: improve that code
-    path = STRING_PATH_SEPARATOR "tmp";
-    const char *s;
-    if (NFind::DoesDirExist_FollowLink(path))
-        s = STRING_PATH_SEPARATOR "tmp" STRING_PATH_SEPARATOR;
-    else
-        s = "." STRING_PATH_SEPARATOR;
-    path = s;
+    // OS service adaptation: respect TMPDIR and macOS's per-user temp directory,
+    // matching Qt temporary owners and the native cleanup boundary.
+    path = us2fs(QDir::tempPath().toStdWString().c_str());
+    NormalizeDirPathPrefix(path);
     return true;
 
 #endif
@@ -827,6 +832,7 @@ bool CreateTempFile2(CFSTR prefix, bool addRandom, AString &postfix, NIO::COutFi
 bool CTempFile::Create(CFSTR prefix, NIO::COutFile *outFile) {
     if (!Remove())
         return false;
+    _ownedLease.reset();
     _path.Empty();
     AString postfix;
     if (!CreateTempFile2(prefix, false, postfix, outFile))
@@ -834,12 +840,21 @@ bool CTempFile::Create(CFSTR prefix, NIO::COutFile *outFile) {
     _path = prefix;
     _path += postfix;
     _mustBeDeleted = true;
+    _ownedLease =
+        QtOwnedTempRegistry().RegisterCreated(QString::fromWCharArray(fs2us(_path).Ptr()));
+    if (!_ownedLease) {
+        outFile->Close();
+        Remove();
+        SetTempRegistrationError();
+        return false;
+    }
     return true;
 }
 
 bool CTempFile::CreateRandomInTempFolder(CFSTR namePrefix, NIO::COutFile *outFile) {
     if (!Remove())
         return false;
+    _ownedLease.reset();
     _path.Empty();
     FString tempPath;
     if (!MyGetTempPath(tempPath))
@@ -851,6 +866,14 @@ bool CTempFile::CreateRandomInTempFolder(CFSTR namePrefix, NIO::COutFile *outFil
     _path = tempPath;
     _path += postfix;
     _mustBeDeleted = true;
+    _ownedLease =
+        QtOwnedTempRegistry().RegisterCreated(QString::fromWCharArray(fs2us(_path).Ptr()));
+    if (!_ownedLease) {
+        outFile->Close();
+        Remove();
+        SetTempRegistrationError();
+        return false;
+    }
     return true;
 }
 
@@ -885,6 +908,7 @@ bool CTempFile::MoveTo(CFSTR name, bool deleteDestBefore, ICopyFileProgress *pro
 bool CTempDir::Create(CFSTR prefix) {
     if (!Remove())
         return false;
+    _ownedLease.reset();
     _path.Empty();
     FString tempPath;
     if (!MyGetTempPath(tempPath))
@@ -896,6 +920,13 @@ bool CTempDir::Create(CFSTR prefix) {
     _path = tempPath;
     _path += postfix;
     _mustBeDeleted = true;
+    _ownedLease =
+        QtOwnedTempRegistry().RegisterCreated(QString::fromWCharArray(fs2us(_path).Ptr()));
+    if (!_ownedLease) {
+        Remove();
+        SetTempRegistrationError();
+        return false;
+    }
     return true;
 }
 

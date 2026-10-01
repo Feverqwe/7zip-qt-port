@@ -1,17 +1,21 @@
+#include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "external_editor_fixture.h"
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
+#include "qtownedtempregistry.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QPushButton>
 #include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QTreeWidget>
 #include <QtTest>
 #include <atomic>
 
@@ -51,6 +55,13 @@ class CProcessService final : public IQtExternalFileServices {
     }
 };
 QString settings() { return qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"); }
+QtOwnedTempEntry ownedDirectory(const QString &file) {
+    const QString directory = QFileInfo(file).absolutePath();
+    for (const auto &entry : QtOwnedTempRegistry().Entries())
+        if (entry.path == directory)
+            return entry;
+    return {};
+}
 bool bind(CPanel &panel, IFolderManager *manager, IQtExternalFileServices &service,
           const QString &archive) {
     panel.AttachFolderManager(manager, settings());
@@ -87,6 +98,29 @@ class ArchiveExternalLifetimeTests final : public QObject {
         QTRY_VERIFY(QFileInfo(control + ".parent-finished").exists());
         QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
         const QString temporary = QString::fromUtf8(read(control + ".ready"));
+        QVERIFY(QFileInfo(temporary).isFile());
+        const auto owned = ownedDirectory(temporary);
+        QVERIFY(!owned.key.isEmpty());
+        QVERIFY(owned.active && owned.externallyProtected);
+        QVERIFY(!QtOwnedTempRegistry().ClaimForDeletion(owned));
+        bool cleanupProtected = false;
+        QTimer::singleShot(0, this, [&] {
+            auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            auto *list = dialog->findChild<QTreeWidget *>("tempList");
+            const auto rows = list->findItems(QFileInfo(owned.path).fileName(), Qt::MatchExactly);
+            if (!rows.isEmpty()) {
+                list->clearSelection();
+                list->setCurrentItem(rows.first());
+                rows.first()->setSelected(true);
+                cleanupProtected = !dialog->findChild<QPushButton *>("tempDelete")->isEnabled() &&
+                                   !rows.first()->toolTip(0).isEmpty();
+            }
+            dialog->reject();
+        });
+        MyBrowseForTempFolder(nullptr);
+        QVERIFY(cleanupProtected);
         QVERIFY(QFileInfo(temporary).isFile());
         bool prompt = false;
         QTimer responder;
@@ -185,6 +219,12 @@ class ArchiveExternalLifetimeTests final : public QObject {
         panel.ExitExternalWorkers(false);
         QCOMPARE(error, !waitError);
         QCOMPARE(QFileInfo(service.Opened).exists(), waitError);
+        if (waitError) {
+            const auto owned = ownedDirectory(service.Opened);
+            QVERIFY(!owned.key.isEmpty());
+            QVERIFY(!owned.active && owned.externallyProtected);
+            QVERIFY(!QtOwnedTempRegistry().ClaimForDeletion(owned));
+        }
         QCOMPARE(contents(archive, name), QByteArray("original"));
         if (waitError)
             QVERIFY(QDir(QFileInfo(service.Opened).absolutePath()).removeRecursively());

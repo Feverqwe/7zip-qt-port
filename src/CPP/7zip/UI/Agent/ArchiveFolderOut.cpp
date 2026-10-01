@@ -185,6 +185,12 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
                                      (void **)&updateCallback_MoveArc);
 
         HRESULT res;
+        HRESULT ownedTempResult = S_OK;
+        const auto adoptPublishedTemp = [&] {
+            if (auto *resource =
+                    dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource()))
+                ownedTempResult = resource->AdoptPublishedOwnedTemp(tempFile);
+        };
         if (updateCallback_MoveArc) {
             const FString &tempFilePath = tempFile.Get_TempFilePath();
             UInt64 totalSize = 0;
@@ -201,6 +207,7 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
             res = tempFile.MoveToOriginal(true, // deleteOriginal
                                           &prox);
             if (res == S_OK) {
+                adoptPublishedTemp();
                 res = updateCallback_MoveArc->MoveArc_Finish();
                 // we don't return after E_ABORT here, because
                 // we want to reopen new archive still.
@@ -213,8 +220,15 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
             // But we want to open archive still.
             // And Before_ArcReopen() call will clear user break status in that case.
             RINOK(updateCallback_MoveArc->Before_ArcReopen())
-        } else
+        } else {
             res = tempFile.MoveToOriginal(true); // deleteOriginal
+            if (res == S_OK)
+                adoptPublishedTemp();
+        }
+        // Preserve native Finish/Before_ArcReopen and reopening even when the
+        // ownership adapter fails after a successful publication.
+        if (res == S_OK && ownedTempResult != S_OK)
+            res = ownedTempResult;
 
         // RINOK(res);
         if (res == S_OK) {

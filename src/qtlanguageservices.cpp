@@ -1,16 +1,16 @@
 #include "qtlanguageservices.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Common/Lang.h"
+#include "qtownedtempdir.h"
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
-#include <QTemporaryDir>
 
 static void InitLanguageResources() { Q_INIT_RESOURCE(upstream_languages); }
 
 namespace {
 class BundledLanguageFiles {
-    QTemporaryDir _directory;
+    QtOwnedTempDir _directory;
     CLang _english;
 
   public:

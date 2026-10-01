@@ -38,7 +38,7 @@ void MainWindow::calculateHash(const QString &method) {
     const QStringList entries = selectedArchivePaths();
     if (entries.isEmpty())
         return;
-    hashTemporary_ = std::make_unique<QTemporaryDir>();
+    hashTemporary_ = std::make_unique<QtOwnedTempDir>();
     if (!hashTemporary_->isValid()) {
         hashTemporary_.reset();
         QMessageBox::warning(this, QtLangText(IDS_CHECKSUM_INFORMATION),
@@ -58,7 +58,7 @@ void MainWindow::openArchiveFile(const QString &entry) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    viewTemporary_ = std::make_unique<QTemporaryDir>();
+    viewTemporary_ = std::make_unique<QtOwnedTempDir>();
     if (!viewTemporary_->isValid()) {
         viewTemporary_.reset();
         QMessageBox::warning(this, QtLocalText("Open file", QStringLiteral("Открыть файл")),
@@ -107,7 +107,7 @@ void MainWindow::viewSelectedFile(bool editable) {
                         QStringLiteral("Файл больше 16 МиБ. Просмотр текста недоступен.")));
         return;
     }
-    viewTemporary_ = std::make_unique<QTemporaryDir>();
+    viewTemporary_ = std::make_unique<QtOwnedTempDir>();
     if (!viewTemporary_->isValid()) {
         viewTemporary_.reset();
         QMessageBox::warning(this, QtLocalText("Viewer", QStringLiteral("Просмотр")),

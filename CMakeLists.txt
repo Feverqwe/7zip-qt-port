@@ -111,6 +111,9 @@ endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/AboutDialog.cpp src/CPP/7zip/UI/FileManager/AboutDialog.h
+    src/CPP/7zip/UI/FileManager/BrowseDialog2.cpp src/CPP/7zip/UI/FileManager/BrowseDialog2.h
+    src/qttempbrowsepresentation.cpp
+    src/qtfilelisthover.cpp src/qtfilelisthover.h
     src/CPP/7zip/UI/FileManager/HelpUtils.cpp src/CPP/7zip/UI/FileManager/HelpUtils.h
     src/qthelpservices.cpp src/qthelpservices.h
     src/qtcompressoptionscontrols.cpp src/qtcompressoptionscontrols.h
@@ -209,6 +212,9 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/qtownedtempidentity.cpp src/qtownedtempidentity.h
+    src/qtownedtempregistry.cpp src/qtownedtempregistry.h
+    src/qtownedtempdir.cpp src/qtownedtempdir.h
     third_party/7zip/CPP/Common/Lang.cpp
     src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
     src/qtlanguageservices.cpp src/qtlanguageservices.h
@@ -322,6 +328,17 @@ set_target_properties(sevenzip_desktop PROPERTIES
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(owned_temp_tests tests/owned_temp_tests.cpp)
+    target_include_directories(owned_temp_tests PRIVATE src)
+    target_link_libraries(owned_temp_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME owned_temp COMMAND owned_temp_tests -silent)
+    qt_add_executable(temp_cleanup_tests tests/temp_cleanup_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(temp_cleanup_tests PRIVATE tests)
+    target_link_libraries(temp_cleanup_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME temp_cleanup COMMAND temp_cleanup_tests -silent)
+    set_tests_properties(temp_cleanup PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/temp-cleanup-settings.ini" TIMEOUT 30)
+    set_tests_properties(owned_temp PROPERTIES TIMEOUT 30)
     qt_add_executable(help_source_tests tests/help_source_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(help_source_tests PRIVATE src tests)
     target_link_libraries(help_source_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -513,6 +530,15 @@ if(BUILD_TESTING)
     target_link_libraries(source_update_backend_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME source_update_backend COMMAND source_update_backend_tests -silent)
     set_tests_properties(source_update_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    get_target_property(owned_temp_publication_sources source_update_backend_tests SOURCES)
+    list(REMOVE_ITEM owned_temp_publication_sources tests/source_update_backend_tests.cpp)
+    qt_add_executable(owned_temp_publication_tests tests/owned_temp_publication_tests.cpp
+        ${owned_temp_publication_sources})
+    target_include_directories(owned_temp_publication_tests PRIVATE src)
+    target_link_libraries(owned_temp_publication_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME owned_temp_publication COMMAND owned_temp_publication_tests -silent)
+    set_tests_properties(owned_temp_publication PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     qt_add_executable(archive_update_callback_tests tests/archive_update_callback_tests.cpp)
     qt_add_executable(native_extract_callback_tests tests/native_extract_callback_tests.cpp)
     qt_add_executable(native_hash_bundle_tests tests/native_hash_bundle_tests.cpp)
@@ -1264,8 +1290,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
             src/mainwindow_twopanel.cpp
             src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
-            src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h
-            src/qtfilelisthover.cpp src/qtfilelisthover.h)
+            src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp
@@ -1409,6 +1434,8 @@ endforeach()
 # writers separate while allowing independent tests to run concurrently.
 get_property(sevenzip_registered_tests DIRECTORY PROPERTY TESTS)
 foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
+    set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT
+        "SEVENZIP_OWNED_TEMP_REGISTRY=${CMAKE_BINARY_DIR}/test-owned-temp/${sevenzip_test}")
     # MainWindow opens the current directory before a test navigates to its
     # fixture. Keep that startup input separate from hundreds of build outputs.
     # Each suite owns its directory so parallel runs cannot populate each other.

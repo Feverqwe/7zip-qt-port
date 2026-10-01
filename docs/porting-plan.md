@@ -82,7 +82,7 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
 Текущий счёт после P1-14 (2026-10-01):
-**25/46 закрыты, 21 остаётся**; P0: 12/12, P1: 12/18, P2: 0/10, P3: 1/6.
+**26/46 закрыты, 20 остаётся**; P0: 12/12, P1: 13/18, P2: 0/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -875,9 +875,19 @@ topics/links, F1/context consumers и version/license; P1-15.2 — source cleanu
 с owned-temp lifetime и итоговая приёмка parent. .1 принята: focused11/11PASS
 4.70s, final F1/geometry4/4PASS1.05s, final native About2/2PASS0.54s и full
 unsandboxed check.sh172/172PASS63.63s на macOS arm64 Qt6.11.2 2026-10-01;
-baseline215 exact/156 adapted/3 local verified. Следующий P1-15.2;
-parent остаётся открыт, счёт25/46. Disabled System/Benchmark
+baseline215 exact/156 adapted/3 local verified на checkpoint .1. Disabled System/Benchmark
 получат свои source Help callbacks вместе с P2-08/P2-04; cleanup Help входит в .2.
+
+.2 и parent приняты: native BrowseDialog2 command/browser, ownership registry,
+nested/process leases и private spool publication identity transfer; actual
+Yes/No/Cancel, first failure/replaced identity, active child-editor protection,
+context/props, FM preferences, navigation/Help/F1. Focused18/18PASS12.43s;
+full unsandboxed check.sh formatting/build/175 tests PASS66.82s macOS arm64
+Qt6.11.2 2026-10-01. EN/RU900×580/500×320 JSON reviewed, baseline217 exact/
+158 adapted/3 local verified. Счёт26/46; следующий P1-16. Windows/Linux runtime/
+rendered parity, actual cross-volume publication IO и late Finish cancellation
+локально не проверены. Directory Open Outside : 7-Zip disabled до P2-07
+directory CLI consumer; file self-open/OS association подключены.
 
 ### P1-16. Полный drag/drop между панелями и внешними приложениями
 

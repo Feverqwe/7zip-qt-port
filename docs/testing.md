@@ -1,5 +1,30 @@
 # Regression strategy
 
+P1-15.2 accepted: owned_temp observes native/Qt ownership, last copied lease, retained
+external protection/restart, unowned names, replacement identity, links and
+failed registration. archive_external_lifetime also checks the actual native
+child-editor copy cannot be claimed while active, and wait errors retain protected
+copies. Related external/nested/extract/update/viewer/language/volume suites pass
+14/14(10.60s) at the earlier ownership checkpoint on macOS arm64 Qt6.11.2.
+Final actual child-editor/wait-error and failed-registry checks passed2/2(3.33s).
+owned_temp_publication checks native WorkDir publication into an owned spool
+versus an unowned user archive, plus real source AgentFolder rename/reopen with
+successful, failed-engine and cancelled spooled ZIP transactions. It observes
+identity transfer, retained active protection, preserved user bytes and final
+private cleanup; passed1/1(0.67s) on macOS arm64 Qt6.11.2. Cross-volume IO and
+late MoveArc_Finish cancellation remain untested locally.
+All CTest suites use a private owned-temp registry root, including child processes.
+temp_cleanup exercises actual source Yes/No/Cancel, owned Unicode file/dir
+deletion, unowned names, link navigation, active/unconfirmed protection, a replaced
+second item stopping a multi-delete, refresh selection, native context order/
+properties, ShowDots/SingleClick with intercepted launch, Help/F1/Close and EN/RU
+900/500 geometry reports. main_shell tests the real modal command/Escape;
+archive_external_lifetime opens cleanup while the actual child editor still owns
+its extracted copy. Final affected suites passed18/18(12.43s), then unsandboxed
+check.sh passed formatting/build/175 tests(66.82s), macOS arm64 Qt6.11.2
+2026-10-01. EN/RU normal/compact cleanup widget JSON was reviewed; Windows/Linux
+runtime and rendered Windows parity remain unverified.
+
 help_source checks native topic construction/case-insensitive filename lookup,
 offline navigation/fragments, unavailable error and EN/RU normal/compact JSON.
 help_source also checks native About version/date, original license, intercepted
@@ -8,8 +33,8 @@ help_ui checks native Contents/F1, actual modal About command, all current Optio
 page topics without Apply and Add/Extract button/F1 with pending input retained;
 compression_advanced checks source Options topic and unchanged profile.
 P1-15.1 full unsandboxed check.sh passed172/172(63.63s), macOS arm64 Qt6.11.2;
-owned-temp cleanup success/failure/cancel/
-active-session protection and parent acceptance remain P1-15.2.
+owned-temp cleanup success/failure/cancel, active-session protection and parent
+acceptance were subsequently verified in P1-15.2 above.
 
 `language_dialog` checks live source Password/Copy/Split/Create-folder/Overwrite/
 Mem/Messages/Extract captions, raw pending Unicode values, secret redaction,

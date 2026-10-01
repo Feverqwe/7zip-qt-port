@@ -1,9 +1,12 @@
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
 #include <QMenuBar>
+#include <QTimer>
 #include <QToolBar>
+#include <QTreeWidget>
 
 class MainShellTests final : public QObject {
     Q_OBJECT
@@ -17,6 +20,29 @@ class MainShellTests final : public QObject {
 
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+
+    void nativeTemporaryFilesCommandUsesActualModalConsumer() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *action = window.findChild<QAction *>("tempDirAction");
+        QVERIFY(action && action->isEnabled());
+        QCOMPARE(action->property("nativeCommandID").toUInt(), unsigned(IDM_TEMP_DIR));
+        bool observed = false;
+        QTimer close;
+        connect(&close, &QTimer::timeout, &window, [&] {
+            auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
+            if (dialog && dialog->parentWidget() == &window) {
+                observed = dialog->findChild<QTreeWidget *>("tempList") != nullptr;
+                close.stop();
+                QTest::keyClick(dialog, Qt::Key_Escape);
+            }
+        });
+        close.start(5);
+        action->trigger();
+        QVERIFY(observed);
+        QVERIFY(!window.findChild<QDialog *>("tempBrowseDialog"));
+        QVERIFY(!backend.busy());
+    }
 
     void sourceMenusKeepOrderAndUnavailableCommandsVisible() {
         ControlledBackend backend;
@@ -97,8 +123,8 @@ class MainShellTests final : public QObject {
         QCOMPARE(actionNames(*tools),
                  QStringList({"settingsAction", "|", "benchmarkAction", "|", "tempDirAction"}));
         QCOMPARE(actionNames(*help), QStringList({"helpContentsAction", "|", "aboutAction"}));
-        for (const char *name : {"commentAction", "diffAction", "linkAction", "altStreamsAction",
-                                 "benchmarkAction", "tempDirAction"}) {
+        for (const char *name :
+             {"commentAction", "diffAction", "linkAction", "altStreamsAction", "benchmarkAction"}) {
             auto *action = window.findChild<QAction *>(name);
             QVERIFY(action);
             QVERIFY(!action->isEnabled());
@@ -106,6 +132,7 @@ class MainShellTests final : public QObject {
         }
         QVERIFY(window.findChild<QAction *>("helpContentsAction")->isEnabled());
         QVERIFY(window.findChild<QAction *>("aboutAction")->isEnabled());
+        QVERIFY(window.findChild<QAction *>("tempDirAction")->isEnabled());
         QCOMPARE(window.findChild<QAction *>("openInsideOneAction")
                      ->property("nativeCommandID")
                      .toUInt(),

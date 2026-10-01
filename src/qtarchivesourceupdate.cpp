@@ -14,10 +14,10 @@
 #include "archiveprogresstransport.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
+#include "qtownedtempdir.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QSet>
-#include <QTemporaryDir>
 
 namespace {
 class CResourceProgress final : public IQtProgressTransport {
@@ -424,7 +424,7 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         (offset.vt == VT_UI8 && offset.uhVal.QuadPart != 0) ||
         (offset.vt != VT_EMPTY && offset.vt != VT_I8 && offset.vt != VT_UI8))
         return E_NOTIMPL;
-    QTemporaryDir stage;
+    QtOwnedTempDir stage;
     if (!stage.isValid())
         return E_FAIL;
     UInt32 changed;

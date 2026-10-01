@@ -13,16 +13,25 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-15.2: source Delete Temporary Files с настоящим command consumer,
-owned-temp registry/lifetime, confirm/cancel/partial failure и сохранением
-active open/edit fixtures. Actual owner — BrowseDialog2, не commented-out
-DeleteOldTempFiles. Родитель принимается только после обязательной cleanup-функции.
+P1-16: source drag/drop между панелями и наружу из архива, effect/selection/
+destination rules, actual temporary bytes и recipient lifetime, отказ/отмена.
+P1-15.2 и parent приняты: actual native BrowseDialog2/modal command, creation
+ownership registry, native/Qt/nested/process leases, private spool publication,
+Yes/No/Cancel/first failure/replaced identity и active child-editor protection.
+Source ShowDots/SingleClick/hover/FullRow/Grid, context/props, navigation/Help/F1
+подключены; EN/RU900×580/500×320 current-build JSON reviewed. Focused18/18
+PASS12.43s; full unsandboxed check.sh formatting/build/175 tests PASS66.82s
+macOS arm64 Qt6.11.2 2026-10-01; baseline217 exact/158 adapted/3 local verified.
+User archives remain unowned. Cross-volume publication IO/late Finish cancellation
+locally untested; Windows/Linux runtime/rendered parity unverified. Directory
+Open Outside : 7-Zip disabled до P2-07 directory CLI consumer; это обязательный
+сохранённый долг данного owner. File self-open/OS association подключены.
 P1-15.1 принята: original HelpUtils/About и release HTML/CSS, все текущие
 Options/Add/Extract/advanced contexts; focused11/11PASS4.70s, final F1/geometry
 4/4PASS1.05s, final native About2/2PASS0.54s и full unsandboxed check.sh172/172
 PASS63.63s macOS arm64 Qt6.11.2 2026-10-01; baseline215 exact/156 adapted/3 local.
-P1-15.2 cleanup ещё обязательна, parent не принят;25/46. Disabled System/Benchmark
-source Help callbacks закрываются с P2-08/P2-04, cleanup context — с P1-15.2.
+Disabled System/Benchmark source Help callbacks закрываются с P2-08/P2-04;
+cleanup context принят с P1-15.2.
 P1-14.1/.2 и parent приняты: все текущие forms/messages/local context EN/RU,
 static RC/dynamic LangString fallbacks, hot switch/restart/pending state, source
 RAM/size/Auto/bookmarks, geometry normal/compact и keyboard/buddy/collision checks.
@@ -32,9 +41,7 @@ PASS3.00s, isolated modal consumers2/2PASS1.04s. Qt platform standard buttons/
 macOS mnemonic policy сохранены, Windows/Linux runtime/rendered parity unverified.
 Core language services — sevenzip_filesystem, widgets — sevenzip_panel; cancelled
 result определяется HRESULT/typed completion, partial-move warning сохраняется.
-Source baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Счёт25/46, остаётся21.
-Для cleanup исследовать actual BrowseDialog2::MyBrowseForTempFolder/OnDelete;
-PanelItemOpen::DeleteOldTempFiles закомментирован и не действующий owner.
+Source baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Счёт26/46, остаётся20.
 P1-13 parent открыт до .2:
 source shell policies/flags/registration требуют P2-09 consumer, controls disabled
 с причиной. P2-09 зависит от P1-13.1 capability, не от открытого parent.

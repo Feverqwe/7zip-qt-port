@@ -10,6 +10,8 @@
 #include "Windows/FileIO.h"
 #include <QString>
 #include <functional>
+#include <memory>
+class QtOwnedTempLease;
 
 namespace NWindows {
 namespace NFile {
@@ -116,6 +118,7 @@ bool CreateTempFile2(CFSTR prefix, bool addRandom, AString &postfix, NIO::COutFi
 class CTempFile MY_UNCOPYABLE {
     bool _mustBeDeleted;
     FString _path;
+    std::shared_ptr<QtOwnedTempLease> _ownedLease;
     void DisableDeleting() { _mustBeDeleted = false; }
 
   public:
@@ -123,6 +126,7 @@ class CTempFile MY_UNCOPYABLE {
     ~CTempFile() { Remove(); }
     const FString &GetPath() const { return _path; }
     bool Create(CFSTR pathPrefix, NIO::COutFile *outFile); // pathPrefix is not folder prefix
+    const std::shared_ptr<QtOwnedTempLease> &OwnedLease() const { return _ownedLease; }
     bool CreateRandomInTempFolder(CFSTR namePrefix, NIO::COutFile *outFile);
     bool Remove();
     // bool MoveTo(CFSTR name, bool deleteDestBefore);
@@ -132,12 +136,14 @@ class CTempFile MY_UNCOPYABLE {
 class CTempDir MY_UNCOPYABLE {
     bool _mustBeDeleted;
     FString _path;
+    std::shared_ptr<QtOwnedTempLease> _ownedLease;
 
   public:
     CTempDir() : _mustBeDeleted(false) {}
     ~CTempDir() { Remove(); }
     const FString &GetPath() const { return _path; }
     void DisableDeleting() { _mustBeDeleted = false; }
+    const std::shared_ptr<QtOwnedTempLease> &OwnedLease() const { return _ownedLease; }
     bool Create(CFSTR namePrefix);
     bool Remove();
 };

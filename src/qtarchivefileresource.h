@@ -21,11 +21,13 @@ class IArchiveOpenCallback;
 struct CArc;
 class CWorkDirTempFile;
 class QtArchiveDeleteInputs;
+class QtOwnedTempLease;
 class IUpdateDeletionCallback;
 class CDirItems;
 class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_0
     QString _temporary;
+    std::shared_ptr<QtOwnedTempLease> _temporaryLease;
     std::function<HRESULT(ISequentialOutStream *, IInArchive *, UInt32, IArchiveUpdateCallback *)>
         _update;
     CProgressSync *_sync = nullptr;
@@ -68,6 +70,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
         _deleteInputs.reset();
     }
     HRESULT ApplyOutputMTime(CWorkDirTempFile &file) const;
+    HRESULT AdoptPublishedOwnedTemp(const CWorkDirTempFile &file);
     void CaptureOutputMTime(const CFiTime &time, bool defined);
     void CaptureDeleteInputs(const CDirItems &items, const CByteBuffer &processed);
     HRESULT DeleteInputsAfterPublication(IUpdateDeletionCallback &callback);

@@ -7,6 +7,24 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-15.2 accepted: source Delete Temporary Files is connected. It lists only registered
+objects directly under the current OS temp directory and allows browsing inside
+those owned roots. Delete uses native confirmation/first-failure/reload behavior;
+active or externally unconfirmed objects are visible and protected. Qt association
+launches retain protection because their completion cannot be established.
+POSIX native temp creation now respects TMPDIR/macOS per-user temp, matching Qt.
+Enter/Backspace/Delete/F5/F1/Escape and Help/Close retain source meanings; the six
+columns may scroll horizontally at compact width. Qt controls replace Win32 shell
+images; ShowDots, SingleClick/track-select, FullRow and Grid retain source
+settings through Qt parent rows, shared hover and painting. Parent/dot navigation
+stops at OS temp, excluding non-owned ancestors. macOS composed/decomposed
+filenames are matched with OS identity proof, keeping Unicode cleanup reachable.
+Context new-window directory open is disabled until the P2-07 directory CLI
+consumer; file self-open and OS Open Outside use Qt platform services. Runtime
+Windows/Linux and rendered Windows parity remain unverified. Final focused18/18
+passed12.43s; full unsandboxed check.sh175/175 passed66.82s, macOS arm64 Qt6.11.2
+2026-10-01; EN/RU normal/compact JSON inspected. P1-15 parent accepted.
+
 P1-15.1 принята: Contents/F1, Help/F1 текущих Options/Add/Extract/advanced
 и About открывают исходные
 offline-разделы официальной26.03 справки с исходными ссылками/якорями. Qt browser
@@ -18,7 +36,7 @@ OK/homepage и logo; local app-version и license link добавлены явн
 engine version не выводится из source baseline. About EN/RU360×330/300×310
 JSON проверен; справка сохраняет pending input и не выполняет Apply. Full
 unsandboxed check.sh172/172PASS63.63s macOS arm64 Qt6.11.2 2026-10-01;
-owned-temp cleanup/parent остаются P1-15.2. Help будущих disabled
+owned-temp cleanup/parent впоследствии приняты в P1-15.2 выше. Help будущих disabled
 System/Benchmark идёт вместе с их P2-08/P2-04 owners.
 
 P1-14.2 принят (macOS, full170/17063.11s): Password/Copy/Split/Create-folder/Overwrite/Mem/Messages/Extract

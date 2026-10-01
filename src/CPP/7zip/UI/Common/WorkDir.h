@@ -23,6 +23,7 @@ class CWorkDirTempFile MY_UNCOPYABLE {
 
     const FString &Get_OriginalFilePath() const { return _originalPath; }
     const FString &Get_TempFilePath() const { return _tempFile.GetPath(); }
+    const std::shared_ptr<QtOwnedTempLease> &OwnedLease() const { return _tempFile.OwnedLease(); }
 
     HRESULT CreateTempFile(const FString &originalPath, const QString &settingsPath = {});
     HRESULT SetMTime(const CFiTime &time);

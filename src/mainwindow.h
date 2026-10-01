@@ -17,6 +17,7 @@
 #include "settingsdialog.h"
 #include "volumeoperations.h"
 
+#include "qtownedtempdir.h"
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -65,7 +66,6 @@
 #include <QStringView>
 #include <QStyle>
 #include <QTableWidget>
-#include <QTemporaryDir>
 #include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
@@ -404,7 +404,7 @@ class MainWindow : public QMainWindow {
     bool hashing_ = false;
     QString hashMethod_;
     QStringList hashSelection_;
-    std::unique_ptr<QTemporaryDir> hashTemporary_;
+    std::unique_ptr<QtOwnedTempDir> hashTemporary_;
     QAction *createFolder_ = nullptr;
     QAction *createFile_ = nullptr;
     QAction *refresh_ = nullptr;
@@ -424,8 +424,8 @@ class MainWindow : public QMainWindow {
     QAction *largeButtonsOption_ = nullptr;
     QAction *buttonTextOption_ = nullptr;
     QAction *toolbarGroupSeparator_ = nullptr;
-    std::unique_ptr<QTemporaryDir> viewTemporary_;
-    std::vector<std::unique_ptr<QTemporaryDir>> openedTemporaries_;
+    std::unique_ptr<QtOwnedTempDir> viewTemporary_;
+    std::vector<std::unique_ptr<QtOwnedTempDir>> openedTemporaries_;
     QString pendingViewPath_;
     bool pendingView_ = false;
     bool pendingExternalOpen_ = false;

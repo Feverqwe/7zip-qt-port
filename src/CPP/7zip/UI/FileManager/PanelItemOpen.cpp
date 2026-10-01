@@ -22,6 +22,7 @@
 #include "Windows/PropVariantConv.h"
 #include "Windows/System.h"
 #include "qtexternalguicall.h"
+#include "qtownedtempregistry.h"
 #include <QElapsedTimer>
 #include <QMessageBox>
 #include <QWidget>
@@ -215,6 +216,9 @@ static THREAD_FUNC_DECL MyThreadFunction(void *param) {
         }
         const UInt32 curTime = UInt32(timer.elapsed());
         processes.CloseAll();
+        // The native wait/snapshot loop has proved all known children finished.
+        if (tpi->OwnedTempLease)
+            tpi->OwnedTempLease->ExternalFinished();
         isComplexMode = (curTime < 2 * 1000);
     }
     bool needCheckTimestamp = true;
@@ -820,6 +824,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     const FString tempFilePath = tempDirNorm + us2fs(Get_Correct_FsFile_Name(name));
 
     CTempFileInfo tempFileInfo;
+    tempFileInfo.OwnedTempLease = tempDirectory.OwnedLease();
     tempFileInfo.FileIndex = index;
     tempFileInfo.RelPath = relPath;
     tempFileInfo.FolderPath = tempDir;
@@ -1040,6 +1045,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
         return;
     }
     CMyUniquePtr<CTmpProcessInfo> tpi(new CTmpProcessInfo());
+    tpi->OwnedTempLease = tempDirectory.OwnedLease();
     tpi->FolderPath = tempDir;
     tpi->FilePath = tempFilePath;
     tpi->NeedDelete = true;
@@ -1056,6 +1062,12 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     // Allocate tracking before launch/thread creation; Add must not throw while
     // the worker already owns this temp record.
     _exitEventLauncher->_threads.ReserveOnePosition();
+    // A no-handle association or shutdown during a known process must never
+    // turn an unproven external lifetime into an inactive cleanup candidate.
+    if (tpi->OwnedTempLease && !tpi->OwnedTempLease->ProtectExternal()) {
+        MessageBox_LastError();
+        return;
+    }
     IQtProcessHandle *process = nullptr;
     const HRESULT res = editMode
                             ? StartEditApplication(fs2us(tempFilePath), useEditor, GetParent(),
@@ -1065,6 +1077,10 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     // No handle never proves completion of a successful association launch.
     if (res != S_OK)
         return;
+    // The external process can now hold/write the file even if thread creation
+    // fails. Preserve it before handing the source record to the native worker.
+    tempDirectory.DisableDeleting();
+    tmpProcessInfoRelease._needDelete = false;
     tpi->Window = this;
     tpi->Parent = GetParent();
     tpi->ExternalServices = _externalFileServices;
@@ -1079,9 +1095,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     Thread_CONSTRUCT(&th) if (Thread_Create(&th, MyThreadFunction, tpi.get()) != 0) throw 271824;
     _exitEventLauncher->_threads.AddInReserved(th);
     _exitEventLauncher->_numActiveThreads++;
-    tempDirectory.DisableDeleting();
     tpi.release();
-    tmpProcessInfoRelease._needDelete = false;
 }
 
 // Native OnOpenItemChanged message body. A typed request replaces LPARAM and

@@ -31,7 +31,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
         return true;
     UStringVector messages;
     HRESULT result;
-    QTemporaryDir rollback;
+    QtOwnedTempDir rollback;
     const QString destinationArchive = panelUi_[destinationIndex].archive;
     const QString backup = rollback.filePath(QStringLiteral("archive-backup"));
     if (move && (!rollback.isValid() || !QFile::copy(destinationArchive, backup))) {

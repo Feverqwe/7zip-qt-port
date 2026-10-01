@@ -1,6 +1,7 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/AboutDialog.h"
+#include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "CPP/7zip/UI/FileManager/HelpUtils.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
@@ -205,4 +206,4 @@ void QtFileManagerCommands::AboutDialog() {
     CAboutDialog dialog(&window_);
     dialog.Create();
 }
-void QtFileManagerCommands::MyBrowseForTempFolder() { Q_UNREACHABLE(); }
+void QtFileManagerCommands::MyBrowseForTempFolder() { ::MyBrowseForTempFolder(&window_); }

@@ -8,6 +8,142 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-15.2 — owned-temp cleanup acceptance (2026-10-01)
+
+Accepted integrated cleanup and P1-15 parent: actual command/modal browser,
+ownership and native/Qt lifetime, source confirmation/cancellation/first failure,
+active child-editor protection, properties/preferences/navigation and Help/F1.
+After terminal builds, 18 affected CTest suites passed (12.43 s); unsandboxed
+check.sh passed formatting, app build and all 175 tests (66.82 s), macOS arm64
+Qt 6.11.2. Four current EN/RU 900×580/500×320 widget JSON reports were reviewed:
+all named controls remain exposed, including path/filter/footer at compact size.
+Baseline verified: 217 exact / 158 adapted / 3 local. Count 26/46; next P1-16.
+Windows/Linux runtime and rendered Windows parity remain unverified.
+
+Pinned source remains [0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Original BrowseDialog2::Reload filters OS temp names `7z[E/O/S]` plus eight hex
+digits; this establishes a naming convention, not ownership. Its OnDelete
+prefix guard/selected indices/one-or-multi confirmation/native formatters/
+delete loop/first failure/reload and MyBrowseForTempFolder are the required
+functional basis. They are now copied into mirrored BrowseDialog2.cpp/.h and
+connected through native MyLoadMenu → CApp → QtFileManagerCommands.
+BrowseDialog2.rc establishes Delete/Refresh, Parent/read-only path, list,
+disabled filter and Help/Close ordering. The native cleanup command is enabled
+when navigation is available and no modal consumer is active.
+
+Copied functional scope: CBrowseItem/CBrowseEnumerator::Enumerate and its
+200-dir/2000-file limits; native vectors and one-child aggregate; PrintProps*
+and PrintFileProps; CompareItems, sorting transitions, Reload selection/focus,
+GetParentPath/OpenParentFolder/OnItemEnter, single/multiple confirmation,
+OnDelete's native per-item removal/first-failure return/reload; context command
+IDs, ordering, selection constraints and properties; MyBrowseForTempFolder title
+and original fm/temp.htm Help topic. The shared Browse_ConvertSizeToString body
+is copied into its original BrowseDialog.cpp owner. Exact BrowseDialog2.rc/Res.h
+are vendored at the pinned revision. Qt control construction/rows live in
+qttempbrowsepresentation.cpp; public class declarations move from the original
+CPP to its header for this adapter, without a second functional implementation.
+
+Required adaptations: POSIX CEnumerator::CDirEntry + Fill_FileInfo(false),
+IsOsSymLink/GetWinAttrib/FiTime conversion services; Qt controls/messages/cursors,
+column sorting invokes the original comparator; registry lookup replaces only
+top-level naming membership. Identity/root/no-link ancestry is revalidated under
+the claimed root lease immediately before source deletion. Active/unconfirmed
+external leases deny claims. A failed PrintFileProps reload invalidates source
+selection references, so confirmation returns rather than targeting a new row.
+POSIX MyGetTempPath now uses the actual Qt/OS temp service (TMPDIR/macOS per-user
+temp), replacing upstream's explicit FIXME /tmp fallback; Win32 service remains
+unchanged. Canonical OS temp aliases are resolved for this browser boundary.
+Adjacent work/publication paths and prior roots outside current OS temp are
+excluded, even if tracked for lifecycle purposes.
+
+Qt OS association and detached self-open replace Win32 shell/process services;
+protection is persisted before launch and cleared only on launch failure.
+Completion without a waitable handle is deliberately unconfirmed. Directory
+Open Outside : 7-Zip remains disabled with a reason until P2-07 supplies a
+directory command-line consumer; current main.cpp opens archive files only.
+Omitted source scope: drives/non-temp navigation (blocked by the temp boundary),
+UNDER_CE layout, commented-out filters/path editor, Win32 shell image lists,
+Win32 drawing/message plumbing. FM ShowDots/SingleClick/FullRow/Grid use Qt
+parent rows, shared track-select hover and a paint adapter; Shell icons use
+QFileIconProvider. The dot parent stops at OS temp just like the Parent command,
+excluding the non-temp ancestor entry. Parent navigation and all six functional
+columns remain. These presentation adaptations do not
+claim pixel parity; directory new-window integration remains documented debt.
+On macOS the membership/path key accounts for composed versus decomposed
+enumeration names, while revalidating the actual root OS identity before deletion.
+This fixed an observed missing registered Unicode-file row; other platforms
+retain exact names. No ownership is inferred from Unicode-normalized names alone.
+
+The original CTempDir and CTempFile creation/filename/Remove/MoveTo bodies stay
+in mirrored Windows/FileDir.*. After source creation a narrow Core ownership
+adapter registers the OS object and holds a lease through automatic cleanup.
+Registration failure closes the output/removes the created object and returns
+an error rather than leaving an untracked success. Native naming algorithms,
+upstream types and deletion behavior remain unchanged. CTempFileInfo has a
+shared lease copied with native nested CFolderLink/CTmpProcessInfo records;
+DisableDeleting is not treated as proof of inactivity. PanelItemOpen's known
+process wait/snapshot loop clears external protection only after its handles
+finish. Unknown association/shutdown/wait-error paths retain protection.
+Successful launch disables automatic deletion before native worker creation:
+an allocation/thread failure must not delete a file already handed to a process.
+The source wait/update/decision loops otherwise remain intact.
+
+No upstream persistent ownership/lease registry exists: original temporary
+cleanup relies on filename filtering and can browse arbitrary OS temp. New
+qtownedtempregistry/identity/dir are necessary platform/lifetime glue, not a
+replacement deletion algorithm. Records use atomic QSaveFile in a private
+application cache directory (explicit private root for tests), per-object
+QLockFile with age-based expiry disabled, native device/file ID and directory
+kind, and durable unconfirmed-external protection. One generated UUID per OS
+identity prevents a second registration from bypassing an existing lock.
+ClaimForDeletion re-reads identity/protection under the lock. Links/junctions,
+malformed records and replaced objects cannot establish ownership. Windows
+identity uses source CFileBase handle information with read/write/delete sharing
+and OPEN_REPARSE_POINT; POSIX lstat supplies device/inode/type. This is a narrow
+identity service, following the existing FSFolder::ReadFileInfo platform boundary.
+
+Qt-owned hash/view/nested extract/update/rollback/volume/language directories
+use the same lease alongside QTemporaryDir automatic cleanup. Stream-to-file
+spooling retains its source CopyStream body and holds a lease with its private
+engine file. Adjacent archive staging paths are tracked for lifecycle purposes;
+the source cleanup presentation retains the OS-temp boundary and
+does not expose arbitrary filesystem deletion. Standard output/staging paths
+owned by existing backend publication remain behind ArchiveBackend.
+
+owned_temp passed1/1(0.33s), then direct external/nested/extract/update/viewer/
+language/volume consumers passed14/14(10.60s), macOS arm64 Qt6.11.2 2026-10-01.
+Additional actual child-editor/wait-error ownership and failed-registry fixtures
+passed2/2(3.33s) at the earlier registry checkpoint. The final 18-suite and full
+gate above include actual cleanup versus active child-editor fixtures. Windows/
+Linux identity/lock/runtime behavior is unverified locally.
+
+Publication adaptation: mirrored ArchiveFolderOut::CommonUpdateOperation retains
+the source MoveToOriginal / MoveArc_Finish / Before_ArcReopen / ReOpen ordering.
+Immediately after a successful physical move, QtArchiveFileResource transfers
+the native CTempFile lease to its existing private spool destination. CTempFile
+and CWorkDirTempFile expose only that lease; their move algorithms are unchanged.
+For the same OS object the held identity lock and record are relocated; a
+successful cross-volume copy registers the new object only at the already owned
+private spool. Ordinary user archives return without registration. A stale
+replaced-object record is pruned when its last lease dies. Ownership-adapter errors
+retain source reopening and callback-error priority; a cancelled Finish after a
+successful move still follows the ownership transfer. This is narrow integration
+glue, not a replacement publication algorithm.
+
+owned_temp_publication checks native CWorkDirTempFile publication for private
+spools versus user archives, and actual CAgentFolder::CommonUpdateOperation
+rename/reopen with a private spooled ZIP on success, engine failure and cancellation.
+It observes changed identity, retained active lock, denied cleanup claim, original
+user bytes and final spool removal. Passed1/1(0.67s), macOS arm64 Qt6.11.2.
+Actual cross-volume IO and late MoveArc_Finish cancellation are not exercised by
+these fixtures; failed physical moves do not register an unproven destination.
+temp_cleanup additionally checks Yes/No/Cancel through actual message-box buttons,
+Unicode/spaced file and directory deletion, unowned names, link navigation,
+active/unconfirmed entries, replaced second-object identity stopping multi-delete,
+refresh selection, context IDs/properties and source FM view preferences. OS launch
+is intercepted for the SingleClick fixture. main_shell checks actual modal command/
+Escape, and archive_external_lifetime opens cleanup during a real child editor.
+
 ## P1-15.1 — Help/About/current context acceptance (2026-10-01)
 
 Accepted integrated scope: native Contents/F1, source About/version/license,

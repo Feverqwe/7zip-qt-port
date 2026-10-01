@@ -11,8 +11,24 @@ their context topics. Qt help services in sevenzip_panel render bundled original
 HTML/CSS with internal navigation; explicit web clicks use QDesktopServices.
 Native AboutDialog owns source version/date/homepage dispatch; Qt supplies its
 modal controls and the separate CMake application-version/license presentation.
-Main Help/About still enter through CApp/MyLoadMenu capability routing. Cleanup
-is disabled until the separate source BrowseDialog2/owned-temp lifetime port.
+Main Help/About and Delete Temporary Files enter through CApp/MyLoadMenu
+capability routing; cleanup is modal and available while navigation is allowed.
+
+Core qtownedtempregistry owns creation records and active-session
+leases, including durable protection for unconfirmed external lifetimes. Native
+FileDir temp owners and copied CTempFileInfo/nested/process records retain those
+leases; Qt temp/spool services use the same owner. The registry offers an inactive
+object claim with identity revalidation; it does not implement deletion. Native
+BrowseDialog2 owns native enumeration, aggregate/props/sort/navigation and
+confirmation/per-item deletion/first-failure behavior. Qt presentation renders
+its controls and columns; claims protect owned roots including nested navigation.
+FM ShowDots/SingleClick/FullRow/Grid are projected into the tree and paint adapter;
+QtFileListHover has one shared implementation in sevenzip_panel for both views.
+When source CommonUpdateOperation publishes over a private stream spool,
+QtArchiveFileResource retains the replacement CTempFile lease after the native
+move, before Finish/reopen. The held same-object record follows the move; a
+cross-volume copy gets a new identity record only for an already owned spool.
+Publication of user archives never grants cleanup ownership.
 
 Native CApp::ExecuteCommand is the common entry for current menus, toolbar,
 shared context actions, panel activation and keyboard commands. MyLoadMenu owns

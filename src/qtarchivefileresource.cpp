@@ -8,6 +8,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "qtarchivedeleteinputs.h"
+#include "qtownedtempregistry.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -34,6 +35,28 @@ QtArchiveFileResource::~QtArchiveFileResource() {
 
 HRESULT QtArchiveFileResource::ApplyOutputMTime(CWorkDirTempFile &file) const {
     return _outputMTime ? file.SetMTime(*_outputMTime) : S_OK;
+}
+
+HRESULT QtArchiveFileResource::AdoptPublishedOwnedTemp(const CWorkDirTempFile &file) {
+    // A user archive is never registered by publication. Only a private spool
+    // already owned by this resource can receive the successfully moved object.
+    if (_temporary.isEmpty())
+        return S_OK;
+    const QString destination = QString::fromWCharArray(fs2us(file.Get_OriginalFilePath()).Ptr());
+    if (QDir::cleanPath(destination) != QDir::cleanPath(_temporary) || !file.OwnedLease())
+        return E_INVALIDARG;
+    auto replacement = file.OwnedLease();
+    if (replacement->MatchesObjectAt(_temporary)) {
+        if (!replacement->RelocateAfterMove(_temporary))
+            return E_FAIL;
+    } else {
+        // Cross-volume source moves can copy into a different OS file object.
+        replacement = QtOwnedTempRegistry().RegisterCreated(_temporary);
+        if (!replacement)
+            return E_FAIL;
+    }
+    _temporaryLease = std::move(replacement);
+    return S_OK;
 }
 
 void QtArchiveFileResource::CaptureOutputMTime(const CFiTime &time, bool defined) {
@@ -133,6 +156,9 @@ HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {
         return E_FAIL;
     const QString path = temporary.fileName();
     temporary.close();
+    auto lease = QtOwnedTempRegistry().RegisterCreated(path);
+    if (!lease)
+        return E_FAIL;
     auto *outputSpec = new COutFileStream;
     CMyComPtr<ISequentialOutStream> output = outputSpec;
     if (!outputSpec->Open_EXISTING(us2fs(path.toStdWString().c_str())))
@@ -142,6 +168,7 @@ HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {
     RINOK(NCompress::CopyStream(stream, output, copyProgress))
     RINOK(outputSpec->Close())
     _temporary = path;
+    _temporaryLease = std::move(lease);
     EnginePath = path;
     temporary.setAutoRemove(false);
     return S_OK;

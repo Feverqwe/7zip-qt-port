@@ -108,6 +108,7 @@ void QtFileManagerCommands::AttachViewActions() {
     Bind(w.settingsAction_, IDM_OPTIONS);
     Bind(w.findChild<QAction *>("helpContentsAction"), IDM_HELP_CONTENTS);
     Bind(w.findChild<QAction *>("aboutAction"), IDM_ABOUT);
+    Bind(w.findChild<QAction *>("tempDirAction"), IDM_TEMP_DIR);
     actions_[IDM_VIEW_FLAT_VIEW].append(w.flatView_);
     QObject::disconnect(w.flatView_, &QAction::toggled, &w, nullptr);
     QObject::connect(w.flatView_, &QAction::toggled, &w, [this](bool checked) {
@@ -201,6 +202,7 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     const bool navigating = !w.app_.QtOperations().blocking();
     availability[IDM_HELP_CONTENTS] = navigating && !QApplication::activeModalWidget();
     availability[IDM_ABOUT] = availability[IDM_HELP_CONTENTS];
+    availability[IDM_TEMP_DIR] = availability[IDM_HELP_CONTENTS];
     auto &panel = w.app_.GetFocusedPanel();
     const bool hasFolder = panel.GetFolder() != nullptr;
     availability[Journal] = !w.journalMessages_.IsEmpty();

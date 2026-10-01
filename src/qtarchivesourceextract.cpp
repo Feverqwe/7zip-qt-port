@@ -9,8 +9,8 @@
 #include "archivebackend.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
+#include "qtownedtempdir.h"
 #include <QFileInfo>
-#include <QTemporaryDir>
 
 namespace {
 class CExtractStreamProgress final : public ICompressProgressInfo, public CMyUnknownImp {
@@ -67,7 +67,7 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
     }
     RINOK(callback->SetTotal(unpacked))
     UInt64 completed = 0;
-    QTemporaryDir staging;
+    QtOwnedTempDir staging;
     if (!staging.isValid())
         return E_FAIL;
     const Int32 mode =

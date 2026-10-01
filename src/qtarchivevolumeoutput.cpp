@@ -5,11 +5,11 @@
 #include "Common/StringConvert.h"
 #include "Windows/FileFind.h"
 #include "qtlanguageservices.h"
+#include "qtownedtempdir.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QMutexLocker>
-#include <QTemporaryDir>
 
 namespace {
 class CVolumeProgress final : public ICompressProgressInfo, public CMyUnknownImp {
@@ -53,7 +53,7 @@ HRESULT QtArchiveVolumeOutput::checkpoint() {
 HRESULT QtArchiveVolumeOutput::createVolumes() {
     RINOK(checkpoint())
     const QFileInfo target(target_);
-    QTemporaryDir stage(target.absolutePath() + "/.sevenzip-volumes-XXXXXX");
+    QtOwnedTempDir stage(target.absolutePath() + "/.sevenzip-volumes-XXXXXX");
     if (!stage.isValid())
         return E_FAIL;
     const QString prefix = stage.filePath(target.fileName() + '.');
