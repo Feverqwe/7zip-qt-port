@@ -36,7 +36,11 @@ void navigate(MainWindow &window, const QString &path) {
 class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString("-"), settings);
+    }
 
     void editorPageApplyCancelAndGeometry() {
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -48,12 +52,12 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             QVERIFY(!applyButton->isEnabled());
             auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
             QCOMPARE(pages->count(), 6);
-            QCOMPARE(pages->tabText(3), QString("Редактор"));
+            QCOMPARE(pages->tabText(3), QString("Editor"));
             QCOMPARE(pages->widget(3)->property("sourcePageID").toUInt(), 2103u);
             QVERIFY(pages->isTabEnabled(2) && pages->isTabEnabled(3) && pages->isTabEnabled(4));
             QVERIFY(pages->isTabEnabled(1));
-            for (int index : {0, 5})
-                QVERIFY(!pages->isTabEnabled(index));
+            QVERIFY(!pages->isTabEnabled(0));
+            QVERIFY(pages->isTabEnabled(5));
             pages->setCurrentIndex(3);
             dialog.findChild<QLineEdit *>("viewerCommand")->setText("new viewer");
             dialog.findChild<QLineEdit *>("editorCommand")->setText("editor --edit");

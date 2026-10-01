@@ -468,7 +468,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "copyAction")->trigger();
-        QVERIFY(copyInfo.startsWith("Файлов: 1    ( 8 байт )\n\n"));
+        QVERIFY(copyInfo.startsWith("Files: 1    ( 8 bytes )\n\n"));
         QVERIFY(copyInfo.contains(temp.path() + '/'));
         QVERIFY(copyInfo.endsWith(QStringLiteral("  имя с пробелом.txt")));
         const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
@@ -1262,7 +1262,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             action(window, "moveAction")->trigger();
         };
         submit();
-        QVERIFY(moveInfo.startsWith("Папок: 1    ( 4 байт )\n\n"));
+        QVERIFY(moveInfo.startsWith("Folders: 1    ( 4 bytes )\n\n"));
         QVERIFY(moveInfo.endsWith(QStringLiteral("  папка/")));
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("папка/файл с пробелом.txt")}));
@@ -1644,7 +1644,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                                 auto *close = progress
                                                   ? progress->findChild<QPushButton *>("IDCANCEL")
                                                   : nullptr;
-                                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                                if (close && close->text().contains(QStringLiteral("Close")))
                                     close->click();
                             });
                         }
@@ -1654,7 +1654,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
             auto *progress = window.findChild<QDialog *>("progressDialog");
             auto *close = progress ? progress->findChild<QPushButton *>("IDCANCEL") : nullptr;
-            if (close && close->text().contains(QStringLiteral("Закрыть"))) {
+            if (close && close->text().contains(QStringLiteral("Close"))) {
                 sawFailure = true;
                 if (!closeScheduled) {
                     closeScheduled = true;
@@ -1662,7 +1662,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                         auto *progress = window.findChild<QDialog *>("progressDialog");
                         auto *close =
                             progress ? progress->findChild<QPushButton *>("IDCANCEL") : nullptr;
-                        if (close && close->text().contains(QStringLiteral("Закрыть")))
+                        if (close && close->text().contains(QStringLiteral("Close")))
                             close->click();
                     });
                 }

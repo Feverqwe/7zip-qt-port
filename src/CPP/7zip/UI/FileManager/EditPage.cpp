@@ -6,6 +6,7 @@
 #include "BrowseDialog.h"
 #include "Panel.h"
 #include "RegistryUtils.h"
+#include "qtlangcontrols.h"
 #include <QGridLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -15,22 +16,25 @@ CEditPage::CEditPage(const QString &settingsPath, QWidget *parent)
     : QWidget(parent), _settingsPath(settingsPath) {
     setObjectName("editorPage");
     auto *layout = new QGridLayout(this);
-    const QString labels[] = {"&Просмотр:", "&Редактор:", "&Сравнение:"};
+    const QString labels[] = {"&View", "&Editor:", "&Diff:"};
+    const unsigned labelIDs[] = {IDT_EDIT_VIEWER, IDT_EDIT_EDITOR, IDT_EDIT_DIFF};
     const char *names[] = {"viewerCommand", "editorCommand", "diffCommand"};
     const unsigned edits[] = {IDE_EDIT_VIEWER, IDE_EDIT_EDITOR, IDE_EDIT_DIFF};
     const unsigned buttons[] = {IDB_EDIT_VIEWER, IDB_EDIT_EDITOR, IDB_EDIT_DIFF};
     for (unsigned i = 0; i < 3; ++i) {
         auto *label = new QLabel(labels[i], this);
+        label->setProperty("languageColon", i == 0);
+        QtBindLangText(label, labelIDs[i], labels[i]);
         auto &c = _ctrls[i];
         c.Ctrl = edits[i];
         c.Button = buttons[i];
         c.Edit = new QLineEdit(this);
         c.Edit->setObjectName(names[i]);
-        c.Edit->setAccessibleName(labels[i].mid(1));
+        QtBindLangText(c.Edit, labelIDs[i], labels[i], true);
         label->setBuddy(c.Edit);
         auto *browse = new QPushButton("…", this);
         browse->setObjectName(QString(names[i]) + "Browse");
-        browse->setAccessibleName(QString("Выбрать приложение: %1").arg(labels[i].mid(1)));
+        QtBindLangText(browse, labelIDs[i], labels[i], true);
         browse->setFixedWidth(browse->sizeHint().height() * 2);
         layout->addWidget(label, int(i) * 2, 0, 1, 2);
         layout->addWidget(c.Edit, int(i) * 2 + 1, 0);
@@ -85,9 +89,9 @@ static void Edit_BrowseForFile(QLineEdit &edit, QWidget *hwnd) {
     bi.FilePath = ToQString(prg);
     bi.Owner = hwnd;
 #ifdef Q_OS_WIN
-    bi.Filters = "Приложения (*.exe);;Все файлы (*)";
+    bi.Filters = "*.exe (*.exe)";
 #else
-    bi.Filters = "Приложения (*)";
+    bi.Filters = "* (*)";
 #endif
     if (bi.BrowseForFile()) {
         cmd = ToUString(bi.FilePath);

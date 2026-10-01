@@ -154,7 +154,7 @@ class ProgressCancelTests : public QObject {
         QVERIFY(promptPaused);
         QVERIFY(restored);
         QVERIFY(geometry);
-        QCOMPARE(promptText, QStringLiteral("Отменить операцию?"));
+        QCOMPARE(promptText, QStringLiteral("Are you sure you want to cancel?"));
         QCOMPARE(worker.Sync.Get_Stopped(), answer == int(QMessageBox::Yes));
         QCOMPARE(worker.Result, answer == int(QMessageBox::Yes) ? E_ABORT : S_OK);
         QCOMPARE(worker.GuiFinishes, 1u);

@@ -127,8 +127,8 @@ class VolumeDialogTests : public QObject {
         for (int i = 1; i <= count; ++i)
             combiner.Names << QStringLiteral("часть с пробелом.%1").arg(i, 3, 10, QLatin1Char('0'));
         const QString info = combiner.GetInfo();
-        QVERIFY(info.contains(QStringLiteral("Файлов: %1").arg(count)));
-        QVERIFY(info.contains("1 234 байт"));
+        QVERIFY(info.contains(QStringLiteral("Files: %1").arg(count)));
+        QVERIFY(info.contains("1 234 bytes"));
         QVERIFY(info.contains("\n/parts/"));
         QVERIFY(info.contains(combiner.Names.first()));
         QVERIFY(info.contains(combiner.Names[1]));

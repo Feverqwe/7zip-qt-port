@@ -90,7 +90,7 @@ class NestedUpdateTests final : public QObject {
             if (auto *progress =
                     dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();
             }
         });

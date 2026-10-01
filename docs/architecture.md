@@ -480,8 +480,8 @@ Address signals are disconnected before window teardown.
 ## Dialogs and preferences
 
 `QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the partial native
-six-page property sheet. Folders, Editor, Settings and 7-Zip are available; System
-and Language remain disabled. CMenuPage preserves source list/state/apply bodies;
+six-page property sheet. Folders, Editor, Settings, 7-Zip and Language are available;
+System remains disabled. CMenuPage preserves source list/state/apply bodies;
 only Zone propagation has a current consumer, through PanelCopy, Agent and the
 Windows ArchiveExtractCallback. Shell controls are disabled until P2-09 ports
 QueryContextMenu and registration. They do not alter the FM File/context menu.
@@ -497,6 +497,15 @@ and source RefreshAllPanels immediately and supplies
 filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies the
 current operated indices to its bound `CPanel::Properties`, which owns enumeration
 and totals through the source folder interface.
+CLangPage owns the source language list/info/apply state. LangUtils is the native
+CLang lookup/reload owner, with source registry helpers on the explicit FM INI
+adapter. Immutable English fallback comes from source STRINGTABLE/en.ttt; bundled
+assets use pinned official release provenance and native-file staging. Qt text
+bindings and mainwindow_language.cpp supply presentation updates only, retaining
+existing QAction objects, editable fields, table rows and column state. Successful
+Language Apply sends Qt LanguageChange before the existing list-settings callback;
+invalid Settings input keeps the language pending. Other forms and local Qt
+messages remain P1-14.2; this does not establish whole-app localization acceptance.
 `CListViewDialog` presents the result through the shared Qt list adapter;
 the dialog never reads the file table or backend itself.
 `CListViewDialog` reads CFmSettings for single-click activation and delegates

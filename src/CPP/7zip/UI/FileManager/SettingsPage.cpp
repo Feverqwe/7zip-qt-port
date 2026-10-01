@@ -3,10 +3,13 @@
 // Qt replaces property-page controls; source state/apply/RAM calculation retained.
 #include "SettingsPage.h"
 #include "../Common/ZipRegistry.h"
+#include "7zip/UI/FileManager/SettingsPageRes.h"
 #include "Common/IntToString.h"
 #include "Common/StringToInt.h"
 #include "Panel.h"
+#include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtlangcontrols.h"
 #include "qtmemorylimitspin.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
@@ -20,28 +23,37 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
     setObjectName(embedded ? "settingsPage" : "settingsDialog");
     if (embedded)
         setWindowFlags(Qt::Widget);
-    setWindowTitle("Настройки");
+    QtBindLangText(this, IDD_SETTINGS, "Settings");
     auto *layout = new QVBoxLayout(this);
-    _showDots = new QCheckBox(QStringLiteral("Показывать элемент «..»"), this);
+    _showDots = new QCheckBox(this);
+    QtBindLangText(_showDots, IDX_SETTINGS_SHOW_DOTS, "Show \"..\" item");
     _showDots->setObjectName(QStringLiteral("showDotsOption"));
-    _showRealFileIcons = new QCheckBox("Показывать системные значки файлов", this);
+    _showRealFileIcons = new QCheckBox(this);
+    QtBindLangText(_showRealFileIcons, IDX_SETTINGS_SHOW_REAL_FILE_ICONS, "Show real file &icons");
     _showRealFileIcons->setObjectName("realFileIconsOption");
-    _fullRow = new QCheckBox(QStringLiteral("Выделять всю строку"), this);
+    _fullRow = new QCheckBox(this);
+    QtBindLangText(_fullRow, IDX_SETTINGS_FULL_ROW, "&Full row select");
     _fullRow->setObjectName(QStringLiteral("fullRowOption"));
-    _showGrid = new QCheckBox("Показывать линии сетки", this);
+    _showGrid = new QCheckBox(this);
+    QtBindLangText(_showGrid, IDX_SETTINGS_SHOW_GRID, "Show &grid lines");
     _showGrid->setObjectName("gridOption");
-    _singleClick = new QCheckBox("Открывать одним щелчком", this);
+    _singleClick = new QCheckBox(this);
+    QtBindLangText(_singleClick, IDX_SETTINGS_SINGLE_CLICK, "&Single-click to open an item");
     _singleClick->setObjectName("singleClickOption");
-    _alternativeSelection = new QCheckBox(QStringLiteral("Альтернативное выделение"), this);
+    _alternativeSelection = new QCheckBox(this);
+    QtBindLangText(_alternativeSelection, IDX_SETTINGS_ALTERNATIVE_SELECTION,
+                   "&Alternative selection mode");
     _alternativeSelection->setObjectName(QStringLiteral("alternativeSelectionOption"));
-    _showSystemMenu = new QCheckBox(QStringLiteral("Показывать системное меню"), this);
+    _showSystemMenu = new QCheckBox(this);
+    QtBindLangText(_showSystemMenu, IDX_SETTINGS_SHOW_SYSTEM_MENU, "Show system &menu");
     _showSystemMenu->setObjectName(QStringLiteral("showSystemMenuOption"));
     for (auto *control : {_showDots, _showRealFileIcons, _fullRow, _showGrid, _singleClick,
                           _alternativeSelection, _showSystemMenu}) {
         layout->addWidget(control);
         connect(control, &QCheckBox::toggled, this, &CSettingsPage::OnButtonClicked);
     }
-    _largePages = new QCheckBox("Использовать большие страницы памяти", this);
+    _largePages = new QCheckBox(this);
+    QtBindLangText(_largePages, IDX_SETTINGS_LARGE_PAGES, "Use &large memory pages");
     _largePages->setObjectName("largePagesOption");
     layout->addWidget(_largePages);
     connect(_largePages, &QCheckBox::toggled, this, [this] {
@@ -50,17 +62,19 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
             Changed();
         }
     });
-    auto *memoryLabel = new QLabel("Максимальный объём RAM для распаковки архивов:", this);
+    auto *memoryLabel = new QLabel(this);
+    QtBindLangText(memoryLabel, IDT_MEM_USAGE_EXTRACT,
+                   "Maximum amount of RAM memory usage allowed to unpack archives:");
     memoryLabel->setObjectName("extractMemoryLabel");
     memoryLabel->setWordWrap(true);
     layout->addWidget(memoryLabel);
     auto *memoryRow = new QHBoxLayout;
     _memSet = new QCheckBox(":", this);
     _memSet->setObjectName("extractMemorySet");
-    _memSet->setAccessibleName("Ограничить память для распаковки");
+    QtBindLangText(_memSet, IDT_MEM_USAGE_EXTRACT, {}, true);
     _memSpin = new QtMemoryLimitSpin(this);
     _memSpin->setObjectName("extractMemorySpin");
-    _memSpin->setAccessibleName("Максимальный объём памяти в ГБ");
+    QtBindLangText(_memSpin, IDT_MEM_USAGE_EXTRACT, {}, true);
     _memSpin->setFixedWidth(90);
     setFocusProxy(_memSpin);
     auto *ramLabel = new QLabel(this);
@@ -189,7 +203,8 @@ long CSettingsPage::OnApply() {
             const wchar_t *end;
             val = ConvertStringToUInt32(s.Ptr(), &end);
             if (s.IsEmpty() || *end != 0 || val > (1u << 30)) {
-                QMessageBox::warning(this, "Sevenzip Desktop", "Некорректное значение памяти.");
+                QMessageBox::warning(this, "Sevenzip Desktop",
+                                     ToQString(NWindows::NError::MyFormatMessage(E_INVALIDARG)));
                 _memSpin->setFocus();
                 return 1; // PSNRET_INVALID: keep the property sheet open.
             }

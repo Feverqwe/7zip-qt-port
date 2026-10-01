@@ -6,6 +6,7 @@
 #include "BrowseDialog.h"
 #include "Common/StringConvert.h"
 #include "Panel.h"
+#include "qtlangcontrols.h"
 #include <QButtonGroup>
 #include <QCheckBox>
 #include <QGridLayout>
@@ -22,27 +23,32 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
     : QWidget(parent), _settingsPath(settingsPath) {
     setObjectName("foldersPage");
     auto *layout = new QGridLayout(this);
-    layout->addWidget(new QLabel("Рабочая папка", this), 0, 0, 1, 2);
+    auto *workingLabel = new QLabel(this);
+    QtBindLangText(workingLabel, IDT_FOLDERS_WORKING_FOLDER, "&Working folder");
+    layout->addWidget(workingLabel, 0, 0, 1, 2);
     _workModes = new QButtonGroup(this);
-    const QString labels[] = {"Системная &временная папка", "&Текущая папка", "&Указанная папка:"};
+    const QString labels[] = {"&System temp folder", "&Current", "Specified:"};
     const char *names[] = {"workSystem", "workCurrent", "workSpecified"};
     for (unsigned i = 0; i < kNumWorkModeButtons; ++i) {
         auto *button = new QRadioButton(labels[i], this);
         button->setObjectName(names[i]);
         button->setProperty("sourceControlID", kWorkModeButtons[i]);
+        QtBindLangText(button, kWorkModeButtons[i], labels[i]);
         _workModes->addButton(button, int(kWorkModeButtons[i]));
         layout->addWidget(button, int(i) + 1, 0, 1, 2);
     }
     m_WorkPath = new QLineEdit(this);
+    workingLabel->setBuddy(_workModes->button(IDR_FOLDERS_WORK_SYSTEM));
     m_WorkPath->setObjectName("workPath");
-    m_WorkPath->setAccessibleName("Указанная рабочая папка");
+    QtBindLangText(m_WorkPath, IDR_FOLDERS_WORK_SPECIFIED, "Specified working folder", true);
     _workBrowse = new QPushButton("…", this);
     _workBrowse->setObjectName("workPathBrowse");
-    _workBrowse->setAccessibleName("Выбрать рабочую папку");
+    QtBindLangText(_workBrowse, IDT_FOLDERS_WORKING_FOLDER, "Working folder", true);
     _workBrowse->setFixedWidth(_workBrowse->sizeHint().height() * 2);
     layout->addWidget(m_WorkPath, 4, 0);
     layout->addWidget(_workBrowse, 4, 1);
-    _forRemovable = new QCheckBox("Только для сменных носителей", this);
+    _forRemovable = new QCheckBox(this);
+    QtBindLangText(_forRemovable, IDX_FOLDERS_WORK_FOR_REMOVABLE, "Use for removable drives only");
     _forRemovable->setObjectName("workRemovableOnly");
 #ifndef _WIN32
     // Existing source WorkDir drive-type branch is Windows-only. Keep its value
@@ -124,7 +130,7 @@ bool CFoldersPage::OnButtonClicked(unsigned buttonID) {
 
 void CFoldersPage::OnFoldersWorkButtonPath() {
     QString currentPath = m_WorkPath->text();
-    QString title = "Выберите папку для временных файлов архива.";
+    QString title = QtLangText(IDS_FOLDERS_SET_WORK_PATH_TITLE);
     QString resultPath;
     if (MyBrowseForFolder(this, title, currentPath, resultPath))
         m_WorkPath->setText(resultPath);

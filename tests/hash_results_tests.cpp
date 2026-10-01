@@ -54,7 +54,7 @@ class HashResultsTests final : public QObject {
                 valid = list && buttons && list->columnCount() == 2 &&
                         list->topLevelItemCount() == int(pairs.Size()) &&
                         list->selectedItems().isEmpty() && dialog->DeleteIsAllowed &&
-                        dialog->windowTitle() == QStringLiteral("Контрольные суммы");
+                        dialog->windowTitle() == QStringLiteral("Checksum information");
                 if (list && buttons) {
                     details +=
                         QString(

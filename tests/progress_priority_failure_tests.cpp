@@ -86,8 +86,8 @@ class ProgressPriorityFailureTests : public QObject {
         QCOMPARE(Line(child.process), QByteArray("ready 1"));
         const UInt32 pid = UInt32(child.process.processId());
         QCOMPARE(NProcessPriority::SetBackground(pid, true), S_OK);
-        QCOMPARE(Click(child.process), QStringLiteral("0\t1\t0\t0\tНа &передний план").toUtf8());
-        QCOMPARE(Click(child.process), QStringLiteral("0\t1\t1\t1\tНа &передний план").toUtf8());
+        QCOMPARE(Click(child.process), QStringLiteral("0\t1\t0\t0\t&Foreground").toUtf8());
+        QCOMPARE(Click(child.process), QStringLiteral("0\t1\t1\t1\t&Foreground").toUtf8());
         bool nativeBackground = false;
         QCOMPARE(NProcessPriority::GetBackground(pid, nativeBackground), S_OK);
         QVERIFY(nativeBackground);

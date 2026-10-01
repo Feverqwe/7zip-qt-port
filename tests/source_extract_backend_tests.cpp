@@ -380,7 +380,7 @@ class SourceExtractBackendTests final : public QObject {
                 auto *close = progress && progress->objectName() == "progressDialog"
                                   ? progress->findChild<QPushButton *>("IDCANCEL")
                                   : nullptr;
-                if (close && close->text().contains(QStringLiteral("Закрыть")) && !closeScheduled) {
+                if (close && close->text().contains(QStringLiteral("Close")) && !closeScheduled) {
                     closeScheduled = true;
                     QTimer::singleShot(50, progress, [close] { close->click(); });
                 }

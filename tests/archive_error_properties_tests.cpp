@@ -54,23 +54,25 @@ class ArchiveErrorPropertiesTests : public QObject {
     void messagesPreserveSourceOrderAndEncryptedHeaderHint() {
         QVERIFY(GetOpenArcErrorMessage(0).IsEmpty());
         QCOMPARE(Message(kpv_ErrorFlags_EncryptedHeadersError),
-                 QStringLiteral("Ошибка заголовков : Неверный пароль?"));
+                 QStringLiteral("Headers Error : Wrong password?"));
         QCOMPARE(Message(kpv_ErrorFlags_CrcError | kpv_ErrorFlags_HeadersError),
-                 QStringLiteral("Ошибка заголовков\nОшибка CRC"));
-        QCOMPARE(Message(0x7FF),
-                 QStringLiteral("Не является архивом\nОшибка заголовков\n"
-                                "Ошибка заголовков : Неверный пароль?\n"
-                                "Недоступно начало архива\nНачало архива не подтверждено\n"
-                                "Неожиданный конец данных\nЕсть данные после конца содержимого\n"
-                                "Неподдерживаемый метод сжатия\nНеподдерживаемая функция\n"
-                                "Ошибка данных\nОшибка CRC"));
+                 QStringLiteral("Headers Error\nCRC failed"));
+        QCOMPARE(
+            Message(0x7FF),
+            QStringLiteral(
+                "Is not archive\nHeaders Error\n"
+                "Headers Error : Wrong password?\n"
+                "Unavailable start of archive\nUnconfirmed start of archive\n"
+                "Unexpected end of data\nThere are some data after the end of the payload data\n"
+                "Unsupported compression method\nUnsupported feature\n"
+                "Data error\nCRC failed"));
     }
 
     void unknownBitsSurviveAfterLocalizedMessages() {
         QCOMPARE(Message(0x80000000), QString("0x80000000"));
         QCOMPARE(Message(0xA0000000 | kpv_ErrorFlags_DataError),
-                 QStringLiteral("Ошибка данных\n0xA0000000"));
-        QVERIFY(Message(0xFFFFFFFF).endsWith("Ошибка CRC\n0xFFFFF800"));
+                 QStringLiteral("Data error\n0xA0000000"));
+        QVERIFY(Message(0xFFFFFFFF).endsWith("CRC failed\n0xFFFFF800"));
         // Even though resource 3710 exists, external property ID 2710 must
         // bypass the builtin-resource path (the source cutoff is 1000).
         QCOMPARE(QString::fromWCharArray(GetNameOfProperty(2710, nullptr)), QString("2710"));

@@ -61,7 +61,7 @@
       "reports": ["archive-progress-760-controls-close.json", "archive-progress-640-controls-close.json"],
       "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnExternalCloseMessage", "requirement": "Native transport failures retain source errors and Close; percent-only transport does not invent byte totals."}],
       "assert": [
-        {"id": "IDCANCEL", "property": "text", "equals": "&Закрыть"},
+        {"id": "IDCANCEL", "property": "text", "equals": "&Close"},
         {"id": "IDCANCEL", "property": "fullyVisible", "equals": true},
         {"id": "IDB_PAUSE", "property": "visible", "equals": false},
         {"id": "IDB_PROGRESS_BACKGROUND", "property": "visible", "equals": false},
@@ -74,7 +74,7 @@
       "reports": ["progress-worker-760-errors-close.json", "progress-worker-640-errors-close.json"],
       "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnExternalCloseMessage", "requirement": "Finished errors remain visible until the default Close button is acknowledged; Pause and Background are hidden."}],
       "assert": [
-        {"id": "IDCANCEL", "property": "text", "equals": "&Закрыть"},
+        {"id": "IDCANCEL", "property": "text", "equals": "&Close"},
         {"id": "IDCANCEL", "property": "enabled", "equals": true},
         {"id": "IDCANCEL", "property": "fullyVisible", "equals": true},
         {"id": "IDB_PAUSE", "property": "visible", "equals": false},
@@ -89,7 +89,7 @@
       "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnPriorityButton", "requirement": "Background toggle updates native policy, caption and title; original default button preserved."}],
       "assert": [
         {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": true},
-        {"id": "IDB_PROGRESS_BACKGROUND", "property": "text", "equals": "На &передний план"},
+        {"id": "IDB_PROGRESS_BACKGROUND", "property": "text", "equals": "&Foreground"},
         {"id": "IDB_PROGRESS_BACKGROUND", "property": "fullyVisible", "equals": true}
       ]
     },
@@ -158,7 +158,7 @@
       "reports": ["progress-dialog-760-1-0-paused.json", "progress-dialog-640-1-0-paused.json", "progress-dialog-760-1-1-paused.json", "progress-dialog-640-1-1-paused.json", "progress-dialog-760-0-0-paused.json", "progress-dialog-640-0-0-paused.json", "progress-dialog-760-0-1-paused.json", "progress-dialog-640-0-1-paused.json"],
       "evidence": [{"source": "CPP/7zip/UI/FileManager/ProgressDialog2.cpp", "symbol": "CProgressDialog::OnPauseButton", "requirement": "Pause sets native state and replaces caption with Continue, preserving geometry."}],
       "assert": [
-        {"id": "IDB_PAUSE", "property": "text", "equals": "&Продолжить"},
+        {"id": "IDB_PAUSE", "property": "text", "equals": "&Continue"},
         {"id": "IDB_PAUSE", "property": "fullyVisible", "equals": true},
         {"id": "IDB_PROGRESS_BACKGROUND", "property": "enabled", "equals": true},
         {"id": "IDCANCEL", "property": "enabled", "equals": true}

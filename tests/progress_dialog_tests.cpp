@@ -169,8 +169,8 @@ class ProgressDialogTests : public QObject {
         const QString elapsed = text(dialog, "IDT_PROGRESS_ELAPSED_VAL");
         pause(dialog)->click();
         QVERIFY(dialog.Sync.Get_Paused());
-        QCOMPARE(pause(dialog)->text(), QStringLiteral("&Продолжить"));
-        QVERIFY(dialog.windowTitle().startsWith(QStringLiteral("Приостановлено 25% ")));
+        QCOMPARE(pause(dialog)->text(), QStringLiteral("&Continue"));
+        QVERIFY(dialog.windowTitle().startsWith(QStringLiteral("Paused 25% ")));
         dialog.Sync.Set_Status(L"Пока приостановлено");
         // Counter setters that wait on pause belong to the worker; status does not wait.
         QTest::qWait(1100);
@@ -286,9 +286,9 @@ class ProgressDialogTests : public QObject {
         QCOMPARE(dialog.findChild<QLabel *>("IDT_PROGRESS_RATIO")->isVisible(), compression);
         QCOMPARE(dialog.findChild<QLabel *>("IDT_PROGRESS_ERRORS")->isVisible(), errors);
         pause(dialog)->click();
-        QCOMPARE(pause(dialog)->text(), QStringLiteral("&Продолжить"));
+        QCOMPARE(pause(dialog)->text(), QStringLiteral("&Continue"));
         QVERIFY(pause(dialog)->sizeHint().width() <= pause(dialog)->width());
-        QVERIFY(dialog.windowTitle().startsWith(QStringLiteral("Приостановлено ")));
+        QVERIFY(dialog.windowTitle().startsWith(QStringLiteral("Paused ")));
         QVERIFY(UiInspection::writeReport(dialog, tag + "-paused"));
     }
 };

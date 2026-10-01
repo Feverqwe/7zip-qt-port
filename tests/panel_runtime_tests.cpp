@@ -73,10 +73,10 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
             dialog->reject();
         });
         action(window, "moveAction")->trigger();
-        const QString expected = flat ? QStringLiteral("Папок: 1\nФайлов: 1    ( 7 байт )\n\n")
-                                      : QStringLiteral("Папок: 1    ( 11 байт )\n"
-                                                       "Файлов: 1    ( 7 байт )\n"
-                                                       "Размер: 18 байт\n\n");
+        const QString expected = flat ? QStringLiteral("Folders: 1\nFiles: 1    ( 7 bytes )\n\n")
+                                      : QStringLiteral("Folders: 1    ( 11 bytes )\n"
+                                                       "Files: 1    ( 7 bytes )\n"
+                                                       "Size: 18 bytes\n\n");
         QVERIFY2(summary.startsWith(expected), qPrintable(summary));
         QVERIFY(summary.contains("source-summary.zip/"));
         QVERIFY(summary.contains("  " + directory + '/'));
@@ -91,7 +91,7 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
             dialog->reject();
         });
         action(window, "moveAction")->trigger();
-        QVERIFY2(summary.startsWith("Файлов: 1\n\n"), qPrintable(summary));
+        QVERIFY2(summary.startsWith("Files: 1\n\n"), qPrintable(summary));
         QCOMPARE(backend.extractCalls, 0);
         action(window, "flatViewAction")->setChecked(false);
     }

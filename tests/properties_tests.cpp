@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtlocationfolder.h"
@@ -31,7 +32,12 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString("ru"), settings);
+        ReloadLang(settings);
+    }
     void selectedFilesAndFolderShowSummary() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
@@ -59,7 +65,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(value(*dialog, "Файлов"), QString("2"));
             QCOMPARE(value(*dialog, "Папок"), QString("1"));
             QCOMPARE(value(*dialog, "Размер"), QString("10"));
-            QCOMPARE(value(*dialog, "Сжатый размер"), QString("10"));
+            QCOMPARE(value(*dialog, "Сжатый"), QString("10"));
             QCOMPARE(QDir::fromNativeSeparators(value(*dialog, "Имя")),
                      QFileInfo(temporary.path()).canonicalFilePath() + '/');
             checked = true;
@@ -76,7 +82,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         CPanel panel(folder);
         panel.SetCurrentFolderPrefix("archive.7z");
         PropertiesDialog dialog(panel, allIndices(folder));
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("6"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("6"));
         QCOMPARE(value(dialog, "Размер"), QString("15"));
         QCOMPARE(value(dialog, "Файлов"), QString("2"));
     }
@@ -99,7 +105,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(value(*dialog, "Файлов"), QString("2"));
             QCOMPARE(value(*dialog, "Папок"), QString("1"));
             QCOMPARE(value(*dialog, "Размер"), QString("20"));
-            QCOMPARE(value(*dialog, "Сжатый размер"), QString("8"));
+            QCOMPARE(value(*dialog, "Сжатый"), QString("8"));
             checked = true;
             dialog->reject();
         });
@@ -115,7 +121,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         CPanel panel(folder);
         PropertiesDialog dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Размер"), QString("24"));
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("10"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("10"));
         QCOMPARE(value(dialog, "Файлов"), QString("3"));
         QCOMPARE(value(dialog, "Папок"), QString("2"));
     }
@@ -129,7 +135,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(value(dialog, "Имя"), QStringLiteral("файл 😀.txt"));
         QCOMPARE(value(dialog, "Размер"), QString("12 345"));
         QVERIFY(value(dialog, "Изменён").isNull());
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("3"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("3"));
         QCOMPARE(value(dialog, "Файлов"), QString("1")); // Source folder totals follow item.
         QCOMPARE(value(dialog, "Папок"), QString("0"));
         auto *list = dialog.findChild<QTreeWidget *>();
@@ -187,8 +193,8 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
                 QVERIFY(dialog);
                 QCOMPARE(value(*dialog, "Имя").normalized(QString::NormalizationForm_C), name);
                 QCOMPARE(value(*dialog, "Размер"), QString("7"));
-                QCOMPARE(value(*dialog, "Сжатый размер"), QString("7"));
-                QVERIFY(!value(*dialog, "Изменён").isEmpty());
+                QCOMPARE(value(*dialog, "Сжатый"), QString("7"));
+                QVERIFY(!value(*dialog, "Изменен").isEmpty());
                 ++inspected;
                 dialog->reject();
             });
@@ -236,9 +242,9 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
                 const QString name = ToQString(properties->Strings[i]);
                 if (name.startsWith("----"))
                     break;
-                QVERIFY(name != "Размер" && name != "Сжатый размер");
+                QVERIFY(name != "Размер" && name != "Сжатый");
             }
-            QCOMPARE(value(*dialog, "Изменён"), QString("2026-09-28 12:34:56.1234567"));
+            QCOMPARE(value(*dialog, "Изменен"), QString("2026-09-28 12:34:56.1234567"));
             inspected = true;
             dialog->reject();
         });

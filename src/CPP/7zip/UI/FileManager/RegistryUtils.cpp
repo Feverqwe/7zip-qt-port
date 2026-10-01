@@ -44,6 +44,14 @@ void ReadReg_VerCtrlPath(UString &path, const QString &settingsPath) {
     ReadCuString(settingsPath, "7vc", path);
 }
 
+void SaveRegLang(const UString &path, const QString &settingsPath) {
+    SaveCuString(settingsPath, "Lang", path);
+}
+
+void ReadRegLang(UString &path, const QString &settingsPath) {
+    ReadCuString(settingsPath, "Lang", path);
+}
+
 QString FmSettingsPath() {
     const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
     if (!overridden.isEmpty())

@@ -58,7 +58,7 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
                 box->accept();
             else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();
             }
         });
@@ -114,7 +114,7 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
                     box->accept();
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();
             }
         });

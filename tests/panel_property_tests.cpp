@@ -1,6 +1,8 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "layout_inspection.h"
@@ -9,6 +11,7 @@
 #include <QDialogButtonBox>
 #include <QHeaderView>
 #include <QScopedValueRollback>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QTreeWidget>
 
@@ -99,6 +102,13 @@ class PanelPropertyTests : public QObject {
     }
 
   private slots:
+    void initTestCase() {
+        // The catalog assertions intentionally exercise original Russian IDs.
+        QTemporaryDir directory;
+        const QString settings = directory.filePath("language.ini");
+        SaveRegLang(UString("ru"), settings);
+        ReloadLang(settings);
+    }
     void typedCatalogUsesSourceNamesAndFormatting() {
         QScopedValueRollback<bool> utc(g_Timestamp_Show_UTC, true);
         CObjectVector<TestProperty> props;
@@ -125,11 +135,11 @@ class PanelPropertyTests : public QObject {
         render(props, dialog);
         QCOMPARE(value(dialog, "Имя"), QStringLiteral("файл й 😀.txt"));
         QCOMPARE(value(dialog, "Размер"), QString("18 446 744 073 709 551 615"));
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("12 345"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("12 345"));
         QCOMPARE(value(dialog, "Файлов"), QString("1 234"));
         QCOMPARE(value(dialog, "CRC"), QString("00DEADBE"));
         QCOMPARE(value(dialog, "Папка"), QString("-"));
-        QCOMPARE(value(dialog, "Изменён"), QString("1970-01-01 00:00:00.123456789Z"));
+        QCOMPARE(value(dialog, "Изменен"), QString("1970-01-01 00:00:00.123456789Z"));
         QCOMPARE(value(dialog, "Свойство й"), QStringLiteral("значение с пробелом"));
         QCOMPARE(value(dialog, "123456"), QString("42"));
     }
@@ -147,9 +157,9 @@ class PanelPropertyTests : public QObject {
         CListViewDialog dialog;
         render(props, dialog);
         QCOMPARE(dialog.Strings.Size(), 2u); // Defined packed zero and separator; path unavailable.
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("0"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("0"));
         QVERIFY(value(dialog, "Размер").isNull());
-        QVERIFY(value(dialog, "Изменён").isNull());
+        QVERIFY(value(dialog, "Изменен").isNull());
         QVERIFY(value(dialog, "Ошибки").isNull());
     }
 
@@ -162,11 +172,11 @@ class PanelPropertyTests : public QObject {
         props.Add({kpidErrorType, L"", CPropVariant(L"7z")});
         CListViewDialog dialog;
         render(props, dialog);
-        QCOMPARE(value(dialog, "Ошибки"), QStringLiteral("Ошибка заголовков : Неверный пароль?"));
+        QCOMPARE(value(dialog, "Ошибки"), QStringLiteral("Ошибка в заголовках : Неверный пароль?"));
         QCOMPARE(value(dialog, "Предупреждения"), QStringLiteral("Ошибка CRC\n0x80000000"));
         QCOMPARE(value(dialog, "Open WARNING:"),
                  QString("Cannot open the file as expected archive type"));
-        QCOMPARE(value(dialog, "Тип ошибки"), QString("7z"));
+        QCOMPARE(value(dialog, "Тип Ошибки"), QString("7z"));
         CObjectVector<TestProperty> invalid;
         invalid.Add({kpidErrorFlags, L"", CPropVariant(L"invalid")});
         CListViewDialog badDialog;
@@ -206,7 +216,7 @@ class PanelPropertyTests : public QObject {
         QCOMPARE(value(dialog, "Папок"), QString("1 234"));
         QCOMPARE(value(dialog, "Файлов"), QString("5 678"));
         QCOMPARE(value(dialog, "Размер"), QString("10 345"));
-        QCOMPARE(value(dialog, "Сжатый размер"), QString("2 034"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("2 034"));
     }
 
     void typedValuesGeometry_data() {

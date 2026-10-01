@@ -616,7 +616,7 @@ class CPanel : public QObject {
 
 QString ConvertSizeToString(UInt64 value);
 bool IsSizeProp(UINT propID) noexcept;
-void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size);
+void AddValuePair2(UString &s, UINT resourceID, UInt64 num, UInt64 size);
 UString GetFolderPath(IFolderFolder *folder);
 // Source command split used by the Qt external process adapter.
 void SplitCmdLineSmart(const UString &cmd, UString &prg, UString &params);

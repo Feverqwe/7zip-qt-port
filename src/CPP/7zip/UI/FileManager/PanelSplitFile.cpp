@@ -3,6 +3,7 @@
 // QString replaces UString; file I/O remains in the Qt platform adapter.
 
 #include "PanelSplitFile.h"
+#include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "Panel.h"
 #include <QFile>
 #include <QFileInfo>
@@ -15,8 +16,9 @@ static void AddInfoFileName(QString &dest, const QString &name) {
 // Summary block from CApp::Combine, kept beside its original worker. The Qt
 // caller supplies the validated names and sizes without Win32 panel access.
 QString CThreadCombine::GetInfo() const {
-    QString info;
-    AddValuePair2(info, QStringLiteral("Файлов"), quint64(Names.size()), TotalSize);
+    UString summary;
+    AddValuePair2(summary, IDS_PROP_FILES, quint64(Names.size()), TotalSize);
+    QString info = ToQString(summary);
     info += '\n';
     info += InputDirPrefix;
     qsizetype i;

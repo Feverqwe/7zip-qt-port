@@ -27,13 +27,14 @@ set(update_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/GU
 set(overwrite_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/OverwriteDialog.rc")
 set(gui_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.rc")
 set(explorer_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/Explorer/resource2.rc")
+set(language_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/LangPage.rc")
 set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
 add_custom_command(OUTPUT "${resource_strings_header}"
-    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource};${explorer_resource}"
-        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource};${explorer_resource}"
+    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource};${explorer_resource};${language_resource}"
+        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource};${explorer_resource};${language_resource}"
         "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
     DEPENDS "${property_name_resource}" "${extract_resource}" "${file_manager_resource}"
-        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" scripts/rc_strings.cmake
+        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" "${language_resource}" scripts/rc_strings.cmake
     VERBATIM)
 
 qt_standard_project_setup()
@@ -160,7 +161,11 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/SysIconUtils.cpp src/CPP/7zip/UI/FileManager/SysIconUtils.h
     src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
-    src/CPP/7zip/UI/FileManager/LangUtils.h src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
+    src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
+    src/qtlanguageservices.cpp src/qtlanguageservices.h
+    src/qtlangcontrols.cpp src/qtlangcontrols.h
+    src/qtstatuslabel.cpp src/qtstatuslabel.h
+    src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
     "${resource_strings_header}"
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
     src/CPP/7zip/UI/FileManager/PanelOperations.cpp
@@ -175,6 +180,9 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/NetFolder.cpp src/CPP/7zip/UI/FileManager/NetFolder.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
+qt_add_resources(sevenzip_panel upstream_languages PREFIX "/upstream/7zip/Lang"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
+    FILES resources/7zip/Lang/en.ttt resources/7zip/Lang/ru.txt)
 qt_add_resources(sevenzip_panel upstream_progress_icons
     PREFIX "/upstream/7zip/UI/FileManager"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
@@ -205,6 +213,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    third_party/7zip/CPP/Common/Lang.cpp
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/CPP/7zip/UI/Common/Update.cpp src/CPP/7zip/UI/Common/Update.h
     src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
@@ -243,6 +252,7 @@ target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
+    src/CPP/7zip/UI/FileManager/LangPage.cpp src/CPP/7zip/UI/FileManager/LangPage.h
     src/CPP/7zip/UI/FileManager/EditPage.cpp src/CPP/7zip/UI/FileManager/EditPage.h
     src/CPP/7zip/UI/FileManager/MenuPage.cpp src/CPP/7zip/UI/FileManager/MenuPage.h
     src/CPP/7zip/UI/FileManager/OptionsDialog.cpp src/qtfmoptionsdialog.h
@@ -1291,6 +1301,12 @@ if(BUILD_TESTING)
 endif()
 
 if(BUILD_TESTING)
+    qt_add_executable(language_tests tests/language_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(language_tests PRIVATE src tests)
+    target_link_libraries(language_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME language COMMAND language_tests -silent)
+    set_tests_properties(language PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(menu_page_tests tests/menu_page_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(menu_page_tests PRIVATE src tests)
     target_link_libraries(menu_page_tests PRIVATE sevenzip_location Qt6::Test)
@@ -1314,4 +1330,20 @@ if(BUILD_TESTING)
     add_test(NAME options_window COMMAND options_window_tests -silent)
     set_tests_properties(options_window PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/options_window.ini")
+    qt_add_executable(language_ui_tests tests/language_ui_tests.cpp
+        tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(language_ui_tests PRIVATE src tests)
+    target_link_libraries(language_ui_tests PRIVATE ${options_window_libraries})
+    add_test(NAME language_ui COMMAND language_ui_tests -silent)
+    set_tests_properties(language_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 endif()
+
+# Every current window consumer uses the same language presentation adapter.
+get_property(language_consumers DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+foreach(language_consumer IN LISTS language_consumers)
+    get_target_property(language_consumer_sources ${language_consumer} SOURCES)
+    if("src/mainwindow.cpp" IN_LIST language_consumer_sources)
+        target_sources(${language_consumer} PRIVATE src/mainwindow_language.cpp)
+    endif()
+endforeach()

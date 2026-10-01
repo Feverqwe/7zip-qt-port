@@ -1,5 +1,14 @@
 # Regression strategy
 
+`language` checks native CLang escapes/signature/program/ID ordering/size and
+missing/traversal fallback, original bundled RU and source Language page
+Apply/Cancel/restart. `language_ui` checks actual Options/MainWindow hot switch,
+persistence/restart, partial-language menu */#/tab/reset behavior, pending input,
+invalid Settings with deferred Language Apply, action/shortcut/list/selection
+state, and five available Options pages' English/Russian geometry/reports at
+640×390/520×380. Remaining forms/messages are mandatory P1-14.2; Windows/Linux
+runtime and rendered-reference parity are not established by macOS reports.
+
 `menu_page` checks source defaults and 14 flag rows, custom Zone values,
 Apply/Cancel, capability-gated controls and 640×390/520×380 Options geometry/JSON.
 `context_menu_settings` verifies that a Zone-only apply preserves unchanged

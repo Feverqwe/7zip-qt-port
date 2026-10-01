@@ -50,10 +50,10 @@ class FormatUtilsTests : public QObject {
     void sourceResourceLookupFormatsUpdateCaptions() {
         const UString name = L"папка с пробелом/архив й.7z";
         QCOMPARE(text(MyFormatNew(IDS_WANT_UPDATE_MODIFIED_FILE, name)),
-                 QStringLiteral(
-                     "Файл 'папка с пробелом/архив й.7z' был изменён.\nОбновить его в архиве?"));
+                 QStringLiteral("File 'папка с пробелом/архив й.7z' was modified.\nDo you want to "
+                                "update it in the archive?"));
         QCOMPARE(text(MyFormatNew(IDS_CANNOT_UPDATE_FILE, name)),
-                 QStringLiteral("Не удалось обновить файл\n'папка с пробелом/архив й.7z'"));
+                 QStringLiteral("Cannot update file\n'папка с пробелом/архив й.7z'"));
         QCOMPARE(text(MyFormatNew(IDS_BOOKMARK, name)), QString("Bookmark"));
         QCOMPARE(text(MyFormatNew(UINT(0xffff), name)), QString());
     }

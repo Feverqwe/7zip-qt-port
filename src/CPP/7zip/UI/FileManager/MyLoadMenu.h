@@ -5,6 +5,8 @@
 class IQtFileMenuServices;
 class IQtFileManagerCommandServices;
 class IQtFileManagerMenuCommandServices;
+class QMenuBar;
+void MyLoadMenu(QMenuBar &menu, bool needResetMenu);
 bool ExecuteFileCommand(unsigned id, IQtFileManagerCommandServices &app);
 bool OnMenuCommand(unsigned id, IQtFileManagerMenuCommandServices &app);
 

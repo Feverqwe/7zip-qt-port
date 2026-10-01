@@ -102,6 +102,8 @@ class MainWindow : public QMainWindow {
     friend class QtFileManagerWindowServices;
     friend class QtFileManagerCommands;
     void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent *event) override;
+    void reloadLangItems();
     void quiesceOperations();
     bool canHandleExternalUpdate() const;
     bool runExternalArchiveUpdate(CPanel &panel, const std::function<bool()> &body);

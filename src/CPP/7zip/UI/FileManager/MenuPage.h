@@ -36,6 +36,7 @@ class CMenuPage : public QWidget {
     bool OnInit();
     long OnApply();
     bool IsModified() const;
+    void ReloadLangItems();
 
   signals:
     void Changed();

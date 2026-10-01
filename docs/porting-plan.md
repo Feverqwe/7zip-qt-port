@@ -837,6 +837,20 @@ Windows/Linux runtime и rendered parity unverified. Parent остаётся о�
 hot switch/restart, accelerator collisions и длинные labels. Geometry normal/
 compact в обоих языках и доступность controls, без новых algorithm duplicates.
 
+Пакет включает два крупных пользовательских результата, без отдельных коммитов
+для parser/helpers/resources:
+
+- **P1-14.1 — выбор языка и его реальные consumers:** source Lang/LangPage/
+  LangUtils, исходные English/Russian assets, persistence и fallback; Options
+  Apply/Cancel/restart, hot switch source menus/toolbar/list/status и доступных
+  Options pages с сохранением input/selection/action identity. Общий ResourceString
+  fallback возвращает source English, fixed Russian override удалён.
+- **P1-14.2 — оставшиеся app captions и полная приёмка:** source dialog labels,
+  динамические сообщения и локальные Qt captions/commands без upstream IDs,
+  явный контекст backend сообщений, акселераторы и длинные labels во всех
+  затронутых формах; EN/RU normal/compact contracts и final full gate. Сохранить
+  проверенный сценарий .1; parent и счёт принимаются только после .2.
+
 ### P1-15. Help/About и управление временными файлами
 
 **После:** P0-09, P1-08, P1-14. **Источники:** FM `HelpUtils.*`, `AboutDialog.*`,

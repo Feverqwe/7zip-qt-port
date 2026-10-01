@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/ip7z/7zip",
+  "release": "26.03",
+  "archive": "https://github.com/ip7z/7zip/releases/download/26.03/7z2603-x64.exe",
+  "archive_sha256": "0859c524b8a63551848f0c246abddcb1d0b7b656b0fbfe879f8d85e61a9e6edd",
+  "archive_size": 1661239,
+  "files": [
+    {
+      "path": "License.txt",
+      "sha256": "519ac0a4bded9c18ea02e0afb71f663d8c47373bd9facd3ac96a79f51d77765d"
+    },
+    {
+      "path": "Lang/en.ttt",
+      "sha256": "c218145bb039e1fd042fb1f5425b634a4bdc1f40b13801e33ed36cfdbda063ed"
+    },
+    {
+      "path": "Lang/ru.txt",
+      "sha256": "3e76bc88db5cb108cf8750b01bdabbb3772dbf2bf14592c6ab18b7339817d6ee"
+    }
+  ]
+}

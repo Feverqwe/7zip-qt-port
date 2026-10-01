@@ -35,7 +35,7 @@ class CDialogAnswers {
                     if (messages && messages->isVisible() && messages->topLevelItemCount() > 0)
                         ++Errors;
                     auto *close = widget->findChild<QPushButton *>("IDCANCEL");
-                    if (close && close->text().contains(QStringLiteral("Закрыть")))
+                    if (close && close->text().contains(QStringLiteral("Close")))
                         QTimer::singleShot(20, close, &QPushButton::click);
                 }
             }

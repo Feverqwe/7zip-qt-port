@@ -40,16 +40,16 @@ class PanelCopyInfoTests : public QObject {
         indices.Add(2);
         const CPanel panel(QStringLiteral("archive.7z / вложенная/"), items);
         QCOMPARE(panel.GetItemsInfoString(indices),
-                 QStringLiteral("Папок: 1    ( 1 234 байт )\n"
-                                "Файлов: 2    ( 5 байт )\n"
-                                "Размер: 1 239 байт\n\n"
+                 QStringLiteral("Folders: 1    ( 1 234 bytes )\n"
+                                "Files: 2    ( 5 bytes )\n"
+                                "Size: 1 239 bytes\n\n"
                                 "archive.7z / вложенная/\n"
                                 "  подпапка/папка/\n  имя с пробелом.txt\n  empty"));
         CRecordVector<UInt32> files;
         files.Add(2);
         files.Add(1);
         QCOMPARE(panel.GetItemsInfoString(files),
-                 QStringLiteral("Файлов: 2    ( 5 байт )\n\n"
+                 QStringLiteral("Files: 2    ( 5 bytes )\n\n"
                                 "archive.7z / вложенная/\n  empty\n  имя с пробелом.txt"));
     }
 
@@ -64,13 +64,13 @@ class PanelCopyInfoTests : public QObject {
         indices.Add(2);
         const CPanel panel("/folder/", items);
         const QString text = panel.GetItemsInfoString(indices);
-        QVERIFY(text.startsWith("Папок: 2\nФайлов: 1    ( 0 байт )\n\n"));
+        QVERIFY(text.startsWith("Folders: 2\nFiles: 1    ( 0 bytes )\n\n"));
         QVERIFY(!text.contains("9 999"));
-        QVERIFY(!text.contains("Размер:"));
+        QVERIFY(!text.contains("Size:"));
         indices.Clear();
         indices.Add(1);
         indices.Add(0);
-        QVERIFY(panel.GetItemsInfoString(indices).startsWith("Папок: 2\n\n"));
+        QVERIFY(panel.GetItemsInfoString(indices).startsWith("Folders: 2\n\n"));
         indices.Clear();
         QCOMPARE(panel.GetItemsInfoString(indices), QString("\n/folder/"));
     }
@@ -85,11 +85,11 @@ class PanelCopyInfoTests : public QObject {
         const CPanel panel("/folder/", items);
         QCOMPARE(
             panel.GetItemsInfoString(indices),
-            QString("Файлов: 7    ( 7 000 байт )\n\n/folder/\n  0\n  1\n  2\n  3\n  4\n  ..."));
+            QString("Files: 7    ( 7 000 bytes )\n\n/folder/\n  0\n  1\n  2\n  3\n  4\n  ..."));
         indices.DeleteBack();
         indices.DeleteBack();
         const QString five = panel.GetItemsInfoString(indices);
-        QVERIFY(five.startsWith("Файлов: 5    ( 5 000 байт )"));
+        QVERIFY(five.startsWith("Files: 5    ( 5 000 bytes )"));
         QVERIFY(five.endsWith("  4"));
         QVERIFY(!five.contains("..."));
     }

@@ -181,7 +181,7 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
                 }
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();
             }
         });

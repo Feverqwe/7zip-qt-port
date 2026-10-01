@@ -81,7 +81,7 @@ class PanelFolderTests : public QObject {
         QCOMPARE(selected.Size(), 1u);
         QCOMPARE(selected[0], UInt32(2));
         const QString summary = panel.GetItemsInfoString(selected);
-        QVERIFY(summary.contains("20 байт"));
+        QVERIFY(summary.contains("20 bytes"));
         QVERIFY(summary.contains("b/dup.txt"));
         rows({1, 2, 0});
         panel.RefreshListCtrl(state);
@@ -158,7 +158,7 @@ class PanelFolderTests : public QObject {
         CRecordVector<UInt32> indices;
         indices.Add(0);
         QCOMPARE(panel.GetItemsInfoString(indices),
-                 QStringLiteral("Файлов: 1    ( 12 345 байт )\n\n/folder/\n  внутри/файл.txt"));
+                 QStringLiteral("Files: 1    ( 12 345 bytes )\n\n/folder/\n  внутри/файл.txt"));
     }
 
     void missingMetadataValueIsEmptyInsteadOfAnotherItemsValue() {

@@ -12,10 +12,10 @@ class PropertyNameTests : public QObject {
 
   private slots:
     void sourceResourceTakesPrecedenceOverCustomName() {
-        QCOMPARE(AsQString(GetNameOfProperty(kpidName, L"custom")), QStringLiteral("Имя"));
-        QCOMPARE(AsQString(GetNameOfProperty(kpidSize, nullptr)), QStringLiteral("Размер"));
+        QCOMPARE(AsQString(GetNameOfProperty(kpidName, L"custom")), QStringLiteral("Name"));
+        QCOMPARE(AsQString(GetNameOfProperty(kpidSize, nullptr)), QStringLiteral("Size"));
         QCOMPARE(AsQString(GetNameOfProperty(kpidPackSize, nullptr)),
-                 QStringLiteral("Сжатый размер"));
+                 QStringLiteral("Packed Size"));
         QCOMPARE(AsQString(GetNameOfProperty(kpidCRC, L"wrong checksum caption")), QString("CRC"));
         QCOMPARE(AsQString(GetNameOfProperty(kpidOutName, nullptr)), QString("Out Name"));
         QCOMPARE(AsQString(GetNameOfProperty(kpidDevMinor, nullptr)), QString("Dev Minor"));
@@ -36,10 +36,10 @@ class PropertyNameTests : public QObject {
     void resourceOverloadsReplaceOrAppendWithoutStaleText() {
         UString s(L"old value");
         LangString(IDS_PROP_PATH, s);
-        QCOMPARE(AsQString(s), QStringLiteral("Путь"));
+        QCOMPARE(AsQString(s), QStringLiteral("Path"));
         s += L": ";
         AddLangString(s, IDS_PROP_NAME);
-        QCOMPARE(AsQString(s), QStringLiteral("Путь: Имя"));
+        QCOMPARE(AsQString(s), QStringLiteral("Path: Name"));
         LangString(0xFFFFFFFF, s);
         QVERIFY(s.IsEmpty());
         QVERIFY(LangString(0xFFFFFFFF).IsEmpty());

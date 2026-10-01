@@ -50,7 +50,7 @@ class ProgressPriorityTests : public QObject {
         QCOMPARE(background->text(), QStringLiteral("В &фоновый режим"));
         QTest::keyClick(background, Qt::Key_Return);
         QVERIFY(NativeBackground());
-        QCOMPARE(background->text(), QStringLiteral("На &передний план"));
+        QCOMPARE(background->text(), QStringLiteral("&Foreground"));
         QVERIFY(dialog.windowTitle().contains(QStringLiteral("В фоновый режим")));
         QVERIFY(main.windowTitle().contains(QStringLiteral("В фоновый режим")));
         QVERIFY(background->sizeHint().width() <= background->width());
@@ -61,7 +61,7 @@ class ProgressPriorityTests : public QObject {
         QTest::keyClick(pause, Qt::Key_Return);
         QVERIFY(dialog.Sync.Get_Paused());
         QVERIFY(NativeBackground());
-        QCOMPARE(background->text(), QStringLiteral("На &передний план"));
+        QCOMPARE(background->text(), QStringLiteral("&Foreground"));
         QTest::keyClick(pause, Qt::Key_Return);
         QVERIFY(!dialog.Sync.Get_Paused());
         background->setFocus();

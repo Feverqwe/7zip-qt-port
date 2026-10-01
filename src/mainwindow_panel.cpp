@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
+#include "qtstatuslabel.h"
 
 void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
@@ -12,6 +13,19 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     for (QAction *action : {back_, up_}) {
         auto *button = new QToolButton(central);
         button->setDefaultAction(action);
+        // Panel.cpp's parent toolbar uses the standard VIEW_PARENTFOLDER image,
+        // without its longer View menu caption. Qt supplies the platform arrow.
+        const auto updateIcon = [this, button, action] {
+            button->setIcon(
+                style()->standardIcon(action == up_ ? QStyle::SP_ArrowUp : QStyle::SP_ArrowBack));
+        };
+        updateIcon();
+        // QAction::changed also projects its empty menu icon to QToolButton.
+        // Restore the panel-specific image after every caption/state update.
+        connect(action, &QAction::changed, button, updateIcon);
+        button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        button->setObjectName(
+            QString(action == up_ ? "panelParentButton%1" : "panelBackButton%1").arg(index));
         navigation->addWidget(button);
     }
     pathCombo_ = new QComboBox(central);
@@ -43,7 +57,7 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     const char *statusNames[] = {"selectedItemsStatus", "selectedSizeStatus", "focusedSizeStatus",
                                  "focusedDateStatus"};
     for (unsigned part = 0; part < 4; ++part) {
-        auto *label = new QLabel(panelStatus);
+        auto *label = new QtStatusLabel(panelStatus);
         label->setObjectName(statusNames[part]);
         label->setTextInteractionFlags(Qt::TextSelectableByMouse);
         panelStatus->addPermanentWidget(label, part == 0 ? 1 : 0);

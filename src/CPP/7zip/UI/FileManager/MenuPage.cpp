@@ -12,6 +12,7 @@
 #include "Common/StringConvert.h"
 #include "FormatUtils.h"
 #include "LangUtils.h"
+#include "qtlangcontrols.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QHBoxLayout>
@@ -59,6 +60,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
         auto *check = new QCheckBox(text, this);
         check->setObjectName(name);
         check->setProperty("sourceControlID", id);
+        QtBindLangText(check, id, text);
         check->setEnabled(false);
         check->setToolTip("Shell integration is unavailable in this build");
         layout->addWidget(check);
@@ -67,12 +69,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     };
     addCheck("Integrate 7-Zip to shell context menu", "shellIntegration",
              IDX_SYSTEM_INTEGRATE_TO_MENU);
-#if defined(_WIN32) && !defined(_WIN64)
-    const QString otherBitness = "64-bit";
-#else
-    const QString otherBitness = "32-bit";
-#endif
-    addCheck("Integrate 7-Zip to shell context menu (" + otherBitness + ")", "shellIntegration32",
+    addCheck("Integrate 7-Zip to shell context menu", "shellIntegration32",
              IDX_SYSTEM_INTEGRATE_TO_MENU_2);
     _cascaded = addCheck("Cascaded context menu", "cascadedMenu", IDX_SYSTEM_CASCADED_MENU);
     _menuIcons = addCheck("Icons in context menu", "menuIcons", IDX_SYSTEM_ICON_IN_MENU);
@@ -82,6 +79,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     auto *zoneLabel = new QLabel("Propagate Zone.Id stream:", this);
     zoneLabel->setObjectName("menuZoneLabel");
     zoneLabel->setProperty("sourceControlID", IDT_SYSTEM_ZONE);
+    QtBindLangText(zoneLabel, IDT_SYSTEM_ZONE, "Propagate Zone.Id stream:");
     _zoneCombo = new QComboBox(this);
     _zoneCombo->setObjectName("menuZone");
     _zoneCombo->setProperty("sourceControlID", IDC_SYSTEM_ZONE);
@@ -96,6 +94,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     auto *itemsLabel = new QLabel("Context menu items:", this);
     itemsLabel->setObjectName("menuItemsLabel");
     itemsLabel->setProperty("sourceControlID", IDT_SYSTEM_CONTEXT_MENU_ITEMS);
+    QtBindLangText(itemsLabel, IDT_SYSTEM_CONTEXT_MENU_ITEMS, "Context menu items:");
     layout->addWidget(itemsLabel);
     _listView = new QListWidget(this);
     _listView->setObjectName("menuItems");
@@ -108,6 +107,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
             [this] { OnCommand(IDC_SYSTEM_ZONE); });
     connect(_listView, &QListWidget::itemChanged, this, &CMenuPage::OnItemChanged);
     OnInit();
+    ReloadLangItems();
 }
 
 void CMenuPage::Clear_MenuChanged() {
@@ -128,6 +128,72 @@ static void LoadLang_Spec(UString &s, UInt32 id, const char *eng) {
     if (s.IsEmpty())
         s = eng;
     s.RemoveChar(L'&');
+}
+
+static UString GetMenuItemText(const CContextMenuItem &menuItem) {
+    UString s = LangString(menuItem.ControlID);
+    if (menuItem.Flag == kCRC)
+        s = "CRC SHA";
+    else if (menuItem.Flag == kCRC_Cascaded)
+        s = "7-Zip > CRC SHA";
+    if (menuItem.Flag == kOpenAs || menuItem.Flag == kCRC || menuItem.Flag == kCRC_Cascaded)
+        s += " >";
+    switch (menuItem.ControlID) {
+    case IDS_CONTEXT_EXTRACT_TO:
+        s = MyFormatNew(s, LangString(IDS_CONTEXT_FOLDER));
+        break;
+    case IDS_CONTEXT_COMPRESS_TO:
+    case IDS_CONTEXT_COMPRESS_TO_EMAIL: {
+        UString s2 = LangString(IDS_CONTEXT_ARCHIVE);
+        switch (menuItem.Flag) {
+        case kCompressTo7z:
+        case kCompressTo7zEmail:
+            s2 += ".7z";
+            break;
+        case kCompressToZip:
+        case kCompressToZipEmail:
+            s2 += ".zip";
+            break;
+        }
+        s = MyFormatNew(s, s2);
+        break;
+    }
+    }
+    return s;
+}
+
+void CMenuPage::ReloadLangItems() {
+    QtReloadLangTexts(*this);
+    // MenuPage.cpp derives the other shell's caption from the translated first
+    // control and IDS_PROP_BIT64. The controls remain unavailable until P2-09.
+    UString s = LangString(IDX_SYSTEM_INTEGRATE_TO_MENU);
+    UString bit64 = LangString(IDS_PROP_BIT64);
+    if (bit64.IsEmpty())
+        bit64 = "64-bit";
+#if !defined(_WIN32) || defined(_WIN64)
+    bit64.Replace(L"64", L"32");
+#endif
+    s.Add_Space();
+    s.Add_Char('(');
+    s += bit64;
+    s.Add_Char(')');
+    findChild<QCheckBox *>("shellIntegration32")->setText(QString::fromWCharArray(s));
+    for (unsigned i = 0; i < Z7_ARRAY_SIZE(kMenuItems); i++)
+        _listView->item(int(i))->setText(QString::fromWCharArray(GetMenuItemText(kMenuItems[i])));
+    for (int i = 0; i < _zoneCombo->count(); i++) {
+        const unsigned val = _zoneCombo->itemData(i).toUInt();
+        UString s;
+        if (val == 0) {
+            LoadLang_Spec(s, 407, "No");
+            s.Insert(0, L"* ");
+        } else if (val == 1)
+            LoadLang_Spec(s, 406, "Yes");
+        else if (val == 2)
+            LangString(IDT_ZONE_FOR_OFFICE, s);
+        if (s.IsEmpty())
+            s.Add_UInt32(val);
+        _zoneCombo->setItemText(i, QString::fromWCharArray(s));
+    }
 }
 
 bool CMenuPage::OnInit() {
@@ -157,7 +223,7 @@ bool CMenuPage::OnInit() {
                 else if (i == 1)
                     LoadLang_Spec(s, 406, "Yes");
                 else
-                    s = "For Office files"; // MenuPage2.rc; language owner P1-14.
+                    LangString(IDT_ZONE_FOR_OFFICE, s);
             }
             if (s.IsEmpty())
                 s.Add_UInt32(val);
@@ -171,34 +237,7 @@ bool CMenuPage::OnInit() {
     }
     for (unsigned i = 0; i < Z7_ARRAY_SIZE(kMenuItems); i++) {
         const CContextMenuItem &menuItem = kMenuItems[i];
-        UString s = LangString(menuItem.ControlID);
-        if (menuItem.Flag == kCRC)
-            s = "CRC SHA";
-        else if (menuItem.Flag == kCRC_Cascaded)
-            s = "7-Zip > CRC SHA";
-        if (menuItem.Flag == kOpenAs || menuItem.Flag == kCRC || menuItem.Flag == kCRC_Cascaded)
-            s += " >";
-        switch (menuItem.ControlID) {
-        case IDS_CONTEXT_EXTRACT_TO:
-            s = MyFormatNew(s, LangString(IDS_CONTEXT_FOLDER));
-            break;
-        case IDS_CONTEXT_COMPRESS_TO:
-        case IDS_CONTEXT_COMPRESS_TO_EMAIL: {
-            UString s2 = LangString(IDS_CONTEXT_ARCHIVE);
-            switch (menuItem.Flag) {
-            case kCompressTo7z:
-            case kCompressTo7zEmail:
-                s2 += ".7z";
-                break;
-            case kCompressToZip:
-            case kCompressToZipEmail:
-                s2 += ".zip";
-                break;
-            }
-            s = MyFormatNew(s, s2);
-            break;
-        }
-        }
+        UString s = GetMenuItemText(menuItem);
         auto *item = new QListWidgetItem(QString::fromWCharArray(s), _listView);
         item->setData(Qt::UserRole, menuItem.Flag);
         item->setCheckState((ci.Flags & menuItem.Flag) != 0 ? Qt::Checked : Qt::Unchecked);

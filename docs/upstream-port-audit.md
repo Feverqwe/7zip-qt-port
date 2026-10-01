@@ -8,6 +8,124 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-14.1 — accepted Language/Options/main window integration (2026-10-01)
+
+The integrated .1 scenario is accepted; whole-app .2 and parent remain open.
+Source module baseline remains
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, https://github.com/ip7z/7zip.git.
+Common/Lang.cpp is copied unchanged and built with the existing FileIO in
+sevenzip_filesystem; Lang.h was already vendored. Signature/UTF-8/escape/id/offset,
+1 MiB limit and binary lookup bodies are unchanged. LangPage.cpp/.h preserve
+native CLangInfo/CObjectVector, enumeration/filtering, sort, locale marks,
+missing/extra ID comparison, 50-line/1500-character info limits and apply flow.
+Qt replaces the property page/combobox/info/error services. POSIX enumeration
+uses upstream CEnumerator::Next(CDirEntry,found)/Fill_FileInfo in place of the
+Windows Next(CFileInfo) overload. Help remains P1-15; LangPage.rc/Res.h are exact.
+
+LangUtils.cpp/.h now preserve load-once, source two-attempt default-language
+selection, reload/path checks and lookup/fallback bodies. Windows retains the
+original kLangs/FindShortNames and system/user LANGID logic; QLocale supplies
+primary/regional codes only on POSIX where Windows LANGID services do not exist;
+QRecursiveMutex protects source language storage when read by current worker
+consumers. RegistryUtils Read/SaveRegLang retain source CuString calls through
+the existing explicit FM INI service. No source-parser duplicate is introduced.
+
+Language data is not in the upstream Git source checkout. Exact original
+Lang/en.ttt and Lang/ru.txt come from the official 26.03 Windows archive, listed
+by https://www.7-zip.org/download.html and retrieved without executing the
+installer. Release URL, archive SHA-256/size and individual resource SHA-256
+are pinned in resources/7zip/provenance.json; original resource headers and
+distribution License.txt are retained. These assets have a separate archive
+baseline, not a fictitious path/revision in the source Git manifest. Qt bundles
+the files and stages them in an owned temporary directory only when no installed
+module/Lang directory exists; the unchanged CLang file reader consumes that
+directory. This does not write into the installation or the upstream checkout.
+
+MyLoadMenu.cpp now copies k_LangID_TopMenuItems, CIDLangPair/FindLangItem and
+MyChangeMenu's recursive control flow, popup inference, timestamp/bookmark skips,
+OpenInside */#/Benchmark2 and tab suffix logic. QList/QAction replace HMENU/item
+services. The source reset-to-English LoadMenu operation is folded into each
+lookup's compiled STRINGTABLE/original en.ttt fallback; captions change in place
+to preserve QAction identity, shortcuts, enabled/check state and connections.
+The old fixed Russian ResourceString override is removed. Source English tables
+have precedence over en.ttt, matching resource fallback. en.ttt is read by the
+unchanged CLang parser and retained immutable for concurrent fallback readers.
+
+OptionsDialog uses the original six page IDs/order and active CLangPage, source
+modified/apply state, with Qt property-sheet services. Invalid Settings memory
+input retains pending language until a successful Apply. Cancel preserves a
+previous successful Apply. Qt LanguageChange replaces the original after-sheet
+menu/toolbar/ReloadLangItems notification: current top-level widgets receive the
+event after the source language is applied. MainWindow updates source menus,
+toolbar button resource IDs, existing property headers and both panels' selected
+status captions without changing row/selection/column state. CApp::ReloadLangItems
+and AddSizeValue/AddValuePair1/2/GetItemsInfoString retain upstream native UString,
+IDs and formatting bodies; QString conversion remains only at Qt presentation
+boundaries. PanelSplitFile reuses the same source summary helper.
+
+Qt text bindings store source IDs/fallbacks on presentation objects; editable
+values are never rewritten. Options Settings/Folders/Edit labels and accessible
+names use source IDs; Edit viewer colon and Menu other-bitness caption retain
+source formatting. Menu item hot refresh reuses its source formatting body while
+preserving flags/current zone. Folders Browse title now uses its source ID;
+Edit native file filter masks replace independently written Russian filter names.
+Settings invalid-argument errors use existing upstream ErrorMsg, including its
+documented POSIX English system-code text. SettingsPageRes.h is copied exact.
+
+Current focused language/language_ui/options_dialog/external_editors_ui/
+source_properties/panel_shell6/6 passed3.91 s on macOS arm64 Qt6.11.2; additional
+language_ui1/1 passed0.62 s after partial-language menu regressions. Tests cover
+source parser failures and escapes, missing/traversal/malformed fallback, actual
+bundled RU, Apply/Cancel/restart, invalid Settings with pending language, action/
+shortcut/selection/header/toolbar state and pending editor commands. Partial
+language tests preserve timestamp/CRC/bookmark labels, */# and tab suffixes;
+missing language resets formerly Russian menus to English. EN/RU Options JSON
+at640×390/520×380 for all five available pages inspected: grouping/order, bounds,
+checkbox text widths and wrapping memory label fit; Qt standard buttons retain
+platform text. These checks preceded the final gate recorded below. Parent P1-14
+stays open for .2: other dialogs/messages, local main-window extras/tooltips without
+source IDs, backend message context and whole-app accelerator/long-label review.
+Windows/Linux runtime and rendered Windows reference parity remain unverified.
+
+The first full unsandboxed gate built/formatted successfully but failed26/163
+(464.16 s) after removal of the fixed RU table: source labels invalidated old
+caption assertions and modal Close responders; properties_tests was explicitly
+terminated after its stale-date responder left the modal open. No acceptance.
+Tests now select actual Russian explicitly where that is their fixture, using
+ru.txt's `Сжатый`/`Изменен`/`Тип Ошибки`; other default/fallback tests assert exact
+source English. Progress modal responders now recognize source English Close.
+Focused consumers22/25 passed25.20 s before remaining captions were corrected.
+The full gate also exposed compact two-panel size: Panel.cpp's icon-only
+VIEW_PARENTFOLDER control must not show its longer translated menu text. Qt
+standard parent/back arrow buttons adapt that shared platform image service;
+QAction menu captions remain intact. QtStatusLabel elides constrained status
+text, retains full native text/accessibility/copy value and exposes it in tooltip;
+it replaces Win32's bounded status part rendering only. Corrected focused checks
+panel_key/properties_runtime/language_ui/panel_shell4/4 passed7.63 s after these
+changes; current640×400 widget JSON inspected, all status fields/arrow controls
+visible. Source Russian Prefix1030 is `Путь` (same translation as Path1003),
+not the former independently written `Префикс пути`; fixture follows original IDs.
+Navigation button images survive QAction::changed during reload. These focused
+checks preceded the final gate below; .2/parent remain open.
+
+The corrected full gate had162/163 passing tests in57.28 s; its remaining failure was the
+Progress text contract's old fixed-RU Close/Foreground/Continue states. Those
+expectations now use exact source English while keeping the existing grouping,
+visibility, pause/error/close and resizing contracts. All code consumers passed
+in that run. No global Russian override was restored or behavior checks removed.
+The final full gate below followed that contract correction.
+
+Final evidence: unsandboxed `./scripts/check.sh` PASS163/16358.87 s on macOS arm64
+Qt6.11.2, format/build and source inventory/baseline checks passed (207 exact,
+152 adapted,3 local). After the final contract correction its five source fixtures
+passed10.33 s; latest panel_key/properties_runtime/language_ui/panel_shell4/4
+passed7.63 s. Worktree/staged SHA-256 of all three original release assets match
+provenance. No changes followed the successful full gate except acceptance docs.
+P1-14.1 closes as one integrated user scenario; parent24/46 unchanged. P1-14.2
+remains mandatory for other forms/messages/local Qt captions, accelerator and
+long-label matrix before whole-app acceptance. No Windows/Linux/runtime or
+rendered Windows parity claim is made from these macOS checks.
+
 ## P1-13.1 — source MenuPage/Options/Zone scenario (2026-10-01)
 
 Immutable baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from

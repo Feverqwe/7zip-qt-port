@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Windows/PropVariantConv.h"
 #include "qtapppresentation.h"
 #include "qtarchivefoldermanager.h"
@@ -18,6 +19,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         trashService_ = nativeTrashService_.get();
     }
     backend_ = backend ? backend : new ArchiveBackend(this);
+    ReloadLang(toolbarSettingsPath());
     setWindowTitle("Sevenzip Desktop");
     resize(980, 620);
     CWindowInfo windowInfo{};
@@ -144,6 +146,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     autoRefreshTimer_->start();
     refreshActions();
     connectBackend();
+    reloadLangItems();
 }
 
 void MainWindow::connectFilesystemScanner() {

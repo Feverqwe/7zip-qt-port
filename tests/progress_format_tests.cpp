@@ -36,17 +36,17 @@ class ProgressFormatTests : public QObject {
 
     void sourceProgressAndOperationCaptions() {
         QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_PAUSED)),
-                 QStringLiteral("Приостановлено"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_CONTINUE)), QStringLiteral("&Продолжить"));
+                 QStringLiteral("Paused"));
+        QCOMPARE(QString::fromWCharArray(LangString(IDS_CONTINUE)), QStringLiteral("&Continue"));
         QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_FOREGROUND)),
-                 QStringLiteral("На &передний план"));
+                 QStringLiteral("&Foreground"));
         QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_ASK_CANCEL)),
-                 QStringLiteral("Отменить операцию?"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_CLOSE)), QStringLiteral("&Закрыть"));
+                 QStringLiteral("Are you sure you want to cancel?"));
+        QCOMPARE(QString::fromWCharArray(LangString(IDS_CLOSE)), QStringLiteral("&Close"));
         QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_UPDATE)),
-                 QStringLiteral("Обновление"));
+                 QStringLiteral("Updating"));
         QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_HEADER)),
-                 QStringLiteral("Создание заголовка"));
+                 QStringLiteral("Header creating"));
     }
 };
 

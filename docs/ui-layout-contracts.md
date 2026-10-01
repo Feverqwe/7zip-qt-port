@@ -337,7 +337,7 @@ Alternative selection is enabled and persists the source mark mode.
 The page has no heading absent from the resource.
 Large pages are capability-gated Windows controls; source extraction-memory
 edit validation preserves raw input until Apply. The partial
-six-page property sheet has Folders/Editor/Settings enabled and three pages disabled;
+six-page property sheet has Menu/Folders/Editor/Settings/Language enabled and System disabled;
 this does not establish full OptionsDialog parity.
 Folders follows pinned FoldersPage2.rc: working-folder label, system/current/
 specified radios, path/Browse row, removable-only checkbox. Path and Browse are
@@ -351,6 +351,24 @@ integration remains P1-12.2.
 `fm_settings` checks unclipped labels, order and separated footer at 460×390
 and 340×390, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
+
+Language reference: pinned `LangPage.rc`, `LangPage.cpp` and original26.03
+`Lang/en.ttt`/`Lang/ru.txt` (asset baseline in resources/7zip/provenance.json).
+The page keeps language label, combo and read-only scrollable native metadata
+report in source order. `language` checks600×320/480×280; `language_ui` writes
+`options-language-*-*.json` for all five available Options pages at640×390 and
+520×380 in English/Russian, verifies bounds, checkbox widths and wrapped label
+height. Reports reviewed2026-10-01 on macOS: largest shell-bitness RU caption
+391 px fits476 px, memory label wraps within31 px, editor fields retain input.
+Qt standard buttons retain platform conventions. This validates these Qt forms'
+structure/usability, not rendered Windows pixel parity or remaining app dialogs.
+Panel parent navigation follows source Panel.cpp VIEW_PARENTFOLDER's icon-only
+control using Qt's standard up image; the menu caption stays independent and
+button images survive language/state changes. Current640×400 two-panel JSON shows
+29×28 parent buttons and all four status fields visible. QtStatusLabel permits
+bounded status widths, elides long text and exposes full text in a tooltip;
+the source value/accessibility remains intact. `panel_key` verifies640×400 and
+restored splitter300, and `language_ui` verifies icons after EN/RU reload.
 `panel_key` checks red marks and single focused selection across four view
 modes, disk/archive and flat/normal folders, writing 980×620 and 640×400
 window JSON reports. The parent sentinel stays unmarked. These reports establish

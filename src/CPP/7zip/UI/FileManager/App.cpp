@@ -5,10 +5,14 @@
 #include "App.h"
 #include "../../../Windows/FileDir.h"
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/OverwriteDialogRes.h"
+#include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "AppState.h"
 #include "CPP/Common/Wildcard.h"
 #include "CopyDialog.h"
+#include "FormatUtils.h"
+#include "LangUtils.h"
 #include "Panel.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
@@ -23,6 +27,8 @@
 CApp::CApp() : _qtOperations(Panels) { SetPanels_AutoRefresh_Mode(); }
 
 CApp::~CApp() { ReleaseApp(); }
+
+void CApp::ReloadLangItems() { LangString(IDS_N_SELECTED_ITEMS, LangString_N_SELECTED_ITEMS); }
 
 bool CApp::ExecuteCommand(unsigned id) {
     return !_qtOperations.closed() && _qtCommandServices && WndProc(id, *this, *_qtCommandServices);
@@ -478,29 +484,29 @@ CPanel::CPanel(IFolderFolder *folder) {
         _currentFolderPrefix = GetFolderPath(_folder);
 }
 
-static void AddSizeValue(QString &s, UInt64 size) {
-    s += QStringLiteral("%1 байт").arg(ConvertSizeToString(size));
+static void AddSizeValue(UString &s, UInt64 size) {
+    s += MyFormatNew(IDS_FILE_SIZE, ToUString(ConvertSizeToString(size)));
 }
 
-static void AddValuePair1(QString &s, const QString &label, UInt64 size) {
-    s += label;
+static void AddValuePair1(UString &s, UINT resourceID, UInt64 size) {
+    AddLangString(s, resourceID);
     s += ": ";
     AddSizeValue(s, size);
-    s += '\n';
+    s.Add_LF();
 }
 
-void AddValuePair2(QString &s, const QString &label, UInt64 num, UInt64 size) {
+void AddValuePair2(UString &s, UINT resourceID, UInt64 num, UInt64 size) {
     if (num == 0)
         return;
-    s += label;
+    AddLangString(s, resourceID);
     s += ": ";
-    s += ConvertSizeToString(num);
+    s += ToUString(ConvertSizeToString(num));
     if (size != (UInt64)(Int64)-1) {
         s += "    ( ";
         AddSizeValue(s, size);
         s += " )";
     }
-    s += '\n';
+    s.Add_LF();
 }
 
 static void AddPropValueToSum(IFolderFolder *folder, UInt32 index, PROPID propID, UInt64 &sum) {
@@ -516,7 +522,7 @@ static void AddPropValueToSum(IFolderFolder *folder, UInt32 index, PROPID propID
 }
 
 QString CPanel::GetItemsInfoString(const CRecordVector<UInt32> &indices) const {
-    QString info;
+    UString info;
     UInt64 numDirs, numFiles, filesSize, foldersSize;
     numDirs = numFiles = filesSize = foldersSize = 0;
     unsigned i;
@@ -530,25 +536,25 @@ QString CPanel::GetItemsInfoString(const CRecordVector<UInt32> &indices) const {
             numFiles++;
         }
     }
-    AddValuePair2(info, QStringLiteral("Папок"), numDirs, foldersSize);
-    AddValuePair2(info, QStringLiteral("Файлов"), numFiles, filesSize);
+    AddValuePair2(info, IDS_PROP_FOLDERS, numDirs, foldersSize);
+    AddValuePair2(info, IDS_PROP_FILES, numFiles, filesSize);
     int numDefined = ((foldersSize != (UInt64)(Int64)-1) && foldersSize != 0) ? 1 : 0;
     numDefined += ((filesSize != (UInt64)(Int64)-1) && filesSize != 0) ? 1 : 0;
     if (numDefined == 2)
-        AddValuePair1(info, QStringLiteral("Размер"), filesSize + foldersSize);
-    info += '\n';
-    info += ToQString(_currentFolderPrefix);
+        AddValuePair1(info, IDS_PROP_SIZE, filesSize + foldersSize);
+    info.Add_LF();
+    info += _currentFolderPrefix;
     for (i = 0; i < indices.Size() && (int)i < (int)kCopyDialog_NumInfoLines - 6; i++) {
-        info += '\n';
+        info.Add_LF();
         info += "  ";
         const UInt32 index = indices[i];
-        info += ToQString(GetItemRelPath(index));
+        info += GetItemRelPath(index);
         if (IsItem_Folder(index))
-            info += '/';
+            info.Add_Char('/');
     }
     if (i != indices.Size()) {
-        info += '\n';
+        info.Add_LF();
         info += "  ...";
     }
-    return info;
+    return ToQString(info);
 }

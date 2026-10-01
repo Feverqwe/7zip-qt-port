@@ -4,3 +4,6 @@ third_party/7zip/**/*.h -whitespace
 third_party/7zip/**/*.cpp -whitespace
 third_party/7zip/**/*.c -whitespace
 third_party/7zip/**/*.rc -whitespace
+# Preserve hashes of original language/distribution assets on every platform.
+resources/7zip/Lang/* -text -whitespace
+resources/7zip/License.txt -text -whitespace

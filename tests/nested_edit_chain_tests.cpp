@@ -115,7 +115,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                 }
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();
             }
         });
@@ -276,7 +276,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                 box->accept();
             else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Закрыть")))
+                if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();
             }
         });

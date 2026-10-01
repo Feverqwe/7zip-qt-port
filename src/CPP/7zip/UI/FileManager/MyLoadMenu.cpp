@@ -5,11 +5,17 @@
 // language menu construction and unavailable workflows retain their plan owners.
 #include "MyLoadMenu.h"
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "App.h"
+#include "LangUtils.h"
 #include "Windows/FileFind.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemenuservices.h"
+#include <QAction>
+#include <QMenu>
+#include <QMenuBar>
+#include <QVariant>
 
 static const unsigned IDCLOSE = 8;
 static const unsigned k_MenuID_OpenBookmark = 830;
@@ -19,6 +25,111 @@ static const unsigned k_MenuID_Time = IDM_VIEW_TIME;
 static const unsigned g_Zvc_IDs[] = {IDM_VER_EDIT, IDM_VER_COMMIT, IDM_VER_REVERT, IDM_VER_DIFF};
 static const char *const g_Zvc_Strings[] = {"Ver Edit (&1)", "Ver Commit", "Ver Revert",
                                             "Ver Diff (&0)"};
+
+// MyChangeMenu retains the upstream popup/ID/special-caption/shortcut flow.
+// Qt preserves QAction identity; English resource lookup replaces LoadMenu's
+// reset to the original English resource before applying a partial language.
+static const UInt32 k_LangID_TopMenuItems[] = {IDM_FILE,      IDM_EDIT,  IDM_VIEW,
+                                               IDM_FAVORITES, IDM_TOOLS, IDM_HELP};
+struct CIDLangPair {
+    UInt32 ControlID;
+    UInt32 LangID;
+};
+static const CIDLangPair kIDLangPairs[] = {{IDCLOSE, 557},
+                                           {IDM_VIEW_ARANGE_BY_NAME, IDS_PROP_NAME},
+                                           {IDM_VIEW_ARANGE_BY_TYPE, IDS_PROP_FILE_TYPE},
+                                           {IDM_VIEW_ARANGE_BY_DATE, IDS_PROP_MTIME},
+                                           {IDM_VIEW_ARANGE_BY_SIZE, IDS_PROP_SIZE}};
+static int FindLangItem(unsigned controlID) {
+    for (unsigned i = 0; i < Z7_ARRAY_SIZE(kIDLangPairs); i++)
+        if (kIDLangPairs[i].ControlID == controlID)
+            return (int)i;
+    return -1;
+}
+static void MenuLangString(UInt32 id, UString &dest) {
+    LangString_OnlyFromLangFile(id, dest);
+    if (dest.IsEmpty())
+        NWindows::MyLoadString(id, dest);
+}
+static void MyChangeMenu(const QList<QAction *> &menu, unsigned menuID, unsigned level,
+                         unsigned menuIndex) {
+    for (unsigned i = 0; i < unsigned(menu.size()); i++) {
+        QAction *item = menu[int(i)];
+        const UInt32 id = item->property("nativeCommandID").toUInt();
+        const UString oldString(item->text().toStdWString().c_str());
+        UString newString;
+        if (QMenu *subMenu = item->menu()) {
+            UInt32 langID = id;
+            if (langID >= (1 << 16))
+                continue;
+            if (langID == 0) {
+                if (level == 0) {
+                    if (i < Z7_ARRAY_SIZE(k_LangID_TopMenuItems))
+                        langID = k_LangID_TopMenuItems[i];
+                } else if (level == 1) {
+                    if (menuID == IDM_FAVORITES || (menuID == 0 && menuIndex == 3))
+                        langID = IDM_ADD_TO_FAVORITES;
+                    else if (menuID == IDM_VIEW || (menuID == 0 && menuIndex == 2)) {
+                        if (subMenu->objectName() == "timestampMenu" ||
+                            oldString.IsPrefixedBy_Ascii_NoCase("20"))
+                            langID = IDM_VIEW_TIME_POPUP;
+                        else
+                            langID = IDM_VIEW_TOOLBARS;
+                    }
+                }
+            }
+            if (langID == IDM_VIEW_TIME_POPUP)
+                continue;
+            if (langID != IDM_ADD_TO_FAVORITES)
+                MyChangeMenu(subMenu->actions(), langID, level + 1, i);
+            if (langID == 0)
+                continue;
+            MenuLangString(langID, newString);
+            if (newString.IsEmpty())
+                continue;
+        } else {
+            if (item->isSeparator() || oldString.IsEmpty())
+                continue;
+            const int langPos = FindLangItem(id);
+            const UInt32 langID = langPos >= 0 ? kIDLangPairs[langPos].LangID : id;
+            if (langID == 0)
+                continue;
+            if (langID == IDM_OPEN_INSIDE_ONE || langID == IDM_OPEN_INSIDE_PARSER) {
+                MenuLangString(IDM_OPEN_INSIDE, newString);
+                if (newString.IsEmpty())
+                    continue;
+                newString.Replace(L"&", L"");
+                const int tabPos = newString.Find(L'\t');
+                if (tabPos >= 0)
+                    newString.DeleteFrom(tabPos);
+                newString += (langID == IDM_OPEN_INSIDE_ONE ? " *" : " #");
+            } else if (langID == IDM_BENCHMARK2) {
+                MenuLangString(IDM_BENCHMARK, newString);
+                if (newString.IsEmpty())
+                    continue;
+                newString.Replace(L"&", L"");
+                const int tabPos = newString.Find(L'\t');
+                if (tabPos >= 0)
+                    newString.DeleteFrom(tabPos);
+                newString += " 2";
+            } else
+                MenuLangString(langID, newString);
+            if (newString.IsEmpty())
+                continue;
+            const int tabPos = oldString.ReverseFind(L'\t');
+            if (tabPos >= 0)
+                newString += oldString.Ptr(tabPos);
+        }
+        item->setText(QString::fromWCharArray(newString));
+    }
+}
+
+void MyLoadMenu(QMenuBar &menu, bool needResetMenu) {
+    // A reset changes text in place rather than destroying HMENU/QAction
+    // objects. This preserves active shortcuts, signals and current state.
+    if (needResetMenu || !g_Lang.IsEmpty())
+        MyChangeMenu(menu.actions(), 0, 0, 0);
+}
 
 void CFileMenu::Load(IQtFileMenuServices &destMenu, unsigned startPos) {
     UString diffPath;

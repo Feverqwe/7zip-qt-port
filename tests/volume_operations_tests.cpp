@@ -281,8 +281,8 @@ class VolumeOperationsTests : public QObject {
         for (const QString &part : parts.paths)
             combiner.Names << QFileInfo(part).fileName();
         const QString info = combiner.GetInfo();
-        QVERIFY(info.contains("Файлов: 5"));
-        QVERIFY(info.contains("15 байт"));
+        QVERIFY(info.contains("Files: 5"));
+        QVERIFY(info.contains("15 bytes"));
         QVERIFY(info.contains("части с пробелами.bin.001"));
         QVERIFY(info.contains("части с пробелами.bin.002"));
         QVERIFY(info.contains("части с пробелами.bin.005"));

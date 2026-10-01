@@ -234,7 +234,7 @@ class MainWindowLayoutTests : public QObject {
             auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
             QVERIFY(menu);
             for (QAction *option : menu->actions()) {
-                if (option->text() == "Размер") {
+                if (option->text() == "Size") {
                     option->trigger();
                     break;
                 }

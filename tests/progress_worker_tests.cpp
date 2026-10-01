@@ -182,7 +182,7 @@ class ProgressWorkerTests : public QObject {
         QTimer timer;
         connect(&timer, &QTimer::timeout, &worker, [&] {
             auto *close = worker.findChild<QPushButton *>("IDCANCEL");
-            if (close->text() != QStringLiteral("&Закрыть"))
+            if (close->text() != QStringLiteral("&Close"))
                 return;
             inspected = true;
             closeDefault = close->isEnabled() && close->isDefault() && close->hasFocus();

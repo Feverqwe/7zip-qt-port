@@ -357,7 +357,13 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
             QCOMPARE(rightPanel->findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 0);
             auto *splitter = window.findChild<QSplitter *>("filePanelSplitter");
             QVERIFY(splitter);
-            QTRY_VERIFY(qAbs(splitter->sizes().value(0) - 300) <= 8);
+            QTRY_VERIFY2(qAbs(splitter->sizes().value(0) - 300) <= 8,
+                         qPrintable(QString("split=%1/%2 min=%3/%4 width=%5")
+                                        .arg(splitter->sizes().value(0))
+                                        .arg(splitter->sizes().value(1))
+                                        .arg(leftPanel->minimumSizeHint().width())
+                                        .arg(rightPanel->minimumSizeHint().width())
+                                        .arg(window.width())));
             splitter->setSizes({400, 570});
             QApplication::processEvents();
             QVERIFY(window.close());
@@ -790,7 +796,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                 QVERIFY(dialog);
                 QVERIFY(dialog->findChild<QPlainTextEdit *>("copySelectionInfo")
                             ->toPlainText()
-                            .contains(QStringLiteral("Файлов: 2")));
+                            .contains(QStringLiteral("Files: 2")));
                 dialog->reject();
             });
             action(window, "copyAction")->trigger();

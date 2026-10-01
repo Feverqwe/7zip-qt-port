@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/FormatUtils.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
@@ -154,7 +155,8 @@ void MainWindow::refreshPanelStatus() {
     const auto &labels = panelUi_[projectedPanel_].statusLabels;
     if (!labels[0])
         return;
-    labels[0]->setText(QStringLiteral("Выбрано: ") + status.selectedItems);
+    labels[0]->setText(
+        ToQString(MyFormatNew(app_.LangString_N_SELECTED_ITEMS, ToUString(status.selectedItems))));
     labels[1]->setText(status.selectedSize);
     labels[2]->setText(status.focusedSize);
     labels[3]->setText(status.focusedDate);

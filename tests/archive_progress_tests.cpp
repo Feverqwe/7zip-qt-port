@@ -123,7 +123,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 // External I/O may finish after a pause request. Completion must
                 // not strand the bridge in cooperative CheckStop.
                 backend.Finish();
-            } else if (stage == 1 && close->text() == QStringLiteral("&Закрыть")) {
+            } else if (stage == 1 && close->text() == QStringLiteral("&Close")) {
                 stage = 2;
                 geometry =
                     operation.size() == size && close->isDefault() &&
@@ -230,7 +230,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 return; // Let source finish leave the message's nested event loop.
             auto *close = operation.findChild<QPushButton *>("IDCANCEL");
             if (operation.isVisible() && QApplication::activeModalWidget() == &operation && close &&
-                close->text() == QStringLiteral("&Закрыть"))
+                close->text() == QStringLiteral("&Close"))
                 close->click();
         });
         responder.start();

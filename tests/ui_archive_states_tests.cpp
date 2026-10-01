@@ -416,11 +416,11 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         capture();
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
-        QVERIFY(commands.contains("Переименовать…"));
-        QVERIFY(commands.contains("Копировать"));
-        QVERIFY(commands.contains("Создать папку…"));
-        QVERIFY(enabled.value(QStringLiteral("Переименовать…")));
-        QVERIFY(!commands.contains("Обновить"));
+        QVERIFY(commands.contains("Rena&me"));
+        QVERIFY(commands.contains("&Copy To..."));
+        QVERIFY(commands.contains("Create Folder"));
+        QVERIFY(enabled.value(QStringLiteral("Rena&me")));
+        QVERIFY(!commands.contains("Refresh"));
         QStringList properties;
         QTimer::singleShot(0, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
@@ -440,10 +440,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         capture();
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->height() - 5))));
-        QVERIFY(commands.contains("Переименовать…"));
-        QVERIFY(!enabled.value(QStringLiteral("Переименовать…")));
-        QVERIFY(commands.contains("Создать папку…"));
-        QVERIFY(enabled.value(QStringLiteral("Создать папку…")));
+        QVERIFY(commands.contains("Rena&me"));
+        QVERIFY(!enabled.value(QStringLiteral("Rena&me")));
+        QVERIFY(commands.contains("Create Folder"));
+        QVERIFY(enabled.value(QStringLiteral("Create Folder")));
 
         openListedArchive(window, backend, "menu.7z",
                           {ArchiveEntry{QStringLiteral("папка/файл.txt"), 1, 1}});
@@ -451,9 +451,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         capture();
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
-        QVERIFY(commands.contains("Извлечь выбранное…"));
+        QVERIFY(commands.contains(action(window, "extractSelectedAction")->text()));
         QVERIFY(commands.contains("Добавить в открытый архив…"));
-        QVERIFY(commands.contains("Свойства…"));
+        QVERIFY(commands.contains("P&roperties"));
     }
 
     void addressComboKeepsVisitedPaths() {
