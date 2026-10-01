@@ -13,8 +13,18 @@ case "${CODEX_SANDBOX:-}" in
 esac
 
 source "$project_root/scripts/agent-output.sh"
-sevenzip_setup_output 'check.sh (format, build, CTest)'
+sevenzip_setup_output 'check.sh (format, build)'
 
+if [[ "$#" -ne 0 ]]; then
+  printf 'Usage: %s\n' "$0" >&2
+  exit 2
+fi
+
+ctest_jobs="${SEVENZIP_CTEST_JOBS:-4}"
+if [[ ! "$ctest_jobs" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'SEVENZIP_CTEST_JOBS must be a positive integer.\n' >&2
+  exit 2
+fi
 check_formatting() {
   if ! command -v clang-format >/dev/null 2>&1; then
     printf 'clang-format is required for the regression gate.\n' >&2
@@ -36,4 +46,9 @@ check_formatting() {
 sevenzip_run_command 'clang-format checks and git diff --check' check_formatting
 # The outer check.sh log already captures both commands in compact mode.
 sevenzip_run_command './scripts/build.sh dev' env SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/build.sh dev
-sevenzip_run_command './scripts/ctest.sh --preset dev --output-on-failure' env SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/ctest.sh --preset dev --output-on-failure
+if [[ -n "${sevenzip_output_log:-}" ]]; then
+  trap - EXIT
+  sevenzip_finish_output 0
+  exec 1>&3 2>&4
+fi
+env SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/ctest.sh --preset dev --output-on-failure --parallel "$ctest_jobs"

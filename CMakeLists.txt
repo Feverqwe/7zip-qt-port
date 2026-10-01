@@ -1113,6 +1113,16 @@ foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_opera
     endif()
 endforeach()
 
+# Parallel CTest runs share these generated artifact directories. Keep their
+# writers separate while allowing independent tests to run concurrently.
+get_property(sevenzip_registered_tests DIRECTORY PROPERTY TESTS)
+foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
+    get_property(sevenzip_test_environment TEST ${sevenzip_test} PROPERTY ENVIRONMENT)
+    if(sevenzip_test_environment MATCHES "SEVENZIP_UI_REPORT_DIR|SEVENZIP_SCREENSHOT_DIR")
+        set_property(TEST ${sevenzip_test} APPEND PROPERTY RESOURCE_LOCK sevenzip_ui_artifacts)
+    endif()
+endforeach()
+
 foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests file_viewer_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests)
