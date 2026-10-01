@@ -66,6 +66,11 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
     commands_->AttachActions();
     for (unsigned index = 0; index < kNumPanelsMax; ++index)
+        app_.Panels[index].AttachInvalidationPresentation([this, index] {
+            if (index == app_.GetFocusedPanelIndex())
+                redrawSourceProperties();
+        });
+    for (unsigned index = 0; index < kNumPanelsMax; ++index)
         app_.Panels[index].AttachReloadPresentation([this, index](const CSelectedState &selection) {
             if (!panelUi_[index].container || app_.QtOperations().active())
                 return S_OK;

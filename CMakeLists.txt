@@ -1168,6 +1168,22 @@ foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tes
     endif()
 endforeach()
 
+# Reuse the complete MainWindow fixture component, including its narrow adapters.
+if(BUILD_TESTING)
+    get_target_property(folder_size_view_sources ui_operations_tests SOURCES)
+    list(REMOVE_ITEM folder_size_view_sources tests/ui_operations_tests.cpp)
+    get_target_property(folder_size_view_libraries ui_operations_tests LINK_LIBRARIES)
+    qt_add_executable(folder_size_view_tests tests/folder_size_view_tests.cpp
+        tests/layout_inspection.cpp src/mainwindow_selectionpaths.cpp
+        ${folder_size_view_sources})
+    target_include_directories(folder_size_view_tests PRIVATE src tests)
+    target_link_libraries(folder_size_view_tests PRIVATE ${folder_size_view_libraries}
+        sevenzip_location sevenzip_folder_loader)
+    add_test(NAME folder_size_view COMMAND folder_size_view_tests -silent)
+    set_tests_properties(folder_size_view PROPERTIES TIMEOUT 90 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/folder_size_view.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+endif()
+
 # Every target compiling the engine owner needs this typed source-update transport.
 get_property(engine_consumer_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(engine_consumer IN LISTS engine_consumer_targets)
@@ -1183,6 +1199,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     endif()
     if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
+            src/mainwindow_propertyinvalidation.cpp
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp

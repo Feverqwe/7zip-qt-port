@@ -709,11 +709,23 @@ formatting, CRC, totals и full-value display. Snapshot process listing допо
 только теми данными, которые реально даёт engine adapter; отсутствие raw values
 не заполнять выдуманными значениями. Решение CProxyArc2 оформить по provenance.
 Сюда входит исходная ветка F3 для выбранных папок: CalcItemFullSize и обновление
-статистики/свойств PanelItems::EditItem(bool). До её переноса F3 папок disabled.
+статистики/свойств PanelItems::EditItem(bool).
 
 **Готово:** undefined/zero/UInt64, Unicode, multi-selection и explicit/implicit
 folders отображаются правильно; clipboard и detail не обрезают данные.
 Resource comparator/JSON и deterministic property fixtures.
+
+**Крупные результаты:** P1-10.1 — целый исходный F3 folder-size workflow:
+operated directories, existing source FS calculator, Qt invalidation без reload,
+numeric rows/status/selection и normal/compact regression. P1-10.2 — полное
+source Properties перечисление item/raw/folder/archive levels, доступный engine
+transport, CRC/totals и полный detail/clipboard; отдельная UX/fixture приёмка.
+Parent закрывается после обоих результатов; .1 не закрывает raw transport.
+
+**P1-10.1 принято 2026-10-01:** source EditItem folder branch, реальные FS totals
+и Qt invalidation интегрированы, focused5/5 PASS1.41 s, final unsandboxed
+check.sh157/157 PASS54.89 s macOS arm64 Qt6.11.2. Normal/compact JSON проверены;
+Windows/Linux runtime/rendering unverified. Следующий результат — P1-10.2.
 
 ### P1-11. Корни, диски, сеть и Browse dialogs
 

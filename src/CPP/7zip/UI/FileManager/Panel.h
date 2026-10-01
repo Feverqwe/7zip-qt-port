@@ -280,6 +280,14 @@ class CPanel : public QObject {
     void AttachReloadPresentation(std::function<HRESULT(const CSelectedState &)> reload) {
         _reloadPresentation = std::move(reload);
     }
+    void AttachInvalidationPresentation(std::function<void()> invalidate) {
+        _invalidatePresentation = std::move(invalidate);
+    }
+    void InvalidateList() {
+        if (_invalidatePresentation)
+            _invalidatePresentation();
+        _selectionList.Invalidate();
+    }
     bool PanelCreated = false;
     bool AutoRefresh_Mode = true;
     void Set_AutoRefresh_Mode(bool mode) { AutoRefresh_Mode = mode; }
@@ -541,6 +549,7 @@ class CPanel : public QObject {
     QPointer<QWidget> _parentWindow;
     std::function<bool(CPanel &)> _createPresentation;
     std::function<HRESULT(const CSelectedState &)> _reloadPresentation;
+    std::function<void()> _invalidatePresentation;
     bool _portableFolderChanged = false;
     CAppState *_appState = nullptr;
     UINT _baseID = 0;

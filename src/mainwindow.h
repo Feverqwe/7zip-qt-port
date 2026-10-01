@@ -130,6 +130,7 @@ class MainWindow : public QMainWindow {
     void saveColumns();
     void showColumnsMenu(const QPoint &pos);
     void redrawTimestampColumns();
+    void redrawSourceProperties();
     QString sourceColumnText(UInt32 itemIndex, int column);
     Qt::Alignment sourceColumnAlignment(int column) const;
     void createPanelActions(QMenu *editMenu);

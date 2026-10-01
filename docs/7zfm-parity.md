@@ -7,6 +7,15 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-10.1: исходный `PanelItems.cpp::EditItem(bool)` F3 считает все operated
+directories через IFolderCalcItemFullSize; при выбранных папках focused file
+не запускает viewer. F4 остаётся file-only. Qt перечитывает source column text
+и totals без reload, сохраняя выделение/фокус. Исходный synchronous NULL-progress
+расчёт больших деревьев остаётся для адаптации P2-10. Проверены real Unicode tree,
+defined zero и normal980×620/compact640×400 JSON на macOS arm64 Qt6.11.2.
+Windows reference — source body и исходная команда F3; rendered reference и
+Windows/Linux runtime не проверены. Properties/raw remainder P1-10.2 открыт.
+
 P1-09: исходный `PanelItemOpen.cpp::OpenParentArchiveFolder` предлагает обновить
 изменённый внутренний архив при возврате в родителя. Yes записывает через
 исходный OnOpenItemChanged; No и Cancel удаляют временную копию без записи.

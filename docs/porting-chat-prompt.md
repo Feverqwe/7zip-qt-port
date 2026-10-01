@@ -13,10 +13,11 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-10 после принятого P1-09: real nested archive source parent-link update,
-owned memory materialization, F4/mutations и failure/cancel/password/readonly,
-final gate156/156, focused11/11. Следующий scope — полные properties/raw values,
-formatting и исходная F3 ветка для папок. ZIP comment P1-17 и реальные decoder RAM
+P1-10.2 после принятого P1-10.1: source F3 folder-size, operated directories,
+Qt invalidation без reload, final gate157/157, focused5/5. Parent P1-10 открыт.
+Следующий scope — полное source Properties перечисление item/raw/folder/archive
+levels, доступный engine transport, CRC/totals и full detail/clipboard.
+ZIP comment P1-17 и реальные decoder RAM
 prompts P1-18 заблокированы отдельно до source writer/decoder capability;
 обе функции обязательны для полной итоговой приёмки.
 Работай крупными итерациями: целый интегрированный компонент или пользовательский

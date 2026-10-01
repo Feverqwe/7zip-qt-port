@@ -163,6 +163,14 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;
     c.focusedFile = panel.IsFocusedFile();
+    CMyComPtr<IFolderCalcItemFullSize> calcItemFullSize;
+    if (panel.GetFolder())
+        panel.GetFolder()->QueryInterface(IID_IFolderCalcItemFullSize,
+                                          reinterpret_cast<void **>(&calcItemFullSize));
+    if (calcItemFullSize)
+        FOR_VECTOR(i, operated)
+    if (panel.IsItem_Folder(operated[i]))
+        c.folderSize = true;
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
     c.root = panel.GetFolder() && panel.IsRootFolder();
@@ -250,6 +258,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_OPEN_INSIDE_PARSER:
         return c.focused;
     case IDM_FILE_VIEW:
+        return c.folderSize || (c.focusedFile && (c.filesystem || c.archive));
     case IDM_FILE_EDIT:
         return c.focusedFile && (c.filesystem || c.archive);
     case TextView:

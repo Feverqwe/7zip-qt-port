@@ -489,7 +489,12 @@ the dialog never reads the file table or backend itself.
 hover selection to the Qt CListView adapter. Its persistent hover index and
 owned timer prevent access to deleted rows; hovering does not confirm a path.
 
-Disk F3/F4 dispatch CPanel::EditItem using focused native indices; CApp::DiffFiles
+Disk F3 first follows source CPanel::EditItem's operated-folder CalcItemFullSize
+branch. Source FSFolder owns recursive statistics; InvalidateList projects fresh
+properties through mainwindow_propertyinvalidation.cpp without LoadItems/rebind.
+It updates source display values/numeric size data and status/actions while
+preserving selected/focused rows. Large-tree asynchronous work remains P2-10.
+For files, disk F3/F4 dispatch CPanel::EditItem using focused native indices; CApp::DiffFiles
 owns pair/opposite-panel/fallback path choice. IQtExternalFileServices supplies
 process creation with parsed program/base parameters and literal path argv;
 QtAssociatedFileServices detaches disk launches. Archive launches return a

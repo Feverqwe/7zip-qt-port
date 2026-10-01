@@ -1,5 +1,12 @@
 # Regression strategy
 
+`folder_size_view` checks native keyboard F3 over a Unicode/space tree and an
+empty directory, multi-directory operated selection with focus on a file,
+defined zero, recursive file/directory totals, display text, stable provider,
+selection/focus and no archive operations. It writes normal/compact JSON and
+checks the list remains visible. `fs_folder`, `native_open_commands`,
+`external_editors_ui` and `command_policy_runtime` cover direct consumers.
+
 `nested_edit_chain` drives real nested 7z-in-ZIP source opening, native F4 and
 Rename/Delete/CreateFolder, then parent-link publication. It checks bytes before
 and after publication, inner/outer failure and cancellation, protected levels,

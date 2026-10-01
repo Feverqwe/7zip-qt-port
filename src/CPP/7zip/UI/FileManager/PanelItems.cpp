@@ -26,10 +26,33 @@ UInt32 CPanel::GetFocusedFileIndex() const {
 }
 
 void CPanel::EditItem(bool useEditor) {
-    // Source focused-file branch. F3 folder statistics belongs to P1-10;
-    // the Qt command capability does not expose that omitted branch yet.
-    const UInt32 realIndex = GetFocusedFileIndex();
-    if (realIndex != kParentIndex)
+    if (!useEditor) {
+        CMyComPtr<IFolderCalcItemFullSize> calcItemFullSize;
+        _folder.QueryInterface(IID_IFolderCalcItemFullSize, &calcItemFullSize);
+        if (calcItemFullSize) {
+            bool needRefresh = false;
+            CRecordVector<UInt32> indices;
+            Get_ItemIndices_Operated(indices);
+            FOR_VECTOR(i, indices) {
+                UInt32 index = indices[i];
+                if (IsItem_Folder(index)) {
+                    calcItemFullSize->CalcItemFullSize(index, NULL);
+                    needRefresh = true;
+                }
+            }
+            if (needRefresh) {
+                InvalidateList();
+                return;
+            }
+        }
+    }
+    const int focusedItem = _selectionList.GetFocusedItem();
+    if (focusedItem < 0)
+        return;
+    const unsigned realIndex = GetRealItemIndex(focusedItem);
+    if (realIndex == kParentIndex)
+        return;
+    if (!IsItem_Folder(realIndex))
         EditItem(realIndex, useEditor);
 }
 

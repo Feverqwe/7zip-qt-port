@@ -8,6 +8,44 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-10.1 — исходный F3 folder-size workflow (2026-10-01)
+
+Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, repository
+https://github.com/ip7z/7zip.git, `CPP/7zip/UI/FileManager/PanelItems.cpp::EditItem(bool)`
+lines1043–1085. Восстановлен полный исходный body: !useEditor QI
+IFolderCalcItemFullSize, Get_ItemIndices_Operated, обход выбранных папок,
+CalcItemFullSize(index,NULL), needRefresh/InvalidateList/return; иначе focused
+native index и исходная file branch. Контейнеры, порядок и игнорирование HRESULT
+сохранены; F4 папки не запускает. Уже принятый `FSFolder.cpp::{CalcItemFullSize,
+CFsFolderStat::Enumerate}` и FolderStat_Defined остаются единственным владельцем
+размеров/числа объектов. Archive Agent не предоставляет CalcItemFullSize:
+его размеры explicit/implicit папок уже вычисляет source CProxyArc, новый
+параллельный calculator не добавлен.
+
+Win32 InvalidateList заменён narrow Qt invalidation presentation: существующие
+строки перечитывают source properties и numeric sorting data без LoadItems или
+повторного binding, которые уничтожили бы FolderStat_Defined. Callback ограничен
+активной панелью, сохраняет selection/focus, обновляет status/actions.
+Проверка Qt availability теперь разрешает F3 для operated folders только при
+реальном IFolderCalcItemFullSize; F4 по-прежнему требует focused file.
+Новый coherent `mainwindow_propertyinvalidation.cpp` содержит только projection.
+Расчёт сохраняет исходный синхронный NULL-progress flow; responsive large-tree
+adaptation остаётся обязательным P2-10. Прежние symlink/reparse ограничения
+FSFolderStat не объявляются решёнными этим шагом, owner P2-05.
+
+`folder_size_view` использует реальный CFSFolder, keyboard F3, Unicode/space tree,
+пустую папку (defined zero), несколько выбранных папок с фокусом на файле;
+проверяет source totals, displayed sizes, неизменность provider, selection/focus
+и отсутствие archive operations. Normal980×620/compact640×400 current-build
+JSON и geometry просмотрены. Focused5/5 PASS1.41 s macOS arm64 Qt6.11.2,
+2026-10-01. Первый gate обнаружил missing source registration у root_navigation;
+Qt projection подключён автоматически ко всем targets с mainwindow.cpp.
+Focused root_navigation/folder_size_view2/2 PASS0.59 s. Финальный unsandboxed
+check.sh formatting/build/157 из157 CTest PASS54.89 s. P1-10.1 принят;
+parent P1-10 не закрыт:
+Properties/raw/folder/archive levels/CRC/full-value acceptance остаются .2.
+Windows/Linux runtime и rendered Windows parity не проверены.
+
 ## P1-09 — обратная запись вложенной цепочки (2026-10-01)
 
 Baseline `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, source repository
