@@ -78,6 +78,7 @@ class CreateArchiveDialog : public QDialog {
     QLineEdit *destination_ = nullptr;
     QLabel *preview_ = nullptr;
     QComboBox *format_ = nullptr;
+    QComboBox *updateMode_ = nullptr;
     QComboBox *encryption_ = nullptr;
     QComboBox *level_ = nullptr;
     QComboBox *method_ = nullptr;

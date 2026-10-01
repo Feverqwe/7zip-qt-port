@@ -6,6 +6,7 @@
 #include "qtprogresstransport.h"
 #include <memory>
 
+#include "../Agent/Agent.h"
 #include "../Common/ZipRegistry.h"
 
 #include "../GUI/HashGUI.h"
@@ -299,6 +300,12 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
 
 class CThreadUpdate final : public CProgressThreadVirt {
     HRESULT ProcessVirt() override {
+        if (ActionSet) {
+            CMyComPtr<IArchiveFolderInternal> archiveFolder;
+            RINOK(FolderOperations.QueryInterface(IID_IArchiveFolderInternal, &archiveFolder))
+            return archiveFolder->UpdateFrom(FolderPrefix, FileNamePointers.ConstData(),
+                                             FileNamePointers.Size(), *ActionSet, UpdateCallback);
+        }
         return FolderOperations->CopyFrom(MoveMode, FolderPrefix, FileNamePointers.ConstData(),
                                           FileNamePointers.Size(), UpdateCallback);
     }
@@ -311,10 +318,12 @@ class CThreadUpdate final : public CProgressThreadVirt {
     CMyComPtr<IFolderArchiveUpdateCallback> UpdateCallback;
     CUpdateCallback100Imp *UpdateCallbackSpec = nullptr;
     bool MoveMode = false;
+    const NUpdateArchive::CActionSet *ActionSet = nullptr;
 };
 
 HRESULT CPanel::CopyFrom(bool moveMode, const UString &folderPrefix, const UStringVector &filePaths,
-                         bool showErrorMessages, UStringVector *messages) {
+                         bool showErrorMessages, UStringVector *messages,
+                         const NUpdateArchive::CActionSet *actionSet) {
     if (IsHashFolder() && moveMode)
         return E_NOTIMPL;
 
@@ -324,6 +333,7 @@ HRESULT CPanel::CopyFrom(bool moveMode, const UString &folderPrefix, const UStri
     else {
         CThreadUpdate updater;
         updater.MoveMode = moveMode;
+        updater.ActionSet = actionSet;
         updater.UpdateCallbackSpec = new CUpdateCallback100Imp;
         updater.UpdateCallback = updater.UpdateCallbackSpec;
         updater.UpdateCallbackSpec->Init();

@@ -8,6 +8,57 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-05.1 — существующий архив: update modes и compression (2026-10-01)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Original paths and symbols: `CPP/7zip/UI/GUI/UpdateGUI.cpp::g_UpdateMode_Pairs`/
+`FindUpdateMode` and `UpdateGUI`, `CompressDialog.h::NUpdateMode`/
+`CInfo`, `CompressDialog.cpp::k_UpdateMode_Vals`/`OnInit`/`OnOK`,
+`CompressDialog.rc::IDC_COMPRESS_UPDATE_MODE`,
+`CPP/7zip/UI/Agent/AgentOut.cpp::CAgent::DoOperation` and
+`ArchiveFolderOut.cpp::CAgentFolder::CommonUpdateOperation`,
+`CPP/7zip/UI/Common/UpdateAction.cpp`, `UpdatePair.cpp`, `UpdateProduce.cpp`.
+The exact Common action sets and produce algorithm were already present; the
+mirrored Agent operation retains the source pair calculation and callback.
+
+`src/CPP/7zip/UI/GUI/UpdateGUI.cpp` copies the four original mode/action-set
+pairs and lookup loop, omitting the unrelated Win32 update dialog and command
+line setup. `CompressDialog.h` now carries the original enum and info defaults.
+Qt `CreateArchiveDialog` shows the original four modes and existing compression
+controls for an existing target; `CPanel::CopyFrom` passes the selected source
+action set through local `IArchiveFolderInternal::UpdateFrom` to a narrow
+`CAgentFolder` adapter, which calls original `SetFiles` and
+`CommonUpdateOperation`. The interface keeps the portable panel library free
+of a link dependency on the concrete Agent. `QtArchiveFileResource` carries the
+selected options through this source callback route. The resource's local
+callback-plan adapter reads source keep/new/remove decisions, stages the native
+streams and timestamps, and asks `ArchiveBackend` to update a separate copy
+using `7zz` delete/add stages. The backend owns validation, process switches,
+transaction failure/cancel cleanup and compression option checks; Qt widgets
+never build engine commands. The create/archive compression switch builder was
+extracted without changing its validation. The selected archive resource is
+kept alive through the synchronous source worker and refresh.
+
+This is a partial `UpdateGUI.cpp`/`CompressDialog` port: the verified scope is
+existing, top-level ZIP/7z files with relative names. Path modes, directory
+edge cases and encrypted Add need P1-05.2; the larger Win32 dialog body and
+format options unrelated to this workflow are omitted. Source callback plans
+unsupported by the file-only `7zz` adapter still fail explicitly. The dialog
+and plan backend reject protected Add until encryption preservation is
+implemented; the pre-existing source F5 protected Add route is unchanged. Required
+`clang-format` affects presentation of borrowed snippets only. Source notices
+and LGPL reference remain in the mirrored files. macOS arm64 byte-level tests
+cover four modes on ZIP and 7z, Unicode/staged replacement, rollback,
+compression method and UI route; Windows/Linux and rendered Windows appearance
+are unverified.
+The older controlled-backend `ui_operations` fixture now checks the Add
+dialog's Cancel path and mode availability; its separate drag/drop test still
+checks `addSources`. The dialog's real source route is covered in
+`ui_update_modes`.
+Focused `source_update_backend`, `compression`, `ui_update_modes`, `app_state`
+and `panel_folder` passed. The full unsandboxed `./scripts/check.sh` passed
+146/146 CTest on macOS arm64/Qt 6.11.2, 2026-10-01.
+
 ## P1-03.1 — filesystem CreateFolder/CreateFile/inline Rename (2026-09-30)
 
 Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),

@@ -5,6 +5,7 @@
 #include "qtprogresstransport.h"
 #include <QString>
 #include <functional>
+#include <optional>
 
 class IInStream;
 class IProgress;
@@ -29,6 +30,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::function<HRESULT(IInArchive *, const UInt32 *, UInt32, Int32, IArchiveExtractCallback *)>
         _extract;
     std::function<std::unique_ptr<IQtProgressTransport>(CProgressDialog &)> _progress;
+    std::optional<CompressionOptions> _compressionOptions;
 
   public:
     QString EnginePath;
@@ -50,6 +52,11 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog);
     // The caller owns the dialog until the native worker has joined.
     void SetUpdateProgress(CProgressSync *sync) { _sync = sync; }
+    void SetCompressionOptions(const CompressionOptions &options) { _compressionOptions = options; }
+    void ClearCompressionOptions() { _compressionOptions.reset(); }
+    const std::optional<CompressionOptions> &CompressionSettings() const {
+        return _compressionOptions;
+    }
     bool HasUpdateService() const { return bool(_update) && _offset == 0; }
     bool HasExtractService() const { return bool(_extract); }
     HRESULT Update(ISequentialOutStream *output, IInArchive *metadata, UInt32 count,

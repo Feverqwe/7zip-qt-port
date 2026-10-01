@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -113,6 +114,72 @@ class CompressionTests : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, "encryption-compact-confirmation"));
         const QRect passwordRect(password->mapTo(scroll->viewport(), QPoint()), password->size());
         QVERIFY(scroll->viewport()->rect().contains(passwordRect));
+    }
+
+    void updateDialogKeepsModeAndCompressionAccessible() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source.txt");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        const QString archive = temp.filePath("archive.zip");
+        QVERIFY(QFile(archive).open(QIODevice::WriteOnly));
+        CreateArchiveDialog dialog(temp.path(), {source}, nullptr, archive);
+        auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
+        auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        auto *scroll = dialog.findChild<QScrollArea *>();
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        QVERIFY(mode && level && scroll && buttons);
+        QCOMPARE(mode->count(), 4);
+        QCOMPARE(dialog.compressionOptions().UpdateMode, NCompressDialog::NUpdateMode::kAdd);
+        for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
+            dialog.resize(size);
+            dialog.show();
+            QCoreApplication::processEvents();
+            QVERIFY(
+                dialog.rect().contains(QRect(buttons->mapTo(&dialog, QPoint()), buttons->size())));
+            for (QWidget *control : {static_cast<QWidget *>(mode), static_cast<QWidget *>(level)}) {
+                scroll->ensureWidgetVisible(control);
+                QCoreApplication::processEvents();
+                QVERIFY(scroll->viewport()->rect().contains(
+                    QRect(control->mapTo(scroll->viewport(), QPoint()), control->size())));
+            }
+            QVERIFY(UiInspection::writeReport(
+                dialog, size.width() == 760 ? "update-options-normal" : "update-options-compact"));
+        }
+    }
+
+    void cancelledUpdateDoesNotSaveCompressionProfile() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source.txt");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        const QString archive = temp.filePath("archive.zip");
+        QVERIFY(QFile(archive).open(QIODevice::WriteOnly));
+        const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QVERIFY(!settingsPath.isEmpty());
+        const QByteArray previous = QFile(settingsPath).exists() ? [&] {
+            QFile settings(settingsPath);
+            if (!settings.open(QIODevice::ReadOnly))
+                return QByteArray();
+            return settings.readAll();
+        }()
+                                                                 : QByteArray();
+        const bool existed = QFile(settingsPath).exists();
+        CreateArchiveDialog dialog(temp.path(), {source}, nullptr, archive);
+        auto *level = dialog.findChild<QComboBox *>("compressionLevel");
+        QVERIFY(level);
+        level->setCurrentIndex(level->findData(0u));
+        dialog.reject();
+        QCOMPARE(QFile(settingsPath).exists(), existed);
+        if (existed) {
+            QFile settings(settingsPath);
+            QVERIFY(settings.open(QIODevice::ReadOnly));
+            QCOMPARE(settings.readAll(), previous);
+        }
     }
 
     void mismatchedPasswordBlocksSubmission() {

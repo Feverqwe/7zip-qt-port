@@ -747,6 +747,27 @@ QFileIconProvider. Цвет/форма иконок зависят от ОС. `p
 normal/compact Qt JSON и disk/archive popup, но Windows rendered reference,
 Windows/Linux runtime и полноценные shell/namespace icons ещё не проверены.
 
+## P1-05.1 — Add в существующий ZIP/7z (2026-10-01)
+
+Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.rc` update/path combo rows,
+`CompressDialog.cpp::OnInit/OnOK`, `UpdateGUI.cpp::g_UpdateMode_Pairs` and
+`AgentOut.cpp::DoOperation`. The Qt dialog now shows four update modes and
+compression controls for an existing archive. The selected mode uses source
+Add/Update/Freshen/Synchronize action sets, so newer/older/archive-only files
+follow the original pair decisions. A source picker and scrolling compression
+form remain the platform presentation adaptation. The original path-mode combo
+and Full/Absolute names are still P1-05.2; only relative names are exposed.
+Unsupported callback plans report failure rather than applying another mode.
+
+At 760×720 and 640×480 the mode and compression controls can be brought into
+view within the scroll area and the footer remains visible. Current-build
+`update-options-normal.json`/`update-options-compact.json` confirm widget
+structure and clipping on macOS arm64; Windows rendered pixel appearance and
+Windows/Linux runtime are unverified. The existing-archive encryption panel is
+still absent, and this dialog declines protected Add pending P1-05.2; source
+F5 protected Add remains available.
+
 ## P1-04.1 — изменение незашифрованного архива (2026-09-30)
 
 F7, F2 и Delete/Shift+Delete в верхнем 7z/ZIP теперь идут через те же

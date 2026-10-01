@@ -1,10 +1,12 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
+#include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "Windows/PropVariant.h"
 #include "archiveprogressoperation.h"
 #include "mainwindow.h"
 #include "qtarchivebatchextract.h"
 #include "qtarchivefileresource.h"
+#include <QScopeGuard>
 #include <QScopedValueRollback>
 
 void MainWindow::calculateHash(const QString &method) {
@@ -153,12 +155,68 @@ void MainWindow::createArchive(const QString &target, const QStringList &sources
 void MainWindow::addDialog() {
     if (state_ != State::Viewing)
         return;
+    if (info_.encrypted) {
+        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
+                             QStringLiteral("Обновление защищённого архива пока недоступно."));
+        return;
+    }
     CreateArchiveDialog dialog(returnDirectory_, {}, this, archive_);
     if (dialog.exec() != QDialog::Accepted)
         return;
     if (state_ != State::Viewing || dialog.sources().isEmpty())
         return;
-    addSources(dialog.sources());
+    updateArchiveFromDialog(dialog.sources(), dialog.compressionOptions());
+}
+
+void MainWindow::updateArchiveFromDialog(const QStringList &sources,
+                                         const CompressionOptions &options) {
+    if (app_.QtOperations().closed() || state_ != State::Viewing || sources.isEmpty() ||
+        isNestedArchive() || !ArchiveFormats::canModify(archive_))
+        return;
+    if (info_.encrypted) {
+        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
+                             QStringLiteral("Обновление защищённого архива пока недоступно."));
+        return;
+    }
+    CPanel &panel = app_.GetFocusedPanel();
+    auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
+    auto *resource =
+        folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+    const auto *actionSet = NCompressDialog::FindUpdateActionSet(options.UpdateMode);
+    if (!resource || !resource->HasUpdateService() || !actionSet) {
+        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
+                             QStringLiteral("Исходное обновление этого архива недоступно."));
+        return;
+    }
+    QString root, error;
+    QStringList relativePaths;
+    if (!ArchiveBackend::prepareSourceSelection(archive_, sources, &root, &relativePaths, &error)) {
+        QMessageBox::warning(this, QStringLiteral("Добавление в архив"), error);
+        return;
+    }
+    UStringVector names;
+    for (const QString &path : relativePaths)
+        names.Add(ToUString(path));
+    CSelectedState selection;
+    panel.SaveSelectedState(selection);
+    CMyComPtr<IUnknown> keepResourceAlive = resource;
+    resource->SetCompressionOptions(options);
+    const auto resetOptions = qScopeGuard([resource] { resource->ClearCompressionOptions(); });
+    UStringVector messages;
+    HRESULT result;
+    {
+        QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+        result = panel.CopyFrom(false, ToUString(root), names, true, &messages, actionSet);
+    }
+    if (result == S_OK && messages.IsEmpty()) {
+        refreshCurrent(&selection);
+        statusBar()->showMessage(QStringLiteral("Архив обновлён."));
+    } else if (result != E_ABORT) {
+        QMessageBox::warning(this, QStringLiteral("Добавление в архив"),
+                             messages.IsEmpty()
+                                 ? QString::fromWCharArray(HResultToMessage(result).Ptr())
+                                 : ToQString(messages[0]));
+    }
 }
 
 void MainWindow::extractTo(const QString &destination, bool onlySelected, const QString &password,

@@ -34,6 +34,9 @@ class CFastFolders;
 class CListViewDialog;
 class QWidget;
 class CVirtFileSystem;
+namespace NUpdateArchive {
+struct CActionSet;
+}
 
 // Native launcher owner, scoped to this panel rather than a process-wide global.
 struct CExitEventLauncher {
@@ -360,7 +363,8 @@ class CPanel : public QObject {
                    UStringVector *messages, bool &usePassword, UString &password,
                    const UStringVector *filePaths = NULL);
     HRESULT CopyFrom(bool moveMode, const UString &folderPrefix, const UStringVector &filePaths,
-                     bool showErrorMessages, UStringVector *messages);
+                     bool showErrorMessages, UStringVector *messages,
+                     const NUpdateArchive::CActionSet *actionSet = nullptr);
     void SetNewFolder(IFolderFolder *folder);
     void AttachFolderManager(IFolderManager *manager, const QString &settingsPath) {
         _folderManager = manager;

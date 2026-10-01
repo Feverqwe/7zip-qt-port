@@ -348,6 +348,16 @@ HRESULT CAgentFolder::CopyFrom(Int32 moveMode, const wchar_t *fromFolderPath,
     }
     COM_TRY_END
 }
+
+Z7_COM7F_IMF(CAgentFolder::UpdateFrom(const wchar_t *fromFolderPath,
+                                     const wchar_t *const *itemsPaths, UInt32 numItems,
+                                     const NUpdateArchive::CActionSet &actionSet,
+                                     IProgress *progress)) {
+    COM_TRY_BEGIN
+    RINOK(_agentSpec->SetFiles(fromFolderPath, itemsPaths, numItems))
+    return CommonUpdateOperation(AGENT_OP_Uni, false, NULL, &actionSet, NULL, 0, progress);
+    COM_TRY_END
+}
 // clang-format on
 
 Z7_COM7F_IMF(CAgentFolder::CopyFromFile(UInt32 destIndex, const wchar_t *itemPath,

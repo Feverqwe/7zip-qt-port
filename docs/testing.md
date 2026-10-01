@@ -166,7 +166,9 @@ source worker to real ArchiveBackend: real zip Add with Unicode/spaces, unchange
 archive on missing-source failure, GUI start exception composition, owned engine
 password accept/empty/cancel, pause/background failure rollback and completion
 while paused. It also produces normal/compact control/error-close JSON.
-`ui_operations` checks Add/drop modal consumer state and refresh/selection flow.
+`ui_operations` checks the drag/drop Add consumer's modal state and
+refresh/selection flow; `ui_update_modes` checks the existing-archive Add
+dialog's source update route.
 P0-10.2 additionally checks the shared source dialog in filesystem copy/delete
 and volume Split/Combine, including disabled unsupported Pause, native Background
 availability, completion/errors and partial-result refresh. `progress_cancel`
@@ -637,6 +639,15 @@ During implementation, build affected targets and run focused tests for changed 
 For layout, visible-text, control-visibility, and resizing changes, start with [view specifications and geometry reports](ui-layout-contracts.md). Run focused checks at normal and compact sizes and review current-build JSON. Screenshots are a fallback for rendering details these checks cannot resolve, or at the user's request. Identify the upstream resource/source or Windows screenshot used for comparison; geometric/structural checks do not establish pixel-level Windows parity. Nonvisual changes need no appearance inspection.
 
 `settings` checks that cancelling Options leaves the file list unchanged, accepting its list options persists them, and a click opens a Unicode folder when single-click mode is enabled. System icon appearance still needs manual checks on each platform.
+`source_update_backend` checks source Add/Update/Freshen/Synchronize pair
+actions on real ZIP and 7z fixtures with newer, older, new and archive-only
+files. It also checks staged Unicode replacement, invalid compression options
+and cancellation leave the original archive unchanged. `ui_update_modes`
+exercises the existing-archive Add dialog through the real source panel and
+checks replacement bytes and Store compression. `compression` checks update
+dialog normal/compact scroll geometry and verifies Cancel leaves the saved
+compression profile unchanged.
+
 `compression` checks the upstream level masks (0–9 for 7z; 0, 1, 3, 5, 7, 9 for ZIP), ZIP PPMd archive creation, and that changing the 7z/ZIP format updates available methods, password visibility and confirmation controls, and that mismatched passwords prevent submission. It checks method-dependent dictionary, word-size and solid-block controls, creates disposable archives with these options, lists their Unicode filenames and checks the reported method from `7zz l -slt`. Invalid or incompatible options must fail before creating a target. A compact creation dialog must keep confirmation buttons visible and allow scrolling to the password fields. These checks run locally on macOS; the options and dialog layout still need Windows and Linux verification.
 `properties` checks mixed filesystem selection, archive packed sizes, recursive
 folder counts, the upstream sum of every selected row (including a selected

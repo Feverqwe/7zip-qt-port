@@ -49,7 +49,8 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
     _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
                                        UInt32 count, IArchiveUpdateCallback *callback) {
         return UpdateArchiveSourceStream(backend, EnginePath, format, output, metadata, count,
-                                         callback, _sync);
+                                         callback, _sync,
+                                         _compressionOptions ? &*_compressionOptions : nullptr);
     };
 }
 
@@ -157,6 +158,84 @@ HRESULT FindAddPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *
         items.append({i, path, directory.boolVal == VARIANT_TRUE});
     }
     return kept.size() == int(originalCount) && !items.isEmpty() ? S_OK : E_NOTIMPL;
+}
+
+struct CSourceUpdatePlan {
+    QStringList Removed;
+    QList<CAddedItem> Files;
+    QList<CAddedItem> Directories;
+};
+
+HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *callback,
+                             CSourceUpdatePlan &plan) {
+    UInt32 originalCount;
+    RINOK(metadata->GetNumberOfItems(&originalCount))
+    QStringList originalPaths;
+    QList<bool> originalDirectories;
+    QSet<QString> originalNames;
+    for (UInt32 i = 0; i < originalCount; ++i) {
+        QString path;
+        RINOK(ReadPath(metadata, i, path))
+        NWindows::NCOM::CPropVariant directory;
+        RINOK(metadata->GetProperty(i, kpidIsDir, &directory))
+        if (directory.vt != VT_BOOL)
+            return E_NOTIMPL;
+        const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
+        if (originalNames.contains(key))
+            return E_NOTIMPL;
+        originalNames.insert(key);
+        originalPaths.append(path);
+        originalDirectories.append(directory.boolVal == VARIANT_TRUE);
+    }
+    QSet<UInt32> referenced;
+    QSet<QString> finalNames;
+    QSet<UInt32> replaced;
+    for (UInt32 i = 0; i < count; ++i) {
+        Int32 newData, newProps;
+        UInt32 index;
+        RINOK(callback->GetUpdateItemInfo(i, &newData, &newProps, &index))
+        if (index != UInt32(-1) && (index >= originalCount || referenced.contains(index)))
+            return E_NOTIMPL;
+        if (index != UInt32(-1))
+            referenced.insert(index);
+        QString path;
+        bool directory = false;
+        if (!newData && !newProps && index != UInt32(-1)) {
+            path = originalPaths[int(index)];
+            directory = originalDirectories[int(index)];
+        } else if (newData && newProps) {
+            RINOK(ReadNewPath(callback, i, path))
+            NWindows::NCOM::CPropVariant directoryProperty;
+            RINOK(callback->GetProperty(i, kpidIsDir, &directoryProperty))
+            if (directoryProperty.vt != VT_BOOL)
+                return E_NOTIMPL;
+            directory = directoryProperty.boolVal == VARIANT_TRUE;
+            if (index != UInt32(-1)) {
+                if (originalPaths[int(index)] != path ||
+                    originalDirectories[int(index)] != directory)
+                    return E_NOTIMPL;
+                replaced.insert(index);
+            }
+            (directory ? plan.Directories : plan.Files).append({i, path, directory});
+        } else
+            return E_NOTIMPL;
+        const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
+        if (finalNames.contains(key))
+            return E_NOTIMPL;
+        finalNames.insert(key);
+    }
+    for (UInt32 i = 0; i < originalCount; ++i)
+        if (!referenced.contains(i) || (replaced.contains(i) && !originalDirectories[int(i)]))
+            plan.Removed.append(originalPaths[int(i)]);
+    for (UInt32 i = 0; i < originalCount; ++i) {
+        if (referenced.contains(i) || !originalDirectories[int(i)])
+            continue;
+        const QString prefix = originalPaths[int(i)] + '/';
+        for (UInt32 child = 0; child < originalCount; ++child)
+            if (originalPaths[int(child)].startsWith(prefix) && referenced.contains(child))
+                return E_NOTIMPL;
+    }
+    return S_OK;
 }
 
 HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path) {
@@ -315,7 +394,8 @@ HRESULT StageAddedItems(const QString &root, const QList<CAddedItem> &items,
 HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archive,
                                   const QString &format, ISequentialOutStream *output,
                                   IInArchive *metadata, UInt32 count,
-                                  IArchiveUpdateCallback *callback, CProgressSync *sync) {
+                                  IArchiveUpdateCallback *callback, CProgressSync *sync,
+                                  const CompressionOptions *options) {
     COM_TRY_BEGIN
     if (!output || !metadata || !callback)
         return E_INVALIDARG;
@@ -334,17 +414,28 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         return E_FAIL;
     UInt32 changed;
     QString name;
-    const HRESULT fileUpdate = FindChangedItem(metadata, count, callback, changed, name);
+    const HRESULT fileUpdate =
+        options ? E_NOTIMPL : FindChangedItem(metadata, count, callback, changed, name);
     CMutationPlan mutation;
     QList<CAddedItem> added;
+    CSourceUpdatePlan sourcePlan;
+    ArchiveBackend::SourceUpdatePlan sourcePlanBackend;
+    bool sourcePlanSelected = false;
     HRESULT mutationResult = E_NOTIMPL;
     if (fileUpdate == E_NOTIMPL)
         mutationResult = FindMutationPlan(metadata, count, callback, mutation);
     else if (fileUpdate != S_OK)
         return fileUpdate;
-    if (fileUpdate != S_OK && mutationResult == E_NOTIMPL)
-        RINOK(FindAddPlan(metadata, count, callback, added))
-    else if (mutationResult != S_OK && fileUpdate != S_OK)
+    if (fileUpdate != S_OK && mutationResult == E_NOTIMPL) {
+        const HRESULT addResult =
+            options ? E_NOTIMPL : FindAddPlan(metadata, count, callback, added);
+        if (addResult == E_NOTIMPL) {
+            added.clear();
+            RINOK(FindSourceUpdatePlan(metadata, count, callback, sourcePlan))
+            sourcePlanSelected = true;
+        } else
+            RINOK(addResult)
+    } else if (mutationResult != S_OK && fileUpdate != S_OK)
         return mutationResult;
     const QString sourceRoot = stage.filePath("source");
     QStringList addedNames;
@@ -352,8 +443,16 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         RINOK(StageCallbackStream(sourceRoot, name, changed, callback))
     else if (!added.isEmpty())
         RINOK(StageAddedItems(sourceRoot, added, callback, addedNames))
-    else if (mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder &&
-             !QDir().mkpath(QDir(sourceRoot).filePath(mutation.Paths.front())))
+    else if (sourcePlanSelected) {
+        const QString directoryRoot = stage.filePath("directories");
+        RINOK(StageAddedItems(sourceRoot, sourcePlan.Files, callback, sourcePlanBackend.files))
+        RINOK(StageAddedItems(directoryRoot, sourcePlan.Directories, callback,
+                              sourcePlanBackend.directories))
+        sourcePlanBackend.fileRoot = sourceRoot;
+        sourcePlanBackend.directoryRoot = directoryRoot;
+        sourcePlanBackend.removed = sourcePlan.Removed;
+    } else if (mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder &&
+               !QDir().mkpath(QDir(sourceRoot).filePath(mutation.Paths.front())))
         return E_FAIL;
     CMyComPtr<ICryptoGetTextPassword2> crypto;
     callback->QueryInterface(IID_ICryptoGetTextPassword2, (void **)&crypto);
@@ -378,6 +477,15 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
             backend,
             [&backend, archive, addedNames, sourceRoot, result, format, password] {
                 backend.updateSourceAdd(archive, addedNames, sourceRoot, result, format, password);
+            },
+            callback, sync))
+    } else if (sourcePlanSelected) {
+        RINOK(RunArchiveBackendRequest(
+            backend,
+            [&backend, archive, sourcePlanBackend, result, format, password, options] {
+                backend.updateSourcePlan(archive, sourcePlanBackend, result, format, password,
+                                         options ? std::optional<CompressionOptions>(*options)
+                                                 : std::nullopt);
             },
             callback, sync))
     } else {

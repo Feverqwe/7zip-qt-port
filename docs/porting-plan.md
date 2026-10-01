@@ -593,6 +593,12 @@ Common `UpdateAction.cpp`, `UpdatePair.cpp`, `UpdateProduce.cpp`, `ArchiveName.c
 проверены. Cancel/invalid options не сохраняют профиль и не меняют archive.
 Compress resource geometry включает новые controls и compact scrolling.
 
+Интегрированные результаты: P1-05.1 — Add/Update/Freshen/Synchronize для
+существующих верхних ZIP/7z с относительными именами, исходный callback plan,
+настройки сжатия и транзакционный backend; P1-05.2 — полные исходные path modes,
+каталоги/защищённые архивы, оставшиеся Add branches и parent приёмка. Первый
+результат не закрывает P1-05.
+
 ### P1-06. Многотомные архивы и связанные диалоги
 
 **После:** P1-05. **Источники:** GUI `CompressDialog.*`, `UpdateGUI.cpp`,

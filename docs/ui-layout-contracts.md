@@ -12,6 +12,17 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Existing archive Add options (P1-05.1)
+
+Reference: `CompressDialog.rc` update/path rows and `CompressDialog.cpp`
+initialization at upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+The Qt existing-archive form shows target, format, update mode and compression
+controls above the source picker. `compression` checks the mode list, normal
+760×720 and compact 640×480 footer/scroll reachability, then writes
+`update-options-normal.json` and `update-options-compact.json`.
+Path-mode and protected-archive controls remain P1-05.2. These reports verify
+Qt structure and clipping on the checked host; Windows rendering is unverified.
+
 The main-window caption is native CApp::RefreshTitle's focused folder prefix,
 with `7-Zip` for an empty prefix. Toolbar option checks mirror native CApp flags;
 existing grouping and action order stay in the main-window normal/compact reports.

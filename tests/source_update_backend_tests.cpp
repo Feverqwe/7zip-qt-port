@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/UpdateCallback100.h"
+#include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "Common/StringConvert.h"
 #include "archivebackend.h"
 #include "archiveprogresstransport.h"
@@ -173,21 +174,28 @@ class CNativeAddWorker final : public CProgressThreadVirt {
     QtArchiveFileResource *_resourceSpec;
     HRESULT ProcessVirt() override {
         CObjectVector<CPanelItem> items;
-        CPanelItem keep;
-        keep.RelPath = QStringLiteral("inside/keep.bin");
-        keep.SizeDefined = true;
-        keep.Size = 4;
-        items.Add(keep);
+        const QStringList archivePaths =
+            ArchivePaths.isEmpty() ? QStringList{QStringLiteral("inside/keep.bin")} : ArchivePaths;
+        for (const QString &path : archivePaths) {
+            CPanelItem item;
+            item.RelPath = path;
+            item.MTimeText = ArchiveMTimeText;
+            items.Add(item);
+        }
         CMyComPtr<IFolderFolder> props =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
         CMyComPtr2_Create<IUnknown, CAgent> agent;
         RINOK(agent->Init({}, props, ToUString(_format), _resource))
         CMyComPtr<IFolderFolder> root, inside;
         RINOK(agent->BindToRootFolder(&root))
-        RINOK(root->BindToFolder(L"inside", &inside))
-        RINOK(inside->LoadItems())
+        CMyComPtr<IFolderFolder> folder = root;
+        if (!RootFolder) {
+            RINOK(root->BindToFolder(L"inside", &inside))
+            folder = inside;
+        }
+        RINOK(folder->LoadItems())
         CMyComPtr<IFolderOperations> operations;
-        RINOK(inside.QueryInterface(IID_IFolderOperations, &operations))
+        RINOK(folder.QueryInterface(IID_IFolderOperations, &operations))
         CMyComPtr2_Create<IFolderArchiveUpdateCallback, CUpdateCallback100Imp> ui;
         ui->ProgressDialog = this;
         ui->Init();
@@ -205,12 +213,23 @@ class CNativeAddWorker final : public CProgressThreadVirt {
         pointers.reserve(names.size());
         for (const std::wstring &name : names)
             pointers.push_back(name.c_str());
+        if (ActionSet) {
+            auto *agentFolder = dynamic_cast<CAgentFolder *>((IFolderFolder *)folder);
+            if (!agentFolder)
+                return E_NOINTERFACE;
+            return agentFolder->UpdateFrom(parent.c_str(), pointers.data(), UInt32(pointers.size()),
+                                           *ActionSet, ui);
+        }
         return operations->CopyFrom(MoveMode, parent.c_str(), pointers.data(),
                                     UInt32(pointers.size()), ui);
     }
 
   public:
     bool MoveMode = false;
+    bool RootFolder = false;
+    QStringList ArchivePaths;
+    QString ArchiveMTimeText;
+    const NUpdateArchive::CActionSet *ActionSet = nullptr;
     QString Password;
     QStringList Sources;
     CNativeAddWorker(ArchiveBackend &backend, const QString &archive, const QString &source,
@@ -257,6 +276,163 @@ class SourceUpdateBackendTests final : public QObject {
         QVERIFY(!backend.busy());
         QVERIFY(QFile::exists(output));
         QCOMPARE(readFile(archive), original);
+    }
+    void sourcePlanDeletesReplacesAndAddsFiles() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString oldRoot = fixture.filePath("old");
+        const QString fileRoot = fixture.filePath("staged");
+        const QString archive = fixture.filePath("original.zip");
+        const QString output = fixture.filePath("updated.zip");
+        QVERIFY(writeFile(QDir(oldRoot).filePath("keep.txt"), "keep"));
+        QVERIFY(writeFile(QDir(oldRoot).filePath("replace.txt"), "old"));
+        QVERIFY(writeFile(QDir(oldRoot).filePath("removed.txt"), "remove"));
+        QVERIFY(runEngine(oldRoot,
+                          {"a", "-tzip", "--", archive, "keep.txt", "replace.txt", "removed.txt"}));
+        const QByteArray original = readFile(archive);
+        QVERIFY(writeFile(QDir(fileRoot).filePath("replace.txt"), "new"));
+        QVERIFY(writeFile(QDir(fileRoot).filePath(QStringLiteral("новый файл.txt")), "added"));
+        ArchiveBackend::SourceUpdatePlan plan;
+        plan.removed = {"replace.txt", "removed.txt"};
+        plan.files = {"replace.txt", QStringLiteral("новый файл.txt")};
+        plan.fileRoot = fileRoot;
+        ArchiveBackend backend(nullptr, enginePath());
+        CBackendWorker worker(backend);
+        worker.Start = [&] { backend.updateSourcePlan(archive, plan, output, "zip", {}); };
+        ArchiveProgressTransport transport(worker, backend);
+        QCOMPARE(worker.Create(L"Update", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QCOMPARE(readFile(archive), original);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(QDir().mkpath(extracted));
+        QVERIFY(runEngine(extracted, {"x", "-y", "--", output}));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.txt")), QByteArray("keep"));
+        QCOMPARE(readFile(QDir(extracted).filePath("replace.txt")), QByteArray("new"));
+        const QString addedPath = QDir(extracted).filePath(QStringLiteral("новый файл.txt"));
+        QCOMPARE(readFile(addedPath), QByteArray("added"));
+        QVERIFY(!QFileInfo::exists(QDir(extracted).filePath("removed.txt")));
+    }
+    void sourcePlanRejectsInvalidOptionsAndRollsBackOnCancel() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString sourceRoot = fixture.filePath("source");
+        const QString archive = fixture.filePath("original.zip");
+        const QString output = fixture.filePath("updated.zip");
+        QVERIFY(
+            writeFile(QDir(sourceRoot).filePath("input.bin"), QByteArray(4 * 1024 * 1024, 'x')));
+        QVERIFY(runEngine(sourceRoot, {"a", "-tzip", "--", archive, "input.bin"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend::SourceUpdatePlan plan;
+        plan.files = {"input.bin"};
+        plan.removed = {"input.bin"};
+        plan.fileRoot = sourceRoot;
+        CompressionOptions invalid;
+        invalid.level = 99;
+        ArchiveBackend rejected(nullptr, enginePath());
+        QSignalSpy rejectedFinished(&rejected, &ArchiveBackend::finished);
+        rejected.updateSourcePlan(archive, plan, output, "zip", {}, invalid);
+        QCOMPARE(rejectedFinished.count(), 1);
+        QVERIFY(!rejectedFinished.takeFirst().first().toBool());
+        QVERIFY(!QFile::exists(output));
+        QCOMPARE(readFile(archive), original);
+        rejected.updateSourcePlan(archive, plan, output, "zip", "password");
+        QCOMPARE(rejectedFinished.count(), 1);
+        QVERIFY(!rejectedFinished.takeFirst().first().toBool());
+        QVERIFY(!QFile::exists(output));
+        QCOMPARE(readFile(archive), original);
+
+        ArchiveBackend cancelled(nullptr, enginePath());
+        QSignalSpy cancelledFinished(&cancelled, &ArchiveBackend::finished);
+        connect(&cancelled, &ArchiveBackend::engineStarted, &cancelled, &ArchiveBackend::cancel);
+        cancelled.updateSourcePlan(archive, plan, output, "zip", {});
+        QTRY_COMPARE_WITH_TIMEOUT(cancelledFinished.count(), 1, 10000);
+        QVERIFY(!cancelledFinished.takeFirst().first().toBool());
+        QCOMPARE(cancelled.lastResult(), E_ABORT);
+        QVERIFY(!cancelled.busy());
+        QVERIFY(!QFile::exists(output));
+        QCOMPARE(readFile(archive), original);
+    }
+    void nativeUpdateModesFollowSourcePairActions_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<int>("mode");
+        QTest::addColumn<QByteArray>("olderBytes");
+        QTest::addColumn<bool>("newPresent");
+        QTest::addColumn<bool>("archiveOnlyPresent");
+        QTest::newRow("zip-add") << QString("zip") << int(NCompressDialog::NUpdateMode::kAdd)
+                                 << QByteArray("disk older") << true << true;
+        QTest::newRow("zip-update") << QString("zip") << int(NCompressDialog::NUpdateMode::kUpdate)
+                                    << QByteArray("archive older") << true << true;
+        QTest::newRow("zip-freshen") << QString("zip") << int(NCompressDialog::NUpdateMode::kFresh)
+                                     << QByteArray("archive older") << false << true;
+        QTest::newRow("zip-sync") << QString("zip") << int(NCompressDialog::NUpdateMode::kSync)
+                                  << QByteArray("archive older") << true << false;
+        QTest::newRow("7z-add") << QString("7z") << int(NCompressDialog::NUpdateMode::kAdd)
+                                << QByteArray("disk older") << true << true;
+        QTest::newRow("7z-update") << QString("7z") << int(NCompressDialog::NUpdateMode::kUpdate)
+                                   << QByteArray("archive older") << true << true;
+        QTest::newRow("7z-freshen") << QString("7z") << int(NCompressDialog::NUpdateMode::kFresh)
+                                    << QByteArray("archive older") << false << true;
+        QTest::newRow("7z-sync") << QString("7z") << int(NCompressDialog::NUpdateMode::kSync)
+                                 << QByteArray("archive older") << true << false;
+    }
+    void nativeUpdateModesFollowSourcePairActions() {
+        QFETCH(QString, format);
+        QFETCH(int, mode);
+        QFETCH(QByteArray, olderBytes);
+        QFETCH(bool, newPresent);
+        QFETCH(bool, archiveOnlyPresent);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString oldRoot = fixture.filePath("original");
+        const QString diskRoot = fixture.filePath("disk");
+        const QString archive = fixture.filePath("modes." + format);
+        const QStringList archiveNames = {"newer.txt", "older.txt", "archive-only.txt"};
+        QVERIFY(writeFile(QDir(oldRoot).filePath("newer.txt"), "archive newer"));
+        QVERIFY(writeFile(QDir(oldRoot).filePath("older.txt"), "archive older"));
+        QVERIFY(writeFile(QDir(oldRoot).filePath("archive-only.txt"), "archive only"));
+        const QDateTime baseline = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        for (const QString &name : archiveNames) {
+            QFile file(QDir(oldRoot).filePath(name));
+            QVERIFY(file.open(QIODevice::ReadWrite));
+            QVERIFY(file.setFileTime(baseline, QFileDevice::FileModificationTime));
+        }
+        QVERIFY(runEngine(oldRoot, {"a", "-t" + format, "--", archive, "newer.txt", "older.txt",
+                                    "archive-only.txt"}));
+        const QByteArray original = readFile(archive);
+        QVERIFY(writeFile(QDir(diskRoot).filePath("newer.txt"), "disk newer"));
+        QVERIFY(writeFile(QDir(diskRoot).filePath("older.txt"), "disk older"));
+        QVERIFY(writeFile(QDir(diskRoot).filePath("new-file.txt"), "disk new"));
+        for (const auto &entry : {qMakePair(QStringLiteral("newer.txt"), 86400),
+                                  qMakePair(QStringLiteral("older.txt"), -86400),
+                                  qMakePair(QStringLiteral("new-file.txt"), 86400)}) {
+            QFile file(QDir(diskRoot).filePath(entry.first));
+            QVERIFY(file.open(QIODevice::ReadWrite));
+            QVERIFY(file.setFileTime(baseline.addSecs(entry.second),
+                                     QFileDevice::FileModificationTime));
+        }
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, QDir(diskRoot).filePath("newer.txt"), format);
+        worker.RootFolder = true;
+        worker.ArchivePaths = archiveNames;
+        worker.ArchiveMTimeText = baseline.toLocalTime().toString("yyyy-MM-dd HH:mm:ss");
+        worker.Sources = {QDir(diskRoot).filePath("newer.txt"),
+                          QDir(diskRoot).filePath("older.txt"),
+                          QDir(diskRoot).filePath("new-file.txt")};
+        worker.ActionSet = NCompressDialog::FindUpdateActionSet(
+            static_cast<NCompressDialog::NUpdateMode::EEnum>(mode));
+        QVERIFY(worker.ActionSet);
+        auto transport = worker.CreateProgressTransport();
+        QCOMPARE(worker.Create(L"Update", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QVERIFY(readFile(archive) != original);
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(QDir().mkpath(extracted));
+        QVERIFY(runEngine(extracted, {"x", "-y", "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath("newer.txt")), QByteArray("disk newer"));
+        QCOMPARE(readFile(QDir(extracted).filePath("older.txt")), olderBytes);
+        QCOMPARE(QFileInfo::exists(QDir(extracted).filePath("new-file.txt")), newPresent);
+        QCOMPARE(QFileInfo::exists(QDir(extracted).filePath("archive-only.txt")),
+                 archiveOnlyPresent);
     }
     void nativeCopyFromAddsToCurrentFolder() {
         QTemporaryDir fixture;

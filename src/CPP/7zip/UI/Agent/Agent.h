@@ -27,7 +27,10 @@ enum AGENT_OP {
     AGENT_OP_Comment
 };
 Z7_PURE_INTERFACES_BEGIN
-#define Z7_IFACEM_IArchiveFolderInternal(x) x(GetAgentFolder(CAgentFolder **agentFolder))
+#define Z7_IFACEM_IArchiveFolderInternal(x)                                                        \
+    x(GetAgentFolder(CAgentFolder **agentFolder)) x(UpdateFrom(                                    \
+        const wchar_t *fromFolderPath, const wchar_t *const *itemsPaths, UInt32 numItems,          \
+        const NUpdateArchive::CActionSet &actionSet, IProgress *progress))
 Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 

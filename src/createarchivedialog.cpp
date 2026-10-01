@@ -98,14 +98,26 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     format_ = new QComboBox(this);
     format_->setObjectName("archiveFormat");
     format_->addItems({"7z", "zip"});
-    const int savedFormat = format_->findText(m_RegistryInfo.ArcType, Qt::MatchFixedString);
+    const QString initialFormat = existingTarget_.isEmpty()
+                                      ? m_RegistryInfo.ArcType
+                                      : QFileInfo(existingTarget_).suffix().toLower();
+    const int savedFormat = format_->findText(initialFormat, Qt::MatchFixedString);
     format_->setCurrentIndex(savedFormat >= 0 ? savedFormat : 0);
     CCompressDialog path;
     path.Format = format_->currentText();
     path.SetArchiveName("archive");
     name_->setText(path.m_ArchivePath);
     form->addRow("Формат:", format_);
-    if (existingTarget_.isEmpty()) {
+    if (!existingTarget_.isEmpty()) {
+        updateMode_ = new QComboBox(this);
+        updateMode_->setObjectName("archiveUpdateMode");
+        updateMode_->addItem("Добавить и заменить", int(NCompressDialog::NUpdateMode::kAdd));
+        updateMode_->addItem("Обновить и добавить", int(NCompressDialog::NUpdateMode::kUpdate));
+        updateMode_->addItem("Обновить существующие", int(NCompressDialog::NUpdateMode::kFresh));
+        updateMode_->addItem("Синхронизировать", int(NCompressDialog::NUpdateMode::kSync));
+        form->addRow("Режим обновления:", updateMode_);
+    }
+    {
         // CompressDialog.rc places compression on the left and encryption on
         // the right. Keep both columns at compact sizes; scrolling is a Qt
         // adaptation for the additional source picker below the options.
@@ -119,9 +131,13 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
         auto *encryptionForm = new QFormLayout(encryptionColumn);
         encryptionForm->setContentsMargins(0, 0, 0, 0);
         createCompressionOptions(compressionForm);
-        createEncryptionOptions(encryptionForm);
+        if (existingTarget_.isEmpty())
+            createEncryptionOptions(encryptionForm);
         columns->addWidget(compressionColumn, 1, Qt::AlignTop);
-        columns->addWidget(encryptionColumn, 1, Qt::AlignTop);
+        if (existingTarget_.isEmpty())
+            columns->addWidget(encryptionColumn, 1, Qt::AlignTop);
+        else
+            delete encryptionColumn;
         form->addRow(columns);
     }
     auto *destinationRow = new QHBoxLayout;
@@ -216,7 +232,7 @@ void CreateArchiveDialog::validateAndAccept() {
             return;
         }
     }
-    if (existingTarget_.isEmpty() && !checkMemoryUsage())
+    if (!checkMemoryUsage())
         return;
     const QString base = name_->text().trimmed();
     const QFileInfo destination(QFileInfo(archivePath()).absolutePath());
@@ -241,23 +257,25 @@ void CreateArchiveDialog::validateAndAccept() {
         QMessageBox::warning(this, "Создать архив", "Архив уже существует: " + target_);
         return;
     }
-    if (existingTarget_.isEmpty()) {
-        SaveOptionsInMem();
-        CCompressDialog path;
-        path.m_ArchivePath = target_;
-        path.Format = format_->currentText();
-        path.ShowPassword = showPassword_->isChecked();
-        path.EncryptHeaders = encryptHeaders_->isChecked();
-        path.OnOK(m_RegistryInfo);
-        m_RegistryInfo.Save(compressionSettingsPath());
-    }
+    SaveOptionsInMem();
+    CCompressDialog path;
+    path.m_ArchivePath = target_;
+    path.Format = format_->currentText();
+    path.ShowPassword = showPassword_ && showPassword_->isChecked();
+    path.EncryptHeaders = encryptHeaders_ && encryptHeaders_->isChecked();
+    path.OnOK(m_RegistryInfo);
+    m_RegistryInfo.Save(compressionSettingsPath());
     accept();
 }
 
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
+    if (updateMode_)
+        options.UpdateMode =
+            static_cast<NCompressDialog::NUpdateMode::EEnum>(updateMode_->currentData().toInt());
     if (level_) {
-        options.EncryptionMethod = GetEncryptionMethodSpec();
+        if (encryption_)
+            options.EncryptionMethod = GetEncryptionMethodSpec();
         options.level = level_->currentData().toInt();
         options.method = method_->currentText();
         options.threads = threads_->currentData().toInt();

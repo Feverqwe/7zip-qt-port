@@ -237,6 +237,7 @@ class MainWindow : public QMainWindow {
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);
     void addSources(const QStringList &sources);
+    void updateArchiveFromDialog(const QStringList &sources, const CompressionOptions &options);
     QStringList selectedArchivePaths();
     QStringList archivePathsForIndices(const CRecordVector<UInt32> &indices);
     QStringList selectedArchiveItemsPaths();

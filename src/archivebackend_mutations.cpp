@@ -9,26 +9,16 @@
 #include <QSet>
 #include <QUuid>
 
-void ArchiveBackend::create(const QString &archive, const QStringList &sources,
-                            const QString &password, bool encryptHeaders,
-                            const CompressionOptions &options) {
-    if (busy()) {
-        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
-        return;
-    }
-    const QString suffix = QFileInfo(archive).suffix().toLower();
-    if ((suffix != "7z" && suffix != "zip") || sources.isEmpty()) {
-        emit finished(false, QStringLiteral("Выберите файлы или папку и имя архива .7z или .zip."));
-        return;
-    }
+bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &password,
+                                         bool encryptHeaders, const CompressionOptions &options,
+                                         QStringList *switches, QString *error) {
     const auto &formatInfo = NCompressDialog::GetFormatInfo(suffix);
     const QStringList methods = NCompressDialog::GetMethodNames(suffix);
     if (options.level < 0 || options.level > 9 ||
         !(formatInfo.LevelsMask & (UInt32(1) << options.level)) || options.threads < 0 ||
         (!options.method.isEmpty() && !methods.contains(options.method))) {
-        emit finished(false,
-                      QStringLiteral("Недопустимые параметры сжатия для выбранного формата."));
-        return;
+        *error = QStringLiteral("Недопустимые параметры сжатия для выбранного формата.");
+        return false;
     }
     const QString method = options.method.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
                                                                       : QStringLiteral("Deflate"))
@@ -56,9 +46,8 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const auto threadOptions = NCompressDialog::SetNumThreads2(
         suffix, methodID, UInt32(options.level), dict, blockSizeLog, system, options.MemUsage);
     if (options.threads != 0 && !threadOptions.Values.contains(UInt32(options.threads))) {
-        emit finished(false,
-                      QStringLiteral("Число потоков не подходит для выбранного метода сжатия."));
-        return;
+        *error = QStringLiteral("Число потоков не подходит для выбранного метода сжатия.");
+        return false;
     }
     bool validSolid = !options.SolidIsSpecified;
     if (options.SolidIsSpecified) {
@@ -83,10 +72,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                                      UInt32(options.level))
               .Values.contains(options.wordSize)) ||
         !validSolid || (options.level == 0 && (options.dictionaryBytes || options.wordSize))) {
-        emit finished(false,
-                      QStringLiteral("Размер словаря, слова или непрерывного блока не подходит "
-                                     "для выбранного метода сжатия."));
-        return;
+        *error = QStringLiteral("Размер словаря, слова или непрерывного блока не подходит "
+                                "для выбранного метода сжатия.");
+        return false;
     }
     UInt64 decompressMemory;
     const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
@@ -96,27 +84,78 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     const UInt64 memLimit = NCompressDialog::Get_MemUse_Bytes(options.MemUsage, system);
     if ((options.MemUsage.IsDefined || system.RamSizeDefined) && memUsage != UInt64(-1) &&
         memUsage > memLimit) {
-        emit finished(false, QStringLiteral("Для сжатия требуется %1 памяти, лимит — %2.")
-                                 .arg(NCompressDialog::AddMemUsage(memUsage),
-                                      NCompressDialog::AddMemUsage(memLimit)));
-        return;
+        *error = QStringLiteral("Для сжатия требуется %1 памяти, лимит — %2.")
+                     .arg(NCompressDialog::AddMemUsage(memUsage),
+                          NCompressDialog::AddMemUsage(memLimit));
+        return false;
     }
     if ((!options.EncryptionMethod.isEmpty() &&
          options.EncryptionMethod.compare("AES256", Qt::CaseInsensitive) != 0) ||
         (suffix == "7z" && !options.EncryptionMethod.isEmpty()) ||
         (suffix == "zip" && encryptHeaders)) {
-        emit finished(false,
-                      QStringLiteral("Недопустимый метод шифрования для выбранного формата."));
-        return;
+        *error = QStringLiteral("Недопустимый метод шифрования для выбранного формата.");
+        return false;
     }
     const auto passwordError =
         CCompressDialog::CheckPassword(password, password, true, suffix, options.EncryptionMethod);
     if (passwordError != CCompressDialog::kPasswordOK) {
-        emit finished(
-            false,
+        *error =
             passwordError == CCompressDialog::kPasswordTooLong
                 ? QStringLiteral("Пароль ZIP AES не должен превышать 99 символов.")
-                : QStringLiteral("Для ZIP используйте пароль из ASCII без управляющих символов."));
+                : QStringLiteral("Для ZIP используйте пароль из ASCII без управляющих символов.");
+        return false;
+    }
+    *switches = {"-mx=" + QString::number(options.level)};
+    if (options.level != 0) {
+        QString methodArgument = "-m0=" + method;
+        if (options.dictionaryBytes)
+            methodArgument +=
+                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
+                     ? ":mem="
+                     : ":d=") +
+                QString::number(options.dictionaryBytes) + "b";
+        if (options.wordSize)
+            methodArgument +=
+                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
+                     ? ":o="
+                     : ":fb=") +
+                QString::number(options.wordSize);
+        switches->append(methodArgument);
+    }
+    if (options.threads > 0)
+        switches->append("-mmt=" + QString::number(options.threads));
+    if (options.MemUsage.IsDefined)
+        switches->append("-mmemuse=" + QString::number(options.MemUsage.Val) +
+                         (options.MemUsage.IsPercent ? "%" : "b"));
+    if (options.SolidIsSpecified)
+        switches->append("-ms=" + QString::number(options.SolidBlockSize) + "b");
+    if (!password.isEmpty()) {
+        switches->append("-p");
+        if (suffix == "7z")
+            switches->append(encryptHeaders ? "-mhe=on" : "-mhe=off");
+        else if (!options.EncryptionMethod.isEmpty())
+            switches->append("-mem=" + options.EncryptionMethod);
+    }
+    return true;
+}
+
+void ArchiveBackend::create(const QString &archive, const QStringList &sources,
+                            const QString &password, bool encryptHeaders,
+                            const CompressionOptions &options) {
+    if (busy()) {
+        emit finished(false, QStringLiteral("Другая операция ещё выполняется."));
+        return;
+    }
+    const QString suffix = QFileInfo(archive).suffix().toLower();
+    if ((suffix != "7z" && suffix != "zip") || sources.isEmpty()) {
+        emit finished(false, QStringLiteral("Выберите файлы или папку и имя архива .7z или .zip."));
+        return;
+    }
+    QStringList compressionArguments;
+    QString compressionError;
+    if (!compressionSwitches(suffix, password, encryptHeaders, options, &compressionArguments,
+                             &compressionError)) {
+        emit finished(false, compressionError);
         return;
     }
     const QFileInfo target(archive);
@@ -144,38 +183,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
             break;
         root = parent;
     }
-    QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--"};
-    arguments.insert(5, "-mx=" + QString::number(options.level));
-    if (options.level != 0) {
-        QString methodArgument = "-m0=" + method;
-        if (options.dictionaryBytes)
-            methodArgument +=
-                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
-                     ? ":mem="
-                     : ":d=") +
-                QString::number(options.dictionaryBytes) + "b";
-        if (options.wordSize)
-            methodArgument +=
-                (NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(method, suffix))
-                     ? ":o="
-                     : ":fb=") +
-                QString::number(options.wordSize);
-        arguments.insert(5, methodArgument);
-    }
-    if (options.threads > 0)
-        arguments.insert(5, "-mmt=" + QString::number(options.threads));
-    if (options.MemUsage.IsDefined)
-        arguments.insert(5, "-mmemuse=" + QString::number(options.MemUsage.Val) +
-                                (options.MemUsage.IsPercent ? "%" : "b"));
-    if (options.SolidIsSpecified)
-        arguments.insert(5, "-ms=" + QString::number(options.SolidBlockSize) + "b");
-    if (!password.isEmpty()) {
-        arguments.insert(5, "-p");
-        if (suffix == "7z")
-            arguments.insert(5, encryptHeaders ? "-mhe=on" : "-mhe=off");
-        else if (!options.EncryptionMethod.isEmpty())
-            arguments.insert(5, "-mem=" + options.EncryptionMethod);
-    }
+    QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix};
+    arguments += compressionArguments;
+    arguments << "--";
     for (const QString &source : sources) {
         if (!QFileInfo::exists(source)) {
             emit finished(false, QStringLiteral("Файл или папка не найдены: %1").arg(source));

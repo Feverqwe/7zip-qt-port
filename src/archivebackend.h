@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QStringList>
+#include <optional>
 
 struct ArchiveEntry {
     QString path;
@@ -88,6 +89,17 @@ class ArchiveBackend : public QObject {
     virtual void updateSourceAdd(const QString &archive, const QStringList &entries,
                                  const QString &sourceRoot, const QString &output,
                                  const QString &format, const QString &password);
+    struct SourceUpdatePlan {
+        QStringList removed;
+        QStringList files;
+        QStringList directories;
+        QString fileRoot;
+        QString directoryRoot;
+    };
+    virtual void updateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
+                                  const QString &output, const QString &format,
+                                  const QString &password,
+                                  const std::optional<CompressionOptions> &options = std::nullopt);
     enum class SourceMutation { Delete, Rename, CreateFolder };
     virtual void updateSourceMutation(const QString &archive, const QString &output,
                                       const QString &format, SourceMutation operation,
@@ -103,6 +115,8 @@ class ArchiveBackend : public QObject {
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error) const;
     static bool sourceUpdatePathIsSafe(const QString &path);
+    static bool prepareSourceSelection(const QString &archive, const QStringList &sources,
+                                       QString *root, QStringList *relativePaths, QString *error);
     virtual void cancel();
     // Native controls affect only this backend's live engine child.
     virtual HRESULT setPaused(bool paused);
@@ -145,6 +159,9 @@ class ArchiveBackend : public QObject {
         ReplaceDelete,
         ReplaceAdd,
         SourceUpdate,
+        SourcePlanDelete,
+        SourcePlanFiles,
+        SourcePlanDirectories,
         SourceMutation,
         SourceExtract
     };
@@ -159,6 +176,10 @@ class ArchiveBackend : public QObject {
                               ExtractionOptions::PathMode pathMode, QStringList *replaceEntries,
                               QStringList *renameEntries);
     bool prepareMutation(const QString &archive);
+    void startSourcePlanStage(Job stage);
+    static bool compressionSwitches(const QString &format, const QString &password,
+                                    bool encryptHeaders, const CompressionOptions &options,
+                                    QStringList *switches, QString *error);
     bool restoreListedArchive(const QString &archive);
     void startListing(const QString &archive, const QString &password, const QString &format);
 
@@ -173,6 +194,10 @@ class ArchiveBackend : public QObject {
     QString addBackup_;
     QString replacementEntry_;
     QString replacementRoot_;
+    SourceUpdatePlan sourcePlan_;
+    QString sourcePlanPassword_;
+    QString sourcePlanFormat_;
+    QStringList sourcePlanSwitches_;
     QList<ArchiveEntry> entries_;
     QHash<QString, ListedSourceSnapshot> listedSourceArchives_;
     bool listed_ = false;

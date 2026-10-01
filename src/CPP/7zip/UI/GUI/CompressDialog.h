@@ -3,11 +3,16 @@
 #pragma once
 
 #include "../Common/ZipRegistry.h"
+#include "CPP/Common/Wildcard.h"
 #include "Common/MyTypes.h"
 #include <QStringList>
 #include <QStringView>
 
 namespace NCompressDialog {
+namespace NUpdateMode {
+enum EEnum { kAdd, kUpdate, kFresh, kSync };
+}
+
 enum EMethodID {
     kCopy,
     kLZMA,
@@ -73,6 +78,8 @@ EMethodID GetMethodID(QStringView name, QStringView format);
 bool GetOrderMode(EMethodID methodID);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 struct CInfo {
+    NUpdateMode::EEnum UpdateMode = NUpdateMode::kAdd;
+    NWildcard::ECensorPathMode PathMode = NWildcard::k_RelatPath;
     bool SolidIsSpecified = false;
     UInt64 SolidBlockSize = 0;
     NCompression::CMemUse MemUsage;
