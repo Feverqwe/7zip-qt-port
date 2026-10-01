@@ -16,8 +16,23 @@ precision and explicit time flags separately by format. Options Cancel discards
 its copy; Add Cancel does not persist changes. The native property parser handles
 method overrides; invalid and unsupported properties fail before publication.
 Real mtime round-trips and normal/compact widget reports were checked on macOS.
-Preserve access, archive mtime and RAM/lifecycle workflows remain P1-07.2, with
-unfinished controls disabled. Help remains P1-15. Windows/Linux runtime and
+P1-07.2: archive mtime now reaches multi-root create, native Add
+publication and all output volumes. Preserve access is available on Windows;
+the official engine does not implement it on POSIX, where the disabled control
+explains that limitation. Windows preferences survive opening the form on POSIX
+without enabling an ineffective request. Shared/Delete controls follow the
+source resource order ahead of Encryption; shared writing is Windows-only.
+Delete defaults off and is available for Add, disabled for Update/Freshen/Sync
+with a reason. All create stages and all volumes must publish before source
+deletion; native Add deletes after MoveToOriginal. Skipped or changed files are
+retained by the original size/time checks. Cancel before publication preserves
+sources; Cancel during deletion can leave the archive and partially deleted
+sources. Physical deletion failures retain the file without undoing the successful
+archive, following upstream. Create with links refuses deletion pending P2-05.
+Compression limit rejection keeps Add open for retry; Cancel leaves profiles
+unchanged. Actual RAR decoder memory prompts remain mandatory P1-18, requiring
+native decoder callback transport; the existing memory form does not prove it.
+Help remains P1-15. Windows/Linux runtime and
 rendered Windows Options parity are unverified.
 
 P0-12 Ask extraction uses the source `COverwriteDialog` and progress dialog.

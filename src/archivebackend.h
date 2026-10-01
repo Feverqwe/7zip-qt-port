@@ -12,6 +12,7 @@
 #include <memory>
 #include <optional>
 class QtArchiveVolumeOutput;
+class QtArchiveCreationLifecycle;
 
 struct ArchiveEntry {
     QString path;
@@ -161,6 +162,8 @@ class ArchiveBackend : public QObject {
         Test,
         Hash,
         Create,
+        CreatePrepare,
+        CreateDeleteInputs,
         CreateVolumes,
         Add,
         Delete,
@@ -190,6 +193,8 @@ class ArchiveBackend : public QObject {
     static bool checkVolumeTargets(const QString &archive, QString *error);
     void startVolumeOutput();
     void finishVolumeOutput();
+    void finishCreationLifecycle();
+    bool startCreationDeletion();
     static bool compressionSwitches(const QString &format, const QString &password,
                                     bool encryptHeaders, const CompressionOptions &options,
                                     QStringList *switches, QString *error);
@@ -204,6 +209,7 @@ class ArchiveBackend : public QObject {
     QString archive_;
     QString createTarget_;
     QString createTemporary_;
+    bool createSetArcMTime_ = false;
     struct CreateStage {
         QString directory;
         QStringList arguments;
@@ -212,6 +218,7 @@ class ArchiveBackend : public QObject {
     QString createPassword_;
     CRecordVector<UInt64> createVolumeSizes_;
     std::unique_ptr<QtArchiveVolumeOutput> volumeOutput_;
+    std::unique_ptr<QtArchiveCreationLifecycle> creationLifecycle_;
     QString addBackup_;
     QString replacementEntry_;
     QString replacementRoot_;

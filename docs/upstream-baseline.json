@@ -229,6 +229,8 @@
     "src/CPP/7zip/UI/Common/OpenArchive.cpp",
     "src/CPP/7zip/UI/Common/OpenArchive.h",
     "src/CPP/7zip/UI/Common/SortUtils.cpp",
+    "src/CPP/7zip/UI/Common/Update.cpp",
+    "src/CPP/7zip/UI/Common/Update.h",
     "src/CPP/7zip/UI/Common/UpdateCallback.cpp",
     "src/CPP/7zip/UI/Common/UpdateCallback.h",
     "src/CPP/7zip/UI/Common/UpdatePair.cpp",

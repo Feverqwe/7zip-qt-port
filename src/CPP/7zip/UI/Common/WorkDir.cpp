@@ -71,6 +71,10 @@ HRESULT CWorkDirTempFile::CreateTempFile(const FString &originalPath, const QStr
     return S_OK;
 }
 
+HRESULT CWorkDirTempFile::SetMTime(const CFiTime &time) {
+    return _outStreamSpec->SetMTime(&time) ? S_OK : GetLastError_noZero_HRESULT();
+}
+
 HRESULT CWorkDirTempFile::MoveToOriginal(bool deleteOriginal,
                                          NWindows::NFile::NDir::ICopyFileProgress *progress) {
     OutStream.Release();

@@ -225,6 +225,9 @@ void CInfo::Save(const QString &path) const {
     optionsKey.setValue("Compression/Archiver", ArcType);
     optionsKey.setValue("Compression/ShowPassword", ShowPassword);
     optionsKey.setValue("Compression/EncryptHeaders", EncryptHeaders);
+    optionsKey.beginGroup("Compression");
+    Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "PreserveATime", PreserveATime);
+    optionsKey.endGroup();
     QStringList arcPaths;
     FOR_VECTOR(i, ArcPaths)
     arcPaths.append(ArcPaths[i]);
@@ -262,6 +265,9 @@ void CInfo::Load(const QString &path) {
     QSettings optionsKey(path, QSettings::IniFormat);
     ShowPassword = optionsKey.value("Compression/ShowPassword", false).toBool();
     EncryptHeaders = optionsKey.value("Compression/EncryptHeaders", false).toBool();
+    optionsKey.beginGroup("Compression");
+    Key_Get_BoolPair(optionsKey, "PreserveATime", PreserveATime);
+    optionsKey.endGroup();
     if (optionsKey.contains("Compression/Archiver"))
         ArcType = optionsKey.value("Compression/Archiver").toString();
     for (const QString &s : optionsKey.value("Compression/ArcHistory").toStringList())

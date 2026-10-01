@@ -137,13 +137,11 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
         auto *encryptionForm = new QFormLayout(encryptionColumn);
         encryptionForm->setContentsMargins(0, 0, 0, 0);
         createCompressionOptions(compressionForm);
+        createLifecycleOptions(encryptionForm);
         if (existingTarget_.isEmpty())
             createEncryptionOptions(encryptionForm);
         columns->addWidget(compressionColumn, 1, Qt::AlignTop);
-        if (existingTarget_.isEmpty())
-            columns->addWidget(encryptionColumn, 1, Qt::AlignTop);
-        else
-            delete encryptionColumn;
+        columns->addWidget(encryptionColumn, 1, Qt::AlignTop);
         form->addRow(columns);
     }
     createVolumeOptions(form);
@@ -280,6 +278,14 @@ void CreateArchiveDialog::validateAndAccept() {
 
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
+    options.OpenShareForWrite =
+        sharedFiles_ && sharedFiles_->isEnabled() && sharedFiles_->isChecked();
+    options.DeleteAfterCompressing = deleteAfterCompressing_ &&
+                                     deleteAfterCompressing_->isEnabled() &&
+                                     deleteAfterCompressing_->isChecked();
+#ifdef Q_OS_WIN
+    options.PreserveATime = m_RegistryInfo.PreserveATime;
+#endif
     if (parameters_) {
         options.Options = parameters_->text().toStdWString().c_str();
         options.Options.Trim();

@@ -655,13 +655,31 @@ checks replacement bytes and Store compression. `compression` checks update
 dialog normal/compact scroll geometry and verifies Cancel leaves the saved
 compression profile unchanged.
 
+P1-07.2: `compression_advanced` additionally checks latest archive
+mtime across two input roots for ZIP/7z with and without output volumes, profile
+persistence, POSIX rejection of ineffective preserve-atime requests before any
+process launch, and retained Windows preferences on POSIX. Windows fixtures
+assert source atime when that capability is enabled. `ui_update_modes` checks
+native latest time for changed inputs and unchanged Freshen archive entries.
+`archive_creation_lifecycle` checks native processed/changed/time guards,
+deepest-first cleanup and partial cancellation; real multi-root ZIP/7z and volumes
+delete only after publication, restore matching extracted bytes, preserve changed
+inputs and preserve all originals on launch/stage/cancel/publication failure.
+`ui_update_modes` exercises real Add deletion and cancellation through the native
+panel. `compression_limit` checks retry after rejection, Cancel without profile
+changes, and normal/compact JSON (PNG is opt-in). Current-build Options
+520×400/440×340 and Add 760×720/640×480 JSON was inspected on macOS arm64.
+Real decoder memory transport remains mandatory P1-18; synthetic extract_prompt
+memory callbacks do not accept it. Windows/Linux runtime remains unverified.
+
 P1-07.1: `compression_advanced` exercises ZIP/7z Options states at normal/compact
 sizes, parameter/summary reachability in Add, per-format time and raw parameter
 persistence, Options/Add Cancel, real method overrides and mtime extraction
 round-trips (Windows precision, ZIP UNIX/DOS). It also verifies omitted mtime,
 unknown properties, unsupported 7z precision, and cancellation without publishing
 an archive or leaving staging files. Fixtures use Unicode/spaces and isolated INI.
-Creation/access metadata restoration and lifecycle/RAM workflows remain P1-07.2;
+Creation/access metadata restoration remains a separate extraction/platform scope;
+real decoder RAM requests remain P1-18;
 no cross-platform result is inferred from the macOS run.
 
 P1-06.1: `archive_volume_creation` creates real ZIP/7z numbered archives using

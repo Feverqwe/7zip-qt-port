@@ -71,6 +71,7 @@ struct CInfo {
     QString ArcType = QStringLiteral("7z");
     bool ShowPassword = false;
     bool EncryptHeaders = false;
+    CBoolPair PreserveATime;
     CObjectVector<QString> ArcPaths;
     CObjectVector<CFormatOptions> Formats;
     void Save(const QString &path) const;

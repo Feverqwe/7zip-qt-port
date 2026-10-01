@@ -1,6 +1,8 @@
+#include "CPP/7zip/UI/Common/Update.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
+#include "qtarchivecreationlifecycle.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -14,10 +16,20 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
                                          bool encryptHeaders, const CompressionOptions &options,
                                          QStringList *switches, QString *error) {
     const auto &formatInfo = NCompressDialog::GetFormatInfo(suffix);
-    if (options.SetArcMTime.Def) {
-        *error = QStringLiteral("Изменение времени архива пока недоступно.");
+    const auto *actionSet = NCompressDialog::FindUpdateActionSet(options.UpdateMode);
+    if (options.DeleteAfterCompressing &&
+        (!actionSet || CheckDeleteAfterCompressingActionSet(*actionSet) != S_OK)) {
+        *error =
+            QStringLiteral("Удаление после сжатия доступно только в режиме добавления и замены.");
         return false;
     }
+#ifndef Q_OS_WIN
+    if (options.PreserveATime.Def && options.PreserveATime.Val) {
+        *error =
+            QStringLiteral("Сохранение времени доступа поддерживается движком только в Windows.");
+        return false;
+    }
+#endif
     const QStringList methods = NCompressDialog::GetMethodNames(suffix);
     if (options.level < 0 || options.level > 9 ||
         !(formatInfo.LevelsMask & (UInt32(1) << options.level)) || options.threads < 0 ||
@@ -124,6 +136,14 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
     if (password.isEmpty())
         info.EncryptionMethod.clear();
     switches->clear();
+    // UpdateGUI.cpp's lifecycle projection is transported through the source
+    // ArchiveCommandLine.cpp switches, outside method properties.
+    if (options.SetArcMTime.Val)
+        switches->append("-stl");
+    if (options.PreserveATime.Def && options.PreserveATime.Val)
+        switches->append("-ssp");
+    if (options.OpenShareForWrite)
+        switches->append("-ssw");
     const auto properties = NCompressDialog::GetCompressionProperties(info, suffix == "7z");
     FOR_VECTOR(i, properties) {
         const CProperty &property = properties[i];
@@ -266,7 +286,24 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     }
     createStages_ = stages;
     createVolumeSizes_ = options.VolumeSizes;
+    createSetArcMTime_ = options.SetArcMTime.Val;
     createPassword_ = password;
+    creationLifecycle_.reset();
+    if (options.DeleteAfterCompressing) {
+        creationLifecycle_ = std::make_unique<QtArchiveCreationLifecycle>(sources);
+        connect(creationLifecycle_.get(), &QThread::finished, this,
+                &ArchiveBackend::finishCreationLifecycle);
+        creationLifecycle_->Progress = [this](const QString &path, bool) {
+            QMetaObject::invokeMethod(
+                this,
+                [this, path] { emit progress(0, QStringLiteral("Сканирование: %1").arg(path)); },
+                Qt::QueuedConnection);
+        };
+        job_ = Job::CreatePrepare;
+        cancelled_ = false;
+        creationLifecycle_->start();
+        return;
+    }
     const CreateStage first = createStages_.takeFirst();
     pendingPassword_ = password;
     start(Job::Create, first.arguments, first.directory);

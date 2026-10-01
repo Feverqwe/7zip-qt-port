@@ -23,6 +23,85 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
+    void addDeleteAfterPublication_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<bool>("cancel");
+        QTest::newRow("zip-success") << QString("zip") << false;
+        QTest::newRow("7z-success") << QString("7z") << false;
+        QTest::newRow("zip-cancel") << QString("zip") << true;
+        QTest::newRow("7z-cancel") << QString("7z") << true;
+    }
+    void addDeleteAfterPublication() {
+        QFETCH(QString, format);
+        QFETCH(bool, cancel);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = fixture.filePath("result." + format);
+        const QString source = fixture.filePath(QStringLiteral("добавленный файл.txt"));
+        const QString keep = fixture.filePath("keep.txt");
+        QFile file(keep);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("keep bytes"), qint64(10));
+        file.close();
+        QVERIFY(runEngine(fixture.path(), {"a", "-t" + format, "--", archive, "keep.txt"}));
+        QFile original(archive);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        const QByteArray archiveBefore = original.readAll();
+        original.close();
+        file.setFileName(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("new bytes"), qint64(9));
+        file.close();
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        window.show();
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        bool accepted = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            QVERIFY(dialog);
+            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
+            directory->setText(fixture.path());
+            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
+            auto *available = dialog->findChild<QListWidget *>("availableSources");
+            for (int row = 0; row < available->count(); ++row)
+                if (available->item(row)->data(Qt::UserRole).toString() == source)
+                    available->item(row)->setSelected(true);
+            QCOMPARE(available->selectedItems().size(), 1);
+            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+            auto *remove = dialog->findChild<QCheckBox *>("archiveDeleteAfterCompression");
+            QVERIFY(remove && remove->isEnabled());
+            remove->setChecked(true);
+            dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            accepted = dialog->result() == QDialog::Accepted;
+        });
+        connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
+            if (cancel)
+                backend.cancel();
+        });
+        action(window, "addArchiveAction")->trigger();
+        QVERIFY(accepted);
+        if (cancel) {
+            QVERIFY(QFileInfo::exists(source));
+            QVERIFY(original.open(QIODevice::ReadOnly));
+            QCOMPARE(original.readAll(), archiveBefore);
+        } else {
+            QVERIFY(!QFileInfo::exists(source));
+            QTRY_COMPARE(table(window)->rowCount(), 2);
+            QByteArray listing;
+            QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-sccUTF-8", "--", archive}, &listing));
+            QVERIFY(QString::fromUtf8(listing)
+                        .normalized(QString::NormalizationForm_C)
+                        .contains(QStringLiteral("добавленный файл.txt")));
+            const QString extracted = fixture.filePath("extracted");
+            QVERIFY(runEngine(fixture.path(), {"x", "-y", "-o" + extracted, "--", archive}));
+            QFile restored(QDir(extracted).filePath(QStringLiteral("добавленный файл.txt")));
+            QVERIFY(restored.open(QIODevice::ReadOnly));
+            QCOMPARE(restored.readAll(), QByteArray("new bytes"));
+        }
+    }
+
     void protectedAddUsesOpenedArchivePassword() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -92,7 +171,13 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(listing.count("Encrypted = +"), 2);
     }
 
+    void addDialogUpdatesExistingEntryWithSelectedCompression_data() {
+        QTest::addColumn<bool>("freshenUnchanged");
+        QTest::newRow("update-newer") << false;
+        QTest::newRow("freshen-older-keeps-entry-time") << true;
+    }
     void addDialogUpdatesExistingEntryWithSelectedCompression() {
+        QFETCH(bool, freshenUnchanged);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString source = fixture.filePath(QStringLiteral("source file.txt"));
@@ -100,17 +185,31 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QFile file(source);
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write("old bytes"), qint64(9));
+        QVERIFY(file.flush());
+        const QDateTime entryTime = QDateTime::fromSecsSinceEpoch(946684800, QTimeZone::UTC);
+        QVERIFY(file.setFileTime(entryTime, QFileDevice::FileModificationTime));
         file.close();
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.create(archive, {source});
         QVERIFY(finished.wait(30000));
         QVERIFY(finished.takeFirst().first().toBool());
+        QFile archiveFile(archive);
+        QVERIFY(archiveFile.open(QIODevice::ReadWrite));
+        QVERIFY(archiveFile.setFileTime(entryTime.addDays(1), QFileDevice::FileModificationTime));
+        archiveFile.close();
         QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
         QCOMPARE(file.write("new bytes"), qint64(9));
-        QVERIFY(file.setFileTime(QDateTime::currentDateTimeUtc().addSecs(10),
-                                 QFileDevice::FileModificationTime));
+        QVERIFY(file.flush());
+        const QDateTime modified = entryTime.addSecs(freshenUnchanged ? -10 : 10);
+        QVERIFY(file.setFileTime(modified, QFileDevice::FileModificationTime));
         file.close();
+        NCompression::CInfo preferences;
+        NCompression::CFormatOptions profile;
+        profile.FormatID = "zip";
+        profile.SetArcMTime.SetTrueTrue();
+        preferences.Formats.Add(profile);
+        preferences.Save(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         MainWindow window(&backend);
         window.openArchive(archive);
         window.show();
@@ -144,8 +243,11 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             }
             sourceSelected = true;
             add->click();
-            mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kUpdate)));
+            mode->setCurrentIndex(
+                mode->findData(int(freshenUnchanged ? NCompressDialog::NUpdateMode::kFresh
+                                                    : NCompressDialog::NUpdateMode::kUpdate)));
             level->setCurrentIndex(level->findData(0));
+            QVERIFY(dialog->compressionOptions().SetArcMTime.Val);
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             dialogAccepted = dialog->result() == QDialog::Accepted;
         });
@@ -153,15 +255,17 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(dialogSeen);
         QVERIFY(sourceSelected);
         QVERIFY(dialogAccepted);
+        QCOMPARE(QFileInfo(archive).lastModified(), freshenUnchanged ? entryTime : modified);
         const QString extracted = fixture.filePath("extracted");
         QVERIFY(QDir().mkpath(extracted));
         QVERIFY(runEngine(extracted, {"x", "-y", "--", archive}));
         QFile updated(QDir(extracted).filePath(QStringLiteral("source file.txt")));
         QVERIFY(updated.open(QIODevice::ReadOnly));
-        QCOMPARE(updated.readAll(), QByteArray("new bytes"));
+        QCOMPARE(updated.readAll(), QByteArray(freshenUnchanged ? "old bytes" : "new bytes"));
         QByteArray listing;
         QVERIFY(runEngine(fixture.path(), {"l", "-slt", "--", archive}, &listing));
-        QVERIFY(listing.contains("Method = Store"));
+        if (!freshenUnchanged)
+            QVERIFY(listing.contains("Method = Store"));
     }
 
     void addDialogUsesSelectedPathMode_data() {

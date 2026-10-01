@@ -66,8 +66,8 @@ capabilities, а не только по старой ссылке на parent; �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **19/45 завершённых пакетов; 26 остаётся** (2026-10-01).
-P0: 12/12; P1: 4/17; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-01, P1-03, P1-04, P1-11 и P3-01
+Текущий счёт: **21/46 завершённых пакетов; 25 остаётся** (2026-10-01).
+P0: 12/12; P1: 8/18; P2: 0/10; P3: 1/6. P0-01–P0-12, P1-01–P1-07, P1-11 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -176,9 +176,9 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [x] | P1-06 | Архивные тома create/open/test/extract | P1-05 | done — P1-06.1/.2; исходный CMultiOutStream creation, source open/list/TestArchives/Ask extract, occupied/missing/corrupt/password/cancel и UX; focused 9/9 6.14 с, полный unsandboxed check.sh 148/148 40.58 с macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime и rendered Windows parity непроверены, обновление volumes отключено |
 | [x] | P1-06.1 | Целое создание архивных томов ZIP/7z: исходные volume control/parser/confirmation/CMultiOutStream, transactional output, password/failure/cancel и UX | P1-05 | done — audit § P1-06.1; variable-size protected ZIP/7z, occupied/failure/cancel/pause, normal/compact JSON; focused 8/8 3.86 с, unsandboxed check.sh 147/147 41.04 с macOS arm64/Qt 6.11.2 2026-10-01; Windows/Linux runtime и rendered Windows parity непроверены |
 | [x] | P1-06.2 | Open/list/test/extract архивных томов, missing/corrupt/password/cancel и parent приёмка | P1-06.1 | done — audit § P1-06.2; source TestArchives archive branch/CopyTo saved-password overload, `.001` picker и source panel/Agent/GUI consumers; focused 9/9 6.14 с, check.sh 148/148 40.58 с macOS arm64/Qt 6.11.2 2026-10-01; filesystem batch entrypoint остаётся mandatory P3-05, Windows/Linux runtime непроверены |
-| [ ] | P1-07 | Advanced options/time/parameters/memory prompts | P1-05, P0-10 | partial — P1-07.1 принят; lifecycle/memory P1-07.2 остаётся обязательным, 2026-10-01 |
+| [x] | P1-07 | Advanced options/time/parameters, lifecycle и compression memory retry/cancel | P1-05, P0-10 | done — P1-07.1/.2, audit § P1-07.2; реальный decoder callback из исторического .2 вынесен в обязательный blocked P1-18 с точным prerequisite; runtime Windows/Linux и rendered Windows unverified, 2026-10-01 |
 | [x] | P1-07.1 | Целая Advanced Options форма и parameter field: source COptionsDialog/SetOutProperties/parser, timestamp capability/roundtrip, validation, format profiles и normal/compact UX | P1-05, P0-10 | done — source Options/parser/property bodies, ZIP/7z time flags/profiles/method override; focused 7/7 4.06 s, полный check.sh 149/149 57.09 s macOS arm64 Qt 6.11.2; Add 760×720/640×480, Options 520×400/440×340 JSON просмотрены; Windows/Linux runtime/rendering не проверены |
-| [ ] | P1-07.2 | Source lifecycle options shared/preserve access/archive mtime/delete-after-compress и memory retry/cancel: source checks, transactional multi-stage/volumes consumers, persistence и parent приёмка | P1-07.1 | todo |
+| [x] | P1-07.2 | Source lifecycle shared/preserve access/archive mtime/delete-after-compress, compression memory retry/cancel, multi-stage/volume/native Add consumers, persistence и parent приёмка | P1-07.1 | done — audit § P1-07.2, pinned Update action/deletion/latest-time bodies; focused 11/11 PASS 3.97 s, full unsandboxed check.sh formatting/build/150 CTest PASS 42.21 s macOS arm64 Qt 6.11.2 2026-10-01; Add/lifecycle/memory normal760×720/compact640×480 и Options520×400/440×340 JSON inspected; decoder scope сохранён P1-18; Windows/Linux runtime unverified |
 | [ ] | P1-08 | External viewer/editor/diff и changed-temp update | P0-04, P1-04 | todo |
 | [ ] | P1-09 | Обновление цепочки вложенных архивов | P1-04, P1-08 | todo |
 | [ ] | P1-10 | Полные properties/raw values/formatting | P0-06, P1-04 | todo |
@@ -192,6 +192,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | [ ] | P1-15 | F1/Help/About/Delete Temporary Files | P0-09, P1-08, P1-14 | todo |
 | [ ] | P1-16 | Drag/drop между панелями и наружу из архива | P1-01, P1-09, P0-07 | todo |
 | [ ] | P1-17 | ZIP per-item comment: исходный in-process writer, ChangeComment/SetProperty, ArchiveBackend adapter, UX/error/refresh и tests | P1-04 | blocked — прежний P1-04.3; audit § P1-04.3 сохраняет доказательство блокера. `7zz` 26.03 не записывает per-item ZIP comment; нужен source `ZipHandlerOut.cpp::UpdateItems` с `ZipUpdate.cpp`, `ZipOut.cpp`, codec/crypto/stream dependencies. Не prerequisite для P1-01/05/08/09/10; обязателен для полной P3-приёмки |
+| [ ] | P1-18 | Реальные RAR5/RAR7 decoder memory requests через ArchiveBackend → source GUI callback: Allow/Skip/Cancel/remember, persistence и root/selected/Test/batch consumers | P0-12; native RAR reader/decoder из P2-01 | blocked — исторический decoder scope P1-07.2; audit § P1-18 prerequisite: только hash-часть Rar5Handler перенесена, внешний console callback отвечает локально без GUI protocol. Нужны native handler/decoder/crypto/streams или source-derived structured bridge; synthetic MemDialog tests не закрывают функцию. Не prerequisite для Settings P1-12 или остальных независимых P1; обязателен для P3-02/05/06 |
 
 ## P2 — расширенные функции и платформенная интеграция
 
@@ -213,10 +214,10 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |
-| [ ] | P3-02 | Сквозная regression/security traceability | Принятые P0/P1 scenarios; relevant P2 rows; P1-17 для полной приёмки | todo — матрицу принятого scope можно собирать до P1-17 |
+| [ ] | P3-02 | Сквозная regression/security traceability | Принятые P0/P1 scenarios; relevant P2 rows; P1-17/18 для полной приёмки | todo — матрицу принятого scope можно собирать до P1-17/18 |
 | [ ] | P3-03 | CI и реальные Windows/macOS/Linux checks | можно начать рано; final после P2 | todo |
 | [ ] | P3-04 | Engine/Qt/resources/packages/licenses | P2-01, P2-02, P1-14, P1-15, P3-03 | todo |
-| [ ] | P3-05 | Полная сверка omitted scope/dependency closure | Принятый scope P0–P2, P3-01; P1-17 для полной приёмки | todo — аудит принятого scope можно начать до P1-17 |
+| [ ] | P3-05 | Полная сверка omitted scope/dependency closure | Принятый scope P0–P2, P3-01; P1-17/18 для полной приёмки | todo — аудит принятого scope можно начать до P1-17/18 |
 | [ ] | P3-06 | Итоговая source/workflow/UX/platform приёмка | все обязательные пакеты | todo |
 
 ## Подшаги, блокировки и handoff

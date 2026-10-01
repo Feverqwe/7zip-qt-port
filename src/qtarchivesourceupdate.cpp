@@ -48,6 +48,7 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
     AttachProgressService(backend);
     _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
                                        UInt32 count, IArchiveUpdateCallback *callback) {
+        _outputMTime.reset();
         return UpdateArchiveSourceStream(backend, EnginePath, format, output, metadata, count,
                                          callback, _sync,
                                          _compressionOptions ? &*_compressionOptions : nullptr);

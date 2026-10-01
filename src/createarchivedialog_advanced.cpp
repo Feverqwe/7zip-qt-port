@@ -2,6 +2,37 @@
 #include "createarchivedialog.h"
 #include "qtcompressoptionsdialog.h"
 
+void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
+    // CompressDialog.rc: right-hand Options group, Shared then Delete,
+    // preceding Encryption. SFX remains owned by its mandatory P2 package.
+    auto *group = new QGroupBox("Параметры", this);
+    group->setObjectName("archiveLifecycleOptions");
+    auto *layout = new QVBoxLayout(group);
+    sharedFiles_ = new QCheckBox("Сжимать открытые для записи файлы", group);
+    sharedFiles_->setObjectName("archiveSharedFiles");
+#ifndef Q_OS_WIN
+    sharedFiles_->setEnabled(false);
+    sharedFiles_->setToolTip(
+        "Ограничение совместного доступа к файлам используется только в Windows.");
+#endif
+    layout->addWidget(sharedFiles_);
+    deleteAfterCompressing_ = new QCheckBox("Удалить файлы после сжатия", group);
+    deleteAfterCompressing_->setObjectName("archiveDeleteAfterCompression");
+    layout->addWidget(deleteAfterCompressing_);
+    form->addRow(group);
+    if (updateMode_) {
+        const auto update = [this] {
+            const bool supported =
+                updateMode_->currentData().toInt() == NCompressDialog::NUpdateMode::kAdd;
+            deleteAfterCompressing_->setEnabled(supported);
+            deleteAfterCompressing_->setToolTip(
+                supported ? QString() : "Доступно только при добавлении и замене файлов.");
+        };
+        connect(updateMode_, &QComboBox::currentIndexChanged, this, update);
+        update();
+    }
+}
+
 void CreateArchiveDialog::createAdvancedOptions(QFormLayout *form) {
     parameters_ = new QLineEdit(this);
     parameters_->setObjectName("archiveParameters");
@@ -27,6 +58,9 @@ void CreateArchiveDialog::showAdvancedOptions() {
     CCompressDialog source;
     source.Format = registryFormat_;
     source.MethodID = NCompressDialog::GetMethodID(method_->currentText(), registryFormat_);
+#ifdef Q_OS_WIN
+    source.PreserveATime.SetVal_as_Supported(m_RegistryInfo.PreserveATime.Val);
+#endif
     source.ArcInfo.Name = registryFormat_.toStdWString().c_str();
     source.ArcInfo.Flags = NArcInfoFlags::kCTime | NArcInfoFlags::kATime | NArcInfoFlags::kMTime |
                            NArcInfoFlags::kMTime_Default;
@@ -40,8 +74,13 @@ void CreateArchiveDialog::showAdvancedOptions() {
     NCompression::CFormatOptions profile = Get_FormatOptions();
     source.FormatOptions = &profile;
     COptionsDialog dialog(&source);
-    if (dialog.Create(this) == QDialog::Accepted)
+    if (dialog.Create(this) == QDialog::Accepted) {
         Get_FormatOptions() = profile;
+        if (source.PreserveATime.Supported) {
+            m_RegistryInfo.PreserveATime.Val = source.PreserveATime.Val;
+            m_RegistryInfo.PreserveATime.Def = true;
+        }
+    }
     updateAdvancedSummary();
 }
 

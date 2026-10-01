@@ -9,6 +9,8 @@
 #include "7zip/Compress/CopyCoder.h"
 #include "Agent.h"
 #include "Common/ComTry.h"
+#include "qtarchivedeleteinputs.h"
+#include "qtarchivefileresource.h"
 #include <QScopeGuard>
 
 using namespace NWindows;
@@ -161,6 +163,10 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
             }
 
             RINOK(result)
+            if (auto *resource =
+                    dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource())) {
+                RINOK(resource->ApplyOutputMTime(tempFile))
+            }
         }
 
         _agentSpec->KeepModeForNextOpen();
@@ -212,6 +218,15 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
 
         // RINOK(res);
         if (res == S_OK) {
+            if (auto *resource =
+                    dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource())) {
+                QtUpdateDeletionCallback callback;
+                callback.Progress = [updateCallback100](const FString &path, bool) {
+                    return updateCallback100 ? updateCallback100->DeleteOperation(fs2us(path))
+                                             : S_OK;
+                };
+                res = resource->DeleteInputsAfterPublication(callback);
+            }
             if (moveMode) {
                 unsigned i;
                 for (i = 0; i < processedPaths.Size(); i++) {

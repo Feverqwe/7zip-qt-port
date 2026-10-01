@@ -521,7 +521,20 @@ in-memory format profile and exposes the native parameter field and summary.
 capability bodies remain in GUI/CompressDialog.cpp. Native UpdateGUI property
 helpers produce CProperty records, and ArchiveBackend alone projects them to
 engine argv. Options Cancel discards its profile copy; only confirmed Add saves
-INI. Lifecycle flags and RAM retry dialogs remain P1-07.2.
+INI. Lifecycle flags cross the same native request boundary. Preserve-atime and
+shared writing are effective only on Windows; the global PreserveATime BoolPair
+persists without becoming effective on POSIX. Delete is nonpersistent and uses
+the native action-set check. Real decoder RAM requests require P1-18.
+
+`archivebackend_creation.cpp` coordinates prepare/delete jobs around CLI creation.
+`QtArchiveCreationLifecycle` owns native enumeration, snapshots, pause/cancel and
+queued progress off the GUI thread. `QtArchiveDeleteInputs` invokes the copied
+UpdateArchive deletion phase after final publication; native Add captures original
+processed flags and invokes it after MoveToOriginal. EnumDirItems/SortUtils belong
+to sevenzip_filesystem, so creation does not depend on the archive UI provider.
+Native latest-time selection includes retained archive items and callback times;
+QtArchiveFileResource applies it to CWorkDirTempFile before publication. CLI create
+uses the original -stl service, and CMultiOutStream receives its completed mtime.
 
 `createarchivedialog_volumes.cpp` binds the original volume parser and small-size
 confirmation to the Add form. Confirmed native `CRecordVector<UInt64>` sizes cross

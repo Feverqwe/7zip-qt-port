@@ -94,6 +94,9 @@ struct CInfo {
     CBoolPair CTime;
     CBoolPair ATime;
     CBoolPair SetArcMTime;
+    CBoolPair PreserveATime;
+    bool OpenShareForWrite = false;
+    bool DeleteAfterCompressing = false;
     NUpdateMode::EEnum UpdateMode = NUpdateMode::kAdd;
     NWildcard::ECensorPathMode PathMode = NWildcard::k_RelatPath;
     bool SolidIsSpecified = false;

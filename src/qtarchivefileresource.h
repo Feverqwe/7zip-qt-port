@@ -1,6 +1,7 @@
 // Owned file-only engine resource for a source archive folder.
 #pragma once
 #include "Common/MyCom.h"
+#include "Windows/FileFind.h"
 #include "archivebackend.h"
 #include "qtprogresstransport.h"
 #include <QString>
@@ -18,6 +19,10 @@ class ISequentialOutStream;
 class IFolderFolder;
 class IArchiveOpenCallback;
 struct CArc;
+class CWorkDirTempFile;
+class QtArchiveDeleteInputs;
+class IUpdateDeletionCallback;
+class CDirItems;
 class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_0
     QString _temporary;
@@ -31,6 +36,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
         _extract;
     std::function<std::unique_ptr<IQtProgressTransport>(CProgressDialog &)> _progress;
     std::optional<CompressionOptions> _compressionOptions;
+    std::optional<CFiTime> _outputMTime;
+    std::shared_ptr<QtArchiveDeleteInputs> _deleteInputs;
 
   public:
     QString EnginePath;
@@ -53,7 +60,14 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     // The caller owns the dialog until the native worker has joined.
     void SetUpdateProgress(CProgressSync *sync) { _sync = sync; }
     void SetCompressionOptions(const CompressionOptions &options) { _compressionOptions = options; }
-    void ClearCompressionOptions() { _compressionOptions.reset(); }
+    void ClearCompressionOptions() {
+        _compressionOptions.reset();
+        _deleteInputs.reset();
+    }
+    HRESULT ApplyOutputMTime(CWorkDirTempFile &file) const;
+    void CaptureOutputMTime(const CFiTime &time, bool defined);
+    void CaptureDeleteInputs(const CDirItems &items, const CByteBuffer &processed);
+    HRESULT DeleteInputsAfterPublication(IUpdateDeletionCallback &callback);
     const std::optional<CompressionOptions> &CompressionSettings() const {
         return _compressionOptions;
     }

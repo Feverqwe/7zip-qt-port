@@ -11,7 +11,8 @@
 // CMultiOutStream, then publish its complete set without replacing any target.
 class QtArchiveVolumeOutput final : public QThread {
   public:
-    QtArchiveVolumeOutput(QString source, QString target, CRecordVector<UInt64> sizes);
+    QtArchiveVolumeOutput(QString source, QString target, CRecordVector<UInt64> sizes,
+                          bool setArcMTime = false);
     void cancel();
     void setPaused(bool paused);
     HRESULT checkpoint();
@@ -29,4 +30,5 @@ class QtArchiveVolumeOutput final : public QThread {
     QWaitCondition resumed_;
     bool stopped_ = false;
     bool paused_ = false;
+    bool setArcMTime_ = false;
 };

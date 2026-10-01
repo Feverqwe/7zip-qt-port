@@ -195,6 +195,11 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/CPP/7zip/UI/Common/Update.cpp src/CPP/7zip/UI/Common/Update.h
+    src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
+    src/CPP/7zip/UI/Common/SortUtils.cpp
+    src/qtarchivedeleteinputs.cpp src/qtarchivedeleteinputs.h
+    src/qtarchivecreationlifecycle.cpp src/qtarchivecreationlifecycle.h
     src/CPP/7zip/Common/MultiOutStream.cpp
     src/qtarchivevolumeoutput.cpp src/qtarchivevolumeoutput.h
     src/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp src/CPP/7zip/UI/Common/ArchiveExtractCallback.h
@@ -238,8 +243,6 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/ArchiveFolder.cpp
     src/CPP/7zip/UI/Common/UpdateCallback.cpp src/CPP/7zip/UI/Common/UpdateCallback.h
     src/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp src/CPP/7zip/UI/Agent/UpdateCallbackAgent.h
-    src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
-    src/CPP/7zip/UI/Common/SortUtils.cpp
     src/CPP/7zip/UI/Common/UpdatePair.cpp
     third_party/7zip/CPP/7zip/UI/Common/UpdateProduce.cpp
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
@@ -751,6 +754,13 @@ if(BUILD_TESTING)
     add_test(NAME archive_volume_creation COMMAND archive_volume_creation_tests -silent)
     set_tests_properties(archive_volume_creation PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(archive_creation_lifecycle_tests tests/archive_creation_lifecycle_tests.cpp
+        src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp
+        src/archivebackend_listing.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp)
+    target_include_directories(archive_creation_lifecycle_tests PRIVATE src)
+    target_link_libraries(archive_creation_lifecycle_tests PRIVATE Qt6::Test sevenzip_panel)
+    add_test(NAME archive_creation_lifecycle COMMAND archive_creation_lifecycle_tests -silent)
+    set_tests_properties(archive_creation_lifecycle PROPERTIES TIMEOUT 60)
     qt_add_executable(compression_path_tests tests/compression_path_tests.cpp tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_path_tests PRIVATE src tests)
     target_link_libraries(compression_path_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
@@ -781,11 +791,13 @@ if(BUILD_TESTING)
     target_include_directories(memory_limit_tests PRIVATE src)
     target_link_libraries(memory_limit_tests PRIVATE Qt6::Test sevenzip_common)
     add_test(NAME memory_limit COMMAND memory_limit_tests -silent)
-    qt_add_executable(compression_limit_tests tests/compression_limit_tests.cpp ${compression_order_sources})
+    qt_add_executable(compression_limit_tests tests/compression_limit_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_limit_tests PRIVATE src)
     target_link_libraries(compression_limit_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_limit COMMAND compression_limit_tests -silent)
-    set_tests_properties(compression_limit PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(compression_limit PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(compression_preferences_tests tests/compression_preferences_tests.cpp ${compression_order_sources})
     target_include_directories(compression_preferences_tests PRIVATE src)
     target_link_libraries(compression_preferences_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
@@ -1127,7 +1139,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp
-            src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp)
+            src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
+            src/archivebackend_creation.cpp)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)

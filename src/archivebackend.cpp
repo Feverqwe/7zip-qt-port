@@ -1,6 +1,7 @@
 #include "archivebackend.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "processpriority.h"
+#include "qtarchivecreationlifecycle.h"
 #include "qtarchivevolumeoutput.h"
 
 #include <QDir>
@@ -85,6 +86,10 @@ bool ArchiveBackend::busy() const { return job_ != Job::None || overwritePromptA
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
 HRESULT ArchiveBackend::setPaused(bool paused) {
+    if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
+        creationLifecycle_->setPaused(paused);
+        return S_OK;
+    }
     if (volumeOutput_) {
         volumeOutput_->setPaused(paused);
         return S_OK;
@@ -97,7 +102,7 @@ HRESULT ArchiveBackend::setPaused(bool paused) {
 HRESULT ArchiveBackend::setBackground(bool background) {
     // The source progress dialog already sets this application's priority.
     // The volume worker runs in that process rather than a separate CLI child.
-    if (volumeOutput_)
+    if (volumeOutput_ || job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)
         return S_OK;
     if (process_.state() != QProcess::Running)
         return E_FAIL;
@@ -449,6 +454,8 @@ void ArchiveBackend::cancel() {
     if (!busy())
         return;
     cancelled_ = true;
+    if (creationLifecycle_)
+        creationLifecycle_->cancel();
     if (volumeOutput_)
         volumeOutput_->cancel();
     pendingPassword_.clear();
@@ -462,6 +469,10 @@ void ArchiveBackend::cancel() {
 void ArchiveBackend::cancelAndWait() {
     if (busy())
         cancel();
+    if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
+        creationLifecycle_->wait();
+        finishCreationLifecycle();
+    }
     if (volumeOutput_) {
         if (!volumeOutput_->isRunning() && !volumeOutput_->isFinished()) {
             volumeOutput_->Result = E_ABORT;
@@ -594,6 +605,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                       QStringLiteral("Не удалось сохранить новый архив: %1").arg(createTarget_));
         return;
     }
+    if (completed == Job::Create && startCreationDeletion())
+        return;
     if (completed == Job::Add || completed == Job::Delete || completed == Job::Rename ||
         completed == Job::ReplaceAdd) {
         if (!QFile::rename(createTarget_, addBackup_)) {

@@ -21,7 +21,7 @@ bool ArchiveBackend::checkVolumeTargets(const QString &archive, QString *error) 
 void ArchiveBackend::startVolumeOutput() {
     job_ = Job::CreateVolumes;
     volumeOutput_ = std::make_unique<QtArchiveVolumeOutput>(createTemporary_, createTarget_,
-                                                            createVolumeSizes_);
+                                                            createVolumeSizes_, createSetArcMTime_);
     volumeOutput_->Progress = [this](quint64 done, quint64 total) {
         const int percent = total ? int(100.0 * double(done) / double(total)) : 0;
         QMetaObject::invokeMethod(
@@ -43,11 +43,15 @@ void ArchiveBackend::finishVolumeOutput() {
         return;
     volumeOutput_->wait();
     lastResult_ = volumeOutput_->Result;
-    const QString error = volumeOutput_->Error;
+    if (cancelled_)
+        lastResult_ = E_ABORT;
+    const QString error = cancelled_ ? QStringLiteral("Операция отменена.") : volumeOutput_->Error;
     volumeOutput_.reset();
     QFile::remove(createTemporary_);
     createVolumeSizes_.Clear();
     job_ = Job::None;
+    if (lastResult_ == S_OK && startCreationDeletion())
+        return;
     emit finished(lastResult_ == S_OK,
                   lastResult_ == S_OK ? QStringLiteral("Архивные тома созданы.") : error);
 }

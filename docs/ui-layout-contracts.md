@@ -24,8 +24,9 @@ Options keeps resource grouping/order: optional NTFS controls, format time info,
 Time group with explicit/default precision and modification/creation/access/time
 of archive rows, preserve-access checkbox, then OK/Cancel/Help. Explicit/default
 checkboxes have accessible names. Native capability policy hides unsupported NTFS
-controls; ZIP UNIX/DOS precision hides creation/access rows. Preserve access,
-archive mtime and Help are disabled until their owners are implemented.
+controls; ZIP UNIX/DOS precision hides creation/access rows. Archive mtime is
+enabled. Preserve access is enabled on Windows and disabled with a reason on
+POSIX; Help remains disabled pending P1-15.
 
 `compression-options-{zip|7z}-{520|440}.json` covers actual 520×400 and 440×340
 sizes, exposed controls and footer. Current Qt reports show small explicit-value
@@ -33,6 +34,25 @@ checkboxes beside their labels, no clipping and separate confirmation buttons.
 Source visibility is applied before Qt computes minimum size so hidden NTFS
 controls cannot enlarge the compact dialog. No rendered Windows reference was
 available; these checks establish structure and usability on macOS only.
+
+### Compression lifecycle and memory rejection (P1-07.2)
+
+Reference: pinned CompressDialog.rc right Options group (Shared then Delete,
+before Encryption), CompressDialog.cpp OnOK action/memory checks and
+CompressOptionsDialog.rc archive-time/preserve controls. Qt keeps the right group
+for existing Add even when encryption fields are omitted. Shared writing is
+disabled with a Windows-only reason on POSIX. Delete starts unchecked, is enabled
+in Add, and disabled with a reason in Update/Freshen/Synchronize. A checked value
+survives switching modes in the open form but is excluded from disabled effective
+requests and never persisted. SFX remains owned by P2-02.
+
+`compression_advanced` writes archive-lifecycle-760/640.json at 760×720/640×480:
+group and both checkbox texts fully fit, Shared precedes Delete, footer remains
+exposed. Compact form uses scrolling; controls outside the viewport are reachable.
+`compression_limit` writes memory-limit-760/640.json after exposing the native
+memory combo. Both sizes fully expose it. A memory rejection leaves Add open for
+retry, while Cancel leaves INI unchanged. Reports verify macOS Qt usability and
+resource order; actual RAR decoder memory requests remain P1-18.
 
 ### Archive volume creation (P1-06.1)
 

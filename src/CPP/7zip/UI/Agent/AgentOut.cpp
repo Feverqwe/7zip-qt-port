@@ -5,6 +5,7 @@
 #include "../../../Common/Wildcard.h"
 #include "../../../Windows/FileDir.h"
 #include "../Common/EnumDirItems.h"
+#include "../Common/Update.h"
 #include "7zip/Archive/Common/ItemNameUtils.h"
 #include "7zip/Common/FileStreams.h"
 #include "7zip/Compress/CopyCoder.h"
@@ -15,6 +16,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
+#include "qtarchivefileresource.h"
 
 using namespace NWindows;
 using namespace NCOM;
@@ -241,6 +243,12 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
     }
 
     CDirItemsCallback_AgentOut enumCallback;
+    if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource())) {
+        if (resource->CompressionSettings() &&
+            resource->CompressionSettings()->DeleteAfterCompressing) {
+            RINOK(CheckDeleteAfterCompressingActionSet(actionSet))
+        }
+    }
     if (updateCallback100) {
         enumCallback.FolderArchiveUpdateCallback = updateCallback100;
         updateCallback100->QueryInterface(IID_IFolderScanProgress,
@@ -336,6 +344,17 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
     updateCallback->DirItems = &dirItems;
     updateCallback->ArcItems = &arcItems;
     updateCallback->UpdatePairs = &updatePairs2;
+    // UpdateGUI's lifecycle projection must also reach the original source
+    // streams used to stage input, before the external engine reads that stage.
+    if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource())) {
+        if (resource->CompressionSettings()) {
+            const auto &options = *resource->CompressionSettings();
+            updateCallback->ShareForWrite = options.OpenShareForWrite;
+            updateCallback->Need_LatestMTime = options.SetArcMTime.Val;
+            if (options.PreserveATime.Def)
+                updateCallback->PreserveATime = options.PreserveATime.Val;
+        }
+    }
 
     SetInArchiveInterfaces(this, updateCallback.ClsPtr());
 
@@ -381,8 +400,20 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
         RINOK(NCompress::CopyStream(sfxStream, outArchiveStream, NULL))
     }
 
+    CFiTime ft;
+    bool ft_Defined;
+    GetUpdateArchiveMTime(dirItems, arcItems, updatePairs2, ft, ft_Defined);
     const HRESULT res =
         outArchive->UpdateItems(outArchiveStream, updatePairs2.Size(), updateCallback);
+    if (res == S_OK) {
+        if (updateCallback->LatestMTime_Defined) {
+            if (!ft_Defined || Compare_FiTime(&ft, &updateCallback->LatestMTime) < 0)
+                ft = updateCallback->LatestMTime;
+            ft_Defined = true;
+        }
+        if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource()))
+            resource->CaptureOutputMTime(ft, ft_Defined);
+    }
     if (res == S_OK && processedPaths) {
         {
             /* OutHandler for 7z archives doesn't report compression operation for empty files.
@@ -400,6 +431,8 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
         FOR_VECTOR(i, dirItems.Items)
         if (processedItems[i] != 0)
             processedPaths->Add(dirItems.GetPhyPath(i));
+        if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource()))
+            resource->CaptureDeleteInputs(dirItems, processedItems);
     }
     return res;
 }

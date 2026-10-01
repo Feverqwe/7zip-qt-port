@@ -42,13 +42,14 @@ Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https:/
 | `CPP/7zip/UI/FileManager` | 67 | 45 | 22 |
 | `CPP/7zip/UI/Agent` | 7 | 6 | 1 |
 | `CPP/7zip/UI/GUI` | 10 | 5 | 5 |
-| `CPP/7zip/UI/Common` | 25 | 10 | 15 |
-| **Всего** | **109** | **66** | **43** |
+| `CPP/7zip/UI/Common` | 25 | 11 | 14 |
+| **Всего** | **109** | **67** | **42** |
 
-Текущие counts пересчитаны на 2026-09-30 после P1-11.3; P0-01 inventory
-зафиксировал исторический snapshot 27 mirrored/82 missing. Все 66 совпадений путей
+Текущие counts пересчитаны на 2026-10-01 после partial Common/Update.cpp P1-07.2;
+P0-01 inventory зафиксировал исторический snapshot 27 mirrored/82 missing.
+Все 67 совпадений путей
 требуют проверки пропущенных функций/веток. Нельзя считать их полностью
-завершёнными модулями. Из 43 отсутствующих файлов часть
+завершёнными модулями. Из 42 отсутствующих файлов часть
 содержит необходимую логику, часть обслуживает Win32 presentation или запуск
 отдельной 7zG/console-программы. Они должны получить явное решение о переносе,
 адаптации или неприменимости, а не автоматически копироваться целиком.
@@ -72,7 +73,7 @@ workflow и rendered/platform acceptance остаются обязательны
 Его дальнейшая runtime-интеграция и Windows-проверки остаются обязательными;
 создавать вторую реализацию под `src/` не требуется.
 
-**Оставшуюся работу планируем как 45 пакетов**: P0 — 12, P1 — 17,
+**Оставшуюся работу планируем как 46 пакетов**: P0 — 12, P1 — 18,
 P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID и отдельный результат.
 Часть пакетов завершает частичный перенос; часть добавляет отсутствующие
 модули; P3 закрывает обновляемость, проверки и поставку. Это не утверждение,
@@ -80,10 +81,11 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-01.4 (2026-10-01):
-**17/45 закрыты, 28 остаётся**; P0: 12/12, P1: 4/17, P2: 0/10, P3: 1/6.
+Текущий счёт после P1-07 (2026-10-01):
+**21/46 закрыты, 25 остаётся**; P0: 12/12, P1: 8/18, P2: 0/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
-под самостоятельным ID P1-17. Остальные mandatory workflow
+под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
+P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
 owners сохраняются в чеклисте.
 
 Нельзя честно вывести процент полного source port из числа файлов: размеры,
@@ -634,15 +636,19 @@ parser. Опции уровня ОС доступны по capability с объ�
 
 **Готово:** timestamps проверены round-trip, unsupported/invalid parameters
 дают исходный отказ; source удаляется только после доказанного успешного archive;
-memory retry/cancel и profile persistence не теряют настройку. UI contracts
+compression memory rejection/retry/cancel и profile persistence не теряют настройку.
+Реальные decoder RAM prompts вынесены отдельно в обязательный P1-18. UI contracts
 advanced/memory dialogs, tests success/failure/cancel.
 
 Интегрированные результаты: P1-07.1 переносит целую source Options форму,
 time/capability states, parameter field с исходным parser/SetOutProperties,
 backend effect/validation, format profiles и normal/compact UX. P1-07.2
 завершает lifecycle shared/preserve access/archive mtime/delete-after-compress
-и memory retry/cancel через source checks и текущие multi-stage/volume consumers;
-parent принимается после обоих результатов. NTFS/link controls сохраняют
+и compression memory retry/cancel через source checks и multi-stage/volume consumers.
+Исторический decoder callback scope P1-07.2 вынесен в P1-18 после проверки
+реальных callers и consumers (audit § P1-18 prerequisite), не объявлен выполненным.
+Parent принимается по .1/.2 без этой отдельной обязательной функции.
+NTFS/link controls сохраняют
 исходную capability policy; функциональные links/ADS/security owners — P2-05.
 
 ### P1-08. Внешние viewer/editor/diff и возврат изменённого файла
@@ -801,6 +807,27 @@ per-item comment round-trip, отказе, отмене, сохранности 
 остаётся `blocked`; другие пакеты выполняются по их зависимостям. P3-02/05
 могут проверить и документировать остальной scope, но полная приёмка P3-06
 требует закрытия P1-17.
+
+### P1-18. Реальные decoder RAM prompts
+
+**После:** P0-12, source RAR reader/decoder capability из P2-01.
+**Исторический scope:** decoder RequestMemoryUse из P1-07.2; provenance и
+подтверждённый разрыв — audit § P1-18 prerequisite. **Статус:** blocked, 2026-10-01.
+
+Исходные callers — `Rar5Handler.cpp::CHandler::Extract` (RAR5/RAR7); текущий
+mirrored модуль содержит только hash registration, а console callback внешнего
+7zz не передаёт GUI native requiredSize/allowedSize/flags/answerFlags. Перенести
+исходный handler с decoder/crypto/stream dependencies и подключить его через
+ArchiveBackend к уже перенесённому FM RequestMemoryUse/CMemDialog. Допустим
+source-derived структурированный engine bridge; парсинг диагностик/угадывание
+dictionary по строке Method не заменяют перенос алгоритма.
+
+**Разблокировка и готово:** реальные детерминированные RAR5/RAR7 fixtures вызывают
+GUI worker callback, проверены Allow/Skip/Cancel/remember, источник sizes/flags,
+root/selected/Test/batch consumers, persistence и failure/cancel. Настройки
+P1-12 и остальные независимые P1 owners не требуют этой runtime capability;
+P3-02/05/06 требуют закрытия P1-18 для полной приёмки. Функция не отменена
+и не закрывается synthetic callback тестом.
 
 ## 5. P2 — расширенная функциональность и платформы (10 шагов)
 
@@ -1032,7 +1059,7 @@ normal layout, оба языка, accessibility/focus, prompts/error/progress/he
 
 **Готово:** опубликована матрица checked/partial/unverified/N/A с доказательствами
 по ОС и source scope; README не обещает лишнего; счётчик checklist актуален.
-Только реальные закрытые обязательные пакеты дают 45/45 (или новое честное число
+Только реальные закрытые обязательные пакеты дают 46/46 (или новое честное число
 после decomposition/additions). Известные обязательные пробелы не объявляются
 «полным портом» ради завершения плана.
 
@@ -1070,6 +1097,7 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 | P1-15 | `HelpUtils.cpp`, `AboutDialog.cpp`, `ProgramLocation.cpp` |
 | P1-16 | `PanelDrag.cpp`, `EnumFormatEtc.cpp` |
 | P1-17 | `PanelOperations.cpp::ChangeComment`, `AgentOut.cpp::CommentItem`, `ArchiveFolderOut.cpp::SetProperty`, `ZipHandlerOut.cpp`, `ZipUpdate.cpp`, `ZipOut.cpp` |
+| P1-18 | `Rar5Handler.cpp::CHandler::Extract`, `ExtractCallback.cpp::RequestMemoryUse`, `MemDialog.cpp` |
 | P2-01 | `FilePlugins.cpp`, `FileFolderPluginOpen.cpp`, `RegistryPlugins.cpp` |
 | P2-03 | `PanelCrc.cpp` |
 | P2-05 | `LinkDialog.cpp` |
@@ -1144,6 +1172,7 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 отдельно после проверок, включая только свои изменения. Сохранять чужие hunks,
 записывать local commit как evidence; push и публикация не разрешены.
 
-Следующий доступный результат — **P1-07.2** после принятого P1-07.1; parent P1-07
-остаётся открытым до lifecycle/memory приёмки. Далее по приоритету и
+Следующий доступный результат — **P1-08** после принятого P1-07. ZIP comment
+P1-17 и реальные decoder RAM prompts P1-18 сохраняют самостоятельные блокеры.
+Далее по приоритету и
 зависимостям. UX идёт вместе с каждым пакетом.

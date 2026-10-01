@@ -4,8 +4,10 @@
 #include "7zip/Compress/CopyCoder.h"
 #include "7zip/UI/Common/ArchiveOpenCallback.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "CPP/7zip/UI/Common/WorkDir.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
+#include "qtarchivedeleteinputs.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -27,6 +29,30 @@ class CSpoolProgress final : public ICompressProgressInfo, public CMyUnknownImp 
 QtArchiveFileResource::~QtArchiveFileResource() {
     if (!_temporary.isEmpty())
         QFile::remove(_temporary);
+}
+
+HRESULT QtArchiveFileResource::ApplyOutputMTime(CWorkDirTempFile &file) const {
+    return _outputMTime ? file.SetMTime(*_outputMTime) : S_OK;
+}
+
+void QtArchiveFileResource::CaptureOutputMTime(const CFiTime &time, bool defined) {
+    _outputMTime.reset();
+    if (_compressionOptions && _compressionOptions->SetArcMTime.Val && defined)
+        _outputMTime = time;
+}
+
+void QtArchiveFileResource::CaptureDeleteInputs(const CDirItems &items,
+                                                const CByteBuffer &processed) {
+    _deleteInputs.reset();
+    if (_compressionOptions && _compressionOptions->DeleteAfterCompressing) {
+        _deleteInputs = std::make_shared<QtArchiveDeleteInputs>();
+        _deleteInputs->Capture(items, processed);
+    }
+}
+
+HRESULT QtArchiveFileResource::DeleteInputsAfterPublication(IUpdateDeletionCallback &callback) {
+    auto inputs = std::move(_deleteInputs);
+    return inputs ? inputs->Delete(callback) : S_OK;
 }
 
 HRESULT QtArchiveFileResource::GetArchiveProperty(PROPID id, PROPVARIANT *value) const {

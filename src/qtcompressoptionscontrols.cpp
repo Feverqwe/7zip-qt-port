@@ -89,10 +89,6 @@ void CQtCompressOptionsDialog::buildControls() {
     for (const auto &item : rows) {
         auto *set = checkbox(item.set, item.setName, {}, time);
         set->setAccessibleName("Задать: " + QString::fromUtf8(item.text));
-        if (item.set == IDX_COMPRESS_ZTIME_SET) {
-            set->setEnabled(false);
-            set->setToolTip("Параметр пока недоступен.");
-        }
         set->setToolTip("Задать значение вместо настройки по умолчанию");
         grid->addWidget(set, row, 0);
         grid->addWidget(checkbox(item.value, item.valueName, item.text, time), row, 1, 1, 2);
@@ -100,8 +96,10 @@ void CQtCompressOptionsDialog::buildControls() {
     }
     auto *preserve = checkbox(IDX_COMPRESS_PRESERVE_ATIME, "IDX_COMPRESS_PRESERVE_ATIME",
                               "Не изменять время последнего доступа\nк исходным файлам", time);
+#ifndef Q_OS_WIN
     preserve->setEnabled(false);
-    preserve->setToolTip("Параметр пока недоступен.");
+    preserve->setToolTip("Официальный движок поддерживает эту опцию только в Windows.");
+#endif
     grid->addWidget(preserve, row, 0, 1, 3);
     layout->addWidget(time);
     layout->addStretch();
@@ -137,7 +135,7 @@ void CQtCompressOptionsDialog::ShowItem_Bool(unsigned id, bool visible) {
     GetItem(id)->setVisible(visible);
 }
 void CQtCompressOptionsDialog::EnableItem(unsigned id, bool enabled) {
-    GetItem(id)->setEnabled(enabled && id != IDX_COMPRESS_ZTIME);
+    GetItem(id)->setEnabled(enabled);
 }
 void CQtCompressOptionsDialog::SetItemText(unsigned id, const UString &text) {
     static_cast<QLabel *>(GetItem(id))->setText(QString::fromWCharArray(text.Ptr()));

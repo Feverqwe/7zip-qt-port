@@ -3,6 +3,7 @@
 #include "7zip/Common/MultiOutStream.h"
 #include "7zip/Compress/CopyCoder.h"
 #include "Common/StringConvert.h"
+#include "Windows/FileFind.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -27,8 +28,9 @@ class CVolumeProgress final : public ICompressProgressInfo, public CMyUnknownImp
 } // namespace
 
 QtArchiveVolumeOutput::QtArchiveVolumeOutput(QString source, QString target,
-                                             CRecordVector<UInt64> sizes)
-    : source_(std::move(source)), target_(std::move(target)), sizes_(std::move(sizes)) {}
+                                             CRecordVector<UInt64> sizes, bool setArcMTime)
+    : source_(std::move(source)), target_(std::move(target)), sizes_(std::move(sizes)),
+      setArcMTime_(setArcMTime) {}
 
 void QtArchiveVolumeOutput::cancel() {
     QMutexLocker lock(&mutex_);
@@ -62,6 +64,15 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
     CMyComPtr2_Create<IOutStream, CMultiOutStream> output;
     output->Prefix = us2fs(prefix.toStdWString().c_str());
     output->Init(sizes_);
+    // Update.cpp assigns MTime before UpdateItems/FinalFlush. The CLI has
+    // already calculated the source latest time on this completed archive.
+    if (setArcMTime_) {
+        NWindows::NFile::NFind::CFileInfo info;
+        if (!info.Find(us2fs(source_.toStdWString().c_str())))
+            return GetLastError_noZero_HRESULT();
+        output->MTime = info.MTime;
+        output->MTime_Defined = true;
+    }
     CMyComPtr<ICompressProgressInfo> progress = new CVolumeProgress(*this, size);
     RINOK(NCompress::CopyStream(input, output, progress))
     unsigned count = 0;

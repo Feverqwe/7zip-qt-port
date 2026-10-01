@@ -42,6 +42,7 @@ class CreateArchiveDialog : public QDialog {
     void createEncryptionOptions(QFormLayout *form);
     void createVolumeOptions(QFormLayout *form);
     void createAdvancedOptions(QFormLayout *form);
+    void createLifecycleOptions(QFormLayout *form);
     void showAdvancedOptions();
     void updateAdvancedSummary();
     bool checkVolumeSizes();
@@ -89,6 +90,8 @@ class CreateArchiveDialog : public QDialog {
     QLineEdit *parameters_ = nullptr;
     QPushButton *advanced_ = nullptr;
     QLabel *advancedSummary_ = nullptr;
+    QCheckBox *sharedFiles_ = nullptr;
+    QCheckBox *deleteAfterCompressing_ = nullptr;
     QComboBox *encryption_ = nullptr;
     QComboBox *level_ = nullptr;
     QComboBox *method_ = nullptr;

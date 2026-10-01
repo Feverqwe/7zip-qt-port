@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -109,8 +110,6 @@ class CompressionLimitTests final : public QObject {
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QVERIFY(rejectedForMemory);
         QCOMPARE(dialog.result(), 0);
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         limit->setCurrentIndex(limit->findData("256M"));
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -118,12 +117,53 @@ class CompressionLimitTests final : public QObject {
             dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
                 ->ensureWidgetVisible(limit, 0, 80);
             QApplication::processEvents();
-            QVERIFY(dialog.grab().save(screenshots +
-                                       QString("/memory-limit-%1.png").arg(size.width())));
+            QVERIFY(UiInspection::fullyVisible(*limit, dialog));
+            QVERIFY(
+                UiInspection::writeReport(dialog, QString("memory-limit-%1").arg(size.width())));
         }
         limit->setCurrentIndex(0);
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
+    }
+    void cancelAfterMemoryRejectionPreservesProfile() {
+        QTemporaryDir dir;
+        QFile source(dir.filePath("source.txt"));
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write("contents"), qint64(8));
+        source.close();
+        QFile settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QByteArray before;
+        if (settings.exists()) {
+            QVERIFY(settings.open(QIODevice::ReadOnly));
+            before = settings.readAll();
+            settings.close();
+        }
+        const bool existed = settings.exists();
+        CreateArchiveDialog dialog(dir.path(), {source.fileName()});
+        auto *limit = dialog.findChild<QComboBox *>("compressionMemoryLimit");
+        QVERIFY(limit);
+        limit->addItem("0 B", "0b");
+        limit->setCurrentIndex(limit->count() - 1);
+        dialog.show();
+        bool rejected = false;
+        QTimer::singleShot(0, &dialog, [&] {
+            auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            if (message) {
+                rejected = message->text().contains(QStringLiteral("лимит"));
+                message->accept();
+            }
+        });
+        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        buttons->button(QDialogButtonBox::Ok)->click();
+        QVERIFY(rejected);
+        QVERIFY(dialog.isVisible());
+        buttons->button(QDialogButtonBox::Cancel)->click();
+        QCOMPARE(dialog.result(), int(QDialog::Rejected));
+        QCOMPARE(settings.exists(), existed);
+        if (existed) {
+            QVERIFY(settings.open(QIODevice::ReadOnly));
+            QCOMPARE(settings.readAll(), before);
+        }
     }
     void operations_data() {
         QTest::addColumn<QString>("format");

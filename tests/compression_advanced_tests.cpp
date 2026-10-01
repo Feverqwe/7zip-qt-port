@@ -79,8 +79,12 @@ class CompressionAdvancedTests final : public QObject {
         QVERIFY(!check(dialog, "IDX_COMPRESS_MTIME")->isEnabled());
         QVERIFY(!check(dialog, "IDX_COMPRESS_MTIME_SET")->isVisible());
         QVERIFY(!check(dialog, "IDX_COMPRESS_CTIME")->isEnabled());
+#ifdef Q_OS_WIN
+        QVERIFY(check(dialog, "IDX_COMPRESS_PRESERVE_ATIME")->isEnabled());
+#else
         QVERIFY(!check(dialog, "IDX_COMPRESS_PRESERVE_ATIME")->isEnabled());
-        QVERIFY(!check(dialog, "IDX_COMPRESS_ZTIME_SET")->isEnabled());
+#endif
+        QVERIFY(check(dialog, "IDX_COMPRESS_ZTIME_SET")->isEnabled());
         if (format == "zip") {
             check(dialog, "IDX_COMPRESS_PREC_SET")->click();
             precision->setCurrentIndex(precision->findData(UInt32(NFileTimeType::kUnix)));
@@ -111,10 +115,143 @@ class CompressionAdvancedTests final : public QObject {
         QVERIFY(profile.CTime.Val);
         QVERIFY(!profile.SetArcMTime.Def);
     }
+    void lifecycleRoundTrip_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<bool>("volumes");
+        QTest::newRow("7z") << QString("7z") << false;
+        QTest::newRow("zip") << QString("zip") << false;
+        QTest::newRow("7z-volumes") << QString("7z") << true;
+        QTest::newRow("zip-volumes") << QString("zip") << true;
+    }
+    void lifecycleRoundTrip() {
+        QFETCH(QString, format);
+        QFETCH(bool, volumes);
+        QTemporaryDir first, second, output;
+        QVERIFY(first.isValid() && second.isValid() && output.isValid());
+        const QString a = first.filePath(QStringLiteral("первый файл.txt"));
+        const QString b = second.filePath(QStringLiteral("второй файл.txt"));
+        QVERIFY(writeFile(a, QByteArray(4096, 'a')));
+        QVERIFY(writeFile(b, QByteArray(4096, 'b')));
+        const QDateTime latest = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone::UTC);
+        const QDateTime accessed = latest.addDays(-5);
+        for (const QString &path : {a, b}) {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::ReadWrite));
+            QVERIFY(file.setFileTime(path == a ? latest : latest.addDays(-1),
+                                     QFileDevice::FileModificationTime));
+            QVERIFY(file.setFileTime(accessed, QFileDevice::FileAccessTime));
+        }
+        CompressionOptions options;
+        options.level = 0;
+        options.SetArcMTime.SetTrueTrue();
+#ifdef Q_OS_WIN
+        options.PreserveATime.SetTrueTrue();
+#endif
+        options.OpenShareForWrite = true;
+        if (volumes)
+            options.VolumeSizes.Add(2048);
+        const QString archive = output.filePath("result." + format);
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {a, b}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
+        QVERIFY2(finished.last().first().toBool(), qPrintable(finished.last().at(1).toString()));
+#ifdef Q_OS_WIN
+        for (const QString &path : {a, b})
+            QCOMPARE(QFileInfo(path).lastRead(), accessed);
+#endif
+        const QStringList files = QDir(output.path()).entryList(QDir::Files);
+        QVERIFY(!files.isEmpty());
+        for (const QString &name : files)
+            QCOMPARE(QFileInfo(output.filePath(name)).lastModified(), latest);
+    }
+    void unsupportedPreserveAccessTime() {
+#ifndef Q_OS_WIN
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("input.txt");
+        QVERIFY(writeFile(source, "retained source"));
+        CompressionOptions options;
+        options.PreserveATime.SetTrueTrue();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
+        backend.create(fixture.filePath("result.7z"), {source}, {}, false, options);
+        QCOMPARE(finished.size(), 1);
+        QVERIFY(!finished.last().first().toBool());
+        QCOMPARE(started.size(), 0);
+        QCOMPARE(readFile(source), QByteArray("retained source"));
+        QVERIFY(!QFileInfo::exists(fixture.filePath("result.7z")));
+        NCompression::CInfo persisted;
+        persisted.PreserveATime.SetTrueTrue();
+        persisted.Save(settings_);
+        CreateArchiveDialog dialog(fixture.path(), {source});
+        QVERIFY(!dialog.compressionOptions().PreserveATime.Val);
+        NCompression::CInfo loaded;
+        loaded.Load(settings_);
+        QVERIFY(loaded.PreserveATime.Def && loaded.PreserveATime.Val);
+#endif
+    }
     void addFormGeometry_data() {
         QTest::addColumn<QSize>("size");
         QTest::newRow("normal") << QSize(760, 720);
         QTest::newRow("compact") << QSize(640, 480);
+    }
+    void lifecycleFormGeometry_data() {
+        QTest::addColumn<QSize>("size");
+        QTest::newRow("normal") << QSize(760, 720);
+        QTest::newRow("compact") << QSize(640, 480);
+    }
+    void lifecycleFormGeometry() {
+        QFETCH(QSize, size);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("source.txt");
+        QVERIFY(writeFile(source, "source bytes"));
+        CreateArchiveDialog dialog(fixture.path(), {source}, nullptr,
+                                   fixture.filePath("existing.zip"));
+        dialog.resize(size);
+        dialog.show();
+        QCoreApplication::processEvents();
+        QCOMPARE(dialog.size(), size);
+        auto *group = dialog.findChild<QGroupBox *>("archiveLifecycleOptions");
+        auto *shared = check(dialog, "archiveSharedFiles");
+        auto *remove = check(dialog, "archiveDeleteAfterCompression");
+        QVERIFY(group && shared && remove);
+        auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
+        scroll->ensureWidgetVisible(group);
+        QCoreApplication::processEvents();
+        for (QWidget *widget : {static_cast<QWidget *>(group), static_cast<QWidget *>(shared),
+                                static_cast<QWidget *>(remove)})
+            QVERIFY(UiInspection::fullyVisible(*widget, dialog));
+        QVERIFY(shared->width() >= shared->sizeHint().width());
+        QVERIFY(remove->width() >= remove->sizeHint().width());
+        QVERIFY(UiInspection::bounds(*shared, dialog).bottom() <
+                UiInspection::bounds(*remove, dialog).top());
+#ifdef Q_OS_WIN
+        QVERIFY(shared->isEnabled());
+        shared->setChecked(true);
+        QVERIFY(dialog.compressionOptions().OpenShareForWrite);
+#else
+        QVERIFY(!shared->isEnabled());
+        QVERIFY(!shared->toolTip().isEmpty());
+        QVERIFY(!dialog.compressionOptions().OpenShareForWrite);
+#endif
+        QVERIFY(remove->isEnabled());
+        remove->setChecked(true);
+        QVERIFY(dialog.compressionOptions().DeleteAfterCompressing);
+        auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
+        mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kFresh)));
+        QVERIFY(!remove->isEnabled());
+        QVERIFY(!dialog.compressionOptions().DeleteAfterCompressing);
+        mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kAdd)));
+        QVERIFY(remove->isEnabled());
+        QVERIFY(dialog.compressionOptions().DeleteAfterCompressing);
+        QVERIFY(
+            UiInspection::writeReport(dialog, QString("archive-lifecycle-%1").arg(size.width())));
+        dialog.reject();
+        CreateArchiveDialog reopened(fixture.path(), {source});
+        QVERIFY(!reopened.compressionOptions().DeleteAfterCompressing);
     }
     void addFormGeometry() {
         QFETCH(QSize, size);
@@ -184,6 +321,11 @@ class CompressionAdvancedTests final : public QObject {
             QVERIFY(options);
             check(*options, "IDX_COMPRESS_CTIME_SET")->click();
             check(*options, "IDX_COMPRESS_CTIME")->click();
+#ifdef Q_OS_WIN
+            check(*options, "IDX_COMPRESS_PRESERVE_ATIME")->click();
+#endif
+            check(*options, "IDX_COMPRESS_ZTIME_SET")->click();
+            check(*options, "IDX_COMPRESS_ZTIME")->click();
             options->accept();
         });
         confirmed.findChild<QPushButton *>("archiveAdvancedOptions")->click();
@@ -206,6 +348,11 @@ class CompressionAdvancedTests final : public QObject {
         QCOMPARE(reopened.findChild<QLineEdit *>("archiveParameters")->text(), QString("mt=2"));
         QVERIFY(reopened.compressionOptions().CTime.Def);
         QVERIFY(reopened.compressionOptions().CTime.Val);
+#ifdef Q_OS_WIN
+        QVERIFY(reopened.compressionOptions().PreserveATime.Def);
+        QVERIFY(reopened.compressionOptions().PreserveATime.Val);
+#endif
+        QVERIFY(reopened.compressionOptions().SetArcMTime.Val);
         reopened.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         QCOMPARE(reopened.findChild<QLineEdit *>("archiveParameters")->text(), QString("m=Store"));
         QCOMPARE(reopened.compressionOptions().TimePrec, UInt32(NFileTimeType::kUnix));
