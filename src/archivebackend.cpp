@@ -117,6 +117,7 @@ void ArchiveBackend::start(Job job, const QStringList &arguments, const QString 
     job_ = job;
     lastResult_ = E_FAIL;
     output_.clear();
+    listingOutput_.clear();
     pendingOutput_.clear();
     cancelled_ = false;
     passwordPrompted_ = false;
@@ -175,6 +176,10 @@ void ArchiveBackend::consumeLine(const QByteArray &line) {
 }
 
 void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
+    // Metadata must retain spaces, blank/multiline values and fragmented UTF-8.
+    // The existing trimmed/redacted progress journal is a separate presentation.
+    if (job_ == Job::List)
+        listingOutput_ += chunk;
     pendingOutput_ += chunk;
     if (!passwordPrompted_ && pendingPassword_.isEmpty() &&
         pendingOutput_.contains("Enter password:")) {
@@ -632,10 +637,14 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         listedSourceArchives_.remove(createTarget_);
     }
     if (completed == Job::List) {
-        entries_ = parseListing(output_);
+        QString listing = QString::fromUtf8(listingOutput_);
+        listing.replace("\r\n", "\n");
+        listing.replace('\r', '\n');
+        entries_ = parseListing(listing);
         listed_ = true;
         ArchiveInfo info;
-        const QString header = output_.section(QStringLiteral("----------\n"), 0, 0);
+        const QString header = listing.section(QStringLiteral("----------\n"), 0, 0);
+        info.properties = parseArchiveHeaderProperties(header);
         for (const QString &line : header.split('\n')) {
             if (line.startsWith(QStringLiteral("Type = ")))
                 info.format = line.mid(7);
@@ -666,7 +675,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                 ++info.folders;
             else {
                 ++info.files;
-                info.unpackedSize += entry.size;
+                if (entry.size >= 0)
+                    info.unpackedSize += entry.size;
             }
         }
         info.encrypted = output_.contains(QStringLiteral("Encrypted = +")) ||

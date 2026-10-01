@@ -62,7 +62,30 @@ HRESULT QtArchiveFileResource::GetArchiveProperty(PROPID id, PROPVARIANT *value)
         prop = UInt64(_physicalSize);
     else if (id == kpidOffset)
         prop.Set_Int64(_offset);
+    else if (id >= 0x10000 && id - 0x10000 < unsigned(Info.properties.size())) {
+        auto i = Info.properties.cbegin();
+        std::advance(i, id - 0x10000);
+        prop = i.value().toStdWString().c_str();
+    }
     return prop.Detach(value);
+}
+
+HRESULT QtArchiveFileResource::GetNumberOfArchiveProperties(UInt32 *count) const {
+    *count = UInt32(Info.properties.size());
+    return S_OK;
+}
+
+HRESULT QtArchiveFileResource::GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id,
+                                                      VARTYPE *type) const {
+    if (index >= unsigned(Info.properties.size()))
+        return E_INVALIDARG;
+    auto i = Info.properties.cbegin();
+    std::advance(i, index);
+    const std::wstring key = i.key().toStdWString();
+    *name = ::SysAllocStringLen(key.c_str(), unsigned(key.size()));
+    *id = 0x10000 + index;
+    *type = VT_BSTR;
+    return *name ? S_OK : E_OUTOFMEMORY;
 }
 
 HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc) const {

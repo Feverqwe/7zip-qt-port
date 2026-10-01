@@ -7,6 +7,21 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-10.2: Properties показывает исходные item/raw/folder/archive levels,
+MainItemProperty и ошибки non-open уровня. Undefined item value не подменяется
+нулём; после separator отдельно идут folder totals. CRC/checksum форматируются
+исходными helpers. Display может сокращать длинный текст, но clipboard/detail
+сохраняют полный Unicode value. Qt заменяет Windows system Properties общей
+source enumeration; original path block использует имя property kpidName.
+File-only adapter сохраняет actual CLI fields, native UInt64/CRC и доступные
+checksum/SHA raw bytes до64; большие raw/decoded security values остаются только
+engine display text. CLI normalization уже может потерять исходные control
+characters; generic CLI names/text не объявляются native raw metadata.
+Проверены source ListViewDialog.rc grouping, current-build JSON540×360/360×240,
+list/buttons geometry, macOS arm64 Qt6.11.2. Windows/Linux runtime и rendered
+Windows parity не проверены; codec error-type lookup/P2-01 и ADS graph/P2-06
+остаются отдельными source capabilities.
+
 P1-10.1: исходный `PanelItems.cpp::EditItem(bool)` F3 считает все operated
 directories через IFolderCalcItemFullSize; при выбранных папках focused file
 не запускает viewer. F4 остаётся file-only. Qt перечитывает source column text

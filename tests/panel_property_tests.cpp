@@ -146,7 +146,7 @@ class PanelPropertyTests : public QObject {
         props.Add({kpidPackSize, L"", CPropVariant(UInt64(0))});
         CListViewDialog dialog;
         render(props, dialog);
-        QCOMPARE(dialog.Strings.Size(), 3u); // Defined packed zero, separator and path.
+        QCOMPARE(dialog.Strings.Size(), 2u); // Defined packed zero and separator; path unavailable.
         QCOMPARE(value(dialog, "Сжатый размер"), QString("0"));
         QVERIFY(value(dialog, "Размер").isNull());
         QVERIFY(value(dialog, "Изменён").isNull());

@@ -147,6 +147,9 @@ struct CPanelItem {
     UInt64 NumSubDirs = 0;
     UInt64 NumSubFiles = 0;
     CObjectVector<CPanelProperty> Properties;
+    CObjectVector<CPanelProperty> ArchiveProperties;
+    std::optional<UInt32> Crc;
+    QMap<PROPID, QByteArray> RawProperties;
     // Unparsed 7zz timestamp compatibility text; native FILETIME parsing remains P0-03/P0-04.
     QString MTimeText;
 };

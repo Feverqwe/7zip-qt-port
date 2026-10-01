@@ -92,12 +92,16 @@ HRESULT CreateArchiveMetadata(const QList<ArchiveEntry> &entries, IFolderFolder 
         item.RelPath = entry.path;
         item.MTimeText = entry.modified;
         item.IsFolder = entry.directory;
-        item.SizeDefined = entry.size >= 0;
+        item.Crc = entry.crc;
+        item.RawProperties = entry.rawProperties;
+        for (auto i = entry.properties.cbegin(); i != entry.properties.cend(); ++i)
+            item.ArchiveProperties.Add({ToUString(i.key()), ToUString(i.value())});
+        item.SizeDefined = entry.sizeValue.has_value() || entry.size >= 0;
         if (item.SizeDefined)
-            item.Size = UInt64(entry.size);
-        item.PackSizeDefined = entry.packedSize >= 0;
+            item.Size = entry.sizeValue.value_or(UInt64(entry.size));
+        item.PackSizeDefined = entry.packedSizeValue.has_value() || entry.packedSize >= 0;
         if (item.PackSizeDefined)
-            item.PackSize = UInt64(entry.packedSize);
+            item.PackSize = entry.packedSizeValue.value_or(UInt64(entry.packedSize));
         items.Add(item);
     }
     CMyComPtr<IFolderFolder> props =

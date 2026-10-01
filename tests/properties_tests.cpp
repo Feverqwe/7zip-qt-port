@@ -60,7 +60,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(value(*dialog, "Папок"), QString("1"));
             QCOMPARE(value(*dialog, "Размер"), QString("10"));
             QCOMPARE(value(*dialog, "Сжатый размер"), QString("10"));
-            QCOMPARE(QDir::fromNativeSeparators(value(*dialog, "Путь")),
+            QCOMPARE(QDir::fromNativeSeparators(value(*dialog, "Имя")),
                      QFileInfo(temporary.path()).canonicalFilePath() + '/');
             checked = true;
             dialog->reject();
@@ -130,8 +130,8 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(value(dialog, "Размер"), QString("12 345"));
         QVERIFY(value(dialog, "Изменён").isNull());
         QCOMPARE(value(dialog, "Сжатый размер"), QString("3"));
-        QVERIFY(value(dialog, "Файлов").isNull());
-        QVERIFY(value(dialog, "Папок").isNull());
+        QCOMPARE(value(dialog, "Файлов"), QString("1")); // Source folder totals follow item.
+        QCOMPARE(value(dialog, "Папок"), QString("0"));
         auto *list = dialog.findChild<QTreeWidget *>();
         QVERIFY(!list->header()->isHidden());
         QCOMPARE(list->columnCount(), 2);
@@ -228,8 +228,16 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(dialog);
             const auto closeDialog = qScopeGuard([dialog] { dialog->reject(); });
             QCOMPARE(value(*dialog, "Имя"), QString("unknown.txt"));
-            QVERIFY(value(*dialog, "Размер").isNull());
-            QVERIFY(value(*dialog, "Сжатый размер").isNull());
+            // The undefined item fields are omitted before the separator;
+            // source folder totals are still enumerated afterward.
+            auto *properties = dynamic_cast<PropertiesDialog *>(dialog);
+            QVERIFY(properties);
+            for (unsigned i = 0; i < properties->Strings.Size(); ++i) {
+                const QString name = ToQString(properties->Strings[i]);
+                if (name.startsWith("----"))
+                    break;
+                QVERIFY(name != "Размер" && name != "Сжатый размер");
+            }
             QCOMPARE(value(*dialog, "Изменён"), QString("2026-09-28 12:34:56.1234567"));
             inspected = true;
             dialog->reject();

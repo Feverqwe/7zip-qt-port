@@ -150,7 +150,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtcallbackpassword.cpp src/qtcallbackpassword.h
     src/qtprogresscontrols.cpp src/qtprogresscontrols.h
     src/qtpanellist.cpp src/qtpanellist.h
-    src/qtpanelfolder.cpp src/qtpanelfolder.h
+    src/qtpanelfolder.cpp src/qtpanelfolderraw.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
     src/CPP/7zip/UI/FileManager/SettingsPage.cpp src/CPP/7zip/UI/FileManager/SettingsPage.h
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
@@ -1271,3 +1271,17 @@ foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_opera
         target_link_libraries(${target} PRIVATE sevenzip_filesystem)
     endif()
 endforeach()
+
+if(BUILD_TESTING)
+    get_target_property(source_properties_sources archive_opening_tests SOURCES)
+    list(REMOVE_ITEM source_properties_sources tests/archive_opening_tests.cpp)
+    get_target_property(source_properties_libraries archive_opening_tests LINK_LIBRARIES)
+    qt_add_executable(source_properties_tests tests/source_properties_tests.cpp
+        tests/layout_inspection.cpp src/propertiesdialog.cpp ${source_properties_sources})
+    target_include_directories(source_properties_tests PRIVATE src tests)
+    target_link_libraries(source_properties_tests PRIVATE ${source_properties_libraries})
+    add_test(NAME source_properties COMMAND source_properties_tests -silent)
+    set_tests_properties(source_properties PROPERTIES TIMEOUT 90
+        RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/source_properties.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+endif()

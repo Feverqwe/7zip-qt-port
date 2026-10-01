@@ -1,5 +1,14 @@
 # Regression strategy
 
+`source_properties` opens actual local ZIP and SHA-256 manifest fixtures through
+the native source open owner, checks CRC/raw checksum and sparse values, then
+drives source folder/arc/MainItemProperty/non-open enumeration. A controlled
+CLI fixture covers full UInt64, defined zero, undefined fields, unavailable large
+raw payload and SHA bytes. Long Unicode multiline header values survive the
+transport, clipboard and full detail; normal/compact geometry and JSON cover the
+list/buttons. Direct consumers are `properties`, `panel_property`,
+`archive_opening`, `archive_backend`, property catalogs and source update/extract.
+
 `folder_size_view` checks native keyboard F3 over a Unicode/space tree and an
 empty directory, multi-directory operated selection with focus on a file,
 defined zero, recursive file/directory totals, display text, stable provider,

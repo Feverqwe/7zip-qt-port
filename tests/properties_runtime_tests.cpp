@@ -9,6 +9,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
 
     struct Inspection {
         QMap<QString, QString> values;
+        QString folderPath;
         bool shown = false;
         bool geometry = true;
     };
@@ -46,9 +47,15 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
             auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
             result.shown = list && dialog->windowTitle() == QStringLiteral("Свойства");
             if (list) {
+                bool firstSection = true;
                 for (int i = 0; i < list->topLevelItemCount(); ++i) {
                     const auto *item = list->topLevelItem(i);
-                    result.values.insert(item->text(0), item->text(1));
+                    if (item->text(0).startsWith("----"))
+                        firstSection = false;
+                    if (firstSection)
+                        result.values.insert(item->text(0), item->text(1));
+                    else if (item->text(0) == "Имя" && result.folderPath.isEmpty())
+                        result.folderPath = item->text(1);
                 }
                 if (!reportTag.isEmpty()) {
                     auto *buttons = dialog->findChild<QDialogButtonBox *>("listViewButtons");
@@ -110,7 +117,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(properties.values.value("Имя").normalized(QString::NormalizationForm_C), name);
         QCOMPARE(properties.values.value("Размер"), QString("7"));
         QCOMPARE(properties.values.value("Сжатый размер"), QString("7"));
-        QCOMPARE(properties.values.value("Путь"), QDir::fromNativeSeparators(root.path() + '/'));
+        QCOMPARE(properties.folderPath, QDir::fromNativeSeparators(root.path() + '/'));
         QVERIFY(!properties.values.value("Изменён").isEmpty());
         // Prime the source's lazy Windows packed-size cache before changing the file.
         createFile(root.filePath(name), 31);
@@ -215,7 +222,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(properties.shown);
         QCOMPARE(properties.values.value("Размер"), QString("31"));
         QCOMPARE(properties.values.value("Сжатый размер"), QString("31"));
-        QCOMPARE(properties.values.value("Путь"), QDir::fromNativeSeparators(root.path() + '/'));
+        QCOMPARE(properties.folderPath, QDir::fromNativeSeparators(root.path() + '/'));
         selectOnly(window, diskRow(window, root.filePath("zero")));
         properties = inspect(window);
         QVERIFY(properties.shown);

@@ -103,12 +103,15 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetPropertyInfo(UInt32 index, BSTR *name,
     return _properties->GetPropertyInfo(index, name, id, type);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfArchiveProperties(UInt32 *count)) {
+    if (_resourceSpec)
+        return _resourceSpec->GetNumberOfArchiveProperties(count);
     *count = 0;
     return S_OK;
 }
-Z7_COM7F_IMF(CFolderArchiveProperties::GetArchivePropertyInfo(UInt32, BSTR *, PROPID *,
-                                                              VARTYPE *)) {
-    return E_INVALIDARG;
+Z7_COM7F_IMF(CFolderArchiveProperties::GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id,
+                                                              VARTYPE *type)) {
+    return _resourceSpec ? _resourceSpec->GetArchivePropertyInfo(index, name, id, type)
+                         : E_INVALIDARG;
 }
 } // namespace
 

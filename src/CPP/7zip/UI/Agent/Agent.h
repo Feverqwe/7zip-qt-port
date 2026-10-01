@@ -41,6 +41,8 @@ Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 
 class CAgentFolder final : public IFolderFolder,
+                           public IFolderProperties,
+                           public IGetFolderArcProps,
                            public IArchiveGetRawProps,
                            public IFolderSetFlatMode,
                            public IArchiveFolderInternal,
@@ -51,6 +53,8 @@ class CAgentFolder final : public IFolderFolder,
                            public IQtProgressServices,
                            public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
+    Z7_COM_QI_ENTRY(IFolderProperties)
+    Z7_COM_QI_ENTRY(IGetFolderArcProps)
     Z7_COM_QI_ENTRY(IArchiveGetRawProps)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
     Z7_COM_QI_ENTRY(IArchiveFolderInternal)
@@ -67,6 +71,8 @@ class CAgentFolder final : public IFolderFolder,
   public:
     CAgentFolder() = default;
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IFolderProperties)
+    Z7_IFACE_COM7_IMP(IGetFolderArcProps)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IArchiveFolderInternal)
@@ -122,9 +128,10 @@ class CAgentFolder final : public IFolderFolder,
 
 // Partial source owner: proxy lifetime/root binding only. Engine operations remain
 // behind ArchiveBackend; IInFolderArchive is not advertised by this adapter.
-class CAgent final : public IUnknown, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_0
+class CAgent final : public IFolderArcProps, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IFolderArcProps)
   public:
+    Z7_IFACE_COM7_IMP(IFolderArcProps)
     CAgent();
     ~CAgent();
     HRESULT Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,

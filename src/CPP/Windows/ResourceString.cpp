@@ -23,6 +23,8 @@ struct ResourceStringEntry {
 #include "ResourceStrings.h"
 
 static const ResourceStringEntry kLocalizedStrings[] = {
+    {IDS_PROPERTIES, L"Свойства"},
+    {IDS_N_SELECTED_ITEMS, L"Выбрано элементов: {0}"},
     {IDS_MESSAGE, L"Сообщение"},
     {IDS_MESSAGE_NO_ERRORS, L"Ошибок нет"},
     {IDS_ARCHIVES_COLON, L"Архивов:"},

@@ -51,6 +51,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
         _offset = offset;
     }
     HRESULT GetArchiveProperty(PROPID id, PROPVARIANT *value) const;
+    HRESULT GetNumberOfArchiveProperties(UInt32 *count) const;
+    HRESULT GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type) const;
     HRESULT ConfigureArc(CArc &arc) const;
     void AttachUpdateService(ArchiveBackend &backend, const QString &format);
     void AttachProgressService(ArchiveBackend &backend);

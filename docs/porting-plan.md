@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-09 (2026-10-01):
-**23/46 закрыты, 23 остаётся**; P0: 12/12, P1: 10/18, P2: 0/10, P3: 1/6.
+Текущий счёт после P1-10 (2026-10-01):
+**24/46 закрыты, 22 остаётся**; P0: 12/12, P1: 11/18, P2: 0/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -725,7 +725,16 @@ Parent закрывается после обоих результатов; .1 �
 **P1-10.1 принято 2026-10-01:** source EditItem folder branch, реальные FS totals
 и Qt invalidation интегрированы, focused5/5 PASS1.41 s, final unsandboxed
 check.sh157/157 PASS54.89 s macOS arm64 Qt6.11.2. Normal/compact JSON проверены;
-Windows/Linux runtime/rendering unverified. Следующий результат — P1-10.2.
+Windows/Linux runtime/rendering unverified.
+
+**P1-10.2 и parent принято 2026-10-01:** восстановлены source Properties
+item/raw/folder/archive levels/MainItemProperty/non-open flow и Agent interfaces.
+File-only adapter сохраняет actual fields, UInt64/CRC и доступные checksum/SHA
+bytes; UI snapshot не расширяет native catalog. Long Unicode clipboard/detail,
+normal/compact JSON проверены. Final focused6/6 PASS2.04 s; unsandboxed check.sh
+158/158 PASS55.35 s macOS arm64 Qt6.11.2. Native codec error-type lookup, ADS graph,
+недоступные CLI bytes и shell integration остаются в своих P2 owners;
+Windows/Linux runtime/rendering unverified. Следующий ID — P1-12.
 
 ### P1-11. Корни, диски, сеть и Browse dialogs
 

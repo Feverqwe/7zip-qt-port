@@ -5,6 +5,7 @@
 
 #include <QDateTime>
 #include <QHash>
+#include <QMap>
 #include <QObject>
 #include <QPair>
 #include <QProcess>
@@ -21,6 +22,11 @@ struct ArchiveEntry {
     QString modified;
     bool directory = false;
     bool link = false;
+    // Actual technical-listing fields; no value is synthesized for absent data.
+    QMap<QString, QString> properties;
+    std::optional<quint32> crc;
+    QMap<quint32, QByteArray> rawProperties;
+    std::optional<quint64> sizeValue, packedSizeValue;
 };
 
 struct ArchiveInfo {
@@ -33,6 +39,7 @@ struct ArchiveInfo {
     int files = 0;
     int folders = 0;
     bool encrypted = false;
+    QMap<QString, QString> properties;
 };
 
 struct CompressionOptions : NCompressDialog::CInfo {
@@ -183,6 +190,7 @@ class ArchiveBackend : public QObject {
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
+    static QMap<QString, QString> parseArchiveHeaderProperties(const QString &header);
     HRESULT listingFailureResult(int exitCode, QProcess::ExitStatus status) const;
     static bool safePath(const QString &path);
     bool prepareAskExtraction(const QString &outputDirectory, const QStringList &selected,
@@ -205,6 +213,7 @@ class ArchiveBackend : public QObject {
     CProcessPause processPause_;
     Job job_ = Job::None;
     QString output_;
+    QByteArray listingOutput_;
     QByteArray pendingOutput_;
     QString archive_;
     QString createTarget_;

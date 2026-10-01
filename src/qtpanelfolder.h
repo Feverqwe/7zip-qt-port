@@ -2,10 +2,16 @@
 #pragma once
 #include "CPP/7zip/UI/FileManager/Panel.h"
 
-class QtPanelFolder final : public IFolderFolder, public IInArchive, public CMyUnknownImp {
+class QtPanelFolder final : public IFolderFolder,
+                            public IInArchive,
+                            public IArchiveGetRawProps,
+                            public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
     else if (catalog_ == PropertyCatalog::ArchiveTransport && iid == IID_IInArchive) {
         *outObject = static_cast<IInArchive *>(this);
+    }
+    else if (!rawPropertyIds_.IsEmpty() && iid == IID_IArchiveGetRawProps) {
+        *outObject = static_cast<IArchiveGetRawProps *>(this);
     }
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
@@ -14,6 +20,7 @@ class QtPanelFolder final : public IFolderFolder, public IInArchive, public CMyU
     QtPanelFolder(const QString &prefix, const CObjectVector<CPanelItem> &items,
                   PropertyCatalog catalog = PropertyCatalog::CustomPresentation);
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     // Shared read-only native metadata contract, not an in-process codec.
     Z7_COM7F_IMP(Open(IInStream *, const UInt64 *, IArchiveOpenCallback *))
     Z7_COM7F_IMP(Close())
@@ -28,4 +35,6 @@ class QtPanelFolder final : public IFolderFolder, public IInArchive, public CMyU
     UStringVector propertyNames_;
     PropertyCatalog catalog_;
     bool hasMTimeText_ = false;
+    bool hasCrc_ = false;
+    CRecordVector<PROPID> rawPropertyIds_;
 };

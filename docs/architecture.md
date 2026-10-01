@@ -439,8 +439,13 @@ selection; Qt display names retain Qt normalization. Normal loading uses the sam
 folder, source metadata and indices. Uncalculated directory sizes remain absent;
 POSIX links expose their own lstat metadata. `CPanel::InitColumns` owns the
 source property catalog and per-folder-type column settings; `MainWindow`
-projects it into the shared Qt header. The external `7zz` adapter still needs
-binary raw property support in P1-10. `CNetFolder` owns the network namespace:
+projects it into the shared Qt header. P1-10.2 retains technical listing bytes
+separately from the trimmed journal, projects actual named display fields and
+typed UInt64/CRC, and exposes available checksum/SHA raw bytes through
+qtpanelfolderraw.cpp. Agent source IFolderProperties/IFolderArcProps own folder
+and archive-level enumeration; QtArchiveFileResource supplies actual header
+metadata. No parent/name/ADS graph or unavailable large raw bytes are invented;
+CProxyArc2 dispatch remains P2-06. `CNetFolder` owns the network namespace:
 Windows uses upstream `NWindows::NNet`, while POSIX lists already mounted
 network shares through `qtvolumemounts` and binds them to source `CFSFolder`.
 Qt command availability enables Parent/Back for the virtual child folder.

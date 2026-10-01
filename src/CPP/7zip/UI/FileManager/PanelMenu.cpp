@@ -1,14 +1,15 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelMenu.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Properties single-item enumeration and multi-item totals retain upstream
-// control flow. IFolder supplies the bound owner's typed properties. Raw/archive-level
-// properties and Windows shell invocation are outside this partial port.
+// Properties enumeration retains upstream item/raw/folder/archive-level flow.
+// Qt supplies modal presentation; OS shell invocation remains a separate service.
 #include "../Common/OpenArchive.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/Common/PropIDUtils.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "Common/IntToString.h"
 #include "ExtractCallback.h"
+#include "FormatUtils.h"
 #include "LangUtils.h"
 #include "ListViewDialog.h"
 #include "MyLoadMenu.h"
@@ -54,6 +55,7 @@ void CPanel::CreateFileMenu(IQtFileMenuServices &menu, bool programMenu) {
 }
 
 static const char *const kSeparator = "------------------------";
+static const char *const kSeparatorSmall = "----------------";
 
 static bool IsReadOnlyFolder(IFolderFolder *folder) {
     if (!folder)
@@ -115,6 +117,7 @@ static void AddListAscii(CListViewDialog &dialog, const char *s) {
 }
 
 static void AddSeparator(CListViewDialog &dialog) { AddListAscii(dialog, kSeparator); }
+static void AddSeparatorSmall(CListViewDialog &dialog) { AddListAscii(dialog, kSeparatorSmall); }
 
 static void AddPropertyPair(const UString &name, const UString &val, CListViewDialog &dialog) {
     dialog.Strings.Add(name);
@@ -158,8 +161,16 @@ static void AddPropertyString(PROPID propID, UInt64 val, CListViewDialog &dialog
     AddPropertyString(propID, NULL, prop, dialog);
 }
 
+static const Byte kSpecProps[] = {kpidPath,       kpidType,    kpidErrorType,    kpidError,
+                                  kpidErrorFlags, kpidWarning, kpidWarningFlags, kpidOffset,
+                                  kpidPhySize,    kpidTailSize};
+
 void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
                         CListViewDialog &message) const {
+    CMyComPtr<IGetFolderArcProps> getFolderArcProps;
+    _folder.QueryInterface(IID_IGetFolderArcProps, &getFolderArcProps);
+    // Filesystem Properties uses this same portable dialog rather than the
+    // Windows-only InvokeSystemCommand branch; item properties remain native.
     if (operatedIndices.Size() == 1) {
         UInt32 index = operatedIndices[0];
         UInt32 numProps;
@@ -174,6 +185,40 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
                 if (_folder->GetProperty(index, propID, &prop) != S_OK)
                     continue;
                 AddPropertyString(propID, name, prop, message);
+            }
+        }
+        if (_folderRawProps) {
+            _folderRawProps->GetNumRawProps(&numProps);
+            for (UInt32 i = 0; i < numProps; i++) {
+                CMyComBSTR name;
+                PROPID propID;
+                if (_folderRawProps->GetRawPropInfo(i, &name, &propID) != S_OK)
+                    continue;
+                const void *data;
+                UInt32 dataSize;
+                UInt32 propType;
+                if (_folderRawProps->GetRawProp(index, propID, &data, &dataSize, &propType) != S_OK)
+                    continue;
+                if (dataSize != 0) {
+                    AString s;
+                    if (propID == kpidNtSecure)
+                        ConvertNtSecureToString((const Byte *)data, dataSize, s);
+                    else {
+                        const unsigned kMaxDataSize = 1 << 8;
+                        if (dataSize > kMaxDataSize) {
+                            s += "data:";
+                            s.Add_UInt32(dataSize);
+                        } else {
+                            char temp[kMaxDataSize * 2 + 2];
+                            if (dataSize <= 8 && (propID == kpidCRC || propID == kpidChecksum))
+                                ConvertDataToHex_Upper(temp, (const Byte *)data, dataSize);
+                            else
+                                ConvertDataToHex_Lower(temp, (const Byte *)data, dataSize);
+                            s += temp;
+                        }
+                    }
+                    AddPropertyPair(GetNameOfProperty(propID, name), (UString)s.Ptr(), message);
+                }
             }
         }
         AddSeparator(message);
@@ -193,10 +238,11 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
             } else
                 numFiles++;
         }
-        AddPropertyPair(
-            UString(),
-            ToUString(QStringLiteral("Выбрано элементов: %1").arg(operatedIndices.Size())),
-            message);
+        {
+            wchar_t temp[32];
+            ConvertUInt32ToString(operatedIndices.Size(), temp);
+            AddPropertyPair(L"", MyFormatNew(LangString(IDS_N_SELECTED_ITEMS), temp), message);
+        }
         if (numDirs != 0)
             AddPropertyString(kpidNumSubDirs, numDirs, message);
         if (numFiles != 0)
@@ -205,7 +251,97 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
         AddPropertyString(kpidPackSize, packSize, message);
         AddSeparator(message);
     }
-    AddPropertyPair(ToUString(QStringLiteral("Путь")), _currentFolderPrefix, message);
-    message.Title = ToUString(QStringLiteral("Свойства"));
+    {
+        NWindows::NCOM::CPropVariant prop;
+        if (_folder->GetFolderProperty(kpidPath, &prop) == S_OK)
+            AddPropertyString(kpidName, L"Path", prop, message);
+    }
+    CMyComPtr<IFolderProperties> folderProperties;
+    _folder.QueryInterface(IID_IFolderProperties, &folderProperties);
+    if (folderProperties) {
+        UInt32 numProps;
+        if (folderProperties->GetNumberOfFolderProperties(&numProps) == S_OK) {
+            for (UInt32 i = 0; i < numProps; i++) {
+                CMyComBSTR name;
+                PROPID propID;
+                VARTYPE vt;
+                if (folderProperties->GetFolderPropertyInfo(i, &name, &propID, &vt) != S_OK)
+                    continue;
+                NWindows::NCOM::CPropVariant prop;
+                if (_folder->GetFolderProperty(propID, &prop) != S_OK)
+                    continue;
+                AddPropertyString(propID, name, prop, message);
+            }
+        }
+    }
+    if (getFolderArcProps) {
+        CMyComPtr<IFolderArcProps> getProps;
+        getFolderArcProps->GetFolderArcProps(&getProps);
+        if (getProps) {
+            UInt32 numLevels;
+            if (getProps->GetArcNumLevels(&numLevels) != S_OK)
+                numLevels = 0;
+            for (UInt32 level2 = 0; level2 < numLevels; level2++) {
+                {
+                    UInt32 level = numLevels - 1 - level2;
+                    UInt32 numProps;
+                    if (getProps->GetArcNumProps(level, &numProps) == S_OK) {
+                        const int kNumSpecProps = Z7_ARRAY_SIZE(kSpecProps);
+                        AddSeparator(message);
+                        for (Int32 i = -(int)kNumSpecProps; i < (Int32)numProps; i++) {
+                            CMyComBSTR name;
+                            PROPID propID;
+                            VARTYPE vt;
+                            if (i < 0)
+                                propID = kSpecProps[i + kNumSpecProps];
+                            else if (getProps->GetArcPropInfo(level, (UInt32)i, &name, &propID,
+                                                              &vt) != S_OK)
+                                continue;
+                            NWindows::NCOM::CPropVariant prop;
+                            if (getProps->GetArcProp(level, propID, &prop) != S_OK)
+                                continue;
+                            AddPropertyString(propID, name, prop, message);
+                        }
+                    }
+                }
+                if (level2 < numLevels - 1) {
+                    const UInt32 level = numLevels - 1 - level2;
+                    UInt32 numProps;
+                    if (getProps->GetArcNumProps2(level, &numProps) == S_OK) {
+                        AddSeparatorSmall(message);
+                        for (UInt32 i = 0; i < numProps; i++) {
+                            CMyComBSTR name;
+                            PROPID propID;
+                            VARTYPE vt;
+                            if (getProps->GetArcPropInfo2(level, i, &name, &propID, &vt) != S_OK)
+                                continue;
+                            NWindows::NCOM::CPropVariant prop;
+                            if (getProps->GetArcProp2(level, propID, &prop) != S_OK)
+                                continue;
+                            AddPropertyString(propID, name, prop, message);
+                        }
+                    }
+                }
+            }
+            {
+                bool needSep = true;
+                const int kNumSpecProps = Z7_ARRAY_SIZE(kSpecProps);
+                for (Int32 i = -(int)kNumSpecProps; i < 0; i++) {
+                    CMyComBSTR name;
+                    const PROPID propID = kSpecProps[i + kNumSpecProps];
+                    NWindows::NCOM::CPropVariant prop;
+                    if (getProps->GetArcProp(numLevels, propID, &prop) != S_OK)
+                        continue;
+                    if (needSep) {
+                        AddSeparator(message);
+                        AddSeparator(message);
+                        needSep = false;
+                    }
+                    AddPropertyString(propID, name, prop, message);
+                }
+            }
+        }
+    }
+    message.Title = LangString(IDS_PROPERTIES);
     message.NumColumns = 2;
 }
