@@ -20,11 +20,6 @@ if [[ "$#" -ne 0 ]]; then
   exit 2
 fi
 
-ctest_jobs="${SEVENZIP_CTEST_JOBS:-4}"
-if [[ ! "$ctest_jobs" =~ ^[1-9][0-9]*$ ]]; then
-  printf 'SEVENZIP_CTEST_JOBS must be a positive integer.\n' >&2
-  exit 2
-fi
 check_formatting() {
   if ! command -v clang-format >/dev/null 2>&1; then
     printf 'clang-format is required for the regression gate.\n' >&2
@@ -51,4 +46,4 @@ if [[ -n "${sevenzip_output_log:-}" ]]; then
   sevenzip_finish_output 0
   exec 1>&3 2>&4
 fi
-env SEVENZIP_SCRIPT_OUTPUT=verbose ./scripts/ctest.sh --preset dev --output-on-failure --parallel "$ctest_jobs"
+./scripts/ctest.sh --preset dev --output-on-failure
