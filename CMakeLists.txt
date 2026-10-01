@@ -110,6 +110,9 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/AboutDialog.cpp src/CPP/7zip/UI/FileManager/AboutDialog.h
+    src/CPP/7zip/UI/FileManager/HelpUtils.cpp src/CPP/7zip/UI/FileManager/HelpUtils.h
+    src/qthelpservices.cpp src/qthelpservices.h
     src/qtcompressoptionscontrols.cpp src/qtcompressoptionscontrols.h
     src/qtcompressoptionsdialog.h
     src/CPP/7zip/UI/GUI/UpdateGUI.cpp src/CPP/7zip/UI/GUI/UpdateGUI.h
@@ -241,6 +244,13 @@ add_library(sevenzip_filesystem STATIC
 qt_add_resources(sevenzip_filesystem upstream_languages PREFIX "/upstream/7zip/Lang"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
     FILES resources/7zip/Lang/en.ttt resources/7zip/Lang/ru.txt)
+file(GLOB_RECURSE sevenzip_help_assets CONFIGURE_DEPENDS resources/7zip/Help/*.htm resources/7zip/Help/*.css)
+qt_add_resources(sevenzip_panel upstream_help PREFIX "/upstream/7zip/Help"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Help" FILES ${sevenzip_help_assets})
+target_compile_definitions(sevenzip_panel PRIVATE SEVENZIP_DESKTOP_VERSION="${PROJECT_VERSION}")
+qt_add_resources(sevenzip_panel upstream_about PREFIX "/upstream/7zip/About"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
+    FILES third_party/7zip/CPP/7zip/UI/FileManager/7zipLogo.ico)
 if(WIN32)
     target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp
         third_party/7zip/CPP/Windows/Net.cpp third_party/7zip/CPP/Windows/Net.h)
@@ -312,6 +322,12 @@ set_target_properties(sevenzip_desktop PROPERTIES
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(help_source_tests tests/help_source_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(help_source_tests PRIVATE src tests)
+    target_link_libraries(help_source_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME help_source COMMAND help_source_tests -silent)
+    set_tests_properties(help_source PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(TARGET sevenzip_launcher)
         find_program(DBUS_DAEMON_EXECUTABLE dbus-daemon REQUIRED)
         add_library(private_bus_fixture STATIC tests/fixtures/private_bus.cpp tests/fixtures/private_bus.h)
@@ -1335,6 +1351,12 @@ if(BUILD_TESTING)
     get_target_property(options_window_sources settings_tests SOURCES)
     list(REMOVE_ITEM options_window_sources tests/settings_tests.cpp)
     get_target_property(options_window_libraries settings_tests LINK_LIBRARIES)
+    qt_add_executable(help_ui_tests tests/help_ui_tests.cpp ${options_window_sources})
+    target_include_directories(help_ui_tests PRIVATE src tests)
+    target_link_libraries(help_ui_tests PRIVATE ${options_window_libraries})
+    add_test(NAME help_ui COMMAND help_ui_tests -silent)
+    set_tests_properties(help_ui PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/help_ui.ini")
     qt_add_executable(options_window_tests tests/options_window_tests.cpp ${options_window_sources})
     target_include_directories(options_window_tests PRIVATE src tests)
     target_link_libraries(options_window_tests PRIVATE ${options_window_libraries})

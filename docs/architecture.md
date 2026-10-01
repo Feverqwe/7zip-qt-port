@@ -6,6 +6,14 @@ Source provenance, baselines, adaptations and migration debt belong in the
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
 
+Native HelpUtils owns topic construction and source dialog/page callbacks own
+their context topics. Qt help services in sevenzip_panel render bundled original
+HTML/CSS with internal navigation; explicit web clicks use QDesktopServices.
+Native AboutDialog owns source version/date/homepage dispatch; Qt supplies its
+modal controls and the separate CMake application-version/license presentation.
+Main Help/About still enter through CApp/MyLoadMenu capability routing. Cleanup
+is disabled until the separate source BrowseDialog2/owned-temp lifetime port.
+
 Native CApp::ExecuteCommand is the common entry for current menus, toolbar,
 shared context actions, panel activation and keyboard commands. MyLoadMenu owns
 the copied dispatch and CFileMenu capability policy. QtFileManagerCommands binds

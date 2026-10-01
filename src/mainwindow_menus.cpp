@@ -398,6 +398,7 @@ void MainWindow::rebuildSourceMenus() {
 
     auto *help = findChild<QMenu *>("helpMenu");
     unavailable(help, QStringLiteral("Содержание…"), "helpContentsAction", IDM_HELP_CONTENTS);
+    findChild<QAction *>("helpContentsAction")->setShortcut(QKeySequence(Qt::Key_F1));
     help->addSeparator();
     unavailable(help, QStringLiteral("О 7-Zip…"), "aboutAction", IDM_ABOUT);
 }

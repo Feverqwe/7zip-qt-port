@@ -1,5 +1,16 @@
 # Regression strategy
 
+help_source checks native topic construction/case-insensitive filename lookup,
+offline navigation/fragments, unavailable error and EN/RU normal/compact JSON.
+help_source also checks native About version/date, original license, intercepted
+homepage, EN/RU normal/compact geometry and unchanged borrowed version.
+help_ui checks native Contents/F1, actual modal About command, all current Options
+page topics without Apply and Add/Extract button/F1 with pending input retained;
+compression_advanced checks source Options topic and unchanged profile.
+P1-15.1 full unsandboxed check.sh passed172/172(63.63s), macOS arm64 Qt6.11.2;
+owned-temp cleanup success/failure/cancel/
+active-session protection and parent acceptance remain P1-15.2.
+
 `language_dialog` checks live source Password/Copy/Split/Create-folder/Overwrite/
 Mem/Messages/Extract captions, raw pending Unicode values, secret redaction,
 history, focus/selection, modal decisions and existing diagnostic rows. It writes

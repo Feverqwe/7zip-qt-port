@@ -2,6 +2,8 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Native enumeration/sort/comparison/info/apply bodies; Qt controls replace Win32.
 #include "LangPage.h"
+#include "HelpUtils.h"
+
 #include "7zip/UI/FileManager/LangPageRes.h"
 #include "CPP/Windows/ResourceString.h"
 #include "Common/Lang.h"
@@ -14,6 +16,9 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
+
+#define kLangTopic "fm/options.htm#language"
+void CLangPage::OnNotifyHelp() { ShowHelpWindow(kLangTopic, this); }
 
 using namespace NWindows;
 

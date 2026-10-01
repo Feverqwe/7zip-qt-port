@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "qtlangcontrols.h"
 #include <QScrollArea>
+#include <QShortcut>
 
 CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
                                          const QStringList &initialSources, QWidget *parent,
@@ -216,7 +217,15 @@ void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
     preview_->setObjectName("archiveTargetPreview");
     preview_->setWordWrap(true);
     layout->addWidget(preview_);
-    buttons_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    buttons_ = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
+    const auto showHelp = [this] {
+        CCompressDialog dialog;
+        dialog.OnHelp(this);
+    };
+    connect(buttons_, &QDialogButtonBox::helpRequested, this, showHelp);
+    auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
+    connect(help, &QShortcut::activated, this, showHelp);
     buttons_->button(QDialogButtonBox::Ok)
         ->setText(existingTarget_.isEmpty() ? "Создать" : "Добавить");
     layout->addWidget(buttons_);

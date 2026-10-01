@@ -10,6 +10,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QScreen>
+#include <QShortcut>
 #include <QVBoxLayout>
 
 void CQtCompressCombo::Attach(QWidget *widget) { view_ = static_cast<QComboBox *>(widget); }
@@ -121,7 +122,9 @@ void CQtCompressOptionsDialog::buildControls() {
     auto *buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
     buttons->setObjectName("compressOptionsButtons");
-    buttons->button(QDialogButtonBox::Help)->setEnabled(false);
+    connect(buttons, &QDialogButtonBox::helpRequested, this, [this] { OnHelp(); });
+    auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
+    connect(help, &QShortcut::activated, this, [this] { OnHelp(); });
     connect(buttons, &QDialogButtonBox::accepted, this, &CQtCompressOptionsDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     layout->addWidget(buttons);

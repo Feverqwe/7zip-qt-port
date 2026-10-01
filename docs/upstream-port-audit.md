@@ -8,6 +8,69 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-15.1 — Help/About/current context acceptance (2026-10-01)
+
+Accepted integrated scope: native Contents/F1, source About/version/license,
+all current Options/Add/Extract/advanced Help callbacks, offline links/fragments,
+unavailable error, pending input/dirty Apply preservation and EN/RU normal/compact
+geometry. Final unsandboxed check.sh passed formatting, app build and172/172
+CTest(63.63s), macOS arm64 Qt6.11.2 2026-10-01. Parent P1-15 remains open;
+next P1-15.2 owned-temp cleanup, count25/46 unchanged. Windows/Linux runtime
+and rendered Windows parity remain unverified.
+
+Baseline [ip7z/7zip0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Mirrored HelpUtils.cpp/.h retains ShowHelpWindow, kHelpFileName and native FString
+module-prefix + `7-zip.chm::/` + topic construction. Qt module-directory/offline
+display replaces GetModuleDirPrefix/HtmlHelp/hh.exe; Qt parent supplies lifetime.
+Win32/CE/MingW display branches use the common Qt adapter. Native MyLoadMenu
+Contents `FM/index.htm` and COptionsDialog::OnHelp kHelpTopic_Options are wired
+through their original command switch/functions. Main Contents/F1 and advanced
+compression Help are actual consumers. Source Edit/Folders/Settings/Menu/Lang
+OnNotifyHelp callbacks retain their original topic constants, including source
+case and fragment. Qt Options dispatches the selected page's native callback;
+F1 and Help never apply pending settings. CCompressDialog::OnHelp and native
+ExtractDialog::OnHelp retain original topics; Qt parent is a presentation input.
+Win32 CModalDialog::OnHelp's base notification has no Qt control-message counterpart.
+Disabled System/Benchmark callbacks remain with P2-08/P2-04; cleanup Help is .2.
+
+AboutDialog.cpp/.h preserves CAboutDialog::OnInit/OnHelp/OnButtonClicked,
+kLangIDs, native UString version/date calls, start.htm and homepage switch.
+Qt bindings replace LangSetWindowText/LangSetDlgItems; Qt modal positioning,
+initialization/standard OK replace CModalDialog services. QDesktopServices
+replaces Win32/CE ShellExecute variants. Original external-codec diagnostic
+branch is omitted because g_CodecsObj is unavailable in the current external-7zz
+adapter; its capability owner is P2-01/P2-02. Exact AboutDialog.rc/Res.h,
+7zipLogo.ico, MyVersion.h and C/7zVersion.h are vendored at the full baseline.
+The original logo/version/date/copyright/free-software/OK/homepage grouping
+remains. Added local application version and explicit original license link
+distinguish borrowed source version from external engine; no engine version is
+inferred. Desktop version comes from CMake project metadata. EN/RU360×330/300×310
+About JSON is reviewed: all labels/buttons exposed, source and local text fit.
+Homepage tests intercept Qt URL handling; no live service is contacted.
+
+Exact HTML/CSS comes from the official26.03 installer already used by Language,
+SHA2560859c524b8a63551848f0c246abddcb1d0b7b656b0fbfe879f8d85e61a9e6edd.
+resources/7zip/help-provenance.json records retrievable URL, CHM hash and all78
+exact extracted members (70 HTML,8 CSS). CHM binary index streams are omitted;
+QTextBrowser uses original relative links. Encoding/CRLF/content is unchanged.
+The release help is English; local window/navigation/unavailable context is
+EN/RU. Qt normalizes source topic filenames for native case-insensitive CHM
+lookup, retaining fragment case. Offline Qt HTML replaces native CHM presentation
+on all platforms; Windows/Linux runtime/rendering remains unverified. Explicit
+root fixtures exercise unavailable help; HTTP(S) links launch only after a click.
+
+help_source passed1/1 (0.44 s); actual Contents/F1 and advanced Help plus main
+shell/language consumers passed5/5 (2.76 s), macOS arm64 Qt6.11.2. Current
+EN/RU760×560/420×300 JSON inspected: browser, Back and standard Close exposed.
+Additional integrated Help/About/current-context focused set passed11/11(4.70s);
+final real Add/Extract F1 and geometry/resource consumers passed4/4(1.05s).
+Baseline verified215 exact/156 adapted/3 local; all78 HTML/CSS bytes and original
+CHM member hash independently compared with the extracted pinned installer.
+Final native-UString About/actual UI consumers passed2/2(0.54s); full gate above
+accepts .1 as one integrated result, without helper commits. Actual cleanup
+owner is BrowseDialog2::MyBrowseForTempFolder/OnDelete; DeleteOldTempFiles is
+commented out. Owned-temp lifetime/cleanup and parent acceptance remain mandatory.
+
 ## P1-14.2 — remaining dialog consumers and acceptance (2026-10-01)
 
 **Accepted current scope:** all current app forms, source captions and dynamic

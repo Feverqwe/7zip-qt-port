@@ -3,6 +3,8 @@
 // Source menu state/list/apply bodies; Qt replaces property-page services.
 // Shell DLL enumeration/registration and Help are owned by P2-09/P1-15.
 #include "MenuPage.h"
+#include "HelpUtils.h"
+
 #include "../Common/ZipRegistry.h"
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "7zip/UI/Explorer/resource.h"
@@ -19,6 +21,9 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QVBoxLayout>
+
+#define kMenuTopic "fm/options.htm#sevenZip"
+void CMenuPage::OnNotifyHelp() { ShowHelpWindow(kMenuTopic, this); }
 
 using namespace NContextMenuFlags;
 

@@ -2,6 +2,8 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Qt supplies controls/property-page services; original state/apply/Browse flow.
 #include "EditPage.h"
+#include "HelpUtils.h"
+
 #include "7zip/UI/FileManager/EditPageRes.h"
 #include "BrowseDialog.h"
 #include "Panel.h"
@@ -11,6 +13,9 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+
+#define kEditTopic "FM/options.htm#editor"
+void CEditPage::OnNotifyHelp() { ShowHelpWindow(kEditTopic, this); }
 
 CEditPage::CEditPage(const QString &settingsPath, QWidget *parent)
     : QWidget(parent), _settingsPath(settingsPath) {

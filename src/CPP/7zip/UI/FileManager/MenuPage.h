@@ -34,6 +34,7 @@ class CMenuPage : public QWidget {
     explicit CMenuPage(const QString &settingsPath, QWidget *parent = nullptr,
                        bool zoneSupported = IsZonePropagationSupported());
     bool OnInit();
+    void OnNotifyHelp();
     long OnApply();
     bool IsModified() const;
     void ReloadLangItems();

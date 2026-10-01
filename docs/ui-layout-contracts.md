@@ -12,6 +12,22 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Offline Help and About (P1-15.1)
+
+References: pinned HelpUtils/MyLoadMenu/CompressDialog topic calls and exact
+official26.03 CHM HTML/CSS with release provenance in resources/7zip.
+QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
+help_source writes EN/RU760×560/420×300 help-*.json: browser, Back and standard
+Close remain exposed. AboutDialog.rc/source is the structural reference for
+About360×330/300×310 EN/RU: logo, version/date/copyright/free-software, footer
+OK/homepage. Added application version/license link are explicit adaptations.
+help_source writes about-*.json; all text fits and controls remain exposed.
+help_ui checks actual Contents/F1/modal About, source Options page callbacks and
+Add/Extract button/F1 without applying pending state; compression_advanced checks
+original Options Help. Existing Add760/640, Extract600/470 and Options640/520
+geometry reports cover the added Help footer. Current Qt usability is checked;
+rendered Windows parity and complete P1-15 acceptance remain open.
+
 ### Live dialog language consumers (P1-14.2)
 
 References are pinned Password/Copy/Split/Overwrite/Mem/Messages RC/source,

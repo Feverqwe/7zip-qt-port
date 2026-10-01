@@ -870,6 +870,15 @@ Windows/Linux runtime и rendered Windows parity остаются непрове
 cleanup confirm/cancel/partial failure и сохранение active temp fixtures.
 Help/About/cleanup UX закрыт в P1, не оставлен на этап выпуска.
 
+**Рабочее деление:** P1-15.1 — интегрированный Help/About с исходными offline
+topics/links, F1/context consumers и version/license; P1-15.2 — source cleanup
+с owned-temp lifetime и итоговая приёмка parent. .1 принята: focused11/11PASS
+4.70s, final F1/geometry4/4PASS1.05s, final native About2/2PASS0.54s и full
+unsandboxed check.sh172/172PASS63.63s на macOS arm64 Qt6.11.2 2026-10-01;
+baseline215 exact/156 adapted/3 local verified. Следующий P1-15.2;
+parent остаётся открыт, счёт25/46. Disabled System/Benchmark
+получат свои source Help callbacks вместе с P2-08/P2-04; cleanup Help входит в .2.
+
 ### P1-16. Полный drag/drop между панелями и внешними приложениями
 
 **После:** P1-01, P1-09, P0-07. **Источники:** FM `PanelDrag.cpp`,

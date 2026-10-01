@@ -2,6 +2,8 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Original work-mode/state/apply bodies; Qt replaces property-page controls.
 #include "FoldersPage.h"
+#include "HelpUtils.h"
+
 #include "7zip/UI/FileManager/FoldersPageRes.h"
 #include "BrowseDialog.h"
 #include "Common/StringConvert.h"
@@ -14,6 +16,9 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QRadioButton>
+
+#define kFoldersTopic "fm/options.htm#folders"
+void CFoldersPage::OnNotifyHelp() { ShowHelpWindow(kFoldersTopic, this); }
 
 static const unsigned kWorkModeButtons[] = {IDR_FOLDERS_WORK_SYSTEM, IDR_FOLDERS_WORK_CURRENT,
                                             IDR_FOLDERS_WORK_SPECIFIED};

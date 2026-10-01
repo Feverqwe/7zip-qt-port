@@ -21,6 +21,7 @@ class QtFmOptionsDialog final : public QDialog {
     void updateApplyButton();
     void changeEvent(QEvent *event) override;
     void reloadLangItems();
+    void showPageHelp();
 
   public:
     std::function<void(const CFmSettings &)> Applied;

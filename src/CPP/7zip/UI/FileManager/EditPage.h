@@ -20,6 +20,7 @@ class CEditPage : public QWidget {
   public:
     explicit CEditPage(const QString &settingsPath, QWidget *parent = nullptr);
     bool OnInit();
+    void OnNotifyHelp();
     long OnApply();
     bool OnCommand(unsigned itemID);
     bool OnButtonClicked(unsigned buttonID);

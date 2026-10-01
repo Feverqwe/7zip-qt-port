@@ -32,6 +32,7 @@ class CSettingsPage : public QDialog {
     explicit CSettingsPage(const QString &settingsPath, QWidget *parent = nullptr,
                            bool embedded = false);
     long OnApply();
+    void OnNotifyHelp();
     void accept() override;
     CFmSettings settings() const { return _settings; }
     bool IsModified() const { return _wasChanged || _largePages_wasChanged || _memx_wasChanged; }

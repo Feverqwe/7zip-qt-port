@@ -7,6 +7,20 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-15.1 принята: Contents/F1, Help/F1 текущих Options/Add/Extract/advanced
+и About открывают исходные
+offline-разделы официальной26.03 справки с исходными ссылками/якорями. Qt browser
+заменяет CHM presentation на всех ОС; exact members имеют release provenance.
+Справка английская, локальные окно/Back/error — EN/RU, Close — стандартный Qt.
+Normal/compact JSON проверен на macOS; Windows/Linux runtime/rendered parity
+не подтверждён. About сохраняет source version/date/copyright/free-software,
+OK/homepage и logo; local app-version и license link добавлены явно, внешняя
+engine version не выводится из source baseline. About EN/RU360×330/300×310
+JSON проверен; справка сохраняет pending input и не выполняет Apply. Full
+unsandboxed check.sh172/172PASS63.63s macOS arm64 Qt6.11.2 2026-10-01;
+owned-temp cleanup/parent остаются P1-15.2. Help будущих disabled
+System/Benchmark идёт вместе с их P2-08/P2-04 owners.
+
 P1-14.2 принят (macOS, full170/17063.11s): Password/Copy/Split/Create-folder/Overwrite/Mem/Messages/Extract
 получают captions из исходных language IDs. Смена языка обновляет текст без
 повторной инициализации ввода и решений. Для папок Overwrite сохраняет исходную

@@ -13,6 +13,7 @@
 #include <QDialogButtonBox>
 #include <QEvent>
 #include <QPushButton>
+#include <QShortcut>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -43,12 +44,16 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     }
     pages->setCurrentWidget(_settingsPage);
     layout->addWidget(pages);
-    _buttons = new QDialogButtonBox(
-        QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply, this);
+    _buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
+                                        QDialogButtonBox::Apply | QDialogButtonBox::Help,
+                                    this);
     _buttons->setObjectName("settingsButtons");
     layout->addWidget(_buttons);
     connect(_buttons, &QDialogButtonBox::accepted, this, &QtFmOptionsDialog::accept);
     connect(_buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(_buttons, &QDialogButtonBox::helpRequested, this, &QtFmOptionsDialog::showPageHelp);
+    auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
+    connect(help, &QShortcut::activated, this, &QtFmOptionsDialog::showPageHelp);
     connect(_buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this,
             &QtFmOptionsDialog::apply);
     connect(_editPage, &CEditPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
@@ -61,6 +66,19 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
 }
 
 CFmSettings QtFmOptionsDialog::settings() const { return _settingsPage->settings(); }
+void QtFmOptionsDialog::showPageHelp() {
+    auto *page = findChild<QTabWidget *>("optionsPages")->currentWidget();
+    if (page == _editPage)
+        _editPage->OnNotifyHelp();
+    else if (page == _foldersPage)
+        _foldersPage->OnNotifyHelp();
+    else if (page == _settingsPage)
+        _settingsPage->OnNotifyHelp();
+    else if (page == _menuPage)
+        _menuPage->OnNotifyHelp();
+    else if (page == _langPage)
+        _langPage->OnNotifyHelp();
+}
 void QtFmOptionsDialog::apply() {
     _editPage->OnApply();
     _foldersPage->OnApply();

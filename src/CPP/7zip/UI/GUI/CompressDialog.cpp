@@ -3,6 +3,7 @@
 // Qt names replace CArcInfoEx / UString. SFX and external codecs are not exposed.
 #include "CompressDialog.h"
 #include "../../Common/MethodProps.h"
+#include "../FileManager/HelpUtils.h"
 #include "../FileManager/LangUtils.h"
 #include "../FileManager/PropertyName.h"
 #include "../FileManager/SplitUtils.h"
@@ -1611,6 +1612,8 @@ void COptionsDialog::OnOK() {
     CQtCompressOptionsDialog::OnOK();
 }
 
-void COptionsDialog::OnHelp() {
-    CQtCompressOptionsDialog::OnHelp(); // Help integration remains P1-15.
-}
+#define kHelpTopic_Options "fm/plugins/7-zip/add.htm#options"
+#define kHelpTopic "fm/plugins/7-zip/add.htm"
+void CCompressDialog::OnHelp(QWidget *parent) { ShowHelpWindow(kHelpTopic, parent); }
+
+void COptionsDialog::OnHelp() { ShowHelpWindow(kHelpTopic_Options, this); }

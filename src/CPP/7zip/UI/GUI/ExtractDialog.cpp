@@ -3,6 +3,7 @@
 #include "ExtractDialog.h"
 #include "../../../Common/Wildcard.h"
 #include "../FileManager/BrowseDialog.h"
+#include "../FileManager/HelpUtils.h"
 #include "7zip/UI/GUI/ExtractDialogRes.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "qtlangcontrols.h"
@@ -13,9 +14,12 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QPushButton>
+#include <QShortcut>
 #include <QStandardPaths>
 #include <QVBoxLayout>
 
+#define kHelpTopic "fm/plugins/7-zip/extract.htm"
+void CExtractDialog::OnHelp() { ShowHelpWindow(kHelpTopic, this); }
 static const int kPathModeButtonsVals[] = {
     NExtract::NPathMode::kFullPaths, NExtract::NPathMode::kNoPaths, NExtract::NPathMode::kAbsPaths};
 static const int kOverwriteButtonsVals[] = {
@@ -145,7 +149,11 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     hint->setWordWrap(true);
     layout->addWidget(hint);
     layout->addStretch();
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
+    connect(buttons, &QDialogButtonBox::helpRequested, this, &CExtractDialog::OnHelp);
+    auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
+    connect(help, &QShortcut::activated, this, &CExtractDialog::OnHelp);
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CExtractDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);

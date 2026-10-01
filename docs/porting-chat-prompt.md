@@ -13,8 +13,16 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-15: source F1/context Help/About и Delete Temporary Files вместе с настоящими
-consumers, offline/unavailable errors, version/license и safe owned-temp lifetime.
+P1-15.2: source Delete Temporary Files с настоящим command consumer,
+owned-temp registry/lifetime, confirm/cancel/partial failure и сохранением
+active open/edit fixtures. Actual owner — BrowseDialog2, не commented-out
+DeleteOldTempFiles. Родитель принимается только после обязательной cleanup-функции.
+P1-15.1 принята: original HelpUtils/About и release HTML/CSS, все текущие
+Options/Add/Extract/advanced contexts; focused11/11PASS4.70s, final F1/geometry
+4/4PASS1.05s, final native About2/2PASS0.54s и full unsandboxed check.sh172/172
+PASS63.63s macOS arm64 Qt6.11.2 2026-10-01; baseline215 exact/156 adapted/3 local.
+P1-15.2 cleanup ещё обязательна, parent не принят;25/46. Disabled System/Benchmark
+source Help callbacks закрываются с P2-08/P2-04, cleanup context — с P1-15.2.
 P1-14.1/.2 и parent приняты: все текущие forms/messages/local context EN/RU,
 static RC/dynamic LangString fallbacks, hot switch/restart/pending state, source
 RAM/size/Auto/bookmarks, geometry normal/compact и keyboard/buddy/collision checks.

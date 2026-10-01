@@ -8,6 +8,7 @@
 #include "Common/MyTypes.h"
 #include <QStringList>
 #include <QStringView>
+class QWidget;
 
 void SetErrorMessage_MemUsage(UString &s, UInt64 reqSize, UInt64 ramSize, UInt64 ramLimit,
                               const UString &usageString);
@@ -169,6 +170,7 @@ struct CBool1 {
 
 class CCompressDialog {
   public:
+    void OnHelp(QWidget *parent = nullptr);
     CBool1 SymLinks;
     CBool1 HardLinks;
     CBool1 AltStreams;

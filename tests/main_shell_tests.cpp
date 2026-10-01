@@ -97,14 +97,15 @@ class MainShellTests final : public QObject {
         QCOMPARE(actionNames(*tools),
                  QStringList({"settingsAction", "|", "benchmarkAction", "|", "tempDirAction"}));
         QCOMPARE(actionNames(*help), QStringList({"helpContentsAction", "|", "aboutAction"}));
-        for (const char *name :
-             {"commentAction", "diffAction", "linkAction", "altStreamsAction", "benchmarkAction",
-              "tempDirAction", "helpContentsAction", "aboutAction"}) {
+        for (const char *name : {"commentAction", "diffAction", "linkAction", "altStreamsAction",
+                                 "benchmarkAction", "tempDirAction"}) {
             auto *action = window.findChild<QAction *>(name);
             QVERIFY(action);
             QVERIFY(!action->isEnabled());
             QVERIFY(action->property("nativeCommandID").isValid());
         }
+        QVERIFY(window.findChild<QAction *>("helpContentsAction")->isEnabled());
+        QVERIFY(window.findChild<QAction *>("aboutAction")->isEnabled());
         QCOMPARE(window.findChild<QAction *>("openInsideOneAction")
                      ->property("nativeCommandID")
                      .toUInt(),
