@@ -65,11 +65,11 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
             QMessageBox::warning(this, "Разбить файл", "Размер тома должен быть меньше файла.");
             return;
         }
-        std::vector<UInt64> volumeSizes;
+        CRecordVector<UInt64> volumeSizes;
         for (unsigned i = 0; i < dialog.VolumeSizes.Size(); ++i) {
             const UInt64 size = dialog.VolumeSizes[i];
             sizes.append(qint64(size));
-            volumeSizes.push_back(size);
+            volumeSizes.Add(size);
         }
         const UInt64 numVolumes = GetNumberOfVolumes(quint64(source.size()), volumeSizes);
         if (numVolumes >= 100 &&

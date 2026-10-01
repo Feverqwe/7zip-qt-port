@@ -9,7 +9,9 @@
 #include <QPair>
 #include <QProcess>
 #include <QStringList>
+#include <memory>
 #include <optional>
+class QtArchiveVolumeOutput;
 
 struct ArchiveEntry {
     QString path;
@@ -159,6 +161,7 @@ class ArchiveBackend : public QObject {
         Test,
         Hash,
         Create,
+        CreateVolumes,
         Add,
         Delete,
         Rename,
@@ -184,6 +187,9 @@ class ArchiveBackend : public QObject {
                               QStringList *renameEntries);
     bool prepareMutation(const QString &archive);
     void startSourcePlanStage(Job stage);
+    static bool checkVolumeTargets(const QString &archive, QString *error);
+    void startVolumeOutput();
+    void finishVolumeOutput();
     static bool compressionSwitches(const QString &format, const QString &password,
                                     bool encryptHeaders, const CompressionOptions &options,
                                     QStringList *switches, QString *error);
@@ -204,6 +210,8 @@ class ArchiveBackend : public QObject {
     };
     QList<CreateStage> createStages_;
     QString createPassword_;
+    CRecordVector<UInt64> createVolumeSizes_;
+    std::unique_ptr<QtArchiveVolumeOutput> volumeOutput_;
     QString addBackup_;
     QString replacementEntry_;
     QString replacementRoot_;

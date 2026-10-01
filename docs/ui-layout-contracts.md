@@ -12,6 +12,18 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Archive volume creation (P1-06.1)
+
+Reference: pinned `GUI/CompressDialog.rc::IDC_COMPRESS_VOLUME` and source
+`CompressDialog.cpp::OnOK`, `SplitUtils.cpp::AddVolumeItems`. The editable
+«Разбить на тома, байт» combo follows compression controls, has nine source
+presets and starts empty. Existing-target mode disables it. Invalid input keeps
+the dialog open; final sizes below 100 KiB require Yes/No/Cancel before saving.
+`archive_volume_creation` checks these states and scroll reachability at
+760×720/640×480, writing `archive-volumes-760.json` and `archive-volumes-640.json`.
+Current reports show the label/combo fully exposed with the footer below the
+scroll area; compact layout uses scrolling. Windows rendering is unverified.
+
 ### Existing archive Add options (P1-05.1)
 
 Reference: `CompressDialog.rc` update/path rows and `CompressDialog.cpp`

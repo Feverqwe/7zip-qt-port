@@ -515,6 +515,15 @@ the backend validates encryption settings before staging and owns 7zz arguments.
 QSettings. `CMemUse` parses memory limits. `CompressionOptions` carries confirmed
 values to the backend, which repeats validation before starting the operation.
 
+`createarchivedialog_volumes.cpp` binds the original volume parser and small-size
+confirmation to the Add form. Confirmed native `CRecordVector<UInt64>` sizes cross
+the `ArchiveBackend` boundary. `archivebackend_volumes.cpp` owns target checks
+and lifecycle; `QtArchiveVolumeOutput` copies completed official engine bytes
+through the original `CMultiOutStream` and transactionally publishes numbered
+files. It supports pause/cancel and removes its own partial outputs. This CLI
+integration needs a full temporary archive plus staged volumes; widgets never
+construct split commands. Existing multivolume updates are rejected.
+
 `FileViewerDialog` reads bounded UTF-8 text and saves through `QSaveFile` after
 checking for external changes. `MainWindow` owns extraction and the subsequent
 archive-update request, keeping the temporary source alive until completion.

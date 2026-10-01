@@ -105,6 +105,7 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h
     src/CPP/7zip/UI/FileManager/CopyDialog.cpp src/CPP/7zip/UI/FileManager/CopyDialog.h
     src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
     src/CPP/7zip/UI/FileManager/MyLoadMenu.cpp src/CPP/7zip/UI/FileManager/MyLoadMenu.h
@@ -190,6 +191,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/CPP/7zip/Common/MultiOutStream.cpp
+    src/qtarchivevolumeoutput.cpp src/qtarchivevolumeoutput.h
     src/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp src/CPP/7zip/UI/Common/ArchiveExtractCallback.h
     src/CPP/7zip/UI/Common/Extract.cpp src/CPP/7zip/UI/Common/Extract.h
     src/CPP/7zip/UI/Common/OpenArchive.cpp src/CPP/7zip/UI/Common/OpenArchive.h
@@ -726,6 +729,13 @@ if(BUILD_TESTING)
     add_test(NAME compression COMMAND compression_tests)
     get_target_property(compression_order_sources compression_tests SOURCES)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
+    qt_add_executable(archive_volume_creation_tests tests/archive_volume_creation_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
+    target_include_directories(archive_volume_creation_tests PRIVATE src tests)
+    target_link_libraries(archive_volume_creation_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_panel)
+    add_test(NAME archive_volume_creation COMMAND archive_volume_creation_tests -silent)
+    set_tests_properties(archive_volume_creation PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(compression_path_tests tests/compression_path_tests.cpp tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_path_tests PRIVATE src tests)
     target_link_libraries(compression_path_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
@@ -1081,6 +1091,15 @@ endforeach()
 get_property(engine_consumer_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(engine_consumer IN LISTS engine_consumer_targets)
     get_target_property(engine_consumer_sources ${engine_consumer} SOURCES)
+    if("src/CPP/7zip/UI/GUI/CompressDialog.cpp" IN_LIST engine_consumer_sources)
+        target_link_libraries(${engine_consumer} PRIVATE sevenzip_panel)
+    endif()
+    if(NOT engine_consumer STREQUAL "sevenzip_panel" AND
+       "src/CPP/7zip/UI/FileManager/SplitUtils.cpp" IN_LIST engine_consumer_sources)
+        list(REMOVE_ITEM engine_consumer_sources src/CPP/7zip/UI/FileManager/SplitUtils.cpp)
+        set_property(TARGET ${engine_consumer} PROPERTY SOURCES ${engine_consumer_sources})
+        target_link_libraries(${engine_consumer} PRIVATE sevenzip_panel)
+    endif()
     if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
@@ -1093,8 +1112,11 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp
-            src/archivebackend_sourceextract.cpp)
+            src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
+    endif()
+    if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
+        target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp)
     endif()
 endforeach()
 

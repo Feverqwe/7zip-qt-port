@@ -78,6 +78,7 @@ EMethodID GetMethodID(QStringView name, QStringView format);
 bool GetOrderMode(EMethodID methodID);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 struct CInfo {
+    CRecordVector<UInt64> VolumeSizes;
     NUpdateMode::EEnum UpdateMode = NUpdateMode::kAdd;
     NWildcard::ECensorPathMode PathMode = NWildcard::k_RelatPath;
     bool SolidIsSpecified = false;
@@ -128,6 +129,8 @@ QStringList GetMethodNames(QStringView name);
 // supplies the editable combo text and directory; codec/SFX branches are omitted.
 class CCompressDialog {
   public:
+    enum EVolumeResult { kVolumeOK, kIncorrectVolumeSize, kConfirmSmallVolume };
+    static EVolumeResult OnOK(const QString &volumeText, NCompressDialog::CInfo &Info);
     QString DirPrefix;
     QString StartDirPrefix;
     QString m_ArchivePath;

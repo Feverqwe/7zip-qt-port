@@ -1,6 +1,7 @@
 #include "archivebackend.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "processpriority.h"
+#include "qtarchivevolumeoutput.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -84,12 +85,20 @@ bool ArchiveBackend::busy() const { return job_ != Job::None || overwritePromptA
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
 HRESULT ArchiveBackend::setPaused(bool paused) {
+    if (volumeOutput_) {
+        volumeOutput_->setPaused(paused);
+        return S_OK;
+    }
     if (process_.state() != QProcess::Running)
         return E_FAIL;
     return processPause_.SetPaused(paused);
 }
 
 HRESULT ArchiveBackend::setBackground(bool background) {
+    // The source progress dialog already sets this application's priority.
+    // The volume worker runs in that process rather than a separate CLI child.
+    if (volumeOutput_)
+        return S_OK;
     if (process_.state() != QProcess::Running)
         return E_FAIL;
     return NProcessPriority::SetBackground(UInt32(process_.processId()), background);
@@ -440,6 +449,8 @@ void ArchiveBackend::cancel() {
     if (!busy())
         return;
     cancelled_ = true;
+    if (volumeOutput_)
+        volumeOutput_->cancel();
     pendingPassword_.clear();
     if (overwritePromptActive_)
         emit dismissOverwriteRequested();
@@ -451,6 +462,14 @@ void ArchiveBackend::cancel() {
 void ArchiveBackend::cancelAndWait() {
     if (busy())
         cancel();
+    if (volumeOutput_) {
+        if (!volumeOutput_->isRunning() && !volumeOutput_->isFinished()) {
+            volumeOutput_->Result = E_ABORT;
+            volumeOutput_->Error = QStringLiteral("Операция отменена.");
+        }
+        volumeOutput_->wait();
+        finishVolumeOutput();
+    }
     if (process_.state() != QProcess::NotRunning) {
         process_.kill();
         process_.waitForFinished(-1);
@@ -565,6 +584,10 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     }
     if (completed == Job::Create)
         createPassword_.clear();
+    if (completed == Job::Create && !createVolumeSizes_.IsEmpty()) {
+        startVolumeOutput();
+        return;
+    }
     if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
         QFile::remove(createTemporary_);
         emit finished(false,

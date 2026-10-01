@@ -165,6 +165,19 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                           .arg(target.absoluteFilePath()));
         return;
     }
+    FOR_VECTOR(i, options.VolumeSizes) {
+        if (options.VolumeSizes[i] == 0 || options.VolumeSizes[i] > UInt64(INT64_MAX)) {
+            emit finished(false, QStringLiteral("Недопустимый размер архивного тома."));
+            return;
+        }
+    }
+    if (!options.VolumeSizes.IsEmpty()) {
+        QString error;
+        if (!checkVolumeTargets(archive, &error)) {
+            emit finished(false, error);
+            return;
+        }
+    }
     QList<CreateStage> stages;
     QSet<QString> logicalNames;
     auto appendStage = [&stages](const QString &directory, const QString &name) {
@@ -238,9 +251,15 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     createTarget_ = target.absoluteFilePath();
     createTemporary_ = target.absolutePath() + "/.sevenzip-" +
                        QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
+    bool firstStage = true;
     for (CreateStage &stage : stages) {
         QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-spd", "-t" + suffix};
         arguments += compressionArguments;
+        // Later roots update the encrypted output created by the first stage.
+        // Reuse its opened password instead of prompting for a new one too.
+        if (!firstStage && suffix == "7z" && !password.isEmpty() && encryptHeaders)
+            arguments.removeAll("-p");
+        firstStage = false;
         if (options.PathMode == NWildcard::k_AbsPath)
             arguments << "-spf";
         arguments << "--" << createTemporary_;
@@ -248,6 +267,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         stage.arguments = arguments;
     }
     createStages_ = stages;
+    createVolumeSizes_ = options.VolumeSizes;
     createPassword_ = password;
     const CreateStage first = createStages_.takeFirst();
     pendingPassword_ = password;

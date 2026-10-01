@@ -40,6 +40,8 @@ class CreateArchiveDialog : public QDialog {
     void createArchiveForm(QVBoxLayout *layout);
     void createCompressionOptions(QFormLayout *form);
     void createEncryptionOptions(QFormLayout *form);
+    void createVolumeOptions(QFormLayout *form);
+    bool checkVolumeSizes();
     void SetEncryptionMethod();
     QString GetEncryptionMethodSpec() const;
     void UpdatePasswordControl();
@@ -80,6 +82,7 @@ class CreateArchiveDialog : public QDialog {
     QComboBox *format_ = nullptr;
     QComboBox *updateMode_ = nullptr;
     QComboBox *pathMode_ = nullptr;
+    QComboBox *volume_ = nullptr;
     QComboBox *encryption_ = nullptr;
     QComboBox *level_ = nullptr;
     QComboBox *method_ = nullptr;

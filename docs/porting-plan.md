@@ -615,6 +615,12 @@ Common `Update.cpp`, `OpenArchive.cpp`; FM `SplitUtils.*` для reused volume p
 обрабатывается понятно, cancel убирает staged outputs, пароль работает.
 Volume creation/list/test/extract integration и geometry формы.
 
+Интегрированные результаты: P1-06.1 — создание ZIP/7z volumes из Add to Archive,
+исходные volume parser/control/small-size confirmation и CMultiOutStream,
+transactional publication, occupied/failure/cancel/password и normal/compact UX;
+P1-06.2 — source open/list/test/extract consumers, missing/corrupt volumes,
+password/cancel и parent приёмка. Существующий обычный Split сохраняет свой workflow.
+
 ### P1-07. Advanced compression options, время и RAM dialogs
 
 **После:** P1-05, P0-10. **Источники:** GUI `CompressDialog.cpp` (включая
@@ -1130,5 +1136,5 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 отдельно после проверок, включая только свои изменения. Сохранять чужие hunks,
 записывать local commit как evidence; push и публикация не разрешены.
 
-Следующий доступный результат — **P1-06** после принятого P1-05; далее по приоритету и
+Следующий доступный результат — **P1-06.2** после принятого P1-06.1; далее по приоритету и
 зависимостям. UX идёт вместе с каждым пакетом.

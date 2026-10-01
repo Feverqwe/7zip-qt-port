@@ -146,6 +146,7 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
             delete encryptionColumn;
         form->addRow(columns);
     }
+    createVolumeOptions(form);
     auto *destinationRow = new QHBoxLayout;
     destination_ = new QLineEdit(currentDirectory_, this);
     destination_->setObjectName("archiveDestination");
@@ -240,6 +241,8 @@ void CreateArchiveDialog::validateAndAccept() {
     }
     if (!checkMemoryUsage())
         return;
+    if (!checkVolumeSizes())
+        return;
     const QString base = name_->text().trimmed();
     const QFileInfo destination(QFileInfo(archivePath()).absolutePath());
     if (selected_.isEmpty() ||
@@ -276,6 +279,8 @@ void CreateArchiveDialog::validateAndAccept() {
 
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
+    if (volume_ && volume_->isEnabled())
+        CCompressDialog::OnOK(volume_->currentText(), options);
     if (updateMode_)
         options.UpdateMode =
             static_cast<NCompressDialog::NUpdateMode::EEnum>(updateMode_->currentData().toInt());

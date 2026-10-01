@@ -1,0 +1,106 @@
+#include "qtarchivevolumeoutput.h"
+#include "7zip/Common/FileStreams.h"
+#include "7zip/Common/MultiOutStream.h"
+#include "7zip/Compress/CopyCoder.h"
+#include "Common/StringConvert.h"
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QMutexLocker>
+#include <QTemporaryDir>
+
+namespace {
+class CVolumeProgress final : public ICompressProgressInfo, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(ICompressProgressInfo)
+    QtArchiveVolumeOutput &_owner;
+    quint64 _size;
+    HRESULT STDMETHODCALLTYPE SetRatioInfo(const UInt64 *input, const UInt64 *) throw() override {
+        RINOK(_owner.checkpoint())
+        if (input && _owner.Progress)
+            _owner.Progress(*input, _size);
+        return S_OK;
+    }
+
+  public:
+    CVolumeProgress(QtArchiveVolumeOutput &owner, quint64 size) : _owner(owner), _size(size) {}
+};
+} // namespace
+
+QtArchiveVolumeOutput::QtArchiveVolumeOutput(QString source, QString target,
+                                             CRecordVector<UInt64> sizes)
+    : source_(std::move(source)), target_(std::move(target)), sizes_(std::move(sizes)) {}
+
+void QtArchiveVolumeOutput::cancel() {
+    QMutexLocker lock(&mutex_);
+    stopped_ = true;
+    resumed_.wakeAll();
+}
+void QtArchiveVolumeOutput::setPaused(bool paused) {
+    QMutexLocker lock(&mutex_);
+    paused_ = paused;
+    resumed_.wakeAll();
+}
+HRESULT QtArchiveVolumeOutput::checkpoint() {
+    QMutexLocker lock(&mutex_);
+    while (paused_ && !stopped_)
+        resumed_.wait(&mutex_);
+    return stopped_ ? E_ABORT : S_OK;
+}
+
+HRESULT QtArchiveVolumeOutput::createVolumes() {
+    RINOK(checkpoint())
+    const QFileInfo target(target_);
+    QTemporaryDir stage(target.absolutePath() + "/.sevenzip-volumes-XXXXXX");
+    if (!stage.isValid())
+        return E_FAIL;
+    const QString prefix = stage.filePath(target.fileName() + '.');
+    CMyComPtr2_Create<IInStream, CInFileStream> input;
+    if (!input->Open(us2fs(source_.toStdWString().c_str())))
+        return GetLastError_noZero_HRESULT();
+    UInt64 size = 0;
+    RINOK(input->GetSize(&size))
+    CMyComPtr2_Create<IOutStream, CMultiOutStream> output;
+    output->Prefix = us2fs(prefix.toStdWString().c_str());
+    output->Init(sizes_);
+    CMyComPtr<ICompressProgressInfo> progress = new CVolumeProgress(*this, size);
+    RINOK(NCompress::CopyStream(input, output, progress))
+    unsigned count = 0;
+    RINOK(output->FinalFlush_and_CloseFiles(count))
+    output->NeedDelete = false;
+    for (unsigned i = 1; i <= count; ++i) {
+        RINOK(checkpoint())
+        const QString suffix = QString::number(i).rightJustified(3, '0');
+        const QString destination = target_ + '.' + suffix;
+        if (QFileInfo::exists(destination) || QFileInfo(destination).isSymLink()) {
+            Error = QStringLiteral("Том уже существует: %1").arg(destination);
+            return E_FAIL;
+        }
+    }
+    for (unsigned i = 1; i <= count; ++i) {
+        RINOK(checkpoint())
+        const QString suffix = QString::number(i).rightJustified(3, '0');
+        const QString destination = target_ + '.' + suffix;
+        if (!QFile::rename(prefix + suffix, destination)) {
+            Error = QStringLiteral("Не удалось сохранить том: %1").arg(destination);
+            return E_FAIL;
+        }
+        PublishedPaths.append(destination);
+    }
+    return checkpoint();
+}
+
+void QtArchiveVolumeOutput::run() {
+    try {
+        Result = createVolumes();
+    } catch (...) {
+        Result = E_OUTOFMEMORY;
+    }
+    if (Result != S_OK) {
+        for (const QString &path : PublishedPaths)
+            QFile::remove(path);
+        PublishedPaths.clear();
+        if (Error.isEmpty())
+            Error = Result == E_ABORT ? QStringLiteral("Операция отменена.")
+                                      : QStringLiteral("Не удалось создать архивные тома.");
+    }
+}

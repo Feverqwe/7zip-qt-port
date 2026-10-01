@@ -655,6 +655,16 @@ checks replacement bytes and Store compression. `compression` checks update
 dialog normal/compact scroll geometry and verifies Cancel leaves the saved
 compression profile unchanged.
 
+P1-06.1: `archive_volume_creation` creates real ZIP/7z numbered archives using
+variable 64/128 KiB sizes, two source roots and Unicode/space names. Official
+engine test/extract validates round-trip bytes; protected cases check wrong
+password refusal and both files encrypted. Occupied targets before/after engine
+creation, launch failure, invalid sizes, engine/worker cancellation and paused
+worker cancel-and-wait leave sources and unrelated targets intact without staged
+outputs. Dialog checks cover presets, small-size No/Cancel/Yes before persistence,
+existing-target disabled state and normal/compact JSON. These CLI checks do not
+replace P1-06.2 source UI open/list/test/extract acceptance.
+
 P1-05.4: `source_update_backend` checks the source Full-path Synchronize callback
 with omitted explicit directory records and retained newer archive children on
 ZIP/7z, including Unicode and spaces. Backend cases retain a subtree, delete its

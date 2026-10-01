@@ -22,11 +22,13 @@ VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination,
 void VolumeOperation::cancel() { canceled_ = true; }
 
 QList<qint64> VolumeOperation::parseSizes(const QString &text) {
-    std::vector<UInt64> values;
-    if (!ParseVolumeSizes(text.trimmed().toStdWString(), values) || values.empty())
+    CRecordVector<UInt64> values;
+    if (!ParseVolumeSizes(UString(text.trimmed().toStdWString().c_str()), values) ||
+        values.IsEmpty())
         return {};
     QList<qint64> result;
-    for (UInt64 value : values) {
+    FOR_VECTOR(i, values) {
+        const UInt64 value = values[i];
         if (value == 0 || value > UInt64(std::numeric_limits<qint64>::max()))
             return {};
         result.append(qint64(value));
@@ -95,17 +97,17 @@ VolumeParts VolumeOperation::inspectParts(const QString &firstPart, QString *err
 bool VolumeOperation::split(QString *error) {
     const QFileInfo sourceInfo(source_);
     const QFileInfo destinationInfo(destination_);
-    std::vector<UInt64> sizes;
+    CRecordVector<UInt64> sizes;
     for (qint64 size : volumeSizes_) {
         if (size <= 0) {
             *error = QStringLiteral("Размер тома должен быть положительным.");
             return false;
         }
-        sizes.push_back(UInt64(size));
+        sizes.Add(UInt64(size));
     }
     if (!sourceInfo.isFile() || sourceInfo.isSymLink() || !destinationInfo.isDir() ||
-        destinationInfo.isSymLink() || sizes.empty() ||
-        sourceInfo.size() <= qint64(sizes.front())) {
+        destinationInfo.isSymLink() || sizes.IsEmpty() ||
+        sourceInfo.size() <= qint64(sizes.FrontItem())) {
         *error = QStringLiteral("Файл или размер тома недоступен для разделения.");
         return false;
     }

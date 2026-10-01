@@ -182,6 +182,10 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         return;
     }
     lastResult_ = E_FAIL;
+    if (options && !options->VolumeSizes.IsEmpty()) {
+        emit finished(false, QStringLiteral("Обновление архивных томов не поддерживается."));
+        return;
+    }
     const QFileInfo input(archive);
     const QFileInfo result(output);
     if ((format != "7z" && format != "zip") || !input.isFile() || input.isSymLink() ||

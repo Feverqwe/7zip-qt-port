@@ -91,10 +91,12 @@ void CSplitDialog::OnButtonSetPath() {
 void CSplitDialog::OnOK() {
     Path = _pathCombo->currentText();
     const QString volumeString = _volumeCombo->currentText().trimmed();
-    std::vector<UInt64> values;
+    CRecordVector<UInt64> values;
     VolumeSizes.Clear();
-    bool valid = ParseVolumeSizes(volumeString.toStdWString(), values) && !values.empty();
-    for (UInt64 value : values) {
+    bool valid =
+        ParseVolumeSizes(UString(volumeString.toStdWString().c_str()), values) && !values.IsEmpty();
+    FOR_VECTOR(i, values) {
+        const UInt64 value = values[i];
         // The Qt worker/file API has signed 64-bit offsets.
         if (value > UInt64(std::numeric_limits<qint64>::max()))
             valid = false;

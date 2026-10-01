@@ -1,6 +1,6 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/SplitUtils.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// UString / CRecordVector use standard containers; the combo box uses Qt.
+// The combo box uses Qt; parser and volume-count bodies retain upstream types.
 // SplitUtils.cpp
 
 #include "SplitUtils.h"
@@ -9,10 +9,10 @@
 
 #include "Common/StringToInt.h"
 
-bool ParseVolumeSizes(const std::wstring &s, std::vector<UInt64> &values) {
-    values.clear();
+bool ParseVolumeSizes(const UString &s, CRecordVector<UInt64> &values) {
+    values.Clear();
     bool prevIsNumber = false;
-    for (unsigned i = 0; i < s.size();) {
+    for (unsigned i = 0; i < s.Len();) {
         wchar_t c = s[i++];
         if (c == L' ')
             continue;
@@ -21,7 +21,7 @@ bool ParseVolumeSizes(const std::wstring &s, std::vector<UInt64> &values) {
         if (prevIsNumber) {
             prevIsNumber = false;
             unsigned numBits = 0;
-            switch ((c >= L'A' && c <= L'Z' ? c + (L'a' - L'A') : c)) {
+            switch (MyCharLower_Ascii(c)) {
             case 'b':
                 continue;
             case 'k':
@@ -38,26 +38,26 @@ bool ParseVolumeSizes(const std::wstring &s, std::vector<UInt64> &values) {
                 break;
             }
             if (numBits != 0) {
-                UInt64 &val = values.back();
+                UInt64 &val = values.Back();
                 if (val >= ((UInt64)1 << (64 - numBits)))
                     return false;
                 val <<= numBits;
 
-                for (; i < s.size(); i++)
+                for (; i < s.Len(); i++)
                     if (s[i] == L' ')
                         break;
                 continue;
             }
         }
         i--;
-        const wchar_t *start = s.c_str() + i;
+        const wchar_t *start = s.Ptr(i);
         const wchar_t *end;
         UInt64 val = ConvertStringToUInt64(start, &end);
         if (start == end)
             return false;
         if (val == 0)
             return false;
-        values.push_back(val);
+        values.Add(val);
         prevIsNumber = true;
         i += (unsigned)(end - start);
     }
@@ -84,17 +84,17 @@ void AddVolumeItems(QComboBox &combo) {
         combo.addItem(QString::fromLatin1(k_Sizes[i]));
 }
 
-UInt64 GetNumberOfVolumes(UInt64 size, const std::vector<UInt64> &volSizes) {
-    if (size == 0 || volSizes.size() == 0)
+UInt64 GetNumberOfVolumes(UInt64 size, const CRecordVector<UInt64> &volSizes) {
+    if (size == 0 || volSizes.Size() == 0)
         return 1;
-    for (size_t i = 0; i < volSizes.size(); ++i) {
+    FOR_VECTOR(i, volSizes) {
         UInt64 volSize = volSizes[i];
         if (volSize >= size)
             return i + 1;
         size -= volSize;
     }
-    UInt64 volSize = volSizes.back();
+    UInt64 volSize = volSizes.Back();
     if (volSize == 0)
         return (UInt64)(Int64)-1;
-    return volSizes.size() + (size - 1) / volSize + 1;
+    return volSizes.Size() + (size - 1) / volSize + 1;
 }
