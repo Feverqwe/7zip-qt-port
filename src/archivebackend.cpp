@@ -530,6 +530,10 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         return;
     }
     if (completed == Job::SourcePlanDelete) {
+        if (!sourcePlan_.removed.isEmpty() || !sourcePlan_.removedDirectories.isEmpty()) {
+            startSourcePlanStage(Job::SourcePlanDelete);
+            return;
+        }
         if (!sourcePlan_.files.isEmpty()) {
             startSourcePlanStage(Job::SourcePlanFiles);
             return;

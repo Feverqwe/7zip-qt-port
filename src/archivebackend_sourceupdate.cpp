@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
+#include <algorithm>
 
 bool IsSafePath(const UString &path);
 
@@ -200,7 +201,7 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         emit finished(false, QStringLiteral("Подготовленные источники недоступны."));
         return;
     }
-    for (const QString &path : plan.removed)
+    for (const QString &path : plan.removed + plan.removedDirectories + plan.retainedPaths)
         if (!sourceUpdatePathIsSafe(path, plan.allowAbsolute) || path.contains('*') ||
             path.contains('?') || path.startsWith('@')) {
             emit finished(false, QStringLiteral("Небезопасный путь обновления архива."));
@@ -255,10 +256,14 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
     archive_ = input.absoluteFilePath();
     createTemporary_ = result.absoluteFilePath();
     sourcePlan_ = plan;
+    // CLI deletion matches a directory's descendants as well. Remove omitted
+    // directories deepest first, excluding the source callback's retained items.
+    std::sort(sourcePlan_.removedDirectories.begin(), sourcePlan_.removedDirectories.end(),
+              [](const QString &a, const QString &b) { return a.count('/') > b.count('/'); });
     sourcePlanPassword_ = password;
     sourcePlanFormat_ = format;
     sourcePlanSwitches_ = switches;
-    if (!plan.removed.isEmpty())
+    if (!plan.removed.isEmpty() || !plan.removedDirectories.isEmpty())
         startSourcePlanStage(Job::SourcePlanDelete);
     else if (!plan.files.isEmpty())
         startSourcePlanStage(Job::SourcePlanFiles);
@@ -289,9 +294,22 @@ void ArchiveBackend::startSourcePlanStage(Job stage) {
         args << "-t" + sourcePlanFormat_;
     if (stage != Job::SourcePlanDelete)
         args += sourcePlanSwitches_;
+    QStringList removed;
+    if (stage == Job::SourcePlanDelete) {
+        if (!sourcePlan_.removed.isEmpty()) {
+            removed = sourcePlan_.removed;
+            sourcePlan_.removed.clear();
+        } else {
+            const QString directory = sourcePlan_.removedDirectories.takeFirst();
+            removed.append(directory);
+            for (const QString &path : sourcePlan_.retainedPaths)
+                if (path.startsWith(directory + '/'))
+                    args << "-x!" + path;
+        }
+    }
     args << "--" << createTemporary_;
     if (stage == Job::SourcePlanDelete) {
-        args += sourcePlan_.removed;
+        args += removed;
         start(stage, args);
     } else if (stage == Job::SourcePlanFiles) {
         args += sourcePlan_.files;

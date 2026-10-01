@@ -1117,6 +1117,24 @@ endforeach()
 # writers separate while allowing independent tests to run concurrently.
 get_property(sevenzip_registered_tests DIRECTORY PROPERTY TESTS)
 foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
+    # MainWindow opens the current directory before a test navigates to its
+    # fixture. Keep that startup input separate from hundreds of build outputs.
+    # Each suite owns its directory so parallel runs cannot populate each other.
+    if(TARGET ${sevenzip_test}_tests)
+        get_target_property(sevenzip_test_sources ${sevenzip_test}_tests SOURCES)
+        if("src/mainwindow.cpp" IN_LIST sevenzip_test_sources)
+            set(sevenzip_test_startup_dir "${CMAKE_BINARY_DIR}/test-startup/${sevenzip_test}")
+            file(MAKE_DIRECTORY "${sevenzip_test_startup_dir}")
+            set_tests_properties(${sevenzip_test} PROPERTIES
+                WORKING_DIRECTORY "${sevenzip_test_startup_dir}")
+            # Saved panel paths outlive a QTemporaryDir fixture. Upstream
+            # navigation then opens its parent, which must also be test-owned.
+            set_property(TEST ${sevenzip_test} APPEND PROPERTY ENVIRONMENT
+                "TMPDIR=${sevenzip_test_startup_dir}"
+                "TMP=${sevenzip_test_startup_dir}"
+                "TEMP=${sevenzip_test_startup_dir}")
+        endif()
+    endif()
     get_property(sevenzip_test_environment TEST ${sevenzip_test} PROPERTY ENVIRONMENT)
     if(sevenzip_test_environment MATCHES "SEVENZIP_UI_REPORT_DIR|SEVENZIP_SCREENSHOT_DIR")
         set_property(TEST ${sevenzip_test} APPEND PROPERTY RESOURCE_LOCK sevenzip_ui_artifacts)

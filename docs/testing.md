@@ -632,6 +632,13 @@ check that status bars remain visible for the updated operation message.
 
 `ui_operations` also exercises the source Ask callback on an encrypted 7z and ZIP: a wrong password must fail before the occupied target changes, and a second extraction with the correct password must show the source overwrite dialog and replace the bytes. Its nested-folder ZIP case checks that extraction from the viewed folder targets a relative path and uses the same source dialog. The UI test closes the source error message first, then the finished progress window; clicking its Close button while the error message is still unwinding can trigger the active-operation cancel prompt instead.
 
+MainWindow CTest suites start in separate build-local `test-startup/<suite>`
+directories and use those directories as their temporary roots. This also keeps
+upstream fallback from a deleted fixture's persisted panel path inside a small,
+test-owned parent. Initial navigation must not enumerate build outputs or the
+shared system temporary directory; startup performance should be measured only
+in deliberate fixtures. Settings and UI-report destinations remain explicit.
+
 The regression gate is `./scripts/check.sh`. It checks C++ formatting, builds the development preset, and runs CTest. Run it manually according to `AGENTS.md`; there is no project pre-commit hook, and setup does not install one. Local results do not establish verification on other platforms.
 
 During implementation, build affected targets and run focused tests for changed behavior and direct consumers, for example `ctest --preset dev -R '^compression_preferences$' --output-on-failure`. Expand coverage for shared-component changes or failures. Run the full gate once before completing code, test, or build-tooling changes; rerun affected checks after localized edits and repeat the full gate only for broad changes or unresolved regression concerns. Do not repeat a passing full gate on unchanged code. Documentation and agent-instruction edits need only `git diff --check`.
@@ -648,6 +655,12 @@ checks replacement bytes and Store compression. `compression` checks update
 dialog normal/compact scroll geometry and verifies Cancel leaves the saved
 compression profile unchanged.
 
+P1-05.4: `source_update_backend` checks the source Full-path Synchronize callback
+with omitted explicit directory records and retained newer archive children on
+ZIP/7z, including Unicode and spaces. Backend cases retain a subtree, delete its
+omitted nested directory, verify unchanged child bytes, reject unsafe exclusions
+and cancel during the second deletion stage with exact-original rollback.
+
 P1-05.3: `source_update_backend` checks protected ZIP AES and 7z header
 Add through the source Agent and transactional backend. It verifies old/new
 Unicode file bytes and encryption, wrong-password rollback and cancellation
@@ -663,7 +676,7 @@ rejected traversal rename. `ui_update_modes` exercises Full and Absolute from
 the existing-archive dialog. `compression` checks the path-mode control and
 scroll reachability in current-build normal/compact reports. Absolute entries
 are listable but extraction remains guarded by `ArchiveBackend` until P2-07;
-protected Add is covered by P1-05.3; directory filtering remains P1-05.4.
+protected Add is covered by P1-05.3; directory filtering is covered by P1-05.4.
 
 `compression` checks the upstream level masks (0–9 for 7z; 0, 1, 3, 5, 7, 9 for ZIP), ZIP PPMd archive creation, and that changing the 7z/ZIP format updates available methods, password visibility and confirmation controls, and that mismatched passwords prevent submission. It checks method-dependent dictionary, word-size and solid-block controls, creates disposable archives with these options, lists their Unicode filenames and checks the reported method from `7zz l -slt`. Invalid or incompatible options must fail before creating a target. A compact creation dialog must keep confirmation buttons visible and allow scrolling to the password fields. These checks run locally on macOS; the options and dialog layout still need Windows and Linux verification.
 `properties` checks mixed filesystem selection, archive packed sizes, recursive

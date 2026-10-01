@@ -180,6 +180,7 @@ class CNativeAddWorker final : public CProgressThreadVirt {
         for (const QString &path : archivePaths) {
             CPanelItem item;
             item.RelPath = path;
+            item.IsFolder = ArchiveDirectories.contains(path);
             item.MTimeText = ArchiveMTimeText;
             items.Add(item);
         }
@@ -239,6 +240,7 @@ class CNativeAddWorker final : public CProgressThreadVirt {
     bool MoveMode = false;
     bool RootFolder = false;
     QStringList ArchivePaths;
+    QStringList ArchiveDirectories;
     QString ArchiveMTimeText;
     const NUpdateArchive::CActionSet *ActionSet = nullptr;
     std::optional<NWildcard::ECensorPathMode> PathMode;
@@ -259,6 +261,130 @@ class CNativeAddWorker final : public CProgressThreadVirt {
 class SourceUpdateBackendTests final : public QObject {
     Q_OBJECT
   private slots:
+    void directoryPlanRetainsSubtreeAndRollsBack_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<bool>("cancel");
+        for (const QString &format : {QString("zip"), QString("7z")}) {
+            QTest::newRow(qPrintable(format + "-success")) << format << false;
+            QTest::newRow(qPrintable(format + "-cancel")) << format << true;
+        }
+    }
+    void directoryPlanRetainsSubtreeAndRollsBack() {
+        QFETCH(QString, format);
+        QFETCH(bool, cancel);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original." + format);
+        const QString output = fixture.filePath("output." + format);
+        QVERIFY(writeFile(QDir(root).filePath("tree/keep/child.txt"), "kept"));
+        QVERIFY(writeFile(QDir(root).filePath("tree/keep/drop/old.txt"), "dropped"));
+        QVERIFY(runEngine(root, {"a", "-t" + format, "--", archive, "tree"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend::SourceUpdatePlan plan;
+        plan.removed = {"tree/keep/drop/old.txt"};
+        plan.removedDirectories = {"tree", "tree/keep/drop"};
+        plan.retainedPaths = {"tree/keep", "tree/keep/child.txt"};
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        int stages = 0;
+        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
+            if (++stages == 2 && cancel)
+                backend.cancel();
+        });
+        backend.updateSourcePlan(archive, plan, output, format, {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
+        QCOMPARE(finished.takeFirst().first().toBool(), !cancel);
+        QCOMPARE(readFile(archive), original);
+        if (cancel) {
+            QCOMPARE(backend.lastResult(), E_ABORT);
+            QVERIFY(!QFileInfo::exists(output));
+        } else {
+            QProcess listing;
+            listing.start(enginePath(), {"l", "-slt", "--", output});
+            QVERIFY(listing.waitForFinished(10000));
+            QCOMPARE(listing.exitCode(), 0);
+            const QByteArray contents = listing.readAllStandardOutput().replace("\r\n", "\n");
+            QVERIFY(contents.contains("Path = tree/keep\n"));
+            QVERIFY(!contents.contains("Path = tree\n"));
+            QVERIFY(!contents.contains("Path = tree/keep/drop\n"));
+            const QString extracted = fixture.filePath("extracted");
+            QVERIFY(QDir().mkpath(extracted));
+            QVERIFY(runEngine(extracted, {"x", "-y", "--", output}));
+            QCOMPARE(readFile(QDir(extracted).filePath("tree/keep/child.txt")), QByteArray("kept"));
+        }
+        plan.retainedPaths = {"../unsafe"};
+        const QString rejected = fixture.filePath("rejected." + format);
+        backend.updateSourcePlan(archive, plan, rejected, format, {});
+        QCOMPARE(finished.count(), 1);
+        QVERIFY(!finished.takeFirst().first().toBool());
+        QVERIFY(!QFileInfo::exists(rejected));
+        QCOMPARE(readFile(archive), original);
+    }
+    void nativeSyncRemovesDirectoryRecordsAndKeepsChildren_data() {
+        QTest::addColumn<QString>("format");
+        QTest::newRow("zip") << QString("zip");
+        QTest::newRow("7z") << QString("7z");
+    }
+    void nativeSyncRemovesDirectoryRecordsAndKeepsChildren() {
+        QFETCH(QString, format);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString oldRoot = fixture.filePath("old");
+        const QString diskRoot = fixture.filePath("disk");
+        const QString selectedFolder = QStringLiteral("папка с пробелом");
+        const QString source = QDir(diskRoot).filePath(selectedFolder + "/nested/keep.txt");
+        QVERIFY(writeFile(source, "older disk bytes"));
+        NWildcard::CCensor censor;
+        censor.AddPreItem_NoWildcard(ToUString(source));
+        censor.AddPathsToCensor(NWildcard::k_FullPath);
+        CDirItems enumerated;
+        QCOMPARE(EnumerateItems(censor, NWildcard::k_FullPath, UString(), enumerated), S_OK);
+        QCOMPARE(enumerated.Items.Size(), 1u);
+        const QString fullName = QString::fromWCharArray(enumerated.GetLogPath(0));
+        const QString folder =
+            QDir::fromNativeSeparators(fullName).chopped(QStringLiteral("/nested/keep.txt").size());
+        const QString child = folder + "/nested/keep.txt";
+        const QString removed = folder + "/nested/remove.txt";
+        const QString archive = fixture.filePath("directories." + format);
+        QVERIFY(writeFile(QDir(oldRoot).filePath(selectedFolder + "/nested/keep.txt"),
+                          "retained archive bytes"));
+        QVERIFY(
+            writeFile(QDir(oldRoot).filePath(selectedFolder + "/nested/remove.txt"), "removed"));
+        QVERIFY(runEngine(oldRoot, {"a", "-t" + format, "--", archive, selectedFolder}));
+        QVERIFY(runEngine(oldRoot, {"rn", "--", archive, selectedFolder, folder}));
+        const QByteArray original = readFile(archive);
+        QFile disk(source);
+        QVERIFY(disk.open(QIODevice::ReadWrite));
+        QVERIFY(disk.setFileTime(QDateTime::fromSecsSinceEpoch(1500000000, Qt::UTC),
+                                 QFileDevice::FileModificationTime));
+        disk.close();
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, format);
+        worker.RootFolder = true;
+        worker.PathMode = NWildcard::k_FullPath;
+        worker.ArchivePaths = {folder, folder + "/nested", child, removed};
+        worker.ArchiveDirectories = {folder, folder + "/nested"};
+        worker.ArchiveMTimeText = "2023-11-14 22:13:20";
+        worker.ActionSet = &NUpdateArchive::k_ActionSet_Sync;
+        auto transport = worker.CreateProgressTransport();
+        QCOMPARE(worker.Create(L"Synchronize selected child", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QVERIFY(readFile(archive) != original);
+        QProcess listing;
+        listing.start(enginePath(), {"l", "-slt", "--", archive});
+        QVERIFY(listing.waitForFinished(10000));
+        QCOMPARE(listing.exitCode(), 0);
+        const QByteArray contents = listing.readAllStandardOutput().replace("\r\n", "\n");
+        QVERIFY2(contents.contains("Path = " + child.toUtf8() + '\n'), contents.constData());
+        QVERIFY(!contents.contains("Path = " + folder.toUtf8() + '\n'));
+        QVERIFY(!contents.contains("Path = " + (folder + "/nested").toUtf8() + '\n'));
+        QVERIFY(!contents.contains("Path = " + removed.toUtf8() + '\n'));
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(QDir().mkpath(extracted));
+        QVERIFY(runEngine(extracted, {"x", "-y", "--", archive}));
+        QCOMPARE(readFile(QDir(extracted).filePath(child)), QByteArray("retained archive bytes"));
+    }
     void sourcePathModeLogicalNames() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

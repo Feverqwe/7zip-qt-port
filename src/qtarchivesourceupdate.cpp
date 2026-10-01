@@ -163,6 +163,8 @@ HRESULT FindAddPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *
 
 struct CSourceUpdatePlan {
     QStringList Removed;
+    QStringList RemovedDirectories;
+    QStringList RetainedPaths;
     QList<CAddedItem> Files;
     QList<CAddedItem> Directories;
 };
@@ -225,16 +227,12 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
             return E_NOTIMPL;
         finalNames.insert(key);
     }
-    for (UInt32 i = 0; i < originalCount; ++i)
-        if (!referenced.contains(i) || (replaced.contains(i) && !originalDirectories[int(i)]))
-            plan.Removed.append(originalPaths[int(i)]);
     for (UInt32 i = 0; i < originalCount; ++i) {
-        if (referenced.contains(i) || !originalDirectories[int(i)])
-            continue;
-        const QString prefix = originalPaths[int(i)] + '/';
-        for (UInt32 child = 0; child < originalCount; ++child)
-            if (originalPaths[int(child)].startsWith(prefix) && referenced.contains(child))
-                return E_NOTIMPL;
+        if (!referenced.contains(i) || (replaced.contains(i) && !originalDirectories[int(i)]))
+            (originalDirectories[int(i)] ? plan.RemovedDirectories : plan.Removed)
+                .append(originalPaths[int(i)]);
+        else
+            plan.RetainedPaths.append(originalPaths[int(i)]);
     }
     return S_OK;
 }
@@ -333,6 +331,14 @@ HRESULT FindMutationPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallb
             continue;
         QString path;
         RINOK(ReadPath(metadata, i, path))
+        // A CLI delete of this path would also delete retained descendants.
+        // Such callback plans require the staged source-plan adapter below.
+        for (UInt32 child : kept) {
+            QString childPath;
+            RINOK(ReadPath(metadata, child, childPath))
+            if (childPath.startsWith(path + '/'))
+                return E_NOTIMPL;
+        }
         plan.Paths.append(path);
     }
     plan.Operation = ArchiveBackend::SourceMutation::Delete;
@@ -463,6 +469,8 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         sourcePlanBackend.fileRoot = sourceRoot;
         sourcePlanBackend.directoryRoot = directoryRoot;
         sourcePlanBackend.removed = sourcePlan.Removed;
+        sourcePlanBackend.removedDirectories = sourcePlan.RemovedDirectories;
+        sourcePlanBackend.retainedPaths = sourcePlan.RetainedPaths;
     } else if (mutation.Operation == ArchiveBackend::SourceMutation::CreateFolder &&
                !QDir().mkpath(QDir(sourceRoot).filePath(mutation.Paths.front())))
         return E_FAIL;

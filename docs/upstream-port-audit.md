@@ -8,6 +8,51 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-05.4 — directory callback plans и приёмка Add (2026-10-01)
+
+Baseline remains [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Reviewed source bodies: `CPP/7zip/UI/Agent/AgentOut.cpp::EnumerateArchiveItems`,
+`CAgent::DoOperation`, `CPP/7zip/UI/Common/UpdatePair.cpp::GetUpdatePairInfoList`,
+`UpdateProduce.cpp::UpdateProduce`, `EnumDirItems.cpp::EnumerateItems`, and
+`CPP/Common/Wildcard.cpp::CItem::CheckPath`. Their previously copied bodies and
+module boundaries are retained; this iteration changes only the local
+`qtarchivesourceupdate.cpp` and `ArchiveBackend` process adapters.
+
+The callback may omit an explicit directory record while retaining a child.
+The ordinary Delete recognizer now declines that shape, so it cannot silently
+route Synchronize to recursive CLI deletion. The source-plan recognizer carries
+removed directory records and retained original paths separately. The backend
+deletes omitted files first, then omitted directories deepest first with exact
+retained-descendant exclusions. The official CLI has no item-index deletion
+interface; these stages adapt its path matching to the authoritative callback
+plan without extracting/recompressing retained data. All stages use the existing
+transaction copy, password, progress, cancellation and publish boundary.
+
+Regressions exercise the source Agent's Full-path Synchronize on ZIP/7z with
+Unicode/space directories, an older retained disk child and omitted directory
+records. Direct backend cases retain an explicit subtree while removing its
+unwanted nested directory, check byte contents, reject unsafe exclusions and
+cancel during the second deletion stage with exact-original rollback.
+No visible controls or layout change in this iteration. P1-05.1–.3 retain their
+historical evidence; advanced options/formats, nested update, links/streams and
+absolute extraction remain owned by P1-07/P2-01/P1-09/P2-05/P2-06/P2-07.
+Duplicate/case-folded archive names and noncanonical unsafe paths remain rejected
+by the integration guard; their broader source closure is reviewed in P3-05.
+Windows/Linux runtime and rendered Windows appearance remain unverified.
+
+Validation on macOS arm64/Qt 6.11.2, 2026-10-01: affected targets built;
+unsandboxed focused `source_update_backend`, `ui_operations`, `ui_update_modes`,
+`command_policy_runtime`, `filesystem_selection_runtime`, `binding_lifecycle`,
+`panel_runtime` passed 7/7 (16.00 s); full unsandboxed `./scripts/check.sh`
+passed formatting/build and 146/146 CTest (61.96 s). Fresh Add JSON reports
+760×720/640×480 retain fully visible four-mode and three-path combos and footer.
+Initial validation exposed slow startup sorting of build outputs and of the
+shared temporary parent after a fixture's saved panel path disappeared; those
+runs were stopped after a timeout. CMake now isolates current and temporary
+directories per MainWindow suite. This is a test integration adaptation;
+application navigation and sorting remain unchanged. Parent P1-05 is accepted
+for the documented top-level ZIP/7z scope; the listed platform checks remain.
+
 ## P1-05.3 — защищённый Add в существующий архив (2026-10-01)
 
 Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

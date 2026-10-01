@@ -747,6 +747,20 @@ QFileIconProvider. Цвет/форма иконок зависят от ОС. `p
 normal/compact Qt JSON и disk/archive popup, но Windows rendered reference,
 Windows/Linux runtime и полноценные shell/namespace icons ещё не проверены.
 
+## P1-05.4 — Synchronize и записи каталогов (2026-10-01)
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`AgentOut.cpp::DoOperation`, Common `UpdatePair.cpp`/`UpdateProduce.cpp`.
+Add's source callback plan can now remove explicit parent directory records
+without losing retained descendants. Synchronize with Full paths preserves the
+archive's newer child bytes and removes obsolete entries; a kept explicit
+subtree does not shield its separately omitted nested directory from deletion.
+The transactional backend reports failure/cancel through the existing progress
+workflow and leaves the input archive unchanged until successful publication.
+No presentation change; existing mode/path controls and compact scrolling remain.
+ZIP/7z regressions run on macOS arm64. Windows/Linux runtime and rendered Windows
+appearance remain unverified; absolute extraction remains P2-07.
+
 ## P1-05.3 — Add в защищённый архив (2026-10-01)
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

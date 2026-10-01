@@ -92,6 +92,8 @@ class ArchiveBackend : public QObject {
                                  const QString &format, const QString &password);
     struct SourceUpdatePlan {
         QStringList removed;
+        QStringList removedDirectories;
+        QStringList retainedPaths;
         QStringList files;
         QStringList directories;
         QList<QPair<QString, QString>> renames;
