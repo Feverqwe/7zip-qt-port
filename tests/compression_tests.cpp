@@ -127,11 +127,14 @@ class CompressionTests : public QObject {
         QVERIFY(QFile(archive).open(QIODevice::WriteOnly));
         CreateArchiveDialog dialog(temp.path(), {source}, nullptr, archive);
         auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
+        auto *pathMode = dialog.findChild<QComboBox *>("archivePathMode");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *scroll = dialog.findChild<QScrollArea *>();
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
-        QVERIFY(mode && level && scroll && buttons);
+        QVERIFY(mode && pathMode && level && scroll && buttons);
         QCOMPARE(mode->count(), 4);
+        QCOMPARE(pathMode->count(), 3);
+        QCOMPARE(pathMode->currentData().toInt(), int(NWildcard::k_RelatPath));
         QCOMPARE(dialog.compressionOptions().UpdateMode, NCompressDialog::NUpdateMode::kAdd);
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -139,7 +142,8 @@ class CompressionTests : public QObject {
             QCoreApplication::processEvents();
             QVERIFY(
                 dialog.rect().contains(QRect(buttons->mapTo(&dialog, QPoint()), buttons->size())));
-            for (QWidget *control : {static_cast<QWidget *>(mode), static_cast<QWidget *>(level)}) {
+            for (QWidget *control : {static_cast<QWidget *>(mode), static_cast<QWidget *>(pathMode),
+                                     static_cast<QWidget *>(level)}) {
                 scroll->ensureWidgetVisible(control);
                 QCoreApplication::processEvents();
                 QVERIFY(scroll->viewport()->rect().contains(

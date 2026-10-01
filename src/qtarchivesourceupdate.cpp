@@ -106,8 +106,9 @@ struct CMutationPlan {
     QStringList Paths;
 };
 
-HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path);
-HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &path);
+HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path, bool allowAbsolute = false);
+HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &path,
+                    bool allowAbsolute = false);
 
 struct CAddedItem {
     UInt32 Index = 0;
@@ -167,7 +168,7 @@ struct CSourceUpdatePlan {
 };
 
 HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *callback,
-                             CSourceUpdatePlan &plan) {
+                             bool allowAbsolute, CSourceUpdatePlan &plan) {
     UInt32 originalCount;
     RINOK(metadata->GetNumberOfItems(&originalCount))
     QStringList originalPaths;
@@ -175,7 +176,7 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
     QSet<QString> originalNames;
     for (UInt32 i = 0; i < originalCount; ++i) {
         QString path;
-        RINOK(ReadPath(metadata, i, path))
+        RINOK(ReadPath(metadata, i, path, allowAbsolute))
         NWindows::NCOM::CPropVariant directory;
         RINOK(metadata->GetProperty(i, kpidIsDir, &directory))
         if (directory.vt != VT_BOOL)
@@ -204,7 +205,7 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
             path = originalPaths[int(index)];
             directory = originalDirectories[int(index)];
         } else if (newData && newProps) {
-            RINOK(ReadNewPath(callback, i, path))
+            RINOK(ReadNewPath(callback, i, path, allowAbsolute))
             NWindows::NCOM::CPropVariant directoryProperty;
             RINOK(callback->GetProperty(i, kpidIsDir, &directoryProperty))
             if (directoryProperty.vt != VT_BOOL)
@@ -238,22 +239,23 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
     return S_OK;
 }
 
-HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path) {
+HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path, bool allowAbsolute) {
     NWindows::NCOM::CPropVariant value;
     RINOK(metadata->GetProperty(index, kpidPath, &value))
     if (value.vt != VT_BSTR)
         return E_NOTIMPL;
     path = QString::fromWCharArray(value.bstrVal);
-    return ArchiveBackend::sourceUpdatePathIsSafe(path) ? S_OK : E_NOTIMPL;
+    return ArchiveBackend::sourceUpdatePathIsSafe(path, allowAbsolute) ? S_OK : E_NOTIMPL;
 }
 
-HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &path) {
+HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &path,
+                    bool allowAbsolute) {
     NWindows::NCOM::CPropVariant value;
     RINOK(callback->GetProperty(index, kpidPath, &value))
     if (value.vt != VT_BSTR)
         return E_NOTIMPL;
     path = QString::fromWCharArray(value.bstrVal);
-    return ArchiveBackend::sourceUpdatePathIsSafe(path) ? S_OK : E_NOTIMPL;
+    return ArchiveBackend::sourceUpdatePathIsSafe(path, allowAbsolute) ? S_OK : E_NOTIMPL;
 }
 
 HRESULT FindMutationPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallback *callback,
@@ -356,15 +358,19 @@ HRESULT StageCallbackStream(const QString &root, const QString &name, UInt32 ind
 }
 
 HRESULT StageAddedItems(const QString &root, const QList<CAddedItem> &items,
-                        IArchiveUpdateCallback *callback, QStringList &names) {
+                        IArchiveUpdateCallback *callback, QStringList &names,
+                        QList<QPair<QString, QString>> *renames = nullptr) {
     QList<QPair<QString, CFiTime>> directories;
     for (const CAddedItem &item : items) {
-        const QString path = QDir(root).filePath(item.Path);
+        const QString stageName = renames && QDir::isAbsolutePath(item.Path)
+                                      ? QStringLiteral("absolute-item-%1").arg(item.Index)
+                                      : item.Path;
+        const QString path = QDir(root).filePath(stageName);
         if (item.Directory) {
             if (!QDir().mkpath(path))
                 return E_FAIL;
         } else
-            RINOK(StageCallbackStream(root, item.Path, item.Index, callback))
+            RINOK(StageCallbackStream(root, stageName, item.Index, callback))
         NWindows::NCOM::CPropVariant modified;
         RINOK(callback->GetProperty(item.Index, kpidMTime, &modified))
         if (modified.vt == VT_FILETIME) {
@@ -381,7 +387,9 @@ HRESULT StageAddedItems(const QString &root, const QList<CAddedItem> &items,
                                                         nullptr, &time))
                 return E_FAIL;
         }
-        names.append(item.Path);
+        names.append(stageName);
+        if (renames && stageName != item.Path)
+            renames->append({stageName, item.Path});
     }
     for (auto it = directories.crbegin(); it != directories.crend(); ++it)
         if (!NWindows::NFile::NDir::SetDirTime(us2fs(it->first.toStdWString().c_str()), nullptr,
@@ -431,7 +439,9 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
             options ? E_NOTIMPL : FindAddPlan(metadata, count, callback, added);
         if (addResult == E_NOTIMPL) {
             added.clear();
-            RINOK(FindSourceUpdatePlan(metadata, count, callback, sourcePlan))
+            RINOK(FindSourceUpdatePlan(metadata, count, callback,
+                                       options && options->PathMode == NWildcard::k_AbsPath,
+                                       sourcePlan))
             sourcePlanSelected = true;
         } else
             RINOK(addResult)
@@ -445,9 +455,11 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
         RINOK(StageAddedItems(sourceRoot, added, callback, addedNames))
     else if (sourcePlanSelected) {
         const QString directoryRoot = stage.filePath("directories");
-        RINOK(StageAddedItems(sourceRoot, sourcePlan.Files, callback, sourcePlanBackend.files))
+        sourcePlanBackend.allowAbsolute = options && options->PathMode == NWildcard::k_AbsPath;
+        RINOK(StageAddedItems(sourceRoot, sourcePlan.Files, callback, sourcePlanBackend.files,
+                              &sourcePlanBackend.renames))
         RINOK(StageAddedItems(directoryRoot, sourcePlan.Directories, callback,
-                              sourcePlanBackend.directories))
+                              sourcePlanBackend.directories, &sourcePlanBackend.renames))
         sourcePlanBackend.fileRoot = sourceRoot;
         sourcePlanBackend.directoryRoot = directoryRoot;
         sourcePlanBackend.removed = sourcePlan.Removed;

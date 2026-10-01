@@ -444,6 +444,9 @@ Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 - The editable archive-path combo and format precede the options and source picker.
   The combo retains the extension and offers the last twenty destinations;
   its text and the format row do not overlap at either tested size.
+- For an existing target, the update-mode row precedes the path-mode row;
+  the latter offers Relative, Full and Absolute. A new target has the same
+  path-mode row without an update-mode row.
 - Compression controls retain level, method, dictionary, word size, solid block,
   CPU threads, and memory controls. Encryption retains the upstream order:
   password, confirmation, Show Password, method, Encrypt file names.
@@ -468,6 +471,9 @@ cover method/format-dependent enabled states and persistence.
 `compression_encryption` checks the complete encryption group, control separation
 and shown/hidden confirmation at both sizes, with a 400-character history path;
 reports are `encryption-{760,640}-{0,1}.json`.
+`compression` checks update and path-mode visibility and scroll reachability
+at 760×720 and 640×480; current-build reports are
+`update-options-normal.json` and `update-options-compact.json`.
 
 ## Archive password prompt
 

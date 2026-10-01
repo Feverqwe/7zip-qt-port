@@ -4,6 +4,7 @@
 // narrow presentation/operation adapters around the partial source panel.
 #pragma once
 
+#include "../../../Common/Wildcard.h"
 #include "7zip/Archive/IArchive.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/Common/ExtractMode.h"
@@ -364,7 +365,8 @@ class CPanel : public QObject {
                    const UStringVector *filePaths = NULL);
     HRESULT CopyFrom(bool moveMode, const UString &folderPrefix, const UStringVector &filePaths,
                      bool showErrorMessages, UStringVector *messages,
-                     const NUpdateArchive::CActionSet *actionSet = nullptr);
+                     const NUpdateArchive::CActionSet *actionSet = nullptr,
+                     std::optional<NWildcard::ECensorPathMode> pathMode = std::nullopt);
     void SetNewFolder(IFolderFolder *folder);
     void AttachFolderManager(IFolderManager *manager, const QString &settingsPath) {
         _folderManager = manager;

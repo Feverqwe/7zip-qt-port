@@ -46,12 +46,15 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
                 job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd ||
                 job_ == Job::SourceUpdate || job_ == Job::SourcePlanDelete ||
                 job_ == Job::SourcePlanFiles || job_ == Job::SourcePlanDirectories ||
-                job_ == Job::SourceMutation || job_ == Job::SourceExtract)
+                job_ == Job::SourcePlanRename || job_ == Job::SourceMutation ||
+                job_ == Job::SourceExtract)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
             extractQueue_.clear();
             extractArguments_.clear();
             pendingPassword_.clear();
+            createStages_.clear();
+            createPassword_.clear();
             extractPassword_.clear();
             sourcePlanPassword_.clear();
             emit finished(
@@ -72,7 +75,7 @@ ArchiveBackend::~ArchiveBackend() {
          job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd || job_ == Job::SourceUpdate ||
          job_ == Job::SourcePlanDelete || job_ == Job::SourcePlanFiles ||
          job_ == Job::SourcePlanDirectories || job_ == Job::SourceMutation ||
-         job_ == Job::SourceExtract))
+         job_ == Job::SourcePlanRename || job_ == Job::SourceExtract))
         QFile::remove(createTemporary_);
 }
 
@@ -468,6 +471,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (cancelled_) {
         lastResult_ = E_ABORT;
         extractPassword_.clear();
+        createStages_.clear();
+        createPassword_.clear();
         sourcePlanPassword_.clear();
         extractQueue_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
@@ -475,7 +480,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
             completed == Job::SourcePlanDelete || completed == Job::SourcePlanFiles ||
             completed == Job::SourcePlanDirectories || completed == Job::SourceMutation ||
-            completed == Job::SourceExtract)
+            completed == Job::SourcePlanRename || completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
         emit finished(false, QStringLiteral("Операция отменена."));
         return;
@@ -484,6 +489,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         if (completed == Job::List)
             lastResult_ = listingFailureResult(exitCode, status);
         extractPassword_.clear();
+        createStages_.clear();
+        createPassword_.clear();
         sourcePlanPassword_.clear();
         extractQueue_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
@@ -491,7 +498,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
             completed == Job::SourcePlanDelete || completed == Job::SourcePlanFiles ||
             completed == Job::SourcePlanDirectories || completed == Job::SourceMutation ||
-            completed == Job::SourceExtract)
+            completed == Job::SourcePlanRename || completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
         const bool wrongPassword =
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
@@ -531,13 +538,29 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
             startSourcePlanStage(Job::SourcePlanDirectories);
             return;
         }
+        if (!sourcePlan_.renames.isEmpty()) {
+            startSourcePlanStage(Job::SourcePlanRename);
+            return;
+        }
     } else if (completed == Job::SourcePlanFiles && !sourcePlan_.directories.isEmpty()) {
         startSourcePlanStage(Job::SourcePlanDirectories);
         return;
+    } else if ((completed == Job::SourcePlanFiles || completed == Job::SourcePlanDirectories) &&
+               !sourcePlan_.renames.isEmpty()) {
+        startSourcePlanStage(Job::SourcePlanRename);
+        return;
     }
     if (completed == Job::SourcePlanDelete || completed == Job::SourcePlanFiles ||
-        completed == Job::SourcePlanDirectories)
+        completed == Job::SourcePlanDirectories || completed == Job::SourcePlanRename)
         sourcePlanPassword_.clear();
+    if (completed == Job::Create && !createStages_.isEmpty()) {
+        const CreateStage next = createStages_.takeFirst();
+        pendingPassword_ = createPassword_;
+        start(Job::Create, next.arguments, next.directory);
+        return;
+    }
+    if (completed == Job::Create)
+        createPassword_.clear();
     if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
         QFile::remove(createTemporary_);
         emit finished(false,

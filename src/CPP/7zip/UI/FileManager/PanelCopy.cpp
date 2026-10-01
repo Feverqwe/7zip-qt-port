@@ -303,6 +303,10 @@ class CThreadUpdate final : public CProgressThreadVirt {
         if (ActionSet) {
             CMyComPtr<IArchiveFolderInternal> archiveFolder;
             RINOK(FolderOperations.QueryInterface(IID_IArchiveFolderInternal, &archiveFolder))
+            if (PathMode)
+                return archiveFolder->UpdateFromPaths(FileNamePointers.ConstData(),
+                                                      FileNamePointers.Size(), *ActionSet,
+                                                      *PathMode, UpdateCallback);
             return archiveFolder->UpdateFrom(FolderPrefix, FileNamePointers.ConstData(),
                                              FileNamePointers.Size(), *ActionSet, UpdateCallback);
         }
@@ -319,11 +323,13 @@ class CThreadUpdate final : public CProgressThreadVirt {
     CUpdateCallback100Imp *UpdateCallbackSpec = nullptr;
     bool MoveMode = false;
     const NUpdateArchive::CActionSet *ActionSet = nullptr;
+    std::optional<NWildcard::ECensorPathMode> PathMode;
 };
 
 HRESULT CPanel::CopyFrom(bool moveMode, const UString &folderPrefix, const UStringVector &filePaths,
                          bool showErrorMessages, UStringVector *messages,
-                         const NUpdateArchive::CActionSet *actionSet) {
+                         const NUpdateArchive::CActionSet *actionSet,
+                         std::optional<NWildcard::ECensorPathMode> pathMode) {
     if (IsHashFolder() && moveMode)
         return E_NOTIMPL;
 
@@ -334,6 +340,7 @@ HRESULT CPanel::CopyFrom(bool moveMode, const UString &folderPrefix, const UStri
         CThreadUpdate updater;
         updater.MoveMode = moveMode;
         updater.ActionSet = actionSet;
+        updater.PathMode = pathMode;
         updater.UpdateCallbackSpec = new CUpdateCallback100Imp;
         updater.UpdateCallback = updater.UpdateCallbackSpec;
         updater.UpdateCallbackSpec->Init();

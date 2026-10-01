@@ -9,6 +9,7 @@
 #include "7zip/Compress/CopyCoder.h"
 #include "Agent.h"
 #include "Common/ComTry.h"
+#include <QScopeGuard>
 
 using namespace NWindows;
 using namespace NFile;
@@ -355,6 +356,19 @@ Z7_COM7F_IMF(CAgentFolder::UpdateFrom(const wchar_t *fromFolderPath,
                                      IProgress *progress)) {
     COM_TRY_BEGIN
     RINOK(_agentSpec->SetFiles(fromFolderPath, itemsPaths, numItems))
+    return CommonUpdateOperation(AGENT_OP_Uni, false, NULL, &actionSet, NULL, 0, progress);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgentFolder::UpdateFromPaths(const wchar_t *const *itemsPaths, UInt32 numItems,
+                                          const NUpdateArchive::CActionSet &actionSet,
+                                          NWildcard::ECensorPathMode pathMode,
+                                          IProgress *progress)) {
+    COM_TRY_BEGIN
+    RINOK(_agentSpec->SetFiles(L"", itemsPaths, numItems))
+    const auto previous = _agentSpec->GuiPathMode;
+    _agentSpec->GuiPathMode = pathMode;
+    const auto restore = qScopeGuard([&] { _agentSpec->GuiPathMode = previous; });
     return CommonUpdateOperation(AGENT_OP_Uni, false, NULL, &actionSet, NULL, 0, progress);
     COM_TRY_END
 }

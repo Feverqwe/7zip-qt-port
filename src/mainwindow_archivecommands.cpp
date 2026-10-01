@@ -195,8 +195,8 @@ void MainWindow::updateArchiveFromDialog(const QStringList &sources,
         return;
     }
     UStringVector names;
-    for (const QString &path : relativePaths)
-        names.Add(ToUString(path));
+    for (const QString &path : sources)
+        names.Add(ToUString(QFileInfo(path).absoluteFilePath()));
     CSelectedState selection;
     panel.SaveSelectedState(selection);
     CMyComPtr<IUnknown> keepResourceAlive = resource;
@@ -206,7 +206,8 @@ void MainWindow::updateArchiveFromDialog(const QStringList &sources,
     HRESULT result;
     {
         QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
-        result = panel.CopyFrom(false, ToUString(root), names, true, &messages, actionSet);
+        result =
+            panel.CopyFrom(false, UString(), names, true, &messages, actionSet, options.PathMode);
     }
     if (result == S_OK && messages.IsEmpty()) {
         refreshCurrent(&selection);

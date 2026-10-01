@@ -322,6 +322,8 @@
     "src/CPP/7zip/UI/GUI/HashGUI.h",
     "src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.cpp",
     "src/CPP/7zip/UI/GUI/UpdateCallbackGUI2.h",
+    "src/CPP/7zip/UI/GUI/UpdateGUI.cpp",
+    "src/CPP/7zip/UI/GUI/UpdateGUI.h",
     "src/CPP/7zip/UI/GUI/resource2.h",
     "src/CPP/Common/Wildcard.cpp",
     "src/CPP/Common/Wildcard.h",

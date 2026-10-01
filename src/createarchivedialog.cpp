@@ -117,6 +117,12 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
         updateMode_->addItem("Синхронизировать", int(NCompressDialog::NUpdateMode::kSync));
         form->addRow("Режим обновления:", updateMode_);
     }
+    pathMode_ = new QComboBox(this);
+    pathMode_->setObjectName("archivePathMode");
+    pathMode_->addItem("Относительные пути", int(NWildcard::k_RelatPath));
+    pathMode_->addItem("Полные пути", int(NWildcard::k_FullPath));
+    pathMode_->addItem("Абсолютные пути", int(NWildcard::k_AbsPath));
+    form->addRow("Режим путей:", pathMode_);
     {
         // CompressDialog.rc places compression on the left and encryption on
         // the right. Keep both columns at compact sizes; scrolling is a Qt
@@ -273,6 +279,7 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
     if (updateMode_)
         options.UpdateMode =
             static_cast<NCompressDialog::NUpdateMode::EEnum>(updateMode_->currentData().toInt());
+    options.PathMode = static_cast<NWildcard::ECensorPathMode>(pathMode_->currentData().toInt());
     if (level_) {
         if (encryption_)
             options.EncryptionMethod = GetEncryptionMethodSpec();

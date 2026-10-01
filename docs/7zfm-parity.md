@@ -747,6 +747,26 @@ QFileIconProvider. Цвет/форма иконок зависят от ОС. `p
 normal/compact Qt JSON и disk/archive popup, но Windows rendered reference,
 Windows/Linux runtime и полноценные shell/namespace icons ещё не проверены.
 
+## P1-05.2 — режимы путей в Add (2026-10-01)
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/CompressDialog.rc` path-mode row,
+`CompressDialog.cpp::OnInit/OnOK`, and `CPP/Common/Wildcard.cpp::
+CCensor::AddPathsToCensor`. The Qt Add dialog offers Relative, Full and
+Absolute for a new or existing ZIP/7z. Relative stores selected names under
+their own parent; Full stores the path from the filesystem root; Absolute
+stores the leading root too. A source `CCensor` enumerates existing-archive
+items, while the backend stages an atomic new archive or update. Simple
+directory trees and empty folders are supported. The dialog's source picker
+and scroll area remain Qt adaptations.
+
+The `compression` normal/compact JSON reports at 760×720 and 640×480 show
+the path-mode row and accessible footer on macOS. Rendered Windows appearance
+and Windows/Linux runtime remain unverified. Existing-archive protected Add
+and directory filtering with a kept descendant remain P1-05.3. Absolute
+entries can be listed, but safe extraction currently rejects them; P2-07
+owns the extraction policy.
+
 ## P1-05.1 — Add в существующий ZIP/7z (2026-10-01)
 
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

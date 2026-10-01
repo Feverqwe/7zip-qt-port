@@ -8,6 +8,55 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-05.2 — режимы путей нового и существующего архива (2026-10-01)
+
+Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+Original paths and symbols: `CPP/Common/Wildcard.cpp::CCensor::{AddItem,
+AddPathsToCensor}`, `CPP/7zip/UI/Common/Update.cpp::UpdateArchive`,
+`EnumDirItems.cpp::EnumerateItems`, `CPP/7zip/UI/Agent/AgentOut.cpp::
+CAgent::DoOperation`, `ArchiveFolderOut.cpp::CAgentFolder::CommonUpdateOperation`,
+`CPP/7zip/UI/GUI/CompressDialog.cpp::OnInit/OnOK` and
+`CompressDialog.rc::IDC_COMPRESS_PATH_MODE`.
+
+The unchanged upstream `CCensor::AddPathsToCensor` and already adapted source
+`EnumerateItems` decide logical names: Relative drops the selected item's
+parent, Full retains the path without its volume/root, and Absolute retains
+the absolute name. A narrow GUI-only branch in `CAgent::DoOperation` now calls
+that original enumeration body; the existing `EnumerateItems2` route remains
+for other callers. `CAgentFolder::UpdateFromPaths` supplies the absolute
+selection and scoped path mode through local `IArchiveFolderInternal`, while
+the original pair/action/callback operation remains the authority for update
+decisions. Qt's `CreateArchiveDialog` adds the source path-mode choices and
+passes the selection through `CPanel::CopyFrom`.
+
+`ArchiveBackend` is platform integration: for a new archive it stages selected
+parents separately for Relative, the filesystem root for Full, and absolute
+names via `7zz -spf` for Absolute. The temporary archive is published only
+after every stage succeeds. The existing-archive callback adapter stages
+absolute item streams under safe temporary aliases, then asks the backend to
+rename those names to their original absolute names after delete/add. The
+backend validates both aliases and requested names, uses `-spf` for absolute
+delete/rename, and keeps all mutations in the temporary archive. These
+process and validation steps have no reusable upstream implementation because
+the project bridges the original in-process callback to `7zz`.
+
+Port scope: ZIP and 7z, new and existing archives, files and simple directory
+trees including empty directories. `FindSourceUpdatePlan` still declines an
+omitted explicit directory that contains an otherwise kept child; the CLI
+`7zz d` command removes that child too. Protected Add remains guarded, pending
+encryption-preserving update handling. Absolute archive entries are listed but
+the current safe extraction path rejects them; extraction policy belongs to
+P2-07. Full path root/UNC behavior needs Windows runtime validation. These
+branches and protected Add belong to P1-05.3 before parent acceptance.
+`clang-format` affects only the edited portions of mirrored C++ files; source
+notices remain. The baseline inventory now lists the two `UpdateGUI` files
+introduced in P1-05.1. On macOS arm64/Qt 6.11.2 the full unsandboxed gate
+passed formatting, build and 145/146 CTest cases; only `upstream_inventory`
+failed because the prior commit omitted those two entries. After this JSON
+correction, focused `upstream_inventory` and `upstream_baseline` passed.
+Focused `source_update_backend`, `ui_update_modes` and `compression` also
+passed. Windows/Linux runtime and rendered Windows appearance are unverified.
+
 ## P1-05.1 — существующий архив: update modes и compression (2026-10-01)
 
 Exact baseline: [ip7z/7zip commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).

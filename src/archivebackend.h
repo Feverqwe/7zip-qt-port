@@ -6,6 +6,7 @@
 #include <QDateTime>
 #include <QHash>
 #include <QObject>
+#include <QPair>
 #include <QProcess>
 #include <QStringList>
 #include <optional>
@@ -93,6 +94,8 @@ class ArchiveBackend : public QObject {
         QStringList removed;
         QStringList files;
         QStringList directories;
+        QList<QPair<QString, QString>> renames;
+        bool allowAbsolute = false;
         QString fileRoot;
         QString directoryRoot;
     };
@@ -114,7 +117,7 @@ class ArchiveBackend : public QObject {
     // Shared destination/path guard for the native archive callback transport.
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error) const;
-    static bool sourceUpdatePathIsSafe(const QString &path);
+    static bool sourceUpdatePathIsSafe(const QString &path, bool allowAbsolute = false);
     static bool prepareSourceSelection(const QString &archive, const QStringList &sources,
                                        QString *root, QStringList *relativePaths, QString *error);
     virtual void cancel();
@@ -162,6 +165,7 @@ class ArchiveBackend : public QObject {
         SourcePlanDelete,
         SourcePlanFiles,
         SourcePlanDirectories,
+        SourcePlanRename,
         SourceMutation,
         SourceExtract
     };
@@ -191,6 +195,12 @@ class ArchiveBackend : public QObject {
     QString archive_;
     QString createTarget_;
     QString createTemporary_;
+    struct CreateStage {
+        QString directory;
+        QStringList arguments;
+    };
+    QList<CreateStage> createStages_;
+    QString createPassword_;
     QString addBackup_;
     QString replacementEntry_;
     QString replacementRoot_;

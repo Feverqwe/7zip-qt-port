@@ -1,6 +1,7 @@
 #include "7zip/Common/FileStreams.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/Agent/UpdateCallbackAgent.h"
+#include "CPP/7zip/UI/Common/EnumDirItems.h"
 #include "CPP/7zip/UI/Common/WorkDir.h"
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
@@ -203,12 +204,19 @@ class CNativeAddWorker final : public CProgressThreadVirt {
             ui->PasswordIsDefined = true;
             ui->Password = ToUString(Password);
         }
+        if (PathMode) {
+            CompressionOptions options;
+            options.PathMode = *PathMode;
+            _resourceSpec->SetCompressionOptions(options);
+        }
         const QStringList sources = Sources.isEmpty() ? QStringList{_source} : Sources;
         const std::wstring parent = QFileInfo(sources.first()).absolutePath().toStdWString();
         std::vector<std::wstring> names;
         names.reserve(size_t(sources.size()));
         for (const QString &source : sources)
-            names.push_back(QFileInfo(source).fileName().toStdWString());
+            names.push_back(
+                (PathMode ? QFileInfo(source).absoluteFilePath() : QFileInfo(source).fileName())
+                    .toStdWString());
         std::vector<const wchar_t *> pointers;
         pointers.reserve(names.size());
         for (const std::wstring &name : names)
@@ -217,6 +225,9 @@ class CNativeAddWorker final : public CProgressThreadVirt {
             auto *agentFolder = dynamic_cast<CAgentFolder *>((IFolderFolder *)folder);
             if (!agentFolder)
                 return E_NOINTERFACE;
+            if (PathMode)
+                return agentFolder->UpdateFromPaths(pointers.data(), UInt32(pointers.size()),
+                                                    *ActionSet, *PathMode, ui);
             return agentFolder->UpdateFrom(parent.c_str(), pointers.data(), UInt32(pointers.size()),
                                            *ActionSet, ui);
         }
@@ -230,6 +241,7 @@ class CNativeAddWorker final : public CProgressThreadVirt {
     QStringList ArchivePaths;
     QString ArchiveMTimeText;
     const NUpdateArchive::CActionSet *ActionSet = nullptr;
+    std::optional<NWildcard::ECensorPathMode> PathMode;
     QString Password;
     QStringList Sources;
     CNativeAddWorker(ArchiveBackend &backend, const QString &archive, const QString &source,
@@ -247,6 +259,235 @@ class CNativeAddWorker final : public CProgressThreadVirt {
 class SourceUpdateBackendTests final : public QObject {
     Q_OBJECT
   private slots:
+    void sourcePathModeLogicalNames() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("selected.txt");
+        QVERIFY(writeFile(source, "path mode"));
+        QStringList logicalNames;
+        for (const auto mode :
+             {NWildcard::k_RelatPath, NWildcard::k_FullPath, NWildcard::k_AbsPath}) {
+            NWildcard::CCensor censor;
+            censor.AddPreItem_NoWildcard(ToUString(source));
+            censor.AddPathsToCensor(mode);
+            CDirItems items;
+            QCOMPARE(EnumerateItems(censor, mode, UString(), items), S_OK);
+            QCOMPARE(items.Items.Size(), 1u);
+            logicalNames.append(QString::fromWCharArray(items.GetLogPath(0).Ptr()));
+        }
+        QCOMPARE(logicalNames[0], QStringLiteral("selected.txt"));
+#ifndef _WIN32
+        QCOMPARE(logicalNames[1], source.mid(1));
+        QCOMPARE(logicalNames[2], source);
+#else
+        QVERIFY(logicalNames[1].endsWith(QStringLiteral("selected.txt")));
+        QCOMPARE(logicalNames[2], source);
+#endif
+    }
+    void nativeGuiPathModes_data() {
+        QTest::addColumn<int>("mode");
+        QTest::newRow("relative") << int(NWildcard::k_RelatPath);
+        QTest::newRow("full") << int(NWildcard::k_FullPath);
+        QTest::newRow("absolute") << int(NWildcard::k_AbsPath);
+    }
+    void nativeGuiPathModes() {
+        QFETCH(int, mode);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString sourceRoot = fixture.filePath("old");
+        const QString source = fixture.filePath("nested/selected.txt");
+        if (mode == int(NWildcard::k_AbsPath))
+            QVERIFY(ArchiveBackend::sourceUpdatePathIsSafe(source, true));
+        const QString archive = fixture.filePath("paths.zip");
+        QVERIFY(writeFile(QDir(sourceRoot).filePath("keep.txt"), "kept"));
+        QVERIFY(runEngine(sourceRoot, {"a", "-tzip", "--", archive, "keep.txt"}));
+        QVERIFY(writeFile(source, "path mode"));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, source, "zip");
+        worker.RootFolder = true;
+        worker.ArchivePaths = {"keep.txt"};
+        worker.ActionSet = &NUpdateArchive::k_ActionSet_Add;
+        worker.PathMode = static_cast<NWildcard::ECensorPathMode>(mode);
+        worker.DisableUserQuestions = true;
+        auto transport = worker.CreateProgressTransport();
+        QCOMPARE(worker.Create(L"Path mode", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        if (mode == int(NWildcard::k_AbsPath)) {
+            QProcess listing;
+            listing.start(enginePath(), {"l", "-slt", "--", archive});
+            QVERIFY(listing.waitForFinished(10000));
+            QCOMPARE(listing.exitCode(), 0);
+            QVERIFY(listing.readAllStandardOutput().contains("Path = " + source.toUtf8()));
+            return;
+        }
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(QDir().mkpath(extracted));
+        QVERIFY(runEngine(extracted, {"x", "-y", "--", archive}));
+        QString logical = QStringLiteral("selected.txt");
+        if (mode == int(NWildcard::k_FullPath)) {
+#ifdef _WIN32
+            logical = QFileInfo(source).absoluteFilePath().mid(QDir::rootPath().length());
+#else
+            logical = QFileInfo(source).absoluteFilePath().mid(1);
+#endif
+        }
+        QCOMPARE(readFile(QDir(extracted).filePath(logical)), QByteArray("path mode"));
+        QCOMPARE(readFile(QDir(extracted).filePath("keep.txt")), QByteArray("kept"));
+    }
+    void nativeGuiDirectoryPathModes_data() {
+        QTest::addColumn<int>("mode");
+        QTest::newRow("relative") << int(NWildcard::k_RelatPath);
+        QTest::newRow("full") << int(NWildcard::k_FullPath);
+        QTest::newRow("absolute") << int(NWildcard::k_AbsPath);
+    }
+    void nativeGuiDirectoryPathModes() {
+        QFETCH(int, mode);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString oldRoot = fixture.filePath("old");
+        const QString folder = fixture.filePath(QStringLiteral("папка с пробелом"));
+        const QString archive = fixture.filePath("directories.zip");
+        QVERIFY(writeFile(QDir(oldRoot).filePath("keep.txt"), "keep"));
+        QVERIFY(runEngine(oldRoot, {"a", "-tzip", "--", archive, "keep.txt"}));
+        QVERIFY(writeFile(QDir(folder).filePath(QStringLiteral("внутри/файл.txt")), "nested"));
+        QVERIFY(QDir().mkpath(QDir(folder).filePath("empty")));
+        ArchiveBackend backend(nullptr, enginePath());
+        CNativeAddWorker worker(backend, archive, folder, "zip");
+        worker.RootFolder = true;
+        worker.ArchivePaths = {"keep.txt"};
+        worker.ActionSet = &NUpdateArchive::k_ActionSet_Add;
+        worker.PathMode = static_cast<NWildcard::ECensorPathMode>(mode);
+        worker.DisableUserQuestions = true;
+        auto transport = worker.CreateProgressTransport();
+        QCOMPARE(worker.Create(L"Directory path mode", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
+        QString logical = QFileInfo(folder).fileName();
+        if (mode == int(NWildcard::k_FullPath)) {
+#ifdef _WIN32
+            logical = folder.mid(QDir::rootPath().length());
+#else
+            logical = folder.mid(1);
+#endif
+        } else if (mode == int(NWildcard::k_AbsPath))
+            logical = folder;
+        QProcess listing;
+        listing.start(enginePath(), {"l", "-slt", "--", archive});
+        QVERIFY(listing.waitForFinished(10000));
+        QCOMPARE(listing.exitCode(), 0);
+        const QByteArray contents = listing.readAllStandardOutput();
+        const QString listingText =
+            QString::fromUtf8(contents).normalized(QString::NormalizationForm_C);
+        const QString expected = logical.normalized(QString::NormalizationForm_C);
+        QVERIFY(listingText.contains("Path = " + expected + "/внутри/файл.txt"));
+        QVERIFY(listingText.contains("Path = " + expected + "/empty"));
+        if (mode != int(NWildcard::k_AbsPath)) {
+            const QString extracted = fixture.filePath("extracted");
+            QVERIFY(QDir().mkpath(extracted));
+            QVERIFY(runEngine(extracted, {"x", "-y", "--", archive}));
+            QCOMPARE(readFile(QDir(extracted).filePath(logical + "/внутри/файл.txt")),
+                     QByteArray("nested"));
+            QVERIFY(QFileInfo(QDir(extracted).filePath(logical + "/empty")).isDir());
+        }
+    }
+    void createArchivePathModes_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<int>("mode");
+        for (const QString &format : {QStringLiteral("zip"), QStringLiteral("7z")})
+            for (const auto mode :
+                 {NWildcard::k_RelatPath, NWildcard::k_FullPath, NWildcard::k_AbsPath})
+                QTest::newRow(qPrintable(format + "-" + QString::number(int(mode))))
+                    << format << int(mode);
+    }
+    void createArchivePathModes() {
+        QFETCH(QString, format);
+        QFETCH(int, mode);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("first/selected.txt");
+        const QString second = fixture.filePath("second/other.txt");
+        const QString archive = fixture.filePath("created." + format);
+        QVERIFY(writeFile(source, "first bytes"));
+        QVERIFY(writeFile(second, "second bytes"));
+        CompressionOptions options;
+        options.PathMode = static_cast<NWildcard::ECensorPathMode>(mode);
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        const QStringList sources =
+            mode == int(NWildcard::k_RelatPath) ? QStringList{source, second} : QStringList{source};
+        backend.create(archive, sources, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
+        QVERIFY2(finished.takeFirst().first().toBool(), "path-mode create failed");
+        QProcess listing;
+        listing.start(enginePath(), {"l", "-slt", "--", archive});
+        QVERIFY(listing.waitForFinished(10000));
+        QCOMPARE(listing.exitCode(), 0);
+        const QByteArray output = listing.readAllStandardOutput();
+        QString logical = QStringLiteral("selected.txt");
+        if (mode == int(NWildcard::k_FullPath)) {
+#ifdef _WIN32
+            logical = source.mid(QDir::rootPath().length());
+#else
+            logical = source.mid(1);
+#endif
+        } else if (mode == int(NWildcard::k_AbsPath))
+            logical = source;
+        QVERIFY(output.contains("Path = " + logical.toUtf8()));
+        if (mode == int(NWildcard::k_RelatPath)) {
+            QVERIFY(output.contains("Path = other.txt"));
+            const QString extracted = fixture.filePath("extracted");
+            QVERIFY(QDir().mkpath(extracted));
+            QVERIFY(runEngine(extracted, {"x", "-y", "--", archive}));
+            QCOMPARE(readFile(QDir(extracted).filePath("selected.txt")), QByteArray("first bytes"));
+            QCOMPARE(readFile(QDir(extracted).filePath("other.txt")), QByteArray("second bytes"));
+        }
+    }
+    void multiRootCreateCancelKeepsSourcesAndNoTarget() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString first = fixture.filePath("first/one.txt");
+        const QString second = fixture.filePath("second/two.bin");
+        const QString archive = fixture.filePath("cancelled.zip");
+        QVERIFY(writeFile(first, "first bytes"));
+        QVERIFY(writeFile(second, QByteArray(4 * 1024 * 1024, 'x')));
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        int stages = 0;
+        connect(&backend, &ArchiveBackend::engineStarted, this, [&] {
+            ++stages;
+            if (stages == 2)
+                backend.cancel();
+        });
+        backend.create(archive, {first, second});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
+        QCOMPARE(stages, 2);
+        QVERIFY(!finished.takeFirst().first().toBool());
+        QCOMPARE(backend.lastResult(), E_ABORT);
+        QVERIFY(!QFileInfo::exists(archive));
+        QCOMPARE(readFile(first), QByteArray("first bytes"));
+        QCOMPARE(readFile(second), QByteArray(4 * 1024 * 1024, 'x'));
+    }
+    void absolutePlanRejectsTraversalAlias() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString root = fixture.filePath("source");
+        const QString archive = fixture.filePath("original.zip");
+        const QString output = fixture.filePath("updated.zip");
+        QVERIFY(writeFile(QDir(root).filePath("keep.txt"), "keep"));
+        QVERIFY(runEngine(root, {"a", "-tzip", "--", archive, "keep.txt"}));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend::SourceUpdatePlan plan;
+        plan.files = {"keep.txt"};
+        plan.fileRoot = root;
+        plan.renames = {{"keep.txt", "/tmp/../outside.txt"}};
+        plan.allowAbsolute = true;
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.updateSourcePlan(archive, plan, output, "zip", {});
+        QCOMPARE(finished.count(), 1);
+        QVERIFY(!finished.takeFirst().first().toBool());
+        QVERIFY(!QFileInfo::exists(output));
+        QCOMPARE(readFile(archive), original);
+    }
     void initTestCase() {
         QVERIFY2(!enginePath().isEmpty(), "7zz required for local source-update fixture");
     }
@@ -311,6 +552,50 @@ class SourceUpdateBackendTests final : public QObject {
         const QString addedPath = QDir(extracted).filePath(QStringLiteral("новый файл.txt"));
         QCOMPARE(readFile(addedPath), QByteArray("added"));
         QVERIFY(!QFileInfo::exists(QDir(extracted).filePath("removed.txt")));
+    }
+    void sourcePlanStagesAbsoluteNameAndDeletesIt() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString originalRoot = fixture.filePath("old");
+        const QString stageRoot = fixture.filePath("stage");
+        const QString original = fixture.filePath("original.zip");
+        const QString updated = fixture.filePath("updated.zip");
+        const QString removed = fixture.filePath("removed.zip");
+        const QString alias = QStringLiteral("absolute-item-0");
+        const QString logical = fixture.filePath("absolute.txt");
+        QVERIFY(writeFile(QDir(originalRoot).filePath("keep.txt"), "keep"));
+        QVERIFY(runEngine(originalRoot, {"a", "-tzip", "--", original, "keep.txt"}));
+        const QByteArray originalBytes = readFile(original);
+        QVERIFY(writeFile(QDir(stageRoot).filePath(alias), "absolute bytes"));
+        ArchiveBackend::SourceUpdatePlan add;
+        add.files = {alias};
+        add.fileRoot = stageRoot;
+        add.allowAbsolute = true;
+        add.renames = {{alias, logical}};
+        ArchiveBackend backend(nullptr, enginePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.updateSourcePlan(original, add, updated, "zip", {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
+        QVERIFY2(finished.takeFirst().first().toBool(), "absolute rename stage failed");
+        QCOMPARE(readFile(original), originalBytes);
+        QProcess listing;
+        listing.start(enginePath(), {"l", "-slt", "--", updated});
+        QVERIFY(listing.waitForFinished(10000));
+        QCOMPARE(listing.exitCode(), 0);
+        QVERIFY(listing.readAllStandardOutput().contains("Path = " + logical.toUtf8()));
+        ArchiveBackend::SourceUpdatePlan drop;
+        drop.removed = {logical};
+        drop.allowAbsolute = true;
+        backend.updateSourcePlan(updated, drop, removed, "zip", {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
+        QVERIFY2(finished.takeFirst().first().toBool(), "absolute delete stage failed");
+        QProcess after;
+        after.start(enginePath(), {"l", "-slt", "--", removed});
+        QVERIFY(after.waitForFinished(10000));
+        QCOMPARE(after.exitCode(), 0);
+        const QByteArray contents = after.readAllStandardOutput();
+        QVERIFY(!contents.contains("Path = " + logical.toUtf8()));
+        QVERIFY(contents.contains("Path = keep.txt"));
     }
     void sourcePlanRejectsInvalidOptionsAndRollsBackOnCancel() {
         QTemporaryDir fixture;

@@ -94,6 +94,74 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(runEngine(fixture.path(), {"l", "-slt", "--", archive}, &listing));
         QVERIFY(listing.contains("Method = Store"));
     }
+
+    void addDialogUsesSelectedPathMode_data() {
+        QTest::addColumn<int>("pathMode");
+        QTest::newRow("full") << int(NWildcard::k_FullPath);
+        QTest::newRow("absolute") << int(NWildcard::k_AbsPath);
+    }
+    void addDialogUsesSelectedPathMode() {
+        QFETCH(int, pathMode);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("nested/selected.txt");
+        const QString archive = fixture.filePath("paths.zip");
+        QVERIFY(QDir().mkpath(QFileInfo(source).absolutePath()));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("full path"), qint64(9));
+        file.close();
+        ArchiveBackend backend;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.create(archive, {source});
+        QVERIFY(finished.wait(30000));
+        QVERIFY(finished.takeFirst().first().toBool());
+        MainWindow window(&backend);
+        window.openArchive(archive);
+        window.show();
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        bool accepted = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            if (!dialog)
+                return;
+            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
+            auto *available = dialog->findChild<QListWidget *>("availableSources");
+            auto *pathModeControl = dialog->findChild<QComboBox *>("archivePathMode");
+            if (!directory || !available || !pathModeControl) {
+                dialog->reject();
+                return;
+            }
+            directory->setText(QFileInfo(source).absolutePath());
+            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
+            for (int row = 0; row < available->count(); ++row)
+                if (QFileInfo(available->item(row)->data(Qt::UserRole).toString()).fileName() ==
+                    QStringLiteral("selected.txt"))
+                    available->item(row)->setSelected(true);
+            if (available->selectedItems().size() != 1) {
+                dialog->reject();
+                return;
+            }
+            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+            pathModeControl->setCurrentIndex(pathModeControl->findData(pathMode));
+            dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            accepted = dialog->result() == QDialog::Accepted;
+        });
+        action(window, "addArchiveAction")->trigger();
+        QVERIFY(accepted);
+        QByteArray listing;
+        QVERIFY(runEngine(fixture.path(), {"l", "-slt", "--", archive}, &listing));
+        const QString selectedPath = QFileInfo(source).canonicalFilePath();
+        QString logical = selectedPath;
+        if (pathMode == int(NWildcard::k_FullPath)) {
+#ifdef _WIN32
+            logical = selectedPath.mid(QDir::rootPath().length());
+#else
+            logical = selectedPath.mid(1);
+#endif
+        }
+        QVERIFY(listing.contains("Path = " + logical.toUtf8()));
+    }
 };
 
 QTEST_MAIN(UiUpdateModesTests)

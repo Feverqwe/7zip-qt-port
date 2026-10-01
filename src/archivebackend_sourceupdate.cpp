@@ -5,14 +5,31 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 
 bool IsSafePath(const UString &path);
 
-bool ArchiveBackend::sourceUpdatePathIsSafe(const QString &path) {
+bool ArchiveBackend::sourceUpdatePathIsSafe(const QString &path, bool allowAbsolute) {
     const auto value = path.toStdWString();
     const UString native(value.c_str());
-    if (path.contains(QChar(0)) || !IsSafePath(native))
-        return false;
+    if (path.contains(QChar(0)) || !IsSafePath(native)) {
+        if (!allowAbsolute || !QDir::isAbsolutePath(path))
+            return false;
+        const QString normalized = QDir::fromNativeSeparators(path);
+        if (normalized.split('/').contains("..") || normalized.split('/').contains("."))
+            return false;
+        QString relative;
+#ifdef Q_OS_WIN
+        const QRegularExpression rootPattern(R"(^(?:[A-Za-z]:/|//[^/]+/[^/]+/))");
+        const auto match = rootPattern.match(normalized);
+        if (!match.hasMatch())
+            return false;
+        relative = normalized.mid(match.capturedLength());
+#else
+        relative = normalized.mid(1);
+#endif
+        return !relative.isEmpty() && sourceUpdatePathIsSafe(relative);
+    }
     UStringVector parts;
     SplitPathToParts(native, parts);
     UStringVector corrected = parts;
@@ -183,15 +200,26 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         emit finished(false, QStringLiteral("Подготовленные источники недоступны."));
         return;
     }
-    for (const QStringList *group : {&plan.removed, &plan.files, &plan.directories}) {
-        for (const QString &path : *group) {
+    for (const QString &path : plan.removed)
+        if (!sourceUpdatePathIsSafe(path, plan.allowAbsolute) || path.contains('*') ||
+            path.contains('?') || path.startsWith('@')) {
+            emit finished(false, QStringLiteral("Небезопасный путь обновления архива."));
+            return;
+        }
+    for (const QStringList *group : {&plan.files, &plan.directories})
+        for (const QString &path : *group)
             if (!sourceUpdatePathIsSafe(path) || path.contains('*') || path.contains('?') ||
                 path.startsWith('@')) {
                 emit finished(false, QStringLiteral("Небезопасный путь обновления архива."));
                 return;
             }
+    for (const auto &rename : plan.renames)
+        if (!sourceUpdatePathIsSafe(rename.first) ||
+            !sourceUpdatePathIsSafe(rename.second, plan.allowAbsolute) ||
+            (!plan.files.contains(rename.first) && !plan.directories.contains(rename.first))) {
+            emit finished(false, QStringLiteral("Небезопасное переименование обновления."));
+            return;
         }
-    }
     for (const QString &path : plan.files) {
         const QFileInfo staged(fileRoot.filePath(path));
         if (!staged.isFile() || staged.isSymLink() ||
@@ -232,6 +260,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         startSourcePlanStage(Job::SourcePlanFiles);
     else if (!plan.directories.isEmpty())
         startSourcePlanStage(Job::SourcePlanDirectories);
+    else if (!plan.renames.isEmpty())
+        startSourcePlanStage(Job::SourcePlanRename);
     else {
         lastResult_ = S_OK;
         sourcePlanPassword_.clear();
@@ -241,7 +271,16 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
 
 void ArchiveBackend::startSourcePlanStage(Job stage) {
     pendingPassword_ = sourcePlanPassword_;
+    if (stage == Job::SourcePlanRename) {
+        QStringList args = {"rn", "-y", "-bsp1", "-bb1", "-spd", "-spf", "--", createTemporary_};
+        for (const auto &rename : sourcePlan_.renames)
+            args << rename.first << rename.second;
+        start(stage, args);
+        return;
+    }
     QStringList args = {stage == Job::SourcePlanDelete ? "d" : "a", "-y", "-bsp1", "-bb1", "-spd"};
+    if (stage == Job::SourcePlanDelete && sourcePlan_.allowAbsolute)
+        args << "-spf";
     if (stage != Job::SourcePlanDelete)
         args << "-t" + sourcePlanFormat_;
     if (stage != Job::SourcePlanDelete)

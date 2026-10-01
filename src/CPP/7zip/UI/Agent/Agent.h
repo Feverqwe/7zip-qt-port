@@ -1,6 +1,7 @@
 // Adapted from 7-Zip UI/Agent/Agent.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
+#include "../../../Common/Wildcard.h"
 #include "7zip/UI/Common/UpdateAction.h"
 #include "7zip/UI/FileManager/IFolder.h"
 #include "AgentProxy.h"
@@ -10,6 +11,7 @@
 #include "IFolderArchive.h"
 #include "archivebackend.h"
 #include "qtprogresstransport.h"
+#include <optional>
 
 struct CProxyItem {
     unsigned DirIndex;
@@ -28,9 +30,13 @@ enum AGENT_OP {
 };
 Z7_PURE_INTERFACES_BEGIN
 #define Z7_IFACEM_IArchiveFolderInternal(x)                                                        \
-    x(GetAgentFolder(CAgentFolder **agentFolder)) x(UpdateFrom(                                    \
-        const wchar_t *fromFolderPath, const wchar_t *const *itemsPaths, UInt32 numItems,          \
-        const NUpdateArchive::CActionSet &actionSet, IProgress *progress))
+    x(GetAgentFolder(CAgentFolder **agentFolder))                                                  \
+        x(UpdateFrom(const wchar_t *fromFolderPath, const wchar_t *const *itemsPaths,              \
+                     UInt32 numItems, const NUpdateArchive::CActionSet &actionSet,                 \
+                     IProgress *progress))                                                         \
+            x(UpdateFromPaths(const wchar_t *const *itemsPaths, UInt32 numItems,                   \
+                              const NUpdateArchive::CActionSet &actionSet,                         \
+                              NWildcard::ECensorPathMode pathMode, IProgress *progress))
 Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 
@@ -135,6 +141,7 @@ class CAgent final : public IUnknown, public CMyUnknownImp {
     UString ArchiveType;
     FStringVector _names;
     FString _folderPrefix; // for new files from disk
+    std::optional<NWildcard::ECensorPathMode> GuiPathMode;
     CObjectVector<UString> m_PropNames;
     CObjectVector<NWindows::NCOM::CPropVariant> m_PropValues;
     UString _archiveFilePath;

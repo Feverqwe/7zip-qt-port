@@ -165,38 +165,62 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                           .arg(target.absoluteFilePath()));
         return;
     }
-    QString root = QFileInfo(sources.first()).absolutePath();
-    while (!root.isEmpty()) {
-        bool containsAll = true;
-        for (const QString &source : sources) {
-            const QString relative =
-                QDir(root).relativeFilePath(QFileInfo(source).absoluteFilePath());
-            if (relative == ".." || relative.startsWith("../") || QDir::isAbsolutePath(relative)) {
-                containsAll = false;
-                break;
+    QList<CreateStage> stages;
+    QSet<QString> logicalNames;
+    auto appendStage = [&stages](const QString &directory, const QString &name) {
+        for (CreateStage &stage : stages)
+            if (stage.directory == directory) {
+                stage.arguments.append(name);
+                return;
             }
-        }
-        if (containsAll)
-            break;
-        const QString parent = QFileInfo(root).absolutePath();
-        if (parent == root)
-            break;
-        root = parent;
-    }
-    QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix};
-    arguments += compressionArguments;
-    arguments << "--";
+        stages.append({directory, {name}});
+    };
     for (const QString &source : sources) {
-        if (!QFileInfo::exists(source)) {
+        const QFileInfo info(source);
+        if (!info.exists()) {
             emit finished(false, QStringLiteral("Файл или папка не найдены: %1").arg(source));
             return;
         }
-        const QString relative = QDir(root).relativeFilePath(QFileInfo(source).absoluteFilePath());
-        if (relative == ".." || relative.startsWith("../") || QDir::isAbsolutePath(relative)) {
-            emit finished(false, QStringLiteral("Файлы должны находиться на одном диске."));
+        const QString absolute = QDir::fromNativeSeparators(info.absoluteFilePath());
+        QString directory;
+        QString logical;
+        if (options.PathMode == NWildcard::k_RelatPath) {
+            directory = info.absolutePath();
+            logical = info.fileName();
+        } else if (options.PathMode == NWildcard::k_FullPath) {
+#ifdef Q_OS_WIN
+            const QRegularExpression rootPattern(R"(^(?:[A-Za-z]:/|//[^/]+/[^/]+/))");
+            const auto match = rootPattern.match(absolute);
+            if (!match.hasMatch()) {
+                emit finished(false, QStringLiteral("Не удалось определить корень источника."));
+                return;
+            }
+            directory = match.captured();
+#else
+            directory = QDir::rootPath();
+#endif
+            logical = absolute.mid(directory.length());
+        } else if (options.PathMode == NWildcard::k_AbsPath) {
+            directory = QDir::rootPath();
+            logical = absolute;
+        } else {
+            emit finished(false, QStringLiteral("Недопустимый режим путей архива."));
             return;
         }
-        arguments << relative;
+        if (logical.isEmpty() || logical.contains('*') || logical.contains('?') ||
+            logical.startsWith('@') ||
+            (options.PathMode != NWildcard::k_AbsPath && !sourceUpdatePathIsSafe(logical))) {
+            emit finished(false, QStringLiteral("Недопустимый путь источника: %1").arg(source));
+            return;
+        }
+        const QString key = logical.normalized(QString::NormalizationForm_C).toCaseFolded();
+        if (logicalNames.contains(key)) {
+            emit finished(
+                false, QStringLiteral("Источники дают одинаковое имя в архиве: %1").arg(logical));
+            return;
+        }
+        logicalNames.insert(key);
+        appendStage(directory, logical);
     }
     for (const QString &source : sources) {
         const QFileInfo info(source);
@@ -214,9 +238,20 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     createTarget_ = target.absoluteFilePath();
     createTemporary_ = target.absolutePath() + "/.sevenzip-" +
                        QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
-    arguments.insert(arguments.indexOf("--") + 1, createTemporary_);
+    for (CreateStage &stage : stages) {
+        QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-spd", "-t" + suffix};
+        arguments += compressionArguments;
+        if (options.PathMode == NWildcard::k_AbsPath)
+            arguments << "-spf";
+        arguments << "--" << createTemporary_;
+        arguments += stage.arguments;
+        stage.arguments = arguments;
+    }
+    createStages_ = stages;
+    createPassword_ = password;
+    const CreateStage first = createStages_.takeFirst();
     pendingPassword_ = password;
-    start(Job::Create, arguments, root);
+    start(Job::Create, first.arguments, first.directory);
 }
 
 void ArchiveBackend::add(const QString &archive, const QStringList &sources) {

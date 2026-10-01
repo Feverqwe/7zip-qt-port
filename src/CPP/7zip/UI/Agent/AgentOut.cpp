@@ -4,6 +4,7 @@
 // Other mandatory operations remain recorded in the audit.
 #include "../../../Common/Wildcard.h"
 #include "../../../Windows/FileDir.h"
+#include "../Common/EnumDirItems.h"
 #include "7zip/Archive/Common/ItemNameUtils.h"
 #include "7zip/Common/FileStreams.h"
 #include "7zip/Compress/CopyCoder.h"
@@ -253,7 +254,13 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
         FString folderPrefix = _folderPrefix;
         NFile::NName::NormalizeDirPathPrefix(folderPrefix);
 
-        RINOK(dirItems.EnumerateItems2(folderPrefix, _updatePathPrefix, _names, requestedPaths))
+        if (GuiPathMode) {
+            NWildcard::CCensor censor;
+            FOR_VECTOR(i, _names) censor.AddPreItem_NoWildcard(fs2us(_names[i]));
+            censor.AddPathsToCensor(*GuiPathMode);
+            RINOK(EnumerateItems(censor, *GuiPathMode, _updatePathPrefix, dirItems))
+        } else
+            RINOK(dirItems.EnumerateItems2(folderPrefix, _updatePathPrefix, _names, requestedPaths))
 
         if (_updatePathPrefix_is_AltFolder) {
             // The current portable CDirItem has no alt-stream flag.
