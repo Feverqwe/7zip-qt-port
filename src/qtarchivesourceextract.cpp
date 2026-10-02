@@ -7,6 +7,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "archivebackend.h"
+#include "archivenativeopen.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
 #include "qtownedtempdir.h"
@@ -143,6 +144,11 @@ void QtArchiveFileResource::AttachExtractService(ArchiveBackend &backend, const 
     _extract = [this, &backend, format](IInArchive *metadata, const UInt32 *indices, UInt32 count,
                                         Int32 testMode, IArchiveExtractCallback *callback) {
         COM_TRY_BEGIN
+        if (_nativeOpen && _nativeOpen->hasNativeRarExtractor()) {
+            if (!HasNativeExtractService())
+                return E_FAIL;
+            return backend.extractNativeArchive(_nativeOpen, indices, count, testMode, callback);
+        }
         return ExtractItems(backend, EnginePath, format, metadata, indices, count, testMode,
                             callback, _sync, Info.encrypted);
         COM_TRY_END

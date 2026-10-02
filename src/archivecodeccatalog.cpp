@@ -1,4 +1,5 @@
 #include "archivecodeccatalog.h"
+#include "7zip/Archive/Rar/Rar5Handler.h"
 #include "7zip/Archive/Zip/ZipHandler.h"
 #include "Common/StringConvert.h"
 #include "qtlanguageservices.h"
@@ -7,6 +8,7 @@
 namespace {
 IInArchive *CreateSourceZipReader() { return new NArchive::NZip::CHandler; }
 IOutArchive *CreateSourceZipWriter() { return new NArchive::NZip::CHandler; }
+IInArchive *CreateSourceRarReader() { return new NArchive::NRar5::CHandler; }
 } // namespace
 
 ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion) {
@@ -44,6 +46,9 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
                 format.LibIndex = -1;
                 format.CreateInArchive = CreateSourceZipReader;
                 format.CreateOutArchive = CreateSourceZipWriter;
+            } else if (format.Name.IsEqualTo("Rar5")) {
+                format.LibIndex = -1;
+                format.CreateInArchive = CreateSourceRarReader;
             }
         }
         codecs_->Formats.Sort();

@@ -1851,6 +1851,9 @@ excludes only this explicitly separated function, not the rest of the plan.
 
 ### P1-18 prerequisite — actual RAR decoder memory callbacks
 
+Historical prerequisite investigation (2026-10-01); the capability gap below
+is superseded by P1-18 implementation. Its older checks do not validate new code.
+
 Pinned `Archive/Rar/Rar5Handler.cpp::CHandler::Extract` is the actual caller of
 IArchiveRequestMemoryUseCallback (3009 and 3145). Its dictionary/header/solid
 sequence logic supplies native required/allowed sizes and flags. Our mirrored
@@ -5582,6 +5585,97 @@ Qt consumer относится к P1-01.4. Проверены `fs_folder_copy`, 
 `main_shell`/`panel_shell` JSON; полный unsandboxed `check.sh` прошёл 143/143
 CTest на macOS arm64/Qt 6.11.2, 2026-10-01. Реальный второй том,
 Windows/Linux runtime и rendered Windows reference локально не проверены.
+
+### P1-18 implementation — native RAR memory consumers
+
+Baseline: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`https://github.com/ip7z/7zip.git`. Existing adapted
+`CPP/7zip/Archive/Rar/Rar5Handler.cpp` now retains the complete original handler,
+including header parsing, Open/Extract, dictionary/memory request control flow,
+properties and BLAKE2sp/arc registration. Changes are canonical include paths,
+source notice and project formatting. It remains one authoritative module in
+the forced hash/arc registration object; a second vendored handler is not built.
+Direct baseline comparison after excluding includes/comments and normalizing
+C++ backslash-newline splices found all 16,536 functional tokens identical.
+Formatting changed macro line continuations, not their logical bodies.
+
+Exact vendored dependencies are recorded in `docs/upstream-baseline.json`:
+Archive/Common/FindSignature, Archive/HandlerCont, Rar5Handler.h/RarHeader/RarVol
+and StdAfx headers, Compress/HuffmanDecoder and Rar5Decoder, Crypto/HmacSha256
+and Rar5Aes. Existing source stream, AES and ZIP/common dependencies are reused.
+`CPP/7zip/Compress/RarCodecsRegister.cpp` copies the original RAR5 factory and
+registration macros; legacy RAR1/2/3 registrations and decoder dependencies are
+omitted and remain supplied by the official codec module. The native RAR5
+registration object is forced into consumers so original CreateCoder finds the
+copied decoder before external codecs. `cmake/native_rar.cmake` groups this
+dependency closure without reorganizing original source modules; common/RAR/ZIP
+static archive dependencies are linked through CMake.
+The first full gate exposed LoadCodecs filesystem symbols missing from
+foundation-only consumers. Existing FileDir/FileName/FileFind/FileIO/TimeUtils
+and FileDir's Qt owned-temp identity/registry dependencies now have their sole
+build owner in sevenzip_common (QtCore only), alongside original FileStreams.
+No module is copied again or rewritten; filesystem/application targets consume
+that foundation. This closes the complete handler/hash registration dependency
+graph for every consumer, not just archive UI targets.
+
+Verified module metadata retains ownership of format capabilities; only Rar5
+reader construction is replaced with the source factory. Native reader format
+indices are bounds checked. QtArchiveFileResource validates every source item
+index/path against the file-only listing before exposing native extraction.
+Mismatch refuses extraction rather than silently routing memory decisions to
+the console. ArchiveBackend calls original IInArchive::Extract; original Agent,
+FM CExtractCallbackImp::RequestMemoryUse and CMemDialog own decisions. Native
+progress uses cooperative source synchronization without requiring a child
+process. Batch opening applies original SetProperties after Open and before
+Extract because its file-only adapter has already opened the native handler;
+RAR memx/crc/mt extraction properties retain original interpretation.
+
+Deterministic stored RAR5/RAR7 fixtures declare a 2 MiB dictionary and force the
+public handler memx limit to 1 MiB. The actual handler requests the original
+required/allowed values and flags through the GUI callback: no synthetic memory
+invocation or console text parsing. A pinned libarchive compressed fixture
+checks the copied decoder against known payload size/CRC; its provenance and
+distribution notice are under `tests/fixtures/rar/`. Installed official 7zz
+26.03 refuses that compressed fixture with Unsupported Method; independent
+libarchive extraction is used where available. These checks do not establish
+RAR7 compressed interoperability, Windows/Linux runtime or rendered parity.
+Encrypted/solid and RAR multivolume GUI workflows are not established by these
+small fixtures. Original handler bodies are retained, but the file-only batch
+adapter still refuses non-.001 volume sets; the source module's full scope is
+not evidence of full workflow/platform coverage.
+P1-18 acceptance is recorded below; the additional unverified workflows above
+remain explicit limits, not evidence supplied by these fixtures.
+MainWindow root/selected Extract and Test also use the native reader for all
+overwrite modes. Original source overwrite enums remain authoritative; local
+RejectExisting validation maps to source Skip against a newly appearing file.
+Unavailable index contracts refuse commands explicitly. The existing broad
+mainwindow_archivecommands glue is kept focused on this routing change; its
+general extraction/state component split is deferred rather than reorganizing
+unrelated commands in the source-port iteration.
+
+#### P1-18 acceptance (2026-10-02)
+
+`native_rar_memory` passes35 Qt cases (28 handler Allow/Skip/Cancel/CRC rows,
+four batch remember/save/reuse/cancel cases, compressed decoder and setup).
+`native_rar_ui` passes15 Qt cases (12 actual root/selected × six overwrite
+mode/Test rows, traversal refusal and setup). Exact source requests carry
+2 MiB required/1 MiB allowed and original flags through source GUI callbacks.
+Skip preserves output, cancellation returns E_ABORT, original archives are
+unchanged; source IsOK separately reports CRC/Skip errors even when HRESULT
+is S_OK. Missing index contracts refuse actual source extraction with no output.
+Independent libarchive bytes/known CRC establish compressed RAR5 decoding;
+installed7zz still cannot supply that comparator. Actual memory dialog Extract/
+Test reports at700×460/560×460 were inspected: all visible controls fit,
+labels fit, grouping/order and single-archive hidden remember follow source.
+
+Focused direct consumer gate8/8 PASS6.96s; after foundation dependency correction,
+foundation/RAR4/4 PASS1.30s and final RAR2/2 PASS1.25s. Baseline verifier367exact/
+164adapted/3local PASS. Final unsandboxed `./scripts/check.sh` passes formatting,
+all-target build and193/193 CTest79.91s, macOS arm64 Qt6.11.2. First full gate's
+foundation linker failure was fixed before this acceptance. Windows/Linux runtime
+and rendered Windows reference remain unverified. Whole iteration local commit
+subject: `Port source RAR decoder memory requests and GUI consumers (P1-18)`.
+No helper commit, push, publication or upstream change.
 
 ## P1-06.2 — source consumers томов (принято, 2026-10-01)
 

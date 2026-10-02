@@ -272,8 +272,16 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                         QStringLiteral("Исходное извлечение для этого архива недоступно.")));
         return true;
     }
-    if (options.overwriteMode != ExtractionOptions::OverwriteMode::Ask || !resource ||
-        !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
+    const bool nativeRar = resource && resource->HasNativeRarReader();
+    if (nativeRar && !resource->HasNativeExtractService()) {
+        QMessageBox::warning(
+            this, QtLangText(IDS_PROGRESS_EXTRACTING),
+            QtLocalText("Source extraction is unavailable for this archive.",
+                        QStringLiteral("Исходное извлечение для этого архива недоступно.")));
+        return true;
+    }
+    if ((!nativeRar && options.overwriteMode != ExtractionOptions::OverwriteMode::Ask) ||
+        !resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
         return false;
     {
         QString validationError;
@@ -302,9 +310,15 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             QtArchiveBatchResult result;
             {
                 QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+                ExtractionOptions sourceOptions = options;
+                // Validation above implements RejectExisting. If a file appears
+                // afterwards, source Skip also preserves it without overwriting.
+                if (nativeRar &&
+                    sourceOptions.overwriteMode == ExtractionOptions::OverwriteMode::RejectExisting)
+                    sourceOptions.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
                 result = RunQtArchiveBatchExtract(*backend_, {archive_}, output,
                                                   password.isEmpty() ? archivePassword_ : password,
-                                                  options, this);
+                                                  sourceOptions, this);
             }
             const bool ok = result.Result == S_OK && result.CallbackOK;
             const QString message =
@@ -343,6 +357,25 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                                      : NExtract::NPathMode::kFullPaths;
         sourceOptions.NeedRegistryZone = false;
         sourceOptions.showErrorMessages = true;
+        if (nativeRar) {
+            switch (options.overwriteMode) {
+            case ExtractionOptions::OverwriteMode::Ask:
+                break;
+            case ExtractionOptions::OverwriteMode::OverwriteExisting:
+                sourceOptions.overwriteMode = NExtract::NOverwriteMode::kOverwrite;
+                break;
+            case ExtractionOptions::OverwriteMode::SkipExisting:
+            case ExtractionOptions::OverwriteMode::RejectExisting:
+                sourceOptions.overwriteMode = NExtract::NOverwriteMode::kSkip;
+                break;
+            case ExtractionOptions::OverwriteMode::RenameExtracted:
+                sourceOptions.overwriteMode = NExtract::NOverwriteMode::kRename;
+                break;
+            case ExtractionOptions::OverwriteMode::RenameExisting:
+                sourceOptions.overwriteMode = NExtract::NOverwriteMode::kRenameExisting;
+                break;
+            }
+        }
         bool usePassword = !password.isEmpty() || !archivePassword_.isEmpty();
         UString sourcePassword = ToUString(password.isEmpty() ? archivePassword_ : password);
         UStringVector messages;
@@ -374,6 +407,13 @@ void MainWindow::testArchive() {
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+    if (resource && resource->HasNativeRarReader() && !resource->HasNativeExtractService()) {
+        QMessageBox::warning(
+            this, QtLangText(IDS_PROGRESS_TESTING),
+            QtLocalText("Source extraction is unavailable for this archive.",
+                        QStringLiteral("Исходное извлечение для этого архива недоступно.")));
+        return;
+    }
     if (resource && resource->HasExtractService() && backend_->hasListedSourceArchive(archive_)) {
         previousState_ = state_;
         setState(State::Operating);

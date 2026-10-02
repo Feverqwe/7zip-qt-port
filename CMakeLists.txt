@@ -56,7 +56,7 @@ add_library(sevenzip_hash_registry OBJECT third_party/7zip/CPP/Common/CrcReg.cpp
     third_party/7zip/CPP/Common/XzCrc64Reg.cpp third_party/7zip/CPP/Common/XzCrc64Init.cpp
     third_party/7zip/CPP/Common/Xxh64Reg.cpp)
 set_target_properties(sevenzip_hash_registry PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-target_include_directories(sevenzip_hash_registry PRIVATE src third_party/7zip/CPP)
+target_include_directories(sevenzip_hash_registry PRIVATE src/CPP src third_party/7zip/CPP)
 target_link_libraries(sevenzip_hash_registry PRIVATE Qt6::Core)
 add_library(sevenzip_hash_registration INTERFACE)
 target_link_libraries(sevenzip_hash_registration INTERFACE sevenzip_hash_registry
@@ -82,6 +82,13 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/MyWindows.cpp
+    src/qtownedtempidentity.cpp src/qtownedtempidentity.h
+    src/qtownedtempregistry.cpp src/qtownedtempregistry.h
+    src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
+    src/CPP/Windows/FileName.cpp
+    third_party/7zip/CPP/Windows/FileFind.cpp
+    third_party/7zip/CPP/Windows/FileIO.cpp
+    third_party/7zip/CPP/Windows/TimeUtils.cpp
     third_party/7zip/CPP/7zip/Common/FileStreams.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp
@@ -116,6 +123,7 @@ if(WIN32)
 endif()
 
 include(cmake/native_zip.cmake)
+include(cmake/native_rar.cmake)
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/Common/ArchiveName.cpp
@@ -223,8 +231,6 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
-    src/qtownedtempidentity.cpp src/qtownedtempidentity.h
-    src/qtownedtempregistry.cpp src/qtownedtempregistry.h
     src/qtownedtempdir.cpp src/qtownedtempdir.h
     third_party/7zip/CPP/Common/Lang.cpp
     src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
@@ -255,13 +261,8 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/TextPairs.cpp
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
     src/qtvolumemounts.cpp src/qtvolumemounts.h
-    src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
-    src/CPP/Windows/FileName.cpp
     src/CPP/Windows/FileLink.cpp
-    third_party/7zip/CPP/7zip/UI/Common/PropIDUtils.cpp
-    third_party/7zip/CPP/Windows/FileFind.cpp
-    third_party/7zip/CPP/Windows/FileIO.cpp
-    third_party/7zip/CPP/Windows/TimeUtils.cpp)
+    third_party/7zip/CPP/7zip/UI/Common/PropIDUtils.cpp)
 qt_add_resources(sevenzip_filesystem upstream_languages PREFIX "/upstream/7zip/Lang"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
     FILES resources/7zip/Lang/en.ttt resources/7zip/Lang/ru.txt)
@@ -1533,6 +1534,30 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/codec_commands_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_zip_writer_tests tests/native_zip_writer_tests.cpp)
     qt_add_executable(native_comment_tests tests/native_comment_tests.cpp ${codec_update_sources})
+    qt_add_executable(native_rar_memory_tests tests/native_rar_memory_tests.cpp tests/layout_inspection.cpp ${codec_update_sources})
+    target_include_directories(native_rar_memory_tests PRIVATE src tests)
+    target_link_libraries(native_rar_memory_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(native_rar_memory_tests PRIVATE
+        "RAR_COMPRESSED_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/rar/test_read_format_rar5_compressed.rar\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_rar_memory_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_rar_memory COMMAND native_rar_memory_tests -silent)
+    set_tests_properties(native_rar_memory PROPERTIES TIMEOUT 45 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(native_rar_ui_tests tests/native_rar_ui_tests.cpp ${options_window_sources})
+    target_include_directories(native_rar_ui_tests PRIVATE src tests)
+    target_link_libraries(native_rar_ui_tests PRIVATE ${options_window_libraries})
+    target_compile_definitions(native_rar_ui_tests PRIVATE
+        "RAR_COMPRESSED_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/rar/test_read_format_rar5_compressed.rar\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_rar_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_rar_ui COMMAND native_rar_ui_tests -silent)
+    set_tests_properties(native_rar_ui PROPERTIES TIMEOUT 45 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_rar_ui.ini")
     qt_add_executable(native_comment_ui_tests tests/native_comment_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
     target_include_directories(native_comment_ui_tests PRIVATE src tests)
     target_link_libraries(native_comment_ui_tests PRIVATE ${options_window_libraries})

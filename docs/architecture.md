@@ -1,6 +1,10 @@
 # Architecture
 
 This document describes component ownership, data flow and integration boundaries.
+Original FileDir/FileName/FileFind/FileIO/TimeUtils and the Qt owned-temp
+identity/registry services used by FileDir are foundation units in
+sevenzip_common. FileStreams/LoadCodecs/source RAR handler consumers therefore
+have the same dependency closure without depending on filesystem UI modules.
 `archivebackend_sourceplan.cpp` owns local source callback-plan validation,
 KeepName output selection and asynchronous stage orchestration. Other individual
 update/mutation transports remain in archivebackend_sourceupdate.cpp. Native
@@ -13,8 +17,14 @@ the folder resource delegates archive-level properties to the native reader.
 Its stable callback proxy detaches the opening UI after Open3, since source
 volume streams can retain COpenCallbackImp. Resource/transport Close releases
 native handlers and streams before source publication or private-file cleanup.
-Item enumeration, extraction, update and reopen still use the explicit 7zz
-integration services. Missing-module callers retain process-only read fallback.
+Item enumeration, update and reopen still use explicit 7zz integration services,
+except the source ZIP comment writer. Rar5 metadata constructs the copied native
+RAR5/RAR7 reader and registered decoder. After proving identical item index/path
+order, the resource routes extraction/Test through ArchiveBackend to original
+IInArchive::Extract and source Agent/FM memory callbacks. Native RAR extraction
+uses source overwrite modes for root/batch and selected paths; a missing index
+contract is an explicit refusal. Process transports do not handle its memory
+decisions. Missing-module callers retain process-only read fallback.
 Native nested streams retain their original open-type intent (explicit *:r for
 empty native types) for process listing/extract/reopen. Process writer readiness
 refuses volume sets/native nested chains and native read-only readers; the flags

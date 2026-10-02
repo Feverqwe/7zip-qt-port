@@ -95,6 +95,9 @@ class ArchiveBackend : public QObject {
     HRESULT updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback) const;
+    HRESULT extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                 const UInt32 *indices, UInt32 count, Int32 testMode,
+                                 IArchiveExtractCallback *callback) const;
     virtual void list(const QString &archive, const QString &password = {});
     virtual void openFolder(const QString &archive, const QString &format,
                             const QString &password = {});

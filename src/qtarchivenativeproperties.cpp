@@ -5,7 +5,8 @@
 
 void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
     _nativeItemOrder = false;
-    if (!metadata || !_nativeOpen || !_nativeOpen->hasCommentWriter())
+    if (!metadata || !_nativeOpen ||
+        (!_nativeOpen->hasCommentWriter() && !_nativeOpen->hasNativeRarExtractor()))
         return;
     IInArchive *native = _nativeOpen->arc().Archive;
     UInt32 nativeCount = 0, count = 0;
@@ -32,4 +33,19 @@ IInArchive *QtArchiveFileResource::NativeItemProperties() const {
 
 bool QtArchiveFileResource::HasCommentService() const {
     return NativeItemProperties() && _nativeOpen->hasCommentWriter() && HasUpdateService();
+}
+
+bool QtArchiveFileResource::HasNativeExtractService() const {
+    return NativeItemProperties() && HasNativeRarReader();
+}
+
+bool QtArchiveFileResource::HasNativeRarReader() const {
+    return _nativeOpen && _nativeOpen->hasNativeRarExtractor();
+}
+
+bool QtArchiveFileResource::HasExtractService() const {
+    // Never silently replace a source RAR memory decision with a console one
+    // when the process-backed proxy cannot prove matching native item indexes.
+    return bool(_extract) &&
+           (!_nativeOpen || !_nativeOpen->hasNativeRarExtractor() || HasNativeExtractService());
 }

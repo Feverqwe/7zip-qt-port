@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-17 (2026-10-02):
-**29/46 закрыты, 17 остаётся**; P0: 12/12, P1: 15/18, P2: 1/10, P3: 1/6.
+Текущий счёт после P1-18 (2026-10-02):
+**30/46 закрыты, 16 остаётся**; P0: 12/12, P1: 16/18, P2: 1/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -965,8 +965,8 @@ failed because its test file disappeared. It is preserved outside this scope.
 Isolated P1-17 snapshot full gate1910 terminal0: formatting/all-target build and
 191/191 CTest PASS86.83s macOS arm64 Qt6.11.2, 2026-10-02. Снимок исключает только
 чужие runner hunks; все162 own source/build-module/test files совпадают с checkout.
-P1-17 принят целой итерацией, счёт29/46. Windows/Linux runtime и rendered Windows
-parity не проверены. Следующая итерация снятия capability prerequisite — P1-18;
+P1-17 принят целой итерацией; исторический счёт после неё29/46. Windows/Linux runtime и rendered Windows
+parity не проверены. На момент приёмки следующим prerequisite был P1-18;
 native catalog/leases и original progress callbacks доступны, actual RAR handler/
 decoder/GUI consumer ещё требуется подключить. Finder остаётся mandatory P3-03.1.
 
@@ -974,10 +974,11 @@ decoder/GUI consumer ещё требуется подключить. Finder ос
 
 **После:** P0-12, source RAR reader/decoder capability из P2-01.
 **Исторический scope:** decoder RequestMemoryUse из P1-07.2; provenance и
-подтверждённый разрыв — audit § P1-18 prerequisite. **Статус:** blocked, 2026-10-01.
+подтверждённый разрыв — audit § P1-18 prerequisite. **Статус:** done, 2026-10-02;
+source handler/decoder capability и реальные GUI consumers приняты.
 
 Исходные callers — `Rar5Handler.cpp::CHandler::Extract` (RAR5/RAR7); текущий
-mirrored модуль содержит только hash registration, а console callback внешнего
+до этой итерации mirrored модуль содержал только hash registration, а console callback внешнего
 7zz не передаёт GUI native requiredSize/allowedSize/flags/answerFlags. Перенести
 исходный handler с decoder/crypto/stream dependencies и подключить его через
 ArchiveBackend к уже перенесённому FM RequestMemoryUse/CMemDialog. Допустим
@@ -990,6 +991,18 @@ root/selected/Test/batch consumers, persistence и failure/cancel. Настро�
 P1-12 и остальные независимые P1 owners не требуют этой runtime capability;
 P3-02/05/06 требуют закрытия P1-18 для полной приёмки. Функция не отменена
 и не закрывается synthetic callback тестом.
+
+**Приёмка:** audit § P1-18 implementation/acceptance. Полный оригинальный
+Rar5Handler/decoder/crypto; actual small RAR5/RAR7 requests, original bytes/flags,
+Allow/Skip/Cancel, whole/selected Extract/Test, batch remember/save/new-callback
+reuse, CRC errors и compressed RAR5 source decoder проверены. MainWindow root/
+selected/Test используют source во всех overwrite modes, traversal и потерянный
+item contract дают отказ. Четыре actual Mem JSON700/560 inspected. Baseline367/
+164/3 verified; все16,536 functional handler tokens совпадают с baseline.
+Полный unsandboxed check.sh formatting/all-target build/193 CTest PASS79.91s
+macOS arm64 Qt6.11.2. Windows/Linux runtime/rendered reference и дополнительные
+compressed RAR7/encrypted/solid/multivolume workflows не подтверждены этими
+fixtures. Не объявлять перенос исходного модуля полной платформенной приёмкой.
 
 ## 5. P2 — расширенная функциональность и платформы (10 шагов)
 
@@ -1365,8 +1378,8 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 отдельно после проверок, включая только свои изменения. Сохранять чужие hunks,
 записывать local commit как evidence; push и публикация не разрешены.
 
-Следующий результат — итерация снятия prerequisites **P1-18** после принятого
-P1-17: actual RAR handler/decoder memory GUI consumer. P1-12/P1-13 сохраняют
+Следующий доступный результат — **P2-02**, SFX и external handlers/plugins,
+после принятого P1-18. P1-12/P1-13 сохраняют
 зависимые platform/shell функции, Finder — самостоятельный mandatory P3-03.1.
 Далее по приоритету и
 зависимостям. UX идёт вместе с каждым пакетом.

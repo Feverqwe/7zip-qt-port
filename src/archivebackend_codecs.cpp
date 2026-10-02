@@ -62,6 +62,14 @@ HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeO
     return writer->UpdateItems(output, count, callback);
 }
 
+HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                             const UInt32 *indices, UInt32 count, Int32 testMode,
+                                             IArchiveExtractCallback *callback) const {
+    if (!reader || !reader->hasNativeRarExtractor())
+        return E_NOTIMPL;
+    return reader->arc().Archive->Extract(indices, count, testMode, callback);
+}
+
 bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
     if (codecDiscoveryActive_)
         return false;

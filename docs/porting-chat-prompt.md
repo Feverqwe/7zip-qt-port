@@ -13,16 +13,28 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-18: итерация снятия source RAR handler/decoder memory GUI prerequisite.
-Native catalog/module lease, original progress и callback infrastructure доступны
-после P2-01/P1-17. Inspect original Rar5Handler Extract/SetProperties, decoder/
-crypto/stream dependencies перед интеграцией; нынешний mirrored Rar5Handler
-содержит только hash registration. Портировать actual source ArchiveBackend →
-GUI RequestMemoryUse/CMemDialog consumer, root/selected/Test/batch, Allow/Skip/
-Cancel/remember/persistence. Synthetic tests не закрывают scope. Safe stored
-RAR5/RAR7 fixtures declared2MiB dictionary проверены независимым7zz; handler
-memx1MiB вызывает actual refusal. Не разрешать гигантские dictionaries для tests;
-малого forced handler limit достаточно. Это ещё не GUI consumer/приёмка P1-18.
+P2-02: supported SFX и external handlers/plugins с source bodies, consumers,
+платформенными adapters, UX и проверками. Inspect upstream CompressDialog,
+UpdateGUI/Update, LoadCodecs и FM FilePlugins/RegistryPlugins перед изменением.
+Нативный console SFX macOS/Linux не равен Windows GUI SFX: выбрать и записать
+реально поддерживаемый scope; N/A не заменяет неперенесённую functional branch.
+
+P1-18 принят целой итерацией: полный source Rar5Handler/native decoder/crypto,
+actual RAR5/RAR7 required2MiB/allowed1MiB/flags через FM memory callback;
+Allow/Skip/Cancel, whole/selected Extract/Test, batch remember/save/new-callback
+reuse и CRC errors, compressed RAR5 size/CRC/independent libarchive проверены.
+MainWindow root/selected/Test все шесть overwrite modes без console fallback,
+traversal и потерянный item contract дают отказ. Four actual Mem JSON700/560
+reviewed; baseline367exact/164adapted/3local verified,16,536 handlerfunctional
+tokens identical. Финальный unsandboxed check.sh formatting/all-target build/
+193 CTest PASS79.91s macOSarm64Qt6.11.2 2026-10-02; первый foundation linker
+failure исправлен до приёмки. Whole commit subject:
+Port source RAR decoder memory requests and GUI consumers (P1-18).
+Counts30/46,16remain; P0 12/12,P1 16/18,P2 1/10,P3 1/6. Windows/Linux runtime/
+rendered reference и additional compressedRAR7/encrypted/solid/multivolume
+workflows unverified. Finder сохраняется отдельным mandatory P3-03.1.
+Не разрешать giant dictionaries в tests: малого forced handler limit достаточно.
+No push/publication/upstream edits.
 
 P1-17 принят целой итерацией: source ZIP handler/writer/dependencies и original
 CommentItem/SetProperty/ChangeComment, actual EN/RU plain/AES command, publication/
@@ -32,7 +44,7 @@ all-target build/191 CTest PASS86.83s macOSarm64Qt6.11.2 2026-10-02, baseline351
 163/3. All162 own source/build-module/test files совпадают с checkout. Shared
 gate43923 passed191/19288.64s: только чужой runner_vm missingfile; foreign hunks
 сохранены и не входят в итерацию. Four Combo EN/RU360/260 JSON reviewed.
-Counts29/46,17remain; P0 12/12,P1 15/18,P2 1/10,P3 1/6. Windows/Linux runtime и
+Historical counts after P1-17:29/46,17remain; P0 12/12,P1 15/18,P2 1/10,P3 1/6. Windows/Linux runtime и
 rendered Windows parity unverified; native Finder отдельно mandatory P3-03.1.
 Whole iteration commit subject: Port source ZIP item comments and GUI workflow (P1-17).
 No push/publication/upstream edits.

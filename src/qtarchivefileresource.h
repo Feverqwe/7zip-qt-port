@@ -58,6 +58,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT CloseNativeOpen();
     void BindNativeItemOrder(IFolderFolder *metadata);
     bool HasCommentService() const;
+    bool HasNativeExtractService() const;
+    bool HasNativeRarReader() const;
     IInArchive *NativeItemProperties() const;
     HRESULT Spool(IInStream *stream, IProgress *progress);
     HRESULT SpoolToOwnedFile(IInStream *stream, const QString &path, IProgress *progress);
@@ -97,7 +99,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool HasUpdateService() const;
     bool RequiresOuterOpen() const;
     QString TransportFormat() const;
-    bool HasExtractService() const { return bool(_extract); }
+    bool HasExtractService() const;
     HRESULT Update(ISequentialOutStream *output, IInArchive *metadata, UInt32 count,
                    IArchiveUpdateCallback *callback);
     HRESULT Extract(IInArchive *metadata, const UInt32 *indices, UInt32 count, Int32 testMode,

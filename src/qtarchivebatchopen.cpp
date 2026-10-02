@@ -2,6 +2,7 @@
 #include "7zip/IPassword.h"
 #include "7zip/IProgress.h"
 #include "7zip/UI/Common/DefaultName.h"
+#include "7zip/UI/Common/SetProperties.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/Common/Wildcard.h"
@@ -52,6 +53,11 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
     if (!resource || !agent->GetArchiveProperties())
         return E_FAIL;
+    // Source OpenArchive applies COpenOptions properties to the native handler.
+    // The file-only folder stage has already opened it; RAR extraction options
+    // (memx/crc/mt) remain applicable before its original Extract call.
+    if (options.props && resource->HasNativeExtractService())
+        RINOK(SetProperties(resource->NativeItemProperties(), *options.props))
     CArc &arc = link.Arcs.AddNew();
     arc.Archive = agent->GetArchiveProperties();
     // Process-owned archives do not share COpenOptions::codecs. The resource

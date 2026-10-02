@@ -1,5 +1,27 @@
 # Сверка с Windows 7zFM
 
+## P1-18 — запрос памяти RAR (2026-10-02)
+
+Эталон — `Rar5Handler.cpp::CHandler::Extract`, FM
+`ExtractCallback.cpp::RequestMemoryUse`, `MemDialog.cpp/.rc` baseline
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Required/allowed bytes и flags поступают
+из исходного обработчика. Allow, Skip и Cancel сохраняют исходные решения;
+remember применяется к текущему пакету, сохранённый GB-лимит — к следующей
+операции. Single-archive запрос без item index скрывает remember как в source;
+MultiArcMode показывает его. Округление небольшого тестового лимита до 1 GB
+принадлежит исходному диалогу, не означает выделения такого объёма памяти.
+
+Root Extract использует исходный ExtractGUI/batch, selected — PanelCopy/Agent,
+Test — Panel::TestArchives. Все режимы перезаписи RAR используют source пути;
+RejectExisting проверяется до начала операции и сохраняет вновь появившийся
+файл через source Skip. Несовпадение native item order вызывает явный отказ.
+Native progress синхронизируется с исходным worker без child process.
+Qt адаптирует presentation и хранение настроек; Windows/Linux runtime и
+rendered Windows parity остаются непроверенными. Четыре actual Mem JSON
+700×460/560×460 Extract/Test inspected, видимые controls и labels помещаются.
+Полный gate formatting/build/193 CTest PASS79.91s на macOS arm64 Qt6.11.2;
+это приёмка P1-18, не итоговая платформенная приёмка всего плана.
+
 ## P1-17 — комментарий элемента ZIP (2026-10-02)
 
 Эталон — `PanelOperations.cpp::ChangeComment`, `ComboDialog.cpp/.rc`,

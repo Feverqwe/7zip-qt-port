@@ -5,6 +5,22 @@ project's CTest gate. See `~/.codex/skills/runners/references/create.md` for
 host/guest startup checks and own versus communal state. VM preparation alone
 does not prove OS installation or compiler/Qt readiness.
 
+P1-18 focused suites are `native_rar_memory` and `native_rar_ui`.
+The first invokes actual source Rar5Handler with stored RAR5/RAR7 2 MiB dictionary
+and public forced memx1 MiB: whole/selected Extract/Test Allow/Skip/Cancel,
+exact bytes/flags, CRC failures, source ExtractGUI two-archive remember/save/reuse
+and cancellation. It also decodes pinned compressed test data against recorded
+size/CRC and independent bsdtar when available (installed7zz lacks compressed
+RAR support). The second exercises MainWindow root/selected Extract/Test with
+all six overwrite modes, records any console fallback and refuses traversal.
+No giant dictionary is allowed; no synthetic RequestMemoryUse invocation
+substitutes for a handler request. Reports `rar-memory-{0,1}-{700,560}.json`
+describe actual Extract/Test dialogs; hidden remember follows original flags.
+P1-18 final unsandboxed check.sh passes formatting, all-target build and193/193
+CTest79.91s (macOS arm64 Qt6.11.2,2026-10-02), after fixing the first gate's
+foundation linker dependency failure. Baseline367exact/164adapted/3local verified.
+Windows/Linux and rendered Windows parity remain unverified.
+
 P1-17 final unsandboxed check.sh on isolated own-scope snapshot passed formatting,
 all-target build and191/191 CTest86.83s, macOS arm64 Qt6.11.2, 2026-10-02.
 Shared checkout passed191/19288.64s, only unrelated runner_vm failed because its

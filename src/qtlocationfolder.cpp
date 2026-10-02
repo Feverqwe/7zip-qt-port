@@ -13,7 +13,8 @@
 std::unique_ptr<IQtProgressTransport>
 CAgentFolder::CreateProgressTransport(CProgressDialog &dialog) {
     auto *resource = dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource());
-    return resource ? resource->CreateProgressTransport(dialog) : nullptr;
+    return resource ? resource->CreateProgressTransport(dialog, resource->HasNativeExtractService())
+                    : nullptr;
 }
 
 std::unique_ptr<IQtProgressTransport>

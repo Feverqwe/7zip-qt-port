@@ -253,5 +253,5 @@ Z7_COM7F_IMF(QtArchiveFolderManager::GetIconPath(const wchar_t *, BSTR *iconPath
 
 std::unique_ptr<IQtProgressTransport>
 QtArchiveFolderManager::CreateProgressTransport(CProgressDialog &dialog) {
-    return std::make_unique<ArchiveProgressTransport>(dialog, _backend);
+    return std::make_unique<ArchiveProgressTransport>(dialog, _backend, true);
 }
