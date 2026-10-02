@@ -1,5 +1,10 @@
 # Regression strategy
 
+VM orchestration belongs to the global `runners` skill and is outside this
+project's CTest gate. See `~/.codex/skills/runners/references/create.md` for
+host/guest startup checks and own versus communal state. VM preparation alone
+does not prove OS installation or compiler/Qt readiness.
+
 P1-17 final unsandboxed check.sh on isolated own-scope snapshot passed formatting,
 all-target build and191/191 CTest86.83s, macOS arm64 Qt6.11.2, 2026-10-02.
 Shared checkout passed191/19288.64s, only unrelated runner_vm failed because its
