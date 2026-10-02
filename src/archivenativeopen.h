@@ -29,5 +29,6 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }
     bool hasCommentWriter() const;
     bool hasNativeRarExtractor() const;
+    bool hasNativeHashExtractor() const;
     QString transportType() const { return transportType_; }
 };

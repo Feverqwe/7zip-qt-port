@@ -1,4 +1,5 @@
 #pragma once
+#include "Common/MyWindows.h"
 #include "qtfilemanagercommandservices.h"
 #include <QHash>
 #include <QList>
@@ -88,6 +89,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
         bool filesystem = false, archive = false, writable = false, mutationWritable = false;
         bool nested = false, root = false;
         bool comment = false;
+        QHash<unsigned, bool> hashMethods;
         bool selected = false, one = false, oneFile = false, operated = false, focused = false;
         bool focusedFile = false, folderSize = false;
         bool split = false, combine = false, entries = false, rows = false, foldersHistory = false;

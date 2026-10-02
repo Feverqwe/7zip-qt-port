@@ -1,5 +1,26 @@
 # Regression strategy
 
+P2-03 accepted checks: `native_hash_workflow` exercises complete source HashCalc
+scan totals, known digests, multiple methods/`*`, pause/cancel, Hash file writer,
+reader and verifier (good/CRC/read failure/Cancel), plus original HashCalcGUI.
+`checksum` checks backend source hashing and actual FS/archive actions, encrypted
+ZIP, wrong password, password cancellation and corrupted stored ZIP. The source
+checksum command has a modal scan/hash/result lifecycle; there is no second
+CLI hash job. `archive_selection_runtime` checks original source indices across
+four views and ordinary/flat modes. Flat folder selection intentionally does not
+include descendants; select flat file items explicitly. `binding_lifecycle`
+checks deferred close while source worker owns the panel and no stale-owner
+restart. `filesystem_selection_runtime` checks real source hash results after
+forged display paths across all four views and ordinary/flat modes; its modal
+lifecycle is bounded by a45s CTest timeout. `native_hash_ui` uses the catalog's copied Hash handler through real
+MainWindow Test: success/CRC/missing/unsafe manifest paths, no engine Test/extract,
+and unchanged fixture bytes. Missing module skips are not platform acceptance.
+Run codec/native opening, source extraction and RAR direct consumers after changes
+to the shared catalog or callback boundary. Final macOS full gate199/199PASS79.48s,
+then final localized fixes' five direct consumers5/5PASS2.79s. Linux12/12PASS3.82s
+and final5/5PASS3.28s, Windows13/13PASS13.04s, all focused Qt cases zero skipped,
+2026-10-03. Full Windows/Linux plan acceptance and rendered parity remain P3.
+
 P2-02 is accepted within its recorded scope (2026-10-03). Prepare the pinned official native module with
 `scripts/build-sfx.sh` and dynamic codec runtime with
 `scripts/build-codec-runtime.sh` before interpreting SFX/external suites: missing

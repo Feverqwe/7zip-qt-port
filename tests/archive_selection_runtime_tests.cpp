@@ -1,26 +1,26 @@
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "window_state_support.h"
+#include <QTreeWidget>
 
 class PathHashBackend : public ControlledBackend {
   public:
-    void hash(const QStringList &paths, const QString &method) override {
-        hashPaths = paths;
-        hashMethod = method;
-        ++hashCalls;
-        hashRunning = true;
+    void extractSourceEntry(const QString &archive, const QString &entry, const QString &output,
+                            const QString &, const QString &password) override {
+        streamEntries.append(entry);
+        streamPaths.append(output);
+        extract(archive, output, {entry}, password);
+        QTimer::singleShot(0, this, [this, output] {
+            QFile file(output);
+            if (!file.open(QIODevice::WriteOnly) || file.write("fixture") != 7)
+                fail("Cannot prepare stream fixture");
+            else {
+                file.close();
+                completeExtraction();
+            }
+        });
     }
-    bool busy() const override { return hashRunning || ControlledBackend::busy(); }
-    void cancel() override {
-        hashRunning = false;
-        ControlledBackend::cancel();
-    }
-    void completeHash() {
-        hashRunning = false;
-        emit finished(true, QStringLiteral("Fixture hash complete."));
-    }
-    QStringList hashPaths;
-    QString hashMethod;
-    int hashCalls = 0;
-    bool hashRunning = false;
+    QStringList streamEntries;
+    QStringList streamPaths;
 };
 
 class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSupport {
@@ -82,20 +82,30 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
                                                     QItemSelectionModel::Rows);
         corruptPresentationPath(window, directoryRow);
         corruptPresentationPath(window, rootRow);
+        int resultRows = 0;
+        QTimer closeResults;
+        connect(&closeResults, &QTimer::timeout, &window, [&] {
+            if (auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget())) {
+                resultRows =
+                    dialog->findChild<QTreeWidget *>("propertiesList")->topLevelItemCount();
+                dialog->accept();
+            }
+        });
+        closeResults.start(1);
         action(window, "hashSHA256Action")->trigger();
-        QCOMPARE(backend.lastSelected, (QStringList{"root.bin", directory + "/inside.txt"}));
-        const QDir extracted(backend.lastExtractDestination);
-        QVERIFY(extracted.exists());
-        backend.completeExtraction();
-        QCOMPARE(backend.hashCalls, 1);
-        QCOMPARE(backend.hashMethod, QString("SHA256"));
-        QStringList expected = {extracted.filePath(directory), extracted.filePath("root.bin")};
-        QStringList actual = backend.hashPaths;
+        closeResults.stop();
+        QVERIFY(resultRows > 0);
+        QStringList expected = {directory + "/inside.txt", "root.bin"};
+        // Original Agent::Extract does not recurse selected folders in flat
+        // mode. Descendant files must be selected as their own flat items.
+        if (flat)
+            expected = {"root.bin"};
+        QStringList actual = backend.streamEntries;
         expected.sort();
         actual.sort();
         QCOMPARE(actual, expected);
-        backend.completeHash();
-        QVERIFY(!QFileInfo::exists(extracted.path()));
+        for (const QString &path : backend.streamPaths)
+            QVERIFY(!QFileInfo::exists(QFileInfo(path).absolutePath()));
         QVERIFY(action(window, "hashSHA256Action")->isEnabled());
         action(window, "flatViewAction")->setChecked(false);
     }
@@ -192,8 +202,7 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         QCOMPARE(backend.removeCalls, 0); // Cancelled move must not remove archive entries.
         action(window, "hashSHA256Action")->trigger();
         QCOMPARE(backend.extractCalls, 4);
-        QCOMPARE(backend.lastSelected, expected);
-        backend.cancel();
+        QCOMPARE(backend.lastSelected, QStringList{"root.bin"}); // First source stream cancels.
         QVERIFY(action(window, "hashSHA256Action")->isEnabled());
         action(window, "flatViewAction")->setChecked(false);
     }

@@ -56,3 +56,13 @@ bool ArchiveNativeOpen::hasNativeRarExtractor() const {
     const auto &format = formats[unsigned(arc().FormatIndex)];
     return format.Name.IsEqualTo("Rar5") && format.LibIndex < 0;
 }
+
+bool ArchiveNativeOpen::hasNativeHashExtractor() const {
+    if (!link_.IsOpen)
+        return false;
+    const auto &formats = catalog_->nativeCodecs().Formats;
+    if (arc().FormatIndex < 0 || unsigned(arc().FormatIndex) >= formats.Size())
+        return false;
+    const auto &format = formats[unsigned(arc().FormatIndex)];
+    return format.Flags_HashHandler() && format.LibIndex < 0;
+}

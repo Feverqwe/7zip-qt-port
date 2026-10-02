@@ -232,7 +232,7 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
             #endif
             */
 
-            extracter.Hash.SetMethods(EXTERNAL_CODECS_VARS_G options.hashMethods);
+            RINOK(extracter.Hash.SetMethods(options.ExternalCodecs, options.hashMethods))
             extracter.ExtractCallbackSpec->SetHashMethods(&extracter.Hash);
         } else if (options.testMode) {
             extracter.ExtractCallbackSpec->SetHashCalc(&extracter.Hash);

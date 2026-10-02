@@ -2,6 +2,19 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+P2-03: source PanelCrc owns panel checksum routing and filesystem scan/read;
+PanelCopy/ExtractCallback hash the selected archive stream. MainWindow supplies
+only the retained backend catalog provider and Qt operation lifetime. Backend
+hash/hashMethods use an owned QtArchiveHashOperation thread around complete source
+HashCalc; thread adapters forward progress/pause/cancel and never implement hashes.
+HashCalc and its directory/link dependencies belong to sevenzip_common, HashGUI
+to sevenzip_panel. Exact original digest registration remains the sole algorithm
+owner. The complete source Hash reader/writer/verifier is attached to the catalog;
+native manifest Test uses ArchiveBackend's typed extraction boundary after source
+item-order verification and a local safe-read path guard. Catalog images outlive
+all retained IHasher/handler instances. File-only engine streams can use a private
+spool at the extraction boundary; application-level checksum staging is removed.
+
 P2-02: ArchiveEngineLocation selects a deployed official dynamic `7z` client
 when available, with an explicit engine-path override and standalone `7zz` fallback.
 The runtime builder snapshots the pinned original Console and Format7zF makefiles;

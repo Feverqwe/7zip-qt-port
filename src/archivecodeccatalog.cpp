@@ -1,6 +1,7 @@
 #include "archivecodeccatalog.h"
 #include "7zip/Archive/Rar/Rar5Handler.h"
 #include "7zip/Archive/Zip/ZipHandler.h"
+#include "CPP/7zip/UI/Common/HashCalc.h"
 #include "Common/StringConvert.h"
 #include "archivecodecimage.h"
 #include "qtlanguageservices.h"
@@ -74,6 +75,8 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
                 format.CreateInArchive = CreateSourceRarReader;
             }
         }
+        Codecs_AddHashArcHandler(codecs_);
+        codecs_->NeedSetLibCodecs = true;
         codecs_->Formats.Sort();
     }
 }

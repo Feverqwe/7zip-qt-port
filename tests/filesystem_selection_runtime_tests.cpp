@@ -1,3 +1,6 @@
+#include "7zip/UI/FileManager/PropertyNameRes.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "window_state_support.h"
 
 class FilesystemPathBackend : public ControlledBackend {
@@ -141,13 +144,25 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         }
         QStringList expected = {root.filePath(name), second};
         expected.sort();
+        QHash<QString, QString> hashResults;
+        QTimer closeResults;
+        connect(&closeResults, &QTimer::timeout, this, [&] {
+            auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            FOR_VECTOR(i, dialog->Strings)
+            hashResults.insert(ToQString(dialog->Strings[i]), ToQString(dialog->Values[i]));
+            dialog->accept();
+        });
+        closeResults.start(1);
         action(window, "hashSHA256Action")->trigger();
-        QCOMPARE(backend.hashCalls, 1);
-        QCOMPARE(backend.hashMethod, QString("SHA256"));
-        QStringList actual = backend.hashPaths;
-        actual.sort();
-        QCOMPARE(actual, expected);
-        emit backend.finished(true, QStringLiteral("Fixture hash complete."));
+        closeResults.stop();
+        // Forged display paths would fail to read. The source panel indices
+        // must instead hash both real files, including ordinary folder children.
+        QCOMPARE(hashResults.value(ToQString(LangString(IDS_PROP_FILES))), QString("2"));
+        QVERIFY(hashResults.value(ToQString(LangString(IDS_PROP_SIZE))).startsWith("28"));
+        QVERIFY(!hashResults.contains(ToQString(LangString(IDS_PROP_NUM_ERRORS))));
+        QCOMPARE(backend.hashCalls, 0);
         QTRY_VERIFY(action(window, "createArchiveAction")->isEnabled());
 
         QStringList dialogSources;

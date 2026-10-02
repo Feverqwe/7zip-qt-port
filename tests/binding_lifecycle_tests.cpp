@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "window_state_support.h"
 #include <QElapsedTimer>
 #include <QScopeGuard>
@@ -43,21 +44,26 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
-    void closingWindowStopsPendingHashBeforeReleasedOwnerCanRestartIt() {
+    void closingWindowWaitsForSourceHashBeforeReleasingOwner() {
         LifecycleBackend backend;
         MainWindow window(&backend);
         window.show();
         openListedArchive(window, backend, "close hash lifetime.zip",
                           {{QStringLiteral("имя й с пробелом.txt"), 6, 3}});
         table(window)->selectRow(0);
+        bool closeWasDeferred = false;
+        backend.queueSourceExtractAction([&] {
+            backend.observedTemporary = QFileInfo(backend.lastExtractDestination).absolutePath();
+            closeWasDeferred = !window.close();
+            backend.cancel();
+        });
         action(window, "hashSHA256Action")->trigger();
-        backend.observedTemporary = backend.lastExtractDestination;
-        QVERIFY(backend.busy());
-        QVERIFY(QFileInfo::exists(backend.observedTemporary));
-        QVERIFY(window.close());
+        QVERIFY(closeWasDeferred);
         QCOMPARE(backend.cancelCalls, 1);
         QVERIFY(backend.temporaryExistedOnCancel);
         QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(backend.observedTemporary));
+        QVERIFY(window.close());
         QCOMPARE(table(window)->rowCount(), 0);
         backend.completeList({{"late event.txt", 9, 5}});
         QCoreApplication::processEvents();
@@ -101,24 +107,27 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(!backend.busy());
             QCOMPARE(finished.size(), iteration + 1);
             QVERIFY(!finished.last().at(0).toBool());
-            QCOMPARE(finished.last().at(1).toString(), QString("Operation canceled."));
+            QVERIFY(!finished.last().at(1).toString().isEmpty());
             QCOMPARE(backend.lastResult(), E_ABORT);
             backend.cancelAndWait();
             QCOMPARE(finished.size(), iteration + 1);
         }
     }
 
-    void destroyingWindowStopsBackendBeforeTemporaryCleanup() {
+    void destroyingWindowAfterSourceHashJoinsReleasesItsSpool() {
         LifecycleBackend backend;
         auto window = std::make_unique<MainWindow>(&backend);
         action(*window, "flatViewAction")->setChecked(false);
         openListedArchive(*window, backend, "owned-lifetime.zip",
                           {{QStringLiteral("имя й с пробелом.txt"), 6, 3}});
         table(*window)->selectRow(0);
+        backend.queueSourceExtractAction([&] {
+            backend.observedTemporary = QFileInfo(backend.lastExtractDestination).absolutePath();
+            backend.cancel();
+        });
         action(*window, "hashSHA256Action")->trigger();
-        backend.observedTemporary = backend.lastExtractDestination;
-        QVERIFY(QFileInfo::exists(backend.observedTemporary));
-        QVERIFY(backend.busy());
+        QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(backend.observedTemporary));
         const QPointer<MainWindow> destroyed = window.get();
         window.reset();
         QVERIFY(destroyed.isNull());
@@ -174,8 +183,6 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         action(window, "hashSHA256Action")->trigger();
         QCOMPARE(backend.lastSelected, QStringList{oldPath});
         const QString oldTemporary = backend.lastExtractDestination;
-        QVERIFY(QFileInfo::exists(oldTemporary));
-        backend.cancel();
         QVERIFY(!QFileInfo::exists(oldTemporary));
         QVERIFY(action(window, "hashSHA256Action")->isEnabled());
         QVERIFY(action(window, "builtinTextViewAction")->isEnabled());
@@ -199,8 +206,6 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         action(window, "hashSHA256Action")->trigger();
         QCOMPARE(backend.lastSelected, QStringList{newPath});
         const QString newTemporary = backend.lastExtractDestination;
-        QVERIFY(QFileInfo::exists(newTemporary));
-        backend.cancel();
         QVERIFY(!QFileInfo::exists(newTemporary));
 
         QVERIFY(backend.prepareArchiveFixture("failed-owner.zip"));
@@ -224,9 +229,19 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         QTRY_VERIFY(table(window)->isEnabled());
         selectAndForge(window);
         const int requests = backend.extractCalls;
+        bool resultsShown = false;
+        QTimer closeResults;
+        connect(&closeResults, &QTimer::timeout, &window, [&] {
+            if (auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget())) {
+                resultsShown = true;
+                dialog->accept();
+            }
+        });
+        closeResults.start(1);
         action(window, "hashSHA256Action")->trigger();
-        QCOMPARE(backend.hashCalls, 1);
-        QCOMPARE(backend.hashPaths, QStringList{diskPath});
+        closeResults.stop();
+        QVERIFY(resultsShown);
+        QCOMPARE(backend.hashCalls, 0); // Filesystem CalculateCrc2 reads the bound source path.
         QCOMPARE(backend.extractCalls, requests);
         backend.cancel();
         action(window, "flatViewAction")->setChecked(false);

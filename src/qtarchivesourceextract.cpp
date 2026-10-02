@@ -144,7 +144,8 @@ void QtArchiveFileResource::AttachExtractService(ArchiveBackend &backend, const 
     _extract = [this, &backend, format](IInArchive *metadata, const UInt32 *indices, UInt32 count,
                                         Int32 testMode, IArchiveExtractCallback *callback) {
         COM_TRY_BEGIN
-        if (_nativeOpen && _nativeOpen->hasNativeRarExtractor()) {
+        if (_nativeOpen &&
+            (_nativeOpen->hasNativeRarExtractor() || _nativeOpen->hasNativeHashExtractor())) {
             if (!HasNativeExtractService())
                 return E_FAIL;
             return backend.extractNativeArchive(_nativeOpen, indices, count, testMode, callback);

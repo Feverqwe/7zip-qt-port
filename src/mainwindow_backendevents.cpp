@@ -86,18 +86,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (sourceArchiveProgress_)
         return; // Source worker owns completion until its modal lifecycle joins.
-    if (startPendingHash(ok))
-        return;
-    if (pendingHashExtraction_) {
-        pendingHashExtraction_ = false;
-        hashSelection_.clear();
-        hashTemporary_.reset();
-    }
-    const bool hashFinished = hashing_;
-    if (hashing_) {
-        hashing_ = false;
-        hashTemporary_.reset();
-    }
     if (startPendingArchiveMove(ok))
         return;
     const std::optional<unsigned> transferDestination = transferDestinationPanel_;
@@ -119,11 +107,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
     appendJournal((ok ? QtLocalText("Result: ", QStringLiteral("Результат: "))
                       : QtLocalText("Error: ", QStringLiteral("Ошибка: "))) +
                   resultMessage);
-    if (hashFinished && ok)
-        QTimer::singleShot(0, this, [this] {
-            if (!app_.QtOperations().closed())
-                showJournal();
-        });
     const bool hadProgress = progress_;
     const bool canceled = result == E_ABORT;
     if (hadProgress && !ok && !canceled)
@@ -138,22 +121,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
     statusBar()->showMessage(resultMessage);
     if (!ok && !hadProgress && !messageDisplayed && !canceled)
         QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
-}
-
-bool MainWindow::startPendingHash(bool ok) {
-    if (pendingHashExtraction_ && ok) {
-        pendingHashExtraction_ = false;
-        QStringList files;
-        for (const QString &entry : hashSelection_)
-            files << QDir(hashTemporary_->path()).filePath(entry);
-        hashSelection_.clear();
-        closeProgressDialog();
-        begin(QtLangText(IDS_CHECKSUM_CALCULATING), hashMethod_, true);
-        hashing_ = true;
-        backend_->hash(files, hashMethod_);
-        return true;
-    }
-    return false;
 }
 
 bool MainWindow::startPendingArchiveMove(bool ok) {

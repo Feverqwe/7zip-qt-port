@@ -4,6 +4,7 @@
 // narrow presentation/operation adapters around the partial source panel.
 #pragma once
 
+#include "../../../../../third_party/7zip/C/Alloc.h"
 #include "../../../Common/Wildcard.h"
 #include "7zip/Archive/IArchive.h"
 #include "7zip/PropID.h"
@@ -32,6 +33,23 @@
 #include <optional>
 
 class CFolderHistory;
+struct CExternalCodecs;
+
+// Original Panel.h worker buffer, shared by the source CRC worker.
+class CMyBuffer {
+    void *_data;
+
+  public:
+    CMyBuffer() : _data(NULL) {}
+    operator void *() { return _data; }
+    bool Allocate(size_t size) {
+        if (_data)
+            return false;
+        _data = ::MidAlloc(size);
+        return _data != NULL;
+    }
+    ~CMyBuffer() { ::MidFree(_data); }
+};
 struct CAppState;
 class CFastFolders;
 class CListViewDialog;
@@ -116,6 +134,8 @@ struct CCopyToOptions {
     NExtract::NPathMode::EEnum pathMode;
     NExtract::NOverwriteMode::EEnum overwriteMode;
     UStringVector hashMethods;
+    // Borrowed only while source CopyTo joins its worker; the caller retains the catalog.
+    const CExternalCodecs *ExternalCodecs = nullptr;
     CVirtFileSystem *VirtFileSystemSpec;
     CCopyToOptions()
         : streamMode(false), moveMode(false), testMode(false), extractMode(false),
@@ -315,6 +335,7 @@ class CPanel : public QObject {
     bool _showRealFileIcons = false;
     UInt32 GetListViewMode() const { return _listViewMode; }
     bool GetFlatModeForArc() const { return _flatModeForArc; }
+    bool GetFlatMode() const { return Is_IO_FS_Folder() ? _flatModeForDisk : _flatModeForArc; }
     void SetFlatModeForArc(bool enabled) { _flatModeForArc = enabled; }
     void SetFlatModeForDisk(bool enabled) { _flatModeForDisk = enabled; }
     // Qt notification adapters replace the Win32 OnNotify entry point.

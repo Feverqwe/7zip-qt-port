@@ -235,9 +235,11 @@ struct CHashPair {
           Size_from_Arc(0), Size_from_Disk(0) {}
 };
 
-Z7_CLASS_IMP_CHandler_IInArchive_3(IArchiveGetRawProps,
+Z7_CLASS_IMP_CHandler_IInArchive_4(IArchiveGetRawProps,
                                    /* public IGetArchiveHashHandler, */
-                                   IOutArchive, ISetProperties) bool _isArc;
+                                   IOutArchive, ISetProperties,
+                                   ISetCompressCodecsInfo) CExternalCodecs _hashCodecs;
+bool _isArc;
 bool _supportWindowsBackslash;
 bool _crcSize_WasSet;
 bool _is_CksumMode;

@@ -3,6 +3,7 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "7zip/UI/GUI/ExtractRes.h"
+#include "CPP/7zip/UI/Common/HashCalc.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "CPP/7zip/UI/GUI/resource2.h"
@@ -22,36 +23,23 @@ void MainWindow::calculateHash(const QString &method) {
     if ((state_ != State::Filesystem && state_ != State::Viewing) ||
         sourceOperatedIndices().IsEmpty())
         return;
-    hashMethod_ = method;
     previousState_ = state_;
-    if (state_ == State::Filesystem) {
-        const QStringList paths = selectedFilesystemPaths();
-        if (paths.isEmpty())
-            return;
-        hashing_ = true;
-        setState(State::Operating);
-        begin(QtLangText(IDS_CHECKSUM_CALCULATING), method);
-        backend_->hash(paths, method);
-        return;
-    }
-    hashSelection_ = selectedArchiveItemsPaths();
-    const QStringList entries = selectedArchivePaths();
-    if (entries.isEmpty())
-        return;
-    hashTemporary_ = std::make_unique<QtOwnedTempDir>();
-    if (!hashTemporary_->isValid()) {
-        hashTemporary_.reset();
-        QMessageBox::warning(this, QtLangText(IDS_CHECKSUM_INFORMATION),
-                             QtLocalText("Could not create temporary folder.",
-                                         QStringLiteral("Не удалось создать временную папку.")));
-        return;
-    }
-    pendingHashExtraction_ = true;
     setState(State::Operating);
-    begin(QtLocalText("Extracting for checksum calculation",
-                      QStringLiteral("Извлечение для расчёта контрольных сумм")),
-          archive_);
-    backend_->extract(archive_, hashTemporary_->path(), entries, archivePassword_);
+    HRESULT result;
+    {
+        // The immutable catalog must outlive its borrowed hash-provider interfaces.
+        const auto catalog = backend_->codecCatalog();
+        CExternalCodecs providers;
+        QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+        result = backend_->loadHashProviders(providers);
+        if (result == S_OK)
+            result = app_.CalculateCrc2(ToUString(method), &providers);
+    }
+    if (!app_.QtOperations().closed()) {
+        setState(previousState_);
+        if (result != S_OK && result != E_ABORT)
+            app_.GetFocusedPanel().MessageBox_Error_HRESULT(result);
+    }
 }
 
 void MainWindow::openArchiveFile(const QString &entry) {

@@ -626,10 +626,17 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
     arc.PhySize_Defined = false;
     if (auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource)) {
         RINOK(resource->ConfigureArc(arc))
+        _isHashHandler = resource->HasNativeHashReader();
     }
     _archiveLink.IsOpen = true;
     ArchiveType = archiveType;
     _archiveFilePath = arc.Path;
+    _hashBaseFolderPrefix.Empty();
+    FString dirPrefix, fileName;
+    if (NWindows::NFile::NDir::GetFullPathAndSplit(us2fs(_archiveFilePath), dirPrefix, fileName)) {
+        NWindows::NFile::NName::NormalizeDirPathPrefix(dirPrefix);
+        _hashBaseFolderPrefix = dirPrefix;
+    }
     NWindows::NFile::NFind::CFileInfo fi;
     _attrib = fi.Find(us2fs(_archiveFilePath)) ? fi.GetWinAttrib() : (DWORD)-1;
     _engineResource = engineResource;

@@ -1,4 +1,5 @@
 #pragma once
+struct CExternalCodecs;
 
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "processpause.h"
@@ -14,6 +15,7 @@
 #include <optional>
 class QtArchiveVolumeOutput;
 class QtArchiveCreationLifecycle;
+class QtArchiveHashOperation;
 class ArchiveCodecCatalog;
 class ArchiveSfxModule;
 class ArchiveCodecProbe;
@@ -112,6 +114,8 @@ class ArchiveBackend : public QObject {
     // this archive, independent of the backend's last UI listing.
     virtual void testSourceArchive(const QString &archive, const QString &password);
     virtual void hash(const QStringList &paths, const QString &method);
+    void hashMethods(const QStringList &paths, const QStringList &methods);
+    HRESULT loadHashProviders(CExternalCodecs &providers) const;
     virtual void create(const QString &archive, const QStringList &sources,
                         const QString &password = {}, bool encryptHeaders = false,
                         const CompressionOptions &options = {});
@@ -275,6 +279,11 @@ class ArchiveBackend : public QObject {
     CRecordVector<UInt64> createVolumeSizes_;
     std::unique_ptr<QtArchiveVolumeOutput> volumeOutput_;
     std::unique_ptr<QtArchiveCreationLifecycle> creationLifecycle_;
+    std::unique_ptr<QtArchiveHashOperation> hashOperation_;
+    quint64 hashGeneration_ = 0;
+    void finishHashOperation();
+    HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,
+                                    UInt32 count) const;
     QString addBackup_;
     QString replacementEntry_;
     QString replacementRoot_;

@@ -313,13 +313,15 @@ void MainWindow::renameSelected() {
     renameOriginalPath_ = paths.first();
     renameSourceIndex_ = item->data(Qt::UserRole + 6).toUInt();
     renameActivationPending_ = true;
+    const QString nameHint =
+        archive ? ToQString(app_.GetFocusedPanel().GetItemName(indices[0])) : QString();
     if (viewStack_->currentWidget() == iconList_) {
         const QModelIndex modelIndex = table_->model()->index(row, 0);
         iconList_->scrollTo(modelIndex);
         iconList_->edit(modelIndex);
         if (archive)
             if (auto *editor = iconList_->findChild<QLineEdit *>()) {
-                editor->setText(paths.first().section('/', -1));
+                editor->setText(nameHint);
                 editor->selectAll();
             }
     } else {
@@ -327,7 +329,7 @@ void MainWindow::renameSelected() {
         table_->editItem(item);
         if (archive)
             if (auto *editor = table_->findChild<QLineEdit *>()) {
-                editor->setText(paths.first().section('/', -1));
+                editor->setText(nameHint);
                 editor->selectAll();
             }
     }

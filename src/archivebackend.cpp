@@ -6,6 +6,7 @@
 #include "archiveenginelocation.h"
 #include "processpriority.h"
 #include "qtarchivecreationlifecycle.h"
+#include "qtarchivehashoperation.h"
 #include "qtarchivevolumeoutput.h"
 #include "qtlanguageservices.h"
 
@@ -83,6 +84,10 @@ bool ArchiveBackend::busy() const {
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
 HRESULT ArchiveBackend::setPaused(bool paused) {
+    if (hashOperation_) {
+        hashOperation_->setPaused(paused);
+        return S_OK;
+    }
     if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
         creationLifecycle_->setPaused(paused);
         return S_OK;
@@ -98,8 +103,9 @@ HRESULT ArchiveBackend::setPaused(bool paused) {
 
 HRESULT ArchiveBackend::setBackground(bool background) {
     // The source progress dialog already sets this application's priority.
-    // The volume worker runs in that process rather than a separate CLI child.
-    if (volumeOutput_ || job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)
+    // Native workers run in that process rather than a separate CLI child.
+    if (hashOperation_ || volumeOutput_ || job_ == Job::CreatePrepare ||
+        job_ == Job::CreateDeleteInputs)
         return S_OK;
     if (process_.state() != QProcess::Running)
         return E_FAIL;
@@ -459,40 +465,15 @@ void ArchiveBackend::testSourceArchive(const QString &archive, const QString &pa
 }
 
 void ArchiveBackend::hash(const QStringList &paths, const QString &method) {
-    if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         QStringLiteral("Другая операция ещё выполняется.")));
-        return;
-    }
-    static const QStringList methods = {"CRC32",    "CRC64",    "XXH64",  "MD5",
-                                        "SHA1",     "SHA256",   "SHA384", "SHA512",
-                                        "SHA3-256", "BLAKE2sp", "*"};
-    if (!methods.contains(method) || paths.isEmpty()) {
-        emit finished(false,
-                      QtLocalText("No files or hash method selected.",
-                                  QStringLiteral("Не выбраны файлы или метод хеширования.")));
-        return;
-    }
-    for (const QString &path : paths) {
-        const QFileInfo info(path);
-        if (!info.exists() || info.isSymLink()) {
-            emit finished(false,
-                          QtLocalText("File is missing or is a link: %1",
-                                      QStringLiteral("Файл отсутствует или является ссылкой: %1"))
-                              .arg(path));
-            return;
-        }
-    }
-    QStringList arguments = {"h", "-bsp1", "-bb1", "-spd", "-scrc" + method, "--"};
-    arguments += paths;
-    pendingPassword_.clear();
-    start(Job::Hash, arguments);
+    hashMethods(paths, {method});
 }
 
 void ArchiveBackend::cancel() {
     if (!busy())
         return;
     cancelled_ = true;
+    if (hashOperation_)
+        hashOperation_->cancel();
     if (creationLifecycle_)
         creationLifecycle_->cancel();
     if (volumeOutput_)
@@ -508,6 +489,10 @@ void ArchiveBackend::cancel() {
 void ArchiveBackend::cancelAndWait() {
     if (busy())
         cancel();
+    if (hashOperation_) {
+        hashOperation_->wait();
+        finishHashOperation();
+    }
     if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
         creationLifecycle_->wait();
         finishCreationLifecycle();

@@ -144,7 +144,6 @@ class MainWindow : public QMainWindow {
     bool extractWithSource(const QString &destination, bool onlySelected, const QString &password,
                            const ExtractionOptions &options, const QStringList &names,
                            const CRecordVector<UInt32> *explicitIndices = nullptr);
-    bool startPendingHash(bool ok);
     bool startPendingArchiveMove(bool ok);
     bool finishArchiveState(bool ok);
     void finishViewExtraction(bool ok);
@@ -401,11 +400,6 @@ class MainWindow : public QMainWindow {
     QAction *diffFiles_ = nullptr;
     QAction *properties_ = nullptr;
     QAction *hashActions_[11]{};
-    bool pendingHashExtraction_ = false;
-    bool hashing_ = false;
-    QString hashMethod_;
-    QStringList hashSelection_;
-    std::unique_ptr<QtOwnedTempDir> hashTemporary_;
     QAction *createFolder_ = nullptr;
     QAction *createFile_ = nullptr;
     QAction *refresh_ = nullptr;

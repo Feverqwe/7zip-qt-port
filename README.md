@@ -4,12 +4,19 @@
 для Windows, macOS и Linux. Цель — перенос исходного кода с адаптацией UI;
 архивные форматы и сжатие обеспечивает официальный движок 7-Zip.
 
+P2-03 принят: исходные PanelCrc/HashCalc/HashGUI заменяют прежнюю checksum
+orchestration; выбор файлов, scan/read, методы и окно результатов идут через
+перенесённые source bodies. Hash-файлы проверяет исходный Hash handler.
+Полный macOS gate199/199 PASS79.48s; финальные direct consumers5/5,
+Windows13/13 и Linux12/12 плюс финальные5/5 прошли без пропусков (2026-10-03).
+План закрыт на32/46; следующим остаётся P2-04 Benchmark.
+
 P2-02 принят: исходные SFX naming/method/update и загрузка внешних Codecs/Formats
 подключены к форме и backend. Windows создаёт GUI SFX `.exe`, macOS/Linux —
 нативный console SFX; single/split, AES, отмена и native extraction проверены.
 Внешние модули используют отдельный immutable runtime и исходный SetCodecs.
 Полный macOS gate197/197 PASS107.31s; focused Windows7/7 и Linux9/9 прошли
-(2026-10-03). План закрыт на31/46; полная платформенная и итоговая приёмка открыты.
+(2026-10-03). Полная платформенная и итоговая приёмка открыты.
 
 P1-18 принят на macOS: исходный RAR5/RAR7 reader и decoder подключены внутри приложения.
 При доступном проверенном codec module извлечение и Test получают запросы памяти

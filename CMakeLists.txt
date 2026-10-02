@@ -73,6 +73,12 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/7zip/Common/CreateCoder.cpp
     third_party/7zip/CPP/7zip/Common/FilterCoder.cpp
     src/CPP/7zip/UI/Common/HashCalc.cpp
+    third_party/7zip/CPP/Common/DynLimBuf.cpp
+    src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
+    src/CPP/7zip/UI/Common/SortUtils.cpp
+    src/CPP/Windows/FileLink.cpp
+    third_party/7zip/CPP/7zip/Common/UniqBlocks.cpp
+    third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     src/CPP/7zip/UI/Common/LoadCodecs.cpp src/CPP/7zip/UI/Common/LoadCodecs.h
     third_party/7zip/CPP/7zip/UI/Common/DefaultName.cpp
     src/processpriority.cpp src/processpriority.h
@@ -106,6 +112,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC src/CPP third_party/7zip/CPP PRIVATE src)
+target_include_directories(sevenzip_common PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 target_compile_definitions(sevenzip_common PUBLIC Z7_EXTERNAL_CODECS)
 target_compile_definitions(sevenzip_hash_registry PRIVATE Z7_EXTERNAL_CODECS)
@@ -126,6 +133,7 @@ include(cmake/native_zip.cmake)
 include(cmake/native_rar.cmake)
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/FileManager/PanelCrc.cpp
     src/CPP/7zip/UI/Common/ArchiveName.cpp
     src/qtpaneldragmodel.h
     src/qtpaneldragtransport.cpp src/qtpaneldragtransport.h
@@ -235,6 +243,7 @@ endif()
 
 add_library(sevenzip_filesystem STATIC
     src/archivesfxmodule.cpp src/archivesfxmodule.h
+    src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
     src/archiveenginelocation.cpp src/archiveenginelocation.h
     src/qtownedtempdir.cpp src/qtownedtempdir.h
     third_party/7zip/CPP/Common/Lang.cpp
@@ -244,8 +253,6 @@ add_library(sevenzip_filesystem STATIC
     "${resource_strings_header}"
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
     src/CPP/7zip/UI/Common/Update.cpp src/CPP/7zip/UI/Common/Update.h
-    src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
-    src/CPP/7zip/UI/Common/SortUtils.cpp
     src/qtarchivedeleteinputs.cpp src/qtarchivedeleteinputs.h
     src/qtarchivecreationlifecycle.cpp src/qtarchivecreationlifecycle.h
     src/CPP/7zip/Common/MultiOutStream.cpp
@@ -259,8 +266,6 @@ add_library(sevenzip_filesystem STATIC
     src/archivecodecprobe.cpp src/archivecodecprobe.h
     third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
     third_party/7zip/CPP/7zip/UI/Common/SetProperties.cpp
-    third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
-    third_party/7zip/CPP/7zip/Common/UniqBlocks.cpp
     third_party/7zip/CPP/7zip/Common/FilePathAutoRename.cpp
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
     src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp
@@ -268,7 +273,6 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/TextPairs.cpp
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
     src/qtvolumemounts.cpp src/qtvolumemounts.h
-    src/CPP/Windows/FileLink.cpp
     third_party/7zip/CPP/7zip/UI/Common/PropIDUtils.cpp)
 qt_add_resources(sevenzip_filesystem upstream_languages PREFIX "/upstream/7zip/Lang"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
@@ -603,6 +607,10 @@ if(BUILD_TESTING)
     qt_add_executable(native_hash_bundle_tests tests/native_hash_bundle_tests.cpp)
     target_link_libraries(native_hash_bundle_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME native_hash_bundle COMMAND native_hash_bundle_tests -silent)
+    qt_add_executable(native_hash_workflow_tests tests/native_hash_workflow_tests.cpp)
+    target_link_libraries(native_hash_workflow_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME native_hash_workflow COMMAND native_hash_workflow_tests -silent)
+    set_tests_properties(native_hash_workflow PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 60)
     qt_add_executable(hash_results_tests tests/hash_results_tests.cpp tests/layout_inspection.cpp)
     target_link_libraries(hash_results_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME hash_results COMMAND hash_results_tests -silent)
@@ -1240,7 +1248,7 @@ if(BUILD_TESTING)
     target_include_directories(filesystem_selection_runtime_tests PRIVATE src tests)
     target_link_libraries(filesystem_selection_runtime_tests PRIVATE sevenzip_panel sevenzip_filesystem Qt6::Test)
     add_test(NAME filesystem_selection_runtime COMMAND filesystem_selection_runtime_tests -silent)
-    set_tests_properties(filesystem_selection_runtime PROPERTIES ENVIRONMENT
+    set_tests_properties(filesystem_selection_runtime PROPERTIES TIMEOUT 45 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/filesystem-selection-runtime-settings.ini")
     target_link_libraries(property_formatting_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME property_formatting COMMAND property_formatting_tests -silent)
@@ -1460,7 +1468,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp src/archivebackend_sourceplan.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
-            src/archivebackend_creation.cpp)
+            src/archivebackend_creation.cpp src/archivebackend_hash.cpp)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
@@ -1646,6 +1654,16 @@ if(BUILD_TESTING)
     set_tests_properties(native_rar_memory PROPERTIES TIMEOUT 45 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_rar_ui_tests tests/native_rar_ui_tests.cpp ${options_window_sources})
+    qt_add_executable(native_hash_ui_tests tests/native_hash_ui_tests.cpp ${options_window_sources})
+    target_include_directories(native_hash_ui_tests PRIVATE src tests)
+    target_link_libraries(native_hash_ui_tests PRIVATE ${options_window_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_hash_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_hash_ui COMMAND native_hash_ui_tests -silent)
+    set_tests_properties(native_hash_ui PROPERTIES TIMEOUT 45 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_hash_ui.ini")
     target_include_directories(native_rar_ui_tests PRIVATE src tests)
     target_link_libraries(native_rar_ui_tests PRIVATE ${options_window_libraries})
     target_compile_definitions(native_rar_ui_tests PRIVATE

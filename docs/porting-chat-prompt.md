@@ -13,10 +13,21 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-03: целый CRC/Hash/Test workflow с source PanelCrc/HashGUI/HashCalc/Extract,
-реальными native/engine consumers, capabilities/menu, progress/messages,
-ошибками/Cancel и проверками. Сначала inspect current source bodies и audit;
-не переписывать уже перенесённые digest algorithms.
+P2-04: Benchmark controls/results/lifecycle с source BenchmarkDialog/Bench,
+реальным bounded engine consumer, memory refusal/Stop/Close/restart,
+normal/compact geometry и проверками. Сначала inspect current source bodies,
+engine output capabilities и audit; не придумывать формулы недоступных метрик.
+
+P2-03 принят целой итерацией2026-10-03: complete PanelCrc/HashCalc/HashGUI,
+native Hash writer/reader/Test, source method providers/menu, scan/read/selection,
+actual encrypted/wrong password/corrupt ZIP/error/Cancel и modal lifetime проверены.
+Hash result JSON540/420 reviewed. Full macOS unsandboxed format/all-target build/
+199CTestPASS79.48s; later localized MyWindows/Rename/lifecycle fixes5/5PASS2.79s.
+Linux12/12PASS3.82s plus final5/5PASS3.28s, Windows build13targets/13/13PASS13.04s,
+zero focused skips. Baseline374exact/165adapted/3local verified. Counts32/46,
+14remain;P0 12/12,P1 16/18,P2 3/10,P3 1/6. Whole local iteration commit;
+no push/upstream writes. FinderP3-03.1 and rendered/full P3 remain mandatory.
+Historical pending checkpoints below are superseded by the accepted records.
 
 P2-02 принят целой итерацией 2026-10-03: source SFX/LoadCodecs, оригинальные
 runtime builders для macOS/Linux/Windows, private images/SetCodecs/native leases,

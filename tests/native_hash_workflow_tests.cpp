@@ -1,0 +1,209 @@
+#include "7zip/Common/StreamObjects.h"
+#include "CPP/7zip/UI/Common/HashCalc.h"
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
+#include "CPP/7zip/UI/GUI/HashGUI.h"
+#include "Windows/PropVariant.h"
+#include "qtarchivehashoperation.h"
+#include <QCryptographicHash>
+#include <QDir>
+#include <QFile>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QTimer>
+#include <QTreeWidget>
+#include <QtTest>
+
+namespace {
+class CHashFixture final : public IArchiveUpdateCallback,
+                           public IArchiveExtractCallback,
+                           public IArchiveUpdateCallbackFile,
+                           public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IArchiveUpdateCallback, IArchiveExtractCallback,
+                         IArchiveUpdateCallbackFile)
+  public:
+    QByteArray Data = "123456789";
+    UString Name = L"имя с пробелом.txt";
+    bool Canceled = false;
+    bool Missing = false;
+    QList<Int32> Results;
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return Canceled ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return Canceled ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(GetUpdateItemInfo(UInt32, Int32 *data, Int32 *props, UInt32 *index)) override {
+        *data = *props = 1;
+        *index = UInt32(-1);
+        return S_OK;
+    }
+    Z7_COM7F_IMF(GetProperty(UInt32, PROPID id, PROPVARIANT *value)) override {
+        NWindows::NCOM::CPropVariant property;
+        if (id == kpidPath)
+            property = Name;
+        else if (id == kpidIsDir)
+            property = false;
+        else if (id == kpidSize)
+            property = UInt64(Data.size());
+        return property.Detach(value);
+    }
+    Z7_COM7F_IMF(GetStream(UInt32 index, ISequentialInStream **stream)) override {
+        return GetStream2(index, stream, 0);
+    }
+    Z7_COM7F_IMF(GetStream2(UInt32, ISequentialInStream **stream, UInt32)) override {
+        *stream = nullptr;
+        if (Missing)
+            return E_FAIL;
+        if (Canceled)
+            return E_ABORT;
+        Create_BufInStream_WithNewBuffer(Data.constData(), size_t(Data.size()), stream);
+        return S_OK;
+    }
+    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32)) override {
+        *stream = nullptr;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
+    Z7_COM7F_IMF(ReportOperation(UInt32, UInt32, UInt32)) override { return S_OK; }
+    Z7_COM7F_IMF(SetOperationResult(Int32 result)) override {
+        Results.append(result);
+        return S_OK;
+    }
+};
+} // namespace
+
+class NativeHashWorkflowTests final : public QObject {
+    Q_OBJECT
+    static bool write(const QString &path, const QByteArray &data) {
+        QFile file(path);
+        return file.open(QIODevice::WriteOnly) && file.write(data) == data.size();
+    }
+  private slots:
+    void filesystemMethodsAndScanTotals_data() {
+        QTest::addColumn<QStringList>("methods");
+        QTest::newRow("multiple") << QStringList{"CRC32", "SHA256", "MD5"};
+        QTest::newRow("all") << QStringList{"*"};
+    }
+    void filesystemMethodsAndScanTotals() {
+        QFETCH(QStringList, methods);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString root = temporary.filePath(QStringLiteral("папка с пробелом"));
+        QVERIFY(QDir().mkpath(root + "/empty"));
+        QVERIFY(write(root + QStringLiteral("/имя.txt"), "123456789"));
+        QVERIFY(write(root + "/other.txt", "abc"));
+        QtArchiveHashOperation worker({root}, methods, {});
+        QSignalSpy finished(&worker, &QThread::finished);
+        worker.start();
+        QVERIFY(finished.wait(30000));
+        QVERIFY(worker.wait());
+        QCOMPARE(worker.Result, S_OK);
+        QCOMPARE(worker.Bundle.NumFiles, UInt64(2));
+        QCOMPARE(worker.Bundle.NumDirs, UInt64(2));
+        QCOMPARE(worker.Bundle.FilesSize, UInt64(12));
+        QCOMPARE(worker.Bundle.NumErrors, UInt64(0));
+        QVERIFY(worker.Errors.isEmpty());
+        const QString output = worker.Output.join('\n');
+        QVERIFY(output.contains("CBF43926"));
+        QVERIFY(output.contains(QString::fromLatin1(
+            QCryptographicHash::hash("123456789", QCryptographicHash::Sha256).toHex())));
+        QVERIFY(output.contains(
+            QString::fromLatin1(QCryptographicHash::hash("abc", QCryptographicHash::Md5).toHex())));
+        if (methods.first() == "*")
+            QVERIFY(worker.Bundle.Hashers.Size() > 10);
+        else
+            QCOMPARE(worker.Bundle.Hashers.Size(), 3u);
+    }
+    void sourceWorkerFailureAndPausedCancellation() {
+        QTemporaryDir temporary;
+        const QString path = temporary.filePath("input.txt");
+        QVERIFY(write(path, "input"));
+        for (bool cancel : {false, true}) {
+            QtArchiveHashOperation worker({path}, {cancel ? "SHA256" : "unknown"}, {});
+            QSignalSpy finished(&worker, &QThread::finished);
+            if (cancel)
+                worker.setPaused(true);
+            worker.start();
+            if (cancel)
+                worker.cancel();
+            QVERIFY(finished.wait(30000));
+            QVERIFY(worker.wait());
+            QCOMPARE(worker.Result, cancel ? E_ABORT : E_NOTIMPL);
+            QVERIFY(worker.Output.isEmpty());
+        }
+    }
+    void originalHashFileWriteReadVerifyFailureCancel() {
+        CMyComPtr<IInArchive> owner = new NHash::CHandler;
+        CMyComPtr<IOutArchive> writer;
+        QCOMPARE(owner.QueryInterface(IID_IOutArchive, &writer), S_OK);
+        CMyComPtr<ISetProperties> properties;
+        QCOMPARE(owner.QueryInterface(IID_ISetProperties, &properties), S_OK);
+        const wchar_t *name = L"m";
+        NWindows::NCOM::CPropVariant method(L"SHA256");
+        QCOMPARE(properties->SetProperties(&name, &method, 1), S_OK);
+        CMyComPtr2<ISequentialOutStream, CDynBufSeqOutStream> output;
+        output.Create_if_Empty();
+        output->Init();
+        CMyComPtr2<IArchiveUpdateCallback, CHashFixture> fixture;
+        fixture.Create_if_Empty();
+        QCOMPARE(writer->UpdateItems(output.Interface(), 1, fixture.Interface()), S_OK);
+        const QByteArray hashFile(reinterpret_cast<const char *>(output->GetBuffer()),
+                                  int(output->GetSize()));
+        QVERIFY(hashFile.contains(
+            QCryptographicHash::hash("123456789", QCryptographicHash::Sha256).toHex()));
+        QVERIFY(hashFile.contains(QStringLiteral("имя с пробелом.txt").toUtf8()));
+        CMyComPtr2<IInStream, CBufInStream> input;
+        input.Create_if_Empty();
+        input->Init(reinterpret_cast<const Byte *>(hashFile.constData()), size_t(hashFile.size()));
+        CMyComPtr<IInArchive> reader = new NHash::CHandler;
+        QCOMPARE(reader->Open(input.Interface(), nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(reader->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 1u);
+        NWindows::NCOM::CPropVariant path;
+        QCOMPARE(reader->GetProperty(0, kpidPath, &path), S_OK);
+        QCOMPARE(QString::fromWCharArray(path.bstrVal), QStringLiteral("имя с пробелом.txt"));
+        fixture->Results.clear();
+        auto *callback = static_cast<IArchiveExtractCallback *>(fixture.operator->());
+        QCOMPARE(reader->Extract(nullptr, UInt32(-1), 1, callback), S_OK);
+        QCOMPARE(fixture->Results, QList<Int32>{NArchive::NExtract::NOperationResult::kOK});
+        fixture->Data = "corrupt";
+        fixture->Results.clear();
+        QCOMPARE(reader->Extract(nullptr, UInt32(-1), 1, callback), S_OK);
+        QCOMPARE(fixture->Results, QList<Int32>{NArchive::NExtract::NOperationResult::kCRCError});
+        fixture->Missing = true;
+        QCOMPARE(reader->Extract(nullptr, UInt32(-1), 1, callback), E_FAIL);
+        fixture->Missing = false;
+        fixture->Canceled = true;
+        QCOMPARE(reader->Extract(nullptr, UInt32(-1), 1, callback), E_ABORT);
+        output->Init();
+        QCOMPARE(writer->UpdateItems(output.Interface(), 1, fixture.Interface()), E_ABORT);
+        QCOMPARE(output->GetSize(), size_t(0));
+    }
+    void originalGuiWorkerShowsMultipleMethods() {
+        QTemporaryDir temporary;
+        const QString path = temporary.filePath(QStringLiteral("файл с пробелом.txt"));
+        QVERIFY(write(path, "123456789"));
+        NWildcard::CCensor censor;
+        NWildcard::CCensorPathProps props;
+        props.WildcardMatching = false;
+        censor.AddItem(NWildcard::k_RelatPath, true, path.toStdWString().c_str(), props);
+        CHashOptions options;
+        options.Methods.Add(L"CRC32");
+        options.Methods.Add(L"SHA256");
+        bool shown = false;
+        QTimer closeResults;
+        connect(&closeResults, &QTimer::timeout, this, [&] {
+            auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            auto *rows = dialog->findChild<QTreeWidget *>("propertiesList");
+            for (int row = 0; row < rows->topLevelItemCount(); ++row)
+                shown |= rows->topLevelItem(row)->text(1) == "CBF43926";
+            dialog->accept();
+        });
+        closeResults.start(1);
+        bool messages = false;
+        QCOMPARE(HashCalcGUI(nullptr, censor, options, messages), S_OK);
+        closeResults.stop();
+        QVERIFY(shown);
+    }
+};
+QTEST_MAIN(NativeHashWorkflowTests)
+#include "native_hash_workflow_tests.moc"

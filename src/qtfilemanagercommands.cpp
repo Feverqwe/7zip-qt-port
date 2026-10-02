@@ -1,6 +1,7 @@
 #include "qtfilemanagercommands.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/Common/HashCalc.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "mainwindow.h"
 #include "qtdialogscreenservices.h"
@@ -180,6 +181,24 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
     c.root = panel.GetFolder() && panel.IsRootFolder();
+    if (panel.DoesItSupportOperations()) {
+        const auto catalog = w.backend_->codecCatalog();
+        CExternalCodecs providers;
+        if (w.backend_->loadHashProviders(providers) == S_OK) {
+            for (QAction *action : w.hashActions_) {
+                const unsigned command = action->property("nativeCommandID").toUInt();
+                const QByteArray method = action->objectName().mid(4).chopped(6).toLatin1();
+                CMethodId id;
+                if (method == "*") {
+                    CRecordVector<CMethodId> methods;
+                    GetHashMethods(&providers, methods);
+                    c.hashMethods[command] = !methods.IsEmpty();
+                } else
+                    c.hashMethods[command] =
+                        FindHashMethod(&providers, AString(method.constData()), id);
+            }
+        }
+    }
     c.archive = panel.GetFolder() && panel.IsArcFolder();
     c.nested = w.isNestedArchive();
     c.mutationWritable = c.archive && !panel.IsThereReadOnlyFolder();
@@ -310,7 +329,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_SHA3_256:
     case IDM_BLAKE2SP:
     case IDM_HASH_ALL:
-        return c.selected && !c.root;
+        return c.selected && !c.root && c.hashMethods.value(id);
     case IDM_SELECT_ALL:
     case IDM_INVERT_SELECTION:
     case IDM_SELECT:

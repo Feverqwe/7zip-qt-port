@@ -60,6 +60,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool HasCommentService() const;
     bool HasNativeExtractService() const;
     bool HasNativeRarReader() const;
+    bool HasNativeHashReader() const;
     IInArchive *NativeItemProperties() const;
     HRESULT Spool(IInStream *stream, IProgress *progress);
     HRESULT SpoolToOwnedFile(IInStream *stream, const QString &path, IProgress *progress);

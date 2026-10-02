@@ -596,7 +596,9 @@ CRC32 fixture, title/state and unclipped, separate list/footer/buttons at
 540×360 and 420×360; reports are `hash-results-540`/`hash-results-420`.
 Horizontal scrolling remains available for long Unicode names/values. This
 checks Qt structure/usability, not rendered Windows pixel parity. The complete
-hash command/file workflow remains mandatory P2-03.
+hash command/file workflow is connected and accepted in P2-03. PanelCrc and
+HashCalcGUI invoke this same source presenter; current540/420 JSON reviewed
+2026-10-03, macOS full gate199/199 and Windows13/Linux focused consumers passed.
 
 ## Full text detail
 

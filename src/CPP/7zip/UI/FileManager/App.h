@@ -123,6 +123,9 @@ class CApp {
     }
     bool ExecuteCommand(unsigned id);
     void DiffFiles();
+    HRESULT CalculateCrc2(const UString &methodName,
+                          const CExternalCodecs *externalCodecs = nullptr);
+    void CalculateCrc(const char *methodName);
     void DiffFiles(const UString &path1, const UString &path2);
     void VerCtrl(unsigned id);
     QtAppOperationState &QtOperations() { return _qtOperations; }

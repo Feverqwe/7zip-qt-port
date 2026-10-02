@@ -1,3 +1,4 @@
+#include "7zip/Common/CreateCoder.h"
 #include "7zip/UI/Common/DefaultName.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
@@ -66,8 +67,11 @@ HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeO
 HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                              const UInt32 *indices, UInt32 count, Int32 testMode,
                                              IArchiveExtractCallback *callback) const {
-    if (!reader || !reader->hasNativeRarExtractor())
+    if (!reader || (!reader->hasNativeRarExtractor() && !reader->hasNativeHashExtractor()))
         return E_NOTIMPL;
+    if (reader->hasNativeHashExtractor()) {
+        RINOK(validateNativeHashReads(*reader, indices, count))
+    }
     return reader->arc().Archive->Extract(indices, count, testMode, callback);
 }
 
@@ -100,6 +104,16 @@ bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
             },
             Qt::QueuedConnection);
     });
+}
+
+HRESULT ArchiveBackend::loadHashProviders(CExternalCodecs &providers) const {
+    providers.ClearAndRelease();
+    const auto catalog = codecCatalog();
+    if (!catalog || catalog->result() != S_OK)
+        return S_OK; // Original registered hashers remain available without a DLL.
+    auto &codecs = const_cast<CCodecs &>(catalog->nativeCodecs());
+    providers.GetHashers = static_cast<IHashers *>(&codecs);
+    return providers.Load();
 }
 
 void ArchiveBackend::cancelCodecDiscovery() {
