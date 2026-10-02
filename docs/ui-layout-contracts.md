@@ -625,6 +625,16 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 - `combo_dialog` checks folder/file/mask views at 360×150 and 260×150:
   fitted prompt, reachable combo/footer, control order and separate buttons.
   JSON reports accompany the checks; screenshots remain optional.
+- ZIP comment uses source `PanelOperations.cpp::ChangeComment` with the focused
+  item name and localized Comment in its title, localized IDS_COMMENT2 prompt
+  and the existing raw property value. `native_comment_ui` checks EN/RU at the
+  same two sizes: current comment-en/ru-360/260 JSON reports preserve prompt,
+  editable combo and separately reachable OK/Cancel. titleID=0 preserves the
+  caller's dynamic title; source language ID0 is the application name.
+- Original Set Comment Error/HRESULT remains the error presentation. On macOS,
+  which omits QMessageBox window captions, the caption is the visible message
+  heading and HRESULT detail is informative text. Tests exercise real writer
+  refusal on both languages and ordinary/AES ZIP.
 
 Qt layouts replace OnSize. Plain-text wrapping handles Qt label rendering;
 the native AddString behavior is adapted by restoring initial edit text after

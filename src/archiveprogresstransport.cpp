@@ -3,8 +3,9 @@
 #include "archivebackend.h"
 #include "processpriority.h"
 
-ArchiveProgressTransport::ArchiveProgressTransport(CProgressDialog &dialog, ArchiveBackend &backend)
-    : _dialog(dialog), _backend(backend) {
+ArchiveProgressTransport::ArchiveProgressTransport(CProgressDialog &dialog, ArchiveBackend &backend,
+                                                   bool nativeWorker)
+    : _dialog(dialog), _backend(backend), _nativeWorker(nativeWorker) {
     _dialog.AttachTransport(this);
     connect(&backend, &ArchiveBackend::engineStarted, this, [this] {
         bool background;
@@ -31,7 +32,9 @@ ArchiveProgressTransport::~ArchiveProgressTransport() { _dialog.AttachTransport(
 HRESULT ArchiveProgressTransport::SetPaused(bool paused) {
     if (_backend.busy())
         return _backend.setPaused(paused);
-    return _completed ? S_OK : E_FAIL;
+    // Native source callbacks wait on the dialog's Sync pause state. A native
+    // phase has no child process to suspend; metadata reopen still uses above.
+    return _nativeWorker || _completed ? S_OK : E_FAIL;
 }
 
 void ArchiveProgressTransport::Cancel() { _backend.cancel(); }

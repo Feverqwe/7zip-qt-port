@@ -38,7 +38,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::function<HRESULT(IFolderFolder **, IArchiveOpenCallback *)> _reopen;
     std::function<HRESULT(IInArchive *, const UInt32 *, UInt32, Int32, IArchiveExtractCallback *)>
         _extract;
-    std::function<std::unique_ptr<IQtProgressTransport>(CProgressDialog &)> _progress;
+    std::function<std::unique_ptr<IQtProgressTransport>(CProgressDialog &, bool)> _progress;
     std::optional<CompressionOptions> _compressionOptions;
     std::optional<CFiTime> _outputMTime;
     std::shared_ptr<QtArchiveDeleteInputs> _deleteInputs;
@@ -46,6 +46,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::shared_ptr<ArchiveNativeOpen> _nativeOpen;
     bool _nativeNested = false;
     bool _nativeReadOnly = false;
+    bool _nativeItemOrder = false;
     QString _nativeOpenType;
 
   public:
@@ -55,6 +56,9 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     ~QtArchiveFileResource();
     void AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader);
     HRESULT CloseNativeOpen();
+    void BindNativeItemOrder(IFolderFolder *metadata);
+    bool HasCommentService() const;
+    IInArchive *NativeItemProperties() const;
     HRESULT Spool(IInStream *stream, IProgress *progress);
     HRESULT SpoolToOwnedFile(IInStream *stream, const QString &path, IProgress *progress);
     void SetArchiveMetadata(qint64 physicalSize, qint64 offset) {
@@ -73,7 +77,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     void AttachExtractService(ArchiveBackend &backend, const QString &format);
     void AttachReopenService(ArchiveBackend &backend, const QString &format);
     HRESULT ReOpen(IFolderFolder **metadata, IArchiveOpenCallback *callback);
-    std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog);
+    std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog,
+                                                                  bool nativeWorker = false);
     // The caller owns the dialog until the native worker has joined.
     void SetUpdateProgress(CProgressSync *sync) { _sync = sync; }
     void SetCompressionOptions(const CompressionOptions &options) { _compressionOptions = options; }

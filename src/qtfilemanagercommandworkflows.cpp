@@ -173,7 +173,20 @@ void QtFileManagerCommands::VerCtrl(unsigned id) {
         w.app_.GetFocusedPanel().RefreshListCtrl(selection);
     w.refreshActions();
 }
-void QtFileManagerCommands::Comment() { Q_UNREACHABLE(); }
+void QtFileManagerCommands::Comment() {
+    auto &w = window_;
+    auto &panel = w.app_.GetFocusedPanel();
+    CSelectedState selection;
+    panel.SaveSelectedState(selection);
+    w.setState(MainWindow::State::Operating);
+    {
+        QScopedValueRollback<bool> source(w.sourceArchiveProgress_, true);
+        panel.ChangeComment();
+    }
+    w.renderBoundFolder();
+    panel.RefreshListCtrl(selection);
+    w.refreshActions();
+}
 void QtFileManagerCommands::Link() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::OpenAltStreams() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Change_AutoRefresh_Mode() {

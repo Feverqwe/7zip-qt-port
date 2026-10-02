@@ -76,6 +76,8 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.split_, IDM_SPLIT);
     Bind(w.combine_, IDM_COMBINE);
     Bind(w.properties_, IDM_PROPERTIES);
+    Bind(w.findChild<QAction *>("commentAction"), IDM_COMMENT);
+    w.findChild<QAction *>("commentAction")->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
     Bind(w.createFolder_, IDM_CREATE_FOLDER);
     Bind(w.createFile_, IDM_CREATE_FILE);
     Bind(w.exitAction_, 8);
@@ -166,6 +168,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;
     c.focusedFile = panel.IsFocusedFile();
+    c.comment = panel.CanComment();
     CMyComPtr<IFolderCalcItemFullSize> calcItemFullSize;
     if (panel.GetFolder())
         panel.GetFolder()->QueryInterface(IID_IFolderCalcItemFullSize,
@@ -290,6 +293,8 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return c.filesystem || c.mutationWritable;
     case IDM_CREATE_FILE:
         return c.filesystem;
+    case IDM_COMMENT:
+        return c.comment;
     case IDM_SPLIT:
         return c.split;
     case IDM_COMBINE:

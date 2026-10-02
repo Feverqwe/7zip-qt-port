@@ -16,6 +16,12 @@ CAgentFolder::CreateProgressTransport(CProgressDialog &dialog) {
     return resource ? resource->CreateProgressTransport(dialog) : nullptr;
 }
 
+std::unique_ptr<IQtProgressTransport>
+CAgentFolder::CreateNativeProgressTransport(CProgressDialog &dialog) {
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource());
+    return resource ? resource->CreateProgressTransport(dialog, true) : nullptr;
+}
+
 bool CAgentFolder::CanCopyFromFile() const {
     if (!_agentSpec || !_agentSpec->CanUpdate())
         return false;
@@ -30,11 +36,15 @@ bool CAgentFolder::CanCopyTo() const {
     return resource && resource->HasExtractService();
 }
 
+bool CAgentFolder::CanComment() const {
+    if (!_agentSpec || !_agentSpec->CanUpdate())
+        return false;
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(_agentSpec->GetEngineResource());
+    return resource && resource->HasCommentService();
+}
+
 // Remaining unavailable operation bodies stay with their source owners.
 Z7_COM7F_IMF(CAgentFolder::CreateFile(const wchar_t *, IProgress *)) { return E_NOTIMPL; }
-Z7_COM7F_IMF(CAgentFolder::SetProperty(UInt32, PROPID, const PROPVARIANT *, IProgress *)) {
-    return E_NOTIMPL;
-}
 
 int QtArchiveDirectoryIndex(const CProxyArc &proxy, const QString &path) {
     if (proxy.Dirs.IsEmpty())

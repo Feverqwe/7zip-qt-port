@@ -13,11 +13,60 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-17: source ZIP per-item comment writer/ChangeComment/SetProperty и реальный
-GUI consumer через ArchiveBackend. Native catalog/module lease и ZIP reader/writer
-factories из принятого P2-01 теперь доступны; inspect original source writer и
-dependencies перед интеграцией. Это ещё не перенос actual comment consumer.
-P1-18 actual RAR memory consumer остаётся mandatory, не закрывать synthetic tests.
+P1-18: итерация снятия source RAR handler/decoder memory GUI prerequisite.
+Native catalog/module lease, original progress и callback infrastructure доступны
+после P2-01/P1-17. Inspect original Rar5Handler Extract/SetProperties, decoder/
+crypto/stream dependencies перед интеграцией; нынешний mirrored Rar5Handler
+содержит только hash registration. Портировать actual source ArchiveBackend →
+GUI RequestMemoryUse/CMemDialog consumer, root/selected/Test/batch, Allow/Skip/
+Cancel/remember/persistence. Synthetic tests не закрывают scope. Safe stored
+RAR5/RAR7 fixtures declared2MiB dictionary проверены независимым7zz; handler
+memx1MiB вызывает actual refusal. Не разрешать гигантские dictionaries для tests;
+малого forced handler limit достаточно. Это ещё не GUI consumer/приёмка P1-18.
+
+P1-17 принят целой итерацией: source ZIP handler/writer/dependencies и original
+CommentItem/SetProperty/ChangeComment, actual EN/RU plain/AES command, publication/
+reopen/clear/error/cancel, nested parent Yes/No и native pause/cancel проверены.
+Final unsandboxed full check.sh1910 на isolated own-scope snapshot: formatting,
+all-target build/191 CTest PASS86.83s macOSarm64Qt6.11.2 2026-10-02, baseline351/
+163/3. All162 own source/build-module/test files совпадают с checkout. Shared
+gate43923 passed191/19288.64s: только чужой runner_vm missingfile; foreign hunks
+сохранены и не входят в итерацию. Four Combo EN/RU360/260 JSON reviewed.
+Counts29/46,17remain; P0 12/12,P1 15/18,P2 1/10,P3 1/6. Windows/Linux runtime и
+rendered Windows parity unverified; native Finder отдельно mandatory P3-03.1.
+Whole iteration commit subject: Port source ZIP item comments and GUI workflow (P1-17).
+No push/publication/upstream edits.
+
+Ниже historical P1-17/P2-01 checkpoints: их pending/live/disabled/next statements
+superseded текущей приёмкой выше; это evidence, не текущий backlog.
+P1-17 WIP: полный source ZIP handler/writer/dependencies уже скопирован;
+sevenzip_zip и native_zip_writer_tests собираются, CTest1/1PASS0.51s (обычный/AES
+ZIP × success/failure/cancel). Это собственный build source handler, не handler
+из установленного DLL; metadata/Unicode comment/bytes/extraction проверены.
+Next: actual ArchiveBackend leased native consumer, source Agent CommentItem/
+SetProperty/ChangeComment, GUI/publication/reopen/error/cancel, потом full gate и
+whole iteration commit. Команда disabled; accepted count28/46 не меняется.
+Latest backend checkpoint supersedes that next statement: source CommentItem/
+SetProperty/AGENT_OP_Comment and backend source ZIP consumer now connected;
+verified source factory override in catalog, native item count/path order guard,
+native properties and native reopen. Affected build90336 exit0; focused5/5 suites
+PASS2.82s (native_comment/writer/folder_opening/codec_update/owned_temp_publication).
+Plain/AES actual SetProperty publication/reopen/comment clearing, oversized
+comment refusal/cancel/unchanged bytes tested. All-target build36443 still live
+at checkpoint; do not restart while its handle is live. Next actual Panel/GUI,
+broader regressions and full gate; no P1-17 acceptance or commit yet.
+Subsequent36443 failed backend-only link without Agent: source g_ExternalCodecs
+single empty ABI storage moved to local archiveexternalcodecs.cpp in source ZIP
+library, Agent.cpp definition removed. All-target35574 terminal0; broader shared
+consumer wrapper43406 live at checkpoint. Earlier36443 live status superseded.
+Latest verified checkpoint:43406 terminal8,20/22pass, native parser cases
+archive_opening/codec_commands_ui crashed because new hasCommentWriter looked up
+source Parser FormatIndex=-1. LLDB20670 identified integration bounds bug; added
+signed/bounds guard, source parser algorithm unchanged. All-target63060 terminal0;
+same expanded wrapper67928 terminal0,22/22PASS14.39s; baseline351/163/3 verified,
+diff checks pass. All earlier live handles terminal; no current live work.
+Next actual source ChangeComment/GUI/capability/errors/refresh/geometry and full
+gate/whole P1-17 commit. Accepted count28/46 unchanged; command disabled.
 P2-01 принят целой итерацией: полный unsandboxed check.sh12893 formatting/build/
 188 CTest PASS74.09s macOSarm64Qt6.11.2 2026-10-02, baseline224/161/3 verified.
 Actual MainWindow Add seven formats success/cancel, Inside */#, missing/version

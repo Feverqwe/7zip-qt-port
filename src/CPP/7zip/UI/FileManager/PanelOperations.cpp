@@ -9,11 +9,15 @@
 #include "Common/StringConvert.h"
 
 #include "BrowseDialog.h"
+#include "ComboDialog.h"
 #include "FSFolder.h"
 #include "FormatUtils.h"
 #include "LangUtils.h"
 #include "Panel.h"
 #include "UpdateCallback100.h"
+#include "Windows/ErrorMsg.h"
+#include "qtfolderpropertycapabilities.h"
+#include "qtprogresstransport.h"
 #include "qttrashservice.h"
 
 #include <QFileInfo>
@@ -29,7 +33,8 @@ enum EFolderOpType {
     FOLDER_TYPE_CREATE_FOLDER = 0,
     FOLDER_TYPE_DELETE = 1,
     FOLDER_TYPE_RENAME = 2,
-    FOLDER_TYPE_CREATE_FILE = 3 // Source CreateFile calls IFolderOperations directly.
+    FOLDER_TYPE_CREATE_FILE = 3, // Source CreateFile calls IFolderOperations directly.
+    FOLDER_TYPE_COMMENT = 4
 };
 
 class CThreadFolderOperations : public CProgressThreadVirt {
@@ -61,6 +66,10 @@ HRESULT CThreadFolderOperations::ProcessVirt() {
         return FolderOperations->Rename(Index, Name, UpdateCallback);
     case FOLDER_TYPE_CREATE_FILE:
         return FolderOperations->CreateFile(Name, UpdateCallback);
+    case FOLDER_TYPE_COMMENT: {
+        NWindows::NCOM::CPropVariant value(Name);
+        return FolderOperations->SetProperty(Index, kpidComment, &value, UpdateCallback);
+    }
     default:
         return E_FAIL;
     }
@@ -86,6 +95,10 @@ HRESULT CThreadFolderOperations::DoOperation(CPanel &panel, const UString &progr
     MainTitle = "7-Zip";
     MainAddTitle = progressTitle + L' ';
 
+    std::unique_ptr<IQtProgressTransport> transport;
+    if (OpType == FOLDER_TYPE_COMMENT)
+        if (auto *services = dynamic_cast<IQtProgressServices *>(FolderOperations.Interface()))
+            transport = services->CreateNativeProgressTransport(*this);
     RINOK(Create(progressTitle, MainWindow))
     return Result;
 }
@@ -93,6 +106,78 @@ HRESULT CThreadFolderOperations::DoOperation(CPanel &panel, const UString &progr
 static bool IsCorrectFsName(const UString &name) {
     const UString lastPart = name.Ptr((unsigned)(name.ReverseFind_PathSepar() + 1));
     return !lastPart.IsEqualTo(".") && !lastPart.IsEqualTo("..");
+}
+
+bool CPanel::CanComment() const {
+    const int focused = _selectionList.GetFocusedItem();
+    if (focused < 0 || GetRealItemIndex(focused) == kParentIndex || IsThereReadOnlyFolder())
+        return false;
+    const auto *folder = dynamic_cast<IQtFolderPropertyCapabilities *>(_folder.Interface());
+    return folder && folder->CanComment();
+}
+
+void CPanel::ChangeComment() {
+    if (IsHashFolder())
+        return;
+    if (!CheckBeforeUpdate(IDS_COMMENT))
+        return;
+    CDisableTimerProcessing disableTimerProcessing2(*this);
+    const int index = _selectionList.GetFocusedItem();
+    if (index < 0)
+        return;
+    const unsigned realIndex = GetRealItemIndex(index);
+    if (realIndex == kParentIndex)
+        return;
+    CSelectedState state;
+    SaveSelectedState(state);
+    UString comment;
+    {
+        NWindows::NCOM::CPropVariant propVariant;
+        if (_folder->GetProperty(realIndex, kpidComment, &propVariant) != S_OK)
+            return;
+        if (propVariant.vt == VT_BSTR)
+            comment = propVariant.bstrVal;
+        else if (propVariant.vt != VT_EMPTY)
+            return;
+    }
+    const UString name = GetItemRelPath2(realIndex);
+    UString title = name;
+    title += " : ";
+    AddLangString(title, IDS_COMMENT);
+    CComboDialog dlg(ToQString(title), ToQString(LangString(IDS_COMMENT2)), ToQString(comment),
+                     GetParent());
+    dlg.BindLanguage(0, IDS_COMMENT2);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    CDisableNotify disableNotify(*this);
+    // Qt runs the unchanged source property operation on its existing worker
+    // and callback lifecycle. The caller owns the original error presentation.
+    CThreadFolderOperations op(FOLDER_TYPE_COMMENT);
+    op.FolderOperations = _folderOperations;
+    op.Index = realIndex;
+    op.Name = ToUString(dlg.Value);
+    op.DisableUserQuestions = true;
+    const HRESULT result = op.DoOperation(*this, LangString(IDS_COMMENT), L"Set Comment Error");
+    if (result != S_OK && result != E_ABORT) {
+        if (result == E_NOINTERFACE)
+            MessageBox_Error_UnsupportOperation();
+        else {
+            QMessageBox box(QMessageBox::Critical, QStringLiteral("Set Comment Error"),
+                            ToQString(NWindows::NError::MyFormatMessage(result)), QMessageBox::Ok,
+                            GetParent());
+            box.setObjectName("commentUpdateError");
+#ifdef Q_OS_MAC
+            // Native macOS message boxes omit window captions. Keep the
+            // original source caption visible as the message heading.
+            box.setInformativeText(box.text());
+            box.setText(QStringLiteral("Set Comment Error"));
+#endif
+            box.setTextFormat(Qt::PlainText);
+            box.exec();
+        }
+    }
+    RefreshListCtrl(state);
 }
 
 bool CPanel::CorrectFsPath(const UString &path2, UString &result) {

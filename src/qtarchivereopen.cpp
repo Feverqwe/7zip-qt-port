@@ -10,6 +10,7 @@
 #include "Common/StringConvert.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
+#include "qtarchivenativeopenprogress.h"
 #include "qtlocationfolder.h"
 #include <QThread>
 #include <memory>
@@ -105,6 +106,14 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             &backend, &ArchiveBackend::entriesReady, &backend,
             [request](const QList<ArchiveEntry> &value) { request->Entries = value; }));
         const QString path = EnginePath;
+        auto *openCallback = dynamic_cast<COpenCallbackImp *>(callback);
+        CMyComPtr<IProgress> nativeProgressCallback;
+        if (callback)
+            callback->QueryInterface(IID_IProgress, (void **)&nativeProgressCallback);
+        CNativeOpenProgress nativeProgress(nativeProgressCallback,
+                                           openCallback ? openCallback->Callback : nullptr);
+        std::shared_ptr<ArchiveNativeOpen> nativeOpen;
+        RINOK(backend.openNativeArchive(path, format, &nativeProgress, nativeOpen))
         QString password;
         CMyComPtr<ICryptoGetTextPassword2> crypto;
         if (callback)
@@ -131,6 +140,7 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             callback, _sync))
         RINOK(CreateArchiveMetadata(request->Entries, metadata))
         Info = request->Info;
+        AttachNativeOpen(std::move(nativeOpen));
         SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
         return S_OK;
         COM_TRY_END

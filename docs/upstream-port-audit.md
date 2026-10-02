@@ -8,6 +8,28 @@
 [архитектуре](architecture.md). Эти документы ссылаются на реестр,
 не дублируя сведения о происхождении и историю переноса.
 
+## P1-17 — ZIP item comment acceptance (2026-10-02)
+
+Accepted whole iteration after unsandboxed check.sh1910 on isolated own-scope
+snapshot `/private/tmp/sevenzip-p117-review-h0ufqfu9`: formatting, all-target build
+and191/191 CTest PASS86.83s macOS arm64 Qt6.11.2. All162 owned source/build-module/
+test files match current checkout byte-for-byte; only unrelated runner hunks were
+excluded. Shared checkout check.sh43923 passed formatting/build and191/192 suites
+88.64s, failing solely foreign runner_vm because tests/runner_vm_tests.py was
+removed concurrently. Foreign code/docs/index hunks preserved outside this commit.
+
+Original source ZIP writer and dependencies, CommentItem/SetProperty/ChangeComment,
+ArchiveBackend/native factory/property-order/transaction/reopen adapters and actual
+GUI consumer are complete for per-item ZIP comments. Ordinary/AES success,
+writer failure, cancellation, clear/raw Unicode/spaces, metadata/input bytes,
+independent extraction, nested parent confirmation and native pause/cancel checked.
+Four current EN/RU Combo JSON reports360×150/260×150 reviewed. Baseline351 exact,
+163 adapted,3 local paths verified against recorded0766b733 revision. Detailed
+source scope, deviations, omitted registration/export layer and historical
+checkpoints below remain authoritative; earlier pending/disabled states superseded.
+Windows/Linux runtime and rendered Windows appearance remain unverified P3 scope.
+Counts29/46; next P1-18 source RAR memory consumer. No push/upstream mutation.
+
 ## P2-01 — native codecs/formats acceptance (2026-10-02)
 
 P2-01 accepted after full unsandboxed check.sh12893: formatting, all-target build
@@ -5062,6 +5084,149 @@ AES поддержаны 7zz, новый пустой ZIP folder entry сам п
 шифруемых данных. Add/Edit/Move, nested updates и comment/SetProperty этим
 частичным портом не покрыты. Source notices и лицензия сохранены в
 `third_party/7zip/License.txt`.
+
+## P1-17 — source ZIP writer and GUI consumer (details, 2026-10-02)
+
+Current GUI checkpoint supersedes the historical disabled/next statements below:
+original `PanelOperations.cpp::CPanel::ChangeComment` now owns focused real-index
+selection, parent/read-only/hash guards, native comment property, item title,
+shared `ComboDialog` and refresh. The original `ArchiveFolderOut::SetProperty`
+and `CAgent::CommentItem` functional bodies remain the property/update owners.
+Qt replaces Win32 list/control calls and runs SetProperty on the existing source
+`CThreadFolderOperations` worker with `CUpdateCallback100Imp`, rather than the
+original NULL-progress synchronous GUI call. This is the responsiveness adapter;
+the source ZIP update plan, callbacks, work-dir publication and reopen are reused.
+
+The narrow `IQtFolderPropertyCapabilities` interface exposes actual comment
+support to Panel without coupling shared presentation targets to concrete Agent.
+The CApp command route binds resource `IDM_COMMENT` and original Ctrl+Z shortcut.
+Comment is available only for a focused real item with the validated native ZIP
+writer and writable ancestor chain. `ComboDialog::BindLanguage` preserves a
+caller-supplied dynamic title when titleID is zero: source language ID0 means
+7-Zip, not an absent string. Prompt and editable value still use the shared view;
+raw whitespace and empty comments remain valid.
+
+The caller retains original Set Comment Error/HRESULT presentation. Qt macOS
+message boxes omit window captions, so the original error caption is shown as
+the message heading with the HRESULT detail below. Cancellation is quiet.
+Native progress uses original Sync pause/stop callbacks; the local transport
+accepts native pause requests without attempting to suspend a nonexistent child
+process. A subsequent process-backed metadata reopen uses the existing controls.
+
+Current GUI/callback changes built37772 exit0; wrapper22135 exit0,5/5 suites
+PASS15.95s on macOS arm64 Qt6.11.2 (native_comment_ui/native_comment/
+codec_commands_ui/combo_dialog/archive_progress). Actual EN/RU plain/AES command
+success, editable cancellation, UTF-8 oversized-comment writer refusal/error,
+focus, readback, bytes and extraction checked. Four current Combo JSON reports
+cover360×150/260×150 EN/RU. Nested publication and native paused cancellation
+tests are being added; no full gate or acceptance yet. Windows/Linux runtime and
+rendered Windows appearance remain unverified.
+
+Latest backend checkpoint (supersedes the prerequisite-only next statements
+below): copied original `CAgent::CommentItem` body from
+`CPP/7zip/UI/Agent/AgentOut.cpp`, original ZIP/VT_BSTR `CAgentFolder::SetProperty`
+guard/body from `ArchiveFolderOut.cpp` and its `AGENT_OP_Comment` dispatch. No
+comment plan algorithm rewritten; existing source CArchiveUpdateCallback owns
+CommentIndex/Comment and metadata forwarding. The process-backed Agent's
+GetTypeOfArc adapter resolves its retained detected ArchiveType because its
+synthetic CArc FormatIndex cannot index the native/global catalog.
+
+ArchiveCodecCatalog retains verified module metadata, flags, signatures and
+extensions, replacing only the ZIP input/output factory hooks with the copied
+source CHandler (`LibIndex=-1`). Source OpenArchive performs detection/opening
+and per-instance SetCompressCodecsInfo as before; the immutable catalog/handler
+lease owns external module lifetime. Other factories remain module-backed.
+ArchiveBackend::updateNativeComment invokes that original handler IOutArchive;
+the Qt resource dispatches only the source callback's explicit comment plan
+to this route. Other update/extract/item-list transports remain explicit process
+integration. No handwritten ZIP record editing or CLI comment workaround.
+
+The source folder proxy currently uses CLI item order. Before native per-item
+properties/comment updates, QtArchiveFileResource verifies count and each Path
+in the same order (NFC comparison only at the Qt Unicode boundary). A mismatch
+retains process properties and disables comment capability; native indexes
+are never guessed. Once validated, original native properties preserve comment
+and writer metadata. The source work-dir transaction closes all native readers
+before publication; reopen now obtains a fresh native reader and validates order
+again. The existing progress/open/password projection was extracted unchanged
+to qtarchivenativeopenprogress.cpp/.h for initial open and reopen.
+
+Actual native_comment tests exercise source IFolderOperations::SetProperty through
+CAgent/CommonUpdate/ArchiveBackend/source ZIP writer, transaction publication and
+reopen, Unicode comment read-back and empty-comment clearing. Ordinary/AES256
+archives each cover success, original writer refusal of65536-byte comments, and
+callback E_ABORT; original input/archive unchanged on non-success and no owned
+staging remnants. Successful archives extract exact binary bytes through 7zz.
+Final affected build90336 exit0; focused wrapper76216 exit0:5/5 suites PASS2.82s
+(native_comment/native_zip_writer/native_folder_opening/codec_update/
+owned_temp_publication), macOS arm64 Qt6.11.2, 2026-10-02. Full all-target build
+36443 subsequently failed a backend-only link: its target does not contain Agent,
+so the source g_ExternalCodecs fallback storage could not remain in Agent.cpp.
+The single empty ABI storage definition now lives in the narrow standalone-library
+integration unit `src/archiveexternalcodecs.cpp`, referenced by sevenzip_zip.
+No global catalog is populated; per-handler leases remain authoritative. This
+relocation is a build boundary adaptation of the original Agent global, not a
+new codec algorithm. Agent.cpp no longer contains the duplicate definition.
+Repeated all-target build35574 exited0 (only existing Qt date deprecations).
+No full gate/GUI acceptance/commit.
+Next: actual CPanel::ChangeComment command/capability/dialog/error/refresh and
+UI geometry, broader shared-property/open/update regressions and full gate.
+
+Subsequent shared regression checkpoint: wrapper43406 found20/22 passing, with
+SIGSEGV in archive_opening and codec_commands_ui parser cases. LLDB20670 showed
+the new local hasCommentWriter guard indexing Formats with source parser
+FormatIndex=-1 (unsigned4294967295). The native parser algorithm was unchanged;
+the integration capability guard now checks the signed index and catalog bounds
+before lookup. Rebuilt all targets63060 exit0; repeated the same expanded wrapper
+67928 exit0:22/22 suites PASS14.39s, macOS arm64 Qt6.11.2, 2026-10-02.
+Current baseline verifier e684d2 PASS351 exact/163 adapted/3 local; diff check
+passed. No live build/test/debug handles. This supersedes earlier live handles
+and failed checkpoint results; GUI/full gate/iteration acceptance remain pending.
+
+Baseline: https://github.com/ip7z/7zip.git,
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Copied complete original
+`CPP/7zip/Archive/Zip/ZipHandler.cpp`, `ZipHandlerOut.cpp`, `ZipIn.cpp`,
+`ZipItem.cpp`, `ZipOut.cpp`, `ZipUpdate.cpp`, `ZipAddCommon.cpp` and the
+codec/crypto/stream dependency closure into `third_party/7zip/` with their
+original paths. Dependency units include original LZMA/XZ/PPMd encoders and
+decoders, ZIP/AES crypto and C support. No compression or ZIP algorithm rewritten.
+Registration (`ZipRegister.cpp`) is not copied/linked: the integration
+explicitly constructs the source handler behind ArchiveBackend, while the existing
+leased module catalog continues to own format discovery. This is partial bundle
+integration, not a replacement of the entire upstream DLL/export layer.
+
+129 newly borrowed files are recorded individually in upstream-baseline.json:
+127 exact plus two adapted headers under `src/CPP/7zip/Archive/`:
+`Common/HandlerOut.h` and `Zip/ZipCompressionMode.h`. Their only functional
+adaptation is canonical include ownership to reuse the already adapted
+`Common/MethodProps.h`; notices and project formatting are accounted separately.
+The single original `g_ExternalCodecs` fallback definition is provided in local
+`src/archiveexternalcodecs.cpp` for the source handlers' external-codec ABI. It remains empty;
+future consumers must pass/retain their immutable catalog per handler, rather
+than mutate shared global codec state. Shared dependencies have one authoritative
+source path; the isolated static target may compile existing stream/time modules
+also needed by other static libraries.
+
+`cmake/native_zip.cmake` builds these original sources as `sevenzip_zip`.
+`native_zip_writer_tests` constructs the source `NArchive::NZip::CHandler`, uses
+the already copied `CArchiveUpdateCallback` comment/no-data update plan, and
+verifies a Unicode/spaces comment, two entries, unchanged Path/Size/CRC/encryption,
+and exact binary extraction through the independent installed official `7zz`.
+Ordinary and AES256 ZIP each cover success, output write failure, and callback
+cancellation; original archive/input bytes remain unchanged in all cases.
+This is a prerequisite check, not the source CAgent::CommentItem or GUI consumer.
+
+Checks: isolated source-library build52641 exit0; final native writer test build
+85154 exit0; wrapper CTest307021 exit0, 1/1 suite PASS0.51s (six data scenarios),
+macOS arm64/Qt6.11.2, 2026-10-02. Intermediate compile failures were exported
+adapted-header include paths and a test using the wrong FileStreams API; link
+failure identified the omitted original global fallback. No live test/build
+handles, full gate, acceptance or iteration commit yet. Command remains disabled.
+Baseline verifier e39244 passed351 exact/163 adapted/3 local paths across the
+single pinned revision; git diff --check passed after documentation updates.
+Next: backend-owned native handler/lease integration, actual source Agent comment
+and SetProperty/ChangeComment GUI, publication/reopen/refresh/failure/cancel and
+full checks. Windows/Linux runtime and rendered Windows parity remain unverified.
 
 ## P1-04.3 — prerequisite для ZIP item comment (2026-09-30; перенесён в P1-17)
 

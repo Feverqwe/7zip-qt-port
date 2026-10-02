@@ -1,5 +1,27 @@
 # Сверка с Windows 7zFM
 
+## P1-17 — комментарий элемента ZIP (2026-10-02)
+
+Эталон — `PanelOperations.cpp::ChangeComment`, `ComboDialog.cpp/.rc`,
+`SevenZip.rc` IDM_COMMENT/Ctrl+Z, `AgentOut.cpp::CommentItem` и
+`ArchiveFolderOut.cpp::SetProperty` baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+Команда действует на элемент под фокусом, даже если отмечено несколько строк.
+Общий диалог сохраняет имя элемента в заголовке, исходное значение и пробелы;
+Cancel не записывает ничего, пустое значение очищает comment. Порядок prompt,
+editable combo, OK/Cancel следует исходному resource. Actual EN/RU geometry
+проверена360×150/260×150, четыре JSON отчёта просмотрены; Windows rendering
+не доступен и pixel parity не подтверждается.
+
+Qt выполняет исходный SetProperty на source progress worker, обеспечивая pause
+и отмену через исходные callbacks. Ошибку ZIP writer показывает исходный
+Set Comment Error/HRESULT; на macOS заголовок сообщения размещён в его тексте,
+поскольку ОС не показывает QMessageBox window caption. Ошибка и отмена не
+заменяют исходный архив. Обычный/AES ZIP сохраняет bytes файлов; вложенный ZIP
+проходит существующее подтверждение записи в родителя. Native writer и
+совпадение native/transport item order обязательны для доступности команды;
+остальные форматы и read-only цепочки её не предлагают. Windows/Linux runtime
+пока не проверен. Source provenance и частичный DLL scope — audit § P1-17.
+
 Здесь описаны текущие сценарии, команды, ограничения и отличия от Windows
 7zFM. Исходники в таблице служат ссылками на эталон поведения;
 происхождение реализации, ревизии и технические адаптации находятся в

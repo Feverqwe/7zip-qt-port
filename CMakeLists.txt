@@ -115,6 +115,8 @@ if(WIN32)
     target_link_libraries(sevenzip_common PUBLIC ole32 oleaut32 uuid advapi32)
 endif()
 
+include(cmake/native_zip.cmake)
+
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/Common/ArchiveName.cpp
     src/qtpaneldragmodel.h
@@ -278,7 +280,7 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common)
+target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common sevenzip_zip)
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
@@ -301,8 +303,11 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     third_party/7zip/CPP/7zip/UI/Common/UpdateProduce.cpp
     src/qtarchiveproperties.cpp src/qtarchiveproperties.h
     src/qtarchivefoldermanager.cpp src/qtarchivefoldermanager.h
+    src/qtarchivenativeopenprogress.cpp src/qtarchivenativeopenprogress.h
     src/qtarchivestreamopen.h
     src/qtarchivefileresource.cpp src/qtarchivefileresource.h
+    src/qtarchivenativeproperties.cpp
+    src/qtfolderpropertycapabilities.h
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
 target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
@@ -1526,6 +1531,30 @@ if(BUILD_TESTING)
     add_test(NAME codec_commands_ui COMMAND codec_commands_ui_tests -silent)
     set_tests_properties(codec_commands_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/codec_commands_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(native_zip_writer_tests tests/native_zip_writer_tests.cpp)
+    qt_add_executable(native_comment_tests tests/native_comment_tests.cpp ${codec_update_sources})
+    qt_add_executable(native_comment_ui_tests tests/native_comment_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(native_comment_ui_tests PRIVATE src tests)
+    target_link_libraries(native_comment_ui_tests PRIVATE ${options_window_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_comment_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_comment_ui COMMAND native_comment_ui_tests -silent)
+    set_tests_properties(native_comment_ui PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_comment_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    target_include_directories(native_comment_tests PRIVATE src tests)
+    target_link_libraries(native_comment_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_comment_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_comment COMMAND native_comment_tests -silent)
+    set_tests_properties(native_comment PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    target_include_directories(native_zip_writer_tests PRIVATE src)
+    target_link_libraries(native_zip_writer_tests PRIVATE sevenzip_zip sevenzip_location Qt6::Test)
+    add_test(NAME native_zip_writer COMMAND native_zip_writer_tests -silent)
+    set_tests_properties(native_zip_writer PROPERTIES TIMEOUT 30)
     qt_add_executable(native_folder_opening_tests tests/native_folder_opening_tests.cpp ${codec_update_sources})
     target_include_directories(native_folder_opening_tests PRIVATE src tests)
     target_link_libraries(native_folder_opening_tests PRIVATE sevenzip_location Qt6::Test)

@@ -8,9 +8,11 @@ class ArchiveProgressTransport final : public QObject, public IQtProgressTranspo
     CProgressDialog &_dialog;
     ArchiveBackend &_backend;
     bool _completed = false;
+    bool _nativeWorker = false;
 
   public:
-    ArchiveProgressTransport(CProgressDialog &dialog, ArchiveBackend &backend);
+    ArchiveProgressTransport(CProgressDialog &dialog, ArchiveBackend &backend,
+                             bool nativeWorker = false);
     ~ArchiveProgressTransport() override;
     HRESULT SetPaused(bool paused) override;
     HRESULT SetBackground(bool background) override;

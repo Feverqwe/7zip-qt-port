@@ -35,6 +35,8 @@ class CFolderArchiveProperties final : public IInArchive,
         : _properties(properties), _resource(resource),
           _resourceSpec(dynamic_cast<QtArchiveFileResource *>(resource)) {
         _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
+        if (_resourceSpec)
+            _resourceSpec->BindNativeItemOrder(_properties);
     }
     Z7_IFACE_COM7_IMP(IInArchive)
     Z7_IFACE_COM7_IMP(IOutArchive)
@@ -75,6 +77,7 @@ Z7_COM7F_IMF(CFolderArchiveProperties::Open(IInStream *, const UInt64 *,
     _properties = metadata;
     _rawProps.Release();
     _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
+    _resourceSpec->BindNativeItemOrder(_properties);
     return S_OK;
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::Close()) {
@@ -84,6 +87,9 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfItems(UInt32 *count)) {
     return _properties->GetNumberOfItems(count);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value)) {
+    if (_resourceSpec)
+        if (auto *native = _resourceSpec->NativeItemProperties())
+            return native->GetProperty(index, id, value);
     return _properties->GetProperty(index, id, value);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::Extract(const UInt32 *indices, UInt32 count, Int32 testMode,

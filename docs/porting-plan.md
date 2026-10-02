@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-16 (2026-10-02):
-**28/46 закрыты, 18 остаётся**; P0: 12/12, P1: 14/18, P2: 1/10, P3: 1/6.
+Текущий счёт после P1-17 (2026-10-02):
+**29/46 закрыты, 17 остаётся**; P0: 12/12, P1: 15/18, P2: 1/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -925,9 +925,10 @@ consumer ещё не интегрированы. P1-18 сохраняет отд
 ### P1-17. ZIP per-item comment и запись свойства
 
 **После:** P1-04. **Исторический ID:** P1-04.3; его исследование и provenance
-сохранены в audit § P1-04.3. **Статус:** active — снятие source writer prerequisite,
-2026-10-02. P2-01 дал проверенные native module/lease и ZIP writer factory;
-это новая возможность интеграции, а не доказательство comment round-trip.
+сохранены в audit § P1-04.3. **Статус:** done, 2026-10-02; audit § P1-17 acceptance.
+P2-01 дал native module/lease, теперь исходный ZIP writer и actual comment
+consumer перенесены и проверены. Следующие требования и WIP checkpoints
+сохранены как история scope; их pending/disabled state superseded приёмкой ниже.
 
 Текущий file-only `7zz` 26.03 не записывает комментарий отдельного ZIP-элемента.
 Портировать исходный `ZipHandlerOut.cpp::CHandler::UpdateItems` через
@@ -943,6 +944,31 @@ per-item comment round-trip, отказе, отмене, сохранности 
 новую foundation из P2-01. Другие пакеты выполняются по своим зависимостям. P3-02/05
 могут проверить и документировать остальной scope, но полная приёмка P3-06
 требует закрытия P1-17.
+
+WIP checkpoint 2026-10-02: полный original ZIP handler/writer и codec/crypto/stream
+dependency closure скопированы из baseline и собираются в `sevenzip_zip`.
+Source writer prerequisite suite `native_zip_writer` прошла1/1 (шесть scenarios,
+0.51s) на macOS arm64 Qt6.11.2: обычный/AES ZIP, Unicode comment, исходные bytes,
+Path/Size/CRC/encryption и извлечение через официальный `7zz`, failure/cancel.
+Это ещё не actual Agent/ArchiveBackend/GUI/publication consumer; P1-17 остаётся
+active, команда disabled, счёт28/46 прежний. Provenance: audit § P1-17.
+
+Latest checkpoint supersedes that historical disabled/next state: actual source
+Agent/SetProperty/CommonUpdate/native ZIP/ArchiveBackend publication/reopen and
+Panel ChangeComment/GUI command are connected. EN/RU ordinary/AES success,
+failure, dialog Cancel, raw comment readback/clear, focus, independent extraction,
+nested parent Yes/No and original native progress pause/resume/cancel-paused
+verified. Final focused native suites2/2PASS5.65s; four current Combo JSON reports
+reviewed360×150/260×150. Baseline351/163/3 verified. Shared check.sh43923 passed
+formatting/all-target build and191/192 suites88.64s; unrelated concurrent runner_vm
+failed because its test file disappeared. It is preserved outside this scope.
+Isolated P1-17 snapshot full gate1910 terminal0: formatting/all-target build and
+191/191 CTest PASS86.83s macOS arm64 Qt6.11.2, 2026-10-02. Снимок исключает только
+чужие runner hunks; все162 own source/build-module/test files совпадают с checkout.
+P1-17 принят целой итерацией, счёт29/46. Windows/Linux runtime и rendered Windows
+parity не проверены. Следующая итерация снятия capability prerequisite — P1-18;
+native catalog/leases и original progress callbacks доступны, actual RAR handler/
+decoder/GUI consumer ещё требуется подключить. Finder остаётся mandatory P3-03.1.
 
 ### P1-18. Реальные decoder RAM prompts
 
@@ -1339,7 +1365,8 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 отдельно после проверок, включая только свои изменения. Сохранять чужие hunks,
 записывать local commit как evidence; push и публикация не разрешены.
 
-Следующий доступный результат — **P1-08** после принятого P1-07. ZIP comment
-P1-17 и реальные decoder RAM prompts P1-18 сохраняют самостоятельные блокеры.
+Следующий результат — итерация снятия prerequisites **P1-18** после принятого
+P1-17: actual RAR handler/decoder memory GUI consumer. P1-12/P1-13 сохраняют
+зависимые platform/shell функции, Finder — самостоятельный mandatory P3-03.1.
 Далее по приоритету и
 зависимостям. UX идёт вместе с каждым пакетом.

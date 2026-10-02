@@ -27,5 +27,6 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     HRESULT Close();
     const CArc &arc() const { return *link_.GetArc(); }
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }
+    bool hasCommentWriter() const;
     QString transportType() const { return transportType_; }
 };

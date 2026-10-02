@@ -92,6 +92,9 @@ class ArchiveBackend : public QObject {
     // Called by the source opening worker; no process or widget state is accessed.
     HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
                               std::shared_ptr<ArchiveNativeOpen> &reader) const;
+    HRESULT updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                ISequentialOutStream *output, UInt32 count,
+                                IArchiveUpdateCallback *callback) const;
     virtual void list(const QString &archive, const QString &password = {});
     virtual void openFolder(const QString &archive, const QString &format,
                             const QString &password = {});

@@ -143,7 +143,8 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
                                                 updateCallback100);
                 break;
             case AGENT_OP_Comment:
-                result = E_NOTIMPL /* mandatory AgentOut operation not yet connected */;
+                result = _agentSpec->CommentItem(tailStream, indices, numItems, newItemName,
+                                                 updateCallback100);
                 break;
             case AGENT_OP_CopyFromFile:
                 result = _agentSpec->UpdateOneFile(tailStream, indices, numItems, newItemName,
@@ -436,5 +437,19 @@ Z7_COM7F_IMF(CAgentFolder::CreateFolder(const wchar_t *name, IProgress *progress
 Z7_COM7F_IMF(CAgentFolder::Rename(UInt32 index, const wchar_t *newName, IProgress *progress)) {
     COM_TRY_BEGIN
     return CommonUpdateOperation(AGENT_OP_Rename, false, newName, NULL, &index, 1, progress);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgentFolder::SetProperty(UInt32 index, PROPID propID, const PROPVARIANT *value,
+                                       IProgress *progress)) {
+    COM_TRY_BEGIN
+    if (propID != kpidComment || value->vt != VT_BSTR)
+        return E_NOTIMPL;
+    if (!_agentSpec ||
+        !_agentSpec->GetTypeOfArc(_agentSpec->GetArc()).IsEqualTo_Ascii_NoCase("zip"))
+        return E_NOTIMPL;
+
+    return CommonUpdateOperation(AGENT_OP_Comment, false, value->bstrVal, NULL, &index, 1,
+                                 progress);
     COM_TRY_END
 }

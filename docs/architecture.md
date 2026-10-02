@@ -108,6 +108,20 @@ The panel context popup feeds resource-derived File actions into native
 `CPanel::CreateFileMenu`/`CFileMenu::Load` with `programMenu=false`; Qt renders
 the returned order and enabled state. OS shell and 7-Zip extension groups stay
 disabled until their separate platform command owners are ported.
+ZIP item comments follow source CPanel::ChangeComment, Agent::CommentItem and
+CAgentFolder::SetProperty. The shared source worker/callback invokes the source
+ZIP IOutArchive behind ArchiveBackend::updateNativeComment; widgets never build
+archive commands. sevenzip_zip contains the exact original handler and codec/
+crypto/stream closure. ArchiveCodecCatalog retains module discovery metadata and
+replaces only ZIP factory hooks with this source handler, passing codecs per
+instance and retaining the immutable lease. An empty g_ExternalCodecs ABI fallback
+is owned by archiveexternalcodecs.cpp, not a mutable global runtime catalog.
+The process-backed item proxy can expose native properties and comment writes
+only after exact count/order/path validation; mismatches disable the capability.
+CommonUpdate closes readers, publishes via the existing work-dir transaction and
+reopens/validates the new native reader. Owned nested spools reuse the existing
+parent writeback chain. Native callbacks pause/stop through source ProgressSync;
+process-backed reopen still uses the shared external transport controls.
 Native CApp owns toolbar flags, persistence ordering and focused-folder title;
 QtAppPresentation supplies toolbar reload/layout services. Dialog.cpp retains
 the source dialog-unit size predicate with Qt font/work-area services. Complete

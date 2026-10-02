@@ -37,11 +37,13 @@ QtArchiveFileResource::~QtArchiveFileResource() {
 }
 
 HRESULT QtArchiveFileResource::CloseNativeOpen() {
+    _nativeItemOrder = false;
     auto reader = std::move(_nativeOpen);
     return reader ? reader->Close() : S_OK;
 }
 
 void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader) {
+    _nativeItemOrder = false;
     _nativeNested = reader && reader->hasNestedStream();
     _nativeReadOnly = reader && reader->arc().IsReadOnly;
     _nativeOpenType = reader ? reader->transportType() : QString();
@@ -188,8 +190,8 @@ HRESULT QtArchiveFileResource::Extract(IInArchive *metadata, const UInt32 *indic
 }
 
 std::unique_ptr<IQtProgressTransport>
-QtArchiveFileResource::CreateProgressTransport(CProgressDialog &dialog) {
-    return _progress ? _progress(dialog) : nullptr;
+QtArchiveFileResource::CreateProgressTransport(CProgressDialog &dialog, bool nativeWorker) {
+    return _progress ? _progress(dialog, nativeWorker) : nullptr;
 }
 
 HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {

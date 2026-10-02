@@ -52,6 +52,16 @@ HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVe
     return result;
 }
 
+HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                            ISequentialOutStream *output, UInt32 count,
+                                            IArchiveUpdateCallback *callback) const {
+    if (!reader || !reader->hasCommentWriter())
+        return E_NOTIMPL;
+    CMyComPtr<IOutArchive> writer;
+    RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
+    return writer->UpdateItems(output, count, callback);
+}
+
 bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
     if (codecDiscoveryActive_)
         return false;

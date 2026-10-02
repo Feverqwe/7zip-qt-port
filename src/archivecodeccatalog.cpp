@@ -1,7 +1,13 @@
 #include "archivecodeccatalog.h"
+#include "7zip/Archive/Zip/ZipHandler.h"
 #include "Common/StringConvert.h"
 #include "qtlanguageservices.h"
 #include <QDir>
+
+namespace {
+IInArchive *CreateSourceZipReader() { return new NArchive::NZip::CHandler; }
+IOutArchive *CreateSourceZipWriter() { return new NArchive::NZip::CHandler; }
+} // namespace
 
 ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion) {
     codecs_ = new CCodecs;
@@ -28,8 +34,20 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
     if (result_ != S_OK) {
         codecs_->Formats.Clear();
         codecs_->CloseLibs();
-    } else
+    } else {
+        // Keep verified module metadata/indexes for source detection, but use
+        // our copied ZIP handler for the in-process property update consumer.
+        // OpenArchive still initializes its per-instance external codec lease.
+        FOR_VECTOR(i, codecs_->Formats) {
+            auto &format = codecs_->Formats[i];
+            if (format.Is_Zip()) {
+                format.LibIndex = -1;
+                format.CreateInArchive = CreateSourceZipReader;
+                format.CreateOutArchive = CreateSourceZipWriter;
+            }
+        }
         codecs_->Formats.Sort();
+    }
 }
 
 ArchiveCodecCatalog::~ArchiveCodecCatalog() {

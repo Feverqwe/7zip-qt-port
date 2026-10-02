@@ -1,5 +1,24 @@
 # Regression strategy
 
+P1-17 final unsandboxed check.sh on isolated own-scope snapshot passed formatting,
+all-target build and191/191 CTest86.83s, macOS arm64 Qt6.11.2, 2026-10-02.
+Shared checkout passed191/19288.64s, only unrelated runner_vm failed because its
+test file disappeared concurrently. The snapshot preserves identical owned code
+and excludes that foreign runner hunk; this does not accept the runner work.
+
+P1-17 uses three focused suites. `native_zip_writer` constructs the source-built
+ZIP handler with original CArchiveUpdateCallback, checking ordinary/AES success,
+write failure, callback cancellation, comment and retained Path/Size/CRC/encryption
+and independent7zz extraction. `native_comment` runs actual source SetProperty/
+CommentItem/CommonUpdate publication/reopen/clear and original callback pause,
+resume and cancellation while paused. `native_comment_ui` runs the real command
+in EN/RU for ordinary/AES success, editable-dialog Cancel, UTF-8 oversized comment
+refusal/error, focused versus marked items and refreshed readback. Nested ZIP
+updates preserve the outer bytes until parent confirmation; Yes publishes the
+comment and No discards it. Current-build Combo geometry reports cover360×150
+and260×150 in both languages. Local validation is macOS arm64/Qt6.11.2 only;
+Windows/Linux runtime and rendered Windows parity remain separate P3 checks.
+
 P2-01 final gate: unsandboxed check.sh formatting/all-target build and188/188 CTest
 PASS74.09s macOS arm64 Qt6.11.2, 2026-10-02. Baseline224/161/3 verified. This
 supersedes pending-gate statements in the dated implementation checkpoints below.

@@ -61,7 +61,10 @@ void CComboDialog::OnOK() {
 void CComboDialog::accept() { OnOK(); }
 
 void CComboDialog::BindLanguage(UInt32 titleID, UInt32 promptID) {
-    QtBindLangText(this, titleID, Title);
+    // A caller-built item title has no resource ID. Lang ID 0 names 7-Zip,
+    // so binding it would replace the source "item : Comment" title.
+    if (titleID)
+        QtBindLangText(this, titleID, Title);
     QtBindLangText(findChild<QLabel *>("comboPrompt"), promptID, Static);
     QtBindLangText(_comboBox, promptID, Static, true);
 }

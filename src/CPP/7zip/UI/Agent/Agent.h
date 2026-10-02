@@ -10,6 +10,7 @@
 #include "Common/MyVector.h"
 #include "IFolderArchive.h"
 #include "archivebackend.h"
+#include "qtfolderpropertycapabilities.h"
 #include "qtprogresstransport.h"
 #include <optional>
 
@@ -51,6 +52,7 @@ class CAgentFolder final : public IFolderFolder,
                            public IFolderSetZoneIdMode,
                            public IFolderSetZoneIdFile,
                            public IQtProgressServices,
+                           public IQtFolderPropertyCapabilities,
                            public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
     Z7_COM_QI_ENTRY(IFolderProperties)
@@ -97,7 +99,10 @@ class CAgentFolder final : public IFolderFolder,
     IUnknown *GetEngineResource() const;
     // File-only refresh bridge; native ReOpen and folder binding retain ownership.
     HRESULT ReOpen(IArchiveOpenCallback *callback, IFolderFolder **folder);
+    bool CanComment() const override;
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog) override;
+    std::unique_ptr<IQtProgressTransport>
+    CreateNativeProgressTransport(CProgressDialog &dialog) override;
     void GetPathParts(UStringVector &pathParts, bool &isAltStreamFolder);
     HRESULT CommonUpdateOperation(AGENT_OP operation, bool moveMode, const wchar_t *newItemName,
                                   const NUpdateArchive::CActionSet *actionSet,
@@ -157,6 +162,9 @@ class CAgent final : public IFolderArcProps, public CMyUnknownImp {
     FString _hashBaseFolderPrefix;
     bool ThereIsPathProp = false;
     const CArc &GetArc() const { return _archiveLink.Arcs.Back(); }
+    // Process-backed CArc indexes belong to a different catalog. Resolve its
+    // detected type through the retained transport name, not global codecs.
+    UString GetTypeOfArc(const CArc &) const { return ArchiveType; }
     IInArchive *GetArchive() const {
         if (_archiveLink.Arcs.IsEmpty())
             return NULL;
@@ -188,6 +196,9 @@ class CAgent final : public IFolderArcProps, public CMyUnknownImp {
     HRESULT UpdateOneFile(ISequentialOutStream *outArchiveStream, const UInt32 *indices,
                           UInt32 numItems, const wchar_t *diskFilePath,
                           IFolderArchiveUpdateCallback *updateCallback100);
+    HRESULT CommentItem(ISequentialOutStream *outArchiveStream, const UInt32 *indices,
+                        UInt32 numItems, const wchar_t *newItemName,
+                        IFolderArchiveUpdateCallback *updateCallback100);
     // External engine stream/file lifetime replaces the in-process archive's
     // stream ownership. All folders retain this source CAgent owner.
     void AttachEngineResource(IUnknown *resource) { _engineResource = resource; }

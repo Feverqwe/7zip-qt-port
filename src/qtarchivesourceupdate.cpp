@@ -3,6 +3,7 @@
 #include "7zip/Common/StreamUtils.h"
 #include "7zip/Compress/CopyCoder.h"
 #include "7zip/IPassword.h"
+#include "CPP/7zip/UI/Common/UpdateCallback.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/Windows/FileDir.h"
 #include "Common/ComTry.h"
@@ -27,8 +28,8 @@ class CResourceProgress final : public IQtProgressTransport {
 
   public:
     CResourceProgress(QtArchiveFileResource *resource, CProgressDialog &dialog,
-                      ArchiveBackend &backend)
-        : _resource(resource), _resourceSpec(resource), _transport(dialog, backend) {
+                      ArchiveBackend &backend, bool nativeWorker)
+        : _resource(resource), _resourceSpec(resource), _transport(dialog, backend, nativeWorker) {
         resource->SetUpdateProgress(&dialog.Sync);
     }
     ~CResourceProgress() override { _resourceSpec->SetUpdateProgress(nullptr); }
@@ -38,8 +39,8 @@ class CResourceProgress final : public IQtProgressTransport {
 } // namespace
 
 void QtArchiveFileResource::AttachProgressService(ArchiveBackend &backend) {
-    _progress = [this, &backend](CProgressDialog &dialog) {
-        return std::make_unique<CResourceProgress>(this, dialog, backend);
+    _progress = [this, &backend](CProgressDialog &dialog, bool nativeWorker) {
+        return std::make_unique<CResourceProgress>(this, dialog, backend, nativeWorker);
     };
 }
 
@@ -49,6 +50,12 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
     _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
                                        UInt32 count, IArchiveUpdateCallback *callback) {
         _outputMTime.reset();
+        if (const auto *source = dynamic_cast<CArchiveUpdateCallback *>(callback);
+            source && source->CommentIndex >= 0 && source->Comment) {
+            if (!HasCommentService())
+                return E_NOTIMPL;
+            return backend.updateNativeComment(_nativeOpen, output, count, callback);
+        }
         return UpdateArchiveSourceStream(backend, EnginePath, format, output, metadata, count,
                                          callback, _sync,
                                          _compressionOptions ? &*_compressionOptions : nullptr);

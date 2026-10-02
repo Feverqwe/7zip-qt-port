@@ -87,6 +87,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     struct TransportCapabilities {
         bool filesystem = false, archive = false, writable = false, mutationWritable = false;
         bool nested = false, root = false;
+        bool comment = false;
         bool selected = false, one = false, oneFile = false, operated = false, focused = false;
         bool focusedFile = false, folderSize = false;
         bool split = false, combine = false, entries = false, rows = false, foldersHistory = false;
