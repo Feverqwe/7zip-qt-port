@@ -6,6 +6,15 @@ Source provenance, baselines, adaptations and migration debt belong in the
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
 
+Native PanelDrag owns source selection, effects, destination/transfer handshake,
+source-versus-target CopyTo/CopyFrom/Add execution and completion. CApp owns its
+drop target and Begin/End focus state. QtFileManagerDrag owns view hit testing,
+highlight, modal presentation, input/event delivery and the existing backend's
+Add progress consumer. It attaches newly created panels as well as initial ones.
+QtPanelDragTransport exposes real local-file URLs after native source extraction;
+the common temp registry retains unconfirmed external lifetimes. Widgets do not
+parse archive commands or implement archive transfers.
+
 Native HelpUtils owns topic construction and source dialog/page callbacks own
 their context topics. Qt help services in sevenzip_panel render bundled original
 HTML/CSS with internal navigation; explicit web clicks use QDesktopServices.

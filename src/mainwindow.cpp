@@ -6,6 +6,7 @@
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qttrashservice.h"
@@ -70,6 +71,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
     commands_->AttachActions();
+    drag_ = std::make_unique<QtFileManagerDrag>(*this);
     for (unsigned index = 0; index < kNumPanelsMax; ++index)
         app_.Panels[index].AttachInvalidationPresentation([this, index] {
             if (index == app_.GetFocusedPanelIndex())

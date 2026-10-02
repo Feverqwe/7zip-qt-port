@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
+#include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
 #include "qtstatuslabel.h"
 
@@ -400,7 +401,7 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
 }
 
 void MainWindow::createIconList(QWidget *central) {
-    iconList_ = new QListView(central);
+    iconList_ = new FileIconList(central);
     iconList_->setObjectName("iconList");
     QtBindLocalText(iconList_, "File list", "Список файлов", true);
     iconList_->setModel(table_->model());
@@ -490,6 +491,8 @@ void MainWindow::updateParentEntry() {
 }
 
 void MainWindow::activateSingleClickedRow(int row) {
+    if (drag_ && drag_->Active())
+        return;
     // Selection modifiers must keep the Qt multi-selection gesture intact.
     const auto modifiers = QApplication::keyboardModifiers();
     if (fileListSettings_.SingleClick &&

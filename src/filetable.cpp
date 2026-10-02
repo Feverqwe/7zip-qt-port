@@ -24,8 +24,11 @@ class FileRowDelegate final : public QStyledItemDelegate {
         }
         return QStyledItemDelegate::eventFilter(editor, event);
     }
-    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+    void paint(QPainter *painter, const QStyleOptionViewItem &original,
                const QModelIndex &index) const override {
+        QStyleOptionViewItem option(original);
+        if (index.data(Qt::UserRole + 19).toBool())
+            option.state |= QStyle::State_Selected;
         auto *table = dynamic_cast<const FileTable *>(parent());
         if (!table || table->fullRowHighlight() || index.column() == 0) {
             QStyledItemDelegate::paint(painter, option, index);
@@ -66,6 +69,19 @@ QMimeData *FileTable::mimeData(const QList<QTableWidgetItem *> &items) const {
     }
     data->setUrls(urls);
     return data;
+}
+
+void FileTable::startDrag(Qt::DropActions actions) {
+    if (dragStarter)
+        dragStarter();
+    else
+        QTableWidget::startDrag(actions);
+}
+void FileIconList::startDrag(Qt::DropActions actions) {
+    if (dragStarter)
+        dragStarter();
+    else
+        QListView::startDrag(actions);
 }
 
 bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {

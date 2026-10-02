@@ -251,33 +251,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         selectionClickModifiers_ = mouse->modifiers();
         selectionClickLeft_ = mouse->button() == Qt::LeftButton;
     }
-    if (listViewport && (event->type() == QEvent::DragEnter || event->type() == QEvent::DragMove)) {
-        auto *drag = static_cast<QDragMoveEvent *>(event);
-        if ((state_ == State::Filesystem || (state_ == State::Viewing && !info_.encrypted)) &&
-            !drag->mimeData()->urls().isEmpty() && !backend_->busy()) {
-            drag->setDropAction(Qt::CopyAction);
-            drag->accept();
-            return true;
-        }
-    }
-    if (listViewport && event->type() == QEvent::Drop) {
-        auto *drop = static_cast<QDropEvent *>(event);
-        QStringList paths;
-        for (const QUrl &url : drop->mimeData()->urls()) {
-            if (!url.isLocalFile())
-                return true;
-            paths << url.toLocalFile();
-        }
-        if (paths.isEmpty())
-            return true;
-        if (state_ == State::Filesystem)
-            transferFiles(paths, directory_, false);
-        else if (state_ == State::Viewing && !info_.encrypted)
-            addSources(paths);
-        drop->setDropAction(Qt::CopyAction);
-        drop->accept();
-        return true;
-    }
     if (event->type() == QEvent::KeyPress &&
         handlePanelKey(watched, static_cast<QKeyEvent *>(event)))
         return true;
@@ -300,6 +273,9 @@ void MainWindow::setViewMode(int mode) {
         iconList_->setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
         iconList_->setWrapping(true);
         iconList_->setMovement(QListView::Static);
+        // Qt's Static movement resets dragEnabled. The shared file-list policy
+        // still permits exporting entries through the native drag controller.
+        iconList_->setDragEnabled(table_->dragEnabled());
     }
     viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
     app_.GetFocusedPanel().AttachPresentation(viewStack_->currentWidget(), pathCombo_);

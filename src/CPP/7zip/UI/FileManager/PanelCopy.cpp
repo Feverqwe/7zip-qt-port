@@ -88,9 +88,9 @@ HRESULT CPanelCopyThread::ProcessVirt() {
     }
 
     if (CopyFrom_Paths) {
-        // Mandatory P0-05/P1-02 dependency: native CopyFileSystemItems is not
-        // connected yet. Archive opening uses the folder-operation branch below.
-        return E_NOTIMPL;
+        result2 = NFsFolder::CopyFileSystemItems(
+            *CopyFrom_Paths, us2fs(options->folder), options->moveMode,
+            (IFolderOperationsExtractCallback *)ExtractCallbackSpec);
     } else if (options->testMode || options->extractMode) {
         CMyComPtr<IArchiveFolder> archiveFolder;
         FolderOperations.QueryInterface(IID_IArchiveFolder, &archiveFolder);
@@ -296,6 +296,25 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
 
     RefreshTitleAlways();
     return res;
+}
+
+HRESULT CPanel::CopyFromNoAsk(bool moveMode, const UStringVector &filePaths) {
+    CDisableTimerProcessing disableTimerProcessing(*this);
+    CSelectedState srcSelState;
+    SaveSelectedState(srcSelState);
+    CDisableNotify disableNotify(*this);
+    const HRESULT result = CopyFrom(moveMode, L"", filePaths, true, NULL);
+    if (result != S_OK) {
+        disableNotify.Restore();
+        SetFocusToList();
+        if (result != E_ABORT)
+            MessageBox_Error_HRESULT(result);
+        return result;
+    }
+    RefreshListCtrl(srcSelState);
+    disableNotify.Restore();
+    SetFocusToList();
+    return S_OK;
 }
 
 class CThreadUpdate final : public CProgressThreadVirt {

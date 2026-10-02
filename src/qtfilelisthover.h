@@ -10,6 +10,10 @@ class QtFileListHover final : public QObject {
   public:
     explicit QtFileListHover(QAbstractItemView &view);
     void SetEnabled(bool enabled);
+    void SetSuspended(bool suspended) {
+        suspended_ = suspended;
+        Cancel();
+    }
 
   protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -21,4 +25,5 @@ class QtFileListHover final : public QObject {
     QPersistentModelIndex index_;
     QPoint position_;
     bool enabled_ = false;
+    bool suspended_ = false;
 };

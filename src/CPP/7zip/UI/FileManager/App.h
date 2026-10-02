@@ -19,6 +19,7 @@ enum {
 class IQtFileManagerMenuCommandServices;
 
 class CApp;
+class CDropTarget;
 
 class CPanelCallbackImp final : public CPanelCallback {
     CApp *_app = nullptr;
@@ -113,6 +114,8 @@ class CApp {
     void OnSetSubFolder(unsigned index);
     void DragBegin(unsigned index);
     void DragEnd();
+    void CreateDragTarget();
+    CDropTarget &DropTarget() { return *_dropTargetSpec; }
     void Save();
     void ReleaseApp();
     void AttachQtCommandServices(IQtFileManagerMenuCommandServices *services) {
@@ -145,6 +148,7 @@ class CApp {
     }
 
   private:
+    std::unique_ptr<CDropTarget> _dropTargetSpec;
     QtAppOperationState _qtOperations;
     IQtFileManagerMenuCommandServices *_qtCommandServices = nullptr;
     QPointer<QWidget> _window;

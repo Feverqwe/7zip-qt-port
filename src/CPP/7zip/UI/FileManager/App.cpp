@@ -19,12 +19,16 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "qtfilemanagercommandservices.h"
+#include "qtpaneldragmodel.h"
 #include "qtpanelfolder.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QWidget>
 
-CApp::CApp() : _qtOperations(Panels) { SetPanels_AutoRefresh_Mode(); }
+CApp::CApp() : _qtOperations(Panels) {
+    CreateDragTarget();
+    SetPanels_AutoRefresh_Mode();
+}
 
 CApp::~CApp() { ReleaseApp(); }
 
@@ -239,18 +243,6 @@ void CApp::OnSetSubFolder(unsigned index) {
     if (_presentation)
         if (auto *callback = _presentation->PanelCallback(index))
             callback->OnSetSubFolder();
-}
-
-void CApp::DragBegin(unsigned index) {
-    if (_presentation)
-        if (auto *callback = _presentation->PanelCallback(index))
-            callback->DragBegin();
-}
-
-void CApp::DragEnd() {
-    if (_presentation)
-        if (auto *callback = _presentation->PanelCallback(LastFocusedPanel))
-            callback->DragEnd();
 }
 
 HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const UString &arcFormat,

@@ -110,6 +110,9 @@ if(WIN32)
 endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/CPP/7zip/UI/Common/ArchiveName.cpp
+    src/qtpaneldragmodel.h
+    src/qtpaneldragtransport.cpp src/qtpaneldragtransport.h
     src/CPP/7zip/UI/FileManager/AboutDialog.cpp src/CPP/7zip/UI/FileManager/AboutDialog.h
     src/CPP/7zip/UI/FileManager/BrowseDialog2.cpp src/CPP/7zip/UI/FileManager/BrowseDialog2.h
     src/qttempbrowsepresentation.cpp
@@ -328,6 +331,10 @@ set_target_properties(sevenzip_desktop PROPERTIES
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    qt_add_executable(drag_drop_tests tests/drag_drop_tests.cpp)
+    target_link_libraries(drag_drop_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME drag_drop COMMAND drag_drop_tests -silent)
+    set_tests_properties(drag_drop PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     qt_add_executable(owned_temp_tests tests/owned_temp_tests.cpp)
     target_include_directories(owned_temp_tests PRIVATE src)
     target_link_libraries(owned_temp_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -532,6 +539,10 @@ if(BUILD_TESTING)
     set_tests_properties(source_update_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     get_target_property(owned_temp_publication_sources source_update_backend_tests SOURCES)
     list(REMOVE_ITEM owned_temp_publication_sources tests/source_update_backend_tests.cpp)
+    qt_add_executable(drag_archive_tests tests/drag_archive_tests.cpp ${owned_temp_publication_sources})
+    target_link_libraries(drag_archive_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME drag_archive COMMAND drag_archive_tests -silent)
+    set_tests_properties(drag_archive PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     qt_add_executable(owned_temp_publication_tests tests/owned_temp_publication_tests.cpp
         ${owned_temp_publication_sources})
     target_include_directories(owned_temp_publication_tests PRIVATE src)
@@ -1267,6 +1278,23 @@ if(BUILD_TESTING)
     add_test(NAME folder_size_view COMMAND folder_size_view_tests -silent)
     set_tests_properties(folder_size_view PROPERTIES TIMEOUT 90 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/folder_size_view.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(drag_drop_ui_tests tests/drag_drop_ui_tests.cpp
+        tests/layout_inspection.cpp src/mainwindow_selectionpaths.cpp
+        ${folder_size_view_sources})
+    target_include_directories(drag_drop_ui_tests PRIVATE src tests)
+    target_link_libraries(drag_drop_ui_tests PRIVATE ${folder_size_view_libraries}
+        sevenzip_location sevenzip_folder_loader)
+    add_test(NAME drag_drop_ui COMMAND drag_drop_ui_tests -silent)
+    set_tests_properties(drag_drop_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/drag_drop_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(drag_drop_add_ui_tests tests/drag_drop_add_ui_tests.cpp
+        src/mainwindow_selectionpaths.cpp ${folder_size_view_sources})
+    target_include_directories(drag_drop_add_ui_tests PRIVATE src tests)
+    target_link_libraries(drag_drop_add_ui_tests PRIVATE ${folder_size_view_libraries}
+        sevenzip_location sevenzip_folder_loader)
+    add_test(NAME drag_drop_add_ui COMMAND drag_drop_add_ui_tests -silent)
+    set_tests_properties(drag_drop_add_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/drag_drop_add_ui.ini")
 endif()
 
 # Every target compiling the engine owner needs this typed source-update transport.
@@ -1288,6 +1316,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
+            src/qtfilemanagerdrag.cpp src/qtfilemanagerdrag.h src/qtfilemanagerdragpresentation.cpp
+            src/qtfilemanagerdraginput.cpp
             src/mainwindow_twopanel.cpp
             src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
             src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)

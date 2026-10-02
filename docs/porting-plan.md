@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-14 (2026-10-01):
-**26/46 закрыты, 20 остаётся**; P0: 12/12, P1: 13/18, P2: 0/10, P3: 1/6.
+Текущий счёт после P1-16 (2026-10-02):
+**27/46 закрыты, 19 остаётся**; P0: 12/12, P1: 14/18, P2: 0/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -901,8 +901,24 @@ OLE IDataObject заменяется Qt mime/platform promise adapter; archive d
 Mouse hover/single-click не открывает файл во время drag.
 
 **Готово:** copy/move modifiers, отказ/отмена extract, outside receiver failure
-и lifetime temp тестированы fake recipient; native file managers отдельно
-на доступных ОС. Unsupported native promise branch остаётся documented partial.
+и lifetime temp тестированы fake recipient; live Qt workflow и полный gate проверены.
+Нативная проверка Finder вынесена в обязательный P3-03.1 и не блокирует приёмку
+реализации P1-16. Остальные native file managers проверяются в P3-03.
+Unsupported native promise branch остаётся documented partial.
+
+Реализация принята: native OnDrag/Drop/transfer/CompressDropFiles и CApp bodies скопированы,
+подключены обе table/icon панели, lazy F9 panel, исходные popup/confirmation/Add.
+Actual ZIP binary bytes/receiver lifetime/refusal/drag+extract cancel, disk Copy/
+Move, live two-panel и archive Yes/No/Cancel, source close/SingleClick/hover guards
+проверены; focused11/11PASS7.44s macOS arm64 Qt6.11.2 2026-10-02 до последних
+archive→disk/archive и Add naming fixtures. Native archive→disk/archive проверены
+отдельно. Полный unsandboxed check.sh: formatting/build/179 tests PASS67.66s,
+macOS arm64 Qt6.11.2 2026-10-02; drag_drop_add_ui PASS0.55s.
+Finder proof теперь относится к P3-03.1: Computer Use отказал в доступе к
+sevenzip_desktop, запрос доступа ожидает ответа. Source scope и адаптации
+зафиксированы в audit § P1-16; Windows/Linux runtime/rendered parity остаются
+непроверенными в P3-03/P3-06, GUI-thread preparation — mandatory P2-10.
+Следующий доступный пакет — P2-01; P1-17/18 ждут native engine capability.
 
 ### P1-17. ZIP per-item comment и запись свойства
 
@@ -1138,6 +1154,23 @@ official 7zz, format/build/CTest, diagnostics artifacts. Запуск на GitHu
 dialogs/shortcuts/icons/drag/registration/FS differences проверены отдельно.
 При недоступной ОС записать unverified; config файл сам по себе не доказывает
 триплатформенную готовность. Windows visual reference — отдельное свидетельство.
+
+### P3-03.1. Нативная проверка drag-out в Finder (macOS)
+
+**После:** проверенная реализация P1-16. Отдельный обязательный подшаг P3-03;
+не является prerequisite приёмки реализации P1-16 или работы над P2.
+
+В тестовой сборке перетащить файл из disposable архива в папку Finder и проверить
+реальные bytes, Unicode/пробелы в имени, отмену, сохранность исходного архива и
+доступность временных данных до завершения получения. Зафиксировать macOS,
+Qt/7zz versions, revision/date, результат и ограничения наблюдения lifetime.
+Qt synthetic events и fake recipient не заменяют этот сценарий.
+
+**Готово:** реальный Finder transfer подтверждён с доказательствами; ошибки,
+отмена и lifetime проверены в доступном native scope, оставшиеся ограничения
+явно записаны. До этого P3-03 и итоговая P3-06 не могут быть полностью приняты.
+Текущий статус: blocked — Computer Use отказал в доступе к sevenzip_desktop;
+перенос в отдельный пункт не означает успешной проверки или N/A.
 
 ### P3-04. Поставка приложения, движка, ресурсов и лицензий
 

@@ -7,6 +7,23 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P1-16 implementation accepted: обе table/icon панели используют исходные правила PanelDrag: внутренний
+disk→disk Copy/Move с Ctrl/Shift и выбором подпапки, внешний filesystem drop→Add,
+drop в архив→Copy с Yes/No/Cancel. Правое drop-меню сохраняет исходные порядок,
+маски и Cancel; source right drag разрешён только из filesystem. Наведение и
+SingleClick при source drag приостановлены. Qt на macOS откладывает context menu
+с нажатия до отпускания правой кнопки, чтобы допустить этот жест.
+Архивный source заранее извлекает реальные bytes до Qt QDrag, поскольку у Qt
+нет переносимого OLE release-before-drop hook; отмена может произойти уже после
+извлечения. Move наружу не удаляет исходные архивные элементы. Неподтверждённый
+внешний получатель удерживает owned temp после завершения локального drag без
+удаления по таймеру. Native promise/delayed materialization не заявлены.
+Qt Add всегда ждёт свой backend/progress вместо отдельного nonmodal 7zG.
+Автоматические native/Qt receiver tests и normal/compact JSON выполнены;
+Finder ещё не проверен (отдельный обязательный P3-03.1): Computer Use не получил
+доступ к sevenzip_desktop. Эта проверка требуется для итоговой приёмки P3-03/P3-06.
+Windows/Linux runtime и rendered Windows reference остаются unverified.
+
 P1-15.2 accepted: source Delete Temporary Files is connected. It lists only registered
 objects directly under the current OS temp directory and allows browsing inside
 those owned roots. Delete uses native confirmation/first-failure/reload behavior;

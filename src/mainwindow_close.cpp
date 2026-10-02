@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "qtfilemanagercommands.h"
+#include "qtfilemanagerdrag.h"
 #include "qtfilemanagerwindowservices.h"
 #include <QCloseEvent>
 
@@ -26,6 +27,8 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
             panel.ExitExternalWorkers(hardExit);
     }
     void RevokeDropTarget() override {
+        if (window_.drag_)
+            window_.drag_->Revoke();
         window_.setAcceptDrops(false);
         for (const auto &ui : window_.panelUi_) {
             if (ui.table)

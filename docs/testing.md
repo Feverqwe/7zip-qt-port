@@ -1,5 +1,26 @@
 # Regression strategy
 
+P1-16 implementation accepted: drag_drop exercises native source/target handshake and disk ControlCopy/
+ShiftMove through actual CopyTo, source rejection/hovered path/modifiers/Cancel.
+drag_archive creates a disposable official-engine ZIP and runs native OnDrag/
+source extraction/Qt MIME/fake recipient with binary Unicode/spaced bytes. It
+checks completed cleanup, durable unconfirmed receiver protection, refused drop,
+drag cancellation and actual engine extraction cancellation; returned Move does
+not change original ZIP bytes. Final focused6/6 passed0.99s on macOS arm64
+Qt6.11.2 2026-10-02. Native archive→disk/archive now additionally checks actual
+destination bytes, source-versus-target execution flags, source ZIP preservation
+and temp removal. drag_drop_ui covers real table/icon events in both directions,
+source rejection, folder highlight, right popup Copy/Cancel, archive Yes/No/Cancel
+with actual ZIP update, source close/SingleClick protection and hover resumption.
+drag_drop_add_ui covers native naming/selected format suffix and actual external
+filesystem→Add creation/re-extraction. A focused11/11 run passed7.44s before the
+latest naming/header fixtures; final drag_drop_add_ui passed0.55s and the full
+unsandboxed check.sh formatting/build/179 tests passed67.66s on macOS arm64
+Qt6.11.2 2026-10-02. Eight current 980×620/640×400 JSON reports were reviewed.
+Native Finder proof is a separate mandatory P3-03.1 check, open because Computer
+Use denied app access. It does not block implementation acceptance of P1-16;
+P3-03/P3-06 acceptance requires it. Windows/Linux runtime remains unverified.
+
 P1-15.2 accepted: owned_temp observes native/Qt ownership, last copied lease, retained
 external protection/restart, unowned names, replacement identity, links and
 failed registration. archive_external_lifetime also checks the actual native

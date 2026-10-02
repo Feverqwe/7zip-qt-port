@@ -2,8 +2,10 @@
 
 #include "7zip/PropID.h"
 #include "Common/MyWindows.h"
+#include <QListView>
 #include <QTableWidget>
 #include <QVector>
+#include <functional>
 class CPanel;
 QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent);
 
@@ -14,6 +16,7 @@ class FileTable : public QTableWidget {
     bool fullRowHighlight() const { return fullRowHighlight_; }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
+    std::function<void()> dragStarter;
     QVector<PROPID> propertyIds;
     QVector<bool> rawProperties;
     PROPID propertyId(int column) const {
@@ -31,10 +34,20 @@ class FileTable : public QTableWidget {
     }
 
   protected:
+    void startDrag(Qt::DropActions actions) override;
     QMimeData *mimeData(const QList<QTableWidgetItem *> &items) const override;
 
   private:
     bool fullRowHighlight_ = false;
+};
+
+class FileIconList final : public QListView {
+  public:
+    using QListView::QListView;
+    std::function<void()> dragStarter;
+
+  protected:
+    void startDrag(Qt::DropActions actions) override;
 };
 
 class ArchiveTableItem : public QTableWidgetItem {

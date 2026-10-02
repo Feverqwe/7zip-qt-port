@@ -13,8 +13,23 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P1-16: source drag/drop между панелями и наружу из архива, effect/selection/
-destination rules, actual temporary bytes и recipient lifetime, отказ/отмена.
+P2-01: formats/codec capabilities и Open Inside */#, source LoadCodecs/OpenArchive/
+FilePlugins owners; engine metadata вместо самостоятельных extension guesses.
+Native bridge из этого пакета также разблокирует mandatory P1-17/18; их не
+закрывать synthetic tests или console-only capability.
+P1-16 implementation accepted: native OnDrag/Drop/transfer/CompressDropFiles и
+CApp Begin/End, Qt MIME transport; focused6/6PASS0.99s macOS arm64 Qt6.11.2
+2026-10-02. Actual ZIP binary bytes/known+unconfirmed receiver/refusal/drag+extract
+cancel и native disk Copy/Move проверены. Live both views/lazy F9 panel, popup/
+confirmation/Add, Yes/No/Cancel, close/SingleClick/hover guards уже подключены;
+focused11/11PASS7.44s до последних naming/header fixtures, actual archive→disk/
+archive также проверены. Полный unsandboxed check.sh formatting/build/179 tests
+PASS67.66s macOS arm64 Qt6.11.2 2026-10-02. Нативная проверка Finder вынесена
+в отдельный обязательный P3-03.1; она не блокирует приёмку реализации P1-16
+или работу над P2, но требуется для P3-03/P3-06. Computer Use app access отказан,
+запрос ожидает ответа; native transfer не выполнялся. Baseline218 exact/159 adapted/3 local.
+Current audit/note содержат точный scope; eager materialization documented,
+GUI-thread preparation/large-list responsiveness остаётся mandatory P2-10.
 P1-15.2 и parent приняты: actual native BrowseDialog2/modal command, creation
 ownership registry, native/Qt/nested/process leases, private spool publication,
 Yes/No/Cancel/first failure/replaced identity и active child-editor protection.
@@ -41,7 +56,7 @@ PASS3.00s, isolated modal consumers2/2PASS1.04s. Qt platform standard buttons/
 macOS mnemonic policy сохранены, Windows/Linux runtime/rendered parity unverified.
 Core language services — sevenzip_filesystem, widgets — sevenzip_panel; cancelled
 result определяется HRESULT/typed completion, partial-move warning сохраняется.
-Source baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Счёт26/46, остаётся20.
+Source baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Счёт27/46, остаётся19.
 P1-13 parent открыт до .2:
 source shell policies/flags/registration требуют P2-09 consumer, controls disabled
 с причиной. P2-09 зависит от P1-13.1 capability, не от открытого parent.

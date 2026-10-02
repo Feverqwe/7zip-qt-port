@@ -148,8 +148,10 @@ void MainWindow::refreshActions() {
         ui.iconList->setEnabled(panelIdle);
         ui.path->setReadOnly(!navigating);
     }
-    table_->setDragEnabled(idle && state_ == State::Filesystem);
-    iconList_->setDragEnabled(idle && state_ == State::Filesystem);
+    const bool dragAvailable = idle && app_.GetFocusedPanel().DoesItSupportOperations() &&
+                               (state_ == State::Filesystem || state_ == State::Viewing);
+    table_->setDragEnabled(dragAvailable);
+    iconList_->setDragEnabled(dragAvailable);
 }
 
 void MainWindow::refreshPanelStatus() {

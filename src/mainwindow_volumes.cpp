@@ -9,11 +9,14 @@
 #include "qtapppresentation.h"
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
+#include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
 #include "qttrashservice.h"
 #include <QCloseEvent>
 
 MainWindow::~MainWindow() {
+    if (drag_)
+        drag_->Revoke();
     removeEventFilter(this);
     // QComboBox can emit activated from editingFinished while QWidget tears
     // down focus. Navigation must stop before MainWindow members are destroyed.

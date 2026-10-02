@@ -660,16 +660,32 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         file.close();
         ControlledBackend backend;
         MainWindow window(&backend);
+        window.show();
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(temp.filePath("in"));
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(table(window)->isEnabled());
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(source)});
         QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table(window)->viewport(), &enter);
         QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        bool addFormShown = false;
+        QTimer rejectDropAdd;
+        rejectDropAdd.setInterval(5);
+        connect(&rejectDropAdd, &QTimer::timeout, &window, [&] {
+            if (auto *dialog =
+                    dynamic_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
+                addFormShown = true;
+                dialog->reject();
+            }
+        });
+        rejectDropAdd.start();
         QCoreApplication::sendEvent(table(window)->viewport(), &drop);
-        QTRY_VERIFY(QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
+        rejectDropAdd.stop();
+        QVERIFY(addFormShown);
+        QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
+        QCOMPARE(backend.createCalls, 0);
         QTRY_VERIFY(table(window)->isEnabled());
 
         openListedArchive(window, backend, "items.zip",
@@ -708,23 +724,14 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         bool cancelRequested = false;
         connect(&cancelAdd, &QTimer::timeout, &window, [&] {
             if (auto *question = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                if (question->objectName() == "progressCancelQuestion")
-                    question->button(QMessageBox::Yes)->click();
-                return;
-            }
-            if (backend.addCalls == 1 && !cancelRequested) {
                 cancelRequested = true;
-                QVERIFY(!action(window, "copyAction")->isEnabled());
-                auto *progress =
-                    dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
-                QVERIFY(progress);
-                QTimer::singleShot(0, progress, [progress] { progress->reject(); });
+                question->button(QMessageBox::No)->click();
             }
         });
         cancelAdd.start();
         QCoreApplication::sendEvent(table(window)->viewport(), &archiveDrop);
         cancelAdd.stop();
-        QCOMPARE(backend.addCalls, 1);
+        QCOMPARE(backend.addCalls, 0);
         QVERIFY(cancelRequested);
         QVERIFY(action(window, "copyAction")->isEnabled());
     }

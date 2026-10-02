@@ -101,6 +101,7 @@ class MainWindow : public QMainWindow {
     friend class QtAppPresentation;
     friend class QtFileManagerWindowServices;
     friend class QtFileManagerCommands;
+    friend class QtFileManagerDrag;
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
     void reloadLangItems();
@@ -256,6 +257,7 @@ class MainWindow : public QMainWindow {
     CMyComPtr<IFolderManager> folderManager_;
     std::unique_ptr<class QtAssociatedFileServices> associatedFileServices_;
     std::unique_ptr<class QtAppPresentation> appPresentation_;
+    std::unique_ptr<class QtFileManagerDrag> drag_;
     std::unique_ptr<class QtFileManagerCommands> commands_;
     std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;

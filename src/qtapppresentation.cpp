@@ -1,6 +1,7 @@
 #include "qtapppresentation.h"
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
+#include "qtfilemanagerdrag.h"
 
 void QtAppPresentation::Initialize(CApp &app) {
     // Preserve the existing single-panel preferences when introducing the
@@ -54,6 +55,8 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
     window_.createFilePanel(editMenu_, index);
     panel.AttachSelectionView(window_.table_);
     window_.storePanelUi(index);
+    if (window_.drag_)
+        window_.drag_->AttachPanel(index);
     if (hadPrevious && index != previous) {
         window_.restorePanelUi(previous);
         window_.projectedPanel_ = previous;

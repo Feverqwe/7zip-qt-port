@@ -36,6 +36,7 @@ struct CAppState;
 class CFastFolders;
 class CListViewDialog;
 class CPanel;
+class IQtPanelDragServices;
 class QWidget;
 class CVirtFileSystem;
 namespace NUpdateArchive {
@@ -390,6 +391,19 @@ class CPanel : public QObject {
     void AttachExternalFileServices(IQtExternalFileServices *services) {
         _externalFileServices = services;
     }
+    void AttachDragServices(IQtPanelDragServices *services) { _dragServices = services; }
+    void OnDrag(bool isRightButton);
+    HRESULT CompressDropFiles(const UStringVector &filePaths, const UString &folderPath,
+                              bool createNewArchive, bool moveMode, UInt32 sourceFlags,
+                              UInt32 &targetFlags);
+    HRESULT CopyFsItems(CCopyToOptions &options, const UStringVector &filePaths,
+                        UStringVector *messages) {
+        bool usePassword = false;
+        UString password;
+        CRecordVector<UInt32> indices;
+        return CopyTo(options, indices, messages, usePassword, password, &filePaths);
+    }
+    HRESULT CopyFromNoAsk(bool moveMode, const UStringVector &filePaths);
     void RefreshTitle(bool always = false) {
         if (_panelCallback)
             _panelCallback->RefreshTitle(always);
@@ -516,6 +530,7 @@ class CPanel : public QObject {
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
     UString GetItemName_for_Copy(unsigned index) const;
+    UString GetItemName(unsigned index) const;
     UString GetItemRelPath(unsigned index) const;
     UString GetItemRelPath2(unsigned index) const;
     UString GetItemFullPath(unsigned index) const;
@@ -561,6 +576,7 @@ class CPanel : public QObject {
     UINT _comboBoxID = 0;
     UINT _statusBarID = 0;
     CPanelCallback *_panelCallback = nullptr;
+    IQtPanelDragServices *_dragServices = nullptr;
     std::optional<CSelectedState> _refreshSelection;
     IQtExternalFileServices *_externalFileServices = nullptr;
     std::unique_ptr<CExitEventLauncher> _exitEventLauncher;
@@ -605,7 +621,6 @@ class CPanel : public QObject {
     CRecordVector<bool> _isDirVector;
     UString _currentFolderPrefix;
     bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
-    UString GetItemName(unsigned index) const;
     UString GetItemPrefix(unsigned index) const;
     unsigned GetRealItemIndex(int indexInListView) const;
     UInt32 GetFocusedFileIndex() const;

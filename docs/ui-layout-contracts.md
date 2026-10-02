@@ -5,6 +5,20 @@ For resource-derived comparison and reviewed C++ states, see
 `ui_parity_copy` and `ui_parity_password` check fresh reports against pinned
 resource baselines.
 
+### File-list drag target (P1-16 WIP)
+
+Reference: pinned `PanelDrag.cpp::PositionCursor`, its `LVIS_DROPHILITED`
+paint state, native right-drop popup pairs/masks and Copy-to-archive confirmation.
+Qt preserves per-panel path→view→status order. Hover highlights the folder through
+a separate paint role without changing selection; DragLeave/Drop removes it.
+Source-panel and disabled-view drops are rejected. Hover/SingleClick stays
+suspended during the source operation, including archive byte preparation.
+`drag_drop_ui` covers table/icon targets in both directions, popup Copy/Cancel,
+archive Yes/No/Cancel and real source cancellation. Reports `drag-*.json` at
+980×620/640×400 keep both containers, paths, current views and status strips
+exposed. The reviewed resource/source establishes structure and states; no
+Windows rendered reference is available for pixel fidelity.
+
 For layout work, read the affected view's specification below, run its focused
 test, and inspect the generated JSON. Screenshots are a fallback for fonts,
 icons, styling, or defects that geometry cannot explain. These checks establish
