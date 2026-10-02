@@ -1,4 +1,5 @@
 #pragma once
+#include "Common/MyTypes.h"
 #include "Common/MyVector.h"
 #include "Common/MyWindows.h"
 #include <QMutex>
@@ -12,7 +13,7 @@
 class QtArchiveVolumeOutput final : public QThread {
   public:
     QtArchiveVolumeOutput(QString source, QString target, CRecordVector<UInt64> sizes,
-                          bool setArcMTime = false);
+                          bool setArcMTime = false, QString sfxModule = {}, QString sfxTarget = {});
     void cancel();
     void setPaused(bool paused);
     HRESULT checkpoint();
@@ -25,6 +26,7 @@ class QtArchiveVolumeOutput final : public QThread {
     void run() override;
     HRESULT createVolumes();
     QString source_, target_;
+    QString sfxModule_, sfxTarget_;
     CRecordVector<UInt64> sizes_;
     QMutex mutex_;
     QWaitCondition resumed_;

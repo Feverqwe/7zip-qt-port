@@ -1,11 +1,57 @@
 # Development toolchain
 
+Native console SFX can be built from the recorded official baseline with
+`./scripts/build-sfx.sh [upstream-checkout] [artifact-directory]` on macOS/Linux.
+Defaults are the read-only sibling checkout and `build/sfx`. The script extracts
+an immutable temporary snapshot, builds upstream SFXCon unchanged and writes
+`7zCon.sfx`, its license and a SHA-256/source/host/version JSON record. It refuses
+to replace an unowned module artifact. This runtime preparation belongs to the
+in-progress P2-02; application SFX consumers are not yet accepted. Windows uses
+the official GUI `7z.sfx` runtime; this script does not create a Windows module.
+
+For Windows, use `scripts/build-sfx.ps1 -Architecture arm64` (or `x64`/`x86`)
+in a matching Visual Studio developer PowerShell. It requires Git, Windows tar,
+MSVC/nmake, linker and resource compiler, snapshots the same recorded revision,
+and builds unchanged `Bundles/SFXWin/makefile` with `PLATFORM`. Optional
+`-UpstreamCheckout` and `-OutputDirectory` select the read-only source and output.
+It writes `7z.sfx`, `7z.sfx.json` and `7z-LICENSE.txt`, refuses unowned/reparse-point
+artifacts, and never builds in the sibling checkout. The sidecar producer must
+match the Windows builder. Actual unchanged SFXWin compilation passes on
+Windows11 ARM64 with MSVC14.44 and SDK10.0.26100.0; native Qt SFX consumer
+acceptance is still pending. Tools are installed in the local VM but require its
+scoped Visual Studio developer environment rather than the default SSH PATH.
+`build.sh` requests process-local English MSVC diagnostics (`VSLANG=1033`)
+unless supplied by the caller. It also switches its console to UTF-8 and restores
+the previous code page on exit so CMake/Ninja parse `/showIncludes` reliably
+even when English compiler resources are not installed.
+An existing cache configured with a damaged localized prefix needs rebuilding
+from a clean build directory; changing the language alone cannot repair stored
+header dependencies. This setting does not change application language.
+
+External codecs require the official dynamic console client, not standalone
+`7zz`. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
+builds unchanged `UI/Console` and `Bundles/Format7zF` from the pinned source
+snapshot into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7z.so`,
+license and source/version/SHA records, and refuses unowned artifacts. The Debug
+app uses this prepared runtime when present; deployed builds look beside the app
+or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
+a missing explicit path reports an error. Standalone `7zz` remains the fallback.
+Codecs/Formats discovery follows original LoadCodecs from the confirmed deployment;
+native modules must agree with the dynamic engine's reported libraries. P2-02 is
+still in progress; remaining plugin consumers are not accepted.
+On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
+uses a matching developer environment and the same optional source/output arguments
+as the SFX builder. It compiles unchanged Console/Format7zF/Alone2 makefiles and
+produces `7z.exe`, `7z.dll`, `7zz.exe`, license and runtime manifest. All three
+compile on Windows11 ARM64; both clients report26.03. Do not install test-only
+codec fixtures in a production runtime.
+
 ## Dependencies
 
 - C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, Git, clang-format
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
-- Official `7zz` executable for archive functionality once implemented
+- Official `7zz`, or the prepared dynamic `7z`/module runtime for external codecs
 - Qt 6 DBus for the Linux launcher service; Unix launcher regression tests also
   need `dbus-daemon` to create their own private bus. macOS builds with testing
   enabled require Qt DBus; Cocoa-only production builds do not.

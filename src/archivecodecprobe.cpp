@@ -45,6 +45,49 @@ UInt32 EngineVersion(const QByteArray &output) {
     return majorOk && minorOk && major && major <= 0xffff && minor <= 0xffff ? (major << 16) | minor
                                                                              : 0;
 }
+
+QStringList EngineLibraries(const QByteArray &output) {
+    // Console/Main.cpp kInfo prints "index : version : full path" under Libs.
+    // This transport confirms shared deployment; native LoadCodecs owns metadata.
+    const QString text = QString::fromUtf8(output).replace("\r\n", "\n");
+    const int start = text.indexOf("\nLibs:\n");
+    if (start < 0)
+        return {};
+    const int end = text.indexOf("\nFormats:", start);
+    if (end < 0)
+        return {};
+    static const QRegularExpression line(QStringLiteral("^\\s*[0-9]+ : [0-9]+\\.[0-9]+ : (.+)$"));
+    QStringList paths;
+    for (const QString &row : text.mid(start + 7, end - start - 7).split('\n')) {
+        const auto match = line.match(row.trimmed());
+        if (match.hasMatch())
+            paths.append(match.captured(1));
+    }
+    return paths;
+}
+
+QString DeploymentModule(const QStringList &libraries, const QString &fallback) {
+#ifdef _WIN32
+    const QString name = QStringLiteral("7z.dll");
+#else
+    const QString name = QStringLiteral("7z.so");
+#endif
+    // The original engine has already resolved its registry/deployment folder.
+    // Transport that result rather than implement another registry policy.
+    for (const QString &library : libraries) {
+        const QFileInfo info(library);
+        if (info.fileName() == name)
+            return library;
+    }
+    for (const QString &library : libraries) {
+        QDir folder(QFileInfo(library).absolutePath());
+        if (folder.dirName() == "Codecs" || folder.dirName() == "Formats") {
+            folder.cdUp();
+            return folder.filePath(name); // May be missing: source load is nonfatal.
+        }
+    }
+    return fallback;
+}
 } // namespace
 
 ArchiveCodecProbe::ArchiveCodecProbe(QObject *parent) : QObject(parent) {
@@ -89,6 +132,7 @@ bool ArchiveCodecProbe::Start(const QString &engine, const QString &module,
     timedOut_ = false;
     active_ = true;
     completion_ = std::move(completion);
+    explicitModule_ = !module.isEmpty();
     module_ = module.isEmpty() ? FindModule(engine) : module;
     process_.setProgram(engine);
     process_.setArguments({QStringLiteral("i"), QStringLiteral("-sccUTF-8")});
@@ -122,7 +166,10 @@ void ArchiveCodecProbe::Finish(int exitCode, QProcess::ExitStatus status) {
                                    "Не удалось определить версию официального 7zz.");
     } else if (const UInt32 version = EngineVersion(output_)) {
         try {
-            result.catalog = std::make_shared<ArchiveCodecCatalog>(module_, version);
+            const QStringList libraries = EngineLibraries(output_);
+            const QString module = explicitModule_ ? module_ : DeploymentModule(libraries, module_);
+            result.catalog = std::make_shared<ArchiveCodecCatalog>(module, version, libraries,
+                                                                   process_.program());
             result.result = result.catalog->result();
             result.error = result.catalog->error();
         } catch (...) {

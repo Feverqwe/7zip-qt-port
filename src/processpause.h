@@ -1,5 +1,6 @@
 // Narrow native service for a live child owned by ArchiveBackend/QProcess.
 #pragma once
+#include "Common/MyTypes.h"
 #include "Common/MyWindows.h"
 #include <memory>
 

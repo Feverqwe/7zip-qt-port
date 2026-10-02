@@ -7,6 +7,36 @@
 #include <QFileInfo>
 #include <string>
 
+#ifdef _WIN32
+#include "Common/StringConvert.h"
+#include "Windows/FileIO.h"
+#include <shellapi.h>
+
+// Original Unicode branch and HRESULT wrapper; obsolete ANSI dispatch omitted.
+static DWORD_PTR Shell_GetFileInfo_SysIconIndex_for_Path_attrib_iconIndexRef(CFSTR path,
+                                                                             DWORD attrib,
+                                                                             int &iconIndex) {
+    SHFILEINFOW shFileInfo;
+    shFileInfo.iIcon = -1;
+    const DWORD_PTR res =
+        ::SHGetFileInfoW(fs2us(path), attrib ? attrib : FILE_ATTRIBUTE_ARCHIVE, &shFileInfo,
+                         sizeof(shFileInfo), SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX);
+    iconIndex = shFileInfo.iIcon;
+    return res;
+}
+
+HRESULT Shell_GetFileInfo_SysIconIndex_for_Path_return_HRESULT(CFSTR path, DWORD attrib,
+                                                               Int32 *iconIndex) {
+    *iconIndex = -1;
+    int iconIndexTemp;
+    if (Shell_GetFileInfo_SysIconIndex_for_Path_attrib_iconIndexRef(path, attrib, iconIndexTemp)) {
+        *iconIndex = iconIndexTemp;
+        return S_OK;
+    }
+    return GetLastError_noZero_HRESULT();
+}
+#endif
+
 CExtToIconMap g_Ext_to_Icon_Map;
 
 void CExtToIconMap::Clear() {

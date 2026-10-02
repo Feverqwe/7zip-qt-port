@@ -1,0 +1,6 @@
+EXPORTS
+  GetModuleProp
+  GetNumberOfFormats
+  GetHandlerProperty2
+  SetCodecs
+  CreateObject

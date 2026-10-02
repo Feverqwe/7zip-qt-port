@@ -6,6 +6,29 @@
 #include "7zip/UI/Common/UpdateAction.h"
 #include "7zip/UI/Common/UpdateProduce.h"
 
+struct CUpdateErrorInfo {
+    DWORD SystemError;
+    AString Message;
+    FStringVector FileNames;
+    bool ThereIsError() const {
+        return SystemError != 0 || !Message.IsEmpty() || !FileNames.IsEmpty();
+    }
+    HRESULT Get_HRESULT_Error() const {
+        return SystemError == 0 ? E_FAIL : HRESULT_FROM_WIN32(SystemError);
+    }
+    void SetFromLastError(const char *message);
+    HRESULT SetFromLastError(const char *message, const FString &fileName);
+    HRESULT SetFromError_DWORD(const char *message, const FString &fileName, DWORD error);
+    CUpdateErrorInfo() : SystemError(0) {}
+};
+
+// Original UpdateArchive SFX-module validation. Qt supplies the runtime folder
+// instead of the Windows executable/registry installation directory.
+HRESULT PrepareSfxModule(FString &module, const FString &baseFolder, CUpdateErrorInfo &errorInfo);
+// Compress's separate SFX-module output for volume creation. The Qt worker
+// supplies a staging path; the original streams and copy body remain here.
+HRESULT WriteSfxModule(const FString &module, const FString &realPath, CUpdateErrorInfo &errorInfo);
+
 // Narrow publication adapter for UpdateArchive's deletion phase. The archive
 // writer is the official external engine; its transaction must finish first.
 class IUpdateDeletionCallback {

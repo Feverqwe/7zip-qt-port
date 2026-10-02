@@ -1,15 +1,68 @@
 // Update.cpp
 // Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// UpdateArchive's action-set/deletion phases and Compress's latest-time loop only.
+// Partial UpdateArchive and Compress phases; see the upstream port audit.
 #include "Update.h"
 #include "../../../Windows/FileDir.h"
+#include "7zip/Common/FileStreams.h"
+#include "7zip/Compress/CopyCoder.h"
 #include "OpenArchive.h"
+#include "Windows/FileFind.h"
 #include "Windows/TimeUtils.h"
 
 using namespace NWindows;
 using namespace NFile;
 using namespace NDir;
+
+void CUpdateErrorInfo::SetFromLastError(const char *message) {
+    SystemError = ::GetLastError();
+    Message = message;
+}
+HRESULT CUpdateErrorInfo::SetFromLastError(const char *message, const FString &fileName) {
+    SetFromLastError(message);
+    FileNames.Add(fileName);
+    return Get_HRESULT_Error();
+}
+HRESULT CUpdateErrorInfo::SetFromError_DWORD(const char *message, const FString &fileName,
+                                             DWORD error) {
+    Message = message;
+    FileNames.Add(fileName);
+    SystemError = error;
+    return Get_HRESULT_Error();
+}
+HRESULT PrepareSfxModule(FString &module, const FString &baseFolder, CUpdateErrorInfo &errorInfo) {
+    if (module.IsEmpty()) {
+        errorInfo.Message = "SFX file is not specified";
+        return E_FAIL;
+    }
+    bool found = false;
+    if (module.Find(FCHAR_PATH_SEPARATOR) < 0) {
+        const FString fullName = baseFolder + module;
+        if (NFind::DoesFileExist_FollowLink(fullName)) {
+            module = fullName;
+            found = true;
+        }
+    }
+    if (!found) {
+        if (!NFind::DoesFileExist_FollowLink(module))
+            return errorInfo.SetFromLastError("cannot find specified SFX module", module);
+    }
+    return S_OK;
+}
+
+HRESULT WriteSfxModule(const FString &module, const FString &realPath,
+                       CUpdateErrorInfo &errorInfo) {
+    CInFileStream *sfxStreamSpec = new CInFileStream;
+    CMyComPtr<IInStream> sfxStream(sfxStreamSpec);
+    if (!sfxStreamSpec->Open(module))
+        return errorInfo.SetFromLastError("cannot open SFX module", module);
+    COutFileStream *outStreamSpec2 = new COutFileStream;
+    CMyComPtr<ISequentialOutStream> sfxOutStream = outStreamSpec2;
+    if (!outStreamSpec2->Create_NEW(realPath))
+        return errorInfo.SetFromLastError("cannot open file", realPath);
+    RINOK(NCompress::CopyStream(sfxStream, sfxOutStream, NULL))
+    return outStreamSpec2->Close();
+}
 
 HRESULT CheckDeleteAfterCompressingActionSet(const NUpdateArchive::CActionSet &as) {
     using namespace NUpdateArchive;

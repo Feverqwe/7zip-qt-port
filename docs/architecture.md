@@ -1,6 +1,35 @@
 # Architecture
 
 This document describes component ownership, data flow and integration boundaries.
+
+P2-02: ArchiveEngineLocation selects a deployed official dynamic `7z` client
+when available, with an explicit engine-path override and standalone `7zz` fallback.
+The runtime builder snapshots the pinned original Console and Format7zF makefiles;
+neither the engine nor the sibling checkout is rewritten. ArchiveCodecProbe
+transports the source Console `Libs` records and version, while CCodecs owns native
+metadata/ABI checks and its original Codecs/Formats enumeration. Catalog native
+libraries must match the engine deployment. Directory/NeedSetLibCodecs logic is
+factored into an explicit-folder adapter. ArchiveCodecImage owns private runtime
+copies for each confirmed dynamic catalog. Native handlers use the original
+SetCodecs loop and per-instance fallback; child operations use that same runtime.
+Discovery and archive jobs exclude one another. Actual native and engine
+consumers of an external Formats module without a main DLL pass on macOS.
+An external test facade delegates all archive methods to the unchanged official
+module but withholds ISetCompressCodecsInfo. Exact-byte decoding through global
+SetCodecs survives the creation and release of another confirmed catalog on
+macOS. Implicit module selection transports the engine's Libs resolution;
+explicit mismatched module requests still fail. Focused consumers pass on macOS,
+Windows and Linux; this does not establish whole-app P3 acceptance.
+Nested Codecs/Formats assets are copied with the runtime; the source
+loader still enumerates only direct modules. A real external facade reads its
+private resource after the original is removed. Cyclic directory links refuse
+snapshot preparation instead of retaining links to mutable external directories.
+Windows ancestry uses original FileIO directory handles and volume/file IDs
+because junction aliases are not reliably identified by canonical pathname.
+This does not relocate arbitrary dependencies installed outside the deployment.
+Source load errors remain nonfatal when working modules exist and reach startup
+status and original About's error branch. About reads its retained catalog;
+GetCodecsErrorMessage is const-qualified with its functional body unchanged.
 Original FileDir/FileName/FileFind/FileIO/TimeUtils and the Qt owned-temp
 identity/registry services used by FileDir are foundation units in
 sevenzip_common. FileStreams/LoadCodecs/source RAR handler consumers therefore
@@ -422,7 +451,7 @@ integration, tests and build tooling. Application modules live under
 `../7zip-upstream` is a read-only source checkout, not a runtime dependency.
 
 Archive operations go through `ArchiveBackend`, which launches the official
-`7zz` executable. Widgets do not construct process arguments or implement
+`7zz` executable or deployed dynamic `7z` client. Widgets do not construct process arguments or implement
 archive formats. A future direct engine adapter must preserve this boundary.
 Backend destruction disconnects its process callbacks and stops the owned 7zz
 before releasing buffers; an active mutation's temporary output is removed after

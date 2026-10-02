@@ -137,7 +137,7 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
                                      ? item.ArchiveProperties
                                      : item.Properties;
         FOR_VECTOR(i, properties)
-        if (properties[i].Name == propertyNames_[id - kSnapshotProperty]) {
+        if (properties[i].Name == propertyNames_[unsigned(id - kSnapshotProperty)]) {
             prop = properties[i].Value;
             break;
         }

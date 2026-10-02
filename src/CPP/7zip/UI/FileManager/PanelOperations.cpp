@@ -24,7 +24,7 @@
 #include <QMessageBox>
 
 #ifdef _WIN32
-#include "CPP/Windows/COM.h"
+#include "Windows/COM.h"
 #endif
 
 static const UInt32 kParentIndex = (UInt32)-1;

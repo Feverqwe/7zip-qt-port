@@ -1,5 +1,60 @@
 # Сверка с Windows 7zFM
 
+## P2-02 — SFX и внешние модули (принят, 2026-10-03)
+
+Эталон — CompressDialog.rc Options: SFX, Shared, Delete, затем Encryption;
+CompressDialog.cpp ограничения методов и переходы имени, Update.cpp отдельный
+SFX-модуль при создании томов. Флажок использует source IDX_COMPRESS_SFX.
+Новый архив 7z поддерживает SFX при совместимом официальном модуле и методе;
+ZIP/BZip2, отсутствующий модуль и обновление существующего архива отключают его.
+Windows использует `.exe`, macOS/Linux — нативный console SFX без расширения.
+Windows GUI SFXWin собран из исходного baseline; native execution проверен.
+
+Unix-адаптация томов: `<self>.7z.NNN`, поскольку исходный SFX reader ищет именно
+это имя, а 7zz26.03 `-sfx -v` создаёт `<self>.NNN` и self-Test не проходит.
+Сам модуль сохраняется отдельно и получает owner execution permission до
+публикации. Для single/multi-root ordinary/split output проверены реальные
+native self-Test/Extract, AES/header encryption, missing/occupied/cancel и
+сохранность источника/модуля на macOS arm64 Qt6.11.2.
+
+Четыре current-build JSON EN/RU760×720/640×480 reviewed: SFX/Shared/Delete
+расположены в исходном порядке и полностью видимы, тексты помещаются. В compact
+окне нижняя часть Encryption доступна через существующую общую прокрутку;
+пиксельная Windows parity не подтверждена. External codecs и focused consumers
+проверены на трёх платформах; полный macOS gate197/197 PASS107.31s.
+
+Текущая external-codec интеграция использует официальный dynamic Console7z;
+standalone7zz внешние модули не загружает. Codecs/Formats enumeration, ABI checks
+и warnings сохраняют исходные LoadCodecs bodies. Несовпадение native/engine
+deployment вызывает отказ. Working plugins сохраняются при нерабочем модуле;
+source About повторно показывает codec errors, startup status показывает их
+без открытия модального окна. Immutable native readers удерживают собственные
+DLL images: исходный SetCodecs и per-instance fallback используют этот каталог,
+а child engine — тот же снимок runtime. Native reader и Create/List/Test/Extract
+без main DLL, с исходным модулем в Formats, проверены на macOS; warning о main
+сохраняется. Global-only external handler (test facade исходного 7z.so без
+ISetCompressCodecsInfo) декодирует точные bytes после освобождения другого
+подтверждённого каталога. Автоматический выбор модуля использует Libs исходного
+engine; explicit mismatch сохраняет отказ. Те же consumers проходят Windows/Linux.
+Реальные external Copy-codec Create/List/Test/Extract и native leased handler,
+Unicode/space module path, wrong ABI, warnings, mismatch/cancel проверены на
+macOS arm64. About caption EN/RU360/300 current JSON помещается; source error
+box geometry600/400 проверена. Итоговая приёмка всего P0–P3 ещё открыта.
+Actual Add acceptance создаёт single/split native SFX с delete-after-publication;
+engine/volume-worker pause/resume и отмена second-root/prepublication volume
+проверены на disposable данных. Advanced method override сохраняет исходный
+UpdateGUI порядок properties; SFX фильтрует выбранный метод, explicit override
+остаётся экспертной upstream возможностью.
+Linux ARM64 Qt6.4.2 проверяет те же SFX/external consumers: focused6/6 без skips,
+EN/RU normal/compact controls ordered/visible и captions fit. Windows SFX tests
+используют GUI -y/-o/-p из SfxWin.cpp и отдельный engine Test; реальный Windows
+запуск проверен: final clean Windows7/7PASS13.76s, Linux9/9PASS2.79s.
+External/SFX Windows без skips; existing owned_temp symlink case требует
+отдельной Windows fixture в P3. Четыре Windows EN/RU SFX JSON760/640 проверены:
+source order, полная видимость и size hints. Эти проверки не принимают весь P3.
+У стандартного QMessageBox оба resize requests дают auto-fit400×121 на этой
+платформе; source text помещается, отдельная compact rendering parity не заявлена.
+
 ## P1-18 — запрос памяти RAR (2026-10-02)
 
 Эталон — `Rar5Handler.cpp::CHandler::Extract`, FM

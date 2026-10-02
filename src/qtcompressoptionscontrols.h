@@ -26,7 +26,9 @@ class CQtCompressOptionsDialog : public QDialog {
     void changeEvent(QEvent *event) override;
 
   protected:
+#ifndef CBN_SELCHANGE
     static constexpr unsigned CBN_SELCHANGE = 1;
+#endif
     QWidget *GetItem(unsigned id) const;
     void CheckButton(unsigned id, bool value);
     bool IsButtonCheckedBool(unsigned id) const;

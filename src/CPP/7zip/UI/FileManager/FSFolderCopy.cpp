@@ -89,7 +89,8 @@ bool IsDestChild(const QString &src, const QString &dest) {
 }
 
 bool CCopyState::CallProgress() {
-    if (Callback && Callback->SetCompleted(&StartPos) != S_OK) {
+    const UInt64 completed = StartPos;
+    if (Callback && Callback->SetCompleted(&completed) != S_OK) {
         ErrorMessage = QtLocalText("Operation canceled.", "Операция отменена.");
         return false;
     }
@@ -152,7 +153,8 @@ bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
     const bool targetExistedBefore = QFileInfo::exists(newFile);
     state2.StartPos = StartPos;
     state2.Progress = [this](quint64 completed) {
-        if (Callback && Callback->SetCompleted(&completed) != S_OK)
+        const UInt64 nativeCompleted = completed;
+        if (Callback && Callback->SetCompleted(&nativeCompleted) != S_OK)
             return false;
         return !Progress || Progress(completed);
     };
@@ -176,9 +178,9 @@ bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
 #endif
 }
 
-class CopyProgressRoutine final : public NWindows::NFile::NDir::ICopyFileProgress {
+class QtMoveFileProgress final : public NWindows::NFile::NDir::ICopyFileProgress {
   public:
-    explicit CopyProgressRoutine(CCopyState &state) : state_(state) {}
+    explicit QtMoveFileProgress(CCopyState &state) : state_(state) {}
     DWORD CopyFileProgress(UInt64 total, UInt64 current) override {
         return state_.ReportSystemProgress(total, current);
     }
@@ -198,7 +200,7 @@ bool CCopyState::MoveFile_Sys(const QString &oldFile, const QString &newFile,
     const std::wstring newWide = QDir::toNativeSeparators(newFile).toStdWString();
     FileSize = quint64(QFileInfo(oldFile).size());
     ProgressResult = S_OK;
-    CopyProgressRoutine progress(*this);
+    QtMoveFileProgress progress(*this);
     const bool moved = NWindows::NFile::NDir::MyMoveFile_with_Progress(
         us2fs(oldWide.c_str()), us2fs(newWide.c_str()), &progress);
     if (ProgressResult != S_OK)

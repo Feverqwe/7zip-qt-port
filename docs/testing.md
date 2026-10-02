@@ -1,5 +1,36 @@
 # Regression strategy
 
+P2-02 is accepted within its recorded scope (2026-10-03). Prepare the pinned official native module with
+`scripts/build-sfx.sh` and dynamic codec runtime with
+`scripts/build-codec-runtime.sh` before interpreting SFX/external suites: missing
+assets skip those cases and do not prove acceptance. `sfx_lifecycle` accepts the
+real Add form and creates native single/split SFX with disposable Unicode files.
+It checks DeleteAfterCompressing after publication, engine and volume-worker
+pause/resume, second-root cancellation and prepublication volume cancellation,
+source preservation and native extraction of exact bytes. `sfx_creation` covers
+method/name/format transitions, geometry and module validation, including invalid
+native bytes with otherwise matching metadata/SHA. `external_codecs` exercises
+actual engine/native plugin methods, a read-only global-only facade of the
+unchanged original handler, second-catalog release and missing-main Formats
+deployment. Linux ARM64 Qt6.4.2/GCC13.3.0 focused six suites pass with zero Qt
+skips: external_codecs, codec_catalog, sfx_creation, sfx_lifecycle, fs_folder_copy
+and filesystem_operations (1.52s,2026-10-03). The official standalone 7zz fixture
+must be placed beside its matching 7z.so for implicit module discovery. Current
+SFX normal/compact EN/RU JSON controls fit and preserve source order. Windows
+consumer checks now pass. Windows SFX fixtures
+select 7z.sfx, test archives via the separate engine, and invoke SFXWin with its
+actual -y/-o/-p extraction switches; they no longer skip solely for Windows.
+On Windows, prepare both assets with the corresponding `.ps1` builders in a
+matching Visual Studio developer environment. Actual ARM64 compilation of
+SFXWin/Console/Format7zF/Alone2 and both client26.03 banners pass. Disposable
+unowned-file and junction-directory fixtures prove both builders refuse before
+compilation and preserve sentinel hashes/target inventory. Qt consumer checks
+pass after a clean build: seven suites13.76s. External/SFX have zero Qt skips;
+the existing owned_temp file-symlink fixture is skipped on Windows and remains
+platform work for P3. Final Linux nine suites pass2.79s with zero skips.
+Full unsandboxed macOS formatting/all-target build/197 CTest passes107.31s,
+Qt6.11.2 arm64. These checks do not establish rendered GUI parity or full P3.
+
 VM orchestration belongs to the global `runners` skill and is outside this
 project's CTest gate. See `~/.codex/skills/runners/references/create.md` for
 host/guest startup checks and own versus communal state. VM preparation alone

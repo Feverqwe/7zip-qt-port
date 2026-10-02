@@ -2,7 +2,7 @@
 // Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Reparse parsers and POSIX link services retain their complete source bodies.
-// Windows native link creation/device services await the FileDir operation port.
+// Windows and POSIX link services use the retained original FileIO/FileDir adapters.
 
 #include "StdAfx.h"
 
@@ -133,7 +133,7 @@ static const bool IsVolumeName(const wchar_t *s)
 }
 */
 
-#if defined(_WIN32) && !defined(UNDER_CE) && defined(SEVENZIP_FILE_LINK_NATIVE_OPERATIONS)
+#if defined(_WIN32) && !defined(UNDER_CE)
 
 #define Set16(p, v) SetUi16(p, v)
 #define Set32(p, v) SetUi32(p, v)
@@ -465,7 +465,7 @@ bool MyGetDiskFreeSpace(CFSTR rootPath, UInt64 &clusterSize, UInt64 &totalSize, 
 }
 #endif // Z7_DEVICE_FILE
 
-#if defined(_WIN32) && !defined(UNDER_CE) && defined(SEVENZIP_FILE_LINK_NATIVE_OPERATIONS)
+#if defined(_WIN32) && !defined(UNDER_CE)
 
 namespace NIO {
 

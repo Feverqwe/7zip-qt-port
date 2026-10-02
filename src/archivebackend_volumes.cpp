@@ -23,8 +23,9 @@ bool ArchiveBackend::checkVolumeTargets(const QString &archive, QString *error) 
 
 void ArchiveBackend::startVolumeOutput() {
     job_ = Job::CreateVolumes;
-    volumeOutput_ = std::make_unique<QtArchiveVolumeOutput>(createTemporary_, createTarget_,
-                                                            createVolumeSizes_, createSetArcMTime_);
+    volumeOutput_ = std::make_unique<QtArchiveVolumeOutput>(
+        createTemporary_, createVolumeTarget_, createVolumeSizes_, createSetArcMTime_,
+        createNativeSfx_ ? createSfxModule_ : QString(), createTarget_);
     volumeOutput_->Progress = [this](quint64 done, quint64 total) {
         const int percent = total ? int(100.0 * double(done) / double(total)) : 0;
         QMetaObject::invokeMethod(

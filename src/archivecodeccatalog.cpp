@@ -2,8 +2,11 @@
 #include "7zip/Archive/Rar/Rar5Handler.h"
 #include "7zip/Archive/Zip/ZipHandler.h"
 #include "Common/StringConvert.h"
+#include "archivecodecimage.h"
 #include "qtlanguageservices.h"
 #include <QDir>
+#include <QFileInfo>
+#include <QSysInfo>
 
 namespace {
 IInArchive *CreateSourceZipReader() { return new NArchive::NZip::CHandler; }
@@ -11,20 +14,36 @@ IOutArchive *CreateSourceZipWriter() { return new NArchive::NZip::CHandler; }
 IInArchive *CreateSourceRarReader() { return new NArchive::NRar5::CHandler; }
 } // namespace
 
-ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion) {
+ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion,
+                                         const QStringList &engineLibraries,
+                                         const QString &engine) {
     codecs_ = new CCodecs;
     owner_ = codecs_;
     bool loaded = false;
-    const auto path = QDir::toNativeSeparators(module).toStdWString();
+    QString nativeModule = module;
+    if (!engineLibraries.isEmpty()) {
+        image_ = std::make_unique<ArchiveCodecImage>();
+        if (!image_->prepare(module, engine)) {
+            error_ = QtLocalText("Could not prepare the codec runtime snapshot.",
+                                 "Не удалось подготовить снимок модулей движка.");
+            return;
+        }
+        nativeModule = image_->module();
+    }
+    const auto path = QDir::toNativeSeparators(nativeModule).toStdWString();
     result_ = codecs_->LoadDll(us2fs(path.c_str()), false, &loaded);
+    if (result_ == S_OK && !engineLibraries.isEmpty())
+        result_ = loadEnginePlugins(module, engineLibraries);
     UString message;
     codecs_->GetCodecsErrorMessage(message);
-    if (result_ != S_OK || !loaded || !codecs_->Errors.IsEmpty() || codecs_->Libs.IsEmpty() ||
-        codecs_->Formats.IsEmpty()) {
+    if (result_ != S_OK || (engineLibraries.isEmpty() && (!loaded || !codecs_->Errors.IsEmpty())) ||
+        codecs_->Libs.IsEmpty() || codecs_->Formats.IsEmpty()) {
         result_ = E_FAIL;
-        error_ = message.IsEmpty() ? QtLocalText("The official 7-Zip codec module is unavailable.",
-                                                 "Официальный модуль форматов 7-Zip недоступен.")
-                                   : QString::fromWCharArray(message.Ptr());
+        if (error_.isEmpty())
+            error_ = message.IsEmpty()
+                         ? QtLocalText("The official 7-Zip codec module is unavailable.",
+                                       "Официальный модуль форматов 7-Zip недоступен.")
+                         : QString::fromWCharArray(message.Ptr());
     } else {
         version_ = codecs_->Libs[0].Version;
         if (!version_ || (expectedVersion && version_ != expectedVersion)) {
@@ -43,10 +62,14 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
         FOR_VECTOR(i, codecs_->Formats) {
             auto &format = codecs_->Formats[i];
             if (format.Is_Zip()) {
+                // These source factories are hooked after Load's g_NumArcs
+                // decision; retain their per-instance external codec context.
+                codecs_->NeedSetLibCodecs = true;
                 format.LibIndex = -1;
                 format.CreateInArchive = CreateSourceZipReader;
                 format.CreateOutArchive = CreateSourceZipWriter;
             } else if (format.Name.IsEqualTo("Rar5")) {
+                codecs_->NeedSetLibCodecs = true;
                 format.LibIndex = -1;
                 format.CreateInArchive = CreateSourceRarReader;
             }
@@ -60,6 +83,58 @@ ArchiveCodecCatalog::~ArchiveCodecCatalog() {
     codecs_->CloseLibs();
 }
 
+QString ArchiveCodecCatalog::runtimeEngine() const {
+    return result_ == S_OK && image_ ? image_->engine() : QString();
+}
+
+HRESULT ArchiveCodecCatalog::loadEnginePlugins(const QString &module,
+                                               const QStringList &engineLibraries) {
+    QStringList canonicalLibraries;
+    for (const QString &library : engineLibraries)
+        canonicalLibraries.append(QFileInfo(library).canonicalFilePath());
+    const QString mainPath = QFileInfo(module).canonicalFilePath();
+    if (!mainPath.isEmpty() && !canonicalLibraries.contains(mainPath)) {
+        error_ = QtLocalText("The engine uses a different codec module.",
+                             "Движок использует другой модуль форматов.");
+        return E_FAIL;
+    }
+    const QString baseFolder = image_->baseFolder();
+    RINOK(codecs_->LoadExternalModules(us2fs(baseFolder.toStdWString().c_str())))
+    bool sameDeployment = codecs_->Libs.Size() == unsigned(canonicalLibraries.size());
+    QStringList loadedLibraries;
+    FOR_VECTOR(i, codecs_->Libs) {
+        auto &library = codecs_->Libs[i];
+        const QString original = image_->originalPath(QString::fromWCharArray(fs2us(library.Path)));
+        library.Path = us2fs(original.toStdWString().c_str());
+        const QString loadedPath =
+            QFileInfo(QString::fromWCharArray(fs2us(codecs_->Libs[i].Path))).canonicalFilePath();
+        loadedLibraries.append(loadedPath);
+        if (!canonicalLibraries.contains(loadedPath))
+            sameDeployment = false;
+    }
+    FOR_VECTOR(i, codecs_->Errors) {
+        auto &error = codecs_->Errors[i];
+        const QString original = image_->originalPath(QString::fromWCharArray(fs2us(error.Path)));
+        error.Path = us2fs(original.toStdWString().c_str());
+    }
+    if (!sameDeployment) {
+        error_ = QtLocalText("The engine and application loaded different plugins.",
+                             "Движок и приложение загрузили разные плагины.");
+        error_ += '\n' + QtLocalText("Engine modules:\n%1\nApplication modules:\n%2",
+                                     "Модули движка:\n%1\nМодули приложения:\n%2")
+                             .arg(canonicalLibraries.join('\n'), loadedLibraries.join('\n'));
+        UString message;
+        codecs_->GetCodecsErrorMessage(message);
+        if (!message.IsEmpty())
+            error_ += '\n' + QString::fromWCharArray(message.Ptr());
+        return E_FAIL;
+    }
+    UString message;
+    codecs_->GetCodecsErrorMessage(message);
+    error_ = QString::fromWCharArray(message.Ptr());
+    return codecs_->SetLibCodecs();
+}
+
 int ArchiveCodecCatalog::formatIndex(const QString &type) const {
     return result_ == S_OK ? codecs_->FindFormatForArchiveType(UString(type.toStdWString().c_str()))
                            : -1;
@@ -68,6 +143,42 @@ int ArchiveCodecCatalog::formatIndex(const QString &type) const {
 bool ArchiveCodecCatalog::canUpdate(const QString &type) const {
     const int index = formatIndex(type);
     return index >= 0 && codecs_->Formats[unsigned(index)].UpdateEnabled;
+}
+
+ArchiveSfxModule ArchiveCodecCatalog::sfxModule(const QString &path) const {
+    if (result_ != S_OK)
+        return {};
+    auto module = path.isEmpty() ? ArchiveSfxModule::Discover(version_)
+                                 : ArchiveSfxModule::Read(path, version_);
+    if (!module.available())
+        return module;
+#ifdef Q_OS_WIN
+    const QString type = "PE";
+#elif defined(Q_OS_MACOS)
+    const QString type = "MachO";
+#else
+    const QString type = "ELF";
+#endif
+    // The original executable handler validates structure/CPU. Do not invent
+    // another platform executable parser at this integration boundary.
+    CArchiveLink link;
+    if (openArchive(link, module.path(), type, nullptr) != S_OK || link.Arcs.IsEmpty())
+        return ArchiveSfxModule::Read({});
+    NWindows::NCOM::CPropVariant cpu;
+    if (link.GetArc()->Archive->GetArchiveProperty(kpidCpu, &cpu) != S_OK || cpu.vt != VT_BSTR)
+        return ArchiveSfxModule::Read({});
+    QString actual = QString::fromWCharArray(cpu.bstrVal).toLower();
+    actual.replace('-', '_');
+    if (actual == "aarch64")
+        actual = "arm64";
+    if (actual == "amd64")
+        actual = "x86_64";
+    QString host = QSysInfo::buildCpuArchitecture().toLower();
+    if (host == "i386")
+        host = "x86";
+    if (actual != host)
+        return ArchiveSfxModule::Read({});
+    return module;
 }
 
 QStringList ArchiveCodecCatalog::extensions() const {

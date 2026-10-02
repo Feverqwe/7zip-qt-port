@@ -5,6 +5,20 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
 
+# Keep MSVC /showIncludes encoding consistent even without English language resources.
+if [[ "${OS:-}" == Windows_NT ]]; then
+  export VSLANG="${VSLANG:-1033}"
+  windows_code_page_output="$(chcp.com)"
+  if [[ "$windows_code_page_output" =~ ([0-9]+)[^0-9]*$ ]]; then
+    windows_code_page="${BASH_REMATCH[1]}"
+    chcp.com 65001 >/dev/null
+    trap 'chcp.com "$windows_code_page" >/dev/null' EXIT
+  else
+    printf 'Could not read the Windows console code page.\n' >&2
+    exit 1
+  fi
+fi
+
 compiler_cache=""
 if command -v ccache >/dev/null 2>&1; then
   compiler_cache="$(command -v ccache)"

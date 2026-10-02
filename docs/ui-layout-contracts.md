@@ -1,5 +1,34 @@
 # Text specifications and geometry checks
 
+### SFX Options group (P2-02)
+
+Reference: pinned `GUI/CompressDialog.rc` Options control order SFX→Shared→Delete,
+followed by Encryption, and original CompressDialog naming/method decisions.
+The Add form retains its two columns and common scrolling content. New archive
+SFX is enabled only with a compatible native module, 7z format and source-supported
+method. Changing to ZIP clears SFX; toggling restores the source archive extension.
+Module absence and existing-target update disable SFX with a reason.
+
+`sfx_creation` writes `sfx-options---760/640` and `sfx-options-ru-760/640` JSON,
+checks exposed controls/order and checkbox size hints at760×720/640×480, and
+checks source name/format/method transitions. Reports reviewed2026-10-03 on
+macOS, Linux and Windows:
+all Options captions fit; Encryption below it uses the existing compact scroll.
+Windows show/layout events settle before ensuring scroll visibility. Its EN
+checkbox widths385 and RU421 meet all size hints; exposedBounds equal bounds
+at normal/compact sizes. This is resource structure/usability evidence;
+rendered 7zFM pixel parity remains unverified. P2-02 acceptance is in the audit.
+
+P2-02 About integration restores original codec-error message initialization.
+The retained catalog supplies source GetCodecsErrorMessage; a Qt critical message
+substitutes the original MessageBoxW/MB_ICONERROR. `help_source` checks exact source
+text and exposed/wrapped label with600×300/400×250 resize requests and writes
+`about-codec-error-600/400` JSON. About's local app caption now says official7-Zip
+engine; EN/RU360×330/300×310 JSON was reviewed with visible/fitting text. No
+rendered Windows reference is claimed for either standard Qt message or caption.
+The standard QMessageBox auto-fit resolves both requests to400×121 on this host;
+these reports prove fitting source text, not two distinct error-window sizes.
+
 For resource-derived comparison and reviewed C++ states, see
 [upstream UI references](ui-reference.md) and `$sz-ui-parity`.
 `ui_parity_copy` and `ui_parity_password` check fresh reports against pinned

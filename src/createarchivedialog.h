@@ -1,6 +1,7 @@
 #pragma once
 
 #include "archivebackend.h"
+#include "archivesfxmodule.h"
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -47,6 +48,8 @@ class CreateArchiveDialog : public QDialog {
     void createVolumeOptions(QFormLayout *form);
     void createAdvancedOptions(QFormLayout *form);
     void createLifecycleOptions(QFormLayout *form);
+    void updateSfxControls();
+    void toggleSfx(bool enabled);
     void showAdvancedOptions();
     void updateAdvancedSummary();
     bool checkVolumeSizes();
@@ -107,6 +110,8 @@ class CreateArchiveDialog : public QDialog {
     QPushButton *advanced_ = nullptr;
     QLabel *advancedSummary_ = nullptr;
     QCheckBox *sharedFiles_ = nullptr;
+    QCheckBox *sfx_ = nullptr;
+    ArchiveSfxModule sfxModule_;
     QCheckBox *deleteAfterCompressing_ = nullptr;
     QComboBox *encryption_ = nullptr;
     QComboBox *level_ = nullptr;

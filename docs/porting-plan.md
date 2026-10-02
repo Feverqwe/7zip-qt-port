@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P1-18 (2026-10-02):
-**30/46 закрыты, 16 остаётся**; P0: 12/12, P1: 16/18, P2: 1/10, P3: 1/6.
+Текущий счёт после P2-02 (2026-10-03):
+**31/46 закрыты, 15 остаётся**; P0: 12/12, P1: 16/18, P2: 2/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -1036,6 +1036,37 @@ priority незавершённый capability scope — P1-17; источник
 actual GUI comment consumer ещё требуется перенести/проверить.
 
 ### P2-02. SFX и внешние handlers/plugins
+
+**Статус 2026-10-03:** done, audit § P2-02 acceptance. Pinned native
+SFXCon build и native disposable Test/Extract доказаны на macOS arm64;
+source SFX naming/method/control, Update presence/separate-module copy подключены
+к backend и форме. Реальные single/multi-root ordinary/split self-Test/Extract,
+AES/header encryption, missing/occupied/cancel и EN/RU geometry проверены.
+Unix имена томов адаптированы к исходному SFX reader; причина в аудите.
+Dynamic Console7z/Format7zF runtime и original external-directory/ABI policy
+подключены: actual external-codec Create/List/Test/Extract/native lease, warnings,
+wrong ABI/mismatch/cancel и default engine selection проверены на macOS arm64.
+Private runtime images подключают исходный SetCodecs без перезаписи retained
+каталогов; native/engine consumer исходного Formats модуля без main DLL проверен.
+Global-only external handler fixture без per-instance interface сохраняет
+декодирование после освобождения второго каталога; implicit deployment resolution
+и отказ неисполняемого SFX с совпадающими SHA/metadata проверены.
+Nested plugin assets и cycle refusal проверены через external handler consumer,
+codec/catalog/SFX3/3PASS5.31s macOS. Windows build-sfx.ps1 и
+build-codec-runtime.ps1 собрали unchanged SFXWin/Console/Format7zF/Alone2
+на Windows11 ARM64 с MSVC14.44; оба клиента запускаются как26.03.
+Linux ARM64 Qt6.4.2/GCC13.3 focused6/6PASS1.52s без skips; original runtime/SFX/
+standalone engine собраны, четыре SFX JSON EN/RU inspected. Windows SFX consumer
+tests используют исходные GUI switches. Ошибки Windows header dependencies,
+MSVC ABI и narrow filesystem adapters исправлены; финальная чистая сборка и
+focused7/7PASS13.76s. SFX/external suites без skips; один существующий owned_temp
+symlink case остаётся непроверенным на Windows и сохраняется для P3.
+Actual Add acceptance, delete-after-publication, engine/volume-worker pause и
+отмена second-root/prepublication volume проверены, affected4/4PASS2.63s macOS.
+Финальный Linux ARM64 snapshot focused9/9PASS2.79s без Qt skips. Полный
+unsandboxed macOS gate: formatting/all-target build/197 CTest PASS107.31s,
+Qt6.11.2 arm64. Baseline372 exact/164 adapted/3 local. Целая итерация,
+отдельный local commit; P3 и rendered Windows parity остаются обязательными.
 
 **После:** P2-01, P1-06. **Источники:** GUI `CompressDialog.cpp`, `UpdateGUI.cpp`,
 Common `LoadCodecs.*`, FM `FilePlugins.*`, `RegistryPlugins.*`, `ProgramLocation.*`;

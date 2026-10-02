@@ -8,23 +8,23 @@
 #include <functional>
 #include <optional>
 
-class IInStream;
-class IProgress;
+struct IInStream;
+struct IProgress;
 class ArchiveBackend;
 class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
 class CProgressSync;
-class IInArchive;
-class IArchiveUpdateCallback;
-class IArchiveExtractCallback;
-class ISequentialOutStream;
-class IFolderFolder;
-class IArchiveOpenCallback;
+struct IInArchive;
+struct IArchiveUpdateCallback;
+struct IArchiveExtractCallback;
+struct ISequentialOutStream;
+struct IFolderFolder;
+struct IArchiveOpenCallback;
 struct CArc;
 class CWorkDirTempFile;
 class QtArchiveDeleteInputs;
 class QtOwnedTempLease;
-class IUpdateDeletionCallback;
+struct IUpdateDeletionCallback;
 class CDirItems;
 class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_0

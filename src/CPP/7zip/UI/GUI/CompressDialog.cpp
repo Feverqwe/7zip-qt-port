@@ -1,6 +1,6 @@
 // Adapted from 7-Zip CPP/7zip/UI/GUI/CompressDialog.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Qt names replace CArcInfoEx / UString. SFX and external codecs are not exposed.
+// Qt presentation adapters retain upstream format, naming and SFX decisions.
 #include "CompressDialog.h"
 #include "../../Common/MethodProps.h"
 #include "../FileManager/HelpUtils.h"
@@ -20,6 +20,14 @@
 #include <QLabel>
 
 static const unsigned kHistorySize = 20;
+// Common/Update.cpp uses an empty SFX extension on Unix. The native console
+// module is an executable for that host; Windows retains GUI .exe naming.
+static const wchar_t *const kExeExt =
+#ifdef _WIN32
+    L".exe";
+#else
+    L"";
+#endif
 static const char *const k_Auto_Prefix = "*  ";
 
 static void Modify_Auto(AString &s) { s.Insert(0, k_Auto_Prefix); }
@@ -148,7 +156,7 @@ void CCompressDialog::SetArchiveName2(bool prevWasSFX) {
         if (prevArchiverInfo.Flags_KeepName() || Info.KeepName) {
             UString prevExtension;
             if (prevWasSFX)
-                prevExtension = L".exe";
+                prevExtension = kExeExt;
             else {
                 prevExtension.Add_Dot();
                 prevExtension += prevArchiverInfo.GetMainExt();
@@ -175,7 +183,7 @@ void CCompressDialog::SetArchiveName(const QString &name) {
             fileName.DeleteFrom(unsigned(dotPos));
     }
     if (IsSFX())
-        fileName += L".exe";
+        fileName += kExeExt;
     else {
         fileName.Add_Dot();
         UString ext = ai.GetMainExt();
@@ -316,6 +324,38 @@ void CCompressDialog::OnOK(NCompression::CInfo &registry) const {
     registry.ArcPaths = arcPaths;
 }
 
+bool CCompressDialog::CheckSFXControlsEnable() {
+    const NCompressDialog::CFormatInfo &fi = NCompressDialog::GetFormatInfo(Format);
+    bool enable = fi.SFX_();
+    if (enable) {
+        const int methodID = MethodID;
+        enable = (methodID == -1 || NCompressDialog::IsMethodSupportedBySfx(methodID));
+    }
+    if (!enable)
+        Info.SFXMode = false;
+    return enable;
+}
+
+void CCompressDialog::OnButtonSFX() {
+    UString fileName(m_ArchivePath.toStdWString().c_str());
+    const int dotPos = GetExtDotPos(fileName);
+    if (IsSFX()) {
+        if (dotPos >= 0)
+            fileName.DeleteFrom(unsigned(dotPos));
+        fileName += kExeExt;
+        m_ArchivePath = QString::fromWCharArray(fileName.Ptr());
+    } else {
+        if (dotPos >= 0) {
+            const UString ext = fileName.Ptr(unsigned(dotPos));
+            if (ext.IsEqualTo_NoCase(kExeExt)) {
+                fileName.DeleteFrom(unsigned(dotPos));
+                m_ArchivePath = QString::fromWCharArray(fileName.Ptr());
+            }
+        }
+        SetArchiveName2(false);
+    }
+}
+
 namespace NCompressDialog {
 QString Modify_Auto(const QString &text) {
     const QByteArray ascii = text.toLatin1();
@@ -354,6 +394,13 @@ static const EMethodID g_7zMethods[] = {kLZMA2,
                                         kCopy};
 
 static const EMethodID g_7zSfxMethods[] = {kCopy, kLZMA, kLZMA2, kPPMd};
+
+bool IsMethodSupportedBySfx(int methodID) {
+    for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_7zSfxMethods); i++)
+        if (methodID == g_7zSfxMethods[i])
+            return true;
+    return false;
+}
 
 static const EMethodID g_ZipMethods[] = {
     kDeflate, kDeflate64, kBZip2, kLZMA, kPPMdZip
@@ -458,12 +505,14 @@ static unsigned GetStaticFormatIndex(QStringView name) {
 
 const CFormatInfo &GetFormatInfo(QStringView name) { return g_Formats[GetStaticFormatIndex(name)]; }
 
-QStringList GetMethodNames(QStringView name) {
+QStringList GetMethodNames(QStringView name, bool isSFX) {
     const CFormatInfo &fi = GetFormatInfo(name);
     const bool is7z = name.compare(QLatin1StringView("7z"), Qt::CaseInsensitive) == 0;
     QStringList methods;
     for (unsigned m = 0; m < fi.NumMethods; m++) {
         const int methodID = fi.MethodIDs[m];
+        if (isSFX && !IsMethodSupportedBySfx(methodID))
+            continue;
         const char *method = kMethodsNames[methodID];
         if (is7z)
             if (methodID == kCopy || methodID == kDeflate || methodID == kDeflate64)
@@ -472,6 +521,7 @@ QStringList GetMethodNames(QStringView name) {
     }
     return methods;
 }
+
 EMethodID GetMethodID(QStringView name, QStringView format) {
     const auto &fi = GetFormatInfo(format);
     for (unsigned i = 0; i < fi.NumMethods; i++)

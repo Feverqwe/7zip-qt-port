@@ -3,12 +3,14 @@
 // Original initialization, help topic and homepage command; Qt presentation/services.
 #include "AboutDialog.h"
 #include "../../../../../third_party/7zip/C/CpuArch.h"
+#include "../Common/LoadCodecs.h"
 #include "7zip/MyVersion.h"
 #include "HelpUtils.h"
 #include "qtlangcontrols.h"
 #include <QDesktopServices>
 #include <QDialogButtonBox>
 #include <QLabel>
+#include <QMessageBox>
 #include <QPixmap>
 #include <QPushButton>
 #include <QShortcut>
@@ -23,7 +25,8 @@ static const UInt32 kLangIDs[] = {IDT_ABOUT_INFO};
 
 static void InitAboutResources() { Q_INIT_RESOURCE(upstream_about); }
 
-CAboutDialog::CAboutDialog(QWidget *parent) : QDialog(parent) {
+CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
+    : QDialog(parent), codecs_(codecs) {
     InitAboutResources();
     setObjectName("aboutDialog");
     resize(360, 330);
@@ -49,9 +52,9 @@ CAboutDialog::CAboutDialog(QWidget *parent) : QDialog(parent) {
     application->setWordWrap(true);
     QtBindLocalText(application,
                     "Sevenzip Desktop " SEVENZIP_DESKTOP_VERSION
-                    "\n7-Zip source port; archive operations use external 7zz.",
+                    "\n7-Zip source port; uses the official 7-Zip engine.",
                     "Sevenzip Desktop " SEVENZIP_DESKTOP_VERSION
-                    "\nПорт исходников 7-Zip; операции с архивами выполняет внешний 7zz.");
+                    "\nПорт исходников 7-Zip; использует официальный движок 7-Zip.");
     layout->addWidget(application);
     layout->addStretch();
     auto *license = new QPushButton(this);
@@ -79,7 +82,12 @@ void CAboutDialog::SetItemText(unsigned id, const UString &text) {
 }
 
 bool CAboutDialog::OnInit() {
-    // Z7_EXTERNAL_CODECS is not part of the current external-7zz capability owner.
+    if (codecs_) {
+        UString s;
+        codecs_->GetCodecsErrorMessage(s);
+        if (!s.IsEmpty())
+            QMessageBox::critical(parentWidget(), "7-Zip", QString::fromWCharArray(s.Ptr()));
+    }
     QtBindResourceText(this, IDD_ABOUT, "About 7-Zip");
     for (UInt32 id : kLangIDs)
         QtBindResourceText(findChild<QLabel *>(QString("aboutText%1").arg(id)), id,

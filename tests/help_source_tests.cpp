@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/Common/LoadCodecs.h"
 #include "CPP/7zip/UI/FileManager/AboutDialog.h"
 #include "CPP/7zip/UI/FileManager/HelpUtils.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
@@ -22,6 +23,36 @@ class HelpSourceTests : public QObject {
   public slots:
     void openUrl(const QUrl &url) { openedUrl = url; }
   private slots:
+    void aboutReportsSourceCodecErrors() {
+        CCodecs codecs;
+        auto &error = codecs.Errors.AddNew();
+        error.Path = FTEXT("unusable plugin");
+        error.Message = "the module is not compatible with program";
+        UString expected;
+        codecs.GetCodecsErrorMessage(expected);
+        QVERIFY(!expected.IsEmpty());
+        for (const QSize size : {QSize(600, 300), QSize(400, 250)}) {
+            QString shown;
+            bool geometry = false;
+            QTimer::singleShot(0, this, [&] {
+                auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                if (!message)
+                    return;
+                message->resize(size);
+                QApplication::processEvents();
+                shown = message->text();
+                auto *label = message->findChild<QLabel *>("qt_msgbox_label");
+                geometry = label && UiInspection::fullyVisible(*label, *message) &&
+                           UiInspection::labelFits(*label) &&
+                           UiInspection::writeReport(*message, "about-codec-error-" +
+                                                                   QString::number(size.width()));
+                message->accept();
+            });
+            CAboutDialog dialog(nullptr, &codecs);
+            QCOMPARE(shown, QString::fromWCharArray(expected.Ptr()));
+            QVERIFY(geometry);
+        }
+    }
     void aboutSourceVersionLicenseHomepageAndGeometry() {
         QTemporaryDir fixture;
         const QString settings = fixture.filePath("language.ini");

@@ -1,7 +1,8 @@
 // LoadCodecs.cpp
-// Copied from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+// Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Include paths use the project's single source/vendor owners.
+// Include paths use the project's single source/vendor owners. The source
+// directory/NeedSetLibCodecs body is factored for the immutable Qt catalog.
 
 /*
 Z7_EXTERNAL_CODECS
@@ -770,26 +771,23 @@ HRESULT CCodecs::Load() {
         if (!loadedOK)
             MainDll_ErrorPath = kMainDll;
     }
-    RINOK(LoadDllsFromFolder(baseFolder + kCodecsFolderName))
-    RINOK(LoadDllsFromFolder(baseFolder + kFormatsFolderName))
+    RINOK(LoadExternalModules(baseFolder))
 
-    NeedSetLibCodecs = true;
+    RINOK(SetLibCodecs())
 
-    if (Libs.Size() == 0)
-        NeedSetLibCodecs = false;
-    else if (Libs.Size() == 1) {
-// we don't need to set ISetCompressCodecsInfo, if all arcs and codecs are in one external module.
-#ifndef EXPORT_CODECS
-        if (g_NumArcs == 0)
-            NeedSetLibCodecs = false;
 #endif
-    }
 
+    // we sort Formats to get fixed order of Formats after compilation.
+    Formats.Sort();
+    return S_OK;
+}
+
+#ifdef Z7_EXTERNAL_CODECS
+HRESULT CCodecs::SetLibCodecs() {
     if (NeedSetLibCodecs) {
         /* 15.00: now we call global function in DLL: SetCompressCodecsInfo(c)
            old versions called only ISetCompressCodecsInfo::SetCompressCodecsInfo(c) for each
            archive handler */
-
         FOR_VECTOR(i, Libs) {
             CCodecLib &lib = Libs[i];
             MY_GET_FUNC(lib.SetCodecs, Func_SetCodecs, lib.Lib, "SetCodecs")
@@ -798,13 +796,25 @@ HRESULT CCodecs::Load() {
             }
         }
     }
-
-#endif
-
-    // we sort Formats to get fixed order of Formats after compilation.
-    Formats.Sort();
     return S_OK;
 }
+
+HRESULT CCodecs::LoadExternalModules(const FString &baseFolder) {
+    RINOK(LoadDllsFromFolder(baseFolder + kCodecsFolderName))
+    RINOK(LoadDllsFromFolder(baseFolder + kFormatsFolderName))
+    NeedSetLibCodecs = true;
+    if (Libs.Size() == 0)
+        NeedSetLibCodecs = false;
+    else if (Libs.Size() == 1) {
+        // All arcs and codecs can be in one external module.
+#ifndef EXPORT_CODECS
+        if (g_NumArcs == 0)
+            NeedSetLibCodecs = false;
+#endif
+    }
+    return S_OK;
+}
+#endif
 
 #ifndef Z7_SFX
 
@@ -1157,7 +1167,7 @@ UInt32 CCodecs::GetHasherDigestSize(UInt32 index) {
     return prop.ulVal;
 }
 
-void CCodecs::GetCodecsErrorMessage(UString &s) {
+void CCodecs::GetCodecsErrorMessage(UString &s) const {
     s.Empty();
     FOR_VECTOR(i, Errors) {
         const CCodecError &ce = Errors[i];

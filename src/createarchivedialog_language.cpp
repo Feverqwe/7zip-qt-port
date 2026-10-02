@@ -38,6 +38,7 @@ void CreateArchiveDialog::BindLanguage() {
     row(encryption_, IDT_COMPRESS_ENCRYPTION_METHOD, "&Encryption method:");
     QtBindResourceText(advanced_, IDB_COMPRESS_OPTIONS, "Options");
     QtBindResourceText(sharedFiles_, IDX_COMPRESS_SHARED, "Compress shared files");
+    QtBindResourceText(sfx_, IDX_COMPRESS_SFX, "Create SFX archive");
     QtBindResourceText(deleteAfterCompressing_, IDX_COMPRESS_DEL, "Delete files after compression");
     QtBindResourceText(findChild<QGroupBox *>("archiveLifecycleOptions"), IDG_COMPRESS_OPTIONS,
                        "Options");

@@ -23,6 +23,7 @@ class ArchiveCodecProbe final : public QObject {
     bool active_ = false;
     bool cancelled_ = false;
     bool timedOut_ = false;
+    bool explicitModule_ = false;
     void Finish(int exitCode, QProcess::ExitStatus status);
 
   public:

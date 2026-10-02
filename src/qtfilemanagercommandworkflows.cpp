@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/HelpUtils.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include "archivecodeccatalog.h"
 #include "mainwindow.h"
 #include "qtfilemanagercommands.h"
 #include <QScopedValueRollback>
@@ -216,7 +217,8 @@ void QtFileManagerCommands::SetTimestampLevel(int level) {
 void QtFileManagerCommands::MyBenchmark(bool) { Q_UNREACHABLE(); }
 void QtFileManagerCommands::ShowHelpWindow(const char *topic) { ::ShowHelpWindow(topic, &window_); }
 void QtFileManagerCommands::AboutDialog() {
-    CAboutDialog dialog(&window_);
+    const auto catalog = window_.backend_->codecCatalog();
+    CAboutDialog dialog(&window_, catalog ? &catalog->nativeCodecs() : nullptr);
     dialog.Create();
 }
 void QtFileManagerCommands::MyBrowseForTempFolder() { ::MyBrowseForTempFolder(&window_); }

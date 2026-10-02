@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
+#include "archiveenginelocation.h"
 #include "processpriority.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivevolumeoutput.h"
@@ -14,24 +15,13 @@
 #include <QFileInfo>
 #include <QRegularExpression>
 #include <QSet>
-#include <QStandardPaths>
 #include <QUuid>
 
 ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(parent) {
-    if (executable.isEmpty()) {
-        executable = QStandardPaths::findExecutable("7zz");
-        if (executable.isEmpty()) {
-            for (const QString &candidate : {"/opt/homebrew/bin/7zz", "/usr/local/bin/7zz"}) {
-                if (QFileInfo(candidate).isExecutable()) {
-                    executable = candidate;
-                    break;
-                }
-            }
-        }
-        if (executable.isEmpty())
-            executable = "7zz";
-    }
+    if (executable.isEmpty())
+        executable = FindArchiveEngine();
     process_.setProgram(executable);
+    configuredEngine_ = executable;
     process_.setProcessChannelMode(QProcess::MergedChannels);
     connect(&process_, &QProcess::started, this, [this] {
         processPause_.Attach(UInt32(process_.processId()));
@@ -86,7 +76,9 @@ ArchiveBackend::~ArchiveBackend() {
         QFile::remove(createTemporary_);
 }
 
-bool ArchiveBackend::busy() const { return job_ != Job::None || overwritePromptActive_; }
+bool ArchiveBackend::busy() const {
+    return job_ != Job::None || overwritePromptActive_ || codecDiscoveryActive_;
+}
 
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
@@ -653,6 +645,17 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         startVolumeOutput();
         return;
     }
+#ifndef Q_OS_WIN
+    if (completed == Job::Create && createNativeSfx_ &&
+        !QFile::setPermissions(createTemporary_, QFile::permissions(createTemporary_) |
+                                                     QFileDevice::ExeOwner |
+                                                     QFileDevice::ExeUser)) {
+        QFile::remove(createTemporary_);
+        emit finished(false, QtLocalText("Could not make the SFX archive executable.",
+                                         "Не удалось назначить SFX-архиву право исполнения."));
+        return;
+    }
+#endif
     if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
         QFile::remove(createTemporary_);
         emit finished(false, QtLocalText("Could not save new archive: %1",

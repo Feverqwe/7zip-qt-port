@@ -92,8 +92,16 @@ class CodecCatalogTests : public QObject {
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog());
         QVERIFY(!backend.discoverCodecCatalog());
+        QVERIFY(backend.busy());
+        QSignalSpy refused(&backend, &ArchiveBackend::finished);
+        QSignalSpy launched(&backend, &ArchiveBackend::engineStarted);
+        backend.list("unused");
+        QCOMPARE(refused.size(), 1);
+        QVERIFY(!refused[0][0].toBool());
+        QVERIFY(launched.isEmpty());
         QCOMPARE(backend.loadCodecCatalog("unused", 1), E_ABORT);
         QTRY_COMPARE(ready.size(), 1);
+        QVERIFY(!backend.busy());
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         const auto catalog = backend.codecCatalog();
         QVERIFY(catalog && catalog->canUpdate("zip"));
@@ -169,6 +177,7 @@ class CodecCatalogTests : public QObject {
 
     void busyAndUnverifiedVersionDoNotStartDiscovery() {
         BusyBackend busy;
+        QVERIFY(!busy.discoverCodecCatalog("unused"));
         QCOMPARE(busy.loadCodecCatalog("unused", 1), E_ABORT);
         QVERIFY(!busy.codecCatalog());
         ArchiveBackend backend;

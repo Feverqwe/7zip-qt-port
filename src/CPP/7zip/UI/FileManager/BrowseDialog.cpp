@@ -132,7 +132,7 @@ bool CorrectFsPath(const UString &relBase, const UString &path2, UString &result
         const int slashPos = path.Find(WCHAR_PATH_SEPARATOR, start);
         cur.SetFrom(path.Ptr(start), (slashPos < 0 ? path.Len() : (unsigned)slashPos) - start);
         if (checkExist) {
-            CFileInfo fi;
+            NFind::CFileInfo fi;
             if (fi.Find(us2fs(base + result + cur))) {
                 if (!fi.IsDir()) {
                     result = path;

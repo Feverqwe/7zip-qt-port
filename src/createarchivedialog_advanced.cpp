@@ -1,14 +1,22 @@
 #include "7zip/PropID.h"
+#include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "qtcompressoptionsdialog.h"
 #include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
-    // CompressDialog.rc: right-hand Options group, Shared then Delete,
-    // preceding Encryption. SFX remains owned by its mandatory P2 package.
+    // CompressDialog.rc: right-hand Options group, SFX, Shared, Delete,
+    // preceding Encryption.
     auto *group = new QGroupBox("Параметры", this);
     group->setObjectName("archiveLifecycleOptions");
     auto *layout = new QVBoxLayout(group);
+    sfx_ = new QCheckBox(group);
+    sfx_->setObjectName("archiveSfx");
+    if (codecs_)
+        sfxModule_ = codecs_->sfxModule();
+    layout->addWidget(sfx_);
+    connect(sfx_, &QCheckBox::toggled, this, &CreateArchiveDialog::toggleSfx);
+    updateSfxControls();
     sharedFiles_ = new QCheckBox("Сжимать открытые для записи файлы", group);
     sharedFiles_->setObjectName("archiveSharedFiles");
 #ifndef Q_OS_WIN

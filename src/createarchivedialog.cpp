@@ -321,6 +321,9 @@ void CreateArchiveDialog::validateAndAccept() {
 
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
+    options.SFXMode = sfx_ && sfx_->isEnabled() && sfx_->isChecked();
+    if (options.SFXMode)
+        options.SfxModule = sfxModule_.path();
     options.format = format_->currentText();
     options.OpenShareForWrite =
         sharedFiles_ && sharedFiles_->isEnabled() && sharedFiles_->isChecked();

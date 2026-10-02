@@ -6,10 +6,11 @@
 #include "7zip/UI/FileManager/AboutDialogRes.h"
 #include "Common/MyString.h"
 #include <QDialog>
+class CCodecs;
 
 class CAboutDialog : public QDialog {
   public:
-    explicit CAboutDialog(QWidget *parent = nullptr);
+    explicit CAboutDialog(QWidget *parent = nullptr, const CCodecs *codecs = nullptr);
     bool OnInit();
     void OnHelp();
     bool OnButtonClicked(unsigned buttonID, QWidget *buttonHWND);
@@ -17,6 +18,7 @@ class CAboutDialog : public QDialog {
 
   private:
     void SetItemText(unsigned id, const UString &text);
+    const CCodecs *codecs_ = nullptr; // Caller retains the immutable catalog lease.
 };
 
 #endif

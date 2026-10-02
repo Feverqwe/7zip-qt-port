@@ -89,7 +89,9 @@ void CreateArchiveDialog::FormatChanged() {
     SetMemUseCombo();
     SetLevel2();
     method_->clear();
-    method_->addItems(NCompressDialog::GetMethodNames(registryFormat_));
+    method_->addItems(NCompressDialog::GetMethodNames(
+        registryFormat_,
+        sfx_ && sfx_->isChecked() && NCompressDialog::GetFormatInfo(registryFormat_).SFX_()));
     const int methodIndex = method_->findText(fo.Method, Qt::MatchFixedString);
     if (methodIndex >= 0)
         method_->setCurrentIndex(methodIndex);
@@ -134,4 +136,5 @@ void CreateArchiveDialog::MethodChanged() {
     wordSize_->setEnabled(compressed && wordSize_->count() > 1);
     solidBlock_->setEnabled(compressed && NCompressDialog::GetFormatInfo(registryFormat_).Solid_());
     SetMemoryUsage();
+    updateSfxControls();
 }

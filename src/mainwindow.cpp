@@ -155,9 +155,9 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     reloadLangItems();
     if (!backend) {
         connect(backend_, &ArchiveBackend::codecCatalogReady, this,
-                [this](bool success, const QString &message) {
+                [this](bool, const QString &message) {
                     refreshActions();
-                    if (!success)
+                    if (!message.isEmpty())
                         statusBar()->showMessage(message);
                 });
         backend_->discoverCodecCatalog();

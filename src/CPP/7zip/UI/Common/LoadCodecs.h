@@ -1,7 +1,7 @@
 // LoadCodecs.h
-// Copied from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+// Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Only includes adapt to authoritative project source/vendor owners.
+// Includes and an explicit-folder entry point adapt to the Qt runtime owner.
 
 #ifndef ZIP7_INC_LOAD_CODECS_H
 #define ZIP7_INC_LOAD_CODECS_H
@@ -322,6 +322,10 @@ class CCodecs Z7_final :
     HRESULT LoadFormats();
     HRESULT LoadDll(const FString &path, bool needCheckDll, bool *loadedOK = NULL);
     HRESULT LoadDllsFromFolder(const FString &folderPrefix);
+    // Source Load directory policy with an explicit engine deployment folder.
+    // Keeps the per-handler ISetCompressCodecsInfo protocol for immutable leases.
+    HRESULT LoadExternalModules(const FString &baseFolder);
+    HRESULT SetLibCodecs();
 
     HRESULT CreateArchiveHandler(const CArcInfoEx &ai, bool outHandler, void **archive) const {
         return Libs[(unsigned)ai.LibIndex].CreateObject(
@@ -386,7 +390,7 @@ class CCodecs Z7_final :
     AString GetHasherName(UInt32 index);
     UInt32 GetHasherDigestSize(UInt32 index);
 
-    void GetCodecsErrorMessage(UString &s);
+    void GetCodecsErrorMessage(UString &s) const;
 
 #endif
 

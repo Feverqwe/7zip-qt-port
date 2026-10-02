@@ -15,6 +15,7 @@
 class QtArchiveVolumeOutput;
 class QtArchiveCreationLifecycle;
 class ArchiveCodecCatalog;
+class ArchiveSfxModule;
 class ArchiveCodecProbe;
 class ArchiveNativeOpen;
 struct IOpenCallbackUI;
@@ -47,6 +48,7 @@ struct ArchiveInfo {
 };
 
 struct CompressionOptions : NCompressDialog::CInfo {
+    QString SfxModule;
     // Stable native handler name at the process boundary; never a CLI switch.
     QString format;
     int level = 5;
@@ -89,6 +91,7 @@ class ArchiveBackend : public QObject {
     void cancelCodecDiscovery();
     QString openDialogFilter() const;
     bool supportsArchiveUpdate(const QString &format) const;
+    ArchiveSfxModule sfxModule(const QString &path = {}) const;
     // Called by the source opening worker; no process or widget state is accessed.
     HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
                               std::shared_ptr<ArchiveNativeOpen> &reader) const;
@@ -246,6 +249,7 @@ class ArchiveBackend : public QObject {
     void startListing(const QString &archive, const QString &password, const QString &format);
 
     QProcess process_;
+    QString configuredEngine_;
     std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;
     std::unique_ptr<ArchiveCodecProbe> codecProbe_;
     bool codecDiscoveryActive_ = false;
@@ -257,6 +261,9 @@ class ArchiveBackend : public QObject {
     QByteArray pendingOutput_;
     QString archive_;
     QString createTarget_;
+    bool createNativeSfx_ = false;
+    QString createSfxModule_;
+    QString createVolumeTarget_;
     QString createTemporary_;
     bool createSetArcMTime_ = false;
     struct CreateStage {

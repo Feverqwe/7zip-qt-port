@@ -115,7 +115,7 @@ class CChildProcess {
         for (unsigned i = 0; !Process.canReadLine() && i < 3; ++i)
             if (!Process.waitForReadyRead(1000))
                 return {};
-        return Process.readLine();
+        return Process.readLine().replace("\r\n", "\n");
     }
 };
 

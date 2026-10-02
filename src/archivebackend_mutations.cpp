@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
+#include "archivesfxmodule.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtlanguageservices.h"
 
@@ -202,6 +203,28 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         emit finished(false, compressionError);
         return;
     }
+    QString validatedSfxModule;
+    if (options.SFXMode) {
+        const auto module = sfxModule(options.SfxModule);
+        const auto method =
+            options.level == 0
+                ? NCompressDialog::kCopy
+                : NCompressDialog::GetMethodID(
+                      options.method.isEmpty() ? QString("LZMA2") : options.method, suffix);
+        if (suffix != "7z" || !NCompressDialog::IsMethodSupportedBySfx(method) ||
+            !module.available()) {
+            lastResult_ = E_INVALIDARG;
+            emit finished(
+                false, module.available()
+                           ? QtLocalText("The selected format or method is not supported by SFX.",
+                                         "Выбранный формат или метод не поддерживается SFX.")
+                           : module.error());
+            return;
+        }
+        validatedSfxModule = module.path();
+        if (options.VolumeSizes.IsEmpty())
+            compressionArguments.append("-sfx" + validatedSfxModule);
+    }
     const QFileInfo target(archive);
     if (!QFileInfo(target.absolutePath()).isDir() || target.exists() || target.isSymLink()) {
         emit finished(false,
@@ -217,9 +240,19 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
             return;
         }
     }
+    QString volumeTarget = archive;
+    if (options.SFXMode) {
+#ifdef Q_OS_WIN
+        if (volumeTarget.endsWith(".exe", Qt::CaseInsensitive))
+            volumeTarget.chop(4);
+#endif
+        // Original SFX OpenStreamOrFile looks for <self>.7z.001 on Unix too.
+        // GetFinalVolPath omits this extension with Unix's empty SFX extension.
+        volumeTarget += ".7z";
+    }
     if (!options.VolumeSizes.IsEmpty()) {
         QString error;
-        if (!checkVolumeTargets(archive, &error)) {
+        if (!checkVolumeTargets(volumeTarget, &error)) {
             emit finished(false, error);
             return;
         }
@@ -303,6 +336,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         }
     }
     createTarget_ = target.absoluteFilePath();
+    createNativeSfx_ = options.SFXMode;
+    createSfxModule_ = validatedSfxModule;
+    createVolumeTarget_ = QFileInfo(volumeTarget).absoluteFilePath();
     const FString workDir = NCompressDialog::GetCompressionWorkingDir(
         UString(createTarget_.toStdWString().c_str()), FmSettingsPath());
     if (!workDir.IsEmpty())

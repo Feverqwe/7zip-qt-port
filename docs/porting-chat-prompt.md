@@ -13,11 +13,74 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-02: supported SFX и external handlers/plugins с source bodies, consumers,
-платформенными adapters, UX и проверками. Inspect upstream CompressDialog,
-UpdateGUI/Update, LoadCodecs и FM FilePlugins/RegistryPlugins перед изменением.
-Нативный console SFX macOS/Linux не равен Windows GUI SFX: выбрать и записать
-реально поддерживаемый scope; N/A не заменяет неперенесённую functional branch.
+P2-03: целый CRC/Hash/Test workflow с source PanelCrc/HashGUI/HashCalc/Extract,
+реальными native/engine consumers, capabilities/menu, progress/messages,
+ошибками/Cancel и проверками. Сначала inspect current source bodies и audit;
+не переписывать уже перенесённые digest algorithms.
+
+P2-02 принят целой итерацией 2026-10-03: source SFX/LoadCodecs, оригинальные
+runtime builders для macOS/Linux/Windows, private images/SetCodecs/native leases,
+external codec/global-only facade/no-main Formats/assets/junction cycle,
+single/split/AES/Add/delete/pause/cancel и EN/RU JSON проверены. Final macOS
+unsandboxed formatting/all-target build/197 CTest PASS107.31s Qt6.11.2 arm64;
+Linux ARM64 Qt6.4.2/GCC13.3 focused9/9PASS2.79s zero skips;
+Windows11 ARM64 Qt6.8.3/MSVC14.44 clean build/focused7/7PASS13.76s.
+Windows external/SFX zero skips; existing owned_temp symlink fixture остаётся
+для P3. Baseline372exact/164adapted/3local verified. UTF-8 console в build.sh
+исправляет Ninja/MSVC header dependencies без изменения VM/toolchain; prefix и
+actual header records проверены. Counts31/46,15remain; P0 12/12,P1 16/18,
+P2 2/10,P3 1/6. Whole local commit; no push/upstream writes. Rendered Windows
+reference/full P3 и отдельный mandatory Finder P3-03.1 остаются открыты.
+Далее historical P2-02 WIP checkpoints: pending/next/live statements superseded
+этой приёмкой, не текущий backlog.
+
+Historical P2-02 WIP on559102c: scripts/build-sfx.sh builds official native SFXCon from
+baseline snapshot into build/sfx with SHA/source/host/version JSON and license;
+native Mach-O arm64 Test/Extract disposableUnicode fixture PASS, source26.03.
+Manual/script builds sameSHA ad64e6ffb725efdab3a2d3072ebffb6b20f74af10a34ed4ebb8c782cdc32b99b.
+Source CompressDialog IsMethodSupportedBySfx/GetMethodNames filter,
+CheckSFXControlsEnable/OnButtonSFX ported; Windows.exe/Unix empty native extension
+follows Common/Update platform rule. Original CUpdateErrorInfo/PrepareSfxModule/
+WriteSfxModule connected; runtime provenance/digest/version/native CPU validation,
+backend create/split publication/+X and actual source checkbox/order/transitions
+connected. Native self-Test/Extract single/multi-root/split/AES, missing/occupied/
+cancel verified; EN/RU normal/compact4JSON reviewed. Unixvolume names mustuse
+<self>.7z.NNN because original SFX reader cannotfind official7zz <self>.NNN.
+Dynamic Console7z/Format7zF runtime built unchanged in pinned snapshot by
+build-codec-runtime.sh; app selects prepared/deployed runtime, explicit
+SEVENZIP_ENGINE_PATH, standalonefallback. Source Load directory/NeedSet body
+factored into explicit-folder entry, native per-handler lease protocol; actual
+external Copy-codec Create/List/Test/Extract/native leasedhandler, Unicode/space
+pluginpath, ABI warning/mismatch/cancel and defaultengine checks verified.
+About source codec-error branch connected to retainedcatalog; getterconst only,
+new appcaption and normal/compact geometry verified. Baseline371/164/3 after
+Windows COM.h/Codec.def dependencies; fourexact
+export sources staged onlyforinventory, no helpercommit. No owncommit/fullgate/
+P2acceptance. Private runtime images now connect the original SetCodecs loop
+without clobbering retained catalogs; discovery and archive jobs exclude each
+other. External Formats module without main DLL passes native/engine consumers.
+Global-only external facade delegates original 7z handler with no per-instance
+interface; exact decoding survives another confirmed catalog's release.
+Implicit module uses engine Libs resolution. Matching-SHA non-executable SFX
+refused before engine start. Latest codec2/2PASS4.47s, SFX/UI4/4PASS5.71s macOS
+arm64. Nested Codecs/Formats assets retained after original removal and cyclic
+directory refusal checked, codec/catalog/SFX3/3PASS5.31s. Windows build-sfx.ps1
+and build-codec-runtime.ps1 compiled unchanged SFXWin/Console/Format7zF/Alone2
+on Windows11 ARM64 with MSVC14.44; both clients report26.03. Earlier tools-missing
+probe inspected PATH only; installed scoped developer environment is available.
+Next: finish Windows Qt consumer build/checks and image isolation. Linux ARM64
+Qt6.4.2/GCC13.3 focused6/6PASS1.52s zero skips; four SFX JSON controls reviewed.
+FSFolderCopy callback pointer uses local original UInt64 instead of Qt quint64;
+copy flow unchanged, mac filesystem2/2PASS0.27s. Windows SFX fixtures use GUI
+-y/-o/-p extraction and separate engine Test, native execution still pending.
+Actual Add acceptance and SFX delete-after-publication,
+engine/volume-worker pause/resume, second-root/prepublication volume cancel pass;
+latest affected4/4PASS2.63s macOS. Advanced method override preserves original
+UpdateGUI property order; source allows explicit override of the selected method.
+FM FilePlugins/RegistryPlugins external
+branches are commented out upstream; ProgramLocation has no functional body.
+Do not revive obsolete branches. Preserve current WIP; indexednote carries
+details/temporarypaths. No ownlivehandles at checkpoint.
 
 P1-18 принят целой итерацией: полный source Rar5Handler/native decoder/crypto,
 actual RAR5/RAR7 required2MiB/allowed1MiB/flags через FM memory callback;
@@ -30,7 +93,7 @@ tokens identical. Финальный unsandboxed check.sh formatting/all-target 
 193 CTest PASS79.91s macOSarm64Qt6.11.2 2026-10-02; первый foundation linker
 failure исправлен до приёмки. Whole commit subject:
 Port source RAR decoder memory requests and GUI consumers (P1-18).
-Counts30/46,16remain; P0 12/12,P1 16/18,P2 1/10,P3 1/6. Windows/Linux runtime/
+Historical counts after P1-18:30/46,16remain; P0 12/12,P1 16/18,P2 1/10,P3 1/6. Windows/Linux runtime/
 rendered reference и additional compressedRAR7/encrypted/solid/multivolume
 workflows unverified. Finder сохраняется отдельным mandatory P3-03.1.
 Не разрешать giant dictionaries в tests: малого forced handler limit достаточно.

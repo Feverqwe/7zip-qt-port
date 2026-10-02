@@ -48,6 +48,7 @@ HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVe
     std::shared_ptr<const ArchiveCodecCatalog> catalog =
         std::make_shared<ArchiveCodecCatalog>(module, engineVersion);
     const HRESULT result = catalog->result();
+    process_.setProgram(configuredEngine_);
     std::atomic_store(&codecCatalog_, std::move(catalog));
     return result;
 }
@@ -71,19 +72,23 @@ HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNative
 }
 
 bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
-    if (codecDiscoveryActive_)
+    if (busy())
         return false;
     if (!codecProbe_)
         codecProbe_ = std::make_unique<ArchiveCodecProbe>();
     codecDiscoveryActive_ = true;
     codecDiscoveryCancelled_ = false;
-    return codecProbe_->Start(process_.program(), module, [this](ArchiveCodecProbeResult result) {
+    return codecProbe_->Start(configuredEngine_, module, [this](ArchiveCodecProbeResult result) {
         // Delivery is queued so a UI receiver can close/delete the backend
         // without deleting the probe's QProcess during its finished callback.
         QMetaObject::invokeMethod(
             this,
             [this, result = std::move(result)] {
                 codecDiscoveryActive_ = false;
+                process_.setProgram(!codecDiscoveryCancelled_ && result.result == S_OK &&
+                                            !result.catalog->runtimeEngine().isEmpty()
+                                        ? result.catalog->runtimeEngine()
+                                        : configuredEngine_);
                 std::atomic_store(&codecCatalog_, codecDiscoveryCancelled_
                                                       ? std::shared_ptr<const ArchiveCodecCatalog>()
                                                       : result.catalog);
@@ -124,6 +129,12 @@ bool ArchiveBackend::supportsArchiveUpdate(const QString &format) const {
     return catalog ? catalog->result() == S_OK && catalog->canUpdate(format)
                    : !format.compare("zip", Qt::CaseInsensitive) ||
                          !format.compare("7z", Qt::CaseInsensitive);
+}
+
+ArchiveSfxModule ArchiveBackend::sfxModule(const QString &path) const {
+    const auto catalog = codecCatalog();
+    return catalog && catalog->result() == S_OK ? catalog->sfxModule(path)
+                                                : ArchiveSfxModule::Read({});
 }
 
 bool ArchiveBackend::selectCreationFormat(const QString &archive, const QStringList &sources,

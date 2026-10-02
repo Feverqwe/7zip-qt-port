@@ -1,0 +1,98 @@
+# Run in a Visual Studio developer PowerShell for the selected target.
+# Builds unchanged upstream SFXWin from the recorded immutable source revision.
+[CmdletBinding()]
+param(
+    [string]$UpstreamCheckout,
+    [string]$OutputDirectory,
+    [ValidateSet('arm64', 'x64', 'x86')]
+    [string]$Architecture = $env:VSCMD_ARG_TGT_ARCH
+)
+$ErrorActionPreference = 'Stop'
+$scriptDirectory = [IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Path)
+if (-not $UpstreamCheckout) { $UpstreamCheckout = Join-Path $scriptDirectory '../../7zip-upstream' }
+if (-not $OutputDirectory) { $OutputDirectory = Join-Path $scriptDirectory '../build/sfx' }
+if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows.' }
+if (-not $Architecture) { throw 'Choose -Architecture arm64, x64 or x86 in a matching MSVC environment.' }
+if ($env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
+    throw 'The MSVC developer environment must match -Architecture.'
+}
+foreach ($tool in @('git', 'tar', 'nmake', 'cl', 'link', 'rc')) {
+    $null = Get-Command $tool -ErrorAction Stop
+}
+function Invoke-Checked([string]$Program, [string[]]$Arguments) {
+    & $Program @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "$Program failed (exit $LASTEXITCODE)." }
+}
+$projectRoot = [IO.Path]::GetFullPath((Join-Path $scriptDirectory '..'))
+$baseline = Get-Content -LiteralPath (Join-Path $projectRoot 'docs/upstream-baseline.json') -Raw |
+    ConvertFrom-Json
+$revision = [string]$baseline.revision
+if ($revision -notmatch '^[0-9a-f]{40}$') { throw 'Invalid recorded upstream revision.' }
+$upstream = [IO.Path]::GetFullPath($UpstreamCheckout)
+Invoke-Checked 'git' @('-C', $upstream, 'cat-file', '-e', "$revision`^{commit}")
+$output = [IO.Path]::GetFullPath($OutputDirectory)
+$null = New-Item -ItemType Directory -Path $output -Force
+if ((Get-Item -LiteralPath $output).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+    throw 'Refusing a reparse-point SFX output directory.'
+}
+$module = Join-Path $output '7z.sfx'
+$manifest = "$module.json"
+$license = Join-Path $output '7z-LICENSE.txt'
+$existing = @($module, $manifest, $license) | Where-Object { Test-Path -LiteralPath $_ }
+foreach ($path in $existing) {
+    if ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw 'Refusing to replace a reparse-point SFX artifact.'
+    }
+}
+if ($existing.Count -gt 0) {
+    if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
+        throw 'Refusing to replace an unowned SFX artifact.'
+    }
+    $owner = Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
+    if ($owner.producer -ne 'sevenzip-desktop/build-sfx-windows') {
+        throw 'Refusing to replace an unowned SFX artifact.'
+    }
+}
+$snapshot = Join-Path $output ('.build-sfx-' + [Guid]::NewGuid().ToString('N'))
+$null = New-Item -ItemType Directory -Path $snapshot
+try {
+    $archive = Join-Path $snapshot 'source.tar'
+    # PowerShell 5.1 binary pipelines corrupt archives: let Git write the file.
+    Invoke-Checked 'git' @('-C', $upstream, 'archive', "--output=$archive", $revision)
+    Invoke-Checked 'tar' @('-xf', $archive, '-C', $snapshot)
+    $bundle = Join-Path $snapshot 'CPP/7zip/Bundles/SFXWin'
+    Push-Location -LiteralPath $bundle
+    try {
+        Invoke-Checked 'nmake' @('/nologo', '/f', 'makefile', "PLATFORM=$Architecture")
+    } finally { Pop-Location }
+    $built = Join-Path $bundle "$Architecture/7z.sfx"
+    if (-not (Test-Path -LiteralPath $built -PathType Leaf)) { throw 'SFXWin produced no module.' }
+    $header = Get-Content -LiteralPath (Join-Path $snapshot 'C/7zVersion.h') -Raw
+    $major = [regex]::Match($header, '#define MY_VER_MAJOR\s+(\d+)')
+    $minor = [regex]::Match($header, '#define MY_VER_MINOR\s+(\d+)')
+    if (-not $major.Success -or -not $minor.Success) { throw 'Missing upstream version.' }
+    $targetArch = @{ arm64 = 'arm64'; x64 = 'x86_64'; x86 = 'x86' }[$Architecture]
+    $record = [ordered]@{
+        schema = 1
+        producer = 'sevenzip-desktop/build-sfx-windows'
+        repository = [string]$baseline.repository
+        revision = $revision
+        source = 'CPP/7zip/Bundles/SFXWin/makefile'
+        target = 'windows-gui'
+        system = 'Windows'
+        architecture = $targetArch
+        version = ([int]$major.Groups[1].Value -shl 16) -bor [int]$minor.Groups[1].Value
+        sha256 = (Get-FileHash -LiteralPath $built -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $stagedManifest = Join-Path $snapshot '7z.sfx.json'
+    [IO.File]::WriteAllText($stagedManifest, ($record | ConvertTo-Json) + "`n",
+                          (New-Object Text.UTF8Encoding($false)))
+    Copy-Item -LiteralPath (Join-Path $snapshot 'DOC/License.txt') -Destination $license
+    Copy-Item -LiteralPath $built -Destination $module
+    Move-Item -LiteralPath $stagedManifest -Destination $manifest -Force
+    Write-Output "Built official Windows GUI SFX: $module"
+    Write-Output "Upstream: $revision SHA-256: $($record.sha256)"
+} finally {
+    # Only this invocation's unique source snapshot is removed.
+    Remove-Item -LiteralPath $snapshot -Recurse -Force
+}

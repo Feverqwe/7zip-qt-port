@@ -104,7 +104,8 @@ HRESULT CreateArchiveMetadata(const QList<ArchiveEntry> &entries, IFolderFolder 
         item.MTimeText = entry.modified;
         item.IsFolder = entry.directory;
         item.Crc = entry.crc;
-        item.RawProperties = entry.rawProperties;
+        for (auto i = entry.rawProperties.cbegin(); i != entry.rawProperties.cend(); ++i)
+            item.RawProperties.insert(PROPID(i.key()), i.value());
         for (auto i = entry.properties.cbegin(); i != entry.properties.cend(); ++i)
             item.ArchiveProperties.Add({ToUString(i.key()), ToUString(i.value())});
         item.SizeDefined = entry.sizeValue.has_value() || entry.size >= 0;

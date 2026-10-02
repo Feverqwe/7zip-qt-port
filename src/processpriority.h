@@ -1,5 +1,6 @@
 // Native platform service for the source background transition and 7zz transport.
 #pragma once
+#include "Common/MyTypes.h"
 #include "Common/MyWindows.h"
 
 namespace NProcessPriority {

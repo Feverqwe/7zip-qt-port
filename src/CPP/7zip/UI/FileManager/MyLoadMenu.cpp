@@ -17,7 +17,9 @@
 #include <QMenuBar>
 #include <QVariant>
 
+#ifndef IDCLOSE
 static const unsigned IDCLOSE = 8;
+#endif
 static const unsigned k_MenuID_OpenBookmark = 830;
 static const unsigned k_MenuID_SetBookmark = 810;
 static const unsigned k_MenuID_Time = IDM_VIEW_TIME;

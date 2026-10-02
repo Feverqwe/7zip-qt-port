@@ -148,11 +148,13 @@ QList<CMemComboItem> SetMemUseCombo(const QString &spec = {}, int *selected = nu
 UInt64 Get_MemUse_Bytes(const NCompression::CMemUse &mu, const CSystemInfo &system);
 
 const CFormatInfo &GetFormatInfo(QStringView name);
-QStringList GetMethodNames(QStringView name);
+QStringList GetMethodNames(QStringView name, bool isSFX = false);
+bool IsMethodSupportedBySfx(int methodID);
 } // namespace NCompressDialog
 
 // Source-ported archive-path and encryption portions of CCompressDialog. Qt presentation
-// supplies the editable combo text and directory; codec/SFX branches are omitted.
+// supplies editable path text; source format/SFX naming is retained. Runtime
+// module discovery and modal control presentation belong to narrow adapters.
 struct CBool1 {
     bool Val;
     bool Supported;
@@ -219,6 +221,8 @@ class CCompressDialog {
                                         const QString &encryptionMethod);
     void SetArchiveName(const QString &name);
     void SetArchiveName2(bool prevWasSFX = false);
+    bool CheckSFXControlsEnable();
+    void OnButtonSFX();
     void ArcPath_WasChanged(const QString &path);
     bool SetArcPathFields(const QString &path);
     bool SetArcPathFields(const QString &path, QString &name, bool always);

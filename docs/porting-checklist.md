@@ -66,8 +66,8 @@ capabilities, а не только по старой ссылке на parent; �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **30/46 завершённых пакетов; 16 остаётся** (2026-10-02).
-P0: 12/12; P1: 16/18; P2: 1/10; P3: 1/6. P0-01–P0-12, P1-01–P1-11, P1-14–P1-18, P2-01 и P3-01
+Текущий счёт: **31/46 завершённых пакетов; 15 остаётся** (2026-10-03).
+P0: 12/12; P1: 16/18; P2: 2/10; P3: 1/6. P0-01–P0-12, P1-01–P1-11, P1-14–P1-18, P2-01–P2-02 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
 Подшаги не увеличивают число parent packages; новый самостоятельный scope
 добавляется отдельной строкой и меняет знаменатель в обоих документах.
@@ -212,7 +212,7 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P2-01 | Formats/codecs/capabilities, KeepName, Inside */# | P0-04, P1-05 | done — audit § P2-01 acceptance; complete source LoadCodecs/OpenArchive/default naming/eligibility, immutable leased catalog, async module/version discovery, metadata filters, seven typed writer transports. Native CFfpOpen worker/properties/password/cancel/leases, actual TGZ/Split extraction; source Add42success/failure/cancel plus MainWindow Add7formats success/cancel, Inside */#, missing/version mismatch read-only commands, bzip2 refusal/XZ empty-stream Delete/cancel and exact extensionless spool publication. Add normal760/compact640 JSON14 reviewed, native format/method restoration fixed. Full unsandboxed check.sh formatting/build/188 CTest PASS74.09s macOS arm64 Qt6.11.2 2026-10-02; baseline224/161/3 verified. Process item/extract/update/reopen integration explicit; P1-17/18 actual consumers remain mandatory, Windows/Linux runtime/rendered parity unverified. Whole iteration local commit, no helper commit/push |
-| [ ] | P2-02 | SFX и внешние handlers/plugins | P2-01, P1-06 | todo |
+| [x] | P2-02 | SFX и внешние handlers/plugins | P2-01, P1-06 | done — audit § P2-02 acceptance; source CompressDialog/Update/LoadCodecs, native SFX single/split/AES/Add/delete/pause/cancel, external codec/global-only facade/no-main Formats, immutable images/leases/assets and actual Windows junction cycle refusal. Official pinned runtimes compiled on all three OS; EN/RU SFX JSON reviewed. Final Windows11 ARM64 Qt6.8.3/MSVC14.44 clean build/focused7/7PASS13.76s; SFX/external zero skips, existing owned_temp symlink case deferred P3. Linux ARM64 Qt6.4.2/GCC13.3 focused9/9PASS2.79s zero skips. Full unsandboxed macOS arm64 Qt6.11.2 formatting/all-target build/197 CTest PASS107.31s, baseline372/164/3, 2026-10-03. Whole local iteration commit; rendered Windows parity/full P3/Finder remain open |
 | [ ] | P2-03 | Исходный CRC/Hash/Test workflow | P0-10, P1-10, P2-01 | todo |
 | [ ] | P2-04 | Benchmark controls/results/lifecycle | P0-10, P1-14 | todo |
 | [ ] | P2-05 | Links/junctions и FS metadata | P1-02, P1-03 | todo |

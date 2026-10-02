@@ -3,7 +3,7 @@
 #include "Common/MyTypes.h"
 #include <QString>
 class CAgentFolder;
-class IFolderFolder;
+struct IFolderFolder;
 class QWidget;
 
 HRESULT ReOpenArchiveFolder(CAgentFolder &folder, const QString &settingsPath, QWidget *parent,

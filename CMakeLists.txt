@@ -222,6 +222,9 @@ qt_add_resources(sevenzip_panel upstream_progress_icons
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
+if(WIN32)
+    target_link_libraries(sevenzip_panel PUBLIC shell32)
+endif()
 target_sources(sevenzip_panel PRIVATE src/qtprogresswait.cpp src/qtprogresswait.h)
 if(APPLE)
     target_sources(sevenzip_panel PRIVATE src/qttaskbarprogress_mac.mm src/qttaskbarprogress.h)
@@ -231,6 +234,8 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_library(sevenzip_filesystem STATIC
+    src/archivesfxmodule.cpp src/archivesfxmodule.h
+    src/archiveenginelocation.cpp src/archiveenginelocation.h
     src/qtownedtempdir.cpp src/qtownedtempdir.h
     third_party/7zip/CPP/Common/Lang.cpp
     src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
@@ -249,11 +254,13 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/Common/Extract.cpp src/CPP/7zip/UI/Common/Extract.h
     src/CPP/7zip/UI/Common/OpenArchive.cpp src/CPP/7zip/UI/Common/OpenArchive.h
     src/archivecodeccatalog.cpp src/archivecodeccatalog.h
+    src/archivecodecimage.cpp src/archivecodecimage.h
     src/archivenativeopen.cpp src/archivenativeopen.h
     src/archivecodecprobe.cpp src/archivecodecprobe.h
     third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
     third_party/7zip/CPP/7zip/UI/Common/SetProperties.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
+    third_party/7zip/CPP/7zip/Common/UniqBlocks.cpp
     third_party/7zip/CPP/7zip/Common/FilePathAutoRename.cpp
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
     src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp
@@ -282,6 +289,16 @@ target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common sevenzip_zip)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
+string(JSON sfx_upstream_revision GET "${sfx_baseline_json}" revision)
+target_compile_definitions(sevenzip_filesystem PRIVATE
+    "SEVENZIP_UPSTREAM_REVISION=\"${sfx_upstream_revision}\"")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(sevenzip_filesystem PRIVATE
+        "SEVENZIP_BUILD_SFX_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/build/sfx\"")
+    target_compile_definitions(sevenzip_filesystem PRIVATE
+        "SEVENZIP_BUILD_CODEC_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
+endif()
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
@@ -930,6 +947,87 @@ if(BUILD_TESTING)
     add_test(NAME archive_creation_lifecycle COMMAND archive_creation_lifecycle_tests -silent)
     set_tests_properties(archive_creation_lifecycle PROPERTIES TIMEOUT 60)
     qt_add_executable(compression_path_tests tests/compression_path_tests.cpp tests/layout_inspection.cpp ${compression_order_sources})
+    qt_add_executable(sfx_options_tests tests/sfx_options_tests.cpp ${compression_order_sources})
+    add_library(external_codec_fixture MODULE tests/external_codec_fixture.cpp
+        third_party/7zip/CPP/7zip/Compress/CodecExports.cpp
+        third_party/7zip/CPP/7zip/Compress/DllExportsCompress.cpp
+        third_party/7zip/CPP/7zip/Compress/CopyCoder.cpp
+        third_party/7zip/CPP/Windows/PropVariant.cpp
+        third_party/7zip/CPP/Common/MyWindows.cpp
+        third_party/7zip/CPP/Common/MyString.cpp
+        third_party/7zip/CPP/Common/IntToString.cpp
+        third_party/7zip/CPP/Common/StringConvert.cpp
+        third_party/7zip/CPP/Common/UTFConvert.cpp
+        third_party/7zip/C/Alloc.c third_party/7zip/C/CpuArch.c)
+    target_include_directories(external_codec_fixture PRIVATE third_party/7zip/CPP)
+    target_link_libraries(external_codec_fixture PRIVATE Threads::Threads)
+    set_target_properties(external_codec_fixture PROPERTIES AUTOMOC OFF AUTOUIC OFF
+        PREFIX "")
+    if(UNIX AND NOT APPLE)
+        target_link_options(external_codec_fixture PRIVATE "-Wl,-Bsymbolic")
+    endif()
+    if(WIN32)
+        target_sources(external_codec_fixture PRIVATE third_party/7zip/CPP/7zip/Compress/Codec.def)
+        target_link_libraries(external_codec_fixture PRIVATE oleaut32)
+    endif()
+    qt_add_executable(external_codec_tests tests/external_codec_tests.cpp ${compression_order_sources})
+    add_library(incompatible_codec_fixture MODULE tests/incompatible_codec_fixture.cpp)
+    target_include_directories(incompatible_codec_fixture PRIVATE third_party/7zip/CPP)
+    set_target_properties(incompatible_codec_fixture PROPERTIES AUTOMOC OFF AUTOUIC OFF
+        PREFIX "")
+    add_library(external_format_fixture MODULE tests/external_format_fixture.cpp
+        third_party/7zip/CPP/Common/MyWindows.cpp)
+    target_include_directories(external_format_fixture PRIVATE third_party/7zip/CPP)
+    target_link_libraries(external_format_fixture PRIVATE ${CMAKE_DL_LIBS})
+    set_target_properties(external_format_fixture PROPERTIES AUTOMOC OFF AUTOUIC OFF
+        PREFIX "")
+    if(WIN32)
+        target_sources(incompatible_codec_fixture PRIVATE tests/incompatible_codec_fixture.def)
+        target_sources(external_format_fixture PRIVATE tests/external_format_fixture.def)
+        target_link_libraries(external_format_fixture PRIVATE oleaut32)
+    elseif(NOT APPLE)
+        target_link_options(external_format_fixture PRIVATE "-Wl,-Bsymbolic")
+    endif()
+    target_include_directories(external_codec_tests PRIVATE src)
+    target_link_libraries(external_codec_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_compile_definitions(external_codec_tests PRIVATE
+        "SEVENZIP_EXTERNAL_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_EXTERNAL_FIXTURE=\"$<TARGET_FILE:external_codec_fixture>\""
+        "SEVENZIP_EXTERNAL_FORMAT_FIXTURE=\"$<TARGET_FILE:external_format_fixture>\""
+        "SEVENZIP_INCOMPATIBLE_FIXTURE=\"$<TARGET_FILE:incompatible_codec_fixture>\"")
+    add_dependencies(external_codec_tests external_codec_fixture incompatible_codec_fixture external_format_fixture)
+    add_test(NAME external_codecs COMMAND external_codec_tests -silent)
+    set_tests_properties(external_codecs PROPERTIES TIMEOUT 60)
+    target_include_directories(sfx_options_tests PRIVATE src)
+    target_link_libraries(sfx_options_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME sfx_options COMMAND sfx_options_tests -silent)
+    qt_add_executable(sfx_creation_tests tests/sfx_creation_tests.cpp tests/layout_inspection.cpp ${compression_order_sources})
+    set(sevenzip_sfx_fixture_name "7zCon.sfx")
+    if(WIN32)
+        set(sevenzip_sfx_fixture_name "7z.sfx")
+    endif()
+    target_include_directories(sfx_creation_tests PRIVATE src tests)
+    target_link_libraries(sfx_creation_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_compile_definitions(sfx_creation_tests PRIVATE
+        "SEVENZIP_SFX_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/${sevenzip_sfx_fixture_name}\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(sfx_creation_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME sfx_creation COMMAND sfx_creation_tests -silent)
+    qt_add_executable(sfx_lifecycle_tests tests/sfx_lifecycle_tests.cpp ${compression_order_sources})
+    target_include_directories(sfx_lifecycle_tests PRIVATE src)
+    target_link_libraries(sfx_lifecycle_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_compile_definitions(sfx_lifecycle_tests PRIVATE
+        "SEVENZIP_SFX_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/${sevenzip_sfx_fixture_name}\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(sfx_lifecycle_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME sfx_lifecycle COMMAND sfx_lifecycle_tests -silent)
+    set_tests_properties(sfx_lifecycle PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(sfx_creation PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     target_include_directories(compression_path_tests PRIVATE src tests)
     target_link_libraries(compression_path_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_path COMMAND compression_path_tests -silent)
@@ -1368,7 +1466,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_language.cpp)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp
-            src/createarchivedialog_advanced.cpp src/createarchivedialog_formats.cpp)
+            src/createarchivedialog_advanced.cpp src/createarchivedialog_formats.cpp
+            src/createarchivedialog_sfx.cpp)
     endif()
 endforeach()
 

@@ -4,6 +4,13 @@
 для Windows, macOS и Linux. Цель — перенос исходного кода с адаптацией UI;
 архивные форматы и сжатие обеспечивает официальный движок 7-Zip.
 
+P2-02 принят: исходные SFX naming/method/update и загрузка внешних Codecs/Formats
+подключены к форме и backend. Windows создаёт GUI SFX `.exe`, macOS/Linux —
+нативный console SFX; single/split, AES, отмена и native extraction проверены.
+Внешние модули используют отдельный immutable runtime и исходный SetCodecs.
+Полный macOS gate197/197 PASS107.31s; focused Windows7/7 и Linux9/9 прошли
+(2026-10-03). План закрыт на31/46; полная платформенная и итоговая приёмка открыты.
+
 P1-18 принят на macOS: исходный RAR5/RAR7 reader и decoder подключены внутри приложения.
 При доступном проверенном codec module извлечение и Test получают запросы памяти
 через исходный GUI callback с Allow/Skip/Cancel, remember и сохранением лимита.
@@ -194,6 +201,15 @@ sh .agents/skills/sz-setup/scripts/setup.sh
 На macOS запустите `build/dev/sevenzip_desktop.app`. Для открытия архива
 из терминала: `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop /path/to/archive.7z`.
 `7zz` должен находиться в `PATH`; на macOS также проверяются стандартные пути Homebrew.
+
+Для текущей интеграции внешних кодеков P2-02 на macOS/Linux можно подготовить
+официальный dynamic runtime командой `./scripts/build-codec-runtime.sh`.
+На Windows используйте `scripts/build-codec-runtime.ps1 -Architecture arm64`
+в соответствующем Visual Studio developer environment; доступны также x64/x86.
+Debug-сборка использует созданные `build/codec-runtime/7z` и `7z.so`;
+`SEVENZIP_ENGINE_PATH` явно выбирает другой engine. Standalone `7zz` служит
+резервным вариантом. P2-02 ещё не принят полностью; детали и ограничения —
+в [development](docs/development.md) и [source audit](docs/upstream-port-audit.md).
 
 ## Агент и локальная память
 
