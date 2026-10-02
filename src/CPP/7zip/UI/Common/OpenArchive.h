@@ -338,6 +338,8 @@ class CArc {
     }
 
     HRESULT OpenStream(const COpenOptions &options);
+    // Source naming body for process-owned archives without a native format index.
+    void SetDefaultName(const CCodecs &codecs, int formatIndex);
     HRESULT OpenStreamOrFile(COpenOptions &options);
 
     HRESULT ReOpen(const COpenOptions &options, IArchiveOpenCallback *openCallback_Additional);

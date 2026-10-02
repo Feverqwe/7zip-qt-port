@@ -1,5 +1,117 @@
 # Regression strategy
 
+P2-01 final gate: unsandboxed check.sh formatting/all-target build and188/188 CTest
+PASS74.09s macOS arm64 Qt6.11.2, 2026-10-02. Baseline224/161/3 verified. This
+supersedes pending-gate statements in the dated implementation checkpoints below.
+Windows/Linux runtime and rendered Windows parity remain unverified; actual
+native ZIP comment/RAR memory GUI consumers are separate mandatory P1-17/18.
+
+`codec_commands_ui` covers MainWindow Add success/cancel for seven real native
+formats, Inside */# on actual unknown-suffix content, parser read-only commands,
+missing/version-mismatch read fallback and native stream Delete contracts.
+The tests caught missing existing gzip/bzip2/xz format restoration and stale
+method controls after empty→one-source transitions. They also caught copied
+mutation DefaultName mismatches; preservation of the original staging basename
+now yields actual bzip2 refusal and XZ empty-stream output, with cancel rollback.
+The first full gate found extensionless owned-spool rename regression; explicit
+source -sae fixes it. Fresh control/publication4/4PASS5.66s on macOS arm64
+Qt6.11.2 2026-10-02; repeated full gate pending. Add JSON14 reports760/640 reviewed.
+
+Latest application-opening checkpoint: `native_folder_opening` exercises real
+CFfpOpen/native Open3 before process listing, actual archive property IDs, reader
+lease after failed catalog replacement, wrong forced-type refusal before process
+start, cancellation and encrypted-header password handoff. Real TGZ remains on
+the source gzip level because the installed handler does not expose a seekable
+decoded stream; extracting that item returns the exact original TAR bytes.
+Native Split→7z opens the inner item and extracts its exact Unicode-named bytes.
+Split/nested process writer readiness stays false after native Close. An expanded
+run exposed and fixed split Delete/Rename readiness through ui_archive_volumes;
+the TGZ test initially expected automatic TAR descent, which the actual upstream
+interface contract does not support here. After terminal all-target build82764,
+37 direct suites passed37/37(15.88s), macOS arm64 Qt6.11.2 2026-10-02. Baseline
+verified224/161/3. Final mutation/MainWindow command UX and full P2-01 gate remain
+open; this is not cross-platform or final acceptance.
+
+`native_archive_opening` exercises full source CArchiveLink::Open3 against actual
+module handlers without a QtOpenService: unknown-suffix ZIP, explicit 7z,
+gzip/TGZ AddExt, concatenated ZIP parser, forced wrong type and source open
+callback cancellation/finished. It checks unchanged input bytes and native
+handler/parser state; it does not prove a GUI native-open consumer. The direct
+suite passed1/1(0.31s), macOS arm64 Qt6.11.2 2026-10-02. Exact dependency baseline
+now includes SetProperties.cpp/.h (224 exact/161 adapted/3 local).
+After terminal all-target build,25 direct suites passed25/25(9.06s), macOS arm64
+Qt6.11.2 2026-10-02; final app integration/mutation UX and full gate remain open.
+
+Latest source writer checkpoint: `codec_update` opens seven real unknown-suffix
+archives through CFfpOpen and obtains actual source Agent folder operations.
+It publishes through CopyFromFile and CopyFrom/Add-plan callbacks, verifies exact
+extracted binary Unicode/spaced-file bytes, and injects failure/cancellation
+after partial output for each path/type. All42 scenarios pass, preserving original
+archive/source bytes on non-success. The source progress test worker suppresses
+modal questions using its existing DisableUserQuestions flag. Actual handlers
+still determine supported individual mutations. Terminal all-target build and
+23 direct suites passed23/23(8.61s), macOS arm64 Qt6.11.2 2026-10-02; final mutation/
+command/error UX and the full P2-01 gate remain pending.
+
+Latest creation UI checkpoint: `codec_creation_ui` selects each of seven actual
+native formats at760×720/640×480, submits the real dialog and creates through
+ArchiveBackend. It verifies source-changing gzip→7z parameter refresh, retained
+password exclusion for disabled encryption, source header visibility, TAR POSIX
+selection at level0 and actual POSIX archive magic. Top/encryption scroll JSON
+reports were reviewed for all14 type/size states; footer remains exposed.
+Terminal all-target build followed by21/21 selected suites PASS7.66s, macOS arm64
+Qt6.11.2 2026-10-02. Generic update transports/final full gate remain pending.
+
+Latest P2-01 creation checkpoint: `codec_creation` uses the actual installed
+official engine/module for explicit 7z/ZIP/gzip/bzip2/xz/tar/WIM creation with an
+unknown suffix, then listing/extraction and exact binary Unicode/spaced-file
+comparison. It covers pathless stream records and the genuinely undefined bzip2
+size, read-only/single-file refusal, engine failure after partial output and
+cancellation after observing staging, with unchanged sources and no leftover
+temporary archive. Actual-module coverage skips explicitly when unavailable.
+After a terminal all-target build, 17 direct suites passed17/17(7.54s), macOS
+arm64 Qt6.11.2, 2026-10-02. UI choices and generic update transports are not
+completed; no full gate or P2-01 acceptance is claimed by this checkpoint.
+
+P2-01 WIP: codec_capabilities checks native LoadCodecs aliases/AddExt, path/type
+lookup, missing library and incompatible POSIX library refusal. When an official
+module is available it reads actual metadata and creates/releases RAR5 reader
+and ZIP writer objects before unloading. Configure SEVENZIP_CODEC_MODULE with
+the module file, or SEVENZIP_CODEC_MODULE_DIR for discovery; absent-module real
+coverage explicitly skips and does not establish platform acceptance. The local
+official7z.so26.03/macOS arm64 run plus native_library/native_hash_bundle/
+hash_results passed4/4(0.56s), Qt6.11.2 2026-10-02. This is historical loader evidence.
+Latest codec_catalog verifies the backend's explicit native module/version load,
+busy and unverified-version guards, strict mismatch refusal, reload and a retained
+RAR5 reader across replacement. Native open-type tests cover */#/chains/options/
+size overflow, and exact DefaultName tests cover Unicode/AddExt/tilde/trimming.
+After terminal app/direct-consumer builds, seven selected suites passed7/7(3.89s)
+on macOS arm64 Qt6.11.2 2026-10-02. The latest checkpoint includes asynchronous
+codec_probe fixtures for start/nonzero/malformed/deadline/cancel/overlap/version
+failure, backend restart and deletion on queued delivery, and actual engine module
+discovery. Native filters include DOCX/.001; failure falls back to All files.
+archive_opening exercises source CFfpOpen with real unknown-suffix ZIP, gzip/TGZ,
+misleading ZIP suffix and concatenated ZIP '#' parser: native default-name,
+kpidReadOnly/update-service readiness and unchanged original bytes. Nine direct
+consumer suites passed9/9(7.42s), macOS arm64 Qt6.11.2 2026-10-02 after terminal
+affected builds. Add metadata/KeepName, final live command/error UX and the full
+gate remain pending; these checks do not accept P2-01.
+Latest Add continuation checks actual module KeepName/main extension, gzip→ZIP/7z
+naming transitions, DOCX history aliases, detected existing ZIP with unknown suffix
+and missing-module disabled confirmation. Source naming bodies are exercised;
+the gzip helper test is not an actual gzip Add consumer. After terminal affected
+and all-target builds,16 direct suites passed16/16(7.72s), macOS arm64 Qt6.11.2
+2026-10-02. Real-catalog archive-path760/640 and EN/RU Add760/640 JSON reviewed;
+top fields and lower scrolled preview/footer remain reachable/exposed. Source
+UpdateGUI one-file/original-name inputs are now connected to the source picker:
+native eligibility for a file versus multiple paths/directory, actual original
+name, no-update-engine refusal, two-files→one naming transition and native default
+archive name. Six affected suites passed6/6(1.43s); after direct-consumer terminal
+builds, final11/11 passed7.53s on macOS arm64 Qt6.11.2 2026-10-02. Current real-
+catalog760/640 JSON reviewed with native Archive.7z suggestion and fully exposed
+top fields/preview/footer. Full writable-format transports and final live command/
+error UX/full gate remain pending; the parent P2-01 is not accepted.
+
 P1-16 implementation accepted: drag_drop exercises native source/target handshake and disk ControlCopy/
 ShiftMove through actual CopyTo, source rejection/hovered path/modifiers/Cancel.
 drag_archive creates a disposable official-engine ZIP and runs native OnDrag/

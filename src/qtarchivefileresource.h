@@ -11,6 +11,8 @@
 class IInStream;
 class IProgress;
 class ArchiveBackend;
+class ArchiveCodecCatalog;
+class ArchiveNativeOpen;
 class CProgressSync;
 class IInArchive;
 class IArchiveUpdateCallback;
@@ -40,12 +42,19 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::optional<CompressionOptions> _compressionOptions;
     std::optional<CFiTime> _outputMTime;
     std::shared_ptr<QtArchiveDeleteInputs> _deleteInputs;
+    std::shared_ptr<const ArchiveCodecCatalog> _codecs;
+    std::shared_ptr<ArchiveNativeOpen> _nativeOpen;
+    bool _nativeNested = false;
+    bool _nativeReadOnly = false;
+    QString _nativeOpenType;
 
   public:
     QString EnginePath;
     ArchiveInfo Info;
     explicit QtArchiveFileResource(const QString &path) : EnginePath(path) {}
     ~QtArchiveFileResource();
+    void AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader);
+    HRESULT CloseNativeOpen();
     HRESULT Spool(IInStream *stream, IProgress *progress);
     HRESULT SpoolToOwnedFile(IInStream *stream, const QString &path, IProgress *progress);
     void SetArchiveMetadata(qint64 physicalSize, qint64 offset) {
@@ -56,6 +65,9 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT GetNumberOfArchiveProperties(UInt32 *count) const;
     HRESULT GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type) const;
     HRESULT ConfigureArc(CArc &arc) const;
+    void AttachCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> codecs) {
+        _codecs = std::move(codecs);
+    }
     void AttachUpdateService(ArchiveBackend &backend, const QString &format);
     void AttachProgressService(ArchiveBackend &backend);
     void AttachExtractService(ArchiveBackend &backend, const QString &format);
@@ -77,7 +89,9 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     const std::optional<CompressionOptions> &CompressionSettings() const {
         return _compressionOptions;
     }
-    bool HasUpdateService() const { return bool(_update) && _offset == 0; }
+    bool HasUpdateService() const;
+    bool RequiresOuterOpen() const;
+    QString TransportFormat() const;
     bool HasExtractService() const { return bool(_extract); }
     HRESULT Update(ISequentialOutStream *output, IInArchive *metadata, UInt32 count,
                    IArchiveUpdateCallback *callback);

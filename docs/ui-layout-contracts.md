@@ -26,6 +26,39 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Add archive naming metadata (P2-01)
+
+Reference: pinned CompressDialog.cpp/rc and UpdateGUI.cpp::ShowDialog format/name
+inputs. Metadata projection retains Archive→Format→Path mode grouping and source
+format-switch naming rules. `compression_path` checks actual native default
+extensions/KeepName/history aliases, detected ZIP with unknown target suffix and
+missing-module disabled confirmation. Its archive-path760/640 JSON uses a real
+catalog and exposes the path/format controls after scrolling to the top. Current
+reports reviewed: native eligible transport choices, separate rows and
+unclipped inputs/scroll viewport. `language_ui` EN/RU760/640 reports check the lower
+scroll state and exposed preview/footer; upper controls are expected offscreen
+there. Native one-file/name inputs now follow source-picker changes; the reviewed
+current metadata form uses the native Archive.7z suggestion.
+`codec_commands_ui` adds14 real MainWindow Add reports, `codec-add-<type>-760/640`:
+all seven detected formats remain fixed, empty→one-source restoration refreshes
+Deflate/BZip2/LZMA2 controls, and the format control/footer OK remain exposed.
+Current JSON was reviewed for bounds, source parameter states and grouping at
+760×720/640×480. The real dialog submits seven-format success/cancel operations.
+Its new report coverage is English; existing shared EN/RU layout checks remain.
+resources/geometry do not establish rendered Windows fidelity.
+
+### Open archive picker (P2-01)
+
+Reference: pinned BrowseDialog.cpp/CBrowseInfo and FilePlugins.cpp extension
+database. Qt uses the native OS file picker; archive masks project matching native
+handler metadata followed by All files, or only All files when metadata is absent.
+The picker retains filter order/index, Unicode paths and .001 selection.
+`browse_dialog` checks EN/RU filter presentation and selection with explicit test
+fixtures; `codec_catalog` checks the actual metadata masks and failure fallback.
+The OS-owned picker is a documented platform adaptation, not a Windows pixel
+reference. Actual MainWindow startup/error/command integration and full P2-01
+gate passed188/188(74.09s), macOS arm64 Qt6.11.2 2026-10-02.
+
 ### Delete Temporary Files (P1-15.2)
 
 Reference: pinned BrowseDialog2.cpp/rc (dialog93), six Name/MTime/Size/Files/
@@ -672,6 +705,17 @@ pixel coordinates or native button ordering.
 
 ## Create archive dialog
 
+P2-01 creation states: native eligible formats are 7z/ZIP/gzip/bzip2/xz/tar/WIM;
+the one-file KeepName constraint comes from source UpdateGUI. References for
+enabled states are CompressDialog.cpp::FormatChanged (Encrypt_/EncryptFileNames_),
+SetMethod2 (TAR GNU/POSIX remains selectable at level0), and SetSolidBlockSize2
+(source Solid_ flag includes xz). Disabled encryption remains in the right
+column; Encrypt file names is hidden outside 7z. `codec_creation_ui` produces
+`{type}-creation-top-{760,640}.json` and `{type}-creation-{760,640}.json` at the
+top and encryption scroll positions. All seven types expose their relevant
+controls by scrolling and retain the footer. These are Qt structure/state
+checks; a rendered Windows reference and Windows/Linux runtime remain unverified.
+
 Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 `IDD_COMPRESS`. Implemented view: `src/createarchivedialog*.cpp`.
 
@@ -684,7 +728,7 @@ Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 - Compression controls retain level, method, dictionary, word size, solid block,
   CPU threads, and memory controls. Encryption retains the upstream order:
   password, confirmation, Show Password, method, Encrypt file names.
-  Show Password hides confirmation and its label; headers are disabled for ZIP.
+  Show Password hides confirmation and its label; headers are hidden for ZIP.
   Compression stays in the left column and encryption in the right at both sizes.
   Password and confirmation labels sit above their fields, as in the resource.
   Destination and the source picker follow the options. Long archive history

@@ -43,8 +43,9 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
                              "Недопустимые параметры сжатия для выбранного формата.");
         return false;
     }
-    const QString method = options.method.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
-                                                                      : QStringLiteral("Deflate"))
+    const QString method = options.method.isEmpty() ? (suffix == "7z"      ? QStringLiteral("LZMA2")
+                                                       : methods.isEmpty() ? QString()
+                                                                           : methods.front())
                                                     : options.method;
     const auto methodID =
         options.level == 0 ? NCompressDialog::kCopy : NCompressDialog::GetMethodID(method, suffix);
@@ -142,7 +143,8 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
     // SetOutProperties/parser owns method selection, overrides and time props.
     NCompressDialog::CInfo info = options;
     info.Level = UInt32(options.level);
-    info.Method = options.level ? UString(method.toStdWString().c_str()) : UString();
+    info.Method =
+        options.level || suffix == "tar" ? UString(method.toStdWString().c_str()) : UString();
     info.Dict64 = options.dictionaryBytes ? UInt64(options.dictionaryBytes) : UInt64(-1);
     info.OrderMode = NCompressDialog::GetOrderMode(methodID);
     info.Order = options.wordSize ? UInt32(options.wordSize) : UInt32(-1);
@@ -181,10 +183,16 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                                          "Другая операция ещё выполняется."));
         return;
     }
-    const QString suffix = QFileInfo(archive).suffix().toLower();
-    if ((suffix != "7z" && suffix != "zip") || sources.isEmpty()) {
-        emit finished(false, QtLocalText("Select files or a folder and a .7z or .zip archive name.",
-                                         "Выберите файлы или папку и имя архива .7z или .zip."));
+    if (sources.isEmpty()) {
+        lastResult_ = E_INVALIDARG;
+        emit finished(false, QtLocalText("Select source files or folders.",
+                                         "Выберите файлы или папки для архива."));
+        return;
+    }
+    QString suffix, formatError;
+    if (!selectCreationFormat(archive, sources, options, suffix, formatError)) {
+        lastResult_ = E_INVALIDARG;
+        emit finished(false, formatError);
         return;
     }
     QStringList compressionArguments;

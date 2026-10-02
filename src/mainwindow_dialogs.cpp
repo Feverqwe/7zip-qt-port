@@ -113,7 +113,7 @@ void MainWindow::openDialog() {
     CBrowseInfo browse;
     browse.Owner = this;
     browse.Title = QtLocalText("Open archive", QStringLiteral("Открыть архив"));
-    browse.Filters = ArchiveFormats::openDialogFilter();
+    browse.Filters = backend_->openDialogFilter();
     if (browse.BrowseForFile())
         openArchive(browse.FilePath);
 }

@@ -2,6 +2,8 @@
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "archivebackend.h"
+#include "archivecodeccatalog.h"
+#include "archivenativeopen.h"
 #include "archiveprogresstransport.h"
 #include "qtarchivefileresource.h"
 #include "qtlocationfolder.h"
@@ -12,6 +14,47 @@
 #include <QScopeGuard>
 #include <QThread>
 #include <atomic>
+
+namespace {
+// Presentation-only projection for callers exposing IProgress rather than
+// the source IOpenCallbackUI. Native algorithm/volume callbacks stay upstream.
+class CNativeOpenProgress final : public IOpenCallbackUI {
+    IProgress *_progress;
+    IOpenCallbackUI *_source;
+
+  public:
+    QString Password;
+    CNativeOpenProgress(IProgress *progress, IOpenCallbackUI *source)
+        : _progress(progress), _source(source) {}
+    HRESULT Open_CheckBreak() override {
+        return _source ? _source->Open_CheckBreak()
+                       : (_progress ? _progress->SetCompleted(nullptr) : S_OK);
+    }
+    HRESULT Open_SetTotal(const UInt64 *files, const UInt64 *bytes) override {
+        return _source ? _source->Open_SetTotal(files, bytes)
+                       : (_progress && bytes ? _progress->SetTotal(*bytes) : Open_CheckBreak());
+    }
+    HRESULT Open_SetCompleted(const UInt64 *files, const UInt64 *bytes) override {
+        return _source ? _source->Open_SetCompleted(files, bytes)
+                       : (_progress ? _progress->SetCompleted(bytes) : S_OK);
+    }
+    HRESULT Open_Finished() override { return Open_CheckBreak(); }
+    HRESULT Open_CryptoGetTextPassword(BSTR *password) override {
+        HRESULT result;
+        if (_source)
+            result = _source->Open_CryptoGetTextPassword(password);
+        else {
+            CMyComPtr<ICryptoGetTextPassword> crypto;
+            if (_progress)
+                _progress->QueryInterface(IID_ICryptoGetTextPassword, (void **)&crypto);
+            result = crypto ? crypto->CryptoGetTextPassword(password) : E_NOINTERFACE;
+        }
+        if (result == S_OK)
+            Password = QString::fromWCharArray(*password);
+        return result;
+    }
+};
+} // namespace
 
 struct QtArchiveFolderManager::CRequest {
     QMutex Mutex;
@@ -51,13 +94,14 @@ QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backe
                     dynamic_cast<QtArchiveFileResource *>(request->Resource.Interface());
                 if (resource) {
                     resource->Info = request->Info;
+                    resource->AttachCodecCatalog(_backend.codecCatalog());
                     resource->SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
-                    resource->AttachReopenService(_backend, request->Info.format);
+                    const QString transportFormat = resource->TransportFormat();
+                    resource->AttachReopenService(_backend, transportFormat);
                     // A split archive opens through the outer Split handler before its
                     // contained format; forcing -t7z on .001 bypasses that handler.
-                    resource->AttachExtractService(
-                        _backend, request->Info.volumeCount > 1 ? QString() : request->Info.format);
-                    if (request->Info.format == "zip" || request->Info.format == "7z")
+                    resource->AttachExtractService(_backend, transportFormat);
+                    if (_backend.supportsArchiveUpdate(request->Info.format))
                         resource->AttachUpdateService(_backend, request->Info.format);
                 }
                 result = CreateArchiveFolder(request->Entries,
@@ -133,8 +177,10 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
     QString ownedPath;
     bool keepOwnedPath = false;
     const auto cleanup = qScopeGuard([&] {
-        if (!keepOwnedPath && !ownedPath.isEmpty())
+        if (!keepOwnedPath && !ownedPath.isEmpty()) {
+            resource->CloseNativeOpen();
             QFile::remove(ownedPath);
+        }
     });
     const QString format = QString::fromWCharArray(arcFormat);
     auto *callback = dynamic_cast<COpenCallbackImp *>(progress);
@@ -149,10 +195,20 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
             RINOK(resource->Spool(inStream, progress))
     }
     const QString path = resource->EnginePath;
-    const QString password =
-        ui && ui->PasswordIsDefined ? QString::fromWCharArray(ui->Password.Ptr()) : QString();
+    CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
+    std::shared_ptr<ArchiveNativeOpen> nativeOpen;
+    RINOK(_backend.openNativeArchive(path, format, &nativeProgress, nativeOpen))
+    resource->AttachNativeOpen(std::move(nativeOpen));
+    const QString listingFormat =
+        resource->RequiresOuterOpen() ? resource->TransportFormat() : format;
+    const QString password = ui && ui->PasswordIsDefined
+                                 ? QString::fromWCharArray(ui->Password.Ptr())
+                                 : nativeProgress.Password;
     QMetaObject::invokeMethod(
-        this, [this, request, path, format, password] { Start(request, path, format, password); },
+        this,
+        [this, request, path, listingFormat, password] {
+            Start(request, path, listingFormat, password);
+        },
         Qt::QueuedConnection);
     HRESULT stopResult = S_OK;
     bool cancelRequested = false;
@@ -214,9 +270,16 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
 }
 
 Z7_COM7F_IMF(QtArchiveFolderManager::GetExtensions(BSTR *extensions)) {
-    if (extensions)
-        *extensions = nullptr;
-    return E_NOTIMPL; // Packaging/association capabilities belong to P3-05.
+    if (!extensions)
+        return E_INVALIDARG;
+    *extensions = nullptr;
+    const auto catalog = _backend.codecCatalog();
+    if (!catalog || catalog->result() != S_OK)
+        return E_FAIL;
+    // Qt transports the source CArcInfoEx extension catalog. Windows icon
+    // resource enumeration remains separate presentation/association scope.
+    const QString value = catalog->extensions().join(' ');
+    return StringToBstr(UString(value.toStdWString().c_str()), extensions);
 }
 
 Z7_COM7F_IMF(QtArchiveFolderManager::GetIconPath(const wchar_t *, BSTR *iconPath,

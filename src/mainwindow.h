@@ -4,7 +4,6 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/App.h"
 #include "archivebackend.h"
-#include "archiveformats.h"
 #include "combodialog.h"
 #include "copydialog.h"
 #include "createarchivedialog.h"

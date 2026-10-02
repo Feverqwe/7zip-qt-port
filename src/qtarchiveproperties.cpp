@@ -77,7 +77,9 @@ Z7_COM7F_IMF(CFolderArchiveProperties::Open(IInStream *, const UInt64 *,
     _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
     return S_OK;
 }
-Z7_COM7F_IMF(CFolderArchiveProperties::Close()) { return S_OK; }
+Z7_COM7F_IMF(CFolderArchiveProperties::Close()) {
+    return _resourceSpec ? _resourceSpec->CloseNativeOpen() : S_OK;
+}
 Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfItems(UInt32 *count)) {
     return _properties->GetNumberOfItems(count);
 }

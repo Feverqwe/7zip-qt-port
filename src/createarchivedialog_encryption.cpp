@@ -39,7 +39,10 @@ void CreateArchiveDialog::SetEncryptionMethod() {
     encryption_->clear();
     encryption_->addItems(dialog._encryptionMethod);
     encryption_->setCurrentIndex(dialog._encryptionMethod_Index);
-    encryptHeaders_->setEnabled(format_->currentText() == "7z");
+    const auto &fi = NCompressDialog::GetFormatInfo(format_->currentText());
+    password_->parentWidget()->setEnabled(fi.Encrypt_());
+    encryptHeaders_->setEnabled(fi.EncryptFileNames_());
+    encryptHeaders_->setVisible(fi.EncryptFileNames_());
 }
 
 QString CreateArchiveDialog::GetEncryptionMethodSpec() const {

@@ -13,10 +13,126 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-01: formats/codec capabilities и Open Inside */#, source LoadCodecs/OpenArchive/
-FilePlugins owners; engine metadata вместо самостоятельных extension guesses.
-Native bridge из этого пакета также разблокирует mandatory P1-17/18; их не
-закрывать synthetic tests или console-only capability.
+P1-17: source ZIP per-item comment writer/ChangeComment/SetProperty и реальный
+GUI consumer через ArchiveBackend. Native catalog/module lease и ZIP reader/writer
+factories из принятого P2-01 теперь доступны; inspect original source writer и
+dependencies перед интеграцией. Это ещё не перенос actual comment consumer.
+P1-18 actual RAR memory consumer остаётся mandatory, не закрывать synthetic tests.
+P2-01 принят целой итерацией: полный unsandboxed check.sh12893 formatting/build/
+188 CTest PASS74.09s macOSarm64Qt6.11.2 2026-10-02, baseline224/161/3 verified.
+Actual MainWindow Add seven formats success/cancel, Inside */#, missing/version
+mismatch read-only fallback, native folder/password/cancel/leases, TGZ/Split
+extract, bzip2 refusal/XZ empty-stream Delete/cancel и owned extensionless spool
+publication проверены. Current14 Add760/640 JSON reviewed. Existing source format
+and Deflate/BZip2/LZMA2 controls restore after empty→one-source transition. Native
+DefaultName is preserved by copied mutation basename; source -sae retains exact
+private archive paths. Whole iteration local commit subject:
+Port native codecs and archive format workflows (P2-01). No push/upstream edits.
+Counts28/46,18remain; P0 12/12,P1 14/18,P2 1/10,P3 1/6. Windows/Linux runtime
+and rendered Windows parity remain mandatory. Finder separately P3-03.1.
+Ниже исторические checkpoints P2-01: pending/next statements в них superseded
+приёмкой выше, не являются текущим backlog или новой инструкцией.
+Historical P2-01 bootstrap: full source LoadCodecs.cpp/.h, exact RegisterArc/Registry,
+Qt executable-path service; actual installed7z.so26.03 typed metadata и
+RAR5 reader/ZIP writer objects проверены. Focused codec/library/hash4/4PASS0.56s,
+baseline220 exact/161 adapted/3 local — historical loader checkpoint; no helper commit.
+All-target build passed; расширенный набор13 consumers PASS7.54s macOS arm64
+Qt6.11.2 2026-10-02. Full gate для завершённого P2-01 ещё не выполнялся.
+Earlier checkpoint: ArchiveBackend владеет immutable shared ArchiveCodecCatalog;
+strict module-version/reload/native-handler lease проверены. Native ParseOpenTypes/
+ParseComplexSize и exact DefaultName.cpp/.h перенесены, focused7/7PASS3.89s после
+новых terminal builds, baseline222 exact/161 adapted/3 local.
+Latest: asynchronous backend probe/discovery/version/timeout/cancel и queued safe
+delivery подключены; default MainWindow запускает probe, injected backend caller-owned.
+Metadata Open filters/IFolderManager extensions и source default-name body работают;
+archiveformats.h удалён, menus/transfers используют source read-only state. Native
+encoder flags не включают отсутствующий transactional transport (только actual ZIP/7z).
+Real source CFfpOpen unknown-suffix ZIP/gzip/TGZ/AddExt/parser '#' и unchanged bytes
+проверены; focused9/9PASS7.42s после terminal affected builds на macOS arm64 Qt6.11.2.
+Latest Add continuation: native SetArchiveName2/SetArchiveName/metadata history,
+ArcFormats/ArcIndices/KeepName/OriginalFileName inputs сохранены; Add удерживает
+catalog и использует actual detected existing type, missing module disables OK.
+ZIP/7z transport choices from native UpdateEnabled; standalone no-catalog legacy
+compatibility не является discovery. После terminal affected + all-target builds
+focused16/16PASS7.72s macOS arm64 Qt6.11.2, baseline222/161/3 verified. Native
+archive-path760/640 и EN/RU Add JSON reviewed. Native gzip KeepName helper не
+доказывает реальный gzip Add.
+Latest selection/name: copied ShowDialog one-file/censor/FileInfo/eligibility block
+в оригинальный UpdateGUI owner; Qt source picker add/remove обновляет OriginalFileName/
+KeepName/ArcIndices, native CreateArchiveName задаёт initial suggestion. Native
+one-file/multiple/directory/no-writer и live two-files→one naming/default-name cases
+проверены, final11/11PASS7.53s after terminal consumer builds на macOS arm64 Qt6.11.2,
+baseline222/161/3 verified. Current native760/640 JSON reviewed. Next: полный
+writable-format creation/update transport scope, final live command/error UX и full gate;
+P2-01 не принят, helper commit отсутствует. Native handlers не закрывают P1-17/18.
+Latest backend creation: stable CompressionOptions.format selects actual native
+name, source FindFormatForArchiveName/PrepareFormatSelection own eligibility,
+source table owns method defaults. Real seven-format unknown-suffix create/list/
+extract binary Unicode round trips pass; pathless bzip2/xz entries retained,
+source DefaultName supplies their name, bzip2 undefined size remains undefined.
+Partial-output failure/cancel preserve sources and remove staging. Terminal
+all-target build and17/17PASS7.54s macOS arm64 Qt6.11.2 2026-10-02; baseline222/161/3
+verified. UI projection still ZIP/7z, generic update transports and final UX/gate
+next; no helper commit/acceptance. Do not edit a C++ test while its build is live:
+an earlier all-target attempt failed on stale moc after our slot rename; the
+subsequent terminal all-target rebuild above passed. No live build/test handles.
+Latest GUI creation: native seven-format list, typed format DTO, source encrypt/
+header flags, TAR GNU/POSIX at level0 and xz solid flags; source selection changes
+refresh all format controls. codec_creation_ui covers14 real type/size creation
+cases plus gzip→7z source transition and actual POSIX TAR magic. Top/encryption
+JSON reviewed for all14 states; terminal all-target build20815 exit0,21/21PASS7.66s
+macOS arm64 Qt6.11.2 2026-10-02. Current new-creation UI is no longer ZIP/7z-only;
+existing update services remain ZIP/7z. Next: generic actual update transport,
+success/failure/cancel and source callback consumers, final UX/full gate and whole
+P2-01 commit. No helper commit or acceptance. No live build/test handles.
+Latest source update: native UpdateEnabled replaces backend4guards/QtSourceUpdate
+guard and Add existing-target projection. Actual CFfpOpen→Agent operations→source
+publication CopyFromFile and CopyFrom/Add-plan pass for7formats under unknown
+suffixes,42 success/failure/cancel scenarios. Source-plan projection deletes
+omitted items only; native Add replaces referenced files. Native KeepName one-file
+plans retain original input default-name and write separate output; copied
+result.bzip2/xz changes unnamed item identity and is no longer used for matching.
+Terminal all-target buildc3ad03 exit0, final23/23PASS8.61s (09b7a4), macOS arm64
+Qt6.11.2 2026-10-02, baseline222/161/3 verified. Next: review/cover remaining
+mutation and actual MainWindow command/error/read-only/type UX; review source
+opening partial-port claims, final full gate and whole P2-01 commit. No helper
+commit/acceptance or live handles. Native loader/writer objects do not close
+P1-17/18: actual ZIP comment/RAR memory GUI consumers remain mandatory.
+Latest native source: COMPLETE OpenArchive.cpp copied from recorded0766b733;
+NParser/signature scanning/PrepareToOpen/OpenStream2/OpenStreamOrFile/nested
+Open/Open2/ReOpen retained. Only canonical includes, provenance, optional existing
+QtOpenService branch and deduplicated source default-name body differ from the
+fresh upstream file formatted once with repo style. Exact SetProperties.cpp/.h
+added; baseline224/161/3 verified. Native Open3 without Qt service tested on actual
+ZIP/7z/gzip/TGZ/# handlers, wrong forced type, cancel/finished/unchanged bytes.
+IMPORTANT: initialize native options.excludedFormats/props, and create fresh
+options for a new open after releasing native streams; source mutates stream
+pointers. Two initial test crashes came from missing exclusions and stale reused
+stream options; no production source algorithm was changed to hide them.
+Source-plan glue coherently moved to archivebackend_sourceplan.cpp (217lines,
+validation/KeepName/orchestration functions); sourceupdate now253lines. Borrowed
+modules not split. All-target7099 terminal0,25/25PASS9.06s b66793 macOSarm64Qt6.11.2
+2026-10-02. App still uses Qt process-open service; native GUI/backend integration,
+remaining actual mutation/MainWindow command UX and final full gate needed before
+P201acceptance/whole commit. No helper commit or live handles.
+Latest application integration: original native Open3 now executes in the
+CFfpOpen/QtArchiveFolderManager worker through ArchiveBackend::openNativeArchive.
+ArchiveNativeOpen holds the original link/catalog and a stable callback proxy,
+detaching opening UI while volume callback references remain. Resource exposes
+native archive properties and closes streams before publication/private cleanup.
+Tests cover actual property IDs/catalog reload lease, wrong-type refusal before
+process start, worker cancel and native encrypted-header password handoff. Real
+TGZ remains on gzip level (native GetStream lacks seekable decoded stream), its
+source callback extraction returns exact TAR bytes. Native Split→7z source opening
+and extraction return actual Unicode-named input bytes. Expanded37-consumer run
+caught split Delete/Rename readiness regression from source-read-only migration;
+process writer now refuses volume sets/native nested chains and native read-only
+handlers, preserving those flags after Close. Native nested process services retain
+parsed opening intent (explicit *:r for empty native types). Final all-target82764
+terminal0,37/37PASS15.88s macOSarm64Qt6.11.2 2026-10-02, baseline224/161/3 verified.
+No full gate/helper commit/P201acceptance. Next: remaining actual MainWindow
+command/error/read-only/type/mutation UX and whole-step gate/commit. Native
+Open3/reader objects still do not close actual ZIP comment P117/RAR memory P118.
 P1-16 implementation accepted: native OnDrag/Drop/transfer/CompressDropFiles и
 CApp Begin/End, Qt MIME transport; focused6/6PASS0.99s macOS arm64 Qt6.11.2
 2026-10-02. Actual ZIP binary bytes/known+unconfirmed receiver/refusal/drag+extract

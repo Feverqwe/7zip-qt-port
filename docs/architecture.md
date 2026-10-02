@@ -1,10 +1,69 @@
 # Architecture
 
 This document describes component ownership, data flow and integration boundaries.
+`archivebackend_sourceplan.cpp` owns local source callback-plan validation,
+KeepName output selection and asynchronous stage orchestration. Other individual
+update/mutation transports remain in archivebackend_sourceupdate.cpp. Native
+OpenArchive.cpp now retains the full upstream handler detection/parser/nested/
+reopen implementation; QtOpenService remains an explicit optional process
+integration branch. With a valid codec catalog, QtArchiveFolderManager invokes
+ArchiveBackend::openNativeArchive in the source worker before process listing.
+ArchiveNativeOpen owns the original CArchiveLink and its exact catalog lease;
+the folder resource delegates archive-level properties to the native reader.
+Its stable callback proxy detaches the opening UI after Open3, since source
+volume streams can retain COpenCallbackImp. Resource/transport Close releases
+native handlers and streams before source publication or private-file cleanup.
+Item enumeration, extraction, update and reopen still use the explicit 7zz
+integration services. Missing-module callers retain process-only read fallback.
+Native nested streams retain their original open-type intent (explicit *:r for
+empty native types) for process listing/extract/reopen. Process writer readiness
+refuses volume sets/native nested chains and native read-only readers; the flags
+survive Close so publication/reopen cannot silently enable an unsupported writer.
+The installed gzip reader does not expose a seekable decoded stream: TGZ remains
+at the gzip item level, as in the original OpenArchive contract.
+New creation requests carry a stable native format name in CompressionOptions;
+ArchiveBackend resolves/validates it against its immutable catalog and the
+source UpdateGUI eligibility routine, then transports native properties to 7zz.
+An existing Add target retains its detected format across empty/ineligible
+source-picker states and restores the source parameter controls when eligible.
+CreateArchiveDialog projects eligible formats and original format control flags;
+changing sources refreshes both naming inputs and parameter controls. Existing
+archive update services use native UpdateEnabled capabilities. Single-stream
+KeepName replacements use the original input and a separate output to preserve
+source default-name identity. Other callback plans use staged publication; CLI
+Add replaces referenced files, while Delete handles only omitted items.
+Copied mutation staging retains the physical archive basename in its own private
+subdirectory, preserving source DefaultName for pathless handlers. Mutation
+commands use the source exact archive-name mode (-sae), including extensionless
+owned spools. Individual handler contracts determine refusal/empty-stream results.
 Source provenance, baselines, adaptations and migration debt belong in the
 [source-port audit](upstream-port-audit.md). Supported workflows and differences
 from Windows 7zFM belong in the [parity record](7zfm-parity.md). Working rules
 are defined in [AGENTS.md](../AGENTS.md).
+
+P2-01: ArchiveBackend owns shared immutable ArchiveCodecCatalog snapshots.
+The explicit module/version boundary loads native CCodecs and refuses missing,
+incompatible or mismatched metadata. Source owners handle aliases, update flags
+and open-type parsing; Qt only projects metadata for consumers. Native objects
+must retain their catalog until they are released, including across a failed
+replacement. ArchiveCodecProbe asynchronously obtains the installed 7zz version,
+finds its official module beside the app/engine or installation library directory,
+and checks exact version agreement before queued publication. It owns timeout,
+failure and cancellation; no shell or Formats-table guessing is used. The default
+MainWindow starts discovery; injected backends retain caller-owned configuration.
+The Open dialog projects native extensions, falling back to All files when absent.
+Source archive folders retain a metadata lease and use native default-name rules;
+menu and transfer readiness follows source read-only state rather than suffixes.
+Transactional update transport supports the seven checked native writer formats. With no catalog
+loaded the existing typed transport works; an explicitly failed catalog refuses
+update readiness. CreateArchiveDialog holds a catalog lease; its formats component
+projects native eligible transports and configures source CompressDialog naming
+and history indices. Existing archive type is passed from actual listing metadata;
+failed metadata disables submission. Source UpdateGUI prepares one-file/name/format
+eligibility from native censor paths; additions/removals in the Qt source picker
+refresh those inputs. Native CreateArchiveName supplies initial suggestions for
+metadata-configured callers. Complete writable-format transports and final live
+command/error consumers remain P2-01 work.
 
 Native PanelDrag owns source selection, effects, destination/transfer handshake,
 source-versus-target CopyTo/CopyFrom/Add execution and completion. CApp owns its

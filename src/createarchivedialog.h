@@ -25,11 +25,15 @@ class CreateArchiveDialog : public QDialog {
 
   public:
     explicit CreateArchiveDialog(const QString &directory, const QStringList &initialSources = {},
-                                 QWidget *parent = nullptr, const QString &existingTarget = {});
+                                 QWidget *parent = nullptr, const QString &existingTarget = {},
+                                 std::shared_ptr<const ArchiveCodecCatalog> codecs = {},
+                                 const QString &existingFormat = {});
 
     QString target() const { return target_; }
     QStringList sources() const { return selected_; }
-    QString password() const { return password_ ? password_->text() : QString(); }
+    QString password() const {
+        return password_ && password_->isEnabled() ? password_->text() : QString();
+    }
     bool encryptHeaders() const {
         return encryptHeaders_ && encryptHeaders_->isEnabled() && encryptHeaders_->isChecked();
     }
@@ -81,6 +85,14 @@ class CreateArchiveDialog : public QDialog {
     const QString StartDirPrefix;
     QString target_;
     QString existingTarget_;
+    QString existingFormat_;
+    std::shared_ptr<const ArchiveCodecCatalog> codecs_;
+    CCompressDialog archiveNameState_;
+    void configureArchiveName(const QString &format);
+    void populateArchiveFormats();
+    void refreshArchiveFormats();
+    void prepareInitialSources(const QStringList &sources);
+    QString suggestedArchiveName_ = QStringLiteral("archive");
     QStringList selected_;
     QLineEdit *sourcePath_ = nullptr;
     QLineEdit *name_ = nullptr;

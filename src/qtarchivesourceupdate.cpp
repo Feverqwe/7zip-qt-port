@@ -193,7 +193,6 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
     }
     QSet<UInt32> referenced;
     QSet<QString> finalNames;
-    QSet<UInt32> replaced;
     for (UInt32 i = 0; i < count; ++i) {
         Int32 newData, newProps;
         UInt32 index;
@@ -218,7 +217,6 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
                 if (originalPaths[int(index)] != path ||
                     originalDirectories[int(index)] != directory)
                     return E_NOTIMPL;
-                replaced.insert(index);
             }
             (directory ? plan.Directories : plan.Files).append({i, path, directory});
         } else
@@ -229,7 +227,10 @@ HRESULT FindSourceUpdatePlan(IInArchive *metadata, UInt32 count, IArchiveUpdateC
         finalNames.insert(key);
     }
     for (UInt32 i = 0; i < originalCount; ++i) {
-        if (!referenced.contains(i) || (replaced.contains(i) && !originalDirectories[int(i)]))
+        // CLI Add uses the source Add action set and replaces selected files.
+        // Deleting a replaced stream first would require an unsupported empty
+        // intermediate archive for gzip/bzip2/xz. Delete only omitted items.
+        if (!referenced.contains(i))
             (originalDirectories[int(i)] ? plan.RemovedDirectories : plan.Removed)
                 .append(originalPaths[int(i)]);
         else
@@ -414,7 +415,7 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
     COM_TRY_BEGIN
     if (!output || !metadata || !callback)
         return E_INVALIDARG;
-    if (format != "zip" && format != "7z")
+    if (!backend.supportsArchiveUpdate(format))
         return E_NOTIMPL;
     // Prefix publication is owned by native CommonUpdateOperation. Until that
     // consumer is connected, this file service accepts only a zero-offset arc.
@@ -486,7 +487,15 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
             password = QString::fromWCharArray(value);
     }
     sourcePlanBackend.allowProtected = !password.isEmpty();
-    const QString result = stage.filePath("result." + format);
+    // Mutations operate on a copied archive. Preserve its basename because
+    // pathless native handlers derive the selected item's DefaultName from it.
+    // The private subdirectory avoids collision with prepared source files.
+    const bool copiedMutation = fileUpdate != S_OK && added.isEmpty() && !sourcePlanSelected;
+    const QString result = copiedMutation
+                               ? stage.filePath("mutation/" + QFileInfo(archive).fileName())
+                               : stage.filePath("result." + format);
+    if (copiedMutation && !QDir().mkpath(QFileInfo(result).absolutePath()))
+        return E_FAIL;
     if (fileUpdate == S_OK) {
         RINOK(RunArchiveBackendRequest(
             backend,

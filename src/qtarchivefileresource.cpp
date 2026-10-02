@@ -7,6 +7,8 @@
 #include "CPP/7zip/UI/Common/WorkDir.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
+#include "archivecodeccatalog.h"
+#include "archivenativeopen.h"
 #include "qtarchivedeleteinputs.h"
 #include "qtownedtempregistry.h"
 #include <QDir>
@@ -29,8 +31,36 @@ class CSpoolProgress final : public ICompressProgressInfo, public CMyUnknownImp 
 } // namespace
 
 QtArchiveFileResource::~QtArchiveFileResource() {
+    CloseNativeOpen();
     if (!_temporary.isEmpty())
         QFile::remove(_temporary);
+}
+
+HRESULT QtArchiveFileResource::CloseNativeOpen() {
+    auto reader = std::move(_nativeOpen);
+    return reader ? reader->Close() : S_OK;
+}
+
+void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader) {
+    _nativeNested = reader && reader->hasNestedStream();
+    _nativeReadOnly = reader && reader->arc().IsReadOnly;
+    _nativeOpenType = reader ? reader->transportType() : QString();
+    _nativeOpen = std::move(reader);
+}
+
+bool QtArchiveFileResource::RequiresOuterOpen() const {
+    return Info.volumeCount > 1 || _nativeNested;
+}
+
+QString QtArchiveFileResource::TransportFormat() const {
+    return _nativeNested ? _nativeOpenType : (Info.volumeCount > 1 ? QString() : Info.format);
+}
+
+bool QtArchiveFileResource::HasUpdateService() const {
+    // The process writer publishes one physical archive, not a volume set or
+    // a reconstructed chain of native container streams. Source folder
+    // read-only state must reflect this transport constraint as well.
+    return bool(_update) && _offset == 0 && !RequiresOuterOpen() && !_nativeReadOnly;
 }
 
 HRESULT QtArchiveFileResource::ApplyOutputMTime(CWorkDirTempFile &file) const {
@@ -80,6 +110,8 @@ HRESULT QtArchiveFileResource::DeleteInputsAfterPublication(IUpdateDeletionCallb
 }
 
 HRESULT QtArchiveFileResource::GetArchiveProperty(PROPID id, PROPVARIANT *value) const {
+    if (_nativeOpen)
+        return _nativeOpen->arc().Archive->GetArchiveProperty(id, value);
     NWindows::NCOM::CPropVariant prop;
     if (id == kpidPhySize && _physicalSize >= 0)
         prop = UInt64(_physicalSize);
@@ -94,12 +126,16 @@ HRESULT QtArchiveFileResource::GetArchiveProperty(PROPID id, PROPVARIANT *value)
 }
 
 HRESULT QtArchiveFileResource::GetNumberOfArchiveProperties(UInt32 *count) const {
+    if (_nativeOpen)
+        return _nativeOpen->arc().Archive->GetNumberOfArchiveProperties(count);
     *count = UInt32(Info.properties.size());
     return S_OK;
 }
 
 HRESULT QtArchiveFileResource::GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id,
                                                       VARTYPE *type) const {
+    if (_nativeOpen)
+        return _nativeOpen->arc().Archive->GetArchivePropertyInfo(index, name, id, type);
     if (index >= unsigned(Info.properties.size()))
         return E_INVALIDARG;
     auto i = Info.properties.cbegin();
@@ -116,6 +152,16 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc) const {
     if (!file.isFile())
         return E_FAIL;
     arc.Path = EnginePath.toStdWString().c_str();
+    if (_nativeOpen) {
+        const CArc &native = _nativeOpen->arc();
+        arc.DefaultName = native.DefaultName;
+        arc.IsReadOnly = native.IsReadOnly;
+        arc.FileSize = native.FileSize;
+        arc.ArcStreamOffset = native.ArcStreamOffset;
+        return arc.ReadBasicProps(arc.Archive, 0, S_OK);
+    }
+    if (_codecs && _codecs->result() == S_OK)
+        arc.SetDefaultName(_codecs->nativeCodecs(), _codecs->formatIndex(Info.format));
     // 7zz reports the logical stream across all split parts; source
     // ReadBasicProps compares kpidPhySize with that combined stream size.
     arc.FileSize = UInt64(Info.volumeCount > 1 && Info.totalPhysicalSize >= file.size()

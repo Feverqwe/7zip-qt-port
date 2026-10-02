@@ -153,6 +153,15 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     refreshActions();
     connectBackend();
     reloadLangItems();
+    if (!backend) {
+        connect(backend_, &ArchiveBackend::codecCatalogReady, this,
+                [this](bool success, const QString &message) {
+                    refreshActions();
+                    if (!success)
+                        statusBar()->showMessage(message);
+                });
+        backend_->discoverCodecCatalog();
+    }
 }
 
 void MainWindow::connectFilesystemScanner() {

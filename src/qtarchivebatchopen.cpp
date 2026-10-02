@@ -1,8 +1,10 @@
 #include "qtarchivebatchopen.h"
 #include "7zip/IPassword.h"
 #include "7zip/IProgress.h"
+#include "7zip/UI/Common/DefaultName.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "CPP/Common/Wildcard.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
 #include "qtarchivefileresource.h"
@@ -52,11 +54,11 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         return E_FAIL;
     CArc &arc = link.Arcs.AddNew();
     arc.Archive = agent->GetArchiveProperties();
-    arc.FormatIndex = -1; // The external engine has no in-process CCodecs index.
-    arc.DefaultName = QFileInfo(QString::fromWCharArray(options.filePath))
-                          .completeBaseName()
-                          .toStdWString()
-                          .c_str();
+    // Process-owned archives do not share COpenOptions::codecs. The resource
+    // applies source metadata without storing an incompatible format index.
+    arc.FormatIndex = -1;
+    arc.DefaultName =
+        GetDefaultName2(ExtractFileNameFromPath(options.filePath), UString(), UString());
     RINOK(resource->ConfigureArc(arc))
     if (resource->Info.volumeCount > 1) {
         const QFileInfo first(QString::fromWCharArray(options.filePath));

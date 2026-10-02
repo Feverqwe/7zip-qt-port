@@ -128,9 +128,10 @@ void CreateArchiveDialog::MethodChanged() {
         threads_->setCurrentIndex(threads >= 0 ? threads : 0);
     }
     const bool compressed = level_->currentData().toUInt() != 0;
-    method_->setEnabled(compressed);
+    // Source SetMethod2 retains TAR's GNU/POSIX choice at its only level (0).
+    method_->setEnabled(compressed || registryFormat_ == "tar");
     dictionary_->setEnabled(compressed && dictionary_->count() > 1);
     wordSize_->setEnabled(compressed && wordSize_->count() > 1);
-    solidBlock_->setEnabled(compressed && registryFormat_ == "7z");
+    solidBlock_->setEnabled(compressed && NCompressDialog::GetFormatInfo(registryFormat_).Solid_());
     SetMemoryUsage();
 }

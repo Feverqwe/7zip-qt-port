@@ -20,7 +20,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
         return false;
     if (source.GetParentFolders().Size() != 1 || target.GetParentFolders().Size() != 1 ||
         QDir::cleanPath(archive_) == QDir::cleanPath(panelUi_[destinationIndex].archive) ||
-        !ArchiveFormats::canModify(panelUi_[destinationIndex].archive)) {
+        target.IsThereReadOnlyFolder()) {
         QMessageBox::warning(this, QtLangText(IDS_COPYING),
                              QtLocalText("Transfer between these archives is unavailable.",
                                          "Перенос между этими архивами недоступен."));

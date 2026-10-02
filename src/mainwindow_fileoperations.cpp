@@ -219,8 +219,7 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
         QDir::cleanPath(destination) != QDir::cleanPath(ToQString(target.GetFsPath())))
         return false;
     auto *folder = dynamic_cast<CAgentFolder *>(target.GetFolder());
-    if (!folder || target.GetParentFolders().Size() != 1 ||
-        !ArchiveFormats::canModify(panelUi_[destinationIndex].archive)) {
+    if (!folder || target.GetParentFolders().Size() != 1 || target.IsThereReadOnlyFolder()) {
         QMessageBox::warning(this, QtLangText(IDS_COPYING),
                              QtLocalText("Writing to this archive folder is unavailable.",
                                          "Запись в эту папку архива недоступна."));

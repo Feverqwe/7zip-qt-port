@@ -82,7 +82,7 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
 Текущий счёт после P1-16 (2026-10-02):
-**27/46 закрыты, 19 остаётся**; P0: 12/12, P1: 14/18, P2: 0/10, P3: 1/6.
+**28/46 закрыты, 18 остаётся**; P0: 12/12, P1: 14/18, P2: 1/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -918,12 +918,16 @@ Finder proof теперь относится к P3-03.1: Computer Use отказ
 sevenzip_desktop, запрос доступа ожидает ответа. Source scope и адаптации
 зафиксированы в audit § P1-16; Windows/Linux runtime/rendered parity остаются
 непроверенными в P3-03/P3-06, GUI-thread preparation — mandatory P2-10.
-Следующий доступный пакет — P2-01; P1-17/18 ждут native engine capability.
+P2-01 принят 2026-10-02; native module/lease и factories теперь доступны.
+Следующий доступный пакет — P1-17: source writer/dependencies и actual GUI
+consumer ещё не интегрированы. P1-18 сохраняет отдельный decoder callback scope.
 
 ### P1-17. ZIP per-item comment и запись свойства
 
 **После:** P1-04. **Исторический ID:** P1-04.3; его исследование и provenance
-сохранены в audit § P1-04.3. **Статус:** blocked, 2026-09-30.
+сохранены в audit § P1-04.3. **Статус:** active — снятие source writer prerequisite,
+2026-10-02. P2-01 дал проверенные native module/lease и ZIP writer factory;
+это новая возможность интеграции, а не доказательство comment round-trip.
 
 Текущий file-only `7zz` 26.03 не записывает комментарий отдельного ZIP-элемента.
 Портировать исходный `ZipHandlerOut.cpp::CHandler::UpdateItems` через
@@ -934,8 +938,9 @@ error/refresh и tests. Не писать новый ZIP writer вместо ups
 
 **Разблокировка:** исходный in-process ZIP writer и adapter проверены на
 per-item comment round-trip, отказе, отмене, сохранности bytes/metadata и
-неизменности исходного архива при ошибке. До появления этой capability статус
-остаётся `blocked`; другие пакеты выполняются по их зависимостям. P3-02/05
+неизменности исходного архива при ошибке. До появления этой capability сама
+команда остаётся disabled/unverified; итерация снятия prerequisite использует
+новую foundation из P2-01. Другие пакеты выполняются по своим зависимостям. P3-02/05
 могут проверить и документировать остальной scope, но полная приёмка P3-06
 требует закрытия P1-17.
 
@@ -976,6 +981,20 @@ Process backend может читать engine capabilities, но не выда�
 **Готово:** unknown extension/content open, handler override/parser mode,
 read-only/update capability, missing codec и version mismatch проверены;
 dialog filters/default names следуют той же metadata.
+
+**Приёмка 2026-10-02:** done — audit § P2-01. Complete source LoadCodecs/
+OpenArchive, immutable native catalog/leases, asynchronous official version/module
+discovery, metadata naming/filters и семь typed writer transports подключены.
+MainWindow Add success/cancel, Inside */#, module-failure read-only fallback и
+реальные stream mutation contracts проверены; current Add JSON760/640 просмотрен.
+Native Open3 выполняется в source worker, archive properties/stream/module lifetime
+сохраняются до Close. Item listing/extract/update/reopen оставляют документированную
+process integration boundary; это не приёмка ZIP comment/RAR memory consumers.
+Полный unsandboxed check.sh formatting/build/188 CTest PASS74.09s macOS arm64
+Qt6.11.2, baseline224 exact/161 adapted/3 local verified. Windows/Linux runtime и
+rendered Windows parity остаются обязательными в P3-03/P3-06. Следующий lower
+priority незавершённый capability scope — P1-17; источник writer/dependencies и
+actual GUI comment consumer ещё требуется перенести/проверить.
 
 ### P2-02. SFX и внешние handlers/plugins
 

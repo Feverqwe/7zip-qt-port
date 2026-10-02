@@ -14,6 +14,10 @@
 #include <optional>
 class QtArchiveVolumeOutput;
 class QtArchiveCreationLifecycle;
+class ArchiveCodecCatalog;
+class ArchiveCodecProbe;
+class ArchiveNativeOpen;
+struct IOpenCallbackUI;
 
 struct ArchiveEntry {
     QString path;
@@ -43,6 +47,8 @@ struct ArchiveInfo {
 };
 
 struct CompressionOptions : NCompressDialog::CInfo {
+    // Stable native handler name at the process boundary; never a CLI switch.
+    QString format;
     int level = 5;
     QString method;
     int threads = 0;             // 0 lets 7-Zip choose.
@@ -73,6 +79,19 @@ class ArchiveBackend : public QObject {
     ~ArchiveBackend() override;
     virtual bool busy() const;
     virtual HRESULT lastResult() const;
+    // Explicit module/version boundary. The engine probe/discovery service
+    // supplies its verified version; widgets consume immutable metadata only.
+    HRESULT loadCodecCatalog(const QString &module, quint32 engineVersion);
+    std::shared_ptr<const ArchiveCodecCatalog> codecCatalog() const {
+        return std::atomic_load(&codecCatalog_);
+    }
+    bool discoverCodecCatalog(const QString &module = {});
+    void cancelCodecDiscovery();
+    QString openDialogFilter() const;
+    bool supportsArchiveUpdate(const QString &format) const;
+    // Called by the source opening worker; no process or widget state is accessed.
+    HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
+                              std::shared_ptr<ArchiveNativeOpen> &reader) const;
     virtual void list(const QString &archive, const QString &password = {});
     virtual void openFolder(const QString &archive, const QString &format,
                             const QString &password = {});
@@ -152,6 +171,7 @@ class ArchiveBackend : public QObject {
     void overwriteRequired(const QString &existing, const ArchiveEntry &incoming);
     void dismissOverwriteRequested();
     void engineStarted();
+    void codecCatalogReady(bool success, const QString &message);
 
   private:
     struct ListedSourceSnapshot {
@@ -190,6 +210,7 @@ class ArchiveBackend : public QObject {
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);
+    void assignDefaultEntryNames(const QString &format);
     static QMap<QString, QString> parseArchiveHeaderProperties(const QString &header);
     HRESULT listingFailureResult(int exitCode, QProcess::ExitStatus status) const;
     static bool safePath(const QString &path);
@@ -198,6 +219,12 @@ class ArchiveBackend : public QObject {
                               QStringList *renameEntries);
     bool prepareMutation(const QString &archive);
     void startSourcePlanStage(Job stage);
+    bool startKeepNameSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
+                                 const QString &output, const QString &format,
+                                 const QString &password, const QStringList &switches);
+    bool validateSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
+                            const QString &output, const QString &format, const QString &password,
+                            const std::optional<CompressionOptions> &options);
     static bool checkVolumeTargets(const QString &archive, QString *error);
     void startVolumeOutput();
     void finishVolumeOutput();
@@ -206,10 +233,17 @@ class ArchiveBackend : public QObject {
     static bool compressionSwitches(const QString &format, const QString &password,
                                     bool encryptHeaders, const CompressionOptions &options,
                                     QStringList *switches, QString *error);
+    bool selectCreationFormat(const QString &archive, const QStringList &sources,
+                              const CompressionOptions &options, QString &format,
+                              QString &error) const;
     bool restoreListedArchive(const QString &archive);
     void startListing(const QString &archive, const QString &password, const QString &format);
 
     QProcess process_;
+    std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;
+    std::unique_ptr<ArchiveCodecProbe> codecProbe_;
+    bool codecDiscoveryActive_ = false;
+    bool codecDiscoveryCancelled_ = false;
     CProcessPause processPause_;
     Job job_ = Job::None;
     QString output_;

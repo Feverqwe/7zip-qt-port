@@ -4,9 +4,14 @@
 
 #include "7zip/UI/Common/Property.h"
 #include "7zip/UI/Common/UpdateAction.h"
+#include "CPP/Common/Wildcard.h"
 #include "CompressDialog.h"
 
 namespace NCompressDialog {
+// Source ShowDialog format/name preparation; Qt supplies the selected paths
+// and owns modal presentation after this source decision block.
+HRESULT PrepareFormatSelection(CCompressDialog &dialog, const CCodecs &codecs,
+                               const CObjectVector<NWildcard::CCensorPath> &censor);
 FString GetCompressionWorkingDir(const UString &arcPath, const QString &settingsPath);
 const NUpdateArchive::CActionSet *FindUpdateActionSet(NUpdateMode::EEnum mode);
 CObjectVector<CProperty> GetCompressionProperties(const CInfo &info, bool is7z);

@@ -141,19 +141,58 @@ static int GetExtDotPos(const UString &s) {
     return -1;
 }
 
-void CCompressDialog::SetArchiveName2() {
-    QString fileName = m_ArchivePath;
-    // Neither supported codec has Flags_KeepName; Info.KeepName is false.
-    SetArchiveName(fileName);
+void CCompressDialog::SetArchiveName2(bool prevWasSFX) {
+    UString fileName(m_ArchivePath.toStdWString().c_str());
+    if (ArcFormats && m_PrevFormat >= 0) {
+        const CArcInfoEx &prevArchiverInfo = (*ArcFormats)[unsigned(m_PrevFormat)];
+        if (prevArchiverInfo.Flags_KeepName() || Info.KeepName) {
+            UString prevExtension;
+            if (prevWasSFX)
+                prevExtension = L".exe";
+            else {
+                prevExtension.Add_Dot();
+                prevExtension += prevArchiverInfo.GetMainExt();
+            }
+            const unsigned prevExtensionLen = prevExtension.Len();
+            if (fileName.Len() >= prevExtensionLen)
+                if (StringsAreEqualNoCase(fileName.RightPtr(prevExtensionLen), prevExtension))
+                    fileName.DeleteFrom(fileName.Len() - prevExtensionLen);
+        }
+    }
+    SetArchiveName(QString::fromWCharArray(fileName.Ptr()));
 }
 
 void CCompressDialog::SetArchiveName(const QString &name) {
     UString fileName(name.toStdWString().c_str());
-    const int dotPos = GetExtDotPos(fileName);
-    if (dotPos >= 0)
-        fileName.DeleteFrom(unsigned(dotPos));
-    fileName.Add_Dot();
-    fileName += Format.toStdWString().c_str();
+    Info.FormatIndex = (int)GetFormatIndex();
+    const CArcInfoEx &ai = Get_ArcInfoEx();
+    m_PrevFormat = Info.FormatIndex;
+    if (ai.Flags_KeepName())
+        fileName = OriginalFileName;
+    else if (!Info.KeepName) {
+        const int dotPos = GetExtDotPos(fileName);
+        if (dotPos >= 0)
+            fileName.DeleteFrom(unsigned(dotPos));
+    }
+    if (IsSFX())
+        fileName += L".exe";
+    else {
+        fileName.Add_Dot();
+        UString ext = ai.GetMainExt();
+        // Legacy standalone callers have no catalog. The application supplies
+        // ArcFormats; this compatibility path is not native codec discovery.
+        if (!ArcFormats && ext.IsEmpty())
+            ext = Format.toStdWString().c_str();
+        if (ai.Flags_HashHandler()) {
+            UString estimatedName;
+            GetMethodSpec(estimatedName);
+            if (!estimatedName.IsEmpty()) {
+                ext = estimatedName;
+                ext.MakeLower_Ascii();
+            }
+        }
+        fileName += ext;
+    }
     m_ArchivePath = QString::fromWCharArray(fileName.Ptr());
 }
 
@@ -163,6 +202,22 @@ void CCompressDialog::ArcPath_WasChanged(const QString &path) {
     if (dotPos < 0)
         return;
     const UString ext = name.Ptr(unsigned(dotPos + 1));
+    if (ArcFormats) {
+        const CArcInfoEx &ai = Get_ArcInfoEx();
+        if (ai.FindExtension(ext) >= 0)
+            return;
+        const unsigned count = ArcIndices.Size();
+        for (unsigned i = 0; i < count; i++) {
+            const CArcInfoEx &candidate = (*ArcFormats)[ArcIndices[i]];
+            if (candidate.FindExtension(ext) >= 0) {
+                Info.FormatIndex = int(ArcIndices[i]);
+                Format = QString::fromWCharArray(candidate.Name.Ptr()).toLower();
+                // The Qt combo binding saves options and invokes FormatChanged.
+                return;
+            }
+        }
+        return;
+    }
     if (ext.IsEqualTo_NoCase(Format.toStdWString().c_str()))
         return;
     const QStringList formats = {QStringLiteral("7z"), QStringLiteral("zip")};

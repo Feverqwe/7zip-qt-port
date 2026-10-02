@@ -84,6 +84,9 @@ EMethodID GetMethodID(QStringView name, QStringView format);
 bool GetOrderMode(EMethodID methodID);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 struct CInfo {
+    int FormatIndex = -1;
+    bool KeepName = false;
+    bool SFXMode = false;
     CRecordVector<UInt64> VolumeSizes;
     UInt32 Level = UInt32(-1);
     UString Method;
@@ -170,6 +173,14 @@ struct CBool1 {
 
 class CCompressDialog {
   public:
+    const CObjectVector<CArcInfoEx> *ArcFormats = nullptr;
+    CUIntVector ArcIndices;
+    NCompressDialog::CInfo Info;
+    UString OriginalFileName;
+    int m_PrevFormat = -1;
+    UString HashMethodSpec;
+    bool IsSFX() const { return Info.SFXMode; }
+    void GetMethodSpec(UString &spec) const { spec = HashMethodSpec; }
     void OnHelp(QWidget *parent = nullptr);
     CBool1 SymLinks;
     CBool1 HardLinks;
@@ -181,7 +192,11 @@ class CCompressDialog {
     UString OptionsString;
     void ShowOptionsString();
     int MethodID = NCompressDialog::kLZMA2;
-    const CArcInfoEx &Get_ArcInfoEx() const { return ArcInfo; }
+    const CArcInfoEx &Get_ArcInfoEx() const {
+        return ArcFormats && Info.FormatIndex >= 0 ? (*ArcFormats)[unsigned(Info.FormatIndex)]
+                                                   : ArcInfo;
+    }
+    unsigned GetFormatIndex() const { return unsigned(Info.FormatIndex); }
     NCompression::CFormatOptions &Get_FormatOptions() { return *FormatOptions; }
     int GetMethodID() const { return MethodID; }
     enum EVolumeResult { kVolumeOK, kIncorrectVolumeSize, kConfirmSmallVolume };
@@ -203,7 +218,7 @@ class CCompressDialog {
                                         bool showPassword, QStringView format,
                                         const QString &encryptionMethod);
     void SetArchiveName(const QString &name);
-    void SetArchiveName2();
+    void SetArchiveName2(bool prevWasSFX = false);
     void ArcPath_WasChanged(const QString &path);
     bool SetArcPathFields(const QString &path);
     bool SetArcPathFields(const QString &path, QString &name, bool always);

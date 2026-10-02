@@ -43,12 +43,14 @@ QList<ArchiveEntry> ArchiveBackend::parseListing(const QString &output) {
     ArchiveEntry current;
     current.size = current.packedSize = -1;
     bool havePath = false;
+    bool haveEntryProperties = false;
     auto flush = [&] {
-        if (havePath)
+        if (havePath || haveEntryProperties)
             result.append(current);
         current = ArchiveEntry{};
         current.size = current.packedSize = -1;
         havePath = false;
+        haveEntryProperties = false;
     };
     const bool hasHeader = output.contains(QStringLiteral("----------\n"));
     bool inEntries = !hasHeader;
@@ -68,6 +70,10 @@ QList<ArchiveEntry> ArchiveBackend::parseListing(const QString &output) {
             continue;
         const QString key = line.left(separator);
         const QString value = line.mid(separator + 3);
+        // Console/List.cpp can emit a stream item without kpidPath or even
+        // defined sizes (bzip2). Keep the record, including undefined values.
+        if (key == "Size" || key == "Packed Size")
+            haveEntryProperties = true;
         if (key == "Path") {
             flush();
             current.path = value;

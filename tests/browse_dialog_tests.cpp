@@ -1,7 +1,6 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
-#include "archiveformats.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -35,7 +34,7 @@ class BrowseDialogTests final : public QObject {
         QCOMPARE(result, selected);
     }
 
-    void firstArchiveVolumeUsesDefaultArchiveFilter_data() {
+    void firstArchiveVolumeUsesArchiveFilter_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<QString>("archives");
         QTest::addColumn<QString>("allFiles");
@@ -43,7 +42,7 @@ class BrowseDialogTests final : public QObject {
         QTest::newRow("Russian") << QString("ru") << QStringLiteral("Архивы")
                                  << QStringLiteral("Все файлы");
     }
-    void firstArchiveVolumeUsesDefaultArchiveFilter() {
+    void firstArchiveVolumeUsesArchiveFilter() {
         QFETCH(QString, language);
         QFETCH(QString, archives);
         QFETCH(QString, allFiles);
@@ -58,7 +57,7 @@ class BrowseDialogTests final : public QObject {
         file.close();
         CBrowseInfo browse;
         browse.Title = "Открыть архив";
-        browse.Filters = ArchiveFormats::openDialogFilter();
+        browse.Filters = archives + " (*.7z *.zip *.001);;" + allFiles + " (*)";
         browse.FilePath = fixture.path() + '/';
         bool answered = false;
         QStringList observedFilters;

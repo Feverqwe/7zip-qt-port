@@ -18,7 +18,7 @@ class HashResultsTests final : public QObject {
         CHashBundle hash;
         UStringVector methods;
         methods.Add(L"CRC32");
-        QCOMPARE(hash.SetMethods(methods), S_OK);
+        QCOMPARE(hash.SetMethods(nullptr, methods), S_OK);
         hash.FirstFileName = L"имя с пробелом.bin";
         hash.InitForNewFile();
         hash.Update("123456789", 9);

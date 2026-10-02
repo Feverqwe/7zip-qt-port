@@ -4,15 +4,18 @@
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
+#include "archivecodeccatalog.h"
 #include "qtlangcontrols.h"
 #include <QScrollArea>
 #include <QShortcut>
 
 CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
                                          const QStringList &initialSources, QWidget *parent,
-                                         const QString &existingTarget)
+                                         const QString &existingTarget,
+                                         std::shared_ptr<const ArchiveCodecCatalog> codecs,
+                                         const QString &existingFormat)
     : QDialog(parent), currentDirectory_(directory), StartDirPrefix(directory),
-      existingTarget_(existingTarget) {
+      existingTarget_(existingTarget), existingFormat_(existingFormat), codecs_(std::move(codecs)) {
     setObjectName("createArchiveDialog");
     resize(760, 720);
     auto *layout = new QVBoxLayout(this);
@@ -24,6 +27,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
     m_RegistryInfo.Load(compressionSettingsPath());
+    prepareInitialSources(initialSources);
     createArchiveForm(contentLayout);
     createSourcePicker(contentLayout);
     scroll->setWidget(content);
@@ -32,8 +36,10 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     BindLanguage();
     showDirectory(currentDirectory_);
     updateTargetPreview();
-    for (const QString &source : initialSources)
-        addSource(QFileInfo(source).absoluteFilePath());
+    const QStringList preparedSources = selected_;
+    selected_.clear();
+    for (const QString &source : preparedSources)
+        addSource(source);
 }
 
 void CreateArchiveDialog::createSourcePicker(QVBoxLayout *layout) {
@@ -98,6 +104,7 @@ void CreateArchiveDialog::createSourcePicker(QVBoxLayout *layout) {
             selected_.removeAll(item->data(Qt::UserRole).toString());
             delete item;
         }
+        refreshArchiveFormats();
     });
 }
 
@@ -116,16 +123,18 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     form->addRow("Архив:", archivePath_);
     format_ = new QComboBox(this);
     format_->setObjectName("archiveFormat");
-    format_->addItems({"7z", "zip"});
-    const QString initialFormat = existingTarget_.isEmpty()
-                                      ? m_RegistryInfo.ArcType
-                                      : QFileInfo(existingTarget_).suffix().toLower();
+    populateArchiveFormats();
+    const QString initialFormat = existingTarget_.isEmpty() ? m_RegistryInfo.ArcType
+                                  : existingFormat_.isEmpty()
+                                      ? QFileInfo(existingTarget_).suffix().toLower()
+                                      : existingFormat_.toLower();
     const int savedFormat = format_->findText(initialFormat, Qt::MatchFixedString);
-    format_->setCurrentIndex(savedFormat >= 0 ? savedFormat : 0);
-    CCompressDialog path;
-    path.Format = format_->currentText();
-    path.SetArchiveName("archive");
-    name_->setText(path.m_ArchivePath);
+    format_->setCurrentIndex(savedFormat >= 0 ? savedFormat : existingTarget_.isEmpty() ? 0 : -1);
+    if (codecs_ && codecs_->result() != S_OK)
+        format_->setToolTip(codecs_->error());
+    configureArchiveName(format_->currentText());
+    archiveNameState_.SetArchiveName(suggestedArchiveName_);
+    name_->setText(archiveNameState_.m_ArchivePath);
     form->addRow("Формат:", format_);
     if (!existingTarget_.isEmpty()) {
         updateMode_ = new QComboBox(this);
@@ -180,7 +189,6 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     if (!existingTarget_.isEmpty()) {
         const QFileInfo target(existingTarget_);
         name_->setText(target.fileName());
-        format_->setCurrentText(target.suffix().toLower());
         destination_->setText(target.absolutePath());
         archivePath_->setEnabled(false);
         format_->setEnabled(false);
@@ -194,14 +202,13 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
             destination_->setText(path);
     });
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
-        CCompressDialog path;
-        path.Format = format_->currentText();
-        path.m_ArchivePath = name_->text();
-        path.SetArchiveName2();
-        name_->setText(path.m_ArchivePath);
+        archiveNameState_.m_ArchivePath = name_->text();
+        configureArchiveName(format_->currentText());
+        archiveNameState_.SetArchiveName2();
+        name_->setText(archiveNameState_.m_ArchivePath);
     });
     connect(archivePath_, &QComboBox::activated, this, [this](int index) {
-        CCompressDialog path;
+        CCompressDialog path = archiveNameState_;
         const QString selectedPath = archivePath_->itemText(index);
         path.Format = format_->currentText();
         path.ArcPath_WasChanged(selectedPath);
@@ -229,6 +236,8 @@ void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
     buttons_->button(QDialogButtonBox::Ok)
         ->setText(existingTarget_.isEmpty() ? "Создать" : "Добавить");
     layout->addWidget(buttons_);
+    if (format_->currentIndex() < 0)
+        buttons_->button(QDialogButtonBox::Ok)->setEnabled(false);
 
     connect(name_, &QLineEdit::textChanged, this, &CreateArchiveDialog::updateTargetPreview);
     connect(destination_, &QLineEdit::textChanged, this, &CreateArchiveDialog::updateTargetPreview);
@@ -256,7 +265,7 @@ QString CreateArchiveDialog::archivePath() const {
 }
 
 void CreateArchiveDialog::validateAndAccept() {
-    if (password_) {
+    if (password_ && password_->isEnabled()) {
         const auto error = CCompressDialog::CheckPassword(
             password_->text(), passwordConfirmation_->text(), showPassword_->isChecked(),
             format_->currentText(), GetEncryptionMethodSpec());
@@ -275,10 +284,8 @@ void CreateArchiveDialog::validateAndAccept() {
     const QString base = name_->text().trimmed();
     const QFileInfo destination(QFileInfo(archivePath()).absolutePath());
     if (selected_.isEmpty() ||
-        (existingTarget_.isEmpty() &&
-         (base.isEmpty() || archivePath().isEmpty() || !destination.isDir() ||
-          QFileInfo(archivePath()).suffix().compare(format_->currentText(), Qt::CaseInsensitive) !=
-              0))) {
+        (existingTarget_.isEmpty() && (base.isEmpty() || archivePath().isEmpty() ||
+                                       !destination.isDir() || format_->currentIndex() < 0))) {
         QMessageBox::warning(
             this, windowTitle(),
             QtLocalText("Choose sources, an archive name and an existing destination folder.",
@@ -314,6 +321,7 @@ void CreateArchiveDialog::validateAndAccept() {
 
 CompressionOptions CreateArchiveDialog::compressionOptions() const {
     CompressionOptions options;
+    options.format = format_->currentText();
     options.OpenShareForWrite =
         sharedFiles_ && sharedFiles_->isEnabled() && sharedFiles_->isChecked();
     options.DeleteAfterCompressing = deleteAfterCompressing_ &&
@@ -366,6 +374,7 @@ void CreateArchiveDialog::addSource(const QString &path) {
     auto *item = new QListWidgetItem(info.fileName() + "\n" + info.absolutePath(), sources_);
     item->setData(Qt::UserRole, path);
     item->setToolTip(path);
+    refreshArchiveFormats();
 }
 
 void CreateArchiveDialog::showDirectory(const QString &path) {

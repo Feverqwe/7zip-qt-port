@@ -73,6 +73,8 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/7zip/Common/CreateCoder.cpp
     third_party/7zip/CPP/7zip/Common/FilterCoder.cpp
     src/CPP/7zip/UI/Common/HashCalc.cpp
+    src/CPP/7zip/UI/Common/LoadCodecs.cpp src/CPP/7zip/UI/Common/LoadCodecs.h
+    third_party/7zip/CPP/7zip/UI/Common/DefaultName.cpp
     src/processpriority.cpp src/processpriority.h
     src/processpause.cpp src/processpause.h
     third_party/7zip/C/Threads.c third_party/7zip/CPP/Windows/ErrorMsg.cpp
@@ -96,14 +98,18 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h
     src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-target_include_directories(sevenzip_common PUBLIC third_party/7zip/CPP PRIVATE src)
+target_include_directories(sevenzip_common PUBLIC src/CPP third_party/7zip/CPP PRIVATE src)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
+target_compile_definitions(sevenzip_common PUBLIC Z7_EXTERNAL_CODECS)
+target_compile_definitions(sevenzip_hash_registry PRIVATE Z7_EXTERNAL_CODECS)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 if(WIN32)
+    target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/Registry.cpp)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/ProcessUtils.cpp)
-    set_source_files_properties(third_party/7zip/CPP/Windows/ProcessUtils.cpp PROPERTIES
+    set_source_files_properties(third_party/7zip/CPP/Windows/ProcessUtils.cpp
+        third_party/7zip/CPP/Windows/Registry.cpp src/CPP/7zip/UI/Common/LoadCodecs.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/SecurityUtils.cpp)
     target_link_libraries(sevenzip_common PUBLIC ole32 oleaut32 uuid advapi32)
@@ -234,7 +240,11 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp src/CPP/7zip/UI/Common/ArchiveExtractCallback.h
     src/CPP/7zip/UI/Common/Extract.cpp src/CPP/7zip/UI/Common/Extract.h
     src/CPP/7zip/UI/Common/OpenArchive.cpp src/CPP/7zip/UI/Common/OpenArchive.h
+    src/archivecodeccatalog.cpp src/archivecodeccatalog.h
+    src/archivenativeopen.cpp src/archivenativeopen.h
+    src/archivecodecprobe.cpp src/archivecodecprobe.h
     third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
+    third_party/7zip/CPP/7zip/UI/Common/SetProperties.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     third_party/7zip/CPP/7zip/Common/FilePathAutoRename.cpp
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
@@ -310,7 +320,7 @@ qt_add_executable(sevenzip_desktop
     src/copydialog.h
     src/extractdialog.h
     src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp
-    src/archivebackend.h src/archiveformats.h
+    src/archivebackend.h
     src/filesystemscanner.cpp
     src/filesystemscanner.h
     src/fileviewerdialog.cpp
@@ -475,6 +485,21 @@ if(BUILD_TESTING)
         "NATIVE_LIBRARY_FIXTURE=\"$<TARGET_FILE:native_library_fixture>\"")
     add_dependencies(native_library_tests native_library_fixture)
     add_test(NAME native_library COMMAND native_library_tests -silent)
+    find_file(SEVENZIP_CODEC_MODULE NAMES 7z.so 7z.dll
+        HINTS ENV SEVENZIP_CODEC_MODULE_DIR
+        PATHS /opt/homebrew/opt/sevenzip/lib /usr/lib/7zip /usr/lib/p7zip
+        DOC "Official 7-Zip module for native capability regression checks")
+    qt_add_executable(codec_capabilities_tests tests/codec_capabilities_tests.cpp)
+    target_include_directories(codec_capabilities_tests PRIVATE src)
+    target_link_libraries(codec_capabilities_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_compile_definitions(codec_capabilities_tests PRIVATE
+        "NATIVE_LIBRARY_FIXTURE=\"$<TARGET_FILE:native_library_fixture>\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(codec_capabilities_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_dependencies(codec_capabilities_tests native_library_fixture)
+    add_test(NAME codec_capabilities COMMAND codec_capabilities_tests -silent)
     qt_add_executable(folder_link_tests tests/folder_link_tests.cpp)
     target_link_libraries(folder_link_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(folder_link_tests PRIVATE
@@ -902,6 +927,12 @@ if(BUILD_TESTING)
     target_include_directories(compression_path_tests PRIVATE src tests)
     target_link_libraries(compression_path_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common)
     add_test(NAME compression_path COMMAND compression_path_tests -silent)
+    qt_add_executable(codec_creation_ui_tests tests/codec_creation_ui_tests.cpp tests/layout_inspection.cpp ${compression_order_sources})
+    target_include_directories(codec_creation_ui_tests PRIVATE src tests)
+    target_link_libraries(codec_creation_ui_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_common sevenzip_panel)
+    add_test(NAME codec_creation_ui COMMAND codec_creation_ui_tests -silent)
+    set_tests_properties(codec_creation_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(compression_path PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(compression_encryption_tests tests/compression_encryption_tests.cpp tests/layout_inspection.cpp ${compression_order_sources})
@@ -1323,7 +1354,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
-        target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp
+        target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp src/archivebackend_sourceplan.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
             src/archivebackend_creation.cpp)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
@@ -1331,7 +1362,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_language.cpp)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp
-            src/createarchivedialog_advanced.cpp)
+            src/createarchivedialog_advanced.cpp src/createarchivedialog_formats.cpp)
     endif()
 endforeach()
 
@@ -1451,6 +1482,97 @@ if(BUILD_TESTING)
 endif()
 
 # Every current window consumer uses the same language presentation adapter.
+if(BUILD_TESTING)
+    get_target_property(codec_catalog_backend_sources archive_backend_tests SOURCES)
+    list(REMOVE_ITEM codec_catalog_backend_sources tests/archive_backend_tests.cpp)
+    get_target_property(codec_catalog_backend_libraries archive_backend_tests LINK_LIBRARIES)
+    qt_add_executable(codec_catalog_tests tests/codec_catalog_tests.cpp ${codec_catalog_backend_sources})
+    target_include_directories(codec_catalog_tests PRIVATE src)
+    target_link_libraries(codec_catalog_tests PRIVATE ${codec_catalog_backend_libraries} sevenzip_location)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(codec_catalog_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+        target_compile_definitions(compression_path_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+        target_compile_definitions(codec_creation_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME codec_catalog COMMAND codec_catalog_tests -silent)
+    qt_add_executable(codec_creation_tests tests/codec_creation_tests.cpp ${codec_catalog_backend_sources})
+    target_include_directories(codec_creation_tests PRIVATE src tests)
+    target_link_libraries(codec_creation_tests PRIVATE ${codec_catalog_backend_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(codec_creation_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME codec_creation COMMAND codec_creation_tests -silent)
+    get_target_property(codec_update_sources source_update_backend_tests SOURCES)
+    list(REMOVE_ITEM codec_update_sources tests/source_update_backend_tests.cpp)
+    qt_add_executable(codec_update_tests tests/codec_update_tests.cpp ${codec_update_sources})
+    target_include_directories(codec_update_tests PRIVATE src tests)
+    target_link_libraries(codec_update_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(codec_update_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME codec_update COMMAND codec_update_tests -silent)
+    qt_add_executable(codec_commands_ui_tests tests/codec_commands_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(codec_commands_ui_tests PRIVATE src tests)
+    target_link_libraries(codec_commands_ui_tests PRIVATE ${options_window_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(codec_commands_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME codec_commands_ui COMMAND codec_commands_ui_tests -silent)
+    set_tests_properties(codec_commands_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/codec_commands_ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(native_folder_opening_tests tests/native_folder_opening_tests.cpp ${codec_update_sources})
+    target_include_directories(native_folder_opening_tests PRIVATE src tests)
+    target_link_libraries(native_folder_opening_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_folder_opening_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_folder_opening COMMAND native_folder_opening_tests -silent)
+    set_tests_properties(native_folder_opening PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(native_archive_opening_tests tests/native_archive_opening_tests.cpp)
+    target_include_directories(native_archive_opening_tests PRIVATE src)
+    target_link_libraries(native_archive_opening_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_archive_opening_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_archive_opening COMMAND native_archive_opening_tests -silent)
+    set_tests_properties(native_archive_opening PROPERTIES TIMEOUT 30)
+    set_tests_properties(codec_update PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(codec_creation PROPERTIES TIMEOUT 60)
+    qt_add_executable(codec_probe_fixture tests/fixtures/codec_probe_fixture.cpp)
+    target_link_libraries(codec_probe_fixture PRIVATE Qt6::Core)
+    target_compile_definitions(codec_catalog_tests PRIVATE
+        "CODEC_PROBE_FIXTURE=\"$<TARGET_FILE:codec_probe_fixture>\"")
+    add_dependencies(codec_catalog_tests codec_probe_fixture)
+    qt_add_executable(codec_probe_tests tests/codec_probe_tests.cpp)
+    target_include_directories(codec_probe_tests PRIVATE src)
+    target_link_libraries(codec_probe_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_compile_definitions(codec_probe_tests PRIVATE
+        "CODEC_PROBE_FIXTURE=\"$<TARGET_FILE:codec_probe_fixture>\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(codec_probe_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_dependencies(codec_probe_tests codec_probe_fixture)
+    add_test(NAME codec_probe COMMAND codec_probe_tests -silent)
+    set_tests_properties(codec_probe PROPERTIES TIMEOUT 20)
+endif()
+
+get_property(codec_backend_consumers DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+foreach(codec_backend_consumer IN LISTS codec_backend_consumers)
+    get_target_property(codec_backend_sources ${codec_backend_consumer} SOURCES)
+    if("src/archivebackend.cpp" IN_LIST codec_backend_sources)
+        target_sources(${codec_backend_consumer} PRIVATE src/archivebackend_codecs.cpp)
+    endif()
+endforeach()
+
 get_property(language_consumers DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(language_consumer IN LISTS language_consumers)
     get_target_property(language_consumer_sources ${language_consumer} SOURCES)

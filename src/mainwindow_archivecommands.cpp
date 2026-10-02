@@ -146,7 +146,7 @@ void MainWindow::createDialog() {
     if (state_ != State::Filesystem)
         return;
     const QStringList selectedPaths = selectedFilesystemPaths();
-    CreateArchiveDialog dialog(directory_, selectedPaths, this);
+    CreateArchiveDialog dialog(directory_, selectedPaths, this, {}, backend_->codecCatalog());
     if (dialog.exec() != QDialog::Accepted)
         return;
     createArchive(dialog.target(), dialog.sources(), dialog.password(), dialog.encryptHeaders(),
@@ -171,7 +171,8 @@ void MainWindow::createArchive(const QString &target, const QStringList &sources
 void MainWindow::addDialog() {
     if (state_ != State::Viewing)
         return;
-    CreateArchiveDialog dialog(returnDirectory_, {}, this, archive_);
+    CreateArchiveDialog dialog(returnDirectory_, {}, this, archive_, backend_->codecCatalog(),
+                               info_.format);
     if (dialog.exec() != QDialog::Accepted)
         return;
     if (state_ != State::Viewing || dialog.sources().isEmpty())
@@ -182,7 +183,7 @@ void MainWindow::addDialog() {
 void MainWindow::updateArchiveFromDialog(const QStringList &sources,
                                          const CompressionOptions &options) {
     if (app_.QtOperations().closed() || state_ != State::Viewing || sources.isEmpty() ||
-        !ArchiveFormats::canModify(archive_))
+        app_.GetFocusedPanel().IsThereReadOnlyFolder())
         return;
     CPanel &panel = app_.GetFocusedPanel();
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
@@ -394,8 +395,8 @@ void MainWindow::addSources(const QStringList &sources) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Viewing || !ArchiveFormats::canModify(archive_) || info_.encrypted ||
-        sources.isEmpty())
+    if (state_ != State::Viewing || app_.GetFocusedPanel().IsThereReadOnlyFolder() ||
+        info_.encrypted || sources.isEmpty())
         return;
     previousState_ = state_;
     updatingArchive_ = true;

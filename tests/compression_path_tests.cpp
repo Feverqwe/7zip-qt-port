@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/GUI/UpdateGUI.h"
+#include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
@@ -55,6 +57,153 @@ class CompressionPathTests final : public QObject {
         QCOMPARE(path.Format, QString("7z"));
         path.ArcPath_WasChanged(".zip");
         QCOMPARE(path.Format, QString("7z"));
+    }
+    void nativeMetadataKeepsOriginalNamesAndUsesMainExtension() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Official codec module unavailable; native naming unverified");
+#else
+        const auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+        CCompressDialog path;
+        path.ArcFormats = &catalog->nativeCodecs().Formats;
+        path.ArcIndices.Add(unsigned(catalog->formatIndex("7z")));
+        path.ArcIndices.Add(unsigned(catalog->formatIndex("zip")));
+        path.Info.FormatIndex = catalog->formatIndex("gzip");
+        path.OriginalFileName = L"исходное 空.tar";
+        path.SetArchiveName("ignored name.zip");
+        QCOMPARE(path.m_ArchivePath, QStringLiteral("исходное 空.tar.gz"));
+        path.Info.FormatIndex = catalog->formatIndex("zip");
+        path.SetArchiveName2();
+        QCOMPARE(path.m_ArchivePath, QStringLiteral("исходное 空.zip"));
+        path.Info.KeepName = true;
+        path.Info.FormatIndex = catalog->formatIndex("gzip");
+        path.SetArchiveName("ignored again");
+        path.Info.FormatIndex = catalog->formatIndex("7z");
+        path.SetArchiveName2();
+        QCOMPARE(path.m_ArchivePath, QStringLiteral("исходное 空.tar.7z"));
+        path.SetArchiveName2();
+        QCOMPARE(path.m_ArchivePath, QStringLiteral("исходное 空.tar.7z"));
+        path.ArcPath_WasChanged("document.DOCX");
+        QCOMPARE(path.Info.FormatIndex, catalog->formatIndex("zip"));
+        QCOMPARE(path.Format, QStringLiteral("zip"));
+        path.ArcPath_WasChanged("document.rar");
+        QCOMPARE(path.Info.FormatIndex, catalog->formatIndex("zip"));
+#endif
+    }
+    void sourceSelectionControlsSingleFileFormatsAndOriginalName() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Official module unavailable; source format selection unverified");
+#else
+        const auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+        const int gzip = catalog->formatIndex("gzip");
+        const int zip = catalog->formatIndex("zip");
+        QVERIFY(gzip >= 0 && zip >= 0);
+        CCompressDialog state;
+        CObjectVector<NWildcard::CCensorPath> censor;
+        censor.AddNew().Path = source_.toStdWString().c_str();
+        QCOMPARE(NCompressDialog::PrepareFormatSelection(state, catalog->nativeCodecs(), censor),
+                 S_OK);
+        QVERIFY(!state.Info.KeepName);
+        QCOMPARE(QString::fromWCharArray(state.OriginalFileName.Ptr())
+                     .normalized(QString::NormalizationForm_C),
+                 QFileInfo(source_).fileName().normalized(QString::NormalizationForm_C));
+        QVERIFY(state.ArcIndices.FindInSorted(unsigned(gzip)) >= 0);
+        QVERIFY(state.ArcIndices.FindInSorted(unsigned(zip)) >= 0);
+        censor.AddNew().Path = source_.toStdWString().c_str();
+        QCOMPARE(NCompressDialog::PrepareFormatSelection(state, catalog->nativeCodecs(), censor),
+                 S_OK);
+        QVERIFY(state.Info.KeepName);
+        QCOMPARE(state.ArcIndices.FindInSorted(unsigned(gzip)), -1);
+        censor.Clear();
+        censor.AddNew().Path = dir_.path().toStdWString().c_str();
+        QCOMPARE(NCompressDialog::PrepareFormatSelection(state, catalog->nativeCodecs(), censor),
+                 S_OK);
+        QVERIFY(state.Info.KeepName);
+        QCOMPARE(state.ArcIndices.FindInSorted(unsigned(gzip)), -1);
+        CCodecs missing;
+        QCOMPARE(NCompressDialog::PrepareFormatSelection(state, missing, censor), E_FAIL);
+        QVERIFY(state.ArcIndices.IsEmpty());
+#endif
+    }
+    void sourcePickerRemovalRefreshesKeepNameBeforeFormatSwitch() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Official module unavailable; source-picker naming consumer unverified");
+#else
+        const auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+        const QString other = dir_.filePath(QStringLiteral("второй 空 с пробелом.txt"));
+        QFile file(other);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("second"), qint64(6));
+        file.close();
+        CreateArchiveDialog dialog(dir_.path(), {source_, other}, nullptr, {}, catalog);
+        auto *name = dialog.findChild<QLineEdit *>("archiveName");
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        auto *sources = dialog.findChild<QListWidget *>("selectedSources");
+        QCOMPARE(sources->count(), 2);
+        name->setText("report.with.dot");
+        format->setCurrentText("zip");
+        QCOMPARE(name->text(), QStringLiteral("report.with.dot.zip"));
+        sources->setCurrentRow(1);
+        dialog.findChild<QPushButton *>("removeSourcesButton")->click();
+        QCOMPARE(dialog.sources(), QStringList{source_});
+        name->setText("report.with.dot");
+        format->setCurrentText("7z");
+        QCOMPARE(name->text(), QStringLiteral("report.with.7z"));
+        dialog.reject();
+        QVERIFY(dialog.target().isEmpty());
+#endif
+    }
+    void defaultArchiveNameComesFromNativeSourceName() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Official module unavailable; native default archive name unverified");
+#else
+        const auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, {}, catalog);
+        const QString name = dialog.findChild<QLineEdit *>("archiveName")
+                                 ->text()
+                                 .normalized(QString::NormalizationForm_C);
+        QCOMPARE(name, QStringLiteral("источник с пробелом.7z"));
+        dialog.reject();
+        QVERIFY(dialog.target().isEmpty());
+#endif
+    }
+    void addUsesDetectedTypeWithUnknownTargetSuffix() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Official codec module unavailable; Add metadata consumer unverified");
+#else
+        const auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+        const QString target = dir_.filePath(QStringLiteral("архив 空.unknown"));
+        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, target, catalog, "ZIP");
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        QVERIFY(format);
+        QCOMPARE(format->currentText(), QStringLiteral("zip"));
+        QVERIFY(!format->isEnabled());
+        QCOMPARE(format->count(), 7);
+        submit(dialog);
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QCOMPARE(dialog.target(), target);
+#endif
+    }
+    void unavailableMetadataDisablesSubmission() {
+        const auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(dir_.filePath("missing module"), 1);
+        QVERIFY(catalog->result() != S_OK);
+        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, {}, catalog);
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        QCOMPARE(format->count(), 0);
+        QVERIFY(!format->toolTip().isEmpty());
+        QVERIFY(!dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->isEnabled());
+        dialog.reject();
+        QVERIFY(dialog.target().isEmpty());
     }
     void fullPathsAndFailure() {
         CCompressDialog path;
@@ -171,8 +320,14 @@ class CompressionPathTests final : public QObject {
         QVERIFY(!QFileInfo::exists(dir_.filePath("absent")));
     }
     void geometry() {
+        std::shared_ptr<const ArchiveCodecCatalog> catalog;
+#ifdef SEVENZIP_CODEC_MODULE
+        catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+#endif
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
-            CreateArchiveDialog dialog(dir_.path());
+            CreateArchiveDialog dialog(dir_.path(), {}, nullptr, {}, catalog);
             dialog.resize(size);
             dialog.show();
             QApplication::processEvents();

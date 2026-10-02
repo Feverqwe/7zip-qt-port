@@ -1,10 +1,46 @@
 // Adapted from 7-Zip CPP/Windows/DLL.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Library lifetime/loading and POSIX procedure lookup retain source bodies.
-// Module-path helpers remain mandatory separate platform/resource scope.
+// Executable-path lookup uses Qt; directory/fallback rules retain source code.
 #include "Windows/StdAfx.h"
 
 #include "DLL.h"
+#include <QCoreApplication>
+#include <QFile>
+
+namespace NWindows {
+namespace NDLL {
+
+// Qt supplies the executable path on all supported platforms. Upstream's
+// Win32 resource-module lookup has no POSIX body and the desktop owns no DLL UI.
+bool MyGetModuleFileName(FString &path) {
+    const QString executable = QCoreApplication::applicationFilePath();
+    path.Empty();
+    if (executable.isEmpty())
+        return false;
+#ifdef _WIN32
+    path = us2fs(UString(executable.toStdWString().c_str()));
+#else
+    path = QFile::encodeName(executable).constData();
+#endif
+    return true;
+}
+
+// Original upstream directory/fallback body, shared with the POSIX adapter.
+FString GetModuleDirPrefix() {
+    FString s;
+    if (MyGetModuleFileName(s)) {
+        const int pos = s.ReverseFind_PathSepar();
+        if (pos >= 0)
+            s.DeleteFrom((unsigned)(pos + 1));
+    }
+    if (s.IsEmpty())
+        s = "." STRING_PATH_SEPARATOR;
+    return s;
+}
+
+} // namespace NDLL
+} // namespace NWindows
 
 #ifdef _WIN32
 

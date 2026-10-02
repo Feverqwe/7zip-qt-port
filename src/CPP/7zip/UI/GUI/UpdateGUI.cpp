@@ -3,7 +3,53 @@
 #include "UpdateGUI.h"
 #include "../Common/WorkDir.h"
 
+#include "Common/StringConvert.h"
 #include "Common/StringToInt.h"
+#include "Windows/FileFind.h"
+
+HRESULT
+NCompressDialog::PrepareFormatSelection(CCompressDialog &dialog, const CCodecs &codecs,
+                                        const CObjectVector<NWildcard::CCensorPath> &censor) {
+    bool oneFile = false;
+    NWindows::NFile::NFind::CFileInfo fileInfo;
+    UString name;
+    if (censor.Size() > 0) {
+        const NWildcard::CCensorPath &cp = censor[0];
+        if (cp.Include) {
+            {
+                if (fileInfo.Find(us2fs(cp.Path))) {
+                    if (censor.Size() == 1)
+                        oneFile = !fileInfo.IsDir();
+                }
+            }
+        }
+    }
+    NCompressDialog::CInfo &di = dialog.Info;
+    dialog.ArcFormats = &codecs.Formats;
+    // Qt's source picker can change selection without reconstructing the modal.
+    dialog.ArcIndices.Clear();
+    FOR_VECTOR(i, codecs.Formats) {
+        const CArcInfoEx &ai = codecs.Formats[i];
+        if (!ai.UpdateEnabled)
+            continue;
+        if (!oneFile && ai.Flags_KeepName())
+            continue;
+        if ((int)i != di.FormatIndex) {
+            if (ai.Flags_HashHandler())
+                continue;
+            if (ai.Name.IsEqualTo_Ascii_NoCase("swfc"))
+                if (!oneFile || name.Len() < 4 ||
+                    !StringsAreEqualNoCase_Ascii(name.RightPtr(4), ".swf"))
+                    continue;
+        }
+        dialog.ArcIndices.Add(i);
+    }
+    if (dialog.ArcIndices.IsEmpty())
+        return E_FAIL; // Qt presents the original No Update Engines result.
+    dialog.OriginalFileName = fs2us(fileInfo.Name);
+    di.KeepName = !oneFile;
+    return S_OK;
+}
 
 // Source ShowDialog working-directory block; return the field instead of the
 // unavailable in-process CUpdateOptions owner. The engine consumes it via -w.

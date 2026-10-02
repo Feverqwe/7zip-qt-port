@@ -8,6 +8,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "archive_backend_test_support.h"
+#include "archivecodeccatalog.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include "qtarchiveproperties.h"
@@ -33,6 +34,72 @@ class CRecordingBackend final : public ArchiveBackend {
 class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport {
     Q_OBJECT
   private slots:
+    void detectedMetadataOwnsNamesAndWriteReadiness_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<QString>("name");
+        QTest::addColumn<QString>("openType");
+        QTest::addColumn<QString>("defaultName");
+        QTest::addColumn<bool>("writable");
+        QTest::newRow("ZIP unknown suffix") << "zip" << QStringLiteral("архив 空.unknown") << "*"
+                                            << QStringLiteral("архив 空") << true;
+        QTest::newRow("gzip tgz AddExt") << "gzip" << QStringLiteral("архив 空.tgz") << "*"
+                                         << QStringLiteral("архив 空.tar") << true;
+        QTest::newRow("gzip misleading ZIP suffix") << "gzip" << QStringLiteral("архив 空.zip")
+                                                    << "*" << QStringLiteral("архив 空") << true;
+        QTest::newRow("parser container")
+            << "zip" << QStringLiteral("архив 空.unknown") << "#" << QString() << false;
+    }
+    void detectedMetadataOwnsNamesAndWriteReadiness() {
+        QFETCH(QString, format);
+        QFETCH(QString, name);
+        QFETCH(QString, openType);
+        QFETCH(QString, defaultName);
+        QFETCH(bool, writable);
+        const QString engine = QStandardPaths::findExecutable("7zz");
+        QVERIFY2(!engine.isEmpty(), "official 7zz fixture engine is required");
+        ArchiveBackend backend(nullptr, engine);
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog());
+        QTRY_COMPARE(ready.size(), 1);
+        if (!ready[0][0].toBool())
+            QSKIP("Matching official module unavailable; native metadata consumer unverified");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString input = temporary.filePath(QStringLiteral("payload 空 with spaces.bin"));
+        const QByteArray payload("binary\0payload", 14);
+        writeFile(input, payload);
+        const QString path = temporary.filePath(name);
+        QProcess creator;
+        creator.start(engine, {"a", "-t" + format, "--", path, input});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        QFile original(path);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        const QByteArray bytes = original.readAll();
+        original.close();
+        if (openType == "#")
+            writeFile(path, bytes + bytes);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(path.toStdWString().c_str()),
+                                              UString(openType.toStdWString().c_str()), nullptr),
+                 S_OK);
+        auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
+        QVERIFY(folder);
+        auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
+        QVERIFY(resource);
+        CArc arc;
+        arc.Archive = folder->GetArchiveProperties();
+        QCOMPARE(resource->ConfigureArc(arc), S_OK);
+        QCOMPARE(QString::fromWCharArray(arc.DefaultName.Ptr()), defaultName);
+        NWindows::NCOM::CPropVariant readOnly;
+        QCOMPARE(folder->GetFolderProperty(kpidReadOnly, &readOnly), S_OK);
+        QCOMPARE(readOnly.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(readOnly.boolVal != VARIANT_FALSE, !writable);
+        QCOMPARE(resource->HasUpdateService(), writable);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), openType == "#" ? bytes + bytes : bytes);
+    }
     void nativeMetadataUsesFileTimeAndEmptyUnsupportedProperties() {
         CObjectVector<CPanelItem> items;
         for (const QString &time :

@@ -1,6 +1,8 @@
 #include "archivebackend.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "archivecodeccatalog.h"
+#include "archivecodecprobe.h"
 #include "processpriority.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivevolumeoutput.h"
@@ -70,6 +72,7 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
 }
 
 ArchiveBackend::~ArchiveBackend() {
+    codecProbe_.reset();
     // QProcess can emit readyRead/finished during destruction. Stop callbacks
     // while their buffers and operation state are still alive.
     disconnect(&process_, nullptr, this, nullptr);
@@ -216,6 +219,18 @@ void ArchiveBackend::list(const QString &archive, const QString &password) {
 
 void ArchiveBackend::openFolder(const QString &archive, const QString &format,
                                 const QString &password) {
+    if (!busy() && !format.isEmpty()) {
+        if (const auto catalog = codecCatalog(); catalog && catalog->result() == S_OK) {
+            CObjectVector<COpenType> types;
+            if (!catalog->parseOpenTypes(format, types)) {
+                lastResult_ = E_INVALIDARG;
+                emit finished(false, QtLocalText("Invalid archive open type: %1",
+                                                 "Неверный режим открытия архива: %1")
+                                         .arg(format));
+                return;
+            }
+        }
+    }
     if (format.isEmpty())
         list(archive, password);
     else
@@ -708,6 +723,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
                     info.offset = offset;
             }
         }
+        assignDefaultEntryNames(info.format);
         for (const ArchiveEntry &entry : entries_) {
             if (entry.directory)
                 ++info.folders;

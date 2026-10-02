@@ -7,7 +7,7 @@ class NativeHashBundleTests final : public QObject {
   private slots:
     void defaultCRCAndSourceStatistics() {
         CHashBundle bundle;
-        QCOMPARE(bundle.SetMethods(UStringVector()), S_OK);
+        QCOMPARE(bundle.SetMethods(nullptr, UStringVector()), S_OK);
         QCOMPARE(bundle.Hashers.Size(), unsigned(1));
         QCOMPARE(QString::fromLatin1(bundle.Hashers[0].Name.Ptr()), QString("CRC32"));
         bundle.InitForNewFile();
@@ -35,7 +35,7 @@ class NativeHashBundleTests final : public QObject {
             CHashBundle bundle;
             UStringVector names;
             names.Add(UString(method.first));
-            QCOMPARE(bundle.SetMethods(names), S_OK);
+            QCOMPARE(bundle.SetMethods(nullptr, names), S_OK);
             bundle.InitForNewFile();
             bundle.Update(bytes.constData(), 7);
             bundle.Update(bytes.constData() + 7, bytes.size() - 7);
@@ -47,7 +47,7 @@ class NativeHashBundleTests final : public QObject {
         CHashBundle all;
         UStringVector wildcard;
         wildcard.Add(UString("*"));
-        QCOMPARE(all.SetMethods(wildcard), S_OK);
+        QCOMPARE(all.SetMethods(nullptr, wildcard), S_OK);
         QStringList names;
         FOR_VECTOR(i, all.Hashers)
         names.append(QString::fromLatin1(all.Hashers[i].Name.Ptr()));
@@ -56,7 +56,7 @@ class NativeHashBundleTests final : public QObject {
         UStringVector missing;
         missing.Add(UString("unsupported-test-method"));
         CHashBundle unsupported;
-        QVERIFY(unsupported.SetMethods(missing) != S_OK);
+        QVERIFY(unsupported.SetMethods(nullptr, missing) != S_OK);
     }
 };
 QTEST_GUILESS_MAIN(NativeHashBundleTests)

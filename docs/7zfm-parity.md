@@ -7,6 +7,55 @@
 [тестировании](testing.md) и [контрактах компоновки](ui-layout-contracts.md).
 Совпадение поведения не подтверждает перенос исходника или проверку на всех ОС.
 
+P2-01 accepted: Open filters now use the matching official codec module's native
+extensions/aliases, including DOCX and .001, with All files fallback on failure.
+The default app asynchronously probes its installed engine version; mismatched
+or unavailable metadata is reported in the status bar. Source folders use native
+default-name/AddExt rules and read-only state for mutation commands rather than
+filename suffixes. Real ZIP with unknown suffix, gzip/TGZ and parser '#' folders
+are checked on macOS. Source UpdateEnabled now drives update-service readiness
+for the detected type; original Agent CopyFromFile and Add callback plans update
+all seven writable formats with checked failure/cancellation rollback. The
+official handler still determines whether a particular mutation is possible;
+UpdateEnabled does not promise every operation on every stream format.
+With a valid module, source opening now runs native Open3 in the application
+worker before the process listing and retains its reader for native archive
+properties. Wrong forced types and cancellation refuse before process start;
+native encrypted-header passwords pass to the listing service. Folder Close
+releases reader streams before source publication. Native properties and module
+reload lifetime are checked through CFfpOpen; item listing/extraction/update and
+reopen still have a 7zz integration boundary. Actual TGZ retains the gzip item
+level (no seekable decoded native stream); extraction returns its original TAR.
+Actual native Split→7z and its process extraction round trip are verified. Volume
+sets/nested streams stay read-only for this process publication service, including
+after reader Close. Remaining mutation/command UX acceptance is still pending.
+Add uses native eligibility and the detected existing archive type. Empty or
+ineligible source selection does not discard that detected type; selecting one
+file restores gzip/bzip2/xz and their Deflate/BZip2/LZMA2 controls. Actual Add
+success/cancel and Inside */# command routes are checked through MainWindow.
+Single-item bzip2 Delete reports its handler refusal; XZ produces the source
+empty stream and still presents one stream item. Copied mutation basename and
+exact-name CLI mode preserve source item identity and extensionless spool paths.
+Source KeepName and
+main-extension naming/history bodies are compiled; a failed catalog disables
+confirmation with an explanatory format tooltip. Native one-file/OriginalFileName/
+KeepName eligibility is connected to source-picker changes, and native
+CreateArchiveName supplies initial suggestions for metadata-configured callers.
+New archive creation now exposes native eligible 7z/ZIP/gzip/bzip2/xz/tar/WIM;
+KeepName formats disappear when a directory or multiple sources are selected.
+The explicit type request permits gzip's .gz extension and aliases. Original
+FormatChanged encryption flags disable the group for unsupported formats and
+hide Encrypt file names outside 7z. TAR retains GNU/POSIX at level0; real POSIX
+magic is verified, and source solid flags include xz. Formats refresh their
+parameter state when a source change removes the selected format. Current Qt
+760×720/640×480 reports establish control states, scrolling and exposed footer;
+Source KeepName updates preserve the original input name and write a separate
+result: a temporary copied bzip2/xz archive would otherwise acquire a different
+default item name. The process Add action set replaces selected files directly;
+only omitted items are deleted. MainWindow command/error/cancel consumers and
+the full P2-01 gate passed188/188(74.09s), macOS arm64 Qt6.11.2 2026-10-02;
+Windows/Linux runtime and rendered parity unverified.
+
 P1-16 implementation accepted: обе table/icon панели используют исходные правила PanelDrag: внутренний
 disk→disk Copy/Move с Ctrl/Shift и выбором подпапки, внешний filesystem drop→Add,
 drop в архив→Copy с Yes/No/Cancel. Правое drop-меню сохраняет исходные порядок,

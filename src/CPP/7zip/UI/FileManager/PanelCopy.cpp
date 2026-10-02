@@ -185,11 +185,12 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
     HRESULT res = S_OK;
 
     {
-        /*
-        #ifdef Z7_EXTERNAL_CODECS
+#ifdef Z7_EXTERNAL_CODECS
+        // This port has no upstream FM global codec singleton. Keep the source
+        // local provider alive longer than extracter.Hash; runtime attachment
+        // is owned by the P2-01 backend adapter.
         CExternalCodecs g_ExternalCodecs;
-        #endif
-        */
+#endif
         /* extracter.Hash uses g_ExternalCodecs
            extracter must be declared after g_ExternalCodecs for correct destructor order !!! */
 
