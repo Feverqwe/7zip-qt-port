@@ -123,6 +123,8 @@ class CApp {
     }
     bool ExecuteCommand(unsigned id);
     void DiffFiles();
+    void Link();
+    void RefreshTitleAlways() { RefreshTitle(true); }
     HRESULT CalculateCrc2(const UString &methodName,
                           const CExternalCodecs *externalCodecs = nullptr);
     void CalculateCrc(const char *methodName);

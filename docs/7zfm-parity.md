@@ -1,5 +1,33 @@
 # Сверка с Windows 7zFM
 
+## P2-05 — Link и filesystem metadata (принят, 2026-10-03)
+
+Эталон — исходные LinkDialog.cpp/.h/.rc и CApp::Link. File → Link доступен для
+одного filesystem item; defaults, Link from/to, browse, current target, пять
+radio types и Link/Cancel сохраняют source order и validation. Nonempty plain
+file нельзя скрыть reparse data. Qt заменяет Win32 controls и координаты;
+compact форма прокручивается, длинные EN/RU radio captions переносятся.
+Normal/compact geometry проверены на macOS, Windows и Linux; rendered 7zFM
+pixel parity этой проверкой не подтверждается.
+
+Windows сохраняет исходные hardlink/symlink/junction/reparse и process privileges.
+Unix поддерживает hard/symbolic links, Junction/WSL видны с причиной недоступности.
+POSIX edit атомарно заменяет link inode через private same-parent stage; Clear
+удаляет inode. Windows Clear сохраняет пустой исходный file object после удаления
+reparse attribute. POSIX target classification следует target только для выбора
+file/directory type; создание и перенос сохраняют raw target.
+
+Copy/Move/Delete обращаются к ссылке как к leaf object, включая dangling/cycle
+и Windows directory junction. Это явная адаптация source copy flow: directory
+links не обходятся. Raw target и поддерживаемые link timestamps сохраняются;
+destination links остаются запрещены transaction boundary. Linux real EXDEV и
+forced fallback на остальных ОС проверяют copy/publish/delete. Новые файлы и
+папки сохраняют поддерживаемые timestamps/attributes/mode. Unix ownership,
+inode/ctime и link permissions определяются ОС. Archive storage/extraction links
+и security policy остаются отдельными backend workflows; filesystem Link не
+включает их. Full macOS gate205/205PASS82.95s; focused Windows7/7PASS30.24s
+и Linux7/7PASS0.15s без пропусков;12current-build JSON reviewed.
+
 ## P2-04 — Benchmark (принят, 2026-10-03)
 
 Эталон — исходные BenchmarkDialog.cpp/.rc, Common/Bench.cpp и Tools dispatch.
@@ -383,7 +411,9 @@ deletion; native Add deletes after MoveToOriginal. Skipped or changed files are
 retained by the original size/time checks. Cancel before publication preserves
 sources; Cancel during deletion can leave the archive and partially deleted
 sources. Physical deletion failures retain the file without undoing the successful
-archive, following upstream. Create with links refuses deletion pending P2-05.
+archive, following upstream. Create with links still refuses deletion until its
+archive storage/deletion backend consumer is ported (P2-07); filesystem Link
+support in P2-05 does not remove that guard.
 Compression limit rejection keeps Add open for retry; Cancel leaves profiles
 unchanged. Actual RAR decoder memory prompts remain mandatory P1-18, requiring
 native decoder callback transport; the existing memory form does not prove it.

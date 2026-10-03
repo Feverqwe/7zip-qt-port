@@ -129,6 +129,9 @@ if(WIN32)
         third_party/7zip/CPP/Windows/Registry.cpp src/CPP/7zip/UI/Common/LoadCodecs.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/SecurityUtils.cpp)
+    target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/MemoryLock.cpp)
+    set_source_files_properties(third_party/7zip/CPP/Windows/MemoryLock.cpp
+        src/CPP/7zip/UI/FileManager/FM.cpp PROPERTIES COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     target_link_libraries(sevenzip_common PUBLIC ole32 oleaut32 uuid advapi32)
 endif()
 
@@ -163,6 +166,8 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/GUI/CompressDialog.cpp
     src/CPP/7zip/UI/Common/CompressCall2.cpp src/CPP/7zip/UI/Common/CompressCall.h
     src/qtbenchmarkcontrols.cpp src/qtbenchmarkcontrols.h
+    src/CPP/7zip/UI/FileManager/LinkDialog.cpp src/CPP/7zip/UI/FileManager/LinkDialog.h
+    src/qtlinkcontrols.cpp src/qtlinkcontrols.h
     src/CPP/7zip/UI/FileManager/ExtractCallback.cpp src/CPP/7zip/UI/FileManager/ExtractCallback.h
     src/qtcallbackdialogs.cpp src/qtcallbackdialogs.h src/qtmodalresult.h
     src/CPP/7zip/UI/FileManager/OverwriteDialog.cpp src/CPP/7zip/UI/FileManager/OverwriteDialog.h
@@ -276,6 +281,7 @@ add_library(sevenzip_filesystem STATIC
     third_party/7zip/CPP/7zip/Common/FilePathAutoRename.cpp
     src/CPP/7zip/UI/FileManager/FSFolder.cpp
     src/CPP/7zip/UI/FileManager/FSFolderCopy.cpp
+    src/qtlinkservices.cpp src/qtlinkservices.h
     src/qtfiletransfercopycallback.cpp src/qtfiletransfercopycallback.h
     src/CPP/7zip/UI/FileManager/TextPairs.cpp
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
@@ -625,6 +631,12 @@ if(BUILD_TESTING)
     target_include_directories(benchmark_lifecycle_tests PRIVATE src tests)
     target_link_libraries(benchmark_lifecycle_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME benchmark_lifecycle COMMAND benchmark_lifecycle_tests -silent)
+    qt_add_executable(link_dialog_tests tests/link_dialog_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(link_dialog_tests PRIVATE src tests)
+    target_link_libraries(link_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME link_dialog COMMAND link_dialog_tests -silent)
+    set_tests_properties(link_dialog PROPERTIES TIMEOUT 30 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/link_dialog.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(benchmark_lifecycle PROPERTIES TIMEOUT 30 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/benchmark_lifecycle.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(hash_results PROPERTIES ENVIRONMENT
@@ -1163,6 +1175,11 @@ if(BUILD_TESTING)
     target_include_directories(fs_folder_copy_tests PRIVATE src)
     target_link_libraries(fs_folder_copy_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME fs_folder_copy COMMAND fs_folder_copy_tests -silent)
+    qt_add_executable(filesystem_link_tests tests/filesystem_link_tests.cpp
+        src/filetransferoperation.cpp src/filetransferoperation.h)
+    target_link_libraries(filesystem_link_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME filesystem_link COMMAND filesystem_link_tests -silent)
+    set_tests_properties(filesystem_link PROPERTIES TIMEOUT 60)
     get_target_property(panel_sort_sources ui_state_tests SOURCES)
     list(REMOVE_ITEM panel_sort_sources tests/ui_state_tests.cpp)
     qt_add_executable(command_policy_runtime_tests tests/command_policy_runtime_tests.cpp ${panel_sort_sources})
@@ -1679,6 +1696,12 @@ if(BUILD_TESTING)
     qt_add_executable(native_rar_ui_tests tests/native_rar_ui_tests.cpp ${options_window_sources})
     qt_add_executable(native_hash_ui_tests tests/native_hash_ui_tests.cpp ${options_window_sources})
     qt_add_executable(benchmark_command_tests tests/benchmark_command_tests.cpp ${options_window_sources})
+    qt_add_executable(link_command_tests tests/link_command_tests.cpp ${options_window_sources})
+    target_include_directories(link_command_tests PRIVATE src tests)
+    target_link_libraries(link_command_tests PRIVATE ${options_window_libraries})
+    add_test(NAME link_command COMMAND link_command_tests -silent)
+    set_tests_properties(link_command PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/link_command.ini")
     target_include_directories(benchmark_command_tests PRIVATE src tests)
     target_link_libraries(benchmark_command_tests PRIVATE ${options_window_libraries})
     if(SEVENZIP_CODEC_MODULE)

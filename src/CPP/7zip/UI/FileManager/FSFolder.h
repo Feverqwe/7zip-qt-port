@@ -1,6 +1,7 @@
 // Adapted from 7-Zip UI/FileManager/FSFolder.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
+#include "7zip/Archive/IArchive.h"
 #include "7zip/UI/FileManager/IFolder.h"
 #include "Common/MyCom.h"
 #include "Common/MyVector.h"
@@ -13,6 +14,7 @@
 
 namespace NFsFolder {
 struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
+    CByteBuffer Reparse;
     UInt64 PackSize = 0;
     bool PackSize_Defined = false;
     CFiTime ChangeTime{};
@@ -43,18 +45,20 @@ struct CFsFolderStat {
 // Source folder owner. Runtime panel loading and destructive mutations use
 // narrow Qt/platform services; CopyTo retains the upstream callback contract.
 class CFSFolder final : public IFolderFolder,
+                        public IArchiveGetRawProps,
                         public IFolderCalcItemFullSize,
                         public IFolderClone,
                         public IFolderSetFlatMode,
                         public IFolderWasChanged,
                         public IFolderOperations,
                         public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_6(IFolderFolder, IFolderCalcItemFullSize, IFolderClone, IFolderSetFlatMode,
-                         IFolderWasChanged, IFolderOperations)
+    Z7_COM_UNKNOWN_IMP_7(IFolderFolder, IArchiveGetRawProps, IFolderCalcItemFullSize, IFolderClone,
+                         IFolderSetFlatMode, IFolderWasChanged, IFolderOperations)
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     Z7_IFACE_COM7_IMP(IFolderCalcItemFullSize)
     Z7_IFACE_COM7_IMP(IFolderClone)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)

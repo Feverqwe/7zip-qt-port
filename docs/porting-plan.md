@@ -81,8 +81,8 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P2-03 (2026-10-03):
-**33/46 закрыты, 13 остаётся**; P0: 12/12, P1: 16/18, P2: 4/10, P3: 1/6.
+Текущий счёт после P2-05 (2026-10-03):
+**34/46 закрыты, 12 остаётся**; P0: 12/12, P1: 16/18, P2: 5/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -1129,6 +1129,15 @@ security boundary. Для Unix adapters документировать разл�
 hardlink bytes/identity, copy/move/delete и cancel; platform fixtures без live data.
 Не следовать ссылкам неявно и не путать link creation с extract policy.
 
+Приёмка2026-10-03: исходные LinkDialog/CApp::Link и native FSFolder/FSFolderCopy
+подключены к File menu; link objects не обходятся, сохраняют raw target и
+поддерживаемые metadata. Hardlink inode/bytes, permissions/privilege refusal,
+Windows junction, actual create/Cancel/selection, Linux real EXDEV и metadata
+проверены. Full macOS gate205/205PASS82.95s; Windows7/7PASS30.24s и
+Linux7/7PASS0.15s zero focused skips;12normal/compact EN/RU JSON reviewed,
+baseline382exact/173adapted/3local. Scope/deviations — audit § P2-05.
+Archive link storage/extract security остаются отдельными backend workflows.
+
 ### P2-06. Alternate streams и расширенные archive proxies
 
 **После:** P1-10, P2-05. **Источники:** FM `AltStreamsFolder.*`,
@@ -1159,6 +1168,12 @@ policy. Absolute extraction требует предварительного оп
 **Готово:** каждый control имеет effect/round-trip; root elimination,
 ACL/permissions/timestamps при поддержке, malicious paths/links/collisions,
 failure/cancel и partial writes. Differences исходного Windows и Unix recorded.
+
+Связанный оставшийся archive metadata consumer: source link storage и deletion
+after archive creation/update. Текущий guard запрещает deletion для input links;
+его нельзя снимать только потому, что filesystem Link принят в P2-05. Проверить
+native DirItems/Update link metadata и processed-item deletion вместе с backend
+archive boundary, включая dangling/cycle, no-follow refusal, failure и Cancel.
 
 ### P2-08. System page и file associations
 
@@ -1418,8 +1433,8 @@ scope. P0-01 уточняет symbols/dependencies, P3-05 подтверждае
 отдельно после проверок, включая только свои изменения. Сохранять чужие hunks,
 записывать local commit как evidence; push и публикация не разрешены.
 
-Следующий доступный результат — **P2-02**, SFX и external handlers/plugins,
-после принятого P1-18. P1-12/P1-13 сохраняют
+Следующий доступный результат — **P2-06**, ADS/streams и расширенные proxies,
+после принятого P2-05. P1-12/P1-13 сохраняют
 зависимые platform/shell функции, Finder — самостоятельный mandatory P3-03.1.
 Далее по приоритету и
 зависимостям. UX идёт вместе с каждым пакетом.

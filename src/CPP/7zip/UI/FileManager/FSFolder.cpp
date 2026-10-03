@@ -16,6 +16,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
 #include "qtlanguageservices.h"
+#include "qtlinkservices.h"
 #include <QDir>
 #include <QFile>
 #ifndef _WIN32
@@ -71,9 +72,7 @@ HRESULT CFsFolderStat::Enumerate() {
 #ifdef _WIN32
     NWindows::NFile::NFind::CDirEntry fi;
     while (enumerator.Next(fi)) {
-        if (QFileInfo(QtPath(Path + fi.Name)).isSymLink())
-            return E_NOTIMPL;
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             NumFolders++;
             Path.DeleteFrom(len);
             Path += fi.Name;
@@ -94,9 +93,7 @@ HRESULT CFsFolderStat::Enumerate() {
         NWindows::NFile::NFind::CFileInfo fi;
         if (!enumerator.Fill_FileInfo(entry, fi, false))
             return E_FAIL;
-        if (QFileInfo(QtPath(Path + fi.Name)).isSymLink())
-            return E_NOTIMPL;
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             NumFolders++;
             Path.DeleteFrom(len);
             Path += fi.Name;
@@ -220,6 +217,19 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
             fi.ChangeTime_Defined = false;
             fi.ChangeTime_WasRequested = false;
             fi.PackSize = fi.Size;
+            fi.Reparse.Free();
+#ifdef _WIN32
+            if (fi.HasReparsePoint()) {
+                fi.FileInfo_WasRequested = true;
+                BY_HANDLE_FILE_INFORMATION info;
+                if (NWindows::NFile::NIO::GetReparseData(_path + relPrefix + fi.Name, fi.Reparse,
+                                                         &info)) {
+                    fi.NumLinks = info.nNumberOfLinks;
+                    fi.FileIndex = (((UInt64)info.nFileIndexHigh) << 32) + info.nFileIndexLow;
+                    fi.FileInfo_Defined = true;
+                }
+            }
+#endif
             Files.Add(fi);
             if (SetCompleted && !SetCompleted(Files.Size()))
                 return E_ABORT;
@@ -353,7 +363,7 @@ Z7_COM7F_IMF(CFSFolder::CalcItemFullSize(UInt32 index, IProgress *progress)) {
     if (index >= Files.Size())
         return S_OK;
     CDirItem &fi = Files[index];
-    if (!fi.IsDir())
+    if (!fi.IsDir() || fi.IsOsSymLink())
         return S_OK;
     CFsFolderStat stat(_path + GetRelPath(fi), progress);
     RINOK(stat.Enumerate())
@@ -366,6 +376,45 @@ Z7_COM7F_IMF(CFSFolder::CalcItemFullSize(UInt32 index, IProgress *progress)) {
 
 Z7_COM7F_IMF(CFSFolder::SetFlatMode(Int32 flatMode)) {
     _flatMode = IntToBool(flatMode);
+    return S_OK;
+}
+
+// ---------- IArchiveGetRawProps (original FSFolder source bodies) ----------
+Z7_COM7F_IMF(CFSFolder::GetNumRawProps(UInt32 *numProps)) {
+#ifdef _WIN32
+    *numProps = 1;
+#else
+    // A POSIX readlink string is not an NT reparse record.
+    *numProps = 0;
+#endif
+    return S_OK;
+}
+Z7_COM7F_IMF(CFSFolder::GetRawPropInfo(UInt32 /* index */, BSTR *name, PROPID *propID)) {
+    *name = NULL;
+    *propID = kpidNtReparse;
+    return S_OK;
+}
+Z7_COM7F_IMF(CFSFolder::GetParent(UInt32 /* index */, UInt32 * /* parent */,
+                                  UInt32 * /* parentType */)) {
+    return E_FAIL;
+}
+Z7_COM7F_IMF(CFSFolder::GetRawProp(UInt32 index, PROPID propID, const void **data, UInt32 *dataSize,
+                                   UInt32 *propType)) {
+    *data = NULL;
+    *dataSize = 0;
+    *propType = 0;
+    if (index >= Files.Size())
+        return E_INVALIDARG;
+    if (propID == kpidNtReparse) {
+        const CDirItem &fi = Files[index];
+        const CByteBuffer &buf = fi.Reparse;
+        if (buf.Size() == 0)
+            return S_OK;
+        *data = buf;
+        *dataSize = (UInt32)buf.Size();
+        *propType = NPropDataType::kRaw;
+        return S_OK;
+    }
     return S_OK;
 }
 
@@ -720,14 +769,12 @@ Z7_COM7F_IMF(CFSFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress
         {
             const CDirItem &fi = Files[index];
             const FString fullPath = _path + GetRelPath(fi);
-            // Existing Qt transport refuses directly selected symbolic links.
-            // Source filesystem service retains recursive no-follow deletion.
             const QString path = QtPath(fullPath);
-            if (QFileInfo(path).isSymLink())
-                return E_NOTIMPL;
             if (CheckBreak && !CheckBreak(path))
                 return E_ABORT;
-            if (fi.IsDir()) {
+            if (fi.IsOsSymLink())
+                result = QtRemoveFileSystemEntry(path);
+            else if (fi.IsDir()) {
                 bool canceled = false;
                 result =
                     NWindows::NFile::NDir::RemoveDirWithSubItems(path, [&](const QString &item) {

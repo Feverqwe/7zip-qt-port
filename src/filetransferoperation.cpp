@@ -5,6 +5,7 @@
 #include "Common/StringConvert.h"
 #include "qtfiletransfercopycallback.h"
 #include "qtlanguageservices.h"
+#include "qtlinkservices.h"
 
 #include <QDir>
 #include <QDirIterator>
@@ -20,7 +21,7 @@ FileTransferOperation::FileTransferOperation(QStringList sources, QString destin
       move_(move), destinationKind_(destinationKind), adapter_(std::move(adapter)) {
     if (!adapter_.trySourceRename)
         adapter_.trySourceRename = [](const QString &source, const QString &stage) {
-            return QDir().rename(source, stage);
+            return QtRenameFileSystemEntry(source, stage);
         };
     if (!adapter_.removeSource)
         adapter_.removeSource = removeEntry;
@@ -61,9 +62,7 @@ int FileTransferOperation::askOverwrite(const QString &existing, const QString &
 }
 
 bool FileTransferOperation::removeEntry(const QString &path) {
-    if (QFileInfo(path).isDir())
-        return QDir(path).removeRecursively();
-    return QFile::remove(path);
+    return QtRemoveFileSystemEntry(path);
 }
 
 bool FileTransferOperation::validateEntry(const QString &source, QString *error) {
@@ -72,7 +71,9 @@ bool FileTransferOperation::validateEntry(const QString &source, QString *error)
         return false;
     }
     const QFileInfo info(source);
-    if (!info.exists() || info.isSymLink() || (!info.isFile() && !info.isDir())) {
+    if (QtIsFileSystemLink(source))
+        return true;
+    if (!info.exists() || (!info.isFile() && !info.isDir())) {
         *error = QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(source);
         return false;
     }
@@ -104,8 +105,9 @@ bool FileTransferOperation::copyEntry(const QString &source, const QString &targ
         return false;
     }
     const QFileInfo info(source);
-    const bool copied = info.isDir() ? NFsFolder::CopyFolder(state, source, target)
-                                     : NFsFolder::CopyFile_Ask(state, source, info, target);
+    const bool copied = info.isDir() && !QtIsFileSystemLink(source)
+                            ? NFsFolder::CopyFolder(state, source, target)
+                            : NFsFolder::CopyFile_Ask(state, source, info, target);
     *error = state.ErrorMessage;
     return copied;
 }
@@ -245,13 +247,14 @@ void FileTransferOperation::run() {
         const QString target =
             directPath ? destination_ : QDir(destinationDirectory).filePath(info.fileName());
         const QFileInfo targetInfo(target);
-        const bool samePath =
-            QDir::cleanPath(info.absoluteFilePath()) ==
-                QDir::cleanPath(targetInfo.absoluteFilePath()) ||
-            (targetInfo.exists() && info.canonicalFilePath() == targetInfo.canonicalFilePath());
-        if (!info.exists() || info.isSymLink() || (!info.isFile() && !info.isDir()) ||
-            targetInfo.isSymLink() || samePath || targets.contains(target) ||
-            (info.isDir() &&
+        const bool sourceLink = QtIsFileSystemLink(source);
+        const bool samePath = QDir::cleanPath(info.absoluteFilePath()) ==
+                                  QDir::cleanPath(targetInfo.absoluteFilePath()) ||
+                              (!sourceLink && targetInfo.exists() &&
+                               info.canonicalFilePath() == targetInfo.canonicalFilePath());
+        if ((!sourceLink && (!info.exists() || (!info.isFile() && !info.isDir()))) ||
+            QtIsFileSystemLink(target) || samePath || targets.contains(target) ||
+            (!sourceLink && info.isDir() &&
              NFsFolder::IsDestChild(info.canonicalFilePath(), canonicalDestination)))
             error = QtLocalText("Source or destination unavailable, or the name is already in use.",
                                 "Источник или назначение недоступны либо имя уже занято.");
@@ -268,7 +271,8 @@ void FileTransferOperation::run() {
         bool mayReplace = false;
         const QFileInfo sourceInfo(source);
         const QFileInfo existingInfo(target);
-        const bool merge = existingInfo.isDir() && sourceInfo.isDir();
+        const bool merge =
+            existingInfo.isDir() && sourceInfo.isDir() && !QtIsFileSystemLink(source);
         if (existingInfo.exists()) {
             if (existingInfo.isDir() != sourceInfo.isDir()) {
                 error =

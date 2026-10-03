@@ -8,6 +8,7 @@
 #include "Windows/FileName.h"
 #include "Windows/TimeUtils.h"
 #include "qtlanguageservices.h"
+#include "qtlinkservices.h"
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -18,6 +19,13 @@ bool CCopyStateIO::MyCopyFile(const QString &inPath, const QString &outPath,
     ErrorFileIndex = -1;
     ErrorMessage.clear();
     CurrentSize = 0;
+    NWindows::NFile::NFind::CFileInfo metadata;
+    const FString nativeInput = us2fs(QDir::toNativeSeparators(inPath).toStdWString().c_str());
+    const FString nativeOutput = us2fs(QDir::toNativeSeparators(outPath).toStdWString().c_str());
+    if (!metadata.Find(nativeInput) || metadata.IsOsSymLink()) {
+        ErrorFileIndex = 0;
+        return true;
+    }
     {
         const qint64 kBufSize = 1 << 16;
         QByteArray buf(kBufSize, Qt::Uninitialized);
@@ -63,9 +71,15 @@ bool CCopyStateIO::MyCopyFile(const QString &inPath, const QString &outPath,
             ErrorFileIndex = 1;
             return true;
         }
-        outFile.setFileTime(QFileInfo(inPath).lastModified(), QFileDevice::FileModificationTime);
     }
-    QFile::setPermissions(outPath, attrib);
+    Q_UNUSED(attrib)
+    if (!NWindows::NFile::NDir::SetDirTime(nativeOutput, &metadata.CTime, &metadata.ATime,
+                                           &metadata.MTime) ||
+        !NWindows::NFile::NDir::SetFileAttrib_PosixHighDetect(nativeOutput,
+                                                              metadata.GetWinAttrib())) {
+        ErrorFileIndex = 1;
+        return true;
+    }
     if (DeleteSrcFile) {
         if (!QFile::remove(inPath)) {
             ErrorFileIndex = 0;
@@ -234,7 +248,8 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
         return false;
     }
 
-    if (!srcFileInfo.exists() || !srcFileInfo.isFile() || srcFileInfo.isSymLink())
+    const bool isLink = QtIsFileSystemLink(srcPath);
+    if (!isLink && (!srcFileInfo.exists() || !srcFileInfo.isFile()))
         return ReportError(
             state, QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
 
@@ -275,11 +290,41 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
     }
     if (state.CurrentFile)
         state.CurrentFile(srcPath);
+    if (isLink) {
+        if (!state.CallProgress())
+            return false;
+        bool copied = state.MoveMode && QtRenameFileSystemEntry(srcPath, destPathNew);
+        if (!copied) {
+            if (!QtCopyFileSystemLink(srcPath, destPathNew))
+                return ReportError(state, QtLocalText("Could not copy link: %1",
+                                                      "Не удалось скопировать ссылку: %1")
+                                              .arg(srcPath));
+            if (!state.CallProgress()) {
+                QtRemoveFileSystemEntry(destPathNew);
+                return false;
+            }
+            if (state.MoveMode && !QtRemoveFileSystemEntry(srcPath)) {
+                QtRemoveFileSystemEntry(destPathNew);
+                return ReportError(state, QtLocalText("Could not move link: %1",
+                                                      "Не удалось переместить ссылку: %1")
+                                              .arg(srcPath));
+            }
+        }
+        NWindows::NFile::NFind::CFileInfo info;
+        if (info.Find(us2fs(QDir::toNativeSeparators(destPathNew).toStdWString().c_str())))
+            state.StartPos += info.Size;
+        return state.CallProgress();
+    }
     const bool copied = state.MoveMode
                             ? state.MoveFile_Sys(srcPath, destPathNew, srcFileInfo.permissions())
                             : state.CopyFile_Sys(srcPath, destPathNew, srcFileInfo.permissions());
-    if (!copied)
+    if (!copied) {
+        if (state.ErrorMessage.isEmpty())
+            state.ErrorMessage = QtLocalText("Could not copy or move link: %1",
+                                             "Не удалось скопировать или переместить ссылку: %1")
+                                     .arg(srcPath);
         return ReportError(state, state.ErrorMessage);
+    }
     return state.CallProgress();
 }
 
@@ -304,6 +349,14 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
     if (!source.exists() || !source.isDir() || source.isSymLink() || !source.isReadable())
         return ReportError(
             state, QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+    NWindows::NFile::NFind::CFileInfo metadata;
+    const FString nativeSource = us2fs(QDir::toNativeSeparators(srcPath).toStdWString().c_str());
+    const FString nativeDestination =
+        us2fs(QDir::toNativeSeparators(destPath).toStdWString().c_str());
+    if (!metadata.Find(nativeSource) || metadata.IsOsSymLink())
+        return ReportError(
+            state, QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+    const bool destinationExisted = QFileInfo::exists(destPath);
     if (state.MoveMode && state.MoveFile_Sys(srcPath, destPath, source.permissions()))
         return true;
     if (QFileInfo(destPath).isSymLink() ||
@@ -341,11 +394,7 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
         const QString name = QString::fromWCharArray(fs2us(fi.Name));
         const QString srcPath2 = CombinePath(srcPath, name);
         const QString destPath2 = CombinePath(destPath, name);
-        if (QFileInfo(srcPath2).isSymLink())
-            return ReportError(state, QtLocalText("Links are not supported yet: %1",
-                                                  "Ссылки пока не поддерживаются: %1")
-                                          .arg(srcPath2));
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             if (!CopyFolder(state, srcPath2, destPath2))
                 return false;
         } else {
@@ -353,6 +402,16 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
                 return false;
         }
     }
+    // Native services preserve the folder's metadata after child creation has
+    // finished changing its timestamps. POSIX ownership/ctime are not writable copies.
+    if (!destinationExisted &&
+        (!NWindows::NFile::NDir::SetDirTime(nativeDestination, &metadata.CTime, &metadata.ATime,
+                                            &metadata.MTime) ||
+         !NWindows::NFile::NDir::SetFileAttrib_PosixHighDetect(nativeDestination,
+                                                               metadata.GetWinAttrib())))
+        return ReportError(state, QtLocalText("Could not preserve folder metadata: %1",
+                                              "Не удалось сохранить метаданные папки: %1")
+                                      .arg(destPath));
     if (state.MoveMode && !QDir().rmdir(srcPath))
         return ReportError(
             state,
@@ -388,10 +447,7 @@ Z7_COM7F_IMF(CFSFolder::CopyTo(Int32 moveMode, const UInt32 *indices, UInt32 num
             return E_INVALIDARG;
         const CDirItem &fi = Files[index];
         const FString srcPath = _path + GetRelPath(fi);
-        if (QFileInfo(QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(srcPath))))
-                .isSymLink())
-            return E_NOTIMPL;
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             stat.Path = srcPath;
             RINOK(stat.Enumerate())
             stat.NumFolders++;
@@ -420,7 +476,7 @@ Z7_COM7F_IMF(CFSFolder::CopyTo(Int32 moveMode, const UInt32 *indices, UInt32 num
         const QString source = QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(srcPath)));
         const QString target =
             QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(destPath2)));
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             if (!CopyFolder(state, source, target))
                 return E_ABORT;
         } else if (!CopyFile_Ask(state, source, QFileInfo(source), target)) {
@@ -449,9 +505,7 @@ HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &dest
         NWindows::NFile::NFind::CFileInfo fi;
         if (!fi.Find(path))
             continue;
-        if (QFileInfo(QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(path)))).isSymLink())
-            return E_NOTIMPL;
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             stat.Path = path;
             RINOK(stat.Enumerate())
             stat.NumFolders++;
@@ -482,7 +536,7 @@ HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &dest
         destPath += fi.Name;
         const QString source = QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(path)));
         const QString target = QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(destPath)));
-        if (fi.IsDir()) {
+        if (fi.IsDir() && !fi.IsOsSymLink()) {
             if (!CopyFolder(state, source, target))
                 return E_ABORT;
         } else if (!CopyFile_Ask(state, source, QFileInfo(source), target)) {

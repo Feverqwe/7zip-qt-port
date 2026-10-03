@@ -190,7 +190,14 @@ void QtFileManagerCommands::Comment() {
     panel.RefreshListCtrl(selection);
     w.refreshActions();
 }
-void QtFileManagerCommands::Link() { Q_UNREACHABLE(); }
+void QtFileManagerCommands::Link() {
+    auto &w = window_;
+    QtAppOperationState::CallScope call(w.app_.QtOperations());
+    CPanel::CDisableTimerProcessing disableTimerProcessing1(w.app_.Panels[0]);
+    CPanel::CDisableTimerProcessing disableTimerProcessing2(w.app_.Panels[1]);
+    w.app_.Link();
+    w.refreshActions();
+}
 void QtFileManagerCommands::OpenAltStreams() { Q_UNREACHABLE(); }
 void QtFileManagerCommands::Change_AutoRefresh_Mode() {
     window_.app_.Change_AutoRefresh_Mode();

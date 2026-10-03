@@ -78,6 +78,7 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.combine_, IDM_COMBINE);
     Bind(w.properties_, IDM_PROPERTIES);
     Bind(w.findChild<QAction *>("commentAction"), IDM_COMMENT);
+    Bind(w.findChild<QAction *>("linkAction"), IDM_LINK);
     w.findChild<QAction *>("commentAction")->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
     Bind(w.createFolder_, IDM_CREATE_FOLDER);
     Bind(w.createFile_, IDM_CREATE_FILE);
@@ -331,6 +332,8 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return c.filesystem;
     case IDM_COMMENT:
         return c.comment;
+    case IDM_LINK:
+        return c.filesystem && c.one && c.selected;
     case IDM_SPLIT:
         return c.split;
     case IDM_COMBINE:

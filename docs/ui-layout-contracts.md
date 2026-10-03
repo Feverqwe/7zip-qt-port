@@ -1,5 +1,20 @@
 # Text specifications and geometry checks
 
+### Link (P2-05)
+
+Reference: pinned FileManager/LinkDialog.rc and source OnInit/OnButton_Link.
+Link from combo/browse precedes Link to combo/browse and current target text.
+Link Type contains Hard→File Symbolic→Directory Symbolic→Junction→WSL in source
+order. Link is the default footer button, followed by Cancel. Qt scrolls the
+content at compact sizes; desktop-only Junction/WSL remain visibly disabled on
+POSIX with a platform reason. Source radio/type choices and errors remain owned
+by CLinkDialog; Qt controls bind original captions and the Cancel402 language ID.
+Radio captions use the existing220-pixel language wrapping binding so native
+Windows EN/RU font metrics do not force horizontal clipping at360 pixels.
+`link_dialog` writes EN/RU520×500/360×300 JSON and checks named controls after
+scrolling and footer exposure. Twelve current reports reviewed across macOS,
+Windows and Linux2026-10-03. Rendered Windows pixel parity remains unverified.
+
 ### Benchmark (P2-04)
 
 Reference: pinned `CPP/7zip/UI/GUI/BenchmarkDialog.rc` and its source state bodies.

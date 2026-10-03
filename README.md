@@ -4,12 +4,18 @@
 для Windows, macOS и Linux. Цель — перенос исходного кода с адаптацией UI;
 архивные форматы и сжатие обеспечивает официальный движок 7-Zip.
 
+P2-05 принят: File → Link использует исходные LinkDialog/CApp::Link и native
+platform services. Copy/Move/Delete сохраняют link object и raw target;
+hardlink identity, junction, metadata, privilege refusal, Cancel и UX проверены.
+Full macOS gate205/205 PASS82.95s; Windows7/7 и Linux7/7 без пропусков
+(2026-10-03). План закрыт на34/46; следующий шаг — P2-06 ADS/streams.
+Нативная проверка Finder остаётся отдельным обязательным P3-03.1.
+
 P2-04 принят: Benchmark в Tools использует перенесённые исходные Bench и
 BenchmarkDialog. Метрики, память, Restart/Stop/Close и worker join проверены;
 backend удерживает нативные providers/services, Qt отображает исходные результаты.
 Full macOS gate202/202 PASS89.68s; финальные affected3/3, Windows5/5 и Linux5/5
-плюс финальные3/3 прошли без пропусков (2026-10-03). План закрыт на33/46;
-следующий шаг — P2-05 Links, junctions и metadata.
+плюс финальные3/3 прошли без пропусков (2026-10-03).
 
 P2-03 принят: исходные PanelCrc/HashCalc/HashGUI заменяют прежнюю checksum
 orchestration; выбор файлов, scan/read, методы и окно результатов идут через

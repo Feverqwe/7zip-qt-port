@@ -630,22 +630,24 @@ class FileTransferTests : public QObject {
     }
 
 #ifndef Q_OS_WIN
-    void rejectsNestedSymbolicLinkForCopyAndMove() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        QVERIFY(QDir(temp.path()).mkpath("source/child"));
-        QVERIFY(QDir(temp.path()).mkdir("destination"));
-        const QString source = temp.filePath("source");
-        QVERIFY(QFile::link(temp.path(), temp.filePath("source/child/link")));
+    void preservesNestedSymbolicLinkForCopyAndMove() {
         for (bool move : {false, true}) {
+            QTemporaryDir temp;
+            QVERIFY(temp.isValid());
+            QVERIFY(QDir(temp.path()).mkpath("source/child"));
+            QVERIFY(QDir(temp.path()).mkdir("destination"));
+            const QString source = temp.filePath("source");
+            QVERIFY(QFile::link(temp.path(), temp.filePath("source/child/link")));
             FileTransferOperation operation({source}, temp.filePath("destination"), move);
             QSignalSpy finished(&operation, &FileTransferOperation::result);
             operation.start();
             QVERIFY(operation.wait(30000));
             QTRY_COMPARE(finished.size(), 1);
-            QVERIFY(!finished.first().first().toBool());
-            QVERIFY(QDir(source).exists());
-            QVERIFY(!QDir(temp.filePath("destination/source")).exists());
+            QVERIFY2(finished.first().first().toBool(), qPrintable(finished.first()[1].toString()));
+            QCOMPARE(QDir(source).exists(), !move);
+            const QFileInfo copied(temp.filePath("destination/source/child/link"));
+            QVERIFY(copied.isSymLink());
+            QCOMPARE(copied.symLinkTarget(), temp.path());
         }
     }
 #endif

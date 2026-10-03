@@ -2,6 +2,21 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+P2-05: source LinkDialog/CApp::Link own selection, defaults, path/type/data
+validation and original hardlink/reparse command semantics. CQtLinkWindow owns
+only Qt controls, language bindings and scrolling. The partial source FM startup
+initializes original Windows process privileges through exact MemoryLock.
+Shared qtlinkservices belongs to sevenzip_filesystem: raw-link cloning and
+no-copy rename reuse FileLink/FileDir operations, with a POSIX rename adapter
+that lets callers handle EXDEV without reading target bytes. Source FSFolder
+owns Windows raw reparse properties and no-follow deletion; FSFolderCopy owns
+leaf-link copy/move, progress and native file/new-folder metadata preservation.
+FileTransferOperation retains staging, publication, cancellation and rollback.
+Destination links remain refused; source links are leaves, including dangling
+and cyclic targets. POSIX edit stages a replacement in the same parent before
+rename. Archive link storage/extraction and their security policy have separate
+backend boundaries and are not enabled by the filesystem Link command.
+
 P2-04: complete source Common/Bench owns generation, timing and rating
 calculations in sevenzip_common. Source GUI/BenchmarkDialog owns properties,
 memory refusal, native worker synchronization, callbacks, passes and results in

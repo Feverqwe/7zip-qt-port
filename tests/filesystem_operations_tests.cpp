@@ -154,8 +154,9 @@ class FilesystemOperationsTests : public QObject {
         NFsFolder::CFSFolder folder(temp.path());
         folder.AddPath(temp.filePath("tree/directory link"));
         UInt32 index = 0;
-        QVERIFY(!folder.Delete(&index, 1));
-        QVERIFY(QFileInfo(temp.filePath("tree/directory link")).isSymLink());
+        QVERIFY(folder.Delete(&index, 1));
+        QVERIFY(!QFileInfo(temp.filePath("tree/directory link")).isSymLink());
+        QCOMPARE(read(temp.filePath("outside/keep")), QByteArray("keep"));
         folder.AddPath(temp.filePath("tree"));
         index = 1;
         QVERIFY(folder.Delete(&index, 1));

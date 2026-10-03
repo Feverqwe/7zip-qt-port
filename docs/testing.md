@@ -1,5 +1,19 @@
 # Regression strategy
 
+P2-05 focused tests: `link_dialog` exercises original create/type/nonempty-data
+checks, shared hardlink bytes, raw relative/absolute/dangling/cycle targets,
+Windows junction and platform retarget/clear, Cancel and EN/RU normal/compact
+geometry. `link_command` exercises actual File menu dispatch, selection lifetime
+and multiple-selection/archive refusal. `filesystem_link` covers native inode
+identity, file/new-folder timestamps/attributes, raw-link copy/move/delete,
+permission refusal, cancellation and occupied destinations. Linux fallback rows
+use private /tmp and /dev/shm fixtures on distinct devices to test real EXDEV in
+the source primitive and staged consumer; other platforms force the adapter
+fallback without claiming a real second volume. Direct consumers are
+`fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `filesystem_operations`.
+Fixtures never use user archives or targets. Geometry proves accessible controls
+and source grouping, not rendered 7zFM pixel fidelity.
+
 P2-04 accepted checks: `native_benchmark` exercises original Bench encode/decode callbacks,
 callback cancellation and a bounded real GUI run (256KiB dictionary, one thread,
 one pass,50ms benchmark interval; frequency calibration adds several seconds).

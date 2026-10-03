@@ -13,11 +13,23 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-05: Links/junctions/filesystem metadata с исходными LinkDialog/CApp::Link,
-FSFolder/FSFolderCopy и Windows FileDir/FileLink/FileIO. Сначала inspect bodies
-и platform capabilities; сохранить source validation и native platform adapters.
-Проверить relative/absolute/dangling/cycle, hardlink identity/bytes, privilege
-refusal, copy/move/delete/cancel и EN/RU normal/compact UX.
+P2-06: ADS/streams/CProxyArc2 по platform capabilities с исходными
+AltStreamsFolder/FSFolder/ArchiveFolder/Agent proxies и Windows FileIO/FileFind.
+Сначала inspect bodies и native Windows capability; Unix unsupported ветки
+disabled с причиной. Подключить реальные list/open/copy/delete/update/Properties
+consumers, failures/Cancel и EN/RU UX, сохранить baseline и source control flow.
+
+P2-05 принят целой итерацией2026-10-03: complete LinkDialog/CApp::Link,
+partial original FM privilege startup, raw Windows FSFolder properties,
+native leaf Copy/Move/Delete и file/new-folder metadata. Actual File menu,
+selection/create/Cancel, raw relative/absolute/dangling/cycle/directory links,
+Windows junction, hardlink inode/bytes, privilege refusal и Linux real EXDEV
+проверены. Full macOS unsandboxed format/build/205CTestPASS82.95s;
+Windows7/7PASS30.24s, Linux7/7PASS0.15s zero focused skips;
+12EN/RU normal/compact JSON reviewed, baseline382exact/173adapted/3local.
+Counts34/46,12remain;P0 12/12,P1 16/18,P2 5/10,P3 1/6. Whole local commit;
+no push/upstream writes. Finder отдельно mandatory P3-03.1, rendered/full P3
+не закрыты. Archive storage/deletion link consumer остаётся P2-07 с явным guard.
 
 P2-04 принят целой итерацией2026-10-03: complete Bench/BenchmarkDialog,
 partial original CompressCall Benchmark entry, native backend providers/services,

@@ -1,12 +1,17 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/FM.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Partial port: WM_CLOSE, WM_COMMAND/toolbar dispatch and IsLargePageSupported.
-// Full startup/window placement/drop retain their mandatory plan owners.
+// Link type/privilege initialization is also ported; other startup/window
+// placement/drop retain their mandatory plan owners.
 #include "App.h"
 #include "Common/MyWindows.h"
 #include "MyLoadMenu.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemanagerwindowservices.h"
+#include "qtlinkservices.h"
+#ifdef _WIN32
+#include "Windows/MemoryLock.h"
+#endif
 
 static void ExecuteCommand(unsigned commandID, CApp &g_App,
                            IQtFileManagerMenuCommandServices &services) {
@@ -90,3 +95,32 @@ bool IsLargePageSupported() {
     return false;
 #endif
 }
+
+#ifdef _WIN32
+bool g_SymLink_Supported = false;
+
+static void Set_SymLink_Supported() {
+    // g_SymLink_Supported = false;
+    const DWORD v = GetVersion();
+    // low byte is major version:
+    if ((Byte)v < 6)
+        return;
+    g_SymLink_Supported = true;
+    // if (g_SymLink_Supported)
+    {
+        NWindows::NSecurity::EnablePrivilege_SymLink();
+    }
+}
+
+void QtInitializeLinkPlatform() {
+    static const bool initialized = [] {
+        Set_SymLink_Supported();
+        return true;
+    }();
+    (void)initialized;
+}
+#else
+// POSIX symbolic links have no Windows type/privilege initialization.
+bool g_SymLink_Supported = true;
+void QtInitializeLinkPlatform() {}
+#endif
