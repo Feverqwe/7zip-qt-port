@@ -4,6 +4,10 @@
 для Windows, macOS и Linux. Цель — перенос исходного кода с адаптацией UI;
 архивные форматы и сжатие обеспечивает официальный движок 7-Zip.
 
+Для Linux/Windows проверок настроены общие x64 Hyper-V runners с отдельными
+snapshot Sevenzip и сборкой официального движка из закреплённой ревизии. Команды и ограничения:
+[Hyper-V runners](docs/hyperv-runners.md).
+
 P2-06 принят: исходные AltStreamsFolder и Agent/CProxyArc2 подключены к
 File → Alternate streams, native raw/tree properties и операциям над NTFS ADS.
 Архивные WIM Rename/Delete используют исходные callbacks и официальный native

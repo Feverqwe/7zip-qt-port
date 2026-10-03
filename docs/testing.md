@@ -129,9 +129,10 @@ Full unsandboxed macOS formatting/all-target build/197 CTest passes107.31s,
 Qt6.11.2 arm64. These checks do not establish rendered GUI parity or full P3.
 
 VM orchestration belongs to the global `runners` skill and is outside this
-project's CTest gate. See `~/.codex/skills/runners/references/create.md` for
-host/guest startup checks and own versus communal state. VM preparation alone
-does not prove OS installation or compiler/Qt readiness.
+project's CTest gate. Use `python3 scripts/hyperv-runner.py check linux` or
+`check windows` for the current shared Hyper-V guests. See
+[Hyper-V runners](hyperv-runners.md) for snapshot scope and recorded results.
+Readiness probes do not prove application acceptance or desktop parity.
 
 P1-18 focused suites are `native_rar_memory` and `native_rar_ui`.
 The first invokes actual source Rar5Handler with stored RAR5/RAR7 2 MiB dictionary

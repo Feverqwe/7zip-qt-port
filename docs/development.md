@@ -91,32 +91,27 @@ Some Apple Command Line Tools installations contain C++ standard headers inside 
 
 ## Automation
 
-The global `runners` skill (`~/.codex/skills/runners/SKILL.md`) creates
-independent Linux/Windows ARM64 VMs from local cloud images or Windows ISO/MSI/
-driver inputs on a macOS ARM64 host with UTM installed. Bundled CLI launchers
-load UTM's QEMU/swtpm libraries directly; orchestration uses QMP/SSH without
-AppleScript or UTM application control. Default `--scope own`
-uses `build/runners/own`; `--scope communal` uses a common local-user state root,
-overridable with `--state-root`. Each scope owns its writable disks, SSH keys,
-ports and lifecycle state. See the skill's `references/create.md` creation guide.
-`create` prepares media/state; `start` boots it, with `--install` for Windows
-Setup. `probe` checks connectivity/dependencies. `sync`
-copies the current Git-visible worktree, including uncommitted files, to a
-fresh guest directory; `check` also invokes the full project gate there.
-Generated secrets, disks and seeds remain in private ignored runtime state.
-Connection-only `--scope htopqt` can reuse the sibling VMs; their lifecycle and
-secrets remain with that owner. VM creation and OS/toolchain acceptance are separate.
-The helper is local VM/build integration glue; 7zFM has no corresponding runner
-implementation to port. Earlier htopQt SSH/snapshot transfers were verified on
-2026-10-02; those results do not validate newly created VM toolchains. Network/
-proxy and compiler/Qt/package provisioning must be checked in each guest.
+Use the existing shared x64 Hyper-V guests on Windows host `192.168.1.14`:
 
-The skill is installed globally as `~/.codex/skills/runners`. Its bundled
-`scripts/runner.py --project /absolute/project/path` works from other checkouts;
-this repository's `scripts/runner.py` remains a compatibility wrapper around
-the global skill package, respecting `CODEX_HOME`. There is no repository-local
-copy of the skill or its VM tests. Installation copies only code/templates/references,
-not VM state or credentials.
+```sh
+python3 scripts/hyperv-runner.py probe linux
+python3 scripts/hyperv-runner.py probe windows
+python3 scripts/hyperv-runner.py check linux
+python3 scripts/hyperv-runner.py check windows
+```
+
+Add `--preset release` to run Debug's full gate followed by the Release build
+and CTest. The helper uses the global `runners` skill's authenticated readiness
+command, starts only the requested guest if needed, and discovers its current
+DHCP address. Host storage stays on `D:\runner`; project snapshots and logs
+use separate Sevenzip guest directories. See [Hyper-V runners](hyperv-runners.md)
+for toolchains, pinned engine preparation, snapshot scope and validation results.
+This is project integration glue; upstream 7zFM has no runner implementation.
+
+The old `scripts/runner.py` wrapper is retained for explicitly selected local
+QEMU/UTM workflows supported by the global skill. Historical ARM64 VM checks
+do not validate the current Hyper-V guests; the removed htopQt QEMU VMs must
+not be selected as the default route.
 
 Local task memory is initialized by the setup script in `.codex/memory/` and
 `.codex/notes/`. Repeated setup preserves the populated index, notes, and
