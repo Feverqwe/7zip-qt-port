@@ -528,6 +528,18 @@ static void AddPathToMessage(UString &s, const FString &path) {
     s += fs2us(path);
 }
 
+HRESULT CArchiveExtractCallback::CheckQtLinkPolicy(const FString &path, const FString &target,
+                                                   bool relative) const {
+    if (!_ntOptions.QtPathPolicy)
+        return S_OK;
+    UString message;
+    const HRESULT result = _ntOptions.QtPathPolicy->CheckLink(path, target, relative, message);
+    if (result != S_OK) {
+        RINOK(_extractCallback2->MessageError(message))
+    }
+    return result;
+}
+
 HRESULT CArchiveExtractCallback::SendMessageError(const char *message, const FString &path) const {
     UString s(message);
     AddPathToMessage(s, path);
@@ -1243,11 +1255,6 @@ HRESULT CArchiveExtractCallback::GetExtractStream(CMyComPtr<ISequentialOutStream
     CorrectPathParts();
     UString processedPath(MakePathFromParts(_item.PathParts));
 
-    if (!isAnti) {
-        // 21.04: CreateFolders doesn't change (_item.PathParts)
-        CreateFolders();
-    }
-
     FString fullProcessedPath(us2fs(processedPath));
     if (_pathMode != NExtract::NPathMode::kAbsPaths || !NName::IsAbsolutePath(processedPath)) {
         fullProcessedPath = MakePath_from_2_Parts(_dirPathPrefix, fullProcessedPath);
@@ -1266,6 +1273,21 @@ HRESULT CArchiveExtractCallback::GetExtractStream(CMyComPtr<ISequentialOutStream
         }
     }
 #endif // SUPPORT_ALT_STREAMS
+
+    if (_ntOptions.QtPathPolicy) {
+        UString message;
+        const HRESULT result = _ntOptions.QtPathPolicy->CheckPath(fullProcessedPath, _item.IsDir,
+                                                                  _item.IsAltStream, message);
+        if (result != S_OK) {
+            RINOK(_extractCallback2->MessageError(message))
+            return result;
+        }
+    }
+
+    if (!isAnti) {
+        // 21.04: CreateFolders doesn't change (_item.PathParts)
+        CreateFolders();
+    }
 
     if (_item.IsDir) {
         _diskFilePath = fullProcessedPath;
@@ -1949,6 +1971,7 @@ HRESULT CArchiveExtractCallback::CreateHardLink2(const FString &newFilePath,
                                                  const FString &existFilePath,
                                                  bool &link_was_Created) const {
     link_was_Created = false;
+    RINOK(CheckQtLinkPolicy(newFilePath, existFilePath, false))
     if (_ntOptions.SymLinks_DangerousLevel <= k_DangLevel_MAX_for_Link_over_Link) {
         NFind::CFileInfo fi;
         if (fi.Find(existFilePath) && fi.IsOsSymLink())
@@ -2116,6 +2139,8 @@ static HRESULT SetLink2(const CArchiveExtractCallback &callback, const CPostLink
     }
     if (target.IsEmpty())
         return callback.SendMessageError("Empty link", fullProcessedPath_from);
+    if (!link.Is_HardLink())
+        RINOK(callback.CheckQtLinkPolicy(fullProcessedPath_from, target, link.isRelative))
 
     if (link.Is_HardLink() /* || link.IsCopyLink */) {
         // if (link.isHardLink)

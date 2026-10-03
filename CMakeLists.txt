@@ -328,7 +328,7 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/FileManager/MenuPage.cpp src/CPP/7zip/UI/FileManager/MenuPage.h
     src/CPP/7zip/UI/FileManager/OptionsDialog.cpp src/qtfmoptionsdialog.h
     src/qtarchivebatchopen.cpp src/qtarchivebatchopen.h
-    src/qtarchivebatchextract.cpp src/qtarchivebatchextract.h
+    src/qtarchivebatchextract.cpp src/qtarchivebatchextract.h src/qtextractpathpolicy.h
     src/qtarchivebackendrequest.cpp src/qtarchivebackendrequest.h
     src/qtarchivesourceupdate.cpp src/qtarchivesourceupdate.h
     src/qtarchivereopen.cpp src/qtarchivereopen.h
@@ -399,6 +399,12 @@ if(BUILD_TESTING)
     add_test(NAME temp_cleanup COMMAND temp_cleanup_tests -silent)
     set_tests_properties(temp_cleanup PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/temp-cleanup-settings.ini" TIMEOUT 30)
+    qt_add_executable(temp_detached_launch_tests tests/temp_detached_launch_tests.cpp)
+    target_link_libraries(temp_detached_launch_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME temp_detached_launch COMMAND temp_detached_launch_tests -silent)
+    set_tests_properties(temp_detached_launch PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/temp-detached-settings.ini"
+        TIMEOUT 30)
     set_tests_properties(owned_temp PROPERTIES TIMEOUT 30)
     qt_add_executable(help_source_tests tests/help_source_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(help_source_tests PRIVATE src tests)
@@ -588,6 +594,29 @@ if(BUILD_TESTING)
     target_link_libraries(source_extract_backend_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME source_extract_backend COMMAND source_extract_backend_tests -silent)
     set_tests_properties(source_extract_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    get_target_property(source_extract_advanced_sources source_extract_backend_tests SOURCES)
+    list(REMOVE_ITEM source_extract_advanced_sources tests/source_extract_backend_tests.cpp)
+    qt_add_executable(source_extract_advanced_tests tests/source_extract_advanced_tests.cpp
+        tests/layout_inspection.cpp ${source_extract_advanced_sources})
+    target_include_directories(source_extract_advanced_tests PRIVATE src)
+    target_link_libraries(source_extract_advanced_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(source_extract_advanced_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME source_extract_advanced COMMAND source_extract_advanced_tests -silent)
+    qt_add_executable(source_link_extract_tests tests/source_link_extract_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(source_link_extract_tests PRIVATE src)
+    target_link_libraries(source_link_extract_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(source_link_extract_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME source_link_extract COMMAND source_link_extract_tests -silent)
+    set_tests_properties(source_link_extract PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(source_extract_advanced PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 60)
     qt_add_executable(source_extract_contract_tests tests/source_extract_contract_tests.cpp
         src/archivebackend.cpp src/archivebackend_listing.cpp src/archivebackend_mutations.cpp
         src/archivebackend_validation.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp)
@@ -1679,6 +1708,32 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME codec_update COMMAND codec_update_tests -silent)
+    get_target_property(source_link_options_sources compression_preferences_tests SOURCES)
+    list(REMOVE_ITEM source_link_options_sources tests/compression_preferences_tests.cpp)
+    set(source_link_storage_sources ${codec_update_sources} ${source_link_options_sources})
+    list(REMOVE_DUPLICATES source_link_storage_sources)
+    qt_add_executable(source_link_storage_tests tests/source_link_storage_tests.cpp
+        tests/layout_inspection.cpp ${source_link_storage_sources})
+    target_include_directories(source_link_storage_tests PRIVATE src tests)
+    target_link_libraries(source_link_storage_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(source_link_storage_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME source_link_storage COMMAND source_link_storage_tests -silent)
+    set_tests_properties(source_link_storage PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(source_metadata_storage_tests tests/source_metadata_storage_tests.cpp
+        tests/layout_inspection.cpp ${source_link_storage_sources})
+    target_include_directories(source_metadata_storage_tests PRIVATE src tests)
+    target_link_libraries(source_metadata_storage_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(source_metadata_storage_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME source_metadata_storage COMMAND source_metadata_storage_tests -silent)
+    set_tests_properties(source_metadata_storage PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(codec_commands_ui_tests tests/codec_commands_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
     target_include_directories(codec_commands_ui_tests PRIVATE src tests)
     target_link_libraries(codec_commands_ui_tests PRIVATE ${options_window_libraries})
@@ -1835,6 +1890,35 @@ foreach(language_consumer IN LISTS language_consumers)
         target_sources(${language_consumer} PRIVATE src/mainwindow_language.cpp)
     endif()
 endforeach()
+
+if(BUILD_TESTING)
+    get_target_property(startup_path_sources ui_navigation_tests SOURCES)
+    list(REMOVE_ITEM startup_path_sources tests/ui_navigation_tests.cpp)
+    get_target_property(startup_path_libraries ui_navigation_tests LINK_LIBRARIES)
+    qt_add_executable(startup_path_tests tests/startup_path_tests.cpp ${startup_path_sources})
+    target_include_directories(startup_path_tests PRIVATE src tests)
+    target_link_libraries(startup_path_tests PRIVATE ${startup_path_libraries})
+    add_test(NAME startup_path COMMAND startup_path_tests -silent)
+    set_tests_properties(startup_path PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/startup-path-settings.ini"
+        TIMEOUT 30)
+endif()
+
+if(BUILD_TESTING)
+    get_target_property(metadata_ui_sources ui_update_modes_tests SOURCES)
+    list(REMOVE_ITEM metadata_ui_sources tests/ui_update_modes_tests.cpp)
+    get_target_property(metadata_ui_libraries ui_update_modes_tests LINK_LIBRARIES)
+    qt_add_executable(archive_metadata_ui_tests tests/archive_metadata_ui_tests.cpp ${metadata_ui_sources})
+    target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
+    target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_metadata_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME archive_metadata_ui COMMAND archive_metadata_ui_tests -silent)
+    set_tests_properties(archive_metadata_ui PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-metadata-ui.ini")
+endif()
 
 # Apply startup isolation after registering every consumer, including Language.
 # Parallel CTest runs share these generated artifact directories. Keep their

@@ -12,6 +12,7 @@
 #include "mainwindow.h"
 #include "qtarchivebatchextract.h"
 #include "qtarchivefileresource.h"
+#include "qtextractpathpolicy.h"
 #include "qtlangcontrols.h"
 #include <QScopeGuard>
 #include <QScopedValueRollback>
@@ -121,7 +122,8 @@ void MainWindow::extract(bool onlySelected) {
         return;
     if (onlySelected && sourceOperatedIndices().IsEmpty())
         return;
-    ExtractDialog dialog(copyDefaultDestination(), {}, onlySelected, this);
+    ExtractDialog dialog(copyDefaultDestination(), {}, onlySelected || !archiveFolder_.isEmpty(),
+                         this);
     if (dialog.exec() != QDialog::Accepted)
         return;
     const QString destination = dialog.destination();
@@ -187,7 +189,8 @@ void MainWindow::updateArchiveFromDialog(const QStringList &sources,
     }
     QString root, error;
     QStringList relativePaths;
-    if (!ArchiveBackend::prepareSourceSelection(archive_, sources, &root, &relativePaths, &error)) {
+    if (!ArchiveBackend::prepareSourceSelection(archive_, sources, &root, &relativePaths, &error,
+                                                options.SymLinks.Val)) {
         QMessageBox::warning(this, QtLangText(IDD_COMPRESS), error);
         return;
     }
@@ -268,18 +271,39 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                         QStringLiteral("Исходное извлечение для этого архива недоступно.")));
         return true;
     }
-    if ((!nativeRar && options.overwriteMode != ExtractionOptions::OverwriteMode::Ask) ||
-        !resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
+    if (!resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
         return false;
+    const bool scoped = onlySelected || !archiveFolder_.isEmpty();
+    CRecordVector<UInt32> indices;
+    QStringList validationNames = names;
+    if (scoped) {
+        if (onlySelected)
+            indices = explicitIndices ? *explicitIndices : sourceOperatedIndices();
+        else {
+            UInt32 count = 0;
+            if (folder->GetNumberOfItems(&count) != S_OK)
+                return true;
+            for (UInt32 index = 0; index < count; ++index)
+                indices.Add(index);
+        }
+        if (indices.IsEmpty())
+            return true;
+        validationNames = archivePathsForIndices(indices);
+        if (validationNames.isEmpty())
+            return true;
+    }
     {
         QString validationError;
-        if (!backend_->validateExtraction(destination, names, options, &validationError)) {
+        const bool sourceLinks = resource->HasNativeExtractService();
+        if (!backend_->validateExtraction(destination, validationNames, options, &validationError,
+                                          sourceLinks)) {
             QMessageBox::warning(this, QtLangText(IDS_PROGRESS_EXTRACTING), validationError);
             return true;
         }
         const QString output = QFileInfo(destination).absoluteFilePath();
         if (!QDir().mkpath(output) ||
-            !backend_->validateExtraction(output, names, options, &validationError)) {
+            !backend_->validateExtraction(output, validationNames, options, &validationError,
+                                          sourceLinks)) {
             QMessageBox::warning(
                 this, QtLangText(IDS_PROGRESS_EXTRACTING),
                 validationError.isEmpty()
@@ -301,8 +325,7 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                 ExtractionOptions sourceOptions = options;
                 // Validation above implements RejectExisting. If a file appears
                 // afterwards, source Skip also preserves it without overwriting.
-                if (nativeRar &&
-                    sourceOptions.overwriteMode == ExtractionOptions::OverwriteMode::RejectExisting)
+                if (sourceOptions.overwriteMode == ExtractionOptions::OverwriteMode::RejectExisting)
                     sourceOptions.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
                 result = RunQtArchiveBatchExtract(*backend_, {archive_}, output,
                                                   password.isEmpty() ? archivePassword_ : password,
@@ -320,32 +343,28 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             backendFinished(ok, message, result.Result, result.MessageWasDisplayed);
             return true;
         }
-        CRecordVector<UInt32> indices;
-        if (onlySelected)
-            indices = explicitIndices ? *explicitIndices : sourceOperatedIndices();
-        else {
-            UInt32 count = 0;
-            if (folder->GetNumberOfItems(&count) != S_OK)
-                return true;
-            for (UInt32 index = 0; index < count; ++index)
-                indices.Add(index);
-        }
-        if (indices.IsEmpty())
-            return true;
         previousState_ = state_;
         setState(State::Operating);
         operationName_ = QtLangText(IDS_COPYING); // PanelCopy::CopyTo title owner
         appendJournal(operationName_ + QStringLiteral(": ") + output);
         journalAction_->setEnabled(true);
         CCopyToOptions sourceOptions;
+        CQtExtractPathPolicy pathPolicy(output);
+        CExtractNtOptions ntOptions;
+        ntOptions.NtSecurity = options.NtSecurity;
+        ntOptions.QtPathPolicy = &pathPolicy;
+        QScopedValueRollback<const CExtractNtOptions *> extractOptions(folder->QtExtractNtOptions,
+                                                                       &ntOptions);
         sourceOptions.extractMode = options.pathMode != ExtractionOptions::PathMode::CurrentPaths;
-        sourceOptions.folder = ToUString(output);
+        sourceOptions.folder = ToUString(QDir::toNativeSeparators(output));
         sourceOptions.pathMode = options.pathMode == ExtractionOptions::PathMode::NoPaths
                                      ? NExtract::NPathMode::kNoPaths
+                                 : options.pathMode == ExtractionOptions::PathMode::AbsolutePaths
+                                     ? NExtract::NPathMode::kAbsPaths
                                      : NExtract::NPathMode::kFullPaths;
         sourceOptions.NeedRegistryZone = false;
         sourceOptions.showErrorMessages = true;
-        if (nativeRar) {
+        {
             switch (options.overwriteMode) {
             case ExtractionOptions::OverwriteMode::Ask:
                 break;

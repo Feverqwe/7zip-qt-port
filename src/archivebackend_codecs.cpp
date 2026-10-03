@@ -1,5 +1,7 @@
 #include "7zip/Common/CreateCoder.h"
+#include "7zip/IPassword.h"
 #include "7zip/UI/Common/DefaultName.h"
+#include "7zip/UI/Common/SetProperties.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
@@ -79,10 +81,46 @@ HRESULT ArchiveBackend::updateNativeTree(const std::shared_ptr<ArchiveNativeOpen
     return writer->UpdateItems(output, count, callback);
 }
 
+HRESULT ArchiveBackend::updateNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                            ISequentialOutStream *output, UInt32 count,
+                                            IArchiveUpdateCallback *callback,
+                                            const CompressionOptions &options) const {
+    if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly ||
+        reader->hasNestedStream() || reader->arc().ArcStreamOffset != 0)
+        return E_NOTIMPL;
+    CMyComPtr<IOutArchive> writer;
+    RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
+    const auto *format = reader->formatInfo();
+    if (!format || (options.SymLinks.Val && !format->Flags_SymLinks()) ||
+        (options.HardLinks.Val && !format->Flags_HardLinks()) ||
+        (options.AltStreams.Val && !format->Flags_AltStreams()) ||
+        (options.NtSecurity.Val && !format->Flags_NtSecurity()))
+        return E_NOTIMPL;
+    CMyComPtr<ICryptoGetTextPassword2> crypto;
+    callback->QueryInterface(IID_ICryptoGetTextPassword2, (void **)&crypto);
+    QString password;
+    if (crypto) {
+        Int32 defined = 0;
+        CMyComBSTR value;
+        RINOK(crypto->CryptoGetTextPassword2(&defined, &value))
+        if (defined)
+            password = QString::fromWCharArray(value);
+    }
+    CObjectVector<CProperty> properties;
+    QString error;
+    if (!compressionProperties(QString::fromWCharArray(format->Name.Ptr()).toLower(), password,
+                               options.EncryptHeaders, options, &properties, &error))
+        return E_INVALIDARG;
+    // Common/Update.cpp's writer property and callback sequence. No staging
+    // layer intervenes between native reparse properties and the handler.
+    RINOK(SetProperties(writer, properties))
+    return writer->UpdateItems(output, count, callback);
+}
+
 HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                              const UInt32 *indices, UInt32 count, Int32 testMode,
                                              IArchiveExtractCallback *callback) const {
-    if (!reader || (!reader->hasNativeRarExtractor() && !reader->hasNativeHashExtractor()))
+    if (!reader || !reader->arc().Archive)
         return E_NOTIMPL;
     if (reader->hasNativeHashExtractor()) {
         RINOK(validateNativeHashReads(*reader, indices, count))
@@ -189,7 +227,14 @@ bool ArchiveBackend::selectCreationFormat(const QString &archive, const QStringL
         // Existing standalone callers retain their implemented typed transports.
         format = options.format.isEmpty() ? QFileInfo(archive).suffix().toLower()
                                           : options.format.toLower();
-        if (format == "7z" || format == "zip")
+        if ((format == "7z" || format == "zip")
+#ifdef Q_OS_WIN
+            // These handlers do not advertise source GUI link storage. The
+            // standalone engine loses directory reparse metadata; require a
+            // catalog-backed handler before allowing Windows link storage.
+            && !options.SymLinks.Val
+#endif
+            && !options.HardLinks.Val && !options.AltStreams.Val && !options.NtSecurity.Val)
             return true;
     } else if (catalog->result() != S_OK) {
         error = catalog->error();
@@ -200,7 +245,11 @@ bool ArchiveBackend::selectCreationFormat(const QString &archive, const QStringL
             options.format.isEmpty()
                 ? codecs.FindFormatForArchiveName(UString(archive.toStdWString().c_str()))
                 : catalog->formatIndex(options.format);
-        if (index >= 0 && !codecs.Formats[unsigned(index)].Flags_HashHandler()) {
+        if (index >= 0 && !codecs.Formats[unsigned(index)].Flags_HashHandler() &&
+            (!options.SymLinks.Val || codecs.Formats[unsigned(index)].Flags_SymLinks()) &&
+            (!options.HardLinks.Val || codecs.Formats[unsigned(index)].Flags_HardLinks()) &&
+            (!options.AltStreams.Val || codecs.Formats[unsigned(index)].Flags_AltStreams()) &&
+            (!options.NtSecurity.Val || codecs.Formats[unsigned(index)].Flags_NtSecurity())) {
             CObjectVector<NWildcard::CCensorPath> censor;
             for (const QString &path : sources)
                 censor.AddNew().Path = path.toStdWString().c_str();

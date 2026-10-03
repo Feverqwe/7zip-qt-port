@@ -7,9 +7,6 @@ void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
     _nativeItemOrder = false;
     if (!metadata || !_nativeOpen)
         return;
-    if (!_nativeOpen->arc().IsTree && !_nativeOpen->hasCommentWriter() &&
-        !_nativeOpen->hasNativeRarExtractor() && !_nativeOpen->hasNativeHashExtractor())
-        return;
     IInArchive *native = _nativeOpen->arc().Archive;
     UInt32 nativeCount = 0, count = 0;
     if (native->GetNumberOfItems(&nativeCount) != S_OK ||
@@ -38,7 +35,7 @@ bool QtArchiveFileResource::HasCommentService() const {
 }
 
 bool QtArchiveFileResource::HasNativeExtractService() const {
-    return NativeItemProperties() && (HasNativeRarReader() || HasNativeHashReader());
+    return NativeItemProperties() != nullptr;
 }
 
 bool QtArchiveFileResource::HasNativeRarReader() const {

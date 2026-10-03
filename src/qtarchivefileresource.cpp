@@ -104,6 +104,7 @@ void QtArchiveFileResource::CaptureDeleteInputs(const CDirItems &items,
     if (_compressionOptions && _compressionOptions->DeleteAfterCompressing) {
         _deleteInputs = std::make_shared<QtArchiveDeleteInputs>();
         _deleteInputs->Capture(items, processed);
+        _deleteInputs->SymLinks = _compressionOptions->SymLinks;
     }
 }
 
@@ -208,6 +209,11 @@ HRESULT QtArchiveFileResource::Extract(IInArchive *metadata, const UInt32 *indic
 
 std::unique_ptr<IQtProgressTransport>
 QtArchiveFileResource::CreateProgressTransport(CProgressDialog &dialog, bool nativeWorker) {
+    if (_compressionOptions && NativeItemProperties()) {
+        const auto &options = *_compressionOptions;
+        nativeWorker = nativeWorker || options.SymLinks.Val || options.HardLinks.Val ||
+                       options.AltStreams.Val || options.NtSecurity.Val;
+    }
     return _progress ? _progress(dialog, nativeWorker) : nullptr;
 }
 

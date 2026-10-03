@@ -18,9 +18,9 @@
 #include <QSet>
 #include <QUuid>
 
-bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &password,
-                                         bool encryptHeaders, const CompressionOptions &options,
-                                         QStringList *switches, QString *error) {
+bool ArchiveBackend::compressionProperties(const QString &suffix, const QString &password,
+                                           bool encryptHeaders, const CompressionOptions &options,
+                                           CObjectVector<CProperty> *properties, QString *error) {
     const auto &formatInfo = NCompressDialog::GetFormatInfo(suffix);
     const auto *actionSet = NCompressDialog::FindUpdateActionSet(options.UpdateMode);
     if (options.DeleteAfterCompressing &&
@@ -30,6 +30,11 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
         return false;
     }
 #ifndef Q_OS_WIN
+    if (options.NtSecurity.Val || options.AltStreams.Val) {
+        *error = QtLocalText("NTFS security and streams are available only on Windows.",
+                             "Защита NTFS и потоки доступны только в Windows.");
+        return false;
+    }
     if (options.PreserveATime.Def && options.PreserveATime.Val) {
         *error = QtLocalText("The engine supports preserving access time only on Windows.",
                              "Сохранение времени доступа поддерживается движком только в Windows.");
@@ -154,6 +159,16 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
     info.EncryptHeaders = encryptHeaders;
     if (password.isEmpty())
         info.EncryptionMethod.clear();
+    *properties = NCompressDialog::GetCompressionProperties(info, suffix == "7z");
+    return true;
+}
+
+bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &password,
+                                         bool encryptHeaders, const CompressionOptions &options,
+                                         QStringList *switches, QString *error) {
+    CObjectVector<CProperty> properties;
+    if (!compressionProperties(suffix, password, encryptHeaders, options, &properties, error))
+        return false;
     switches->clear();
     // UpdateGUI.cpp's lifecycle projection is transported through the source
     // ArchiveCommandLine.cpp switches, outside method properties.
@@ -163,7 +178,15 @@ bool ArchiveBackend::compressionSwitches(const QString &suffix, const QString &p
         switches->append("-ssp");
     if (options.OpenShareForWrite)
         switches->append("-ssw");
-    const auto properties = NCompressDialog::GetCompressionProperties(info, suffix == "7z");
+    // ArchiveCommandLine.cpp uses kMinus and SetBoolPair for kSymLinks.
+    if (options.SymLinks.Def || options.SymLinks.Val)
+        switches->append(options.SymLinks.Val ? "-snl" : "-snl-");
+    if (options.HardLinks.Def || options.HardLinks.Val)
+        switches->append(options.HardLinks.Val ? "-snh" : "-snh-");
+    if (options.AltStreams.Def || options.AltStreams.Val)
+        switches->append(options.AltStreams.Val ? "-sns" : "-sns-");
+    if (options.NtSecurity.Val)
+        switches->append("-sni");
     FOR_VECTOR(i, properties) {
         const CProperty &property = properties[i];
         QString argument = "-m" + QString::fromWCharArray(property.Name.Ptr());
@@ -269,7 +292,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     };
     for (const QString &source : sources) {
         const QFileInfo info(source);
-        if (!info.exists()) {
+        if (!info.exists() && !(options.SymLinks.Val && info.isSymLink())) {
             emit finished(
                 false, QtLocalText("File or folder not found: %1", "Файл или папка не найдены: %1")
                            .arg(source));
@@ -366,7 +389,8 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     createPassword_ = password;
     creationLifecycle_.reset();
     if (options.DeleteAfterCompressing) {
-        creationLifecycle_ = std::make_unique<QtArchiveCreationLifecycle>(sources);
+        creationLifecycle_ =
+            std::make_unique<QtArchiveCreationLifecycle>(sources, options.SymLinks);
         connect(creationLifecycle_.get(), &QThread::finished, this,
                 &ArchiveBackend::finishCreationLifecycle);
         creationLifecycle_->Progress = [this](const QString &path, bool) {

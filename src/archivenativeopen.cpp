@@ -47,6 +47,14 @@ bool ArchiveNativeOpen::hasCommentWriter() const {
     return format.Is_Zip() && format.LibIndex < 0;
 }
 
+const CArcInfoEx *ArchiveNativeOpen::formatInfo() const {
+    if (!link_.IsOpen)
+        return nullptr;
+    const auto &formats = catalog_->nativeCodecs().Formats;
+    const int index = arc().FormatIndex;
+    return index >= 0 && unsigned(index) < formats.Size() ? &formats[unsigned(index)] : nullptr;
+}
+
 bool ArchiveNativeOpen::hasNativeRarExtractor() const {
     if (!link_.IsOpen)
         return false;

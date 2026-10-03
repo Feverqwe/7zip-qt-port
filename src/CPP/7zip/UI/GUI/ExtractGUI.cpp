@@ -26,6 +26,7 @@
 #include "ExtractDialog.h"
 #include "ExtractGUI.h"
 #include "HashGUI.h"
+#include <QDir>
 
 #include "../FileManager/ViewSettings.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
@@ -205,20 +206,22 @@ HRESULT ExtractGUI(
                                          : QString());
 
 #ifndef Z7_SFX
-            // dialog.AltStreams and NtSecurity have no Qt controls yet.
+            dialog.SetMetadataOptions(options.ElimDup, options.NtOptions.NtSecurity);
 #endif
 
             if (dialog.exec() != QDialog::Accepted)
                 return E_ABORT;
 
-            outputDir = us2fs(ToUString(dialog.DirPath));
+            outputDir = us2fs(ToUString(QDir::toNativeSeparators(dialog.DirPath)));
 
             options.OverwriteMode = dialog.OverwriteMode;
             options.PathMode = dialog.PathMode;
+            options.ElimDup = dialog.ElimDup;
 
 #ifndef Z7_SFX
             extractCallback->Password = ToUString(dialog.Password);
             extractCallback->PasswordIsDefined = !dialog.Password.isEmpty();
+            options.NtOptions.NtSecurity = dialog.NtSecurity;
 #endif
         }
         if (!MyGetFullPathName(outputDir, options.OutputDir)) {

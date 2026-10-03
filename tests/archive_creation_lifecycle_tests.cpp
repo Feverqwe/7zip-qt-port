@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Common/EnumDirItems.h"
 #include "Common/StringConvert.h"
 #include "archivebackend.h"
+#include "native_link_fixture.h"
 #include "qtarchivedeleteinputs.h"
 #include <QDir>
 #include <QFile>
@@ -18,6 +19,13 @@ QByteArray readFile(const QString &path) {
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
 }
 HRESULT snapshot(QtArchiveDeleteInputs &inputs, const QStringList &paths) {
+    if (inputs.DirItems.SymLinks) {
+        NWildcard::CCensor censor;
+        for (const QString &path : paths)
+            censor.AddPreItem_NoWildcard(path.toStdWString().c_str());
+        censor.AddPathsToCensor(NWildcard::k_RelatPath);
+        return EnumerateItems(censor, NWildcard::k_RelatPath, UString(), inputs.DirItems);
+    }
     FStringVector names;
     for (const QString &path : paths)
         names.Add(us2fs(path.toStdWString().c_str()));
@@ -29,6 +37,114 @@ class ArchiveCreationLifecycleTests final : public QObject {
     Q_OBJECT
 
   private slots:
+    void nativeStoredLinksDeleteOnlyProcessedUnchangedInputs() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString target = fixture.filePath("цель с пробелом.txt");
+        QVERIFY(writeFile(target, "outside bytes"));
+        const QString processed = fixture.filePath("processed link");
+        const QString skipped = fixture.filePath("skipped link");
+        const QString changed = fixture.filePath("changed link");
+        for (const QString &path : {processed, skipped, changed})
+            QVERIFY(CreateNativeSymbolicLink(path, target));
+        QtArchiveDeleteInputs inputs;
+        inputs.SymLinks.SetTrueTrue();
+        inputs.DirItems.SymLinks = true;
+        QCOMPARE(snapshot(inputs, {processed, skipped, changed}), S_OK);
+        inputs.MarkCreatedInputsProcessed();
+        QCOMPARE(inputs.DirItems.Items.Size(), 3U);
+        for (unsigned i = 0; i < inputs.DirItems.Items.Size(); ++i) {
+            QVERIFY(inputs.DirItems.Items[i].AreReparseData());
+            const QString path = QDir::fromNativeSeparators(
+                QString::fromWCharArray(fs2us(inputs.DirItems.GetPhyPath(i)).Ptr()));
+            if (path == skipped)
+                inputs.ProcessedItems[i] = 0;
+        }
+        QVERIFY(QFile::remove(changed));
+        QVERIFY(writeFile(changed, "replacement file"));
+        QtUpdateDeletionCallback callback;
+        QCOMPARE(inputs.Delete(callback), S_OK);
+        QVERIFY(!QFileInfo(processed).isSymLink());
+        QVERIFY(QFileInfo(skipped).isSymLink());
+        QCOMPARE(readFile(changed), QByteArray("replacement file"));
+        QCOMPARE(readFile(target), QByteArray("outside bytes"));
+    }
+    void createStoredLinksDeletesAfterPublication_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<int>("outcome");
+        QTest::addColumn<bool>("selectedLeaves");
+        for (const QString &format : {QString("7z"), QString("zip")}) {
+#ifdef Q_OS_WIN
+            QTest::newRow(qPrintable(format + "-unproved-link-capability-refusal"))
+                << format << 3 << false;
+#else
+            QTest::newRow(qPrintable(format + "-success")) << format << 0 << false;
+            QTest::newRow(qPrintable(format + "-selected")) << format << 0 << true;
+            QTest::newRow(qPrintable(format + "-cancel")) << format << 1 << false;
+            QTest::newRow(qPrintable(format + "-failure")) << format << 2 << false;
+#endif
+        }
+    }
+    void createStoredLinksDeletesAfterPublication() {
+        QFETCH(QString, format);
+        QFETCH(int, outcome);
+        QFETCH(bool, selectedLeaves);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString target = fixture.filePath("outside/цель.txt");
+        QVERIFY(QDir().mkpath(QFileInfo(target).absolutePath()));
+        QVERIFY(writeFile(target, "outside bytes"));
+        const QString root = fixture.filePath("source folder");
+        QVERIFY(QDir().mkpath(root));
+        QVERIFY(CreateNativeSymbolicLink(root + "/file link", target));
+        QVERIFY(
+            CreateNativeSymbolicLink(root + "/directory link", QFileInfo(target).absolutePath()));
+        QVERIFY(
+            CreateNativeSymbolicLink(root + "/dangling link", fixture.filePath("missing target")));
+        const QString archive = fixture.filePath("result." + format);
+        CompressionOptions options;
+        options.SymLinks.SetTrueTrue();
+        if (selectedLeaves)
+            options.SymLinks.Def = false;
+        options.DeleteAfterCompressing = true;
+        ArchiveBackend backend(nullptr,
+                               outcome == 2 ? fixture.filePath("missing-engine") : QString());
+        if (outcome == 1)
+            connect(&backend, &ArchiveBackend::engineStarted, this, [&] { backend.cancel(); });
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
+        const QStringList sources = selectedLeaves
+                                        ? QStringList{root + "/file link", root + "/directory link",
+                                                      root + "/dangling link"}
+                                        : QStringList{root};
+        backend.create(archive, sources, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
+        QCOMPARE(finished.last().first().toBool(), outcome == 0);
+        if (outcome == 3)
+            QCOMPARE(started.size(), 0);
+        QCOMPARE(readFile(target), QByteArray("outside bytes"));
+        if (outcome != 0) {
+            QVERIFY(QFileInfo(root + "/file link").isSymLink());
+            QVERIFY(QFileInfo(root + "/directory link").isSymLink());
+            QVERIFY(QFileInfo(root + "/dangling link").isSymLink());
+            QVERIFY(!QFileInfo::exists(archive));
+            return;
+        }
+        if (selectedLeaves)
+            QVERIFY(QDir(root).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
+        else
+            QVERIFY(!QFileInfo::exists(root));
+        const QString extracted = fixture.filePath("extracted");
+        QProcess engine;
+        engine.start("7zz", {"x", "-y", "-snld", "-o" + extracted, "--", archive});
+        QVERIFY(engine.waitForFinished(15000));
+        QCOMPARE(engine.exitCode(), 0);
+        for (const QString &name :
+             {QString("file link"), QString("directory link"), QString("dangling link")})
+            QVERIFY2(QFileInfo(extracted + (selectedLeaves ? "/" : "/source folder/") + name)
+                         .isSymLink(),
+                     qPrintable(name));
+    }
     void nativeProcessedAndChangedFiles() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -73,8 +189,17 @@ class ArchiveCreationLifecycleTests final : public QObject {
         metadata.MarkCreatedInputsProcessed();
         // On POSIX the source CTime is inode metadata time. Changing permission
         // preserves size/mtime, and must prevent deletion of that changed input.
-        QVERIFY(
-            QFile::setPermissions(source, QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup));
+        NWindows::NFile::NFind::CFileInfo changedInfo;
+        const auto metadataChanged = [&] {
+            if (!QFile::setPermissions(source,
+                                       QFile::ReadOwner | QFile::WriteOwner | QFile::ReadGroup) ||
+                !changedInfo.Find(inputs.DirItems.GetPhyPath(0)))
+                return false;
+            return Compare_FiTime(&changedInfo.CTime, &metadata.DirItems.Items[0].CTime) != 0;
+        };
+        // Some filesystems coalesce consecutive metadata changes in one tick.
+        // Establish a real source CTime change before testing its deletion guard.
+        QTRY_VERIFY_WITH_TIMEOUT(metadataChanged(), 2000);
         QCOMPARE(metadata.Delete(callback), S_OK);
         QCOMPARE(readFile(source), QByteArray("original"));
 #endif

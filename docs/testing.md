@@ -1,5 +1,76 @@
 # Regression strategy
 
+P2-07 in progress: source_extract_advanced checks source bool-pair precedence,
+Cancel/no-write persistence, EN/RU normal/compact control geometry, actual ZIP
+root elimination and timestamps through both file service and native handler,
+bounded absolute paths and a link occupying the source-corrected target.
+startup_path checks Unicode/spaced folders through native navigation without
+archive listing, and launch-cwd relative archive resolution. temp_detached_launch
+uses an actual disposable child receiver to verify directory argument transport
+and retained external owned-temp protection. These focused checks do not
+establish a full Windows/Linux gate or rendered Windows parity.
+`archive_creation_lifecycle` additionally verifies ZIP/7z stored file, directory
+and dangling symlinks, selected leaves, output-publication ordering, cancellation
+and engine-start failure, plus source no-follow deletion of processed unchanged
+links while skipped/replaced inputs and targets survive. On Windows it uses
+native reparse fixtures and checks standalone ZIP/7z link-capability refusal,
+preserved inputs and no engine start; that CLI loses directory link metadata.
+POSIX standalone success/selected/failure/Cancel remain covered.
+source_link_storage checks source TAR metadata Add with native SetProperties/
+UpdateItems, real hard-link inode identity, failure/cancel archive/input
+preservation, publication before deletion and native-phase Pause/Resume through
+PanelCopy's default service call. It verifies ZIP/7z original-capability refusal,
+Options Cancel/OK/restart/format filtering and EN/RU normal/compact geometry.
+Windows native link/security/streams are covered by the source TAR/WIM suites.
+
+archive_metadata_ui exercises actual MainWindow Add/Options/native TAR update,
+processed deletion, selected-folder and current-folder link extraction, plus
+Add Cancel, in EN/RU. Unrelated root entries ensure preflight uses the source
+Agent's operated scope rather than the complete listing. native_link_fixture
+uses original Windows reparse services and file identity, not QFile shortcuts;
+link suites no longer skip Windows wholesale. Linux focused thirteen suites
+passed (10.51s); this does not constitute a passing full Linux gate.
+
+source_link_extract uses official TAR fixtures and original native extraction
+for file, directory, dangling and hard links, with and without common-root
+elimination. It checks inode identity, absolute-target source rebasing, parent
+traversal and occupied-link refusal, preserved archive/outside bytes and final
+target policy containment. Overwrite Cancel preserves a completed output,
+the existing conflicting file, source files and archive; the subsequent deferred
+link is not created. Windows native fixtures now pass, including cyclic links;
+absolute Unix TAR link targets follow the original Windows refusal, while POSIX
+targets are source-rebased. Windows focused nine CTest suites passed (43.11s),
+including actual metadata UI, source update Sync ZIP/7z and Add geometry.
+macOS full gate passed 213/213 (80.54s); later source update/link/storage/advanced
+checks passed 4/4 (3.85s). Whole-step acceptance remains open.
+
+The Linux full snapshot built successfully but passed 199/210 tests (835.10s).
+Failures include external launch/edit, selection/navigation, compression,
+creation lifecycle, panel key/selection, agent output and language UI/focus.
+These remain integration work; the earlier focused nine-suite pass does not
+establish a full Linux gate. Whole-native-WIM ADS now restores Unicode/spaced
+base and stream bytes on Windows, preserving the archive; nine focused suites
+passed again (26.12s). New nativeSecurityOptionRestoresArchivedDacl verifies
+NtSecurity on/off against a disposable explicit DACL and passes on Windows.
+source_metadata_storage verifies independent security/ADS choices, native WIM
+publication and subsequent processed-source deletion, plus original archive,
+source bytes/ADS/DACL preservation on E_FAIL/E_ABORT. Windows ten focused suites
+passed (26.27s) after refreshing native CArc capabilities before source ReadItems.
+The regression found an error reopening the first added ADS after publication;
+the writer had succeeded but CProxyArc2 saw the stale Ask_AltStream flag.
+
+The later macOS full gate passed formatting/build and 212/213 tests (81.32s),
+with archive_external_lifetime timing out. Its own orphan fixture was stopped
+through its normal control file; the isolated test passed (3.11s). Browse response
+now waits repeatedly for the actual modal rather than assuming a single zero-time
+callback can see it. The next full gate passed formatting/all-target build and
+214/214 tests (81.10s). Subsequent localized Windows destination-separator and
+WIM Options changes passed affected checks. Windows thirteen focused suites
+passed (33.56s), including creation/deletion, startup and detached launch.
+Four WIM Options EN/RU normal/compact JSON reports have fully exposed controls
+and footer. This does not validate rendered Windows parity or a full
+Linux/Windows run.
+
 P2-06 focused coverage (iteration accepted): `alt_streams_folder` uses disposable
 Windows NTFS files/ADS for enumeration/properties/clone, Create_NEW occupied
 refusal, rename/delete, ordinary-file and ADS copy, preserved base attributes,

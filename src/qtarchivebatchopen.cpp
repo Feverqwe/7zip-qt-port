@@ -37,6 +37,12 @@ class CBatchOpenProgress final : public IProgress,
 QtArchiveBatchOpen::QtArchiveBatchOpen(ArchiveBackend &backend)
     : _backend(backend), _manager(new QtArchiveFolderManager(backend)) {}
 
+void QtArchiveBatchOpen::SetExtractionPolicy(const QString &destination,
+                                             const ExtractionOptions &options) {
+    _destination = destination;
+    _extractOptions = &options;
+}
+
 HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options,
                                  IOpenCallbackUI *callback) {
     COM_TRY_BEGIN
@@ -53,6 +59,12 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
     if (!resource || !agent->GetArchiveProperties())
         return E_FAIL;
+    if (_extractOptions) {
+        QString error;
+        if (!_backend.validateExtraction(_destination, {}, *_extractOptions, &error,
+                                         resource->HasNativeExtractService()))
+            return E_INVALIDARG;
+    }
     // Source OpenArchive applies COpenOptions properties to the native handler.
     // The file-only folder stage has already opened it; RAR extraction options
     // (memx/crc/mt) remain applicable before its original Extract call.

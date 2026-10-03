@@ -344,6 +344,8 @@ void MainWindow::createFile() {
     selectPaths({target});
 }
 
+void MainWindow::openPath(const QString &path) { navigateTo(QFileInfo(path).absoluteFilePath()); }
+
 void MainWindow::navigateTo(const QString &path) {
     if (state_ == State::Loading || state_ == State::Operating)
         return;

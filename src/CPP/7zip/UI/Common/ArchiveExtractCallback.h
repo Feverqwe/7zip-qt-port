@@ -48,7 +48,18 @@ UInt64 GetSize() const { return _size; }
 
 #endif
 
+// Integration policy receives the source-corrected destination before any
+// folder/file creation. It does not choose or rewrite the extraction path.
+struct IQtExtractPathPolicy {
+    virtual ~IQtExtractPathPolicy() = default;
+    virtual HRESULT CheckPath(const FString &path, bool isDir, bool isAltStream,
+                              UString &message) = 0;
+    virtual HRESULT CheckLink(const FString &path, const FString &target, bool relative,
+                              UString &message) = 0;
+};
+
 struct CExtractNtOptions {
+    IQtExtractPathPolicy *QtPathPolicy = nullptr;
     CBoolPair NtSecurity;
     CBoolPair SymLinks;
     CBoolPair HardLinks;
@@ -425,6 +436,7 @@ class CArchiveExtractCallback Z7_final : public IArchiveExtractCallback,
 
   public:
     HRESULT SendMessageError(const char *message, const FString &path) const;
+    HRESULT CheckQtLinkPolicy(const FString &path, const FString &target, bool relative) const;
     HRESULT SendMessageError_with_Error(HRESULT errorCode, const char *message,
                                         const FString &path) const;
     HRESULT SendMessageError_with_LastError(const char *message, const FString &path) const;

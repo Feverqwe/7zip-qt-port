@@ -90,6 +90,7 @@ class MainWindow : public QMainWindow {
                         IQtTrashService *trashService = nullptr);
 
     void openArchive(const QString &path);
+    void openPath(const QString &path);
 
     void extractTo(const QString &destination, bool onlySelected = false,
                    const QString &password = {}, const ExtractionOptions &options = {});

@@ -293,7 +293,8 @@ void CreateArchiveDialog::validateAndAccept() {
         return;
     }
     for (const QString &source : selected_) {
-        if (!QFileInfo::exists(source)) {
+        if (!QFileInfo::exists(source) &&
+            !(compressionOptions().SymLinks.Val && QFileInfo(source).isSymLink())) {
             QMessageBox::warning(this, windowTitle(),
                                  QtLocalText("Source not found: ", "Источник не найден: ") +
                                      source);
@@ -325,6 +326,19 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
     if (options.SFXMode)
         options.SfxModule = sfxModule_.path();
     options.format = format_->currentText();
+    CCompressDialog metadata;
+    if (codecs_ && codecs_->result() == S_OK) {
+        const int index = codecs_->formatIndex(registryFormat_);
+        if (index >= 0)
+            metadata.ArcInfo = codecs_->nativeCodecs().Formats[unsigned(index)];
+    }
+    metadata.LoadMetadataOptions(m_RegistryInfo);
+    NCompression::CInfo metadataRegistry = m_RegistryInfo;
+    metadata.SaveMetadataOptions(metadataRegistry);
+    options.SymLinks = metadata.Info.SymLinks;
+    options.HardLinks = metadata.Info.HardLinks;
+    options.AltStreams = metadata.Info.AltStreams;
+    options.NtSecurity = metadata.Info.NtSecurity;
     options.OpenShareForWrite =
         sharedFiles_ && sharedFiles_->isEnabled() && sharedFiles_->isChecked();
     options.DeleteAfterCompressing = deleteAfterCompressing_ &&
@@ -370,7 +384,7 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
 }
 
 void CreateArchiveDialog::addSource(const QString &path) {
-    if (!QFileInfo::exists(path) || selected_.contains(path))
+    if ((!QFileInfo::exists(path) && !QFileInfo(path).isSymLink()) || selected_.contains(path))
         return;
     selected_ << path;
     const QFileInfo info(path);

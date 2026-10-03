@@ -9,7 +9,7 @@
 // after every CLI stage and output-volume publication has succeeded.
 class QtArchiveCreationLifecycle final : public QThread {
   public:
-    explicit QtArchiveCreationLifecycle(QStringList sources);
+    explicit QtArchiveCreationLifecycle(QStringList sources, const CBoolPair &symLinks = {});
     void beginDeletion();
     void cancel();
     void setPaused(bool paused);

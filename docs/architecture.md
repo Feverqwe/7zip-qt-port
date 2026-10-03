@@ -2,6 +2,37 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+P2-07: source Common/Extract owns root elimination;
+ArchiveExtractCallback owns path correction, overwrite, attributes and timestamps.
+IQtExtractPathPolicy checks source-corrected containment and occupied/link ancestors
+before creation. QtArchiveBatchOpen validates each actual listing before the
+source loop. ArchiveBackend invokes native extraction after count/path-order
+proof, retaining reader/catalog lifetime. Agent borrows metadata/path choices
+only while CopyTo's worker is joined. Startup openPath delegates to existing
+native navigation; it does not implement a second opener.
+
+Metadata storage choices flow from original CompressDialog bool pairs and
+handler capabilities through the Add request into original CDirItems and
+CArchiveUpdateCallback. Requested metadata uses native SetProperties/UpdateItems;
+ordinary process plans retain their current transport. One validated source
+CProperty projection supplies both transports. Native readers retain their exact
+catalog for format/capability decisions. Source processed-item statuses and the
+no-follow snapshot reach deletion only after publication. Windows native
+security/streams are validated through native WIM fixtures. Native link extraction preserves
+source deferred creation and safety algorithms; the borrowed destination policy
+checks final symbolic/hard-link targets before creation. Preflight permits links
+only for a proved native service, with directory links treated as leaves.
+File-only transport refuses archive links. POSIX fixtures are checked; Windows
+link extraction is checked through native TAR/WIM fixtures. MainWindow scopes preflight to the real Agent
+indices used by CopyTo, including every entry in the current folder. Actual
+Add/Options/native update/deletion and selected/current-folder extraction are
+covered by the focused metadata UI suite on all three platforms. CAgent::ReOpen
+refreshes the new native handler's capabilities before source ReadItems, including
+the first added ADS. Native Windows ADS output validates stream and bounded base
+separately; ordinary colon paths remain refused. Standalone Windows ZIP/7z link
+storage is refused before engine start because its directory reparse round-trip
+loses metadata. Source-advertised native TAR/WIM capabilities remain authoritative.
+
 P2-05: source LinkDialog/CApp::Link own selection, defaults, path/type/data
 validation and original hardlink/reparse command semantics. CQtLinkWindow owns
 only Qt controls, language bindings and scrolling. The partial source FM startup

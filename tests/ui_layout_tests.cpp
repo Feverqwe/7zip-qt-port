@@ -104,7 +104,7 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(pathMode->currentText(), QString("Full pathnames"));
         QVERIFY(pathMode->isEnabled());
         QVERIFY(overwriteMode->isEnabled());
-        QCOMPARE(pathMode->count(), 2);
+        QCOMPARE(pathMode->count(), 3);
         QCOMPARE(overwriteMode->count(), 5);
         pathMode->setCurrentIndex(1);
         overwriteMode->setCurrentIndex(1);

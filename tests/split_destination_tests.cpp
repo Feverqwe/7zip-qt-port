@@ -141,6 +141,9 @@ class SplitDestinationTests final : public QObject {
         done.clear();
         const QString base = fixture.filePath(QStringLiteral("вывод"));
         CExtractDialog dialog(base + "/initial", {}, false);
+        // This fixture exercises the basic process transport's destination
+        // path; advanced ElimDup is covered by source_extract_advanced.
+        dialog.findChild<QCheckBox *>("extractElimDup")->setChecked(false);
         name(dialog)->setText(QStringLiteral("  δ результат  "));
         dialog.accept();
         QCOMPARE(dialog.destination(), base + QStringLiteral("/δ результат/"));
@@ -152,6 +155,7 @@ class SplitDestinationTests final : public QObject {
         QCOMPARE(restored.readAll(), QByteArray("source bytes"));
         done.clear();
         CExtractDialog invalid(base + "/initial", {}, false);
+        invalid.findChild<QCheckBox *>("extractElimDup")->setChecked(false);
         name(invalid)->setText("occupied");
         QFile occupied(base + "/occupied");
         QVERIFY(occupied.open(QIODevice::WriteOnly));

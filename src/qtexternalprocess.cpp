@@ -33,9 +33,14 @@ class CWinProcessHandle final : public IQtProcessHandle {
     explicit CWinProcessHandle(HANDLE handle) { _process.Attach(handle); }
     UInt32 Id() const override { return GetProcessId(const_cast<NWindows::CProcess &>(_process)); }
     UString FileName() const override {
+        // Resolve the API without changing the SDK target inherited by source
+        // modules. This service needs the DOS path for retained-file comparison.
+        using QueryName = BOOL(WINAPI *)(HANDLE, DWORD, LPWSTR, PDWORD);
+        const auto queryName = Z7_GET_PROC_ADDRESS(QueryName, ::GetModuleHandleA("kernel32.dll"),
+                                                   "QueryFullProcessImageNameW");
         wchar_t name[32768];
         DWORD size = 32768;
-        if (!QueryFullProcessImageNameW(const_cast<NWindows::CProcess &>(_process), 0, name, &size))
+        if (!queryName || !queryName(const_cast<NWindows::CProcess &>(_process), 0, name, &size))
             return UString();
         UString result;
         result.SetFrom(name, size);

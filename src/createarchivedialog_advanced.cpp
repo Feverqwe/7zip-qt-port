@@ -81,6 +81,12 @@ void CreateArchiveDialog::showAdvancedOptions() {
     if (registryFormat_ == "zip")
         source.ArcInfo.TimeFlags |= TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kUnix) |
                                     TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kDOS);
+    if (codecs_ && codecs_->result() == S_OK) {
+        const int index = codecs_->formatIndex(registryFormat_);
+        if (index >= 0)
+            source.ArcInfo = codecs_->nativeCodecs().Formats[unsigned(index)];
+    }
+    source.LoadMetadataOptions(m_RegistryInfo);
     // Local profile copy is source COptionsDialog's in-memory transaction:
     // Options Cancel does not mutate the Add form; Add Cancel never saves disk.
     NCompression::CFormatOptions profile = Get_FormatOptions();
@@ -88,6 +94,7 @@ void CreateArchiveDialog::showAdvancedOptions() {
     COptionsDialog dialog(&source);
     if (dialog.Create(this) == QDialog::Accepted) {
         Get_FormatOptions() = profile;
+        source.SaveMetadataOptions(m_RegistryInfo);
         if (source.PreserveATime.Supported) {
             m_RegistryInfo.PreserveATime.Val = source.PreserveATime.Val;
             m_RegistryInfo.PreserveATime.Def = true;
@@ -100,6 +107,12 @@ void CreateArchiveDialog::updateAdvancedSummary() {
     if (!advancedSummary_)
         return;
     CCompressDialog source;
+    if (codecs_ && codecs_->result() == S_OK) {
+        const int index = codecs_->formatIndex(registryFormat_);
+        if (index >= 0)
+            source.ArcInfo = codecs_->nativeCodecs().Formats[unsigned(index)];
+    }
+    source.LoadMetadataOptions(m_RegistryInfo);
     source.FormatOptions = &Get_FormatOptions();
     source.ShowOptionsString();
     advancedSummary_->setText(QString::fromWCharArray(source.OptionsString.Ptr()));

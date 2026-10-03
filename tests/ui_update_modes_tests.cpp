@@ -1,4 +1,5 @@
 #include "createarchivedialog.h"
+#include "technical_listing_fixture.h"
 #include "window_state_support.h"
 #include <QProcess>
 
@@ -186,7 +187,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write("old bytes"), qint64(9));
         QVERIFY(file.flush());
-        const QDateTime entryTime = QDateTime::fromSecsSinceEpoch(946684800, QTimeZone::UTC);
+        const QDateTime entryTime = QDateTime::fromSecsSinceEpoch(946684800, QTimeZone(0));
         QVERIFY(file.setFileTime(entryTime, QFileDevice::FileModificationTime));
         file.close();
         ArchiveBackend backend;
@@ -263,7 +264,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(updated.open(QIODevice::ReadOnly));
         QCOMPARE(updated.readAll(), QByteArray(freshenUnchanged ? "old bytes" : "new bytes"));
         QByteArray listing;
-        QVERIFY(runEngine(fixture.path(), {"l", "-slt", "--", archive}, &listing));
+        QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-sccUTF-8", "--", archive}, &listing));
         if (!freshenUnchanged)
             QVERIFY(listing.contains("Method = Store"));
     }
@@ -323,7 +324,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         action(window, "addArchiveAction")->trigger();
         QVERIFY(accepted);
         QByteArray listing;
-        QVERIFY(runEngine(fixture.path(), {"l", "-slt", "--", archive}, &listing));
+        QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-sccUTF-8", "--", archive}, &listing));
         const QString selectedPath = QFileInfo(source).canonicalFilePath();
         QString logical = selectedPath;
         if (pathMode == int(NWildcard::k_FullPath)) {
@@ -333,7 +334,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             logical = selectedPath.mid(1);
 #endif
         }
-        QVERIFY(listing.contains("Path = " + logical.toUtf8()));
+        QVERIFY(NormalizeTechnicalListing(listing).contains("Path = " + logical.toUtf8()));
     }
 };
 

@@ -104,7 +104,8 @@ class ArchiveExternalLifetimeTests final : public QObject {
         QVERIFY(owned.active && owned.externallyProtected);
         QVERIFY(!QtOwnedTempRegistry().ClaimForDeletion(owned));
         bool cleanupProtected = false;
-        QTimer::singleShot(0, this, [&] {
+        QTimer browseResponder;
+        connect(&browseResponder, &QTimer::timeout, this, [&] {
             auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
             if (!dialog)
                 return;
@@ -118,8 +119,11 @@ class ArchiveExternalLifetimeTests final : public QObject {
                                    !rows.first()->toolTip(0).isEmpty();
             }
             dialog->reject();
+            browseResponder.stop();
         });
+        browseResponder.start(1);
         MyBrowseForTempFolder(nullptr);
+        browseResponder.stop();
         QVERIFY(cleanupProtected);
         QVERIFY(QFileInfo(temporary).isFile());
         bool prompt = false;

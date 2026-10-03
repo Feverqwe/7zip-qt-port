@@ -257,16 +257,27 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
 
     CDirItems dirItems;
     dirItems.Callback = &enumCallback;
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource());
+    if (resource && resource->CompressionSettings()) {
+        const auto &options = *resource->CompressionSettings();
+        dirItems.SymLinks = options.SymLinks.Val;
+        dirItems.ScanAltStreams = options.AltStreams.Val;
+#if defined(_WIN32) && !defined(UNDER_CE)
+        dirItems.ReadSecure = options.NtSecurity.Val;
+#endif
+    }
 
     {
         FString folderPrefix = _folderPrefix;
         NFile::NName::NormalizeDirPathPrefix(folderPrefix);
 
-        if (GuiPathMode) {
+        if (GuiPathMode || dirItems.SymLinks || dirItems.ScanAltStreams) {
             NWildcard::CCensor censor;
-            FOR_VECTOR(i, _names) censor.AddPreItem_NoWildcard(fs2us(_names[i]));
-            censor.AddPathsToCensor(*GuiPathMode);
-            RINOK(EnumerateItems(censor, *GuiPathMode, _updatePathPrefix, dirItems))
+            FOR_VECTOR(i, _names)
+            censor.AddPreItem_NoWildcard(fs2us(GuiPathMode ? _names[i] : folderPrefix + _names[i]));
+            const auto pathMode = GuiPathMode ? *GuiPathMode : NWildcard::k_RelatPath;
+            censor.AddPathsToCensor(pathMode);
+            RINOK(EnumerateItems(censor, pathMode, _updatePathPrefix, dirItems))
         } else
             RINOK(dirItems.EnumerateItems2(folderPrefix, _updatePathPrefix, _names, requestedPaths))
 
@@ -351,6 +362,9 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
             const auto &options = *resource->CompressionSettings();
             updateCallback->ShareForWrite = options.OpenShareForWrite;
             updateCallback->Need_LatestMTime = options.SetArcMTime.Val;
+            updateCallback->StoreSymLinks = options.SymLinks.Val;
+            updateCallback->StoreHardLinks = options.HardLinks.Val;
+            updateCallback->StoreNtSecurity = options.NtSecurity.Val;
             if (options.PreserveATime.Def)
                 updateCallback->PreserveATime = options.PreserveATime.Val;
         }
@@ -416,13 +430,13 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
     }
     if (res == S_OK && processedPaths) {
         {
-            /* OutHandler for 7z archives doesn't report compression operation for empty files.
-               So we must include these files manually */
+            /* Common/Update.cpp::Compress includes reparse properties and empty
+               files after successful writing: handlers can omit their streams. */
             FOR_VECTOR(i, updatePairs2) {
                 const CUpdatePair2 &up = updatePairs2[i];
                 if (up.DirIndex != -1 && up.NewData) {
                     const CDirItem &di = dirItems.Items[(unsigned)up.DirIndex];
-                    if (!di.IsDir() && di.Size == 0)
+                    if (di.AreReparseData() || (!di.IsDir() && di.Size == 0))
                         processedItems[(unsigned)up.DirIndex] = 1;
                 }
             }

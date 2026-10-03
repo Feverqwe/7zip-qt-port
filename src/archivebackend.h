@@ -1,5 +1,6 @@
 #pragma once
 struct CExternalCodecs;
+struct CProperty;
 
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "processpause.h"
@@ -62,7 +63,7 @@ struct CompressionOptions : NCompressDialog::CInfo {
 };
 
 struct ExtractionOptions {
-    enum class PathMode { FullPaths, NoPaths, CurrentPaths };
+    enum class PathMode { FullPaths, NoPaths, CurrentPaths, AbsolutePaths };
     enum class OverwriteMode {
         Ask,
         RejectExisting,
@@ -74,6 +75,8 @@ struct ExtractionOptions {
     PathMode pathMode = PathMode::FullPaths;
     QString currentFolder;
     OverwriteMode overwriteMode = OverwriteMode::RejectExisting;
+    CBoolPair ElimDup;
+    CBoolPair NtSecurity;
 };
 
 class ArchiveBackend : public QObject {
@@ -94,6 +97,9 @@ class ArchiveBackend : public QObject {
     void cancelCodecDiscovery();
     QString openDialogFilter() const;
     bool supportsArchiveUpdate(const QString &format) const;
+    static bool compressionProperties(const QString &format, const QString &password,
+                                      bool encryptHeaders, const CompressionOptions &options,
+                                      CObjectVector<CProperty> *properties, QString *error);
     ArchiveSfxModule sfxModule(const QString &path = {}) const;
     // Called by the source opening worker; no process or widget state is accessed.
     HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
@@ -104,6 +110,10 @@ class ArchiveBackend : public QObject {
     HRESULT updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,
                              ISequentialOutStream *output, UInt32 count,
                              IArchiveUpdateCallback *callback) const;
+    HRESULT updateNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                ISequentialOutStream *output, UInt32 count,
+                                IArchiveUpdateCallback *callback,
+                                const CompressionOptions &options) const;
     HRESULT extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                  const UInt32 *indices, UInt32 count, Int32 testMode,
                                  IArchiveExtractCallback *callback) const;
@@ -167,10 +177,16 @@ class ArchiveBackend : public QObject {
     bool hasListedSourceArchive(const QString &archive) const;
     // Shared destination/path guard for the native archive callback transport.
     bool validateExtraction(const QString &destination, const QStringList &selected,
-                            const ExtractionOptions &options, QString *error) const;
+                            const ExtractionOptions &options, QString *error,
+                            bool nativeSource = false) const;
+    static bool validateExtractionOutput(const QString &destination, const QString &path,
+                                         bool directory, QString *error);
+    static bool validateExtractionStreamOutput(const QString &destination, const QString &path,
+                                               QString *error);
     static bool sourceUpdatePathIsSafe(const QString &path, bool allowAbsolute = false);
     static bool prepareSourceSelection(const QString &archive, const QStringList &sources,
-                                       QString *root, QStringList *relativePaths, QString *error);
+                                       QString *root, QStringList *relativePaths, QString *error,
+                                       bool storeLinks = false);
     virtual void cancel();
     // Native controls affect only this backend's live engine child.
     virtual HRESULT setPaused(bool paused);

@@ -4,6 +4,7 @@
 #include "qtcompressoptionsdialog.h"
 #include <QDateTime>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTextBrowser>
@@ -154,7 +155,7 @@ class CompressionAdvancedTests final : public QObject {
         const QString b = second.filePath(QStringLiteral("второй файл.txt"));
         QVERIFY(writeFile(a, QByteArray(4096, 'a')));
         QVERIFY(writeFile(b, QByteArray(4096, 'b')));
-        const QDateTime latest = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone::UTC);
+        const QDateTime latest = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone(0));
         const QDateTime accessed = latest.addDays(-5);
         for (const QString &path : {a, b}) {
             QFile file(path);
@@ -290,16 +291,24 @@ class CompressionAdvancedTests final : public QObject {
         auto *scroll = dialog.findChild<QScrollArea *>();
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(scroll);
+        QCoreApplication::processEvents();
+        scroll->ensureWidgetVisible(parameters);
+        // QLineEdit exposes its input cursor to ensureWidgetVisible. Scroll
+        // horizontally as well to inspect the full field, not just that cursor.
+        scroll->horizontalScrollBar()->setValue(scroll->horizontalScrollBar()->maximum());
+        QCoreApplication::processEvents();
+        QVERIFY(
+            UiInspection::writeReport(dialog, QString("archive-parameters-%1").arg(size.width())));
+        QVERIFY(UiInspection::fullyVisible(*parameters, dialog));
         scroll->ensureWidgetVisible(advanced);
         QCoreApplication::processEvents();
-        QVERIFY(UiInspection::fullyVisible(*parameters, dialog));
+        QVERIFY(
+            UiInspection::writeReport(dialog, QString("archive-advanced-%1").arg(size.width())));
         QVERIFY(UiInspection::fullyVisible(*advanced, dialog));
         QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
         QVERIFY(UiInspection::separate(*parameters, *advanced, dialog));
         QVERIFY(UiInspection::bounds(*volume, dialog).bottom() <
                 UiInspection::bounds(*parameters, dialog).top());
-        QVERIFY(
-            UiInspection::writeReport(dialog, QString("archive-advanced-%1").arg(size.width())));
     }
     void profilesAndCancel() {
         QTemporaryDir fixture;
@@ -399,7 +408,7 @@ class CompressionAdvancedTests final : public QObject {
         QFile file(source);
         QVERIFY(file.open(QIODevice::ReadWrite));
         const qint64 time = 1700000001123;
-        QVERIFY(file.setFileTime(QDateTime::fromMSecsSinceEpoch(time, QTimeZone::UTC),
+        QVERIFY(file.setFileTime(QDateTime::fromMSecsSinceEpoch(time, QTimeZone(0)),
                                  QFileDevice::FileModificationTime));
         file.close();
         CompressionOptions options;

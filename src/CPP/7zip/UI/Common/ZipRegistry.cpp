@@ -227,6 +227,10 @@ void CInfo::Save(const QString &path) const {
     optionsKey.setValue("Compression/ShowPassword", ShowPassword);
     optionsKey.setValue("Compression/EncryptHeaders", EncryptHeaders);
     optionsKey.beginGroup("Compression");
+    Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "Security", NtSecurity);
+    Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "AltStreams", AltStreams);
+    Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "HardLinks", HardLinks);
+    Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "SymLinks", SymLinks);
     Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "PreserveATime", PreserveATime);
     optionsKey.endGroup();
     QStringList arcPaths;
@@ -267,6 +271,10 @@ void CInfo::Load(const QString &path) {
     ShowPassword = optionsKey.value("Compression/ShowPassword", false).toBool();
     EncryptHeaders = optionsKey.value("Compression/EncryptHeaders", false).toBool();
     optionsKey.beginGroup("Compression");
+    Key_Get_BoolPair(optionsKey, "Security", NtSecurity);
+    Key_Get_BoolPair(optionsKey, "AltStreams", AltStreams);
+    Key_Get_BoolPair(optionsKey, "HardLinks", HardLinks);
+    Key_Get_BoolPair(optionsKey, "SymLinks", SymLinks);
     Key_Get_BoolPair(optionsKey, "PreserveATime", PreserveATime);
     optionsKey.endGroup();
     if (optionsKey.contains("Compression/Archiver"))
@@ -346,6 +354,8 @@ void CInfo::Save(const QString &path) const {
         key.setValue("SplitDest", SplitDest.Val);
     if (ShowPassword.Def)
         key.setValue("ShowPassword", ShowPassword.Val);
+    Key_Set_BoolPair_Delete_IfNotDef(key, "ElimDup", ElimDup);
+    Key_Set_BoolPair_Delete_IfNotDef(key, "Security", NtSecurity);
     QStringList paths;
     FOR_VECTOR(i, Paths)
     paths.append(Paths[i]);
@@ -366,6 +376,8 @@ void CInfo::Load(const QString &path) {
     const QStringList legacyPaths = key.value("history/extract").toStringList();
     key.beginGroup("Extraction");
     const QStringList paths = key.value("PathHistory", legacyPaths).toStringList();
+    Key_Get_BoolPair(key, "ElimDup", ElimDup);
+    Key_Get_BoolPair(key, "Security", NtSecurity);
     for (const QString &s : paths)
         Paths.Add(s);
     bool ok;

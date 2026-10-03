@@ -8,14 +8,24 @@
 snapshot Sevenzip и сборкой официального движка из закреплённой ревизии. Команды и ограничения:
 [Hyper-V runners](docs/hyperv-runners.md).
 
+P2-07 принят: Extract использует исходные ElimDup/Absolute paths/NtSecurity,
+native archive links и ограничивает все выходные пути выбранной папкой.
+Windows WIM восстанавливает NTFS security/ADS и relative/absolute reparse links;
+Add Options сохраняет metadata preferences и передаёт их native writer.
+Directory Open Outside : 7-Zip открывает папку отдельным экземпляром.
+macOS full gate214/214PASS81.10s; Windows13/13 и Linux13/13 focused прошли.
+Windows standalone ZIP/7z отклоняет link storage из-за потери directory reparse
+metadata; source-capable TAR/WIM сохраняет ссылки. Текущий счёт36/47,
+включая добавленный обязательный P2-11. Полные Windows/Linux gates остаются P3.
+
 P2-06 принят: исходные AltStreamsFolder и Agent/CProxyArc2 подключены к
 File → Alternate streams, native raw/tree properties и операциям над NTFS ADS.
 Архивные WIM Rename/Delete используют исходные callbacks и официальный native
 writer; Unix filesystem streams явно недоступны. macOS gate207/207PASS120.58s,
 финальные localized consumers macOS2/2, Linux3/3 и Windows drag/contract2/2
-плюс семь Add-сценариев прошли без пропусков. План закрыт на35/46; следующий
-шаг — P2-07 Extract modes/security/metadata. Полный Windows gate остаётся P3:
-расширенный source-update набор выявил ошибки absolute/Sync и таймаут.
+плюс семь Add-сценариев прошли без пропусков. Исторический счёт35/46.
+Выявленные тогда Windows absolute/Sync failures и таймаут исправлены в P2-07;
+полный Windows gate пока не принят.
 
 P2-05 принят: File → Link использует исходные LinkDialog/CApp::Link и native
 platform services. Copy/Move/Delete сохраняют link object и raw target;

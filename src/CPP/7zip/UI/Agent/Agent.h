@@ -21,6 +21,7 @@ struct CProxyItem {
 
 class CAgent;
 class CAgentFolder;
+struct CExtractNtOptions;
 enum AGENT_OP {
     AGENT_OP_Uni,
     AGENT_OP_Delete,
@@ -74,6 +75,9 @@ class CAgentFolder final : public IFolderFolder,
     Z7_COM_ADDREF_RELEASE
   public:
     CAgentFolder() = default;
+    // Borrowed while the source modal CopyTo worker is joined. UI supplies
+    // only metadata choices and the integration path policy.
+    const CExtractNtOptions *QtExtractNtOptions = nullptr;
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderProperties)
     Z7_IFACE_COM7_IMP(IGetFolderArcProps)

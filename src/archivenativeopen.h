@@ -28,6 +28,7 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     const CArc &arc() const { return *link_.GetArc(); }
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }
     bool hasCommentWriter() const;
+    const CArcInfoEx *formatInfo() const;
     bool hasNativeRarExtractor() const;
     bool hasNativeHashExtractor() const;
     QString transportType() const { return transportType_; }

@@ -102,6 +102,10 @@ struct CInfo {
     CBoolPair CTime;
     CBoolPair ATime;
     CBoolPair SetArcMTime;
+    CBoolPair SymLinks;
+    CBoolPair HardLinks;
+    CBoolPair AltStreams;
+    CBoolPair NtSecurity;
     CBoolPair PreserveATime;
     bool OpenShareForWrite = false;
     bool DeleteAfterCompressing = false;
@@ -189,6 +193,8 @@ class CCompressDialog {
     CBool1 AltStreams;
     CBool1 NtSecurity;
     CBool1 PreserveATime;
+    void LoadMetadataOptions(const NCompression::CInfo &registry);
+    void SaveMetadataOptions(NCompression::CInfo &registry);
     CArcInfoEx ArcInfo;
     NCompression::CFormatOptions *FormatOptions = nullptr;
     UString OptionsString;

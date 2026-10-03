@@ -17,6 +17,8 @@ class CExtractDialog : public QDialog {
     QComboBox *_pathMode = nullptr;
     QComboBox *_overwriteMode = nullptr;
     QCheckBox *_showPassword = nullptr;
+    QCheckBox *_elimDup = nullptr;
+    QCheckBox *_ntSecurity = nullptr;
     NExtract::CInfo _info;
     void OnInit(const QStringList &history);
     void OnOK();
@@ -25,12 +27,16 @@ class CExtractDialog : public QDialog {
     void changeEvent(QEvent *event) override;
     static QString settingsPath();
     bool IsShowPasswordChecked() const { return _showPassword->isChecked(); }
+    void CheckButton_TwoBools(QCheckBox *button, const CBoolPair &b1, const CBoolPair &b2);
+    void GetButton_Bools(QCheckBox *button, CBoolPair &b1, CBoolPair &b2);
 
   public:
     CExtractDialog(const QString &initialPath, const QStringList &history, bool selected,
                    QWidget *parent = nullptr);
     QString DirPath;
     QString Password;
+    CBoolPair ElimDup;
+    CBoolPair NtSecurity;
     bool PathMode_Force = false;
     bool OverwriteMode_Force = false;
     NExtract::NPathMode::EEnum PathMode = NExtract::NPathMode::kFullPaths;
@@ -41,6 +47,7 @@ class CExtractDialog : public QDialog {
     void OnHelp();
     void SetInitialOptions(NExtract::NPathMode::EEnum pathMode,
                            NExtract::NOverwriteMode::EEnum overwriteMode, const QString &password);
+    void SetMetadataOptions(const CBoolPair &elimDup, const CBoolPair &ntSecurity);
   public slots:
     void accept() override { OnOK(); }
 };

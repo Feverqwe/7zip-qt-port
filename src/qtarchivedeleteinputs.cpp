@@ -13,7 +13,6 @@ void QtArchiveDeleteInputs::MarkCreatedInputsProcessed() {
 }
 
 HRESULT QtArchiveDeleteInputs::Delete(IUpdateDeletionCallback &callback) {
-    CBoolPair SymLinks;
     return UpdateArchive(DirItems, ProcessedItems, SymLinks, &callback);
 }
 

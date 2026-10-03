@@ -600,13 +600,6 @@ void CBrowseDialog2::OnContextMenu(const QPoint &position) {
         if (cmd == k_CmdId_Open_Explorer || cmd == k_CmdId_Open_7zip) {
             const auto owner = indices.Size() == 1 ? _owners[indices[0]] : _currentRoot;
             action->setEnabled(!owner.key.isEmpty() && !owner.active && !owner.externallyProtected);
-            // Current argument consumer opens files; directory CLI belongs to P2-07.
-            if (cmd == k_CmdId_Open_7zip &&
-                (indices.IsEmpty() || _files[_items[indices[0]].MainFileIndex].IsDir())) {
-                action->setEnabled(false);
-                action->setToolTip(QtLocalText("Opening a folder in a new window is unavailable.",
-                                               "Открытие папки в новом окне пока недоступно."));
-            }
         }
         if (cmd == k_CmdId_Props)
             action->setEnabled(indices.Size() == 1);

@@ -1,4 +1,5 @@
 #include "qtarchivesourceupdate.h"
+#include "7zip/Archive/Common/ItemNameUtils.h"
 #include "7zip/Common/FileStreams.h"
 #include "7zip/Common/StreamUtils.h"
 #include "7zip/Compress/CopyCoder.h"
@@ -51,6 +52,14 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
     _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
                                        UInt32 count, IArchiveUpdateCallback *callback) {
         _outputMTime.reset();
+        if (_compressionOptions &&
+            (_compressionOptions->SymLinks.Val || _compressionOptions->HardLinks.Val ||
+             _compressionOptions->AltStreams.Val || _compressionOptions->NtSecurity.Val)) {
+            if (!NativeItemProperties())
+                return E_NOTIMPL;
+            return backend.updateNativeArchive(_nativeOpen, output, count, callback,
+                                               *_compressionOptions);
+        }
         if (NativeItemProperties() && _nativeOpen->arc().IsTree)
             return backend.updateNativeTree(_nativeOpen, output, count, callback);
         if (const auto *source = dynamic_cast<CArchiveUpdateCallback *>(callback);
@@ -254,7 +263,9 @@ HRESULT ReadPath(IInArchive *metadata, UInt32 index, QString &path, bool allowAb
     RINOK(metadata->GetProperty(index, kpidPath, &value))
     if (value.vt != VT_BSTR)
         return E_NOTIMPL;
-    path = QString::fromWCharArray(value.bstrVal);
+    UString sourcePath(value.bstrVal);
+    NArchive::NItemName::ReplaceSlashes_OsToUnix(sourcePath);
+    path = QString::fromWCharArray(sourcePath.Ptr());
     return ArchiveBackend::sourceUpdatePathIsSafe(path, allowAbsolute) ? S_OK : E_NOTIMPL;
 }
 
@@ -264,7 +275,9 @@ HRESULT ReadNewPath(IArchiveUpdateCallback *callback, UInt32 index, QString &pat
     RINOK(callback->GetProperty(index, kpidPath, &value))
     if (value.vt != VT_BSTR)
         return E_NOTIMPL;
-    path = QString::fromWCharArray(value.bstrVal);
+    UString sourcePath(value.bstrVal);
+    NArchive::NItemName::ReplaceSlashes_OsToUnix(sourcePath);
+    path = QString::fromWCharArray(sourcePath.Ptr());
     return ArchiveBackend::sourceUpdatePathIsSafe(path, allowAbsolute) ? S_OK : E_NOTIMPL;
 }
 
@@ -425,6 +438,11 @@ HRESULT UpdateArchiveSourceStream(ArchiveBackend &backend, const QString &archiv
     COM_TRY_BEGIN
     if (!output || !metadata || !callback)
         return E_INVALIDARG;
+    // File-only staging cannot carry the original callback's reparse data.
+    // Require a native writer before exposing this choice for archive updates.
+    if (options && (options->SymLinks.Val || options->HardLinks.Val || options->AltStreams.Val ||
+                    options->NtSecurity.Val))
+        return E_NOTIMPL;
     if (!backend.supportsArchiveUpdate(format))
         return E_NOTIMPL;
     // Prefix publication is owned by native CommonUpdateOperation. Until that

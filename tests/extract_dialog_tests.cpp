@@ -153,9 +153,8 @@ class ExtractDialogTests final : public QObject {
         settings.setValue("Extraction/ExtractMode", UInt32(NExtract::NPathMode::kAbsPaths));
         settings.sync();
         CExtractDialog absolute("/initial", {}, false);
-        // Absolute paths remain unavailable at the backend boundary.
-        QCOMPARE(pathMode(absolute)->count(), 2);
-        QCOMPARE(absolute.options().pathMode, ExtractionOptions::PathMode::FullPaths);
+        QCOMPARE(pathMode(absolute)->count(), 3);
+        QCOMPARE(absolute.options().pathMode, ExtractionOptions::PathMode::AbsolutePaths);
     }
     void renderedLayout() {
         CExtractDialog dialog(QStringLiteral("/данные с пробелом/"), {"/previous/"}, false);
@@ -195,7 +194,9 @@ class ExtractDialogTests final : public QObject {
         pathMode(dialog)->setCurrentIndex(1);
         overwrite(dialog)->setCurrentIndex(2);
         dialog.accept();
-        backend.extract(archive, dialog.destination(), {}, {}, dialog.options());
+        auto options = dialog.options();
+        options.ElimDup.Val = false; // This fixture exercises the basic CLI transport.
+        backend.extract(archive, dialog.destination(), {}, {}, options);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
         QVERIFY(existing.open(QIODevice::ReadOnly));
@@ -203,7 +204,9 @@ class ExtractDialogTests final : public QObject {
         existing.close();
         done.clear();
         overwrite(dialog)->setCurrentIndex(1);
-        backend.extract(archive, dialog.destination(), {}, {}, dialog.options());
+        options = dialog.options();
+        options.ElimDup.Val = false;
+        backend.extract(archive, dialog.destination(), {}, {}, options);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
         QVERIFY(existing.open(QIODevice::ReadOnly));

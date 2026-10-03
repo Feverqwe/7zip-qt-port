@@ -950,6 +950,12 @@ HRESULT CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback) {
     options.callback = openArchiveCallback;
 
     RINOK(_archiveLink.ReOpen(options))
+    // The Qt transport opens a fresh native handler after publication. Its
+    // tree/stream capabilities can change when the first ADS is added.
+    if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource())) {
+        RINOK(resource->ConfigureArc(_archiveLink.Arcs.Back()))
+        _isHashHandler = resource->HasNativeHashReader();
+    }
     return ReadItems();
     COM_TRY_END
 }
@@ -1124,6 +1130,8 @@ Z7_COM7F_IMF(CAgentFolder::Extract(const UInt32 *indices, UInt32 numItems, Int32
     }
 
     CExtractNtOptions extractNtOptions;
+    if (QtExtractNtOptions)
+        extractNtOptions = *QtExtractNtOptions;
     extractNtOptions.AltStreams.Val = IntToBool(includeAltStreams); // change it!!!
     extractNtOptions.AltStreams.Def = true;
 

@@ -22,8 +22,11 @@ class CCreationScanCallback final : public IDirItemsCallback {
 };
 } // namespace
 
-QtArchiveCreationLifecycle::QtArchiveCreationLifecycle(QStringList sources)
-    : sources_(std::move(sources)) {}
+QtArchiveCreationLifecycle::QtArchiveCreationLifecycle(QStringList sources,
+                                                       const CBoolPair &symLinks)
+    : sources_(std::move(sources)) {
+    inputs_.SymLinks = symLinks;
+}
 
 void QtArchiveCreationLifecycle::cancel() {
     QMutexLocker lock(&mutex_);
@@ -51,18 +54,22 @@ void QtArchiveCreationLifecycle::beginDeletion() {
 HRESULT QtArchiveCreationLifecycle::scan() {
     CCreationScanCallback callback(*this);
     inputs_.DirItems.Callback = &callback;
-    // Enumerate links as links so a selected directory cannot lead deletion
-    // through an unported link workflow. Link storage remains the P2 owner.
+    // Detect links without following them. Deletion can use this snapshot only
+    // when the engine request also stores links rather than their targets.
     inputs_.DirItems.SymLinks = true;
-    FStringVector names;
+    NWildcard::CCensor censor;
     for (const QString &source : sources_)
-        names.Add(us2fs(source.toStdWString().c_str()));
-    const HRESULT result = inputs_.DirItems.EnumerateItems2(FString(), UString(), names, nullptr);
+        censor.AddPreItem_NoWildcard(source.toStdWString().c_str());
+    censor.AddPathsToCensor(NWildcard::k_RelatPath);
+    // Common/Update.cpp's censor enumeration sets original reparse properties
+    // for selected leaves too; Agent's EnumerateItems2 omits that operation.
+    const HRESULT result =
+        EnumerateItems(censor, NWildcard::k_RelatPath, UString(), inputs_.DirItems);
     inputs_.DirItems.Callback = nullptr;
     if (result != S_OK)
         return result;
     FOR_VECTOR(i, inputs_.DirItems.Items) {
-        if (inputs_.DirItems.Items[i].AreReparseData()) {
+        if (inputs_.DirItems.Items[i].AreReparseData() && !inputs_.SymLinks.Val) {
             Error = QtLocalText(
                 "Deleting inputs after compression is unavailable for sources containing links.",
                 QStringLiteral(

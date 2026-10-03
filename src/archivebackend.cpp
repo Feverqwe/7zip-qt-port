@@ -353,6 +353,12 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                         QStringLiteral("Сначала откройте архив и проверьте его содержимое.")));
         return;
     }
+    if (options.pathMode == ExtractionOptions::PathMode::AbsolutePaths || options.ElimDup.Val ||
+        options.NtSecurity.Val) {
+        emit finished(false, QtLocalText("These extraction options require the source workflow.",
+                                         "Эти параметры извлечения требуют исходного сценария."));
+        return;
+    }
     QStringList selectedEntries;
     for (const QString &name : selected) {
         QString normalized = name;

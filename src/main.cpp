@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
         window.show();
         if (app.arguments().size() > 1)
             QTimer::singleShot(0, &window,
-                               [&window, &app] { window.openArchive(app.arguments().at(1)); });
+                               [&window, &app] { window.openPath(app.arguments().at(1)); });
     }
     return app.exec();
 }

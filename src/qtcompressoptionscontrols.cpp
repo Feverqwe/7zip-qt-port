@@ -36,11 +36,16 @@ CQtCompressOptionsDialog::CQtCompressOptionsDialog(QWidget *parent) : QDialog(pa
 
 void CQtCompressOptionsDialog::buildControls() {
     auto *layout = new QVBoxLayout(this);
+    layout->setSpacing(3);
     const auto registerControl = [this](unsigned id, const char *name, QWidget *widget) {
         controls_.insert(id, widget);
         widget->setObjectName(name);
-        if (id == IDX_COMPRESS_ZTIME)
+        if (id == IDX_COMPRESS_ZTIME || id == IDX_COMPRESS_PRESERVE_ATIME)
             widget->setProperty("languageWrapWidth", 300);
+        if (id == IDX_COMPRESS_ATIME)
+            widget->setProperty("languageWrapWidth", 380);
+        if (id == IDT_COMPRESS_TIME_PREC)
+            widget->setProperty("languageWrapWidth", 160);
         if (id >= IDX_COMPRESS_NT_SYM_LINKS && id <= IDX_COMPRESS_PRESERVE_ATIME)
             QtBindLangText(widget, id);
     };
@@ -57,6 +62,7 @@ void CQtCompressOptionsDialog::buildControls() {
     auto *ntfs = new QGroupBox("NTFS", this);
     registerControl(IDG_COMPRESS_NTFS, "IDG_COMPRESS_NTFS", ntfs);
     auto *ntfsLayout = new QVBoxLayout(ntfs);
+    ntfsLayout->setSpacing(3);
     ntfsLayout->addWidget(checkbox(IDX_COMPRESS_NT_SYM_LINKS, "IDX_COMPRESS_NT_SYM_LINKS",
                                    "Store symbolic links", ntfs));
     ntfsLayout->addWidget(checkbox(IDX_COMPRESS_NT_HARD_LINKS, "IDX_COMPRESS_NT_HARD_LINKS",
@@ -73,6 +79,7 @@ void CQtCompressOptionsDialog::buildControls() {
     registerControl(IDG_COMPRESS_TIME, "IDG_COMPRESS_TIME", time);
     QtBindResourceText(time, IDG_COMPRESS_TIME, "Time");
     auto *grid = new QGridLayout(time);
+    grid->setVerticalSpacing(3);
     grid->addWidget(checkbox(IDX_COMPRESS_PREC_SET, "IDX_COMPRESS_PREC_SET", {}, time), 0, 0);
     QtBindLocalText(GetItem(IDX_COMPRESS_PREC_SET), "Set time precision", "Задать точность времени",
                     true);

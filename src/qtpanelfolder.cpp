@@ -85,9 +85,12 @@ Z7_COM7F_IMF(QtPanelFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *va
     const int separator = item.RelPath.lastIndexOf('/');
     switch (id) {
     case kpidPath:
-        prop = item.IsFolder && catalog_ == PropertyCatalog::ArchiveTransport
-                   ? NArchive::NItemName::GetOsPath_Remove_TailSlash(ToUString(item.RelPath))
-                   : ToUString(item.RelPath);
+        if (catalog_ == PropertyCatalog::ArchiveTransport)
+            prop = item.IsFolder
+                       ? NArchive::NItemName::GetOsPath_Remove_TailSlash(ToUString(item.RelPath))
+                       : NArchive::NItemName::GetOsPath(ToUString(item.RelPath));
+        else
+            prop = ToUString(item.RelPath);
         break;
     case kpidName:
         prop = ToUString(item.RelPath.mid(separator + 1));

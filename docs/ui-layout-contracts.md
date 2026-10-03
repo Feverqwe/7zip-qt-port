@@ -1,5 +1,23 @@
 # Text specifications and geometry checks
 
+### Add metadata Options (P2-07, in progress)
+
+Reference: pinned CompressDialog.rc Options NTFS group and COptionsDialog
+OnInit/OnOK. Symbolic links precede hard links, alternate streams and security;
+original handler flags control visibility. Time controls follow this group,
+with OK/Cancel/Help in the footer. Unix hides NTFS streams/security.
+source_link_storage writes EN/RU540×480/480×430 reports for actual TAR options.
+Four current macOS reports reviewed: visible links and footer bounds equal
+exposed bounds; compact checkboxes434 pixels wide exceed RU hints221/197.
+This establishes structure/usability, not rendered Windows pixel parity.
+source_metadata_storage additionally checks WIM security/ADS and all visible
+time captions, Options/Add Cancel/OK/restart, and writes four Windows
+`source-metadata-wim-{language}-{width}` reports. Current EN/RU540×480/480×430
+reports reviewed: RU compact hint475×423 fits480×430, ADS397×18/security301×18
+fit434-wide controls; last-access337×32 fits414×32; footer458×20 fully exposed.
+Only the last-access caption wraps additionally for WIM; 3px vertical gaps keep
+all source groups and controls reachable at compact sizes without reordering.
+
 ### Link (P2-05)
 
 Reference: pinned FileManager/LinkDialog.rc and source OnInit/OnButton_Link.
@@ -789,17 +807,24 @@ Implemented view: `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`.
 
 - Destination label and editable history occupy the top; Browse is on the right.
 - Below the destination, the left column contains the optional folder-name
-  row, path mode, and overwrite mode in that order. The password group is right
-  of the modes and contains the password field and Show Password.
+  row, path mode, root-duplication checkbox, and overwrite mode in that order.
+  The password group is right of the modes, with Password and Show Password.
+  Restore file security is below it; Unix disables it with a platform reason.
 - Toggling `extractNameEnable` hides/shows the folder-name field without
   obscuring modes or confirmation buttons.
 - The explanatory hint wraps above the footer. OK and Cancel stay visible,
   distinct, and inside the window at requested sizes 640×360 and 470×330;
   Qt may expand to its style-dependent minimum size. Static labels fit.
 
-Adaptations: the pinned desktop upstream resource uses combo boxes for modes,
-as does Qt. Help and unsupported root-duplication/security controls
-are omitted. The backend-specific hint is added. See `docs/7zfm-parity.md` for
+P2-07 source_extract_advanced additionally checks EN/RU700×390/600×340 exposed
+controls, checkbox width and source grouping/order. Four JSON reports reviewed
+2026-10-03: compact modes are286 pixels wide, Russian ElimDup requires285;
+inspected bounds equal exposedBounds. Rendered Windows parity is unverified.
+
+Adaptations: the pinned desktop resource and Qt use combo boxes for modes.
+Help uses the source topic. Selected/current-folder workflows disable root
+duplication with a scope reason. The backend-specific hint is added.
+See `docs/7zfm-parity.md` for
 behavioral limitations. The tests check these relationships rather than hardcoded
 pixel coordinates or native button ordering.
 

@@ -15,6 +15,7 @@
 #include "qtarchivefoldermanager.h"
 #include "qtarchivesourceupdate.h"
 #include "qtpanelfolder.h"
+#include "technical_listing_fixture.h"
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
@@ -169,33 +170,66 @@ class CNativeMutationWorker final : public CProgressThreadVirt {
     }
 };
 
+class CDeletionTrace final : public IFolderArchiveUpdateCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IFolderArchiveUpdateCallback)
+    CMyComPtr<IFolderArchiveUpdateCallback> callback_;
+    QStringList &deleted_;
+
+  public:
+    CDeletionTrace(IFolderArchiveUpdateCallback *callback, QStringList &deleted)
+        : callback_(callback), deleted_(deleted) {}
+    Z7_COM7F_IMF(SetTotal(UInt64 value)) override { return callback_->SetTotal(value); }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *value)) override {
+        return callback_->SetCompleted(value);
+    }
+    Z7_COM7F_IMF(CompressOperation(const wchar_t *name)) override {
+        return callback_->CompressOperation(name);
+    }
+    Z7_COM7F_IMF(DeleteOperation(const wchar_t *name)) override {
+        deleted_.append(QString::fromWCharArray(name));
+        return callback_->DeleteOperation(name);
+    }
+    Z7_COM7F_IMF(OperationResult(Int32 value)) override {
+        return callback_->OperationResult(value);
+    }
+    Z7_COM7F_IMF(UpdateErrorMessage(const wchar_t *message)) override {
+        return callback_->UpdateErrorMessage(message);
+    }
+    Z7_COM7F_IMF(SetNumFiles(UInt64 count)) override { return callback_->SetNumFiles(count); }
+};
+
 class CNativeAddWorker final : public CProgressThreadVirt {
     QString _source, _format;
     CMyComPtr<IUnknown> _resource;
+    CMyComPtr<IFolderFolder> _openedFolder;
     QtArchiveFileResource *_resourceSpec;
     HRESULT ProcessVirt() override {
-        CObjectVector<CPanelItem> items;
-        const QStringList archivePaths =
-            ArchivePaths.isEmpty() ? QStringList{QStringLiteral("inside/keep.bin")} : ArchivePaths;
-        for (const QString &path : archivePaths) {
-            CPanelItem item;
-            item.RelPath = path;
-            item.IsFolder = ArchiveDirectories.contains(path);
-            item.MTimeText = ArchiveMTimeText;
-            items.Add(item);
+        CMyComPtr<IFolderFolder> folder = _openedFolder;
+        if (!folder) {
+            CObjectVector<CPanelItem> items;
+            const QStringList archivePaths = ArchivePaths.isEmpty()
+                                                 ? QStringList{QStringLiteral("inside/keep.bin")}
+                                                 : ArchivePaths;
+            for (const QString &path : archivePaths) {
+                CPanelItem item;
+                item.RelPath = path;
+                item.IsFolder = ArchiveDirectories.contains(path);
+                item.MTimeText = ArchiveMTimeText;
+                items.Add(item);
+            }
+            CMyComPtr<IFolderFolder> props =
+                new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
+            CMyComPtr2_Create<IUnknown, CAgent> agent;
+            RINOK(agent->Init({}, props, ToUString(_format), _resource))
+            CMyComPtr<IFolderFolder> root, inside;
+            RINOK(agent->BindToRootFolder(&root))
+            folder = root;
+            if (!RootFolder) {
+                RINOK(root->BindToFolder(L"inside", &inside))
+                folder = inside;
+            }
+            RINOK(folder->LoadItems())
         }
-        CMyComPtr<IFolderFolder> props =
-            new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
-        CMyComPtr2_Create<IUnknown, CAgent> agent;
-        RINOK(agent->Init({}, props, ToUString(_format), _resource))
-        CMyComPtr<IFolderFolder> root, inside;
-        RINOK(agent->BindToRootFolder(&root))
-        CMyComPtr<IFolderFolder> folder = root;
-        if (!RootFolder) {
-            RINOK(root->BindToFolder(L"inside", &inside))
-            folder = inside;
-        }
-        RINOK(folder->LoadItems())
         CMyComPtr<IFolderOperations> operations;
         RINOK(folder.QueryInterface(IID_IFolderOperations, &operations))
         CMyComPtr2_Create<IFolderArchiveUpdateCallback, CUpdateCallback100Imp> ui;
@@ -211,6 +245,9 @@ class CNativeAddWorker final : public CProgressThreadVirt {
             _resourceSpec->SetCompressionOptions(options);
         }
         const QStringList sources = Sources.isEmpty() ? QStringList{_source} : Sources;
+        CMyComPtr<IFolderArchiveUpdateCallback> callback = ui.Interface();
+        if (TraceDeletion)
+            callback = new CDeletionTrace(ui.Interface(), DeletedNames);
         const std::wstring parent = QFileInfo(sources.first()).absolutePath().toStdWString();
         std::vector<std::wstring> names;
         names.reserve(size_t(sources.size()));
@@ -228,12 +265,12 @@ class CNativeAddWorker final : public CProgressThreadVirt {
                 return E_NOINTERFACE;
             if (PathMode)
                 return agentFolder->UpdateFromPaths(pointers.data(), UInt32(pointers.size()),
-                                                    *ActionSet, *PathMode, ui);
+                                                    *ActionSet, *PathMode, callback);
             return agentFolder->UpdateFrom(parent.c_str(), pointers.data(), UInt32(pointers.size()),
-                                           *ActionSet, ui);
+                                           *ActionSet, callback);
         }
         return operations->CopyFrom(MoveMode, parent.c_str(), pointers.data(),
-                                    UInt32(pointers.size()), ui);
+                                    UInt32(pointers.size()), callback);
     }
 
   public:
@@ -246,6 +283,8 @@ class CNativeAddWorker final : public CProgressThreadVirt {
     std::optional<NWildcard::ECensorPathMode> PathMode;
     QString Password;
     QStringList Sources;
+    bool TraceDeletion = false;
+    QStringList DeletedNames;
     CNativeAddWorker(ArchiveBackend &backend, const QString &archive, const QString &source,
                      const QString &format)
         : _source(source), _format(format), _resourceSpec(new QtArchiveFileResource(archive)) {
@@ -254,6 +293,14 @@ class CNativeAddWorker final : public CProgressThreadVirt {
     }
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport() {
         return _resourceSpec->CreateProgressTransport(*this);
+    }
+    void SetOpenedFolder(IFolderFolder *folder) {
+        _openedFolder = folder;
+        auto *agent = dynamic_cast<CAgentFolder *>(folder);
+        _resourceSpec =
+            agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
+        Q_ASSERT(_resourceSpec);
+        _resource = _resourceSpec;
     }
 };
 } // namespace
@@ -301,10 +348,10 @@ class SourceUpdateBackendTests final : public QObject {
             QVERIFY(!QFileInfo::exists(output));
         } else {
             QProcess listing;
-            listing.start(enginePath(), {"l", "-slt", "--", output});
+            listing.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", output});
             QVERIFY(listing.waitForFinished(10000));
             QCOMPARE(listing.exitCode(), 0);
-            const QByteArray contents = listing.readAllStandardOutput().replace("\r\n", "\n");
+            const QByteArray contents = NormalizeTechnicalListing(listing.readAllStandardOutput());
             QVERIFY(contents.contains("Path = tree/keep\n"));
             QVERIFY(!contents.contains("Path = tree\n"));
             QVERIFY(!contents.contains("Path = tree/keep/drop\n"));
@@ -360,22 +407,45 @@ class SourceUpdateBackendTests final : public QObject {
                                  QFileDevice::FileModificationTime));
         disk.close();
         ArchiveBackend backend(nullptr, enginePath());
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
+                                              UString(), nullptr),
+                 S_OK);
+        auto *opened = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
+        QVERIFY(opened);
+        IInArchive *properties = opened->GetArchiveProperties();
+        QVERIFY(properties);
+        UInt32 count = 0;
+        QCOMPARE(properties->GetNumberOfItems(&count), S_OK);
+        QStringList actualPaths;
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(properties->GetProperty(i, kpidPath, &path), S_OK);
+            QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+            actualPaths.append(QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)));
+        }
+        QVERIFY2(actualPaths.contains(child), qPrintable(actualPaths.join('\n')));
         CNativeAddWorker worker(backend, archive, source, format);
-        worker.RootFolder = true;
+        worker.SetOpenedFolder(opening.Folder);
         worker.PathMode = NWildcard::k_FullPath;
-        worker.ArchivePaths = {folder, folder + "/nested", child, removed};
-        worker.ArchiveDirectories = {folder, folder + "/nested"};
-        worker.ArchiveMTimeText = "2023-11-14 22:13:20";
         worker.ActionSet = &NUpdateArchive::k_ActionSet_Sync;
+        worker.TraceDeletion = true;
         auto transport = worker.CreateProgressTransport();
         QCOMPARE(worker.Create(L"Synchronize selected child", nullptr), S_OK);
         QCOMPARE(worker.Result, S_OK);
+        QStringList sourceDeleted;
+        for (const QString &path : worker.DeletedNames)
+            sourceDeleted.append(QDir::fromNativeSeparators(path));
+        QVERIFY(sourceDeleted.contains(folder));
+        QVERIFY(sourceDeleted.contains(removed));
+        QVERIFY(!sourceDeleted.contains(child));
         QVERIFY(readFile(archive) != original);
         QProcess listing;
-        listing.start(enginePath(), {"l", "-slt", "--", archive});
+        listing.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", archive});
         QVERIFY(listing.waitForFinished(10000));
         QCOMPARE(listing.exitCode(), 0);
-        const QByteArray contents = listing.readAllStandardOutput().replace("\r\n", "\n");
+        const QByteArray contents = NormalizeTechnicalListing(listing.readAllStandardOutput());
         QVERIFY2(contents.contains("Path = " + child.toUtf8() + '\n'), contents.constData());
         QVERIFY(!contents.contains("Path = " + folder.toUtf8() + '\n'));
         QVERIFY(!contents.contains("Path = " + (folder + "/nested").toUtf8() + '\n'));
@@ -404,11 +474,10 @@ class SourceUpdateBackendTests final : public QObject {
         QCOMPARE(logicalNames[0], QStringLiteral("selected.txt"));
 #ifndef _WIN32
         QCOMPARE(logicalNames[1], source.mid(1));
-        QCOMPARE(logicalNames[2], source);
 #else
         QVERIFY(logicalNames[1].endsWith(QStringLiteral("selected.txt")));
-        QCOMPARE(logicalNames[2], source);
 #endif
+        QCOMPARE(QDir::fromNativeSeparators(logicalNames[2]), source);
     }
     void nativeGuiPathModes_data() {
         QTest::addColumn<int>("mode");
@@ -440,10 +509,11 @@ class SourceUpdateBackendTests final : public QObject {
         QCOMPARE(worker.Result, S_OK);
         if (mode == int(NWildcard::k_AbsPath)) {
             QProcess listing;
-            listing.start(enginePath(), {"l", "-slt", "--", archive});
+            listing.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", archive});
             QVERIFY(listing.waitForFinished(10000));
             QCOMPARE(listing.exitCode(), 0);
-            QVERIFY(listing.readAllStandardOutput().contains("Path = " + source.toUtf8()));
+            QVERIFY(NormalizeTechnicalListing(listing.readAllStandardOutput())
+                        .contains("Path = " + source.toUtf8()));
             return;
         }
         const QString extracted = fixture.filePath("extracted");
@@ -497,10 +567,10 @@ class SourceUpdateBackendTests final : public QObject {
         } else if (mode == int(NWildcard::k_AbsPath))
             logical = folder;
         QProcess listing;
-        listing.start(enginePath(), {"l", "-slt", "--", archive});
+        listing.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", archive});
         QVERIFY(listing.waitForFinished(10000));
         QCOMPARE(listing.exitCode(), 0);
-        const QByteArray contents = listing.readAllStandardOutput();
+        const QByteArray contents = NormalizeTechnicalListing(listing.readAllStandardOutput());
         const QString listingText =
             QString::fromUtf8(contents).normalized(QString::NormalizationForm_C);
         const QString expected = logical.normalized(QString::NormalizationForm_C);
@@ -544,10 +614,10 @@ class SourceUpdateBackendTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
         QVERIFY2(finished.takeFirst().first().toBool(), "path-mode create failed");
         QProcess listing;
-        listing.start(enginePath(), {"l", "-slt", "--", archive});
+        listing.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", archive});
         QVERIFY(listing.waitForFinished(10000));
         QCOMPARE(listing.exitCode(), 0);
-        const QByteArray output = listing.readAllStandardOutput();
+        const QByteArray output = NormalizeTechnicalListing(listing.readAllStandardOutput());
         QString logical = QStringLiteral("selected.txt");
         if (mode == int(NWildcard::k_FullPath)) {
 #ifdef _WIN32
@@ -705,10 +775,11 @@ class SourceUpdateBackendTests final : public QObject {
         QVERIFY2(finished.takeFirst().first().toBool(), "absolute rename stage failed");
         QCOMPARE(readFile(original), originalBytes);
         QProcess listing;
-        listing.start(enginePath(), {"l", "-slt", "--", updated});
+        listing.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", updated});
         QVERIFY(listing.waitForFinished(10000));
         QCOMPARE(listing.exitCode(), 0);
-        QVERIFY(listing.readAllStandardOutput().contains("Path = " + logical.toUtf8()));
+        QVERIFY(NormalizeTechnicalListing(listing.readAllStandardOutput())
+                    .contains("Path = " + logical.toUtf8()));
         ArchiveBackend::SourceUpdatePlan drop;
         drop.removed = {logical};
         drop.allowAbsolute = true;
@@ -716,10 +787,10 @@ class SourceUpdateBackendTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
         QVERIFY2(finished.takeFirst().first().toBool(), "absolute delete stage failed");
         QProcess after;
-        after.start(enginePath(), {"l", "-slt", "--", removed});
+        after.start(enginePath(), {"l", "-slt", "-sccUTF-8", "--", removed});
         QVERIFY(after.waitForFinished(10000));
         QCOMPARE(after.exitCode(), 0);
-        const QByteArray contents = after.readAllStandardOutput();
+        const QByteArray contents = NormalizeTechnicalListing(after.readAllStandardOutput());
         QVERIFY(!contents.contains("Path = " + logical.toUtf8()));
         QVERIFY(contents.contains("Path = keep.txt"));
     }
@@ -1418,7 +1489,7 @@ class SourceUpdateBackendTests final : public QObject {
         QCOMPARE(worker.Create(L"Protected path-mode Add", nullptr), S_OK);
         QCOMPARE(worker.Result, S_OK);
         QProcess listProcess;
-        listProcess.start(enginePath(), {"l", "-slt", "-pfixture123", "--", archive});
+        listProcess.start(enginePath(), {"l", "-slt", "-sccUTF-8", "-pfixture123", "--", archive});
         QVERIFY(listProcess.waitForFinished(10000));
         QCOMPARE(listProcess.exitCode(), 0);
         const QByteArray listing = listProcess.readAllStandardOutput();

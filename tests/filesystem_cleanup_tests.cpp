@@ -78,8 +78,10 @@ class FilesystemCleanupTests : public QObject {
         QVERIFY(!QFileInfo::exists(directory));
     }
 
-#ifndef _WIN32
     void symbolicLinkCleanupDoesNotTouchTarget() {
+#ifdef _WIN32
+        QSKIP("POSIX DeleteFileAlways directory-link contract.");
+#else
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         const QString directory = temporary.filePath(QStringLiteral("target й с пробелом"));
@@ -100,8 +102,8 @@ class FilesystemCleanupTests : public QObject {
         QFile file(filePath);
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("keep original bytes"));
-    }
 #endif
+    }
 };
 
 QTEST_GUILESS_MAIN(FilesystemCleanupTests)

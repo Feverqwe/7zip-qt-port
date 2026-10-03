@@ -1,4 +1,5 @@
 #include "qtarchiveproperties.h"
+#include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "qtarchivefileresource.h"
@@ -71,6 +72,12 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetRawProp(UInt32 index, PROPID id, const
 Z7_COM7F_IMF(CFolderArchiveProperties::GetFileTimeType(UInt32 *type)) {
     if (!type)
         return E_INVALIDARG;
+    if (_resourceSpec)
+        if (auto *native = _resourceSpec->NativeItemProperties()) {
+            CMyComPtr<IOutArchive> writer;
+            if (native->QueryInterface(IID_IOutArchive, (void **)&writer) == S_OK)
+                return writer->GetFileTimeType(type);
+        }
     *type = NFileTimeType::kWindows;
     return S_OK;
 }
@@ -97,8 +104,18 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfItems(UInt32 *count)) {
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value)) {
     if (_resourceSpec)
-        if (auto *native = _resourceSpec->NativeItemProperties())
+        if (auto *native = _resourceSpec->NativeItemProperties()) {
+            // IInArchive permits an omitted IsDir property (gzip is a file).
+            // The folder/process-plan boundary needs its defined bool. Reuse
+            // the original archive property reader's default/type rules.
+            if (id == kpidIsDir) {
+                bool isDir;
+                RINOK(Archive_IsItem_Dir(native, index, isDir))
+                NWindows::NCOM::CPropVariant prop(isDir);
+                return prop.Detach(value);
+            }
             return native->GetProperty(index, id, value);
+        }
     return _properties->GetProperty(index, id, value);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::Extract(const UInt32 *indices, UInt32 count, Int32 testMode,

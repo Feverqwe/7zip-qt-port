@@ -1,5 +1,57 @@
 # Сверка с Windows 7zFM
 
+## P2-07 — Extract и directory startup
+
+Эталон — pinned ExtractDialog.rc/ExtractDialog.cpp, ExtractGUI.cpp,
+Common/Extract.cpp, ArchiveExtractCallback.cpp, FM.cpp и BrowseDialog2.cpp.
+Qt восстанавливает Absolute paths, Eliminate duplication of root folder между
+Path mode и Overwrite mode и Restore file security под Password. NtSecurity
+доступен только в Windows; Unix показывает disabled control с причиной.
+Для выбранных объектов и текущей архивной папки ElimDup disabled: исходный
+Agent workflow не выполняет Common root elimination. Persistence сохраняет
+source precedence/defined-value rules; Cancel не записывает изменения.
+
+Absolute extraction допускает только пути внутри выбранной папки назначения;
+исходный 7zFM допускает произвольные абсолютные пути. Это явное ограничение
+интеграции перед созданием source-corrected output. Проверенный native handler
+восстанавливает archive links через исходные deferred callbacks; вычисленная
+цель должна оставаться внутри назначения и не проходить через существующую
+ссылку. Absolute link targets перебазируются по исходным правилам, включая
+ElimDup. File-only transport ссылки отклоняет. POSIX fixtures проверены;
+Windows native link fixtures тоже проверены, включая cyclic links; Unix TAR
+absolute link target на Windows отклоняется по исходным правилам. Positive
+WIM relative/absolute file и directory reparse targets проверены чтением байтов.
+Cancel на overwrite prompt сохраняет уже
+завершённый файл и существующий конфликтующий файл; последующая ссылка
+не создаётся. Исходный архив и входные файлы сохраняются.
+
+Add → Options использует исходные SymLinks/HardLinks/AltStreams/NtSecurity
+bool pairs и флаги выбранного handler. ZIP/7z в upstream не объявляют kSymLinks
+для GUI, хотя CLI может сохранять ссылки; эта разница сохранена. TAR показывает
+symbolic/hard links, NTFS streams/security доступны только Windows. Options
+Cancel не меняет Add, Add OK сохраняет настройки, смена формата фильтрует
+неподдерживаемые запросы. Source TAR writer и processed-input deletion
+проверены на macOS и Linux, включая actual MainWindow Add/Options и Extract
+выбранной/текущей папки в EN/RU. Cancel Add сохраняет архив и входные ссылки.
+Windows actual MainWindow metadata consumer и девять focused CTest прошли.
+Restore file security проверен с опцией on/off на настоящем NTFS DACL.
+Native WIM Add сохраняет security/ADS по независимым опциям, failure/Cancel
+сохраняют источники, успешная публикация предшествует processed deletion.
+После первого ADS source proxy получает обновлённый native capability flag.
+
+Standalone ZIP/7z на Windows отклоняет запрос сохранения ссылок до запуска
+engine: фактический CLI round-trip теряет directory reparse metadata. При
+Delete after compressing это приводило бы к потере исходной ссылки. Native
+TAR/WIM использует объявленные исходным handler capabilities; POSIX standalone
+ZIP/7z сохраняет прежний проверенный режим.
+
+Open Outside : 7-Zip для owned temp directory больше не disabled. Аргумент
+проходит через существующую native navigation; detached запуск сохраняет
+unconfirmed external protection, поскольку подтверждённого exit handle нет.
+P2-07 принят с focused runtime checks всех трёх платформ. Полные Windows/Linux
+gates и rendered Windows parity не заявлены; resources и widget JSON
+подтверждают структуру, порядок и доступность controls, а не pixel fidelity.
+
 ## P2-06 — Alternate streams (принят, 2026-10-03)
 
 Эталон — IDM_ALT_STREAMS в FileManager.rc, исходный CPanel::OpenAltStreams,

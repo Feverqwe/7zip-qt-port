@@ -14,18 +14,26 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 интеграцию и Qt Widgets пишем на C++17. C-файлы собираются как C.
 Обязательный P2-11 — рефакторинг уже написанного собственного кода по реестру
 и интегрированным компонентам; сохраняй source bodies и необходимые native bridges.
-Актуальный счёт с новым пакетом:35/47,12remain;P2 6/11. Счётчики ниже —
+Актуальный счёт после P2-07:36/47,11remain;P2 7/11. Счётчики ниже —
 историческое evidence до добавления P2-11.
 
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-07: Extract ElimDup/absolute/security/metadata с исходными ExtractDialog,
-ExtractGUI, ExtractingFilePath/ArchiveExtractCallback/Extract и SecurityUtils.
-Сначала inspect bodies и определить безопасную границу absolute extraction;
-каждый control должен иметь effect/persistence, success/failure/Cancel и EN/RU UX.
-Также завершить archive link storage/processed-input deletion и directory
-Open Outside : 7-Zip consumer. Сохранить source flow и upstream read-only.
+P2-08: System page/file associations с исходными SystemPage/RegistryAssociations
+и platform registration adapters. Сначала inspect bodies и platform boundaries;
+detect/apply/revert, denied permissions, absent handlers и external changes
+проверять через fake registration services. Реальные системные изменения только
+как явно выбранное пользователем действие приложения; upstream read-only.
+
+P2-07 принят целой итерацией2026-10-03: source Extract controls/persistence,
+bounded final paths/links, native WIM security/ADS/reparse, metadata TAR/WIM Add
+и processed deletion, actual MainWindow и directory detached startup. Mac full
+214/214PASS81.10s; final4/4PASS1.45s/lifecycle1/1PASS1.28s; Windows13/13PASS33.56s
++final lifecycle1/1PASS2.48s; Linux final13/13PASS10.15s. EN/RU normal/compact
+JSON reviewed; baseline382/175/3. Standalone Windows ZIP/7z link request refused
+до engine start: CLI теряет directory reparse metadata. Полные Windows/Linux
+gates/rendered parity/Finder остаются P3. Счёт36/47, следующийP2-08.
 
 P2-06 принят целой итерацией2026-10-03: complete AltStreamsFolder,
 source CCopyStateIO/Agent proxy2/native raw tree и native WIM writer, actual

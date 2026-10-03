@@ -20,6 +20,44 @@
 #include <QLabel>
 
 static const unsigned kHistorySize = 20;
+
+// Original CompressDialog.cpp FormatChanged/OnOK bool-pair bodies. Qt uses
+// explicit load/save entry points for the modal Options transaction.
+static void Combine_Two_BoolPairs(const CBoolPair &b1, const CBoolPair &b2, CBool1 &res) {
+    if (!b1.Def && b2.Def)
+        res.Val = b2.Val;
+    else
+        res.Val = b1.Val;
+}
+static void Set_Final_BoolPairs(const CBool1 &gui, CBoolPair &cmd, CBoolPair &reg) {
+    if (!cmd.Def) {
+        reg.Val = gui.Val;
+        reg.Def = gui.Val;
+    }
+    if (gui.Supported) {
+        cmd.Val = gui.Val;
+        cmd.Def = gui.Val;
+    } else
+        cmd.Init();
+}
+void CCompressDialog::LoadMetadataOptions(const NCompression::CInfo &registry) {
+    Combine_Two_BoolPairs(Info.SymLinks, registry.SymLinks, SymLinks);
+    Combine_Two_BoolPairs(Info.HardLinks, registry.HardLinks, HardLinks);
+    Combine_Two_BoolPairs(Info.AltStreams, registry.AltStreams, AltStreams);
+    Combine_Two_BoolPairs(Info.NtSecurity, registry.NtSecurity, NtSecurity);
+    SymLinks.Supported = ArcInfo.Flags_SymLinks();
+    HardLinks.Supported = ArcInfo.Flags_HardLinks();
+#ifdef Q_OS_WIN
+    AltStreams.Supported = ArcInfo.Flags_AltStreams();
+    NtSecurity.Supported = ArcInfo.Flags_NtSecurity();
+#endif
+}
+void CCompressDialog::SaveMetadataOptions(NCompression::CInfo &registry) {
+    Set_Final_BoolPairs(SymLinks, Info.SymLinks, registry.SymLinks);
+    Set_Final_BoolPairs(HardLinks, Info.HardLinks, registry.HardLinks);
+    Set_Final_BoolPairs(AltStreams, Info.AltStreams, registry.AltStreams);
+    Set_Final_BoolPairs(NtSecurity, Info.NtSecurity, registry.NtSecurity);
+}
 // Common/Update.cpp uses an empty SFX extension on Unix. The native console
 // module is an executable for that host; Windows retains GUI .exe naming.
 static const wchar_t *const kExeExt =

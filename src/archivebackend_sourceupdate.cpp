@@ -46,7 +46,7 @@ bool ArchiveBackend::sourceUpdatePathIsSafe(const QString &path, bool allowAbsol
 
 bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStringList &sources,
                                             QString *root, QStringList *relativePaths,
-                                            QString *error) {
+                                            QString *error, bool storeLinks) {
     if (!root || !relativePaths || !error || sources.isEmpty())
         return false;
     const QFileInfo target(archive);
@@ -72,7 +72,8 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
     for (const QString &source : sources) {
         const QFileInfo info(source);
         const QString relative = QDir(commonRoot).relativeFilePath(info.absoluteFilePath());
-        if (!info.exists() || info.isSymLink() || relative == ".." || relative.startsWith("../") ||
+        if ((!info.exists() && !(storeLinks && info.isSymLink())) ||
+            (info.isSymLink() && !storeLinks) || relative == ".." || relative.startsWith("../") ||
             QDir::isAbsolutePath(relative) || !sourceUpdatePathIsSafe(relative) ||
             relative.contains('*') || relative.contains('?') || relative.startsWith('@') ||
             info.absoluteFilePath() == target.absoluteFilePath()) {
@@ -81,7 +82,7 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
                     .arg(source);
             return false;
         }
-        if (info.isDir()) {
+        if (info.isDir() && !info.isSymLink()) {
             const QString nested =
                 QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
             if (nested == "." ||
@@ -96,7 +97,7 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
                                   QDirIterator::Subdirectories);
             while (iterator.hasNext()) {
                 iterator.next();
-                if (iterator.fileInfo().isSymLink()) {
+                if (iterator.fileInfo().isSymLink() && !storeLinks) {
                     *error = QtLocalText("Sources must not contain links: %1",
                                          "Источники не должны содержать ссылки: %1")
                                  .arg(iterator.filePath());

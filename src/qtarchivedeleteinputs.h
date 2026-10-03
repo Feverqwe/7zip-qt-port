@@ -8,6 +8,7 @@ class QtArchiveDeleteInputs {
   public:
     CDirItems DirItems;
     CByteBuffer ProcessedItems;
+    CBoolPair SymLinks;
     void Capture(const CDirItems &items, const CByteBuffer &processed);
     void MarkCreatedInputsProcessed();
     HRESULT Delete(IUpdateDeletionCallback &callback);

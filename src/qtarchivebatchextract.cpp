@@ -2,6 +2,8 @@
 #include "CPP/7zip/UI/GUI/ExtractGUI.h"
 #include "Common/StringConvert.h"
 #include "qtarchivebatchopen.h"
+#include "qtextractpathpolicy.h"
+#include <QDir>
 #include <QFileInfo>
 
 QtArchiveBatchResult RunQtArchiveBatchExtract(ArchiveBackend &backend, const QStringList &archives,
@@ -23,11 +25,18 @@ QtArchiveBatchResult RunQtArchiveBatchExtract(ArchiveBackend &backend, const QSt
     NWildcard::CCensorNode censor;
     censor.Add_Wildcard();
     CExtractOptions sourceOptions;
-    sourceOptions.OutputDir = us2fs(UString(destination.toStdWString().c_str()));
+    CQtExtractPathPolicy pathPolicy(destination);
+    sourceOptions.NtOptions.QtPathPolicy = &pathPolicy;
+    sourceOptions.OutputDir =
+        us2fs(UString(QDir::toNativeSeparators(destination).toStdWString().c_str()));
     sourceOptions.OutDirMode = NExtractOutDirMode::k_Direct;
     sourceOptions.PathMode = options.pathMode == ExtractionOptions::PathMode::NoPaths
                                  ? NExtract::NPathMode::kNoPaths
+                             : options.pathMode == ExtractionOptions::PathMode::AbsolutePaths
+                                 ? NExtract::NPathMode::kAbsPaths
                                  : NExtract::NPathMode::kFullPaths;
+    sourceOptions.ElimDup = options.ElimDup;
+    sourceOptions.NtOptions.NtSecurity = options.NtSecurity;
     switch (options.overwriteMode) {
     case ExtractionOptions::OverwriteMode::Ask:
         sourceOptions.OverwriteMode = NExtract::NOverwriteMode::kAsk;
@@ -55,6 +64,7 @@ QtArchiveBatchResult RunQtArchiveBatchExtract(ArchiveBackend &backend, const QSt
     spec->Password = UString(password.toStdWString().c_str());
     spec->PasswordIsDefined = !password.isEmpty();
     QtArchiveBatchOpen open(backend);
+    open.SetExtractionPolicy(destination, options);
     result.Result = ExtractGUI(&codecs, types, excludedFormats, archivePaths, archivePathsFull,
                                censor, sourceOptions, nullptr, false, result.MessageWasDisplayed,
                                spec, &open, &open, parent);

@@ -197,8 +197,11 @@ class NestedArchiveTests : public QObject {
         QVERIFY(QDir().mkdir(destination));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         window.extractTo(destination);
-        QVERIFY(finished.wait(30000));
-        QVERIFY(finished.takeFirst().first().toBool());
+        // Source modal extraction joins its worker before returning. Backend
+        // signals describe its listing/stream subrequests, not the UI operation.
+        QVERIFY(!backend.busy());
+        for (const auto &result : finished)
+            QVERIFY2(result.first().toBool(), qPrintable(result.at(1).toString()));
         QFile extracted(QDir(destination).filePath(sourceName));
         QVERIFY(extracted.open(QIODevice::ReadOnly));
         QCOMPARE(extracted.readAll(), QByteArray("tar payload"));

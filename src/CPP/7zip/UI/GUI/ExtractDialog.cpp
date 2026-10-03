@@ -68,7 +68,7 @@ static void NormalizeDirPathPrefix(QString &dirPath) {
 CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &history,
                                bool selected, QWidget *parent)
     : QDialog(parent), DirPath(initialPath) {
-    Q_UNUSED(selected);
+    ElimDup.Val = true;
     setObjectName("extractDialog");
     QtBindResourceText(this, IDD_EXTRACT, "Extract");
     resize(470, 330);
@@ -117,6 +117,15 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     pathLabel->setBuddy(_pathMode);
 
     modeColumn->addWidget(_pathMode);
+    _elimDup = new QCheckBox(this);
+    _elimDup->setObjectName("extractElimDup");
+    QtBindResourceText(_elimDup, IDX_EXTRACT_ELIM_DUP, "Eliminate duplication of root folder");
+    if (selected) {
+        _elimDup->setEnabled(false);
+        QtBindLocalToolTip(_elimDup, "This option applies to extraction of the whole archive.",
+                           "Этот параметр применяется при извлечении всего архива.");
+    }
+    modeColumn->addWidget(_elimDup);
     auto *overwriteLabel = new QLabel(this);
     overwriteLabel->setObjectName("extractOverwriteModeLabel");
     QtBindResourceText(overwriteLabel, IDT_EXTRACT_OVERWRITE_MODE, "Overwrite mode:");
@@ -140,7 +149,19 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     QtBindResourceText(_showPassword, IDX_PASSWORD_SHOW, "Show Password");
     _showPassword->setObjectName("extractShowPassword");
     passwordLayout->addWidget(_showPassword);
-    options->addWidget(passwordGroup, 1, Qt::AlignTop);
+    auto *metadataColumn = new QVBoxLayout;
+    metadataColumn->addWidget(passwordGroup);
+    _ntSecurity = new QCheckBox(this);
+    _ntSecurity->setObjectName("extractNtSecurity");
+    QtBindResourceText(_ntSecurity, IDX_EXTRACT_NT_SECUR, "Restore file security");
+#ifndef Q_OS_WIN
+    _ntSecurity->setEnabled(false);
+    QtBindLocalToolTip(_ntSecurity, "Windows file security is unavailable on this platform.",
+                       "Права доступа Windows недоступны на этой платформе.");
+#endif
+    metadataColumn->addWidget(_ntSecurity);
+    metadataColumn->addStretch();
+    options->addLayout(metadataColumn, 1);
     layout->addLayout(options);
     auto *hint = new QLabel(this);
     hint->setObjectName("extractDestinationHint");
@@ -161,6 +182,36 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     connect(_showPassword, &QCheckBox::toggled, this, &CExtractDialog::UpdatePasswordControl);
     connect(_nameEnable, &QCheckBox::toggled, _pathName, &QWidget::setVisible);
     OnInit(history);
+}
+
+// Source bool-pair precedence and changed-value persistence; Qt substitutes
+// only the Win32 CheckButton/IsButtonCheckedBool control services.
+static bool GetBoolsVal(const CBoolPair &b1, const CBoolPair &b2) {
+    if (b1.Def)
+        return b1.Val;
+    if (b2.Def)
+        return b2.Val;
+    return b1.Val;
+}
+
+void CExtractDialog::CheckButton_TwoBools(QCheckBox *button, const CBoolPair &b1,
+                                          const CBoolPair &b2) {
+    button->setChecked(GetBoolsVal(b1, b2));
+}
+
+void CExtractDialog::GetButton_Bools(QCheckBox *button, CBoolPair &b1, CBoolPair &b2) {
+    const bool val = button->isChecked();
+    const bool oldVal = GetBoolsVal(b1, b2);
+    if (val != oldVal)
+        b1.Def = b2.Def = true;
+    b1.Val = b2.Val = val;
+}
+
+void CExtractDialog::SetMetadataOptions(const CBoolPair &elimDup, const CBoolPair &ntSecurity) {
+    ElimDup = elimDup;
+    NtSecurity = ntSecurity;
+    CheckButton_TwoBools(_elimDup, ElimDup, _info.ElimDup);
+    CheckButton_TwoBools(_ntSecurity, NtSecurity, _info.NtSecurity);
 }
 
 void CExtractDialog::SetInitialOptions(NExtract::NPathMode::EEnum pathMode,
@@ -206,6 +257,8 @@ void CExtractDialog::OnInit(const QStringList &history) {
     if (!OverwriteMode_Force && _info.OverwriteMode_Force)
         OverwriteMode = _info.OverwriteMode;
     _showPassword->setChecked(_info.ShowPassword.Val);
+    CheckButton_TwoBools(_elimDup, ElimDup, _info.ElimDup);
+    CheckButton_TwoBools(_ntSecurity, NtSecurity, _info.NtSecurity);
     UpdatePasswordControl();
     QString pathPrefix = DirPath;
     if (_info.SplitDest.Val) {
@@ -224,7 +277,8 @@ void CExtractDialog::OnInit(const QStringList &history) {
     // Qt addItem selects the first item in an editable empty combo. Restore typed text.
     _path->setCurrentIndex(-1);
     _path->setEditText(pathPrefix);
-    AddComboItems(*_pathMode, kPathMode_IDs, 2, kPathModeButtonsVals, PathMode);
+    AddComboItems(*_pathMode, kPathMode_IDs, Z7_ARRAY_SIZE(kPathMode_IDs), kPathModeButtonsVals,
+                  PathMode);
     AddComboItems(*_overwriteMode, kOverwriteMode_IDs, Z7_ARRAY_SIZE(kOverwriteMode_IDs),
                   kOverwriteButtonsVals, OverwriteMode);
 }
@@ -258,6 +312,8 @@ void CExtractDialog::OnOK() {
     OverwriteMode = (NExtract::NOverwriteMode::EEnum)
         kOverwriteButtonsVals[_overwriteMode->currentData().toUInt()];
     Password = _passwordControl->text();
+    GetButton_Bools(_elimDup, ElimDup, _info.ElimDup);
+    GetButton_Bools(_ntSecurity, NtSecurity, _info.NtSecurity);
     const bool showPassword = IsShowPasswordChecked();
     if (showPassword != _info.ShowPassword.Val) {
         _info.ShowPassword.Def = true;
@@ -318,8 +374,15 @@ QString CExtractDialog::destination() const {
 
 ExtractionOptions CExtractDialog::options() const {
     ExtractionOptions result;
+    result.ElimDup = ElimDup;
+    result.ElimDup.Val = _elimDup->isEnabled() && _elimDup->isChecked();
+    result.NtSecurity = NtSecurity;
+    result.NtSecurity.Val = _ntSecurity->isEnabled() && _ntSecurity->isChecked();
     if (kPathModeButtonsVals[_pathMode->currentData().toUInt()] == NExtract::NPathMode::kNoPaths)
         result.pathMode = ExtractionOptions::PathMode::NoPaths;
+    else if (kPathModeButtonsVals[_pathMode->currentData().toUInt()] ==
+             NExtract::NPathMode::kAbsPaths)
+        result.pathMode = ExtractionOptions::PathMode::AbsolutePaths;
     switch (kOverwriteButtonsVals[_overwriteMode->currentData().toUInt()]) {
     case NExtract::NOverwriteMode::kAsk:
         result.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
