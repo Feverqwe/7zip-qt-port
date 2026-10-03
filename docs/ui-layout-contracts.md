@@ -1,5 +1,29 @@
 # Text specifications and geometry checks
 
+### Benchmark (P2-04)
+
+Reference: pinned `CPP/7zip/UI/GUI/BenchmarkDialog.rc` and its source state bodies.
+Dictionary/memory precede CPU threads, then Size→Speed→CPU Usage→Rating / Usage→
+Rating columns; Compressing and Decompressing retain Current/Resulting rows.
+Elapsed/Passes and Total Rating precede CPU/version/system information. Restart
+and Stop sit beside the original log; Help/Cancel stay in the footer. Total mode
+has elapsed time and a fixed-font console. Qt scrolls the normal control pane at
+compact sizes and replaces Win32 rectangles/font setup with Qt layout services.
+
+`benchmark_lifecycle` writes normal/total EN/RU JSON at960×650 and640×400,
+checks all named labels/inputs after scrolling, fixed footer exposure and live
+language changes. Current reports on all three OS were reviewed2026-10-03: normal compact
+controls scroll vertically/horizontally, metrics captions fit; buttons remain
+fully exposed. Total console is618×326 compact and938×576 normal. Cancel/Help use
+the original standard language mapping402/409; control IDs2/9 are not language
+IDs. No screenshot or rendered Windows reference has been used to claim pixel
+parity. Windows spanning group/error/system labels retain natural width; wrapped
+source text updates also set its required height, since a grid span's height
+calculation otherwise assumes the wider span. The Windows console is618×332
+compact/938×582normal; Linux618×330/938×580. Lower system rows are expected below
+the initial compact viewport and are tested after scrolling. P2-04 acceptance
+is recorded in the audit; whole-plan platform/rendered checks remain P3.
+
 ### SFX Options group (P2-02)
 
 Reference: pinned `GUI/CompressDialog.rc` Options control order SFX→Shared→Delete,

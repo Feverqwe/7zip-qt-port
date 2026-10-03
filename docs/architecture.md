@@ -2,6 +2,17 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+P2-04: complete source Common/Bench owns generation, timing and rating
+calculations in sevenzip_common. Source GUI/BenchmarkDialog owns properties,
+memory refusal, native worker synchronization, callbacks, passes and results in
+sevenzip_panel. CQtBenchmarkWindow provides only controls, layout, monotonic
+clock, timer and queued-message services. ArchiveBackend supplies retained native
+codec/hash providers and IQtBenchmarkServices; the production services delegate
+to original Bench and SystemInfo GetRamSize. The source Common/CompressCall2
+Benchmark entry connects Tools dispatch without global codec/window ownership.
+Providers and services outlive the dialog's original worker join. There is no
+CLI benchmark output parser or independently implemented rating formula.
+
 P2-03: source PanelCrc owns panel checksum routing and filesystem scan/read;
 PanelCopy/ExtractCallback hash the selected archive stream. MainWindow supplies
 only the retained backend catalog provider and Qt operation lifetime. Backend

@@ -6,6 +6,7 @@
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
 #include "archivenativeopen.h"
+#include "qtbenchmarkservices.h"
 #include "qtlanguageservices.h"
 #include <QFileInfo>
 
@@ -114,6 +115,21 @@ HRESULT ArchiveBackend::loadHashProviders(CExternalCodecs &providers) const {
     auto &codecs = const_cast<CCodecs &>(catalog->nativeCodecs());
     providers.GetHashers = static_cast<IHashers *>(&codecs);
     return providers.Load();
+}
+
+HRESULT ArchiveBackend::loadBenchmarkProviders(CExternalCodecs &providers) const {
+    providers.ClearAndRelease();
+    const auto catalog = codecCatalog();
+    if (!catalog || catalog->result() != S_OK)
+        return E_NOTIMPL;
+    auto &codecs = const_cast<CCodecs &>(catalog->nativeCodecs());
+    providers.GetCodecs = static_cast<ICompressCodecsInfo *>(&codecs);
+    providers.GetHashers = static_cast<IHashers *>(&codecs);
+    return providers.Load();
+}
+
+std::unique_ptr<IQtBenchmarkServices> ArchiveBackend::benchmarkServices() const {
+    return std::make_unique<QtBenchmarkServices>();
 }
 
 void ArchiveBackend::cancelCodecDiscovery() {

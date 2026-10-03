@@ -1,5 +1,26 @@
 # Сверка с Windows 7zFM
 
+## P2-04 — Benchmark (принят, 2026-10-03)
+
+Эталон — исходные BenchmarkDialog.cpp/.rc, Common/Bench.cpp и Tools dispatch.
+Qt сохраняет Dictionary/Threads, Current/Resulting для Compressing/Decompressing,
+исходные Size/Speed/Usage/RPU/Rating, elapsed/passes/total и Restart/Stop/Cancel.
+Числа рассчитывает исходный Bench и callbacks: текст CLI не содержит весь набор
+метрик окна. Нативный worker и исходные отказ по памяти, остановка и join
+сохранены; backend удерживает codecs/hashers и engine/platform services.
+
+Qt layouts заменяют Win32 координаты, fixed-font console — исходный CMyFont.
+Компактный normal pane прокручивается; footer остаётся видимым. Total mode
+сохраняет elapsed/console, но не добавляется в обычное Tools menu: в исходном
+ресурсе Benchmark2 относится к UNDER_CE. EN/RU captions обновляются в открытом
+окне, включая исходное сопоставление стандартных кнопок402/409.
+Проверены normal/total EN/RU JSON всех трёх платформ; labels доступны при
+прокрутке, footer остаётся видимым. Spanning captions имеют естественную ширину,
+переносимые системные строки сохраняют нужную высоту при source text update.
+Full macOS gate202/202PASS89.68s + финальные affected3/3PASS5.82s;
+Linux5/5PASS3.34s + финальные3/3PASS2.28s; Windows5/5PASS4.09s, zero focused
+Qt skips. Rendered Windows pixel parity и полная приёмка всего плана остаются P3.
+
 ## P2-03 — CRC/Hash/Test (принят, 2026-10-03)
 
 Эталон — исходные PanelCrc.cpp, PanelCopy.cpp, HashGUI.cpp и Agent.cpp.

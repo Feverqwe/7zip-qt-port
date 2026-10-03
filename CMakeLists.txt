@@ -73,6 +73,9 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/7zip/Common/CreateCoder.cpp
     third_party/7zip/CPP/7zip/Common/FilterCoder.cpp
     src/CPP/7zip/UI/Common/HashCalc.cpp
+    src/CPP/7zip/UI/Common/Bench.cpp src/CPP/7zip/UI/Common/Bench.h
+    src/qtbenchmarkservices.cpp src/qtbenchmarkservices.h
+    third_party/7zip/CPP/Windows/SystemInfo.cpp
     third_party/7zip/CPP/Common/DynLimBuf.cpp
     src/CPP/7zip/UI/Common/EnumDirItems.cpp src/CPP/7zip/UI/Common/EnumDirItems.h
     src/CPP/7zip/UI/Common/SortUtils.cpp
@@ -156,6 +159,10 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtappoperationstate.cpp src/qtappoperationstate.h
     src/CPP/7zip/UI/FileManager/PanelDrag.cpp
     src/CPP/7zip/UI/GUI/HashGUI.cpp src/CPP/7zip/UI/GUI/HashGUI.h
+    src/CPP/7zip/UI/GUI/BenchmarkDialog.cpp src/CPP/7zip/UI/GUI/BenchmarkDialog.h
+    src/CPP/7zip/UI/GUI/CompressDialog.cpp
+    src/CPP/7zip/UI/Common/CompressCall2.cpp src/CPP/7zip/UI/Common/CompressCall.h
+    src/qtbenchmarkcontrols.cpp src/qtbenchmarkcontrols.h
     src/CPP/7zip/UI/FileManager/ExtractCallback.cpp src/CPP/7zip/UI/FileManager/ExtractCallback.h
     src/qtcallbackdialogs.cpp src/qtcallbackdialogs.h src/qtmodalresult.h
     src/CPP/7zip/UI/FileManager/OverwriteDialog.cpp src/CPP/7zip/UI/FileManager/OverwriteDialog.h
@@ -614,6 +621,12 @@ if(BUILD_TESTING)
     qt_add_executable(hash_results_tests tests/hash_results_tests.cpp tests/layout_inspection.cpp)
     target_link_libraries(hash_results_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME hash_results COMMAND hash_results_tests -silent)
+    qt_add_executable(benchmark_lifecycle_tests tests/benchmark_lifecycle_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(benchmark_lifecycle_tests PRIVATE src tests)
+    target_link_libraries(benchmark_lifecycle_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME benchmark_lifecycle COMMAND benchmark_lifecycle_tests -silent)
+    set_tests_properties(benchmark_lifecycle PROPERTIES TIMEOUT 30 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/benchmark_lifecycle.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(hash_results PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     qt_add_executable(extract_prompt_tests tests/extract_prompt_tests.cpp tests/layout_inspection.cpp)
@@ -1444,7 +1457,8 @@ endif()
 get_property(engine_consumer_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 foreach(engine_consumer IN LISTS engine_consumer_targets)
     get_target_property(engine_consumer_sources ${engine_consumer} SOURCES)
-    if("src/CPP/7zip/UI/GUI/CompressDialog.cpp" IN_LIST engine_consumer_sources)
+    if(NOT engine_consumer STREQUAL "sevenzip_panel" AND
+       "src/CPP/7zip/UI/GUI/CompressDialog.cpp" IN_LIST engine_consumer_sources)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_panel)
     endif()
     if(NOT engine_consumer STREQUAL "sevenzip_panel" AND
@@ -1611,6 +1625,15 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME codec_catalog COMMAND codec_catalog_tests -silent)
+    qt_add_executable(native_benchmark_tests tests/native_benchmark_tests.cpp ${codec_catalog_backend_sources})
+    target_include_directories(native_benchmark_tests PRIVATE src)
+    target_link_libraries(native_benchmark_tests PRIVATE ${codec_catalog_backend_libraries} sevenzip_location sevenzip_panel)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_benchmark_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_benchmark COMMAND native_benchmark_tests -silent)
+    set_tests_properties(native_benchmark PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(codec_creation_tests tests/codec_creation_tests.cpp ${codec_catalog_backend_sources})
     target_include_directories(codec_creation_tests PRIVATE src tests)
     target_link_libraries(codec_creation_tests PRIVATE ${codec_catalog_backend_libraries})
@@ -1655,6 +1678,16 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_rar_ui_tests tests/native_rar_ui_tests.cpp ${options_window_sources})
     qt_add_executable(native_hash_ui_tests tests/native_hash_ui_tests.cpp ${options_window_sources})
+    qt_add_executable(benchmark_command_tests tests/benchmark_command_tests.cpp ${options_window_sources})
+    target_include_directories(benchmark_command_tests PRIVATE src tests)
+    target_link_libraries(benchmark_command_tests PRIVATE ${options_window_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(benchmark_command_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME benchmark_command COMMAND benchmark_command_tests -silent)
+    set_tests_properties(benchmark_command PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/benchmark_command.ini")
     target_include_directories(native_hash_ui_tests PRIVATE src tests)
     target_link_libraries(native_hash_ui_tests PRIVATE ${options_window_libraries})
     if(SEVENZIP_CODEC_MODULE)

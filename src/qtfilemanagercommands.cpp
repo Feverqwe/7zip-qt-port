@@ -112,6 +112,7 @@ void QtFileManagerCommands::AttachViewActions() {
     Bind(w.findChild<QAction *>("helpContentsAction"), IDM_HELP_CONTENTS);
     Bind(w.findChild<QAction *>("aboutAction"), IDM_ABOUT);
     Bind(w.findChild<QAction *>("tempDirAction"), IDM_TEMP_DIR);
+    Bind(w.findChild<QAction *>("benchmarkAction"), IDM_BENCHMARK);
     actions_[IDM_VIEW_FLAT_VIEW].append(w.flatView_);
     QObject::disconnect(w.flatView_, &QAction::toggled, &w, nullptr);
     QObject::connect(w.flatView_, &QAction::toggled, &w, [this](bool checked) {
@@ -181,6 +182,19 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
     c.root = panel.GetFolder() && panel.IsRootFolder();
+    {
+        const auto catalog = w.backend_->codecCatalog();
+        CExternalCodecs providers;
+        if (w.backend_->loadBenchmarkProviders(providers) == S_OK) {
+            CMethodId method;
+            UInt32 streams;
+            bool filter;
+            c.benchmark =
+                FindMethod_Index(&providers, AString("LZMA"), true, method, streams, filter) >= 0 &&
+                streams == 1 && !filter &&
+                FindMethod_Index(&providers, AString("LZMA"), false, method, streams, filter) >= 0;
+        }
+    }
     if (panel.DoesItSupportOperations()) {
         const auto catalog = w.backend_->codecCatalog();
         CExternalCodecs providers;
@@ -261,6 +275,9 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
 
 bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabilities &c) const {
     switch (id) {
+    case IDM_BENCHMARK:
+    case IDM_BENCHMARK2:
+        return c.benchmark;
     case OpenDialog:
         return true;
     case CreateArchive:

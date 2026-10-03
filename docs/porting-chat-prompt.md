@@ -13,10 +13,22 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-04: Benchmark controls/results/lifecycle с source BenchmarkDialog/Bench,
-реальным bounded engine consumer, memory refusal/Stop/Close/restart,
-normal/compact geometry и проверками. Сначала inspect current source bodies,
-engine output capabilities и audit; не придумывать формулы недоступных метрик.
+P2-05: Links/junctions/filesystem metadata с исходными LinkDialog/CApp::Link,
+FSFolder/FSFolderCopy и Windows FileDir/FileLink/FileIO. Сначала inspect bodies
+и platform capabilities; сохранить source validation и native platform adapters.
+Проверить relative/absolute/dangling/cycle, hardlink identity/bytes, privilege
+refusal, copy/move/delete/cancel и EN/RU normal/compact UX.
+
+P2-04 принят целой итерацией2026-10-03: complete Bench/BenchmarkDialog,
+partial original CompressCall Benchmark entry, native backend providers/services,
+actual Tools menu, source metrics/total, memory refusal/error/Restart/Stop/Close,
+worker join, deferred MainWindow close and Help. Full macOS unsandboxed format/
+all-target build/202CTestPASS89.68s; final localized affected3/3PASS5.82s.
+Linux5/5PASS3.34s+final3/3PASS2.28s; Windows5/5PASS4.09s zero focused skips.
+Eight normal/total EN/RU JSON per platform reviewed; baseline378exact/171adapted/
+3local verified. Counts33/46,13remain; P0 12/12,P1 16/18,P2 4/10,P3 1/6.
+Whole local iteration commit; no push/upstream writes. Native Finder separately
+mandatory P3-03.1; rendered/full P3 still open. Earlier WIP evidence is superseded.
 
 P2-03 принят целой итерацией2026-10-03: complete PanelCrc/HashCalc/HashGUI,
 native Hash writer/reader/Test, source method providers/menu, scan/read/selection,
@@ -24,7 +36,7 @@ actual encrypted/wrong password/corrupt ZIP/error/Cancel и modal lifetime пр�
 Hash result JSON540/420 reviewed. Full macOS unsandboxed format/all-target build/
 199CTestPASS79.48s; later localized MyWindows/Rename/lifecycle fixes5/5PASS2.79s.
 Linux12/12PASS3.82s plus final5/5PASS3.28s, Windows build13targets/13/13PASS13.04s,
-zero focused skips. Baseline374exact/165adapted/3local verified. Counts32/46,
+zero focused skips. Baseline374exact/165adapted/3local verified. Historical counts32/46,
 14remain;P0 12/12,P1 16/18,P2 3/10,P3 1/6. Whole local iteration commit;
 no push/upstream writes. FinderP3-03.1 and rendered/full P3 remain mandatory.
 Historical pending checkpoints below are superseded by the accepted records.

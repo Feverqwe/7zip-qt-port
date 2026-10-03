@@ -82,7 +82,7 @@ P2 — 10, P3 — 6. Каждый пакет имеет постоянный ID 
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
 Текущий счёт после P2-03 (2026-10-03):
-**32/46 закрыты, 14 остаётся**; P0: 12/12, P1: 16/18, P2: 3/10, P3: 1/6.
+**33/46 закрыты, 13 остаётся**; P0: 12/12, P1: 16/18, P2: 4/10, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -1106,6 +1106,15 @@ start/stop/restart. Engine выполняет benchmark, Qt отображает
 **Готово:** lifecycle и controls source-compatible, отказ по памяти, stop/close,
 deterministic fake results и маленький bounded engine smoke. Геометрия normal/
 compact; численные performance результаты машины не являются golden fixture.
+
+**Приёмка2026-10-03:** complete source Bench/BenchmarkDialog и исходный
+CompressCall Benchmark entry подключены к backend providers/services и Tools.
+Нативные bounded callbacks/GUI, deterministic metrics/total, память, ошибка,
+Restart/Stop/Close/join, deferred MainWindow close и source Help проверены.
+Full macOS gate202/202PASS89.68s + финальные3/3PASS5.82s; Linux5/5PASS3.34s
++ финальные3/3PASS2.28s; Windows5/5PASS4.09s, zero focused Qt skips.
+EN/RU normal/compact JSON всех трёх платформ проверены; audit § P2-04 содержит
+provenance/адаптации. Rendered parity и полная платформенная приёмка остаются P3.
 
 ### P2-05. Links, junctions и metadata файловой системы
 

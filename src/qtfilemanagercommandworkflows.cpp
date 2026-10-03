@@ -1,5 +1,6 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/AboutDialog.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "CPP/7zip/UI/FileManager/HelpUtils.h"
@@ -7,6 +8,7 @@
 #include "Windows/PropVariantConv.h"
 #include "archivecodeccatalog.h"
 #include "mainwindow.h"
+#include "qtbenchmarkservices.h"
 #include "qtfilemanagercommands.h"
 #include <QScopedValueRollback>
 
@@ -214,7 +216,20 @@ void QtFileManagerCommands::SetTimestampLevel(int level) {
     settings.setValue(QStringLiteral("view/timestampLevel"), level);
     window_.redrawTimestampColumns();
 }
-void QtFileManagerCommands::MyBenchmark(bool) { Q_UNREACHABLE(); }
+void QtFileManagerCommands::MyBenchmark(bool totalMode) {
+    auto &w = window_;
+    QtAppOperationState::CallScope call(w.app_.QtOperations());
+    CPanel::CDisableTimerProcessing disableTimerProcessing1(w.app_.Panels[0]);
+    CPanel::CDisableTimerProcessing disableTimerProcessing2(w.app_.Panels[1]);
+    const auto catalog = w.backend_->codecCatalog();
+    CExternalCodecs providers;
+    HRESULT result = w.backend_->loadBenchmarkProviders(providers);
+    auto services = w.backend_->benchmarkServices();
+    if (result == S_OK)
+        result = Benchmark(totalMode, &providers, &w, services.get());
+    if (result != S_OK && result != E_ABORT && !w.app_.QtOperations().closed())
+        w.app_.GetFocusedPanel().MessageBox_Error_HRESULT(result);
+}
 void QtFileManagerCommands::ShowHelpWindow(const char *topic) { ::ShowHelpWindow(topic, &window_); }
 void QtFileManagerCommands::AboutDialog() {
     const auto catalog = window_.backend_->codecCatalog();

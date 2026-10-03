@@ -1,5 +1,24 @@
 # Regression strategy
 
+P2-04 accepted checks: `native_benchmark` exercises original Bench encode/decode callbacks,
+callback cancellation and a bounded real GUI run (256KiB dictionary, one thread,
+one pass,50ms benchmark interval; frequency calibration adds several seconds).
+It asserts source metrics, not machine performance goldens. `benchmark_lifecycle`
+uses a narrow backend service fixture for deterministic source results, total
+console, Restart/Stop/Close joins, memory refusal and engine errors, plus live
+EN/RU normal/compact geometry and JSON. `benchmark_command` invokes the real
+MainWindow menu with confirmed providers: missing catalog disables the command;
+cancel/error join before service release, MainWindow close is deferred during
+the modal call, and the window is usable afterward. Fake RAM permits source
+defaults without allocating benchmark memory. Missing native-module skips do
+not establish platform acceptance. Full macOS gate202/202PASS89.68s preceded
+localized geometry/Help fixes' affected3/3PASS5.82s; Linux5/5PASS3.34s and final
+3/3PASS2.28s, Windows5/5PASS4.09s, all focused Qt cases zero skipped2026-10-03.
+Windows exposed the source FM startup large-page default dependency, spanning
+text geometry and premature Total-test close before queued GUI text. The fixes
+retain original calculations; the test waits for observed output. Final rendered
+parity and whole-plan platform acceptance remain P3.
+
 P2-03 accepted checks: `native_hash_workflow` exercises complete source HashCalc
 scan totals, known digests, multiple methods/`*`, pause/cancel, Hash file writer,
 reader and verifier (good/CRC/read failure/Cancel), plus original HashCalcGUI.

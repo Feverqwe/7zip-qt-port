@@ -116,6 +116,8 @@ class ArchiveBackend : public QObject {
     virtual void hash(const QStringList &paths, const QString &method);
     void hashMethods(const QStringList &paths, const QStringList &methods);
     HRESULT loadHashProviders(CExternalCodecs &providers) const;
+    HRESULT loadBenchmarkProviders(CExternalCodecs &providers) const;
+    virtual std::unique_ptr<class IQtBenchmarkServices> benchmarkServices() const;
     virtual void create(const QString &archive, const QStringList &sources,
                         const QString &password = {}, bool encryptHeaders = false,
                         const CompressionOptions &options = {});
