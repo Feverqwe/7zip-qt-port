@@ -64,6 +64,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     auto addCheck = [&](const QString &text, const char *name, unsigned id) {
         auto *check = new QCheckBox(text, this);
         check->setObjectName(name);
+        check->setProperty("languageWrapWidth", 380);
         check->setProperty("sourceControlID", id);
         QtBindResourceText(check, id, text);
         check->setEnabled(false);
@@ -84,6 +85,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     auto *zoneRow = new QHBoxLayout;
     auto *zoneLabel = new QLabel("Propagate Zone.Id stream:", this);
     zoneLabel->setObjectName("menuZoneLabel");
+    zoneLabel->setProperty("languageWrapWidth", 160);
     zoneLabel->setProperty("sourceControlID", IDT_SYSTEM_ZONE);
     QtBindResourceText(zoneLabel, IDT_SYSTEM_ZONE, "Propagate Zone.Id stream:");
     _zoneCombo = new QComboBox(this);
@@ -185,7 +187,8 @@ void CMenuPage::ReloadLangItems() {
     s.Add_Char('(');
     s += bit64;
     s.Add_Char(')');
-    findChild<QCheckBox *>("shellIntegration32")->setText(QString::fromWCharArray(s));
+    auto *integration32 = findChild<QCheckBox *>("shellIntegration32");
+    integration32->setText(QtWrapControlText(*integration32, QString::fromWCharArray(s)));
     for (unsigned i = 0; i < Z7_ARRAY_SIZE(kMenuItems); i++)
         _listView->item(int(i))->setText(QString::fromWCharArray(GetMenuItemText(kMenuItems[i])));
     for (int i = 0; i < _zoneCombo->count(); i++) {

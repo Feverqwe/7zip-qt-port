@@ -14,17 +14,26 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 интеграцию и Qt Widgets пишем на C++17. C-файлы собираются как C.
 Обязательный P2-11 — рефакторинг уже написанного собственного кода по реестру
 и интегрированным компонентам; сохраняй source bodies и необходимые native bridges.
-Актуальный счёт после P2-07:36/47,11remain;P2 7/11. Счётчики ниже —
+Актуальный счёт после P2-08:37/47,10remain;P2 8/11. Счётчики ниже —
 историческое evidence до добавления P2-11.
 
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-08: System page/file associations с исходными SystemPage/RegistryAssociations
-и platform registration adapters. Сначала inspect bodies и platform boundaries;
-detect/apply/revert, denied permissions, absent handlers и external changes
-проверять через fake registration services. Реальные системные изменения только
-как явно выбранное пользователем действие приложения; upstream read-only.
+P2-09: source Explorer functional command generation, shell registration и
+оставшаяся Menu page. Сначала inspect ContextMenu/RegistryContextMenu/MyMessages
+и текущие MenuPage consumers; native extension packaging изолировать от widgets.
+Проверять selections/paths/quoting/flags и registration через fake environment;
+native UX — на runner с установленной тестовой сборкой. Не регистрировать
+extension на машине пользователя ради автоматического теста; upstream read-only.
+
+P2-08 принят целой итерацией2026-10-03: source System/FilePlugins/Registry/
+partial icon owner, actual Options/MainWindow и native file-open/bundle consumers.
+macOS full219/219PASS67.46s, localized9/9PASS3.21s; Windows12/12PASS25.26s и
+Linux12/12PASS3.17s. Twelve System/four Windows WIM JSON reviewed, baseline384/182/3.
+Разработка не меняла OS defaults. Expanded Windows Add/Editor path/geometry/
+lifetime и Linux Add clipping сохраняются для P3; full Windows/Linux/rendered/
+installed native registration/Finder приёмка открыта. Счёт37/47, следующийP2-09.
 
 P2-07 принят целой итерацией2026-10-03: source Extract controls/persistence,
 bounded final paths/links, native WIM security/ADS/reparse, metadata TAR/WIM Add

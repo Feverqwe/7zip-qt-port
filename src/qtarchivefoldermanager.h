@@ -8,6 +8,8 @@
 #include <memory>
 
 class ArchiveBackend;
+class ArchiveCodecCatalog;
+class CArchiveFolderManager;
 class QtArchiveFolderManager final : public QObject,
                                      public IFolderManager,
                                      public IQtProgressServices,
@@ -17,6 +19,9 @@ class QtArchiveFolderManager final : public QObject,
     struct CRequest;
     ArchiveBackend &_backend;
     std::shared_ptr<CRequest> _request;
+    std::shared_ptr<const ArchiveCodecCatalog> _associationCatalog;
+    std::unique_ptr<CArchiveFolderManager> _associationManager;
+    CArchiveFolderManager *AssociationManager();
     void Start(const std::shared_ptr<CRequest> &request, const QString &path, const QString &format,
                const QString &password);
     HRESULT OpenFolderFileImpl(IInStream *stream, const wchar_t *path, const wchar_t *format,

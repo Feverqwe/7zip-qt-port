@@ -28,13 +28,14 @@ set(overwrite_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI
 set(gui_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.rc")
 set(explorer_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/Explorer/resource2.rc")
 set(language_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/LangPage.rc")
+set(codec_icon_resource "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Bundles/Format7zF/resource.rc")
 set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
 add_custom_command(OUTPUT "${resource_strings_header}"
-    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource};${explorer_resource};${language_resource}"
-        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource};${explorer_resource};${language_resource}"
+    COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource};${explorer_resource};${language_resource};${codec_icon_resource}"
+        "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource};${explorer_resource};${language_resource};${codec_icon_resource}"
         "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
     DEPENDS "${property_name_resource}" "${extract_resource}" "${file_manager_resource}"
-        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" "${language_resource}" scripts/rc_strings.cmake
+        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" "${language_resource}" "${codec_icon_resource}" scripts/rc_strings.cmake
     VERBATIM)
 
 qt_standard_project_setup()
@@ -323,9 +324,15 @@ endif()
 target_link_libraries(sevenzip_panel PUBLIC sevenzip_filesystem)
 
 add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfolder.h
+    src/qtassociationfileopen.cpp src/qtassociationfileopen.h
+    src/CPP/7zip/UI/Agent/ArchiveFolderOpen.cpp
     src/CPP/7zip/UI/FileManager/LangPage.cpp src/CPP/7zip/UI/FileManager/LangPage.h
     src/CPP/7zip/UI/FileManager/EditPage.cpp src/CPP/7zip/UI/FileManager/EditPage.h
     src/CPP/7zip/UI/FileManager/MenuPage.cpp src/CPP/7zip/UI/FileManager/MenuPage.h
+    src/CPP/7zip/UI/FileManager/SystemPage.cpp src/CPP/7zip/UI/FileManager/SystemPage.h
+    src/CPP/7zip/UI/FileManager/FilePlugins.cpp src/CPP/7zip/UI/FileManager/FilePlugins.h
+    src/CPP/7zip/UI/FileManager/RegistryAssociations.cpp src/CPP/7zip/UI/FileManager/RegistryAssociations.h
+    src/qtassociationservices.cpp src/qtassociationservices.h src/qtassociationplatform.h
     src/CPP/7zip/UI/FileManager/OptionsDialog.cpp src/qtfmoptionsdialog.h
     src/qtarchivebatchopen.cpp src/qtarchivebatchopen.h
     src/qtarchivebatchextract.cpp src/qtarchivebatchextract.h src/qtextractpathpolicy.h
@@ -350,6 +357,22 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
 target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-unix-2.0)
+    target_sources(sevenzip_location PRIVATE src/qtassociationplatform_linux.cpp)
+    target_link_libraries(sevenzip_location PRIVATE PkgConfig::GIO)
+endif()
+if(WIN32)
+    # Source association records expose CSysString. Keep the Windows UTF-16
+    # definition consistent between the library and its page/service consumers.
+    target_compile_definitions(sevenzip_location PUBLIC _UNICODE UNICODE)
+    target_sources(sevenzip_location PRIVATE src/qtassociationplatform_win.cpp)
+elseif(APPLE)
+    target_sources(sevenzip_location PRIVATE src/qtassociationplatform_mac.cpp src/qtassociationplatform_mac.mm
+        src/qtmacassociationnative.h)
+    target_link_libraries(sevenzip_location PRIVATE "-framework AppKit" "-framework UniformTypeIdentifiers")
+endif()
 
 add_library(sevenzip_folder_loader STATIC
     src/filesystemfolderloader.cpp src/filesystemfolderloader.h)
@@ -382,6 +405,9 @@ set_target_properties(sevenzip_desktop PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+if(APPLE)
+    include(cmake/MacAssociationBundle.cmake)
+endif()
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
@@ -1604,6 +1630,35 @@ if(BUILD_TESTING)
     set_tests_properties(language PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(menu_page_tests tests/menu_page_tests.cpp tests/layout_inspection.cpp)
+    qt_add_executable(system_page_tests tests/system_page_tests.cpp tests/layout_inspection.cpp)
+    qt_add_executable(association_services_tests tests/association_services_tests.cpp)
+    qt_add_executable(association_file_open_tests tests/association_file_open_tests.cpp)
+    target_include_directories(association_file_open_tests PRIVATE src)
+    target_link_libraries(association_file_open_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME association_file_open COMMAND association_file_open_tests -silent)
+    set_tests_properties(association_file_open PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    if(APPLE)
+        add_test(NAME macos_association_bundle COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/tests/macos_association_bundle_tests.py
+            $<TARGET_BUNDLE_DIR:sevenzip_desktop> ${codec_icon_resource})
+    endif()
+    target_include_directories(association_services_tests PRIVATE src tests)
+    target_link_libraries(association_services_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME association_services COMMAND association_services_tests -silent)
+    set_tests_properties(association_services PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    target_include_directories(system_page_tests PRIVATE src tests)
+    target_link_libraries(system_page_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME system_page COMMAND system_page_tests -silent)
+    set_tests_properties(system_page PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        FIXTURES_SETUP ui_reference_system
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    add_test(NAME ui_parity_system COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_ui_parity.py compare
+        --reference ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/system-page.reference.json
+        --contract ${CMAKE_CURRENT_SOURCE_DIR}/docs/ui-reference/system-page.contract.json
+        --reports ${CMAKE_BINARY_DIR}/ui-reports
+        --output ${CMAKE_BINARY_DIR}/ui-reports/system-parity.json)
+    set_tests_properties(ui_parity_system PROPERTIES FIXTURES_REQUIRED ui_reference_system)
     target_include_directories(menu_page_tests PRIVATE src tests)
     target_link_libraries(menu_page_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME menu_page COMMAND menu_page_tests -silent)

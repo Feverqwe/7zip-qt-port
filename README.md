@@ -8,6 +8,13 @@
 snapshot Sevenzip и сборкой официального движка из закреплённой ревизии. Команды и ограничения:
 [Hyper-V runners](docs/hyperv-runners.md).
 
+P2-08 принят: исходная System page, association/icon catalog и Windows registry
+подключены к Options; Linux GIO и macOS NSWorkspace имеют native adapters.
+Apply проверяет внешние изменения; тесты не меняют реальные OS associations.
+macOS full gate219/219PASS67.46s, финальные профильные9/9; Windows12/12 и
+Linux12/12 прошли. EN/RU normal/compact System JSON проверены на трёх платформах.
+Текущий счёт37/47; следующий P2-09. Полная платформенная приёмка остаётся P3.
+
 P2-07 принят: Extract использует исходные ElimDup/Absolute paths/NtSecurity,
 native archive links и ограничивает все выходные пути выбранной папкой.
 Windows WIM восстанавливает NTFS security/ADS и relative/absolute reparse links;
@@ -15,7 +22,7 @@ Add Options сохраняет metadata preferences и передаёт их nat
 Directory Open Outside : 7-Zip открывает папку отдельным экземпляром.
 macOS full gate214/214PASS81.10s; Windows13/13 и Linux13/13 focused прошли.
 Windows standalone ZIP/7z отклоняет link storage из-за потери directory reparse
-metadata; source-capable TAR/WIM сохраняет ссылки. Текущий счёт36/47,
+metadata; source-capable TAR/WIM сохраняет ссылки. Исторический счёт36/47,
 включая добавленный обязательный P2-11. Полные Windows/Linux gates остаются P3.
 
 P2-06 принят: исходные AltStreamsFolder и Agent/CProxyArc2 подключены к
@@ -170,7 +177,11 @@ PasswordDialog с переключателем показа. Пароли не �
 контекстного меню пока отключены до платформенной интеграции. Главное меню и
 toolbar используют исходный порядок 7zFM и bitmap-ресурсы; четыре поля
 состояния принадлежат каждой панели. В настройках доступны страницы «Папки»,
-«7-Zip», «Редактор», «Настройки» и «Язык»; System пока отключена. Исходные English
+«7-Zip», «Редактор», «Настройки», «Язык» и System. Принятый P2-08: System
+показывает source association catalog; изменения выполняются только по Apply,
+недоступные native scopes/types отключены с причиной. Windows UserChoice
+сохраняется; macOS/Linux требуют установленного native application handler.
+Полные Windows/Linux gates и установленная native регистрация остаются P3. Исходные English
 и Russian переключают меню, toolbar, список, status, Options и остальные текущие
 формы без потери выделения и введённых значений. Сообщения операций получают
 явный EN/RU-контекст, сохраняя пути и текст движка; fallback и клавиатурная

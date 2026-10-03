@@ -1,4 +1,5 @@
 #include "qtarchivefoldermanager.h"
+#include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "archivebackend.h"
@@ -229,26 +230,34 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
     COM_TRY_END
 }
 
+CArchiveFolderManager *QtArchiveFolderManager::AssociationManager() {
+    const auto catalog = _backend.codecCatalog();
+    if (!catalog || catalog->result() != S_OK)
+        return nullptr;
+    if (_associationCatalog != catalog) {
+        _associationManager.reset();
+        _associationCatalog = catalog;
+        _associationManager = std::make_unique<CArchiveFolderManager>(catalog->nativeCodecs());
+    }
+    return _associationManager.get();
+}
+
 Z7_COM7F_IMF(QtArchiveFolderManager::GetExtensions(BSTR *extensions)) {
     if (!extensions)
         return E_INVALIDARG;
     *extensions = nullptr;
-    const auto catalog = _backend.codecCatalog();
-    if (!catalog || catalog->result() != S_OK)
-        return E_FAIL;
-    // Qt transports the source CArcInfoEx extension catalog. Windows icon
-    // resource enumeration remains separate presentation/association scope.
-    const QString value = catalog->extensions().join(' ');
-    return StringToBstr(UString(value.toStdWString().c_str()), extensions);
+    auto *manager = AssociationManager();
+    return manager ? manager->GetExtensions(extensions) : E_FAIL;
 }
 
-Z7_COM7F_IMF(QtArchiveFolderManager::GetIconPath(const wchar_t *, BSTR *iconPath,
+Z7_COM7F_IMF(QtArchiveFolderManager::GetIconPath(const wchar_t *ext, BSTR *iconPath,
                                                  Int32 *iconIndex)) {
-    if (iconPath)
-        *iconPath = nullptr;
-    if (iconIndex)
-        *iconIndex = -1;
-    return E_NOTIMPL; // The source icon owner belongs to P0-09.
+    if (!ext || !iconPath || !iconIndex)
+        return E_INVALIDARG;
+    *iconPath = nullptr;
+    *iconIndex = 0;
+    auto *manager = AssociationManager();
+    return manager ? manager->GetIconPath(ext, iconPath, iconIndex) : E_FAIL;
 }
 
 std::unique_ptr<IQtProgressTransport>

@@ -1,5 +1,43 @@
 # Сверка с Windows 7zFM
 
+## P2-08 — System page (принят 2026-10-03)
+
+Эталон — pinned SystemPage.rc/.cpp: File type, current-user и All users columns,
+две кнопки «+» и исходные правила выбора/переключения. CSystemPage перенесён
+на Qt с исходными state/apply bodies и подключён к Options/MainWindow.
+Список расширений и Windows DLL icon lookup берутся из исходного владельца
+ArchiveFolderOpen, а не из всех detection aliases. EN/RU normal/compact System
+geometry и resource contract проверены на macOS, Windows и Linux: по четыре
+актуальных отчёта. Заголовок текущего пользователя получает native username,
+как в исходном Windows OnInit, с локализованным fallback. Qt Icons/native
+provider не подтверждают pixel parity.
+
+Windows сохраняет исходную регистрацию HKCU/HKLM и UserChoice: для выбора
+эффективного default app может потребоваться Windows Settings, о чём сообщает
+tooltip кнопки. Linux поддерживает current-user GIO MIME associations только
+при installed desktop entry, указывающем на этот executable; неизвестные типы
+отключены. macOS12+ требует .app bundle и использует native consent/completion;
+Clear восстанавливает сохранённый предыдущий handler, а отсутствие истории
+даёт отказ. All users на macOS/Linux disabled с причиной. Изменение native
+MIME/UTType действует на все aliases этого типа. External revision перед Apply
+проверяется; обнаруженный конфликт обновляет строку и требует нового выбора.
+Проверка не является atomic OS transaction, а native ошибка может последовать
+за частичным изменением. Options остаётся открытым для просмотра ошибки.
+Тесты используют только fake registration services; реальные OS associations
+в разработке не менялись. macOS full gate219/219PASS67.46s, последующие
+локальные проверки9/9PASS3.21s; Windows12/12PASS25.26s и Linux12/12PASS3.17s.
+Полные Windows/Linux gates и установленная native регистрация остаются P3.
+
+macOS .app объявляет source association extensions как Viewer/Alternate и
+принимает QFileOpenEvent, включая ранние и повторные local requests. Запрос
+идёт через существующий openPath в отдельном окне, чтобы не менять активную
+операцию другого окна; Windows upstream запускает отдельный экземпляр для
+association command. На первом native запуске может оставаться начальное окно
+приложения: это явно отмеченная Qt/native adaptation, не pixel parity claim.
+Command-line startup сохраняет свой прежний путь. Fake consumer/bundle checks
+не регистрируют реальные defaults. Этап принят в этом явно описанном scope;
+rendered Windows reference и отдельная native Finder приёмка остаются P3.
+
 ## P2-07 — Extract и directory startup
 
 Эталон — pinned ExtractDialog.rc/ExtractDialog.cpp, ExtractGUI.cpp,
@@ -864,7 +902,7 @@ reference не проверены. Open/test/extract приёмка остаёт
 | Диалог Extract | `../GUI/ExtractDialog.rc`, `ExtractDialog.cpp`; `../GUI/Extract.rc` | Перенесены поле назначения с историей из 16 путей, кнопка выбора папки, полные пути или режим без путей, отказ от перезаписи, пропуск, перезапись и оба режима переименования при конфликте, поле пароля с показом. Новая папка назначения создаётся после проверки существующих родителей. Совпадающие имена при извлечении без путей отклоняются до запуска. В upstream доступны также абсолютные пути и запрос решения при конфликте; здесь они ещё не реализованы. Имя подпапки включается отдельным флажком и сохраняется; устранение дублирования корневой папки и восстановление прав пока отсутствуют. |
 | Разбить файл / объединить части | `PanelSplitFile.cpp`, `SplitDialog.rc` | Нумерация частей использует перенесённый `CVolSeqName` и `SplitUtils.cpp` (`ParseVolumeSizes`, `GetNumberOfVolumes`, `AddVolumeItems`) в `src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp`. В обычной папке доступны команды для одного файла. Диалог Split содержит папку назначения и редактируемый размер тома; как `CSplitDialog::OnOK()` и `CThreadSplit::ProcessVirt()`, принимает последовательность размеров, применяет их по порядку и повторяет последний для оставшихся частей; Combine принимает первую часть по исходному `CVolSeqName::ParseName` — суффикс `01` с любым числом ведущих нулей, с точкой или без неё, проверяет непрерывность и собирает файл в выбранную папку. Операции идут в рабочем потоке с отменой и временными файлами; файлы с существующими именами не заменяются. Диалог Combine показывает число частей, общий размер в байтах, исходную папку, первые две и последнюю часть, как `CApp::Combine()`. Проверку списка и суммы выполняет `VolumeOperation::inspectParts`; рабочий поток повторно проверяет части перед сборкой. |
 | Диалог Copy/Move | `CopyDialog.rc`, `CopyDialog.cpp`; `App.cpp`, `Copy()` | F5/F6 открывают общий диалог с редактируемой историей назначения до 20 путей, выбором папки и именами объектов. Рабочий поток показывает текущий файл, принимает отмену и сохраняет прежнюю цель до публикации. Обычный `CApp::OnCopy` маршрутизирует операции между двумя файловыми или верхними архивными панелями, включая disk↔archive и archive↔archive; F6 из архива удаляет источник после успешной записи цели. При отказе rename F6 копирует во временную цель и удаляет источник после публикации, сообщая о частичном результате при ошибке удаления. Совпадающие дисковые папки сливаются с отдельными решениями по вложенным файлам. Одиночный новый filename и Shift+F5/F6 для элемента под фокусом поддержаны. Вложенные и защищённые архивы имеют явные ограничения. |
-| Сервис → Настройки | `resource.rc`, `OptionsDialog.cpp`, `SettingsPage2.rc`, `EditPage2.rc`, `FoldersPage2.rc`, `MenuPage2.rc`, `LangPage.rc` | Partial six-page container сохраняет source order/IDs; Folders/Editor/Settings, 7-Zip и Language доступны, System disabled. Apply/OK пишут изменённые source values, Cancel сохраняет уже применённое. Language Apply обновляет source menus/toolbar/property headers/status и Options labels без очистки input/selection; missing/malformed fallback — source English. Qt standard buttons сохраняют platform conventions. WorkDir/RAM, external editors и Windows Zone имеют consumers. Shell controls остаются disabled до P2-09; полная интеграция страниц остаётся P1-12.2/P1-13.2/P1-14/P2-08. |
+| Сервис → Настройки | `resource.rc`, `OptionsDialog.cpp`, `SystemPage.rc`, `SettingsPage2.rc`, `EditPage2.rc`, `FoldersPage2.rc`, `MenuPage2.rc`, `LangPage.rc` | Six-page container сохраняет source order/IDs; все страницы доступны после P2-08. System использует source state/apply и native registration services, с явными ограничениями платформ. Apply/OK пишут изменённые source values, Cancel сохраняет уже применённое. Language Apply обновляет source menus/toolbar/property headers/status и Options labels без очистки input/selection; missing/malformed fallback — source English. Qt standard buttons сохраняют platform conventions. WorkDir/RAM, external editors и Windows Zone имеют consumers. Shell controls остаются disabled до P2-09; полная интеграция страниц остаётся P1-12.2/P1-13.2. |
 
 ## Следующие крупные блоки
 

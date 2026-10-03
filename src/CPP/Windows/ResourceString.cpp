@@ -35,7 +35,31 @@ UString MyLoadString(UINT resourceID) {
 void MyLoadString(UINT resourceID, UString &dest) { dest = MyLoadString(resourceID); }
 
 #ifdef _WIN32
-void MyLoadString(HINSTANCE, UINT resourceID, UString &dest) { MyLoadString(resourceID, dest); }
+// Original Unicode module-resource body: codec DLLs own a different string
+// table from the compiled Qt File Manager captions.
+static const int kStartSize = 256;
+static void MyLoadString2(HINSTANCE hInstance, UINT resourceID, UString &s) {
+    int size = kStartSize;
+    int len;
+    do {
+        size <<= 1;
+        len = ::LoadStringW(hInstance, resourceID, s.GetBuf((unsigned)size - 1), size);
+    } while (size - len <= 1);
+    s.ReleaseBuf_CalcLen((unsigned)len);
+}
+void MyLoadString(HINSTANCE hInstance, UINT resourceID, UString &dest) {
+    dest.Empty();
+    {
+        wchar_t s[kStartSize];
+        s[0] = 0;
+        int len = ::LoadStringW(hInstance, resourceID, s, kStartSize);
+        if (kStartSize - len > 1) {
+            dest = s;
+            return;
+        }
+    }
+    MyLoadString2(hInstance, resourceID, dest);
+}
 #endif
 
 } // namespace NWindows

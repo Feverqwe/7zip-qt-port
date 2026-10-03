@@ -21,8 +21,9 @@ class HelpUiTests : public QObject {
         command->setText("pending viewer %1");
         QVERIFY(buttons->button(QDialogButtonBox::Apply)->isEnabled());
         const QStringList keysBefore = QSettings(settingsPath, QSettings::IniFormat).allKeys();
-        const QStringList fragments = {"", "sevenZip", "folders", "editor", "settings", "language"};
-        for (int i = 1; i < pages->count(); ++i) {
+        const QStringList fragments = {"system", "sevenZip", "folders",
+                                       "editor", "settings", "language"};
+        for (int i = 0; i < pages->count(); ++i) {
             pages->setCurrentIndex(i);
             buttons->button(QDialogButtonBox::Help)->click();
             auto *help = pages->widget(i)->findChild<QDialog *>("helpWindow");

@@ -1,0 +1,113 @@
+#include "qtassociationplatform.h"
+#include <QtTest>
+
+namespace {
+class CFakePlatform final : public IQtAssociationPlatform {
+  public:
+    QByteArray revision = "original";
+    QByteArray scope;
+    LONG readError = 0;
+    LONG writeError = 0;
+    int writes = 0;
+    bool associated = false;
+    bool CanApply(unsigned group) const override { return group == 0; }
+    QString UnavailableReason(unsigned) const override { return "Only current user is supported"; }
+    UString OwnIconPath() const override { return UString(L"/app/папка с пробелом/sevenzip"); }
+    LONG Read(unsigned, const UString &, QtAssociationRecord &record) override {
+        if (readError)
+            return readError;
+        record.revision = revision;
+        record.scope = scope;
+        record.info.ProgramKey = associated ? "7-Zip.fixture" : "Other.application";
+        record.info.IconPath = associated ? OwnIconPath() : UString(L"/other");
+        return 0;
+    }
+    LONG Write(unsigned, const UString &, bool associate, const QtAssociationRecord &,
+               const UString &, const UString &, const UString &, int) override {
+        writes++;
+        if (writeError)
+            return writeError;
+        associated = associate;
+        revision += "-write";
+        return 0;
+    }
+    void NotifyChanged() override {}
+};
+} // namespace
+
+class AssociationServicesTests final : public QObject {
+    Q_OBJECT
+  private slots:
+    void nativeTypeAliasesFollowOwnWritesAndStillRejectExternalChanges() {
+        auto native = std::make_shared<CFakePlatform>();
+        native->scope = "fixture:0:application/gzip";
+        auto service = CreateQtAssociationServices(native);
+        NRegistryAssoc::CShellExtInfo gz, gzip;
+        QVERIFY(service->Read(0, UString(L"gz"), gz));
+        QVERIFY(service->Read(0, UString(L"gzip"), gzip));
+        QCOMPARE(service->Add(0, UString(L"gz"), gz, UString(), UString(), UString(), 0), LONG(0));
+        QCOMPARE(service->Add(0, UString(L"gzip"), gzip, UString(), UString(), UString(), 0),
+                 LONG(0));
+        QCOMPARE(native->writes, 2);
+        native->revision = "external after own alias write";
+        QCOMPARE(service->Delete(0, UString(L"gz"), gz), LONG(1237));
+        QCOMPARE(native->writes, 2);
+    }
+    void detectApplyRevertAndRepeatedApply() {
+        auto native = std::make_shared<CFakePlatform>();
+        auto service = CreateQtAssociationServices(native);
+        NRegistryAssoc::CShellExtInfo info;
+        QVERIFY(service->Read(0, UString(L"архив"), info));
+        QCOMPARE(service->Add(0, UString(L"архив"), info, UString(), UString(), UString(), 0),
+                 LONG(0));
+        QVERIFY(native->associated);
+        QCOMPARE(service->Delete(0, UString(L"архив"), info), LONG(0));
+        QVERIFY(!native->associated);
+        QCOMPARE(native->writes, 2);
+    }
+    void externalChangeIsRefusedBeforeWrite() {
+        auto native = std::make_shared<CFakePlatform>();
+        auto service = CreateQtAssociationServices(native);
+        NRegistryAssoc::CShellExtInfo info;
+        QVERIFY(service->Read(0, UString(L"zip"), info));
+        native->revision = "external change";
+        QCOMPARE(service->Add(0, UString(L"zip"), info, UString(), UString(), UString(), 0),
+                 LONG(1237));
+        QCOMPARE(native->writes, 0);
+        QVERIFY(!native->associated);
+        QVERIFY(service->Read(0, UString(L"zip"), info));
+        QCOMPARE(service->Add(0, UString(L"zip"), info, UString(), UString(), UString(), 0),
+                 LONG(0));
+        QVERIFY(native->associated);
+    }
+    void deniedAbsentAndFailedDetectionDoNotWrite() {
+        auto native = std::make_shared<CFakePlatform>();
+        auto service = CreateQtAssociationServices(native);
+        NRegistryAssoc::CShellExtInfo info;
+        QVERIFY(service->Read(0, UString(L"zip"), info));
+        QCOMPARE(service->Add(1, UString(L"zip"), info, UString(), UString(), UString(), 0),
+                 LONG(5));
+        QCOMPARE(service->Delete(0, UString(L"missing"), info), LONG(50));
+        native->readError = 5;
+        QVERIFY(!service->Read(0, UString(L"zip"), info));
+        native->readError = 0;
+        QCOMPARE(service->Delete(0, UString(L"zip"), info), LONG(50));
+        QCOMPARE(native->writes, 0);
+    }
+    void nativeFailurePreservesSnapshotAndHandler() {
+        auto native = std::make_shared<CFakePlatform>();
+        auto service = CreateQtAssociationServices(native);
+        NRegistryAssoc::CShellExtInfo info;
+        QVERIFY(service->Read(0, UString(L"zip"), info));
+        native->writeError = 5;
+        QCOMPARE(service->Add(0, UString(L"zip"), info, UString(), UString(), UString(), 0),
+                 LONG(5));
+        QVERIFY(!native->associated);
+        QCOMPARE(native->revision, QByteArray("original"));
+        native->writeError = 0;
+        QCOMPARE(service->Add(0, UString(L"zip"), info, UString(), UString(), UString(), 0),
+                 LONG(0));
+    }
+};
+QTEST_MAIN(AssociationServicesTests)
+#include "association_services_tests.moc"

@@ -86,9 +86,9 @@ P2 — 11, P3 — 6. P2-11 добавлен 2026-10-03 для рефактори
 на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
 это счётчик оставшейся работы, уже работающий MVP не обнуляется.
 
-Текущий счёт после P2-07 (2026-10-03):
-**36/47 закрыты, 11 остаётся** с учётом нового P2-11;
-P0: 12/12, P1: 16/18, P2: 7/11, P3: 1/6.
+Текущий счёт после P2-08 (2026-10-03):
+**37/47 закрыты, 10 остаётся** с учётом нового P2-11;
+P0: 12/12, P1: 16/18, P2: 8/11, P3: 1/6.
 P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
 под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
 P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
@@ -1194,6 +1194,15 @@ mechanism и соответствующие ограничения без пря
 
 **Готово:** detect/apply/revert state, denied permissions, handler absent и
 external association changes; geometry страницы и typed adapter tests.
+
+Принят целой итерацией2026-10-03: исходные System/FilePlugins/RegistryAssociations
+и partial ArchiveFolderOpen icon owner, actual Options/MainWindow, native
+file-open и .app declaration. macOS unsandboxed fullgate219/219PASS67.46s;
+финальные localized9/9PASS3.21s, Windows12/12PASS25.26s, Linux12/12PASS3.17s.
+Двенадцать System EN/RU normal/compact и четыре Windows WIM JSON reviewed;
+baseline384/182/3. Реальные defaults в разработке не менялись. Полные
+Windows/Linux gates, installed native registration/rendered/Finder остаются P3.
+Счёт37/47; следующийP2-09.
 
 ### P2-09. Shell/context integration и завершение Menu page
 

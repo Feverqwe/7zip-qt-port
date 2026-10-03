@@ -1,5 +1,30 @@
 # Regression strategy
 
+P2-08 accepted: system_page checks source mixed selections, clear/other/7-Zip
+cycles, unsupported groups/types, per-row failure and external-state refresh,
+actual Options Apply/Cancel and EN/RU640×390/520×380 geometry. association_services
+injects a fake native platform to cover detect/apply/revert, denied/failed reads,
+external revisions and shared MIME/UTType aliases. No development check writes
+real OS associations. codec_catalog checks real original association resource
+extensions and case-insensitive icon lookup through QtArchiveFolderManager,
+independently of the broader Open filter aliases. ui_parity_system runs the
+System producer fixture and compares all four pinned RC controls. Native adapter
+compilation/focused tests do not prove installed OS default-app registration,
+Windows rendering or a full cross-platform gate.
+
+association_file_open injects early/repeated QFileOpenEvent and rejects remote
+URLs/empty requests. startup_path connects that event boundary to actual
+MainWindow opening with a deterministic backend. macos_association_bundle reads
+only the built Info.plist/executable and checks source extensions/Viewer/Alternate;
+it never invokes LaunchServices registration or a system default-app setter.
+
+Final macOS check.sh: formatting/all-target build/219 tests PASS67.46s;
+later localized username/time-caption checks9/9PASS3.21s. Windows12/12PASS25.26s,
+Linux12/12PASS3.17s on shared x64 Hyper-V guests. Twelve current System JSON
+reports and four Windows WIM Options reports reviewed. Expanded Windows
+Add/Editor path/geometry/lifetime failures and Linux Add clipping remain P3;
+these passing focused runs do not establish full Windows/Linux acceptance.
+
 P2-07 in progress: source_extract_advanced checks source bool-pair precedence,
 Cancel/no-write persistence, EN/RU normal/compact control geometry, actual ZIP
 root elimination and timestamps through both file service and native handler,

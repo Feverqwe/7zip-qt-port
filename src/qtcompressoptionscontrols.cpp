@@ -42,8 +42,8 @@ void CQtCompressOptionsDialog::buildControls() {
         widget->setObjectName(name);
         if (id == IDX_COMPRESS_ZTIME || id == IDX_COMPRESS_PRESERVE_ATIME)
             widget->setProperty("languageWrapWidth", 300);
-        if (id == IDX_COMPRESS_ATIME)
-            widget->setProperty("languageWrapWidth", 380);
+        if (id == IDX_COMPRESS_MTIME || id == IDX_COMPRESS_CTIME || id == IDX_COMPRESS_ATIME)
+            widget->setProperty("languageWrapWidth", 300);
         if (id == IDT_COMPRESS_TIME_PREC)
             widget->setProperty("languageWrapWidth", 160);
         if (id >= IDX_COMPRESS_NT_SYM_LINKS && id <= IDX_COMPRESS_PRESERVE_ATIME)
@@ -160,6 +160,17 @@ bool CQtCompressOptionsDialog::IsButtonCheckedBool(unsigned id) const {
 }
 void CQtCompressOptionsDialog::ShowItem_Bool(unsigned id, bool visible) {
     GetItem(id)->setVisible(visible);
+    if (id == IDG_COMPRESS_NTFS) {
+        // Source NTFS metadata views have a wider compact contract (480px).
+        // Keep their original one-line mtime/ctime captions; the narrower ZIP
+        // time-only view needs wrapping to fit its 440px contract on Windows.
+        for (const unsigned timeId : {IDX_COMPRESS_MTIME, IDX_COMPRESS_CTIME, IDX_COMPRESS_ATIME}) {
+            auto *control = GetItem(timeId);
+            control->setProperty("languageWrapWidth",
+                                 visible ? (timeId == IDX_COMPRESS_ATIME ? 380 : 0) : 300);
+            QtReloadLangTexts(*control);
+        }
+    }
 }
 void CQtCompressOptionsDialog::EnableItem(unsigned id, bool enabled) {
     GetItem(id)->setEnabled(enabled);

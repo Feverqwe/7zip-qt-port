@@ -1,5 +1,25 @@
 # Text specifications and geometry checks
 
+### System associations (P2-08, accepted)
+
+Reference: pinned SystemPage.rc and CSystemPage OnInit/ChangeState/OnApply.
+Associate label precedes current-user and all-users plus buttons; each button
+is centered above its corresponding association column. File type is the first
+column, followed by current user and all users; the list grows while the Options
+footer remains visible. No selection targets all supported rows. Unavailable
+groups/unknown native types show a reason and cannot initiate registration.
+All four source controls are mapped in system-page.contract.json; the generated
+reference retains source hashes and the exact revision. system_page produces
+EN/RU640×390/520×380 reports; ui_parity_system checks their reviewed spatial
+relations and visibility with injected services. Four-report comparisons pass
+on macOS, Windows and Linux; twelve current reports were reviewed. Compact
+Windows list476×248, Linux476×240 and both80-wide buttons are fully exposed;
+RU labels fit476-wide controls and footers remain visible. Windows RU Folders/
+removable captions wrap to prevent hidden pages enlarging Options. Time-only
+ZIP controls wrap at300 pixels; NTFS views retain single-line mtime/ctime and
+380-pixel atime wrapping. Four current Windows WIM reports confirm480×430.
+Rendered Windows parity and existing Add language clipping remain P3 work.
+
 ### Add metadata Options (P2-07, in progress)
 
 Reference: pinned CompressDialog.rc Options NTFS group and COptionsDialog
@@ -576,7 +596,7 @@ Alternative selection is enabled and persists the source mark mode.
 The page has no heading absent from the resource.
 Large pages are capability-gated Windows controls; source extraction-memory
 edit validation preserves raw input until Apply. The partial
-six-page property sheet has Menu/Folders/Editor/Settings/Language enabled and System disabled;
+six-page property sheet has all six pages enabled after P2-08;
 this does not establish full OptionsDialog parity.
 Folders follows pinned FoldersPage2.rc: working-folder label, system/current/
 specified radios, path/Browse row, removable-only checkbox. Path and Browse are

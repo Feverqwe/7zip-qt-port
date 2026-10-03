@@ -1,9 +1,29 @@
+#include "qtassociationfileopen.h"
 #include "window_state_support.h"
+#include <QFileOpenEvent>
 #include <QScopeGuard>
 
 class StartupPathTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void associationEventUsesTheExistingArchiveOpeningConsumer() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath(QStringLiteral("архив 空 с пробелами.zip"));
+        ControlledBackend backend;
+        QVERIFY(backend.prepareArchiveFixture(path));
+        backend.queueList({ArchiveEntry{QStringLiteral("payload.txt"), 4, 4}});
+        QObject nativeEvents;
+        QtAssociationFileOpen receiver(nativeEvents);
+        QFileOpenEvent early(path);
+        QVERIFY(QApplication::sendEvent(&nativeEvents, &early));
+        MainWindow window(&backend);
+        QObject::connect(&receiver, &QtAssociationFileOpen::OpenRequested, &window,
+                         &MainWindow::openPath);
+        receiver.Activate();
+        QTRY_COMPARE(backend.listCalls, 1);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), path);
+    }
     void directoryArgumentUsesNativeFolderOwnerWithoutArchiveProcess() {
         QTemporaryDir fixture;
         const QString folder = fixture.filePath(QStringLiteral("папка 空 с пробелами"));

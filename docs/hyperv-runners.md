@@ -68,7 +68,10 @@ workaround. The pinned upstream bundle remains intentional: each gate uses
 the recorded revision without depending on an external Git server.
 
 Linux: Ubuntu 24.04.5 LTS x86_64, GCC 13.3, Qt base/DBus 6.4.2,
-CMake 3.28.3, Ninja, Git/Python and DBus daemon.
+CMake 3.28.3, Ninja, Git/Python and DBus daemon. P2-08 association services
+require `pkg-config` and `libglib2.0-dev` (GIO); these build dependencies were
+installed on the shared Linux runner on 2026-10-03 without upgrading existing
+packages. GIO is 2.80.0 there.
 Software rendering is selected for this guest without an accelerated GPU.
 
 Windows: Windows 11 Pro 10.0.26300 x64, MSVC 2022 Build Tools,

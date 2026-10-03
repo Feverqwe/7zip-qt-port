@@ -221,7 +221,8 @@ class OptionsDialogTests : public QObject {
                              us2fs(fixture.filePath("archive.zip").toStdWString().c_str())),
                          HRESULT(S_OK));
                 temporary = qtPath(file.Get_TempFilePath());
-                QVERIFY(temporary.startsWith(work + '/'));
+                QVERIFY(QDir::fromNativeSeparators(temporary).startsWith(
+                    QDir::fromNativeSeparators(work) + '/'));
                 QVERIFY(QFileInfo::exists(temporary));
             }
             QVERIFY(!QFileInfo::exists(temporary));

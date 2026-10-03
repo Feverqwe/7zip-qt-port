@@ -11,6 +11,7 @@
 #include <QLabel>
 #include <QListWidget>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTabWidget>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -93,8 +94,18 @@ class LanguageUiTests : public QObject {
                         !qobject_cast<QLineEdit *>(control) &&
                         !qobject_cast<QListWidget *>(control) && !qobject_cast<QLabel *>(control))
                         continue;
-                    scroll->ensureWidgetVisible(control, 5, 30);
                     QApplication::processEvents();
+                    scroll->ensureWidgetVisible(control, 5, 30);
+                    if (qobject_cast<QLineEdit *>(control))
+                        scroll->horizontalScrollBar()->setValue(
+                            scroll->horizontalScrollBar()->maximum());
+                    QApplication::processEvents();
+                    if (!UiInspection::fullyVisible(*control, dialog))
+                        QVERIFY(UiInspection::writeReport(dialog,
+                                                          QString("language-add-clipped-%1-%2-%3")
+                                                              .arg(lang)
+                                                              .arg(size.width())
+                                                              .arg(control->objectName())));
                     QVERIFY2(UiInspection::fullyVisible(*control, dialog),
                              qPrintable(control->objectName()));
                     if (qobject_cast<QLabel *>(control))
@@ -152,6 +163,8 @@ class LanguageUiTests : public QObject {
             for (QSize size : {QSize(520, 400), QSize(440, 340)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
+                QVERIFY(UiInspection::writeReport(
+                    dialog, QString("language-advanced-%1-%2").arg(lang).arg(size.width())));
                 QCOMPARE(dialog.size(), size);
                 for (auto *label : dialog.findChildren<QLabel *>())
                     if (label->isVisible()) {

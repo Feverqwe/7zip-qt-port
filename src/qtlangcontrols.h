@@ -15,4 +15,5 @@ void QtBindLangText(QObject *object, UInt32 id, const QString &englishFallback =
 void QtBindResourceText(QObject *object, UInt32 id, const QString &resourceCaption,
                         bool accessibleOnly = false);
 void QtReloadLangTexts(QWidget &root);
+QString QtWrapControlText(const QWidget &widget, const QString &text);
 void QtNotifyLanguageChanged();

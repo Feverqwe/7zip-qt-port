@@ -56,7 +56,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(pages->widget(3)->property("sourcePageID").toUInt(), 2103u);
             QVERIFY(pages->isTabEnabled(2) && pages->isTabEnabled(3) && pages->isTabEnabled(4));
             QVERIFY(pages->isTabEnabled(1));
-            QVERIFY(!pages->isTabEnabled(0));
+            QVERIFY(pages->isTabEnabled(0)); // System owner is connected in P2-08.
             QVERIFY(pages->isTabEnabled(5));
             pages->setCurrentIndex(3);
             dialog.findChild<QLineEdit *>("viewerCommand")->setText("new viewer");

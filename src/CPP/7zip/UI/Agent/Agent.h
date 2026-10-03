@@ -5,6 +5,7 @@
 #include "7zip/UI/Common/UpdateAction.h"
 #include "7zip/UI/FileManager/IFolder.h"
 #include "AgentProxy.h"
+#include "CPP/Windows/DLL.h"
 #include "Common/MyCom.h"
 #include "Common/MyString.h"
 #include "Common/MyVector.h"
@@ -214,4 +215,29 @@ class CAgent final : public IFolderArcProps, public CMyUnknownImp {
   private:
     HRESULT ReadItems();
     CMyComPtr<IUnknown> _engineResource;
+};
+
+// ArchiveFolderOpen's icon/association owner. Opening stays with the retained
+// QtArchiveFolderManager/OpenArchive consumer; no second archive opener exists.
+struct CCodecIcons {
+    struct CIconPair {
+        UString Ext;
+        int IconIndex;
+    };
+    CObjectVector<CIconPair> IconPairs;
+    void LoadIcons(HMODULE m);
+    bool FindIconIndex(const UString &ext, int &iconIndex) const;
+};
+
+class CArchiveFolderManager {
+    const CCodecs &_codecs;
+    CObjectVector<CCodecIcons> CodecIconsVector;
+    CCodecIcons InternalIcons;
+    bool WasLoaded = false;
+    void LoadFormats();
+
+  public:
+    explicit CArchiveFolderManager(const CCodecs &codecs) : _codecs(codecs) {}
+    HRESULT GetExtensions(BSTR *extensions);
+    HRESULT GetIconPath(const wchar_t *ext, BSTR *iconPath, Int32 *iconIndex);
 };

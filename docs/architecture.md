@@ -2,6 +2,25 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+P2-08 accepted: source SystemPage owns association selection/state/apply;
+FilePlugins owns extension merging. ArchiveFolderOpen's CArchiveFolderManager
+owns the icon-resource association catalog behind QtArchiveFolderManager, which
+retains its immutable codec catalog lease. Archive opening has its existing owner.
+IQtAssociationServices performs pre-write revision checks and synchronizes aliases
+sharing a native type after its own successful mutation. Native platforms own
+Win registry/notifications, Linux GIO desktop MIME services and macOS NSWorkspace
+completion/history. Options invokes them only on explicit Apply, with reentrant
+dialog actions disabled while a native completion is pending. Tests inject fake
+registration boundaries. GUI code neither writes OS registration directly nor
+builds archive process arguments for this workflow.
+
+QtAssociationFileOpen retains native application file events until the UI
+consumer is connected, then dispatches local paths asynchronously. main.cpp
+uses an additional MainWindow and its existing openPath/backend owner for each
+native request, so an association activation does not replace an active operation
+in another window. macOS document declarations derive from the pinned source
+association resource; Alternate rank does not select an OS default application.
+
 P2-07: source Common/Extract owns root elimination;
 ArchiveExtractCallback owns path correction, overwrite, attributes and timestamps.
 IQtExtractPathPolicy checks source-corrected containment and occupied/link ancestors
@@ -708,8 +727,8 @@ Address signals are disconnected before window teardown.
 ## Dialogs and preferences
 
 `QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the partial native
-six-page property sheet. Folders, Editor, Settings, 7-Zip and Language are available;
-System remains disabled. CMenuPage preserves source list/state/apply bodies;
+six-page property sheet. All six pages are available; System delegates registration
+to the native services described above. CMenuPage preserves source list/state/apply bodies;
 only Zone propagation has a current consumer, through PanelCopy, Agent and the
 Windows ArchiveExtractCallback. Shell controls are disabled until P2-09 ports
 QueryContextMenu and registration. They do not alter the FM File/context menu.

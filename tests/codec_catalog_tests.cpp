@@ -120,9 +120,26 @@ class CodecCatalogTests : public QObject {
         CMyComBSTR extensions;
         QCOMPARE(manager->GetExtensions(&extensions), S_OK);
         const QStringList aliases = QString::fromWCharArray(extensions).split(' ');
-        QVERIFY(aliases.contains("docx"));
+        // SystemPage uses ArchiveFolderOpen's icon association catalog,
+        // rather than every detection alias exposed by the Open filter.
+        QVERIFY(aliases.contains("zip"));
+        QVERIFY(aliases.contains("7z"));
+        QVERIFY(!aliases.contains("docx"));
         QVERIFY(aliases.contains("tgz"));
         QCOMPARE(manager->GetExtensions(nullptr), E_INVALIDARG);
+        CMyComBSTR iconPath;
+        Int32 iconIndex = -1;
+        QCOMPARE(manager->GetIconPath(L"ZIP", &iconPath, &iconIndex), S_OK);
+        QVERIFY(iconPath);
+        QVERIFY(QFileInfo(QString::fromWCharArray(iconPath)).isFile());
+        QCOMPARE(iconIndex, Int32(1));
+        CMyComBSTR missingIcon;
+        iconIndex = -1;
+        QCOMPARE(manager->GetIconPath(L"unknown-source-format", &missingIcon, &iconIndex), S_OK);
+        QVERIFY(!missingIcon);
+        QCOMPARE(iconIndex, Int32(0));
+        QCOMPARE(manager->GetIconPath(L"zip", nullptr, &iconIndex), E_INVALIDARG);
+        QCOMPARE(manager->GetIconPath(nullptr, &iconPath, &iconIndex), E_INVALIDARG);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
         backend.openFolder("unused", "zip..*");

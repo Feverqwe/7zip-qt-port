@@ -1,5 +1,6 @@
 #include "desktopidentity.h"
 #include "mainwindow.h"
+#include "qtassociationfileopen.h"
 
 #include <QApplication>
 #include <QTimer>
@@ -8,7 +9,19 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("Sevenzip Desktop");
     app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
+    QtAssociationFileOpen associatedFiles(app);
     MainWindow window;
+    QObject::connect(&associatedFiles, &QtAssociationFileOpen::OpenRequested, &app,
+                     [](const QString &path) {
+                         // LaunchServices can target an already busy application.
+                         // Match Windows' independent association launch by giving
+                         // the request its own window/backend/operation lifetime.
+                         auto *receiver = new MainWindow;
+                         receiver->setAttribute(Qt::WA_DeleteOnClose);
+                         receiver->openPath(path);
+                         receiver->show();
+                     });
+    associatedFiles.Activate();
     if (app.arguments().contains("--smoke-test")) {
         QTimer::singleShot(0, &app, &QCoreApplication::quit);
     } else {

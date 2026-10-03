@@ -16,6 +16,27 @@ QString QtLangText(UInt32 id, const QString &englishFallback) {
     return s.IsEmpty() ? englishFallback : QString::fromWCharArray(s);
 }
 
+QString QtWrapControlText(const QWidget &widget, const QString &text) {
+    const int wrapWidth = widget.property("languageWrapWidth").toInt();
+    if (wrapWidth <= 0)
+        return text;
+    QTextLayout layout(text, widget.font());
+    QTextOption option;
+    option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+    layout.setTextOption(option);
+    QStringList lines;
+    layout.beginLayout();
+    for (;;) {
+        QTextLine line = layout.createLine();
+        if (!line.isValid())
+            break;
+        line.setLineWidth(wrapWidth);
+        lines.append(text.mid(line.textStart(), line.textLength()).trimmed());
+    }
+    layout.endLayout();
+    return lines.join('\n');
+}
+
 namespace {
 void SetText(QObject *object) {
     if (auto *widget = qobject_cast<QWidget *>(object))
@@ -39,25 +60,8 @@ void SetText(QObject *object) {
     if (object->property("languageColon").toBool())
         text += ':';
     text += object->property("languageSuffix").toString();
-    const int wrapWidth = object->property("languageWrapWidth").toInt();
-    if (wrapWidth > 0)
-        if (auto *widget = qobject_cast<QWidget *>(object)) {
-            QTextLayout layout(text, widget->font());
-            QTextOption option;
-            option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-            layout.setTextOption(option);
-            QStringList lines;
-            layout.beginLayout();
-            for (;;) {
-                QTextLine line = layout.createLine();
-                if (!line.isValid())
-                    break;
-                line.setLineWidth(wrapWidth);
-                lines.append(text.mid(line.textStart(), line.textLength()).trimmed());
-            }
-            layout.endLayout();
-            text = lines.join('\n');
-        }
+    if (auto *widget = qobject_cast<QWidget *>(object))
+        text = QtWrapControlText(*widget, text);
     if (auto *widget = qobject_cast<QWidget *>(object)) {
         if (object->property("languageToolTip").toBool())
             widget->setToolTip(QString(text).remove('&'));

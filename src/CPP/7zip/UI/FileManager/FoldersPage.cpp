@@ -53,6 +53,7 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
     layout->addWidget(m_WorkPath, 4, 0);
     layout->addWidget(_workBrowse, 4, 1);
     _forRemovable = new QCheckBox(this);
+    _forRemovable->setProperty("languageWrapWidth", 380);
     QtBindResourceText(_forRemovable, IDX_FOLDERS_WORK_FOR_REMOVABLE,
                        "Use for removable drives only");
     _forRemovable->setObjectName("workRemovableOnly");

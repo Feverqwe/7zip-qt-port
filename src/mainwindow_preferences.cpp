@@ -202,7 +202,7 @@ void MainWindow::updateToolbar() {
 }
 
 void MainWindow::showSettings() {
-    SettingsDialog dialog(toolbarSettingsPath(), this);
+    SettingsDialog dialog(toolbarSettingsPath(), this, folderManager_);
     dialog.Applied = [this](const CFmSettings &settings) { applyFileListSettings(settings); };
     dialog.exec();
 }

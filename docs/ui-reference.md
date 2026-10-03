@@ -1,5 +1,12 @@
 # Upstream UI reference and Qt comparison
 
+P2-08 adds SystemPage's four-control resource contract. `system_page` produces
+EN/RU normal/compact Options/System reports with injected registration services;
+`ui_parity_system` uses the `ui_reference_system` fixture to compare the pinned
+resource grouping and order. The native platform availability/error transitions
+remain public behavioral tests. This source geometry contract does not establish
+Windows rendering or real OS association writes.
+
 To collect rendered Windows sizes, control IDs, fonts and optional PNGs from
 official 7zFM, use the [Windows capture guide](windows-ui-reference.md) and
 `scripts/capture-7zfm-reference.ps1`. Its runtime JSON is a separate schema,

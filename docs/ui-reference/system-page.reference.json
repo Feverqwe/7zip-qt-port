@@ -1,0 +1,155 @@
+{
+  "schema": 1,
+  "upstreamCommit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+  "resource": "CPP/7zip/UI/FileManager/SystemPage.rc",
+  "profile": "desktop; RC_INVOKED; UNDER_CE undefined; SDK constants symbolic",
+  "dependencies": {
+    "CPP/7zip/UI/FileManager/SystemPage.rc": "1b00e6063f7ac5244b78f11fe3dc40d71dd9ae4f2bd4460d8ebd17924db3df69",
+    "CPP/7zip/UI/FileManager/SystemPageRes.h": "d47a7250d4c439dfe28340fdb639b0ec8c86b6b879893832e828beec0043d387",
+    "CPP/7zip/GuiCommon.rc": "d464f9e17b65a25db12f915fdf0a36c46134a80e70cd2d0efbe7c85c64b939db",
+    "CPP/7zip/UI/FileManager/SystemPage.cpp": "ba083d3cbb4bf05f30fc18cbe08ebd558ffff81566defb5299334837a45730fb",
+    "CPP/7zip/UI/FileManager/RegistryAssociations.cpp": "d5aec42f0be4d0cc09bf1358560f3b36a5c63f9b33df8244c6a34b57212b9c8f"
+  },
+  "opaqueIncludes": [
+    "CommCtrl.h",
+    "windows.h"
+  ],
+  "dialogs": [
+    {
+      "id": "IDD_SYSTEM",
+      "caption": "System",
+      "boundsDLU": [
+        0,
+        0,
+        316,
+        296
+      ],
+      "controls": [
+        {
+          "id": "IDT_SYSTEM_ASSOCIATE",
+          "kind": "LTEXT",
+          "qtClass": "QLabel",
+          "text": "Associate 7-Zip with:",
+          "boundsDLU": [
+            8,
+            8,
+            300,
+            8
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDB_SYSTEM_CURRENT",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "+",
+          "boundsDLU": [
+            92,
+            20,
+            40,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDB_SYSTEM_ALL",
+          "kind": "PUSHBUTTON",
+          "qtClass": "QPushButton",
+          "text": "+",
+          "boundsDLU": [
+            194,
+            20,
+            40,
+            16
+          ],
+          "style": ""
+        },
+        {
+          "id": "IDL_SYSTEM_ASSOCIATE",
+          "kind": "CONTROL",
+          "qtClass": null,
+          "text": "List1",
+          "boundsDLU": [
+            8,
+            40,
+            300,
+            248
+          ],
+          "style": "LVS_REPORT | LVS_SHOWSELALWAYS | LVS_SHAREIMAGELISTS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP"
+        }
+      ]
+    }
+  ],
+  "behaviorSymbols": {
+    "CPP/7zip/UI/FileManager/SystemPage.cpp": [
+      "CSystemPage::ChangeState",
+      "CSystemPage::OnButtonClicked",
+      "CSystemPage::OnInit",
+      "CSystemPage::OnListKeyDown",
+      "CSystemPage::OnNotify",
+      "CSystemPage::OnNotifyHelp",
+      "CSystemPage::RefreshListItem"
+    ],
+    "CPP/7zip/UI/FileManager/RegistryAssociations.cpp": [
+      "CShellExtInfo::IsIt7Zip",
+      "CShellExtInfo::ReadFromRegistry"
+    ]
+  },
+  "behaviorCandidates": [
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 156,
+      "code": "bool CSystemPage::OnInit()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 265,
+      "code": "return CPropertyPage::OnInit();"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 278,
+      "code": "LONG CSystemPage::OnApply()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 339,
+      "code": "void CSystemPage::OnNotifyHelp()"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 341,
+      "code": "ShowHelpWindow(kSystemTopic);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 345,
+      "code": "bool CSystemPage::OnButtonClicked(unsigned buttonID, HWND buttonHWND)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 359,
+      "code": "return CPropertyPage::OnButtonClicked(buttonID, buttonHWND);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 363,
+      "code": "bool CSystemPage::OnNotify(UINT controlID, LPNMHDR lParam)"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 415,
+      "code": "return CPropertyPage::OnNotify(controlID, lParam);"
+    },
+    {
+      "source": "CPP/7zip/UI/FileManager/SystemPage.cpp",
+      "line": 435,
+      "code": "bool CSystemPage::OnListKeyDown(LPNMLVKEYDOWN keyDownInfo)"
+    }
+  ],
+  "limitations": [
+    "DLU are not pixels; combo height includes dropdown extent",
+    "Behavior candidates are navigation hints, not a C++ semantic analysis",
+    "No Windows rendering, focus or tab-order verification"
+  ]
+}
