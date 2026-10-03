@@ -31,7 +31,7 @@ class ViewerBackend : public ControlledBackend {
         });
     }
     void extractSourceEntry(const QString &, const QString &entry, const QString &output,
-                            const QString &, const QString &) override {
+                            const QString &, const QString &, bool = false) override {
         extracted = {entry};
         temporary = QFileInfo(output).absolutePath();
         if (cancelExtraction) {

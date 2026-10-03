@@ -94,6 +94,26 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
+### Alternate streams namespace (P2-06, active)
+
+Reference: pinned FileManager.rc IDM_ALT_STREAMS and
+PanelFolderChange.cpp::OpenAltStreams, AltStreamsFolder properties and original
+Agent CProxyArc2 folder/parent binding. Keep the existing main shell and file
+list order: address, Name/Size/Packed/etc. columns and per-panel status. A colon
+folder prefix names an ADS namespace, not a filesystem subdirectory. Stream
+rows are files; no synthetic Unix xattr rows. Parent returns to the original
+file owner. Filesystem CreateFolder/import remain disabled because their
+original AltStreamsFolder methods return E_NOTIMPL.
+
+`alt_streams_command` writes Windows filesystem `alt-streams-{language}-{size}`
+JSON in EN/RU at 980×620 and 640×400. `alt_streams_archive_ui` writes
+`archive-alt-streams-{language}-{size}` for the native archive namespace at the
+same sizes. Both require the address and table to remain fully visible.
+Current macOS/Linux/Windows archive and Windows filesystem reports retain
+toolbar→address→table→status order, with address, complete table and status
+exposed at both sizes in both languages. Sixteen current JSON were reviewed.
+These checks establish Qt structure/usability, not rendered 7zFM pixel parity.
+
 ### Add archive naming metadata (P2-01)
 
 Reference: pinned CompressDialog.cpp/rc and UpdateGUI.cpp::ShowDialog format/name

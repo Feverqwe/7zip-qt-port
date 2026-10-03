@@ -29,10 +29,8 @@ QStringList MainWindow::selectedArchiveItemsPaths() {
 
 QStringList MainWindow::selectedFilesystemPaths() {
     QStringList paths;
-    if (state_ != State::Filesystem)
-        return paths;
     CPanel &panel = app_.GetFocusedPanel();
-    if (!panel.GetFolder())
+    if (!panel.GetFolder() || (state_ != State::Filesystem && !panel.IsAltStreamsFolder()))
         return paths;
     const auto indices = sourceOperatedIndices();
     panel.LoadFullPath();

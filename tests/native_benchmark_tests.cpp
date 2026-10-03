@@ -116,7 +116,9 @@ class NativeBenchmarkTests final : public QObject {
                 dialog->reject();
         });
         responder.start(1);
-        watchdog.start(10000);
+        // The original GUI also runs CPU-frequency calibration. timems bounds
+        // codec work, not that loop (Bench grows it to 2048 million commands).
+        watchdog.start(20000);
         QCOMPARE(Benchmark(&providers, boundedProperties(), 1), S_OK);
         QVERIFY(!timedOut);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));

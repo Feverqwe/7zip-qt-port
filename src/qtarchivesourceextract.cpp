@@ -76,10 +76,11 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
     for (UInt32 n = 0; n < count; ++n) {
         const UInt32 index = indices ? indices[n] : n;
         RINOK(callback->SetCompleted(&completed))
-        NWindows::NCOM::CPropVariant path, directory, size;
+        NWindows::NCOM::CPropVariant path, directory, size, altStream;
         RINOK(metadata->GetProperty(index, kpidPath, &path))
         RINOK(metadata->GetProperty(index, kpidIsDir, &directory))
         RINOK(metadata->GetProperty(index, kpidSize, &size))
+        RINOK(metadata->GetProperty(index, kpidIsAltStream, &altStream))
         if (path.vt != VT_BSTR || directory.vt != VT_BOOL)
             return E_FAIL;
         const QString name = QString::fromWCharArray(path.bstrVal);
@@ -106,7 +107,11 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
             const QString streamPath = staging.filePath(QString::number(n));
             result = RunArchiveBackendRequest(
                 backend,
-                [&] { backend.extractSourceEntry(archive, name, streamPath, format, password); },
+                [&] {
+                    backend.extractSourceEntry(archive, name, streamPath, format, password,
+                                               altStream.vt == VT_BOOL &&
+                                                   altStream.boolVal != VARIANT_FALSE);
+                },
                 callback, sync);
             if (result == S_OK && output) {
                 CMyComPtr2<ISequentialInStream, CInFileStream> input;

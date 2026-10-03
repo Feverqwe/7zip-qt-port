@@ -42,7 +42,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
             }
         }
     }
-#ifndef _WIN32
+#ifndef Q_OS_WIN
     void networkNamespaceOpensWithoutRemoteServices() {
         ControlledBackend backend;
         MainWindow window(&backend);
@@ -120,7 +120,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         auto *root = action(window, "openRootAction");
         QCOMPARE(root->property("nativeCommandID").toUInt(), unsigned(IDM_OPEN_ROOT_FOLDER));
         root->trigger();
-#ifdef _WIN32
+#ifdef Q_OS_WIN
         QCOMPARE(view->rowCount(), 4);
 #else
         QCOMPARE(view->rowCount(), 3);
@@ -137,11 +137,10 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "createFileAction")->isEnabled());
         QVERIFY(!action(window, "flatViewAction")->isEnabled());
         action(window, "refreshAction")->trigger();
-        QCOMPARE(view->rowCount(),
-#ifdef _WIN32
-                 4);
+#ifdef Q_OS_WIN
+        QCOMPARE(view->rowCount(), 4);
 #else
-                 3);
+        QCOMPARE(view->rowCount(), 3);
 #endif
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
@@ -162,7 +161,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "openOutsideAction")->isEnabled());
         QVERIFY(!action(window, "copyAction")->isEnabled());
         action(window, "openItemAction")->trigger();
-#ifndef _WIN32
+#ifndef Q_OS_WIN
         QCOMPARE(address->text(), QStringLiteral("/"));
         action(window, "parentFolderAction")->trigger();
         QVERIFY(address->text().isEmpty());

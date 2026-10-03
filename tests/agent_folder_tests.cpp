@@ -61,7 +61,8 @@ class AgentFolderTests : public QObject {
         QCOMPARE(base->GetNumberOfItems(&count), S_OK);
         QStringList paths;
         for (UInt32 i = 0; i < count; ++i)
-            paths << ToQString(spec->GetFullPrefix(i) + spec->GetName(i));
+            paths << QDir::fromNativeSeparators(
+                ToQString(spec->GetFullPrefix(i) + spec->GetName(i)));
         QStringList expected = {directory + "/base/sub", directory + "/base/empty",
                                 directory + "/base/same.txt"};
         if (flatMode)
@@ -83,11 +84,13 @@ class AgentFolderTests : public QObject {
         CMyComPtr<IFolderFolder> byIndex;
         QCOMPARE(folder->BindToFolder(L"папка с пробелом", &byName), S_OK);
         QCOMPARE(folder->BindToFolder(UInt32(index), &byIndex), S_OK);
-        QCOMPARE(ToQString(GetFolderPath(byName)), QStringLiteral("папка с пробелом/"));
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(GetFolderPath(byName))),
+                 QStringLiteral("папка с пробелом/"));
         QCOMPARE(ToQString(GetFolderPath(byIndex)), ToQString(GetFolderPath(byName)));
         CMyComPtr<IFolderFolder> inner;
         QCOMPARE(byName->BindToFolder(L"внутри", &inner), S_OK);
-        QCOMPARE(ToQString(GetFolderPath(inner)), QStringLiteral("папка с пробелом/внутри/"));
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(GetFolderPath(inner))),
+                 QStringLiteral("папка с пробелом/внутри/"));
         folder.Release(); // Children retain the source agent and its authoritative proxy.
         QCOMPARE(inner->LoadItems(), S_OK);
         UInt32 propertyCount = 0;
@@ -105,7 +108,8 @@ class AgentFolderTests : public QObject {
         QCOMPARE(size.uhVal.QuadPart, UInt64(13));
         CMyComPtr<IFolderFolder> parent;
         QCOMPARE(inner->BindToParentFolder(&parent), S_OK);
-        QCOMPARE(ToQString(GetFolderPath(parent)), QStringLiteral("папка с пробелом/"));
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(GetFolderPath(parent))),
+                 QStringLiteral("папка с пробелом/"));
         CMyComPtr<IFolderFolder> rootAgain;
         QCOMPARE(parent->BindToParentFolder(&rootAgain), S_OK);
         QCOMPARE(ToQString(GetFolderPath(rootAgain)), QString());
@@ -135,7 +139,7 @@ class AgentFolderTests : public QObject {
                 continue;
             NWindows::NCOM::CPropVariant prefix;
             QCOMPARE(base->GetProperty(i, kpidPrefix, &prefix), S_OK);
-            prefixes << ToQString(UString(prefix.bstrVal));
+            prefixes << QDir::fromNativeSeparators(ToQString(UString(prefix.bstrVal)));
         }
         prefixes.sort();
         QCOMPARE(prefixes, QStringList({"a/", "b/"}));
@@ -143,7 +147,8 @@ class AgentFolderTests : public QObject {
         QVERIFY(deepIndex >= 0);
         CMyComPtr<IFolderFolder> deep;
         QCOMPARE(base->BindToFolder(UInt32(deepIndex), &deep), S_OK);
-        QCOMPARE(ToQString(GetFolderPath(deep)), QString("base/b/deep/"));
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(GetFolderPath(deep))),
+                 QString("base/b/deep/"));
         QCOMPARE(deep->LoadItems(), S_OK);
         QCOMPARE(deep->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, 1u);

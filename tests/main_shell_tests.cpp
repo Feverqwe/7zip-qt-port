@@ -123,13 +123,20 @@ class MainShellTests final : public QObject {
         QCOMPARE(actionNames(*tools),
                  QStringList({"settingsAction", "|", "benchmarkAction", "|", "tempDirAction"}));
         QCOMPARE(actionNames(*help), QStringList({"helpContentsAction", "|", "aboutAction"}));
-        for (const char *name :
-             {"commentAction", "diffAction", "linkAction", "altStreamsAction", "benchmarkAction"}) {
+        for (const char *name : {"commentAction", "diffAction", "linkAction", "benchmarkAction"}) {
             auto *action = window.findChild<QAction *>(name);
             QVERIFY(action);
             QVERIFY(!action->isEnabled());
             QVERIFY(action->property("nativeCommandID").isValid());
         }
+        auto *streams = window.findChild<QAction *>("altStreamsAction");
+        QVERIFY(streams);
+#ifdef Q_OS_WIN
+        QVERIFY(streams->isEnabled()); // Source allows opening the current folder's ADS.
+#else
+        QVERIFY(!streams->isEnabled());
+#endif
+        QVERIFY(streams->property("nativeCommandID").isValid());
         QVERIFY(window.findChild<QAction *>("helpContentsAction")->isEnabled());
         QVERIFY(window.findChild<QAction *>("aboutAction")->isEnabled());
         QVERIFY(window.findChild<QAction *>("tempDirAction")->isEnabled());

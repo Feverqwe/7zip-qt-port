@@ -130,9 +130,31 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
                                         const QString &destination,
                                         const CRecordVector<UInt32> &indices, bool useDestPanel,
                                         bool useTemp) {
+    const bool streams = app_.GetFocusedPanel().IsAltStreamsFolder();
     if (sourceIndex != app_.GetFocusedPanelIndex() || indices.IsEmpty() ||
-        (state_ != State::Viewing && state_ != State::Filesystem))
+        (state_ != State::Viewing && state_ != State::Filesystem && !streams))
         return;
+    if (streams) {
+        QtAppOperationState::CallScope call(app_.QtOperations());
+        CCopyToOptions options;
+        options.folder = ToUString(destination);
+        options.moveMode = move;
+        UStringVector messages;
+        bool usePassword = false;
+        UString password;
+        const HRESULT result =
+            app_.Panels[sourceIndex].CopyTo(options, indices, &messages, usePassword, password);
+        renderBoundFolder();
+        if (useDestPanel && app_.NumPanels == 2) {
+            activatePanelUi(1 - sourceIndex);
+            refreshCurrent();
+            activatePanelUi(sourceIndex);
+        }
+        if (result != S_OK && result != E_ABORT)
+            QMessageBox::warning(this, QtLangText(move ? IDS_MOVING : IDS_COPYING),
+                                 QString::fromWCharArray(HResultToMessage(result).Ptr()));
+        return;
+    }
     const bool directPath = indices.Size() == 1 && !destination.endsWith('/') &&
                             !QFileInfo(destination).isDir() && !useDestPanel;
     if (state_ == State::Viewing) {
@@ -269,7 +291,7 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
                                              "Не удалось удалить объекты из архива."));
         return;
     }
-    if (state_ != State::Filesystem)
+    if (state_ != State::Filesystem && !app_.GetFocusedPanel().IsAltStreamsFolder())
         return;
     CPanel &panel = app_.GetFocusedPanel();
     CSelectedState selection;
@@ -284,7 +306,9 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
 }
 
 void MainWindow::renameSelected() {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
+    const auto &panel = app_.GetFocusedPanel();
+    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
+    if (state_ != State::Filesystem && state_ != State::Viewing && !streams)
         return;
     const bool archive = state_ == State::Viewing;
     if (!rename_->isEnabled())
@@ -314,12 +338,12 @@ void MainWindow::renameSelected() {
     renameSourceIndex_ = item->data(Qt::UserRole + 6).toUInt();
     renameActivationPending_ = true;
     const QString nameHint =
-        archive ? ToQString(app_.GetFocusedPanel().GetItemName(indices[0])) : QString();
+        archive || streams ? ToQString(app_.GetFocusedPanel().GetItemName(indices[0])) : QString();
     if (viewStack_->currentWidget() == iconList_) {
         const QModelIndex modelIndex = table_->model()->index(row, 0);
         iconList_->scrollTo(modelIndex);
         iconList_->edit(modelIndex);
-        if (archive)
+        if (archive || streams)
             if (auto *editor = iconList_->findChild<QLineEdit *>()) {
                 editor->setText(nameHint);
                 editor->selectAll();
@@ -327,7 +351,7 @@ void MainWindow::renameSelected() {
     } else {
         table_->scrollToItem(item);
         table_->editItem(item);
-        if (archive)
+        if (archive || streams)
             if (auto *editor = table_->findChild<QLineEdit *>()) {
                 editor->setText(nameHint);
                 editor->selectAll();
@@ -338,9 +362,11 @@ void MainWindow::renameSelected() {
 void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                         const QString &name) {
     const bool archive = state_ == State::Viewing;
-    if (state_ != State::Filesystem && !archive)
+    const auto &panel = app_.GetFocusedPanel();
+    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
+    if (state_ != State::Filesystem && !archive && !streams)
         return;
-    if (!archive && QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_)
+    if (!archive && !streams && QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_)
         return;
     if (archive && (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
                     name.contains('\\'))) {
@@ -355,6 +381,12 @@ void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &orig
         QMessageBox::warning(
             this, "Sevenzip Desktop",
             QtLocalText("Could not rename the item.", "Не удалось переименовать объект."));
+    if (streams) {
+        const QString target = ToQString(app_.GetFocusedPanel().GetCurrentFolderPrefix()) + name;
+        renderBoundFolder();
+        selectPaths({result == S_OK ? target : originalPath});
+        return;
+    }
     if (archive) {
         renderBoundFolder();
         const QString prefix = originalPath.section('/', 0, -2);

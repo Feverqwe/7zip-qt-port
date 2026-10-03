@@ -1,10 +1,12 @@
 #include "archivebackend.h"
 #include "qtlanguageservices.h"
+#include "qtownedtempdir.h"
+#include <QFile>
 #include <QFileInfo>
 
 void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &entry,
                                         const QString &output, const QString &format,
-                                        const QString &password) {
+                                        const QString &password, bool isAltStream) {
     if (busy()) {
         emit finished(false, QtLocalText("Another operation is still running.",
                                          "Другая операция ещё выполняется."));
@@ -21,8 +23,35 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
     createTemporary_ = QFileInfo(output).absoluteFilePath();
     pendingPassword_ = password;
     QStringList arguments{"x", "-y", "-so", "-bso0", "-bse2", "-bsp2", "-spd", "-ssc"};
+    // Original native kpidIsAltStream controls the Console transport. Unix
+    // skips ADS without this switch; ordinary stdout must stay one payload.
+    if (isAltStream)
+        arguments.append("-sns");
     if (!format.isEmpty())
         arguments.append("-t" + format);
-    arguments.append({"--", archive_, entry});
+    sourceExtractSelection_.reset();
+    QString selection = entry;
+#ifdef Q_OS_MAC
+    // QProcess encodes arguments as filesystem names (NFD on macOS). Archive
+    // item names are not filesystem arguments: retain their exact UTF-8 bytes.
+    if (QFile::encodeName(entry) != entry.toUtf8()) {
+        sourceExtractSelection_ = std::make_unique<QtOwnedTempDir>();
+        QFile list(sourceExtractSelection_->filePath("selection.txt"));
+        const QByteArray bytes = entry.toUtf8() + '\n';
+        if (entry.contains('\n') || entry.contains('\r') || !sourceExtractSelection_->isValid() ||
+            !list.open(QIODevice::WriteOnly) || list.write(bytes) != bytes.size()) {
+            sourceExtractSelection_.reset();
+            emit finished(false,
+                          QtLocalText("Cannot prepare exact archive item selection.",
+                                      "Не удалось подготовить точный выбор элемента архива."));
+            return;
+        }
+        arguments.append({"-scsUTF-8", "-i@" + list.fileName()});
+        selection.clear();
+    }
+#endif
+    arguments.append({"--", archive_});
+    if (!selection.isEmpty())
+        arguments.append(selection);
     start(Job::SourceExtract, arguments);
 }

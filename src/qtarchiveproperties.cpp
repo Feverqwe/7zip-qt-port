@@ -29,14 +29,25 @@ class CFolderArchiveProperties final : public IInArchive,
     CMyComPtr<IArchiveGetRawProps> _rawProps;
     CMyComPtr<IUnknown> _resource;
     QtArchiveFileResource *_resourceSpec;
+    void BindRawProperties() {
+        _rawProps.Release();
+        _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
+        if (_resourceSpec) {
+            _resourceSpec->BindNativeItemOrder(_properties);
+            if (auto *native = _resourceSpec->NativeItemProperties()) {
+                CMyComPtr<IArchiveGetRawProps> raw;
+                native->QueryInterface(IID_IArchiveGetRawProps, (void **)&raw);
+                if (raw)
+                    _rawProps = raw;
+            }
+        }
+    }
 
   public:
     CFolderArchiveProperties(IFolderFolder *properties, IUnknown *resource)
         : _properties(properties), _resource(resource),
           _resourceSpec(dynamic_cast<QtArchiveFileResource *>(resource)) {
-        _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
-        if (_resourceSpec)
-            _resourceSpec->BindNativeItemOrder(_properties);
+        BindRawProperties();
     }
     Z7_IFACE_COM7_IMP(IInArchive)
     Z7_IFACE_COM7_IMP(IOutArchive)
@@ -75,9 +86,7 @@ Z7_COM7F_IMF(CFolderArchiveProperties::Open(IInStream *, const UInt64 *,
     CMyComPtr<IFolderFolder> metadata;
     RINOK(_resourceSpec->ReOpen(&metadata, callback))
     _properties = metadata;
-    _rawProps.Release();
-    _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
-    _resourceSpec->BindNativeItemOrder(_properties);
+    BindRawProperties();
     return S_OK;
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::Close()) {

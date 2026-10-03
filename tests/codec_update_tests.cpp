@@ -14,6 +14,45 @@ QByteArray readFile(const QString &path) {
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
 }
+class CNativeUpdateFault final : public IFolderArchiveUpdateCallback,
+                                 public ICompressProgressInfo,
+                                 public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IFolderArchiveUpdateCallback, ICompressProgressInfo)
+    CMyComPtr<IFolderArchiveUpdateCallback> _callback;
+    HRESULT _failure;
+    bool &_observed;
+    HRESULT CheckProgress(const UInt64 *completed) {
+        if (!completed || !*completed)
+            return S_OK;
+        _observed = true;
+        return _failure;
+    }
+
+  public:
+    CNativeUpdateFault(IFolderArchiveUpdateCallback *callback, HRESULT failure, bool &observed)
+        : _callback(callback), _failure(failure), _observed(observed) {}
+    Z7_COM7F_IMF(SetTotal(UInt64 size)) override { return _callback->SetTotal(size); }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *completed)) override {
+        RINOK(CheckProgress(completed))
+        return _callback->SetCompleted(completed);
+    }
+    Z7_COM7F_IMF(SetRatioInfo(const UInt64 *inSize, const UInt64 *)) override {
+        return CheckProgress(inSize);
+    }
+    Z7_COM7F_IMF(CompressOperation(const wchar_t *name)) override {
+        return _callback->CompressOperation(name);
+    }
+    Z7_COM7F_IMF(DeleteOperation(const wchar_t *name)) override {
+        return _callback->DeleteOperation(name);
+    }
+    Z7_COM7F_IMF(OperationResult(Int32 result)) override {
+        return _callback->OperationResult(result);
+    }
+    Z7_COM7F_IMF(UpdateErrorMessage(const wchar_t *message)) override {
+        return _callback->UpdateErrorMessage(message);
+    }
+    Z7_COM7F_IMF(SetNumFiles(UInt64 count)) override { return _callback->SetNumFiles(count); }
+};
 class CCodecUpdateWorker final : public CProgressThreadVirt {
     CMyComPtr<IFolderOperations> _operations;
     QString _source;
@@ -21,17 +60,23 @@ class CCodecUpdateWorker final : public CProgressThreadVirt {
         CMyComPtr2_Create<IFolderArchiveUpdateCallback, CUpdateCallback100Imp> ui;
         ui->ProgressDialog = this;
         ui->Init();
+        CMyComPtr<IFolderArchiveUpdateCallback> callback = ui.Interface();
+        if (NativeFailure != S_OK)
+            callback =
+                new CNativeUpdateFault(ui.Interface(), NativeFailure, ObservedNativeProgress);
         if (UseSourcePlan) {
             const std::wstring parent = QFileInfo(_source).absolutePath().toStdWString();
             const std::wstring name = QFileInfo(_source).fileName().toStdWString();
             const wchar_t *names[] = {name.c_str()};
-            return _operations->CopyFrom(0, parent.c_str(), names, 1, ui);
+            return _operations->CopyFrom(0, parent.c_str(), names, 1, callback);
         }
-        return _operations->CopyFromFile(0, _source.toStdWString().c_str(), ui);
+        return _operations->CopyFromFile(0, _source.toStdWString().c_str(), callback);
     }
 
   public:
     bool UseSourcePlan = false;
+    HRESULT NativeFailure = S_OK;
+    bool ObservedNativeProgress = false;
     CCodecUpdateWorker(IFolderOperations *operations, const QString &source)
         : _operations(operations), _source(source) {}
 };
@@ -74,9 +119,14 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         QFETCH(QString, format);
         QFETCH(QByteArray, mode);
         QFETCH(bool, sourcePlan);
-        QTemporaryDir fixture;
+        QTemporaryDir fixture(QDir::tempPath() + "/codec update 空-XXXXXX");
         QVERIFY(fixture.isValid());
-        const QString name = QStringLiteral("исходник 空 with spaces.bin");
+        QString name = QStringLiteral("исходник 空 with spaces.bin");
+#ifdef Q_OS_WIN
+        // Source GzHandler stores its filename using CP_ACP, not Unicode.
+        if (format == "gzip")
+            name = QStringLiteral("source with spaces.bin");
+#endif
         const QString source = fixture.filePath(name);
         writeFile(source, "original");
         // Even handlers without a stored filename derive this name from the
@@ -123,7 +173,8 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
                 qputenv("SEVENZIP_TEST_HELPER", previousHelper);
         });
         bool observedPartial = false;
-        if (mode != "success") {
+        const bool nativeTree = format == "wim";
+        if (mode != "success" && !nativeTree) {
             qputenv("SEVENZIP_TEST_HELPER", mode);
             faultBackend =
                 std::make_unique<ArchiveBackend>(nullptr, QCoreApplication::applicationFilePath());
@@ -139,12 +190,14 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         }
         CCodecUpdateWorker worker(operations, source);
         worker.UseSourcePlan = sourcePlan;
+        if (nativeTree && mode != "success")
+            worker.NativeFailure = mode == "cancel" ? E_ABORT : E_FAIL;
         worker.DisableUserQuestions = true;
         auto transport = resource->CreateProgressTransport(worker);
         QCOMPARE(worker.Create(L"Native codec update", nullptr), S_OK);
         if (mode != "success") {
             QCOMPARE(worker.Result, mode == "cancel" ? E_ABORT : E_FAIL);
-            QVERIFY(observedPartial);
+            QVERIFY(nativeTree ? worker.ObservedNativeProgress : observedPartial);
             QCOMPARE(readFile(archive), original);
             QCOMPARE(readFile(source), replacement);
             QVERIFY(QDir(fixture.path())

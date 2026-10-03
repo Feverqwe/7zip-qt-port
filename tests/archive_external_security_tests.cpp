@@ -14,10 +14,12 @@ class ExtractBackend final : public ArchiveBackend {
         return Failure == S_OK ? ArchiveBackend::lastResult() : Failure;
     }
     void extractSourceEntry(const QString &archive, const QString &entry, const QString &output,
-                            const QString &format, const QString &password) override {
+                            const QString &format, const QString &password,
+                            bool isAltStream = false) override {
         Output = output;
         if (Failure == S_OK)
-            ArchiveBackend::extractSourceEntry(archive, entry, output, format, password);
+            ArchiveBackend::extractSourceEntry(archive, entry, output, format, password,
+                                               isAltStream);
         else
             emit finished(false, Failure == E_ABORT
                                      ? QStringLiteral("Операция отменена.")

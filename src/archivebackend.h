@@ -20,6 +20,7 @@ class ArchiveCodecCatalog;
 class ArchiveSfxModule;
 class ArchiveCodecProbe;
 class ArchiveNativeOpen;
+class QtOwnedTempDir;
 struct IOpenCallbackUI;
 
 struct ArchiveEntry {
@@ -100,6 +101,9 @@ class ArchiveBackend : public QObject {
     HRESULT updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback) const;
+    HRESULT updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                             ISequentialOutStream *output, UInt32 count,
+                             IArchiveUpdateCallback *callback) const;
     HRESULT extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                  const UInt32 *indices, UInt32 count, Int32 testMode,
                                  IArchiveExtractCallback *callback) const;
@@ -159,7 +163,7 @@ class ArchiveBackend : public QObject {
     // callbacks own the final output stream and filesystem presentation.
     virtual void extractSourceEntry(const QString &archive, const QString &entry,
                                     const QString &output, const QString &format,
-                                    const QString &password);
+                                    const QString &password, bool isAltStream = false);
     bool hasListedSourceArchive(const QString &archive) const;
     // Shared destination/path guard for the native archive callback transport.
     bool validateExtraction(const QString &destination, const QStringList &selected,
@@ -256,6 +260,7 @@ class ArchiveBackend : public QObject {
 
     QProcess process_;
     QString configuredEngine_;
+    std::unique_ptr<QtOwnedTempDir> sourceExtractSelection_;
     std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;
     std::unique_ptr<ArchiveCodecProbe> codecProbe_;
     bool codecDiscoveryActive_ = false;

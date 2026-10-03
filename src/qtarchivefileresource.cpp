@@ -62,7 +62,8 @@ bool QtArchiveFileResource::HasUpdateService() const {
     // The process writer publishes one physical archive, not a volume set or
     // a reconstructed chain of native container streams. Source folder
     // read-only state must reflect this transport constraint as well.
-    return bool(_update) && _offset == 0 && !RequiresOuterOpen() && !_nativeReadOnly;
+    return bool(_update) && _offset == 0 && !RequiresOuterOpen() && !_nativeReadOnly &&
+           (!_nativeOpen || !_nativeOpen->arc().IsTree || NativeItemProperties());
 }
 
 HRESULT QtArchiveFileResource::ApplyOutputMTime(CWorkDirTempFile &file) const {
@@ -160,6 +161,22 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc) const {
         arc.IsReadOnly = native.IsReadOnly;
         arc.FileSize = native.FileSize;
         arc.ArcStreamOffset = native.ArcStreamOffset;
+        arc.GetRawProps.Release();
+        arc.GetRootProps.Release();
+        arc.IsTree = false;
+        arc.Ask_Deleted = false;
+        arc.Ask_AltStream = false;
+        arc.Ask_Aux = false;
+        arc.Ask_INode = false;
+        if (NativeItemProperties()) {
+            arc.Archive->QueryInterface(IID_IArchiveGetRawProps, (void **)&arc.GetRawProps);
+            arc.GetRootProps = native.GetRootProps;
+            arc.IsTree = native.IsTree;
+            arc.Ask_Deleted = native.Ask_Deleted;
+            arc.Ask_AltStream = native.Ask_AltStream;
+            arc.Ask_Aux = native.Ask_Aux;
+            arc.Ask_INode = native.Ask_INode;
+        }
         return arc.ReadBasicProps(arc.Archive, 0, S_OK);
     }
     if (_codecs && _codecs->result() == S_OK)

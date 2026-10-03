@@ -3,6 +3,9 @@
 // Ordinary filesystem binding prerequisite for PanelFolderChange.
 // Network/ADS/device-image namespace and icon presentation remain P1-11.2/P0-07/P0-09.
 #include "RootFolder.h"
+#ifdef _WIN32
+#include "AltStreamsFolder.h"
+#endif
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "Common/StringConvert.h"
@@ -181,8 +184,9 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(const wchar_t *name, IFolderFolder **resu
         subFolder = folderSpec;
         folderSpec->Init(false, true);
     } else if (name2.Back() == ':' && (name2.Len() != 2 || !NFile::NName::IsDrivePath2(name2))) {
-        // Required CAltStreamsFolder dependency remains P0-07/P1-11.
-        return E_NOTIMPL;
+        NAltStreamsFolder::CAltStreamsFolder *folderSpec = new NAltStreamsFolder::CAltStreamsFolder;
+        subFolder = folderSpec;
+        RINOK(folderSpec->Init(us2fs(name2)))
     } else
 #endif
     {

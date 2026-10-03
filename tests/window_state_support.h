@@ -60,7 +60,7 @@ class ControlledBackend : public ArchiveBackend {
         nextSourceExtractCompletion_ = std::move(action);
     }
     void extractSourceEntry(const QString &archive, const QString &entry, const QString &output,
-                            const QString &, const QString &password) override {
+                            const QString &, const QString &password, bool = false) override {
         extract(archive, output, {entry}, password);
         if (nextSourceExtractCompletion_) {
             auto completion = std::move(nextSourceExtractCompletion_);

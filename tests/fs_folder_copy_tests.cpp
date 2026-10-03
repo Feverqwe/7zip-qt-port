@@ -70,6 +70,58 @@ class FsFolderCopyTests : public QObject {
     }
 
   private slots:
+    void nativeCopyPreservesBytesAndRefusesOccupiedTarget() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("данные с пробелом.bin"));
+        const QString target = temp.filePath(QStringLiteral("copy δ.bin"));
+        QByteArray bytes(150000, '\0');
+        for (qsizetype i = 0; i < bytes.size(); ++i)
+            bytes[i] = char(i % 251);
+        QVERIFY(write(source, bytes));
+        const FString input = us2fs(QDir::toNativeSeparators(source).toStdWString().c_str());
+        const FString output = us2fs(QDir::toNativeSeparators(target).toStdWString().c_str());
+        NFsFolder::CCopyStateIO state;
+        QCOMPARE(state.MyCopyFile(input, output), S_OK);
+        QCOMPARE(state.ErrorFileIndex, -1);
+        QCOMPARE(state.CurrentSize, quint64(bytes.size()));
+        QCOMPARE(read(target), bytes);
+        QVERIFY(write(target, "occupied"));
+        state.DeleteSrcFile = true;
+        QCOMPARE(state.MyCopyFile(input, output), S_OK);
+        QCOMPARE(state.ErrorFileIndex, 1);
+        QCOMPARE(state.CurrentSize, quint64(0));
+        QCOMPARE(read(target), QByteArray("occupied"));
+        QCOMPARE(read(source), bytes);
+    }
+
+    void nativeProgressCancellationRetainsMoveSourceAndResetsErrors() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath("source.bin");
+        const QString target = temp.filePath("partial.bin");
+        const QByteArray bytes(150000, 'x');
+        QVERIFY(write(source, bytes));
+        const FString input = us2fs(source.toStdWString().c_str());
+        const FString output = us2fs(target.toStdWString().c_str());
+        CopyCallback callback;
+        callback.cancelAt = 65536;
+        NFsFolder::CCopyStateIO state;
+        state.Progress = &callback;
+        state.DeleteSrcFile = true;
+        QCOMPARE(state.MyCopyFile(input, output), E_ABORT);
+        QCOMPARE(state.CurrentSize, quint64(65536));
+        QCOMPARE(read(source), bytes);
+        QCOMPARE(read(target), bytes.left(65536));
+        state.ErrorMessage = "stale";
+        QVERIFY(state.MyCopyFile(temp.filePath("missing"), temp.filePath("new"),
+                                 QFileDevice::Permissions{}));
+        QCOMPARE(state.ErrorFileIndex, 0);
+        QCOMPARE(state.CurrentSize, quint64(0));
+        QVERIFY(state.ErrorMessage.isEmpty());
+        QVERIFY(!QFileInfo::exists(temp.filePath("new")));
+    }
+
     void directFilenameUsesSourceCopyToBranch() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

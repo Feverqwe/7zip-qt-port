@@ -1,5 +1,7 @@
+#include "7zip/PropID.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/Common/Wildcard.h"
+#include "Windows/PropVariant.h"
 #include "qtlocationfolder.h"
 #include "qtpanelfolder.h"
 #include <QtTest>
@@ -91,6 +93,78 @@ class ArchiveProxyTests : public QObject {
         CUIntVector indices;
         proxy.AddRealIndices_of_ArcItem(0, false, true, indices);
         QCOMPARE(indices.Size(), unsigned(3));
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IFolderArcProps> agent = agentSpec;
+        QCOMPARE(agentSpec->Init({}, metadata, UString("tree")), S_OK);
+        auto *folderSpec = new CAgentFolder;
+        CMyComPtr<IFolderFolder> folder = folderSpec;
+        folderSpec->Init(nullptr, &proxy, k_Proxy2_RootDirIndex, agentSpec);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        CMyComPtr<IFolderAltStreams> streams;
+        QCOMPARE(folder.QueryInterface(IID_IFolderAltStreams, &streams), S_OK);
+        Int32 supported = 0;
+        QCOMPARE(streams->AreAltStreamsSupported(UInt32(-1), &supported), S_OK);
+        QCOMPARE(supported, Int32(1));
+        QCOMPARE(streams->AreAltStreamsSupported(0, &supported), S_OK);
+        QCOMPARE(supported, Int32(0));
+        QCOMPARE(streams->AreAltStreamsSupported(99, &supported), E_INVALIDARG);
+        CMyComPtr<IFolderFolder> altRoot;
+        QCOMPARE(streams->BindToAltStreams(UInt32(-1), &altRoot), S_OK);
+        QVERIFY(altRoot);
+        QCOMPARE(altRoot->LoadItems(), S_OK);
+        UInt32 altCount = 99;
+        QCOMPARE(altRoot->GetNumberOfItems(&altCount), S_OK);
+        QCOMPARE(altCount, UInt32(0));
+        CMyComPtr<IFolderAltStreams> altStreams;
+        QCOMPARE(altRoot.QueryInterface(IID_IFolderAltStreams, &altStreams), S_OK);
+        QCOMPARE(altStreams->AreAltStreamsSupported(UInt32(-1), &supported), S_OK);
+        QCOMPARE(supported, Int32(0));
+        CMyComPtr<IFolderFolder> nestedAlt;
+        QCOMPARE(altStreams->BindToAltStreams(UInt32(-1), &nestedAlt), S_OK);
+        QVERIFY(!nestedAlt);
+        QCOMPARE(streams->BindToAltStreams(L"missing", &nestedAlt), E_INVALIDARG);
+        QCOMPARE(streams->BindToAltStreams(99u, &nestedAlt), E_INVALIDARG);
+        CMyComPtr<IFolderFolder> altParent;
+        QCOMPARE(altRoot->BindToParentFolder(&altParent), S_OK);
+        QVERIFY(altParent);
+        NWindows::NCOM::CPropVariant rootPath;
+        QCOMPARE(altParent->GetFolderProperty(kpidPath, &rootPath), S_OK);
+        QCOMPARE(rootPath.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(rootPath.bstrVal), QString());
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(QString::fromWCharArray(folderSpec->GetName(0)), names[0]);
+        QCOMPARE(folderSpec->GetRealIndex(0), 0);
+        CMyComPtr<IFolderFolder> child;
+        QCOMPARE(folder->BindToFolder(0u, &child), S_OK);
+        QCOMPARE(child->LoadItems(), S_OK);
+        NWindows::NCOM::CPropVariant path, size;
+        QCOMPARE(child->GetFolderProperty(kpidPath, &path), S_OK);
+        QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)), names[0] + '/');
+        QCOMPARE(child->GetFolderProperty(kpidSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, UInt64(7));
+        CMyComPtr<IFolderFolder> parentFolder;
+        QCOMPARE(child->BindToParentFolder(&parentFolder), S_OK);
+        QVERIFY(parentFolder);
+        QCOMPARE(parentFolder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(3));
+        QCOMPARE(folderSpec->GetRealIndex(2), 2);
+        QCOMPARE(QString::fromWCharArray(folderSpec->GetName(2)), names[2]);
+        const UInt32 selection[] = {0};
+        folderSpec->GetRealIndices(selection, 1, false, true, indices);
+        QCOMPARE(indices.Size(), unsigned(3));
+        QCOMPARE(indices[0], UInt32(0));
+        QCOMPARE(indices[1], UInt32(1));
+        QCOMPARE(indices[2], UInt32(2));
         parents->InvalidParent = true;
         QCOMPARE(proxy.Load(arc, nullptr), HRESULT(E_FAIL));
         parents->InvalidParent = false;

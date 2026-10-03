@@ -69,20 +69,40 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
 
     QSet<QString> names;
     QSet<QString> files;
+    QSet<QString> selectedPaths;
+    for (QString path : selected) {
+        path.replace('\\', '/');
+        selectedPaths.insert(path);
+    }
+    QString currentFolder = options.currentFolder;
+    currentFolder.replace('\\', '/');
     for (const ArchiveEntry &entry : entries_) {
-        if (!selected.isEmpty() && !selected.contains(entry.path))
+        QString entryPath = entry.path;
+        entryPath.replace('\\', '/');
+        if (!selectedPaths.isEmpty() && !selectedPaths.contains(entryPath))
             continue;
-        if (!safePath(entry.path) || entry.link) {
+        const bool streamFolder = options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
+                                  currentFolder.endsWith(':');
+        const bool stream = streamFolder && !entry.directory &&
+                            entry.properties.value(QStringLiteral("Alternate Stream")) == "+";
+        const QString base = streamFolder ? currentFolder.chopped(1) : QString();
+        const QString streamName = entryPath.mid(currentFolder.size());
+        // Original ArchiveExtractCallback::CorrectPathParts removes the base
+        // and colon when extracting from an ADS folder. Validate that exact
+        // output name; ordinary colon paths remain refused.
+        const bool safeStream = stream && entryPath.startsWith(currentFolder) && safePath(base) &&
+                                safePath(streamName) && !streamName.contains('/') &&
+                                !streamName.contains('\\');
+        if ((!safeStream && !safePath(entry.path)) || entry.link || (streamFolder && !safeStream)) {
             *error = QtLocalText("Archive contains an unsafe path or link: %1",
                                  QStringLiteral("Архив содержит небезопасный путь или ссылку: %1"))
                          .arg(entry.path);
             return false;
         }
-        QString relative = entry.path;
-        relative.replace('\\', '/');
+        QString relative = entryPath;
         if (options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
-            !options.currentFolder.isEmpty()) {
-            const QString prefix = options.currentFolder + '/';
+            !currentFolder.isEmpty()) {
+            const QString prefix = currentFolder + (safeStream ? QString() : QString('/'));
             if (!relative.startsWith(prefix)) {
                 *error =
                     QtLocalText("Item is outside the current archive folder: %1",

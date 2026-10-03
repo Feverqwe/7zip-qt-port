@@ -438,6 +438,8 @@
     "src/CPP/7zip/UI/Explorer/ContextMenu.cpp",
     "src/CPP/7zip/UI/FileManager/AboutDialog.cpp",
     "src/CPP/7zip/UI/FileManager/AboutDialog.h",
+    "src/CPP/7zip/UI/FileManager/AltStreamsFolder.cpp",
+    "src/CPP/7zip/UI/FileManager/AltStreamsFolder.h",
     "src/CPP/7zip/UI/FileManager/App.cpp",
     "src/CPP/7zip/UI/FileManager/App.h",
     "src/CPP/7zip/UI/FileManager/AppState.h",

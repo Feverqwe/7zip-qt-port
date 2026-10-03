@@ -45,23 +45,15 @@ void MainWindow::renderArchiveFolder() {
 
 void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
                                     bool flat) {
-    const CProxyArc &proxy = folder.GetProxy();
-    const CProxyItem proxyItem = folder.GetItem(index);
-    const CProxyDir &parent = proxy.Dirs[proxyItem.DirIndex];
-    const bool isDir = proxyItem.Index < parent.SubDirs.Size();
-    const int realIndex = proxy.GetRealIndex(proxyItem.DirIndex, proxyItem.Index);
-    const unsigned childDir = isDir ? parent.SubDirs[proxyItem.Index] : 0;
+    NWindows::NCOM::CPropVariant directory;
+    folder.GetProperty(index, kpidIsDir, &directory);
+    const bool isDir = directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
+    const int realIndex = folder.GetRealIndex(index);
     ArchiveEntry entry;
     entry.directory = isDir;
-    const QString name = QString::fromWCharArray(isDir ? proxy.Dirs[childDir].Name
-                                                       : proxy.Files[unsigned(realIndex)].Name);
-    const QString panelPrefix =
-        QDir::fromNativeSeparators(ToQString(proxy.GetDirPath_as_Prefix(proxyItem.DirIndex)));
-    if (isDir) {
-        entry.path = QDir::fromNativeSeparators(ToQString(proxy.GetDirPath_as_Prefix(childDir)));
-        entry.path.chop(1);
-    } else
-        entry.path = panelPrefix + name;
+    const QString name = ToQString(folder.GetName(index));
+    const QString panelPrefix = QDir::fromNativeSeparators(ToQString(folder.GetFullPrefix(index)));
+    entry.path = panelPrefix + name;
     const QString displayName = flat ? panelPrefix.mid(prefix.size()) + name : name;
     const int row = table_->rowCount();
     table_->insertRow(row);
@@ -99,8 +91,6 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
         item->setData(Qt::UserRole + 3, name);
         item->setData(Qt::UserRole + 5, flat ? panelPrefix.mid(prefix.size()) : QString());
         item->setData(Qt::UserRole + 6, sourceOrder);
-        if (isDir)
-            item->setData(Qt::UserRole + 4, childDir);
         item->setToolTip(entry.path);
         if (col == 0)
             item->setIcon(

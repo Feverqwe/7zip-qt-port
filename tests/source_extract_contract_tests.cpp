@@ -107,17 +107,33 @@ class SourceExtractContractTests final : public QObject {
         process.start(QStandardPaths::findExecutable("7zz"), {"a", "input.zip", other});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
+        ArchiveBackend backend;
+        QList<ArchiveEntry> listed;
+        connect(&backend, &ArchiveBackend::entriesReady, &backend,
+                [&listed](const QList<ArchiveEntry> &entries) { listed = entries; });
+        backend.list(archive);
+        QTRY_VERIFY(!backend.busy());
         CObjectVector<CPanelItem> items;
         for (const auto &pair : {qMakePair(kName, first), qMakePair(other, second)}) {
             CPanelItem item;
-            item.RelPath = pair.first;
+            QString actualName;
+            for (const auto &entry : listed) {
+                QString compared = entry.path;
+                compared.replace('\\', '/');
+                if (!entry.directory && compared.normalized(QString::NormalizationForm_C) ==
+                                            pair.first.normalized(QString::NormalizationForm_C)) {
+                    QVERIFY(actualName.isEmpty());
+                    actualName = entry.path;
+                }
+            }
+            QVERIFY(!actualName.isEmpty());
+            item.RelPath = actualName;
             item.SizeDefined = true;
             item.Size = pair.second.size();
             items.Add(item);
         }
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
-        ArchiveBackend backend;
         CExtractContractWorker worker(backend, archive, metadata);
         QCOMPARE(worker.Create(L"All entries"), S_OK);
         QCOMPARE(worker.Result, S_OK);

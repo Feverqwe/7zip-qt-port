@@ -108,7 +108,8 @@ void MainWindow::renderBoundFolder() {
     auto &panel = app_.GetFocusedPanel();
     const auto selection = panel.TakeRefreshSelection();
     panel.LoadFullPath();
-    if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder()) {
+    if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder() ||
+        panel.IsAltStreamsFolder()) {
         renderRootFolder();
         if (selection)
             panel.RefreshListCtrl(*selection);
@@ -139,7 +140,8 @@ void MainWindow::renderBoundFolder() {
     if (archiveFolder_.endsWith('/'))
         archiveFolder_.chop(1);
     displayArchive_ = QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix()));
-    displayArchive_.chop(archiveFolder_.size() + (archiveFolder_.isEmpty() ? 1 : 2));
+    displayArchive_.chop(archiveFolder_.size() +
+                         (archiveFolder_.isEmpty() || archiveFolder_.endsWith(':') ? 1 : 2));
     entries_.clear();
     IInArchive *metadata = folder->GetArchiveProperties();
     UInt32 count = 0;

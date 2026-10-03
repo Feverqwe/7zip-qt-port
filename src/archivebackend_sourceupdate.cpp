@@ -172,7 +172,8 @@ void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &
         }
         const QFileInfo staged(QDir(root.absoluteFilePath()).filePath(entry));
         if ((!staged.isFile() && !staged.isDir()) || staged.isSymLink() ||
-            !staged.canonicalFilePath().startsWith(root.canonicalFilePath() + QDir::separator())) {
+            // QFileInfo canonical paths use Qt separators on Windows too.
+            !staged.canonicalFilePath().startsWith(root.canonicalFilePath() + '/')) {
             emit finished(false, QtLocalText("The added file has not been prepared.",
                                              "Файл добавления не подготовлен."));
             return;

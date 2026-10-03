@@ -12,6 +12,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
 #include "archivebackend.h"
+#include "archivenativeopen.h"
 #include "archiveprogresstransport.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
@@ -50,6 +51,8 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
     _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
                                        UInt32 count, IArchiveUpdateCallback *callback) {
         _outputMTime.reset();
+        if (NativeItemProperties() && _nativeOpen->arc().IsTree)
+            return backend.updateNativeTree(_nativeOpen, output, count, callback);
         if (const auto *source = dynamic_cast<CArchiveUpdateCallback *>(callback);
             source && source->CommentIndex >= 0 && source->Comment) {
             if (!HasCommentService())

@@ -5,9 +5,10 @@
 
 void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
     _nativeItemOrder = false;
-    if (!metadata || !_nativeOpen ||
-        (!_nativeOpen->hasCommentWriter() && !_nativeOpen->hasNativeRarExtractor() &&
-         !_nativeOpen->hasNativeHashExtractor()))
+    if (!metadata || !_nativeOpen)
+        return;
+    if (!_nativeOpen->arc().IsTree && !_nativeOpen->hasCommentWriter() &&
+        !_nativeOpen->hasNativeRarExtractor() && !_nativeOpen->hasNativeHashExtractor())
         return;
     IInArchive *native = _nativeOpen->arc().Archive;
     UInt32 nativeCount = 0, count = 0;

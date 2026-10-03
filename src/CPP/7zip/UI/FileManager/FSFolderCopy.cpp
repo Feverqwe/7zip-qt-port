@@ -3,6 +3,7 @@
 // Qt supplies portable stage/file services; the source CopyTo, AskWrite,
 // recursive copy/move and progress control flow remain in this module.
 #include "CPP/Windows/FileDir.h"
+#include "Common/MyBuffer.h"
 #include "Common/StringConvert.h"
 #include "FSFolder.h"
 #include "Windows/FileName.h"
@@ -14,79 +15,105 @@
 #include <QFileInfo>
 
 namespace NFsFolder {
-bool CCopyStateIO::MyCopyFile(const QString &inPath, const QString &outPath,
-                              QFileDevice::Permissions attrib) {
+HRESULT CCopyStateIO::MyCopyFile(CFSTR inPath, CFSTR outPath, DWORD attrib) {
+    using namespace NWindows::NFile;
     ErrorFileIndex = -1;
     ErrorMessage.clear();
     CurrentSize = 0;
     NWindows::NFile::NFind::CFileInfo metadata;
-    const FString nativeInput = us2fs(QDir::toNativeSeparators(inPath).toStdWString().c_str());
-    const FString nativeOutput = us2fs(QDir::toNativeSeparators(outPath).toStdWString().c_str());
-    if (!metadata.Find(nativeInput) || metadata.IsOsSymLink()) {
+    if (attrib != DWORD(-1) && (!metadata.Find(inPath) || metadata.IsOsSymLink())) {
         ErrorFileIndex = 0;
-        return true;
+        return S_OK;
     }
     {
-        const qint64 kBufSize = 1 << 16;
-        QByteArray buf(kBufSize, Qt::Uninitialized);
-        QFile inFile(inPath);
-        QFile outFile(outPath);
-        if (!inFile.open(QIODevice::ReadOnly)) {
+        const size_t kBufSize = 1 << 16;
+        CByteArr buf(kBufSize);
+        NIO::CInFile inFile;
+        NIO::COutFile outFile;
+        if (!inFile.Open(inPath)) {
             ErrorFileIndex = 0;
-            return true;
+            return S_OK;
         }
         // The process adapter publishes staged files; a stage must never overwrite
-        // another file. This replaces upstream Create_ALWAYS with Qt NewOnly.
-        if (!outFile.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+        // another file. This adapts upstream Create_ALWAYS to native Create_NEW.
+        if (!outFile.Create_NEW(outPath)) {
             ErrorFileIndex = 1;
-            return true;
+            return S_OK;
         }
         for (;;) {
-            const qint64 num = inFile.read(buf.data(), kBufSize);
-            if (num < 0) {
+            UInt32 num;
+#ifdef _WIN32
+            if (!inFile.Read(buf, kBufSize, num)) {
+#else
+            size_t processed = 0;
+            const bool read = inFile.ReadFull(buf, kBufSize, processed);
+            num = UInt32(processed);
+            if (!read) {
+#endif
                 ErrorFileIndex = 0;
-                return true;
+                return S_OK;
             }
             if (num == 0)
                 break;
-            const qint64 written = outFile.write(buf.constData(), num);
-            if (written < 0) {
+            UInt32 written = 0;
+#ifdef _WIN32
+            if (!outFile.Write(buf, num, written)) {
+#else
+            processed = 0;
+            const ssize_t writeResult = outFile.write_full(buf, num, processed);
+            written = UInt32(processed);
+            if (writeResult == -1) {
+#endif
                 ErrorFileIndex = 1;
-                return true;
+                return S_OK;
             }
             if (written != num) {
                 ErrorMessage = QtLocalText("Write error", "Ошибка записи");
-                return true;
+                return S_OK;
             }
-            CurrentSize += quint64(num);
+            CurrentSize += num;
             if (Progress) {
-                const quint64 completed = StartPos + CurrentSize;
-                if (!Progress(completed))
-                    return false;
+                const UInt64 completed = StartPos + CurrentSize;
+                RINOK(Progress->SetCompleted(&completed))
             }
+            if (QtProgress && !QtProgress(StartPos + CurrentSize))
+                return E_ABORT;
         }
-        // QFile buffers writes, unlike upstream COutFile. Report flush errors
-        // before the transaction can publish the stage, and preserve its timestamp.
-        if (!outFile.flush()) {
+        if ((attrib != DWORD(-1) &&
+             !outFile.SetTime(&metadata.CTime, &metadata.ATime, &metadata.MTime)) ||
+            !outFile.Close()) {
             ErrorFileIndex = 1;
-            return true;
+            return S_OK;
         }
     }
-    Q_UNUSED(attrib)
-    if (!NWindows::NFile::NDir::SetDirTime(nativeOutput, &metadata.CTime, &metadata.ATime,
-                                           &metadata.MTime) ||
-        !NWindows::NFile::NDir::SetFileAttrib_PosixHighDetect(nativeOutput,
-                                                              metadata.GetWinAttrib())) {
+    // Original INVALID_FILE_ATTRIBUTES suppresses changes to an ADS base file.
+    if (attrib != DWORD(-1) && !NDir::SetFileAttrib_PosixHighDetect(outPath, attrib)) {
         ErrorFileIndex = 1;
-        return true;
+        return S_OK;
     }
     if (DeleteSrcFile) {
-        if (!QFile::remove(inPath)) {
+        if (!NDir::DeleteFileAlways(inPath)) {
             ErrorFileIndex = 0;
-            return true;
+            return S_OK;
         }
     }
-    return true;
+    return S_OK;
+}
+
+bool CCopyStateIO::MyCopyFile(const QString &inPath, const QString &outPath,
+                              QFileDevice::Permissions attrib) {
+    Q_UNUSED(attrib)
+    ErrorFileIndex = -1;
+    ErrorMessage.clear();
+    CurrentSize = 0;
+    const FString input = us2fs(QDir::toNativeSeparators(inPath).toStdWString().c_str());
+    const FString output = us2fs(QDir::toNativeSeparators(outPath).toStdWString().c_str());
+    NWindows::NFile::NFind::CFileInfo metadata;
+    if (!metadata.Find(input) || metadata.IsOsSymLink()) {
+        ErrorFileIndex = 0;
+        return true;
+    }
+    return MyCopyFile(input, output, metadata.GetWinAttrib()) == S_OK;
 }
 
 bool IsDestChild(const QString &src, const QString &dest) {
@@ -166,7 +193,7 @@ bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
     CCopyStateIO state2;
     const bool targetExistedBefore = QFileInfo::exists(newFile);
     state2.StartPos = StartPos;
-    state2.Progress = [this](quint64 completed) {
+    state2.QtProgress = [this](quint64 completed) {
         const UInt64 nativeCompleted = completed;
         if (Callback && Callback->SetCompleted(&nativeCompleted) != S_OK)
             return false;

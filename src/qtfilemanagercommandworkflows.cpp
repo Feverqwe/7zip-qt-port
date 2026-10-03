@@ -198,7 +198,13 @@ void QtFileManagerCommands::Link() {
     w.app_.Link();
     w.refreshActions();
 }
-void QtFileManagerCommands::OpenAltStreams() { Q_UNREACHABLE(); }
+void QtFileManagerCommands::OpenAltStreams() {
+    auto &w = window_;
+    QtAppOperationState::CallScope call(w.app_.QtOperations());
+    w.app_.GetFocusedPanel().OpenAltStreams();
+    w.renderBoundFolder();
+    w.refreshActions();
+}
 void QtFileManagerCommands::Change_AutoRefresh_Mode() {
     window_.app_.Change_AutoRefresh_Mode();
     window_.autoRefreshAction_->setChecked(window_.app_.Get_AutoRefresh_Mode());

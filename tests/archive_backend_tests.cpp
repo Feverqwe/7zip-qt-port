@@ -9,12 +9,78 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     Q_OBJECT
 
   private slots:
+    void windowsPasswordPromptThroughProcessPipe() {
+        QTemporaryDir fixture;
+        const QString archive = fixture.filePath("fixture.7z");
+        writeFile(archive, "local prompt fixture");
+        qputenv("SEVENZIP_TEST_HELPER", "windows-password-prompt");
+        const auto restore = qScopeGuard([] { qunsetenv("SEVENZIP_TEST_HELPER"); });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy prompt(&backend, &ArchiveBackend::passwordRequired);
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        connect(&backend, &ArchiveBackend::passwordRequired, &backend,
+                [&] { backend.providePassword("fixture-only-password"); });
+        backend.list(archive);
+        QTRY_VERIFY_WITH_TIMEOUT(!prompt.isEmpty(), 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(!finished.isEmpty(), 3000);
+        QCOMPARE(prompt.size(), 1);
+        QVERIFY(finished.first().first().toBool());
+    }
+    void alternateStreamOutputValidation_data() {
+        QTest::addColumn<QString>("base");
+        QTest::addColumn<QString>("name");
+        QTest::addColumn<bool>("declared");
+        QTest::addColumn<bool>("accepted");
+        QTest::newRow("real-stream") << "folder/file.bin" << "stream δ" << true << true;
+        QTest::newRow("native-separators") << "folder\\file.bin" << "stream δ" << true << true;
+        QTest::newRow("ordinary-colon") << "folder/file.bin" << "stream" << false << false;
+        QTest::newRow("unsafe-base") << "../file.bin" << "stream" << true << false;
+        QTest::newRow("unsafe-stream") << "folder/file.bin" << "../escape" << true << false;
+        QTest::newRow("nested-stream") << "folder/file.bin" << "dir/file" << true << false;
+        QTest::newRow("nested-ads") << "folder/file.bin" << "stream:extra" << true << false;
+    }
+    void alternateStreamOutputValidation() {
+        QFETCH(QString, base);
+        QFETCH(QString, name);
+        QFETCH(bool, declared);
+        QFETCH(bool, accepted);
+        QTemporaryDir fixture;
+        const QString entry = base + ':' + name;
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\nAlternate Stream = " +
+                                          (declared ? "+" : "-") + "\n\n")
+                                             .toUtf8());
+        const auto restore = qScopeGuard([] {
+            qunsetenv("SEVENZIP_TEST_HELPER");
+            qunsetenv("SEVENZIP_TEST_LISTING");
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        const QString archive = fixture.filePath("fixture.wim");
+        writeFile(archive, "local listing fixture");
+        backend.list(archive);
+        await(backend, true);
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+        options.currentFolder = base + ':';
+        options.currentFolder.replace('\\', '/');
+        QString selected = entry;
+        selected.replace('\\', '/');
+        QString error;
+        QCOMPARE(
+            backend.validateExtraction(fixture.filePath("output"), {selected}, options, &error),
+            accepted);
+        if (accepted) {
+            QVERIFY(QDir().mkpath(fixture.filePath("output/" + name)));
+            QVERIFY(!backend.validateExtraction(fixture.filePath("output"), {selected}, options,
+                                                &error));
+        }
+    }
     void extractionValidationLanguagePreservesRawPath() {
         QTemporaryDir fixture;
         const QString languageSettings = fixture.filePath("language.ini");
         const QString entry = QStringLiteral("../путь с пробелом 密碼.txt");
         qputenv("SEVENZIP_TEST_HELPER", "listing");
-        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\n\n").toLocal8Bit());
+        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\n\n").toUtf8());
         const auto restore = qScopeGuard([&] {
             qunsetenv("SEVENZIP_TEST_LISTING");
             qunsetenv("SEVENZIP_TEST_HELPER");
@@ -413,7 +479,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         ArchiveBackend backend(nullptr, "/no/such/7zz");
         QSignalSpy spy(&backend, &ArchiveBackend::finished);
         backend.list("/no/such/archive.7z");
-        QVERIFY(spy.wait(30000));
+        QTRY_VERIFY_WITH_TIMEOUT(!spy.isEmpty(), 30000);
         const auto result = spy.takeFirst();
         QVERIFY(!result.at(0).toBool());
         QVERIFY(result.at(1).toString().contains("7zz"));
@@ -591,7 +657,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         await(backend, true);
         QStringList names;
         for (const ArchiveEntry &entry : entries)
-            names << entry.path.normalized(QString::NormalizationForm_C);
+            names
+                << QDir::fromNativeSeparators(entry.path).normalized(QString::NormalizationForm_C);
         QVERIFY(names.contains(QStringLiteral("файл с пробелом.txt")));
         QVERIFY(names.contains(QStringLiteral("папка Unicode/nested.txt")));
         QVERIFY(QDir(temp.path()).entryList({".sevenzip-*"}, QDir::Files | QDir::Hidden).isEmpty());

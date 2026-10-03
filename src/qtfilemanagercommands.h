@@ -87,6 +87,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
   private:
     struct TransportCapabilities {
         bool filesystem = false, archive = false, writable = false, mutationWritable = false;
+        bool filesystemStreams = false;
         bool nested = false, root = false;
         bool comment = false;
         bool benchmark = false;

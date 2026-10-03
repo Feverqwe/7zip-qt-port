@@ -79,6 +79,7 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.properties_, IDM_PROPERTIES);
     Bind(w.findChild<QAction *>("commentAction"), IDM_COMMENT);
     Bind(w.findChild<QAction *>("linkAction"), IDM_LINK);
+    Bind(w.findChild<QAction *>("altStreamsAction"), IDM_ALT_STREAMS);
     w.findChild<QAction *>("commentAction")->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
     Bind(w.createFolder_, IDM_CREATE_FOLDER);
     Bind(w.createFile_, IDM_CREATE_FILE);
@@ -182,6 +183,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
         c.folderSize = true;
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
+    c.filesystemStreams = panel.GetFolder() && panel.IsAltStreamsFolder();
     c.root = panel.GetFolder() && panel.IsRootFolder();
     {
         const auto catalog = w.backend_->codecCatalog();
@@ -318,22 +320,25 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_VER_DIFF:
         return c.filesystem && c.oneFile;
     case IDM_COPY_TO:
+        return c.selected && !c.root;
     case IDM_PROPERTIES:
         return c.selected && !c.root;
     case IDM_MOVE_TO:
-        return c.selected && (c.filesystem || c.writable);
+        return c.selected && (c.filesystem || c.filesystemStreams || c.writable);
     case IDM_DELETE:
-        return c.selected && (c.filesystem || c.mutationWritable);
+        return c.selected && (c.filesystem || c.filesystemStreams || c.mutationWritable);
     case IDM_RENAME:
-        return c.one && c.selected && (c.filesystem || c.mutationWritable);
+        return c.one && c.selected && (c.filesystem || c.filesystemStreams || c.mutationWritable);
     case IDM_CREATE_FOLDER:
         return c.filesystem || c.mutationWritable;
     case IDM_CREATE_FILE:
-        return c.filesystem;
+        return c.filesystem || c.filesystemStreams;
     case IDM_COMMENT:
         return c.comment;
     case IDM_LINK:
         return c.filesystem && c.one && c.selected;
+    case IDM_ALT_STREAMS:
+        return !c.operated || c.one; // Source OpenAltStreams accepts zero or one item.
     case IDM_SPLIT:
         return c.split;
     case IDM_COMBINE:

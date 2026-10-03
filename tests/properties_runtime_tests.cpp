@@ -124,7 +124,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(properties.values.value("Имя").normalized(QString::NormalizationForm_C), name);
         QCOMPARE(properties.values.value("Размер"), QString("7"));
         QCOMPARE(properties.values.value("Сжатый"), QString("7"));
-        QCOMPARE(properties.folderPath, QDir::fromNativeSeparators(root.path() + '/'));
+        QCOMPARE(QDir::fromNativeSeparators(properties.folderPath), root.path() + '/');
         QVERIFY(!properties.values.value("Изменен").isEmpty());
         // Prime the source's lazy Windows packed-size cache before changing the file.
         createFile(root.filePath(name), 31);
@@ -145,7 +145,8 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(properties.shown);
             QCOMPARE(properties.values.value("Имя").normalized(QString::NormalizationForm_C), name);
             QCOMPARE(properties.values.value("Размер"), QString("11"));
-            QCOMPARE(properties.values.value("Путь").normalized(QString::NormalizationForm_C),
+            QCOMPARE(QDir::fromNativeSeparators(properties.values.value("Путь"))
+                         .normalized(QString::NormalizationForm_C),
                      directory + '/');
         }
         selectOnly(window, diskRow(window, root.filePath(directory)));
@@ -206,7 +207,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(properties.values.value("Имя"), name);
             QCOMPARE(properties.values.value("Размер"), QString("23"));
             QCOMPARE(properties.values.value("Сжатый"), QString("9"));
-            QCOMPARE(properties.values.value("Путь"), directory + '/');
+            QCOMPARE(QDir::fromNativeSeparators(properties.values.value("Путь")), directory + '/');
         }
         selectOnly(window, rowWithPath(window, directory));
         table(window)->selectionModel()->select(
@@ -228,7 +229,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(properties.shown);
         QCOMPARE(properties.values.value("Размер"), QString("31"));
         QCOMPARE(properties.values.value("Сжатый"), QString("31"));
-        QCOMPARE(properties.folderPath, QDir::fromNativeSeparators(root.path() + '/'));
+        QCOMPARE(QDir::fromNativeSeparators(properties.folderPath), root.path() + '/');
         selectOnly(window, diskRow(window, root.filePath("zero")));
         properties = inspect(window);
         QVERIFY(properties.shown);

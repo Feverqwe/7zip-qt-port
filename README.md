@@ -4,11 +4,20 @@
 для Windows, macOS и Linux. Цель — перенос исходного кода с адаптацией UI;
 архивные форматы и сжатие обеспечивает официальный движок 7-Zip.
 
+P2-06 принят: исходные AltStreamsFolder и Agent/CProxyArc2 подключены к
+File → Alternate streams, native raw/tree properties и операциям над NTFS ADS.
+Архивные WIM Rename/Delete используют исходные callbacks и официальный native
+writer; Unix filesystem streams явно недоступны. macOS gate207/207PASS120.58s,
+финальные localized consumers macOS2/2, Linux3/3 и Windows drag/contract2/2
+плюс семь Add-сценариев прошли без пропусков. План закрыт на35/46; следующий
+шаг — P2-07 Extract modes/security/metadata. Полный Windows gate остаётся P3:
+расширенный source-update набор выявил ошибки absolute/Sync и таймаут.
+
 P2-05 принят: File → Link использует исходные LinkDialog/CApp::Link и native
 platform services. Copy/Move/Delete сохраняют link object и raw target;
 hardlink identity, junction, metadata, privilege refusal, Cancel и UX проверены.
 Full macOS gate205/205 PASS82.95s; Windows7/7 и Linux7/7 без пропусков
-(2026-10-03). План закрыт на34/46; следующий шаг — P2-06 ADS/streams.
+(2026-10-03). Исторический счёт после этого шага —34/46.
 Нативная проверка Finder остаётся отдельным обязательным P3-03.1.
 
 P2-04 принят: Benchmark в Tools использует перенесённые исходные Bench и

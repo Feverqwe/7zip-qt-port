@@ -635,7 +635,14 @@ typed UInt64/CRC, and exposes available checksum/SHA raw bytes through
 qtpanelfolderraw.cpp. Agent source IFolderProperties/IFolderArcProps own folder
 and archive-level enumeration; QtArchiveFileResource supplies actual header
 metadata. No parent/name/ADS graph or unavailable large raw bytes are invented;
-CProxyArc2 dispatch remains P2-06. `CNetFolder` owns the network namespace:
+CProxyArc2 dispatch now retains original Agent tree/ADS binding and raw parent
+properties behind native item-order proof. Native tree updates call the official
+IOutArchive with original Agent callbacks through ArchiveBackend; ordinary CLI
+mutation plans do not flatten tree/stream parent indexes. Windows filesystem
+AltStreamsFolder is a source namespace rendered in the same Qt panel, with
+CPanel workers for copy/move/delete/create/rename. Unix filesystem ADS remains
+unsupported; archive ADS remains a portable source namespace.
+`CNetFolder` owns the network namespace:
 Windows uses upstream `NWindows::NNet`, while POSIX lists already mounted
 network shares through `qtvolumemounts` and binds them to source `CFSFolder`.
 Qt command availability enables Parent/Back for the virtual child folder.

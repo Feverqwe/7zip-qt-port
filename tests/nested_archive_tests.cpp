@@ -40,7 +40,7 @@ class NestedBackend : public ArchiveBackend {
         });
     }
     void extractSourceEntry(const QString &, const QString &entry, const QString &output,
-                            const QString &, const QString &) override {
+                            const QString &, const QString &, bool = false) override {
         extracted = {entry};
         temporary = output;
         QTimer::singleShot(0, this, [this, output] {

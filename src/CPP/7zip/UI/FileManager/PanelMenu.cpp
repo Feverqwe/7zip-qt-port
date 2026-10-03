@@ -47,10 +47,12 @@ void CPanel::CreateFileMenu(IQtFileMenuServices &menu, bool programMenu) {
                 fm.isAltStreamsSupported = IntToBool(val);
         }
     } else {
+#if defined(_WIN32) && !defined(UNDER_CE)
         if (fm.numItems == 0)
             fm.isAltStreamsSupported = IsFSFolder();
         else
             fm.isAltStreamsSupported = IsFolder_with_FsItems();
+#endif
     }
     fm.Load(menu, 0);
 }

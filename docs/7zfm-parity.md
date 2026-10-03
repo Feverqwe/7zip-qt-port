@@ -1,5 +1,43 @@
 # Сверка с Windows 7zFM
 
+## P2-06 — Alternate streams (принят, 2026-10-03)
+
+Эталон — IDM_ALT_STREAMS в FileManager.rc, исходный CPanel::OpenAltStreams,
+AltStreamsFolder и Agent/CProxyArc2. File → Alternate streams открывает потоки
+выбранного файла либо текущей папки. Имена, размеры, Packed size и Properties
+получаются из исходного folder interface. Copy/Move/Delete/CreateFile/Rename
+для NTFS вызывают исходные CPanel workers и AltStreamsFolder; CreateFolder и
+импорт в эту FS-папку недоступны, как в активных исходных E_NOTIMPL methods.
+Base bytes/attributes сохраняются при операциях над потоком.
+
+На macOS/Linux filesystem command недоступен: xattrs не выдаются за NTFS ADS,
+файлы с двоеточием не создаются как имитация потоков. Архивная ADS-папка и
+native raw/tree properties переносимы. Архивные WIM Rename/Delete используют
+исходные Agent callbacks и нативный IOutArchive, сохраняя родительские индексы.
+После удаления последнего потока исходный Restore FolderItem возвращается к
+обычной папке владельца: ADS-ветка больше не существует.
+
+Windows actual EN/RU archive ADS Copy/Rename/Delete Cancel/Yes, проверка `7zz t`
+и байты основного файла прошли. Filesystem Create Cancel/Create/Rename, Copy/Move,
+Delete Cancel/Yes и Properties проверены на NTFS. EN/RU980×620/640×400 JSON
+сохраняют порядок toolbar→address→table→status; geometry подтверждает Qt
+структуру, но не rendered 7zFM pixel parity. macOS gate207/207PASS120.58s;
+финальные direct consumers macOS2/2, Linux3/3 и Windows drag/contract2/2
+плюс семь Add-сценариев прошли без пропусков. Расширенный Windows source-update
+набор остаётся открытым для P2-07/P3 (absolute/Sync assertions и таймаут).
+
+На macOS те же archive ADS операции проверены с синтетическим Windows WIM,
+включая Unicode-имена, точные байты потока и сохранение основного файла.
+Console transport включает `-sns` по исходному `kpidIsAltStream`. Имя элемента
+передаётся через приватный UTF-8 список, когда Qt преобразовал бы argv в NFD;
+сравнение имён в архиве сохраняется точным. Имена с переводами строк в такой
+комбинации требуют нативного extract service и получают явный отказ.
+
+Связанные codec regressions учитывают исходное ограничение gzip: GzHandler
+кодирует сохранённое имя через CP_ACP на Windows. Произвольное Unicode-имя
+в этом поле не гарантируется; путь к самому архиву и входной папке остаётся
+Unicode. Алгоритм и формат заголовка для обхода ограничения не изменены.
+
 ## P2-05 — Link и filesystem metadata (принят, 2026-10-03)
 
 Эталон — исходные LinkDialog.cpp/.h/.rc и CApp::Link. File → Link доступен для

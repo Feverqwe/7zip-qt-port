@@ -3,14 +3,16 @@
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
 
-// RootFolder and FSDrives own item names, order and binding. This file presents
+// Source namespace folders own item names, order and binding. This file presents
 // their IFolderFolder items in the same list used by disk and archive views.
 void MainWindow::renderRootFolder() {
     auto &panel = app_.GetFocusedPanel();
     const bool drives = panel.IsFSDrivesFolder();
     const bool network = panel.IsNetFolder();
-    if ((!panel.IsRootFolder() && !drives && !network) || !panel.GetFolder())
+    const bool streams = panel.IsAltStreamsFolder();
+    if ((!panel.IsRootFolder() && !drives && !network && !streams) || !panel.GetFolder())
         return;
+    auto disableNotify = std::make_unique<CPanel::CDisableNotify>(panel);
     IFolderFolder *folder = panel.GetFolder();
     UInt32 count = 0;
     if (folder->LoadItems() != S_OK || folder->GetNumberOfItems(&count) != S_OK) {
@@ -31,7 +33,7 @@ void MainWindow::renderRootFolder() {
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
     static_cast<FileTable *>(table_)->filesystem = false;
-    if (drives || network)
+    if (drives || network || streams)
         path_->setText(QString::fromWCharArray(GetFolderPath(folder)));
     else
         path_->clear(); // The source root's current folder prefix is empty.
@@ -47,20 +49,26 @@ void MainWindow::renderRootFolder() {
             auto *item = new ArchiveTableItem;
             item->setData(Qt::UserRole + 6, index);
             item->setData(Qt::UserRole + 3, nativeName);
-            item->setData(Qt::UserRole + 1, true);
+            item->setData(Qt::UserRole + 1, !streams);
+            if (streams)
+                item->setData(Qt::UserRole, path_->text() + nativeName);
             if (column == 0) {
                 item->setText(nativeName.normalized(QString::NormalizationForm_C));
-                item->setIcon(QApplication::style()->standardIcon(drives ? QStyle::SP_DriveHDIcon
+                item->setIcon(QApplication::style()->standardIcon(streams  ? QStyle::SP_FileIcon
+                                                                  : drives ? QStyle::SP_DriveHDIcon
                                                                   : network
                                                                       ? QStyle::SP_DirIcon
                                                                       : QStyle::SP_ComputerIcon));
-            } else if (drives || network || column >= 7)
+            } else if (drives || network || streams || column >= 7)
                 item->setText(sourceColumnText(index, column));
             table_->setItem(row, column, item);
         }
     }
     table_->setSortingEnabled(true);
     applySortMode();
+    // Restore the row-rebuild guard before End releases operation guards.
+    // Otherwise this guard would restore its saved disabled state afterward.
+    disableNotify.reset();
     setState(State::Namespace);
     statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
 }

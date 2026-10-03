@@ -5,7 +5,7 @@
 class PathHashBackend : public ControlledBackend {
   public:
     void extractSourceEntry(const QString &archive, const QString &entry, const QString &output,
-                            const QString &, const QString &password) override {
+                            const QString &, const QString &password, bool = false) override {
         streamEntries.append(entry);
         streamPaths.append(output);
         extract(archive, output, {entry}, password);

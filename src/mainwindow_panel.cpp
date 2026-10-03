@@ -138,7 +138,9 @@ void MainWindow::createFileTable(QWidget *central) {
     tableHover_->SetEnabled(fileListSettings_.SingleClick);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     connect(table_, &QTableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
-        if (item != renameEditingItem_ || (state_ != State::Filesystem && state_ != State::Viewing))
+        if (item != renameEditingItem_ ||
+            (state_ != State::Filesystem && state_ != State::Viewing &&
+             !app_.GetFocusedPanel().IsAltStreamsFolder()))
             return;
         const QString name = item->text();
         const QString path = renameOriginalPath_;

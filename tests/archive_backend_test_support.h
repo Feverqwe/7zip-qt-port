@@ -57,6 +57,15 @@ inline int backendTestMain(int argc, char **argv, QObject *tests) {
             writeOutput(qgetenv("SEVENZIP_TEST_LISTING"));
             return 0;
         }
+        if (mode == "windows-password-prompt") {
+            writeOutput("\nEnter password (will not be echoed):");
+            char password[128] = {};
+            if (!std::fgets(password, sizeof(password), stdin) ||
+                QByteArray(password).trimmed() != QByteArray("fixture-only-password"))
+                return 2;
+            writeOutput("\nType = 7z\n----------\nPath = payload.txt\nSize = 1\n\n");
+            return 0;
+        }
         if (mode == "memoryoption") {
             const bool requested = QCoreApplication::arguments().contains("-slp");
             writeOutput("Type = zip\nPhysical Size = 1\nLargePagesRequested = " +

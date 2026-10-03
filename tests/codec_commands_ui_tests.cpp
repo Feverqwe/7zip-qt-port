@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -83,9 +84,14 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
     void actualAddCommandUsesDetectedWriter() {
         QFETCH(QString, format);
         QFETCH(bool, cancel);
-        QTemporaryDir fixture, output;
+        QTemporaryDir fixture(QDir::tempPath() + "/codec UI 空-XXXXXX"), output;
         QVERIFY(fixture.isValid() && output.isValid());
-        const QString name = QStringLiteral("entry 空 with spaces.bin");
+        QString name = QStringLiteral("entry 空 with spaces.bin");
+#ifdef Q_OS_WIN
+        // Source gzip names are limited by CP_ACP; keep the containing path Unicode.
+        if (format == "gzip")
+            name = QStringLiteral("entry with spaces.bin");
+#endif
         const QString source = fixture.filePath(name);
         const QString archive = fixture.filePath(name + ".unknown");
         QVERIFY(writeFile(source, "original"));
@@ -137,6 +143,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             else if (format == "xz")
                 QCOMPARE(method->currentText(), QString("LZMA2"));
             dialog->resize(cancel ? QSize(640, 480) : QSize(760, 720));
+            QApplication::processEvents();
             dialog->findChild<QScrollArea *>("archiveOptionsScrollArea")
                 ->ensureWidgetVisible(types);
             QApplication::processEvents();
@@ -149,7 +156,22 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             submitted = dialog->result() == QDialog::Accepted;
         });
         bool observedStart = false;
+        QTimer nativeCancel;
+        if (format == "wim" && cancel) {
+            connect(&nativeCancel, &QTimer::timeout, &window, [&] {
+                for (QWidget *widget : QApplication::topLevelWidgets())
+                    if (auto *progress = dynamic_cast<CProgressDialog *>(widget)) {
+                        observedStart = true;
+                        progress->Sync.Set_Stopped(true);
+                        nativeCancel.stop();
+                        return;
+                    }
+            });
+            nativeCancel.start(1);
+        }
         const auto connection = connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
+            if (format == "wim" && cancel)
+                return; // Native writer cancellation belongs to its source Sync.
             if (!observedStart) {
                 observedStart = true;
                 if (cancel)
@@ -157,6 +179,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             }
         });
         action(window, "addArchiveAction")->trigger();
+        nativeCancel.stop();
         disconnect(connection);
         QVERIFY(submitted && observedStart);
         QVERIFY2(messages.Errors.isEmpty(), qPrintable(messages.Errors.join('\n')));

@@ -65,6 +65,20 @@ HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeO
     return writer->UpdateItems(output, count, callback);
 }
 
+HRESULT ArchiveBackend::updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                         ISequentialOutStream *output, UInt32 count,
+                                         IArchiveUpdateCallback *callback) const {
+    if (!reader || !reader->arc().IsTree || reader->arc().IsReadOnly || reader->hasNestedStream() ||
+        reader->arc().ArcStreamOffset != 0)
+        return E_NOTIMPL;
+    CMyComPtr<IOutArchive> writer;
+    RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
+    // Original ArchiveFolderOut calls the handler with its source callback.
+    // Tree/ADS parent indexes and raw properties cannot pass through a flat
+    // command-line mutation plan without losing their source meaning.
+    return writer->UpdateItems(output, count, callback);
+}
+
 HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                              const UInt32 *indices, UInt32 count, Int32 testMode,
                                              IArchiveExtractCallback *callback) const {

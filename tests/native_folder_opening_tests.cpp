@@ -1,10 +1,12 @@
 #include "7zip/Common/StreamObjects.h"
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
+#include "CPP/7zip/UI/FileManager/Panel.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
+#include "qtarchivereopen.h"
 #include <QFile>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -147,6 +149,166 @@ class NativeFolderOpeningTests final : public QObject {
         QVERIFY(!wrong.Folder);
         QCOMPARE(backend.Starts, 1u);
     }
+    void nativeWimTreeRetainsRawParentsAndAgentBinding() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir().mkpath(fixture.filePath(QStringLiteral("tree/папка δ"))));
+        QFile input(fixture.filePath(QStringLiteral("tree/папка δ/имя space.bin")));
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("tree bytes"), qint64(10));
+        input.close();
+        const QString path = fixture.filePath("tree.wim");
+        QProcess creator;
+        creator.setWorkingDirectory(fixture.path());
+        creator.start(engine_, {"a", "-twim", "--", path, "tree"});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        CObservedBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(path.toStdWString().c_str()),
+                                              UString(L"wim"), nullptr),
+                 S_OK);
+        auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
+        QVERIFY(folder);
+        auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
+        QVERIFY(resource);
+        QVERIFY(resource->NativeItemProperties());
+        CMyComPtr<IInArchive> archive = folder->GetArchiveProperties();
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(archive.QueryInterface(IID_IArchiveGetRawProps, &raw), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive->GetNumberOfItems(&count), S_OK);
+        QVERIFY(count >= 3);
+        bool hasParent = false;
+        for (UInt32 index = 0; index < count; ++index) {
+            UInt32 parent = 0, type = 0;
+            QCOMPARE(raw->GetParent(index, &parent, &type), S_OK);
+            hasParent |= parent != UInt32(-1);
+            QVERIFY(parent == UInt32(-1) || parent < count);
+        }
+        QVERIFY(hasParent);
+        CMyComPtr<IFolderAltStreams> streams;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderAltStreams, &streams), S_OK);
+        Int32 supported = 0;
+        QCOMPARE(streams->AreAltStreamsSupported(UInt32(-1), &supported), S_OK);
+        QCOMPARE(supported, Int32(1));
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(opening.Folder->LoadItems(), S_OK);
+        UInt32 listed = 0;
+        QCOMPARE(opening.Folder->GetNumberOfItems(&listed), S_OK);
+        QCOMPARE(listed, count);
+        extractToMemory(archive, QByteArray("tree bytes"));
+    }
+
+#ifdef Q_OS_WIN
+    void nativeWimAlternateStreamBindsToOriginalFileOwner() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir().mkpath(fixture.filePath("tree")));
+        const QString name = QStringLiteral("имя δ space.bin");
+        const QString base = fixture.filePath("tree/" + name);
+        QFile input(base);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("main bytes"), qint64(10));
+        input.close();
+        QFile stream(base + QStringLiteral(":поток δ"));
+        QVERIFY(stream.open(QIODevice::WriteOnly));
+        QCOMPARE(stream.write("alternate bytes"), qint64(15));
+        stream.close();
+        const QString path = fixture.filePath("streams.wim");
+        QProcess creator;
+        creator.setWorkingDirectory(fixture.path());
+        creator.start(engine_, {"a", "-twim", "-sns", "--", path, "tree"});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        CObservedBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(path.toStdWString().c_str()),
+                                              UString(L"wim"), nullptr),
+                 S_OK);
+        auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
+        QVERIFY(folder);
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(opening.Folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(opening.Folder->GetNumberOfItems(&count), S_OK);
+        UInt32 fileIndex = UInt32(-1);
+        for (UInt32 index = 0; index < count; ++index)
+            if (QString::fromWCharArray(folder->GetName(index)) == name)
+                fileIndex = index;
+        QVERIFY(fileIndex != UInt32(-1));
+        CMyComPtr<IFolderAltStreams> streams;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderAltStreams, &streams), S_OK);
+        Int32 supported = 0;
+        QCOMPARE(streams->AreAltStreamsSupported(fileIndex, &supported), S_OK);
+        QCOMPARE(supported, Int32(1));
+        CUIntVector selected;
+        folder->GetRealIndices(&fileIndex, 1, false, false, selected);
+        QCOMPARE(selected.Size(), 1u);
+        folder->GetRealIndices(&fileIndex, 1, true, false, selected);
+        QCOMPARE(selected.Size(), 2u);
+        CMyComPtr<IFolderFolder> altFolder;
+        QCOMPARE(streams->BindToAltStreams(fileIndex, &altFolder), S_OK);
+        QVERIFY(altFolder);
+        QCOMPARE(altFolder->LoadItems(), S_OK);
+        QCOMPARE(altFolder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        NWindows::NCOM::CPropVariant altName, altSize, isAlt;
+        QCOMPARE(altFolder->GetProperty(0, kpidName, &altName), S_OK);
+        QCOMPARE(altName.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(altName.bstrVal), QStringLiteral("поток δ"));
+        QCOMPARE(altFolder->GetProperty(0, kpidSize, &altSize), S_OK);
+        QCOMPARE(altSize.vt, VARTYPE(VT_UI8));
+        QCOMPARE(altSize.uhVal.QuadPart, UInt64(15));
+        QCOMPARE(altFolder->GetProperty(0, kpidIsAltStream, &isAlt), S_OK);
+        QCOMPARE(isAlt.boolVal, VARIANT_TRUE);
+        auto *altSpec = dynamic_cast<CAgentFolder *>(altFolder.Interface());
+        QVERIFY(altSpec);
+        const int realStreamIndex = altSpec->GetRealIndex(0);
+        QVERIFY(realStreamIndex >= 0);
+        auto *extract = new CExtractToMemory;
+        CMyComPtr<IArchiveExtractCallback> extractOwner = extract;
+        const UInt32 streamIndex = UInt32(realStreamIndex);
+        IInArchive *archive = folder->GetArchiveProperties();
+        auto extracted = std::async(
+            std::launch::async, [&] { return archive->Extract(&streamIndex, 1, 0, extractOwner); });
+        QTRY_VERIFY_WITH_TIMEOUT(
+            extracted.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 10000);
+        QCOMPARE(extracted.get(), S_OK);
+        QCOMPARE(QByteArray(reinterpret_cast<const char *>(extract->Stream->GetBuffer()),
+                            qsizetype(extract->Stream->GetSize())),
+                 QByteArray("alternate bytes"));
+        CMyComPtr<IFolderFolder> parent;
+        QCOMPARE(altFolder->BindToParentFolder(&parent), S_OK);
+        QVERIFY(parent);
+        const UString streamFolderPath = GetFolderPath(altFolder);
+        CMyComPtr<IFolderFolder> reopened;
+        QCOMPARE(ReOpenArchiveFolder(*altSpec, QString(), nullptr, &reopened, false, UString()),
+                 S_OK);
+        QVERIFY(reopened);
+        QCOMPARE(QString::fromWCharArray(GetFolderPath(reopened)),
+                 QString::fromWCharArray(streamFolderPath));
+        QCOMPARE(reopened->LoadItems(), S_OK);
+        QCOMPARE(reopened->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(reopened->GetProperty(0, kpidName, &altName), S_OK);
+        QCOMPARE(QString::fromWCharArray(altName.bstrVal), QStringLiteral("поток δ"));
+        QCOMPARE(reopened->GetProperty(0, kpidIsAltStream, &isAlt), S_OK);
+        QCOMPARE(isAlt.boolVal, VARIANT_TRUE);
+        QFile verify(base);
+        QVERIFY(verify.open(QIODevice::ReadOnly));
+        QCOMPARE(verify.readAll(), QByteArray("main bytes"));
+    }
+#endif
+
     void workerCancelAndNativePassword_data() {
         QTest::addColumn<bool>("cancel");
         QTest::newRow("native cancel before process") << true;

@@ -10,6 +10,7 @@
 #include "qtarchivevolumeoutput.h"
 #include "qtlanguageservices.h"
 
+#include "qtownedtempdir.h"
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -47,6 +48,7 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
                 job_ == Job::SourceExtract)
                 QFile::remove(createTemporary_);
             job_ = Job::None;
+            sourceExtractSelection_.reset();
             extractQueue_.clear();
             extractArguments_.clear();
             pendingPassword_.clear();
@@ -188,7 +190,8 @@ void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
         listingOutput_ += chunk;
     pendingOutput_ += chunk;
     if (!passwordPrompted_ && pendingPassword_.isEmpty() &&
-        pendingOutput_.contains("Enter password:")) {
+        (pendingOutput_.contains("Enter password:") ||
+         pendingOutput_.contains("Enter password (will not be echoed):"))) {
         passwordPrompted_ = true;
         emit passwordRequired();
     }
@@ -248,7 +251,7 @@ void ArchiveBackend::startListing(const QString &archive, const QString &passwor
     listed_ = false;
     encrypted_ = false;
     pendingPassword_ = password;
-    QStringList arguments{"l", "-slt"};
+    QStringList arguments{"l", "-slt", "-sns"};
     if (!format.isEmpty())
         arguments << QStringLiteral("-t") + format;
     arguments << "--" << archive_;
@@ -264,9 +267,10 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
     for (const ArchiveEntry &entry : entries_) {
         if (entry.directory || (!selected.isEmpty() && !selected.contains(entry.path)))
             continue;
-        const QString relative = pathMode == ExtractionOptions::PathMode::NoPaths
-                                     ? entry.path.section('/', -1)
-                                     : entry.path;
+        QString relative = entry.path;
+        relative.replace('\\', '/');
+        if (pathMode == ExtractionOptions::PathMode::NoPaths)
+            relative = relative.section('/', -1);
         const QString target = QDir(outputDirectory).filePath(relative);
         if (!QFileInfo::exists(target))
             continue;
@@ -349,10 +353,20 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                         QStringLiteral("Сначала откройте архив и проверьте его содержимое.")));
         return;
     }
+    QStringList selectedEntries;
     for (const QString &name : selected) {
+        QString normalized = name;
+        normalized.replace('\\', '/');
         bool found = false;
-        for (const ArchiveEntry &entry : entries_)
-            found |= entry.path == name;
+        for (const ArchiveEntry &entry : entries_) {
+            QString entryPath = entry.path;
+            entryPath.replace('\\', '/');
+            if (entryPath == normalized) {
+                selectedEntries << entry.path;
+                found = true;
+                break;
+            }
+        }
         if (!found) {
             emit finished(false,
                           QtLocalText("Selected file is missing from the archive: %1",
@@ -362,13 +376,13 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         }
     }
     QString validationError;
-    if (!validateExtraction(destination, selected, options, &validationError)) {
+    if (!validateExtraction(destination, selectedEntries, options, &validationError)) {
         emit finished(false, validationError);
         return;
     }
     const QString outputDirectory = QFileInfo(destination).absoluteFilePath();
     if (!QDir().mkpath(outputDirectory) ||
-        !validateExtraction(destination, selected, options, &validationError)) {
+        !validateExtraction(destination, selectedEntries, options, &validationError)) {
         emit finished(false,
                       validationError.isEmpty()
                           ? QtLocalText("Could not create destination folder: %1",
@@ -381,10 +395,10 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
     QStringList replaceEntries;
     QStringList renameEntries;
     if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask) {
-        if (!prepareAskExtraction(outputDirectory, selected, options.pathMode, &replaceEntries,
-                                  &renameEntries))
+        if (!prepareAskExtraction(outputDirectory, selectedEntries, options.pathMode,
+                                  &replaceEntries, &renameEntries))
             return;
-        if (!validateExtraction(destination, selected, options, &validationError)) {
+        if (!validateExtraction(destination, selectedEntries, options, &validationError)) {
             emit finished(false, validationError);
             return;
         }
@@ -406,14 +420,14 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
         arguments.insert(2, "-aou");
     else if (options.overwriteMode == ExtractionOptions::OverwriteMode::RenameExisting)
         arguments.insert(2, "-aot");
-    arguments += selected;
+    arguments += selectedEntries;
     if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask) {
         const auto addConflictPass = [&](const QString &mode, const QStringList &entries) {
             if (entries.isEmpty())
                 return;
             QStringList pass = arguments;
             pass.replace(2, mode);
-            pass.erase(pass.end() - selected.size(), pass.end());
+            pass.erase(pass.end() - selectedEntries.size(), pass.end());
             pass += entries;
             extractQueue_.append(pass);
         };
@@ -523,6 +537,8 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     pendingPassword_.clear();
     const Job completed = job_;
     job_ = Job::None;
+    if (completed == Job::SourceExtract)
+        sourceExtractSelection_.reset();
     if (cancelled_) {
         lastResult_ = E_ABORT;
         extractPassword_.clear();

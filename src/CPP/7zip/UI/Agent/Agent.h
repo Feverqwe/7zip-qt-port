@@ -46,6 +46,7 @@ class CAgentFolder final : public IFolderFolder,
                            public IGetFolderArcProps,
                            public IArchiveGetRawProps,
                            public IFolderSetFlatMode,
+                           public IFolderAltStreams,
                            public IArchiveFolderInternal,
                            public IFolderOperations,
                            public IArchiveFolder,
@@ -59,6 +60,7 @@ class CAgentFolder final : public IFolderFolder,
     Z7_COM_QI_ENTRY(IGetFolderArcProps)
     Z7_COM_QI_ENTRY(IArchiveGetRawProps)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
+    Z7_COM_QI_ENTRY(IFolderAltStreams)
     Z7_COM_QI_ENTRY(IArchiveFolderInternal)
     else if (iid == IID_IFolderOperations && (CanCopyFromFile() || CanCopyTo())) {
         *outObject = static_cast<IFolderOperations *>(this);
@@ -77,13 +79,16 @@ class CAgentFolder final : public IFolderFolder,
     Z7_IFACE_COM7_IMP(IGetFolderArcProps)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
+    Z7_IFACE_COM7_IMP(IFolderAltStreams)
     Z7_IFACE_COM7_IMP(IArchiveFolderInternal)
     Z7_IFACE_COM7_IMP(IFolderOperations)
     Z7_IFACE_COM7_IMP(IArchiveFolder)
     Z7_IFACE_COM7_IMP(IFolderSetZoneIdMode)
     Z7_IFACE_COM7_IMP(IFolderSetZoneIdFile)
-    void Init(const CProxyArc *proxy, unsigned proxyDirIndex, CAgent *agent);
+    void Init(const CProxyArc *proxy, const CProxyArc2 *proxy2, unsigned proxyDirIndex,
+              CAgent *agent);
     HRESULT BindToFolder_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
+    HRESULT BindToAltStreams_Internal(unsigned proxyDirIndex, IFolderFolder **resultFolder);
     int GetRealIndex(unsigned index) const;
     UString GetName(UInt32 index) const;
     UString GetFullPrefix(UInt32 index) const;
@@ -91,8 +96,6 @@ class CAgentFolder final : public IFolderFolder,
                         bool includeFolderSubItemsInFlatMode, CUIntVector &realIndices) const;
     unsigned GetNumberOfItems() const;
     CProxyItem GetItem(unsigned index) const;
-    // Read-only Qt presentation access to the source owner's authoritative tree.
-    const CProxyArc &GetProxy() const { return *_proxy; }
     // Read-only 7zz transport boundary for original archive-index Path queries.
     IInArchive *GetArchiveProperties() const;
     // Borrowed engine service for Qt presentation; the source agent retains it.

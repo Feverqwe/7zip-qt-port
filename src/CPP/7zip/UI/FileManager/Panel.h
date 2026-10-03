@@ -463,6 +463,7 @@ class CPanel : public QObject {
     HRESULT OpenAsArc_Name(const UString &relPath, const UString &arcFormat);
     HRESULT OpenAsArc_Index(unsigned index, const wchar_t *type = NULL);
     void OpenFolder(unsigned index);
+    void OpenAltStreams();
     void OpenFolderExternal(unsigned index);
     void OpenItem(unsigned index, bool tryInternal, bool tryExternal, const wchar_t *type = NULL);
     void OpenFocusedItemAsInternal(const wchar_t *type);

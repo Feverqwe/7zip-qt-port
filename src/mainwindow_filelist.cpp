@@ -155,8 +155,12 @@ QStringList MainWindow::selectedPaths() const {
 
 void MainWindow::selectPaths(const QStringList &paths) {
     table_->clearSelection();
+    const auto &panel = app_.GetFocusedPanel();
+    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
     for (int row = 0; row < table_->rowCount(); ++row) {
-        if (paths.contains(table_->item(row, 1)->text()))
+        const QString path = streams ? table_->item(row, 0)->data(Qt::UserRole).toString()
+                                     : table_->item(row, 1)->text();
+        if (paths.contains(path))
             table_->selectionModel()->select(table_->model()->index(row, 0),
                                              QItemSelectionModel::Select |
                                                  QItemSelectionModel::Rows);
@@ -312,7 +316,9 @@ void MainWindow::createFolder() {
 }
 
 void MainWindow::createFile() {
-    if (state_ != State::Filesystem)
+    const auto &panel = app_.GetFocusedPanel();
+    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
+    if (state_ != State::Filesystem && !streams)
         return;
     ComboDialog dialog("Создать файл", "Имя файла:", "Новый файл", this);
     if (dialog.exec() != QDialog::Accepted)
@@ -324,6 +330,13 @@ void MainWindow::createFile() {
         return;
     if (result != S_OK) {
         QMessageBox::warning(this, "Создать файл", "Не удалось создать файл.");
+        return;
+    }
+    if (streams) {
+        const QString target =
+            ToQString(app_.GetFocusedPanel().GetCurrentFolderPrefix()) + ToQString(createdName);
+        renderBoundFolder();
+        selectPaths({target});
         return;
     }
     const QString target = QDir(directory_).filePath(ToQString(createdName));

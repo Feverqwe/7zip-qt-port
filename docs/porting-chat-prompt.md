@@ -13,11 +13,24 @@ docs/porting-checklist.md. Прочитай AGENTS.md, индекс .codex/memor
 Выбери первый незавершённый незаблокированный шаг минимального приоритета, для
 которого выполнены фактически нужные dependencies/capabilities. Назови его ID
 и конкретный результат, затем выполни его до конца. Сейчас следующий ID —
-P2-06: ADS/streams/CProxyArc2 по platform capabilities с исходными
-AltStreamsFolder/FSFolder/ArchiveFolder/Agent proxies и Windows FileIO/FileFind.
-Сначала inspect bodies и native Windows capability; Unix unsupported ветки
-disabled с причиной. Подключить реальные list/open/copy/delete/update/Properties
-consumers, failures/Cancel и EN/RU UX, сохранить baseline и source control flow.
+P2-07: Extract ElimDup/absolute/security/metadata с исходными ExtractDialog,
+ExtractGUI, ExtractingFilePath/ArchiveExtractCallback/Extract и SecurityUtils.
+Сначала inspect bodies и определить безопасную границу absolute extraction;
+каждый control должен иметь effect/persistence, success/failure/Cancel и EN/RU UX.
+Также завершить archive link storage/processed-input deletion и directory
+Open Outside : 7-Zip consumer. Сохранить source flow и upstream read-only.
+
+P2-06 принят целой итерацией2026-10-03: complete AltStreamsFolder,
+source CCopyStateIO/Agent proxy2/native raw tree и native WIM writer, actual
+FS/archive Copy/Move/Create/Rename/Delete/Properties/Cancel. Mac fullgate
+207/207PASS120.58s; final localized mac2/2PASS4.43s, Linux3/3PASS3.21s,
+Windows drag/contract2/2 и семь Add consumers1/1PASS1.39s zero Qt skips.
+Sixteen current EN/RU normal/compact JSON reviewed; baseline382/175/3 verified.
+Counts35/46,11remain;P0 12/12,P1 16/18,P2 6/10,P3 1/6. Whole local commit;
+no push/upstream writes. Expanded Windows source_update_backend still fails
+slash-sensitive/absolute/Sync expectations (synthetic Sync empty archive) and
+times out30s; preserve this evidence and resolve under P2-07/P3, do not claim
+full Windows gate. Finder remains separate mandatory P3-03.1.
 
 P2-05 принят целой итерацией2026-10-03: complete LinkDialog/CApp::Link,
 partial original FM privilege startup, raw Windows FSFolder properties,

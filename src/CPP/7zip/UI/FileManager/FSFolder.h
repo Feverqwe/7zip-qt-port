@@ -108,8 +108,11 @@ struct CCopyStateIO {
     QString ErrorMessage;
     quint64 CurrentSize = 0;
     quint64 StartPos = 0;
+    quint64 TotalSize = 0;
     bool DeleteSrcFile = false;
-    std::function<bool(quint64)> Progress;
+    IProgress *Progress = nullptr;
+    std::function<bool(quint64)> QtProgress;
+    HRESULT MyCopyFile(CFSTR inPath, CFSTR outPath, DWORD attrib = DWORD(-1));
     bool MyCopyFile(const QString &inPath, const QString &outPath, QFileDevice::Permissions attrib);
 };
 bool IsDestChild(const QString &src, const QString &dest);

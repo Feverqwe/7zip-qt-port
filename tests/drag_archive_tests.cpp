@@ -8,14 +8,18 @@
 #include "qtpanelfolder.h"
 #include <QDrag>
 #include <QFile>
+#include <QMessageBox>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTableWidget>
 #include <QTemporaryDir>
+#include <QUuid>
 #include <QtTest>
 
 class DragArchiveTests : public QObject {
     Q_OBJECT
+    QByteArray previousRegistry;
+    QTemporaryDir registryFixture;
     static QByteArray Read(const QString &path) {
         QFile file(path);
         return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
@@ -45,6 +49,16 @@ class DragArchiveTests : public QObject {
         return panel.IsArcFolder();
     }
   private slots:
+    void init() {
+        previousRegistry = qgetenv("SEVENZIP_OWNED_TEMP_REGISTRY");
+        // Unconfirmed receivers deliberately retain their registry records. Each
+        // disposable row needs its own registry, including when native temp names
+        // and OS file identities are reused after fixture cleanup.
+        qputenv(
+            "SEVENZIP_OWNED_TEMP_REGISTRY",
+            registryFixture.filePath(QUuid::createUuid().toString(QUuid::WithoutBraces)).toUtf8());
+    }
+    void cleanup() { qputenv("SEVENZIP_OWNED_TEMP_REGISTRY", previousRegistry); }
     void nativeArchiveDropUsesCorrectExecutionOwner_data() {
         QTest::addColumn<bool>("archiveTarget");
         QTest::newRow("archive-to-disk") << false;
@@ -79,6 +93,9 @@ class DragArchiveTests : public QObject {
         }
         const QByteArray original = Read(sourceZip);
         ArchiveBackend sourceBackend, targetBackend;
+        QString targetResult;
+        connect(&targetBackend, &ArchiveBackend::finished, &targetBackend,
+                [&targetResult](bool, const QString &message) { targetResult = message; });
         CApp app;
         QVERIFY(BindArchive(app.Panels[0], sourceBackend, sourceZip, name, false));
         if (archiveTarget)
@@ -124,7 +141,21 @@ class DragArchiveTests : public QObject {
             return effect ? Qt::CopyAction : Qt::IgnoreAction;
         });
         app.Panels[0].AttachDragServices(&transport);
+        QStringList errors;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &list, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                errors.append(box->text());
+                box->accept();
+            }
+        });
+        responder.start(1);
         app.Panels[0].OnDrag(false);
+        responder.stop();
+        QVERIFY2(errors.isEmpty(), qPrintable(QString("Drop HRESULT=0x%1; %2; backend=%3")
+                                                  .arg(quint32(dropped), 8, 16, QLatin1Char('0'))
+                                                  .arg(errors.join('\n'))
+                                                  .arg(targetResult)));
         QCOMPARE(entered, S_OK);
         QCOMPARE(dropped, S_OK);
         QVERIFY(flags & (archiveTarget ? k_TargetFlags_WasProcessed
@@ -140,6 +171,7 @@ class DragArchiveTests : public QObject {
             QCOMPARE(extract.exitCode(), 0);
             QCOMPARE(Read(QDir(destination).filePath("untouched.txt")),
                      QByteArray("untouched bytes"));
+            QCOMPARE(Read(QDir(destination).filePath(name)), payload);
         }
         QCOMPARE(Read(QDir(destination).filePath(name)), payload);
     }
@@ -171,6 +203,12 @@ class DragArchiveTests : public QObject {
         QCOMPARE(create.exitCode(), 0);
         const QByteArray original = Read(archive);
         ArchiveBackend backend;
+        QList<ArchiveEntry> listed;
+        connect(&backend, &ArchiveBackend::entriesReady, &backend,
+                [&listed](const QList<ArchiveEntry> &entries) { listed = entries; });
+        backend.list(archive);
+        QTRY_VERIFY(!backend.busy());
+        QCOMPARE(listed.size(), 1);
         if (outcome == 3)
             connect(&backend, &ArchiveBackend::engineStarted, &backend,
                     [&backend] { backend.cancel(); });
@@ -179,7 +217,8 @@ class DragArchiveTests : public QObject {
         resource->AttachExtractService(backend, "zip");
         CObjectVector<CPanelItem> items;
         CPanelItem item;
-        item.RelPath = name;
+        // Actual archive metadata can be NFD when Qt creates the fixture on macOS.
+        item.RelPath = listed.front().path;
         item.SizeDefined = true;
         item.Size = payload.size();
         items.Add(item);
@@ -223,7 +262,18 @@ class DragArchiveTests : public QObject {
             return outcome == 2 || outcome == 4 ? Qt::IgnoreAction : Qt::MoveAction;
         });
         app.Panels[0].AttachDragServices(&transport);
+        QStringList errors;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &list, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                errors.append(box->text());
+                box->accept();
+            }
+        });
+        responder.start(1);
         app.Panels[0].OnDrag(false);
+        responder.stop();
+        QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         QVERIFY(!transport.Active());
         QCOMPARE(app.DropTarget().SrcPanelIndex, -1);
         QCOMPARE(Read(archive), original);
@@ -250,7 +300,8 @@ class DragArchiveTests : public QObject {
                 QVERIFY(!registry.ClaimForDeletion(entry));
             }
             QVERIFY(found);
-            // Disposable fixture only: positive test receiver completion now.
+            // Dispose only this fixture; its protected record stays in the
+            // row's private registry, never the application's registry.
             QVERIFY(QDir(ownedRoot).removeRecursively());
         } else
             QVERIFY(!QFileInfo::exists(ownedRoot));

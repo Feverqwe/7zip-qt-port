@@ -1,5 +1,48 @@
 # Regression strategy
 
+P2-06 focused coverage (iteration accepted): `alt_streams_folder` uses disposable
+Windows NTFS files/ADS for enumeration/properties/clone, Create_NEW occupied
+refusal, rename/delete, ordinary-file and ADS copy, preserved base attributes,
+partial native copy cancellation and move source preservation/removal. Unix
+asserts explicit filesystem unsupported state. `alt_streams_command` invokes
+real MainWindow source actions, Copy/Move bytes, Properties, Delete Cancel/Yes,
+Create Cancel/Create and label Rename/selection with Unicode/spaces, preserving
+the base file. EN/RU normal/compact reports use the shared main-shell contract.
+
+`native_folder_opening` verifies real WIM raw parents, proxy2 binding, ADS real
+index expansion and exact extraction, then source ReOpen restoration.
+`alt_streams_archive_ui` verifies native WIM menu/list/Copy and EN/RU geometry,
+Rename/Delete Cancel/Yes, final-stream parent fallback, official archive integrity
+and unchanged main payload. Unix uses the synthetic Windows ADS fixture documented
+in `tests/fixtures/streams/README.md`; Windows creates streams on NTFS.
+Its portable tree writer
+fixture verifies a real native WIM Rename and exact extraction on each platform.
+`archive_proxy`/`agent_folder` cover source folder/parent/ADS interface branches.
+`archive_backend` covers declared ADS output names, unsafe base/name/non-stream
+colon, native separator mapping, occupied targets and the original Windows
+echo-suppressed password prompt over a process pipe. `extraction_options` is a
+direct consumer of selection/validation/flat overwrite mapping. Fixtures are
+local; missing modules or NTFS skips do not establish platform acceptance.
+
+Native WIM failure/cancel in `codec_update` is injected through public source
+progress callbacks after actual progress, preserving original bytes and cleaning
+owned output stages. `codec_commands_ui` cancels the writer through original
+`CProgressDialog::Sync`, before publication rather than during backend reopen.
+Windows gzip cases use an ASCII stored name inside a Unicode/spaced filesystem
+path: original GzHandler.cpp reads/writes that header with CP_ACP, which cannot
+represent arbitrary Unicode. Other tested formats retain Unicode stored names.
+The benchmark GUI watchdog includes original CPU-frequency calibration;
+`timems` bounds codec work but does not bound that separate source loop.
+Drag rows use private ownership registries: manually disposing an unconfirmed
+receiver fixture must not leave protected records in the application's registry.
+Archive-to-archive drop checks both retained and added payload bytes. Windows
+canonical containment uses Qt '/' paths, preserving unsafe-path rejection.
+Final macOS gate207/207PASS120.58s; localized macOS2/2PASS4.43s,
+Linux3/3PASS3.21s, Windows drag/contract2/2 plus seven Add consumers PASS1.39s
+with zero focused Qt skips. Expanded Windows source_update_backend still fails
+absolute/Sync expectations and times out; resolve under P2-07/P3, not a full
+Windows acceptance claim.
+
 P2-05 focused tests: `link_dialog` exercises original create/type/nonempty-data
 checks, shared hardlink bytes, raw relative/absolute/dangling/cycle targets,
 Windows junction and platform retarget/clear, Cancel and EN/RU normal/compact
