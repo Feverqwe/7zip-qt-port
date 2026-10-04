@@ -5,20 +5,20 @@ description: Implement or review Sevenzip Desktop C++17 and Qt 6 Widgets code, i
 
 # C++ and Qt in Sevenzip Desktop
 
-Follow `AGENTS.md`. Read `docs/architecture.md` when changing the UI/backend boundary. This repository owns the Qt UI and archive adapter; `../7zip-upstream` remains an independent, read-only source checkout.
+Follow `AGENTS.md` for source reuse, module organization, provenance and validation.
+Read [architecture](../../../docs/architecture.md) for the affected owner and
+UI/backend boundary. Use `$sz-navigation` to locate original bodies and dependencies.
 
-Start from the original upstream implementation, copying code rather than recreating its behavior. Follow the source-port rules in `AGENTS.md`: preserve relative paths, filenames, symbols, module boundaries, and algorithm/control flow. Adapted application code lives under `src/<upstream-relative-path>`; unchanged supporting code lives under `third_party/7zip/<upstream-relative-path>`.
+- Keep long archive operations off the UI event loop. Use asynchronous process
+  signals or a worker; make lifetime/cancellation explicit and update widgets
+  only on the GUI thread.
+- Pass executable and arguments separately to `QProcess`. Never run archive paths
+  through a shell or construct a single command string. Do not log passwords;
+  assess process-argument exposure when implementing password support.
+- Handle paths/names as Unicode. Use Qt path APIs instead of splitting on platform
+  separators. Treat archive metadata as untrusted, particularly during extraction.
+- Register sources and focused test targets in CMake. Use `$sz-regression` for
+  behavioral coverage and [UI contracts](../../../docs/ui-layout-contracts.md)
+  for affected visible controls/states.
 
-Adapt the presentation in upstream UI modules to Qt Widgets while retaining their functional code. Replace Win32/platform dependencies with narrow adapters where required; do not rewrite a module because it lives under `UI/` or because Qt offers another implementation. Reuse portable upstream types and dependencies. New functional logic needs a documented reason why no upstream implementation can be reused.
-
-Record source commit, paths/symbols, copied and adapted portions, and reasons for changes in `docs/upstream-port-audit.md`; preserve source notices and licenses. Record observable differences in `docs/7zfm-parity.md`. Keep archive operations behind `ArchiveBackend` and the official engine. The current `7zz` adapter and existing custom Qt logic do not override the source-port goal.
-
-- Keep widgets, archive operations, and process parsing separate. Widgets express user intent and display state; the backend owns `7zz` arguments, output, cancellation, and errors.
-- Keep long archive operations off the UI event loop. Use asynchronous process signals or a worker when appropriate. Keep object lifetime and cancellation explicit; update widgets only on the GUI thread.
-- Pass executable and arguments separately to `QProcess`. Do not run archive paths through a shell or build a single command string. Do not log passwords; assess process-argument exposure before implementing password support.
-- Handle paths and names as Unicode. Use Qt path APIs rather than splitting archive paths on platform separators. Treat archive metadata as untrusted input, especially during extraction.
-- Add new sources and tests to CMake. For behavior changes, use focused Qt/CTest tests with temporary directories and disposable archives. Use `$sz-regression` when designing regression coverage or investigating a test failure.
-- Follow the appearance-validation rules in `AGENTS.md`: use the view specification, geometry tests, and current-build widget JSON first (see `docs/ui-layout-contracts.md`). Screenshots are a fallback for rendering details these cannot resolve. Identify the concrete upstream resource/source or Windows screenshot used as a reference; distinguish structural comparison and Qt usability from verified visual parity.
-- Preserve copied upstream structure and avoid unrelated style rewrites. Apply repository formatting to changed files covered by its formatting gate; keep required formatting changes distinct from functional adaptations in the port record. Follow the staged validation rules in `AGENTS.md`: focused builds/tests during implementation, one full `./scripts/check.sh` before completion, and no repeated full gate on unchanged code.
-
-Use `build/dev/compile_commands.json` with clangd for definitions and diagnostics. See `$sz-navigation` when tracing behavior into upstream 7-Zip.
+Use `build/dev/compile_commands.json` with clangd for compiler diagnostics.

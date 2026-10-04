@@ -1,16 +1,8 @@
 # Sevenzip Desktop context map
 
-- `README.md`: project goal, status, and quick start.
-- `AGENTS.md`: primary source-port goal and agent working rules.
-- `docs/architecture.md`: UI/backend boundary and upstream 7-Zip relationship.
-- `docs/development.md`: installation, build, run, and verification.
-- `docs/testing.md`: regression strategy.
-- `docs/7zfm-parity.md`: implemented and remaining 7zFM behavior.
-- `docs/upstream-port-audit.md`: copied/adapted sources, provenance, and custom logic awaiting migration.
-- `.agents/skills/`: reusable project workflows.
-- `.agents/skills/sz-navigation/`: map Qt, backend, and upstream C++ behavior.
-- `.codex/notes/`: local investigations and handoffs; not source of truth.
-- `.codex/memory/README.md`: short index of relevant local task notes; read first.
-- `docs/agent-memory.md`: memory protocol and checkout/platform verification.
+Start with [the memory index](../memory/README.md) for relevant local handoffs.
+Use [the documentation map](../docs/README.md) for tracked facts and
+[AGENTS.md](../AGENTS.md) for project rules.
 
-Follow the source-port goal in `AGENTS.md`: copy upstream implementation with its paths and names, adapt UI to Qt and platform dependencies where needed. Search narrowly. Confirm source provenance against upstream and behavior in code and tests.
+Local investigations live in `../notes/`; durable findings belong in the
+owning tracked document. Follow [the memory protocol](../docs/agent-memory.md).

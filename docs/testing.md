@@ -1,5 +1,13 @@
 # Regression strategy
 
+Use [What to test](#what-to-test) for coverage and
+[Qt layout checks](#проверка-компоновки-qt) for report producers.
+The port-specific entries below include dated coverage checkpoints; they do
+not establish current acceptance. General validation requirements are in
+[AGENTS.md](../AGENTS.md#validation-and-ui-reference), script usage in
+[development](development.md), package status in [the checklist](porting-checklist.md)
+and source-port validation evidence in [the audit](upstream-port-audit.md).
+
 P2-09 native System WIP (2026-10-04): `native_system_menu` is Windows-only.
 It uses disposable Unicode file/folder selections with the real source PIDL/
 IContextMenu query, checks missing/empty selection release, and records the

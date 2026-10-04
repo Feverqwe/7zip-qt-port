@@ -1,24 +1,18 @@
 # Sevenzip Desktop task memory
 
-Read only notes relevant to the current request. This index stores local handoffs,
-not product documentation, instructions, or a task queue. Follow the
-[memory protocol](../docs/agent-memory.md); confirm dated evidence in current code.
+This is an index of dated local evidence, not instructions or a task queue.
+Follow [the memory protocol](../docs/agent-memory.md).
 
 ## Active investigations and handoffs
 
-No handoffs recorded yet. Add a topic, status, date, and link to a distinct note
+No handoffs recorded yet. Add topic, date, status and a link to a distinct note
 in `../notes/` when useful context needs to survive a task.
 
 ## Reusable investigations
 
-No investigations recorded yet. Link resolved research that would save repeating
-work; keep durable conclusions in [project docs](../docs/).
+No investigations recorded yet. Link resolved research rather than copying
+product facts, status counters or test logs.
 
-## Authoritative project context
+## Project context
 
-- [Goal and working rules](../AGENTS.md)
-- [Source-port provenance and migration debt](../docs/upstream-port-audit.md)
-- [7zFM workflow and platform differences](../docs/7zfm-parity.md)
-- [Component boundaries](../docs/architecture.md)
-- [Build commands](../docs/development.md), [checks](../docs/testing.md)
-- [Text UI contracts](../docs/ui-layout-contracts.md)
+[Documentation map](../docs/README.md) · [Agent rules](../AGENTS.md)

@@ -1,22 +1,10 @@
 # Sevenzip Desktop workspace
 
-## Project
+- [Project overview](README.md)
+- [Documentation map](docs/README.md)
+- [Agent rules](AGENTS.md)
+- [Memory index](memory/README.md)
+- [Memory protocol](docs/agent-memory.md)
 
-- [Project README](README.md)
-- [Agent guidance](AGENTS.md)
-- [Architecture](docs/architecture.md)
-- [Development](docs/development.md)
-- [Testing](docs/testing.md)
-- [7zFM parity](docs/7zfm-parity.md)
-- [Upstream source-port audit](docs/upstream-port-audit.md)
-- [Context map](context/README.md)
-
-## Local workspace
-
-- [Memory between tasks](memory/README.md) — start here for relevant local handoffs.
-- [Memory protocol](docs/agent-memory.md) — what to read, save, and verify.
-- `notes/` — local investigations and handoffs.
-- `attachments/` — local note attachments.
-- `templates/` — note templates.
-
-Tracked project files remain authoritative. Move durable findings into the relevant tracked document.
+Local investigations: `notes/`; attachments: `attachments/`;
+templates: `templates/`. Tracked documents remain authoritative.

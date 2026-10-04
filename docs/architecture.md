@@ -2,6 +2,15 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Core sections: [repository boundary](#repository-boundary),
+[window/panel state](#window-and-panel-state),
+[dialogs/preferences](#dialogs-and-preferences),
+[filesystem/volume workers](#filesystem-and-volume-workers),
+[archive backend](#archive-backend-and-safety), [diagnostics](#diagnostics).
+The port-specific entries below record ownership changes at their stated scope;
+current package status belongs in [the checklist](porting-checklist.md), and
+dated source/validation evidence in [the audit](upstream-port-audit.md).
+
 P2-09 in progress: CPanel::CreateFileMenu now owns plugin release, extended
 verbs, archive-folder exclusion and ShowSystemMenu sequencing. CreateSevenZipMenu
 owns source path/attribute setup and query IDs; InvokePluginCommand owns numeric

@@ -5,8 +5,8 @@ Native console SFX can be built from the recorded official baseline with
 Defaults are the read-only sibling checkout and `build/sfx`. The script extracts
 an immutable temporary snapshot, builds upstream SFXCon unchanged and writes
 `7zCon.sfx`, its license and a SHA-256/source/host/version JSON record. It refuses
-to replace an unowned module artifact. This runtime preparation belongs to the
-in-progress P2-02; application SFX consumers are not yet accepted. Windows uses
+to replace an unowned module artifact. Source scope and acceptance evidence are
+in [the port audit](upstream-port-audit.md). Windows uses
 the official GUI `7z.sfx` runtime; this script does not create a Windows module.
 
 For Windows, use `scripts/build-sfx.ps1 -Architecture arm64` (or `x64`/`x86`)
@@ -17,8 +17,8 @@ and builds unchanged `Bundles/SFXWin/makefile` with `PLATFORM`. Optional
 It writes `7z.sfx`, `7z.sfx.json` and `7z-LICENSE.txt`, refuses unowned/reparse-point
 artifacts, and never builds in the sibling checkout. The sidecar producer must
 match the Windows builder. Actual unchanged SFXWin compilation passes on
-Windows11 ARM64 with MSVC14.44 and SDK10.0.26100.0; native Qt SFX consumer
-acceptance is still pending. Tools are installed in the local VM but require its
+Windows11 ARM64 with MSVC14.44 and SDK10.0.26100.0. Tools are installed in the
+local VM but require its
 scoped Visual Studio developer environment rather than the default SSH PATH.
 `build.sh` requests process-local English MSVC diagnostics (`VSLANG=1033`)
 unless supplied by the caller. It also switches its console to UTF-8 and restores
@@ -37,8 +37,8 @@ app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
 a missing explicit path reports an error. Standalone `7zz` remains the fallback.
 Codecs/Formats discovery follows original LoadCodecs from the confirmed deployment;
-native modules must agree with the dynamic engine's reported libraries. P2-02 is
-still in progress; remaining plugin consumers are not accepted.
+native modules must agree with the dynamic engine's reported libraries.
+Current package statuses belong in [the checklist](porting-checklist.md).
 On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
 uses a matching developer environment and the same optional source/output arguments
 as the SFX builder. It compiles unchanged Console/Format7zF/Alone2 makefiles and
@@ -87,7 +87,11 @@ Qt Test suites run with `-silent`, so a failed suite reports its failed cases wi
 If `ccache` is installed, `build.sh` automatically uses it for C, C++ and Objective-C++ compilation, including builds started by `check.sh`. Install it with `brew install ccache` on macOS or your package manager on Linux. It speeds up recompilation after a clean build or branch switch; Ninja already skips unchanged files, and the full CTest suite still runs on every `check.sh` invocation.
 On macOS the script defaults `CCACHE_DIR` to `/private/tmp/sevenzip-desktop-ccache`, which is writable in the local sandbox and reuses the existing cache. Set `CCACHE_DIR` before running the script to use another directory.
 
-During implementation, build only affected targets with `./scripts/build.sh dev <target> [target ...]` and run relevant cases with `./scripts/ctest.sh --preset dev -R '<test-name-regex>' --output-on-failure`. The build script configures the preset and applies platform toolchain workarounds; without targets it builds everything. Run the full `check.sh` once before completing code, test, or build-tooling changes; do not repeat a passing gate on unchanged code. After a localized edit, rerun affected checks; repeat the full gate for broad changes or unresolved regression concerns. Documentation-only and agent-instruction edits need `git diff --check`.
+Build specific targets with `./scripts/build.sh dev <target> [target ...]` and run
+focused cases with `./scripts/ctest.sh --preset dev -R '<test-name-regex>' --output-on-failure`.
+The build script configures the preset and applies platform toolchain workarounds;
+without targets it builds everything. Requirements for focused/full validation,
+repeat runs and docs-only changes are in [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
 Run the built app on macOS from `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
 

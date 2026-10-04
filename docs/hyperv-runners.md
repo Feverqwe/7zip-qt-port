@@ -7,15 +7,82 @@ same shared x64 guests used by htopQt, with separate project snapshot directorie
 The helper starts from htopQt's `scripts/hyperv-runner.py` at commit
 `f57b93a72d765f738a6b779b4b3c94e16c0ef64a`, adapted for Sevenzip resources,
 MSVC, pinned engine builders, formatter and SSH stdin transport.
+CLI, parallel probes, shared Bash command payload and discovery-error reporting
+were refreshed from htopQt's modified worktree on 2026-10-04 (base commit
+`56320ebb4d62b3bac83f38719278cae6a5c454c1`), retaining these Sevenzip adaptations.
+The source script's SHA256 was
+`f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
 
 ```sh
 python3 scripts/hyperv-runner.py probe linux
 python3 scripts/hyperv-runner.py probe windows
+python3 scripts/hyperv-runner.py probe all
 python3 scripts/hyperv-runner.py check linux
 python3 scripts/hyperv-runner.py check windows
+python3 scripts/hyperv-runner.py check all
 python3 scripts/hyperv-runner.py check linux --preset release
 python3 scripts/hyperv-runner.py check windows --preset release
 ```
+
+The general entry point is `run <linux|windows|all> [runner-options] --
+<project-script> [script-arguments]`. Examples:
+
+```sh
+python3 scripts/hyperv-runner.py run all -- scripts/check.sh
+python3 scripts/hyperv-runner.py run linux -- scripts/build.sh dev
+python3 scripts/hyperv-runner.py run all --skip-runtime -- scripts/check_ui_parity.py --help
+```
+
+Scripts must be indexed project files in the synced directories, with paths
+relative to the project root. `.sh` uses Bash on both platforms (Git Bash on
+Windows); `.py` uses the guest Python; `.ps1` is supported for Windows only.
+Arguments after `--` are passed literally, including spaces, Unicode and shell
+metacharacters. Scripts run from the snapshot root in the existing platform
+toolchain environment. `--skip-runtime` skips engine/SFX compilation when the
+selected script does not need it; by default runtime preparation is retained.
+Each action has its own `--help` and accepts only its applicable runner options.
+`--preset` is accepted only by the `check` shortcut; `run` passes build/test options through
+the script arguments. `scripts/build.sh` takes `dev` or `release` positionally.
+
+The default transport is `rsync` over the verified SSH connection. The local
+snapshot is an uncompressed `source.tar`; the latest successful rsync run's
+archive is copied into the new guest run directory as a private delta basis.
+Rsync transfers changed blocks, then the guest verifies the full archive SHA256
+before extraction. The previous run is untouched, concurrent runs have separate
+destinations, and deleted source files cannot survive extraction into the fresh
+directory. The first run sends the full archive. `--transport scp` selects the
+original gzip archive transport and does not require rsync.
+
+Windows rsync 3.5.1 (protocol 33) was installed on request on 2026-10-03 in
+`C:\runner\sevenzip-desktop\tools\rsync\msys64`, using the
+[official MSYS2 portable setup](https://www.msys2.org/docs/ci/#other-systems)
+and signed `pacman` packages (`pacman --noconfirm -Syu rsync`). The downloaded
+official `msys2-base-x86_64-latest.tar.xz` had SHA256
+`51612cb7ee5117b68bf342fb7885212537e19c2aa6bb8b989ba5498f39efcb22`.
+The helper addresses `usr/bin/rsync.exe` explicitly and maps destination paths
+to `/c/runner/...`. Its MSYS2 installation is separate from htopQt's Git Bash,
+MSVC and Qt, and is used only for transport; builds retain Git Bash and MSVC.
+Linux uses its installed `/usr/bin/rsync`; the Mac client needs `rsync` in PATH.
+Checks do not install or upgrade packages automatically.
+
+`all` creates and hashes the source archive once, then runs the two guests in
+parallel. Failure on one guest does not prevent the other from completing.
+The command exits nonzero if either fails. Each platform has `run.json`, a local
+`transport.log`, and a downloaded full `check.log` when available under
+`build/runners/hyperv/<run-id>/<platform>/`; the parent `run.json` records the
+shared snapshot hash, source revision, command and aggregate result. Failure
+output includes the last 20 log lines with a platform prefix. Log retrieval
+errors are recorded separately from script results.
+`probe all` also checks both guests in parallel, printing each guest's captured
+output as one block and returning nonzero if either probe fails. Preparation
+errors captured by discovery are retained in the run record and transport log.
+
+Every invocation uses a fresh snapshot and build directory; it does not reuse
+an earlier build. A script invoking CTest must build its targets first in that
+same invocation, for example in a project script that calls `build.sh` followed
+by `ctest.sh`. There is no `--run-id` reuse mode yet. Interrupting the client is
+not a guaranteed remote process cancellation; parallel workers may finish
+before the client exits. No automatic remote cleanup is performed.
 
 The global skill at `~/.codex/skills/runners` must be installed. Its
 `scripts/hyperv_ready.py <platform> --start` starts only the requested existing
@@ -30,8 +97,11 @@ Each check creates a fresh `/home/runner/sevenzip-desktop/runs/<id>` or
 `C:\runner\sevenzip-desktop\runs\<id>`. The SHA256-verified archive contains
 current tracked project sources, resources, tests, docs, skills and build
 configuration, including modifications and excluding deleted files. Add new
-files to the Git index before running; the helper itself is included explicitly.
-Unrelated untracked files, ignored state and the project's `.git` are excluded.
+files to the Git index before running; the runner and its transport helper are
+included explicitly.
+Untracked project files are listed as omitted with a reminder to use `git add`;
+selecting an untracked script is rejected before runner startup. Ignored state
+and the project's `.git` are excluded.
 
 The helper also includes an upstream Git bundle at the exact revision recorded
 in `docs/upstream-baseline.json`. `--upstream /path/to/7zip` overrides the default
@@ -97,6 +167,10 @@ check Unicode/spaced filenames, modified/deleted/untracked content, exact pinned
 bundle retrieval without upstream mutation, local whitespace rejection, large
 Windows scripts through SSH stdin, Linux failure exit/log propagation, and
 failed/interrupted run records.
+They also cover a shared snapshot with independent platform failures and
+literal command argument transport through Linux and the Windows Bash payload.
+An actual local rsync delta fixture checks reconstructed bytes and preservation
+of the previous basis; transport tests require local Bash, Git and rsync.
 Runner orchestration tests remain outside the application's CTest gate.
 
 SSH checks cover the project gate, not interactive desktop/Finder behavior,
@@ -138,3 +212,30 @@ offline helper tests passed. Installed Qt versions remain Linux 6.4.2 and
 Windows 6.8.3. Network access alone does not resolve either recorded compilation
 blocker. No packages were installed and the application gates were not rerun
 during this documentation review.
+
+## General entry point validation on 2026-10-03
+
+Twelve offline transport/orchestration tests passed on macOS, as did
+`git diff --check`. Live Linux and Windows checks passed for Python script
+execution and Bash script execution, using one SHA256-verified rsync snapshot.
+A subsequent snapshot transferred 46,342 client bytes per guest for an
+approximately 18 MB archive (29,280 unmatched bytes; 17,952,160 matched bytes).
+An intentionally invalid `check_ui_parity.py` invocation returned guest exit 2
+on both platforms, downloaded both full logs, and returned aggregate exit 1.
+These are orchestration checks, not guest application-gate acceptance.
+
+The local unsandboxed full gate passed formatting/build and 222/226 CTest
+cases in 95.95 s. Failures were `ui_operations` (segfault), `panel_auto_refresh`,
+`archive_external_lifetime` and `archive_external_security`. A focused sequential
+rerun through `scripts/ctest.sh` passed all four in 16.58 s. The initial full
+gate remains failed; this tooling change does not modify application sources
+or those test suites, and their parallel-run instability remains unresolved.
+
+## CLI refresh validation on 2026-10-04
+
+Sixteen offline runner tests passed on macOS, including action-specific options,
+parallel probe failure isolation, preserved discovery diagnostics and Release
+fail-fast behavior through both generated guest payloads. Live `probe all`
+passed on Linux and Windows, using Sevenzip's formatter 23.1.2. The unsandboxed
+local `scripts/check.sh` passed formatting, build and all 229 CTest cases in
+79.24 s; `git diff --check` passed. Guest application gates were not rerun.

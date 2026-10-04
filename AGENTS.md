@@ -1,75 +1,141 @@
 # Sevenzip Desktop agent guide
 
-This repository owns a C++17 / Qt 6 Widgets desktop UI for Windows, macOS, and Linux. The official 7-Zip source is a separate sibling checkout at `../7zip-upstream`.
+This repository owns a C++17 / Qt 6 Widgets port of Windows 7-Zip File Manager
+for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream`.
 
-## Primary goal: a source port of upstream 7-Zip
+## Source-port requirements
 
-This project ports upstream source code, not just its observable behavior. Copy the original implementation as the starting point. Adapt UI presentation to Qt Widgets and make only the platform and integration changes needed for Windows, macOS, and Linux. The main body of functional code must come directly from upstream; matching behavior with a newly written implementation does not satisfy this goal.
+- Start from upstream implementation, not a new implementation of its behavior.
+  Before functional changes, inspect original bodies, callers, types and dependencies.
+  Functional code inside `UI/` files is part of the port; replace Win32 presentation
+  and platform services with Qt or narrow adapters without rewriting the whole module.
+- Preserve upstream paths, filenames, symbols, module boundaries, algorithms and
+  control flow. Adapted sources belong under `src/<upstream-relative-path>`;
+  unchanged reusable dependencies under `third_party/7zip/<upstream-relative-path>`.
+  Keep one authoritative implementation per module and reuse portable upstream types.
+- Preserve the source language: upstream `C/` stays C and is compiled as C;
+  `CPP/` stays C++. Local UI/integration uses C++17 / Qt 6; necessary platform
+  bridges may use their native language, with the reason recorded in the audit.
+  Use existing upstream headers and their C linkage at C/C++ boundaries.
+- New functional code requires evidence that no usable upstream implementation
+  exists. Existing independent logic is migration debt: replace the relevant part
+  when working on it without expanding into a repository-wide rewrite.
+- Keep archive operations behind `ArchiveBackend` and the official engine.
+  Widgets do not construct `7zz` syntax; the transport is an integration constraint,
+  not a reason to recreate upstream logic. Do not reimplement archive formats or compression.
+- Keep the sibling upstream checkout read-only. Copying source into this repository
+  is authorized; editing upstream or adding Qt to it requires a user request.
+- Record full upstream commit, retrievable source repository, paths/symbols,
+  copied/adapted/omitted scope, dependencies and reasons in
+  [the port audit](docs/upstream-port-audit.md). Preserve notices and licenses.
+  Record observable workflow/platform differences in [parity](docs/7zfm-parity.md).
 
-- Preserve upstream filenames, relative directory paths, class/function names, module boundaries, and algorithm/control flow. Adapted application sources belong under `src/<upstream-relative-path>` (for example, `src/CPP/7zip/UI/FileManager/PanelSort.cpp`); unchanged reusable dependencies belong under `third_party/7zip/<upstream-relative-path>`. Keep one authoritative implementation of each borrowed module.
-- UI-related files can contain substantial non-UI logic. Retain that logic from the original file; replace Win32 controls, rendering, messages, and platform services with Qt or narrow portability adapters. Do not rewrite an entire module merely because it lives under `UI/` or uses Win32/COM types.
-- Reuse upstream types and supporting modules when portable. Do not replace their algorithms or containers with Qt/std equivalents solely for style or convenience. When a dependency cannot be used across platforms, isolate or minimally adapt it and explain the reason.
-- New code is for Qt presentation, platform/integration glue, and functionality with no usable upstream implementation. Before writing functional logic, locate and inspect its upstream implementation and dependencies. If direct reuse requires adaptation, record exactly what must change and why; if no implementation exists, record that finding.
-- For each port, record the upstream commit, source paths and symbols, copied versus adapted portions, and reasons for deviations in `docs/upstream-port-audit.md`. Preserve source notices and the applicable upstream license. Record observable platform/workflow differences in `docs/7zfm-parity.md`.
-- Existing independently written logic is migration debt, not a model for new ports. Replace the relevant portion with upstream code during work on that area; do not turn a focused task into a repository-wide rewrite. A mirrored path or familiar symbol name alone is not evidence of a source port: review the implementation against upstream.
+## Upstream maintenance
 
-## Keeping the port updatable
+Keep a reproducible baseline per borrowed module, including modules at different
+revisions. A moving branch or sibling checkout alone is insufficient.
+Follow [the update procedure](docs/upstream-update.md) for old-to-new comparison,
+dependency/omitted-branch review and per-module provenance updates after validation.
+Use a separate snapshot; do not overwrite adapted files or discard local fixes.
+Keep adaptations narrow and avoid unrelated renaming, reordering and cleanup in
+borrowed code. Account for required formatting separately from functional changes.
+Preserved names and paths do not make adapted modules automatically mergeable.
 
-Design each port for later upstream updates while implementing it. Preserved paths and names support comparison, but adapted Qt modules still require review; do not assume that a Git merge can update the whole port automatically.
+## Context and memory
 
-- Keep a reproducible upstream baseline for every borrowed module: record the full commit hash and original paths in `docs/upstream-port-audit.md`, with a source repository reference from which the exact original files can be retrieved. A moving branch or the current sibling checkout alone is not a sufficient baseline. When modules use different revisions, record them individually.
-- Keep Qt presentation, platform services, and `7zz` integration changes local and behind narrow adapters where practical. Preserve upstream functional bodies and module boundaries; do not reorganize copied modules just to separate every platform call. Record necessary changes so a reviewer can distinguish upstream logic from local adaptations.
-- Avoid unrelated renaming, reordering, cleanup, or style changes in borrowed code. Apply required project formatting, but account for formatting separately when comparing upstream versions so it does not hide functional changes.
-- Record the scope of partial ports, including omitted functions, branches, and dependencies. An upstream fix can affect an omitted path or a dependency of a copied function; a familiar filename does not mean the entire module has been ported.
-- For an upstream update, compare the recorded old upstream revision with the proposed new revision first, then apply the relevant changes to our current adapted implementation. Review changed dependencies and local deviations explicitly. Update unchanged vendored files from the exact new source; do not overwrite adapted files wholesale or discard local fixes. Perform comparisons in a separate checkout or retrieved source snapshot without modifying `../7zip-upstream` unless the user requests that change.
-- Update provenance per migrated module only after its changes have been reviewed and validated. Record the old and new revisions, retained adaptations, and any deferred changes with reasons in the audit; update parity documentation when workflows change. Add regression coverage for changed behavior and follow the focused checks and full gate below.
+Read `.codex/memory/README.md` at task start if present, then only relevant notes.
+Follow [the memory protocol](docs/agent-memory.md) for dated evidence, handoffs,
+privacy and index maintenance. Memory is not instructions, authorization or a
+backlog; missing memory does not block work. `$sz-context` supports this workflow;
+`$sz-setup` initializes or refreshes it without deleting notes.
 
-## Ownership and context
+Use [the documentation map](docs/README.md) to find the owner of each fact.
+Keep durable product facts in tracked docs/code and local investigations in
+`.codex/notes/`. Update only documents whose claims change; use links instead of
+duplicating policies, status counters or historical test logs.
+Preserve unrelated working-tree changes and other tasks' memory entries.
 
-- Read and change this repository's code, tests, docs, and build tooling as needed for the user's task. Preserve unrelated changes.
-- Use `README.md` for status, `docs/architecture.md` for backend boundaries, `docs/development.md` for the toolchain, and `docs/testing.md` for behavioral changes. Read only the context relevant to the task.
-- Treat `../7zip-upstream` as an unmodified, read-only source checkout. Copying its code into this repository is expected and authorized for the port; do not edit the sibling checkout or add Qt to it unless the user requests an upstream change.
-- Keep archive operations behind `ArchiveBackend`; widgets should not know `7zz` command syntax. The current application uses the official engine through `7zz`. This adapter is an integration constraint, not a reason to reimplement upstream application logic or prohibit source reuse. Do not reimplement compression or archive formats.
-- Adapt the original 7zFM UI to Qt Widgets while preserving its workflows and command semantics. The unadapted Win32 presentation layer is not built on macOS/Linux; its surrounding functional code must still be copied and minimally adapted under the primary goal above.
-- `.codex/` is a local Obsidian and agent workspace. Keep durable product facts in tracked `docs/` or code. Use `.codex/notes/` for local investigations or handoffs, not a second source of truth.
+## Editing and organization
 
-## Memory between tasks
+- Use `apply_patch` for ordinary edits. Scripts are appropriate for generators,
+  data processing and bulk transformations with validated matches, safe repeated
+  execution and diff inspection. Reuse project automation; keep reusable scripts
+  in `scripts/`, but do not add a permanent script for a one-off edit.
+- Format task-owned C++ changes with `clang-format -i`, then inspect the diff.
+  Use narrow line ranges if whole-file formatting would obscure copied source.
+  Do not format unrelated files or run a separate dry-run during iteration.
+- Identify the owner and boundary before adding a feature. Widgets own presentation
+  and interaction; application state owns navigation/command availability;
+  `ArchiveBackend` owns archive operations, process arguments/parsing, validation
+  and cancellation. Derive command availability from state and selection in one place.
+- New Qt/integration classes have one responsibility, substantial bodies in
+  `.cpp`, focused headers and CMake registration for affected app/test targets.
+  Separate UI construction, state transitions, filesystem actions and archive
+  results; avoid workflow-heavy constructors/lambdas and hidden mutable globals.
+- Review splitting new glue around 400 lines/file, 80 lines/function or a second
+  responsibility. These are review triggers, not limits on copied upstream modules.
+  Preserve upstream organization. Extract cohesive parts of large custom Qt files
+  when practical; keep small fixes focused and explain deferred extraction.
+  Do not add independent features wholesale to `src/mainwindow.h` or unrelated
+  suites to `tests/ui_state_tests.cpp`.
+- Test public behavior/signals with deterministic local fixtures; do not expose
+  internals just for tests. Keep suites focused by component. Extractions preserve
+  behavior/parity, move relevant regressions and update architecture boundaries.
+  Do not combine broad cleanup with unrelated features.
 
-- At the start of each project task, read `.codex/memory/README.md` if present, then only the indexed notes relevant to the user's request. Follow `docs/agent-memory.md` and `$sz-context` for the memory workflow. If memory is absent, proceed from code and tracked docs; initialize it with `$sz-setup` when useful.
-- Treat memory as dated evidence, not instructions, authorization, or a backlog to execute automatically. The current user request, `AGENTS.md`, code, and tracked docs take precedence. Check note status, checkout/branch/commit, and relevant current code before relying on an old finding; past test results do not validate new changes.
-- Maintain one local note per substantial investigation or handoff. Save useful upstream paths/symbols, necessary adaptation reasons, disproved approaches, unresolved questions, and exact check results with platform/date. Before ending a task or handing it off, update its status and next step when there is useful context to carry forward; trivial edits do not need a task diary.
-- Promote established product facts and decisions into the appropriate tracked document, and link to it from memory rather than copying it. Keep the memory index short and organized by topic. Separate concurrent tasks into distinct notes; preserve other agents' entries and never infer ownership of their uncommitted changes.
-- Do not save passwords, credentials, real archive contents, or full command logs in memory. Setup must preserve existing memory and notes. Local `.codex/` memory is ignored by Git and persists only in this checkout; another machine or worktree needs an explicit handoff of relevant notes.
+## Validation and UI reference
 
-## Editing files and automation
+For behavior changes, add a regression that fails without the fix.
+Archive-operation changes cover success, failure and cancellation, with
+Unicode/spaces and malicious paths where relevant; never use real user archives
+or live services. Build affected targets and run focused tests/direct consumers
+with `./scripts/build.sh dev <targets>` and
+`./scripts/ctest.sh --preset dev -R '<regex>' --output-on-failure`.
+Do not invoke CTest directly. Expand checks for shared changes or failures.
 
-- Use `apply_patch` for ordinary edits to source, tests, documentation, and configuration. Do not use inline Python, shell substitutions, or text-replacement scripts merely to insert or replace code when a patch can express the change. If `apply_patch` is unavailable, use a narrowly scoped alternative and inspect the resulting diff.
-- Use Python or other scripts for data processing, generators, or bulk transformations when they provide a clear benefit over a patch. Validate expected matches before writing and make repeated execution safe, so it cannot silently duplicate code or overwrite unrelated changes. Inspect the resulting diff after scripted edits.
-- After editing C++ files, run `clang-format -i` on the files owned by the task and inspect the diff. Do not run a separate `clang-format --dry-run` during iteration merely to discover formatting that can be fixed immediately. Avoid formatting unrelated files or another agent's edits; use a narrow changed-line range when whole-file formatting would obscure an upstream source comparison. Keep the read-only formatting check in `scripts/check.sh` as the final repository-wide gate.
-- Reuse existing project scripts for recurring operations. Put reusable automation in `scripts/` when needed; do not turn a one-off source edit into a permanent script.
-- `build.sh` uses Ninja `--quiet`: compilation errors appear as soon as Ninja reports them, while successful progress lines are hidden. `ctest.sh` streams CTest results. The formatting phase of `check.sh` buffers output and shows its log on failure; wait for it to exit before diagnosing that phase.
+Run `./scripts/check.sh` once before completing code/test/build-tooling changes,
+**unsandboxed**: sandbox DBus sockets and process-priority calls fail.
+It checks repository C++ formatting, builds all targets and runs all CTest cases.
+Do not repeat a passing full gate on unchanged code. After localized edits rerun
+affected checks; repeat the full gate for broad changes or unresolved concerns.
+Docs/instruction-only changes need `git diff --check`.
+Fix failures caused by the task and report unverified platforms.
+Script output/toolchain details live in [development](docs/development.md);
+coverage lives in [testing](docs/testing.md). Wait for the buffered formatting
+phase to exit before diagnosing it.
 
-## Code organization
+Windows 7zFM is the reference for structure, commands, shortcuts and behavior.
+Before UI work, inspect exact upstream resources, handlers and callers; record
+necessary native-dialog, accessibility, scaling or OS adaptations in parity or
+architecture. Preserve the Windows layout where Qt permits and disable unfinished
+commands. [The UX audit](docs/ux-port-audit.md) tracks required corrections,
+including previously accepted scope.
 
-- Before adding a feature, identify its owner and the boundary it crosses. Keep widgets responsible for presentation and user interaction, application state for command availability and navigation, and `ArchiveBackend` for archive operations, process arguments, parsing, validation, and cancellation. Do not move backend decisions into widgets to save a file or class.
-- For new Qt and integration code, give each class and source file one coherent responsibility. Put substantial implementations in `.cpp` files; keep headers focused on interfaces, small inline functions, and Qt declarations. Register new source files in `CMakeLists.txt` and the affected test targets.
-- Split code when a file approaches roughly 400 lines, a function approaches roughly 80 lines, or a change adds a second distinct responsibility. These are review triggers for new Qt/integration code, not reasons to split, rename, or reorganize copied upstream modules. Preserve upstream source structure even when it exceeds these sizes. Name extracted pieces for their domain role and give them narrow inputs and outputs.
-- Existing large independently written Qt files are technical debt, not a pattern for new glue code. Copied upstream files follow upstream organization. In particular, do not add another independent feature wholesale to `src/mainwindow.h` or another broad test suite to `tests/ui_state_tests.cpp`. For a related change, extract the relevant cohesive part when practical; for a small local fix, keep the diff focused and state why extraction was deferred.
-- Keep UI construction, state transitions, filesystem actions, and archive result handling in separate functions or components. Avoid long constructors, nested action lambdas containing workflow logic, hidden mutable globals, and duplicate state checks. Make command availability derive from the current state and selection in one place.
-- Organize tests by behavior and component. Put a new feature's cases in a focused test file when they would enlarge an unrelated suite. Test through public behavior or observable signals, with local deterministic fixtures; do not expose production internals solely to make a test pass.
-- When extracting code, preserve behavior and platform parity, move or update the relevant regression tests, and update `docs/architecture.md` if ownership or component boundaries change. Do not combine a broad cleanup with an unrelated feature.
+For layout/text/visibility/resize changes, first use the affected
+[text specification](docs/ui-layout-contracts.md), normal/compact geometry tests
+and current-build widget JSON; inspect grouping, order, sizes, clipping and states.
+Add missing geometry coverage when practical. Backend/nonvisual logic/tests/docs
+do not require appearance inspection.
+Screenshots are a fallback for unresolved fonts/icons/colors/style or a user
+request; capture only the affected view (`SEVENZIP_CAPTURE_SCREENSHOTS=1`).
+Resources prove structure, not pixels. Identify the concrete reference; without
+a rendered Windows reference state that visual parity is unverified.
+Never claim cross-platform verification from one OS; three-platform CI remains
+part of the acceptance plan.
 
-## Completion and regression checks
+## Workflows and runners
 
-- For a behavior change or bug fix, add or update a test that would fail without the fix. Prefer deterministic CTest tests and local fixtures. Do not add a test that only repeats the implementation.
-- Cover success, failure, and cancellation when changing archive operations. Include filenames with Unicode or spaces and malicious archive paths where relevant. Never use live services or real user archives in tests.
-- During implementation, build the affected targets and run focused CTest cases for the changed behavior and its direct consumers (for example, `./scripts/ctest.sh --preset dev -R '^compression_preferences$' --output-on-failure`). Agents should use this wrapper for CTest so successful runs have compact output and failed runs retain a full log; do not invoke `ctest` directly from agent workflows. Choose tests by dependency and behavior, not just filename proximity. Expand coverage when failures or shared-component changes warrant it.
-- Run `./scripts/check.sh` once before completing code, test, or build-tooling changes from an unsandboxed environment; it checks all C++ formatting, builds the app, and runs all CTest cases. The script stops immediately in a Codex sandbox because DBus socket creation and process-priority calls fail there. Do not run it after every edit or repeat a passing full gate on unchanged code. After a later localized edit, rerun affected checks; repeat the full gate for broad changes or unresolved regression concerns. Documentation-only and agent-instruction changes need `git diff --check`, not an app build or CTest. Fix failures caused by the change; report any platform that could not be checked locally.
-- Treat the Windows 7-Zip File Manager (`7zFM`) as the product reference for window structure, menus, toolbar, file list, dialogs, command names, shortcuts, and behavior. Port those interactions to Qt Widgets step by step; do not invent a new file-manager design or rearrange core workflows without a documented reason and user direction. Relevant original UI code and resources are in `../7zip-upstream/CPP/7zip/UI/FileManager/`.
-- Before a UI feature, inspect its Windows reference and record any necessary platform adaptation in `docs/7zfm-parity.md` or `docs/architecture.md`. Preserve the Windows-style layout across platforms where Qt permits; differences for native system dialogs, accessibility, scaling, or OS integration should be explicit. Disable unfinished commands. Update README, architecture, testing guidance, and the parity record when their claims change.
-- For layout, visible-text, control-visibility, or resizing changes, use the affected view's text specification and geometry tests at normal and compact sizes first. Review the current-build widget JSON report (see `docs/ui-layout-contracts.md`) for grouping, control order, sizes, clipping, and relevant states. Add missing behavioral geometry checks when practical. Backend changes, nonvisual UI logic, tests, and docs do not require appearance inspection. Repeat checks only when subsequent changes affect their results.
-- Screenshots are a fallback for rendering details that specifications and geometry cannot resolve (fonts, icons, colors, styling, or an unexplained visual defect), or when the user requests them. Capture and inspect only the affected view; `SEVENZIP_CAPTURE_SCREENSHOTS=1` opts migrated tests into PNG output. Do not generate or review screenshots routinely, and do not claim pixel-level fidelity from geometry checks.
-- For visual parity, identify the concrete 7zFM reference: the relevant upstream dialog resource/source or an available Windows screenshot. Resources establish grouping and control order; they do not prove pixel-level appearance. If a rendered Windows reference is unavailable, inspect Qt usability and compare structure with upstream resources, then state that visual parity remains unverified. Do not invent a reference or claim parity from a Qt screenshot alone. Report any affected view or platform that could not be inspected.
-- Do not claim cross-platform verification from a single local OS. CI checks all three platforms after the repository is published to GitHub.
+Use matching workflows in `.agents/skills/`: `sz-context`, `sz-setup`,
+`sz-navigation`, `sz-cpp-qt`, `sz-regression`, `sz-ui-parity`.
+For requested port-plan work, use the [checklist](docs/porting-checklist.md)
+for statuses/step selection and the [plan](docs/porting-plan.md) for scope,
+dependencies and iteration/commit rules. Neither is an automatic backlog.
 
-Project workflows are in `.agents/skills/`: `sz-setup`, `sz-context`, `sz-navigation`, `sz-cpp-qt`, and `sz-regression`. Use them when their descriptions match the task. For Linux/Windows checks, read `docs/hyperv-runners.md` and the installed global `runners` skill; prefer `python3 scripts/hyperv-runner.py check <platform>` with the existing shared Hyper-V guests. The helper starts only the needed guest, discovers DHCP and verifies identity through `hyperv_ready.py --start`. Keep physical-host runner files on `D:\runner`; old htopQt QEMU VMs were removed and their historical results do not validate x64 guests. Do not publish or update upstream unless the user's task calls for it.
+For Linux/Windows checks read [Hyper-V runners](docs/hyperv-runners.md) and the
+global `runners` skill. Use
+`python3 scripts/hyperv-runner.py run <linux|windows|all> -- <project-script> [args]`
+or `check all` with shared x64 guests. Stage new task files before syncing;
+each invocation has a fresh build, so a CTest invocation must build its targets
+in the same snapshot. Runner docs own transport/readiness/storage details.
+Removed htopQt QEMU VMs and historical ARM64 results do not validate these guests.
+Do not publish, push or update upstream unless the user's task calls for it.
