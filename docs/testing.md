@@ -1,5 +1,15 @@
 # Regression strategy
 
+`options_integration` covers the six-page Options container as a whole using
+public controls and an isolated association service. Cancel, OK and Apply then
+Cancel verify committed/pending values, language, menu, editor, work folder and
+list settings, association calls, callback counts and restart. Keyboard page
+switching preserves pending input and keeps focus reachable in the active page.
+`options_dialog` verifies the source initial System page and exact page order,
+memory validation and Settings/Folders geometry. `options_window` verifies real
+refresh of both panels and selection retention. Run these with their page,
+language and Help consumers through `scripts/check-options-integration.sh`.
+
 `menu_policy` connects the default production Menu page's Apply/Cancel to the
 original context generator and invocation owner on all platforms. Four cascade/
 icon combinations verify observed menu flags and extraction arguments with

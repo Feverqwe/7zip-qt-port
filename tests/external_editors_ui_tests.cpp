@@ -144,6 +144,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         navigate(window, fixture.path());
         window.show();
         window.activateWindow();
+        QTRY_COMPARE(QApplication::activeWindow(), &window);
         QTRY_VERIFY(filesystemRow(window, QStringLiteral("второй файл.txt")) >= 0);
         auto *view = table(window);
         view->selectAll();
@@ -151,8 +152,10 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         view->setCurrentCell(focused, 0, QItemSelectionModel::NoUpdate);
         view->setFocus();
         QTRY_VERIFY(view->hasFocus());
-        QTRY_VERIFY(action(window, "editFileAction")->isEnabled());
+        QTRY_VERIFY(action(window, "viewFileAction")->isEnabled());
+        QSignalSpy viewed(action(window, "viewFileAction"), &QAction::triggered);
         QTest::keyClick(view, Qt::Key_F3);
+        QCOMPARE(viewed.count(), 1);
         QTRY_COMPARE(readArguments(viewerOutput), QStringList({second}));
         QTest::keyClick(view, Qt::Key_F4);
         QTRY_COMPARE(readArguments(editorOutput), QStringList({second}));

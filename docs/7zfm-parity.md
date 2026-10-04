@@ -1,5 +1,19 @@
 # Сверка с Windows 7zFM
 
+## P1-12.2 — Options container (принят, 2026-10-04)
+
+Исходный OptionsDialog/MyPropertySheet открывает System, а Qt выбирал Settings.
+Стартовая вкладка исправлена; порядок и source IDs шести страниц сохранены.
+Общий Apply/OK/Cancel/restart scenario проверяет pending/committed значения,
+ассоциации через изолированный сервис, callbacks и посторонние настройки.
+Реальный MainWindow обновляет обе панели с сохранением выделения. Ctrl+Tab
+использует обычный Qt focus cycle: Windows может посетить footer перед полями.
+F3/F4 проверены с ожиданием активного окна и сигнала действия, а затем аргументов
+реального helper-процесса. 72 current EN/RU normal/compact page JSON трёх ОС
+просмотрены без clipping. macOS full234/234 PASS96.26s; Windows59cf7420 8/8
+PASS21.05s; Linux4b9f3d65 8/8 PASS2.91s до локальных test-only corrections.
+Pixel correspondence и полная строка Options в UX audit остаются открыты.
+
 ## P2-09.3 — Menu integration (принят, 2026-10-04)
 
 Восстановлены исходные имена adjacent shell DLL. Cascaded/Icons/ElimDup и

@@ -23,9 +23,22 @@ QString qtPath(const FString &path) { return QString::fromWCharArray(fs2us(path)
 class OptionsDialogTests : public QObject {
     Q_OBJECT
   private slots:
+    void sourceInitialPageAndPageOrder() {
+        QTemporaryDir fixture;
+        QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
+        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
+        QCOMPARE(pages->currentIndex(), 0);
+        const unsigned sourceIDs[] = {2200, 2300, 2400, 2103, 2500, 2101};
+        QCOMPARE(pages->count(), 6);
+        for (int i = 0; i < pages->count(); ++i) {
+            QVERIFY(pages->isTabEnabled(i));
+            QCOMPARE(pages->widget(i)->property("sourcePageID").toUInt(), sourceIDs[i]);
+        }
+    }
     void settingsGeometryAndKeyboardSpin() {
         QTemporaryDir fixture;
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
+        dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(4);
         dialog.show();
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);

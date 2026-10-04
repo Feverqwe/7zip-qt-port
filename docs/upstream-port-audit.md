@@ -1,5 +1,54 @@
 # Ревизия происхождения кода 7zFM
 
+## P1-12.2 — six-page Options integration accepted (2026-10-04)
+
+Prerequisites P1-13/P2-09 are accepted in commit6864399. Inspected full original
+OptionsDialog.cpp::OptionsDialog and its Windows/Control/PropertyPage.cpp::
+MyPropertySheet caller dependency at https://github.com/ip7z/7zip.git,
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17, plus all current Qt container Apply/
+accept/reject/changed-state consumers. Both native character variants start on
+page0; the Qt container incorrectly selected Settings4. A public regression
+fails before the fix (actual4/expected0); the narrow presentation adaptation
+now initially selects System, preserving page IDs and source order. No new
+functional page algorithm or copied dependency is introduced.
+
+New focused options_integration drives all six pages through the public controls
+and Apply/OK/Cancel/restart. It checks discarded versus committed menu/editor/
+work-folder/list/language values, explicit System association calls using an
+isolated injected service, notification/callback counts and unrelated settings.
+Ctrl+Tab/Shift+Ctrl+Tab preserves pending input, Qt focuses its tab bar, and the
+Tab cycle reaches the visible page. This uses normal Qt keyboard services without a custom
+focus-restoration algorithm. Existing options_window verifies actual refresh of
+both panels while preserving their selection; source invalid memory input,
+association failures, Help and page geometry remain in direct-consumer suites.
+
+macOS focused8/8 passes in2.63s. Twenty-four current EN/RU normal/compact page
+reports reviewed: all visible named controls fully exposed; page order, groups,
+input rows and persistent footer preserved. Required unsandboxed macOS full gate
+passes formatting/all-build and234/234 CTest in96.26s. Snapshot4b9f3d65 Linux
+passes8/8 in2.91s; Windows passes6/8 in34.43s, failing the new single-Tab focus
+expectation and existing external_editors_ui F3 helper-output expectation.
+Qt's Windows focus cycle can visit the footer before the page; the fixture now
+checks a bounded visible Tab cycle reaching the active page, preserving pending
+input throughout. Snapshot71c7a6c5 then passes7/8 in34.65s, with only the existing
+F3 helper-output expectation failing. The external-view fixture now waits for
+the active MainWindow and View action readiness, asserts the QAction's F3 signal,
+then observes the real helper arguments. Final Windows59cf7420 passes8/8 in21.05s
+with this fixture; actual F3/F4 consumers pass without a production process-launch
+change. These results supersede both failing intermediate snapshots. Final
+macOS localized fixture checks pass2/2 in1.01s after the passing full gate;
+Linux8/8 above verifies the same production change and predates only those
+localized test corrections.
+
+This accepts P1-12.2 and P1-12 together with previously accepted source page and
+working-directory consumers. Current Windows, Linux and macOS geometry reports
+cover72 EN/RU normal/compact page states, all visible named controls fully
+exposed. Temp-directory failure/cleanup, invalid memory and association
+configuration, source Apply order and both-panel refresh remain covered by direct
+consumers; native Menu registration is separately verified by P2-09.3. Baseline
+verifies409 exact/195 adapted/3 local paths. Windows rendered pixel correspondence
+and the global UX audit remain open. Next mandatory available component is P2-10.
+
 ## P2-09.3 — Menu integration accepted (2026-10-04)
 
 P2-09.2 is committed as329e54f. Current work restores native MenuPage module

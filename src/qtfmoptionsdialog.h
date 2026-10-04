@@ -13,7 +13,7 @@ class CMenuPage;
 class CLangPage;
 class QDialogButtonBox;
 
-// Qt property-sheet services for the partial native OptionsDialog container.
+// Qt property-sheet services for the native six-page OptionsDialog container.
 class QtFmOptionsDialog final : public QDialog {
     Q_OBJECT
     CEditPage *_editPage;

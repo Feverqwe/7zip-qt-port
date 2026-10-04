@@ -761,9 +761,14 @@ pages, extraction-memory label and checkbox/edit/arrows/RAM row, then OK/Cancel.
 Alternative selection is enabled and persists the source mark mode.
 The page has no heading absent from the resource.
 Large pages are capability-gated Windows controls; source extraction-memory
-edit validation preserves raw input until Apply. The partial
-six-page property sheet has all six pages enabled after P2-08;
-this does not establish full OptionsDialog parity.
+edit validation preserves raw input until Apply. The six-page property sheet
+keeps System/Menu/Folders/Edit/Settings/Language order. Original OptionsDialog
+and Windows/Control/PropertyPage.cpp set the initial page to System (nStartPage0);
+the Qt container now follows that state. Ctrl+Tab/Shift+Ctrl+Tab move between
+pages using Qt's tab-bar focus; the Tab cycle reaches the visible page and may
+visit the footer first on Windows. Pending input
+survives switching; unavailable native capabilities remain disabled within pages.
+This establishes structure and interaction, not pixel correspondence.
 Folders follows pinned FoldersPage2.rc: working-folder label, system/current/
 specified radios, path/Browse row, removable-only checkbox. Path and Browse are
 enabled only for specified mode. POSIX removable-only is disabled until the
@@ -771,8 +776,9 @@ platform owner supplies drive-type support. `options_dialog` checks640×390 and
 520×380 JSON/geometry, native mode order and separated footer. The height grows
 from350 because Settings now has minimum361 with its additional source controls.
 `options_dialog` also checks Settings memory row grouping and input focus after
-invalid Apply, writes options-settings JSON at both sizes. Full six-page
-integration remains P1-12.2.
+invalid Apply, writes options-settings JSON at both sizes. `options_integration`
+checks all-six-page Apply/OK/Cancel/restart and visible keyboard focus;
+P1-12.2 evidence is recorded in the port audit.
 `fm_settings` checks unclipped labels, order and separated footer at 460×390
 and 340×390, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
@@ -781,7 +787,7 @@ Language reference: pinned `LangPage.rc`, `LangPage.cpp` and original26.03
 `Lang/en.ttt`/`Lang/ru.txt` (asset baseline in resources/7zip/provenance.json).
 The page keeps language label, combo and read-only scrollable native metadata
 report in source order. `language` checks600×320/480×280; `language_ui` writes
-`options-language-*-*.json` for all five available Options pages at640×390 and
+`options-language-*-*.json` for the other five Options pages at640×390 and
 520×380 in English/Russian, verifies bounds, checkbox widths and wrapped label
 height. Reports reviewed2026-10-01 on macOS: largest shell-bitness RU caption
 391 px fits476 px, memory label wraps within31 px, editor fields retain input.

@@ -1962,6 +1962,11 @@ if(BUILD_TESTING)
     target_include_directories(options_dialog_tests PRIVATE src tests)
     target_link_libraries(options_dialog_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME options_dialog COMMAND options_dialog_tests -silent)
+    qt_add_executable(options_integration_tests tests/options_integration_tests.cpp)
+    target_include_directories(options_integration_tests PRIVATE src)
+    target_link_libraries(options_integration_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME options_integration COMMAND options_integration_tests -silent)
+    set_tests_properties(options_integration PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     set_tests_properties(options_dialog PROPERTIES TIMEOUT 60
         RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")

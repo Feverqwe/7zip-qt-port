@@ -1,6 +1,6 @@
 // Adapted from 7-Zip OptionsDialog.cpp (0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Partial property-sheet container: native page order; unavailable pages disabled.
+// Qt property-sheet container: original page order and initial System page.
 #include "7zip/UI/FileManager/resource.h"
 #include "EditPage.h"
 #include "FoldersPage.h"
@@ -42,7 +42,6 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
         associations = CreateQtAssociationServices(CreateNativeAssociationPlatform());
     _systemPage = new CSystemPage(manager, std::move(associations), pages);
     // OptionsDialog's pageIDs/pagePointers, retaining source order and IDs.
-    // Missing pages and shell consumers remain mandatory P1-14/P2-08/P2-09.
     const unsigned pageIDs[] = {2200, 2300, 2400, 2103, 2500, 2101};
     QWidget *pagePointers[] = {_systemPage, _menuPage,     _foldersPage,
                                _editPage,   _settingsPage, _langPage};
@@ -53,7 +52,8 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
         pages->addTab(page, QtLangText(pageIDs[i], titles[i]));
         pages->setTabEnabled(int(i), pagePointers[i] != nullptr);
     }
-    pages->setCurrentWidget(_settingsPage);
+    // MyPropertySheet sets nStartPage = 0 for both native character variants.
+    pages->setCurrentIndex(0);
     layout->addWidget(pages);
     _buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
                                         QDialogButtonBox::Apply | QDialogButtonBox::Help,

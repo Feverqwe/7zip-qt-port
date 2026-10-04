@@ -893,12 +893,14 @@ Address signals are disconnected before window teardown.
 
 ## Dialogs and preferences
 
-`QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the partial native
-six-page property sheet. All six pages are available; System delegates registration
-to the native services described above. CMenuPage preserves source list/state/apply bodies;
-only Zone propagation has a current consumer, through PanelCopy, Agent and the
-Windows ArchiveExtractCallback. Shell controls are disabled until P2-09 ports
-QueryContextMenu and registration. They do not alter the FM File/context menu.
+`QtFmOptionsDialog` in mirrored OptionsDialog.cpp supplies the native six-page
+property sheet in source order, initially showing System. All six pages are
+available; System delegates registration to the native services described above.
+CMenuPage preserves source list/state/apply bodies; policy flags feed the original
+Explorer QueryContextMenu/InvokeCommand for FM menus and the Windows shell DLL.
+Zone propagation goes through PanelCopy, Agent and Windows ArchiveExtractCallback.
+Native registration is enabled only when its adjacent Windows DLL exists;
+Unix keeps applicable in-app policies while disabling Windows-only controls.
 CEditPage retains source modified-state and Browse/OnApply,
 while CSettingsPage can be embedded or shown standalone. Apply/OK commit source
 FM INI values; Cancel discards only pending changes. Source CSettingsPage owns RAM
@@ -908,9 +910,9 @@ owns NWorkDir::CInfo; source WorkDir in sevenzip_filesystem serves both FM updat
 temporary files and the UpdateGUI Create working-dir block, transported via `-w`.
 `settingsdialog.h` aliases the container. `MainWindow` applies committed list flags
 and source RefreshAllPanels immediately and supplies
-filesystem icons through `QFileIconProvider`. `PropertiesDialog` supplies the
-current operated indices to its bound `CPanel::Properties`, which owns enumeration
-and totals through the source folder interface.
+filesystem icons through `QFileIconProvider`. `CPanel::Properties` owns enumeration
+and totals through the source folder interface; its Qt presentation service
+receives the source-generated property rows.
 CLangPage owns the source language list/info/apply state. LangUtils is the native
 CLang lookup/reload owner, with source registry helpers on the explicit FM INI
 adapter. Immutable English fallback comes from source STRINGTABLE/en.ttt; bundled
