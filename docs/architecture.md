@@ -21,6 +21,12 @@ FilesystemFolderLoader likewise keeps an atomic count, polled by the GUI scanner
 and delivered once at completion before folder ownership. Source cancellation
 checks still execute for every native callback. These are external-worker Qt
 transports; source CProgressSync/CProgressDialog remain the dialog owners.
+Filesystem Copy/Move and Split/Combine presentation feeds that existing
+CProgressSync directly from worker callbacks. Only its mutex-protected source
+state and the callback's local byte accumulator are accessed on the worker;
+the original200ms dialog timer owns widget updates. Result and close paths join
+before releasing the dialog. Public native-worker signals remain available for
+direct cancellation consumers, without per-chunk queued MainWindow updates.
 
 Core sections: [repository boundary](#repository-boundary),
 [window/panel state](#window-and-panel-state),

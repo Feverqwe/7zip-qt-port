@@ -1,5 +1,43 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
+
+Reviewed original CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile,
+PanelCopy.cpp worker/CopyTo callers, ExtractCallback.cpp::CExtractCallbackImp::
+SetCompleted, PanelSplitFile.cpp::CThreadSplit/Combine::ProcessVirt and
+ProgressDialog2.cpp::CProgressSync/UpdateStatInfo/OnTimer. Repository
+https://github.com/ip7z/7zip.git at0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17;
+current MainWindow transfer/split wiring, worker callbacks, result handlers and
+quiesce/close ownership were inspected. No borrowed body or dependency changes.
+
+The former Qt connections queued each native chunk/path to MainWindow before
+updating source CProgressSync. Public64MiB Copy/Split/Combine fixtures fail all
+three rows: after joining the worker without GUI pumping, the actual registered
+source timer shows0 processed bytes instead of65536KB. The adapter now connects
+directly to the existing source mutex snapshot, capturing only that stable
+native state and a worker-local byte accumulator. It never accesses widgets or
+mutable window state on the worker. Terminal handlers explicitly join before
+closing the progress dialog; the existing close path disconnects/cancels/joins
+before release. Public worker signals/checkpoints remain unchanged, including
+direct cancellation subscribers. No new progress implementation or native copy/
+split/combine algorithm. The fixture also counts drained MainWindow MetaCalls,
+checks streamingSHA256 bytes and cleanup. Three additional public close-during-
+callback rows verify cancellation, joined worker/dialog destruction and draining
+late events without published output. Focused macOS regression passes all8 Qt
+cases; the unsandboxed full gate passes formatting, all targets and238/238 tests
+in106.24s. Snapshot20261004T215459Z-d5e791ae passes the eight direct consumers
+on Windows11 x64 in54.79s and Linux x64 in15.63s. Retrieved actual LastTest logs
+verify zero failed/skipped cases, including all8 worker-window cases,34 operation,
+21 volume-workflow and26 volume-operation cases on both platforms. File-transfer
+has18 Windows/19 Linux cases because its POSIX-link case is not compiled on
+Windows. No UI layout/text/resource change or new borrowed module.
+
+This accepts P2-10.4 and the integrated P2-10 parent: preparation/native-worker
+delivery (.1), full large-list projection/navigation (.2), volume cancellation/
+restart (.3) and filesystem/split consumers (.4) are all verified on three OS.
+Their source baselines remain409 exact/195 adapted/3 local. Global rendered UX,
+release checks and final acceptance retain their P3 owners; P2-11 is next.
+
 ## P2-10.3 — bounded volume progress (accepted, 2026-10-05)
 
 Reviewed original full CPP/7zip/Compress/CopyCoder.cpp::CCopyCoder::Code/CopyStream,

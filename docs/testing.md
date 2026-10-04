@@ -1,5 +1,20 @@
 # Regression strategy
 
+`worker_window_progress` exercises public MainWindow Copy, Split and Combine
+with64MiB Unicode/space fixtures. It joins each discovered public QThread without
+pumping GUI events, delivers the registered200ms source dialog timer and requires
+the visible processed-byte label to show65536KB. The former queued connections
+show0 in all three cases. Draining MainWindow MetaCalls permits at most four
+deliveries rather than one per native chunk. Source/output bytes are checked
+by streamingSHA256, command readiness and private-stage cleanup remain required.
+The test uses existing Qt timer/control APIs and adds no internal test access.
+Its three close rows hold a direct native callback until cancellation and destroy
+the window. Destruction must join before deleting worker/dialog, discard queued
+completion and leave source bytes with no staged or published destination.
+The responsiveness script's `files` scope runs these public scenarios with
+Copy/Move, Split/Combine, EN/RU errors/cancellation and application lifecycle
+consumers, preserving each native worker's direct cancellation signals.
+
 `large_list_window` measures complete MainWindow projection of 4096 native disk
 or archive items, with Unicode/spaces, at 980×620 and 640×480. A public model
 signal starts a 1ms GUI heartbeat; the first turn must occur before all rows are

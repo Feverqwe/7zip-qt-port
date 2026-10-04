@@ -2376,6 +2376,15 @@ if(BUILD_TESTING)
     # Timing the real GUI heartbeat must not compete with other CTest processes.
     set_tests_properties(large_list_window PROPERTIES TIMEOUT 240 RUN_SERIAL TRUE ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/large-list-window.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    get_target_property(worker_window_progress_sources ui_copy_same_tests SOURCES)
+    list(REMOVE_ITEM worker_window_progress_sources tests/ui_copy_same_tests.cpp)
+    get_target_property(worker_window_progress_libraries ui_copy_same_tests LINK_LIBRARIES)
+    qt_add_executable(worker_window_progress_tests tests/worker_window_progress_tests.cpp ${worker_window_progress_sources})
+    target_include_directories(worker_window_progress_tests PRIVATE src tests)
+    target_link_libraries(worker_window_progress_tests PRIVATE ${worker_window_progress_libraries})
+    add_test(NAME worker_window_progress COMMAND worker_window_progress_tests -silent)
+    set_tests_properties(worker_window_progress PROPERTIES TIMEOUT 120 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/worker-window-progress.ini")
 endif()
 
 # Apply startup isolation after registering every consumer, including Language.
@@ -2436,7 +2445,7 @@ if(BUILD_TESTING AND WIN32)
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key ui_navigation ui_archive_states ui_archive_volumes
-            large_list_window
+            large_list_window worker_window_progress
             progress_dialog language_dialog
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)

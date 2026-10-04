@@ -128,14 +128,18 @@ void MainWindow::startVolume(VolumeOperation::Mode mode) {
         paths.first(), [operation = volumeOperation_] { operation->cancel(); });
     progress_->Sync.Set_NumBytesTotal(
         quint64(mode == VolumeOperation::Mode::Split ? source.size() : parts.totalSize));
-    connect(volumeOperation_, &VolumeOperation::advanced, this, [this](qint64 bytes) {
-        if (progress_)
-            progress_->Sync.Set_NumBytesCur(quint64(qMax<qint64>(0, bytes)));
-    });
+    // Source CThreadSplit/Combine update this mutex snapshot directly. Close
+    // joins the worker before releasing the dialog; its timer owns presentation.
+    CProgressSync *sync = &progress_->Sync;
+    connect(
+        volumeOperation_, &VolumeOperation::advanced, this,
+        [sync](qint64 bytes) { sync->Set_NumBytesCur(quint64(qMax<qint64>(0, bytes))); },
+        Qt::DirectConnection);
     connect(volumeOperation_, &VolumeOperation::result, this,
             [this, operation = volumeOperation_](bool success, const QString &message) {
                 if (app_.QtOperations().closed())
                     return;
+                operation->wait();
                 if (!success && !operation->isCanceled() && progress_)
                     progress_->Sync.FinalMessage.ErrorMessage.Message = ToUString(message);
                 closeProgressDialog(true);

@@ -72,24 +72,27 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 overwriteDialog_ = nullptr;
                 operation->submitOverwriteAnswer(answer);
             });
-    fileTransferCompletedBytes_ = 0;
     beginWorkerProgress(QtLangText(move ? IDS_MOVING : IDS_COPYING), destination,
                         [operation = fileTransfer_] { operation->cancel(); });
-    connect(fileTransfer_, &FileTransferOperation::currentFile, this, [this](const QString &path) {
-        if (app_.QtOperations().closed())
-            return;
-        if (progress_)
-            progress_->Sync.Set_FilePath(path.toStdWString().c_str());
-    });
-    connect(fileTransfer_, &FileTransferOperation::advanced, this, [this](qint64 bytes) {
-        fileTransferCompletedBytes_ += quint64(qMax<qint64>(0, bytes));
-        if (progress_)
-            progress_->Sync.Set_NumBytesCur(fileTransferCompletedBytes_);
-    });
+    // The source mutex snapshot is worker-safe. Completion or close joins the
+    // worker before releasing this dialog; no QWidget/MainWindow state is read.
+    CProgressSync *sync = &progress_->Sync;
+    connect(
+        fileTransfer_, &FileTransferOperation::currentFile, this,
+        [sync](const QString &path) { sync->Set_FilePath(path.toStdWString().c_str()); },
+        Qt::DirectConnection);
+    connect(
+        fileTransfer_, &FileTransferOperation::advanced, this,
+        [sync, completed = UInt64(0)](qint64 bytes) mutable {
+            completed += quint64(qMax<qint64>(0, bytes));
+            sync->Set_NumBytesCur(completed);
+        },
+        Qt::DirectConnection);
     connect(fileTransfer_, &FileTransferOperation::result, this,
             [this, operation](bool success, const QString &message) {
                 if (app_.QtOperations().closed())
                     return;
+                operation->wait();
                 if (!success &&
                     operation->resultKind() != FileTransferOperation::ResultKind::Canceled &&
                     progress_)
