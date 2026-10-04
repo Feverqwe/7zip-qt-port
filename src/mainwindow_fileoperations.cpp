@@ -284,7 +284,7 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
         if (result == S_FALSE || result == E_ABORT)
             return;
         renderBoundFolder();
-        app_.GetFocusedPanel().RefreshListCtrl(selection);
+        restoreListSelection(selection);
         if (result != S_OK)
             QMessageBox::warning(this, QStringLiteral("7-Zip"),
                                  QtLocalText("Could not delete items from the archive.",

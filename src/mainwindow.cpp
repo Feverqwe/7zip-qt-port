@@ -104,7 +104,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
                 if (loaded != S_OK)
                     return loaded;
                 renderBoundFolder();
-                app_.Panels[index].RefreshListCtrl(selection);
+                restoreListSelection(selection);
                 return S_OK;
             }
             if (state_ != State::Filesystem)
@@ -173,6 +173,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
 }
 
 void MainWindow::connectFilesystemScanner() {
+    listProjection_ = new QtFolderProjection(this);
     filesystemScanner_ = new FilesystemScanner(this);
     connect(filesystemScanner_, &FilesystemScanner::folderReady, this,
             [this](IFolderFolder *folder) {
@@ -208,11 +209,8 @@ void MainWindow::connectFilesystemScanner() {
             return;
         QtAppOperationState::CallScope call(app_.QtOperations());
         scanningDisk_ = false;
-        table_->setSortingEnabled(true);
-        applySortMode();
-        if (scanSelectedState_)
-            app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
-        scanSelectedState_.reset();
+        applySortMode(true);
+        completeListSelection();
         restoreAutoRefreshViewport();
         setState(State::Filesystem);
         statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
@@ -223,6 +221,7 @@ void MainWindow::connectFilesystemScanner() {
         QtAppOperationState::CallScope call(app_.QtOperations());
         scanningDisk_ = false;
         scanSelectedState_.reset();
+        scanSelectedPaths_.reset();
         autoRefreshTopPath_.clear();
         autoRefreshScrollValue_ = -1;
         table_->clearSelection();

@@ -11,6 +11,7 @@
 #include "filesystemscanner.h"
 #include "filetable.h"
 #include "filetransferoperation.h"
+#include "qtfolderprojection.h"
 #include "settingsdialog.h"
 #include "volumeoperations.h"
 
@@ -163,7 +164,7 @@ class MainWindow : public QMainWindow {
     void startVolume(VolumeOperation::Mode mode);
     void showItemContextMenu(const QPoint &globalPos);
     void setSortMode(SortMode mode);
-    void applySortMode();
+    void applySortMode(bool enableSorting = false);
     static QIcon toolbarIcon(int kind);
     static QString toolbarSettingsPath();
     void recordVisitedPath(const QString &path);
@@ -188,7 +189,10 @@ class MainWindow : public QMainWindow {
     void updateParentEntry();
     QStringList selectedPaths() const;
     void selectPaths(const QStringList &paths);
+    void completeListSelection();
     void refreshCurrent(const CSelectedState *preserved = nullptr);
+    void startFilesystemListing(bool sourceAlreadyBound);
+    void restoreListSelection(const CSelectedState &selection);
     struct FilesystemSignature;
     void pollAutoRefresh();
     void restoreAutoRefreshViewport();
@@ -269,6 +273,8 @@ class MainWindow : public QMainWindow {
     bool flatDisk_ = false;
     bool flatArchive_ = false;
     bool scanningDisk_ = false;
+    bool scanningArchive_ = false;
+    QtFolderProjection *listProjection_ = nullptr;
     struct FilesystemSignature {
         QDateTime modified;
         QDateTime metadataChanged;
@@ -310,6 +316,8 @@ class MainWindow : public QMainWindow {
         QString autoRefreshTopPath;
         int autoRefreshScrollValue = -1;
         bool needsRescan = false;
+        std::optional<CSelectedState> pendingSelection;
+        std::optional<QStringList> pendingSelectedPaths;
     };
     std::array<PanelUiState, 2> panelUi_;
     QSplitter *panelSplitter_ = nullptr;
@@ -321,6 +329,7 @@ class MainWindow : public QMainWindow {
     QTimer *autoRefreshTimer_ = nullptr;
     FilesystemScanner *filesystemScanner_ = nullptr;
     std::optional<CSelectedState> scanSelectedState_;
+    std::optional<QStringList> scanSelectedPaths_;
     int viewMode_ = 3;
     State previousState_ = State::Filesystem;
     bool creating_ = false;

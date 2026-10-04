@@ -15,7 +15,7 @@ class FilesystemScanner : public QObject {
     explicit FilesystemScanner(QObject *parent = nullptr);
     ~FilesystemScanner() override;
 
-    void start(const QString &directory);
+    void start(const QString &directory, bool flat = true);
     void cancel();
     void cancelAndWait();
     bool isRunning() const;

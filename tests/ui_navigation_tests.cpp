@@ -65,7 +65,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         backend.queueList(entries);
         QVERIFY(
             QMetaObject::invokeMethod(combo, "activated", Qt::DirectConnection, Q_ARG(int, index)));
-        QCOMPARE(backend.lastArchive, archivePath);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), archivePath);
         QCOMPARE(address->text(), location);
         QCOMPARE(table(window)->rowCount(), 1);
         QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("file.txt"));
@@ -74,7 +74,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_Return);
         backend.queueList(entries);
         acceptHistoryLocation(window, location);
-        QCOMPARE(backend.lastArchive, archivePath);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), archivePath);
         QCOMPARE(address->text(), location);
 
         address->setText(archivePath + " / папка");
@@ -249,8 +249,9 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         backend.queueSourceExtractAction([&] { backend.cancel(); });
         openRow(window, file);
         QCOMPARE(backend.extractCalls, extractionCalls + 1);
-        QCOMPARE(backend.lastSelected,
-                 QStringList({QStringLiteral("папка с пробелом/") + longName}));
+        QCOMPARE(backend.lastSelected.size(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.first()),
+                 QStringLiteral("папка с пробелом/") + longName);
         QCOMPARE(table(window)->rowCount(), 2);
         QCOMPARE(rowWithPath(window, QStringLiteral("папка с пробелом/") + longName), file);
         openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом/глубже")));
@@ -261,8 +262,9 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         table(window)->selectRow(1);
         QVERIFY(action(window, "copyAction")->isEnabled());
         window.extractTo("/temporary/destination", true);
-        QCOMPARE(backend.lastSelected,
-                 QStringList{QStringLiteral("папка с пробелом/глубже/2.txt")});
+        QCOMPARE(backend.lastSelected.size(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.first()),
+                 QStringLiteral("папка с пробелом/глубже/2.txt"));
         backend.cancel();
         action(window, "upAction")->trigger();
         QCOMPARE(table(window)->rowCount(), 2);

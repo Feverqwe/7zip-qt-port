@@ -457,6 +457,34 @@ columns back to source property IDs and raw flags. `MainWindow` snapshots the
 header and presents source-formatted cells but does not sort parsed text. Hidden
 path/index cells remain transport-only. FilesystemFolderLoader runs source
 enumeration off the GUI thread and FilesystemScanner batches Qt row publication.
+Ordinary folders preserve immediate loading up to 256 source items. The original
+CFSFolder callback aborts the bounded probe above that count; the same LoadItems
+body then runs in the existing worker with flat mode disabled. QtFolderProjection
+retains the native archive folder while presenting at most 32 rows or 8ms per
+GUI turn, including property/icon creation. Navigation and close invalidate
+pending turns before releasing owners. Scan operation state disables commands
+until the shared table/icon model is coherent. Native selection snapshots and
+post-operation path selection wait for completion and survive panel switches.
+Sorting is enabled once with the desired source property/order; its comparator
+remains CPanel::CompareItemIndices.
+Archive projection also preserves RefreshListCtrl's redraw suppression until
+sorting and selection finish, using Qt widget update control across batches.
+The synchronous source guards end before an idle operation acquires retained
+scan guards; otherwise a flat-view change would retain disabled notification
+flags after completion. Filesystem batches keep their existing incremental
+redraw because suppressing their accumulated layout causes a long final pause.
+Cancelling projection during a panel switch releases scan guards before commands
+are projected for the ready destination panel. View-mode switching retains the
+captured source panel and control pointers across synchronous Qt focus events;
+the new view restores list focus just as upstream changes the same ListView's
+style. Normal Windows folders use the source change-notification watcher instead
+of duplicate per-file Qt signature reads. A root signature keeps missing-folder
+recovery; flat descendants retain the nonrecursive watch's portable fallback.
+Open/Operation disables both panel address combos along with their lists,
+matching the source modal progress boundary. Otherwise Qt can focus an inactive
+address while source guards suppress its panel-focus notification, leaving
+presentation focus and command ownership inconsistent after completion. Scan
+keeps address navigation available; ending the blocking operation restores it.
 The P0-05.2 large-scan fixture checks ordered source indices, event-loop turns
 between bounded 32-row GUI batches, cancellation and rejection of stale batches.
 
@@ -851,7 +879,7 @@ totals. `CAgentFolder` supplies normal and flat traversal. `MainWindow` converts
 these items into Qt rows and expands selected folders through the same tree.
 Full entry paths remain in item data independently of display order.
 
-`FilesystemFolderLoader` runs the original CFSFolder recursive enumeration in a
+`FilesystemFolderLoader` runs the original CFSFolder normal or recursive enumeration in a
 worker without following POSIX directory symlinks or Windows directory reparse
 points. `FilesystemScanner` waits for
 completion before taking its COM owner, then presents source-index batches of

@@ -37,7 +37,7 @@ bool MainWindow::runExternalArchiveUpdate(CPanel &panel, const std::function<boo
         if (index < kNumPanelsMax) {
             activatePanelUi(index);
             renderBoundFolder();
-            panel.RefreshListCtrl(selection);
+            restoreListSelection(selection);
             activatePanelUi(previous);
         }
     }
@@ -60,8 +60,11 @@ HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
         return E_INVALIDARG;
     }
     filesystemScanner_->cancel();
+    listProjection_->cancel();
+    scanningArchive_ = false;
     scanningDisk_ = false;
     scanSelectedState_.reset();
+    scanSelectedPaths_.reset();
     if (state_ == State::Filesystem)
         returnDirectory_ = directory_;
     auto &panel = app_.GetFocusedPanel();
@@ -125,8 +128,8 @@ void MainWindow::renderBoundFolder() {
                                       : returnDirectory_;
         showDirectory(directory.isEmpty() ? returnDirectory_ : directory, false,
                       panel.GetFolder() && panel.IsFSFolder());
-        if (selection && !scanningDisk_)
-            panel.RefreshListCtrl(*selection);
+        if (selection)
+            restoreListSelection(*selection);
         refreshActions();
         return;
     }
@@ -170,7 +173,7 @@ void MainWindow::renderBoundFolder() {
     state_ = State::Viewing;
     renderArchiveFolder();
     if (selection)
-        panel.RefreshListCtrl(*selection);
+        restoreListSelection(*selection);
     setState(State::Viewing);
 }
 

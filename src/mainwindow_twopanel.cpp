@@ -70,10 +70,15 @@ void MainWindow::activatePanelUi(unsigned index) {
         app_.SetFocusedPanel(projectedPanel_);
         return;
     }
-    if (scanningDisk_) {
+    if (scanningDisk_ || scanningArchive_) {
+        panelUi_[projectedPanel_].pendingSelection = scanSelectedState_;
+        panelUi_[projectedPanel_].pendingSelectedPaths = scanSelectedPaths_;
+        listProjection_->cancel();
+        scanningArchive_ = false;
         filesystemScanner_->cancel();
         scanningDisk_ = false;
         scanSelectedState_.reset();
+        scanSelectedPaths_.reset();
         panelUi_[projectedPanel_].needsRescan = true;
     }
     storePanelUi(projectedPanel_);
@@ -85,8 +90,15 @@ void MainWindow::activatePanelUi(unsigned index) {
     sortActions_[static_cast<int>(sortMode_)]->setChecked(true);
     if (panelUi_[index].needsRescan) {
         panelUi_[index].needsRescan = false;
-        refreshCurrent();
-    }
+        auto selection = std::move(panelUi_[index].pendingSelection);
+        panelUi_[index].pendingSelection.reset();
+        auto paths = std::move(panelUi_[index].pendingSelectedPaths);
+        panelUi_[index].pendingSelectedPaths.reset();
+        refreshCurrent(selection ? &*selection : nullptr);
+        if (paths)
+            selectPaths(*paths);
+    } else
+        setState(state_); // A cancelled scan must release guards for the ready panel.
     refreshActions();
     app_.RefreshTitle(true);
 }

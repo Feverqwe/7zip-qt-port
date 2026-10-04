@@ -244,11 +244,9 @@ void MainWindow::applyFlatView(bool enabled) {
         app_.GetFocusedPanel().SetFlatModeForDisk(enabled);
         settings.setValue("view/flatDisk", enabled);
         showDirectory(directory_, false);
-        if (scanningDisk_)
-            scanSelectedState_ = selection;
     }
-    if (!scanningDisk_) {
-        app_.GetFocusedPanel().RefreshListCtrl(selection);
+    restoreListSelection(selection);
+    if (!scanningDisk_ && !scanningArchive_) {
         refreshActions();
     }
 }

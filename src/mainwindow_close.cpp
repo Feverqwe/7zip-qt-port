@@ -78,6 +78,7 @@ void MainWindow::quiesceOperations() {
     if (overwriteDialog_)
         overwriteDialog_->reject();
     disconnect(filesystemScanner_, nullptr, this, nullptr);
+    listProjection_->cancel();
     filesystemScanner_->cancelAndWait();
     backend_->cancelAndWait();
     if (fileTransfer_) {

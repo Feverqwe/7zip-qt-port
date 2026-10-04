@@ -24,6 +24,30 @@ class FilesystemScannerTests : public QObject {
         }
     }
   private slots:
+    void nonFlatWorkerKeepsNativeDirectChildrenOnly() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        createFiles(fixture.path(), 300);
+        FilesystemScanner scanner;
+        CMyComPtr<IFolderFolder> retained;
+        connect(&scanner, &FilesystemScanner::folderReady, this,
+                [&](IFolderFolder *folder) { retained = folder; });
+        QStringList names;
+        connect(&scanner, &FilesystemScanner::batchReady, this,
+                [&](const QFileInfoList &files, quint32 first) {
+                    QCOMPARE(first, quint32(0));
+                    for (const auto &file : files)
+                        names.append(file.fileName());
+                });
+        QSignalSpy completed(&scanner, &FilesystemScanner::completed);
+        scanner.start(fixture.path(), false);
+        QTRY_COMPARE(completed.count(), 1);
+        QVERIFY(retained);
+        UInt32 count = 0;
+        QCOMPARE(retained->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(names, QStringList{QStringLiteral("папка с пробелом")});
+    }
     void completedWorkerHasOnlyLatestProgressWaitingForGui() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

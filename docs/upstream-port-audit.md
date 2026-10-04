@@ -1,5 +1,132 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-10.2 — full Qt list projection (accepted, 2026-10-05)
+
+Reviewed original FileManager/FSFolder.cpp::LoadItems/LoadSubItems/SetFlatMode,
+PanelItems.cpp::RefreshListCtrl/SaveSelectedState, PanelFolderChange.cpp::
+SetNewFolder/ReleaseFolder and PanelSort.cpp::CompareItemIndices, with the current
+normal/flat filesystem, archive, refresh, selection and two-panel callers.
+Repository https://github.com/ip7z/7zip.git, full commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17; existing authoritative adapted bodies
+and dependencies are reused without new borrowed modules or revisions.
+
+QtFolderProjection is new scheduling glue, because the original Windows
+ListView refresh does not provide Qt event-loop row publication. It retains
+IFolderFolder and real indices, bounds actual archive row/property/icon creation
+to 32 rows/8ms per turn and invalidates generations on navigation/close. Normal
+filesystem loading above 256 items reuses FilesystemFolderLoader with the source
+flat flag disabled; a bounded source callback probe preserves synchronous small
+folder consumers. No enumeration, proxy, property, sorting or selected-state
+algorithm is recreated. Qt's sort enabling already performs a sort, so final
+publication configures the native order before enabling it once. The original
+CPanel comparator remains authoritative. Selection restore and post-operation
+path selection are delayed until completion, including inactive-panel restart.
+The original RefreshListCtrl disables redraw from deletion through sorting and
+selection. Archive publication retains that policy through Qt setUpdatesEnabled;
+filesystem redraw stays incremental because suppressing it causes a603ms final
+layout pause in the local fixture. An idle archive flat-toggle regression exposes
+retained guards capturing synchronous disabled flags; the narrow adapter now
+releases its synchronous guards before acquiring asynchronous scan guards.
+
+Public MainWindow fixtures first fail for all four 4096-row disk/archive
+normal/compact states: the first heartbeat occurs only after all rows exist.
+Current fixtures require an intermediate heartbeat, full completion under 15s
+and a maximum GUI gap below 250ms, with current-build widget JSON. Consumers
+cover refresh selection, panel switches, create-file selection, navigation,
+close and obsolete turns. The macOS full gate passes formatting, all targets
+and 237/237 tests in104.17s after fixing the CMake `bookmarks`/`bookmark_tests`
+startup-isolation mapping. Later localized fixture checks pass navigation/nested,
+auto-refresh and native-window waits. Snapshot60d25b11 worker scope passes
+Windows9/9 in25.94s and Linux9/9 in9.31s with no skips. Snapshot3a07b009 GUI
+scope passes Linux11/11 in38.25s, with no skips and all four normal/compact
+geometry reports fully visible. Windows passes7/11 suites in261.47s: remaining
+path assertions, panel focus/hover and archive projection timing fail. Additional
+comparison-only fixes and focus diagnostics precede fresh snapshot1be288cd.
+After archive redraw adaptation the local four GUI suites pass17.19s and a full
+macOS gate passes237/237 in101.12s. That snapshot precedes the newly failing
+flat-toggle regression. After the guard-order correction, an aggregate run exposes
+timing interference from parallel CTest processes at final4096-row publication;
+the timing suite now runs serially, preserving both original ceilings. Final
+macOS formatting/all-target/full gate passes237/237 in84.31s, including14
+large-list cases with no skips. Filesystem normal/compact505/421ms, gaps84/74ms;
+archive125/123ms, gaps31/33ms. Current four geometry reports are fully visible.
+Baseline verification passes409 exact/195 adapted/3 local paths. Snapshot1be288cd
+Linux passes11/11 in37.00s without skips, filesystem1060/977ms and archive609/506ms,
+all gaps below100ms and geometry reviewed. Its Windows build is pending; this
+snapshot precedes the final guard-order correction and serial timing setting.
+Windows1be288cd passes9/11 suites in228.85s: archive normal/compact9373/9820ms
+with174/132ms gaps now pass, filesystem normal26712ms/641ms still fails while
+compact11779ms/205ms passes. All four geometry reports are fully visible, no
+skips. Panel keys fail only mixed-panel focus and hover; popup waits pass.
+The mixed-panel failure is reproduced locally by synchronous focus movement
+during QStackedWidget switching. Reviewed original Panel.cpp::SetListViewMode
+and its menu/keyboard callers: it changes the same control's style. The Qt
+adapter now captures the native panel/controls and restores list focus across
+the replacement. A separate public cancelled-scan panel-switch regression first
+leaves Refresh disabled; returning operation state to the ready panel fixes it.
+Original FSFolder.cpp::Init/WasChanged and PanelItems.cpp::OnTimer retain native
+Windows change notifications. Normal-folder projection no longer duplicates
+these with per-file Qt signature reads; root recovery and flat-descendant fallback
+remain. Auto-refresh tests additionally change an existing file's bytes/size.
+Three affected local GUI suites pass25.22s; fresh full/platform checks pending.
+The subsequent unsandboxed macOS gate passes formatting, all targets and237/237
+tests in103.03s. Its final filesystem468/389ms, gaps62/65ms, archive122/123ms,
+gaps29/25ms benchmarks and all four normal/compact geometry reports pass.
+Snapshot9a80cdce Linux passes11/11 in38.39s with no skips: filesystem1015/982ms,
+gaps89/90ms, archive503/501ms, gaps55/53ms. Actual LastTest and current geometry
+confirm the new consumers and fully visible controls. Windows9a80cdce passes10/11
+suites in254.27s with no skips. Its complete large-list suite passes: filesystem
+normal/compact12879/11351ms, gaps208/191ms; archive9767/9870ms, gaps134/136ms.
+Actual LastTest and all eight geometry/benchmark JSON files were retrieved;
+all four list/address/status geometries are fully visible. Only panel-key focus
+and hover cases still fail in that snapshot.
+
+Separate diagnostic executable copies reproduce both failures without altering
+the snapshot or its evidence. Focus enters the inactive address combo during
+Open, when native guards intentionally suppress panel activation, and remains
+there after completion. Reviewed original ProgressDialog2.cpp::Create and
+Windows/Control/Dialog.cpp::CModalDialog::Create: native progress uses a modal
+DialogBoxParam. The Qt adapter now disables address combos alongside the lists
+during Open/Operation. A public regression first fails before this correction,
+then verifies both combos disabled during backend work, enabled afterwards and
+the disk panel's command policy after focus restoration; compact state JSON
+records disabled/ready controls. The hover adapter itself receives no MouseMove
+in the failing fixture. The installed Qt6.8.3 qtestmouse.h confirms QWidget's
+no-button helper only moves QCursor; the fixture now uses QWindow's QPA-event
+overload with mapped coordinates. The diagnostic copy then passes both cases,
+including the real400ms hover timer. Fresh snapshotb19c3aa2 and a new full
+macOS gate are pending; diagnostic success does not accept the parent.
+The subsequent macOS gate passes formatting, all targets and237/237 tests
+in101.96s. Snapshotb19c3aa2 Linux passes11/11 GUI suites in41.55s, with zero
+failed/skipped Qt cases in the actual LastTest. Its filesystem1039/984ms,
+gaps91/91ms, archive515/496ms, gaps72/56ms and four current-build list geometries
+pass. Both compact address-state reports show fully visible disabled controls
+during Open and enabled controls after completion. The same final snapshot's
+Windows Limited native-desktop run passes11/11 in212.64s. Retrieved actual
+LastTest confirms all55 panel-key and14 large-list Qt cases pass, with no skips
+in any suite. Filesystem normal/compact12896/11533ms, gaps207/194ms;
+archive9332/9379ms, gaps132/125ms meet the original15s/250ms ceilings.
+All four list/address/status geometries and both compact disabled/ready address
+states are fully visible. The final macOS benchmarks are filesystem593/542ms,
+gaps65/108ms, archive124/123ms, gaps28/28ms. This accepts P2-10.2 across the
+three tested OS, with baseline409 exact/195 adapted/3 local unchanged.
+Rendered Windows pixel parity and global UX acceptance remain in P3.
+
+Read-only follow-up review discovers CreateVolumes still queues each original
+CopyCoder progress callback (every4MiB) and lacks a generation guard around its
+joined completion. Bounded delivery and restart proof for that consumer are
+recorded separately as P2-10.3 before accepting the parent P2-10.
+
+The earlier22e6cbca Windows snapshot exposes Unix-only path assertions, the
+Limited interactive token's native symlink restriction and native focus/hover
+fixture failures. Path assertions now normalize only at the comparison boundary;
+worker and GUI verification use their corresponding Windows logon scopes.
+Native desktop suites serialize focus/popups. Windows large-list timing fails
+in that first aggregate run; an isolated normal disk case passes13441ms/225ms.
+The original15s/250ms per-projection ceilings remain unchanged. Pending native
+GUI/focus/performance failures above are historical and superseded by the final
+acceptance. The parent remains open for P2-10.3.
+
 ## P2-10.1 — archive preparation and bounded worker transport (accepted, 2026-10-04)
 
 Inspected original full FSFolderCopy.cpp::CCopyStateIO::MyCopyFile, FSFolder.h::

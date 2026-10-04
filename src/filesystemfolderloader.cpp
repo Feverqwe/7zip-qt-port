@@ -2,8 +2,8 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "qtlocationfolder.h"
 
-FilesystemFolderLoader::FilesystemFolderLoader(QString directory, QObject *parent)
-    : QThread(parent), directory_(std::move(directory)) {}
+FilesystemFolderLoader::FilesystemFolderLoader(QString directory, QObject *parent, bool flat)
+    : QThread(parent), directory_(std::move(directory)), flat_(flat) {}
 
 void FilesystemFolderLoader::cancel() { canceled_ = true; }
 
@@ -28,7 +28,7 @@ void FilesystemFolderLoader::run() {
             completed_.store(count);
             return !canceled_;
         };
-        result_ = spec->SetFlatMode(1);
+        result_ = spec->SetFlatMode(BoolToInt(flat_));
         if (result_ == S_OK)
             result_ = spec->LoadItems();
         spec->CheckBreak = {};

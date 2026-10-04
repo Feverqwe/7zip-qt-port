@@ -21,8 +21,11 @@ void MainWindow::renderRootFolder() {
         return;
     }
     filesystemScanner_->cancel();
+    listProjection_->cancel();
+    scanningArchive_ = false;
     scanningDisk_ = false;
     scanSelectedState_.reset();
+    scanSelectedPaths_.reset();
     archive_.clear();
     displayArchive_.clear();
     archivePassword_.clear();

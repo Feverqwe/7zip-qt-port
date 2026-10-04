@@ -12,6 +12,7 @@
 #include "qtprogramfilemenu.h"
 #include <QBitmap>
 #include <QMouseEvent>
+#include <QSignalBlocker>
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
@@ -72,13 +73,19 @@ void MainWindow::setSortMode(SortMode mode) {
     applySortMode();
 }
 
-void MainWindow::applySortMode() {
+void MainWindow::applySortMode(bool enableSorting) {
     if (!table_)
         return;
     auto &panel = app_.GetFocusedPanel();
     panel._sortID = static_cast<FileTable *>(table_)->propertyId(sortColumn_);
     panel._ascending = sortOrder_ == Qt::AscendingOrder;
-    table_->sortItems(sortColumn_, sortOrder_);
+    if (enableSorting && !table_->isSortingEnabled()) {
+        // Enabling Qt sorting already sorts; configure the source order first.
+        const QSignalBlocker blocker(table_->horizontalHeader());
+        table_->horizontalHeader()->setSortIndicator(sortColumn_, sortOrder_);
+        table_->setSortingEnabled(true);
+    } else
+        table_->sortItems(sortColumn_, sortOrder_);
     saveColumns();
 }
 
@@ -239,8 +246,15 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
 void MainWindow::setViewMode(int mode) {
     if (mode < 0 || mode > 3 || !viewStack_)
         return;
+    auto &panel = app_.GetFocusedPanel();
+    auto *stack = viewStack_;
+    auto *address = pathCombo_;
+    const QWidget *focused = QApplication::focusWidget();
+    const QWidget *previousView = stack->currentWidget();
+    const bool restoreFocus =
+        previousView && focused && (focused == previousView || previousView->isAncestorOf(focused));
     viewMode_ = mode;
-    app_.GetFocusedPanel()._listViewMode = static_cast<UInt32>(mode);
+    panel._listViewMode = static_cast<UInt32>(mode);
     viewActions_[mode]->setChecked(true);
     if (mode != 3) {
         iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
@@ -253,8 +267,13 @@ void MainWindow::setViewMode(int mode) {
         // still permits exporting entries through the native drag controller.
         iconList_->setDragEnabled(table_->dragEnabled());
     }
-    viewStack_->setCurrentIndex(mode == 3 ? 0 : 1);
-    app_.GetFocusedPanel().AttachPresentation(viewStack_->currentWidget(), pathCombo_);
+    // Upstream changes the style of the same list control. Qt replaces the
+    // visible view, which can synchronously focus another panel while hiding
+    // the old widget. Bind the captured source owner and retain its list focus.
+    stack->setCurrentIndex(mode == 3 ? 0 : 1);
+    panel.AttachPresentation(stack->currentWidget(), address);
+    if (restoreFocus)
+        stack->currentWidget()->setFocus();
     CListMode modes;
     for (unsigned i = 0; i < kNumPanelsMax; ++i)
         modes.Panels[i] = app_.Panels[i].GetListViewMode();

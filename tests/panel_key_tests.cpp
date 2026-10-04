@@ -13,6 +13,73 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
 
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void archiveOpenDisablesBothPanelAddresses() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        SavePanelPath(1, ToUString(fixture.path()), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.resize(640, 480);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        auto *leftAddress = left->findChild<QComboBox *>("pathCombo");
+        auto *rightAddress = right->findChild<QComboBox *>("pathCombo");
+        auto *rightList = right->findChild<QTableWidget *>("archiveTable");
+        rightList->setFocus();
+        QTRY_VERIFY(rightList->hasFocus());
+        const QString archive = fixture.filePath("focus archive.zip");
+        QVERIFY(backend.prepareArchiveFixture(archive));
+        bool leftDisabled = false;
+        bool rightDisabled = false;
+        bool blockedReport = false;
+        backend.queueListAction([&] {
+            leftDisabled = !leftAddress->isEnabled();
+            rightDisabled = !rightAddress->isEnabled();
+            blockedReport =
+                UiInspection::writeReport(window, QStringLiteral("archive-open-address-blocked"));
+            backend.completeList({ArchiveEntry{"entry.txt", 1, 1}});
+        });
+        window.openArchive(archive);
+        QVERIFY(leftDisabled);
+        QVERIFY(rightDisabled);
+        QVERIFY(blockedReport);
+        QVERIFY(leftAddress->isEnabled());
+        QVERIFY(rightAddress->isEnabled());
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *leftEdit = left->findChild<QLineEdit *>("archivePath");
+        leftEdit->setFocus();
+        QTRY_VERIFY(leftEdit->hasFocus());
+        QTRY_VERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(UiInspection::fullyVisible(*leftAddress, window));
+        QVERIFY(UiInspection::fullyVisible(*rightAddress, window));
+        QVERIFY(UiInspection::writeReport(window, QStringLiteral("archive-open-address-ready")));
+    }
+    void viewSwitchRetainsPanelBindingAcrossFocusChange() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        SavePanelPath(1, ToUString(fixture.path()), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "twoPanelsAction")->trigger();
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        auto *address = left->findChild<QLineEdit *>("archivePath");
+        auto *list = right->findChild<QTableWidget *>("archiveTable");
+        list->setFocus();
+        QTRY_VERIFY(list->hasFocus());
+        // A native QStackedWidget switch can synchronously focus another panel.
+        auto *stack = right->findChild<QStackedWidget *>("fileViewStack");
+        connect(stack, &QStackedWidget::currentChanged, &window,
+                [address] { address->setFocus(); });
+        action(window, "viewMode1Action")->trigger();
+        static_cast<FileTable *>(list)->sourcePanel->SetFocusToList();
+        QTRY_VERIFY(right->findChild<QListView *>("iconList")->hasFocus());
+    }
     void twoPanelDiskSwitchKeepsIndependentViews() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -205,6 +272,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         QWidget *leftPanel = window.findChild<QWidget *>("filePanel0");
         auto *leftAddress = leftPanel->findChild<QLineEdit *>("archivePath");
         auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
@@ -258,7 +326,19 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         leftAddress->setFocus();
         QTRY_VERIFY(leftAddress->hasFocus());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QTRY_VERIFY2(
+            !action(window, "extractArchiveAction")->isEnabled(),
+            qPrintable(
+                QString("focus=%1 title=%2 leftNotify=%3 rightNotify=%4 leftArc=%5 rightArc=%6")
+                    .arg(QApplication::focusWidget() ? QApplication::focusWidget()->objectName()
+                                                     : QString())
+                    .arg(window.windowTitle())
+                    .arg(static_cast<FileTable *>(leftTable)
+                             ->sourcePanel->ShouldProcessNotifications())
+                    .arg(static_cast<FileTable *>(rightTable)
+                             ->sourcePanel->ShouldProcessNotifications())
+                    .arg(static_cast<FileTable *>(leftTable)->sourcePanel->IsArcFolder())
+                    .arg(static_cast<FileTable *>(rightTable)->sourcePanel->IsArcFolder())));
         QTest::keyClick(leftTable, Qt::Key_F2, Qt::AltModifier);
         QTRY_VERIFY(rightPanel->findChild<QComboBox *>("pathCombo")->view()->isVisible());
         rightPanel->findChild<QComboBox *>("pathCombo")->hidePopup();
@@ -505,7 +585,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         window.show();
         window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         QWidget *view =
             mode == 3 ? static_cast<QWidget *>(window.findChild<QTableWidget *>("archiveTable"))
@@ -513,13 +593,15 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         const QString currentPath = address->text();
         for (int key : {Qt::Key_F1, Qt::Key_F2}) {
             view->setFocus();
+            QTRY_VERIFY(view->hasFocus());
             QTest::keyClick(view, static_cast<Qt::Key>(key), Qt::AltModifier);
-            QVERIFY(combo->view()->isVisible());
+            QTRY_VERIFY(combo->view()->isVisible());
             QCOMPARE(address->text(), currentPath);
             combo->hidePopup();
             address->setFocus();
+            QTRY_VERIFY(address->hasFocus());
             QTest::keyClick(address, static_cast<Qt::Key>(key), Qt::AltModifier);
-            QVERIFY(combo->view()->isVisible());
+            QTRY_VERIFY(combo->view()->isVisible());
             combo->hidePopup();
             address->setFocus();
             QTest::keyClick(address, Qt::Key_Tab);
@@ -943,6 +1025,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QTest::keyClick(address, Qt::Key_Return);
         window.resize(640, 400);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *files = table(window);
         QTRY_COMPARE(files->rowCount(), 51);
         action(window, "selectAllAction")->trigger();
@@ -965,8 +1048,22 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(files->item(49, 0)->data(Qt::BackgroundRole).value<QBrush>().color(),
                  QColor(255, 192, 192));
         const QModelIndex hovered = icons->model()->index(49, 0);
-        QTest::mouseMove(icons->viewport(), icons->visualRect(hovered).center());
-        QTRY_COMPARE_WITH_TIMEOUT(files->currentRow(), 49, 1200);
+        QTRY_VERIFY(icons->viewport()->rect().contains(icons->visualRect(hovered)));
+        // QWidget's no-button overload only moves the system cursor. Deliver
+        // a QPA event so hover does not depend on native cursor notifications.
+        QTest::mouseMove(window.windowHandle(),
+                         icons->viewport()->mapTo(&window, icons->visualRect(hovered).center()));
+        QTRY_VERIFY2_WITH_TIMEOUT(
+            files->currentRow() == 49,
+            qPrintable(
+                QString("row=%1 mouse=%2 modifiers=%3 active=%4 visible=%5 cursorRow=%6")
+                    .arg(files->currentRow())
+                    .arg(int(QApplication::mouseButtons()))
+                    .arg(int(QApplication::keyboardModifiers()))
+                    .arg(window.isActiveWindow())
+                    .arg(icons->isVisible())
+                    .arg(icons->indexAt(icons->viewport()->mapFromGlobal(QCursor::pos())).row())),
+            1200);
         static_cast<FileTable *>(files)->sourcePanel->Get_ItemIndices_Selected(marks);
         QCOMPARE(marks.Size(), unsigned(49));
         QVERIFY(UiInspection::fullyVisible(*icons, window));

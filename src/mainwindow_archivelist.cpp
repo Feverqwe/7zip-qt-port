@@ -12,9 +12,15 @@
 #include "qtlocationfolder.h"
 
 void MainWindow::renderArchiveFolder() {
+    listProjection_->cancel();
+    scanningArchive_ = false;
+    scanSelectedState_.reset();
+    scanSelectedPaths_.reset();
     auto &panel = app_.GetFocusedPanel();
-    CPanel::CDisableTimerProcessing disableTimerProcessing(panel);
-    CPanel::CDisableNotify disableNotify(panel);
+    std::optional<CPanel::CDisableTimerProcessing> disableTimerProcessing;
+    std::optional<CPanel::CDisableNotify> disableNotify;
+    disableTimerProcessing.emplace(panel);
+    disableNotify.emplace(panel);
     CMyComPtr<IFolderFolder> folderOwner = panel.GetFolder();
     if (!folderOwner)
         return;
@@ -33,10 +39,33 @@ void MainWindow::renderArchiveFolder() {
     app_.GetFocusedPanel().LoadFullPath();
     configureColumns();
     appendParentEntry();
+    if (archiveFolder->GetNumberOfItems() > 256) {
+        // Finish the synchronous source guards before retaining operation
+        // guards. Otherwise an idle flat-view change saves disabled flags
+        // and leaves notifications disabled when asynchronous loading ends.
+        disableNotify.reset();
+        disableTimerProcessing.reset();
+        scanningArchive_ = true;
+        setState(State::Viewing);
+        path_->setText(archiveDisplayPath());
+        listProjection_->start(
+            folderOwner, archiveFolder->GetNumberOfItems(),
+            [this, archiveFolder, prefix, flat](quint32 index) {
+                appendArchiveEntry(*archiveFolder, index, prefix, flat);
+            },
+            [this] {
+                scanningArchive_ = false;
+                applySortMode(true);
+                completeListSelection();
+                setState(State::Viewing);
+                statusBar()->showMessage(
+                    QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
+            });
+        return;
+    }
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
         appendArchiveEntry(*archiveFolder, index, prefix, flat);
-    table_->setSortingEnabled(true);
-    applySortMode();
+    applySortMode(true);
     path_->setText(archiveDisplayPath());
     statusBar()->showMessage(
         QtLocalText("%1 items", "%1 объектов").arg(archiveFolder->GetNumberOfItems()));
@@ -110,10 +139,10 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
 }
 
 void MainWindow::setState(State state) {
-    const auto kind = state == State::Loading     ? QtAppOperationState::Kind::Open
-                      : state == State::Operating ? QtAppOperationState::Kind::Operation
-                      : scanningDisk_             ? QtAppOperationState::Kind::Scan
-                                                  : QtAppOperationState::Kind::Idle;
+    const auto kind = state == State::Loading             ? QtAppOperationState::Kind::Open
+                      : state == State::Operating         ? QtAppOperationState::Kind::Operation
+                      : scanningDisk_ || scanningArchive_ ? QtAppOperationState::Kind::Scan
+                                                          : QtAppOperationState::Kind::Idle;
     if (!app_.QtOperations().Begin(kind))
         return;
     state_ = state;
@@ -123,19 +152,30 @@ void MainWindow::setState(State state) {
 void MainWindow::refreshActions() {
     app_.RefreshTitle();
     const bool navigating = !app_.QtOperations().closed() && !app_.QtOperations().blocking();
-    const bool idle = navigating && !scanningDisk_;
+    const bool idle = navigating && !scanningDisk_ && !scanningArchive_;
     refreshBookmarks();
     if (commands_)
         commands_->RefreshActions();
-    if (commands_ && !scanningDisk_)
+    if (commands_ && !scanningDisk_ && !scanningArchive_)
         refreshPanelStatus();
     for (unsigned index = 0; index < kNumPanelsMax; ++index) {
         const auto &ui = panelUi_[index];
         if (!ui.container || !ui.table || !ui.iconList || !ui.path)
             continue;
-        const bool panelIdle = navigating && (index != projectedPanel_ || !scanningDisk_);
+        const bool projecting = index == projectedPanel_ && scanningArchive_;
+        const bool panelIdle =
+            navigating && (index != projectedPanel_ || (!scanningDisk_ && !scanningArchive_));
+        // RefreshListCtrl disables redraw until native sorting and selection
+        // restoration finish. Keep that policy across Qt's asynchronous batches.
+        ui.table->setUpdatesEnabled(!projecting);
+        ui.iconList->setUpdatesEnabled(!projecting);
         ui.table->setEnabled(panelIdle);
         ui.iconList->setEnabled(panelIdle);
+        // Native archive progress is modal to the file manager. Qt disables
+        // its lists during the operation; disable the address controls too so
+        // focus cannot move to an inactive pane while its source guards block
+        // the corresponding focus notification.
+        ui.pathCombo->setEnabled(navigating);
         ui.path->setReadOnly(!navigating);
     }
     const bool dragAvailable = idle && app_.GetFocusedPanel().DoesItSupportOperations() &&

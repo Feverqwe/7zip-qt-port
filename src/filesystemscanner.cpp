@@ -36,9 +36,9 @@ void FilesystemScanner::cancelAndWait() {
     }
 }
 
-void FilesystemScanner::start(const QString &directory) {
+void FilesystemScanner::start(const QString &directory, bool flat) {
     cancel();
-    loader_ = new FilesystemFolderLoader(directory, this);
+    loader_ = new FilesystemFolderLoader(directory, this, flat);
     loaders_.append(loader_);
     const quint64 generation = generation_;
     auto *loader = loader_;

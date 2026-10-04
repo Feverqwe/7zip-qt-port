@@ -1,5 +1,35 @@
 # Regression strategy
 
+`large_list_window` measures complete MainWindow projection of 4096 native disk
+or archive items, with Unicode/spaces, at 980×620 and 640×480. A public model
+signal starts a 1ms GUI heartbeat; the first turn must occur before all rows are
+created, total completion must stay below 15s and the largest gap below 250ms,
+including final source sorting. It writes geometry and `large-*-benchmark.json`
+under `SEVENZIP_UI_REPORT_DIR`. These are local-fixture regression ceilings,
+not guarantees for arbitrary storage. Refresh/panel-switch selection, created
+file selection, navigation, close and obsolete batch delivery use public controls.
+Panel-key consumers also verify both address combos disabled during archive
+Open, restored afterwards and coherent command availability after panel focus.
+Their compact disabled/ready JSON records control states. The no-button hover
+fixture uses QTest's QWindow overload to deliver a QPA MouseMove; the QWidget
+overload only moves the native cursor and can omit events in a Windows session.
+Archive child-folder navigation and a large flat-view toggle additionally require
+that Refresh becomes available and actually invokes the backend after completion.
+The latter reproduces retained source notification guards acquired too early.
+The integrated responsiveness script also runs flat/selection/two-panel/auto-
+refresh and nested/temp-chain/application binding lifecycle consumers.
+Use its `workers` argument for the nine backend/native-worker suites and `lists`
+for the eleven GUI consumers (`all` is the default). Windows symlink fixtures
+require the privileged SSH token, while native focus/popups require an
+interactive desktop; run these scopes separately on the shared Windows guest.
+Native Windows UI suites share a CTest desktop lock. The large-list suite's
+240s total allowance covers four projections, four refreshes and separate
+lifecycle fixtures; individual projection ceilings remain 15s/250ms.
+CTest runs this timing suite serially so unrelated test processes do not distort
+GUI latency. Worker enumeration and asynchronous publication still run together
+inside the measured application; both row count at the largest gap and elapsed
+time are retained in its benchmark JSON.
+
 `scripts/check-responsiveness.sh` builds and checks the integrated preparation,
 worker progress, creation lifecycle, update/mutation/backend and native folder
 consumers in one snapshot. `archive_preparation` covers public return-before-copy,

@@ -118,7 +118,7 @@ class BookmarkTests : public QObject, protected MainWindowTestSupport {
         MainWindow reopened(&reopenedBackend);
         reopenedBackend.queueList({ArchiveEntry{QStringLiteral("папка/внутри/файл.txt"), 1, 1}});
         action(reopened, "openBookmark7Action")->trigger();
-        QCOMPARE(reopenedBackend.lastArchive, archivePath);
+        QCOMPARE(QDir::fromNativeSeparators(reopenedBackend.lastArchive), archivePath);
         QCOMPARE(reopened.findChild<QLineEdit *>("archivePath")->text(), location);
     }
 

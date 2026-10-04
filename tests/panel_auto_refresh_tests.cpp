@@ -55,6 +55,16 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(files->item(files->rowAt(0), 1));
         QCOMPARE(files->item(files->rowAt(0), 1)->text(), topPath);
 
+        // Changing an existing file leaves the directory entry set unchanged.
+        // Windows must observe this through the original native folder watcher.
+        const QByteArray changed("changed contents");
+        QVERIFY(writeFile(temp.filePath(QStringLiteral("file-050.txt")), changed));
+        QTRY_COMPARE_WITH_TIMEOUT(
+            files->item(files->currentRow(), 2)->data(Qt::UserRole + 2).toLongLong(),
+            qint64(changed.size()), 3500);
+        QCOMPARE(files->item(files->currentRow(), 0)->text(), QStringLiteral("file-050.txt"));
+        QVERIFY(files->selectionModel()->isRowSelected(files->currentRow(), QModelIndex()));
+
         QVERIFY(QFile::remove(temp.filePath(QStringLiteral("новый файл.txt"))));
         QTRY_COMPARE_WITH_TIMEOUT(files->rowCount(), 80, 3500);
     }
@@ -97,7 +107,8 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
         QCOMPARE(table(window)->rowCount(), 1);
         QVERIFY(QDir::setCurrent(temp.path()));
         QVERIFY(QFile::remove(folder + QStringLiteral("/old.txt")));
-        QVERIFY(QDir().rmdir(folder));
+        bool removed = false;
+        QTRY_VERIFY_WITH_TIMEOUT(removed || (removed = QDir().rmdir(folder)), 2000);
         QTRY_COMPARE_WITH_TIMEOUT(table(window)->rowCount(), 0, 3500);
         QVERIFY(window.statusBar()->currentMessage().contains(QStringLiteral("Folder not found")));
 

@@ -448,7 +448,8 @@ elseif(APPLE)
 endif()
 
 add_library(sevenzip_folder_loader STATIC
-    src/filesystemfolderloader.cpp src/filesystemfolderloader.h)
+    src/filesystemfolderloader.cpp src/filesystemfolderloader.h
+    src/qtfolderprojection.cpp src/qtfolderprojection.h)
 target_include_directories(sevenzip_folder_loader PUBLIC src)
 target_link_libraries(sevenzip_folder_loader PUBLIC sevenzip_location Qt6::Core)
 
@@ -2362,6 +2363,21 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-metadata-ui.ini")
 endif()
 
+if(BUILD_TESTING)
+    get_target_property(large_list_window_sources flat_view_tests SOURCES)
+    list(REMOVE_ITEM large_list_window_sources tests/flat_view_tests.cpp)
+    get_target_property(large_list_window_libraries flat_view_tests LINK_LIBRARIES)
+    qt_add_executable(large_list_window_tests tests/large_list_window_tests.cpp ${large_list_window_sources})
+    target_include_directories(large_list_window_tests PRIVATE src tests)
+    target_link_libraries(large_list_window_tests PRIVATE ${large_list_window_libraries})
+    add_test(NAME large_list_window COMMAND large_list_window_tests -silent)
+    # Four measured projections and their refreshes each have a 15s deadline;
+    # leave room for fixture I/O and the separate lifecycle/selection cases.
+    # Timing the real GUI heartbeat must not compete with other CTest processes.
+    set_tests_properties(large_list_window PROPERTIES TIMEOUT 240 RUN_SERIAL TRUE ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/large-list-window.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+endif()
+
 # Apply startup isolation after registering every consumer, including Language.
 # Parallel CTest runs share these generated artifact directories. Keep their
 # writers separate while allowing independent tests to run concurrently.
@@ -2372,8 +2388,12 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     # MainWindow opens the current directory before a test navigates to its
     # fixture. Keep that startup input separate from hundreds of build outputs.
     # Each suite owns its directory so parallel runs cannot populate each other.
-    if(TARGET ${sevenzip_test}_tests)
-        get_target_property(sevenzip_test_sources ${sevenzip_test}_tests SOURCES)
+    set(sevenzip_test_target ${sevenzip_test}_tests)
+    if(sevenzip_test STREQUAL "bookmarks")
+        set(sevenzip_test_target bookmark_tests)
+    endif()
+    if(TARGET ${sevenzip_test_target})
+        get_target_property(sevenzip_test_sources ${sevenzip_test_target} SOURCES)
         if("src/mainwindow.cpp" IN_LIST sevenzip_test_sources)
             set(sevenzip_test_startup_dir "${CMAKE_BINARY_DIR}/test-startup/${sevenzip_test}")
             file(MAKE_DIRECTORY "${sevenzip_test_startup_dir}")
@@ -2416,6 +2436,7 @@ if(BUILD_TESTING AND WIN32)
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key ui_navigation ui_archive_states ui_archive_volumes
+            large_list_window
             progress_dialog language_dialog
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)
@@ -2425,5 +2446,9 @@ if(BUILD_TESTING AND WIN32)
             "^QT_QPA_PLATFORM=offscreen$" "QT_QPA_PLATFORM=windows")
         set_property(TEST ${sevenzip_native_ui_test} PROPERTY ENVIRONMENT
             "${sevenzip_native_ui_environment}")
+        # Native popup/focus checks share the logged-on Windows desktop even
+        # when they do not write geometry artifacts.
+        set_property(TEST ${sevenzip_native_ui_test} APPEND PROPERTY
+            RESOURCE_LOCK sevenzip_native_ui)
     endforeach()
 endif()

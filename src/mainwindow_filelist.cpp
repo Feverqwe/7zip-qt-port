@@ -11,6 +11,7 @@
 #include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
+#include <QScopeGuard>
 #include <QScopedValueRollback>
 #include <QScrollBar>
 
@@ -30,8 +31,11 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     else if (remember && !directory_.isEmpty() && directory_ != next)
         history_.append(directory_);
     filesystemScanner_->cancel();
+    listProjection_->cancel();
+    scanningArchive_ = false;
     scanningDisk_ = false;
     scanSelectedState_.reset();
+    scanSelectedPaths_.reset();
     if (!sourceAlreadyBound)
         app_.GetFocusedPanel().CloseOpenFolders();
     directory_ = next;
@@ -54,6 +58,10 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     table_->setRowCount(0);
     path_->setText(directory_);
     static_cast<FileTable *>(table_)->filesystem = true;
+    startFilesystemListing(sourceAlreadyBound);
+}
+
+void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
     if (flatDisk_) {
         scanningDisk_ = true;
         setState(State::Filesystem);
@@ -67,7 +75,27 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
         CMyComPtr<IFolderFolder> folder = panel.GetFolder();
         if (result == S_OK) {
             panel.LoadFullPath();
-            result = folder->LoadItems();
+            auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
+            bool defer = false;
+            {
+                auto previous = std::move(spec->SetCompleted);
+                const auto restore = qScopeGuard([&] { spec->SetCompleted = std::move(previous); });
+                // Preserve immediate small-folder callers. Stop the original
+                // load at its callback boundary, then rerun it in the existing
+                // worker for a larger list instead of walking all files here.
+                spec->SetCompleted = [&](quint64 count) {
+                    defer = count > 256;
+                    return !defer;
+                };
+                result = folder->LoadItems();
+            }
+            if (result == E_ABORT && defer) {
+                scanningDisk_ = true;
+                setState(State::Filesystem);
+                statusBar()->showMessage(QtLangText(IDS_SCANNING));
+                filesystemScanner_->start(directory_, false);
+                return;
+            }
         }
         if (result == S_OK) {
             configureColumns();
@@ -79,8 +107,7 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
                                   .filePath(QtFilesystemPath(spec->GetRelPath(spec->Files[i])))),
                     i);
         }
-        table_->setSortingEnabled(true);
-        applySortMode();
+        applySortMode(true);
         setState(State::Filesystem);
         statusBar()->showMessage(
             result == S_OK ? QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount())
@@ -89,8 +116,13 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
 }
 
 void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {
-    autoRefreshSnapshot_.insert(file.absoluteFilePath(),
-                                filesystemSignature(file.absoluteFilePath()));
+#ifdef Q_OS_WIN
+    // Normal Windows folders already use source FindChangeNotification. Keep
+    // the portable fallback for flat descendants, outside its nonrecursive watch.
+    if (flatDisk_)
+#endif
+        autoRefreshSnapshot_.insert(file.absoluteFilePath(),
+                                    filesystemSignature(file.absoluteFilePath()));
     IFolderFolder *folder = app_.GetFocusedPanel().GetFolder();
     NWindows::NCOM::CPropVariant isDir, size, name, prefix;
     folder->GetProperty(sourceIndex, kpidIsDir, &isDir);
@@ -154,6 +186,10 @@ QStringList MainWindow::selectedPaths() const {
 }
 
 void MainWindow::selectPaths(const QStringList &paths) {
+    if (scanningDisk_ || scanningArchive_) {
+        scanSelectedPaths_ = paths;
+        return;
+    }
     table_->clearSelection();
     const auto &panel = app_.GetFocusedPanel();
     const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
@@ -190,10 +226,8 @@ void MainWindow::refreshCurrent(const CSelectedState *preserved) {
         else
             app_.GetFocusedPanel().SaveSelectedState(selection);
         showDirectory(directory_, false);
-        if (scanningDisk_)
-            scanSelectedState_ = selection;
-        else {
-            app_.GetFocusedPanel().RefreshListCtrl(selection);
+        restoreListSelection(selection);
+        if (!scanningDisk_) {
             restoreAutoRefreshViewport();
             refreshActions();
         }
@@ -222,8 +256,8 @@ void MainWindow::refreshCurrent(const CSelectedState *preserved) {
         if (result == S_OK) {
             panel.SetNewFolder(refreshed);
             renderBoundFolder();
-            panel.RefreshListCtrl(
-                GetFolderPath(refreshed) == previousFolderPath ? selection : CSelectedState());
+            restoreListSelection(GetFolderPath(refreshed) == previousFolderPath ? selection
+                                                                                : CSelectedState());
             refreshActions();
         } else {
             // Native ReOpen releases the old proxy; never render stale folders.

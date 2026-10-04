@@ -1,5 +1,32 @@
 # Сверка с Windows 7zFM
 
+## P2-10.2 — большие Qt списки (active, 2026-10-04)
+
+Исходные FSFolder/AgentFolder owners, indices, property/selection и comparator
+сохранены. Windows ListView refresh заменён постепенной публикацией Qt rows;
+для обычных папок выше 256 элементов исходный LoadItems выполняется в worker.
+Во время заполнения address/navigation доступны, команды списка ждут coherent
+model. Refresh и выбор созданного файла восстанавливаются после завершения,
+переключение панели отменяет старую публикацию и сохраняет pending selection.
+Сортировка при включении Qt выполняется один раз с исходным property/order.
+Для архивного списка сохраняется исходная политика SetRedraw: Qt updates
+выключены до завершения сортировки и восстановления выделения. Статус и address
+продолжают обрабатывать события. Filesystem публикуется с постепенной redraw,
+чтобы не переносить всю стоимость layout на финальное отображение.
+Смена Qt view сохраняет panel owner и фокус списка: upstream меняет style
+того же ListView. Отмена scan при смене панели освобождает guards для команд
+готовой панели. Обычные Windows folders обновляются через исходный watcher;
+root recovery и flat descendant fallback остаются в Qt transport.
+При Open/Operation адресные combo отключены вместе со списками: исходный
+progress использует modal DialogBoxParam. Это исключает переход фокуса на
+неактивную панель, пока source guards подавляют соответствующее уведомление.
+После завершения combo вновь доступны; при Scan навигация остаётся доступной.
+
+Layout/grouping/order не меняются. Public 4096-item disk/archive fixtures
+проверяют heartbeat, normal 980×620 и compact 640×480 JSON, navigation/close и
+stale turns. Приёмка трёх ОС и parent ещё не завершена. Эти проверки структуры
+не доказывают pixel parity с rendered Windows reference.
+
 ## P2-10.1 — worker scheduling (принят, 2026-10-04)
 
 Подготовка archive update теперь использует исходный CCopyStateIO в worker;

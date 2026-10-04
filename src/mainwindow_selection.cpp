@@ -2,6 +2,23 @@
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
 
+void MainWindow::completeListSelection() {
+    if (scanSelectedState_)
+        app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
+    scanSelectedState_.reset();
+    auto paths = std::move(scanSelectedPaths_);
+    scanSelectedPaths_.reset();
+    if (paths)
+        selectPaths(*paths);
+}
+
+void MainWindow::restoreListSelection(const CSelectedState &selection) {
+    if (scanningDisk_ || scanningArchive_)
+        scanSelectedState_ = selection;
+    else
+        app_.GetFocusedPanel().RefreshListCtrl(selection);
+}
+
 void MainWindow::handleSelectionClick(int row) {
     if (!selectionClickLeft_ || row < 0 || !app_.GetFocusedPanel()._mySelectMode)
         return;

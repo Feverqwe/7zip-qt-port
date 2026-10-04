@@ -145,10 +145,7 @@ void QtFileManagerCommands::VerCtrl(unsigned id) {
     w.app_.GetFocusedPanel().SaveSelectedState(selection);
     w.app_.VerCtrl(id);
     w.showDirectory(w.directory_, false);
-    if (w.scanningDisk_)
-        w.scanSelectedState_ = selection;
-    else
-        w.app_.GetFocusedPanel().RefreshListCtrl(selection);
+    w.restoreListSelection(selection);
     w.refreshActions();
 }
 void QtFileManagerCommands::Comment() {

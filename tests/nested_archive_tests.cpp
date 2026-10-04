@@ -342,7 +342,9 @@ class NestedArchiveTests : public QObject {
         QTRY_COMPARE(backend.listed.size(), 2);
         QTRY_VERIFY(table->rowCount() == 1 && table->item(0, 0) &&
                     table->item(0, 0)->text() == "inside.txt");
-        QCOMPARE(backend.extracted, QStringList({"folder/вложенный архив.zip"}));
+        QCOMPARE(backend.extracted.size(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.extracted.first()),
+                 QStringLiteral("folder/вложенный архив.zip"));
         QVERIFY(QFileInfo::exists(backend.listed.last()));
         QVERIFY(address->text().endsWith("outer.7z/folder/вложенный архив.zip"));
         table->selectRow(0);
