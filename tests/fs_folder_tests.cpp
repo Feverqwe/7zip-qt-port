@@ -8,7 +8,7 @@
 #include <QTemporaryDir>
 #include <QtTest>
 #include <new>
-#ifndef _WIN32
+#ifndef Q_OS_WIN
 #include <sys/stat.h>
 #include <unistd.h>
 #endif
@@ -157,7 +157,7 @@ class FsFolderTests : public QObject {
         QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(1));
     }
-#ifndef _WIN32
+#ifndef Q_OS_WIN
     void flatListingKeepsUnreadableChildAndVisibleSiblings() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

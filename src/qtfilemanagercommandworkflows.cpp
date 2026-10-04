@@ -10,6 +10,7 @@
 #include "mainwindow.h"
 #include "qtbenchmarkservices.h"
 #include "qtfilemanagercommands.h"
+#include "qtprogramfilemenu.h"
 #include <QScopedValueRollback>
 
 bool QtFileManagerCommands::IsShiftDown() const {
@@ -87,40 +88,13 @@ void QtFileManagerCommands::CreateFile() {
     if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_CREATE_FILE_ERROR))
         window_.createFile();
 }
-void QtFileManagerCommands::AddToArchive() {
-    if (window_.app_.GetFocusedPanel().IsFSFolder())
-        window_.createDialog();
-    else
-        window_.addDialog();
-}
+void QtFileManagerCommands::AddToArchive() { window_.createDialog(); }
 void QtFileManagerCommands::ExtractArchives() { window_.extract(false); }
 void QtFileManagerCommands::TestArchives() { window_.testArchive(); }
 bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
     switch (id) {
-    case OpenDialog:
-        window_.openDialog();
-        break;
-    case CreateArchive:
-        window_.createDialog();
-        break;
-    case AddSources:
-        window_.addDialog();
-        break;
-    case ExtractSelected:
-        window_.extract(true);
-        break;
-    case ArchiveInformation:
-        window_.showInfo();
-        break;
     case Back:
         window_.goBack();
-        break;
-    case Journal:
-        window_.showJournal();
-        break;
-    case TextView:
-    case TextEdit:
-        window_.viewSelectedFile(id == TextEdit);
         break;
     default:
         return false;
@@ -159,11 +133,12 @@ void QtFileManagerCommands::OptionsDialog() { window_.showSettings(); }
 void QtFileManagerCommands::OpenBookmark(unsigned index) { window_.openBookmark(index); }
 void QtFileManagerCommands::SetBookmark(unsigned index) { window_.saveBookmark(index); }
 
-// These IDs have no attached/available Qt consumer. Keep their original native
-// switch branches while the mandatory owners port the workflow; policy rejects
-// them before dispatch. Never expose a functioning-looking placeholder action.
-void QtFileManagerCommands::InvokePluginCommand(unsigned) { Q_UNREACHABLE(); }
-void QtFileManagerCommands::ReleasePluginMenus() { Q_UNREACHABLE(); }
+// Original CApp dispatch retains the program-menu plugin until invocation and
+// releases it through the same source ExecuteFileCommand branch afterward.
+void QtFileManagerCommands::InvokePluginCommand(unsigned id) {
+    window_.programFileMenu_->InvokePluginCommand(id);
+}
+void QtFileManagerCommands::ReleasePluginMenus() { window_.programFileMenu_->ReleasePluginMenus(); }
 void QtFileManagerCommands::VerCtrl(unsigned id) {
     auto &w = window_;
     CSelectedState selection;

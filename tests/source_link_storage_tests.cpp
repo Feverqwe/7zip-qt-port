@@ -60,7 +60,7 @@ class SourceLinkStorageTests final : public QObject, protected ArchiveBackendTes
         QVERIFY(backend.discoverCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE)));
         QTRY_COMPARE(ready.size(), 1);
         QVERIFY(ready[0][0].toBool());
-        CreateArchiveDialog form(fixture.path(), {source}, nullptr, {}, backend.codecCatalog());
+        CreateArchiveDialog form(fixture.path(), {source}, nullptr, backend.codecCatalog());
         form.findChild<QComboBox *>("archiveFormat")->setCurrentText("tar");
         auto *advanced = form.findChild<QPushButton *>("archiveAdvancedOptions");
         QVERIFY(advanced);
@@ -115,8 +115,7 @@ class SourceLinkStorageTests final : public QObject, protected ArchiveBackendTes
         QCOMPARE(form.result(), int(QDialog::Accepted));
         saved.Load(settings);
         QVERIFY(saved.SymLinks.Val && saved.HardLinks.Val);
-        CreateArchiveDialog restarted(fixture.path(), {source}, nullptr, {},
-                                      backend.codecCatalog());
+        CreateArchiveDialog restarted(fixture.path(), {source}, nullptr, backend.codecCatalog());
         QCOMPARE(restarted.findChild<QComboBox *>("archiveFormat")->currentText(), QString("tar"));
         QVERIFY(restarted.compressionOptions().SymLinks.Val);
         QVERIFY(restarted.compressionOptions().HardLinks.Val);

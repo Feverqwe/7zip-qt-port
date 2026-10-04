@@ -19,7 +19,17 @@ void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
     encryptionForm_->addRow(showPassword_);
     encryption_ = new QComboBox(group);
     encryption_->setObjectName("archiveEncryption");
-    encryptionForm_->addRow("Метод:", encryption_);
+    // CompressDialog.rc keeps IDT_COMPRESS_ENCRYPTION_METHOD beside its
+    // combo; password labels remain above their full-width edits.
+    auto *methodRow = new QWidget(group);
+    auto *methodLayout = new QHBoxLayout(methodRow);
+    methodLayout->setContentsMargins(0, 0, 0, 0);
+    auto *methodLabel = new QLabel("Метод:", methodRow);
+    methodLabel->setObjectName("archiveEncryptionMethodLabel");
+    methodLabel->setBuddy(encryption_);
+    methodLayout->addWidget(methodLabel);
+    methodLayout->addWidget(encryption_, 1);
+    encryptionForm_->addRow(methodRow);
     encryptHeaders_ = new QCheckBox("Шифровать имена файлов", group);
     encryptHeaders_->setObjectName("archiveEncryptHeaders");
     encryptHeaders_->setChecked(m_RegistryInfo.EncryptHeaders);

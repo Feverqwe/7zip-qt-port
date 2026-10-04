@@ -5,6 +5,7 @@ param(
     [string]$State = 'initial',
     [string]$Language = 'unspecified',
     [switch]$Screenshots,
+    [long]$WindowHandle = 0,
     [string]$TemplatesFrom,
     [switch]$SelfTest
 )
@@ -205,7 +206,15 @@ public static class Native {
         Rect frame;
         root["visibleFrameBoundsScreenPx"] = DwmGetWindowAttribute(window, 9, out frame, Marshal.SizeOf(typeof(Rect))) == 0 ? Bounds(frame) : null;
         Rect units = new Rect { Right = 4, Bottom = 8 };
-        root["dialogBaseUnitsPx"] = Class(window) == "#32770" && MapDialogRect(window, ref units) ? Bounds(units) : null;
+        // MapDialogRect reads process-local dialog state on this Windows build.
+        // Calling it for a 7zFM window in another process causes an access
+        // violation. Resource previews are ours; runtime geometry is measured
+        // directly in pixels without inventing dialog units from another font.
+        uint owner;
+        GetWindowThreadProcessId(window, out owner);
+        bool local = owner == (uint)System.Diagnostics.Process.GetCurrentProcess().Id;
+        root["dialogBaseUnitsPx"] = local && Class(window) == "#32770" && MapDialogRect(window, ref units) ? Bounds(units) : null;
+        root["dialogBaseUnitsAvailable"] = root["dialogBaseUnitsPx"] != null;
         var controls = new List<object>();
         Exception error = null;
         EnumProc callback = delegate(IntPtr child, IntPtr unused) {
@@ -352,6 +361,17 @@ if ($TemplatesFrom) {
         [IO.File]::WriteAllText($summaryPath, ($summary | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding($false)))
         if ($failures.Count) { throw "$($failures.Count) template(s) failed; see $summaryPath" }
     } finally { [void][SevenzipReference.Native]::FreeLibrary($module) }
+    return
+}
+
+if ($WindowHandle -ne 0) {
+    $window = [IntPtr]$WindowHandle
+    [uint32]$targetProcessId = 0
+    [void][SevenzipReference.Native]::GetWindowThreadProcessId($window, [ref]$targetProcessId)
+    $target = Get-Process -Id $targetProcessId
+    if ($target.ProcessName -notin @('7zFM', '7zG')) { throw 'Window must belong to 7zFM.exe or 7zG.exe.' }
+    if ([SevenzipReference.Native]::IsIconic($window)) { throw 'Restore the window first.' }
+    Save-Reference $window $target.MainModule.FileName
     return
 }
 

@@ -15,6 +15,9 @@ class CIdentityFile final : public NWindows::NFile::NIO::CFileBase {
 } // namespace
 #else
 #include <sys/stat.h>
+#ifdef __linux__
+#include <fcntl.h>
+#endif
 #endif
 
 QString QtOwnedTempIdentity(const QString &path) {
@@ -39,9 +42,24 @@ QString QtOwnedTempIdentity(const QString &path) {
     if (::lstat(QFile::encodeName(path).constData(), &info) != 0 ||
         (!S_ISREG(info.st_mode) && !S_ISDIR(info.st_mode)))
         return {};
-    return QString("%1:%2:%3")
-        .arg(qulonglong(info.st_dev))
-        .arg(qulonglong(info.st_ino))
-        .arg(S_ISDIR(info.st_mode));
+    QString identity = QString("%1:%2:%3")
+                           .arg(qulonglong(info.st_dev))
+                           .arg(qulonglong(info.st_ino))
+                           .arg(S_ISDIR(info.st_mode));
+#ifdef __linux__
+    // Linux can immediately reuse an unlinked inode, including at the same
+    // source-generated temp path. Birth time distinguishes that new object
+    // from a retained edit without changing when its contents are updated.
+    struct statx extended = {};
+    if (::statx(AT_FDCWD, QFile::encodeName(path).constData(), AT_SYMLINK_NOFOLLOW,
+                STATX_INO | STATX_BTIME, &extended) == 0 &&
+        (extended.stx_mask & STATX_BTIME)) {
+        if (extended.stx_ino != qulonglong(info.st_ino))
+            return {};
+        identity +=
+            QString(":%1:%2").arg(extended.stx_btime.tv_sec).arg(extended.stx_btime.tv_nsec);
+    }
+#endif
+    return identity;
 #endif
 }

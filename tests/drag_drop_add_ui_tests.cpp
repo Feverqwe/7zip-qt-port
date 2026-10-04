@@ -1,9 +1,13 @@
+#include "archivecodeccatalog.h"
 #include "window_state_support.h"
 
 class DragDropAddUiTests final : public QObject {
     Q_OBJECT
   private slots:
     void externalFilesystemDropCreatesArchiveWithNativeName() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Source drop Add requires the official native module");
+#endif
         QTemporaryDir root;
         QVERIFY(QDir().mkpath(root.filePath("input")));
         QVERIFY(QDir().mkpath(root.filePath("output")));
@@ -14,6 +18,13 @@ class DragDropAddUiTests final : public QObject {
         QCOMPARE(input.write(bytes), qint64(bytes.size()));
         input.close();
         ArchiveBackend backend;
+#ifdef SEVENZIP_CODEC_MODULE
+        ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(probe.result(), S_OK);
+        QCOMPARE(
+            backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), probe.version()),
+            S_OK);
+#endif
         MainWindow window(&backend);
         window.show();
         auto *address = window.findChild<QLineEdit *>("archivePath");

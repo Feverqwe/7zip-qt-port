@@ -46,7 +46,7 @@ class CompressionTests : public QObject {
         QVERIFY(format && level && method && threads && dictionary && wordSize && solidBlock &&
                 encryption && password && confirmation && showPassword);
         QCOMPARE(level->count(), 10);
-        QCOMPARE(method->currentText(), QStringLiteral("LZMA2"));
+        QCOMPARE(method->currentText(), QStringLiteral("*  LZMA2"));
         QVERIFY(dictionary->isEnabled());
         QVERIFY(wordSize->isEnabled());
         QVERIFY(solidBlock->isEnabled());
@@ -82,7 +82,7 @@ class CompressionTests : public QObject {
         QCOMPARE(level->count(), 6);
         QCOMPARE(level->findData(2u), -1);
         QVERIFY(method->findText("PPMd") >= 0);
-        QCOMPARE(method->currentText(), QStringLiteral("Deflate"));
+        QCOMPARE(method->currentText(), QStringLiteral("*  Deflate"));
         QVERIFY(!solidBlock->isEnabled());
         encryption->setCurrentIndex(1);
         QVERIFY(password->isEnabled());
@@ -123,9 +123,8 @@ class CompressionTests : public QObject {
         QFile file(source);
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
-        const QString archive = temp.filePath("archive.zip");
-        QVERIFY(QFile(archive).open(QIODevice::WriteOnly));
-        CreateArchiveDialog dialog(temp.path(), {source}, nullptr, archive);
+        CreateArchiveDialog dialog(temp.path(), {source});
+        dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
         auto *pathMode = dialog.findChild<QComboBox *>("archivePathMode");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
@@ -161,8 +160,6 @@ class CompressionTests : public QObject {
         QFile file(source);
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
-        const QString archive = temp.filePath("archive.zip");
-        QVERIFY(QFile(archive).open(QIODevice::WriteOnly));
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QVERIFY(!settingsPath.isEmpty());
         const QByteArray previous = QFile(settingsPath).exists() ? [&] {
@@ -173,7 +170,8 @@ class CompressionTests : public QObject {
         }()
                                                                  : QByteArray();
         const bool existed = QFile(settingsPath).exists();
-        CreateArchiveDialog dialog(temp.path(), {source}, nullptr, archive);
+        CreateArchiveDialog dialog(temp.path(), {source});
+        dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         QVERIFY(level);
         level->setCurrentIndex(level->findData(0u));
@@ -246,13 +244,18 @@ class CompressionTests : public QObject {
         options.level = level;
         options.method = method;
         options.threads = method == "PPMd" && format == "7z" ? 0 : 2;
+        // Exercise level/method/solid transport with a bounded dictionary.
+        // Level 9's default needs >2 GiB even for this 8 KiB fixture and can
+        // correctly fail the source memory gate in the shared runner guest.
+        options.dictionaryBytes = method == "LZMA2" ? quint64(1 << 20) : 0;
         options.SolidIsSpecified = format == "7z";
         options.SolidBlockSize = 0;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
-        QVERIFY2(done.takeFirst().at(0).toBool(), "7zz rejected compression options");
+        const auto result = done.takeFirst();
+        QVERIFY2(result.at(0).toBool(), qPrintable(result.value(1).toString()));
         QVERIFY(QFile::exists(target));
 
         QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
@@ -264,7 +267,7 @@ class CompressionTests : public QObject {
         QCOMPARE(entries.first().path, QStringLiteral("данные с пробелом.txt"));
 
         QProcess inspect;
-        inspect.start("7zz", {"l", "-slt", "--", target});
+        inspect.start("7zz", {"l", "-slt", "-sccUTF-8", "--", target});
         QVERIFY(inspect.waitForFinished(15000));
         QCOMPARE(inspect.exitCode(), 0);
         QVERIFY(inspect.readAllStandardOutput().contains("Method = " + method.toUtf8()));
@@ -293,7 +296,7 @@ class CompressionTests : public QObject {
         QVERIFY2(done.first().at(0).toBool(), qPrintable(done.first().at(1).toString()));
 
         QProcess inspect;
-        inspect.start("7zz", {"l", "-slt", "--", target});
+        inspect.start("7zz", {"l", "-slt", "-sccUTF-8", "--", target});
         QVERIFY(inspect.waitForFinished(15000));
         QCOMPARE(inspect.exitCode(), 0);
         const QByteArray listing = inspect.readAllStandardOutput();

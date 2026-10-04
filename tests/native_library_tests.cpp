@@ -120,7 +120,7 @@ class NativeLibraryTests : public QObject {
         QVERIFY(QFile::remove(recreated));
     }
 
-#ifdef _WIN32
+#ifdef Q_OS_WIN
     void windowsResourceLoadExRetainsSourceLifetime() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());

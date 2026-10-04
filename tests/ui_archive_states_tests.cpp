@@ -23,7 +23,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         MainWindow window(&backend);
         openListedArchive(window, backend, "archive.zip",
                           {ArchiveEntry{QStringLiteral("папка/δ space.txt"), 3, 3}});
-        QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
         QTimer::singleShot(0, &window, [] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
@@ -79,8 +79,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(!action(window, "backAction")->isEnabled());
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
@@ -169,18 +168,13 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(),
                  QFileInfo(QDir::currentPath()).canonicalFilePath());
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QCOMPARE(action(window, "selectAllAction")->isEnabled(), table(window)->rowCount() > 0);
         QCOMPARE(window.statusBar()->currentMessage(), QString("Operation canceled."));
-        action(window, "operationJournalAction")->trigger();
-        auto *log = window.findChild<QTreeWidget *>("IDL_MESSAGE");
-        QVERIFY(log);
-        QVERIFY(messageText(log).contains(QString("Operation canceled.")));
+        QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
         openListedArchive(window, backend, "after-cancel.zip", {});
         QCOMPARE(backend.listCalls, 2);
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
     }
 
     void operationCancellationKeepsArchive() {
@@ -191,8 +185,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QCoreApplication::processEvents();
         window.extractTo("/temporary/destination");
         QCOMPARE(backend.extractCalls, 1);
-        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());
@@ -214,7 +207,6 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         button->click();
         QCOMPARE(backend.cancelCalls, 1);
         QCOMPARE(table(window)->rowCount(), 1);
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(action(window, "selectAllAction")->isEnabled());
@@ -236,7 +228,6 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.openArchive("protected.7z");
         responder.stop();
         QCOMPARE(backend.cancelCalls, 1);
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         openListedArchive(window, backend, "empty.zip", {});
         QCOMPARE(backend.listCalls, 2);
@@ -278,12 +269,11 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.openArchive("protected.7z");
         responder.stop();
         QVERIFY(supplied);
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         window.testArchive();
         QCOMPARE(backend.lastTestPassword, password);
-        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "openInsideAction")->isEnabled());
         backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         openListedArchive(window, backend, "empty.zip", {});
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
@@ -319,16 +309,14 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(!dialog.encryptHeaders());
     }
 
-    void progressAndLastJournal() {
+    void sourceProgressAndFailureWithoutJournalCommand() {
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        auto *journal = action(window, "operationJournalAction");
-        QVERIFY(!journal->isEnabled());
+        QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
         QVERIFY(backend.prepareArchiveFixture("first.7z"));
         backend.queueListAction([&] {
             const auto finish = qScopeGuard([&] { backend.completeList({}); });
-            QVERIFY(journal->isEnabled());
             auto *progress = dynamic_cast<CQtProgressDialog *>(QApplication::activeModalWidget());
             QVERIFY(progress);
             QCOMPARE(progress->windowModality(), Qt::ApplicationModal);
@@ -342,39 +330,17 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             QVERIFY(name->text().contains(QStringLiteral("папка")));
         });
         window.openArchive("first.7z");
-        journal->trigger();
-        QCoreApplication::processEvents();
-        auto *text = window.findChild<QTreeWidget *>("IDL_MESSAGE");
-        QVERIFY(text);
-        QVERIFY(messageText(text).contains(QStringLiteral("Opening...: ")));
-        QVERIFY(messageText(text).contains(QStringLiteral("42% + папка/имя с пробелом.txt")));
-        QVERIFY(messageText(text).contains(QStringLiteral("Result: Архив открыт.")));
-        auto *dialog = window.findChild<QDialog *>("operationMessagesDialog");
-        QVERIFY(dialog);
-        auto *close = dialog->findChild<QPushButton *>("IDOK");
-        QVERIFY(close);
-        for (const QSize size : {QSize(760, 450), QSize(640, 380)}) {
-            dialog->resize(size);
-            QCoreApplication::processEvents();
-            QVERIFY(UiInspection::fullyVisible(*text, *dialog));
-            QVERIFY(UiInspection::fullyVisible(*close, *dialog));
-            QVERIFY(UiInspection::separate(*text, *close, *dialog));
-            QVERIFY(close->sizeHint().width() <= close->width());
-            QVERIFY(close->sizeHint().height() <= close->height());
-            QVERIFY(UiInspection::writeReport(
-                *dialog, QStringLiteral("messages-%1x%2").arg(size.width()).arg(size.height())));
-        }
-        const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
-        if (!screenshotDir.isEmpty()) {
-            QVERIFY(QDir().mkpath(screenshotDir));
-            const QString screenshot =
-                screenshotDir + "/" + QSysInfo::productType() + "-journal.png";
-            QVERIFY(dialog->grab().save(screenshot));
-        }
+        QVERIFY(!window.findChild<QDialog *>("operationMessagesDialog"));
 
         QVERIFY(backend.prepareArchiveFixture("second.zip"));
+        QStringList errors;
         QTimer warningResponder;
-        connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
+        connect(&warningResponder, &QTimer::timeout, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                errors.append(box->text());
+                box->accept();
+            }
+        });
         warningResponder.start(1);
         backend.queueListAction([&] {
             backend.report(-1, {}, QStringLiteral("ERROR: повреждённый архив"));
@@ -382,10 +348,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         });
         window.openArchive("second.zip");
         warningResponder.stop();
-        QVERIFY(messageText(text).contains(QStringLiteral("ERROR: повреждённый архив")));
-        QVERIFY(messageText(text).contains(QStringLiteral("Error: 7zz завершился с кодом 2.")));
-        QVERIFY(!messageText(text).contains(QStringLiteral("42% +")));
-        QVERIFY(journal->isEnabled());
+        QCOMPARE(errors, QStringList({QStringLiteral("7zz завершился с кодом 2.")}));
+        QCOMPARE(backend.lastResult(), E_FAIL);
+        QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("7zz завершился с кодом 2."));
+        QVERIFY(!window.findChild<QDialog *>("operationMessagesDialog"));
     }
 
     void contextMenuFollowsSelectionAndLocation() {
@@ -451,8 +417,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         capture();
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
-        QVERIFY(commands.contains(action(window, "extractSelectedAction")->text()));
-        QVERIFY(commands.contains("Add to open archive…"));
+        QVERIFY(commands.contains(action(window, "copyAction")->text()));
+        QVERIFY(!commands.contains("Add to open archive…"));
         QVERIFY(commands.contains("P&roperties"));
     }
 

@@ -15,6 +15,9 @@
 #include "FormatUtils.h"
 #include "LangUtils.h"
 #include "qtlangcontrols.h"
+#include "qtmenupageservices.h"
+#include "qtnativemenupageservices.h"
+#include "qtshellregistryservices.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QHBoxLayout>
@@ -56,8 +59,10 @@ bool IsZonePropagationSupported() {
 #endif
 }
 
-CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupported)
-    : QWidget(parent), _settingsPath(settingsPath) {
+CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupported,
+                     std::shared_ptr<IQtMenuPageServices> services)
+    : QWidget(parent), _settingsPath(settingsPath),
+      _services(services ? std::move(services) : CreateNativeMenuPageServices()) {
     setObjectName("menuPage");
     auto *layout = new QVBoxLayout(this);
     layout->setSpacing(4);
@@ -82,6 +87,12 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     _menuIcons = addCheck("Icons in context menu", "menuIcons", IDX_SYSTEM_ICON_IN_MENU);
     _elimDup =
         addCheck("Eliminate duplication of root folder", "menuElimDup", IDX_EXTRACT_ELIM_DUP);
+    const bool commandsAvailable = _services && _services->CommandsAvailable();
+    for (auto *control : {_cascaded, _menuIcons, _elimDup}) {
+        control->setEnabled(commandsAvailable);
+        if (commandsAvailable)
+            QtBindLocalToolTip(control, {}, {});
+    }
     auto *zoneRow = new QHBoxLayout;
     auto *zoneLabel = new QLabel("Propagate Zone.Id stream:", this);
     zoneLabel->setObjectName("menuZoneLabel");
@@ -108,9 +119,11 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     _listView = new QListWidget(this);
     _listView->setObjectName("menuItems");
     _listView->setProperty("sourceControlID", IDL_SYSTEM_OPTIONS);
-    _listView->setEnabled(false);
+    _listView->setEnabled(commandsAvailable);
     QtBindLocalToolTip(_listView, "Shell integration is unavailable in this build.",
                        "Интеграция с оболочкой недоступна в этой сборке.");
+    if (commandsAvailable)
+        QtBindLocalToolTip(_listView, {}, {});
     _listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     layout->addWidget(_listView, 1);
     connect(_zoneCombo, &QComboBox::currentIndexChanged, this,
@@ -129,8 +142,16 @@ void CMenuPage::Clear_MenuChanged() {
 }
 
 bool CMenuPage::IsModified() const {
+    for (const auto &dll : _dlls)
+        if (dll.wasChanged)
+            return true;
     return _cascaded_Changed || _menuIcons_Changed || _elimDup_Changed || _writeZone_Changed ||
            _flags_Changed;
+}
+
+QCheckBox *CMenuPage::ShellControl(unsigned id) const {
+    return findChild<QCheckBox *>(id == IDX_SYSTEM_INTEGRATE_TO_MENU ? "shellIntegration"
+                                                                     : "shellIntegration32");
 }
 
 static void LoadLang_Spec(UString &s, UInt32 id, const char *eng) {
@@ -180,9 +201,8 @@ void CMenuPage::ReloadLangItems() {
     UString bit64 = LangString(IDS_PROP_BIT64);
     if (bit64.IsEmpty())
         bit64 = "64-bit";
-#if !defined(_WIN32) || defined(_WIN64)
-    bit64.Replace(L"64", L"32");
-#endif
+    if (_services ? _services->Is64Bit() : sizeof(void *) == 8)
+        bit64.Replace(L"64", L"32");
     s.Add_Space();
     s.Add_Char('(');
     s += bit64;
@@ -210,6 +230,35 @@ void CMenuPage::ReloadLangItems() {
 bool CMenuPage::OnInit() {
     _initMode = true;
     Clear_MenuChanged();
+    _dlls[0].ctrl = IDX_SYSTEM_INTEGRATE_TO_MENU;
+    _dlls[1].ctrl = IDX_SYSTEM_INTEGRATE_TO_MENU_2;
+    _dlls[0].wow = 0;
+    _dlls[1].wow =
+        _services && _services->Is64Bit() ? NQtShellRegistry::kWow32 : NQtShellRegistry::kWow64;
+    const FString prefix = _services ? _services->GetModuleDirPrefix() : FString();
+    for (unsigned d = 0; d < 2; d++) {
+        CShellDll &dll = _dlls[d];
+        dll.wasChanged = false;
+        auto *control = ShellControl(dll.ctrl);
+        if (_services && !_services->Is64Bit() && d != 0 && !_services->OtherBitnessAvailable()) {
+            control->hide();
+            dll.Path.Empty();
+            continue;
+        }
+        control->show();
+        dll.Path = prefix;
+        if (_services)
+            dll.Path += _services->GetDllName(d);
+        if (!_services || !_services->DoesFileExist(dll.Path)) {
+            dll.Path.Empty();
+            control->setEnabled(false);
+        } else {
+            dll.prevValue = _services->CheckContextMenuHandler(fs2us(dll.Path), dll.wow);
+            control->setChecked(dll.prevValue);
+            control->setEnabled(true);
+            QtBindLocalToolTip(control, {}, {});
+        }
+    }
     CContextMenuInfo ci;
     ci.Load(_settingsPath);
     _cascaded->setChecked(ci.Cascaded.Val);
@@ -259,6 +308,19 @@ bool CMenuPage::OnInit() {
 }
 
 long CMenuPage::OnApply() {
+    for (unsigned d = 2; d != 0;) {
+        d--;
+        CShellDll &dll = _dlls[d];
+        if (dll.wasChanged && !dll.Path.IsEmpty()) {
+            const bool newVal = ShellControl(dll.ctrl)->isChecked();
+            const LONG res = _services->SetContextMenuHandler(newVal, fs2us(dll.Path), dll.wow);
+            if (res != 0 && (dll.prevValue != newVal || newVal))
+                _services->ShowMenuErrorMessage(res, this);
+            dll.prevValue = _services->CheckContextMenuHandler(fs2us(dll.Path), dll.wow);
+            ShellControl(dll.ctrl)->setChecked(dll.prevValue);
+            dll.wasChanged = false;
+        }
+    }
     if (IsModified()) {
         CContextMenuInfo ci;
         ci.Cascaded.Val = _cascaded->isChecked();
@@ -284,6 +346,14 @@ long CMenuPage::OnApply() {
 
 bool CMenuPage::OnButtonClicked(unsigned buttonID) {
     switch (buttonID) {
+    case IDX_SYSTEM_INTEGRATE_TO_MENU:
+    case IDX_SYSTEM_INTEGRATE_TO_MENU_2:
+        for (unsigned d = 0; d < 2; d++) {
+            CShellDll &dll = _dlls[d];
+            if (buttonID == dll.ctrl && !dll.Path.IsEmpty())
+                dll.wasChanged = true;
+        }
+        break;
     case IDX_SYSTEM_CASCADED_MENU:
         _cascaded_Changed = true;
         break;

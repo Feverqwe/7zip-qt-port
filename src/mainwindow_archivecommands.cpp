@@ -14,6 +14,7 @@
 #include "qtarchivefileresource.h"
 #include "qtextractpathpolicy.h"
 #include "qtlangcontrols.h"
+#include "qtshellarchiveservices.h"
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 
@@ -43,80 +44,6 @@ void MainWindow::calculateHash(const QString &method) {
     }
 }
 
-void MainWindow::openArchiveFile(const QString &entry) {
-    if (app_.QtOperations().closed())
-        return;
-    QtAppOperationState::CallScope call(app_.QtOperations());
-    viewTemporary_ = std::make_unique<QtOwnedTempDir>();
-    if (!viewTemporary_->isValid()) {
-        viewTemporary_.reset();
-        QMessageBox::warning(this, QtLocalText("Open file", QStringLiteral("Открыть файл")),
-                             QtLocalText("Could not create temporary folder.",
-                                         QStringLiteral("Не удалось создать временную папку.")));
-        return;
-    }
-    pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
-    pendingView_ = true;
-    pendingExternalOpen_ = true;
-    previousState_ = state_;
-    setState(State::Operating);
-    begin(QtLangText(IDS_OPENNING), entry);
-    backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
-}
-
-void MainWindow::viewSelectedFile(bool editable) {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
-        return;
-    const auto indices = sourceOperatedIndices();
-    if (indices.Size() != 1)
-        return;
-    if (app_.GetFocusedPanel().IsItem_Folder(indices[0]))
-        return;
-    if (state_ == State::Filesystem) {
-        const QStringList paths = selectedFilesystemPaths();
-        if (paths.size() != 1)
-            return;
-        const QString path = paths.first();
-        if (QFileInfo(path).isFile() && !QFileInfo(path).isSymLink())
-            openFileViewer(path, editable);
-        return;
-    }
-    if (editable && (info_.encrypted || isNestedArchive()))
-        return;
-    const QStringList paths = selectedArchiveItemsPaths();
-    if (paths.size() != 1)
-        return;
-    const QString entry = paths.first();
-    NWindows::NCOM::CPropVariant size;
-    app_.GetFocusedPanel().GetFolder()->GetProperty(indices[0], kpidSize, &size);
-    if (size.vt == VT_UI8 && size.uhVal.QuadPart > 16 * 1024 * 1024) {
-        QMessageBox::information(
-            this, QtLocalText("Viewer", QStringLiteral("Просмотр")),
-            QtLocalText("File is larger than 16 MiB. Text preview is unavailable.",
-                        QStringLiteral("Файл больше 16 МиБ. Просмотр текста недоступен.")));
-        return;
-    }
-    viewTemporary_ = std::make_unique<QtOwnedTempDir>();
-    if (!viewTemporary_->isValid()) {
-        viewTemporary_.reset();
-        QMessageBox::warning(this, QtLocalText("Viewer", QStringLiteral("Просмотр")),
-                             QtLocalText("Could not create temporary folder.",
-                                         QStringLiteral("Не удалось создать временную папку.")));
-        return;
-    }
-    pendingViewPath_ = QDir(viewTemporary_->path()).filePath(entry);
-    pendingView_ = true;
-    pendingExternalOpen_ = false;
-    pendingViewEditable_ = editable;
-    pendingEditEntry_ = editable ? entry : QString();
-    previousState_ = state_;
-    setState(State::Operating);
-    begin(editable ? QtLocalText("Editing file", QStringLiteral("Редактирование файла"))
-                   : QtLocalText("Viewing file", QStringLiteral("Просмотр файла")),
-          entry);
-    backend_->extract(archive_, viewTemporary_->path(), {entry}, archivePassword_);
-}
-
 void MainWindow::extract(bool onlySelected) {
     if (state_ != State::Viewing || entries_.isEmpty())
         return;
@@ -133,91 +60,36 @@ void MainWindow::extract(bool onlySelected) {
 }
 
 void MainWindow::createDialog() {
-    if (state_ != State::Filesystem)
-        return;
-    const QStringList selectedPaths = selectedFilesystemPaths();
-    CreateArchiveDialog dialog(directory_, selectedPaths, this, {}, backend_->codecCatalog());
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    createArchive(dialog.target(), dialog.sources(), dialog.password(), dialog.encryptHeaders(),
-                  dialog.compressionOptions());
-}
-
-void MainWindow::createArchive(const QString &target, const QStringList &sources,
-                               const QString &password, bool encryptHeaders,
-                               const CompressionOptions &options) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Filesystem || sources.isEmpty() || target.isEmpty())
+    if (state_ != State::Filesystem && state_ != State::Viewing)
         return;
-    previousState_ = state_;
-    creating_ = true;
-    setState(State::Operating);
-    begin(QtLangText(IDS_PROGRESS_COMPRESSING), target);
-    backend_->create(target, sources, password, encryptHeaders, options);
-}
-
-void MainWindow::addDialog() {
-    if (state_ != State::Viewing)
-        return;
-    CreateArchiveDialog dialog(returnDirectory_, {}, this, archive_, backend_->codecCatalog(),
-                               info_.format);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    if (state_ != State::Viewing || dialog.sources().isEmpty())
-        return;
-    updateArchiveFromDialog(dialog.sources(), dialog.compressionOptions());
-}
-
-void MainWindow::updateArchiveFromDialog(const QStringList &sources,
-                                         const CompressionOptions &options) {
-    if (app_.QtOperations().closed() || state_ != State::Viewing || sources.isEmpty() ||
-        app_.GetFocusedPanel().IsThereReadOnlyFolder())
-        return;
+    const auto previousState = state_;
+    const unsigned sourceIndex = app_.GetFocusedPanelIndex();
     CPanel &panel = app_.GetFocusedPanel();
-    auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
-    auto *resource =
-        folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
-    const auto *actionSet = NCompressDialog::FindUpdateActionSet(options.UpdateMode);
-    if (!resource || !resource->HasUpdateService() || !actionSet) {
-        QMessageBox::warning(
-            this, QtLangText(IDD_COMPRESS),
-            QtLocalText("Source update is unavailable for this archive.",
-                        QStringLiteral("Исходное обновление этого архива недоступно.")));
-        return;
-    }
-    QString root, error;
-    QStringList relativePaths;
-    if (!ArchiveBackend::prepareSourceSelection(archive_, sources, &root, &relativePaths, &error,
-                                                options.SymLinks.Val)) {
-        QMessageBox::warning(this, QtLangText(IDD_COMPRESS), error);
-        return;
-    }
-    UStringVector names;
-    for (const QString &path : sources)
-        names.Add(ToUString(QFileInfo(path).absoluteFilePath()));
     CSelectedState selection;
     panel.SaveSelectedState(selection);
-    CMyComPtr<IUnknown> keepResourceAlive = resource;
-    resource->SetCompressionOptions(options);
-    const auto resetOptions = qScopeGuard([resource] { resource->ClearCompressionOptions(); });
-    UStringVector messages;
-    HRESULT result;
+    bool dialogShown = false;
+    const auto catalog = backend_->codecCatalog();
+    QtShellArchiveServices services(
+        *backend_, this, {}, {}, {},
+        [&](CCompressDialog &source, const CObjectVector<NWildcard::CCensorPath> &paths,
+            QWidget *parent) {
+            dialogShown = true;
+            return CreateArchiveDialog::PresentSource(source, paths, catalog, parent);
+        },
+        toolbarSettingsPath());
+    setState(State::Operating);
     {
         QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
-        result =
-            panel.CopyFrom(false, UString(), names, true, &messages, actionSet, options.PathMode);
+        panel.AddToArchive(services);
     }
-    if (result == S_OK && messages.IsEmpty()) {
-        refreshCurrent(&selection);
-        statusBar()->showMessage(
-            QtLocalText("Archive updated.", QStringLiteral("Архив обновлён.")));
-    } else if (result != E_ABORT) {
-        QMessageBox::warning(this, QtLangText(IDD_COMPRESS),
-                             messages.IsEmpty()
-                                 ? QString::fromWCharArray(HResultToMessage(result).Ptr())
-                                 : ToQString(messages[0]));
+    if (!app_.QtOperations().closed()) {
+        activatePanelUi(sourceIndex);
+        setState(previousState);
+        if (dialogShown && services.Result() == S_OK)
+            refreshCurrent(&selection);
     }
 }
 
@@ -317,8 +189,6 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             previousState_ = state_;
             setState(State::Operating);
             operationName_ = QtLangText(IDS_PROGRESS_EXTRACTING);
-            appendJournal(operationName_ + QStringLiteral(": ") + output);
-            journalAction_->setEnabled(true);
             QtArchiveBatchResult result;
             {
                 QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
@@ -346,8 +216,6 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         previousState_ = state_;
         setState(State::Operating);
         operationName_ = QtLangText(IDS_COPYING); // PanelCopy::CopyTo title owner
-        appendJournal(operationName_ + QStringLiteral(": ") + output);
-        journalAction_->setEnabled(true);
         CCopyToOptions sourceOptions;
         CQtExtractPathPolicy pathPolicy(output);
         CExtractNtOptions ntOptions;
@@ -449,11 +317,6 @@ void MainWindow::addSources(const QStringList &sources) {
     updatingArchive_ = true;
     setState(State::Operating);
     operationName_ = QtLangText(IDS_PROGRESS_COMPRESSING);
-    journalMessages_.Clear();
-    if (journalDialog_)
-        journalDialog_->ResetMessages();
-    appendJournal(operationName_ + ": " + archive_);
-    journalAction_->setEnabled(true);
     bool success = false;
     bool messageDisplayed = false;
     QString message;

@@ -11,6 +11,7 @@
 #include "qtfilemanagercommands.h"
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
+#include "qtprogramfilemenu.h"
 #include "qttrashservice.h"
 #include <QCloseEvent>
 

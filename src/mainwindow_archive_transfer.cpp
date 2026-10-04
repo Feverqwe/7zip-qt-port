@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
+#include "qtownedtempdir.h"
 #include "qttrashservice.h"
 #include <QSaveFile>
 #include <QScopedValueRollback>

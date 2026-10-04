@@ -2,6 +2,84 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+P2-09 in progress: CPanel::CreateFileMenu now owns plugin release, extended
+verbs, archive-folder exclusion and ShowSystemMenu sequencing. CreateSevenZipMenu
+owns source path/attribute setup and query IDs; InvokePluginCommand owns numeric
+offset routing and success-only selection clearing. QtFileManagerShellMenu renders
+the source tree and transports commands to QtShellArchiveServices. CFileMenu's
+regular-item projection starts at the already rendered plugin prefix; there is
+no second Qt copy of shell command-generation rules. Windows System query/invoke
+is connected through the native COM/HMENU presentation bridge. System Properties,
+source email and extension packaging remain pending. Available source
+Open/Extract/Test/Hash and direct Add/generation commands use the real
+popup and program File menu; unsupported transports stay disabled.
+
+QtProgramFileMenu retains the initial static resource actions separately from
+the disposable plugin prefix. Original MyLoadMenu::OnMenuActivating's File
+branch rebuilds it through CPanel::CreateFileMenu; Qt renders the resulting
+projection. Plugin QActions dispatch through CApp::ExecuteCommand and the source
+ExecuteFileCommand invoke/release branch. A generation token rejects deferred
+QActions from an earlier menu, and focused-panel identity rejects a retained
+selection after a panel switch. Rebuilding removes actions without deleting the
+shared toolbar/resource actions. Popup construction uses the retained static
+list, never the dynamic program menu. This Qt ownership adapter does not generate
+functional shell commands.
+Open/Create/Add-to-open/Extract-selected legacy extension actions and their
+dispatch/fields are removed, including the independent Open archive picker.
+Selection extraction is source Copy To/F5; archive update is two-panel Copy;
+creation is source toolbar/Explorer Add with filesystem selection. Archive popup
+contains only the source projection, without the extra Qt toolbar-action group.
+Journal and built-in text aliases, their collector, viewer and MainWindow
+preview/update wrappers are also removed. Original F3/F4 and Progress/Messages
+own their workflows.
+Toolbar Info now shares source IDM_PROPERTIES with File Properties; the
+independent archive summary extension and window have been removed. Original
+Properties supplies item and folder/archive sections, including empty archives.
+Native Windows System Properties remains part of the pending System transport.
+
+The full source Common UpdateArchive/Compress orchestration and its TempFiles,
+UpdateCallback, UpdatePair and UpdateProduce dependencies belong to
+sevenzip_filesystem. sevenzip_location consumes that owner for Agent workflows;
+panel-only backend consumers can also link it without depending on Agent/UI
+providers. ArchiveBackend::updateSourceArchive retains the catalog through the
+call, while ArchiveCodecCatalog confines the original CCodecs pointer to its
+factory owner. Source CThreadUpdating/UpdateGUI own callback, native worker,
+error paths and modal progress completion. IQtUpdateGUIServices transports the
+source update call through ArchiveBackend with its original COpenType vector
+and retained catalog; the worker reads no QProcess/widget state. GUI preflight
+checks busy/stale catalog state. Direct popup Add to7z/ZIP and SHA256 generation
+use this path. Source ShowDialog now owns the options roundtrip and source
+SetMethods filters external encoder metadata. Its PresentCompressDialog boundary
+now presents a fixed-selection Qt modal using the service's retained catalog,
+including external encoder metadata. Generic popup Add is connected. Source
+modal success/broken-existing archive/Cancel and selection/refresh are checked;
+new layout corrections and native platform gates are in progress. Source-modal
+SFX uses the catalog's validated native module path supplied by the service;
+the original adjacent-module fallback remains. Native output shares the Unix
+executable-bit adapter with CLI output, and explicit SfxMode reaches the source
+volume-name owner so suffixless native executables can find their `.7z.001`
+payload. Local native creation, encryption, volumes and cancellation pass;
+fresh Windows/Linux validation is pending.
+The subsequent24-suite native snapshot passed on both Windows and Linux,
+including executable SFX fixtures. The later source method selector owns raw
+IDs and automatic specs separately from Qt captions; its latest Windows
+validation passed in29-suite snapshot07e2aeb5 on Windows/Linux. Actual default
+v12 was compared with native7zFM; subsequent program-menu edits need their own
+platform checks and do not inherit that result.
+The ordinary filesystem Add no longer chooses sources inside its parameters
+dialog. The legacy open-archive Add workflow and independent program File-menu
+aliases have been removed in favor of the original command projection.
+[the mandatory UX audit](ux-port-audit.md) tracks it and other independent
+presentation decisions throughout the application.
+
+Source shell kOpen launches another File Manager. The Qt adaptation creates an
+independent MainWindow/backend with its own operation/process state and shares
+only the immutable codec-module lease. Explicit open type reaches BindToPath;
+archive-only entry retains an S_FALSE archive refusal even when BindToPath
+successfully binds the containing filesystem folder. Cancellation and failed
+operations do not clear the caller's selection. Native synchronous errors are
+presented once through their source services; cancellation stays silent.
+
 P2-08 accepted: source SystemPage owns association selection/state/apply;
 FilePlugins owns extension merging. ArchiveFolderOpen's CArchiveFolderManager
 owns the icon-resource association catalog behind QtArchiveFolderManager, which
@@ -152,10 +230,12 @@ at the gzip item level, as in the original OpenArchive contract.
 New creation requests carry a stable native format name in CompressionOptions;
 ArchiveBackend resolves/validates it against its immutable catalog and the
 source UpdateGUI eligibility routine, then transports native properties to 7zz.
-An existing Add target retains its detected format across empty/ineligible
-source-picker states and restores the source parameter controls when eligible.
+Ordinary Add enters original CPanel::AddToArchive and source CompressCall2/
+ShowDialog/UpdateArchive with the selected filesystem paths and retained catalog.
+The dialog has a fixed selection and no source picker. Updating a detected
+unknown-extension archive uses original two-panel Copy.
 CreateArchiveDialog projects eligible formats and original format control flags;
-changing sources refreshes both naming inputs and parameter controls. Existing
+fixed censor paths supply naming inputs and parameter eligibility. Existing
 archive update services use native UpdateEnabled capabilities. Single-stream
 KeepName replacements use the original input and a separate output to preserve
 source default-name identity. Other callback plans use staged publication; CLI
@@ -188,16 +268,17 @@ update readiness. CreateArchiveDialog holds a catalog lease; its formats compone
 projects native eligible transports and configures source CompressDialog naming
 and history indices. Existing archive type is passed from actual listing metadata;
 failed metadata disables submission. Source UpdateGUI prepares one-file/name/format
-eligibility from native censor paths; additions/removals in the Qt source picker
-refresh those inputs. Native CreateArchiveName supplies initial suggestions for
+eligibility from native censor paths. Native CreateArchiveName supplies initial suggestions for
 metadata-configured callers. Complete writable-format transports and final live
 command/error consumers remain P2-01 work.
 
 Native PanelDrag owns source selection, effects, destination/transfer handshake,
 source-versus-target CopyTo/CopyFrom/Add execution and completion. CApp owns its
 drop target and Begin/End focus state. QtFileManagerDrag owns view hit testing,
-highlight, modal presentation, input/event delivery and the existing backend's
-Add progress consumer. It attaches newly created panels as well as initial ones.
+highlight, modal presentation and input/event delivery. Its CompressFiles service
+passes original PanelDrag arguments to source CompressCall2/UpdateGUI and native
+backend update factories, retaining the catalog throughout the modal worker.
+It attaches newly created panels as well as initial ones.
 QtPanelDragTransport exposes real local-file URLs after native source extraction;
 the common temp registry retains unconfirmed external lifetimes. Widgets do not
 parse archive commands or implement archive transfers.
@@ -225,6 +306,10 @@ QtArchiveFileResource retains the replacement CTempFile lease after the native
 move, before Finish/reopen. The held same-object record follows the move; a
 cross-volume copy gets a new identity record only for an already owned spool.
 Publication of user archives never grants cleanup ownership.
+Linux object identity includes statx birth time when available, distinguishing
+an immediately reused inode after a retained edit is manually deleted. The
+source FileDir temp naming/creation algorithm remains unchanged. Filesystems
+without STATX_BTIME retain the device/inode/type fallback.
 
 Native CApp::ExecuteCommand is the common entry for current menus, toolbar,
 shared context actions, panel activation and keyboard commands. MyLoadMenu owns
@@ -234,8 +319,13 @@ a fresh snapshot before effects. It adds only current transport restrictions and
 delegates operations to existing owners. QAction enabled state is presentation.
 The panel context popup feeds resource-derived File actions into native
 `CPanel::CreateFileMenu`/`CFileMenu::Load` with `programMenu=false`; Qt renders
-the returned order and enabled state. OS shell and 7-Zip extension groups stay
-disabled until their separate platform command owners are ported.
+the returned order and enabled state. The P2-09 popup additionally uses the
+source shell tree through QtFileManagerShellMenu. On Windows, QtNativeShellMenu
+retains the source-created System IContextMenu/HMENU for one generation and
+renders the generated tree; CPanel owns PIDL resolution and the original numeric
+invocation body. The shared dispatch rejects stale QAction generations. Native
+owner-drawn rendering and third-party handler message coverage still need
+Windows acceptance; incomplete archive shell transports stay disabled.
 ZIP item comments follow source CPanel::ChangeComment, Agent::CommentItem and
 CAgentFolder::SetProperty. The shared source worker/callback invokes the source
 ZIP IOutArchive behind ArchiveBackend::updateNativeComment; widgets never build
@@ -370,6 +460,11 @@ panel count/focus and QSplitter coordinate, and uses the opposite
 CPanel::GetFsPath as the Copy/Move/Extract dialog default. An uncreated hidden
 panel keeps its persisted path across close. Full cross-panel transfer remains
 P1-01.
+`OnCopy` retains source/destination panel references across the modal. Its Qt
+consumer restores the captured source's projection before executing Copy/Move:
+native Windows modal focus restoration can activate the opposite pane without
+changing the original request. The close guard still prevents a released owner
+from consuming it.
 P0-02.3 adds CApp-owned QtAppOperationState retaining native timer/notify guards
 through completion, and native FM WM_CLOSE through narrow Qt window services.
 Close stops callbacks and joins workers before folder release, saves native app/
@@ -454,8 +549,9 @@ section, pause/stop and error accumulation. Its POSIX pause sleep is a narrow Qt
 platform service. CProgressDialog/CProgressThreadVirt modal/cancel/finish and Add
 were connected in P0-10.1. P0-10.2 connects the remaining current archive,
 filesystem and volume consumers, with source MessagesDialog replacing the custom
-QPlainTextEdit journal view. A single recent-operation UStringVector retains
-diagnostics for the File menu action. On GUI-thread completion, the source final
+QPlainTextEdit journal view. The independent File-menu journal command and its
+recent-operation collector were removed during the P2-09 source UI audit.
+Errors remain in original Progress/Messages. On GUI-thread completion, the source final
 transition is delivered before command re-enablement so a late final prompt
 cannot interrupt the next operation.
 Original GetTimeString is the native duration formatter for that presentation;
@@ -797,11 +893,11 @@ progress and refreshes the edited panel/selection while retaining the active pan
 Source password callbacks reach the writer through ArchiveBackend; protected ZIP
 file updates enable CLI encryption explicitly, without password argv. POSIX
 launch groups preserve ordinary child lineage after orphan reparenting; deliberate
-daemon/session separation can prevent discovery. The built-in text dialog
-has explicit extra menu actions and remains independent of native F3/F4.
+daemon/session separation can prevent discovery. File viewing/editing uses
+original `CPanel::EditItem` and external viewer/editor settings for F3/F4.
 `FmSettingsPath` supplies the shared INI location outside MainWindow; callers
 may supply an explicit path to history dialogs.
-`CEditDialog` presents full list values; `FileViewerDialog` owns file viewing/editing.
+`CEditDialog` presents read-only full list values; it is not a file editor.
 
 `CApp::VerCtrl` owns source file comparison, numbered backup history and
 Edit/Commit/Revert/Diff. `QtVerCtrlFileServices` projects unavailable POSIX Win32
@@ -882,9 +978,10 @@ outer handler detection instead of forcing its inner codec. Source batch Extract
 uses VolumePaths to skip repeated numbered inputs. Filesystem batch TestArchives
 is not yet exposed by this command.
 
-`FileViewerDialog` reads bounded UTF-8 text and saves through `QSaveFile` after
-checking for external changes. `MainWindow` owns extraction and the subsequent
-archive-update request, keeping the temporary source alive until completion.
+The independent `FileViewerDialog`, its 16 MiB preview limit, menu aliases and
+MainWindow extraction/update wrappers were retired in P2-09. Original
+`PanelItemOpen.cpp` owns archive viewing/editing, temporary-file lifetime and
+update prompts through the existing narrow process/backend services.
 
 ## Filesystem and volume workers
 

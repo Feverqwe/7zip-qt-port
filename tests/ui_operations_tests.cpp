@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "archivecodeccatalog.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -471,7 +472,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         action(window, "copyAction")->trigger();
         QVERIFY(copyInfo.startsWith("Files: 1    ( 8 bytes )\n\n"));
-        QVERIFY(copyInfo.contains(temp.path() + '/'));
+        QVERIFY(QDir::fromNativeSeparators(copyInfo).contains(temp.path() + '/'));
         QVERIFY(copyInfo.endsWith(QStringLiteral("  имя с пробелом.txt")));
         const QString copied = QDir(destination).filePath(QStringLiteral("имя с пробелом.txt"));
         QVERIFY(!action(window, "copyAction")->isEnabled());
@@ -648,7 +649,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!QFileInfo::exists(movable.fileName()));
     }
 
-    void stage7FilesystemDropAndArchiveCopy() {
+    void stage7ArchiveCopyAndDropCancellation() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         QVERIFY(QDir(temp.path()).mkdir("in"));
@@ -661,33 +662,10 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        auto *address = window.findChild<QLineEdit *>("archivePath");
-        address->setText(temp.filePath("in"));
-        QTest::keyClick(address, Qt::Key_Return);
-        QTRY_VERIFY(table(window)->isEnabled());
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(source)});
-        QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
-        QCoreApplication::sendEvent(table(window)->viewport(), &enter);
-        QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
-        bool addFormShown = false;
-        QTimer rejectDropAdd;
-        rejectDropAdd.setInterval(5);
-        connect(&rejectDropAdd, &QTimer::timeout, &window, [&] {
-            if (auto *dialog =
-                    dynamic_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
-                addFormShown = true;
-                dialog->reject();
-            }
-        });
-        rejectDropAdd.start();
-        QCoreApplication::sendEvent(table(window)->viewport(), &drop);
-        rejectDropAdd.stop();
-        QVERIFY(addFormShown);
-        QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("in/drop ü.txt"))));
-        QCOMPARE(backend.createCalls, 0);
-        QTRY_VERIFY(table(window)->isEnabled());
-
+        // Real filesystem-to-Add modals use native factories and are covered
+        // by source_drop_add; this controlled archive fixture has no real file.
         openListedArchive(window, backend, "items.zip",
                           {ArchiveEntry{QStringLiteral("nested/file.txt"), 4, 4}});
         const int row = filesystemRow(window, "nested");
@@ -710,7 +688,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(copyInfo.contains(QStringLiteral("nested/")));
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastExtractionOptions.pathMode, ExtractionOptions::PathMode::CurrentPaths);
-        QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("nested/file.txt")}));
+        QCOMPARE(backend.lastSelected.size(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.front()),
+                 QStringLiteral("nested/file.txt"));
         QVERIFY(!action(window, "copyAction")->isEnabled());
         backend.cancel();
         QVERIFY(action(window, "copyAction")->isEnabled());
@@ -1216,13 +1196,23 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 }
         });
         answerWarning.start(1);
+        bool copyPresented = false;
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<CopyDialog *>("copyDialog");
             QVERIFY(dialog);
+            const auto rejectUnanswered = qScopeGuard([&] {
+                if (dialog->isVisible())
+                    dialog->reject();
+            });
+            copyPresented = true;
+            QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(dialog->destination())),
+                     QDir::cleanPath(targetArchive));
             dialog->accept();
         });
+        QVERIFY(action(window, "copyAction")->isEnabled());
         action(window, "copyAction")->trigger();
         answerWarning.stop();
+        QVERIFY(copyPresented);
         QCOMPARE(warning, QString("Transfer between these archives is unavailable."));
         QFile after(targetArchive);
         QVERIFY(after.open(QIODevice::ReadOnly));
@@ -1260,7 +1250,6 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         backend.queueListAction([&] { backend.cancel(); });
         window.openArchive("cancel.7z");
         QVERIFY(!action(window, "copyAction")->isEnabled());
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
     }
     void moveSelectedOutOfArchive() {
         QTemporaryDir temp;
@@ -1292,7 +1281,9 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(moveInfo.startsWith("Folders: 1    ( 4 bytes )\n\n"));
         QVERIFY(moveInfo.endsWith(QStringLiteral("  папка/")));
         QCOMPARE(backend.extractCalls, 1);
-        QCOMPARE(backend.lastSelected, QStringList({QStringLiteral("папка/файл с пробелом.txt")}));
+        QCOMPARE(backend.lastSelected.size(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.front()),
+                 QStringLiteral("папка/файл с пробелом.txt"));
         QCOMPARE(backend.removeCalls, 0);
         QVERIFY(!action(window, "moveAction")->isEnabled());
         QTimer::singleShot(0, &window, [] {
@@ -1892,41 +1883,40 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         const QString archive = temp.filePath("existing.zip");
         QVERIFY(backend.prepareArchiveFixture(archive));
         backend.queueListAction([&] {
             const auto finish = qScopeGuard([&] { backend.completeList({}); });
-            QVERIFY(!action(window, "addArchiveAction")->isEnabled());
             QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         });
         window.openArchive(archive);
-        QVERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
-        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
 
         bool dialogSeen = false;
-        bool previewMatches = false;
-        bool modeAvailable = false;
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
-            if (!dialog)
-                return;
-            dialogSeen = true;
-            auto *preview = dialog->findChild<QLabel *>("archiveTargetPreview");
-            previewMatches = preview && preview->text().contains(archive);
-            modeAvailable = dialog->findChild<QComboBox *>("archiveUpdateMode") != nullptr;
-            dialog->reject();
+        bool unsupported = false;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            if (auto *dialog =
+                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
+                dialogSeen = true;
+                dialog->reject();
+            } else if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                unsupported = true;
+                box->accept();
+            }
         });
+        answer.start(1);
         action(window, "toolbarAddAction")->trigger();
-        QVERIFY(dialogSeen);
-        QVERIFY(previewMatches);
-        QVERIFY(modeAvailable);
+        QVERIFY(!dialogSeen);
+        QVERIFY(unsupported);
         QCOMPARE(backend.addCalls, 0);
-        QVERIFY(action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
     }
     void createDialogAndStateTransitions() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Source Add requires the official native module");
+#endif
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString file =
@@ -1935,120 +1925,85 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(source.open(QIODevice::WriteOnly));
         source.write("data");
         source.close();
-        const QString folder = temp.filePath(QStringLiteral("другой каталог/папка Unicode"));
+        const QString folder = temp.filePath(QStringLiteral("папка Unicode"));
         QVERIFY(QDir().mkpath(folder));
         const QString canonicalFile = QFileInfo(file).canonicalFilePath();
         const QString canonicalFolder = QFileInfo(folder).canonicalFilePath();
         ControlledBackend backend;
+#ifdef SEVENZIP_CODEC_MODULE
+        ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(probe.result(), S_OK);
+        QCOMPARE(
+            backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), probe.version()),
+            S_OK);
+#endif
         MainWindow window(&backend);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
         for (int row = 0; row < table(window)->rowCount(); ++row) {
             if (table(window)->item(row, 1)->text() == canonicalFile)
                 table(window)->selectRow(row);
         }
 
         int initialSelectionCount = -1;
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
-            QVERIFY(dialog);
-            initialSelectionCount = dialog->findChild<QListWidget *>("selectedSources")->count();
-            dialog->reject();
+        QStringList addErrors;
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &window, [&] {
+            if (auto *dialog =
+                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
+                initialSelectionCount = dialog->sources().size();
+                dialog->reject();
+            } else if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                addErrors.append(box->text());
+                box->accept();
+            }
         });
+        answer.start(1);
         action(window, "toolbarAddAction")->trigger();
+        answer.stop();
+        QVERIFY2(addErrors.isEmpty(), qPrintable(addErrors.join('\n')));
         QCOMPARE(backend.createCalls, 0);
         QCOMPARE(initialSelectionCount, 1);
 
         auto chooseSources = [&] {
+            table(window)->clearSelection();
+            for (int row = 0; row < table(window)->rowCount(); ++row) {
+                const QString path = table(window)->item(row, 1)->text();
+                if (path == canonicalFile || path == canonicalFolder)
+                    table(window)->selectionModel()->select(table(window)->model()->index(row, 0),
+                                                            QItemSelectionModel::Select |
+                                                                QItemSelectionModel::Rows);
+            }
             QTimer::singleShot(0, &window, [&] {
                 auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
                 QVERIFY(dialog);
-                auto *available = dialog->findChild<QListWidget *>("availableSources");
-                for (int row = 0; row < available->count(); ++row) {
-                    const QString path = available->item(row)->data(Qt::UserRole).toString();
-                    if (path == canonicalFile)
-                        available->item(row)->setSelected(true);
-                }
-                auto *add = dialog->findChild<QPushButton *>("selectSourcesButton");
-                add->click();
-                auto *sourceDirectory = dialog->findChild<QLineEdit *>("sourceDirectory");
-                sourceDirectory->setText(QFileInfo(canonicalFolder).absolutePath());
-                QTest::keyClick(sourceDirectory, Qt::Key_Return);
-                available = dialog->findChild<QListWidget *>("availableSources");
-                for (int row = 0; row < available->count(); ++row) {
-                    if (available->item(row)->data(Qt::UserRole).toString() == canonicalFolder)
-                        available->item(row)->setSelected(true);
-                }
-                add->click();
-                if (dialog->findChild<QListWidget *>("selectedSources")->count() != 2) {
+                const auto reject = qScopeGuard([&] { dialog->reject(); });
+                QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
+                if (dialog->sources().size() != 2) {
                     dialog->reject();
                     return;
                 }
-                dialog->findChild<QLineEdit *>("archiveName")->setText("new archive.zip");
-                dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
-                dialog->findChild<QComboBox *>("compressionLevel")->setCurrentIndex(5);
-                dialog->findChild<QComboBox *>("compressionMethod")->setCurrentText("BZip2");
-                auto *threads = dialog->findChild<QComboBox *>("compressionThreads");
-                threads->setCurrentIndex(threads->findData(2u));
-                if (!dialog->findChild<QLabel *>("archiveTargetPreview")
-                         ->text()
-                         .endsWith("new archive.zip")) {
-                    dialog->reject();
-                    return;
-                }
-                const QString screenshotDir = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
-                if (!screenshotDir.isEmpty()) {
-                    QDir().mkpath(screenshotDir);
-                    dialog->grab().save(screenshotDir + "/" + QSysInfo::productType() +
-                                        "-create.png");
-                }
-                dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+                QStringList sourcePaths = dialog->sources();
+                for (QString &path : sourcePaths)
+                    path = path.normalized(QString::NormalizationForm_C);
+                QVERIFY(
+                    sourcePaths.contains(canonicalFile.normalized(QString::NormalizationForm_C)));
+                QVERIFY(
+                    sourcePaths.contains(canonicalFolder.normalized(QString::NormalizationForm_C)));
+                dialog->reject();
             });
             action(window, "toolbarAddAction")->trigger();
         };
         chooseSources();
-        QCOMPARE(backend.createCalls, 1);
-        QCOMPARE(backend.lastCompressionOptions.level, 9);
-        QCOMPARE(backend.lastCompressionOptions.method, QStringLiteral("BZip2"));
-        QCOMPARE(backend.lastCompressionOptions.threads, 2);
-        QCOMPARE(backend.lastCreateTarget,
-                 QDir(QFileInfo(temp.path()).canonicalFilePath()).filePath("new archive.zip"));
-        QCOMPARE(backend.lastCreateSources.size(), 2);
-        QVERIFY(backend.lastCreateSources.contains(canonicalFile));
-        QVERIFY(backend.lastCreateSources.contains(canonicalFolder));
-        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(!table(window)->isEnabled());
-        backend.cancel();
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
-
-        chooseSources();
-        QCOMPARE(backend.createCalls, 2);
-        backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
-        openListedArchive(window, backend, temp.filePath("empty.7z"), {});
-        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
-        action(window, "backAction")->trigger();
-        QVERIFY(QFile::remove(temp.filePath("empty.7z")));
-        action(window, "refreshAction")->trigger();
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
-        chooseSources();
-        QCOMPARE(backend.createCalls, 3);
-        backend.fail(QStringLiteral("Операция отменена."), E_ABORT);
-        chooseSources();
-        QCOMPARE(backend.createCalls, 4);
-        QFile created(backend.lastCreateTarget);
-        QVERIFY(created.open(QIODevice::WriteOnly));
-        created.close();
-        backend.completeCreate();
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
-        QCOMPARE(table(window)->rowCount(), 3);
-        QVERIFY(table(window)->findItems("new archive.zip", Qt::MatchExactly).size() > 0);
+        // Source UpdateGUI owns the modal worker; Add must not use the
+        // independently written asynchronous create transport. Actual native
+        // success/error/Cancel are covered by shell_update_window.
+        QCOMPARE(backend.createCalls, 0);
+        QVERIFY(table(window)->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
+        QCOMPARE(table(window)->rowCount(), 2);
     }
 };
 

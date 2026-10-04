@@ -8,6 +8,10 @@ class IQtFileManagerMenuCommandServices;
 class QMenuBar;
 class QAction;
 class CApp;
+class QMenu;
+class IQtPanelPluginMenuServices;
+void OnMenuActivating(QMenuBar &mainMenu, QMenu &menu, int position, CApp &app,
+                      IQtFileMenuServices &projection, IQtPanelPluginMenuServices &plugins);
 void MyLoadMenu(QMenuBar &menu, bool needResetMenu);
 void MyLoadBookmarks(QAction *const *openActions, QAction *const *setActions, CApp &app);
 bool ExecuteFileCommand(unsigned id, IQtFileManagerCommandServices &app);

@@ -11,17 +11,7 @@ class MainWindow;
 // Native menu policy is recomputed for execution, never read from QAction state.
 class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
   public:
-    enum Extension : unsigned {
-        OpenDialog = 1000,
-        CreateArchive,
-        AddSources,
-        ExtractSelected,
-        ArchiveInformation,
-        Back,
-        Journal,
-        TextView,
-        TextEdit
-    };
+    enum Extension : unsigned { Back = 1000 };
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();

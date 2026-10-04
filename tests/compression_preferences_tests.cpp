@@ -96,7 +96,8 @@ class CompressionPreferencesTests final : public QObject {
         {
             CreateArchiveDialog invalid(dir_.path(), {source_});
             choose(invalid, "100%");
-            invalid.findChild<QLineEdit *>("archiveName")->setText("invalid/name");
+            invalid.findChild<QLineEdit *>("archiveName")
+                ->setText(QStringLiteral("invalid") + QChar::Null + "name");
             QTimer::singleShot(0, &invalid, [] {
                 auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
                 if (message)
@@ -273,7 +274,7 @@ class CompressionPreferencesTests final : public QObject {
         QCOMPARE(dialog.compressionOptions().wordSize, 0);
         QCOMPARE(dialog.compressionOptions().threads, 0);
         QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
-        method->setCurrentText("LZMA2");
+        method->setCurrentIndex(method->findData(-1));
         QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(1 << 20));
         QCOMPARE(dialog.compressionOptions().wordSize, 48);
         QCOMPARE(dialog.compressionOptions().threads, 1);

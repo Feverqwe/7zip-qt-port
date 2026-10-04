@@ -62,10 +62,28 @@ bool MyBrowseForFolder(QWidget *owner, const QString &title, const QString &path
     return true;
 }
 
-bool CBrowseInfo::BrowseForFile() {
+bool CBrowseInfo::BrowseForFile(const CObjectVector<CBrowseFilterInfo> &filters) {
+    QStringList names;
+    FOR_VECTOR(i, filters) {
+        QStringList masks;
+        FOR_VECTOR(k, filters[i].Masks)
+        masks.append(QString::fromWCharArray(filters[i].Masks[k].Ptr()));
+        names.append(QString::fromWCharArray(filters[i].Description.Ptr()) + " (" +
+                     masks.join(' ') + ')');
+    }
+    Filters = names.join(";;");
+    return BrowseForFile(true);
+}
+
+bool CBrowseInfo::BrowseForFile() { return BrowseForFile(false); }
+
+bool CBrowseInfo::BrowseForFile(bool hideNameFilterDetails) {
     const QString storedPath = FilePath;
     const QFileInfo initial(FilePath);
     QFileDialog dialog(Owner, Title, initial.absolutePath(), Filters);
+    // Source descriptions already contain their reviewed extension list.
+    // Qt still needs the mask suffix for matching, but must not display it twice.
+    dialog.setOption(QFileDialog::HideNameFilterDetails, hideNameFilterDetails);
     dialog.setFileMode(SaveMode ? QFileDialog::AnyFile : QFileDialog::ExistingFile);
     dialog.setAcceptMode(SaveMode ? QFileDialog::AcceptSave : QFileDialog::AcceptOpen);
     if (FilterIndex >= 0 && FilterIndex < dialog.nameFilters().size())

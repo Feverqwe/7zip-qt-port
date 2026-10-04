@@ -58,13 +58,14 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         window.openArchive(archive);
         table(window)->selectRow(0);
         QVERIFY(action(window, "editFileAction")->isEnabled());
-        for (const char *name : {"moveAction", "builtinTextEditAction"}) {
+        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction"));
+        for (const char *name : {"moveAction"}) {
             auto *command = action(window, name);
             QVERIFY(!command->isEnabled());
             command->setEnabled(true);
             command->trigger();
         }
-        for (const char *name : {"addArchiveAction", "toolbarAddAction"}) {
+        for (const char *name : {"toolbarAddAction"}) {
             auto *command = action(window, name);
             QCOMPARE(command->isEnabled(), encrypted);
             if (!encrypted) {

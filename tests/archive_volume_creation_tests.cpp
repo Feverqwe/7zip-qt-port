@@ -319,9 +319,9 @@ class ArchiveVolumeCreationTests final : public QObject {
         QCOMPARE(sizes.Size(), 2u);
         QCOMPARE(sizes[0], UInt64(64 << 10));
         QCOMPARE(sizes[1], UInt64(128 << 10));
-        CreateArchiveDialog update(fixture.path(), {source}, nullptr,
-                                   fixture.filePath("existing.zip"));
-        QVERIFY(!update.findChild<QComboBox *>("archiveVolumeSize")->isEnabled());
+        CreateArchiveDialog update(fixture.path(), {source});
+        update.findChild<QLineEdit *>("archiveName")->setText(fixture.filePath("existing.zip"));
+        QVERIFY(update.findChild<QComboBox *>("archiveVolumeSize")->isEnabled());
     }
 };
 QTEST_MAIN(ArchiveVolumeCreationTests)

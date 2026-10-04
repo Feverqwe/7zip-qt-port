@@ -119,7 +119,10 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         table(window)->clearSelection();
         table(window)->selectRow(first);
         window.extractTo("/temporary/destination", true);
-        QCOMPARE(backend.lastSelected, QStringList{QStringLiteral("раздел один/common.txt")});
+        QStringList selected;
+        for (const QString &path : backend.lastSelected)
+            selected.append(QDir::fromNativeSeparators(path));
+        QCOMPARE(selected, QStringList{QStringLiteral("раздел один/common.txt")});
         backend.cancel();
         flat->trigger();
         QCOMPARE(table(window)->rowCount(), 3);

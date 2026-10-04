@@ -6,6 +6,7 @@
 #include "mainwindow.h"
 #include "qtdialogscreenservices.h"
 #include "qtfilemenuprojection.h"
+#include "qtprogramfilemenu.h"
 
 QtFileManagerCommands::QtFileManagerCommands(MainWindow &window) : window_(window) {}
 
@@ -46,13 +47,8 @@ void QtFileManagerCommands::AttachActions() {
 
 void QtFileManagerCommands::AttachFileActions() {
     auto &w = window_;
-    Bind(w.open_, OpenDialog);
-    Bind(w.create_, CreateArchive);
-    Bind(w.add_, AddSources);
-    Bind(w.selected_, ExtractSelected);
-    Bind(w.infoAction_, ArchiveInformation);
+    Bind(w.infoAction_, IDM_PROPERTIES);
     Bind(w.back_, Back);
-    Bind(w.journalAction_, Journal);
     Bind(w.toolbarAdd_, kMenuCmdID_Toolbar_Add);
     Bind(w.extract_, kMenuCmdID_Toolbar_Extract);
     Bind(w.test_, kMenuCmdID_Toolbar_Test);
@@ -68,8 +64,6 @@ void QtFileManagerCommands::AttachFileActions() {
                                   "verDiffAction"};
     for (unsigned i = 0; i < 4; ++i)
         Bind(w.findChild<QAction *>(QString::fromLatin1(verCtrlNames[i])), IDM_VER_EDIT + i);
-    Bind(w.findChild<QAction *>("builtinTextViewAction"), TextView);
-    Bind(w.findChild<QAction *>("builtinTextEditAction"), TextEdit);
     Bind(w.rename_, IDM_RENAME);
     Bind(w.copy_, IDM_COPY_TO);
     Bind(w.move_, IDM_MOVE_TO);
@@ -153,6 +147,8 @@ bool QtFileManagerCommands::CanExecuteCommand(unsigned id) {
     auto &w = window_;
     if (w.app_.QtOperations().closed())
         return false;
+    if (id >= kMenuCmdID_Plugin_Start)
+        return w.programFileMenu_ && w.programFileMenu_->CanInvoke(id);
     if (id == 8)
         return !w.app_.QtOperations().callActive() && !w.sourceArchiveProgress_ &&
                !QApplication::activeModalWidget();
@@ -237,24 +233,28 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     QHash<unsigned, bool> availability;
     if (w.app_.QtOperations().closed())
         return availability;
-    const bool navigating = !w.app_.QtOperations().blocking();
+    auto &panel = w.app_.GetFocusedPanel();
+    const bool navigating = !w.app_.QtOperations().blocking() && !w.sourceArchiveProgress_;
+    // Enumeration disables list notifications too, but its flat-view toggle
+    // remains the cancellation command. Only folder-property queries need
+    // the notification guard; native update can replace the folder proxy.
+    const bool safeFolderQueries = navigating && panel.ShouldProcessNotifications();
     availability[IDM_HELP_CONTENTS] = navigating && !QApplication::activeModalWidget();
     availability[IDM_ABOUT] = availability[IDM_HELP_CONTENTS];
     availability[IDM_TEMP_DIR] = availability[IDM_HELP_CONTENTS];
-    auto &panel = w.app_.GetFocusedPanel();
     const bool hasFolder = panel.GetFolder() != nullptr;
-    availability[Journal] = !w.journalMessages_.IsEmpty();
-    const bool namespaceChild =
-        w.state_ == MainWindow::State::Namespace && hasFolder && !panel.IsRootFolder();
+    const bool namespaceChild = safeFolderQueries && w.state_ == MainWindow::State::Namespace &&
+                                hasFolder && !panel.IsRootFolder();
     availability[Back] = navigating && (w.state_ == MainWindow::State::Viewing || namespaceChild ||
                                         !w.history_.isEmpty());
     availability[IDM_OPEN_PARENT_FOLDER] =
-        navigating && hasFolder && !panel.IsRootFolder() &&
+        safeFolderQueries && hasFolder && !panel.IsRootFolder() &&
         (w.state_ == MainWindow::State::Viewing || panel.IsFSFolder() || namespaceChild);
-    availability[IDM_VIEW_FLAT_VIEW] = navigating && (!hasFolder || !panel.IsRootFolder());
+    availability[IDM_VIEW_FLAT_VIEW] = navigating && (w.scanningDisk_ || !hasFolder ||
+                                                      (safeFolderQueries && !panel.IsRootFolder()));
     availability[8] = !w.app_.QtOperations().callActive() && !w.sourceArchiveProgress_ &&
                       !QApplication::activeModalWidget();
-    if (!navigating || w.scanningDisk_ || !hasFolder)
+    if (!safeFolderQueries || w.scanningDisk_ || !hasFolder)
         return availability;
     const TransportCapabilities capabilities = ReadTransportCapabilities();
     QtFileMenuProjection menu;
@@ -281,21 +281,12 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_BENCHMARK:
     case IDM_BENCHMARK2:
         return c.benchmark;
-    case OpenDialog:
-        return true;
-    case CreateArchive:
-        return c.filesystem;
-    case AddSources:
-        return c.mutationWritable;
     case kMenuCmdID_Toolbar_Add:
         return c.filesystem || c.mutationWritable;
     case kMenuCmdID_Toolbar_Extract:
         return c.archive && c.entries;
     case kMenuCmdID_Toolbar_Test:
-    case ArchiveInformation:
         return c.archive;
-    case ExtractSelected:
-        return c.archive && c.selected && c.entries;
     case IDM_OPEN:
         return c.operated;
     case IDM_OPEN_OUTSIDE:
@@ -308,10 +299,6 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
         return c.folderSize || (c.focusedFile && (c.filesystem || c.archive));
     case IDM_FILE_EDIT:
         return c.focusedFile && (c.filesystem || c.archive);
-    case TextView:
-        return c.oneFile;
-    case TextEdit:
-        return c.oneFile && (c.filesystem || (c.writable && !c.nested));
     case IDM_DIFF:
         return c.filesystem;
     case IDM_VER_EDIT:
@@ -322,7 +309,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_COPY_TO:
         return c.selected && !c.root;
     case IDM_PROPERTIES:
-        return c.selected && !c.root;
+        return c.archive || (c.selected && !c.root);
     case IDM_MOVE_TO:
         return c.selected && (c.filesystem || c.filesystemStreams || c.writable);
     case IDM_DELETE:
@@ -389,7 +376,9 @@ void QtFileManagerCommands::RefreshActions() {
     QtFileMenuProjection versionMenu;
     versionMenu.diffPath = diffCommand;
     ReadReg_VerCtrlPath(versionMenu.versionControlPath, MainWindow::toolbarSettingsPath());
-    if (!window_.app_.QtOperations().closed() && window_.app_.GetFocusedPanel().GetFolder())
+    if (!window_.app_.QtOperations().closed() && !window_.sourceArchiveProgress_ &&
+        window_.app_.GetFocusedPanel().ShouldProcessNotifications() &&
+        window_.app_.GetFocusedPanel().GetFolder())
         window_.app_.GetFocusedPanel().CreateFileMenu(versionMenu, true);
     for (unsigned id = IDM_VER_EDIT; id <= IDM_VER_DIFF; ++id) {
         for (QAction *action : actions_.value(id)) {

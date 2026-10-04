@@ -1,9 +1,12 @@
+#include "7zip/UI/FileManager/ProgressDialog2Res.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
+#include <QTreeWidget>
 
 using namespace ExternalEditorFixture;
 
@@ -79,6 +82,7 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         bool editPrompt = false, parentPrompt = false, error = false, promptGeometry = true;
         int passwords = 0;
+        QString openingMessage;
         QTimer responder;
         connect(&responder, &QTimer::timeout, this, [&] {
             auto *modal = QApplication::activeModalWidget();
@@ -111,21 +115,35 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                         box->button(outcome == 5 ? QMessageBox::No : QMessageBox::Yes)->click();
                 } else {
                     error = true;
+                    openingMessage = box->text();
                     box->accept();
                 }
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Close")))
-                    close->click();
+                if (close && close->text() == ToQString(LangString(IDS_CLOSE))) {
+                    if (auto *messages =
+                            progress->findChild<QTreeWidget *>("IDL_PROGRESS_MESSAGES"))
+                        for (int row = 0; row < messages->topLevelItemCount(); ++row)
+                            openingMessage += messages->topLevelItem(row)->text(1) + '\n';
+                    QTimer::singleShot(0, progress, [progress, close] {
+                        if (QApplication::activeModalWidget() == progress)
+                            close->click();
+                    });
+                }
             }
         });
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
-        table(window)->selectRow(0);
-        action(window, "openInsideAction")->trigger();
         QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
-                     name);
+                     innerName);
+        table(window)->selectRow(0);
+        table(window)->setCurrentCell(0, 0);
+        QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
+        action(window, "openInsideAction")->trigger();
+        QTRY_VERIFY2(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C) ==
+                         name,
+                     qPrintable(openingMessage));
         table(window)->selectRow(0);
         const QString address = window.findChild<QLineEdit *>("archivePath")->text();
         QVERIFY(address.normalized(QString::NormalizationForm_C).contains(innerName));
@@ -133,9 +151,11 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         action(window, "editFileAction")->trigger();
         QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
         const QString temporary = QString::fromUtf8(read(control + ".ready"));
+        QCOMPARE(read(temporary), QByteArray("original"));
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
-        QTRY_VERIFY(editPrompt);
+        QTRY_VERIFY(QFileInfo::exists(control + ".finished"));
+        QTRY_VERIFY2(editPrompt, qPrintable(openingMessage));
         const bool innerFailed = outcome == 1 || outcome == 3;
         if (innerFailed) {
             QTRY_VERIFY(error);
@@ -216,17 +236,22 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
+        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+                     innerName);
         table(window)->selectRow(0);
+        table(window)->setCurrentCell(0, 0);
+        QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
         action(window, "openInsideAction")->trigger();
         QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
                      name);
         const QString materialized = backend.OpenPaths.back();
         QVERIFY(QFileInfo(materialized).isFile());
         table(window)->selectRow(0);
-        for (const char *id : {"addArchiveAction", "deleteAction", "renameAction",
-                               "createFolderAction", "moveAction", "builtinTextEditAction"})
+        for (const char *id : {"toolbarAddAction", "deleteAction", "renameAction",
+                               "createFolderAction", "moveAction"})
             QVERIFY(!action(window, id)->isEnabled());
         QVERIFY(action(window, "editFileAction")->isEnabled());
+        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction"));
         action(window, "editFileAction")->trigger();
         QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
         const QString temporary = QString::fromUtf8(read(control + ".ready"));
@@ -276,14 +301,21 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                 box->accept();
             else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Close")))
-                    close->click();
+                if (close && close->text() == ToQString(LangString(IDS_CLOSE)))
+                    QTimer::singleShot(0, progress, [progress, close] {
+                        if (QApplication::activeModalWidget() == progress)
+                            close->click();
+                    });
             }
         });
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
+        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+                     innerName);
         table(window)->selectRow(0);
+        table(window)->setCurrentCell(0, 0);
+        QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
         action(window, "openInsideAction")->trigger();
         QVERIFY(prompted);
         QCOMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
@@ -326,7 +358,11 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         responder.start(1);
         window.openArchive(outer);
         QTRY_COMPARE(table(window)->rowCount(), 1);
+        QTRY_COMPARE(table(window)->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+                     innerName);
         table(window)->selectRow(0);
+        table(window)->setCurrentCell(0, 0);
+        QTRY_VERIFY(action(window, "openInsideAction")->isEnabled());
         action(window, "openInsideAction")->trigger();
         QTRY_COMPARE(table(window)->rowCount(), 2);
         table(window)->selectRow(filesystemRow(window, "rename.txt"));

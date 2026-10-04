@@ -158,7 +158,7 @@ class UiArchiveVolumesTests final : public QObject, protected MainWindowTestSupp
             QCOMPARE(backend.lastResult(), E_ABORT);
             QVERIFY(!backend.busy());
             QCOMPARE(answers.Errors, 0);
-            QVERIFY(action(window, "openArchiveAction")->isEnabled());
+            QVERIFY(action(window, "toolbarAddAction")->isEnabled());
             return;
         }
         if (mode == 0) {
@@ -166,7 +166,7 @@ class UiArchiveVolumesTests final : public QObject, protected MainWindowTestSupp
             window.openArchive(first);
             QVERIFY(answers.Errors > 0);
             QVERIFY(!backend.busy());
-            QVERIFY(action(window, "openArchiveAction")->isEnabled());
+            QVERIFY(action(window, "toolbarAddAction")->isEnabled());
             return;
         }
         window.openArchive(first);

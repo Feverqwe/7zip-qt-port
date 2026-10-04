@@ -621,6 +621,41 @@ UString CPanel::GetItemRelPath2(unsigned itemIndex) const {
     return s;
 }
 
+void CPanel::Add_ItemRelPath2_To_String(unsigned itemIndex, UString &s) const {
+    if (itemIndex == kParentIndex) {
+        s += "..";
+        return;
+    }
+    const unsigned start = s.Len();
+    NWindows::NCOM::CPropVariant prop;
+    if (_folder->GetProperty(itemIndex, kpidPrefix, &prop) != S_OK)
+        throw 2723400;
+    if (prop.vt == VT_BSTR)
+        s += prop.bstrVal;
+    const wchar_t *name = NULL;
+    unsigned nameLen = 0;
+    if (_folderGetItemName)
+        _folderGetItemName->GetItemName(itemIndex, &name, &nameLen);
+    if (name)
+        s += name;
+    else {
+        prop.Clear();
+        if (_folder->GetProperty(itemIndex, kpidName, &prop) != S_OK)
+            throw 2723400;
+        if (prop.vt != VT_BSTR)
+            throw 2723401;
+        s += prop.bstrVal;
+    }
+#if defined(_WIN32) && !defined(UNDER_CE)
+    if (s.Len() - start == 2 && NWindows::NFile::NName::IsDrivePath2(s.Ptr(start))) {
+        if (IsFSDrivesFolder() && !IsDeviceDrivesPrefix())
+            s.Add_PathSepar();
+    }
+#else
+    (void)start;
+#endif
+}
+
 UString CPanel::GetItemFullPath(unsigned itemIndex) const {
     return GetFsPath() + GetItemRelPath2(itemIndex);
 }

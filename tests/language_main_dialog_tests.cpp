@@ -3,6 +3,7 @@
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
+#include <QScopeGuard>
 #include <QTreeWidget>
 
 class LanguageMainDialogTests final : public QObject {
@@ -40,13 +41,8 @@ class LanguageMainDialogTests final : public QObject {
             QCOMPARE(window.statusBar()->currentMessage(),
                      QString(name) == "ru" ? QStringLiteral("Операция отменена.")
                                            : QString("Operation canceled."));
-            window.findChild<QAction *>("operationJournalAction")->trigger();
-            auto *messages = window.findChild<QTreeWidget *>("IDL_MESSAGE");
-            QVERIFY(messages);
-            QVERIFY(messageText(messages).contains(QtLangText(IDS_OPENNING) + ": " + archive));
-            QVERIFY(messageText(messages).contains(
-                QString(name) == "ru" ? QStringLiteral("Ошибка: Операция отменена.")
-                                      : QString("Error: Operation canceled.")));
+            QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
+            QVERIFY(!window.findChild<QDialog *>("operationMessagesDialog"));
         }
     }
     void cancellationUsesResultCodeInsteadOfMessageText() {
@@ -72,7 +68,7 @@ class LanguageMainDialogTests final : public QObject {
         backend.fail(QStringLiteral("Операция отменена."), E_FAIL);
         QCOMPARE(warningsShown, 1u);
     }
-    void archiveSummaryRetainsMetadataWithoutBackendReload() {
+    void toolbarPropertiesRetainsSourceValuesWithoutBackendReload() {
         ControlledBackend backend;
         MainWindow window(&backend);
         const QString archive = fixture.filePath(QStringLiteral("архив 密碼.zip"));
@@ -87,34 +83,39 @@ class LanguageMainDialogTests final : public QObject {
             backend.completeList({ArchiveEntry{QStringLiteral("δ space.txt"), 3, 7}});
         });
         window.openArchive(archive);
-        window.findChild<QAction *>("archiveInfoAction")->trigger();
-        auto *dialog = window.findChild<QDialog *>("archiveInfoDialog");
-        QVERIFY(dialog);
-        auto *text = dialog->findChild<QLabel *>("archiveInfoText");
-        QVERIFY(text);
+        window.findChild<QTableWidget *>("archiveTable")->selectRow(0);
         const int calls = backend.listCalls;
-        for (const char *name : {"-", "ru", "-"}) {
-            language(name);
-            const bool russian = QString(name) == "ru";
-            QCOMPARE(dialog->windowTitle(), russian ? QStringLiteral("Информация об архиве")
-                                                    : QString("Archive information"));
-            QCOMPARE(text->text(),
-                     russian ? QStringLiteral("Формат: zip\nРазмер архива: 120 байт\nФайлов: "
-                                              "1\nПапок: 0\nРазмер файлов: 3 байт")
-                             : QString("Format: zip\nArchive size: 120 bytes\nFiles: 1\nFolders: "
-                                       "0\nUnpacked size: 3 bytes"));
-            QCOMPARE(backend.listCalls, calls);
-            QCOMPARE(backend.extractCalls, 0);
-            for (QSize size : {QSize(420, 240), QSize(300, 180)}) {
-                dialog->resize(size);
-                QApplication::processEvents();
-                QVERIFY(UiInspection::fullyVisible(*text, *dialog));
-                QVERIFY(UiInspection::labelFits(*text));
-                QVERIFY(UiInspection::writeReport(
-                    *dialog, QString("language-archive-info-%1-%2").arg(name).arg(size.width())));
+        bool inspected = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
+            QVERIFY(list);
+            const QString values = messageText(list);
+            QVERIFY(values.contains(QStringLiteral("δ space.txt")));
+            for (const char *name : {"-", "ru", "-"}) {
+                language(name);
+                const bool russian = QString(name) == "ru";
+                QCOMPARE(dialog->windowTitle(),
+                         russian ? QStringLiteral("Свойства") : QString("Properties"));
+                QCOMPARE(messageText(list), values);
+                QCOMPARE(backend.listCalls, calls);
+                QCOMPARE(backend.extractCalls, 0);
+                for (QSize size : {QSize(540, 360), QSize(360, 240)}) {
+                    dialog->resize(size);
+                    QApplication::processEvents();
+                    QVERIFY(UiInspection::fullyVisible(*list, *dialog));
+                    QVERIFY(UiInspection::writeReport(
+                        *dialog,
+                        QString("language-toolbar-properties-%1-%2").arg(name).arg(size.width())));
+                }
             }
-        }
-        dialog->close();
+            inspected = true;
+        });
+        window.findChild<QAction *>("archiveInfoAction")->trigger();
+        QVERIFY(inspected);
+        QVERIFY(!window.findChild<QDialog *>("archiveInfoDialog"));
     }
 };
 

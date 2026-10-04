@@ -9,6 +9,13 @@ bool CorrectFsPath(const UString &relBase, const UString &path, UString &result)
 bool MyBrowseForFolder(QWidget *owner, const QString &title, const QString &path,
                        QString &resultPath);
 
+// Original BrowseDialog.h filter DTO; Qt translates only the native dialog
+// presentation syntax, retaining the source filter order and selected index.
+struct CBrowseFilterInfo {
+    UStringVector Masks;
+    UString Description;
+};
+
 struct CBrowseInfo {
     QWidget *Owner = nullptr;
     QString Title;
@@ -17,4 +24,8 @@ struct CBrowseInfo {
     bool SaveMode = false;
     int FilterIndex = 0;
     bool BrowseForFile();
+    bool BrowseForFile(const CObjectVector<CBrowseFilterInfo> &filters);
+
+  private:
+    bool BrowseForFile(bool hideNameFilterDetails);
 };

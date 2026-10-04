@@ -86,7 +86,7 @@ export PATH="$fixture/bin:$PATH"
 export FAKE_CTEST_ARGS="$fixture/ctest-args"
 export FAKE_CTEST_PARALLEL_LEVEL="$fixture/ctest-parallel-level"
 
-ctest_success="$(CTEST_PARALLEL_LEVEL= CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
+ctest_success="$(CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS= CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev -R '^agent_output$')"
 [[ "$ctest_success" == 'fixture CTest output' ]]
 [[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$' ]]

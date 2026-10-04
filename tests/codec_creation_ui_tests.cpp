@@ -55,7 +55,7 @@ class CodecCreationUiTests final : public QObject {
     void selectedFormatCreatesRealArchive() {
         QFETCH(QString, type);
         QFETCH(QSize, size);
-        CreateArchiveDialog dialog(fixture_.path(), {source_}, nullptr, {}, catalog_);
+        CreateArchiveDialog dialog(fixture_.path(), {source_}, nullptr, catalog_);
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         QCOMPARE(format->count(), 7);
         const int index = format->findText(type);
@@ -117,32 +117,24 @@ class CodecCreationUiTests final : public QObject {
         }
         QVERIFY(QFile::remove(dialog.target()));
     }
-    void sourceChangesRefreshFormatParameters() {
+    void sourceSelectionDeterminesFormatParameters() {
         const QString folder = fixture_.filePath(QStringLiteral("папка 空"));
         QVERIFY(QDir().mkpath(folder));
-        CreateArchiveDialog dialog(fixture_.path(), {source_}, nullptr, {}, catalog_);
+        CreateArchiveDialog dialog(fixture_.path(), {source_}, nullptr, catalog_);
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         format->setCurrentIndex(format->findText("gzip"));
         QVERIFY(!dialog.findChild<QLineEdit *>("archivePassword")->isEnabled());
-        auto *available = dialog.findChild<QListWidget *>("availableSources");
-        bool found = false;
-        for (int i = 0; i < available->count(); ++i)
-            if (QFileInfo(available->item(i)->data(Qt::UserRole).toString())
-                    .canonicalFilePath()
-                    .normalized(QString::NormalizationForm_C) ==
-                QFileInfo(folder).canonicalFilePath().normalized(QString::NormalizationForm_C)) {
-                available->item(i)->setSelected(true);
-                found = true;
-            }
-        QVERIFY(found);
-        dialog.findChild<QPushButton *>("selectSourcesButton")->click();
-        QCOMPARE(dialog.sources().size(), 2);
-        QCOMPARE(format->findText("gzip"), -1);
-        QCOMPARE(format->currentText(), QStringLiteral("7z"));
-        QVERIFY(dialog.findChild<QLineEdit *>("archivePassword")->isEnabled());
-        QCOMPARE(dialog.compressionOptions().format, QStringLiteral("7z"));
-        QVERIFY(dialog.findChild<QComboBox *>("compressionMethod")->findText("LZMA2") >= 0);
-        QVERIFY(dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->isEnabled());
+        QVERIFY(!dialog.findChild<QListWidget *>("availableSources"));
+        CreateArchiveDialog multiple(fixture_.path(), {source_, folder}, nullptr, catalog_);
+        QCOMPARE(multiple.sources().size(), 2);
+        auto *types = multiple.findChild<QComboBox *>("archiveFormat");
+        QCOMPARE(types->findText("gzip"), -1);
+        types->setCurrentText("7z");
+        QVERIFY(multiple.findChild<QLineEdit *>("archivePassword")->isEnabled());
+        QCOMPARE(multiple.compressionOptions().format, QStringLiteral("7z"));
+        QVERIFY(multiple.findChild<QComboBox *>("compressionMethod")->findText("*  LZMA2") >= 0);
+        QVERIFY(
+            multiple.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->isEnabled());
     }
 };
 QTEST_MAIN(CodecCreationUiTests)

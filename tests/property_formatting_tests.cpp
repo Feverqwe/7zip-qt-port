@@ -35,7 +35,7 @@ class PropertyFormattingTests : public QObject {
     }
 
   private slots:
-#ifndef _WIN32
+#ifndef Q_OS_WIN
     void nativeLinkReadAndFailedReload() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

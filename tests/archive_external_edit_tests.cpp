@@ -1,3 +1,5 @@
+#include "7zip/UI/FileManager/ProgressDialog2Res.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "external_editor_fixture.h"
@@ -6,6 +8,7 @@
 #include <QCoreApplication>
 #include <QScopeGuard>
 #include <QStandardPaths>
+#include <QTreeWidget>
 
 using namespace ExternalEditorFixture;
 
@@ -30,6 +33,48 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
     Q_OBJECT
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void sourceViewerOpensLargeFileWithoutPreviewLimit() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("большой файл 密碼.bin");
+        const QByteArray bytes(17 * 1024 * 1024, 'x');
+        QVERIFY(write(fixture.filePath(name), bytes));
+        const QString archive = fixture.filePath("large.zip");
+        QVERIFY(createArchive(fixture.path(), archive, name));
+        const QByteArray originalArchive = read(archive);
+        const QString control = fixture.filePath("viewer control");
+        const auto stopViewer = qScopeGuard([&] { write(control + ".exit", "exit"); });
+        configure(control);
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        QString unexpectedMessage;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                unexpectedMessage = box->text();
+                box->accept();
+            }
+        });
+        responder.start(1);
+        window.show();
+        window.openArchive(archive);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        table(window)->selectRow(0);
+        table(window)->setCurrentCell(0, 0);
+        QVERIFY(!window.findChild<QAction *>("builtinTextViewAction"));
+        QTRY_VERIFY(action(window, "viewFileAction")->isEnabled());
+        action(window, "viewFileAction")->trigger();
+        QVERIFY2(unexpectedMessage.isEmpty(), qPrintable(unexpectedMessage));
+        QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
+        const QString temporary = QString::fromUtf8(read(control + ".ready"));
+        QCOMPARE(read(temporary), bytes);
+        // Original MyThreadFunction retains a short unchanged launch until
+        // panel exit. Exercise its long-running process-completion branch.
+        QTest::qWait(2100);
+        QVERIFY(write(control + ".exit", "exit"));
+        QTRY_VERIFY(!QFileInfo::exists(temporary));
+        QCOMPARE(read(archive), originalArchive);
+    }
     void changedFileUsesNativeUpdatePrompt_data() {
         QTest::addColumn<int>("answer");
         QTest::addColumn<bool>("viewer");
@@ -100,7 +145,8 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QVERIFY(geometry);
         QTRY_VERIFY(!QDir(temporaryDirectory).exists());
         responder.stop();
-        QCOMPARE(contents(archive, name), answer == QMessageBox::Yes ? modified : "original");
+        QCOMPARE(contents(archive, name),
+                 answer == QMessageBox::Yes ? modified : QByteArray("original"));
         QTRY_COMPARE(table(window)->rowCount(), 1);
         if (answer == QMessageBox::Yes) {
             QCOMPARE(table(window)->item(0, 2)->text(), QString::number(modified.size()));
@@ -165,27 +211,50 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
         QVERIFY(action(window, "editFileAction")->isEnabled());
-        action(window, "editFileAction")->trigger();
-        QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
-        const QString temporary = QString::fromUtf8(read(control + ".ready"));
         bool error = false;
+        QString previousModalState;
         QTimer responder;
         connect(&responder, &QTimer::timeout, &window, [&] {
             auto *modal = QApplication::activeModalWidget();
+            if (modal) {
+                const auto *button = modal->findChild<QPushButton *>("IDCANCEL");
+                const QString state =
+                    QString("%1/%2/%3")
+                        .arg(modal->metaObject()->className(), modal->objectName(),
+                             button ? button->text() : QString());
+                if (state != previousModalState) {
+                    previousModalState = state;
+                    qInfo().noquote() << "External update modal:" << state;
+                    if (auto *messages = modal->findChild<QTreeWidget *>("IDL_PROGRESS_MESSAGES"))
+                        for (int row = 0; row < messages->topLevelItemCount(); ++row)
+                            qInfo().noquote()
+                                << "Progress message:" << messages->topLevelItem(row)->text(1);
+                }
+            }
             if (auto *box = qobject_cast<QMessageBox *>(modal)) {
+                qInfo().noquote() << "External update message:" << box->text();
                 if (box->objectName() == "externalUpdatePrompt")
                     box->done(QMessageBox::Yes);
                 else {
-                    error = box->objectName() == "externalUpdateError";
+                    error |= box->objectName() == "externalUpdateError";
                     box->accept();
                 }
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Close")))
-                    close->click();
+                if (close && close->text() == ToQString(LangString(IDS_CLOSE)))
+                    QTimer::singleShot(0, progress, [progress, close] {
+                        // Source sets the Close caption before presenting its
+                        // final error. Allow that transition to finish before
+                        // simulating input; never click through a child modal.
+                        if (QApplication::activeModalWidget() == progress)
+                            close->click();
+                    });
             }
         });
         responder.start(1);
+        action(window, "editFileAction")->trigger();
+        QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
+        const QString temporary = QString::fromUtf8(read(control + ".ready"));
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
         QTRY_VERIFY(error);

@@ -1,8 +1,10 @@
+#include "../third_party/7zip/C/7zTypes.h"
 #include "7zip/Common/CreateCoder.h"
 #include "7zip/IPassword.h"
 #include "7zip/UI/Common/DefaultName.h"
 #include "7zip/UI/Common/SetProperties.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
+#include "CPP/7zip/UI/Common/Update.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
@@ -11,6 +13,7 @@
 #include "qtbenchmarkservices.h"
 #include "qtlanguageservices.h"
 #include <QFileInfo>
+#include <cerrno>
 
 void ArchiveBackend::assignDefaultEntryNames(const QString &format) {
     CArc arc;
@@ -24,6 +27,14 @@ void ArchiveBackend::assignDefaultEntryNames(const QString &format) {
     for (ArchiveEntry &entry : entries_)
         if (entry.path.isEmpty() && !entry.directory)
             entry.path = QString::fromWCharArray(arc.DefaultName.Ptr());
+}
+
+ArchiveBackend *ArchiveBackend::createIndependentBackend(QObject *parent) const {
+    auto *backend = new ArchiveBackend(parent, configuredEngine_);
+    // A new File Manager window owns its process/operation state. Only the
+    // immutable module lease is shared, as with existing native readers.
+    std::atomic_store(&backend->codecCatalog_, codecCatalog());
+    return backend;
 }
 
 HRESULT ArchiveBackend::openNativeArchive(const QString &path, const QString &type,
@@ -65,6 +76,53 @@ HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeO
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
     return writer->UpdateItems(output, count, callback);
+}
+
+HRESULT ArchiveBackend::updateSourceArchive(const QString &path, const QString &type,
+                                            NWildcard::CCensor &censor, CUpdateOptions &options,
+                                            CUpdateErrorInfo &errorInfo,
+                                            IOpenCallbackUI *openCallback,
+                                            IUpdateCallbackUI2 *callback, bool needSetPath) const {
+    if (!callback || !openCallback)
+        return E_INVALIDARG;
+    if (busy())
+        return E_ABORT;
+    const auto catalog = codecCatalog();
+    if (!catalog)
+        return E_NOTIMPL;
+    return catalog->updateArchive(path, type, censor, options, errorInfo, openCallback, callback,
+                                  needSetPath);
+}
+
+HRESULT ArchiveBackend::updateSourceArchive(
+    const UString &path, const CObjectVector<COpenType> &types, NWildcard::CCensor &censor,
+    CUpdateOptions &options, CUpdateErrorInfo &errorInfo, IOpenCallbackUI *openCallback,
+    IUpdateCallbackUI2 *callback, bool needSetPath,
+    const std::shared_ptr<const ArchiveCodecCatalog> &catalog) const {
+    if (!callback || !openCallback || !catalog)
+        return E_INVALIDARG;
+    // GUI preflight checks busy state before starting this source worker.
+    // Worker code only reads the atomically published catalog, never QProcess.
+    if (catalog != codecCatalog())
+        return E_ABORT;
+    RINOK(catalog->updateArchive(path, types, censor, options, errorInfo, openCallback, callback,
+                                 needSetPath))
+    if (options.SfxMode && !options.StdOutMode) {
+        FOR_VECTOR(i, options.Commands) {
+            const UString output = options.Commands[i].ArchivePath.GetFinalPath();
+            if (!ArchiveSfxModule::MakeExecutable(QString::fromWCharArray(output.Ptr()))) {
+#ifdef _WIN32
+                errorInfo.SystemError = ERROR_ACCESS_DENIED;
+#else
+                errorInfo.SystemError = EACCES;
+#endif
+                errorInfo.Message = "Could not make the SFX archive executable";
+                errorInfo.FileNames.Add(us2fs(output));
+                return errorInfo.Get_HRESULT_Error();
+            }
+        }
+    }
+    return S_OK;
 }
 
 HRESULT ArchiveBackend::updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,

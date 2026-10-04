@@ -1,5 +1,225 @@
 # Сверка с Windows 7zFM
 
+## P2-09 — Shell popup (в работе, 2026-10-03)
+
+Native System WIP 2026-10-04: перенесены исходные PanelMenu PIDL/query bodies и
+CMINVOKECOMMANDINFOEX invocation; QtNativeShellMenu удерживает COM/HMENU на одну
+генерацию и показывает исходное дерево в System submenu на Windows. На Unix
+Windows System transport остаётся unavailable. Snapshot13edb0ee прошёл Windows
+7/7 suites36.79s zero skips; восемь EN/RU normal/compact JSON просмотрены:
+29 root rows с System первым и19 child rows без clipping. Подписи native verbs
+следуют языку ОС (EN), независимо от RU app labels; это системный provider.
+Native icons, owner-drawn handlers и rendered System comparison ещё не приняты;
+COM extension/installation/email остаются открытыми. Старые записи о disabled
+System ниже относятся к снимкам до этого подключения.
+Текущий Windows snapshotc1b68eed прошёл8/8 suites35.54s zero skips: настоящий
+native Copy передаёт выбранный Unicode-файл в clipboard и снимает выделение;
+устаревшие QAction не вызывают новую команду. Повторно просмотрены восемь JSON
+текущего build: исходный порядок root29/child19, без clipping. Это не заменяет
+rendered comparison native icons/owner-drawn handlers и installed COM UX.
+
+2026-10-04, уточнение обязательной UX-сверки: независимые File-команды журнала
+и встроенного Text View/Edit удалены вместе с FileViewerDialog и его preview/
+update wrappers. Исходные F3/F4 и Progress/Messages сохранены. Полный macOS
+format/build/229CTest PASS97.44s подтверждает эту миграцию. Последующее исправление
+Archive caption и независимой строки памяти распаковки проверено шестью suites
+(9.06s), восемь новых EN/RU top/bottom JSON просмотрены. Новый snapshot
+20261004T032721Z-e0a5aaaa проверяет49 suites на Windows/Linux; итог ещё неизвестен.
+Это не приёмка P2-09 и не заявление о полном визуальном соответствии.
+
+Эталон — pinned PanelMenu::CreateFileMenu/CreateSevenZipMenu/InvokePluginCommand
+и Explorer ContextMenu::QueryContextMenu/InvokeCommandCommon. Дисковое меню
+теперь использует исходный генератор путей, labels, verbs, IDs и grouping.
+Qt рисует исходный MenuLogo.bmp; Add to7z/ZIP без диалога и SHA256 generation
+используют source CompressCall2/UpdateGUI/UpdateArchive. Native System,
+email остаются disabled; generic Add теперь открывает fixed-selection source
+modal. Source SFX теперь получает проверенный native module из retained catalog;
+обычный, encrypted и split SFX действительно запускаются на macOS. Новый
+platform snapshot ещё проверяется; прежний Windows v10 показывает старый код.
+Обычный toolbar Add использует исходный CPanel::AddToArchive, включая refusal
+в архиве и пустое выделение; встроенный picker удалён из всех ветвей. Drag Add
+использует исходные CompressCall2/UpdateGUI и native update. Семь форматов
+toolbar Add и unknown-extension update через исходный two-panel Copy проверены.
+Snapshot20261003T231240Z-201ad78d:Windows16/16PASS85.76s иLinux16/16PASS29.23s;
+этот снимок предшествует следующему browse port и исправлению test fixture.
+Обработчик `...` теперь переносит исходный OnButtonSetArchive: filters/index,
+extension/format/alias/SFX/Cancel. Платформенный QFileDialog отображает исходные
+descriptions, скрывая дополнительную Qt mask suffix. macOS expanded18/18
+PASS15.10s; свежие full/Windows/Linux проверки текущего browse ещё выполняются.
+2026-10-04: snapshot20261004T000254Z-d1a630c3 прошёл Linux19/19(31.68s),
+Windows18/19(78.74s): native archive Move больше не падает, source browse проходит;
+sole modal-refresh test сравнивал Windows caption с Qt `/` без нормализации.
+Проверка исправлена; повтор platform validation текущих дальнейших изменений
+остаётся открытой. macOS current20/20PASS18.93s включает flat-scan cancellation.
+
+Настоящий Qt Add v10 снят и просмотрен рядом с исходным Windows 7zFM:
+`build/runners/ui-reference-20261003/qt-application-add-v10/application-add.png`,
+JSON того же имени, native642×546, executable SHA256
+`a8cf7ce10b300a142c7abd1b15fac23548250da8aba0e9b10a86531beecad0e3`.
+Capture task result0; собственная задача удалена, диалог отменён без создания
+архива. Picker отсутствует, две колонки, encryption method в одной строке,
+decompression value справа и footer доступны. Original reference остаётся
+`20261003T203028687Z-f7f64f.png`, pinned7zFM26.03. SFX в оригинале доступен,
+в Qt source consumer пока disabled; `*` у automatic compression method пока
+не перенесён. Это открытые отличия, а не подтверждённое полное visual parity.
+Снимок v10 предшествует удалению неиспользуемой existingTarget ветви и widget
+preflights, но показывает production source form того же layout.
+
+Последующая source SFX сборка прошла macOS full230/230(92.14s), а fresh snapshot
+`20261004T010728Z-b6571bdb` — Windows24/24(114.99s), Linux24/24(35.68s).
+Включены настоящий source toolbar SFX plain/password/volumes/Cancel и нативный
+запуск созданного executable. Windows flat-view separator/cascade тоже больше
+не воспроизводится. Эти результаты предшествуют переносу method selector.
+Теперь исходные SetMethod2/GetMethodSpec дают automatic `*`, пустой source spec
+и очищение Store; локально13affectedPASS10.49s, новая VM проверка идёт.
+Оригинальный Windows переход SFX→ZIP дополнительно выполнен: остаётся только
+LZMA, SFX выключен/disabled. Такое исходное состояние сохранено и проверяется,
+прежнее Qt ожидание Deflate удалено. Capture result0, Cancel без создания архива,
+completed task удалён; JSON — original-method-transition-20261004/states.json
+в той же локальной директории reference. Новый default runtime PNG ещё требуется.
+
+Actual Qt v11 default Add теперь снят и просмотрен рядом с оригиналом:
+`qt-application-add-v11/application-add.png` и JSON в локальном reference,
+snapshot98243ecb, native642×546, executable SHA256
+`8be93735b703202d59634bcca77acdd37d68decc3b74663fe501747792fbb9de`.
+Capture result0; свой completed task удалён, modal отменён. SFX доступен,
+automatic `*  LZMA2` присутствует, picker отсутствует, footer доступен.
+Этот снимок проверяет default state; он предшествует исправлению отсутствующего
+method selection при SFX→ZIP, которое не меняет этот default. Native v2 probe
+дополнительно установил selection -1 после перехода; Qt больше не навязывает
+первый item, local13affectedPASS12.59s. Source-модель и runtime validation
+этого последующего исправления фиксируются отдельно от older29/29 snapshot.
+В v11 найдено ещё одно структурное отличие: folder prefix занимает всю ширину,
+а source.rc задаёт его и Archive combo в одной колонке справа от Archive label.
+Также Windows display prefix использует `/`; оба отличия исправлены и проверены
+в следующем native v12. Начальное полное выделение имени тоже восстановлено.
+Исходный порядок System → 7-Zip → File
+сохраняется без дополнительного Qt separator, отсутствующего в source body.
+
+Shell Open запускает отдельный File Manager. Вместо нового OS process Qt
+создаёт отдельное окно с независимым backend и общей immutable module lease;
+родительская папка не заменяется. Тип архива передаётся отдельно и сохраняется
+до BindToPath. Отказ archive probe не выдаётся за успех привязки к папке.
+Отмена пароля не показывает вторую ошибку и не сбрасывает selection; успешный
+source InvokePluginCommand очищает selection. Native Open success/refusal/cancel
+проверены через действующее popup; байты архива сохранены.
+
+EN/RU normal/compact action geometry и четыре текущих widget JSON проверены на
+macOS; один PNG только для новой bitmap rendering также просмотрен. Source
+resources не подтверждают Windows pixel parity. Native extension, program File
+menu и toolbar aliases, email и installed Windows checks ещё
+обязательны; P2-09 не принят.
+
+2026-10-04: current Add snapshot `20261004T020838Z-07e2aeb5` прошёл
+Windows29/29PASS123.49s и Linux29/29PASS38.34s. Actual Qt v12
+`qt-application-add-v12/application-add.png/.json` лично просмотрен рядом с
+original PNG: native642×546, SHA256
+`6cb83ba8cbc609ccf9acb013915d5e3ae6ac453cfb4b6d0d37b89851b5001ce9`.
+Путь и имя делят одну колонку, Windows prefix использует `\`, имя выделено,
+SFX и automatic `*` доступны, footer не перекрыт. Capture result0, собственная
+задача удалена, Cancel без создания архива. Отступы, ширина compression controls
+и расположение Archive caption всё ещё отличаются от native reference;
+это не подтверждение полного визуального соответствия.
+
+Программное File теперь создаётся через исходный
+`MyLoadMenu.cpp::OnMenuActivating` File branch и `CPanel::CreateFileMenu`.
+Qt сохраняет static resource actions отдельно от disposable shell rows и
+retained plugin context; `CApp::ExecuteCommand/ExecuteFileCommand` вызывает и
+освобождает исходный plugin. Reopen не дублирует строки, старый QAction не
+вызывает новый context, смена focused panel отклоняет старую команду.
+Native program-menu Open success/forced-type refusal/password Cancel и
+Add success/broken-existing/Cancel проходят на macOS. Четыре EN/RU980/640
+File JSON и дочерние shell JSON просмотрены: source order, Exit последним,
+лишних aliases в открытом меню нет, все action rectangles доступны. Сами
+legacy actions и workflows пока существуют; их удаление остаётся обязательным.
+Новые File edits проверяются отдельно свежим snapshot0b1bdcab и full gate.
+
+Позднейшее исправление Info: исходный `App.cpp::g_StandardButtons` связывает
+Info с IDM_PROPERTIES, теперь эта же команда используется в Qt. Самостоятельный
+Archive information screen и extension удалены. Properties открывает исходные
+item/folder/archive sections и для пустого архива, как PanelMenu::Properties;
+label кнопки остаётся исходным Info. Actual item/empty archive и filesystem
+consumer во всех flat/view режимах, EN→RU→EN, unchanged backend calls проходят:
+five direct suites3.16s и nine policy/source/menu consumers9.76s на macOS.
+Четыре current540/360 EN/RU widget JSON просмотрены: list, buttons и footer
+полностью доступны. Native Windows System Properties всё ещё требует source
+System transport; Windows runtime сравнение этого последующего изменения открыто.
+Предыдущий full230PASS95.22s и snapshot0b1bdcab предшествуют Info correction.
+
+Direct Add/generation popup проверен на Unicode/spaced файлах: official7zz
+подтверждает выходы, успешный source invoke очищает selection, результат
+появляется в списке через существующий auto-refresh. Повреждённый existing7z
+отклоняется с одной ошибкой и сохранением bytes/selection. GUI worker Cancel
+останавливает source callback и удаляет свой выход. Восемь EN/RU normal/compact
+root/hash JSON с текстом/verbs/geometry/enabled просмотрены; Qt bounds287×92
+EN/316×92 RU и hash355×301 fully exposed. Свежие focused Hyper-V runs проверили
+direct popup и source worker на Linux/Windows; общий Windows run выявил четыре
+сбоя в baseline/context/SFX consumers. Повторные focused runs после fixes и
+source ShowDialog прошли: Windows17/17PASS56.10s, Linux17/17PASS13.10s.
+Installed native extension UX и rendered Windows parity не подтверждены;
+screenshots для новых command-only изменений не потребовались.
+Восемь current-build EN/RU normal/compact root/hash JSON каждой VM также
+просмотрены: source order/verbs/enabled сохранены, все видимые action rectangles
+exposed; ширины Windows455/503/hash563, Linux273/305/hash342.
+
+Source UpdateGUI::ShowDialog теперь сохраняет исходный options roundtrip,
+action sets, password и properties. PresentCompressDialog подключён к настоящему
+fixed-selection Qt modal с retained catalog/external methods; success, broken
+existing archive и Cancel проверены с native UpdateArchive. Новые исправления
+Add по замечанию пользователя ещё проходят текущие gates.
+
+Windows runtime эталон Add получен 2026-10-03: 7zFM26.03 собран без изменений из
+commit0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17, executableSHA256
+310fc41187fe3482de653a12cb3fc27d2826f9d18e95bd9a7835bf44cfc54151.
+Снимок `application-runtime`, 52 controls,96DPI, client624×546 показывает
+folder label над Archive+`...`, две колонки и OK/Cancel/Help, без выбора источников,
+Save in и preview. PNG и JSON реально просмотрены, локальные артефакты —
+`build/runners/ui-reference-20261003/20261003T203028687Z-f7f64f.{png,json}`.
+Это эталон одного состояния, не доказательство совпадения Qt или остальных форм.
+Qt-форма отрисована нативным Windows-плагином и реально просмотрена в
+`build/runners/ui-reference-20261003/qt-rendered-add/source-add-{en,ru}-{760,640}.png`
+с JSON и нижними scroll states. Это shared форма из тестового executable,
+а не проверка всех команд собранного приложения. Source fixture специально
+задаёт Freshen/Full paths/password, поэтому значения этих полей не сравниваются
+с исходными defaults эталонного окна. Сверка обнаружила сокращённую строку
+памяти и неверное положение её label; исходный PrintMemUsage и верхний label
+исправлены и проверены в новых native Windows reports. SFX в source modal остаётся отключённым
+и не принят. Наше дополнительное отключение Delete при смене update mode удалено:
+исходный OnInit оставляет checkbox доступным, UpdateArchive проверяет action set
+после OK. Успех, Cancel и отказ с сохранением источника проверены.
+Отличия шрифтов и отрисовки Qt не означают pixel parity.
+Обычный filesystem Add теперь получает panel selection без picker; column
+grouping, folder label и footer приведены к этому состоянию. Legacy Add в
+открытый архив и browse filters ещё требуют source/workflow исправления.
+Все подобные допущения обязательны к разбору в [ux-port-audit.md](ux-port-audit.md);
+прежняя запись Qt adaptation не закрывает их.
+
+При нативной Windows проверке Copy из вложенного архива Qt после закрытия
+диалога активировал противоположную панель, и consumer молча отбрасывал запрос.
+Исходный OnCopy сохраняет source/destination refs. QtAppPresentation теперь
+восстанавливает проекцию захваченного источника до ExecuteCopy; изолированная
+регрессия Windows проходит1/1 в1.37s. Свежий snapshot
+20261003T215547Z-2dad9bab прошёл Windows13/13PASS65.39s и Linux13/13PASS25.17s;
+macOS full227/227PASS81.24s включает это исправление.
+
+Настоящий Qt application-runtime Add через toolbar также снят и просмотрен:
+`build/runners/ui-reference-20261003/qt-application-add-v8/application-add.{png,json}`,
+snapshot20261003T212905Z-62e3141a, appSHA256
+473f207e78581b6427ed91e9ec66db3e9e4da55a05c4a0748278ec48d94a5ef.
+Выбор панели и полная строка памяти видны. Оставшийся default760×720 скрывает
+footer под Windows taskbar; это не допустимое отличие. Размер по содержимому
+и доступной области экрана исправлен с новой проверкой без test resize.
+На macOS новые focused13/13PASS14.50s, default640×571 JSON просмотрен:
+колонки, параметры и footer доступны. Свежий Windows snapshot
+20261003T221959Z-6da11f81 прошёл13/13PASS70.86s. Повторный настоящий
+application-runtime v9 PNG/JSON просмотрен: окно642×578 полностью помещается,
+все три кнопки доступны. AppSHA256
+c4d9055f35ed16398677f2ed3815573d18579818a94a846c259e2c13c0c6b712;
+артефакты в `build/runners/ui-reference-20261003/qt-application-add-v9/`.
+Собственная capture task завершилась0 и удалена. Этот sizing snapshot
+предшествует последующему переносу CPanel::AddToArchive, не подтверждает его
+workflow. Последняя полная проверка также предшествует новым Add source edits.
+
 ## P2-08 — System page (принят 2026-10-03)
 
 Эталон — pinned SystemPage.rc/.cpp: File type, current-user и All users columns,
@@ -418,7 +638,8 @@ Qt standard buttons/native pickers сохраняют платформенные
 текущие формы/messages также подключены; Windows/Linux runtime не подтверждён.
 Split/Combine используют исходные заголовки прогресса и подтверждение числа частей;
 Open и продолжение hash — исходные IDS_OPENNING/IDS_CHECKSUM_CALCULATING.
-Qt/7zz staging и контекст журнала получают локальные EN/RU-подписи; исходные
+Qt/7zz staging получает локальные EN/RU-подписи; независимая команда журнала
+и встроенный редактор удалены в P2-09. Ошибки показывают source Progress/Messages, исходные
 сообщения движка сохраняются. Source RC fallback, keyboard/buddy/collision и
 normal/compact geometry входят в принятую .2; новые capabilities имеют свои owners.
 Split/Combine worker показывает EN/RU; отмена определяется состоянием операции.
@@ -454,8 +675,9 @@ Qt сохраняет действия и полный путь в tooltip. Ко
 Qt cycling проверяется, когда ОС включает мнемоники. macOS сохраняет свою
 политику мнемоник; Windows/Linux runtime не подтверждён. Подписи составных
 CPU/RAM-строк направляют фокус к реальным combo и имеют доступные имена.
-Фильтр Open archive — Qt-расширение с явными EN/RU-подписями Archives/All files;
-все прежние маски, включая первый том `.001`, сохранены.
+Историческое Qt-расширение Open archive с отдельным picker/Ctrl+O удалено
+2026-10-04: его нет в исходном File menu. Сохраняются source Open/Open Inside,
+address navigation и reusable BrowseDialog/filter component checks.
 
 P1-13.1: Options page2300 называется 7-Zip и сохраняет source MenuPage2.rc order:
 две регистрации shell, Cascaded, Icons, ElimDup, Zone и 14 items. Только Zone
@@ -1024,13 +1246,10 @@ Split использует заданную последовательность
 завершают операцию с откатом временных файлов. Предварительное выделение
 места под том не выполняется; файл записывается последовательно.
 
-Ветка LZMA/LZMA2 `CCompressDialog::SetOrder2()` перенесена из upstream
-`0766b73` в `src/CPP/7zip/UI/GUI/CompressDialog.cpp`. Сохранены генерация
-8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 273 и автоматическое значение
-32 для уровней ниже 7, иначе 64. UI и backend используют одну функцию.
-Qt-часть формы сжатия выделена в `createarchivedialog_compression.cpp`;
-явный выбор сохраняется при смене уровня, автоматический не передаёт `fb`
-движку. Ветки порядка Deflate/PPMd подключены последующими итерациями, описанными ниже.
+LZMA/LZMA2 сохраняет явный выбор порядка при смене уровня; автоматический
+выбор не передаёт `fb` движку. Исходный числовой ряд, defaults и общий
+владелец `CCompressDialog::SetOrder2()` записаны в
+[source audit](upstream-port-audit.md#qt-layout-diagnostics).
 
 Числовой ряд `CCompressDialog::SetSolidBlockSize2` перенесён из `0766b73`
 в исходный `GUI/CompressDialog.cpp`: степени 2^20–2^36. Qt хранит размеры

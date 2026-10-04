@@ -80,6 +80,12 @@ void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceI
                                     const QString &destination,
                                     const CRecordVector<UInt32> &indices, bool useDestPanel,
                                     bool useTemp) {
+    if (window_.app_.QtOperations().closed() || sourceIndex >= kNumPanelsMax)
+        return;
+    // OnCopy retains srcPanel across its modal dialog. Native Qt focus
+    // restoration can activate the opposite pane; restore the Qt projection
+    // for that captured source before executing the original request.
+    window_.activatePanelUi(sourceIndex);
     window_.executeCopyDestination(move, copyToSame, sourceIndex, destination, indices,
                                    useDestPanel, useTemp);
     if (window_.state_ != MainWindow::State::Operating && sourceIndex < kNumPanelsMax)

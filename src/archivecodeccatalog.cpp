@@ -2,6 +2,7 @@
 #include "7zip/Archive/Rar/Rar5Handler.h"
 #include "7zip/Archive/Zip/ZipHandler.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
+#include "CPP/7zip/UI/Common/Update.h"
 #include "Common/StringConvert.h"
 #include "archivecodecimage.h"
 #include "qtlanguageservices.h"
@@ -174,7 +175,7 @@ ArchiveSfxModule ArchiveCodecCatalog::sfxModule(const QString &path) const {
     actual.replace('-', '_');
     if (actual == "aarch64")
         actual = "arm64";
-    if (actual == "amd64")
+    if (actual == "amd64" || actual == "x64")
         actual = "x86_64";
     QString host = QSysInfo::buildCpuArchitecture().toLower();
     if (host == "i386")
@@ -198,6 +199,10 @@ QStringList ArchiveCodecCatalog::extensions() const {
         }
     }
     return result;
+}
+
+void ArchiveCodecCatalog::getUserCodecs(CObjectVector<CCodecInfoUser> &codecs) const {
+    codecs_->Get_CodecsInfoUser_Vector(codecs);
 }
 
 bool ArchiveCodecCatalog::parseOpenTypes(const QString &types,
@@ -224,4 +229,32 @@ HRESULT ArchiveCodecCatalog::openArchive(CArchiveLink &link, const QString &path
     options.props = nullptr;
     options.filePath = path.toStdWString().c_str();
     return link.Open3(options, callback);
+}
+
+HRESULT ArchiveCodecCatalog::updateArchive(const QString &path, const QString &type,
+                                           NWildcard::CCensor &censor, CUpdateOptions &options,
+                                           CUpdateErrorInfo &errorInfo,
+                                           IOpenCallbackUI *openCallback,
+                                           IUpdateCallbackUI2 *callback, bool needSetPath) const {
+    if (result_ != S_OK)
+        return result_;
+    CObjectVector<COpenType> types;
+    if (!parseOpenTypes(type, types))
+        return E_INVALIDARG;
+    return updateArchive(UString(path.toStdWString().c_str()), types, censor, options, errorInfo,
+                         openCallback, callback, needSetPath);
+}
+
+HRESULT ArchiveCodecCatalog::updateArchive(const UString &path,
+                                           const CObjectVector<COpenType> &types,
+                                           NWildcard::CCensor &censor, CUpdateOptions &options,
+                                           CUpdateErrorInfo &errorInfo,
+                                           IOpenCallbackUI *openCallback,
+                                           IUpdateCallbackUI2 *callback, bool needSetPath) const {
+    if (result_ != S_OK)
+        return result_;
+    // The source API reads factories through CCodecs*. Keep the pointer in its
+    // lifetime owner, as for OpenArchive; copied format tables cannot own DLLs.
+    return ::UpdateArchive(codecs_, types, path, censor, options, errorInfo, openCallback, callback,
+                           needSetPath);
 }

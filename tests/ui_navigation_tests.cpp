@@ -1,3 +1,5 @@
+#include "7zip/UI/FileManager/resource.h"
+#include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 #include <QTreeWidget>
@@ -9,20 +11,21 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QTimer::singleShot(0, &window, [&window, location] {
             auto *dialog = window.findChild<QDialog *>("foldersHistoryDialog");
             QVERIFY(dialog);
+            const auto close = qScopeGuard([&] {
+                if (dialog->isVisible())
+                    dialog->reject();
+            });
             auto *list = dialog->findChild<QTreeWidget *>("foldersHistoryList");
             QVERIFY(list);
             const auto matches = list->findItems(location, Qt::MatchExactly);
             QCOMPARE(matches.size(), 1);
             list->setCurrentItem(matches.first());
-            const QString screenshots = qEnvironmentVariable("SEVENZIP_SCREENSHOT_DIR");
-            if (!screenshots.isEmpty()) {
-                for (const QSize &size : {QSize(540, 360), QSize(360, 240)}) {
-                    dialog->resize(size);
-                    QApplication::processEvents();
-                    QVERIFY(dialog->grab().save(
-                        QDir(screenshots)
-                            .filePath(QStringLiteral("archive-history-%1.png").arg(size.width()))));
-                }
+            for (const QSize &size : {QSize(540, 360), QSize(360, 240)}) {
+                dialog->resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*list, *dialog));
+                QVERIFY(UiInspection::writeReport(
+                    *dialog, QStringLiteral("archive-history-%1").arg(size.width())));
             }
             dialog->accept();
         });
@@ -122,7 +125,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_Return);
         view->setFocus();
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
-        QCOMPARE(action(window, "openArchiveAction")->shortcut(), QKeySequence::Open);
+        QCOMPARE(action(window, "openInsideAction")->shortcut(),
+                 QKeySequence(Qt::CTRL | Qt::Key_PageDown));
         QVERIFY(action(window, "selectAllAction")->isEnabled());
         pressSelectAll(view);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 3);
@@ -167,7 +171,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(view, Qt::Key_Return);
         pressSelectAll(view);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
-        QCOMPARE(action(window, "extractSelectedAction")->isEnabled(), true);
+        QCOMPARE(action(window, "copyAction")->isEnabled(), true);
         view->clearSelection();
         view->setCurrentCell(rowWithPath(window, QStringLiteral("папка")), 0);
         QTest::keyClick(view, Qt::Key_Return);
@@ -255,7 +259,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("10.txt"));
         QCOMPARE(table(window)->item(1, 0)->text(), QStringLiteral("2.txt"));
         table(window)->selectRow(1);
-        QVERIFY(action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
         window.extractTo("/temporary/destination", true);
         QCOMPARE(backend.lastSelected,
                  QStringList{QStringLiteral("папка с пробелом/глубже/2.txt")});
@@ -267,7 +271,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         openRow(window, rowWithPath(window, QStringLiteral("пустая папка")));
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
         action(window, "upAction")->trigger();
         QCOMPARE(table(window)->rowCount(), 3);
     }
@@ -306,8 +310,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
     void reopeningAndEmptyArchive() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
         QVERIFY(!action(window, "archiveInfoAction")->isEnabled());
@@ -322,8 +325,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                 backend.completeList({ArchiveEntry{QStringLiteral("имя с пробелом.txt"), 4, 4}});
             });
             QCOMPARE(backend.listCalls, 1);
-            QVERIFY(!action(window, "openArchiveAction")->isEnabled());
-            QVERIFY(!action(window, "createArchiveAction")->isEnabled());
+            QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
             QVERIFY(!action(window, "openItemAction")->isEnabled());
             QVERIFY(!action(window, "parentFolderAction")->isEnabled());
             QVERIFY(!action(window, "selectAllAction")->isEnabled());
@@ -336,9 +338,9 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(action(window, "archiveInfoAction")->isEnabled());
         QVERIFY(action(window, "selectAllAction")->isEnabled());
-        QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
         table(window)->selectRow(0);
-        QVERIFY(action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
 
         QVERIFY(backend.prepareArchiveFixture("second.zip"));
         backend.queueListAction([&] {
@@ -357,16 +359,14 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());
-        QVERIFY(action(window, "openArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "extractSelectedAction")->isEnabled());
+        QVERIFY(!action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(action(window, "archiveInfoAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Архив открыт."));
     }
 
-    void testAndInfoStates() {
+    void testAndPropertiesStates() {
         ControlledBackend backend;
         MainWindow window(&backend);
         QVERIFY(backend.prepareArchiveFixture("first.7z"));
@@ -375,11 +375,31 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             backend.completeList({ArchiveEntry{QStringLiteral("δ space.txt"), 3, 7}});
         });
         window.openArchive("first.7z");
-        action(window, "archiveInfoAction")->trigger();
-        QPointer<QLabel> info = window.findChild<QLabel *>("archiveInfoText");
-        QVERIFY(info);
-        QVERIFY(info->text().contains(QStringLiteral("Format: 7z")));
-        QVERIFY(info->text().contains(QStringLiteral("Archive size: 120 bytes")));
+        QCOMPARE(action(window, "archiveInfoAction")->property("nativeCommandID").toUInt(),
+                 unsigned(IDM_PROPERTIES));
+        table(window)->selectRow(0);
+        const auto inspect = [&] {
+            QStringList values;
+            bool shown = false;
+            QTimer::singleShot(0, &window, [&] {
+                auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
+                QVERIFY(dialog);
+                const auto close = qScopeGuard([&] { dialog->reject(); });
+                auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
+                QVERIFY(list);
+                for (int i = 0; i < list->topLevelItemCount(); ++i)
+                    values.append(list->topLevelItem(i)->text(1));
+                shown = true;
+            });
+            action(window, "archiveInfoAction")->trigger();
+            if (!shown)
+                values.clear();
+            return values;
+        };
+        const QStringList itemProperties = inspect();
+        QVERIFY(!itemProperties.isEmpty());
+        QVERIFY(itemProperties.contains(QStringLiteral("δ space.txt")));
+        QVERIFY(!window.findChild<QDialog *>("archiveInfoDialog"));
         action(window, "testArchiveAction")->trigger();
         QCOMPARE(backend.testCalls, 1);
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
@@ -391,19 +411,16 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(backend.prepareArchiveFixture("empty.zip"));
         backend.queueListAction([&] {
             const auto finish = qScopeGuard([&] { backend.completeList({}); });
-            QVERIFY(!info || !info->isVisible());
             QVERIFY(!action(window, "testArchiveAction")->isEnabled());
         });
         window.openArchive("empty.zip");
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
-        action(window, "archiveInfoAction")->trigger();
-        QLabel *emptyInfo = nullptr;
-        for (QDialog *dialog : window.findChildren<QDialog *>("archiveInfoDialog")) {
-            if (dialog->isVisible())
-                emptyInfo = dialog->findChild<QLabel *>("archiveInfoText");
-        }
-        QVERIFY(emptyInfo);
-        QVERIFY(emptyInfo->text().contains(QStringLiteral("Format: zip")));
+        // Original Properties shows the archive/folder section even with no
+        // operated entries; Info is the same source command as File Properties.
+        QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
+        const QStringList folderProperties = inspect();
+        QVERIFY(!folderProperties.isEmpty());
+        QVERIFY(folderProperties.join('\n').contains("empty.zip"));
         action(window, "testArchiveAction")->trigger();
         QCOMPARE(backend.testCalls, 2);
         backend.fail(QStringLiteral("Операция отменена."), E_ABORT);

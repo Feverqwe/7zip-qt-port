@@ -3,12 +3,15 @@
 #pragma once
 
 #include "../Common/ZipRegistry.h"
+#include "../FileManager/BrowseDialog.h"
 #include "7zip/UI/Common/LoadCodecs.h"
 #include "CPP/Common/Wildcard.h"
 #include "Common/MyTypes.h"
 #include <QStringList>
 #include <QStringView>
+#include <functional>
 class QWidget;
+class QComboBox;
 
 void SetErrorMessage_MemUsage(UString &s, UInt64 reqSize, UInt64 ramSize, UInt64 ramLimit,
                               const UString &usageString);
@@ -84,6 +87,8 @@ EMethodID GetMethodID(QStringView name, QStringView format);
 bool GetOrderMode(EMethodID methodID);
 COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
 struct CInfo {
+    UString ArcPath;
+    QString Password;
     int FormatIndex = -1;
     bool KeepName = false;
     bool SFXMode = false;
@@ -179,6 +184,8 @@ struct CBool1 {
 
 class CCompressDialog {
   public:
+    AStringVector ExternalMethods;
+    void SetMethods(const CObjectVector<CCodecInfoUser> &userCodecs);
     const CObjectVector<CArcInfoEx> *ArcFormats = nullptr;
     CUIntVector ArcIndices;
     NCompressDialog::CInfo Info;
@@ -186,7 +193,11 @@ class CCompressDialog {
     int m_PrevFormat = -1;
     UString HashMethodSpec;
     bool IsSFX() const { return Info.SFXMode; }
-    void GetMethodSpec(UString &spec) const { spec = HashMethodSpec; }
+    UString GetMethodSpec(UString &estimatedName) const;
+    UString GetMethodSpec() const;
+    bool IsMethodEqualTo(const UString &s) const;
+    void SetMethod2(QComboBox &control, UInt32 level, const NCompression::CInfo &registry,
+                    const std::function<void()> &methodChanged, int keepMethodId = -1);
     void OnHelp(QWidget *parent = nullptr);
     CBool1 SymLinks;
     CBool1 HardLinks;
@@ -205,8 +216,15 @@ class CCompressDialog {
                                                    : ArcInfo;
     }
     unsigned GetFormatIndex() const { return unsigned(Info.FormatIndex); }
+    static QString PrintMemUsage(UInt32 res, UInt64 value, const NCompression::CMemUse &mu,
+                                 const NCompressDialog::CSystemInfo &system);
     NCompression::CFormatOptions &Get_FormatOptions() { return *FormatOptions; }
-    int GetMethodID() const { return MethodID; }
+    // Qt control binding replaces the original CComboBox member. Non-modal
+    // source callers keep their explicit MethodID/HashMethodSpec adapter.
+    QComboBox *m_Method = nullptr;
+    int _auto_MethodId = -1;
+    int GetMethodID_RAW() const;
+    int GetMethodID() const;
     enum EVolumeResult { kVolumeOK, kIncorrectVolumeSize, kConfirmSmallVolume };
     static EVolumeResult OnOK(const QString &volumeText, NCompressDialog::CInfo &Info);
     QString DirPrefix;
@@ -233,5 +251,8 @@ class CCompressDialog {
     bool SetArcPathFields(const QString &path);
     bool SetArcPathFields(const QString &path, QString &name, bool always);
     bool GetFinalPath_Smart(QString &resPath) const;
+    using BrowseFileHandler =
+        std::function<bool(CBrowseInfo &, const CObjectVector<CBrowseFilterInfo> &)>;
+    bool OnButtonSetArchive(QWidget *parent, const BrowseFileHandler &browse = {});
     void OnOK(NCompression::CInfo &registry) const;
 };

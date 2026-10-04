@@ -240,7 +240,7 @@ class SfxCreationTests final : public QObject {
         QVERIFY(write(source, "form fixture"));
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
-        CreateArchiveDialog dialog(fixture.path(), {source}, nullptr, {}, backend.codecCatalog());
+        CreateArchiveDialog dialog(fixture.path(), {source}, nullptr, backend.codecCatalog());
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         auto *sfx = dialog.findChild<QCheckBox *>("archiveSfx");
@@ -285,7 +285,7 @@ class SfxCreationTests final : public QObject {
         QVERIFY(method->findText("BZip2") >= 0);
         method->setCurrentText("BZip2");
         QVERIFY(!sfx->isEnabled());
-        method->setCurrentText("LZMA2");
+        method->setCurrentIndex(method->findData(-1));
         QVERIFY(sfx->isEnabled());
         sfx->setChecked(true);
         format->setCurrentText("zip");
@@ -293,9 +293,17 @@ class SfxCreationTests final : public QObject {
         QVERIFY(!sfx->isChecked());
         QVERIFY(!dialog.compressionOptions().SFXMode);
         QVERIFY(name->text().endsWith(".zip"));
-        QVERIFY(method->findText("Deflate") >= 0);
+        // Pinned native 7zFM preserves SetMethod2's SFX filter for this
+        // transition, then unchecks SFX: ZIP's supported LZMA remains alone
+        // but unselected (CB_GETCURSEL=-1 in the actual Windows reference).
+        QCOMPARE(method->count(), 1);
+        QCOMPARE(method->itemText(0), QString("LZMA"));
+        QCOMPARE(method->currentIndex(), -1);
+        QVERIFY(method->currentText().isEmpty());
+        QVERIFY(!method->isEnabled());
+        QVERIFY(dialog.sourceInfo().Method.IsEmpty());
         qputenv("SEVENZIP_SFX_MODULE", fixture.filePath("missing.sfx").toUtf8());
-        CreateArchiveDialog missing(fixture.path(), {source}, nullptr, {}, backend.codecCatalog());
+        CreateArchiveDialog missing(fixture.path(), {source}, nullptr, backend.codecCatalog());
         QVERIFY(!missing.findChild<QCheckBox *>("archiveSfx")->isEnabled());
     }
 };

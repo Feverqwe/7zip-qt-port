@@ -1,5 +1,49 @@
 # Text specifications and geometry checks
 
+### Source shell popup (P2-09, in progress)
+
+Reference: pinned PanelMenu.cpp::CreateFileMenu/CreateSevenZipMenu and Explorer
+ContextMenu.cpp::QueryContextMenu, including source MenuLogo.bmp. System is
+inserted before the 7-Zip group when requested; native System is connected on
+Windows and unavailable on Unix. Cascaded source Open archive, Open archive submenu, Extract files,
+Test archive and Add to archive remain in source query order. Available Open/
+Extract/Test/Hash, direct Add to7z/ZIP and SHA256 generation use concrete services;
+modal Add uses the source fixed-selection dialog; email remains disabled.
+No additional separator is inserted by Qt between plugins and CFileMenu: the
+corresponding source append-separator block is commented out.
+shell_menu_window checks actual popup/independent Open success, forced-type
+refusal, password cancel and selection result. It checks each submenu action
+rectangle, order and text width at EN/RU980×620/640×400 and writes four
+shell-menu-en/ru-980/640 JSON reports. Current macOS submenu bounds are172×115
+EN and201×115 RU, fully exposed; their nested Open-as menu is intentionally
+hidden until activated. One affected EN submenu PNG was inspected specifically
+for the source bitmap mask/rendering. These checks do not establish rendered
+Windows pixel parity or complete native-extension UX acceptance.
+
+shell_update_window additionally checks direct Add7z/ZIP/generation success,
+broken existing archive refusal, selection and result appearance. Its eight
+EN/RU980×620/640×400 root/hash JSON reports include QAction texts, source verbs,
+order, enabled state and rectangles. Source order is modal Add,
+Add to7z, Add toZIP, CRC SHA submenu; the hash submenu preserves the eleven
+calculation rows, separator, Generate and Test. Current root bounds287×92 EN/
+316×92 RU, hash355×301 in both languages, every visible action fully exposed.
+
+### Shell Menu page (P2-09, in progress)
+
+Reference: pinned MenuPage2.rc and source CShellDll discovery/OnApply.
+Native then other-bitness integration checkboxes precede cascaded/icons/root
+duplication controls, Zone row and scrollable command list. Missing DLL disables
+its checkbox; a 32-bit process without another shell hides only the other-bitness
+control. Explicit Apply runs other view first and resets each check to a fresh
+registration query, including failure. Cancel initiates no registration.
+menu_page checks these states through a fake module/registry service and writes
+menu-shell EN/RU640×390/520×380 reports. Four current macOS reports reviewed:
+compact498-wide controls accommodate the391-wide RU bitness hint; Zone label
+and combo do not overlap, the498×185 RU list scrolls within fully exposed bounds.
+The real page uses a native factory; Unix has no Win32 DLL integration, Windows
+requires adjacent project modules. Packaging/installed Windows UX and rendered
+Windows parity remain unverified, and the whole P2-09 step is not accepted.
+
 ### System associations (P2-08, accepted)
 
 Reference: pinned SystemPage.rc and CSystemPage OnInit/ChangeState/OnApply.
@@ -154,6 +198,84 @@ These checks establish Qt structure/usability, not rendered 7zFM pixel parity.
 
 ### Add archive naming metadata (P2-01)
 
+P2-09 WIP correction 2026-10-03: desktop `IDD_COMPRESS` places
+Format/compression/memory/volumes/parameters/Options summary in the left column;
+Update mode/Path mode/Options group/Encryption group are in the right column.
+There is no Compression group box. `source_compress_dialog` tests these relations
+and produces EN/RU760×720/640×480 top/bottom `source-add-*.json` reports.
+Ordinary filesystem Add also forbids an embedded source picker: the actual panel
+selection supplies its sources, checked by `filesystem_selection_runtime`,
+`ui_operations` and `ui_geometry`. Archive folder is now a read-only label above
+Archive+`...`; extra Save in/preview and Create/Add footer captions were removed.
+All dialog branches now omit the source picker. Toolbar Add uses original
+CPanel::AddToArchive; archive updates also use original two-panel Copy.
+Remaining menu aliases are in [the mandatory UX audit](ux-port-audit.md).
+macOS focused12/12PASS11.95s
+includes the folder/footer correction. Eight current source-add top/bottom
+reports were reviewed: normal columns/control groups fully exposed, compact
+vertical scrolling without horizontal overflow, lower parameters and fixed
+footer visible at the bottom. Qt output has no source picker/Save in/preview.
+
+Current Archive header additionally follows IDT_COMPRESS_ARCHIVE_FOLDER and
+IDC_COMPRESS_ARCHIVE's shared xArcFolderOffs: prefix and combo/browse have the
+same left edge to the right of the Archive caption. The field is two lines;
+prefix can wrap at compact sizes without imposing horizontal overflow. Display
+separators are native; the read-only prefix does not alter source path state.
+`source_compress_dialog` checks that shared edge in EN/RU normal/compact states;
+the regression fails on the previous spanning-prefix layout. Regenerated
+reports were reviewed at both sizes/languages: top controls are exposed, compact
+prefix may wrap, and lower controls/footer are reachable after scrolling.
+Initial filename text is fully selected, reflecting the original modal's first
+editable combo; selectedText tests fail without the explicit Qt focus adapter.
+
+The actual Windows reference additionally places the Archive caption between
+the prefix and name rows; a vertically centered header layout now preserves
+that relation even when the prefix wraps. IDT_COMPRESS_MEMORY_DE has its own
+full-column row, rather than widening all preceding compression labels.
+The six g1x/g1xs combo rows share their left edge and width in EN/RU at both
+sizes. The new compact caption regression fails before the correction.
+Six direct suites pass9.06s on macOS; eight regenerated top/bottom JSON reports
+were reviewed: EN compact combo width148 versus level hint108, RU188 versus145,
+caption between prefix/name, full-column memory and reachable lower fields/footer.
+Fresh Windows/Linux runtime checks and rendered comparison remain required.
+Latest affected6/6PASS9.39s; fresh full/VM/rendered checks remain pending.
+The real Windows 7zFM52-control runtime at96DPI was captured and inspected;
+its JSON/PNG provenance is recorded in parity. Native Windows Qt EN/RU normal/compact
+rendering was compared with that reference; this identified omitted limit/RAM text
+and an extra inline compression-memory label. The source PrintMemUsage text and
+stacked label/value row are corrected. Eight regenerated macOS reports show the
+complete usage/limit/RAM text and exposed fields at the bottom; focused5/5PASS3.14s
+includes source Delete success/Cancel/refusal. The latest fresh snapshot passed
+Windows13/13 in65.39s and Linux13/13 in25.17s; macOS full227/227PASS81.24s.
+The nested-transfer focus restoration failure was corrected in the Qt adapter.
+Eight current native Windows reports were reviewed: full usage/limit/RAM text
+fits; normal groups fit, compact lower parameters become fully visible after
+vertical scrolling, while top rows leave the viewport. Fixed footer stays visible.
+Offscreen Windows box-font metrics are not the application's font metrics;
+the thirteen focused Add/consumer tests use the native Windows plugin. This is not
+whole P2-09 acceptance.
+
+Actual application-runtime Add was also opened from the toolbar on Windows,
+with the fixture selected in the file panel. The2026-10-04 capture is
+`build/runners/ui-reference-20261003/qt-application-add-v8/application-add.png`
+and adjacent JSON; app SHA256
+`473f207e78581b6427ed91e9ec66db3e9e4da55a05c4a0748278ec48d94a5ef`,
+snapshot `20261003T212905Z-62e3141a`. The PNG was inspected against the original
+7zFM runtime: panel-selected sources, columns and complete memory text are
+present, but the retained760×720 default extends the footer behind the taskbar
+on this screen. This is a real application defect absent from explicitly resized
+form tests. Content-based default sizing and a screen/footer regression passed
+locally (default640×571, all controls/footer exposed). Fresh Windows13/13PASS70.86s;
+the inspected actual application v9 capture shows642×578 and the full footer on
+the available screen. Adjacent JSON records app SHA256
+`c4d9055f35ed16398677f2ed3815573d18579818a94a846c259e2c13c0c6b712` and
+snapshot `20261003T221959Z-6da11f81`; files are in
+`build/runners/ui-reference-20261003/qt-application-add-v9/`. The v8 capture predates
+the Copy focus fix and is not the latest cross-platform validation snapshot.
+Both captures predate the subsequent CPanel Add workflow port; that change still
+needs new consumer/platform validation. No remaining Add or global UX closure
+is inferred from the sizing comparison.
+
 Reference: pinned CompressDialog.cpp/rc and UpdateGUI.cpp::ShowDialog format/name
 inputs. Metadata projection retains Archive→Format→Path mode grouping and source
 format-switch naming rules. `compression_path` checks actual native default
@@ -163,17 +285,30 @@ catalog and exposes the path/format controls after scrolling to the top. Current
 reports reviewed: native eligible transport choices, separate rows and
 unclipped inputs/scroll viewport. `language_ui` EN/RU760/640 reports check the lower
 scroll state and exposed preview/footer; upper controls are expected offscreen
-there. Native one-file/name inputs now follow source-picker changes; the reviewed
+there. Native one-file/name inputs follow the fixed panel selection; the reviewed
 current metadata form uses the native Archive.7z suggestion.
-`codec_commands_ui` adds14 real MainWindow Add reports, `codec-add-<type>-760/640`:
-all seven detected formats remain fixed, empty→one-source restoration refreshes
-Deflate/BZip2/LZMA2 controls, and the format control/footer OK remain exposed.
-Current JSON was reviewed for bounds, source parameter states and grouping at
-760×720/640×480. The real dialog submits seven-format success/cancel operations.
+`shell_update_window` writes14 actual toolbar Add reports,
+`source-toolbar-add-<type>-760/640`, for creation/Cancel of seven native formats.
+`codec_commands_ui` writes14 original two-panel Copy reports,
+`codec-copy-<type>-640/480`, for unknown-extension archive update/Cancel.
+The obsolete opened-archive Add picker reports do not describe the current UI.
+2026-10-04 current14 Add/14 Copy JSON reviewed: Add760×720/640×480 keeps
+left/right grouping, method label/combo centers aligned with a6px gap and
+decompression values in their right field. Copy640×400/480×320 destination,
+selection summary and footer are exposed. No visible label is clipped. Compact
+top-state generic reports can place lower encryption offscreen; scroll-state
+reports and geometry tests check reachability. macOS focused16/16PASS14.41s;
+fresh Windows/Linux and full checks are pending.
 Its new report coverage is English; existing shared EN/RU layout checks remain.
 resources/geometry do not establish rendered Windows fidelity.
 
 ### Open archive picker (P2-01)
+
+Historical P2-01 extension, removed2026-10-04 during P2-09 UX correction:
+original IDM_MENU has no independent Open archive/Ctrl+O command. MainWindow's
+picker action/consumer is removed; source Open/Open Inside and address navigation
+remain. BrowseDialog/codec filter unit checks still validate their reusable
+component, and do not imply that an extra File-menu entry is justified.
 
 Reference: pinned BrowseDialog.cpp/CBrowseInfo and FilePlugins.cpp extension
 database. Qt uses the native OS file picker; archive masks project matching native
@@ -235,6 +370,15 @@ Progress reports cover EN/RU760×450/640×380 paused/background state and retain
 source two-column grouping. Properties reports cover540×360/360×240 with the
 existing table, rows and selection. Built-in viewer/editor reports cover760×560/
 420×300 while preserving pending content; editable text is omitted from JSON.
+
+P2-09 correction2026-10-04: toolbar Info uses the original IDM_PROPERTIES
+consumer; the independent archive-summary screen is removed. Four current
+`language-toolbar-properties-{en token -|ru}-{540|360}.json` reports retain
+the source properties list/button grouping with full viewport and footer
+exposure. The same source dialog shows archive/folder properties with zero
+operated indices, tested through actual Info on an empty archive. These checks
+validate source workflow/Qt geometry, not native Windows System Properties
+or pixel parity.
 Split confirmation reference: pinned PanelSplitFile.cpp's IDs7304/7305 and
 MB_YESNOCANCEL. `volume_workflow` checks original EN/RU100-part text and decisions
 with normal1100×640/compact640×380 main windows. Twelve
@@ -346,12 +490,15 @@ scroll area; compact layout uses scrolling. Windows rendering is unverified.
 
 Reference: `CompressDialog.rc` update/path rows and `CompressDialog.cpp`
 initialization at upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
-The Qt existing-archive form shows target, format, update mode and compression
-controls above the source picker. `compression` checks the mode list, normal
+The obsolete separate existing-target form and its source picker have been
+removed. Add uses the same source form with editable archive/format/browse,
+volumes and encryption; source UpdateArchive owns existing-output eligibility.
+`compression` checks the mode list, normal
 760×720 and compact 640×480 footer/scroll reachability, then writes
 `update-options-normal.json` and `update-options-compact.json`.
-Path-mode and protected-archive controls remain P1-05.2. These reports verify
-Qt structure and clipping on the checked host; Windows rendering is unverified.
+Current path/password checks are covered by the source modal and native
+two-panel Copy consumers. These reports verify structure and clipping on the
+checked host; a passing geometry check alone does not verify Windows rendering.
 
 The main-window caption is native CApp::RefreshTitle's focused folder prefix,
 with `7-Zip` for an empty prefix. Toolbar option checks mirror native CApp flags;
@@ -864,7 +1011,7 @@ checks; a rendered Windows reference and Windows/Linux runtime remain unverified
 Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 `IDD_COMPRESS`. Implemented view: `src/createarchivedialog*.cpp`.
 
-- The editable archive-path combo and format precede the options and source picker.
+- The editable archive-path combo and format precede the options.
   The combo retains the extension and offers the last twenty destinations;
   its text and the format row do not overlap at either tested size.
 - For an existing target, the update-mode row precedes the path-mode row;
@@ -876,19 +1023,18 @@ Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
   Show Password hides confirmation and its label; headers are hidden for ZIP.
   Compression stays in the left column and encryption in the right at both sizes.
   Password and confirmation labels sit above their fields, as in the resource.
-  Destination and the source picker follow the options. Long archive history
-  does not widen the form.
+  The encryption-method label/combo share one row; decompression memory is
+  right-aligned. No source picker, Save in or preview is present. Long archive
+  history does not widen the form.
 - Options are scrollable. At 760×720 and 640×480, format, compression controls,
-  password fields, and destination must each be fully reachable by scrolling.
-- Target preview and the Create/Cancel footer remain outside the scrolling
+  password fields must each be fully reachable by scrolling.
+- The OK/Cancel/Help footer remains outside the scrolling
   area. Footer buttons remain visible and do not overlap in both 7z and ZIP.
 
-Adaptations: source picker and destination fields integrate the Qt file-manager
-workflow. The source picker follows the archive form so it does not displace the
-primary upstream controls. The two columns remain in a scroll area; compression
+Adaptations: the two columns remain in a scroll area; compression
 rows wrap at compact widths rather than removing the second column. Unsupported
 upstream options are still absent; this is a partial resource adaptation.
-`ui_geometry` covers column ordering, archive-before-source ordering, reachability
+`ui_geometry` covers column ordering, absence of a source picker, reachability
 and the footer; existing compression tests
 cover method/format-dependent enabled states and persistence.
 `compression_encryption` checks the complete encryption group, control separation

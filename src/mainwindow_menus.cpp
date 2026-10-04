@@ -42,10 +42,6 @@ void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     up_->setObjectName("upAction");
     openItem_ = new QAction("Открыть", this);
     openItem_->setObjectName("openItemAction");
-    open_ = menu->addAction("Открыть…");
-    open_->setObjectName("openArchiveAction");
-    QtBindLocalText(open_, "Open archive…", QStringLiteral("Открыть архив…"));
-    open_->setShortcut(QKeySequence::Open);
     openInside_ = menu->addAction("Открыть внутри");
     openInside_->setObjectName("openInsideAction");
     openInside_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
@@ -56,24 +52,10 @@ void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     openOutside_ = menu->addAction("Открыть снаружи");
     openOutside_->setObjectName("openOutsideAction");
     openOutside_->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Return));
-    create_ = menu->addAction("Создать архив…");
-    create_->setObjectName("createArchiveAction");
-    QtBindLocalText(create_, "Create archive…", QStringLiteral("Создать архив…"));
-    add_ = menu->addAction("Добавить в открытый архив…");
-    add_->setObjectName("addArchiveAction");
-    QtBindLocalText(add_, "Add to open archive…", QStringLiteral("Добавить в открытый архив…"));
     toolbarAdd_ = toolbar->addAction("Добавить");
     toolbarAdd_->setObjectName("toolbarAddAction");
     extract_ = toolbar->addAction("Извлечь");
     extract_->setObjectName("extractArchiveAction");
-    selected_ = menu->addAction("Извлечь выбранное…");
-    selected_->setObjectName("extractSelectedAction");
-    QtBindLocalText(selected_, "Extract selected…", QStringLiteral("Извлечь выбранное…"));
-    journalAction_ = menu->addAction("Журнал последней операции…");
-    journalAction_->setObjectName("operationJournalAction");
-    QtBindLocalText(journalAction_, "Last operation log…",
-                    QStringLiteral("Журнал последней операции…"));
-    journalAction_->setEnabled(false);
     test_ = toolbar->addAction("Тест");
     test_->setObjectName("testArchiveAction");
     copy_ = toolbar->addAction("Копировать");
@@ -333,17 +315,6 @@ void MainWindow::rebuildSourceMenus() {
     file->addSeparator();
     unavailable(file, QStringLiteral("Ссылка…"), "linkAction", IDM_LINK);
     unavailable(file, QStringLiteral("Альтернативные потоки"), "altStreamsAction", IDM_ALT_STREAMS);
-    file->addSeparator();
-    // Existing cross-platform archive workflows are retained as a separate
-    // Qt integration group until their source 7zFM entry points are ported.
-    for (QAction *action : {open_, create_, add_, selected_, journalAction_})
-        file->addAction(action);
-    auto *textView = file->addAction("Просмотреть текст…");
-    textView->setObjectName("builtinTextViewAction");
-    QtBindLocalText(textView, "View text…", QStringLiteral("Просмотреть текст…"));
-    auto *textEdit = file->addAction("Редактировать текст…");
-    textEdit->setObjectName("builtinTextEditAction");
-    QtBindLocalText(textEdit, "Edit text…", QStringLiteral("Редактировать текст…"));
     file->addSeparator();
     file->addAction(exitAction_);
     const char *verCtrlNames[] = {"verEditAction", "verCommitAction", "verRevertAction",

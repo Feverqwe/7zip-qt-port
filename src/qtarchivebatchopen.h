@@ -16,10 +16,12 @@ class QtArchiveBatchOpen final : public IQtArchiveOpenService, public IQtProgres
     CMyComPtr<IFolderManager> _manager;
     QString _destination;
     const ExtractionOptions *_extractOptions = nullptr;
+    UString _openType;
 
   public:
     explicit QtArchiveBatchOpen(ArchiveBackend &backend);
     void SetExtractionPolicy(const QString &destination, const ExtractionOptions &options);
+    void SetOpenType(const UString &type) { _openType = type; }
     HRESULT Open(CArchiveLink &link, const COpenOptions &options,
                  IOpenCallbackUI *callback) override;
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog) override;

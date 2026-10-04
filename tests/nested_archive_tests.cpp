@@ -177,7 +177,7 @@ class NestedArchiveTests : public QObject {
         window.show();
         window.openArchive(archive);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
-        auto *add = window.findChild<QAction *>("addArchiveAction");
+        auto *add = window.findChild<QAction *>("toolbarAddAction");
         auto *remove = window.findChild<QAction *>("deleteAction");
         auto *rename = window.findChild<QAction *>("renameAction");
         auto *move = window.findChild<QAction *>("moveAction");
@@ -191,7 +191,7 @@ class NestedArchiveTests : public QObject {
         QVERIFY(!rename->isEnabled());
         QVERIFY(!move->isEnabled());
         QVERIFY(edit->isEnabled());
-        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction")->isEnabled());
+        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction"));
 
         const QString destination = dir.filePath("output");
         QVERIFY(QDir().mkdir(destination));
@@ -326,7 +326,7 @@ class NestedArchiveTests : public QObject {
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *inside = window.findChild<QAction *>("openInsideAction");
         auto *outside = window.findChild<QAction *>("openOutsideAction");
-        auto *add = window.findChild<QAction *>("addArchiveAction");
+        auto *add = window.findChild<QAction *>("toolbarAddAction");
         auto *remove = window.findChild<QAction *>("deleteAction");
         auto *back = window.findChild<QAction *>("backAction");
         QVERIFY(table && address && inside && outside && add && remove && back);

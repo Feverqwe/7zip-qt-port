@@ -4,6 +4,7 @@
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
 #include "archiveenginelocation.h"
+#include "archivesfxmodule.h"
 #include "processpriority.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivehashoperation.h"
@@ -654,9 +655,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     }
 #ifndef Q_OS_WIN
     if (completed == Job::Create && createNativeSfx_ &&
-        !QFile::setPermissions(createTemporary_, QFile::permissions(createTemporary_) |
-                                                     QFileDevice::ExeOwner |
-                                                     QFileDevice::ExeUser)) {
+        !ArchiveSfxModule::MakeExecutable(createTemporary_)) {
         QFile::remove(createTemporary_);
         emit finished(false, QtLocalText("Could not make the SFX archive executable.",
                                          "Не удалось назначить SFX-архиву право исполнения."));

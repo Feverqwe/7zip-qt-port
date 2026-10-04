@@ -1,6 +1,7 @@
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
+#include "archivecodeccatalog.h"
 #include "window_state_support.h"
 
 class FilesystemPathBackend : public ControlledBackend {
@@ -17,6 +18,7 @@ class FilesystemPathBackend : public ControlledBackend {
 
 class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    quint32 moduleVersion_ = 0;
 
     static int diskRow(MainWindow &window, const QString &path) {
         for (int row = 0; row < table(window)->rowCount(); ++row)
@@ -31,6 +33,15 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
     }
 
   private slots:
+    void initTestCase() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Source Add requires the official native module");
+#else
+        ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(probe.result(), S_OK);
+        moduleVersion_ = probe.version();
+#endif
+    }
     void createUnselectedFocusDoesNotBecomeSource_data() {
         sourcePathsAcrossViewsAndConsumers_data();
     }
@@ -45,6 +56,10 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         QTemporaryDir empty;
         QVERIFY(empty.isValid());
         ControlledBackend backend;
+#ifdef SEVENZIP_CODEC_MODULE
+        QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), moduleVersion_),
+                 S_OK);
+#endif
         MainWindow window(&backend);
         action(window, "flatViewAction")->setChecked(false);
         auto *address = window.findChild<QLineEdit *>("archivePath");
@@ -60,26 +75,37 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         table(window)->item(0, 1)->setText(root.filePath("forged-focused.txt"));
         table(window)->item(0, 0)->setData(Qt::UserRole + 1, true);
         QStringList sources;
+        int errors = 0;
         auto cancelCreate = [&] {
-            QTimer::singleShot(0, &window, [&] {
-                auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                QVERIFY(dialog);
-                auto *items = dialog->findChild<QListWidget *>("selectedSources");
-                QVERIFY(items);
-                for (int i = 0; i < items->count(); ++i)
-                    sources << items->item(i)->data(Qt::UserRole).toString();
-                dialog->reject();
+            QTimer answer;
+            connect(&answer, &QTimer::timeout, &window, [&] {
+                auto *dialog =
+                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget());
+                if (dialog) {
+                    QVERIFY(!dialog->findChild<QListWidget *>("selectedSources"));
+                    sources = dialog->sources();
+                    for (QString &path : sources)
+                        path = path.normalized(QString::NormalizationForm_C);
+                    dialog->reject();
+                } else if (auto *box =
+                               qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                    ++errors;
+                    box->accept();
+                }
             });
-            action(window, "createArchiveAction")->trigger();
+            answer.start(1);
+            action(window, "toolbarAddAction")->trigger();
         };
         cancelCreate();
         QVERIFY(sources.isEmpty());
+        QCOMPARE(errors, 1);
         QCOMPARE(backend.createCalls, 0);
         table(window)->selectionModel()->select(table(window)->model()->index(0, 0),
                                                 QItemSelectionModel::Select |
                                                     QItemSelectionModel::Rows);
         cancelCreate();
         QCOMPARE(sources, QStringList{root.filePath(name)});
+        QCOMPARE(errors, 1);
         sources.clear();
         address->setText(empty.path());
         emit address->returnPressed();
@@ -87,6 +113,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         QTRY_VERIFY(table(window)->isEnabled());
         cancelCreate();
         QVERIFY(sources.isEmpty());
+        QCOMPARE(errors, 2);
         QCOMPARE(backend.createCalls, 0);
         action(window, "flatViewAction")->setChecked(false);
     }
@@ -112,6 +139,10 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         createFile(root.filePath(directory + '/' + name));
 
         FilesystemPathBackend backend;
+#ifdef SEVENZIP_CODEC_MODULE
+        QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), moduleVersion_),
+                 S_OK);
+#endif
         MainWindow window(&backend);
         action(window, "flatViewAction")->setChecked(false);
         auto *address = window.findChild<QLineEdit *>("archivePath");
@@ -163,19 +194,19 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         QVERIFY(hashResults.value(ToQString(LangString(IDS_PROP_SIZE))).startsWith("28"));
         QVERIFY(!hashResults.contains(ToQString(LangString(IDS_PROP_NUM_ERRORS))));
         QCOMPARE(backend.hashCalls, 0);
-        QTRY_VERIFY(action(window, "createArchiveAction")->isEnabled());
+        QTRY_VERIFY(action(window, "toolbarAddAction")->isEnabled());
 
         QStringList dialogSources;
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            auto *dialog = qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
-            auto *sources = dialog->findChild<QListWidget *>("selectedSources");
-            QVERIFY(sources);
-            for (int i = 0; i < sources->count(); ++i)
-                dialogSources << sources->item(i)->data(Qt::UserRole).toString();
+            QVERIFY(!dialog->findChild<QListWidget *>("selectedSources"));
+            dialogSources = dialog->sources();
+            for (QString &path : dialogSources)
+                path = path.normalized(QString::NormalizationForm_C);
             dialog->reject();
         });
-        action(window, "createArchiveAction")->trigger();
+        action(window, "toolbarAddAction")->trigger();
         dialogSources.sort();
         QCOMPARE(dialogSources, expected);
         QCOMPARE(backend.createCalls, 0);

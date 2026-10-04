@@ -1,0 +1,30 @@
+#pragma once
+#include <QList>
+#include <memory>
+
+class QAction;
+class QMenu;
+class CPanel;
+class MainWindow;
+class QtFileManagerShellMenu;
+
+// Retains the original program-menu plugin context through source dispatch.
+// Static resource actions and disposable shell rows have separate ownership.
+class QtProgramFileMenu final {
+    MainWindow &_window;
+    QMenu &_menu;
+    QList<QAction *> _source;
+    QList<QAction *> _dynamic;
+    std::unique_ptr<QtFileManagerShellMenu> _shell;
+    CPanel *_panel = nullptr;
+    void ClearDynamicRows();
+
+  public:
+    explicit QtProgramFileMenu(MainWindow &window);
+    ~QtProgramFileMenu();
+    const QList<QAction *> &SourceActions() const { return _source; }
+    void Activate();
+    bool CanInvoke(unsigned id) const;
+    void InvokePluginCommand(unsigned id);
+    void ReleasePluginMenus();
+};

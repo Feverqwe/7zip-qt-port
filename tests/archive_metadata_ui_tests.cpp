@@ -67,8 +67,13 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
         QVERIFY(ready[0][0].toBool());
         MainWindow window(&backend);
         window.show();
-        window.openArchive(archive);
-        QTRY_VERIFY(action(window, "addArchiveAction")->isEnabled());
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(fixture.path());
+        emit address->returnPressed();
+        QTRY_VERIFY(rowForName(window, rootName) >= 0);
+        QTRY_VERIFY(table(window)->isEnabled());
+        table(window)->selectRow(rowForName(window, rootName));
+        QTRY_VERIFY(action(window, "toolbarAddAction")->isEnabled());
         bool optionsSeen = false, formAnswered = false;
         QStringList errors;
         QTimer dismissErrors;
@@ -87,15 +92,10 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
                 if (form->isVisible())
                     form->reject();
             });
-            auto *directory = form->findChild<QLineEdit *>("sourceDirectory");
-            directory->setText(fixture.path());
-            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
-            auto *available = form->findChild<QListWidget *>("availableSources");
-            for (int row = 0; row < available->count(); ++row)
-                if (available->item(row)->data(Qt::UserRole).toString() == root)
-                    available->item(row)->setSelected(true);
-            QCOMPARE(available->selectedItems().size(), 1);
-            form->findChild<QPushButton *>("selectSourcesButton")->click();
+            QVERIFY(!form->findChild<QListWidget *>("availableSources"));
+            QCOMPARE(form->sources(), QStringList{root});
+            form->findChild<QComboBox *>("archiveFormat")->setCurrentText("tar");
+            form->findChild<QLineEdit *>("archiveName")->setText(archive);
             QTimer::singleShot(0, form, [&] {
                 auto *options = qobject_cast<QDialog *>(QApplication::activeModalWidget());
                 QVERIFY(options);
@@ -120,7 +120,7 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
             else
                 form->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         });
-        action(window, "addArchiveAction")->trigger();
+        action(window, "toolbarAddAction")->trigger();
         QVERIFY(optionsSeen && formAnswered);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         if (cancel) {
@@ -130,6 +130,7 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
             return;
         }
         QVERIFY(!QFileInfo::exists(root));
+        window.openArchive(archive);
         QTRY_VERIFY(rowForName(window, rootName) >= 0);
         table(window)->selectRow(rowForName(window, rootName));
         ExtractionOptions options;

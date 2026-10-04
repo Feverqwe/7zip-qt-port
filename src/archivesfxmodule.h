@@ -11,6 +11,7 @@ class ArchiveSfxModule final {
   public:
     static ArchiveSfxModule Read(const QString &path, quint32 expectedVersion = 0);
     static ArchiveSfxModule Discover(quint32 expectedVersion = 0);
+    static bool MakeExecutable(const QString &path);
     bool available() const { return !path_.isEmpty(); }
     const QString &path() const { return path_; }
     const QString &error() const { return error_; }

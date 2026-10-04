@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
+#include <QMenu>
 #include <QPixmap>
 #include <QWidget>
 
@@ -76,6 +77,20 @@ static QJsonObject describe(const QWidget &widget, const QWidget &root) {
         result["itemCount"] = combo->count();
         if (!combo->isEditable())
             result["text"] = combo->currentText();
+    } else if (const auto *menu = qobject_cast<const QMenu *>(&widget)) {
+        QJsonArray actions;
+        for (auto *action : menu->actions()) {
+            const QRect rect = menu->actionGeometry(action);
+            actions.append(QJsonObject{{"text", action->text()},
+                                       {"separator", action->isSeparator()},
+                                       {"enabled", action->isEnabled()},
+                                       {"submenu", action->menu() != nullptr},
+                                       {"bounds", rectData(rect)},
+                                       {"fullyVisible", menu->isVisible() && !rect.isEmpty() &&
+                                                            menu->rect().contains(rect)},
+                                       {"shellVerb", action->property("shellVerb").toString()}});
+        }
+        result["actions"] = actions;
     }
     QJsonArray children;
     for (const QWidget *child :

@@ -2,6 +2,8 @@
 #include <QScopeGuard>
 #include <QTreeWidget>
 
+extern bool g_CaseSensitive;
+
 class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
@@ -141,7 +143,7 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
             action(window, actionName)->trigger();
         };
         applyMask("selectMaskAction", "*.txt");
-        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), g_CaseSensitive ? 1 : 2);
         applyMask("deselectMaskAction", "alpha.*");
         QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
         const int focusedBeforeCancel = table(window)->currentRow();
@@ -166,7 +168,7 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
                           {ArchiveEntry{"first.txt", 1, 1}, ArchiveEntry{"second.TXT", 1, 1},
                            ArchiveEntry{"other.bin", 1, 1}});
         applyMask("selectMaskAction", "*.txt");
-        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), g_CaseSensitive ? 1 : 2);
         QVERIFY(!action(window, "createFileAction")->isEnabled());
     }
 

@@ -231,8 +231,8 @@ class CompressionAdvancedTests final : public QObject {
         QVERIFY(fixture.isValid());
         const QString source = fixture.filePath("source.txt");
         QVERIFY(writeFile(source, "source bytes"));
-        CreateArchiveDialog dialog(fixture.path(), {source}, nullptr,
-                                   fixture.filePath("existing.zip"));
+        CreateArchiveDialog dialog(fixture.path(), {source});
+        dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         dialog.resize(size);
         dialog.show();
         QCoreApplication::processEvents();
@@ -265,8 +265,8 @@ class CompressionAdvancedTests final : public QObject {
         QVERIFY(dialog.compressionOptions().DeleteAfterCompressing);
         auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
         mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kFresh)));
-        QVERIFY(!remove->isEnabled());
-        QVERIFY(!dialog.compressionOptions().DeleteAfterCompressing);
+        QVERIFY(remove->isEnabled());
+        QVERIFY(dialog.compressionOptions().DeleteAfterCompressing);
         mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kAdd)));
         QVERIFY(remove->isEnabled());
         QVERIFY(dialog.compressionOptions().DeleteAfterCompressing);

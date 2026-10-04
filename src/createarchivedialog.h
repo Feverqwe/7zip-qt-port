@@ -26,9 +26,15 @@ class CreateArchiveDialog : public QDialog {
 
   public:
     explicit CreateArchiveDialog(const QString &directory, const QStringList &initialSources = {},
-                                 QWidget *parent = nullptr, const QString &existingTarget = {},
+                                 QWidget *parent = nullptr,
                                  std::shared_ptr<const ArchiveCodecCatalog> codecs = {},
-                                 const QString &existingFormat = {});
+                                 const CCompressDialog *sourceDialog = nullptr);
+
+    NCompressDialog::CInfo sourceInfo() const;
+    static HRESULT PresentSource(CCompressDialog &source,
+                                 const CObjectVector<NWildcard::CCensorPath> &paths,
+                                 std::shared_ptr<const ArchiveCodecCatalog> codecs,
+                                 QWidget *parent);
 
     QString target() const { return target_; }
     QStringList sources() const { return selected_; }
@@ -41,7 +47,6 @@ class CreateArchiveDialog : public QDialog {
     CompressionOptions compressionOptions() const;
 
   private:
-    void createSourcePicker(QVBoxLayout *layout);
     void createArchiveForm(QVBoxLayout *layout);
     void createCompressionOptions(QFormLayout *form);
     void createEncryptionOptions(QFormLayout *form);
@@ -59,6 +64,7 @@ class CreateArchiveDialog : public QDialog {
     void SetLevel2();
     void FormatChanged();
     void MethodChanged();
+    QString methodName() const;
     void SetOrder2();
     void SetDictionary2();
     void SetSolidBlockSize2();
@@ -78,30 +84,24 @@ class CreateArchiveDialog : public QDialog {
     void ReloadLanguageItems();
     static QString LevelText(unsigned level);
     void changeEvent(QEvent *event) override;
-    void updateTargetPreview();
     void validateAndAccept();
-    void addSource(const QString &path);
-    void showDirectory(const QString &path);
     QString archivePath() const;
 
     QString currentDirectory_;
     const QString StartDirPrefix;
     QString target_;
-    QString existingTarget_;
-    QString existingFormat_;
     std::shared_ptr<const ArchiveCodecCatalog> codecs_;
     CCompressDialog archiveNameState_;
     void configureArchiveName(const QString &format);
     void populateArchiveFormats();
-    void refreshArchiveFormats();
     void prepareInitialSources(const QStringList &sources);
+    void initializeSourceControls(const NCompressDialog::CInfo &info);
+    bool fixedSources_ = false;
     QString suggestedArchiveName_ = QStringLiteral("archive");
     QStringList selected_;
-    QLineEdit *sourcePath_ = nullptr;
     QLineEdit *name_ = nullptr;
     QComboBox *archivePath_ = nullptr;
-    QLineEdit *destination_ = nullptr;
-    QLabel *preview_ = nullptr;
+    QLabel *archiveFolder_ = nullptr;
     QComboBox *format_ = nullptr;
     QComboBox *updateMode_ = nullptr;
     QComboBox *pathMode_ = nullptr;
@@ -132,7 +132,5 @@ class CreateArchiveDialog : public QDialog {
     QCheckBox *showPassword_ = nullptr;
     QCheckBox *encryptHeaders_ = nullptr;
     QFormLayout *encryptionForm_ = nullptr;
-    QListWidget *available_ = nullptr;
-    QListWidget *sources_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;
 };

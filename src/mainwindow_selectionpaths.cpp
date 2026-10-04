@@ -34,8 +34,10 @@ QStringList MainWindow::selectedFilesystemPaths() {
         return paths;
     const auto indices = sourceOperatedIndices();
     panel.LoadFullPath();
-    FOR_VECTOR(i, indices)
-    paths << QtFilesystemPath(us2fs(panel.GetItemFullPath(indices[i])));
+    UStringVector filePaths;
+    panel.GetFilePaths(indices, filePaths);
+    FOR_VECTOR(i, filePaths)
+    paths << QtFilesystemPath(us2fs(filePaths[i]));
     return paths;
 }
 

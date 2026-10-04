@@ -2,7 +2,10 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "Panel.h"
 #include "../Agent/IFolderArchive.h"
+#include "../Common/CompressCall.h"
 #include "7zip/PropID.h"
+#include "7zip/UI/Common/ArchiveName.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
 #include "Windows/FileName.h"
@@ -148,6 +151,62 @@ UString CPanel::GetFsPath() const {
     if (IsFSDrivesFolder() && !IsDeviceDrivesPrefix() && !IsSuperDrivesPrefix())
         return UString();
     return _currentFolderPrefix;
+}
+
+// Original AddToArchive body. The retained engine/Qt modal replaces the
+// process-global CompressFiles entry; only the root prefix is platform-specific.
+void CPanel::AddToArchive(IQtCompressCallServices &services) {
+    if (!Is_IO_FS_Folder()) {
+        MessageBox_Error_UnsupportOperation();
+        return;
+    }
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_Operated(indices);
+    if (indices.Size() == 0) {
+        MessageBox_Error_LangID(IDS_SELECT_FILES);
+        return;
+    }
+    UString destCurDirPrefix = GetFsPath();
+    if (IsFSDrivesFolder()) {
+#ifdef _WIN32
+        destCurDirPrefix = L"C:\\";
+#else
+        destCurDirPrefix = L"/";
+#endif
+    }
+    UStringVector names;
+    GetFilePaths(indices, names);
+    UString baseName;
+    const UString arcName = CreateArchiveName(names,
+                                              false,   // isHash
+                                              nullptr, // CFileInfo *fi
+                                              baseName);
+    const HRESULT res = CompressFiles(destCurDirPrefix, arcName, L"",
+                                      true, // addExtension
+                                      names,
+                                      false, // email
+                                      true,  // showDialog
+                                      false, // waitFinish
+                                      services);
+    if (res != S_OK) {
+        if (destCurDirPrefix.Len() >= MAX_PATH)
+            MessageBox_Error_LangID(IDS_MESSAGE_UNSUPPORTED_OPERATION_FOR_LONG_PATH_FOLDER);
+    }
+    // KillSelection();
+}
+
+void CPanel::GetFilePaths(const CRecordVector<UInt32> &operatedIndices,
+                          UStringVector &paths) const {
+    paths.ClearAndReserve(operatedIndices.Size());
+    UString path = GetFsPath();
+    const unsigned prefixLen = path.Len();
+    const UInt32 *indices = operatedIndices.ConstData();
+    const unsigned numItems = operatedIndices.Size();
+    for (unsigned i = 0; i < numItems; i++) {
+        path.DeleteFrom(prefixLen);
+        Add_ItemRelPath2_To_String(indices[i], path);
+        paths.AddInReserved(path);
+    }
 }
 
 void CPanel::SetFocusToList() {

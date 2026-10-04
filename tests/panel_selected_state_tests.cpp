@@ -22,7 +22,7 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
     }
 
   private slots:
-#ifndef _WIN32
+#ifndef Q_OS_WIN
     void filesystemRuntimeUsesNativeLinkMetadata_data() {
         QTest::addColumn<bool>("flat");
         QTest::newRow("normal") << false;

@@ -23,7 +23,8 @@ QStringList readArguments(const QString &path) {
         return {};
     QStringList result;
     for (const auto &value : QJsonDocument::fromJson(file.readAll()).array())
-        result.append(value.toString().normalized(QString::NormalizationForm_C));
+        result.append(
+            QDir::fromNativeSeparators(value.toString()).normalized(QString::NormalizationForm_C));
     return result;
 }
 void navigate(MainWindow &window, const QString &path) {
@@ -97,7 +98,11 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
 
     void editorBrowsePreservesCancelAndReplacesParameters() {
         QTemporaryDir fixture;
-        const QString selected = fixture.filePath(QStringLiteral("программа с пробелом"));
+        const QString selected = fixture.filePath(QStringLiteral("программа с пробелом")
+#ifdef Q_OS_WIN
+                                                  + ".exe"
+#endif
+        );
         QVERIFY(writeFile(selected));
         CEditPage page(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto *edit = page.findChild<QLineEdit *>("editorCommand");
@@ -151,7 +156,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         QTRY_COMPARE(readArguments(viewerOutput), QStringList({second}));
         QTest::keyClick(view, Qt::Key_F4);
         QTRY_COMPARE(readArguments(editorOutput), QStringList({second}));
-        QVERIFY(!window.findChild<FileViewerDialog *>("fileViewerDialog"));
+        QVERIFY(!window.findChild<QDialog *>("fileViewerDialog"));
     }
 
     void diffUsesSelectedPairAndReportsLaunchFailure() {
@@ -277,6 +282,9 @@ int main(int argc, char **argv) {
             QJsonDocument(QJsonArray::fromStringList(app.arguments().mid(3))).toJson();
         return output.write(bytes) == bytes.size() ? 0 : 2;
     }
+    // The test drives QFileDialog's public widgets. Production still uses
+    // native pickers; their OS windows are checked separately on the runner.
+    QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QApplication app(argc, argv);
     ExternalEditorsUiTests tests;
     return QTest::qExec(&tests, argc, argv);

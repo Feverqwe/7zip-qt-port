@@ -74,7 +74,7 @@ class SfxLifecycleTests final : public QObject {
         QCOMPARE(
             backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), probe.version()),
             S_OK);
-        CreateArchiveDialog dialog(fixture.path(), {first, second}, nullptr, {},
+        CreateArchiveDialog dialog(fixture.path(), {first, second}, nullptr,
                                    backend.codecCatalog());
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("7z");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");

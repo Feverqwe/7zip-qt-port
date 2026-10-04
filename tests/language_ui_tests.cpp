@@ -12,6 +12,7 @@
 #include <QListWidget>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QStyleOptionButton>
 #include <QTabWidget>
 #include <QToolButton>
 #include <QTreeWidget>
@@ -84,6 +85,7 @@ class LanguageUiTests : public QObject {
                 QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
                 auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
                 QVERIFY(scroll && scroll->widget());
+                QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
                 for (QWidget *control : scroll->widget()->findChildren<QWidget *>()) {
                     if (control->objectName().isEmpty() ||
                         control->objectName().startsWith("qt_") || !control->isVisible())
@@ -95,10 +97,13 @@ class LanguageUiTests : public QObject {
                         !qobject_cast<QListWidget *>(control) && !qobject_cast<QLabel *>(control))
                         continue;
                     QApplication::processEvents();
-                    scroll->ensureWidgetVisible(control, 5, 30);
-                    if (qobject_cast<QLineEdit *>(control))
-                        scroll->horizontalScrollBar()->setValue(
-                            scroll->horizontalScrollBar()->maximum());
+                    // ensureWidgetVisible() uses the input-method cursor rect
+                    // for editable controls. Geometry coverage needs the whole
+                    // control, including a combo's frame and arrow.
+                    const QPoint center =
+                        control->mapTo(scroll->widget(), control->rect().center());
+                    scroll->ensureVisible(center.x(), center.y(), control->width() / 2 + 5,
+                                          control->height() / 2 + 30);
                     QApplication::processEvents();
                     if (!UiInspection::fullyVisible(*control, dialog))
                         QVERIFY(UiInspection::writeReport(dialog,
@@ -111,9 +116,22 @@ class LanguageUiTests : public QObject {
                     if (qobject_cast<QLabel *>(control))
                         QVERIFY2(UiInspection::labelFits(*control),
                                  qPrintable(control->objectName()));
-                    if (qobject_cast<QAbstractButton *>(control))
-                        QVERIFY2(control->sizeHint().width() <= control->width(),
-                                 qPrintable(control->objectName()));
+                    if (auto *button = qobject_cast<QAbstractButton *>(control)) {
+                        if (button->objectName() == "archiveBrowse") {
+                            // Source bxsDots is a narrow "..." button. The
+                            // platform's footer-button sizeHint has an unrelated
+                            // minimum width; check the actual caption bounds.
+                            QStyleOptionButton option;
+                            option.initFrom(button);
+                            option.text = button->text();
+                            const QRect contents = button->style()->subElementRect(
+                                QStyle::SE_PushButtonContents, &option, button);
+                            QVERIFY(button->fontMetrics().horizontalAdvance(button->text()) <=
+                                    contents.width());
+                        } else
+                            QVERIFY2(control->sizeHint().width() <= control->width(),
+                                     qPrintable(control->objectName()));
+                    }
                     QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
                 }
                 QVERIFY(UiInspection::writeReport(
@@ -342,13 +360,10 @@ class LanguageUiTests : public QObject {
         inspectWindow("ru");
         QCOMPARE(toolbar->windowTitle(), QStringLiteral("Архив"));
         QCOMPARE(window.findChild<QAction *>("backAction")->text(), QStringLiteral("Назад"));
-        QCOMPARE(window.findChild<QAction *>("openArchiveAction")->text(),
-                 QStringLiteral("Открыть архив…"));
-        QCOMPARE(window.findChild<QAction *>("createArchiveAction")->text(),
-                 QStringLiteral("Создать архив…"));
-        QCOMPARE(window.findChild<QAction *>("builtinTextEditAction")->text(),
-                 QStringLiteral("Редактировать текст…"));
-        QVERIFY(!window.findChild<QAction *>("operationJournalAction")->isEnabled());
+        QCOMPARE(window.findChild<QAction *>("openItemAction")->text(), QStringLiteral("&Открыть"));
+        QCOMPARE(window.findChild<QAction *>("editFileAction")->text(),
+                 QStringLiteral("&Редактировать"));
+        QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
         auto *copy = window.findChild<QAction *>("copyAction");
         auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(copy));
         QVERIFY(button);
@@ -363,13 +378,9 @@ class LanguageUiTests : public QObject {
         QCOMPARE(fileMenu->title(), QString("&File"));
         QCOMPARE(toolbar->windowTitle(), QString("Archive"));
         QCOMPARE(window.findChild<QAction *>("backAction")->text(), QString("Back"));
-        QCOMPARE(window.findChild<QAction *>("openArchiveAction")->text(),
-                 QString("Open archive…"));
-        QCOMPARE(window.findChild<QAction *>("createArchiveAction")->text(),
-                 QString("Create archive…"));
-        QCOMPARE(window.findChild<QAction *>("builtinTextEditAction")->text(),
-                 QString("Edit text…"));
-        QVERIFY(!window.findChild<QAction *>("operationJournalAction")->isEnabled());
+        QCOMPARE(window.findChild<QAction *>("openItemAction")->text(), QString("&Open"));
+        QCOMPARE(window.findChild<QAction *>("editFileAction")->text(), QString("&Edit"));
+        QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
         QVERIFY(!parentButton->icon().isNull());
         QCOMPARE(button->text(), QString("Copy"));
         QCOMPARE(table->horizontalHeaderItem(0)->text(), QString("Name"));

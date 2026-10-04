@@ -56,7 +56,7 @@ void CreateArchiveDialog::SaveOptionsInMem() {
     fo.Order = wordSize_->currentData().toUInt();
     if (fo.Order == 0)
         fo.Order = (UInt32)(Int32)-1;
-    fo.Method = method_->currentText();
+    fo.Method = QString::fromWCharArray(archiveNameState_.GetMethodSpec().Ptr());
     fo.NumThreads = threads_->currentData().toUInt();
     if (fo.NumThreads == 0)
         fo.NumThreads = (UInt32)(Int32)-1;
@@ -88,14 +88,15 @@ void CreateArchiveDialog::FormatChanged() {
     updateAdvancedSummary();
     SetMemUseCombo();
     SetLevel2();
-    method_->clear();
-    method_->addItems(NCompressDialog::GetMethodNames(
-        registryFormat_,
-        sfx_ && sfx_->isChecked() && NCompressDialog::GetFormatInfo(registryFormat_).SFX_()));
-    const int methodIndex = method_->findText(fo.Method, Qt::MatchFixedString);
-    if (methodIndex >= 0)
-        method_->setCurrentIndex(methodIndex);
-    MethodChanged();
+    configureArchiveName(registryFormat_);
+    archiveNameState_.SetMethod2(*method_, level_->currentData().toUInt(), m_RegistryInfo,
+                                 [this] { MethodChanged(); });
+}
+
+QString CreateArchiveDialog::methodName() const {
+    UString estimatedName;
+    archiveNameState_.GetMethodSpec(estimatedName);
+    return QString::fromWCharArray(estimatedName.Ptr());
 }
 
 void CreateArchiveDialog::MethodChanged() {
@@ -103,7 +104,8 @@ void CreateArchiveDialog::MethodChanged() {
         threadsBlock(threads_);
     const NCompression::CFormatOptions fo = Get_FormatOptions();
     // Upstream restores method-dependent values only for the saved method.
-    const bool sameMethod = method_->currentText().compare(fo.Method, Qt::CaseInsensitive) == 0;
+    const bool sameMethod =
+        archiveNameState_.IsMethodEqualTo(UString(fo.Method.toStdWString().c_str()));
     wordSize_->setCurrentIndex(0);
     dictionary_->setCurrentIndex(0);
     solidBlock_->setCurrentIndex(-1);
@@ -131,7 +133,7 @@ void CreateArchiveDialog::MethodChanged() {
     }
     const bool compressed = level_->currentData().toUInt() != 0;
     // Source SetMethod2 retains TAR's GNU/POSIX choice at its only level (0).
-    method_->setEnabled(compressed || registryFormat_ == "tar");
+    method_->setEnabled(method_->count() > 1);
     dictionary_->setEnabled(compressed && dictionary_->count() > 1);
     wordSize_->setEnabled(compressed && wordSize_->count() > 1);
     solidBlock_->setEnabled(compressed && NCompressDialog::GetFormatInfo(registryFormat_).Solid_());

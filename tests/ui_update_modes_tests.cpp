@@ -1,3 +1,4 @@
+#include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "technical_listing_fixture.h"
 #include "window_state_support.h"
@@ -20,8 +21,42 @@ bool runEngine(const QString &directory, const QStringList &arguments,
 
 class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    quint32 moduleVersion_ = 0;
+    void selectFilesystemSource(MainWindow &window, ArchiveBackend &backend,
+                                const QString &source) {
+#ifdef SEVENZIP_CODEC_MODULE
+        QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), moduleVersion_),
+                 S_OK);
+#endif
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(QFileInfo(source).absolutePath());
+        emit address->returnPressed();
+        QTRY_VERIFY(table(window)->isEnabled());
+        const QString name = QFileInfo(source).fileName().normalized(QString::NormalizationForm_C);
+        int row = -1;
+        for (int i = 0; i < table(window)->rowCount(); ++i)
+            if (table(window)->item(i, 0)->text().normalized(QString::NormalizationForm_C) == name)
+                row = i;
+        QVERIFY(row >= 0);
+        table(window)->selectRow(row);
+    }
+    static void setOutput(CreateArchiveDialog &dialog, const QString &archive,
+                          const QString &format) {
+        QVERIFY(!dialog.findChild<QListWidget *>("availableSources"));
+        dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
+        dialog.findChild<QLineEdit *>("archiveName")->setText(archive);
+    }
 
   private slots:
+    void initTestCase() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Source Add requires the official native module");
+#else
+        ArchiveCodecCatalog probe(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(probe.result(), S_OK);
+        moduleVersion_ = probe.version();
+#endif
+    }
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
     void addDeleteAfterPublication_data() {
@@ -55,41 +90,30 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         file.close();
         ArchiveBackend backend;
         MainWindow window(&backend);
-        window.openArchive(archive);
         window.show();
-        QTRY_COMPARE(table(window)->rowCount(), 1);
+        selectFilesystemSource(window, backend, source);
         bool accepted = false;
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
             QVERIFY(dialog);
-            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
-            directory->setText(fixture.path());
-            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
-            auto *available = dialog->findChild<QListWidget *>("availableSources");
-            for (int row = 0; row < available->count(); ++row)
-                if (available->item(row)->data(Qt::UserRole).toString() == source)
-                    available->item(row)->setSelected(true);
-            QCOMPARE(available->selectedItems().size(), 1);
-            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+            setOutput(*dialog, archive, format);
             auto *remove = dialog->findChild<QCheckBox *>("archiveDeleteAfterCompression");
             QVERIFY(remove && remove->isEnabled());
             remove->setChecked(true);
-            dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            if (cancel)
+                dialog->reject();
+            else
+                dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             accepted = dialog->result() == QDialog::Accepted;
         });
-        connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
-            if (cancel)
-                backend.cancel();
-        });
-        action(window, "addArchiveAction")->trigger();
-        QVERIFY(accepted);
+        action(window, "toolbarAddAction")->trigger();
+        QCOMPARE(accepted, !cancel);
         if (cancel) {
             QVERIFY(QFileInfo::exists(source));
             QVERIFY(original.open(QIODevice::ReadOnly));
             QCOMPARE(original.readAll(), archiveBefore);
         } else {
             QVERIFY(!QFileInfo::exists(source));
-            QTRY_COMPARE(table(window)->rowCount(), 2);
             QByteArray listing;
             QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-sccUTF-8", "--", archive}, &listing));
             QVERIFY(QString::fromUtf8(listing)
@@ -103,7 +127,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         }
     }
 
-    void protectedAddUsesOpenedArchivePassword() {
+    void protectedAddUsesEnteredArchivePassword() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString root = fixture.filePath("source");
@@ -133,38 +157,23 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             dialog->accept();
         });
         passwordAnswer.start(1);
-        window.openArchive(archive);
         window.show();
-        QTRY_COMPARE(table(window)->rowCount(), 1);
+        selectFilesystemSource(window, backend, added);
         bool accepted = false;
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
             if (!dialog)
                 return;
-            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
-            auto *available = dialog->findChild<QListWidget *>("availableSources");
-            if (!directory || !available) {
-                dialog->reject();
-                return;
-            }
-            directory->setText(root);
-            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
-            for (int row = 0; row < available->count(); ++row)
-                if (QFileInfo(available->item(row)->data(Qt::UserRole).toString()).fileName() ==
-                    "added.txt")
-                    available->item(row)->setSelected(true);
-            if (available->selectedItems().size() != 1) {
-                dialog->reject();
-                return;
-            }
-            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+            setOutput(*dialog, archive, "7z");
+            dialog->findChild<QLineEdit *>("archivePassword")->setText("fixture123");
+            dialog->findChild<QLineEdit *>("archivePasswordConfirmation")->setText("fixture123");
+            dialog->findChild<QCheckBox *>("archiveEncryptHeaders")->setChecked(true);
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             accepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "addArchiveAction")->trigger();
+        action(window, "toolbarAddAction")->trigger();
         QVERIFY(accepted);
-        QTRY_COMPARE(table(window)->rowCount(), 2);
-        QCOMPARE(passwordPrompts, 1);
+        QCOMPARE(passwordPrompts, 0);
         passwordAnswer.stop();
         QByteArray listing;
         QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-pfixture123", "--", archive}, &listing));
@@ -212,9 +221,8 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         preferences.Formats.Add(profile);
         preferences.Save(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         MainWindow window(&backend);
-        window.openArchive(archive);
         window.show();
-        QTRY_COMPARE(table(window)->rowCount(), 1);
+        selectFilesystemSource(window, backend, source);
         bool dialogSeen = false;
         bool sourceSelected = false;
         bool dialogAccepted = false;
@@ -223,27 +231,14 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             if (!dialog)
                 return;
             dialogSeen = true;
-            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
-            auto *available = dialog->findChild<QListWidget *>("availableSources");
-            auto *add = dialog->findChild<QPushButton *>("selectSourcesButton");
             auto *mode = dialog->findChild<QComboBox *>("archiveUpdateMode");
             auto *level = dialog->findChild<QComboBox *>("compressionLevel");
-            if (!directory || !available || !add || !mode || !level) {
+            if (!mode || !level) {
                 dialog->reject();
                 return;
             }
-            directory->setText(fixture.path());
-            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
-            for (int row = 0; row < available->count(); ++row)
-                if (QFileInfo(available->item(row)->data(Qt::UserRole).toString()).fileName() ==
-                    QStringLiteral("source file.txt"))
-                    available->item(row)->setSelected(true);
-            if (available->selectedItems().size() != 1) {
-                dialog->reject();
-                return;
-            }
-            sourceSelected = true;
-            add->click();
+            setOutput(*dialog, archive, "zip");
+            sourceSelected = dialog->sources() == QStringList{source};
             mode->setCurrentIndex(
                 mode->findData(int(freshenUnchanged ? NCompressDialog::NUpdateMode::kFresh
                                                     : NCompressDialog::NUpdateMode::kUpdate)));
@@ -252,7 +247,7 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             dialogAccepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "addArchiveAction")->trigger();
+        action(window, "toolbarAddAction")->trigger();
         QVERIFY(dialogSeen);
         QVERIFY(sourceSelected);
         QVERIFY(dialogAccepted);
@@ -291,37 +286,24 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(finished.wait(30000));
         QVERIFY(finished.takeFirst().first().toBool());
         MainWindow window(&backend);
-        window.openArchive(archive);
         window.show();
-        QTRY_COMPARE(table(window)->rowCount(), 1);
+        selectFilesystemSource(window, backend, source);
         bool accepted = false;
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
             if (!dialog)
                 return;
-            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
-            auto *available = dialog->findChild<QListWidget *>("availableSources");
             auto *pathModeControl = dialog->findChild<QComboBox *>("archivePathMode");
-            if (!directory || !available || !pathModeControl) {
+            if (!pathModeControl) {
                 dialog->reject();
                 return;
             }
-            directory->setText(QFileInfo(source).absolutePath());
-            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
-            for (int row = 0; row < available->count(); ++row)
-                if (QFileInfo(available->item(row)->data(Qt::UserRole).toString()).fileName() ==
-                    QStringLiteral("selected.txt"))
-                    available->item(row)->setSelected(true);
-            if (available->selectedItems().size() != 1) {
-                dialog->reject();
-                return;
-            }
-            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
+            setOutput(*dialog, archive, "zip");
             pathModeControl->setCurrentIndex(pathModeControl->findData(pathMode));
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             accepted = dialog->result() == QDialog::Accepted;
         });
-        action(window, "addArchiveAction")->trigger();
+        action(window, "toolbarAddAction")->trigger();
         QVERIFY(accepted);
         QByteArray listing;
         QVERIFY(runEngine(fixture.path(), {"l", "-slt", "-sccUTF-8", "--", archive}, &listing));

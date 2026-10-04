@@ -29,19 +29,8 @@ void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     deleteAfterCompressing_->setObjectName("archiveDeleteAfterCompression");
     layout->addWidget(deleteAfterCompressing_);
     form->addRow(group);
-    if (updateMode_) {
-        const auto update = [this] {
-            const bool supported =
-                updateMode_->currentData().toInt() == NCompressDialog::NUpdateMode::kAdd;
-            deleteAfterCompressing_->setEnabled(supported);
-            QtBindLocalToolTip(
-                deleteAfterCompressing_,
-                supported ? QString() : "Available only when adding and replacing files.",
-                supported ? QString() : "Доступно только при добавлении и замене файлов.");
-        };
-        connect(updateMode_, &QComboBox::currentIndexChanged, this, update);
-        update();
-    }
+    // OnInit leaves this checkbox available for all update modes. The original
+    // UpdateArchive owner validates incompatible action sets after confirmation.
 }
 
 void CreateArchiveDialog::createAdvancedOptions(QFormLayout *form) {
@@ -50,7 +39,10 @@ void CreateArchiveDialog::createAdvancedOptions(QFormLayout *form) {
     parameters_->setText(QString::fromWCharArray(Get_FormatOptions().Options.Ptr()));
     QtBindLocalToolTip(parameters_, "Method parameters, for example: tm=off or mt=2.",
                        "Параметры метода, например: tm=off или mt=2.");
-    form->addRow("Параметры:", parameters_);
+    auto *parametersForm = new QFormLayout;
+    parametersForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    parametersForm->addRow("Параметры:", parameters_);
+    form->addRow(parametersForm);
     advanced_ = new QPushButton("Параметры…", this);
     advanced_->setObjectName("archiveAdvancedOptions");
     auto *row = new QHBoxLayout;
@@ -69,7 +61,9 @@ void CreateArchiveDialog::showAdvancedOptions() {
     // owner while codecs/compression remain in the official external engine.
     CCompressDialog source;
     source.Format = registryFormat_;
-    source.MethodID = NCompressDialog::GetMethodID(method_->currentText(), registryFormat_);
+    if (fixedSources_)
+        source.Info = archiveNameState_.Info;
+    source.MethodID = archiveNameState_.GetMethodID();
 #ifdef Q_OS_WIN
     source.PreserveATime.SetVal_as_Supported(m_RegistryInfo.PreserveATime.Val);
 #endif
@@ -95,6 +89,12 @@ void CreateArchiveDialog::showAdvancedOptions() {
     if (dialog.Create(this) == QDialog::Accepted) {
         Get_FormatOptions() = profile;
         source.SaveMetadataOptions(m_RegistryInfo);
+        if (fixedSources_) {
+            archiveNameState_.Info.SymLinks = source.Info.SymLinks;
+            archiveNameState_.Info.HardLinks = source.Info.HardLinks;
+            archiveNameState_.Info.AltStreams = source.Info.AltStreams;
+            archiveNameState_.Info.NtSecurity = source.Info.NtSecurity;
+        }
         if (source.PreserveATime.Supported) {
             m_RegistryInfo.PreserveATime.Val = source.PreserveATime.Val;
             m_RegistryInfo.PreserveATime.Def = true;
@@ -107,6 +107,8 @@ void CreateArchiveDialog::updateAdvancedSummary() {
     if (!advancedSummary_)
         return;
     CCompressDialog source;
+    if (fixedSources_)
+        source.Info = archiveNameState_.Info;
     if (codecs_ && codecs_->result() == S_OK) {
         const int index = codecs_->formatIndex(registryFormat_);
         if (index >= 0)

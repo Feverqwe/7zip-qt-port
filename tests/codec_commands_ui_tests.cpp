@@ -73,7 +73,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
 #endif
     }
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
-    void actualAddCommandUsesDetectedWriter_data() {
+    void actualCopyCommandUsesDetectedWriter_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("cancel");
         for (const QString &format : {"7z", "zip", "gzip", "bzip2", "xz", "tar", "wim"})
@@ -81,7 +81,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
                 QTest::newRow(qPrintable(format + (cancel ? " cancel" : " success")))
                     << format << cancel;
     }
-    void actualAddCommandUsesDetectedWriter() {
+    void actualCopyCommandUsesDetectedWriter() {
         QFETCH(QString, format);
         QFETCH(bool, cancel);
         QTemporaryDir fixture(QDir::tempPath() + "/codec UI 空-XXXXXX"), output;
@@ -106,50 +106,58 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
-        QTRY_VERIFY(action(window, "addArchiveAction")->isEnabled());
         QVERIFY(action(window, "deleteAction")->isEnabled());
         QVERIFY(action(window, "renameAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
-        const QByteArray replacement("updated\0binary bytes", 20);
+        const QByteArray replacement = format == "wim" && cancel
+                                           ? QByteArray(1024 * 1024, 'x')
+                                           : QByteArray("updated\0binary bytes", 20);
         QVERIFY(writeFile(source, replacement));
+        if (!action(window, "twoPanelsAction")->isChecked())
+            action(window, "twoPanelsAction")->trigger();
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        auto *leftAddress = left->findChild<QLineEdit *>("archivePath");
+        auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        leftAddress->setText(fixture.path());
+        emit leftAddress->returnPressed();
+        QTRY_VERIFY(leftTable->isEnabled());
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
+        window.activateWindow();
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
+        window.openArchive(archive);
+        QTRY_COMPARE(rightTable->rowCount(), 1);
+        QTRY_VERIFY(rightTable->isEnabled());
+        QTRY_VERIFY(action(window, "testArchiveAction")->isEnabled());
+        window.activateWindow();
+        QApplication::processEvents();
+        QTRY_VERIFY(leftTable->isEnabled());
+        leftTable->setFocus();
+        QTRY_VERIFY(leftTable->hasFocus());
+        int sourceRow = -1;
+        for (int row = 0; row < leftTable->rowCount(); ++row)
+            if (leftTable->item(row, 0)->text().normalized(QString::NormalizationForm_C) == name)
+                sourceRow = row;
+        QVERIFY(sourceRow >= 0);
+        leftTable->selectRow(sourceRow);
         bool submitted = false;
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
+            auto *dialog = qobject_cast<CopyDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
             const auto closeOnFailure = qScopeGuard([&] {
                 if (!submitted)
                     dialog->reject();
             });
-            auto *types = dialog->findChild<QComboBox *>("archiveFormat");
-            QVERIFY(types);
-            auto *directory = dialog->findChild<QLineEdit *>("sourceDirectory");
-            QVERIFY(directory);
-            directory->setText(fixture.path());
-            QMetaObject::invokeMethod(directory, "returnPressed", Qt::DirectConnection);
-            auto *available = dialog->findChild<QListWidget *>("availableSources");
-            QVERIFY(available);
-            for (int row = 0; row < available->count(); ++row)
-                if (available->item(row)->data(Qt::UserRole).toString() == source)
-                    available->item(row)->setSelected(true);
-            QCOMPARE(available->selectedItems().size(), 1);
-            dialog->findChild<QPushButton *>("selectSourcesButton")->click();
-            QCOMPARE(types->currentText(), format);
-            auto *method = dialog->findChild<QComboBox *>("compressionMethod");
-            QVERIFY(method);
-            if (format == "gzip")
-                QCOMPARE(method->currentText(), QString("Deflate"));
-            else if (format == "bzip2")
-                QCOMPARE(method->currentText(), QString("BZip2"));
-            else if (format == "xz")
-                QCOMPARE(method->currentText(), QString("LZMA2"));
-            dialog->resize(cancel ? QSize(640, 480) : QSize(760, 720));
+            auto *destination = dialog->findChild<QComboBox *>("copyDestination");
+            QVERIFY(destination);
+            QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(destination->currentText())),
+                     QDir::cleanPath(archive));
+            dialog->resize(cancel ? QSize(480, 320) : QSize(640, 400));
             QApplication::processEvents();
-            dialog->findChild<QScrollArea *>("archiveOptionsScrollArea")
-                ->ensureWidgetVisible(types);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::fullyVisible(*types, *dialog));
+            QVERIFY(UiInspection::fullyVisible(*destination, *dialog));
             QVERIFY(UiInspection::writeReport(
-                *dialog, QString("codec-add-%1-%2").arg(format).arg(dialog->width())));
+                *dialog, QString("codec-copy-%1-%2").arg(format).arg(dialog->width())));
             QVERIFY(UiInspection::fullyVisible(
                 *dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok), *dialog));
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
@@ -159,13 +167,12 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QTimer nativeCancel;
         if (format == "wim" && cancel) {
             connect(&nativeCancel, &QTimer::timeout, &window, [&] {
-                for (QWidget *widget : QApplication::topLevelWidgets())
-                    if (auto *progress = dynamic_cast<CProgressDialog *>(widget)) {
-                        observedStart = true;
-                        progress->Sync.Set_Stopped(true);
-                        nativeCancel.stop();
-                        return;
-                    }
+                if (auto *progress =
+                        dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+                    observedStart = true;
+                    progress->Sync.Set_Stopped(true);
+                    nativeCancel.stop();
+                }
             });
             nativeCancel.start(1);
         }
@@ -178,7 +185,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
                     backend.cancel();
             }
         });
-        action(window, "addArchiveAction")->trigger();
+        action(window, "copyAction")->trigger();
         nativeCancel.stop();
         disconnect(connection);
         QVERIFY(submitted && observedStart);
@@ -277,7 +284,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
-        QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+        QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "deleteAction")->isEnabled());
         QVERIFY(!action(window, "renameAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
@@ -313,11 +320,11 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         if (command == "openInsideParserAction") {
             QVERIFY(table(window)->rowCount() >= 2);
             QVERIFY(!action(window, "deleteAction")->isEnabled());
-            QVERIFY(!action(window, "addArchiveAction")->isEnabled());
+            QVERIFY(!action(window, "toolbarAddAction")->isEnabled());
         } else {
             QCOMPARE(table(window)->rowCount(), 1);
             QCOMPARE(table(window)->item(0, 0)->text(), QString("payload.bin"));
-            QVERIFY(action(window, "addArchiveAction")->isEnabled());
+            QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         }
         QVERIFY2(messages.Errors.isEmpty(), qPrintable(messages.Errors.join('\n')));
         QCOMPARE(readFile(archive), bytes);

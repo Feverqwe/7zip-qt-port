@@ -1,0 +1,78 @@
+# Сверка интерфейса с оригинальным 7zFM
+
+Уточнение пользователя 2026-10-03: исправить во всём приложении подобные
+самостоятельные допущения, как выбор источников внутри Add to Archive.
+Это обязательная часть текущего портирования и итоговой P3-06 приёмки.
+Прежняя запись «Qt adaptation» сама по себе не оправдывает иной workflow.
+
+Эталон исходников: `https://github.com/ip7z/7zip.git`, полный commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Для поведения проверяются
+обработчики и callers; для отрисовки — настоящий Windows 7zFM того же commit.
+Требования доступности, масштабирования и платформенные сервисы фиксируются
+с конкретной причиной. Они не разрешают добавлять новые шаги, поля, команды
+и подтверждения ради удобства реализации.
+
+| Область | Исходный владелец | Найденное отличие / необходимая проверка | Статус |
+| --- | --- | --- | --- |
+| Add: выбор источников | FileManager/Panel.cpp::AddToArchive; GUI/CompressDialog.rc | Picker удалён из всех ветвей диалога. Исходный CPanel::AddToArchive перенесён целиком с typed CompressFiles services: источники из панели, пустое выделение и архивная панель дают исходные ошибки, native ShowDialog/UpdateArchive создаёт/обновляет output. Семь форматов, параметры, metadata/password/Cancel проверены; unknown-extension update использует исходный two-panel Copy. Drag Add также идёт через source CompressCall2, с native success/error/Cancel. | macOS focused16/16PASS14.41s; свежие full/Windows/Linux проверки идут |
+| Add: компоновка и дополнительные поля | GUI/CompressDialog.rc/.cpp | Format и compression слева; Update/Path и Options/Encryption справа; volumes/parameters слева; лишняя Compression group, отдельные Save in/preview и Create/Add вместо OK удалены. Folder label над Archive+`...`. Encryption method теперь в одной строке с combo, decompression memory выровнено вправо по настоящему Windows runtime. Normal/compact geometry и текущие 14 Add/14 Copy JSON просмотрены; labels не обрезаны, compact нижние поля доступны прокруткой. AddFilter/OnButtonSetArchive перенесены; порядок фильтров, aliases, extension/Cancel проверены. Устаревшая constructor-only existingTarget ветвь с блокировкой полей ещё подлежит удалению. | macOS focused19/19PASS14.93s; текущие platform/full проверки и legacy branch открыты |
+| Add: размер окна | GUI/CompressDialog.rc; настоящий Windows 7zFM | В Qt оставался размер760×720 от прежнего picker. Размер теперь следует содержимому и доступной области экрана. Повторный настоящий Windows runtime v9:642×578, OK/Cancel/Help полностью доступны; local640×571 JSON и default/frame regression проверены. | Windows13/13PASS70.86s и runtime проверены; snapshot предшествует следующему Add source port |
+| Add: значения памяти | GUI/CompressDialog.cpp::PrintMemUsage; CompressDialog.rc | Сравнение настоящего 7zFM и Qt на Windows выявило отсутствие limit/RAM в видимой строке и label сбоку вместо сверху. Исходный PrintMemUsage перенесён с Qt text return; ветви и новые EN/RU reports проверены. Новый снимок запущенного приложения показывает полную строку. | macOS full227/227; Windows/Linux focused13/13, global acceptance открыта |
+| Add: Delete и update mode | GUI/CompressDialog.cpp::OnInit/OnOK; Common/Update.cpp::CheckDeleteAfterCompressingActionSet | Самостоятельное отключение checkbox для Freshen/Update/Sync удалено. Исходная форма принимает intent, source worker проверяет совместимость после OK. Успех/Cancel/отказ с сохранением input проверены. | macOS full227/227; Windows/Linux focused13/13, global acceptance открыта |
+| File/menu/toolbar/context | FileManager/MyLoadMenu.cpp, App.cpp, PanelMenu.cpp, resource.rc; Explorer/ContextMenu.cpp | Independent Open/Create/Add-to-open/Extract-selected QAction, extension IDs/dispatch и Ctrl+O picker удалены. Source toolbar/Explorer Add, two-panel Copy update, selected Copy To/F5 и Open/Open Inside сохранены. Archive popup больше не добавляет отдельную группу Qt Add/Extract/Test/Info. Program-menu source lifetime и Info→Properties подключены. Journal/built-in text view/edit aliases и остальные local commands ещё требуют миграции. | Четыре aliases удалены; текущий full/platform gate и оставшиеся consumers открыты |
+| Extract и prompts | GUI/ExtractDialog.rc/.cpp, FileManager/OverwriteDialog.rc/.cpp | Проверить исходный набор полей, defaults, скрываемые состояния, overwrite questions и кнопки. Проверки безопасного назначения остаются за backend. | Открыто |
+| Copy/Move, две панели | FileManager/CopyDialog.rc/.cpp, App.cpp, PanelCopy.cpp | Проверить последовательность выбора источника/цели, defaults, prompts и команды в архивном namespace; сохранить исходный способ добавления в архив. | Открыто |
+| Navigation/list/views/selection | FileManager/Panel.cpp, PanelKey.cpp, PanelSelect.cpp, PanelItems.cpp, PanelListNotify.cpp | Проверить focused versus selected, пустую папку, адрес, root/parent, shortcuts, columns и transitions во всех режимах. | Открыто |
+| Options и дочерние страницы | FileManager/OptionsDialog.cpp и *Page.rc/.cpp | Проверить реальные вкладки, порядок, поля, Apply/Cancel и visibility; local controls должны иметь исходный или необходимый платформенный owner. | Открыто |
+| Progress/messages/password | FileManager/ProgressDialog2.rc/.cpp, MessagesDialog.rc/.cpp, PasswordDialog.rc/.cpp | Проверить дополнительные тексты/кнопки, pause/cancel/close, повторные ошибки и modal lifetime. | Открыто |
+| Properties/Comment/Link/Split/Combine/Benchmark | Соответствующие FileManager и GUI .rc/.cpp | Проверить параметры вызова, набор контролов, условные состояния, action semantics и Help. | Открыто |
+| Help/About и OS integration | FileManager/AboutDialog.rc/.cpp, HelpUtils.cpp, SystemPage.cpp, Explorer | Проверить самостоятельные экраны/команды и необходимые различия native платформ; не подменять исходный workflow новой формой. | Открыто |
+
+Устаревшая `existingTarget` constructor-only ветвь Add удалена: поля path/format/
+browse/volumes/encryption больше не блокируются ради отдельного update workflow.
+All-target build и12 affected suites PASS9.66s на macOS. Также удалены
+самостоятельные требования существующей папки назначения и preflight источников:
+исходные scan/UpdateArchive отвечают за ошибки и создание папки после OK.
+Регрессия новой папки падает до исправления; последующие проверки ещё идут.
+Actual Windows v10 Add просмотрен рядом с pinned original:642×546, без picker,
+footer полностью доступен, encryption method same-row и memory right-alignment
+подтверждены отрисовкой. Source SFX уже подключён к retained validated module;
+обычный/password/split executable и Cancel проходят локально. Новая сборка
+ещё проверяется на Windows/Linux. Открыты automatic-method `*` и исходное
+очищение списка методов при Store; их нельзя считать допустимыми Qt adaptations.
+Artifact/provenance — 7zfm-parity.
+
+Исходный `App.cpp::g_StandardButtons` задаёт Info как `IDM_PROPERTIES`.
+`QtFileManagerCommands::AttachFileActions` теперь привязывает её к исходному ID.
+ArchiveInformation extension и самостоятельный summary screen удалены, tests
+мигрированы к исходной modal Properties. Item/empty-archive/EN→RU→EN/backend
+counts и actual filesystem Info во всех view/flat режимах проходят локально;
+five direct consumers PASS3.16s. Native Windows System Properties и свежая
+платформенная проверка этого последующего изменения ещё обязательны.
+
+2026-10-04: Add selection/header/focus corrections validated separately by
+macOS full230/230PASS93.41s and snapshot07e2aeb5 Windows29/29PASS123.49s /
+Linux29/29PASS38.34s. Actual default Qt v12 PNG compared with the pinned original:
+no source picker, native path display, selected filename, SFX/automatic method
+and visible footer. Remaining spacing/control-width/Archive-caption differences
+are still open; full visual correspondence is not claimed.
+
+Program File now uses original OnMenuActivating/CreateFileMenu and CApp plugin
+invoke/release. Reopening, same-ID stale QAction and panel-switch checks pass,
+as do program Open success/refusal/Cancel and program Add success/error/Cancel.
+Four EN/RU normal/compact root and child JSON inspected, no clipped rows or
+visible aliases. Legacy alias QAction construction/workflows still need removal;
+this partial result does not close the File/menu/toolbar/context row.
+
+2026-10-04: Journal и built-in text view/edit QAction, extension IDs и dispatch
+удалены. Удалены их независимые накопитель сообщений, FileViewerDialog и
+MainWindow preview/extract/update wrappers. F3/F4 используют исходный EditItem;
+Progress/Messages продолжают показывать ошибки, Cancel не создаёт второго окна.
+Native Open lifetime/Cancel перенесены в archive_item_open; source external edit
+success/failure/Cancel coverage сохранена. Текущие проверки ещё идут; это не
+закрывает глобальную строку File/menu/toolbar/context.
+
+Каждая строка закрывается только после исправления соответствующих consumers,
+регрессий, текущих EN/RU normal/compact reports и сравнения с доступным Windows
+runtime. Различия, которые ещё не исследованы, не считаются допустимыми или
+исправленными. Счёт принятых пакетов не увеличивается от этой инвентаризации.

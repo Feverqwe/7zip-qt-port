@@ -29,19 +29,21 @@ class UpstreamBaselineTests(unittest.TestCase):
             git(repo, "init", "-q")
             git(repo, "config", "user.name", "Fixture")
             git(repo, "config", "user.email", "fixture@example.invalid")
+            # Exact-byte fixtures must not inherit the host Git newline policy.
+            git(repo, "config", "core.autocrlf", "false")
         self.source = "CPP/7zip/UI/FileManager/NetFolder.cpp"
         self.exact = "third_party/7zip/CPP/Windows/Net.cpp"
         self.local = "src/CPP/7zip/UI/FileManager/PanelSort.h"
         (self.upstream / self.source).parent.mkdir(parents=True)
         (self.upstream / "CPP/Windows").mkdir(parents=True)
         (self.upstream / self.source).write_text("source body\n")
-        (self.upstream / "CPP/Windows/Net.cpp").write_text("exact body\n")
+        (self.upstream / "CPP/Windows/Net.cpp").write_bytes(b"exact body\n")
         git(self.upstream, "add", ".")
         git(self.upstream, "commit", "-qm", "baseline")
         self.old = git(self.upstream, "rev-parse", "HEAD")
         (self.port / "third_party/7zip/CPP/Windows").mkdir(parents=True)
         (self.port / "src/CPP/7zip/UI/FileManager").mkdir(parents=True)
-        (self.port / self.exact).write_text("exact body\n")
+        (self.port / self.exact).write_bytes(b"exact body\n")
         (self.port / ("src/" + self.source)).write_text("source body with Qt adapter\n")
         (self.port / self.local).write_text("local declaration\n")
         git(self.port, "add", ".")

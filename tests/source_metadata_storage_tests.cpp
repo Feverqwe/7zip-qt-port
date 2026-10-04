@@ -86,8 +86,7 @@ class SourceMetadataStorageTests final : public QObject {
             });
             form.findChild<QPushButton *>("archiveAdvancedOptions")->click();
         };
-        CreateArchiveDialog cancelled(fixture.path(), {source}, nullptr, {},
-                                      backend.codecCatalog());
+        CreateArchiveDialog cancelled(fixture.path(), {source}, nullptr, backend.codecCatalog());
         configure(cancelled, false);
         QVERIFY(!cancelled.compressionOptions().AltStreams.Val);
         QVERIFY(!cancelled.compressionOptions().NtSecurity.Val);
@@ -98,14 +97,13 @@ class SourceMetadataStorageTests final : public QObject {
         NCompression::CInfo saved;
         saved.Load(settings);
         QVERIFY(!saved.AltStreams.Val && !saved.NtSecurity.Val);
-        CreateArchiveDialog accepted(fixture.path(), {source}, nullptr, {}, backend.codecCatalog());
+        CreateArchiveDialog accepted(fixture.path(), {source}, nullptr, backend.codecCatalog());
         configure(accepted, true);
         accepted.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(accepted.result(), int(QDialog::Accepted));
         saved.Load(settings);
         QVERIFY(saved.AltStreams.Val && saved.NtSecurity.Val);
-        CreateArchiveDialog restarted(fixture.path(), {source}, nullptr, {},
-                                      backend.codecCatalog());
+        CreateArchiveDialog restarted(fixture.path(), {source}, nullptr, backend.codecCatalog());
         QCOMPARE(restarted.findChild<QComboBox *>("archiveFormat")->currentText(), QString("wim"));
         QVERIFY(restarted.compressionOptions().AltStreams.Val);
         QVERIFY(restarted.compressionOptions().NtSecurity.Val);

@@ -6,7 +6,9 @@
 #include <QFile>
 #include <QLabel>
 #include <QPushButton>
+#include <QScreen>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QTemporaryDir>
 #include <QtTest>
 #include <memory>
@@ -85,6 +87,20 @@ class UiGeometryTests final : public QObject {
         QTest::newRow("extract-compact") << false << QSize(470, 330);
     }
 
+    void addDefaultSizeFitsScreen() {
+        CreateArchiveDialog dialog(directory_.path());
+        dialog.show();
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "create-default"));
+        QVERIFY(dialog.screen()->availableGeometry().contains(dialog.frameGeometry()));
+        QVERIFY(footerFits(dialog));
+        auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
+        QVERIFY(scroll);
+        QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
+        // The default form should not reserve a large empty picker area.
+        QVERIFY(dialog.height() < 720);
+    }
+
     void dialogs() {
         QFETCH(bool, create);
         QFETCH(QSize, requestedSize);
@@ -104,21 +120,20 @@ class UiGeometryTests final : public QObject {
         if (create) {
             auto *scroll = dialog->findChild<QScrollArea *>("archiveOptionsScrollArea");
             QVERIFY(scroll);
-            auto *compression = dialog->findChild<QGroupBox *>("archiveCompressionGroup");
+            auto *compression = dialog->findChild<QWidget *>("archiveCompressionColumn");
             auto *encryption = dialog->findChild<QGroupBox *>("archiveEncryptionGroup");
             QVERIFY(compression && encryption);
             auto *archivePath = dialog->findChild<QComboBox *>("archivePath");
-            auto *sources = dialog->findChild<QListWidget *>("availableSources");
-            QVERIFY(archivePath && sources);
-            QVERIFY(UiInspection::bounds(*archivePath, *dialog).bottom() <
-                    UiInspection::bounds(*sources, *dialog).top());
+            QVERIFY(archivePath);
+            QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
+            QVERIFY(!dialog->findChild<QListWidget *>("selectedSources"));
             // CompressDialog.rc: encryption stays to the right of compression
             // at both sizes. Reachability alone passed the previous stacked UI.
             QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
                     UiInspection::bounds(*encryption, *dialog).left());
             for (const char *name : {"archiveFormat", "compressionLevel", "compressionMethod",
                                      "compressionMemoryLimit", "archivePassword",
-                                     "archivePasswordConfirmation", "archiveDestination"}) {
+                                     "archivePasswordConfirmation", "archiveBrowse"}) {
                 auto *control = dialog->findChild<QWidget *>(name);
                 QVERIFY2(control, name);
                 // Qt scrolls input-method cursor rectangles for editable fields.
@@ -136,6 +151,16 @@ class UiGeometryTests final : public QObject {
                 QVERIFY2(footerFits(*dialog), qPrintable(UiInspection::dump(*dialog)));
                 QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
                         UiInspection::bounds(*encryption, *dialog).left());
+                auto *methodLabel = dialog->findChild<QLabel *>("archiveEncryptionMethodLabel");
+                auto *method = dialog->findChild<QComboBox *>("archiveEncryption");
+                QVERIFY(methodLabel && method);
+                const QRect labelBounds = UiInspection::bounds(*methodLabel, *dialog);
+                const QRect methodBounds = UiInspection::bounds(*method, *dialog);
+                QVERIFY(labelBounds.right() < methodBounds.left());
+                QVERIFY(qAbs(labelBounds.center().y() - methodBounds.center().y()) <= 1);
+                auto *memory = dialog->findChild<QLabel *>("compressionDecompressionMemory");
+                QVERIFY(memory);
+                QVERIFY(memory->alignment().testFlag(Qt::AlignRight));
                 QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + format));
             }
         } else {

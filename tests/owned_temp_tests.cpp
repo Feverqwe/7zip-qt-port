@@ -106,6 +106,22 @@ class OwnedTempTests : public QObject {
             if (candidate.externallyProtected)
                 QVERIFY(!registry.ClaimForDeletion(candidate));
     }
+    void deletedRetainedDirectoryAllowsLaterNativeCreation() {
+        // Source intentionally keeps a failed edit for recovery. The user can
+        // later delete that directory outside the application. A subsequent
+        // source Open/Edit must still be able to create its private directory.
+        for (unsigned iteration = 0; iteration < 50; ++iteration) {
+            QString path;
+            {
+                NWindows::NFile::NDir::CTempDir native;
+                QVERIFY2(native.Create(FTEXT("7zO")), "A deleted retained object blocked creation");
+                path = QString::fromWCharArray(fs2us(native.GetPath()).Ptr());
+                native.DisableDeleting();
+            }
+            QVERIFY(QDir(path).removeRecursively());
+        }
+        QVERIFY(QtOwnedTempRegistry().Entries().isEmpty());
+    }
     void unownedNamesAndReplacedIdentityNeverBecomeCandidates() {
         QtOwnedTempRegistry registry;
         const QString user = fixture.filePath("7zO-user-files");
@@ -124,6 +140,27 @@ class OwnedTempTests : public QObject {
         QVERIFY(!registry.ClaimForDeletion(entry));
         QVERIFY(QFileInfo::exists(user + "/keep.txt"));
         QVERIFY(QFileInfo::exists(owned + "/replacement.txt"));
+    }
+    void deletedOwnedObjectCannotClaimRecreatedUserDirectory() {
+        QtOwnedTempRegistry registry;
+        const QString path = fixture.filePath("recreated directory");
+        for (unsigned iteration = 0; iteration < 50; ++iteration) {
+            QVERIFY(QDir().mkpath(path));
+            auto lease = registry.RegisterCreated(path);
+            QVERIFY(lease);
+            const auto entry = registry.Entries().first();
+            lease.reset();
+            QVERIFY(QDir(path).removeRecursively());
+            QVERIFY(QDir().mkpath(path));
+            QVERIFY(write(path + "/user.txt"));
+            QVERIFY(registry.Entries().isEmpty());
+            QVERIFY(!registry.ClaimForDeletion(entry));
+            QFile user(path + "/user.txt");
+            QVERIFY(user.open(QIODevice::ReadOnly));
+            QCOMPARE(user.readAll(), QByteArray("fixture"));
+            user.close();
+            QVERIFY(QDir(path).removeRecursively());
+        }
     }
     void linkedRootAndLinkedObjectAreRejected() {
 #ifdef Q_OS_WIN

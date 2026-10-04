@@ -128,7 +128,7 @@ class CompressionPathTests final : public QObject {
         QVERIFY(state.ArcIndices.IsEmpty());
 #endif
     }
-    void sourcePickerRemovalRefreshesKeepNameBeforeFormatSwitch() {
+    void sourceSelectionSetsKeepNameBeforeFormatSwitch() {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; source-picker naming consumer unverified");
 #else
@@ -140,20 +140,20 @@ class CompressionPathTests final : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write("second"), qint64(6));
         file.close();
-        CreateArchiveDialog dialog(dir_.path(), {source_, other}, nullptr, {}, catalog);
+        CreateArchiveDialog dialog(dir_.path(), {source_, other}, nullptr, catalog);
         auto *name = dialog.findChild<QLineEdit *>("archiveName");
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
-        auto *sources = dialog.findChild<QListWidget *>("selectedSources");
-        QCOMPARE(sources->count(), 2);
+        QCOMPARE(dialog.sources().size(), 2);
+        QVERIFY(!dialog.findChild<QListWidget *>("selectedSources"));
         name->setText("report.with.dot");
         format->setCurrentText("zip");
         QCOMPARE(name->text(), QStringLiteral("report.with.dot.zip"));
-        sources->setCurrentRow(1);
-        dialog.findChild<QPushButton *>("removeSourcesButton")->click();
-        QCOMPARE(dialog.sources(), QStringList{source_});
-        name->setText("report.with.dot");
-        format->setCurrentText("7z");
-        QCOMPARE(name->text(), QStringLiteral("report.with.7z"));
+        CreateArchiveDialog single(dir_.path(), {source_}, nullptr, catalog);
+        QCOMPARE(single.sources(), QStringList{source_});
+        single.findChild<QLineEdit *>("archiveName")->setText("report.with.dot");
+        single.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
+        QCOMPARE(single.findChild<QLineEdit *>("archiveName")->text(),
+                 QStringLiteral("report.with.zip"));
         dialog.reject();
         QVERIFY(dialog.target().isEmpty());
 #endif
@@ -165,7 +165,7 @@ class CompressionPathTests final : public QObject {
         const auto catalog =
             std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
         QCOMPARE(catalog->result(), S_OK);
-        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, {}, catalog);
+        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, catalog);
         const QString name = dialog.findChild<QLineEdit *>("archiveName")
                                  ->text()
                                  .normalized(QString::NormalizationForm_C);
@@ -174,7 +174,7 @@ class CompressionPathTests final : public QObject {
         QVERIFY(dialog.target().isEmpty());
 #endif
     }
-    void addUsesDetectedTypeWithUnknownTargetSuffix() {
+    void sourceFormKeepsFormatEditableForExistingUnknownSuffix() {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official codec module unavailable; Add metadata consumer unverified");
 #else
@@ -182,28 +182,66 @@ class CompressionPathTests final : public QObject {
             std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
         QCOMPARE(catalog->result(), S_OK);
         const QString target = dir_.filePath(QStringLiteral("архив 空.unknown"));
-        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, target, catalog, "ZIP");
+        QFile archive(target);
+        QVERIFY(archive.open(QIODevice::WriteOnly));
+        QCOMPARE(archive.write("untouched existing bytes"), qint64(24));
+        archive.close();
+        CCompressDialog source;
+        source.Info.FormatIndex = catalog->formatIndex("zip");
+        source.Info.ArcPath = target.toStdWString().c_str();
+        CObjectVector<NWildcard::CCensorPath> paths;
+        paths.AddNew().Path = source_.toStdWString().c_str();
+        QCOMPARE(NCompressDialog::PrepareFormatSelection(source, catalog->nativeCodecs(), paths),
+                 S_OK);
+        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, catalog, &source);
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         QVERIFY(format);
         QCOMPARE(format->currentText(), QStringLiteral("zip"));
-        QVERIFY(!format->isEnabled());
+        QVERIFY(format->isEnabled());
+        QVERIFY(dialog.findChild<QComboBox *>("archivePath")->isEnabled());
+        QVERIFY(dialog.findChild<QPushButton *>("archiveBrowse")->isEnabled());
+        QVERIFY(dialog.findChild<QComboBox *>("archiveVolumeSize")->isEnabled());
+        QVERIFY(dialog.findChild<QLineEdit *>("archivePassword"));
         QCOMPARE(format->count(), 7);
+        dialog.findChild<QLineEdit *>("archiveName")->setText(target);
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         QCOMPARE(dialog.target(), target);
+        QVERIFY(archive.open(QIODevice::ReadOnly));
+        QCOMPARE(archive.readAll(), QByteArray("untouched existing bytes"));
 #endif
     }
     void unavailableMetadataDisablesSubmission() {
         const auto catalog =
             std::make_shared<ArchiveCodecCatalog>(dir_.filePath("missing module"), 1);
         QVERIFY(catalog->result() != S_OK);
-        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, {}, catalog);
+        CreateArchiveDialog dialog(dir_.path(), {source_}, nullptr, catalog);
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         QCOMPARE(format->count(), 0);
         QVERIFY(!format->toolTip().isEmpty());
         QVERIFY(!dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->isEnabled());
         dialog.reject();
         QVERIFY(dialog.target().isEmpty());
+    }
+    void formDefersDestinationCreationToUpdateArchive() {
+        CreateArchiveDialog dialog(dir_.path(), {source_});
+        const QString folder = dir_.filePath(QStringLiteral("новая 空 папка"));
+        const QString output = QDir(folder).filePath("nested.7z");
+        QVERIFY(!QFileInfo::exists(folder));
+        dialog.findChild<QLineEdit *>("archiveName")->setText(output);
+        QString error;
+        QTimer::singleShot(0, &dialog, [&] {
+            if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                error = message->text();
+                message->accept();
+            }
+        });
+        submit(dialog);
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        QCOMPARE(dialog.target(), output);
+        QVERIFY(!QFileInfo::exists(folder));
+        QVERIFY(QFileInfo::exists(source_));
     }
     void fullPathsAndFailure() {
         CCompressDialog path;
@@ -263,20 +301,20 @@ class CompressionPathTests final : public QObject {
         QVERIFY(QMetaObject::invokeMethod(combo, "activated", Q_ARG(int, 0)));
         QCOMPARE(dialog.findChild<QComboBox *>("archiveFormat")->currentText(), QString("zip"));
         QCOMPARE(combo->currentText(), QStringLiteral("готовый архив.ZIP"));
-        QCOMPARE(dialog.findChild<QLineEdit *>("archiveDestination")->text(), dir_.path() + '/');
+        QCOMPARE(dialog.findChild<QLabel *>("archiveFolder")->text(),
+                 QDir::toNativeSeparators(dir_.path() + '/'));
         dialog.reject();
         NCompression::CInfo loaded;
         loaded.Load(settings_);
         QCOMPARE(loaded.ArcType, QString("7z"));
         QCOMPARE(loaded.ArcPaths[0], registry.ArcPaths[0]);
     }
-    void sourceNavigationKeepsInitialPrefix() {
-        QVERIFY(QDir(dir_.path()).mkpath("source-navigation"));
+    void archiveFolderUsesInitialPrefix() {
         CreateArchiveDialog dialog(dir_.path(), {source_});
-        auto *sourceDirectory = dialog.findChild<QLineEdit *>("sourceDirectory");
-        sourceDirectory->setText(dir_.filePath("source-navigation"));
-        QVERIFY(QMetaObject::invokeMethod(sourceDirectory, "returnPressed"));
-        dialog.findChild<QLineEdit *>("archiveDestination")->clear();
+        QVERIFY(!dialog.findChild<QLineEdit *>("sourceDirectory"));
+        QCOMPARE(dialog.findChild<QLabel *>("archiveFolder")->text(),
+                 QDir::toNativeSeparators(dir_.path()));
+        QVERIFY(!dialog.findChild<QLineEdit *>("archiveDestination"));
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         QCOMPARE(dialog.target(), dir_.filePath("archive.7z"));
@@ -306,7 +344,8 @@ class CompressionPathTests final : public QObject {
         QVERIFY(extracted.open(QIODevice::ReadOnly));
         QCOMPARE(extracted.readAll(), QByteArray("archive path regression"));
         CreateArchiveDialog invalid(dir_.path(), {source_});
-        invalid.findChild<QLineEdit *>("archiveName")->setText("absent/invalid.7z");
+        invalid.findChild<QLineEdit *>("archiveName")
+            ->setText(QStringLiteral("bad") + QChar::Null + "name.7z");
         QTimer::singleShot(0, &invalid, [] {
             if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
                 message->accept();
@@ -327,7 +366,7 @@ class CompressionPathTests final : public QObject {
         QCOMPARE(catalog->result(), S_OK);
 #endif
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
-            CreateArchiveDialog dialog(dir_.path(), {}, nullptr, {}, catalog);
+            CreateArchiveDialog dialog(dir_.path(), {}, nullptr, catalog);
             dialog.resize(size);
             dialog.show();
             QApplication::processEvents();

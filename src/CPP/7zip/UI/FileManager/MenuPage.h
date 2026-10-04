@@ -1,7 +1,10 @@
 // Adapted from 7-Zip MenuPage.h (0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
+#include "Common/MyString.h"
 #include <QWidget>
+#include <memory>
+class IQtMenuPageServices;
 class QCheckBox;
 class QComboBox;
 class QListWidget;
@@ -10,6 +13,15 @@ class QListWidgetItem;
 // Windows source ArchiveExtractCallback can write Zone.Identifier. The shell
 // DLL/registration service remains unavailable until the P2-09 source port.
 bool IsZonePropagationSupported();
+
+struct CShellDll {
+    FString Path;
+    bool wasChanged;
+    bool prevValue;
+    unsigned ctrl;
+    UInt32 wow;
+    CShellDll() : wasChanged(false), prevValue(false), ctrl(0), wow(0) {}
+};
 
 class CMenuPage : public QWidget {
     Q_OBJECT
@@ -20,6 +32,9 @@ class CMenuPage : public QWidget {
     bool _writeZone_Changed = false;
     bool _flags_Changed = false;
     QString _settingsPath;
+    std::shared_ptr<IQtMenuPageServices> _services;
+    CShellDll _dlls[2];
+    QCheckBox *ShellControl(unsigned id) const;
     QCheckBox *_cascaded;
     QCheckBox *_menuIcons;
     QCheckBox *_elimDup;
@@ -32,7 +47,8 @@ class CMenuPage : public QWidget {
 
   public:
     explicit CMenuPage(const QString &settingsPath, QWidget *parent = nullptr,
-                       bool zoneSupported = IsZonePropagationSupported());
+                       bool zoneSupported = IsZonePropagationSupported(),
+                       std::shared_ptr<IQtMenuPageServices> services = {});
     bool OnInit();
     void OnNotifyHelp();
     long OnApply();

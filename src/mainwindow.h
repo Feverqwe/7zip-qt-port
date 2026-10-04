@@ -11,12 +11,10 @@
 #include "filesystemscanner.h"
 #include "filetable.h"
 #include "filetransferoperation.h"
-#include "fileviewerdialog.h"
 #include "propertiesdialog.h"
 #include "settingsdialog.h"
 #include "volumeoperations.h"
 
-#include "qtownedtempdir.h"
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
@@ -79,7 +77,6 @@
 
 class QtFileListHover;
 class CProgressDialog;
-class CMessagesDialog;
 class IQtProgressTransport;
 class IQtTrashService;
 
@@ -102,6 +99,9 @@ class MainWindow : public QMainWindow {
     friend class QtFileManagerWindowServices;
     friend class QtFileManagerCommands;
     friend class QtFileManagerDrag;
+    friend class QtFileManagerShellMenu;
+    friend class QtProgramFileMenu;
+    HRESULT openArchiveAs(const QString &path, const QString &type);
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
     void reloadLangItems();
@@ -147,7 +147,6 @@ class MainWindow : public QMainWindow {
                            const CRecordVector<UInt32> *explicitIndices = nullptr);
     bool startPendingArchiveMove(bool ok);
     bool finishArchiveState(bool ok);
-    void finishViewExtraction(bool ok);
     void closeProgressDialog(bool finished = false);
     void beginWorkerProgress(const QString &label, const QString &detail,
                              std::function<void()> cancel);
@@ -214,25 +213,13 @@ class MainWindow : public QMainWindow {
     void setState(State state);
     void refreshActions();
     void refreshPanelStatus();
-    void appendJournal(const QString &line);
-    void showJournal();
-    void showInfo();
     void showSelectedProperties();
     void calculateHash(const QString &method);
-    void begin(const QString &label, const QString &detail, bool preserveJournal = false);
+    void begin(const QString &label, const QString &detail);
     void startProgressDialog(const QString &label, const QString &detail);
-    void openDialog();
-    void openFileViewer(const QString &path, bool editable);
-    bool openLocalFile(const QString &path);
     void openNestedArchive(const QString &entry);
-    void openArchiveFile(const QString &entry);
-    void viewSelectedFile(bool editable);
     void extract(bool onlySelected);
     void createDialog();
-    void createArchive(const QString &target, const QStringList &sources,
-                       const QString &password = {}, bool encryptHeaders = false,
-                       const CompressionOptions &options = {});
-    void addDialog();
     QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move,
                        bool directPath = false);
@@ -244,7 +231,6 @@ class MainWindow : public QMainWindow {
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);
     void addSources(const QStringList &sources);
-    void updateArchiveFromDialog(const QStringList &sources, const CompressionOptions &options);
     QStringList selectedArchivePaths();
     QStringList archivePathsForIndices(const CRecordVector<UInt32> &indices);
     QStringList selectedArchiveItemsPaths();
@@ -258,6 +244,7 @@ class MainWindow : public QMainWindow {
     std::unique_ptr<class QtAppPresentation> appPresentation_;
     std::unique_ptr<class QtFileManagerDrag> drag_;
     std::unique_ptr<class QtFileManagerCommands> commands_;
+    std::unique_ptr<class QtProgramFileMenu> programFileMenu_;
     std::function<bool(const QUrl &)> fileOpener_;
     QString archive_;
     QString displayArchive_;
@@ -357,20 +344,12 @@ class MainWindow : public QMainWindow {
     QPointer<CProgressDialog> progress_;
     std::unique_ptr<IQtProgressTransport> progressTransport_;
     bool sourceArchiveProgress_ = false;
-    QPointer<CMessagesDialog> journalDialog_;
-    QPointer<QDialog> infoDialog_;
-    QAction *journalAction_ = nullptr;
-    UStringVector journalMessages_;
     QString operationName_;
     QString currentDetail_;
-    QAction *open_ = nullptr;
-    QAction *create_ = nullptr;
-    QAction *add_ = nullptr;
     QAction *toolbarAdd_ = nullptr;
     QAction *extract_ = nullptr;
     QAction *test_ = nullptr;
     QAction *infoAction_ = nullptr;
-    QAction *selected_ = nullptr;
     QAction *back_ = nullptr;
     QAction *up_ = nullptr;
     QAction *root_ = nullptr;
@@ -420,12 +399,4 @@ class MainWindow : public QMainWindow {
     QAction *largeButtonsOption_ = nullptr;
     QAction *buttonTextOption_ = nullptr;
     QAction *toolbarGroupSeparator_ = nullptr;
-    std::unique_ptr<QtOwnedTempDir> viewTemporary_;
-    std::vector<std::unique_ptr<QtOwnedTempDir>> openedTemporaries_;
-    QString pendingViewPath_;
-    bool pendingView_ = false;
-    bool pendingExternalOpen_ = false;
-    bool pendingViewEditable_ = false;
-    QString pendingEditEntry_;
-    bool replacingArchiveEntry_ = false;
 };

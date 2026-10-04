@@ -12,10 +12,25 @@
 #include "Windows/FileFind.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemenuservices.h"
+#include "qtpanelpluginservices.h"
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
 #include <QVariant>
+
+// Original OnMenuActivating File branch. Qt supplies the actual menu bar and
+// source projection instead of global HWND/HMENU; other branches remain partial.
+void OnMenuActivating(QMenuBar &mainMenu, QMenu &hMenu, int position, CApp &g_App,
+                      IQtFileMenuServices &projection, IQtPanelPluginMenuServices &plugins) {
+    if (position < 0 || position >= mainMenu.actions().size() ||
+        mainMenu.actions()[position]->menu() != &hMenu)
+        return;
+    if (position == 0) {
+        for (QAction *action : hMenu.actions())
+            hMenu.removeAction(action);
+        g_App.GetFocusedPanel().CreateFileMenu(projection, true, &plugins);
+    }
+}
 
 #ifndef IDCLOSE
 static const unsigned IDCLOSE = 8;

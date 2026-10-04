@@ -39,7 +39,8 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         view->selectionModel()->select(view->model()->index(row, 0),
                                        QItemSelectionModel::Select | QItemSelectionModel::Rows);
     }
-    static Inspection inspect(MainWindow &window, const QString &reportTag = {}) {
+    static Inspection inspect(MainWindow &window, const QString &reportTag = {},
+                              const char *command = "selectedPropertiesAction") {
         Inspection result;
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
@@ -79,7 +80,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
             }
             dialog->reject();
         });
-        action(window, "selectedPropertiesAction")->trigger();
+        action(window, command)->trigger();
         return result;
     }
 
@@ -119,7 +120,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         action(window, "flatViewAction")->setChecked(flat);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         selectOnly(window, diskRow(window, root.filePath(name)));
-        auto properties = inspect(window);
+        auto properties = inspect(window, {}, "archiveInfoAction");
         QVERIFY(properties.shown);
         QCOMPARE(properties.values.value("Имя").normalized(QString::NormalizationForm_C), name);
         QCOMPARE(properties.values.value("Размер"), QString("7"));

@@ -244,7 +244,11 @@ MainWindow::FilesystemSignature MainWindow::filesystemSignature(const QString &p
 }
 
 void MainWindow::pollAutoRefresh() {
-    if (scanningDisk_ || app_.QtOperations().active() || app_.QtOperations().closed())
+    // Native modal commands hold panel timer/notification guards while their
+    // workers can rebuild archive proxies. Do not change the Qt projection
+    // (and query the other panel) before CPanel::OnTimer sees those guards.
+    if (scanningDisk_ || app_.QtOperations().active() || app_.QtOperations().closed() ||
+        app_.QtOperations().callActive() || sourceArchiveProgress_)
         return;
     const unsigned original = projectedPanel_;
     for (unsigned index = 0; index < kNumPanelsMax; ++index) {

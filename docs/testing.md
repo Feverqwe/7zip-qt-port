@@ -1,5 +1,180 @@
 # Regression strategy
 
+P2-09 native System WIP (2026-10-04): `native_system_menu` is Windows-only.
+It uses disposable Unicode file/folder selections with the real source PIDL/
+IContextMenu query, checks missing/empty selection release, and records the
+native numeric invocation through a fake IContextMenu (Unicode directory,
+NULL lpVerbW, success/failure). `shell_menu_window` additionally drives the real
+MainWindow System generation and stale QAction path with EN/RU normal/compact
+reports. Source COM identity/export/DLL registration and installed extension
+are still separate pending work; these tests do not register anything in the OS.
+
+Windows snapshotc1b68eed passes8/8 focused suites in35.54s, zero skips, including
+real native System Copy to the runner's disposable clipboard, Unicode/spaced
+selection and source selection clearing. Stale QAction generation rejection
+remains covered. Native icons/owner-drawn rendering and installed COM UX remain
+outside this focused evidence.
+Eight current-build EN/RU980/640 reports were reviewed:29 root rows with
+System/7-Zip first,19 native child rows, no clipping; canonical Copy verb and
+OS-language labels are preserved. The later Linux ownership safety regression
+was validated by95406fe7; it postdates this Windows snapshot but changes no
+Windows implementation.
+
+Mac full gate26350 passes formatting/all-target build/229 CTest in95.10s.
+Later localized nested fixture readiness and native header dependency changes
+pass six direct local suites in15.55s. Windows snapshot7d3d0b4f passes7/7 in75.94s
+before the new presentation bridge. Linux7eadd4ad still fails one nested entry
+and external-update timeout; the latter is narrowed to update-failure with
+QTEST_FUNCTION_TIMEOUT. Snapshot13edb0ee passes Windows7/7 in36.79s (zero skips),
+including native System source/query/invoke and MainWindow generation. Eight
+current System reports were reviewed:29 root rows and19 native child rows,
+no clipping; RU app grouping retains the OS's English native verb labels.
+Linux13edb0ee and subsequent verbose559d4736 still fail one nested entry and
+external extraction before the update responder starts. The responder now starts
+before initial F4 and defers Close input past the source's final-message
+transition. Snapshot17e0b6d3 checks that change on Linux; no P2-09 acceptance.
+
+`scripts/check-compression-ui.sh` builds the application and focused Add/dialog/
+shell/selection consumers before running their CTest cases. It can be run via
+`python3 scripts/hyperv-runner.py run windows -- scripts/check-compression-ui.sh`
+in one fresh snapshot. `source_compress_dialog` tests the retained catalog's
+fixed-selection real modal, source DTO roundtrip, native success/broken existing
+archive/Cancel, EN/RU normal/compact column relations and top/bottom JSON reports.
+The ordinary Add regression forbids an embedded source picker and reads panel
+selection through the public dialog request. Remaining UX migration debt is in
+[ux-port-audit.md](ux-port-audit.md); passing these focused checks does not close it.
+
+P2-09 later alias correction removes actual Open/Create/Add-to-open/Extract-selected
+QActions and extension dispatch, not only their dynamic-menu visibility.
+`main_shell` asserts construction absence; source Open Inside shortcut, filesystem
+toolbar Add, Copy To/F5 selection availability, native update and password/volume/
+reopen/cancel checks replace the old alias assertions. `panel_shell` and
+`ui_archive_states` forbid the extra archive popup toolbar group and require
+the original Copy To/Properties entries. Fifteen affected suites initially pass
+14/15 in25.58s; the sole panel_key fixture still expected the former
+filesystem-only CreateArchive availability for toolbar Add. Correcting that
+expectation passes panel_key in4.47s. Current normal/compact File and archive
+popup JSON reviewed: source grouping/order, no extra archive group or clipping.
+An unsandboxed full gate of these later changes is running separately from
+the earlier program-menu gate/platform snapshot.
+It subsequently passed230/230 in96.54s (macOS arm64 Qt6.11.2). The focused
+script is now45 suites, adding actual Info/Properties, static File-menu absence,
+source policy/dispatch, panel focus, nested/read-only and volume consumers.
+Windows affected views use native Qt fonts/style. Fresh snapshot69d3153c is
+running on both guests; bash syntax and diff checks of the script pass.
+On Windows the widget suites use the native Qt platform, fonts and style;
+Qt's offscreen FreeType fallback without installed font data produced box metrics
+that did not match the application. `compression_resources` checks the source
+PrintMemUsage branches, including explicit/automatic limit and known/unknown RAM.
+The source modal covers Delete success, Cancel and refusal of an incompatible
+update mode while preserving the input. The checkbox remains enabled as in OnInit;
+source UpdateArchive validates the action set after confirmation.
+`shell_update_window` covers toolbar Add creation/Cancel for all seven native
+formats and existing-output updates. `source_drop_add` covers real external
+filesystem drops into Add: 7z/ZIP, Cancel and broken-existing output, without
+CLI create starts. Controlled archive Copy fixtures are tested separately.
+`codec_commands_ui` updates unknown-extension archives through original
+two-panel Copy, with success/cancellation and unchanged-source checks.
+The focused script now contains29 suites including method-dependent
+dictionary/order/solid/memory/limit consumers, `shell_update_gui`,
+`sfx_creation`, `sfx_lifecycle`, `compression_preferences`, `flat_view`,
+`modal_refresh_window`, `drag_drop_add_ui` and
+`source_archive_browse`. The latter tests original browse filter/default index,
+save alias omissions, confirmed format/extension, recognized ZIP alias, trailing
+dot, all-files inference, Cancel and SFX naming using deterministic picker results.
+`modal_refresh_window` holds the real two-panel F5 Copy modal across two refresh
+ticks and checks that the source projection/selection stays intact and Cancel
+performs no copy. `flat_view` separately checks cancellation during partial
+enumeration: disabling list notifications must not disable that cancellation
+command. Native update guards protect folder-property queries instead.
+`compression_path` checks that the form accepts an existing unknown-suffix output
+with editable source controls, and accepts a new destination parent without
+creating it. `shell_update_window` verifies native toolbar Add creates that
+Unicode/spaced parent and archive on success, and creates neither on Cancel.
+Current macOS gate after these changes: formatting, all-target build and230/230
+CTest PASS92.22s (2026-10-04). Fresh Windows/Linux21 validation is still running;
+the earlier19-suite snapshot does not validate later constructor/preflight fixes.
+
+After source SFX integration and native split-volume naming correction, a new
+macOS unsandboxed full gate passed formatting/build/230 CTest in92.14s.
+Unlike the earlier missing-module run, the local pinned native SFX module was
+present; source toolbar SFX executes plain/encrypted/split fixtures, and checks
+Cancel and broken-existing outputs. The expanded24-suite snapshot
+`20261004T010728Z-b6571bdb` passed Linux24/24 in35.68s and Windows24/24 in114.99s.
+Subsequent method-selector source edits postdate this gate/snapshot and need
+their own current checks. `originalMethodSelection` covers source automatic
+versus explicit spec, format roundtrip, Store clearing and TAR's level-zero
+method selection.
+
+The current method-selector gate subsequently passed macOS unsandboxed
+formatting/all-target build/230 CTest in95.40s (2026-10-04). Fresh29 snapshot
+`20261004T012451Z-98243ecb` passed Linux29/29 in39.16s and Windows29/29 in146.24s. The
+previous24-suite snapshot remains separate evidence for its older code.
+
+Subsequent native-reference findings have separate regressions: SFX→ZIP leaves
+the one LZMA item unselected in original 7zFM (CB_GETCURSEL=-1); Qt insertion
+must not choose it automatically. Four EN/RU normal/compact cases fail before
+that fix; affected13 suites then pass12.59s. The Archive prefix and editable
+combo share the source xArcFolderOffs column, and only the displayed Windows
+prefix uses native separators. The shared-edge regression also fails before
+the layout fix. Finally the initial archive filename is fully selected for
+typing, as in the original modal; four cases fail without the focus/selectAll
+adapter. Latest six affected suites pass9.39s. Fresh full/platform gates are
+running for these later corrections; older230/29 totals do not validate them.
+The subsequent current macOS gate passed formatting/all-target build/230 CTest
+in93.41s. Fresh29 snapshot `20261004T020838Z-07e2aeb5` passed Windows29/29
+in123.49s and Linux29/29 in38.34s. These results precede the program File-menu
+consumer below; a fresh full gate and snapshot0b1bdcab are running for it.
+The passing07e2aeb5 snapshot includes the selection, grouping and initial-focus fixes.
+
+P2-09 prerequisite `source_shell_update` uses ArchiveBackend's retained native
+factory owner and full source UpdateArchive to create 7z and SHA256 outputs
+from Unicode/spaced filenames. Official 7zz verifies both outputs. Early
+cancellation leaves no output; a broken existing archive is refused unchanged.
+These are backend checks, not popup Add/UpdateGUI acceptance.
+
+P2-09 WIP: `shell_menu_window` exercises the actual disk context popup and
+program File menu using
+local Unicode/spaced7z fixtures and the pinned official native module. Open-as
+keeps its explicit type and creates a separate File Manager/backend; forced ZIP
+refusal and encrypted-password cancellation retain the caller's selection and
+archive bytes, while success clears selection. Four EN/RU normal/compact popup
+reports accompany action-order/rectangle/text-width checks. Program File adds
+four EN/RU980/640 root and four child JSON reports; repeated activation keeps
+the row count stable, obsolete QActions cannot dispatch a newly retained context,
+and switching panels refuses the old selection's command. `shell_update_window`
+also exercises native program-menu Add to7z, modal Add/Cancel and broken-existing
+archive, including a second trigger after source context release. The three
+direct shell/menu consumers passed9.04s before the expanded program Open and
+geometry coverage; the expanded `shell_menu_window` passes0.90s on macOS.
+
+Program-menu full gate subsequently passed230/230 in95.22s on macOS.
+Linux immutable0b1bdcab passed29/29 in42.99s after freeing only owned old build
+caches and restoring the original runner runtime environment; its first NoSpace
+failure and retry have separate logs. Eight current Linux program root/child
+reports were reviewed, with source order and no clipped rows. Windows is pending.
+Later Info→Properties changes pass the five direct consumers3.16s plus nine
+policy/source/menu/language consumers9.76s locally and four Properties reports;
+they postdate that full/platform snapshot and need their own native checks.
+
+`shell_context`, `shell_archive_services`, `shell_registry`, `menu_page` and `panel_shell` cover
+the source query/invoke owner, native Extract/Test/Hash, fake registry/Apply and
+existing context/status consumers. Email and Windows COM/package/
+installed integration remain mandatory unverified consumers. Do not register
+an extension on the user's OS to run these tests.
+
+shell_update_gui exercises concrete CompressCall2→UpdateGUI worker→UpdateArchive:
+7z/ZIP/SHA256 outputs, one-error broken archive refusal, real progress Cancel
+and rollback, stale catalog refusal. shell_update_window invokes the real
+popup, verifies outputs via official7zz, success/failure selection, auto-refresh
+result appearance, and eight EN/RU root/hash QAction geometry reports. These
+shell_update_gui also checks the copied ShowDialog roundtrip through an injected
+modal: original action-set selection, time-property parsing, edited format/path,
+password, volumes and metadata; Cancel discards edits and unsupported action sets
+never reach presentation. SetMethods keeps only assigned single-stream encoders
+which are not filters or built-in methods. These checks do not accept the
+remaining real fixed-selection Qt modal/native extension consumers.
+
 P2-08 accepted: system_page checks source mixed selections, clear/other/7-Zip
 cycles, unsupported groups/types, per-row failure and external-state refresh,
 actual Options Apply/Cancel and EN/RU640×390/520×380 geometry. association_services
@@ -405,6 +580,18 @@ child-editor copy cannot be claimed while active, and wait errors retain protect
 copies. Related external/nested/extract/update/viewer/language/volume suites pass
 14/14(10.60s) at the earlier ownership checkpoint on macOS arm64 Qt6.11.2.
 Final actual child-editor/wait-error and failed-registry checks passed2/2(3.33s).
+
+P2-09 adds native create/retain/manual-delete/recreate cycles to `owned_temp`.
+Linux snapshot847c6ded failed before the birth-time identity correction, with
+the same errno13 refusal observed by source external/nested editor consumers.
+The corrected Linux snapshot2291d930 passed all7 focused suites in14.52s,
+including actual external/nested editor consumers. A further50-cycle regression
+checks that a user directory recreated at the old path cannot be claimed for
+deletion and its bytes remain unchanged; fresh Linux snapshot95406fe7 passed
+all7 focused suites in15.28s, zero skips.
+The macOS full formatting/build/229CTest gate passed99.37s; the later localized
+owned_temp test addition passed a focused rebuild/CTest in0.54s.
+
 owned_temp_publication checks native WorkDir publication into an owned spool
 versus an unowned user archive, plus real source AgentFolder rename/reopen with
 successful, failed-engine and cancelled spooled ZIP transactions. It observes
@@ -442,17 +629,22 @@ P1-14.2 regression scope; the final full gate passed170/170 on macOS arm64.
 It also checks paused/background Progress and finished Close hot switch without
 transport requests. Progress's direct consumers/resource contracts are checked
 separately by the existing worker/priority/cancel/archive suites. `language_ui`
-checks actual Properties rows/values/selection in EN/RU; `language_viewer`
-checks pending built-in editor contents/cursor/document state and read-only
-diagnostics. Local viewer messages have no corresponding upstream editor owner.
+checks actual Properties rows/values/selection in EN/RU. `language_archive_command`
+checks original viewer/editor launch failures in EN→RU→EN at normal/compact sizes.
+The former `language_viewer` suite was retired with the independent text editor.
 Main-window local File commands and toolbar title also switch EN/RU in place;
 `language-main-{en|ru}-{1100|640}.json` checks actual1100×640/640×380 exposure.
 `archive_backend` checks EN→RU→EN extraction preflight rejection, empty destination,
 raw malicious Unicode/spaced path and absence of output effects. The fixture
 includes an actual file for the existing listed-archive identity guard; engine
 listing tokens and arguments are unchanged by this presentation work.
-`language_main_dialog` checks a live archive summary in EN→RU→EN, unchanged
-metadata and backend call counts, and420×240/300×180 widget JSON. Its English
+`language_main_dialog` checks the actual toolbar Info→source Properties modal
+in EN→RU→EN, unchanged values and backend call counts, and540×360/360×240
+`language-toolbar-properties` widget JSON. The independent summary screen has
+been removed; `ui_navigation` covers source item and empty-archive properties,
+command identity and operation-state availability. `properties_runtime` also
+invokes toolbar Info for filesystem items across all four flat/non-flat views.
+Its English
 artifact language token is `-` (native English selection), Russian is `ru`.
 Its cancellation regression uses E_ABORT with arbitrary translated text, and
 requires a warning for E_FAIL even when the text matches a cancellation caption.
@@ -841,10 +1033,10 @@ validation remain mandatory beyond this consumer acceptance.
 
 `archive_selection_runtime` additionally verifies successful hash-result targets
 in normal/flat/four views and Unicode rename with its original input hint, plus
-Cancel without another request. `file_viewer` corrupts archive row path/directory
-roles and checks source View/Edit paths, saved bytes, temporary cleanup and
-selection/focus across success/failure/cancel. These checks validate consumer
-binding; full native open/edit/hash workflows remain mandatory later scopes.
+Cancel without another request. `external_editors_ui`, `archive_external_edit`
+and `archive_item_open` cover source focused/selected paths, saved bytes,
+temporary cleanup and selection/focus across success/failure/cancel.
+The independent built-in editor and its `file_viewer` suite were retired in P2-09.
 
 `panel_path` tests original relative/full panel path helpers with native source
 normal/flat folders, Unicode/spaces and duplicate basenames after owner release.
@@ -1029,8 +1221,8 @@ names, independent current/selected items, normal/flat filesystem refresh across
 four view modes, changed row ordering and fallback when the current file is
 removed. Archive cases cover four modes, normal/flat relative paths, duplicate
 basenames, a removed folder and failure/cancel snapshot reset. Mode changes
-retain current separately from selected items. `file_viewer` checks those two
-items separately after successful, failed and cancelled replacement.
+retain current separately from selected items. `archive_external_edit` and
+`external_editors_ui` exercise original external editing and its focused item.
 These are nonvisual state checks; geometry contracts are unchanged.
 
 `filesystem_scanner` also checks a 2048-file nested Unicode flat fixture:
@@ -1106,8 +1298,9 @@ state, Unicode and spaces, show/hide without text loss, OK/Enter and Cancel,
 normal/compact geometry and report redaction. `ui_parity_password` regenerates
 its reports via a fixture and compares all five controls against PasswordDialog.rc.
 `ui_archive_states` checks the prompt's backend integration and password lifetime.
-`ui_geometry` also rejects a stacked Compress layout and checks that the archive
-form precedes the source picker; encryption remains to the right at both sizes.
+`ui_geometry` rejects a stacked Compress layout and any embedded source picker;
+encryption remains to the right at both sizes. It checks the encryption-method
+label/combo on one row and right-aligned decompression memory.
 
 `ui_parity_tool` tests resource extraction and rejects broken/ambiguous widget
 reports, stale baselines and invented evidence symbols. `ui_parity_copy` uses a
@@ -1324,7 +1517,7 @@ truncation without loss of the stored value, full-value clipboard/detail and
 aligned deletion. History/navigation tests cover the shared QTreeWidget adapter.
 `edit_dialog` checks Unicode/literal markup, immutable text, Enter/Close and
 both scroll directions at normal/compact sizes, with JSON geometry reports.
-`file_viewer` checks that Enter or Open sends a Unicode filesystem path to the system file handler, extracts one archive entry before opening it, keeps that temporary copy until window destruction, and does not launch a handler after extraction cancellation. Its file-handler dependency is injected so the test never launches a desktop application.
+`archive_item_open` checks that Open sends a Unicode filesystem path to the system file handler, extracts one archive entry before opening it, keeps that temporary copy until window destruction, and does not launch a handler after extraction cancellation. Its file-handler dependency is injected so the test never launches a desktop application.
 
 ## What to test
 
@@ -1394,9 +1587,11 @@ When a bug is found, first capture it with a focused regression test when practi
 
 ## Проверка компоновки Qt
 
-`file_viewer` проверяет отдельные дополнительные пункты текстового просмотра/правки:
-UTF-8/Unicode, отказ от двоичного содержимого и замену архивной записи через
-управляемый backend. Это не native F3/F4. `external_editors_ui` проверяет реальные
+Независимые пункты текстового просмотра/правки и тест `file_viewer` удалены:
+исходный 7zFM использует внешние приложения. `archive_item_open` сохраняет проверки
+системного Open, lifetime извлечённой копии и отказа от запуска после Cancel.
+`archive_external_edit` также проверяет просмотр файла размером 17 MiB без
+удалённого лимита встроенного preview. `external_editors_ui` проверяет реальные
 F3/F4 disk launches через собственный fixture-процесс, focused file при нескольких
 selected, source Diff pair/opposite/fallback в normal/flat списках, ошибку запуска,
 Editor Browse/Apply/Cancel и normal/compact JSON. `external_launch` проверяет
@@ -1471,9 +1666,10 @@ remains for platform verification.
 `ui_navigation` checks persistent history for internal archive folders with
 Unicode and spaces, restoring from the address combo and Alt+F12 dialog,
 navigation without reloading the current archive, fallback to a surviving
-parent and an unavailable archive. Dialog screenshots at 540×360 and 360×240
-are saved as `archive-history-540.png` and `archive-history-360.png`.
-The existing `file_viewer` scenario also covers window destruction after
+parent and an unavailable archive. Dialog geometry and JSON at 540×360 and 360×240
+are checked as `archive-history-540.json` and `archive-history-360.json`;
+PNG is opt-in through `SEVENZIP_CAPTURE_SCREENSHOTS=1`.
+The `archive_item_open` scenario also covers window destruction after
 visiting an archive folder: address signals are disconnected before Qt's
 focus teardown can trigger navigation into a partially destroyed window.
 

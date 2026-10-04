@@ -44,6 +44,15 @@ QByteArray digest(QFile &file) {
     return result.toHex();
 }
 } // namespace
+bool ArchiveSfxModule::MakeExecutable(const QString &path) {
+#ifdef Q_OS_WIN
+    Q_UNUSED(path)
+    return true;
+#else
+    return QFile::setPermissions(path, QFile::permissions(path) | QFileDevice::ExeOwner |
+                                           QFileDevice::ExeUser);
+#endif
+}
 ArchiveSfxModule ArchiveSfxModule::Read(const QString &path, quint32 expectedVersion) {
     ArchiveSfxModule result;
     result.error_ = QtLocalText("The official SFX module is missing or incompatible.",

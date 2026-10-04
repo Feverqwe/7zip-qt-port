@@ -1,5 +1,7 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resourceGui.h"
+#include "7zip/UI/GUI/ExtractRes.h"
+#include "CPP/7zip/UI/FileManager/FormatUtils.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Common/StringConvert.h"
@@ -43,32 +45,27 @@ bool MainWindow::runExternalArchiveUpdate(CPanel &panel, const std::function<boo
     return result;
 }
 
-void MainWindow::openArchive(const QString &path) {
+void MainWindow::openArchive(const QString &path) { openArchiveAs(path, {}); }
+
+HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
     if (app_.QtOperations().closed())
-        return;
+        return E_ABORT;
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ == State::Loading || state_ == State::Operating)
-        return;
+        return E_ABORT;
     const QFileInfo file(path);
     if (!file.isFile() || file.isSymLink()) {
         statusBar()->showMessage(
             QtLocalText("File not found: ", QStringLiteral("Файл не найден: ")) + path);
-        return;
+        return E_INVALIDARG;
     }
     filesystemScanner_->cancel();
     scanningDisk_ = false;
     scanSelectedState_.reset();
-    if (infoDialog_)
-        infoDialog_->close();
     if (state_ == State::Filesystem)
         returnDirectory_ = directory_;
     auto &panel = app_.GetFocusedPanel();
     operationName_ = QtLangText(IDS_OPENNING);
-    journalMessages_.Clear();
-    if (journalDialog_)
-        journalDialog_->ResetMessages();
-    appendJournal(operationName_ + ": " + file.absoluteFilePath());
-    journalAction_->setEnabled(true);
     QString message;
     const auto completion = connect(backend_, &ArchiveBackend::finished, this,
                                     [&message](bool, const QString &text) { message = text; });
@@ -77,7 +74,16 @@ void MainWindow::openArchive(const QString &path) {
     {
         QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
         COpenResult opened;
-        result = panel.BindToPath(ToUString(file.absoluteFilePath()), UString(), opened);
+        result = panel.BindToPath(ToUString(file.absoluteFilePath()), ToUString(type), opened);
+        // BindToPath can successfully bind the containing filesystem folder
+        // after its archive probe returns S_FALSE. An archive-only request
+        // must retain that refusal rather than report "Archive opened".
+        if (result == S_OK && !opened.ArchiveIsOpened) {
+            result = S_FALSE;
+            message = ToQString(MyFormatNew(opened.Encrypted ? IDS_CANT_OPEN_ENCRYPTED_ARCHIVE
+                                                             : IDS_CANT_OPEN_ARCHIVE,
+                                            ToUString(file.absoluteFilePath())));
+        }
     }
     disconnect(completion);
     if (panel.IsArcFolder())
@@ -89,12 +95,10 @@ void MainWindow::openArchive(const QString &path) {
     else if (message.isEmpty())
         message = result == S_OK ? QtLocalText("Archive opened.", QStringLiteral("Архив открыт."))
                                  : ToQString(HResultToMessage(result));
-    appendJournal((result == S_OK ? QtLocalText("Result: ", QStringLiteral("Результат: "))
-                                  : QtLocalText("Error: ", QStringLiteral("Ошибка: "))) +
-                  message);
     statusBar()->showMessage(message);
     if (result != S_OK && result != E_ABORT)
         QMessageBox::warning(this, QStringLiteral("Sevenzip Desktop"), message);
+    return panel.IsArcFolder() ? result : result == S_OK ? S_FALSE : result;
 }
 
 bool MainWindow::isNestedArchive() const {

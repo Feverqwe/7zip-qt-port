@@ -8,18 +8,16 @@ UInt64 CreateArchiveDialog::GetDict2() const {
     const UInt64 dict = dictionary_->currentData().toULongLong();
     if (dict != 0)
         return dict;
-    const auto method =
-        NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
     return options.AutoDict ? UInt64(options.AutoDict) : UInt64(-1);
 }
 
 void CreateArchiveDialog::SetNumThreads2() {
     const UInt32 previous = threads_->currentData().toUInt();
-    const auto method =
-        level_->currentData().toUInt() == 0
-            ? NCompressDialog::kCopy
-            : NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto method = level_->currentData().toUInt() == 0
+                            ? NCompressDialog::kCopy
+                            : NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
@@ -40,10 +38,9 @@ void CreateArchiveDialog::SetNumThreads2() {
 }
 
 void CreateArchiveDialog::SetMemoryUsage() {
-    const auto method =
-        level_->currentData().toUInt() == 0
-            ? NCompressDialog::kCopy
-            : NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto method = level_->currentData().toUInt() == 0
+                            ? NCompressDialog::kCopy
+                            : NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
@@ -53,12 +50,11 @@ void CreateArchiveDialog::SetMemoryUsage() {
     const UInt64 usage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
         format_->currentText(), method, level_->currentData().toUInt(), numThreads, GetDict2(),
         solidBlock_->currentData().toUInt(), decompressMemory);
-    memoryUsage_->setText(usage == UInt64(-1) ? QStringLiteral("?")
-                                              : NCompressDialog::AddMemUsage(usage));
-    decompressionMemory_->setText(decompressMemory == UInt64(-1)
-                                      ? QStringLiteral("?")
-                                      : NCompressDialog::AddMemUsage(decompressMemory));
     const auto mu = Get_MemUse_Spec();
+    memoryUsage_->setText(
+        CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_VALUE, usage, mu, system_));
+    decompressionMemory_->setText(CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_DE_VALUE,
+                                                                 decompressMemory, mu, system_));
     memoryUsage_->setToolTip(
         mu.IsDefined || system_.RamSizeDefined
             ? QtLocalText("Limit: %1 / RAM: %2", "Лимит: %1 / RAM: %2")

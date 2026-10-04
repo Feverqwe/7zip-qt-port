@@ -50,8 +50,9 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         return E_NOTIMPL;
     CMyComPtr<IProgress> progress = new CBatchOpenProgress(callback);
     CMyComPtr<IFolderFolder> folder;
-    const HRESULT result =
-        _manager->OpenFolderFile(nullptr, options.filePath, nullptr, &folder, progress);
+    const HRESULT result = _manager->OpenFolderFile(nullptr, options.filePath,
+                                                    _openType.IsEmpty() ? nullptr : _openType.Ptr(),
+                                                    &folder, progress);
     if (result != S_OK)
         return result;
     auto *agent = dynamic_cast<CAgentFolder *>(folder.Interface());
@@ -72,12 +73,12 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         RINOK(SetProperties(resource->NativeItemProperties(), *options.props))
     CArc &arc = link.Arcs.AddNew();
     arc.Archive = agent->GetArchiveProperties();
-    // Process-owned archives do not share COpenOptions::codecs. The resource
-    // applies source metadata without storing an incompatible format index.
+    // Process-owned archives have no native codec slot. ConfigureArc maps a
+    // retained native handler into the caller's table when that table exists.
     arc.FormatIndex = -1;
     arc.DefaultName =
         GetDefaultName2(ExtractFileNameFromPath(options.filePath), UString(), UString());
-    RINOK(resource->ConfigureArc(arc))
+    RINOK(resource->ConfigureArc(arc, options.codecs))
     if (resource->Info.volumeCount > 1) {
         const QFileInfo first(QString::fromWCharArray(options.filePath));
         const QString name = first.fileName();

@@ -1,3 +1,4 @@
+#include "7zip/UI/GUI/CompressDialogRes.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
 #include <QScrollArea>
@@ -8,6 +9,35 @@
 class CompressionResourceTests final : public QObject {
     Q_OBJECT
   private slots:
+    void displayedMemoryIncludesLimitAndRam() {
+        NCompressDialog::CSystemInfo system;
+        system.RamSizeDefined = true;
+        system.RamSize = UInt64(8) << 30;
+        system.RamSizeReduced = UInt64(4) << 30;
+        system.RamUsageAuto = UInt64(3) << 30;
+        NCompression::CMemUse limit;
+        QCOMPARE(CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_VALUE, UInt64(32) << 20, limit,
+                                                system),
+                 QString("32 MB / 3072 MB / 8192 MB"));
+        limit.Parse("50%");
+        QCOMPARE(CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_VALUE, UInt64(32) << 20, limit,
+                                                system),
+                 QString("32 MB / 2048 MB / 8192 MB"));
+        QCOMPARE(CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_DE_VALUE, UInt64(32) << 20,
+                                                limit, system),
+                 QString("32 MB"));
+        system.RamSizeDefined = false;
+        QCOMPARE(CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_VALUE, UInt64(32) << 20, limit,
+                                                system),
+                 QString("32 MB / 2048 MB"));
+        limit = {};
+        QCOMPARE(CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_VALUE, UInt64(32) << 20, limit,
+                                                system),
+                 QString("32 MB"));
+        QCOMPARE(
+            CCompressDialog::PrintMemUsage(IDT_COMPRESS_MEMORY_VALUE, UInt64(-1), limit, system),
+            QString("?"));
+    }
     void algorithmLimits_data() {
         QTest::addColumn<QString>("formatName");
         QTest::addColumn<int>("methodID");
@@ -99,9 +129,9 @@ class CompressionResourceTests final : public QObject {
         QVERIFY(!threads->isEnabled());
         QCOMPARE(threads->count(), 1);
         QCOMPARE(dialog.compressionOptions().threads, 0);
-        QCOMPARE(memory->text(), QStringLiteral("18 MB"));
+        QVERIFY(memory->text().startsWith(QStringLiteral("18 MB / ")));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
-        QCOMPARE(memory->text(), QStringLiteral("3 MB"));
+        QVERIFY(memory->text().startsWith(QStringLiteral("3 MB / ")));
         QCOMPARE(decompress->text(), QStringLiteral("3 MB"));
         dialog.show();
         const QString screenshots = QDir::currentPath() + "/ui-screenshots";
@@ -109,14 +139,14 @@ class CompressionResourceTests final : public QObject {
         for (QString scenario : {QString("PPMd"), QString("ZIP"), QString("LZMA2")}) {
             if (scenario == "ZIP") {
                 format->setCurrentText("zip");
-                method->setCurrentText("Deflate");
+                method->setCurrentIndex(method->findData(-1));
                 QVERIFY(threads->isEnabled());
                 threads->setCurrentIndex(threads->findData(1u));
-                QCOMPARE(memory->text(), QStringLiteral("4 MB"));
+                QVERIFY(memory->text().startsWith(QStringLiteral("4 MB / ")));
                 QCOMPARE(decompress->text(), QStringLiteral("2 MB"));
             } else if (scenario == "LZMA2") {
                 format->setCurrentText("7z");
-                method->setCurrentText("LZMA2");
+                method->setCurrentIndex(method->findData(-1));
             }
             for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
                 dialog.resize(size);

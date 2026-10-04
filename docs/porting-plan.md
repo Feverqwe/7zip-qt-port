@@ -24,6 +24,7 @@ Upstream-файлы из `C/` сохраняем на C, из `CPP/` — на C+
 - [Сообщение для каждого нового чата](porting-chat-prompt.md).
 - [Происхождение и границы уже перенесённого кода](upstream-port-audit.md).
 - [Сценарии, ограничения и отличия от 7zFM](7zfm-parity.md).
+- [Обязательное исправление самостоятельных UX-допущений](ux-port-audit.md).
 - [Владельцы компонентов](architecture.md), [тесты](testing.md),
   [геометрия UI](ui-layout-contracts.md), [сверка ресурсов](ui-reference.md).
 
@@ -1206,6 +1207,25 @@ Windows/Linux gates, installed native registration/rendered/Finder остают�
 
 ### P2-09. Shell/context integration и завершение Menu page
 
+**Оставшиеся интегрированные результаты (2026-10-04):**
+
+- **P2-09.1 — File Manager shell consumers.** Source query/invoke и lifetime
+  обоих menus, настоящий Add/update/SFX/Hash/Open/Extract/Test, source F3/F4
+  вместо самостоятельных aliases, native Windows System menu; errors/Cancel,
+  selection, normal/compact EN/RU и текущие gates. Использует существующий
+  P2-09 source port; helpers не являются отдельными итерациями.
+- **P2-09.2 — Native Windows shell/launch component.** Оставшиеся COM interfaces,
+  DLL/GUI process entrypoints, email, native Properties, package и установленная
+  тестовая extension с реальными Windows consumers; native System icons,
+  owner-drawn handlers и rendered comparison существующего bridge. Unix applicability каждой
+  Windows-only ветви фиксируется по исходным callers, без замены workflow.
+- **P2-09.3 — Menu integration и приёмка parent.** Реальные registration/policy
+  controls, flags и consumers всех применимых платформ; закрывает P1-13.2,
+  после чего доступна итоговая P1-12.2. Обязательная глобальная UX-сверка остаётся
+  за своими owners и P3-06. Приёмка каждого результата ведётся в чеклисте;
+  прежние evidence и открытые omissions сохраняются. Parent закрывается только
+  после всех трёх.
+
 **После:** P1-13.1, P2-08. **Источники:** upstream
 `CPP/7zip/UI/Explorer/ContextMenu.*`, `RegistryContextMenu.*`, `MyMessages.*`,
 FM `MenuPage.*`, `MyLoadMenu.*`.
@@ -1219,6 +1239,16 @@ Win32 COM extension не строится на Unix. Platform services/extension
 registration/unregistration проверены fake environment; native extension
 проверяется на ОС с установленной тестовой сборкой. Не регистрировать её на
 машине пользователя только ради автоматического теста.
+
+Текущий scope P2-09.1: исходные PanelMenu/ContextMenu владеют генерацией и
+вызовом команд в popup и program File menu. Common UpdateArchive/Compress,
+TempFiles и GUI UpdateGUI/ShowDialog обеспечивают настоящий modal Add, прямые
+Add7z/ZIP и SHA256 generation через ArchiveBackend и retained codec catalog.
+Native Windows System query/invoke подключён; email, COM extension, установка,
+native Properties и завершение Menu page относятся к .2/.3. Самостоятельные
+File aliases, встроенный viewer и source picker удалены. Проверки, provenance
+и точные исторические omissions — в [audit](upstream-port-audit.md), текущая
+приёмка — в [чеклисте](porting-checklist.md).
 
 ### P2-10. Большие списки и операции без блокировки интерфейса
 

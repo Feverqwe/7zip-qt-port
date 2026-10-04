@@ -5,14 +5,17 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "mainwindow.h"
 #include "qtdialogscreenservices.h"
+#include "qtfilemanagershellmenu.h"
 #include "qtfilemenuprojection.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
+#include "qtprogramfilemenu.h"
 #include <QBitmap>
 #include <QMouseEvent>
 
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
+    QtFileManagerShellMenu shell(*this, menu);
     menu.setObjectName("panelContextMenu");
     QtFileMenuProjection projection;
     ReadRegDiff(projection.diffPath, toolbarSettingsPath());
@@ -20,10 +23,7 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QtDialogScreenServices screen(this);
     projection.screenServices = &screen;
     QHash<unsigned, QAction *> actions;
-    auto *sourceFile = findChild<QMenu *>("fileMenu");
-    for (QAction *action : sourceFile->actions()) {
-        if (action == open_)
-            break; // Qt archive workflow group is not in resource.rc.
+    for (QAction *action : programFileMenu_->SourceActions()) {
         const bool separator = action->isSeparator();
         const unsigned id = action->menu() ? 0u : action->property("nativeCommandID").toUInt();
         if (id < IDM_VER_EDIT || id > IDM_VER_DIFF)
@@ -31,29 +31,13 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
         if (!separator && !action->menu())
             actions.insert(id, action);
     }
-    projection.sourceItems.append({8, ToUString(exitAction_->text()), false});
-    for (QAction *action : sourceFile->actions()) {
+    for (QAction *action : programFileMenu_->SourceActions()) {
         const unsigned id = action->property("nativeCommandID").toUInt();
         if (id >= IDM_VER_EDIT && id <= IDM_VER_DIFF)
             actions.insert(id, action);
     }
-    app_.GetFocusedPanel().CreateFileMenu(projection, false);
-
-    CRecordVector<UInt32> operated;
-    app_.GetFocusedPanel().Get_ItemIndices_Operated(operated);
-    if (!operated.IsEmpty() && state_ == State::Filesystem) {
-        // Shell COM/7-Zip extension menus require their own platform service.
-        // Keep their source grouping visible until that integration is ready.
-        if (app_.ShowSystemMenu) {
-            auto *system = menu.addAction(QtLocalText("System", "Система"));
-            system->setObjectName("systemContextGroup");
-            system->setEnabled(false);
-        }
-        auto *sevenZip = menu.addAction(QStringLiteral("7-Zip"));
-        sevenZip->setObjectName("sevenZipContextGroup");
-        sevenZip->setEnabled(false);
-        menu.addSeparator();
-    }
+    sourceOperatedIndices(); // Synchronize the Qt selection before source menu construction.
+    app_.GetFocusedPanel().CreateFileMenu(projection, false, &shell);
     for (const auto &entry : projection.items) {
         if (entry.source.IsSeparator()) {
             menu.addSeparator();
@@ -71,14 +55,6 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
             continue;
         menu.addAction(action);
         action->setEnabled(action->isEnabled() && entry.enabled);
-    }
-    if (state_ == State::Viewing) {
-        menu.addSeparator();
-        menu.addAction(add_);
-        menu.addAction(selected_);
-        menu.addAction(extract_);
-        menu.addAction(test_);
-        menu.addAction(infoAction_);
     }
     menu.exec(globalPos);
 }

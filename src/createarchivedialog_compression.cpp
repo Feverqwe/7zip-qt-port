@@ -4,10 +4,9 @@
 #include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
-    auto *compression = new QGroupBox("Параметры сжатия", this);
-    compression->setObjectName("archiveCompressionGroup");
-    auto *compressionForm = new QFormLayout(compression);
-    compressionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    // The desktop CompressDialog.rc has plain controls in the left column.
+    QWidget *compression = form->parentWidget();
+    QFormLayout *compressionForm = form;
     level_ = new QComboBox(compression);
     level_->setObjectName("compressionLevel");
     compressionForm->addRow("Уровень сжатия:", level_);
@@ -49,11 +48,23 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     memoryLayout->addWidget(memoryUsage_);
     memoryLayout->addWidget(memUse_, 1);
     memoryRow->setFocusProxy(memUse_);
-    compressionForm->addRow("Память для сжатия:", memoryRow);
+    // IDT_COMPRESS_MEMORY is above the usage/limit row in CompressDialog.rc.
+    // Keep all three source values visible rather than hiding limit/RAM in a tooltip.
+    auto *memoryForm = new QFormLayout;
+    memoryForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    memoryForm->addRow("Память для сжатия:", memoryRow);
+    compressionForm->addRow(memoryForm);
     decompressionMemory_ = new QLabel(compression);
     decompressionMemory_->setObjectName("compressionDecompressionMemory");
-    compressionForm->addRow("Память для распаковки:", decompressionMemory_);
-    form->addRow(compression);
+    decompressionMemory_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    // IDT_COMPRESS_MEMORY_DE spans the column independently of g0xs/g1xs.
+    // Its caption must not widen the labels of the preceding combo rows.
+    auto *decompressionRow = new QHBoxLayout;
+    auto *decompressionLabel = new QLabel(compression);
+    decompressionLabel->setObjectName("compressionDecompressionLabel");
+    decompressionRow->addWidget(decompressionLabel);
+    decompressionRow->addWidget(decompressionMemory_, 1);
+    compressionForm->addRow(decompressionRow);
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         SaveOptionsInMem();
         registryFormat_ = format_->currentText();
@@ -120,8 +131,7 @@ void CreateArchiveDialog::SetLevel2() {
 
 void CreateArchiveDialog::SetOrder2() {
     const int previous = wordSize_->currentData().toInt();
-    const auto method =
-        NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto options = NCompressDialog::SetOrder2(method, level_->currentData().toUInt());
     wordSize_->clear();
     wordSize_->addItem(NCompressDialog::Modify_Auto(options.Values.isEmpty()
@@ -136,8 +146,7 @@ void CreateArchiveDialog::SetOrder2() {
 
 void CreateArchiveDialog::SetDictionary2() {
     const quint64 previous = dictionary_->currentData().toULongLong();
-    const auto method =
-        NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
     dictionary_->clear();
     dictionary_->addItem(
@@ -153,8 +162,7 @@ void CreateArchiveDialog::SetDictionary2() {
 void CreateArchiveDialog::SetSolidBlockSize2() {
     const UInt32 previous =
         solidBlock_->currentIndex() < 0 ? UInt32(-1) : solidBlock_->currentData().toUInt();
-    const auto method =
-        NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto options = NCompressDialog::SetSolidBlockSize2(
         format_->currentText(), level_->currentData().toUInt(), method, GetDict2());
     solidBlock_->clear();

@@ -6,13 +6,12 @@ void CreateArchiveDialog::updateSfxControls() {
     if (!sfx_)
         return;
     configureArchiveName(format_->currentText());
-    archiveNameState_.MethodID =
-        level_->currentData().toUInt() == 0
-            ? NCompressDialog::kCopy
-            : NCompressDialog::GetMethodID(method_->currentText(), format_->currentText());
+    archiveNameState_.MethodID = level_->currentData().toUInt() == 0
+                                     ? NCompressDialog::kCopy
+                                     : archiveNameState_.GetMethodID();
     const bool wasSfx = archiveNameState_.Info.SFXMode;
     const bool sourceSupported = archiveNameState_.CheckSFXControlsEnable();
-    const bool available = sourceSupported && existingTarget_.isEmpty() && sfxModule_.available();
+    const bool available = sourceSupported && sfxModule_.available();
     if (!available) {
         archiveNameState_.Info.SFXMode = false;
         const QSignalBlocker blocker(sfx_);
@@ -27,9 +26,6 @@ void CreateArchiveDialog::updateSfxControls() {
     if (!sfxModule_.available())
         QtBindLocalToolTip(sfx_, "An official SFX module for this platform is unavailable.",
                            "Официальный модуль SFX для этой платформы недоступен.");
-    else if (!existingTarget_.isEmpty())
-        QtBindLocalToolTip(sfx_, "Create SFX when creating a new archive.",
-                           "SFX доступен при создании нового архива.");
     else if (!sourceSupported)
         QtBindLocalToolTip(sfx_, "The selected format or method does not support SFX.",
                            "Выбранный формат или метод не поддерживает SFX.");
@@ -44,5 +40,4 @@ void CreateArchiveDialog::toggleSfx(bool enabled) {
     name_->setText(archiveNameState_.m_ArchivePath);
     SaveOptionsInMem();
     FormatChanged();
-    updateTargetPreview();
 }

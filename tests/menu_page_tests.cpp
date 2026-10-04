@@ -2,22 +2,145 @@
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/MenuPage.h"
+#include "Common/StringConvert.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
+#include "qtmenupageservices.h"
+#include "qtshellregistryservices.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QListWidget>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QSettings>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QtTest>
 
+namespace {
+class CShellServices final : public IQtMenuPageServices {
+  public:
+    bool x64 = true, other = true, exists = true;
+    QHash<UInt32, bool> Registered;
+    QHash<UInt32, LONG> Failures;
+    QList<UInt32> Applies;
+    QList<LONG> Errors;
+    bool CommandsAvailable() const override { return true; }
+    bool Is64Bit() const override { return x64; }
+    bool OtherBitnessAvailable() const override { return other; }
+    FString GetModuleDirPrefix() const override { return us2fs(UString(L"/test install 空/")); }
+    const char *GetDllName(unsigned index) const override {
+        return index == 0 ? "sevenzip_shell.dll" : "sevenzip_shell32.dll";
+    }
+    bool DoesFileExist(const FString &) const override { return exists; }
+    bool CheckContextMenuHandler(const UString &, UInt32 view) override {
+        return Registered.value(view);
+    }
+    LONG SetContextMenuHandler(bool value, const UString &path, UInt32 view) override {
+        Applies.append(view);
+        if (!QString::fromWCharArray(path.Ptr()).startsWith("/test install 空/"))
+            return 2;
+        const LONG error = Failures.value(view);
+        if (!error)
+            Registered.insert(view, value);
+        return error;
+    }
+    void ShowMenuErrorMessage(LONG error, QWidget *) override { Errors.append(error); }
+};
+} // namespace
+
 class MenuPageTests : public QObject {
     Q_OBJECT
   private slots:
+    void sourceShellApplyOrderAndRequeryAfterFailure() {
+        QTemporaryDir fixture;
+        auto services = std::make_shared<CShellServices>();
+        services->Registered[0] = true;
+        services->Failures[NQtShellRegistry::kWow32] = 5;
+        CMenuPage page(fixture.filePath("settings.ini"), nullptr, true, services);
+        page.resize(640, 390);
+        page.show();
+        auto *native = page.findChild<QCheckBox *>("shellIntegration");
+        auto *other = page.findChild<QCheckBox *>("shellIntegration32");
+        QVERIFY(native->isEnabled() && other->isEnabled());
+        QVERIFY(native->isChecked() && !other->isChecked());
+        QTest::mouseClick(native, Qt::LeftButton, Qt::NoModifier, QPoint(10, native->height() / 2));
+        QTest::mouseClick(other, Qt::LeftButton, Qt::NoModifier, QPoint(10, other->height() / 2));
+        QVERIFY(page.IsModified());
+        QCOMPARE(page.OnApply(), 0L);
+        QCOMPARE(services->Applies, QList<UInt32>({NQtShellRegistry::kWow32, 0}));
+        QCOMPARE(services->Errors, QList<LONG>({5}));
+        QVERIFY(!native->isChecked() && !other->isChecked());
+        QVERIFY(!page.IsModified());
+        services->Failures.clear();
+        services->Applies.clear();
+        QTest::mouseClick(other, Qt::LeftButton, Qt::NoModifier, QPoint(10, other->height() / 2));
+        QCOMPARE(page.OnApply(), 0L);
+        QCOMPARE(services->Applies, QList<UInt32>({NQtShellRegistry::kWow32}));
+        QVERIFY(other->isChecked());
+        page.OnApply();
+        QCOMPARE(services->Applies.size(), 1);
+        const UString oldLanguage = g_LangID;
+        const auto restoreLanguage = qScopeGuard([&] {
+            SaveRegLang(oldLanguage, fixture.filePath("language.ini"));
+            ReloadLang(fixture.filePath("language.ini"));
+        });
+        for (const char *language : {"-", "ru"}) {
+            SaveRegLang(UString(language), fixture.filePath("language.ini"));
+            ReloadLang(fixture.filePath("language.ini"));
+            page.ReloadLangItems();
+            QVERIFY(native->toolTip().isEmpty() && other->toolTip().isEmpty());
+            QVERIFY(page.findChild<QCheckBox *>("cascadedMenu")->toolTip().isEmpty());
+            for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
+                page.resize(size);
+                QApplication::processEvents();
+                QWidget *previous = nullptr;
+                for (const char *name :
+                     {"shellIntegration", "shellIntegration32", "cascadedMenu", "menuIcons",
+                      "menuElimDup", "menuZone", "menuItemsLabel", "menuItems"}) {
+                    auto *control = page.findChild<QWidget *>(name);
+                    QVERIFY(UiInspection::fullyVisible(*control, page));
+                    if (previous)
+                        QVERIFY(UiInspection::bounds(*previous, page).bottom() <
+                                UiInspection::bounds(*control, page).top());
+                    if (qobject_cast<QCheckBox *>(control))
+                        QVERIFY(control->width() >= control->sizeHint().width());
+                    previous = control;
+                }
+                QVERIFY(UiInspection::writeReport(page, QString("menu-shell-%1-%2")
+                                                            .arg(language[0] == '-' ? "en" : "ru")
+                                                            .arg(size.width())));
+            }
+        }
+    }
+    void sourceShellDiscoveryCancelAndPersistedFlags() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("settings.ini");
+        auto services = std::make_shared<CShellServices>();
+        services->x64 = services->other = false;
+        {
+            CMenuPage page(path, nullptr, true, services);
+            QVERIFY(page.findChild<QCheckBox *>("shellIntegration32")->isHidden());
+            QVERIFY(page.findChild<QCheckBox *>("shellIntegration32")->text().contains("64-bit"));
+            page.findChild<QCheckBox *>("shellIntegration")->click();
+            QVERIFY(page.IsModified());
+        }
+        QVERIFY(services->Applies.isEmpty());
+        services->exists = false;
+        CMenuPage page(path, nullptr, true, services);
+        QVERIFY(!page.findChild<QCheckBox *>("shellIntegration")->isEnabled());
+        page.findChild<QCheckBox *>("cascadedMenu")->click();
+        page.findChild<QListWidget *>("menuItems")->item(0)->setCheckState(Qt::Unchecked);
+        QCOMPARE(page.OnApply(), 0L);
+        CContextMenuInfo info;
+        info.Load(path);
+        QVERIFY(info.Cascaded.Def && !info.Cascaded.Val);
+        QVERIFY(!(info.Flags & NContextMenuFlags::kOpen));
+        QVERIFY(services->Applies.isEmpty());
+    }
     void capabilitiesAndGeometry() {
         QTemporaryDir fixture;
         QtFmOptionsDialog dialog(fixture.filePath("settings.ini"));

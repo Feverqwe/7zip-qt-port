@@ -21,6 +21,7 @@ struct ISequentialOutStream;
 struct IFolderFolder;
 struct IArchiveOpenCallback;
 struct CArc;
+class CCodecs;
 class CWorkDirTempFile;
 class QtArchiveDeleteInputs;
 class QtOwnedTempLease;
@@ -71,7 +72,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT GetArchiveProperty(PROPID id, PROPVARIANT *value) const;
     HRESULT GetNumberOfArchiveProperties(UInt32 *count) const;
     HRESULT GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type) const;
-    HRESULT ConfigureArc(CArc &arc) const;
+    HRESULT ConfigureArc(CArc &arc, const CCodecs *codecs = nullptr) const;
     void AttachCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> codecs) {
         _codecs = std::move(codecs);
     }

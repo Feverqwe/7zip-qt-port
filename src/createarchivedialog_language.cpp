@@ -18,6 +18,10 @@ void CreateArchiveDialog::BindLanguage() {
                 QtBindResourceText(label, id, caption);
     };
     row(archivePath_, IDT_COMPRESS_ARCHIVE, "&Archive:");
+    row(findChild<QWidget *>("archivePathRow"), IDT_COMPRESS_ARCHIVE, "&Archive:");
+    QtBindResourceText(findChild<QLabel *>("archiveLabel"), IDT_COMPRESS_ARCHIVE, "&Archive:");
+    QtBindResourceText(findChild<QPushButton *>("archiveBrowse"), IDS_COMPRESS_SET_ARCHIVE_BROWSE,
+                       "Specify archive name", true);
     row(format_, IDT_COMPRESS_FORMAT, "Archive &format:");
     row(updateMode_, IDT_COMPRESS_UPDATE_MODE, "&Update mode:");
     row(pathMode_, IDT_COMPRESS_PATH_MODE, "Path mode:");
@@ -31,29 +35,27 @@ void CreateArchiveDialog::BindLanguage() {
     QtBindResourceText(threads_, IDT_COMPRESS_THREADS, "Number of CPU &threads:", true);
     QtBindResourceText(memUse_, IDT_COMPRESS_MEMORY, "Memory usage for Compressing:", true);
     row(decompressionMemory_, IDT_COMPRESS_MEMORY_DE, "Memory usage for Decompressing:");
+    QtBindResourceText(findChild<QLabel *>("compressionDecompressionLabel"), IDT_COMPRESS_MEMORY_DE,
+                       "Memory usage for Decompressing:");
     row(parameters_, IDT_COMPRESS_PARAMETERS, "Parameters:");
     row(volume_, IDT_SPLIT_TO_VOLUMES, "Split to &volumes, bytes:");
     row(password_, IDT_PASSWORD_ENTER, "Enter &password:");
     row(passwordConfirmation_, IDT_PASSWORD_REENTER, "Reenter password:");
     row(encryption_, IDT_COMPRESS_ENCRYPTION_METHOD, "&Encryption method:");
+    if (auto *label = findChild<QLabel *>("archiveEncryptionMethodLabel"))
+        QtBindResourceText(label, IDT_COMPRESS_ENCRYPTION_METHOD, "&Encryption method:");
     QtBindResourceText(advanced_, IDB_COMPRESS_OPTIONS, "Options");
     QtBindResourceText(sharedFiles_, IDX_COMPRESS_SHARED, "Compress shared files");
     QtBindResourceText(sfx_, IDX_COMPRESS_SFX, "Create SFX archive");
     QtBindResourceText(deleteAfterCompressing_, IDX_COMPRESS_DEL, "Delete files after compression");
     QtBindResourceText(findChild<QGroupBox *>("archiveLifecycleOptions"), IDG_COMPRESS_OPTIONS,
                        "Options");
-    QtBindLocalText(findChild<QGroupBox *>("archiveCompressionGroup"), "Compression",
-                    "Параметры сжатия");
     if (password_) {
         QtBindResourceText(findChild<QGroupBox *>("archiveEncryptionGroup"),
                            IDG_COMPRESS_ENCRYPTION, "Encryption");
         QtBindResourceText(showPassword_, IDX_PASSWORD_SHOW, "Show Password");
         QtBindResourceText(encryptHeaders_, IDX_COMPRESS_ENCRYPT_FILE_NAMES, "Encrypt file &names");
     }
-    // The additional picker/footer are local Qt integration, absent from 7zFM.
-    QtBindLocalText(buttons_->button(QDialogButtonBox::Ok),
-                    existingTarget_.isEmpty() ? "Create" : "Add",
-                    existingTarget_.isEmpty() ? "Создать" : "Добавить");
     ReloadLanguageItems();
 }
 
@@ -111,7 +113,6 @@ void CreateArchiveDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && buttons_) {
         ReloadLanguageItems();
         SetMemoryUsage();
-        updateTargetPreview();
     }
     QDialog::changeEvent(event);
 }

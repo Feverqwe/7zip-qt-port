@@ -54,6 +54,10 @@ class MainShellTests final : public QObject {
         auto *tools = window.findChild<QMenu *>("toolsMenu");
         auto *help = window.findChild<QMenu *>("helpMenu");
         QVERIFY(file && edit && view && favorites && tools && help);
+        for (const char *name : {"openArchiveAction", "createArchiveAction", "addArchiveAction",
+                                 "extractSelectedAction", "operationJournalAction",
+                                 "builtinTextViewAction", "builtinTextEditAction"})
+            QVERIFY(!window.findChild<QAction *>(name));
         QCOMPARE(window.menuBar()->actions().size(), 6);
         QCOMPARE(actionNames(*file), QStringList({"openItemAction",
                                                   "openInsideAction",
@@ -81,14 +85,6 @@ class MainShellTests final : public QObject {
                                                   "|",
                                                   "linkAction",
                                                   "altStreamsAction",
-                                                  "|",
-                                                  "openArchiveAction",
-                                                  "createArchiveAction",
-                                                  "addArchiveAction",
-                                                  "extractSelectedAction",
-                                                  "operationJournalAction",
-                                                  "builtinTextViewAction",
-                                                  "builtinTextEditAction",
                                                   "|",
                                                   "exitAction",
                                                   "verEditAction",

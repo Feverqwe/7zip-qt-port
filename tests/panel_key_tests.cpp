@@ -2,6 +2,8 @@
 #include "window_state_support.h"
 #include <QScopeGuard>
 
+extern bool g_CaseSensitive;
+
 class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
@@ -255,7 +257,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QApplication::processEvents();
         leftAddress->setFocus();
         QTRY_VERIFY(leftAddress->hasFocus());
-        QVERIFY(action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QTest::keyClick(leftTable, Qt::Key_F2, Qt::AltModifier);
         QTRY_VERIFY(rightPanel->findChild<QComboBox *>("pathCombo")->view()->isVisible());
@@ -266,7 +268,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         rightIcons->setFocus();
         QTRY_VERIFY(rightIcons->hasFocus());
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "createArchiveAction")->isEnabled());
+        QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<ExtractDialog *>("extractDialog");
             QVERIFY(dialog);
@@ -653,7 +655,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QTest::keyClick(view, Qt::Key_Minus, keypad | Qt::ShiftModifier);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 0);
         QTest::keyClick(view, Qt::Key_Plus, keypad | Qt::AltModifier);
-        QCOMPARE(table->selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(table->selectionModel()->selectedRows().size(), g_CaseSensitive ? 1 : 2);
         QTest::keyClick(view, Qt::Key_Minus, keypad | Qt::AltModifier);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 0);
         QTest::keyClick(view, Qt::Key_Asterisk, keypad);
@@ -676,7 +678,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         };
         maskKey(Qt::Key_Plus);
         QCOMPARE(dialogs, 1);
-        QCOMPARE(table->selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(table->selectionModel()->selectedRows().size(), g_CaseSensitive ? 1 : 2);
         maskKey(Qt::Key_Minus);
         QCOMPARE(dialogs, 2);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 0);

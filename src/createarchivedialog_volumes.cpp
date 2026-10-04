@@ -11,10 +11,12 @@ void CreateArchiveDialog::createVolumeOptions(QFormLayout *form) {
     volume_->setInsertPolicy(QComboBox::NoInsert);
     AddVolumeItems(*volume_);
     volume_->setCurrentIndex(-1);
-    volume_->setEnabled(existingTarget_.isEmpty());
     QtBindLocalToolTip(volume_, "For example: 10M or 10M 20M. Leave empty for a single archive.",
                        "Например: 10M или 10M 20M. Пустое поле — один архив.");
-    form->addRow("Разбить на тома, байт:", volume_);
+    auto *volumeForm = new QFormLayout;
+    volumeForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    volumeForm->addRow("Разбить на тома, байт:", volume_);
+    form->addRow(volumeForm);
 }
 
 bool CreateArchiveDialog::checkVolumeSizes() {

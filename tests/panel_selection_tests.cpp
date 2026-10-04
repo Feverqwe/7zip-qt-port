@@ -3,6 +3,8 @@
 #include <QTableWidget>
 #include <QtTest>
 
+extern bool g_CaseSensitive;
+
 class PanelSelectionTests final : public QObject {
     Q_OBJECT
 
@@ -49,7 +51,7 @@ class PanelSelectionTests final : public QObject {
         QVERIFY(DoesWildcardMatchName(u"АЛЬФА *.TXT", u"альфа файл.txt"));
         QVERIFY(!DoesWildcardMatchName(u"?", u"\U0001F600"));
         QVERIFY(DoesWildcardMatchName(u"??", u"\U0001F600"));
-        QVERIFY(DoesWildcardMatchName(UString(L"*.gz"), UString(L"b.GZ")));
+        QCOMPARE(DoesWildcardMatchName(UString(L"*.gz"), UString(L"b.GZ")), !g_CaseSensitive);
     }
 
     void sourcePanelCommandsKeepIndexAndFocus() {
@@ -64,7 +66,7 @@ class PanelSelectionTests final : public QObject {
                                                QItemSelectionModel::NoUpdate);
         panel.SelectByType(true);
         QVERIFY(selected(view, 1));
-        QVERIFY(selected(view, 2));
+        QCOMPARE(selected(view, 2), !g_CaseSensitive);
         QVERIFY(!selected(view, 3));
         QVERIFY(!selected(view, 4));
         QVERIFY(!selected(view, 0));
@@ -79,7 +81,7 @@ class PanelSelectionTests final : public QObject {
         QVERIFY(!selected(view, 0));
         panel.SelectByType(false);
         QVERIFY(!selected(view, 1));
-        QVERIFY(!selected(view, 2));
+        QCOMPARE(selected(view, 2), g_CaseSensitive);
         QVERIFY(selected(view, 3));
         QVERIFY(selected(view, 4));
         view.selectionModel()->setCurrentIndex(view.model()->index(0, 0),

@@ -1,10 +1,12 @@
 #include "7zip/UI/Explorer/resource.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
-#include "archiveprogressoperation.h"
 #include "mainwindow.h"
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
+#include "qtshellarchiveservices.h"
+#include <QScopedValueRollback>
 
 bool QtFileManagerDrag::ConfirmCopyToArchive(CPanel &panel, DWORD effect) {
     UString s = LangString(effect == DROPEFFECT_MOVE ? IDS_MOVE_TO : IDS_COPY_TO);
@@ -54,23 +56,17 @@ UInt32 QtFileManagerDrag::Drag_OnContextMenu(int x, int y, UInt32 mask) {
     return chosen ? chosen->data().toUInt() : UInt32(NDragMenu::k_Cancel);
 }
 HRESULT QtFileManagerDrag::CompressFiles(CPanel &, const UString &folder, const UString &name,
-                                         const UStringVector &paths, bool) {
-    QStringList sources;
-    FOR_VECTOR(i, paths) sources.append(ToQString(paths[i]));
-    CreateArchiveDialog dialog(ToQString(folder), sources, &window_);
-    if (auto *archiveName = dialog.findChild<QLineEdit *>("archiveName")) {
-        CCompressDialog path;
-        path.Format = dialog.findChild<QComboBox *>("archiveFormat")->currentText();
-        path.SetArchiveName(ToQString(name));
-        archiveName->setText(path.m_ArchivePath);
-    }
-    if (dialog.exec() != QDialog::Accepted)
-        return E_ABORT;
-    ArchiveProgressOperation operation(*window_.backend_, [&] {
-        window_.backend_->create(dialog.target(), dialog.sources(), dialog.password(),
-                                 dialog.encryptHeaders(), dialog.compressionOptions());
-    });
-    operation.MainWindow = &window_;
-    const HRESULT result = operation.Create(L"7-Zip", &window_);
-    return result == S_OK ? operation.Result : result;
+                                         const UStringVector &paths, bool waitFinish) {
+    const auto catalog = window_.backend_->codecCatalog();
+    QtShellArchiveServices services(
+        *window_.backend_, &window_, {}, {}, {},
+        [&](CCompressDialog &source, const CObjectVector<NWildcard::CCensorPath> &selection,
+            QWidget *parent) {
+            return CreateArchiveDialog::PresentSource(source, selection, catalog, parent);
+        },
+        MainWindow::toolbarSettingsPath());
+    QScopedValueRollback<bool> progressOwner(window_.sourceArchiveProgress_, true);
+    // Original PanelDrag::CompressDropFiles call flags; the retained service
+    // transports the in-process CompressCall2 worker and Qt modal.
+    return ::CompressFiles(folder, name, L"", true, paths, false, true, waitFinish, services);
 }

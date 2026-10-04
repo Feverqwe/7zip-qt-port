@@ -185,7 +185,7 @@ class BindingLifecycleTests : public QObject, protected MainWindowTestSupport {
         const QString oldTemporary = backend.lastExtractDestination;
         QVERIFY(!QFileInfo::exists(oldTemporary));
         QVERIFY(action(window, "hashSHA256Action")->isEnabled());
-        QVERIFY(action(window, "builtinTextViewAction")->isEnabled());
+        QVERIFY(!window.findChild<QAction *>("builtinTextViewAction"));
         QVERIFY(action(window, "viewFileAction")->isEnabled());
         window.extractTo(destination.path(), true);
         QCOMPARE(backend.lastSelected, QStringList{oldPath});

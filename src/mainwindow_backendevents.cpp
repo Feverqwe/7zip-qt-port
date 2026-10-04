@@ -58,7 +58,6 @@ void MainWindow::connectBackend() {
     });
     connect(backend_, &ArchiveBackend::outputReceived, this, [this](const QString &line) {
         if (!app_.QtOperations().closed()) {
-            appendJournal(line);
             if (progress_ && (line.startsWith(QStringLiteral("ERROR:"), Qt::CaseInsensitive) ||
                               line.startsWith(QStringLiteral("WARNING:"), Qt::CaseInsensitive)))
                 progress_->Sync.AddError_Message(line.toStdWString().c_str());
@@ -104,9 +103,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
     }
     if (!ok)
         archivePassword_.clear();
-    appendJournal((ok ? QtLocalText("Result: ", QStringLiteral("Результат: "))
-                      : QtLocalText("Error: ", QStringLiteral("Ошибка: "))) +
-                  resultMessage);
     const bool hadProgress = progress_;
     const bool canceled = result == E_ABORT;
     if (hadProgress && !ok && !canceled)
@@ -117,7 +113,6 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
         refreshTransferDestination(*transferDestination);
     if (finishedArchiveState)
         return;
-    finishViewExtraction(ok);
     statusBar()->showMessage(resultMessage);
     if (!ok && !hadProgress && !messageDisplayed && !canceled)
         QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
@@ -125,15 +120,12 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
 
 bool MainWindow::startPendingArchiveMove(bool ok) {
     if (archiveMoveStage_ == ArchiveMoveStage::Extracting && ok) {
-        appendJournal(
-            QtLocalText("Extraction completed. Deleting source entries.",
-                        QStringLiteral("Извлечение завершено. Удаление исходных записей.")));
         archiveMoveStage_ = ArchiveMoveStage::Removing;
         updatingArchive_ = true;
         closeProgressDialog();
         begin(
             QtLocalText("Deleting moved entries", QStringLiteral("Удаление перемещённых записей")),
-            archive_, true);
+            archive_);
         backend_->remove(archive_, archiveMovePaths_);
         return true;
     }
@@ -144,11 +136,6 @@ bool MainWindow::finishArchiveState(bool ok) {
     if (state_ == State::Loading && !ok) {
         showDirectory(returnDirectory_, false);
     } else if (state_ == State::Operating) {
-        if (replacingArchiveEntry_) {
-            replacingArchiveEntry_ = false;
-            viewTemporary_.reset();
-            pendingEditEntry_.clear();
-        }
         if (creating_)
             showDirectory(directory_, false);
         else if (updatingArchive_ && ok) {
@@ -164,34 +151,6 @@ bool MainWindow::finishArchiveState(bool ok) {
         updatingArchive_ = false;
     }
     return false;
-}
-
-void MainWindow::finishViewExtraction(bool ok) {
-    if (pendingView_) {
-        const QString file = pendingViewPath_;
-        const bool external = pendingExternalOpen_;
-        const bool editable = pendingViewEditable_;
-        pendingView_ = false;
-        pendingExternalOpen_ = false;
-        pendingViewEditable_ = false;
-        pendingViewPath_.clear();
-        if (ok && QFileInfo(file).isFile()) {
-            QTimer::singleShot(0, this, [this, file, external, editable] {
-                if (app_.QtOperations().closed())
-                    return;
-                if (external) {
-                    if (openLocalFile(file))
-                        openedTemporaries_.push_back(std::move(viewTemporary_));
-                    else
-                        viewTemporary_.reset();
-                } else
-                    openFileViewer(file, editable);
-            });
-        } else {
-            pendingEditEntry_.clear();
-            viewTemporary_.reset();
-        }
-    }
 }
 
 void MainWindow::closeProgressDialog(bool finished) {

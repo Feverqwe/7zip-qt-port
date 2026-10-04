@@ -57,6 +57,14 @@ class CPanel;
 class IQtPanelDragServices;
 class QWidget;
 class CVirtFileSystem;
+class CZipContextMenu;
+class IQtContextMenuServices;
+#ifdef _WIN32
+struct IContextMenu;
+#endif
+namespace NQtShellMenu {
+struct CMenuHandle;
+}
 namespace NUpdateArchive {
 struct CActionSet;
 }
@@ -538,7 +546,21 @@ class CPanel : public QObject {
     }
     bool IsFolder_with_FsItems() const;
     int FindDir_InOperatedList(const CRecordVector<UInt32> &indices) const;
-    void CreateFileMenu(class IQtFileMenuServices &menu, bool programMenu);
+    void CreateFileMenu(class IQtFileMenuServices &menu, bool programMenu,
+                        class IQtPanelPluginMenuServices *plugins = nullptr);
+    bool InvokePluginCommand(unsigned id, class IQtPanelPluginServices &services);
+#ifdef _WIN32
+    HRESULT CreateShellContextMenu(const CRecordVector<UInt32> &operatedIndices,
+                                   CMyComPtr<IContextMenu> &systemContextMenu);
+    HRESULT InvokeShellContextMenu(unsigned offset, IContextMenu *systemContextMenu);
+    void CreateSystemMenu(HMENU menuSpec, bool showExtendedVerbs,
+                          const CRecordVector<UInt32> &operatedIndices,
+                          CMyComPtr<IContextMenu> &systemContextMenu);
+#endif
+    void CreateSevenZipMenu(NQtShellMenu::CMenuHandle *menuSpec, bool showExtendedVerbs,
+                            const CRecordVector<UInt32> &operatedIndices, int firstDirIndex,
+                            std::unique_ptr<CZipContextMenu> &sevenZipContextMenu,
+                            const QString &settingsPath, IQtContextMenuServices &services);
     CPanelStatus Refresh_StatusBar() const;
     bool IsThereReadOnlyFolder() const;
     bool DoesItSupportOperations() const { return _folderOperations != NULL; }
@@ -553,10 +575,13 @@ class CPanel : public QObject {
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
+    void AddToArchive(class IQtCompressCallServices &services);
     UString GetItemName_for_Copy(unsigned index) const;
     UString GetItemName(unsigned index) const;
     UString GetItemRelPath(unsigned index) const;
     UString GetItemRelPath2(unsigned index) const;
+    void Add_ItemRelPath2_To_String(unsigned itemIndex, UString &s) const;
+    void GetFilePaths(const CRecordVector<UInt32> &operatedIndices, UStringVector &paths) const;
     UString GetItemFullPath(unsigned index) const;
     bool IsItem_Folder(UInt32 index) const;
     int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,

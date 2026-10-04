@@ -71,7 +71,7 @@ class CompressionSolidTests final : public QObject {
         QCOMPARE(block->itemText(0), QStringLiteral("*  4 GB"));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(block->itemText(0), QStringLiteral("*  128 MB"));
-        method->setCurrentText("LZMA2");
+        method->setCurrentIndex(method->findData(-1));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(block->itemText(0), QStringLiteral("*  256 MB"));
         method->setCurrentText("PPMd");

@@ -15,11 +15,36 @@
 #include "Common/StringConvert.h"
 #include "Windows/System.h"
 #include "qtcompressoptionsdialog.h"
+#include <QComboBox>
 #include <QDir>
 #include <QFileInfo>
 #include <QLabel>
+#include <QMessageBox>
 
 static const unsigned kHistorySize = 20;
+
+// Original PrintMemUsage body: Qt text return replaces SetItemText; the caller
+// supplies the parsed memory spec and the source system-information fields.
+QString CCompressDialog::PrintMemUsage(UInt32 res, UInt64 value, const NCompression::CMemUse &mu,
+                                       const NCompressDialog::CSystemInfo &system) {
+    if (value == (UInt64)(Int64)-1)
+        return QStringLiteral("?");
+    QString s = NCompressDialog::AddMemUsage(value);
+    if (res == IDT_COMPRESS_MEMORY_VALUE) {
+        if (mu.IsDefined) {
+            s += " / ";
+            s += NCompressDialog::AddMemUsage(mu.GetBytes(system.RamSizeReduced));
+        } else if (system.RamSizeDefined) {
+            s += " / ";
+            s += NCompressDialog::AddMemUsage(system.RamUsageAuto);
+        }
+        if (system.RamSizeDefined) {
+            s += " / ";
+            s += NCompressDialog::AddMemUsage(system.RamSize);
+        }
+    }
+    return s;
+}
 
 // Original CompressDialog.cpp FormatChanged/OnOK bool-pair bodies. Qt uses
 // explicit load/save entry points for the modal Options transaction.
@@ -185,6 +210,120 @@ static int GetExtDotPos(const UString &s) {
     if (dotPos > s.ReverseFind_PathSepar() + 1)
         return dotPos;
     return -1;
+}
+
+static void AddFilter(CObjectVector<CBrowseFilterInfo> &filters, const UString &description,
+                      const UString &ext) {
+    CBrowseFilterInfo &f = filters.AddNew();
+    UString mask("*.");
+    mask += ext;
+    f.Masks.Add(mask);
+    f.Description = description;
+    f.Description += " (";
+    f.Description += mask;
+    f.Description += ")";
+}
+
+static const char *const k_DontSave_Exts = "xpi odt ods docx xlsx ";
+
+// Original OnButtonSetArchive control flow. Qt supplies the save dialog and
+// model fields instead of Win32 controls; the caller applies FormatChanged.
+bool CCompressDialog::OnButtonSetArchive(QWidget *parent, const BrowseFileHandler &browse) {
+    QString qtPath;
+    if (!GetFinalPath_Smart(qtPath)) {
+        QMessageBox::warning(parent, QStringLiteral("7-Zip"), "Incorrect archive path");
+        return false;
+    }
+    UString path(qtPath.toStdWString().c_str());
+    int filterIndex = -1;
+    CObjectVector<CBrowseFilterInfo> filters;
+    unsigned numFormats = 0;
+    const bool isSFX = IsSFX();
+    if (isSFX) {
+        filterIndex = 0;
+        const UString ext("exe");
+        AddFilter(filters, ext, ext);
+    } else {
+        numFormats = ArcFormats ? ArcIndices.Size() : 0;
+        UString desc;
+        UStringVector masks;
+        CStringFinder finder;
+        for (unsigned i = 0; i < numFormats; i++) {
+            if (ArcIndices[i] == unsigned(Info.FormatIndex))
+                filterIndex = int(i);
+            const CArcInfoEx &ai = (*ArcFormats)[ArcIndices[i]];
+            CBrowseFilterInfo &f = filters.AddNew();
+            f.Description = ai.Name;
+            f.Description += " (";
+            bool needSpace_desc = false;
+            FOR_VECTOR(k, ai.Exts) {
+                const UString &ext = ai.Exts[k].Ext;
+                UString mask("*.");
+                mask += ext;
+                if (finder.FindWord_In_LowCaseAsciiList_NoCase(k_DontSave_Exts, ext))
+                    continue;
+                f.Masks.Add(mask);
+                masks.Add(mask);
+                if (needSpace_desc)
+                    f.Description.Add_Space();
+                needSpace_desc = true;
+                f.Description += ext;
+            }
+            f.Description += ")";
+            if (i != 0)
+                desc.Add_Space();
+            desc += ai.GetMainExt();
+        }
+        CBrowseFilterInfo &f = filters.AddNew();
+        f.Description = LangString(IDT_COMPRESS_ARCHIVE);
+        if (f.Description.IsEmpty())
+            f.Description = "Archive:";
+        f.Description.RemoveChar(L'&');
+        f.Description += " (";
+        f.Description += desc;
+        f.Description += ")";
+        f.Masks = masks;
+    }
+    AddFilter(filters, LangString(IDS_OPEN_TYPE_ALL_FILES), UString("*"));
+    if (filterIndex < 0)
+        filterIndex = int(filters.Size()) - 1;
+    CBrowseInfo bi;
+    bi.Title = QString::fromWCharArray(LangString(IDS_COMPRESS_SET_ARCHIVE_BROWSE).Ptr());
+    bi.SaveMode = true;
+    bi.FilterIndex = filterIndex;
+    bi.Owner = parent;
+    bi.FilePath = QString::fromWCharArray(path.Ptr());
+    if (!(browse ? browse(bi, filters) : bi.BrowseForFile(filters)))
+        return false;
+    path = bi.FilePath.toStdWString().c_str();
+    if (isSFX) {
+        const int dotPos = GetExtDotPos(path);
+        if (dotPos >= 0)
+            path.DeleteFrom(unsigned(dotPos));
+        path += kExeExt;
+    } else if (unsigned(bi.FilterIndex) < numFormats) {
+        bool needAddExt = true;
+        const CArcInfoEx &ai = (*ArcFormats)[ArcIndices[unsigned(bi.FilterIndex)]];
+        const int dotPos = GetExtDotPos(path);
+        if (dotPos >= 0) {
+            const UString ext = path.Ptr(unsigned(dotPos + 1));
+            if (ai.FindExtension(ext) >= 0)
+                needAddExt = false;
+        }
+        if (needAddExt) {
+            if (path.IsEmpty() || path.Back() != '.')
+                path.Add_Dot();
+            path += ai.GetMainExt();
+        }
+    }
+    SetArcPathFields(QString::fromWCharArray(path.Ptr()));
+    if (!isSFX && unsigned(bi.FilterIndex) < numFormats && bi.FilterIndex != filterIndex) {
+        Info.FormatIndex = int(ArcIndices[unsigned(bi.FilterIndex)]);
+        Format = QString::fromWCharArray(Get_ArcInfoEx().Name.Ptr()).toLower();
+        return true;
+    }
+    ArcPath_WasChanged(QString::fromWCharArray(path.Ptr()));
+    return true;
 }
 
 void CCompressDialog::SetArchiveName2(bool prevWasSFX) {
@@ -1302,7 +1441,159 @@ UInt64 Get_MemUse_Bytes(const NCompression::CMemUse &mu, const CSystemInfo &syst
 
 } // namespace NCompressDialog
 
+void CCompressDialog::SetMethods(const CObjectVector<CCodecInfoUser> &userCodecs) {
+    using namespace NCompressDialog;
+    ExternalMethods.Clear();
+    {
+        FOR_VECTOR(i, userCodecs) {
+            const CCodecInfoUser &c = userCodecs[i];
+            if (!c.EncoderIsAssigned || !c.IsFilter_Assigned || c.IsFilter || c.NumStreams != 1)
+                continue;
+            unsigned k;
+            for (k = 0; k < Z7_ARRAY_SIZE(g_7zMethods); k++)
+                if (c.Name.IsEqualTo_Ascii_NoCase(kMethodsNames[g_7zMethods[k]]))
+                    break;
+            if (k != Z7_ARRAY_SIZE(g_7zMethods))
+                continue;
+            ExternalMethods.Add(c.Name);
+        }
+    }
+}
+
 using namespace NCompressDialog;
+
+// Original SetMethod2/GetMethodID/GetMethodSpec bodies. Qt supplies the control,
+// current level/registry and MethodChanged presentation callback; method IDs,
+// auto sentinel, external-method ordering and selection branches remain source.
+void CCompressDialog::SetMethod2(QComboBox &control, UInt32 level,
+                                 const NCompression::CInfo &registry,
+                                 const std::function<void()> &methodChanged, int keepMethodId) {
+    m_Method = &control;
+    m_Method->clear();
+    _auto_MethodId = -1;
+    const CFormatInfo &fi = GetFormatInfo(Format);
+    const CArcInfoEx &ai = Get_ArcInfoEx();
+    if (level == 0 && !ai.Flags_HashHandler()) {
+        if (!ai.Is_Tar() && !ai.Is_Zstd()) {
+            methodChanged();
+            return;
+        }
+    }
+    UString defaultMethod;
+    {
+        const int index = FindRegistryFormat(registry, QString::fromWCharArray(ai.Name.Ptr()));
+        if (index >= 0) {
+            const NCompression::CFormatOptions &fo = registry.Formats[index];
+            defaultMethod = fo.Method.toStdWString().c_str();
+        }
+    }
+    const bool isSfx = IsSFX();
+    bool weUseSameMethod = false;
+    const bool is7z = ai.Is_7z();
+    for (unsigned m = 0;; m++) {
+        int methodID;
+        const char *method;
+        if (m < fi.NumMethods) {
+            methodID = fi.MethodIDs[m];
+            method = kMethodsNames[methodID];
+            if (is7z)
+                if (methodID == kCopy || methodID == kDeflate || methodID == kDeflate64)
+                    continue;
+        } else {
+            if (!is7z)
+                break;
+            const unsigned extIndex = m - fi.NumMethods;
+            if (extIndex >= ExternalMethods.Size())
+                break;
+            methodID = (int)(Z7_ARRAY_SIZE(kMethodsNames) + extIndex);
+            method = ExternalMethods[extIndex].Ptr();
+        }
+        if (isSfx)
+            if (!IsMethodSupportedBySfx(methodID))
+                continue;
+        AString s(method);
+        int writtenMethodId = methodID;
+        if (m == 0) {
+            _auto_MethodId = methodID;
+            writtenMethodId = -1;
+            s.Insert(0, "*  ");
+        }
+        const bool hadSelection = m_Method->currentIndex() >= 0;
+        m_Method->addItem(QString::fromLatin1(s.Ptr()), writtenMethodId);
+        // CComboBox::AddString does not select an item; QComboBox does.
+        // Keep selection solely under the original branches below.
+        if (!hadSelection)
+            m_Method->setCurrentIndex(-1);
+        const int itemIndex = m_Method->count() - 1;
+        if (keepMethodId == methodID) {
+            m_Method->setCurrentIndex(itemIndex);
+            weUseSameMethod = true;
+            continue;
+        }
+        if ((defaultMethod.IsEqualTo_Ascii_NoCase(method) || m == 0) && !weUseSameMethod)
+            m_Method->setCurrentIndex(itemIndex);
+    }
+    if (!weUseSameMethod)
+        methodChanged();
+}
+
+int CCompressDialog::GetMethodID_RAW() const {
+    if (!m_Method)
+        return MethodID;
+    if (m_Method->count() <= 0)
+        return -1;
+    if (m_Method->currentIndex() < 0)
+        return -1; // Original GetItemData_of_CurSel returns CB_ERR.
+    return (int)(Int32)(UInt32)m_Method->currentData().toUInt();
+}
+
+int CCompressDialog::GetMethodID() const {
+    if (!m_Method)
+        return MethodID;
+    int raw = GetMethodID_RAW();
+    if (raw < 0)
+        return _auto_MethodId;
+    return raw;
+}
+
+UString CCompressDialog::GetMethodSpec(UString &estimatedName) const {
+    estimatedName.Empty();
+    if (!m_Method) {
+        estimatedName = HashMethodSpec;
+        return estimatedName;
+    }
+    if (m_Method->count() < 1)
+        return estimatedName;
+    const int methodIdRaw = GetMethodID_RAW();
+    int methodId = methodIdRaw;
+    if (methodIdRaw < 0)
+        methodId = _auto_MethodId;
+    UString s;
+    if (methodId >= 0) {
+        if ((unsigned)methodId < Z7_ARRAY_SIZE(kMethodsNames))
+            estimatedName = kMethodsNames[methodId];
+        else
+            estimatedName =
+                ExternalMethods[(unsigned)methodId - (unsigned)Z7_ARRAY_SIZE(kMethodsNames)];
+        if (methodIdRaw >= 0)
+            s = estimatedName;
+    }
+    return s;
+}
+
+UString CCompressDialog::GetMethodSpec() const {
+    UString estimatedName;
+    UString s = GetMethodSpec(estimatedName);
+    return s;
+}
+
+bool CCompressDialog::IsMethodEqualTo(const UString &s) const {
+    UString estimatedName;
+    const UString shortName = GetMethodSpec(estimatedName);
+    if (s.IsEmpty())
+        return shortName.IsEmpty();
+    return s.IsEqualTo_NoCase(estimatedName);
+}
 
 static void AddText_from_BoolPair(AString &s, const char *name, const CBoolPair &bp) {
     if (bp.Def) {

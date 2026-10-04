@@ -1,3 +1,4 @@
+#include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "7zip/UI/GUI/ExtractRes.h"
@@ -75,52 +76,61 @@ class LanguageArchiveCommandTests final : public QObject {
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("memory fixture"));
     }
-    void boundedArchivePreviewMessageAndGeometry() {
+    void externalEditorFailureUsesSourceMessageAndGeometry() {
+        const QString path = fixture.filePath(QStringLiteral("large file 密碼.txt"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("source editor fixture"), qint64(21));
+        file.close();
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        const UString missing = ToUString('"' + fixture.filePath("missing editor") + '"');
+        SaveRegEditor(false, missing, settings);
+        SaveRegEditor(true, missing, settings);
         ControlledBackend backend;
         MainWindow window(&backend);
-        const QString archive = fixture.filePath(QStringLiteral("large 密碼.zip"));
-        QVERIFY(backend.prepareArchiveFixture(archive));
-        ArchiveEntry entry;
-        entry.path = QStringLiteral("large file 密碼.txt");
-        entry.size = 17 * 1024 * 1024;
-        entry.sizeValue = quint64(entry.size);
-        backend.queueList({entry});
-        window.openArchive(archive);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
-        QTRY_COMPARE(table->rowCount(), 1);
-        table->selectRow(0);
-        auto *view = window.findChild<QAction *>("builtinTextViewAction");
-        QVERIFY(view && view->isEnabled());
+        int row = -1;
+        for (int i = 0; i < table->rowCount(); ++i)
+            if (table->item(i, 0)->text() == QFileInfo(path).fileName())
+                row = i;
+        QVERIFY(row >= 0);
+        table->selectRow(row);
+        table->setCurrentCell(row, 0);
         for (const char *name : {"-", "ru", "-"}) {
             language(name);
-            for (int width : {1100, 640}) {
-                window.resize(width, width == 640 ? 380 : 640);
-                window.show();
-                QString message;
-                bool geometry = false, reported = false;
-                QTimer::singleShot(0, &window, [&] {
-                    auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
-                    QVERIFY(box);
-                    message = box->text();
-                    auto *label = box->findChild<QLabel *>("qt_msgbox_label");
-                    geometry = label && UiInspection::fullyVisible(*label, *box) &&
-                               UiInspection::labelFits(*label);
-                    for (auto *button : box->buttons())
-                        geometry = geometry && UiInspection::fullyVisible(*button, *box);
-                    reported = UiInspection::writeReport(
-                        *box, QString("language-archive-preview-%1-%2").arg(name).arg(width));
-                    box->accept();
-                });
-                view->trigger();
-                QCOMPARE(message,
-                         QString(name) == "ru"
-                             ? QStringLiteral("Файл больше 16 МиБ. Просмотр текста недоступен.")
-                             : QString("File is larger than 16 MiB. Text preview is unavailable."));
-                QVERIFY(geometry && reported);
-                QCOMPARE(backend.extractCalls, 0);
-                QCOMPARE(backend.listCalls, 1);
-                QCOMPARE(table->item(0, 0)->text(), entry.path);
-                QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
+            for (const char *command : {"viewFileAction", "editFileAction"}) {
+                for (int width : {1100, 640}) {
+                    window.resize(width, width == 640 ? 380 : 640);
+                    window.show();
+                    QString message;
+                    bool geometry = false, reported = false;
+                    QTimer::singleShot(0, &window, [&] {
+                        auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+                        QVERIFY(box);
+                        message = box->text();
+                        auto *label = box->findChild<QLabel *>("qt_msgbox_label");
+                        geometry = label && UiInspection::fullyVisible(*label, *box) &&
+                                   UiInspection::labelFits(*label);
+                        for (auto *button : box->buttons())
+                            geometry = geometry && UiInspection::fullyVisible(*button, *box);
+                        reported = UiInspection::writeReport(
+                            *box, QString("language-source-editor-error-%1-%2-%3")
+                                      .arg(name)
+                                      .arg(command)
+                                      .arg(width));
+                        box->accept();
+                    });
+                    window.findChild<QAction *>(command)->trigger();
+                    QCOMPARE(message, ToQString(LangString(IDS_CANNOT_START_EDITOR)));
+                    QVERIFY(geometry && reported);
+                    QCOMPARE(backend.extractCalls, 0);
+                    QCOMPARE(backend.listCalls, 0);
+                    QCOMPARE(table->item(row, 0)->text(), QFileInfo(path).fileName());
+                    QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
+                }
             }
         }
     }

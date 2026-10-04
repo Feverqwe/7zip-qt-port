@@ -23,6 +23,13 @@ class ArchiveCodecProbe;
 class ArchiveNativeOpen;
 class QtOwnedTempDir;
 struct IOpenCallbackUI;
+struct IUpdateCallbackUI2;
+struct CUpdateOptions;
+struct CUpdateErrorInfo;
+struct COpenType;
+namespace NWildcard {
+class CCensor;
+}
 
 struct ArchiveEntry {
     QString path;
@@ -93,6 +100,7 @@ class ArchiveBackend : public QObject {
     std::shared_ptr<const ArchiveCodecCatalog> codecCatalog() const {
         return std::atomic_load(&codecCatalog_);
     }
+    ArchiveBackend *createIndependentBackend(QObject *parent = nullptr) const;
     bool discoverCodecCatalog(const QString &module = {});
     void cancelCodecDiscovery();
     QString openDialogFilter() const;
@@ -107,6 +115,16 @@ class ArchiveBackend : public QObject {
     HRESULT updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback) const;
+    HRESULT updateSourceArchive(const QString &path, const QString &type,
+                                NWildcard::CCensor &censor, CUpdateOptions &options,
+                                CUpdateErrorInfo &errorInfo, IOpenCallbackUI *openCallback,
+                                IUpdateCallbackUI2 *callback, bool needSetPath) const;
+    // Source worker transport. GUI preflight owns operation-state checks.
+    HRESULT updateSourceArchive(const UString &path, const CObjectVector<COpenType> &types,
+                                NWildcard::CCensor &censor, CUpdateOptions &options,
+                                CUpdateErrorInfo &errorInfo, IOpenCallbackUI *openCallback,
+                                IUpdateCallbackUI2 *callback, bool needSetPath,
+                                const std::shared_ptr<const ArchiveCodecCatalog> &catalog) const;
     HRESULT updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,
                              ISequentialOutStream *output, UInt32 count,
                              IArchiveUpdateCallback *callback) const;

@@ -46,10 +46,17 @@ class LanguageFocusTests : public QObject {
         const QKeySequence mnemonic = QKeySequence::mnemonic(show->text());
         QCOMPARE(show->shortcut(), mnemonic);
         if (!mnemonic.isEmpty()) {
-            QTest::keySequence(&dialog, mnemonic);
+            const auto pressMnemonic = [&] {
+                const auto key = mnemonic[0];
+                QKeyEvent press(QEvent::KeyPress, key.key(), key.keyboardModifiers());
+                QKeyEvent release(QEvent::KeyRelease, key.key(), key.keyboardModifiers());
+                QApplication::sendEvent(&dialog, &press);
+                QApplication::sendEvent(&dialog, &release);
+            };
+            pressMnemonic();
             QWidget *first = dialog.focusWidget();
             QVERIFY(first == show || first == parameters);
-            QTest::keySequence(&dialog, mnemonic);
+            pressMnemonic();
             QWidget *second = dialog.focusWidget();
             QVERIFY(second == show || second == parameters);
             QVERIFY(first != second);

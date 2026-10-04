@@ -151,13 +151,19 @@ HRESULT QtArchiveFileResource::GetArchivePropertyInfo(UInt32 index, BSTR *name, 
     return *name ? S_OK : E_OUTOFMEMORY;
 }
 
-HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc) const {
+HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) const {
     const QFileInfo file(EnginePath);
     if (!file.isFile())
         return E_FAIL;
     arc.Path = EnginePath.toStdWString().c_str();
     if (_nativeOpen) {
         const CArc &native = _nativeOpen->arc();
+        // A native index belongs to its retained catalog. Map the handler name
+        // into the caller's metadata table for source IsHashHandler; never copy
+        // an index between different codec owners.
+        if (codecs)
+            if (const CArcInfoEx *format = _nativeOpen->formatInfo())
+                arc.FormatIndex = codecs->FindFormatForArchiveType(format->Name);
         arc.DefaultName = native.DefaultName;
         arc.IsReadOnly = native.IsReadOnly;
         arc.FileSize = native.FileSize;
