@@ -25,8 +25,7 @@ void FilesystemFolderLoader::run() {
         auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder_);
         spec->CheckBreak = [this](const QString &) { return !canceled_; };
         spec->SetCompleted = [this](quint64 count) {
-            if (count == 1 || count % 128 == 0)
-                emit advanced(count);
+            completed_.store(count);
             return !canceled_;
         };
         result_ = spec->SetFlatMode(1);

@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QList>
 #include <QObject>
+#include <QTimer>
 class FilesystemFolderLoader;
 
 class FilesystemScanner : public QObject {
@@ -33,6 +34,8 @@ class FilesystemScanner : public QObject {
     void loaderFinished(FilesystemFolderLoader *loader, quint64 generation);
 
     quint64 generation_ = 0;
+    QTimer progressTimer_{this};
+    quint64 progressCount_ = 0;
     FilesystemFolderLoader *loader_ = nullptr;
     QList<FilesystemFolderLoader *> loaders_;
     CMyComPtr<IFolderFolder> folder_;

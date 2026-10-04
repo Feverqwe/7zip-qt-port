@@ -48,16 +48,11 @@ void ArchiveBackend::hashMethods(const QStringList &paths, const QStringList &me
     }
     hashOperation_ = std::make_unique<QtArchiveHashOperation>(paths, methods, catalog);
     const quint64 generation = ++hashGeneration_;
-    hashOperation_->Progress = [this, generation](quint64 completed, quint64 total,
-                                                  const QString &path) {
+    const quint64 progressGeneration = beginWorkerProgress();
+    hashOperation_->Progress = [this, progressGeneration](quint64 completed, quint64 total,
+                                                          const QString &path) {
         const int percent = total ? int(qMin(100.0, 100.0 * completed / total)) : 0;
-        QMetaObject::invokeMethod(
-            this,
-            [this, generation, percent, path] {
-                if (hashOperation_ && hashGeneration_ == generation)
-                    emit progress(percent, path);
-            },
-            Qt::QueuedConnection);
+        postWorkerProgress(progressGeneration, percent, path);
     };
     connect(hashOperation_.get(), &QThread::finished, this, [this, generation] {
         if (hashOperation_ && hashGeneration_ == generation)
@@ -72,6 +67,7 @@ void ArchiveBackend::finishHashOperation() {
     if (!hashOperation_)
         return;
     hashOperation_->wait();
+    finishWorkerProgress();
     auto operation = std::move(hashOperation_);
     lastResult_ = operation->Result;
     if (cancelled_)

@@ -1,0 +1,46 @@
+#include "archivebackend.h"
+#include <QMutexLocker>
+
+// External-worker transport: like original CProgressSync's mutex snapshot and
+// CProgressDialog's timer, retain the latest state instead of posting every
+// native callback to the GUI queue. Native scan/hash/deletion policy is unchanged.
+quint64 ArchiveBackend::beginWorkerProgress() {
+    QMutexLocker lock(&workerProgressMutex_);
+    workerProgressPending_ = false;
+    workerProgressPath_.clear();
+    workerProgressTimer_.start();
+    return ++workerProgressGeneration_;
+}
+
+void ArchiveBackend::postWorkerProgress(quint64 generation, int percent, const QString &path) {
+    QMutexLocker lock(&workerProgressMutex_);
+    if (generation != workerProgressGeneration_)
+        return;
+    workerProgressPercent_ = percent;
+    workerProgressPath_ = path;
+    workerProgressPending_ = true;
+}
+
+void ArchiveBackend::reportWorkerProgress() {
+    int percent;
+    QString path;
+    {
+        QMutexLocker lock(&workerProgressMutex_);
+        if (!workerProgressPending_)
+            return;
+        percent = workerProgressPercent_;
+        path = workerProgressPath_;
+        workerProgressPending_ = false;
+    }
+    emit progress(percent, path);
+}
+
+void ArchiveBackend::finishWorkerProgress() {
+    workerProgressTimer_.stop();
+    {
+        QMutexLocker lock(&workerProgressMutex_);
+        ++workerProgressGeneration_;
+        workerProgressPending_ = false;
+        workerProgressPath_.clear();
+    }
+}

@@ -6,6 +6,7 @@
 #include "archiveenginelocation.h"
 #include "archivesfxmodule.h"
 #include "processpriority.h"
+#include "qtarchivecopypreparation.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivehashoperation.h"
 #include "qtarchivevolumeoutput.h"
@@ -21,6 +22,10 @@
 #include <QUuid>
 
 ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(parent) {
+    copyProgressTimer_.setInterval(33);
+    connect(&copyProgressTimer_, &QTimer::timeout, this, &ArchiveBackend::reportCopyPreparation);
+    workerProgressTimer_.setInterval(33);
+    connect(&workerProgressTimer_, &QTimer::timeout, this, &ArchiveBackend::reportWorkerProgress);
     if (executable.isEmpty())
         executable = FindArchiveEngine();
     process_.setProgram(executable);
@@ -87,6 +92,10 @@ bool ArchiveBackend::busy() const {
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
 HRESULT ArchiveBackend::setPaused(bool paused) {
+    if (copyPreparation_) {
+        copyPreparation_->setPaused(paused);
+        return S_OK;
+    }
     if (hashOperation_) {
         hashOperation_->setPaused(paused);
         return S_OK;
@@ -107,7 +116,7 @@ HRESULT ArchiveBackend::setPaused(bool paused) {
 HRESULT ArchiveBackend::setBackground(bool background) {
     // The source progress dialog already sets this application's priority.
     // Native workers run in that process rather than a separate CLI child.
-    if (hashOperation_ || volumeOutput_ || job_ == Job::CreatePrepare ||
+    if (copyPreparation_ || hashOperation_ || volumeOutput_ || job_ == Job::CreatePrepare ||
         job_ == Job::CreateDeleteInputs)
         return S_OK;
     if (process_.state() != QProcess::Running)
@@ -493,6 +502,8 @@ void ArchiveBackend::cancel() {
     if (!busy())
         return;
     cancelled_ = true;
+    if (copyPreparation_)
+        copyPreparation_->cancel();
     if (hashOperation_)
         hashOperation_->cancel();
     if (creationLifecycle_)
@@ -510,6 +521,10 @@ void ArchiveBackend::cancel() {
 void ArchiveBackend::cancelAndWait() {
     if (busy())
         cancel();
+    if (copyPreparation_) {
+        copyPreparation_->wait();
+        finishCopyPreparation();
+    }
     if (hashOperation_) {
         hashOperation_->wait();
         finishHashOperation();

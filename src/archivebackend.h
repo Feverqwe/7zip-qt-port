@@ -8,15 +8,19 @@ struct CProperty;
 #include <QDateTime>
 #include <QHash>
 #include <QMap>
+#include <QMutex>
 #include <QObject>
 #include <QPair>
 #include <QProcess>
 #include <QStringList>
+#include <QTimer>
+#include <functional>
 #include <memory>
 #include <optional>
 class QtArchiveVolumeOutput;
 class QtArchiveCreationLifecycle;
 class QtArchiveHashOperation;
+class QtArchiveCopyPreparation;
 class ArchiveCodecCatalog;
 class ArchiveSfxModule;
 class ArchiveCodecProbe;
@@ -245,6 +249,7 @@ class ArchiveBackend : public QObject {
         Hash,
         Create,
         CreatePrepare,
+        CopyPrepare,
         CreateDeleteInputs,
         CreateVolumes,
         Add,
@@ -273,6 +278,10 @@ class ArchiveBackend : public QObject {
                               ExtractionOptions::PathMode pathMode, QStringList *replaceEntries,
                               QStringList *renameEntries);
     bool prepareMutation(const QString &archive);
+    void prepareArchiveCopy(const QString &source, const QString &output,
+                            std::function<void()> continuation);
+    void finishCopyPreparation();
+    void reportCopyPreparation();
     void startSourcePlanStage(Job stage);
     bool startKeepNameSourcePlan(const QString &archive, const SourceUpdatePlan &plan,
                                  const QString &output, const QString &format,
@@ -323,7 +332,23 @@ class ArchiveBackend : public QObject {
     std::unique_ptr<QtArchiveVolumeOutput> volumeOutput_;
     std::unique_ptr<QtArchiveCreationLifecycle> creationLifecycle_;
     std::unique_ptr<QtArchiveHashOperation> hashOperation_;
+    std::unique_ptr<QtArchiveCopyPreparation> copyPreparation_;
+    std::function<void()> copyContinuation_;
+    QTimer copyProgressTimer_{this};
+    QString copyProgressDetail_;
+    quint64 copyGeneration_ = 0;
     quint64 hashGeneration_ = 0;
+    quint64 creationGeneration_ = 0;
+    QTimer workerProgressTimer_{this};
+    QMutex workerProgressMutex_;
+    quint64 workerProgressGeneration_ = 0;
+    bool workerProgressPending_ = false;
+    int workerProgressPercent_ = 0;
+    QString workerProgressPath_;
+    quint64 beginWorkerProgress();
+    void postWorkerProgress(quint64 generation, int percent, const QString &path);
+    void reportWorkerProgress();
+    void finishWorkerProgress();
     void finishHashOperation();
     HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,
                                     UInt32 count) const;

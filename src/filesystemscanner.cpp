@@ -9,7 +9,18 @@
 #include <QPointer>
 #include <QTimer>
 
-FilesystemScanner::FilesystemScanner(QObject *parent) : QObject(parent) {}
+FilesystemScanner::FilesystemScanner(QObject *parent) : QObject(parent) {
+    progressTimer_.setInterval(33);
+    connect(&progressTimer_, &QTimer::timeout, this, [this] {
+        if (!loader_)
+            return;
+        const quint64 count = loader_->completedCount();
+        if (count != progressCount_) {
+            progressCount_ = count;
+            emit advanced(count);
+        }
+    });
+}
 
 FilesystemScanner::~FilesystemScanner() { cancelAndWait(); }
 
@@ -31,11 +42,7 @@ void FilesystemScanner::start(const QString &directory) {
     loaders_.append(loader_);
     const quint64 generation = generation_;
     auto *loader = loader_;
-    connect(loader, &FilesystemFolderLoader::advanced, this,
-            [this, loader, generation](quint64 count) {
-                if (generation == generation_ && loader == loader_)
-                    emit advanced(count);
-            });
+    progressTimer_.start();
     const QPointer<FilesystemFolderLoader> guard(loader);
     connect(loader, &QThread::finished, this, [this, guard, generation] {
         // Disconnect does not remove already queued signals. A close-time join
@@ -50,13 +57,23 @@ void FilesystemScanner::loaderFinished(FilesystemFolderLoader *loader, quint64 g
     loader->wait();
     loaders_.removeOne(loader);
     const bool current = generation == generation_ && loader == loader_;
-    if (current)
+    if (current) {
         loader_ = nullptr;
+        progressTimer_.stop();
+    }
+    const quint64 count = loader->completedCount();
     const HRESULT result = loader->result();
     CMyComPtr<IFolderFolder> loaded;
     loaded.Attach(loader->takeFolder());
     loader->deleteLater();
     if (!current)
+        return;
+    const QPointer<FilesystemScanner> progressGuard(this);
+    if (count != progressCount_) {
+        progressCount_ = count;
+        emit advanced(count);
+    }
+    if (!progressGuard || generation != generation_)
         return;
     if (result != S_OK) {
         emit failed(qint32(result));
@@ -75,6 +92,8 @@ void FilesystemScanner::loaderFinished(FilesystemFolderLoader *loader, quint64 g
 
 void FilesystemScanner::cancel() {
     ++generation_;
+    progressTimer_.stop();
+    progressCount_ = 0;
     if (loader_)
         loader_->cancel();
     loader_ = nullptr;

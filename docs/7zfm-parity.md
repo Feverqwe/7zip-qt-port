@@ -1,5 +1,21 @@
 # Сверка с Windows 7zFM
 
+## P2-10.1 — worker scheduling (принят, 2026-10-04)
+
+Подготовка archive update теперь использует исходный CCopyStateIO в worker;
+Pause/Cancel действуют до запуска engine, незавершённая копия имеет отдельный
+private lifetime. Последовательность source mutation/plan и engine stages
+сохранена. Qt latest-state delivery соответствует исходному принципу
+CProgressSync и timer presentation: промежуточные имена и проценты могут
+объединяться, итоговые результаты/ошибки HashCalc сохраняются. События завершённой
+фазы не доставляются после её terminal result. Это transport adaptation без
+изменения структуры Progress/Messages и без утверждения pixel parity.
+Полная отзывчивость Qt rows/icons и parent P2-10 остаются для P2-10.2.
+Windows native separators приводятся исходным ReplaceSlashes_OsToUnix только
+для comparison/validation совместимых mutations; raw listing не меняется.
+Итоговый macOS gate236/236 PASS95.26s; snapshot90ef1e7f Windows9/9 PASS42.83s,
+Linux9/9 PASS9.38s. Это backend/native-fixture coverage, без rendered UI parity.
+
 ## P1-12.2 — Options container (принят, 2026-10-04)
 
 Исходный OptionsDialog/MyPropertySheet открывает System, а Qt выбирал Settings.

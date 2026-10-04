@@ -6,6 +6,7 @@ void ArchiveBackend::finishCreationLifecycle() {
     if (!creationLifecycle_ || (job_ != Job::CreatePrepare && job_ != Job::CreateDeleteInputs))
         return;
     creationLifecycle_->wait();
+    finishWorkerProgress();
     const bool preparing = job_ == Job::CreatePrepare;
     lastResult_ = creationLifecycle_->Result;
     if (cancelled_)
@@ -35,14 +36,10 @@ bool ArchiveBackend::startCreationDeletion() {
     if (!creationLifecycle_)
         return false;
     job_ = Job::CreateDeleteInputs;
-    creationLifecycle_->Progress = [this](const QString &path, bool) {
-        QMetaObject::invokeMethod(
-            this,
-            [this, path] {
-                emit progress(
-                    100, QtLocalText("Deleting: %1", QStringLiteral("Удаление: %1")).arg(path));
-            },
-            Qt::QueuedConnection);
+    const quint64 progressGeneration = beginWorkerProgress();
+    const QString caption = QtLocalText("Deleting: %1", QStringLiteral("Удаление: %1"));
+    creationLifecycle_->Progress = [this, progressGeneration, caption](const QString &path, bool) {
+        postWorkerProgress(progressGeneration, 100, caption.arg(path));
     };
     creationLifecycle_->beginDeletion();
     return true;

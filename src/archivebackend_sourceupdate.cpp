@@ -229,11 +229,6 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
                                          "Новая папка не подготовлена."));
         return;
     }
-    if (!QFile::copy(input.absoluteFilePath(), result.absoluteFilePath())) {
-        emit finished(false, QtLocalText("Could not prepare a copy of the archive.",
-                                         "Не удалось подготовить копию архива."));
-        return;
-    }
     createTemporary_ = result.absoluteFilePath();
     pendingPassword_ = password;
     QStringList args;
@@ -255,5 +250,6 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
     // Source CArchivePath::ParseFromPath(k_ArcNameMode_Exact) prevents the
     // console updater from appending its format extension to that input.
     args.insert(1, QStringLiteral("-sae"));
-    start(Job::SourceMutation, args, sourceRoot);
+    prepareArchiveCopy(input.absoluteFilePath(), createTemporary_,
+                       [this, args, sourceRoot] { start(Job::SourceMutation, args, sourceRoot); });
 }

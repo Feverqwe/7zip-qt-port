@@ -4,6 +4,7 @@
 #include "filesystemfolderloader.h"
 #include "filesystemscanner.h"
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -23,6 +24,22 @@ class FilesystemScannerTests : public QObject {
         }
     }
   private slots:
+    void completedWorkerHasOnlyLatestProgressWaitingForGui() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        createFiles(fixture.path(), 2048);
+        FilesystemScanner scanner;
+        QSignalSpy progress(&scanner, &FilesystemScanner::advanced);
+        QSignalSpy completed(&scanner, &FilesystemScanner::completed);
+        scanner.start(fixture.path());
+        auto *loader = scanner.findChild<FilesystemFolderLoader *>();
+        QVERIFY(loader);
+        QVERIFY(loader->wait(15000));
+        QTRY_COMPARE_WITH_TIMEOUT(completed.count(), 1, 15000);
+        QVERIFY(!progress.isEmpty());
+        QVERIFY(progress.count() <= 2);
+        QCOMPARE(progress.last().first().toULongLong(), quint64(2050));
+    }
     void sourceOwnershipAndOrderedBatches() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -94,12 +111,16 @@ class FilesystemScannerTests : public QObject {
                 });
         QSignalSpy completed(&scanner, &FilesystemScanner::completed);
         QSignalSpy failed(&scanner, &FilesystemScanner::failed);
+        QElapsedTimer elapsed;
+        elapsed.start();
         scanner.start(temp.path());
         QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 15000);
         QVERIFY(failed.isEmpty());
         QVERIFY(ordered);
         QVERIFY(eventLoopResumed);
         QCOMPARE(expectedIndex, quint32(2050));
+        qInfo("flat source scan/projection: 2050 items in %lld ms", elapsed.elapsed());
+        QVERIFY(elapsed.elapsed() < 15000);
     }
     void cancellationDuringPresentationRejectsStaleGeneration() {
         QTemporaryDir first;

@@ -136,11 +136,6 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
     }
     if (startKeepNameSourcePlan(archive, plan, output, format, password, switches))
         return;
-    if (!QFile::copy(input.absoluteFilePath(), result.absoluteFilePath())) {
-        emit finished(false, QtLocalText("Could not prepare a copy of the archive.",
-                                         "Не удалось подготовить копию архива."));
-        return;
-    }
     archive_ = input.absoluteFilePath();
     createTemporary_ = result.absoluteFilePath();
     sourcePlan_ = plan;
@@ -151,20 +146,22 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
     sourcePlanPassword_ = password;
     sourcePlanFormat_ = format;
     sourcePlanSwitches_ = switches;
-    if (!plan.removed.isEmpty() || !plan.removedDirectories.isEmpty())
-        startSourcePlanStage(Job::SourcePlanDelete);
-    else if (!plan.files.isEmpty())
-        startSourcePlanStage(Job::SourcePlanFiles);
-    else if (!plan.directories.isEmpty())
-        startSourcePlanStage(Job::SourcePlanDirectories);
-    else if (!plan.renames.isEmpty())
-        startSourcePlanStage(Job::SourcePlanRename);
-    else {
-        lastResult_ = S_OK;
-        sourcePlanPassword_.clear();
-        emit finished(true, QtLocalText("The archive does not need updating.",
-                                        "Архив не требует обновления."));
-    }
+    prepareArchiveCopy(archive_, createTemporary_, [this] {
+        if (!sourcePlan_.removed.isEmpty() || !sourcePlan_.removedDirectories.isEmpty())
+            startSourcePlanStage(Job::SourcePlanDelete);
+        else if (!sourcePlan_.files.isEmpty())
+            startSourcePlanStage(Job::SourcePlanFiles);
+        else if (!sourcePlan_.directories.isEmpty())
+            startSourcePlanStage(Job::SourcePlanDirectories);
+        else if (!sourcePlan_.renames.isEmpty())
+            startSourcePlanStage(Job::SourcePlanRename);
+        else {
+            lastResult_ = S_OK;
+            sourcePlanPassword_.clear();
+            emit finished(true, QtLocalText("The archive does not need updating.",
+                                            "Архив не требует обновления."));
+        }
+    });
 }
 
 void ArchiveBackend::startSourcePlanStage(Job stage) {

@@ -181,7 +181,8 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         QStringList paths;
         for (const ArchiveEntry &entry : entries)
-            paths << entry.path.normalized(QString::NormalizationForm_C);
+            paths
+                << QDir::fromNativeSeparators(entry.path).normalized(QString::NormalizationForm_C);
         QVERIFY(paths.contains(newName + QStringLiteral("/nested/файл.txt")));
         QVERIFY(!paths.contains(oldName + QStringLiteral("/nested/файл.txt")));
         QTemporaryDir extracted;
@@ -223,7 +224,8 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         QStringList paths;
         for (const ArchiveEntry &entry : entries)
-            paths << entry.path.normalized(QString::NormalizationForm_C);
+            paths
+                << QDir::fromNativeSeparators(entry.path).normalized(QString::NormalizationForm_C);
         QVERIFY(paths.contains(QStringLiteral("новая папка/sub/файл.txt")));
         QVERIFY(paths.contains(QStringLiteral("занято.txt")));
     }
@@ -253,7 +255,7 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         QStringList paths;
         for (const ArchiveEntry &entry : entries)
-            paths << entry.path;
+            paths << QDir::fromNativeSeparators(entry.path);
         QVERIFY(paths.contains(after));
         QVERIFY(!paths.contains(before));
         QSignalSpy collision(&backend, &ArchiveBackend::finished);
@@ -337,7 +339,7 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         QStringList paths;
         for (const ArchiveEntry &entry : entries)
-            paths << entry.path;
+            paths << QDir::fromNativeSeparators(entry.path);
         QVERIFY(paths.size() >= 2);
         QString oldFile;
         for (const QString &path : paths) {
@@ -353,7 +355,7 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         paths.clear();
         for (const ArchiveEntry &entry : entries)
-            paths << entry.path;
+            paths << QDir::fromNativeSeparators(entry.path);
         QVERIFY(paths.contains(oldFile.left(oldFile.lastIndexOf('/') + 1) +
                                QStringLiteral("новое имя.txt")));
         backend.remove(archive, paths);
@@ -389,7 +391,8 @@ class ArchiveMutationTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         QStringList names;
         for (const ArchiveEntry &entry : entries)
-            names << entry.path.normalized(QString::NormalizationForm_C);
+            names
+                << QDir::fromNativeSeparators(entry.path).normalized(QString::NormalizationForm_C);
         QVERIFY(names.contains(QStringLiteral("исходный.txt")));
         QVERIFY(names.contains(QStringLiteral("папка Unicode/nested/большой файл.bin")));
         const QString output = temp.filePath("out");

@@ -2,6 +2,26 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Archive update preparation belongs to ArchiveBackend. Its CopyPrepare phase
+runs the retained CCopyStateIO::MyCopyFile in QtArchiveCopyPreparation; source
+mutation/plan and compatibility Add/Delete/Rename/Replace consumers resume their
+existing engine stages only after the worker joins and publishes its private
+peer stage. Qt owns scheduling, pause/cancel checkpoints and temporary lifetime;
+the original module owns reads/writes, copy metadata and error behavior. A failed
+publication cannot remove an existing caller-owned output. Normal local-filesystem
+QFile rename supplies exclusive publication; unusual filesystem fallback behavior
+is outside verified coverage.
+
+Hash and creation scan/deletion callbacks update one latest progress snapshot
+under a mutex. A 33ms GUI timer delivers it without per-callback queued events;
+generation tokens reject obsolete posts and finished deliveries. Joining a phase
+stops its timer and discards remaining transient progress before its terminal
+result; retained hash output, errors and source result aggregation are unchanged.
+FilesystemFolderLoader likewise keeps an atomic count, polled by the GUI scanner
+and delivered once at completion before folder ownership. Source cancellation
+checks still execute for every native callback. These are external-worker Qt
+transports; source CProgressSync/CProgressDialog remain the dialog owners.
+
 Core sections: [repository boundary](#repository-boundary),
 [window/panel state](#window-and-panel-state),
 [dialogs/preferences](#dialogs-and-preferences),

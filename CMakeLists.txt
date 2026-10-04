@@ -325,6 +325,7 @@ endif()
 add_library(sevenzip_filesystem STATIC
     src/archivesfxmodule.cpp src/archivesfxmodule.h
     src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
+    src/qtarchivecopypreparation.cpp src/qtarchivecopypreparation.h
     src/archiveenginelocation.cpp src/archiveenginelocation.h
     src/qtownedtempdir.cpp src/qtownedtempdir.h
     third_party/7zip/CPP/Common/Lang.cpp
@@ -1033,6 +1034,18 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     qt_add_executable(archive_backend_tests tests/archive_backend_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)
     qt_add_executable(archive_mutation_tests tests/archive_mutation_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)
+    get_target_property(archive_preparation_sources archive_mutation_tests SOURCES)
+    list(REMOVE_ITEM archive_preparation_sources tests/archive_mutation_tests.cpp)
+    qt_add_executable(archive_preparation_tests tests/archive_preparation_tests.cpp ${archive_preparation_sources})
+    target_include_directories(archive_preparation_tests PRIVATE src)
+    target_link_libraries(archive_preparation_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME archive_preparation COMMAND archive_preparation_tests -silent)
+    set_tests_properties(archive_preparation PROPERTIES TIMEOUT 30)
+    qt_add_executable(worker_progress_tests tests/worker_progress_tests.cpp ${archive_preparation_sources})
+    target_include_directories(worker_progress_tests PRIVATE src)
+    target_link_libraries(worker_progress_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME worker_progress COMMAND worker_progress_tests -silent)
+    set_tests_properties(worker_progress PROPERTIES TIMEOUT 30)
     target_include_directories(archive_backend_tests PRIVATE src)
     target_include_directories(archive_mutation_tests PRIVATE src tests)
     target_link_libraries(archive_backend_tests PRIVATE Qt6::Test)
@@ -1754,7 +1767,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp src/archivebackend_sourceplan.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
-            src/archivebackend_creation.cpp src/archivebackend_hash.cpp)
+            src/archivebackend_creation.cpp src/archivebackend_hash.cpp src/archivebackend_preparation.cpp
+            src/archivebackend_workerprogress.cpp)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)

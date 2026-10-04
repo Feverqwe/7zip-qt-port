@@ -1,5 +1,48 @@
 # Regression strategy
 
+`scripts/check-responsiveness.sh` builds and checks the integrated preparation,
+worker progress, creation lifecycle, update/mutation/backend and native folder
+consumers in one snapshot. `archive_preparation` covers public return-before-copy,
+paused cancel before engine launch, exact bytes, Unicode/spaces, publication
+collision, occupied parent, cancel/join/restart and destruction/stage cleanup.
+Its cancel regression fails with the former synchronous QFile copy.
+
+`worker_progress` hashes 2048 disposable nine-byte files, retains every CRC32
+result and temporarily occupies the GUI for200ms. Delivery is bounded by elapsed
+milliseconds/20+4; restoring per-callback queueing produces4100 deliveries in208ms
+against limit14. Joined cancel/restart must discard obsolete progress/completion.
+`filesystem_scanner` waits for a2048-file native load without GUI pumping, then
+requires at most two progress deliveries with the final2050-item count. Existing
+ordered32-row batches, progress/presentation restart and close-time joins remain
+direct consumers. The2050-item load/projection deadline is15s.
+
+`archive_proxy` loads a32768-node native parent chain and exercises original flat
+folder selection, indices and limited/full prefixes within15s, without creating
+an OS path of that depth. A4096-level path fixture verifies original1024-level
+reduction and selected real archive index. These source fixtures do not measure
+Qt row/icon rendering or establish acceptance of full UI responsiveness; that
+remaining scope is P2-10.2. Timing thresholds are reproducible regression ceilings,
+not a performance promise for arbitrary storage or archive sizes.
+
+Native fixture benchmark samples,2026-10-04 (15s ceiling for each scenario;
+source metadata/selection or scanner delivery only):
+
+| Environment |32768 parent nodes, flat selection/prefix |2050 filesystem items, scan/delivery |
+| --- | --- | --- |
+| macOS arm64, Qt6.11.2, Apple LLVM21 |34ms |50ms |
+| Linux x64, Qt6.4.2, GCC13.2, f31a2c45 |22ms |50ms |
+| Windows11 x64, Qt6.8.3, MSVC2022,90ef1e7f |55ms |57ms |
+
+After the focused build, reproduce the timings with
+`build/dev/archive_proxy_tests deepNativeParentTreeKeepsFlatSelectionWithoutRecursiveStack -v1`
+and
+`build/dev/filesystem_scanner_tests largeFlatListingYieldsBetweenOrderedBatches -v1`
+(Windows executables have `.exe` and use the runner's existing Qt PATH).
+Final integrated90ef1e7f checks pass Windows9/9 in42.83s and Linux9/9 in9.38s;
+the final macOS full gate passes236/236 in95.26s. The initial Windows mutation
+separator failure and macOS language fixture's synchronous empty-plan assumption
+are superseded by those passing results; raw listing names remain preserved.
+
 `options_integration` covers the six-page Options container as a whole using
 public controls and an isolated association service. Cancel, OK and Apply then
 Cancel verify committed/pending values, language, menu, editor, work folder and

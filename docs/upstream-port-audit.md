@@ -1,5 +1,59 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-10.1 — archive preparation and bounded worker transport (accepted, 2026-10-04)
+
+Inspected original full FSFolderCopy.cpp::CCopyStateIO::MyCopyFile, FSFolder.h::
+CCopyStateIO, source PanelCopy worker/callers, ProgressDialog2.h/.cpp::CProgressSync
+and CProgressDialog::UpdateStatInfo, plus current backend start/cancel/join and
+source mutation/plan/compatibility consumers. Source repository is
+https://github.com/ip7z/7zip.git at0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+The existing authoritative adapted FSFolderCopy body is reused unchanged:64KiB
+read/write loop, native metadata, callback cancellation and source errors.
+No new borrowed module or dependency revision is introduced.
+
+QtArchiveCopyPreparation is the narrow asynchronous transport missing from
+upstream's Windows worker integration. It owns private peer staging and calls
+that original body; ArchiveBackend::CopyPrepare retains continuation/state until
+join and exclusive publication. Four former GUI QFile copy sites are removed
+from source mutation/plan and compatibility mutations. Engine command policy,
+source stage order and module boundaries remain unchanged. Existing source copy,
+QtOwnedTempDir/registry and filesystem services are its dependencies. Windows
+thread/window transport is replaced by QThread/mutex/timer; no native copy
+algorithm or archive format is reimplemented. Exotic filesystem rename fallbacks
+are not verified; collision refusal is a public fixture.
+
+External hash and creation scan/deletion transport now uses one mutex snapshot
+and33ms GUI timer instead of a queued call for each native callback. Source
+CProgressSync uses the same snapshot/timer pattern, but is coupled to the dialog
+owner and does not implement this external-backend signal transport. Native
+HashCalc/EnumDirItems/DeleteInputs algorithms, cancellation and retained output
+are reused unchanged. Operation/phase generations protect posts and queued
+completion. Filesystem loader count is atomic and scanner-polled; per-file
+source cancellation remains intact. No new functional scan implementation exists.
+
+Original AgentProxy.cpp::Load/CalculateSizes/AddRealIndices and Agent.cpp::
+LoadFolder/LoadItems/GetRealIndices were reviewed for large/deep fixtures.
+CProxyArc2 uses the retained explicit traversal stack; path-mode CProxyArc
+reduces excessive depth through its original1024-level policy. No proxy or
+selection algorithm was changed. Public32768-node parent-chain and4096-level
+path fixtures exercise native owners/indices/flat selection and destructor scope.
+First platform snapshot f31a2c45 passes Linux8/8 but Windows7/8: compatibility
+mutation fixtures assumed Unix separators, and the implicit-folder Rename
+comparison missed native Windows descendants. Inspected original
+Archive/Common/ItemNameUtils.cpp::ReplaceSlashes_OsToUnix and AgentOut.cpp::
+CAgent::RenameItem/GetItem_Path2 callers. Mutation comparison paths now call that
+existing source normalization through a narrow QString bridge; raw listing
+metadata is unchanged. Fixtures compare OS-normalized paths and still verify
+extracted bytes. The first full macOS gate passes235/236, failing only the
+language fixture's obsolete synchronous empty-plan expectation; it now awaits
+the terminal signal. Updated nine direct macOS suites pass3.92s. Final full
+unsandboxed macOS gate passes formatting, all targets and236/236 tests in95.26s;
+snapshot90ef1e7f passes Windows9/9 in42.83s and Linux9/9 in9.38s. Downloaded actual
+Qt rows have no failures or skips in any of these nine suites. Baseline remains
+409 exact/195 adapted/3 local verified paths. Reproducible native fixture timings
+and thresholds are recorded in [testing](testing.md). This iteration
+does not accept P2-10.2 Qt row/icon/navigation benchmarks or parent P2-10.
+
 ## P1-12.2 — six-page Options integration accepted (2026-10-04)
 
 Prerequisites P1-13/P2-09 are accepted in commit6864399. Inspected full original

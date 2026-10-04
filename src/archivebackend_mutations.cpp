@@ -1,3 +1,4 @@
+#include "7zip/Archive/Common/ItemNameUtils.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "CPP/7zip/UI/Common/Update.h"
@@ -17,6 +18,14 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
+
+namespace {
+QString mutationPath(const QString &path) {
+    UString native(path.toStdWString().c_str());
+    NArchive::NItemName::ReplaceSlashes_OsToUnix(native);
+    return QString::fromWCharArray(native.Ptr());
+}
+} // namespace
 
 bool ArchiveBackend::compressionProperties(const QString &suffix, const QString &password,
                                            bool encryptHeaders, const CompressionOptions &options,
@@ -391,16 +400,16 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     if (options.DeleteAfterCompressing) {
         creationLifecycle_ =
             std::make_unique<QtArchiveCreationLifecycle>(sources, options.SymLinks);
-        connect(creationLifecycle_.get(), &QThread::finished, this,
-                &ArchiveBackend::finishCreationLifecycle);
-        creationLifecycle_->Progress = [this](const QString &path, bool) {
-            QMetaObject::invokeMethod(
-                this,
-                [this, path] {
-                    emit progress(0, QString::fromWCharArray(LangString(IDS_SCANNING).Ptr()) +
-                                         QStringLiteral(" ") + path);
-                },
-                Qt::QueuedConnection);
+        const quint64 generation = ++creationGeneration_;
+        connect(creationLifecycle_.get(), &QThread::finished, this, [this, generation] {
+            if (creationLifecycle_ && creationGeneration_ == generation)
+                finishCreationLifecycle();
+        });
+        const quint64 progressGeneration = beginWorkerProgress();
+        const QString caption = QString::fromWCharArray(LangString(IDS_SCANNING).Ptr());
+        creationLifecycle_->Progress = [this, progressGeneration, caption](const QString &path,
+                                                                           bool) {
+            postWorkerProgress(progressGeneration, 0, caption + QStringLiteral(" ") + path);
         };
         job_ = Job::CreatePrepare;
         cancelled_ = false;
@@ -524,15 +533,10 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
                        QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
     addBackup_ = target.absolutePath() + "/.sevenzip-backup-" +
                  QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
-    if (!QFile::copy(createTarget_, createTemporary_)) {
-        QFile::remove(createTemporary_);
-        emit finished(false, QtLocalText("Could not prepare an archive copy for writing.",
-                                         "Не удалось подготовить копию архива для записи."));
-        return;
-    }
     QStringList arguments = {"a", "-y", "-bsp1", "-bb1", "-t" + suffix, "--", createTemporary_};
     arguments += sourceNames;
-    start(Job::Add, arguments, root);
+    prepareArchiveCopy(createTarget_, createTemporary_,
+                       [this, arguments, root] { start(Job::Add, arguments, root); });
 }
 
 bool ArchiveBackend::prepareMutation(const QString &archive) {
@@ -554,12 +558,6 @@ bool ArchiveBackend::prepareMutation(const QString &archive) {
                        QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
     addBackup_ = target.absolutePath() + "/.sevenzip-backup-" +
                  QUuid::createUuid().toString(QUuid::WithoutBraces) + "." + suffix;
-    if (!QFile::copy(createTarget_, createTemporary_)) {
-        QFile::remove(createTemporary_);
-        emit finished(false, QtLocalText("Could not prepare an archive copy for writing.",
-                                         "Не удалось подготовить копию архива для записи."));
-        return false;
-    }
     return true;
 }
 
@@ -573,10 +571,10 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
     }
     QSet<QString> known;
     for (const ArchiveEntry &entry : entries_)
-        known.insert(entry.path);
+        known.insert(mutationPath(entry.path));
     for (const QString &path : paths) {
-        if (!known.contains(path) || !safePath(path) || path.contains('*') || path.contains('?') ||
-            path.startsWith('@')) {
+        if (!known.contains(mutationPath(path)) || !safePath(path) || path.contains('*') ||
+            path.contains('?') || path.startsWith('@')) {
             emit finished(
                 false,
                 QtLocalText("Archive item not found: %1", "Объект архива не найден: %1").arg(path));
@@ -587,11 +585,14 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
         return;
     QStringList arguments = {"d", "-y", "-bsp1", "-bb1", "--", createTemporary_};
     arguments += paths;
-    start(Job::Delete, arguments);
+    prepareArchiveCopy(createTarget_, createTemporary_,
+                       [this, arguments] { start(Job::Delete, arguments); });
 }
 
-void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
-                                 const QString &newPath) {
+void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
+                                 const QString &newName) {
+    const QString oldPath = mutationPath(oldName);
+    const QString newPath = mutationPath(newName);
     if (!restoreListedArchive(archive)) {
         emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
                                          "Сначала откройте архив и проверьте его содержимое."));
@@ -600,10 +601,11 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
     bool found = false;
     bool directory = false;
     for (const ArchiveEntry &entry : entries_) {
-        if (entry.path == oldPath) {
+        const QString path = mutationPath(entry.path);
+        if (path == oldPath) {
             found = true;
             directory = entry.directory;
-        } else if (entry.path.startsWith(oldPath + '/')) {
+        } else if (path.startsWith(oldPath + '/')) {
             found = true;
             directory = true;
         }
@@ -612,9 +614,9 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
     QSet<QString> existing;
     QSet<QString> renamed;
     for (const ArchiveEntry &entry : entries_) {
-        const bool member =
-            entry.path == oldPath || (directory && entry.path.startsWith(oldPrefix));
-        const QString path = member ? newPath + entry.path.mid(oldPath.size()) : entry.path;
+        const QString entryPath = mutationPath(entry.path);
+        const bool member = entryPath == oldPath || (directory && entryPath.startsWith(oldPrefix));
+        const QString path = member ? newPath + entryPath.mid(oldPath.size()) : entryPath;
         const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (member) {
             if (!safePath(entry.path) || entry.link) {
@@ -651,7 +653,9 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldPath,
     }
     if (!prepareMutation(archive))
         return;
-    start(Job::Rename, {"rn", "-y", "-bsp1", "-bb1", "--", createTemporary_, oldPath, newPath});
+    prepareArchiveCopy(createTarget_, createTemporary_, [this, oldPath, newPath] {
+        start(Job::Rename, {"rn", "-y", "-bsp1", "-bb1", "--", createTemporary_, oldPath, newPath});
+    });
 }
 
 void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
@@ -690,5 +694,8 @@ void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
         return;
     replacementEntry_ = entry;
     replacementRoot_ = root.absolutePath();
-    start(Job::ReplaceDelete, {"d", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, entry});
+    prepareArchiveCopy(createTarget_, createTemporary_, [this, entry] {
+        start(Job::ReplaceDelete,
+              {"d", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, entry});
+    });
 }

@@ -4,6 +4,7 @@
 #include "Windows/PropVariant.h"
 #include "qtlocationfolder.h"
 #include "qtpanelfolder.h"
+#include <QElapsedTimer>
 #include <QtTest>
 
 extern bool g_CaseSensitive; // Existing source filename policy, platform default.
@@ -56,6 +57,79 @@ class ArchiveProxyTests : public QObject {
         return proxy.Load(arc, nullptr);
     }
   private slots:
+    void deepNativeParentTreeKeepsFlatSelectionWithoutRecursiveStack() {
+        constexpr unsigned depth = 32768;
+        CObjectVector<CPanelItem> items;
+        for (unsigned i = 0; i < depth; ++i) {
+            CPanelItem item;
+            item.RelPath = "a";
+            item.IsFolder = i + 1 < depth;
+            item.SizeDefined = true;
+            item.Size = item.IsFolder ? 0 : 7;
+            items.Add(item);
+        }
+        CMyComPtr<IFolderFolder> metadata =
+            new QtPanelFolder(QString(), items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
+        CArc arc;
+        QCOMPARE(metadata.QueryInterface(IID_IInArchive, &arc.Archive), S_OK);
+        arc.GetRawProps = new CParentProperties;
+        CProxyArc2 proxy;
+        QElapsedTimer elapsed;
+        elapsed.start();
+        QCOMPARE(proxy.Load(arc, nullptr), S_OK);
+        CUIntVector selected;
+        proxy.AddRealIndices_of_ArcItem(0, false, true, selected);
+        QCOMPARE(selected.Size(), depth);
+        for (unsigned i = 0; i < depth; ++i)
+            QCOMPARE(selected[i], i);
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IFolderArcProps> agent = agentSpec;
+        QCOMPARE(agentSpec->Init({}, metadata, UString("tree")), S_OK);
+        auto *folderSpec = new CAgentFolder;
+        CMyComPtr<IFolderFolder> folder = folderSpec;
+        folderSpec->Init(nullptr, &proxy, k_Proxy2_RootDirIndex, agentSpec);
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(depth));
+        QCOMPARE(folderSpec->GetRealIndex(depth - 1), int(depth - 1));
+        const UInt32 first[] = {0};
+        folderSpec->GetRealIndices(first, 1, false, true, selected);
+        QCOMPARE(selected.Size(), depth);
+        QCOMPARE(selected.Back(), depth - 1);
+        const unsigned leafParent = unsigned(proxy.Files[depth - 2].DirIndex);
+        QCOMPARE(proxy.GetDirPath_as_Prefix(leafParent, false).Len(), 2 * (depth - 1));
+        QVERIFY(proxy.GetDirPath_as_Prefix(leafParent, true).Len() < 128);
+        qInfo("deep raw parent load/flat/selection: %u nodes in %lld ms", depth, elapsed.elapsed());
+        QVERIFY(elapsed.elapsed() < 15000);
+    }
+    void deepPathArchivePreservesOriginalLevelReduction() {
+        QString path;
+        for (int i = 0; i < 4096; ++i)
+            path += "a/";
+        path += QStringLiteral("лист.txt");
+        CProxyArc proxy;
+        QCOMPARE(load(proxy, {{path, 7, 3}}), S_OK);
+        QVERIFY(proxy.Are_Changed_LongPaths);
+        QVERIFY(proxy.Dirs.Size() <= 1026);
+        CUIntVector indices;
+        QCOMPARE(proxy.Dirs[k_Proxy_RootDirIndex].SubDirs.Size(), 1u);
+        proxy.AddRealIndices(proxy.Dirs[k_Proxy_RootDirIndex].SubDirs[0], indices);
+        QCOMPARE(indices.Size(), 1u);
+        QCOMPARE(indices[0], 0u);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(CreateArchiveFolder({{path, 7, 3}}, UString("zip"), &folder), S_OK);
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QVERIFY(count <= 1026);
+    }
     void nativeTreeFallbackNamesAndParentValidation() {
         const QStringList names{QStringLiteral("root й space"), QStringLiteral("child 😀"),
                                 QStringLiteral("leaf с пробелом.txt")};

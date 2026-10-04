@@ -162,7 +162,7 @@ class LanguageSourceUpdateTests final : public QObject {
         QVERIFY(QFile::remove(output));
 
         backend.updateSourcePlan(archive, {}, output, "zip", {});
-        QCOMPARE(finished.size(), 1);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
         result = finished.takeFirst();
         QVERIFY(result.first().toBool());
         QCOMPARE(result.at(1).toString(), russian ? QStringLiteral("Архив не требует обновления.")
