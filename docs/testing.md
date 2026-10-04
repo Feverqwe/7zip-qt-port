@@ -1,5 +1,23 @@
 # Regression strategy
 
+`menu_policy` connects the default production Menu page's Apply/Cancel to the
+original context generator and invocation owner on all platforms. Four cascade/
+icon combinations verify observed menu flags and extraction arguments with
+Unicode/spaced disposable selections. `native_menu_integration` additionally
+uses real production registration, CoCreateInstance, Shell IDataObject and
+OS handler discovery in the authorized RUNNER-WINDOWS guest. It reserves only
+absent project keys, refuses existing registration, records owner PID and
+checks unregister/cleanup. CMake registers this mutating fixture only in that
+guest; ordinary Windows builds retain the target without registering its CTest.
+Run `scripts/check-menu-integration.sh` through the matching runner for source
+Menu/Options/language consumers and their current geometry reports.
+
+`context_menu_settings` also reads fresh disk INI fixtures containing Qt boolean
+text and native DWORD values, bypassing QSettings' same-process value cache.
+This catches loss of explicit policy values after reopening the settings file.
+The bool transport is shared by the source compression/extraction preferences;
+their direct consumers are included in shared-code validation.
+
 `archive_open_options` exercises the public source extraction service and the
 retained native reader. Disposable Unicode/spaced fixtures cover allowed and
 excluded ZIP handlers, the original `zip.split` multi-volume type chain, invalid

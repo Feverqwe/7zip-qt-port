@@ -1,5 +1,77 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-09.3 — Menu integration accepted (2026-10-04)
+
+P2-09.2 is committed as329e54f. Current work restores native MenuPage module
+names7-zip.dll/7-zip32.dll/7-zip64.dll and enables already-ported command
+policies. Original MenuPage.cpp::OnInit/OnApply/CShellDll, its callers in
+OptionsDialog.cpp and complete RegistryContextMenu.cpp::CheckContextMenuHandler/
+SetContextMenuHandler were inspected at repository https://github.com/ip7z/7zip.git,
+revision0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Their source state, list,
+apply/requery order, flags and registration algorithm remain authoritative.
+QtNativeMenuPageServices supplies only module/file/registry/error transport.
+Unix now supplies the applicable in-app policy capability while native DLL/
+registration remains unavailable; no independent Unix shell workflow is added.
+
+The production-control regression first failed on disabled policy controls and
+the absent Unix platform service. Corrected macOS focused menu_page/menu_policy/
+shell_context/shell_menu_window passes4/4 in0.85s. menu_policy uses the actual
+default page, Apply/Cancel, real Unicode/spaced file selection and original
+QueryContextMenu/InvokeCommand: four cascade/icon combinations preserve source
+flags, selected paths and ElimDup arguments. This is not yet whole-step acceptance.
+
+New Windows native_menu_integration reserves only absent project-owned class/
+handler keys in RUNNER-WINDOWS, records owner PID and drives the production
+Menu page. It checks source registration/requery, actual CoCreateInstance,
+real Shell IDataObject and OS context-handler discovery, then unregistration
+and marker-scoped cleanup. Its CTest registration is limited to that disposable
+guest; ordinary Windows builds do not write the user's registry through this
+fixture. Windows607eb66a passes6/6 in9.26s, including that actual OS discovery
+and cleanup (native3 Qt rows, zero failures/skips). Linux passes5/5 in0.99s.
+Windows first5be5025a fails on a fixture FString/char overload;3765f473 reaches
+the native fixture but fails on an SDK RegDeleteTreeW declaration. The fixture
+now uses original-style FString += and a runtime API lookup. Both failures
+precede fixture execution and are not registry/runtime evidence.
+
+The corrected required unsandboxed macOS gate passes formatting/all-build and
+233/233 CTest in95.44s; its first run failed only the obsolete language tooltip
+expectation after controls became available. Twelve current-build EN/RU Menu
+normal/compact language JSON across macOS/Windows/Linux are reviewed: order,
+exposure and policy enabled states hold; Windows discovers the native DLL and
+disables the missing other-bitness DLL, Unix disables native integration/Zone.
+Expanded21a2a80a fails compilation because the standalone upstream flags header
+requires MyTypes before its inclusion. The fixture now includes that dependency
+explicitly. Snapshot72c8cb47 fails the expanded runtime expectation (34 commands
+instead of one): the fixture passed a Unicode settings path through the ANSI CRT
+environment setter. Snapshot15358740 supplies the child process environment
+through QProcessEnvironment and passes6/6: actual registered DLL produces only
+Extract Here, a flat native menu and its source bitmap; OS discovery and cleanup
+also pass (native3 Qt rows, zero failures/skips).
+
+A separate disk fixture exposes a real persistence defect: QSettings writes INI
+booleans as true/false, while the adapter accepted only DWORD text. ZipRegistry.cpp
+now shares one narrow bool-value transport adapter accepting both representations.
+Original CContextMenuInfo::Load/Save and Windows/Registry.cpp::SetValue(bool)/
+GetValue_bool_IfOk at the pinned revision were inspected; defined/default policy
+and callers in compression/extraction remain unchanged. No upstream Qt INI
+transport exists. The new context_menu_settings disk regression fails before
+the fix and passes afterwards; six direct-consumer suites pass in0.75s on macOS.
+The final required unsandboxed macOS gate passes formatting/all-build and233/233
+CTest in96.35s; baseline verifies409 exact/195 adapted/3 local paths. Final
+snapshot1f968069 passes Windows7/7 in9.68s and Linux6/6 in1.10s, including the
+fresh-disk bool regression and actual native registration/policy consumer.
+All Windows suites report zero Qt failures/skips; native registration has3 rows.
+
+This accepts P2-09.3, P1-13.2 and the P1-13/P2-09 parents together with their
+previously accepted components. Installed native launch, extraction/refusal/
+Cancel, MAPI and Properties evidence remains in P2-09.2; Edit launch/validation/
+Cancel remains in P1-08/P1-13.1. No extension was registered on the developer's
+machine. Windows-only COM/registry branches are unavailable on Unix by source
+platform guards; in-app command policies are verified on all three systems.
+The full six-page Options acceptance is the next P1-12.2 result. Broad three-OS
+release gates, global UX audit and final acceptance remain P3 scope; rendered
+Menu-page pixel correspondence to original Windows is unverified.
+
 ## P2-09.2 — native Windows component accepted (2026-10-04)
 
 This integrated step accepts the retained native COM/DLL, GUI/map sender,

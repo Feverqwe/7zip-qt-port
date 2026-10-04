@@ -1,15 +1,17 @@
 #include "qtnativemenupageservices.h"
 #include "qtmenupageservices.h"
+#include <QCoreApplication>
+#include <QDir>
+#include <QMessageBox>
 #ifdef _WIN32
 #include "CPP/7zip/UI/Explorer/RegistryContextMenu.h"
 #include "Common/StringConvert.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/FileFind.h"
 #include "Windows/Registry.h"
-#include <QCoreApplication>
-#include <QDir>
-#include <QMessageBox>
+#endif
 namespace {
+#ifdef _WIN32
 using namespace NQtShellRegistry;
 class CNativeKey final : public IKey {
     NWindows::NRegistry::CKey _key;
@@ -52,8 +54,11 @@ class CNativeRegistry final : public IServices {
         return RegDeleteKeyExW(Root(root), Path(root, path).Ptr(), wow, 0);
     }
 };
+#endif
 class CNativeMenuPage final : public IQtMenuPageServices {
+#ifdef _WIN32
     CNativeRegistry _registry;
+#endif
     bool _commands;
 
   public:
@@ -61,8 +66,12 @@ class CNativeMenuPage final : public IQtMenuPageServices {
     bool CommandsAvailable() const override { return _commands; }
     bool Is64Bit() const override { return sizeof(void *) == 8; }
     bool OtherBitnessAvailable() const override {
+#ifdef _WIN32
         BOOL wow = FALSE;
         return Is64Bit() || (IsWow64Process(GetCurrentProcess(), &wow) && wow);
+#else
+        return false;
+#endif
     }
     FString GetModuleDirPrefix() const override {
         QString path = QDir::toNativeSeparators(QCoreApplication::applicationDirPath());
@@ -70,30 +79,46 @@ class CNativeMenuPage final : public IQtMenuPageServices {
         return us2fs(UString(path.toStdWString().c_str()));
     }
     const char *GetDllName(unsigned index) const override {
-        return index == 0 ? "sevenzip_shell.dll"
-                          : (Is64Bit() ? "sevenzip_shell32.dll" : "sevenzip_shell64.dll");
+        return index == 0 ? "7-zip.dll" : (Is64Bit() ? "7-zip32.dll" : "7-zip64.dll");
     }
     bool DoesFileExist(const FString &path) const override {
+#ifdef _WIN32
         return NWindows::NFile::NFind::DoesFileExist_Raw(path);
+#else
+        (void)path;
+        return false;
+#endif
     }
     bool CheckContextMenuHandler(const UString &path, UInt32 wow) override {
+#ifdef _WIN32
         return ::CheckContextMenuHandler(path, wow, _registry);
+#else
+        (void)path;
+        (void)wow;
+        return false;
+#endif
     }
     LONG SetContextMenuHandler(bool value, const UString &path, UInt32 wow) override {
+#ifdef _WIN32
         return ::SetContextMenuHandler(value, path, wow, _registry);
+#else
+        (void)value;
+        (void)path;
+        (void)wow;
+        return E_NOTIMPL;
+#endif
     }
     void ShowMenuErrorMessage(LONG error, QWidget *parent) override {
+#ifdef _WIN32
         QMessageBox::critical(parent, QStringLiteral("7-Zip"),
                               QString::fromWCharArray(NWindows::NError::MyFormatMessage(error)));
+#else
+        (void)error;
+        (void)parent;
+#endif
     }
 };
 } // namespace
-#endif
 std::shared_ptr<IQtMenuPageServices> CreateNativeMenuPageServices(bool commandsAvailable) {
-#ifdef _WIN32
     return std::make_shared<CNativeMenuPage>(commandsAvailable);
-#else
-    (void)commandsAvailable;
-    return {};
-#endif
 }

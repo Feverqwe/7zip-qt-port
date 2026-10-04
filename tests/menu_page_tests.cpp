@@ -8,10 +8,12 @@
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include "qtmenupageservices.h"
+#include "qtnativemenupageservices.h"
 #include "qtshellregistryservices.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFileInfo>
 #include <QListWidget>
 #include <QPushButton>
 #include <QScopeGuard>
@@ -168,15 +170,16 @@ class MenuPageTests : public QObject {
         QVERIFY(dialog.findChild<QCheckBox *>("cascadedMenu")->isChecked());
         QVERIFY(dialog.findChild<QCheckBox *>("menuElimDup")->isChecked());
         QVERIFY(!dialog.findChild<QCheckBox *>("menuIcons")->isChecked());
-        for (const char *name : {"shellIntegration", "shellIntegration32", "cascadedMenu",
-                                 "menuIcons", "menuElimDup", "menuItems"}) {
+        for (const char *name : {"cascadedMenu", "menuIcons", "menuElimDup", "menuItems"}) {
             auto *control = dialog.findChild<QWidget *>(name);
-            QVERIFY(!control->isEnabled());
-            QVERIFY(!control->toolTip().isEmpty());
+            QVERIFY(control->isEnabled());
+            QVERIFY(control->toolTip().isEmpty());
         }
         auto *apply = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
-        QTest::mouseClick(dialog.findChild<QCheckBox *>("cascadedMenu"), Qt::LeftButton);
-        QVERIFY(!apply->isEnabled());
+        auto *cascaded = dialog.findChild<QCheckBox *>("cascadedMenu");
+        QTest::mouseClick(cascaded, Qt::LeftButton, Qt::NoModifier,
+                          QPoint(10, cascaded->height() / 2));
+        QVERIFY(apply->isEnabled());
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);
             QApplication::processEvents();
@@ -201,6 +204,23 @@ class MenuPageTests : public QObject {
             QVERIFY(
                 UiInspection::writeReport(dialog, QString("options-menu-%1").arg(size.width())));
         }
+    }
+    void productionModuleNamesAndCommandAvailability() {
+        auto services = CreateNativeMenuPageServices();
+        QVERIFY(services);
+        QVERIFY(services->CommandsAvailable());
+#ifdef Q_OS_WIN
+        QCOMPARE(QByteArray(services->GetDllName(0)), QByteArray("7-zip.dll"));
+        QCOMPARE(QByteArray(services->GetDllName(1)),
+                 sizeof(void *) == 8 ? QByteArray("7-zip32.dll") : QByteArray("7-zip64.dll"));
+        FString path = services->GetModuleDirPrefix();
+        path += services->GetDllName(0);
+        QCOMPARE(services->DoesFileExist(path),
+                 QFileInfo(QCoreApplication::applicationDirPath() + "/7-zip.dll").isFile());
+#else
+        QVERIFY(!services->OtherBitnessAvailable());
+        QVERIFY(!services->DoesFileExist(FString()));
+#endif
     }
     void sourceZoneApplyCancelAndCustomValue() {
         QTemporaryDir fixture;

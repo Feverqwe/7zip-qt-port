@@ -11,6 +11,14 @@ The port-specific entries below record ownership changes at their stated scope;
 current package status belongs in [the checklist](porting-checklist.md), and
 dated source/validation evidence in [the audit](upstream-port-audit.md).
 
+The Menu page's source controls edit the same explicit options file consumed
+by CZipContextMenu. NativeMenuPageServices discovers adjacent original-name
+DLLs and maps original registry operations to project-owned per-user Classes
+keys; the original optional machine Approved operation retains its failure
+policy. Unix exposes applicable in-app command settings while reporting native
+DLL integration unavailable. Apply/requery, flags and command generation stay
+in the copied MenuPage/RegistryContextMenu/ContextMenu modules.
+
 P2-09 in progress: CPanel::CreateFileMenu now owns plugin release, extended
 verbs, archive-folder exclusion and ShowSystemMenu sequencing. CreateSevenZipMenu
 owns source path/attribute setup and query IDs; InvokePluginCommand owns numeric

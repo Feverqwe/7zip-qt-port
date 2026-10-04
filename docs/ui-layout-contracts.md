@@ -42,7 +42,7 @@ Add to7z, Add toZIP, CRC SHA submenu; the hash submenu preserves the eleven
 calculation rows, separator, Generate and Test. Current root bounds287×92 EN/
 316×92 RU, hash355×301 in both languages, every visible action fully exposed.
 
-### Shell Menu page (P2-09, in progress)
+### Shell Menu page (P2-09, accepted)
 
 Reference: pinned MenuPage2.rc and source CShellDll discovery/OnApply.
 Native then other-bitness integration checkboxes precede cascaded/icons/root
@@ -55,8 +55,11 @@ menu-shell EN/RU640×390/520×380 reports. Four current macOS reports reviewed:
 compact498-wide controls accommodate the391-wide RU bitness hint; Zone label
 and combo do not overlap, the498×185 RU list scrolls within fully exposed bounds.
 The real page uses a native factory; Unix has no Win32 DLL integration, Windows
-requires adjacent project modules. Packaging/installed Windows UX and rendered
-Windows parity remain unverified, and the whole P2-09 step is not accepted.
+requires adjacent project modules. Production policy controls and twelve current
+EN/RU normal/compact reports across all three systems are reviewed in P2-09.3.
+Installed native consumers and actual guest registration are verified in .2/.3;
+rendered Menu-page pixel parity remains unverified. P2-09 is accepted; the full
+Options container and its initial-page behavior belong to P1-12.2.
 
 ### System associations (P2-08, accepted)
 
@@ -435,8 +438,10 @@ Reference: pinned `FileManager/MenuPage.cpp`, `MenuPage2.rc` and
 `Explorer/ContextMenuFlags.h`. Options page 2300 is titled 7-Zip and keeps source
 order: two shell registration checkboxes, Cascaded, Icons, Eliminate duplication,
 Zone label/combo, Context menu items label and the 14-row checkable list.
-Registration, Cascaded/Icons/ElimDup and list controls are disabled with an explicit
-capability reason until the real Explorer consumer is ported by P2-09. Zone is
+P2-09.3 now enables Cascaded/Icons/ElimDup and the list for the retained source
+in-app consumers. Windows registration controls discover adjacent original-name
+7-zip.dll/7-zip32.dll/7-zip64.dll and disable missing modules; Unix registration
+stays unavailable with an explicit capability reason. Zone is
 enabled on Windows; on POSIX it is disabled with a Windows-only explanation.
 The source default is `* No`; existing custom integer values remain selectable.
 Qt scrolls the list and uses a persistent OK/Cancel/Apply footer.

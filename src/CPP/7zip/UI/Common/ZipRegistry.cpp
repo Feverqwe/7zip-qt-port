@@ -5,6 +5,22 @@
 #include "Common/StringToInt.h"
 #include <QSettings>
 
+// QSettings serializes bools as text in INI files; native registry values are
+// DWORDs. Accept both representations without changing undefined-value defaults.
+static bool Key_Get_bool_IfOk(QSettings &key, const QString &name, bool &value) {
+    const QVariant stored = key.value(name);
+    const QString text = stored.toString();
+    if (text == QStringLiteral("true") || text == QStringLiteral("false")) {
+        value = text == QStringLiteral("true");
+        return true;
+    }
+    bool ok;
+    const UInt32 number = stored.toUInt(&ok);
+    if (ok)
+        value = number != 0;
+    return ok;
+}
+
 // Native CContextMenuInfo defaults and defined-value branches. The explicit
 // application settings file replaces the process-wide Windows registry key.
 void CContextMenuInfo::Save(const QString &path) const {
@@ -42,14 +58,7 @@ void CContextMenuInfo::Load(const QString &path) {
     QSettings key(path, QSettings::IniFormat);
     key.beginGroup("Options");
     const auto getPair = [&key](const QString &name, CBoolPair &pair) {
-        if (key.contains(name)) {
-            bool ok;
-            const UInt32 value = key.value(name).toUInt(&ok);
-            if (ok) {
-                pair.Val = value != 0;
-                pair.Def = true;
-            }
-        }
+        pair.Def = Key_Get_bool_IfOk(key, name, pair.Val);
     };
     getPair("CascadedMenu", Cascaded);
     getPair("ElimDupExtract", ElimDup);
@@ -76,12 +85,7 @@ static void Key_Set_BoolPair_Delete_IfNotDef(QSettings &key, const char *name,
 static void Key_Get_BoolPair(QSettings &key, const char *name, CBoolPair &pair) {
     pair.Def = false;
     pair.Val = false;
-    bool ok;
-    const UInt32 value = key.value(QLatin1String(name)).toUInt(&ok);
-    if (ok) {
-        pair.Def = true;
-        pair.Val = value != 0;
-    }
+    pair.Def = Key_Get_bool_IfOk(key, QLatin1String(name), pair.Val);
 }
 
 namespace NWorkDir {

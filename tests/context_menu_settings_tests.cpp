@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
+#include <QFile>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -6,6 +7,29 @@
 class ContextMenuSettingsTests final : public QObject {
     Q_OBJECT
   private slots:
+    void diskBooleanPolicies_data() {
+        QTest::addColumn<QByteArray>("booleanValues");
+        QTest::newRow("qt-boolean-text")
+            << QByteArray("CascadedMenu=false\nMenuIcons=true\nElimDupExtract=false\n");
+        QTest::newRow("source-dword-values")
+            << QByteArray("CascadedMenu=0\nMenuIcons=1\nElimDupExtract=0\n");
+    }
+    void diskBooleanPolicies() {
+        QFETCH(QByteArray, booleanValues);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("policy 空.ini");
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        const QByteArray contents = "[Options]\n" + booleanValues + "ContextMenu=2\n";
+        QCOMPARE(file.write(contents), qint64(contents.size()));
+        file.close();
+        CContextMenuInfo info;
+        info.Load(path);
+        QVERIFY(info.Cascaded.Def && !info.Cascaded.Val);
+        QVERIFY(info.MenuIcons.Def && info.MenuIcons.Val);
+        QVERIFY(info.ElimDup.Def && !info.ElimDup.Val);
+        QCOMPARE(info.Flags, UInt32(2));
+    }
     void undefinedDefaultsAndExplicitChoices() {
         QTemporaryDir directory;
         const QString path = directory.filePath("settings.ini");

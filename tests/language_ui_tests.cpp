@@ -414,10 +414,8 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(editor->text(), command);
             QCOMPARE(grid->isChecked(), checked);
             QCOMPARE(items->item(0)->checkState(), itemState);
-            QCOMPARE(items->toolTip(),
-                     QString(language) == "ru"
-                         ? QStringLiteral("Интеграция с оболочкой недоступна в этой сборке.")
-                         : QString("Shell integration is unavailable in this build."));
+            QVERIFY(items->isEnabled());
+            QVERIFY(items->toolTip().isEmpty());
 #ifndef _WIN32
             QCOMPARE(dialog.findChild<QCheckBox *>("workRemovableOnly")->toolTip(),
                      QString(language) == "ru"

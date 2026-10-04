@@ -1,5 +1,22 @@
 # Сверка с Windows 7zFM
 
+## P2-09.3 — Menu integration (принят, 2026-10-04)
+
+Восстановлены исходные имена adjacent shell DLL. Cascaded/Icons/ElimDup и
+список команд теперь доступны для перенесённых source consumers, Apply меняет
+исходный QueryContextMenu/InvokeCommand, Cancel сохраняет прежние flags.
+Windows показывает доступную native registration и отключает отсутствующую
+другую bitness; Unix оставляет native registration/Zone unavailable при
+доступных in-app policies. Двенадцать current EN/RU normal/compact Menu JSON
+трёх ОС просмотрены: grouping/order/exposure сохранены. Windows607eb66a
+проверил настоящую регистрацию, DLL activation и обнаружение системным Shell
+provider с последующей очисткой. Итоговый snapshot1f968069 проходит Windows7/7
+9.68s и Linux6/6 1.10s: реальная DLL получает только Extract Here, flat menu и
+source bitmap. Свежий INI regression проверяет чтение true/false после restart;
+исправлен только транспорт значений. macOS full233/233 PASS96.35s. Приняты
+P2-09.3/P1-13.2 и родители P2-09/P1-13; общая Options приёмка — P1-12.2.
+Pixel parity Menu page и глобальная UX-приёмка здесь не заявляются.
+
 ## P2-09.2 — Native Windows component (принят, 2026-10-04)
 
 Итоговая приёмка компонента заменяет промежуточные ограничения ниже.
