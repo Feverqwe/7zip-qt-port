@@ -1,5 +1,108 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-11 — own glue registry (active, 2026-10-05)
+
+The review starts from bcb86e7 and the248 root src C++/header/Objective-C++ files,
+not borrowed-module line counts. Current macOS compile commands contain133 unique
+local translation units, all C++17;45 upstream C entries represent43 distinct
+paths compiled as C, without C++ language flags. The two native Apple bridges
+use Objective-C++17. CMake retains LANGUAGES C CXX and Apple-only OBJCXX. Windows/
+Linux closure requires their actual builds, not inference from the Mac graph.
+Original source reference throughout this registry is https://github.com/ip7z/7zip.git
+at0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Existing per-module provenance and
+accepted feature evidence remain in their named sections; this registry tracks
+new review/remediation, not another feature implementation.
+
+### Functional/component review register
+
+| Row and files | Source owner, consumers and finding | Required change / verification | Review state |
+| --- | --- | --- | --- |
+| H: `qtlistview.{h,cpp}`, `qtfilelisthover.{h,cpp}` | ListViewDialog.cpp OnInit's TRACKSELECT style; CListView dialogs, MainWindow table/icons and TempBrowse. Two own400ms timer/state implementations | One existing hover adapter; public enable/disable/leave/modifiers/removal/close/wheel/hide, all dialog/main/temp consumers and unchanged normal/compact geometry | Resolved P2-11.1 |
+| C: `archivebackend.h`, `archivebackend_mutations.cpp`, `createarchivedialog_source.cpp`, compression controls and consumers | CompressDialog.h NCompressDialog::CInfo already inherited, but five lower-case fields separately own Level/Method/NumThreads/Dict64/Order; two conversions | Use source DTO once; preserve native auto sentinels, validation, format/property/settings/error semantics; actual compression/Add/direct backend/UI on three OS | Pending component migration |
+| U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks already usable; own fallback reconstructs four callback plans even with native writer | Prefer proven native writer/index order, preserve CommonUpdate no property reset and DoOperation explicit property calls; fallback needs concrete absent-writer/index evidence. Mutation/edit/nested/update/cancel/security checks | Pending component migration |
+| V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreates names | Reuse retained source-link metadata when available; preserve Split outer streams, physical-size/source deletion accounting and absent-native fallback. Batch/volume/SFX/extract checks | Pending component migration |
+| W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*` | ProgressDialog2.cpp CProgressSync owns pause/stop, but is in panel library which already depends on filesystem; own Qt wake/checkpoint loops repeated | Resolve dependency/transport ownership before reuse; preserve immediate wake, atomic cancel/publication and joined lifetime. Hash/creation/preparation/volume success/failure/pause/cancel/restart | Pending boundary review |
+| F: `filetransferoperation.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Review upstream recursion/deletion bodies and extract cohesive Qt transaction boundary where needed, retaining no-overwrite/cancel/link/failure-injection behavior; direct file and window consumers | Pending complete review |
+| B: `CMakeLists.txt`, app/backend/dialog target sources | Same authoritative production sources recompiled per test; consumers have test-only macro variants and late source/link cloning | Share cohesive production objects only after verifying definitions, moc ownership, resources, ABI/platform libraries and all late consumers. Keep test TU definitions and source C language; full three-OS gate | Pending build-boundary review |
+
+### Retained adapter review and remaining coverage
+
+Reviewed bodies provide concrete retention reasons below. Final P2-11 acceptance
+must also account for every root file/header and settle all rows above; this
+checkpoint does not claim the entire inventory has been resolved.
+
+| Files/component | Source basis / retained integration responsibility | Direct consumers/checks |
+| --- | --- | --- |
+| `qtfolderprojection.*`, `filesystemfolderloader.*`, `filesystemscanner.*`, `filetable.*` | FSFolder LoadItems and PanelItems/PanelSort own enumeration/order; Qt incremental widget projection and worker ownership have no Win32-independent presentation equivalent | large_list_window, filesystem_scanner, flat_view, panel_selected_state |
+| `qtpanelfolder*`, `qtpanellist.*`, `qtlocationfolder.*` | Agent/native folder interfaces remain authoritative; inverse Console.List metadata transport and Qt item-model/control operations have no upstream Qt implementation | archive_proxy, binding_lifecycle, panel_property/columns, source_properties |
+| `archivecodeccatalog.*`, `archivecodecimage.*`, `archivecodecprobe.*`, `archiveenginelocation.*`, `archiveexternalcodecs.cpp` | Original LoadCodecs/OpenArchive/handler ABI; Qt immutable module lifetime/discovery/process location. The original external-codecs ABI storage is not a second mutable workflow owner | codec_catalog, external_codecs, native_library, engine_location |
+| `qtarchivebackendrequest.*`, `qtarchivefoldermanager.*`, `qtarchivenativeopenprogress.*`, `qtarchivereopen.*`, `qtarchivesourceextract.cpp` | Original Open/Extract/ReOpen own algorithms; Qt file/process/synchronous callback-to-GUI bridge, cancellation and lifetime | archive_open, nested_archive/edit_chain, source_extract, app_lifecycle_window |
+| `qtarchiveproperties.*`, `qtarchivenativeproperties.cpp` | IInArchive/raw/native item-index proof gates retained reader use; Archive_IsItem_Dir supplies native defaults | source_properties, raw_properties, tree_proxy, comment, rar_memory |
+| `qtownedtempdir.*`, `qtownedtempregistry.*`, `qtownedtempidentity.*` | Source TempFiles lacks persistent Qt leases/OS object identity/restart claims. Lease ownership protects external readers and publication | owned_temp, temp_cleanup, owned_temp_publication, detached_launch |
+| `qtbenchmarkservices.*`, `qtbenchmarkcontrols.*`, `qtmemorylimitspin.*` | Original Bench/GetRamSize/Settings handlers retain calculation; Qt controls/timer/edit/updown adapt Win32 presentation | benchmark, benchmark_ui, fm_settings |
+| `qtlinkservices.*`, `qtlinkcontrols.*`, `qtvolumemounts.*` | Native FileFind/FileIO/FileDir/Reparse retained; exclusive link staging/identity/time rollback and Unix QStorageInfo namespace are required OS integration | link_operations/ui, root_navigation, volume_mounts |
+| `qtlanguageservices.*`, `qtlangcontrols.*`, `qtstatuslabel.*`, `qthelpservices.*` | CLang owns lookup/parser; resource fallback/LanguageChange/status-part projection and portable offline CHM viewer replace Win32 UI | language_ui/dialog/source_update, help_ui, panel_status |
+| `qtexternalguicall.*`, `qtcallbackdialogs.*`, `qtcallbackpassword.*`, `qtprogresswait.*`, `archiveprogresstransport.*`, `qtcallbackprogresstransport.*` | Native callback/thread/event precedence retained; Qt GUI dispatch and process pause/priority rollback differ from native-worker capabilities | callback_lifecycle, progress_wait/transport, external_gui |
+| `qtassociatedfileservices.*`, `qtexternalprocess.*`, `processpause.*`, `processpriority.*` | Source CChildProcesses/EditItem owns workflow; detached OS launch and waitable process ownership/pause/group/reap need separate platform bridges | external_editors, process_controls, temp_detached_launch |
+| `qtassociation*`, `qtmacassociationnative.h`, `desktopidentity.h` | Original System/Register owner; per-user Linux/Windows registration, NSWorkspace/UTType/NSBundle need actual native APIs. Objective-C++ retained only for those APIs | system_page, association_services/file_open, fm_startup |
+| `qtnative*menu*`, `win*menu*`, `qtshell*`, `qtfilemenu*`, `qtprogramfilemenu.*` | Original CFileMenu/CreateSystemMenu/CZipContextMenu owns tree/query/invoke; Qt projects native COM/HMENU/GDI/DPI/message ABI and dispatch | file_menu, native_system_menu, native_shell_data/com, menu_integration |
+| `qtpaneldrag*`, `qtfilemanagerdrag*`, `qttempbrowsepresentation.cpp` | Original OnDrag/Drop/transfer owns command policy; Qt typed MIME/materialization/recipient lifetime and leased temporary browser are presentation/OS transport | drag_drop/archive, panel_key, temp_cleanup; actual Finder remains P3-03.1 |
+| `qttaskbarprogress*`, `qtlauncherprogress.*` | Source taskbar progress projected through Windows interface, Linux launcher DBus or NSDockTile; Apple bridge avoids native BOOL ABI conflict | taskbar_progress, launcher_progress |
+
+Remaining inventory coverage is explicit rather than inferred from those groups:
+`mainwindow*` and `qtapppresentation.*` (view construction/state/focus/synchronous
+source-call lifecycle); `archivebackend*` and `archiveprogressoperation.*`
+(process/validation/phase/error ownership); `createarchivedialog*` and
+`archivesfxmodule.*` (original CompressDialog presentation/DTO and official SFX
+module discovery); `qtappoperationstate.*`, `qtfilemanagercommands.*`,
+`qtfilemanagercommandworkflows.cpp`, `qtfilemanagershellmenu.*`, `main.cpp`,
+`qtfilemanagermain.cpp`, `qtguimain.cpp` (CApp command/readiness and native FM/GUI
+entry); `volumeoperations.*` (source Split/Combine worker); `qtprogresscontrols.*`,
+`qtdialogscreenservices.*`, `qtcompressoptionscontrols.*`, `qtverctrlfileservices.*`
+(source control/platform service projection). Each needs a final component
+disposition and consumer check after the corresponding remediation row.
+The small interface/alias headers (`combodialog.h`, `copydialog.h`,
+`extractdialog.h`, `settingsdialog.h`, `qtfmoptionsdialog.h`,
+`qtcompressoptionsdialog.h`, `qtmodalresult.h`, `qtfolderpropertycapabilities.h`,
+`qtarchivestreamopen.h`, `qtextractpathpolicy.h`, and the `*services.h`/startup/
+drag-model contracts) keep native declarations/typed boundaries rather than
+independent archive algorithms. COptionsDialog's moved declaration retains its
+source name/body and keeps Widgets out of the engine DTO header. Bounded
+extraction path/link checking belongs to ArchiveBackend; source normalization,
+link and write algorithms remain authoritative. Final header/include/consumer
+closure remains part of the inventory check.
+
+### P2-11.1 — shared hover presentation (accepted, 2026-10-05)
+
+Inspected original and adapted full ListViewDialog.cpp, its CFmSettings style
+caller, current CListView/QtFileListHover, main table/icon and temporary-browser
+consumers. The source dialog still owns activation, clipboard/delete/confirmation;
+Qt supplies the400ms dwell because Win32 TRACKSELECT is unavailable. CListView
+now delegates to the existing shared adapter and drops its second timer/index/
+mouse overrides. Hide cancels the shared pending dwell just like wheel/leave/
+press/disable/drag suspension. QObject view lifetime owns the adapter.
+
+Public regression first fails wheel and hide/show (12 other Qt cases pass),
+then verifies cancellation and fresh dwell restart along with close/disable.
+Mouse delivery uses QTest's QWindow QPA overload, preserving the product timer.
+Focused list_activation/list_view_dialog/folder_history/panel_key/properties_runtime/
+temp_cleanup pass6/6 in7.49s on macOS arm64 Qt6.11.2. Unsandboxed full gate
+passes formatting/all targets/238 tests in101.51s. Snapshotee52cd4b's eight
+Linux consumers pass8/8 in23.90s; actual LastTest verifies all14 activation,
+55 panel-key,22 progress-dialog,11 temp-cleanup and other cases without skips.
+Windows's same snapshot passes8/8 in65.06s; actual LastTest verifies the same
+14 activation/55 panel/22 progress and other affected cases with zero failures.
+Its temp-cleanup's existing directory-link setup case skips because QFile::link
+does not create the requested native directory symlink on Windows. That fixture
+gap remains mandatory P3-02 review, separate from shared-hover acceptance; the
+other10 temp-cleanup cases pass. No OS security policy or product change.
+Baseline verifies409 exact/195 adapted/3 local, with paths/bodies unchanged.
+No geometry/text/resource changes. All72 current Mac/Windows/Linux history/hash/
+temp/progress JSON reports were retrieved/reviewed: every visible affected
+control fully inside its normal/compact owner, grouping/order/separation retained.
+The native Windows interactive desktop was used for focus/window consumers;
+rendered pixel parity remains P3-06. This resolves registry row H, not P2-11.
+
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 
 Reviewed original CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile,

@@ -1,13 +1,16 @@
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtlistview.h"
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPlainTextEdit>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QTreeWidget>
+#include <QWheelEvent>
 #include <QtTest>
+#include <memory>
 
 class ListActivationTests : public QObject {
     Q_OBJECT
@@ -34,8 +37,11 @@ class ListActivationTests : public QObject {
     static void move(QTreeWidget *list, int row, Qt::KeyboardModifiers modifiers = Qt::NoModifier) {
         const QPoint pos = position(list, row);
         if (modifiers == Qt::NoModifier) {
-            QTest::mouseMove(list->viewport(), QPoint(1, list->viewport()->height() - 2));
-            QTest::mouseMove(list->viewport(), pos);
+            auto *window = list->window();
+            QTest::mouseMove(
+                window->windowHandle(),
+                list->viewport()->mapTo(window, QPoint(1, list->viewport()->height() - 2)));
+            QTest::mouseMove(window->windowHandle(), list->viewport()->mapTo(window, pos));
             return;
         }
         QMouseEvent event(QEvent::MouseMove, QPointF(pos),
@@ -137,6 +143,48 @@ class ListActivationTests : public QObject {
         QTest::qWait(450);
         QCOMPARE(list->currentItem(), list->topLevelItem(0));
         QVERIFY(dialog.isVisible());
+    }
+    void hoverCancelsBeforeDelayedSelection_data() {
+        QTest::addColumn<QString>("action");
+        for (const char *action : {"wheel", "disable", "hide-show", "close"})
+            QTest::newRow(action) << QString::fromLatin1(action);
+    }
+    void hoverCancelsBeforeDelayedSelection() {
+        QFETCH(QString, action);
+        auto dialog = std::make_unique<CListViewDialog>();
+        prepare(*dialog, true);
+        auto *list = dynamic_cast<CListView *>(dialog->findChild<QTreeWidget *>());
+        QVERIFY(list);
+        move(list, 1);
+        if (action == "wheel") {
+            const QPoint pos = position(list, 1);
+            QWheelEvent wheel(QPointF(pos), QPointF(list->viewport()->mapToGlobal(pos)), QPoint(),
+                              QPoint(0, 120), Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase,
+                              false);
+            QApplication::sendEvent(list->viewport(), &wheel);
+        } else if (action == "disable") {
+            list->SetSingleClickActivation(false);
+        } else if (action == "hide-show") {
+            list->hide();
+            list->show();
+        } else {
+            QPointer<QTreeWidget> lifetime(list);
+            dialog.reset();
+            QVERIFY(lifetime.isNull());
+            QTest::qWait(450);
+            return;
+        }
+        QTest::qWait(450);
+        QCOMPARE(list->currentItem(), list->topLevelItem(0));
+        QCOMPARE(dialog->FocusedItemIndex, -1);
+        QVERIFY(dialog->isVisible());
+        move(list, 2);
+        if (action != "disable")
+            QTRY_COMPARE_WITH_TIMEOUT(list->currentItem(), list->topLevelItem(2), 1200);
+        else {
+            QTest::qWait(450);
+            QCOMPARE(list->currentItem(), list->topLevelItem(0));
+        }
     }
 };
 QTEST_MAIN(ListActivationTests)

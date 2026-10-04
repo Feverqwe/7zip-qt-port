@@ -36,7 +36,7 @@ bool QtFileListHover::eventFilter(QObject *watched, QEvent *event) {
     if (!view_ || watched != view_->viewport())
         return false;
     if (event->type() == QEvent::Leave || event->type() == QEvent::MouseButtonPress ||
-        event->type() == QEvent::Wheel) {
+        event->type() == QEvent::Wheel || event->type() == QEvent::Hide) {
         Cancel();
         return false;
     }

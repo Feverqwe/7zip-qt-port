@@ -1,18 +1,12 @@
 // Qt presentation adapter for upstream NControl::CListView operations.
 #pragma once
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
-#include <QPersistentModelIndex>
-#include <QTimer>
 #include <QTreeWidget>
 
+class QtFileListHover;
+
 class CListView : public QTreeWidget {
-    QTimer _hoverTimer;
-    QPersistentModelIndex _hoverIndex;
-    QPoint _hoverPosition;
-    bool _singleClick = false;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mousePressEvent(QMouseEvent *event) override;
-    bool viewportEvent(QEvent *event) override;
+    QtFileListHover *_hover;
 
   public:
     explicit CListView(QWidget *parent);

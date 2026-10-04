@@ -1,5 +1,20 @@
 # Сверка с Windows 7zFM
 
+## P2-11.1 — единый hover-selection (принят, 2026-10-05)
+
+Исходный ListViewDialog.cpp OnInit применяет LVS_EX_TRACKSELECT вместе с
+SingleClick. Диалоги history/properties/hash/messages теперь используют тот же
+QtFileListHover, что table/icon lists и временный browser: задержка400мс,
+выбор без активации, отмена при press/leave/wheel/hide/disable и удалении строки.
+Source OnEnter/clipboard/Delete/confirmation остаются у исходных callers.
+Public wheel/hide-show regression сначала воспроизводит два сбоя; общий adapter
+устраняет их. Нормальная/компактная структура и тексты не изменялись. Текущие
+24 Mac,24 Windows и24 Linux JSON history/hash/temp/progress проверены: видимые затронутые
+контролы полностью помещаются в owner, порядок и разделение сохранены.
+Scope принят на трёх ОС (audit § P2-11.1); rendered pixel parity остаётся P3-06.
+Windows temp-cleanup directory-link fixture имеет прежний skip; исправление
+этого security coverage gap остаётся в P3-02 и не входит в hover acceptance.
+
 ## P2-10.4 — filesystem/split progress (принят, 2026-10-05)
 
 Filesystem Copy/Move и Split/Combine обновляют исходный CProgressSync из worker,

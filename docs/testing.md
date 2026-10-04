@@ -1,5 +1,14 @@
 # Regression strategy
 
+`list_activation` covers the shared source-style hover presentation used by
+history/properties/hash/message lists, the temporary browser and main lists.
+Public wheel and hide/show fixtures first reproduce delayed selection after
+cancellation; disabling, modifiers, leave, removed rows and destruction also
+remain covered. A fresh unmodified move restarts the same400ms dwell without
+confirming the dialog. QWindow QPA moves make Windows delivery deterministic.
+The responsiveness script's `hover` scope builds/checks these direct consumers
+in one snapshot; normal/compact geometry remains in their existing suites.
+
 `worker_window_progress` exercises public MainWindow Copy, Split and Combine
 with64MiB Unicode/space fixtures. It joins each discovered public QThread without
 pumping GUI events, delivers the registered200ms source dialog timer and requires

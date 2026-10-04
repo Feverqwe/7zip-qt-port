@@ -998,8 +998,12 @@ to support empty captions: source language blank lines skip IDs.
 `CListViewDialog` presents the result through the shared Qt list adapter;
 the dialog never reads the file table or backend itself.
 `CListViewDialog` reads CFmSettings for single-click activation and delegates
-hover selection to the Qt CListView adapter. Its persistent hover index and
-owned timer prevent access to deleted rows; hovering does not confirm a path.
+hover selection through CListView to the same QtFileListHover adapter used by
+the main table/icon views and temporary-file browser. One persistent-index/
+400ms timer implementation owns dwell and cancels it on press, leave, wheel,
+hide, disabling or drag suspension; hovering does not confirm a path. The view
+owns the adapter's QObject lifetime. Source dialogs retain activation, clipboard,
+deletion and confirmation; the shared adapter never calls those actions.
 
 Disk F3 first follows source CPanel::EditItem's operated-folder CalcItemFullSize
 branch. Source FSFolder owns recursive statistics; InvalidateList projects fresh

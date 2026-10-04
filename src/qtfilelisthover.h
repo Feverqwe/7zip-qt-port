@@ -5,7 +5,7 @@
 #include <QPointer>
 #include <QTimer>
 
-// Qt presentation adapter for 7zFM LVS_EX_TRACKSELECT on the main file list.
+// Qt presentation adapter for 7zFM LVS_EX_TRACKSELECT in lists and dialogs.
 class QtFileListHover final : public QObject {
   public:
     explicit QtFileListHover(QAbstractItemView &view);
