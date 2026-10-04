@@ -113,7 +113,8 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/CPP/7zip/UI/FileManager/ClassDefs.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp
     src/CPP/7zip/UI/FileManager/ViewSettings.cpp src/CPP/7zip/UI/FileManager/ViewSettings.h
-    src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h)
+    src/CPP/7zip/UI/FileManager/RegistryUtils.cpp src/CPP/7zip/UI/FileManager/RegistryUtils.h
+    third_party/7zip/CPP/7zip/UI/FileManager/StringUtils.cpp)
 set_target_properties(sevenzip_common PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_common PUBLIC src/CPP third_party/7zip/CPP PRIVATE src)
 target_include_directories(sevenzip_common PRIVATE third_party/7zip/CPP/Windows)
@@ -124,6 +125,25 @@ target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 if(WIN32)
+    target_sources(sevenzip_common PRIVATE third_party/7zip/C/DllSecur.c)
+    target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Common/Random.cpp)
+    target_sources(sevenzip_common PRIVATE
+        third_party/7zip/CPP/Common/CommandLineParser.cpp
+        third_party/7zip/CPP/Common/ListFileUtils.cpp
+        third_party/7zip/CPP/7zip/UI/Common/ArchiveCommandLine.cpp)
+    target_include_directories(sevenzip_common PRIVATE
+        src/CPP/Common src/CPP/7zip/UI/Common)
+    set_source_files_properties(third_party/7zip/CPP/Common/ListFileUtils.cpp
+        third_party/7zip/CPP/7zip/UI/Common/ArchiveCommandLine.cpp PROPERTIES
+        COMPILE_DEFINITIONS "_UNICODE;UNICODE")
+    set_source_files_properties(src/CPP/7zip/UI/Common/CompressCall.cpp PROPERTIES
+        COMPILE_DEFINITIONS "_UNICODE;UNICODE")
+    target_sources(sevenzip_common PRIVATE src/CPP/Windows/Shell.cpp
+        third_party/7zip/CPP/Windows/MemoryGlobal.cpp)
+    set_source_files_properties(src/CPP/Windows/Shell.cpp
+        third_party/7zip/CPP/Windows/MemoryGlobal.cpp PROPERTIES
+        COMPILE_DEFINITIONS "_UNICODE;UNICODE")
+    target_link_libraries(sevenzip_common PUBLIC shell32)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/Registry.cpp)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/Menu.cpp)
     set_source_files_properties(third_party/7zip/CPP/Windows/Menu.cpp PROPERTIES
@@ -165,7 +185,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
     src/CPP/7zip/UI/FileManager/MyLoadMenu.cpp src/CPP/7zip/UI/FileManager/MyLoadMenu.h
     src/qtfilemenuservices.h src/qtfilemanagercommandservices.h
-    src/CPP/7zip/UI/FileManager/FM.cpp src/qtfilemanagerwindowservices.h
+    src/CPP/7zip/UI/FileManager/FM.cpp src/qtfilemanagerwindowservices.h src/qtfilemanagerstartup.h
     src/qtappoperationstate.cpp src/qtappoperationstate.h
     src/CPP/7zip/UI/FileManager/PanelDrag.cpp
     src/CPP/7zip/UI/GUI/HashGUI.cpp src/CPP/7zip/UI/GUI/HashGUI.h
@@ -267,10 +287,34 @@ target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
 if(WIN32)
     target_sources(sevenzip_panel PRIVATE
         src/CPP/7zip/UI/FileManager/AltStreamsFolder.cpp
-        src/CPP/7zip/UI/FileManager/AltStreamsFolder.h)
+        src/CPP/7zip/UI/FileManager/AltStreamsFolder.h
+        src/CPP/7zip/UI/Explorer/MyMessages.cpp
+        src/wincontextmenuservices.cpp src/wincontextmenuservices.h
+        src/winshellmenupresentation.cpp src/winshellmenupresentation.h)
     target_link_libraries(sevenzip_panel PUBLIC shell32)
 endif()
 target_sources(sevenzip_panel PRIVATE src/qtprogresswait.cpp src/qtprogresswait.h)
+if(WIN32)
+    add_library(sevenzip_shell SHARED src/CPP/7zip/UI/Explorer/DllExportsExplorer.cpp
+        third_party/7zip/CPP/7zip/UI/Explorer/Explorer.def)
+    set_target_properties(sevenzip_shell PROPERTIES OUTPUT_NAME "7-zip" AUTOUIC OFF AUTOMOC OFF)
+    target_compile_definitions(sevenzip_shell PRIVATE _UNICODE UNICODE)
+    target_link_libraries(sevenzip_shell PRIVATE sevenzip_panel)
+    file(READ "${explorer_resource}" sevenzip_native_menu_resource)
+    string(REPLACE "\"resource.h\""
+        "\"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/Explorer/resource.h\""
+        sevenzip_native_menu_resource "${sevenzip_native_menu_resource}")
+    string(REPLACE "\"../../UI/Explorer/MenuLogo.bmp\""
+        "\"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/Explorer/MenuLogo.bmp\""
+        sevenzip_native_menu_resource "${sevenzip_native_menu_resource}")
+    # Original Explorer resource.rc icon entry, with a build-only absolute path.
+    string(APPEND sevenzip_native_menu_resource
+        "\nIDI_ICON ICON \"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico\"\n")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/native_context_menu.rc"
+        "${sevenzip_native_menu_resource}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${explorer_resource}")
+    target_sources(sevenzip_shell PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/native_context_menu.rc")
+endif()
 if(APPLE)
     target_sources(sevenzip_panel PRIVATE src/qttaskbarprogress_mac.mm src/qttaskbarprogress.h)
     target_link_libraries(sevenzip_panel PUBLIC "-framework AppKit")
@@ -379,6 +423,12 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
 target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
+if(WIN32)
+    target_sources(sevenzip_location PRIVATE src/CPP/7zip/UI/GUI/GUI.cpp src/qtguicommand.h)
+    target_include_directories(sevenzip_location PRIVATE src/CPP/Common src/CPP/7zip/UI/Common)
+    set_source_files_properties(src/CPP/7zip/UI/GUI/GUI.cpp PROPERTIES
+        COMPILE_DEFINITIONS "_UNICODE;UNICODE")
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(GIO REQUIRED IMPORTED_TARGET gio-unix-2.0)
@@ -413,13 +463,20 @@ qt_add_executable(sevenzip_desktop
     src/filesystemscanner.cpp
     src/filesystemscanner.h
     src/settingsdialog.h
-    src/propertiesdialog.cpp
-    src/propertiesdialog.h
     src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h
 )
 
 target_include_directories(sevenzip_desktop PRIVATE src)
 target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
+if(WIN32)
+    target_sources(sevenzip_desktop PRIVATE src/qtguimain.cpp src/qtfilemanagermain.cpp)
+    add_custom_command(TARGET sevenzip_desktop POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
+            "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG.exe"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
+            "$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM.exe"
+        VERBATIM)
+endif()
 
 set_target_properties(sevenzip_desktop PROPERTIES
     MACOSX_BUNDLE TRUE
@@ -427,6 +484,9 @@ set_target_properties(sevenzip_desktop PROPERTIES
 )
 if(APPLE)
     include(cmake/MacAssociationBundle.cmake)
+endif()
+if(WIN32)
+    include(cmake/WindowsInstall.cmake)
 endif()
 
 if(BUILD_TESTING)
@@ -502,6 +562,8 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME windows_package_verification COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_package_tests.py)
     add_test(NAME upstream_baseline COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/upstream_baseline_tests.py)
     add_test(NAME upstream_inventory COMMAND ${Python3_EXECUTABLE}
@@ -580,6 +642,14 @@ if(BUILD_TESTING)
     target_compile_definitions(native_library_tests PRIVATE
         "NATIVE_LIBRARY_FIXTURE=\"$<TARGET_FILE:native_library_fixture>\"")
     add_dependencies(native_library_tests native_library_fixture)
+    if(WIN32)
+        add_library(native_module_path_fixture SHARED tests/fixtures/native_module_path_fixture.cpp)
+        target_include_directories(native_module_path_fixture PRIVATE src)
+        target_link_libraries(native_module_path_fixture PRIVATE sevenzip_common)
+        target_compile_definitions(native_library_tests PRIVATE
+            "NATIVE_MODULE_PATH_FIXTURE=\"$<TARGET_FILE:native_module_path_fixture>\"")
+        add_dependencies(native_library_tests native_module_path_fixture)
+    endif()
     add_test(NAME native_library COMMAND native_library_tests -silent)
     find_file(SEVENZIP_CODEC_MODULE NAMES 7z.so 7z.dll
         HINTS ENV SEVENZIP_CODEC_MODULE_DIR
@@ -642,6 +712,52 @@ if(BUILD_TESTING)
     set_tests_properties(source_extract_backend PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
     get_target_property(source_extract_advanced_sources source_extract_backend_tests SOURCES)
     list(REMOVE_ITEM source_extract_advanced_sources tests/source_extract_backend_tests.cpp)
+    if(WIN32)
+        qt_add_executable(native_mapi_host tests/fixtures/native_mapi_host.cpp
+            tests/fixtures/native_mapi_loader.cpp
+            src/qtguimain.cpp ${source_extract_advanced_sources}
+            src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp
+            src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp
+            src/createarchivedialog_preferences.cpp)
+        target_include_directories(native_mapi_host PRIVATE src)
+        target_link_libraries(native_mapi_host PRIVATE sevenzip_location Qt6::Widgets)
+        foreach(mapi_variant IN ITEMS wide ansi missing)
+            add_library(native_mapi_${mapi_variant} SHARED tests/fixtures/native_mapi_provider.cpp)
+            target_link_libraries(native_mapi_${mapi_variant} PRIVATE Qt6::Core)
+            set_target_properties(native_mapi_${mapi_variant} PROPERTIES
+                OUTPUT_NAME Mapi32 AUTOMOC OFF AUTOUIC OFF
+                RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mapi-fixtures/${mapi_variant}"
+                LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mapi-fixtures/${mapi_variant}"
+                ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/mapi-fixtures/${mapi_variant}")
+        endforeach()
+        target_compile_definitions(native_mapi_wide PRIVATE SEVENZIP_MAPI_WIDE SEVENZIP_MAPI_ANSI)
+        target_compile_definitions(native_mapi_ansi PRIVATE SEVENZIP_MAPI_ANSI)
+        target_sources(native_mapi_wide PRIVATE tests/fixtures/native_mapi_wide.def)
+        target_sources(native_mapi_ansi PRIVATE tests/fixtures/native_mapi_ansi.def)
+        qt_add_executable(native_mapi_tests tests/native_mapi_tests.cpp)
+        target_include_directories(native_mapi_tests PRIVATE tests)
+        target_link_libraries(native_mapi_tests PRIVATE Qt6::Test)
+        target_compile_definitions(native_mapi_tests PRIVATE
+            "NATIVE_MAPI_HOST=\"$<TARGET_FILE:native_mapi_host>\""
+            "NATIVE_MAPI_WIDE=\"$<TARGET_FILE:native_mapi_wide>\""
+            "NATIVE_MAPI_ANSI=\"$<TARGET_FILE:native_mapi_ansi>\""
+            "NATIVE_MAPI_MISSING=\"$<TARGET_FILE:native_mapi_missing>\"")
+        add_dependencies(native_mapi_tests native_mapi_host native_mapi_wide native_mapi_ansi native_mapi_missing)
+        add_test(NAME native_mapi COMMAND native_mapi_tests -silent)
+        set_tests_properties(native_mapi PROPERTIES TIMEOUT 180 ENVIRONMENT
+            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_mapi.ini")
+    endif()
+    qt_add_executable(archive_open_options_tests tests/archive_open_options_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(archive_open_options_tests PRIVATE src tests)
+    target_link_libraries(archive_open_options_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_open_options_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME archive_open_options COMMAND archive_open_options_tests -silent)
+    set_tests_properties(archive_open_options PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-open-options.ini")
     qt_add_executable(source_extract_advanced_tests tests/source_extract_advanced_tests.cpp
         tests/layout_inspection.cpp ${source_extract_advanced_sources})
     target_include_directories(source_extract_advanced_tests PRIVATE src)
@@ -921,13 +1037,13 @@ if(BUILD_TESTING)
     target_include_directories(archive_mutation_tests PRIVATE src tests)
     target_link_libraries(archive_backend_tests PRIVATE Qt6::Test)
     target_link_libraries(archive_mutation_tests PRIVATE Qt6::Test)
-    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(ui_layout_tests tests/ui_layout_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(ui_layout_tests PRIVATE src)
     target_link_libraries(ui_layout_tests PRIVATE Qt6::Widgets Qt6::Test)
-    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
-    qt_add_executable(ui_operations_tests tests/ui_operations_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
-    qt_add_executable(ui_navigation_tests tests/ui_navigation_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
-    qt_add_executable(ui_archive_states_tests tests/ui_archive_states_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(ui_state_tests tests/ui_state_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(ui_operations_tests tests/ui_operations_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(ui_navigation_tests tests/ui_navigation_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(ui_archive_states_tests tests/ui_archive_states_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(ui_state_tests PRIVATE src)
     target_include_directories(ui_operations_tests PRIVATE src tests)
     target_include_directories(ui_navigation_tests PRIVATE src tests)
@@ -1001,17 +1117,17 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-update-modes-settings.ini")
     target_link_libraries(ui_navigation_tests PRIVATE Qt6::Widgets Qt6::Test)
     target_link_libraries(ui_archive_states_tests PRIVATE Qt6::Widgets Qt6::Test)
-    qt_add_executable(flat_view_tests tests/flat_view_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
-    qt_add_executable(settings_tests tests/settings_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(flat_view_tests tests/flat_view_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(settings_tests tests/settings_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(settings_tests PRIVATE src)
     target_link_libraries(settings_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME settings COMMAND settings_tests -silent)
     set_tests_properties(settings PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/settings-tests.ini")
-    qt_add_executable(properties_tests tests/properties_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(properties_tests tests/properties_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(properties_tests PRIVATE src)
     target_link_libraries(properties_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME properties COMMAND properties_tests -silent)
-    qt_add_executable(checksum_tests tests/checksum_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(checksum_tests tests/checksum_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(checksum_tests PRIVATE src)
     target_link_libraries(checksum_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME checksum COMMAND checksum_tests -silent)
@@ -1265,12 +1381,12 @@ if(BUILD_TESTING)
     foreach(suite compression compression_order compression_dictionary compression_memory compression_resources compression_solid compression_limit)
         set_property(TEST ${suite} APPEND PROPERTY ENVIRONMENT "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/${suite}-settings.ini")
     endforeach()
-    qt_add_executable(archive_item_open_tests tests/archive_item_open_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(archive_item_open_tests tests/archive_item_open_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(archive_item_open_tests PRIVATE src)
     target_link_libraries(archive_item_open_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME archive_item_open COMMAND archive_item_open_tests -silent)
     set_tests_properties(archive_item_open PROPERTIES TIMEOUT 60 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/file-viewer-settings.ini")
-    qt_add_executable(nested_archive_tests tests/nested_archive_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h src/propertiesdialog.cpp src/propertiesdialog.h src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
+    qt_add_executable(nested_archive_tests tests/nested_archive_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h src/filesystemscanner.cpp src/filesystemscanner.h   src/CPP/7zip/UI/FileManager/PanelSelect.cpp src/CPP/7zip/UI/FileManager/PanelSelect.h src/mainwindow_selection.cpp src/CPP/7zip/UI/FileManager/PanelKey.cpp  src/filetable.cpp src/filetable.h src/mainwindow.h src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/Agent.h src/CPP/7zip/UI/Agent/AgentProxy.cpp src/CPP/7zip/UI/Agent/AgentProxy.h src/mainwindow.cpp src/mainwindow_menus.cpp src/mainwindow_panel.cpp src/mainwindow_backendevents.cpp src/mainwindow_archiveopening.cpp src/mainwindow_volumes.cpp src/mainwindow_fileoperations.cpp src/mainwindow_archive_transfer.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/mainwindow_filelist.cpp src/mainwindow_archivelist.cpp src/mainwindow_preferences.cpp src/mainwindow_dialogs.cpp src/mainwindow_archivecommands.cpp src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp src/createarchivedialog_preferences.cpp src/createarchivedialog.h src/extractdialog.h src/combodialog.h src/copydialog.h src/settingsdialog.h  src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/CPP/7zip/UI/FileManager/PanelSplitFile.h src/volumeoperations.cpp src/volumeoperations.h src/CPP/7zip/UI/FileManager/SplitDialog.cpp src/CPP/7zip/UI/FileManager/SplitDialog.h)
     target_include_directories(nested_archive_tests PRIVATE src)
     target_link_libraries(nested_archive_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME nested_archive COMMAND nested_archive_tests -silent)
@@ -1627,6 +1743,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
             src/qtfilemanagershellmenu.cpp src/qtfilemanagershellmenu.h
             src/qtnativeshellmenu.cpp src/qtnativeshellmenu.h
+            src/qtnativeshellmenupresentation.cpp src/qtnativeshellmenupresentation.h
             src/qtprogramfilemenu.cpp src/qtprogramfilemenu.h
             src/qtfilemanagerdrag.cpp src/qtfilemanagerdrag.h src/qtfilemanagerdragpresentation.cpp
             src/qtfilemanagerdraginput.cpp
@@ -1682,7 +1799,7 @@ if(BUILD_TESTING)
     list(REMOVE_ITEM source_properties_sources tests/archive_opening_tests.cpp)
     get_target_property(source_properties_libraries archive_opening_tests LINK_LIBRARIES)
     qt_add_executable(source_properties_tests tests/source_properties_tests.cpp
-        tests/layout_inspection.cpp src/propertiesdialog.cpp ${source_properties_sources})
+        tests/layout_inspection.cpp ${source_properties_sources})
     target_include_directories(source_properties_tests PRIVATE src tests)
     target_link_libraries(source_properties_tests PRIVATE ${source_properties_libraries})
     add_test(NAME source_properties COMMAND source_properties_tests -silent)
@@ -1714,6 +1831,73 @@ if(BUILD_TESTING)
     add_test(NAME shell_context COMMAND shell_context_tests -silent)
     if(WIN32)
         qt_add_executable(native_system_menu_tests tests/native_system_menu_tests.cpp)
+        qt_add_executable(native_menu_presentation_tests tests/native_menu_presentation_tests.cpp
+            tests/fixtures/native_menu_provider.cpp tests/fixtures/native_menu_provider.h
+            src/qtnativeshellmenupresentation.cpp)
+        target_include_directories(native_menu_presentation_tests PRIVATE src)
+        target_link_libraries(native_menu_presentation_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME native_menu_presentation COMMAND native_menu_presentation_tests -silent)
+        if(EXISTS "${CMAKE_SOURCE_DIR}/build/windows-reference/reference.json")
+            qt_add_executable(native_rendered_system_menu_tests
+                tests/native_rendered_system_menu_tests.cpp src/qtnativeshellmenupresentation.cpp)
+            target_include_directories(native_rendered_system_menu_tests PRIVATE src)
+            target_link_libraries(native_rendered_system_menu_tests PRIVATE sevenzip_panel Qt6::Test advapi32)
+            target_compile_definitions(native_rendered_system_menu_tests PRIVATE
+                "SEVENZIP_NATIVE_REFERENCE_DIR=\"${CMAKE_SOURCE_DIR}/build/windows-reference\""
+                "SEVENZIP_UPSTREAM_REVISION=\"${sfx_upstream_revision}\"")
+            add_test(NAME native_rendered_system_menu COMMAND native_rendered_system_menu_tests -silent)
+            set_tests_properties(native_rendered_system_menu PROPERTIES TIMEOUT 60 ENVIRONMENT
+                "QT_QPA_PLATFORM=windows;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+        endif()
+        qt_add_executable(native_shell_data_tests tests/native_shell_data_tests.cpp)
+        target_sources(native_shell_data_tests PRIVATE
+            "${CMAKE_CURRENT_BINARY_DIR}/native_context_menu.rc")
+        target_include_directories(native_shell_data_tests PRIVATE src)
+        target_link_libraries(native_shell_data_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME native_shell_data COMMAND native_shell_data_tests -silent)
+        qt_add_executable(native_archive_command_line_tests tests/native_archive_command_line_tests.cpp)
+        target_include_directories(native_archive_command_line_tests PRIVATE src
+            src/CPP/7zip/UI/Common src/CPP/Common)
+        target_link_libraries(native_archive_command_line_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME native_archive_command_line COMMAND native_archive_command_line_tests -silent)
+        target_compile_definitions(native_archive_command_line_tests PRIVATE
+            "NATIVE_GUI_EXECUTABLE=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG.exe\"")
+        add_dependencies(native_archive_command_line_tests sevenzip_desktop)
+        qt_add_executable(native_gui_workflow_tests tests/native_gui_workflow_tests.cpp)
+        target_include_directories(native_gui_workflow_tests PRIVATE src tests)
+        target_link_libraries(native_gui_workflow_tests PRIVATE sevenzip_panel Qt6::Test)
+        target_compile_definitions(native_gui_workflow_tests PRIVATE
+            "NATIVE_GUI_EXECUTABLE=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG.exe\"")
+        add_dependencies(native_gui_workflow_tests sevenzip_desktop)
+        add_test(NAME native_gui_workflow COMMAND native_gui_workflow_tests -silent)
+        set_tests_properties(native_gui_workflow PROPERTIES TIMEOUT 180 ENVIRONMENT
+            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_gui_workflow.ini")
+        qt_add_executable(native_shell_com_tests tests/native_shell_com_tests.cpp)
+        add_executable(native_shell_host tests/fixtures/native_shell_host.cpp)
+        set_target_properties(native_shell_host PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+        target_link_libraries(native_shell_host PRIVATE ole32 shell32 uuid)
+        target_include_directories(native_shell_com_tests PRIVATE src)
+        target_link_libraries(native_shell_com_tests PRIVATE sevenzip_panel Qt6::Test)
+        target_compile_definitions(native_shell_com_tests PRIVATE
+            "NATIVE_SHELL_LIBRARY=\"$<TARGET_FILE:sevenzip_shell>\""
+            "NATIVE_SHELL_HOST=\"$<TARGET_FILE:native_shell_host>\"")
+        add_dependencies(native_shell_com_tests sevenzip_shell native_shell_host)
+        add_test(NAME native_shell_com COMMAND native_shell_com_tests -silent)
+        qt_add_executable(native_shell_launch_tests tests/native_shell_launch_tests.cpp)
+        add_executable(native_shell_launch_host tests/fixtures/native_shell_launch_host.cpp)
+        set_target_properties(native_shell_launch_host PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+        target_link_libraries(native_shell_launch_host PRIVATE ole32 shell32 uuid advapi32)
+        target_include_directories(native_shell_launch_tests PRIVATE tests)
+        target_link_libraries(native_shell_launch_tests PRIVATE Qt6::Test advapi32 ole32 oleaut32)
+        target_compile_definitions(native_shell_launch_tests PRIVATE
+            "NATIVE_SHELL_LIBRARY=\"$<TARGET_FILE:sevenzip_shell>\""
+            "NATIVE_SHELL_LAUNCH_HOST=\"$<TARGET_FILE:native_shell_launch_host>\"")
+        add_dependencies(native_shell_launch_tests sevenzip_shell native_shell_launch_host sevenzip_desktop)
+        add_test(NAME native_shell_launch COMMAND native_shell_launch_tests -silent)
+        set_tests_properties(native_shell_launch PROPERTIES TIMEOUT 120 ENVIRONMENT
+            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_shell_launch.ini")
+        set_tests_properties(native_shell_com PROPERTIES ENVIRONMENT
+            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_shell_com.ini")
         target_include_directories(native_system_menu_tests PRIVATE src)
         target_link_libraries(native_system_menu_tests PRIVATE sevenzip_panel Qt6::Test)
         add_test(NAME native_system_menu COMMAND native_system_menu_tests -silent)
@@ -1911,6 +2095,15 @@ if(BUILD_TESTING)
     qt_add_executable(native_rar_ui_tests tests/native_rar_ui_tests.cpp ${options_window_sources})
     qt_add_executable(native_hash_ui_tests tests/native_hash_ui_tests.cpp ${options_window_sources})
     qt_add_executable(shell_menu_window_tests tests/shell_menu_window_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    if(WIN32)
+        qt_add_executable(native_properties_window_tests tests/native_properties_window_tests.cpp
+            ${options_window_sources})
+        target_include_directories(native_properties_window_tests PRIVATE src tests)
+        target_link_libraries(native_properties_window_tests PRIVATE ${options_window_libraries})
+        add_test(NAME native_properties_window COMMAND native_properties_window_tests -silent)
+        set_tests_properties(native_properties_window PROPERTIES TIMEOUT 240 ENVIRONMENT
+            "QT_QPA_PLATFORM=windows;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_properties_window.ini")
+    endif()
     target_include_directories(shell_menu_window_tests PRIVATE src tests)
     target_link_libraries(shell_menu_window_tests PRIVATE ${options_window_libraries})
     if(SEVENZIP_CODEC_MODULE)
@@ -2099,6 +2292,35 @@ if(BUILD_TESTING)
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
     if(SEVENZIP_CODEC_MODULE)
+        qt_add_executable(file_manager_startup_tests tests/file_manager_startup_tests.cpp ${metadata_ui_sources})
+        target_include_directories(file_manager_startup_tests PRIVATE src tests)
+        target_link_libraries(file_manager_startup_tests PRIVATE ${metadata_ui_libraries})
+        target_compile_definitions(file_manager_startup_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+        if(WIN32)
+            target_compile_definitions(file_manager_startup_tests PRIVATE
+                "SEVENZIP_NATIVE_FM=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM.exe\"")
+            add_dependencies(file_manager_startup_tests sevenzip_desktop)
+        endif()
+        add_test(NAME file_manager_startup COMMAND file_manager_startup_tests -silent)
+        set_tests_properties(file_manager_startup PROPERTIES TIMEOUT 90 ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/file-manager-startup.ini")
+    endif()
+    if(WIN32 AND SEVENZIP_CODEC_MODULE)
+        qt_add_executable(native_shell_email_tests tests/native_shell_email_tests.cpp
+            tests/fixtures/native_mapi_loader.cpp tests/layout_inspection.cpp ${metadata_ui_sources})
+        target_include_directories(native_shell_email_tests PRIVATE src tests)
+        target_link_libraries(native_shell_email_tests PRIVATE ${metadata_ui_libraries})
+        target_compile_definitions(native_shell_email_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
+            "NATIVE_MAPI_WIDE=\"$<TARGET_FILE:native_mapi_wide>\""
+            "NATIVE_MAPI_MISSING=\"$<TARGET_FILE:native_mapi_missing>\"")
+        add_dependencies(native_shell_email_tests native_mapi_wide native_mapi_missing)
+        add_test(NAME native_shell_email COMMAND native_shell_email_tests -silent)
+        set_tests_properties(native_shell_email PROPERTIES TIMEOUT 180 RESOURCE_LOCK sevenzip_ui_artifacts
+            ENVIRONMENT "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-shell-email.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
+    if(SEVENZIP_CODEC_MODULE)
         target_compile_definitions(archive_metadata_ui_tests PRIVATE
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
@@ -2161,6 +2383,7 @@ if(BUILD_TESTING AND WIN32)
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key ui_navigation ui_archive_states ui_archive_volumes
+            progress_dialog language_dialog
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}

@@ -1,0 +1,50 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "mainwindow.h"
+#include "qtfilemanagerstartup.h"
+#include <QEventLoop>
+#include <QScopeGuard>
+
+int RunSevenzipFileManager(QApplication &application) {
+    return NQtFileManager::WinMain([&] {
+        LoadLangOneTime();
+        const auto startup = WinMain2(UString(GetCommandLineW()));
+        ArchiveBackend backend;
+        if (startup.NeedOpenArc) {
+            // The source first archive open loads Global_Codecs synchronously.
+            // Await the existing backend discovery before CApp::Create so its
+            // initial BindToPath uses that same retained native catalog.
+            QEventLoop discovery;
+            bool ready = false;
+            QString error;
+            QObject::connect(&backend, &ArchiveBackend::codecCatalogReady, &discovery,
+                             [&](bool success, const QString &message) {
+                                 ready = success;
+                                 error = message;
+                                 discovery.quit();
+                             });
+            if (backend.discoverCodecCatalog())
+                discovery.exec();
+            if (!ready)
+                throw UString(error.toStdWString().c_str());
+        }
+        try {
+            const bool quitOnClose = application.quitOnLastWindowClosed();
+            const auto restore =
+                qScopeGuard([&] { application.setQuitOnLastWindowClosed(quitOnClose); });
+            application.setQuitOnLastWindowClosed(false);
+            MainWindow window(&backend, {}, nullptr, &startup);
+            window.show();
+            application.setQuitOnLastWindowClosed(quitOnClose);
+            if (!startup.NeedOpenArc)
+                backend.discoverCodecCatalog();
+            return application.exec();
+        } catch (const QtFileManagerStartupFailure &failure) {
+            // WM_CREATE refusal makes InitInstance fail and WinMain2 returns
+            // FALSE. E_ABORT skips the error message in the original body.
+            if (!failure.Message.IsEmpty())
+                QMessageBox::critical(nullptr, QStringLiteral("7-Zip"),
+                                      QString::fromWCharArray(failure.Message));
+            return 0;
+        }
+    });
+}

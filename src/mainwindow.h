@@ -11,7 +11,6 @@
 #include "filesystemscanner.h"
 #include "filetable.h"
 #include "filetransferoperation.h"
-#include "propertiesdialog.h"
 #include "settingsdialog.h"
 #include "volumeoperations.h"
 
@@ -79,12 +78,14 @@ class QtFileListHover;
 class CProgressDialog;
 class IQtProgressTransport;
 class IQtTrashService;
+struct QtFileManagerStartup;
 
 class MainWindow : public QMainWindow {
   public:
     explicit MainWindow(ArchiveBackend *backend = nullptr,
                         std::function<bool(const QUrl &)> fileOpener = {},
-                        IQtTrashService *trashService = nullptr);
+                        IQtTrashService *trashService = nullptr,
+                        const QtFileManagerStartup *startup = nullptr);
 
     void openArchive(const QString &path);
     void openPath(const QString &path);

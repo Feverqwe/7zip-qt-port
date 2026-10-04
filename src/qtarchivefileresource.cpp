@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/7zip/UI/Common/WorkDir.h"
 #include "Common/StringConvert.h"
+#include "Windows/FileDir.h"
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
@@ -15,7 +16,6 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QScopeGuard>
-#include <QTemporaryFile>
 
 namespace {
 class CSpoolProgress final : public ICompressProgressInfo, public CMyUnknownImp {
@@ -227,19 +227,35 @@ HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {
     if (!_temporary.isEmpty())
         return E_FAIL;
     // 7zz accepts files only. The source stream and copy algorithm are retained;
-    // Qt supplies solely the private filename/cleanup service at this boundary.
-    QTemporaryFile temporary(QDir::tempPath() + "/sevenzip-open-XXXXXX");
-    if (!temporary.open())
-        return E_FAIL;
-    const QString path = temporary.fileName();
-    temporary.close();
-    auto lease = QtOwnedTempRegistry().RegisterCreated(path);
-    if (!lease)
-        return E_FAIL;
+    // Use the original temp-name/create service with the final output handle.
+    // QTemporaryFile::close can retain its OS handle, preventing a native
+    // writable reopen on Windows. This also removes the second file open.
+    FString prefix;
+    if (!NWindows::NFile::NDir::MyGetTempPath(prefix))
+        return GetLastError_noZero_HRESULT();
+    prefix += FTEXT("sevenzip-open");
     auto *outputSpec = new COutFileStream;
     CMyComPtr<ISequentialOutStream> output = outputSpec;
-    if (!outputSpec->Open_EXISTING(us2fs(path.toStdWString().c_str())))
+    outputSpec->ProcessedSize = 0;
+#ifndef _WIN32
+    // Preserve the private spool permissions of the former Qt temp service.
+    outputSpec->File.mode_for_Create = 0600;
+#endif
+    AString postfix;
+    if (!NWindows::NFile::NDir::CreateTempFile2(prefix, true, postfix, &outputSpec->File))
         return GetLastError_noZero_HRESULT();
+    prefix += postfix;
+    const QString path = QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(prefix)));
+    std::shared_ptr<QtOwnedTempLease> lease;
+    bool completed = false;
+    const auto cleanup = qScopeGuard([&] {
+        outputSpec->Close();
+        if (!completed)
+            QFile::remove(path);
+    });
+    lease = QtOwnedTempRegistry().RegisterCreated(path);
+    if (!lease)
+        return E_FAIL;
     RINOK(InStream_SeekToBegin(stream))
     CMyComPtr<ICompressProgressInfo> copyProgress = new CSpoolProgress(progress);
     RINOK(NCompress::CopyStream(stream, output, copyProgress))
@@ -247,7 +263,7 @@ HRESULT QtArchiveFileResource::Spool(IInStream *stream, IProgress *progress) {
     _temporary = path;
     _temporaryLease = std::move(lease);
     EnginePath = path;
-    temporary.setAutoRemove(false);
+    completed = true;
     return S_OK;
 }
 

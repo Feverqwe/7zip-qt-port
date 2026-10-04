@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <vector>
 
 using NWindows::NDLL::CLibrary;
 
@@ -121,6 +122,29 @@ class NativeLibraryTests : public QObject {
     }
 
 #ifdef Q_OS_WIN
+    void modulePathBelongsToLoadedDllInsteadOfHostExecutable() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString path = temporary.filePath(QStringLiteral("модуль й 密碼 с пробелом.dll"));
+        QVERIFY(QFile::copy(QString::fromUtf8(NATIVE_MODULE_PATH_FIXTURE), path));
+        CLibrary library;
+        QVERIFY(library.Load(nativePath(path)));
+        const auto modulePath = reinterpret_cast<unsigned (*)(wchar_t *, unsigned)>(
+            ::GetProcAddress(library.Get_HMODULE(), "sevenzip_module_path"));
+        QVERIFY(modulePath);
+        const unsigned required = modulePath(nullptr, 0);
+        QVERIFY(required > 1);
+        std::vector<wchar_t> buffer(required, wchar_t(0));
+        QCOMPARE(modulePath(buffer.data(), required), required);
+        QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(buffer.data())), path);
+        FString executable;
+        QVERIFY(NWindows::NDLL::MyGetModuleFileName(executable));
+        QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(executable.Ptr())),
+                 QCoreApplication::applicationFilePath());
+        QVERIFY(library.Free());
+        QVERIFY(QFile::remove(path));
+    }
+
     void windowsResourceLoadExRetainsSourceLifetime() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());

@@ -17,7 +17,7 @@
 #include <QToolButton>
 #include <QTreeWidget>
 
-class LanguageUiTests : public QObject {
+class LanguageUiTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     QString settingsPath() const { return qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"); }
     void chooseLanguage(QDialog &dialog, int index) {
@@ -241,6 +241,12 @@ class LanguageUiTests : public QObject {
         QTest::keyClick(address, Qt::Key_Return);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
+#ifdef Q_OS_WIN
+        // Windows filesystem Properties belongs to the OS. Qt language changes
+        // apply to the source archive collector, whose rows this test inspects.
+        openListedArchive(window, backend, "language-properties.zip",
+                          {{QFileInfo(file.fileName()).fileName(), 7, 7}});
+#endif
         table->selectRow(0);
         bool inspected = false;
         QTimer::singleShot(0, &window, [&] {

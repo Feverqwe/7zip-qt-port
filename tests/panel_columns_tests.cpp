@@ -250,9 +250,9 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
         for (const auto &name : {QStringLiteral("later.txt"), QStringLiteral("earlier.txt")}) {
             QFile file(temp.filePath(name));
             QVERIFY(file.open(QIODevice::WriteOnly));
-            file.write("data");
-            file.close();
-            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(file.write("data"), qint64(4));
+            QVERIFY(file.flush());
+            // Windows requires a writable handle to set FILE_WRITE_ATTRIBUTES.
             QVERIFY(file.setFileTime(base.addMSecs(name.startsWith('l') ? 800 : 0),
                                      QFileDevice::FileModificationTime));
             file.close();

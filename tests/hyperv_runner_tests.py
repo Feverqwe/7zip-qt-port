@@ -36,10 +36,13 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(args.preset, "release")
         self.assertTrue(args.skip_runtime)
         self.assertEqual(args.upstream, Path("/fixture"))
+        self.assertTrue(runner.parse_arguments(["check", "windows", "--interactive"]).interactive)
+        self.assertTrue(runner.parse_arguments(["check", "all", "--interactive"]).interactive)
         for argv in (["probe", "linux", "--transport", "scp"],
                      ["run", "linux", "--preset", "release"],
                      ["check", "linux", "--"], ["probe", "all", "--"],
-                     ["run", "all"]):
+                     ["run", "all"], ["check", "linux", "--interactive"],
+                     ["probe", "windows", "--interactive"]):
             with self.subTest(argv=argv), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as error:
                     runner.parse_arguments(argv)
@@ -195,12 +198,16 @@ class RunnerTests(unittest.TestCase):
                     patch.object(runner, "execute_check", side_effect=execute) as execute_mock, \
                     patch.object(runner, "invoke"):
                 code = runner.run_platforms(["linux", "windows"], "dev", state,
-                                            ["bash", "scripts/fixture.sh", "a b"])
+                                            ["bash", "scripts/fixture.sh", "a b"], interactive=True)
             self.assertEqual(code, 1)
             snapshot.assert_called_once()
             self.assertEqual(execute_mock.call_count, 2)
+            for call in execute_mock.call_args_list:
+                self.assertEqual(call.args[-1], call.args[1] == "windows")
             report = json.loads(next(state.glob("*/run.json")).read_text())
             self.assertEqual(report["status"], "failed")
+            self.assertTrue(report["interactive"])
+            self.assertEqual([item["interactive"] for item in report["platforms"]], [False, True])
             self.assertEqual([item["status"] for item in report["platforms"]], ["failed", "passed"])
             self.assertEqual({item["sha256"] for item in report["platforms"]}, {"same-sha"})
             self.assertEqual(report["platforms"][0]["exit_code"], 17)

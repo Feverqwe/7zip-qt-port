@@ -65,6 +65,9 @@ bool QtFileManagerShellMenu::Available(const CZipContextMenu::CCommandMapItem &c
         return false;
     using C = CZipContextMenu;
     switch (command.CommandInternalID) {
+#ifdef _WIN32
+    case C::kCompressEmail:
+#endif
     case C::kCompress:
         FOR_VECTOR(i, catalog->nativeCodecs().Formats) {
             const auto &format = catalog->nativeCodecs().Formats[i];
@@ -72,8 +75,14 @@ bool QtFileManagerShellMenu::Available(const CZipContextMenu::CCommandMapItem &c
                 return true;
         }
         return false;
+#ifdef _WIN32
+    case C::kCompressTo7zEmail:
+#endif
     case C::kCompressTo7z:
         return catalog->canUpdate("7z");
+#ifdef _WIN32
+    case C::kCompressToZipEmail:
+#endif
     case C::kCompressToZip:
         return catalog->canUpdate("zip");
     case C::kHash_Generate_SHA256:
@@ -98,7 +107,7 @@ bool QtFileManagerShellMenu::Available(const CZipContextMenu::CCommandMapItem &c
     case C::kHash_All:
         return true;
     default:
-        return false; // Email/platform transports remain pending.
+        return false; // Commands without an applicable transport stay unavailable.
     }
 }
 

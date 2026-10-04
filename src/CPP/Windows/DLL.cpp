@@ -1,29 +1,60 @@
 // Adapted from 7-Zip CPP/Windows/DLL.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Library lifetime/loading and POSIX procedure lookup retain source bodies.
-// Executable-path lookup uses Qt; directory/fallback rules retain source code.
+// Windows module-path and directory/fallback rules retain source code.
+// Qt supplies the POSIX executable-path service.
 #include "Windows/StdAfx.h"
 
 #include "DLL.h"
 #include <QCoreApplication>
 #include <QFile>
 
+#if defined(_WIN32) && !defined(_UNICODE)
+extern bool g_IsNT;
+#endif
+
 namespace NWindows {
 namespace NDLL {
 
-// Qt supplies the executable path on all supported platforms. Upstream's
-// Win32 resource-module lookup has no POSIX body and the desktop owns no DLL UI.
 bool MyGetModuleFileName(FString &path) {
+#ifdef _WIN32
+    // Resolve the module containing this implementation instead of requiring
+    // every EXE/DLL consumer to define upstream's mutable g_hInstance global.
+    HMODULE hModule = NULL;
+    path.Empty();
+    if (!::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                  GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              reinterpret_cast<LPCWSTR>(&MyGetModuleFileName), &hModule))
+        return false;
+#ifndef _UNICODE
+    if (!g_IsNT) {
+        TCHAR s[MAX_PATH + 2];
+        s[0] = 0;
+        const DWORD size = ::GetModuleFileName(hModule, s, MAX_PATH + 1);
+        if (size <= MAX_PATH && size != 0) {
+            path = fas2fs(s);
+            return true;
+        }
+    } else
+#endif
+    {
+        WCHAR s[MAX_PATH + 2];
+        s[0] = 0;
+        const DWORD size = ::GetModuleFileNameW(hModule, s, MAX_PATH + 1);
+        if (size <= MAX_PATH && size != 0) {
+            path = us2fs(s);
+            return true;
+        }
+    }
+    return false;
+#else
     const QString executable = QCoreApplication::applicationFilePath();
     path.Empty();
     if (executable.isEmpty())
         return false;
-#ifdef _WIN32
-    path = us2fs(UString(executable.toStdWString().c_str()));
-#else
     path = QFile::encodeName(executable).constData();
-#endif
     return true;
+#endif
 }
 
 // Original upstream directory/fallback body, shared with the POSIX adapter.

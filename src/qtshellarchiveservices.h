@@ -33,10 +33,17 @@ class QtShellArchiveServices final : public IQtCompressCallServices, public IQtU
     void ResetResult() { _result = S_OK; }
     CCodecs &Codecs() override;
     HRESULT LoadHashProviders(CExternalCodecs &providers) override;
+    HRESULT LoadExternalCodecs(CExternalCodecs &providers);
     HRESULT ExtractGUI(CCodecs &codecs, const CObjectVector<COpenType> &types, UStringVector &paths,
                        UStringVector &fullPaths, const NWildcard::CCensorNode &censor,
                        CExtractOptions &options, bool showDialog, bool &messageWasDisplayed,
                        CExtractCallbackImp &callback) override;
+    HRESULT ExtractGUI(CCodecs &codecs, const CObjectVector<COpenType> &types,
+                       const CIntVector &excludedFormats, UStringVector &paths,
+                       UStringVector &fullPaths, const NWildcard::CCensorNode &censor,
+                       CExtractOptions &options, CHashBundle *hashBundle, bool showDialog,
+                       bool &messageWasDisplayed, CExtractCallbackImp &callback,
+                       const UString &openType = UString());
     HRESULT HashCalcGUI(const CExternalCodecs *providers, const NWildcard::CCensor &censor,
                         const CHashOptions &options, bool &messageWasDisplayed) override;
     HRESULT UpdateGUI(CCodecs &codecs, const CObjectVector<COpenType> &types, const UString &path,

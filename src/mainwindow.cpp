@@ -7,6 +7,7 @@
 #include "qtassociatedfileservices.h"
 #include "qtfilemanagercommands.h"
 #include "qtfilemanagerdrag.h"
+#include "qtfilemanagerstartup.h"
 #include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtprogramfilemenu.h"
@@ -15,7 +16,7 @@
 #include <QScrollBar>
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener,
-                       IQtTrashService *trashService)
+                       IQtTrashService *trashService, const QtFileManagerStartup *startup)
     : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
     if (trashService)
         trashService_ = trashService;
@@ -65,9 +66,14 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     connectFilesystemScanner();
     COpenResult opened;
     int widths[2] = {width() / 2, width() - width() / 2};
-    const HRESULT result =
-        app_.Create(this, panelsDefined ? UString() : ToUString(QDir::currentPath()), UString(),
-                    widths, false, opened, *appPresentation_, toolbarSettingsPath());
+    const UString initialPath = startup         ? startup->FullPath
+                                : panelsDefined ? UString()
+                                                : ToUString(QDir::currentPath());
+    const HRESULT result = app_.Create(this, initialPath, startup ? startup->ArcFormat : UString(),
+                                       widths, startup && startup->NeedOpenArc, opened,
+                                       *appPresentation_, toolbarSettingsPath());
+    if (startup)
+        CheckFileManagerStartup(result, *startup, opened);
     if (result != S_OK)
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
@@ -155,13 +161,13 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     refreshActions();
     connectBackend();
     reloadLangItems();
+    connect(backend_, &ArchiveBackend::codecCatalogReady, this,
+            [this](bool, const QString &message) {
+                refreshActions();
+                if (!message.isEmpty())
+                    statusBar()->showMessage(message);
+            });
     if (!backend) {
-        connect(backend_, &ArchiveBackend::codecCatalogReady, this,
-                [this](bool, const QString &message) {
-                    refreshActions();
-                    if (!message.isEmpty())
-                        statusBar()->showMessage(message);
-                });
         backend_->discoverCodecCatalog();
     }
 }

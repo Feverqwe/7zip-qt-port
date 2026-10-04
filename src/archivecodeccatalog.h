@@ -45,6 +45,8 @@ class ArchiveCodecCatalog final {
     bool parseOpenTypes(const QString &types, CObjectVector<COpenType> &parsed) const;
     HRESULT openArchive(CArchiveLink &link, const QString &path, const QString &type,
                         IOpenCallbackUI *callback) const;
+    HRESULT openArchive(CArchiveLink &link, const COpenOptions &requested,
+                        IOpenCallbackUI *callback) const;
     HRESULT updateArchive(const QString &path, const QString &type, NWildcard::CCensor &censor,
                           CUpdateOptions &options, CUpdateErrorInfo &errorInfo,
                           IOpenCallbackUI *openCallback, IUpdateCallbackUI2 *callback,

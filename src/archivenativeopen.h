@@ -23,7 +23,8 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     explicit ArchiveNativeOpen(std::shared_ptr<const ArchiveCodecCatalog> catalog)
         : catalog_(std::move(catalog)) {}
     ~ArchiveNativeOpen();
-    HRESULT Open(const QString &path, const QString &type, IOpenCallbackUI *callback);
+    HRESULT Open(const QString &path, const QString &type, IOpenCallbackUI *callback,
+                 const COpenOptions *requested = nullptr);
     HRESULT Close();
     const CArc &arc() const { return *link_.GetArc(); }
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }

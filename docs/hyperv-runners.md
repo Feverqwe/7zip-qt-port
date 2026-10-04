@@ -24,6 +24,16 @@ python3 scripts/hyperv-runner.py check linux --preset release
 python3 scripts/hyperv-runner.py check windows --preset release
 ```
 
+Native Windows window/focus/Properties checks need the logged-on user's desktop,
+not SSH's session0. Use `check windows --interactive`, `check all --interactive`,
+or `run windows --interactive -- <project-script> [args]`. The runner creates a
+unique `Sevenzip-check-...` scheduled task with the current runner identity and
+an InteractiveToken, runs the same snapshot `check.cmd`/toolchain there, records
+the session and exit code, then removes the completed task. It needs an existing
+active runner logon; it does not log in, supply credentials or fall back to a
+noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
+verify backend/COM data consumers, but hidden windows do not prove UI acceptance.
+
 The general entry point is `run <linux|windows|all> [runner-options] --
 <project-script> [script-arguments]`. Examples:
 

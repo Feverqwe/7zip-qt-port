@@ -27,6 +27,7 @@ struct IUpdateCallbackUI2;
 struct CUpdateOptions;
 struct CUpdateErrorInfo;
 struct COpenType;
+struct COpenOptions;
 namespace NWildcard {
 class CCensor;
 }
@@ -111,7 +112,8 @@ class ArchiveBackend : public QObject {
     ArchiveSfxModule sfxModule(const QString &path = {}) const;
     // Called by the source opening worker; no process or widget state is accessed.
     HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
-                              std::shared_ptr<ArchiveNativeOpen> &reader) const;
+                              std::shared_ptr<ArchiveNativeOpen> &reader,
+                              const COpenOptions *options = nullptr) const;
     HRESULT updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback) const;

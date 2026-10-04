@@ -90,12 +90,9 @@ class PropertyFormattingTests : public QObject {
     void timestampPrecisionAndEmptyTime() {
         QScopedValueRollback<bool> utc(g_Timestamp_Show_UTC, true);
         CPropVariant prop;
-        prop.vt = VT_FILETIME;
         const UInt64 ticks = UInt64(11644473600ULL) * 10000000 + 1234567;
-        prop.filetime.dwLowDateTime = UInt32(ticks);
-        prop.filetime.dwHighDateTime = UInt32(ticks >> 32);
-        prop.wReserved1 = k_PropVar_TimePrec_1ns;
-        prop.wReserved2 = 89;
+        const FILETIME ft{UInt32(ticks), UInt32(ticks >> 32)};
+        prop.SetAsTimeFrom_FT_Prec_Ns100(ft, k_PropVar_TimePrec_1ns, 89);
         QCOMPARE(text(prop, kpidMTime, 9), QStringLiteral("1970-01-01 00:00:00.123456789Z"));
         QCOMPARE(text(prop, kpidMTime, 0), QStringLiteral("1970-01-01 00:00:00Z"));
         prop.wReserved1 = k_PropVar_TimePrec_Unix;

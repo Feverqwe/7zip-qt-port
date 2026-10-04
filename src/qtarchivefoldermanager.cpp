@@ -118,10 +118,16 @@ HRESULT QtArchiveFolderManager::OpenOwnedStreamFile(IInStream *stream, const wch
     return OpenFolderFileImpl(stream, path, format, folder, progress, true);
 }
 
+HRESULT QtArchiveFolderManager::OpenArchive(const COpenOptions &options, const wchar_t *format,
+                                            IFolderFolder **folder, IProgress *progress) {
+    return OpenFolderFileImpl(nullptr, options.filePath, format, folder, progress, false, &options);
+}
+
 HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wchar_t *filePath,
                                                    const wchar_t *arcFormat,
                                                    IFolderFolder **resultFolder,
-                                                   IProgress *progress, bool ownedStreamFile) {
+                                                   IProgress *progress, bool ownedStreamFile,
+                                                   const COpenOptions *options) {
     COM_TRY_BEGIN
     if (!resultFolder)
         return E_INVALIDARG;
@@ -158,7 +164,7 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
     const QString path = resource->EnginePath;
     CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
     std::shared_ptr<ArchiveNativeOpen> nativeOpen;
-    RINOK(_backend.openNativeArchive(path, format, &nativeProgress, nativeOpen))
+    RINOK(_backend.openNativeArchive(path, format, &nativeProgress, nativeOpen, options))
     resource->AttachNativeOpen(std::move(nativeOpen));
     const QString listingFormat =
         resource->RequiresOuterOpen() ? resource->TransportFormat() : format;

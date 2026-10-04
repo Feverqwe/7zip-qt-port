@@ -42,6 +42,25 @@ class CMessageAnswers {
         timer_.start(2);
     }
 };
+// Stop at the first visible native progress event, before its OnInit releases
+// callback waiters. A polling timer can run after a small WIM update commits.
+class CNativeCancel final : public QObject {
+    bool &observed_;
+
+  public:
+    explicit CNativeCancel(bool &observed) : observed_(observed) { qApp->installEventFilter(this); }
+    ~CNativeCancel() override { qApp->removeEventFilter(this); }
+
+  protected:
+    bool eventFilter(QObject *object, QEvent *event) override {
+        if (event->type() == QEvent::Show && !observed_)
+            if (auto *progress = dynamic_cast<CProgressDialog *>(object)) {
+                observed_ = true;
+                progress->Sync.Set_Stopped(true);
+            }
+        return false;
+    }
+};
 } // namespace
 
 class CodecCommandsUiTests final : public QObject, protected MainWindowTestSupport {
@@ -164,18 +183,9 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             submitted = dialog->result() == QDialog::Accepted;
         });
         bool observedStart = false;
-        QTimer nativeCancel;
-        if (format == "wim" && cancel) {
-            connect(&nativeCancel, &QTimer::timeout, &window, [&] {
-                if (auto *progress =
-                        dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
-                    observedStart = true;
-                    progress->Sync.Set_Stopped(true);
-                    nativeCancel.stop();
-                }
-            });
-            nativeCancel.start(1);
-        }
+        std::unique_ptr<CNativeCancel> nativeCancel;
+        if (format == "wim" && cancel)
+            nativeCancel = std::make_unique<CNativeCancel>(observedStart);
         const auto connection = connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
             if (format == "wim" && cancel)
                 return; // Native writer cancellation belongs to its source Sync.
@@ -186,7 +196,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             }
         });
         action(window, "copyAction")->trigger();
-        nativeCancel.stop();
+        nativeCancel.reset();
         disconnect(connection);
         QVERIFY(submitted && observedStart);
         QVERIFY2(messages.Errors.isEmpty(), qPrintable(messages.Errors.join('\n')));

@@ -73,32 +73,43 @@ CCodecs &QtShellArchiveServices::Codecs() {
 HRESULT QtShellArchiveServices::LoadHashProviders(CExternalCodecs &providers) {
     return _backend.loadHashProviders(providers);
 }
+HRESULT QtShellArchiveServices::LoadExternalCodecs(CExternalCodecs &providers) {
+    return _backend.loadBenchmarkProviders(providers);
+}
 HRESULT QtShellArchiveServices::ExtractGUI(CCodecs &codecs, const CObjectVector<COpenType> &types,
                                            UStringVector &paths, UStringVector &fullPaths,
                                            const NWildcard::CCensorNode &censor,
                                            CExtractOptions &options, bool showDialog,
                                            bool &messageWasDisplayed,
                                            CExtractCallbackImp &callback) {
+    return ExtractGUI(codecs, types, CIntVector(), paths, fullPaths, censor, options, nullptr,
+                      showDialog, messageWasDisplayed, callback);
+}
+HRESULT QtShellArchiveServices::ExtractGUI(CCodecs &codecs, const CObjectVector<COpenType> &types,
+                                           const CIntVector &excludedFormats, UStringVector &paths,
+                                           UStringVector &fullPaths,
+                                           const NWildcard::CCensorNode &censor,
+                                           CExtractOptions &options, CHashBundle *hashBundle,
+                                           bool showDialog, bool &messageWasDisplayed,
+                                           CExtractCallbackImp &callback, const UString &openType) {
     if (_backend.busy() || _backend.codecCatalog() != _catalog)
         return E_FAIL;
     QtArchiveBatchOpen open(_backend);
-    if (types.Size() > 1)
-        return E_NOTIMPL;
-    if (!types.IsEmpty()) {
+    if (!openType.IsEmpty())
+        open.SetOpenType(openType);
+    else if (types.Size() == 1) {
         const auto &type = types[0];
         if (type.IsHashType)
             open.SetOpenType(UString(L"hash"));
         else if (type.FormatIndex >= 0 && unsigned(type.FormatIndex) < codecs.Formats.Size())
             open.SetOpenType(codecs.Formats[unsigned(type.FormatIndex)].Name);
-        else
-            return E_NOTIMPL;
     }
     COutputPolicy policy(options);
     auto *previous = options.NtOptions.QtPathPolicy;
     const auto restore = qScopeGuard([&] { options.NtOptions.QtPathPolicy = previous; });
     options.NtOptions.QtPathPolicy = &policy;
     const HRESULT result =
-        ::ExtractGUI(&codecs, types, CIntVector(), paths, fullPaths, censor, options, nullptr,
+        ::ExtractGUI(&codecs, types, excludedFormats, paths, fullPaths, censor, options, hashBundle,
                      showDialog, messageWasDisplayed, &callback, &open, &open, _parent);
     return result;
 }

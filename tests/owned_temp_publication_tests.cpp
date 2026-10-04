@@ -13,6 +13,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <algorithm>
 
 // Exercise CommonUpdateOperation, including its publication/reopen adapter.
 class CSpoolRenameWorker final : public CProgressThreadVirt {
@@ -49,6 +50,60 @@ class OwnedTempPublicationTests : public QObject {
     }
 
   private slots:
+    void interruptedSpoolRemovesTemporaryFileAndLease_data() {
+        QTest::addColumn<HRESULT>("result");
+        QTest::newRow("cancel") << HRESULT(E_ABORT);
+        QTest::newRow("failure") << HRESULT(E_FAIL);
+    }
+    void interruptedSpoolRemovesTemporaryFileAndLease() {
+        QFETCH(HRESULT, result);
+        class StopProgress final : public IProgress, public CMyUnknownImp {
+            Z7_COM_UNKNOWN_IMP_1(IProgress)
+            HRESULT _result;
+
+          public:
+            unsigned calls = 0;
+            QVector<QtOwnedTempEntry> entries;
+            explicit StopProgress(HRESULT result) : _result(result) {}
+            Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+            Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override {
+                ++calls;
+                entries = QtOwnedTempRegistry().Entries();
+                return _result;
+            }
+        };
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString path = fixture.filePath(QStringLiteral("source файл 密碼 with space.zip"));
+        // The original copy coder reports progress at 4 MiB boundaries.
+        const QByteArray bytes(8 * 1024 * 1024, 'x');
+        {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(bytes), qint64(bytes.size()));
+        }
+        QtOwnedTempRegistry registry;
+        const auto entriesBefore = registry.Entries();
+        auto *progressSpec = new StopProgress(result);
+        CMyComPtr<IProgress> progress = progressSpec;
+        auto *resource = new QtArchiveFileResource(path);
+        CMyComPtr<IUnknown> owner = resource;
+        CMyComPtr2_Create<IInStream, CInFileStream> input;
+        QVERIFY(input->Open(us2fs(path.toStdWString().c_str())));
+        QCOMPARE(resource->Spool(input, progress), result);
+        QVERIFY(progressSpec->calls > 0);
+        QCOMPARE(resource->EnginePath, path);
+        QCOMPARE(registry.Entries().size(), entriesBefore.size());
+        QCOMPARE(read(path), bytes);
+        QVERIFY(!progressSpec->entries.isEmpty());
+        for (const auto &entry : progressSpec->entries) {
+            const auto previous =
+                std::find_if(entriesBefore.cbegin(), entriesBefore.cend(),
+                             [&](const auto &old) { return old.key == entry.key; });
+            if (previous == entriesBefore.cend())
+                QVERIFY2(!QFileInfo::exists(entry.path), qPrintable(entry.path));
+        }
+    }
     void nativeFolderTransactionRetainsSpoolOwnership_data() {
         QTest::addColumn<int>("outcome");
         QTest::newRow("published-and-reopened") << 0;
@@ -81,6 +136,12 @@ class OwnedTempPublicationTests : public QObject {
             QCOMPARE(resource->Spool(input, nullptr), S_OK);
         }
         const QString spool = resource->EnginePath;
+#ifndef Q_OS_WIN
+        const auto publicPermissions = QFileDevice::ReadGroup | QFileDevice::WriteGroup |
+                                       QFileDevice::ExeGroup | QFileDevice::ReadOther |
+                                       QFileDevice::WriteOther | QFileDevice::ExeOther;
+        QVERIFY(!(QFileInfo(spool).permissions() & publicPermissions));
+#endif
         QtOwnedTempRegistry registry;
         QString oldIdentity;
         for (const auto &entry : registry.Entries())
@@ -119,7 +180,7 @@ class OwnedTempPublicationTests : public QObject {
             QCOMPARE(read(spool), originalBytes);
         else {
             QProcess inspect;
-            inspect.start(engine, {"l", "-slt", "--", spool});
+            inspect.start(engine, {"l", "-slt", "-sccUTF-8", "--", spool});
             QVERIFY(inspect.waitForFinished(10000));
             QCOMPARE(inspect.exitCode(), 0);
             QVERIFY(

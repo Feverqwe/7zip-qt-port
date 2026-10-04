@@ -56,7 +56,15 @@ QString FmSettingsPath() {
     const QString overridden = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
     if (!overridden.isEmpty())
         return overridden;
+#ifdef _WIN32
+    // Explorer has no project QCoreApplication identity. Keep the application
+    // and its in-process shell DLL on the same project settings owner.
+    const QString directory =
+        QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation))
+            .filePath("Sevenzip Desktop");
+#else
     const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+#endif
     QDir().mkpath(directory);
     return QDir(directory).filePath("toolbar.ini");
 }

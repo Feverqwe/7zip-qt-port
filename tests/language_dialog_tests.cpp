@@ -60,6 +60,8 @@ class LanguageDialogTests final : public QObject {
         dialog.resize(width, height);
         dialog.show();
         QApplication::processEvents();
+        // Retain current-build evidence even when a fitting assertion fails.
+        QVERIFY(UiInspection::writeReport(dialog, name + '-' + QString::number(width)));
         for (auto *label : dialog.findChildren<QLabel *>())
             if (label->isVisible() && !label->text().isEmpty()) {
                 QVERIFY2(UiInspection::fullyVisible(*label, dialog),
@@ -71,7 +73,6 @@ class LanguageDialogTests final : public QObject {
                 QVERIFY(UiInspection::fullyVisible(*button, dialog));
                 QVERIFY(button->width() >= button->sizeHint().width());
             }
-        QVERIFY(UiInspection::writeReport(dialog, name + '-' + QString::number(width)));
     }
 
   private slots:

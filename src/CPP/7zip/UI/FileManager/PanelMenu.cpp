@@ -26,6 +26,7 @@
 #include "qtlangcontrols.h"
 #include "qtpanelpluginservices.h"
 #ifdef _WIN32
+#include "Windows/COM.h"
 #include "Windows/Menu.h"
 #include <QWidget>
 #include <shlobj.h>
@@ -37,6 +38,29 @@ static const unsigned kSystemStartMenuID = kMenuCmdID_Plugin_Start + 400;
 using namespace NWindows;
 #define ODS(sz)
 #define ODS_U(s)
+void CPanel::InvokeSystemCommand(const char *command) {
+    NCOM::CComInitializer comInitializer;
+    if (!IsFsOrPureDrivesFolder())
+        return;
+    CRecordVector<UInt32> operatedIndices;
+    Get_ItemIndices_Operated(operatedIndices);
+    if (operatedIndices.IsEmpty())
+        return;
+    CMyComPtr<IContextMenu> contextMenu;
+    if (CreateShellContextMenu(operatedIndices, contextMenu) != S_OK)
+        return;
+
+    CMINVOKECOMMANDINFO ci;
+    ZeroMemory(&ci, sizeof(ci));
+    ci.cbSize = sizeof(CMINVOKECOMMANDINFO);
+    ci.hwnd = GetParent() ? reinterpret_cast<HWND>(GetParent()->winId()) : NULL;
+    ci.lpVerb = command;
+    // Request normal presentation explicitly. Native visibility is checked by
+    // the Windows property-sheet consumer; nShow alone does not establish it.
+    ci.nShow = SW_SHOWNORMAL;
+    contextMenu->InvokeCommand(&ci);
+}
+
 struct CFolderPidls {
     LPITEMIDLIST parent;
     CRecordVector<LPITEMIDLIST> items;
@@ -496,12 +520,32 @@ static const Byte kSpecProps[] = {kpidPath,       kpidType,    kpidErrorType,   
                                   kpidErrorFlags, kpidWarning, kpidWarningFlags, kpidOffset,
                                   kpidPhySize,    kpidTailSize};
 
+void CPanel::Properties() {
+    CMyComPtr<IGetFolderArcProps> getFolderArcProps;
+    _folder.QueryInterface(IID_IGetFolderArcProps, &getFolderArcProps);
+#ifdef _WIN32
+    if (!getFolderArcProps) {
+        InvokeSystemCommand("properties");
+        return;
+    }
+#endif
+    // The existing projection supplies Qt's modal creation around the retained
+    // source collector. Unix has no Windows shell property-sheet provider.
+    CRecordVector<UInt32> operatedIndices;
+    Get_ItemIndices_Operated(operatedIndices);
+    CListViewDialog message(GetParent());
+    Properties(operatedIndices, message);
+    message.OnInit();
+    message.setObjectName("selectedPropertiesDialog");
+    message.exec();
+}
+
 void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
                         CListViewDialog &message) const {
     CMyComPtr<IGetFolderArcProps> getFolderArcProps;
     _folder.QueryInterface(IID_IGetFolderArcProps, &getFolderArcProps);
-    // Filesystem Properties uses this same portable dialog rather than the
-    // Windows-only InvokeSystemCommand branch; item properties remain native.
+    // Public collector for archive metadata and the Unix presentation fallback.
+    // The no-argument source entry invokes the native Windows property sheet.
     if (operatedIndices.Size() == 1) {
         UInt32 index = operatedIndices[0];
         UInt32 numProps;

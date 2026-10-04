@@ -3,12 +3,25 @@
 #include "qtassociationfileopen.h"
 
 #include <QApplication>
+#include <QFileInfo>
 #include <QTimer>
+#ifdef Q_OS_WIN
+#include "qtfilemanagerstartup.h"
+#include "qtguicommand.h"
+#endif
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("Sevenzip Desktop");
     app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
+#ifdef Q_OS_WIN
+    if (QFileInfo(app.applicationFilePath())
+            .fileName()
+            .compare(QStringLiteral("7zG.exe"), Qt::CaseInsensitive) == 0)
+        return RunSevenzipGUI(app);
+    if (!app.arguments().contains("--smoke-test"))
+        return RunSevenzipFileManager(app);
+#endif
     QtAssociationFileOpen associatedFiles(app);
     MainWindow window;
     QObject::connect(&associatedFiles, &QtAssociationFileOpen::OpenRequested, &app,

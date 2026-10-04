@@ -4,8 +4,8 @@
 
 ArchiveNativeOpen::~ArchiveNativeOpen() { Close(); }
 
-HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type,
-                                IOpenCallbackUI *callback) {
+HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenCallbackUI *callback,
+                                const COpenOptions *requested) {
     callback_ = callback;
     // Preserve the empty source type's recursive intent explicitly at the
     // file-only listing/extract/reopen integration boundary.
@@ -13,6 +13,11 @@ HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type,
     const auto detach = qScopeGuard([&] { callback_ = nullptr; });
     // Volume streams can retain the source COpenCallbackImp beyond opening.
     // Its UI pointer must remain valid, without retaining the opening dialog.
+    if (requested) {
+        COpenOptions options = *requested;
+        options.filePath = path.toStdWString().c_str();
+        return catalog_->openArchive(link_, options, this);
+    }
     return catalog_->openArchive(link_, path, type, this);
 }
 

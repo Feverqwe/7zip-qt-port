@@ -13,11 +13,8 @@ void MainWindow::showSelectedProperties() {
     CSelectedState selection;
     // Synchronize the Qt selection until the full source OnNotify port is connected.
     panel.SaveSelectedState(selection);
-    CRecordVector<UInt32> indices;
-    panel.Get_ItemIndices_Operated(indices);
     panel.LoadFullPath();
-    PropertiesDialog dialog(panel, indices, this);
-    dialog.exec();
+    panel.Properties();
 }
 
 void MainWindow::begin(const QString &label, const QString &detail) {

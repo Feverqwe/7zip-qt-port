@@ -148,7 +148,7 @@ class DragDropTests : public QObject {
         app.Panels[0].OnDrag(false);
         QCOMPARE(receiver.calls, 2);
         QCOMPARE(receiver.bytes, QByteArray("selected bytes"));
-        QCOMPARE(receiver.path.normalized(QString::NormalizationForm_C),
+        QCOMPARE(QDir::fromNativeSeparators(receiver.path).normalized(QString::NormalizationForm_C),
                  file.normalized(QString::NormalizationForm_C));
         QVERIFY(!list.item(0, 0)->isSelected());
         QVERIFY(QFileInfo::exists(file));
@@ -178,7 +178,8 @@ class DragDropTests : public QObject {
         view.folder = 7;
         target.PositionCursor(0, 0);
         QCOMPARE(target.TargetPanel(), &app.Panels[1]);
-        QVERIFY(ToQString(target.GetTargetPath()).endsWith("подпапка с пробелом/"));
+        QVERIFY(QDir::fromNativeSeparators(ToQString(target.GetTargetPath()))
+                    .endsWith("подпапка с пробелом/"));
         QCOMPARE(view.highlights, (QList<QPair<int, bool>>{{7, true}}));
         view.folder = -1;
         target.PositionCursor(0, 0);

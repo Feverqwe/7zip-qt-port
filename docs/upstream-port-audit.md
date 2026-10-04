@@ -1,5 +1,651 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-09.2 — native Windows component accepted (2026-10-04)
+
+This integrated step accepts the retained native COM/DLL, GUI/map sender,
+MAPI, Properties, startup and installed-package consumers described below.
+It supersedes the intermediate WIP outcomes in this section. Explorer handler
+registration and Menu policy acceptance belong to P2-09.3, not this step.
+
+Final System subset1c7b58c0 passes all three suites: native_menu_presentation
+14 Qt rows, native_system_menu5, shell_menu_window21; zero failures/skips.
+The adapter forwards IContextMenu2/3 initialization, measure/draw and printable
+WM_MENUCHAR messages, including callback bitmaps and owner-drawn submenus.
+Provider/HMENU ownership outlives Qt rows and filters. Real GDI fixtures cover
+opaque, premultiplied and legacy zero-alpha pixels, transparent edges and both
+DIB orientations. GetDIBits requests a top-down owned buffer: direct bmBits
+interpretation had inverted the rendered Share icon and is rejected by the
+multicolor orientation regression. Upstream contains no usable Qt conversion
+or widget renderer; native query, IDs and invocation bodies remain unchanged.
+
+Rendered comparison0a46f9dd passes1/1 CTest (10.69s), three Qt rows, zero skips.
+It runs original7zFM and compares22 runtime System rows against both the raw
+source query and Qt projection, including order, state, grouping and icon
+presence. Both affected PNGs were inspected. Reference96DPI menu font is Segoe
+UI height-12/weight400; Qt uses Segoe UI9pt under QWindows11Style, ratio1.
+Qt style supplies24px rows, padding and rounded frame; native rows are22px
+with9px separators. This records a Qt presentation adaptation, not an exact
+pixel match or verification of other DPI/settings/platforms.
+
+The reference is built from repository https://github.com/ip7z/7zip.git at
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 using the original FileManager makefile
+and resources in a separate archive snapshot. The wrapper includes the full
+FM.cpp body with an entry-name alias. Only REG_PATH_7Z in RegistryUtils.cpp
+and REG_PATH_FM in ViewSettings.cpp substitute a unique private product path;
+original function bodies and shell providers' HKCU access are retained.
+The manifest records original/adapted source, wrapper and binary hashes.
+Creation refuses an existing key, normal source cleanup removes it, and
+emergency cleanup requires the matching owner PID. No global HKCU override,
+official registration change, Qt addition to upstream or sibling edit occurs.
+See [reference reproduction](windows-ui-reference.md#pinned-runtime-system-menu-reference).
+
+Final required local unsandboxed gate passes formatting/all-target build and
+232/232 CTest in95.15s. Subsequent localized Windows presentation changes pass
+their three direct consumers and the actual rendered reference; the affected
+macOS shell_menu_window consumer passes1/1 in0.95s. Linux full evidence below
+predates those Windows-only changes. Whole-platform final acceptance remains P3.
+
+The following dated checkpoints preserve the failures and narrower checks that
+led to this accepted component; pending labels there are historical.
+
+Latest installed acceptance subset: Windows interactive023fc5e5 passes all three
+package suites in32.83s. The actual installed DLL's reserved COM class is activated
+through CoCreateInstance, then the source map sender launches installed7zG:
+exact extraction, visible Cancel255 and damaged-archive refusal2 all pass
+(5 Qt rows,0 failures,0 skips). Installed7zFM startup has11 passing Qt rows,
+including its two actual process cases; the verifier's five cases pass.
+The fixture now identifies7zG by executable identity within its own job: source
+codec discovery can also launch7z.exe, so an assumed job count of exactly two
+was incorrect. Damaged archives use the source progress error list, not an
+assumed separate error popup. The private key and this snapshot's processes
+are absent after the check. This does not register Explorer handlers or accept
+P2-09.3 Menu policy. Linux full6e4afbef passes formatting/all-build and228/228
+CTest in162.39s; this snapshot predates the new Windows menu presentation.
+
+System presentation adapter WIP: original PanelMenu.cpp::CreateSystemMenu,
+its callers and Windows/Menu.h retain PIDL/query/invocation policy. Their
+native HMENU is normally rendered by Windows; no upstream Qt bitmap or
+owner-draw widget implementation exists. Local QtNativeShellMenuPresentation
+therefore owns only that presentation boundary and the provider lifetime.
+It copies ordinary native item/checkmark HBITMAP pixels with Qt's Win32 image
+adapter and forwards lazy submenu initialization. Interactive3ab31803 passes
+native_menu_presentation/native_system_menu/shell_menu_window (3/3; respectively
+3/5/21 Qt rows,0 failures,0 skips). The bitmap fixture verifies actual GDI pixel
+values, checked/disabled/default state, source data/order, lazy dispatch and
+provider/menu/pixel lifetime. Owner-draw message forwarding is now being added
+and is not covered by that snapshot. Rendered Windows reference comparison and
+whole P2-09.2 acceptance remain required.
+
+Owner-draw subset d65a3df1 passes3/3 suites (6/5/21 Qt rows, zero failures/skips):
+both IContextMenu2 and IContextMenu3 receive real WM_MEASUREITEM/WM_DRAWITEM
+structures with source ID/itemData/state, draw into native GDI, and remain alive
+until Qt widgets/menu message filters are destroyed. Mouse and Return dispatch
+are exercised; failed measurement leaves that unrenderable command disabled.
+Later df4350ba passes the WM_MENUCHAR bridge after b2f2a4c9 exposed Return being
+forwarded as a character: the adapter now forwards only printable characters,
+honors native MNC_SELECT/EXECUTE/CLOSE, and leaves control keys to Qt.
+Snapshot75ab1f20 passes3/3 with callback bitmaps and owner-drawn submenus,
+including preserved Qt text, four icon modes, lazy source child dispatch and
+disabled-parent availability. Subsequent bitmap-alpha and reference checks
+are pending; these earlier snapshots do not verify those changes.
+
+The API boundary follows Microsoft's
+[MENUITEMINFO contract](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-menuiteminfow):
+HBMMENU_CALLBACK requires native measure/draw messages, distinct from a real
+HBITMAP and from an owner-drawn whole row. Qt's
+[Win32 image adapter](https://doc.qt.io/qt-6.8/qimage.html#fromHBITMAP) leaves alpha
+interpretation to the caller. Native premultiplied DIB icons and legacy GDI
+zero-alpha pixels now have separate regressions under validation.
+
+Rendered-reference work uses the exact pinned original FM makefile in a separate
+git-archive snapshot. tests/fixtures/native_reference_entry.cpp includes the
+unchanged FM.original.cpp body with only its entry name aliased, then calls it
+inside a private HKCU mapping on RUNNER-WINDOWS. Original resources, handlers,
+types and native widgets are compiled by upstream nmake; no Qt is added to that
+snapshot or the sibling checkout. scripts/build-windows-reference.ps1 records
+repository, full revision, original entry/adapter/binary hashes and this entry
+adaptation. The fixture refuses an existing private key, records its owner PID,
+restores HKCU and uses original CKey::RecurseDeleteKey for cleanup. The test has
+marker-scoped emergency cleanup; it does not alter official product registration.
+
+Native reference compilation passes in89097891; its consumer initially fails to
+compile on LONG-to-QJsonValue ambiguity, missing revision definition and a
+Windows SDK minimum-version declaration. Those fixture issues are corrected.
+The runtime1c6a4bed actually opens original7zFM File/System, captures its menu
+at96DPI and exits normally. Its comparison fails on22 original versus21 Qt rows;
+it is evidence for an actual rendered reference, not parity acceptance. The
+Qt fixture now provides a valid source panel owner HWND and records both raw
+queried rows and the Qt projection before comparing, to locate the difference.
+Whole-step acceptance stays open while this result is investigated.
+
+Current native-launch validation (2026-10-04): interactive snapshot84fbf652
+executes the visible SHA256 dialog (independent digest through UI Automation)
+and both normal/total Benchmark Close/join cases successfully. Its overall GUI
+suite fails because the original CompressFiles waitFinish/map sender times out;
+11 Qt rows pass,1 fails,0 skip. Owned-helper diagnostics are being added before
+accepting that suite. This result does not supersede the requirement for a
+complete passing GUI consumer check.
+
+The new native_shell_launch fixture uses a host without Qt to load the actual
+DLL, initialize IShellExtInit from a real Unicode/spaced Shell IDataObject,
+query the original menu and invoke its Unicode Extract verbs. The original
+ContextMenu::InvokeCommandCommon, NativeContextMenuServices and CompressCall
+remain authoritative (same pinned revision below); no production command body
+changes. The host releases COM/unloads the DLL after the original map/event
+acknowledgement and retains only its own helper in a kill-on-close job.
+Snapshot7e98e3c9 passes the three prior shell/COM/parser suites and the visible
+Extract-dialog Cancel row with exit255. The success row extracts exact bytes
+but incorrectly waits for a window after the short helper has already exited;
+the test now accepts its signaled process handle and still requires exit0 and
+unchanged archive/source/sentinel. Corrected acceptance is pending. No shell
+registration or installed-package acceptance is claimed.
+
+The subsequent local unsandboxed gate passes formatting/all-target build but
+fails1/231 CTest (94.93s): codec_commands_ui WIM Cancel stops via a1ms timer
+after the update has committed. Unchanged isolated rerun passes in3.81s,
+demonstrating timing sensitivity rather than establishing full-gate acceptance.
+The fixture now stops on the progress Show event before source OnInit releases
+callback waiters; focused codec_commands_ui passes in4.22s. The source algorithm
+and publication rules are unchanged; a new full gate is pending.
+
+The corrected unsandboxed macOS gate5686 passes format/all-target build and
+231/231 CTest in96.66s. Interactive c86e58b3 passes the whole native_gui_workflow
+suite in19.38s, including original sender ZIP bytes, Test/Extract/refusal/Cancel,
+SHA256 accessibility/digest and normal/total Benchmark Close/join. The Add
+timeout did not recur; scoped owned-helper diagnostics remain in the fixture.
+Interactive50281778 passes four shell/COM/parser/launch suites in7.17s; the
+native launch subset at that snapshot contains success and visible Cancel only.
+The expanded damaged-archive snapshot00b73cec stalls during transport after
+source.tar transfer, before extraction or scheduled task creation. Its confirmed
+owned local SSH child is stopped, producing exit255 and a missing-check.log
+record; it is not application-test evidence.
+
+Windows installation now has local CMake integration in
+cmake/WindowsInstall.cmake and VerifyWindowsRuntime.cmake.in. The official
+installer C/Util/7zipInstall/7zipInstall.c at the pinned revision was inspected:
+WinMain/Install consume an embedded self-extracting archive via SzArEx_Extract,
+and WriteCLSID/WriteShellEx write the official product registration. They do
+not provide a Qt/CMake dependency deployment contract. These bodies are not
+reimplemented or modified: CMake installs our already-built entry aliases/DLL
+and the unchanged official engine artifacts, then calls Qt's own generated
+deployment script. This new build integration checks runtime producer,
+repository/revision/platform/architecture and every engine binary's recorded
+SHA256 before copying app files. Runtime provenance and upstream license ship
+under share; app/helper/shell/engine binaries share bin. Shell registration and
+associations are not install side effects. Full distribution/licenses/SFX and
+three-platform package acceptance remain P3-04.
+
+Five windows_package_verification cases independently exercise that actual
+pre-install script on Unicode/spaced temporary paths, including provenance,
+architecture, missing/modified binaries and absent checksum refusal. The local
+unsandboxed gate25030 passes format/all-build and232/232 CTest in78.49s.
+Later affected startup/package-verification checks pass2/2 in0.64s; subsequent
+localized changes are Windows-only fixture/lifecycle checks.
+
+Installed-consumer b36b07b5 installs the binaries and Qt/plugins successfully
+but native_shell_launch times out120s after a Cancel row receives no helper
+report. Its later a9209337 snapshot passes the verifier and file_manager_startup
+(including actual installed7zFM success/refusal); the installed DLL suite still
+times out120s after its success row observes no extracted bytes. Neither accepts
+the installed shell scenario. Desktop-scoped UI Automation diagnostics are
+being added; SSH session0 MainWindowTitle does not establish window visibility.
+The private registration fixture uses only the reserved project CLSID under
+HKCU, refuses an existing key, activates via real CoCreateInstance, checks the
+fixture owner marker for emergency cleanup and removes its own mapping before
+helper/dialog waits. Registration is guarded to the authorized runner-windows
+guest; official CLSID/handler registration is untouched. After a9209337 the
+project class key and that snapshot's processes are verified absent.
+
+GUI/GUI.cpp now contains the complete original Main2 dispatch and WinMain
+exception/exit-code bodies from the pinned revision below. Qt owns entry and
+platform initialization; the dispatcher still reads native GetCommandLineW,
+uses the exact parser, prepares source options/callbacks/censors, enumerates
+archives and routes Benchmark/Extract/Update/Hash with original error policy.
+A delayed service factory occupies the original codec-construction point:
+Parse2 acknowledges the sender before backend codec discovery. The retained
+catalog already performed source Load/AddHash, so those calls are not duplicated;
+external providers come from the same backend catalog and retain their lease.
+GUI calls existing QtShellArchiveServices; its cohesive Extract overload forwards
+excluded formats/hash bundle to the same source ExtractGUI body. No archive
+algorithm or command syntax is supplied by the entry glue. Full original
+My_SetDefaultDllDirectories startup is retained via unchanged C/DllSecur.c/.h,
+compiled as C, and unchanged Common/ExitCode.h supplies source exit values.
+
+Windows app post-build creates7zG.exe and7zFM.exe aliases of the same application
+image. main.cpp selects the GUI entry for7zG.exe and the retained File Manager
+startup for Windows7zFM/regular launches. This is build integration, not
+package/installed proof.
+Native helper process testing sends malformed mapping through actual7zG.exe,
+requires event acknowledgement and original exit7 before backend discovery.
+Windows63acf889 passes three shell/COM/parser suites in3.87s, including that
+process; it predates the restored C DLL-security call. Windows6f7d535c then builds
+the C owner and passes all three suites in14.11s with that call enabled. Local
+shared services2/2 pass0.67s; subsequent full
+unsandboxed macOS format/build/229CTest passes96.16s. Baseline verification passes
+406 exact/195 adapted/3 local paths. Complete native helper archive workflows,
+failure/Cancel, MAPI, package/installed and System rendering remain mandatory.
+Native batch opening now carries the original COpenOptions through
+QtArchiveFolderManager, ArchiveBackend and NativeArchiveReader to the retained
+ArchiveCodecCatalog's source CArchiveLink::Open3. The catalog binds its own
+codec owner and clears the already-consumed Qt service pointer; excluded
+formats, open properties and layered COpenType options remain source-owned.
+Existing file/stream publication, callbacks and cancellation retain their
+owners. The GUI passes its unchanged ArcType to the process listing transport,
+including source type chains; no second type parser/serializer is introduced.
+Public archive_open_options regressions cover allowed/excluded ZIP, Unicode
+multi-volume zip.split, invalid RAR opening properties and cancellation with
+unchanged input bytes. Restoring the old batch entry makes excluded ZIP extract
+incorrectly; the fixed bridge passes. scripts/check-archive-open.sh passes all
+five direct suites locally in1.44s and in snapshot16577146 on Windows in9.04s
+and Linux in2.37s. These are component checks, not native helper success/Cancel,
+installed-extension or final platform acceptance.
+The subsequent unsandboxed macOS gate passes formatting, all-target build and
+230/230 CTest in114.32s, including the new public open-options suite.
+
+Windows interactive snapshota6f1abab passes native_gui_workflow in11.47s:
+the unchanged native CompressFiles sender launches actual7zG.exe with its own
+map/event selection and waitFinish. A disposable Unicode/spaced file produces
+a ZIP that the official engine tests and extracts with exact input bytes.
+The fixture host's private job bounds only its spawned helper on timeout;
+normal source completion disarms that test-only cleanup. Launcher's original
+S_OK does not stand in for archive success. Expanded GUI Test/Extract/refusal
+and visible Add cancellation coverage is being checked separately; MAPI,
+installed/package, native System rendering and full .2 acceptance remain open.
+
+Expanded interactive snapshot3ef6c02c exposes a retained-entry policy gap:
+7zG t -y waits for the final source message because the adapted progress
+operation does not inherit g_DisableUserQuestions. The suite reports the
+30-second process failure, then reaches its old60-second suite timeout.
+Upstream ProgressDialog2 and ExtractCallback read that original global policy.
+The Windows progress constructor now initializes its existing per-operation
+flag from that source owner; GUI also forwards YesToAll to the callback's
+memory-question flag. Existing explicit operation overrides remain available.
+The narrowed shared progress/service/open consumers pass locally3/3 in1.24s;
+interactive snapshotb1091585 passes the native workflow suite in6.87s after
+the progress fix: source sender ZIP creation, GUI Test/Extract, excluded ZIP
+handler, broken archive and actual visible Add-dialog Close returning255.
+Inputs and existing output sentinel remain unchanged on refusal/Cancel.
+The later callback memory-policy forwarding and its low-limit RAR process
+regression pass in interactive snapshot773ce06f in5.93s together with all preceding
+native GUI cases: its forced1MiB RAR limit refuses without a memory question,
+payload publication or changed archive bytes. No orphan7zG process remained
+after the failed suite. This completes the tested Add/Test/Extract/refusal/Add
+Cancel process subset; source email, remaining shell consumers, package and
+installed/rendered acceptance remain open.
+
+Native email process coverage now runs the same RunSevenzipGUI/GUI.cpp owner
+with private Mapi32.dll fixtures, using the installed Windows SDK26100 MAPI ABI.
+The test host preloads an exact private module and verifies its basename,
+resolved module path and marker before entering the dispatcher; failure stops
+the fixture before any real mail provider can be invoked. No production
+environment hook or replacement mail orchestration is introduced. The original
+Update.cpp body remains the sole owner of Unicode-first/ANSI-fallback messages,
+MAPI_DIALOG/MAPI_TO, full attachment paths, synchronous send, cwd restoration
+and EMailRemoveAfter CTempDir lifetime. Provider cancellation retains the
+original ignored-return policy, rather than turning it into archive failure.
+Snapshot31eb934d passes five Windows email cases in6.21s: Unicode keep/remove,
+provider Cancel/remove, ASCII ANSI fallback and missing-export refusal. Copied
+attachments independently test/extract through the official engine; original
+input bytes remain unchanged, temporary attachment directories disappear after
+the call and the provider's cwd change is restored. The first f10a6ef0 build
+failed on a fixture string concatenation and was corrected before this result.
+The later unsandboxed macOS gate17800 passes format/all-build/230CTest in96.30s.
+File Manager email availability is connected to the existing Windows Add/update
+capabilities. Snapshotf9834a5a passes native_mapi and native_shell_email2/2 in11.47s,
+with all five process and fourteen actual File-menu rows passing and zero skips.
+The menu consumer verifies three verbs across EN/RU normal/compact sizes, real
+attachment bytes, source selection clearing, visible Add Cancel and missing
+MAPI-export refusal. The intentionally reverted availability snapshot8cc595f4
+fails all fourteen menu rows; restoring the Windows cases makes them available.
+Two later snapshots0f2ea417/b282d59f exposed a fixture defect: original CFmSettings
+was saved without Load, leaving selection flags uninitialized. Calling its
+original Load before Save fixes the fixture without changing product selection.
+All twelve current UTF-8 widget JSON reports were reviewed: original three-row
+order, Unicode filenames, enabled/fullyVisible rows,334×78 EN and373×78 RU.
+Unix preserves its explicit MAPI refusal. Package/installed
+and native System rendering remain required for .2 acceptance.
+
+The same pinned FM.cpp now supplies the active WinMain2 command-line fragment,
+WM_CREATE absolute-path/file detection and its archive-refusal message flow,
+plus complete WinMain exception/exit policy. Per-launch QtFileManagerStartup
+replaces g_MainPath/g_ArcFormat process globals; unchanged StringUtils.cpp/.h
+and its unchanged StdAfx.h provide the exact quoted-string splitter. Commented
+alternate parsers remain omitted. MainWindow feeds these options directly into
+the retained CApp::Create/CreateOnePanel/CPanel::Create/BindToPath at construction,
+rather than opening a second path after default panel creation. Qt awaits the
+existing ArchiveBackend catalog discovery before an initial archive bind;
+Windows defaults use original empty-path/saved-panel behavior. WM_CREATE refusal
+travels as a typed construction failure to the Qt InitInstance boundary, where
+the original error is presented and FALSE/0 is returned; E_ABORT stays silent.
+Qt replaces the native event loop/message box and widget creation, and per-window
+CApp destruction joins external workers instead of g_ExitEventLauncher. DLL
+security initialization remains unchanged C. Existing link/list/language/window
+owners retain their responsibilities; this does not claim a complete native
+window-placement or installed-extension port. Mac startup/direct consumers pass
+3/3 in0.94s; Linux37359fb6 passes3/3 in1.70s. Windows37359fb6 first fails compilation:
+native WinMain cannot be overloaded, so its retained exception body is scoped
+under NQtFileManager while retaining the symbol. Windows2ed23e18 then passes3/3
+in12.00s, but its nine startup Qt rows prove only the seven in-process scenarios:
+MOC omitted the two process slots guarded with _WIN32. Using Q_OS_WIN corrects
+registration. Windows desktopb6182130 passes3/3 in13.38s with eleven startup rows,
+zero failures/skips, including actual7zFM.exe Unicode ZIP success and forced-type
+refusal, visible windows and normal0 exit after closing their own HWNDs. No process
+from that snapshot remains. Restoring only the old empty-format argument in
+MainWindow makes wrong-forced-type incorrectly open ZIP; the restored bridge
+passes again locally1/1 in0.64s. Full unsandboxed macOS31835 passes format, all
+build targets and231/231CTest in98.30s; the subsequent guard change affects only
+Windows test registration. Baseline409 exact,195 adapted/3 local paths verifies
+against the pinned source repository. Native DLL launch consumers, package,
+installed extension and System rendering still prevent whole .2 acceptance.
+
+The same full pinned revision supplies unchanged Common/CommandLineParser.cpp/.h,
+Common/ListFileUtils.cpp/.h and UI/Common/ArchiveCommandLine.cpp/.h. Inspected
+complete parser bodies, Parse1/Parse2 callers in GUI.cpp and CompressCall's
+UTF-16 mapping/event sender before reuse. Windows compilation resolves existing
+adapted FileIO/FileDir, EnumDirItems/Extract/Update/HashCalc headers through narrow
+private include roots; these modules retain their single authoritative owners.
+The complete borrowed POSIX branch is retained physically but is not compiled:
+this native GUI consumer is Windows-only and the project already owns the Unix
+GetModuleDirPrefix implementation. The source parser now owns g_LargePagesMode;
+the temporary Qt benchmark definition is removed. Its original privilege,
+wildcard, list-file, update-switch and map/event control flow remains unchanged.
+Baseline verification passes403 exact/194 adapted/3 local paths. The subsequent
+macOS full unsandboxed gate passes formatting, all-target build and229/229CTest
+in93.16s; Windows-only parser runtime remains outside that result. Public parser
+fixtures cover native quoted command lines and Unicode/spaced mapping selections
+for Add/Extract/Test/Hash, malformed marker/size/terminator and unavailable map
+refusal with the original sender acknowledgement. Windows565e901f passes all
+three native shell/COM/parser suites; the final censor tree admits the mapped
+paths and refuses another filename. Extract/Test/Hash consume pre-items during
+Parse2, while Add retains them for its dialog; fixtures follow that public
+contract. GUI dispatch/process roundtrip and email/package consumers remain
+required. Windows13fe8ebd stopped before build due to a full guest disk; only
+compiled outputs/CMake directories of this goal's terminal failed3ee10fb1 were
+removed after identity/process checks, preserving sources, logs, CTest and
+widget evidence. It freed17,988,820,992bytes without VM/VHDX/toolchain changes.
+
+Expanded Windows desktop snapshot4b1e4d10 passes16/16 suites in53.64s, including
+all native Properties rows, shell COM/data, language geometry and spool cleanup.
+Its Linux build failed with ENOSPC before tests. Only generated build outputs
+from the goal's earlier terminal failed e5549311 snapshot were removed after
+checking that no process referenced it; sources, logs, CTest and widget evidence
+were preserved. Retry4ee3d663 passes11 suites but cannot run alt_streams_command
+because the script built it only on Windows. After including that target on all
+platforms, Linuxfc5aa56a passes12/12 in4.04s. This is focused desktop/component
+evidence, not full Windows/Linux or installed-extension acceptance.
+
+The same pinned revision now supplies CZipContextMenu's original four COM bases
+and Z7_COM_UNKNOWN_IMP_4_MT, complete LoadPaths/LoadItems/IExplorerCommand and
+IEnumExplorerCommand bodies in ContextMenu.cpp. The only enumeration-body
+adaptation is an explicit null HMENU cast for the shared presentation overload.
+Exact MyCom2.h/MyExplorerCommand.h dependencies preserve SDK/fallback declarations.
+The native default constructor owns a process service per object, including child
+commands; in-app consumers retain their injected service. Original DLL count
+increments/decrements remain, with the image's count defined once in the shared
+ContextMenu owner so both app and DLL compile one class implementation. Bitmap
+destruction uses the previously audited native shared owner rather than deleting
+the typed tree tag.
+
+DllExportsExplorer.cpp keeps complete class factory, CreateInstance/LockServer,
+DllMain, DllCanUnloadNow/DllGetClassObject and register/unregister bodies. Include
+lookup and the existing project CLSID/name are adapted; the official 7-Zip class
+is not replaced. ClassDefs remains the one portable interface-GUID owner: the
+shell INITGUID include follows shared declarations and defines only its CLSID.
+The source NtCheck.h and Explorer.def are unchanged dependencies. The Windows
+sevenzip_shell target links these source owners into7-zip.dll with original
+bitmap and FM icon resources; full version/manifest/package integration remains
+pending. Native MyMessages.cpp bodies are retained with include adaptations and
+their question flag defined once there; its header is exact. Native transport
+forwards original CompressCall entry points, and Open retains the original
+quoted GetModuleDirPrefix/7zFM.exe/MyCreateProcess branch. No new command syntax
+or archive algorithm is introduced.
+
+Windows FmSettingsPath uses the fixed project directory under GenericConfigLocation
+for both app and in-process DLL, preserving SEVENZIP_SETTINGS_PATH. The previous
+AppConfigLocation depended on the host's application identity. Language lookup
+likewise uses the restored containing-module directory for installed Lang files,
+then the existing bundled fallback; Unix paths stay unchanged. COM consumers
+cover public factory/aggregation/refcount/interface identity, original enum
+Reset/Next/Skip/Clone policy, nested children surviving root release, actual icon
+extraction and a native host executable with no Qt application or Qt linkage.
+These are not registered/installed Explorer or GUI/map/email acceptance. Baseline
+verification passes397 exact/194 adapted/3 local at the pinned revision. Local
+full unsandboxed format/build/229CTest passes96.34s. Windowsfcf2fe1c builds the
+real DLL and native host and passes both native_shell_data/native_shell_com
+suites in1.79s. Factory identity/refcounts, legacy IDataObject/HMENU, nested
+children after root release, module icon extraction, host-independent settings
+and no-QCoreApplication host are therefore runtime-tested. Earlier snapshots
+115ae28e/84da222d/7151778e/3ca1eb98 stop at include/GUID or fixture macro issues;
+these are corrected. ccbdbcd7 passes the other consumers but exposes the fixture's
+incorrect ExtractIconEx count: requesting large and small icons returns two
+successful extracted icons, consistent with the
+[Microsoft API contract](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-extracticonexw).
+The corrected fcf2fe1c then reaches all nested-child assertions. This does not
+prove registered Explorer, native GUI/map/email or full component acceptance.
+
+Native HMENU presentation now consumes the same ContextMenu.cpp command tree
+as the Qt menu. The Windows overload generates at relative position0 and inserts
+at the shell's requested position; it does not duplicate command selection,
+IDs, naming or invocation. Inspected original QueryContextMenu callers,
+MyInsertMenu/MyAddSubMenu, bitmap loading/destruction and resource2.rc at the
+pinned revision below, plus complete Windows/Menu.h/.cpp conversion and insertion
+bodies. winshellmenupresentation maps the typed tree to the existing unchanged
+NWindows::CMenu/CMenuItem/InsertItem and CMenuDestroyer, retaining source menu
+handling rather than supplying a second Win32 implementation. Its tree traversal,
+submenu ownership transfer and module-local LoadBitmap glue is needed because the
+shared generator has typed presentation handles. The build-only resource2.rc
+is derived from the single pinned original, retaining its string table and
+MenuLogo.bmp ID and adapting only configured resource paths. A shared native
+bitmap lifetime replaces the original raw HBITMAP owner;
+the tree's unsigned bitmap tag is never passed to DeleteObject. Native consumer
+fixtures compare the entire recursive HMENU with the source tree for cascade,
+icon and1/20-item selections, preserve foreign entries and invoke the original
+numeric Test verb. Windows103aa012 focused native_shell_data passes1/1 suite
+in1.22s after building the authoritative source and generated RC. The preceding
+fc83aa1a broad build stopped at a redundant test include before tests; that
+unused ContextMenuFlags.h include is removed. Local shell_context passes1/1
+in0.27s. The full unsandboxed local gate passes formatting/build and228/229
+in94.15s; only upstream_inventory sees the transient duplicate RC owner. After
+removing that owner, focused inventory passes1/1 in0.06s and baseline verification
+passes392 exact/192 adapted/3 local. No current local failure remains, but this
+is not a new complete229/229 run. COM/DLL consumers and rendered reference
+acceptance remain required before accepting this component.
+
+Same pinned0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 from
+https://github.com/ip7z/7zip.git. Inspected original PanelMenu.cpp complete
+InvokeSystemCommand, Properties, CreateShellContextMenu and their IContextMenu,
+IGetFolderArcProps/operated-selection callers; current FSFolder does not provide
+IGetFolderArcProps. Copied the complete InvokeSystemCommand body into its
+preserved module, changing only QWidget parent to native HWND. Properties()
+restores the original early Windows shell branch, then reuses the existing
+source collector and CListViewDialog Qt modal presentation. Archive metadata
+enumeration remains one implementation. MainWindow synchronizes selection and
+calls this source entry; the redundant PropertiesDialog production wrapper and
+its CMake registrations are removed. Direct projection fixtures use public
+collector calls, not that retired wrapper. Unix cannot use the Win32 COM shell
+property provider and retains the existing source-based portable collector.
+
+Local macOS arm64 direct consumers6/6 PASS3.33s after builds; previous affected
+3/3 PASS3.01s and projection2/2 PASS1.06s. Windows native_properties_window uses
+disposable uniquely named Unicode/spaced files/folders in eight flat/view modes,
+real File/Info invocation, native property-sheet discovery/Close, unchanged bytes
+and selection; missing file requires no portable fallback. Source filesystem
+runtime assertions move to that native consumer on Windows, while archive
+metadata/language coverage remains portable. Windows87f3aa71 stopped during
+test compilation: language_ui lacked the test-support base needed by its new
+archive fixture. That base is restored. The snapshot also predates the row
+lookup correction: filesystem paths are in column1, not archive Qt::UserRole.
+Windowsb171aa21 builds the affected targets and finishes4/7 PASS145.52s;
+properties retained an obsolete filesystem Qt-modal timer and crashed after its
+failed assertion, source_properties assumed Unix separators, and the new native
+fixture missed sheets and flat asynchronous rows. The first two fixtures now use
+the public collector and native-separator normalization. Native discovery now
+uses the unique disposable filename across shell process/proxy-owner boundaries,
+records diagnostic HWND metadata and waits for flat rows. This discovery change
+is not a confirmed cause of the missing-sheet failures. Fresh Windows9a898937
+contains those corrections and the native selection/verb additions below;
+validation is running. No native/runtime acceptance or .2 commit.
+
+Windows9a898937 subsequently builds and finishes6/8 PASS136.01s. Its native
+selection/verb, source projection, runtime/language and ADS suites pass. Properties
+has a second obsolete filesystem modal timer in its loaded-metadata fixture;
+that fixture now calls the public collector twice against the same loaded source
+folder. Native property sheets are positively identified in the shell host:
+correct unique titles and #32770 class, but visible=0. Windows0296e0a7 still
+observes hidden sheets with explicit SW_SHOWNORMAL; the proposed zero-nShow
+cause is disproved. The fixture closes hidden sheets on failure as well.
+Native visible-sheet acceptance remains open. No rendered pixel-parity claim is made.
+COM/DLL/process/email/installation and System icons/owner-drawn remain required.
+The source AltStreamsFolder interface table has no IGetFolderArcProps, and
+InvokeSystemCommand excludes that provider. Windows therefore retains the
+original no-op Properties branch for ADS instead of the former extra Qt dialog;
+its existing command regression now checks this source refusal. That later
+fixture change also postdates87f3aa71. Three additional local archive/ADS/language
+consumers pass3/3 in1.12s before the assertion adjustment (ADS runtime unavailable
+on macOS). Native Windows ADS validation remains pending.
+
+The native selection dependency is now restored from the same pinned revision:
+complete Windows/Shell.cpp and Shell.h bodies, including HDROP/IDLIST names,
+FILE_ATTRIBUTES_ARRAY, CItemIDList lifetime and BrowseForFolder. Adaptations are
+include lookup and Windows-only declarations around the shared CFileAttribs;
+formatting is separate from functionality. Windows/MemoryGlobal.h/.cpp are exact
+unchanged dependencies under third_party, used through their original headers.
+Windows-only CMake registration uses Unicode and shell32. The added public
+native_shell_data fixture covers Unicode/ANSI ordering, malformed DROPFILES/CIDA
+fallback, attribute refusal/reset and an actual disposable shell IDataObject.
+Its Windows compilation/runtime remains pending; source baseline verification
+passes389 exact/192 adapted/3 local. Native COM Initialize consumers still need
+to be connected; these dependencies do not establish extension acceptance.
+The complete original ContextMenu::Initialize, native InvokeCommand and
+GetCommandString/MyCopyString_isUnicode bodies are retained in ContextMenu.cpp,
+under Windows guards, with declarations in its existing header. They reuse the
+same command map and InvokeCommandCommon typed transport. Native selection/verb
+coverage now drives a real shell IDataObject through Initialize and the shared
+generator, validates ANSI/Unicode/truncated/unknown command strings and numeric
+Explorer lpVerbW-null fallback, dispatches Test to a recording transport, then
+checks null-data refusal/reset and unchanged bytes. The COM interface tables,
+factory/refcounts and DLL consumer remain pending. Local affected4/4 PASS0.95s,
+then Properties/projection/shell3/3 PASS1.06s on macOS arm64 after fixture fixes.
+Full unsandboxed macOS arm64/Qt6.11.2 gate passes formatting, all-target build
+and229/229 CTest in107.72s for this Properties/selection/verb snapshot. Windows
+native compilation/runtime remains pending; this does not accept .2.
+
+The same source revision now supplies complete Windows CompressCall.cpp launch
+bodies in their original module: Call7zGui, CreateMap/CRandNameGenerator,
+AddLagePagesSwitch, CompressFiles, ExtractGroupCommand, ExtractArchives,
+TestArchives, CalcChecksum and Benchmark. The shared GetQuotedString remains
+one implementation. Include lookup is adapted; ReadLockMemoryEnable uses the
+existing FmSettingsPath adapter. ErrorMessage retains the shell DLL's original
+null owner through an immutable local handle instead of adding the unused
+mutable g_HWND global to in-app callers. Windows function signatures are restored
+beside the existing typed in-process overloads. Original 7zG.exe name, native
+CProcess command line, UTF-16 mapping, random names, event/process wait and
+exception/error flow are retained. Unchanged Common/Random.h/.cpp and
+Windows/FileMapping.h are vendored with Win-only Random compilation and Unicode
+launcher registration. Baseline verification passes392 exact/192 adapted/3 local.
+This launcher addition postdates the passing full macOS gate and Windows9a898937;
+affected local shell_context passes1/1 in0.22s, but native compilation, process/map
+round trip, GUI parser caller and actual installed DLL consumer remain pending.
+
+The full Windows3ee10fb1 gate finishes190/225 PASS in1340.05s, with35 failed
+suites; Windows full acceptance remains open. Direct consumer corrections include native-separator drag
+assertions and QtArchiveFileResource::Spool's Windows sharing violation. Spool
+now uses original FileDir::MyGetTempPath/CreateTempFile2 with the final native
+COutFileStream handle, retaining CopyStream, registered ownership and publication.
+This removes QTemporaryFile's retained handle and the second writable open.
+POSIX uses the original COutFile::mode_for_Create=0600 to preserve private spool
+permissions. An added public regression verifies failed/cancelled copy leaves no
+temporary file/lease and keeps original bytes; its8MiB fixture reaches the source
+copy coder's4MiB progress boundary. Existing publication success/failure/cancel
+and private POSIX permissions remain checked. Local affected4/4 PASS0.89s before
+the final permissions assertion. The latest full unsandboxed macOS arm64 gate
+passes formatting, all-target build and229/229 tests in97.56s. Windows0296e0a7
+builds the native launcher and finishes8/10 suites PASS in134.42s: its original
+spool publication cases pass, while the two new progress cases predate the8MiB
+fixture correction and native Properties still times out with hidden sheets.
+Progress fitting failures require current-build Windows geometry; language_dialog
+now writes reports before fitting assertions so failures retain that evidence.
+
+Subsequent native diagnostic of one disposable Properties fixture observes both
+the property sheet and its File Manager HWND hidden in the same process; the
+sheet's owner is a hidden StubWindow32. This does not prove an asynchronous
+foreign host. The fixture now requires qWaitForWindowExposed and native owner
+visibility before invocation, preserving the visible-sheet assertion; snapshot
+4e3eccce is checking this precondition. Its240s suite timeout accommodates all16
+rows plus failure cleanup. No production force-show workaround is introduced.
+
+Two timestamp fixtures previously left PROPVARIANT::wReserved3 uninitialized.
+Inspected the pinned PropVariant.h setters, Get_Ns100 and the formatter caller;
+fixtures now use SetAsTimeFrom_FT_Prec_Ns100 with all reserved fields set and
+retain the nine-digit assertions. The file-column fixture flushes its bytes and
+sets mtime through its writable handle, required by Windows attributes access.
+Local formatting/property/column consumers3/3 PASS0.67s; Windows proof pending.
+
+The pinned Windows/DLL.cpp::MyGetModuleFileName complete ANSI/Unicode path body
+is restored, including MAX_PATH refusal and shared directory/fallback behavior.
+Only upstream's external g_hInstance service changes: GetModuleHandleExW with
+FROM_ADDRESS|UNCHANGED_REFCOUNT resolves this implementation's containing module,
+so a shell DLL uses its own adjacent GUI/resources instead of the host EXE's.
+This avoids adding a mutable per-consumer global; the returned handle is not
+freed. The adapter follows [Microsoft's documented contract](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulehandleexw).
+POSIX keeps the existing Qt executable-path adapter. A Windows-only real DLL
+fixture links the authoritative module and is copied to a disposable Unicode/
+spaced path; native_library checks its own DLL path, the host EXE path and unload.
+Local native_library1/1 PASS0.67s; new Windows DLL runtime proof remains pending.
+
+Windows4e3eccce finishes8/11 suites PASS112.47s. Every native Properties row
+fails its exposed-owner precondition before invocation; explicit Normal process
+startup also fails that precondition. This isolates a runner/native-window issue
+for further diagnosis, without accepting product visibility. Its new8MiB spool
+failure/cancel cases pass, but publication assertions expose native versus Qt
+separator mismatch when matching the owned record. Spool now normalizes only the
+native-created QString path at its Qt boundary, preserving source file handles.
+Progress JSON confirms Windows offscreen fallback metrics (Elapsed time width
+hint156px versus74px control). progress_dialog/language_dialog join the existing
+native Windows UI/font tests; no source OnSize geometry rewrite is made.
+Fresh Windows0bfa77d0 checks the latest DLL, timestamp, spool and font changes.
+
+The subsequent local full unsandboxed gate passes formatting/all-target build,
+but finishes228/229 PASS94.85s with archive_external_lifetime timeout. Focused
+rerun confirms two lifetime assertions fail; owned_temp_publication passes.
+The local whole-component gate remains open until that consumer is resolved.
+
+That lifetime failure was reproduced with an orphaned owned fixture left after
+CTest timeout: a live --archive-editor process from this test retained its
+control/temporary path. The preserved source same-name discovery correctly
+waited for it. Signalling only that fixture's .exit control ends it; the suite
+then passes1/1 in3.09s and three repeats in9.35s without source changes. The
+latest full unsandboxed macOS arm64 gate passes formatting/all-target build and
+229/229 in94.21s, including the CLI inspection's explicit -sccUTF-8.
+
+Windows0bfa77d0 finishes13/15 suites PASS110.92s. Native DLL path, timestamp/
+mtime, native-font Progress and selection/verb consumers pass. Spool publication
+and owned records now pass; the remaining success assertion reads CLI output
+without its UTF-8 switch and now uses the same -sccUTF-8 as ArchiveBackend.
+Native Properties fails before invocation because SSH has no input desktop.
+Read-only session inspection finds the active runner console in session1 and
+SSH processes in session0. A disposable scheduled task in that existing logon
+passes the actual exposed-owner/visible-sheet file consumer (3 Qt cases including
+setup/cleanup,1.404s), and the task is removed. Full16-row proof remains pending.
+The project runner now has --interactive for Windows/all, preserving the exact
+snapshot check.cmd/toolchain while using an InteractiveToken task for the current
+runner user; completed tasks are removed and session/exit evidence is recorded.
+It has no credential/login or hidden-desktop fallback. Offline16 runner checks
+pass, including option boundaries and Linux/Windows routing/failure records.
+Fresh d12dce13 is checking all15 consumers through this reproducible desktop path.
+
+Windowsd12dce13 subsequently finishes14/15 suites PASS44.43s through the
+interactive path. All16 native Properties flat/view/file/folder rows and missing
+refusal pass with exposed owner, visible native tabs, closure, unchanged bytes/
+selection and no archive extraction. Only the pre-UTF8-switch publication
+assertion fails; its production publication/ownership and other8 cases pass.
+Current-build EN/RU Progress JSON at640×380 and760×450 is reviewed: native label
+widths155/195px, Elapsed hints70/51px and Ratio100/90px, height16px, fullyVisible
+and labelFits true. This confirms the font-engine diagnosis without changing
+source OnSize. The completed unique scheduled task is confirmed absent. Native
+System icons/owner-drawn/rendered comparison and COM/DLL/GUI/email/package/
+installed consumers still prevent whole .2 acceptance.
+
 ## P2-09.1 — File Manager consumers acceptance (2026-10-04)
 
 Accepted scope is the integrated in-app component: retained Explorer/PanelMenu

@@ -1,5 +1,113 @@
 # Regression strategy
 
+`archive_open_options` exercises the public source extraction service and the
+retained native reader. Disposable Unicode/spaced fixtures cover allowed and
+excluded ZIP handlers, the original `zip.split` multi-volume type chain, invalid
+RAR open properties and callback cancellation. It checks output and unchanged
+archive/volume bytes; handler exclusion must refuse before an engine process
+starts. Reverting the batch bridge to its old filename-only entry makes the
+exclusion regression fail. `scripts/check-archive-open.sh` builds this suite and
+four direct extraction/service/catalog consumers in the same snapshot. This
+coverage does not substitute for actual shell-to-GUI process workflows.
+
+`native_archive_command_line` is a Windows-only public source-parser consumer.
+It supplies disposable named UTF-16 mapping/event objects for Add/Extract/Test/Hash
+and checks Unicode/spaced selections, quoted native command lines and malformed
+or unavailable mapping refusal. Failure checks require the original scope guard
+to acknowledge the sender. It runs with `scripts/check-native-shell.sh`; an
+actual CompressCall-to-GUI process roundtrip remains separate required coverage.
+
+`native_gui_workflow` uses an isolated fixture host for the original native
+CompressFiles map/event sender and real7zG.exe. It verifies produced ZIP bytes
+with the official engine and preserved Unicode/spaced input. Further process
+cases exercise Test/Extract and archive refusal, and the visible source Add
+dialog cancellation checks the original user-break exit. A forced RAR memory
+limit with `-y` must refuse without waiting for a memory question or publishing
+payload bytes. Run in the existing
+Windows desktop with
+`python3 scripts/hyperv-runner.py run windows --interactive -- scripts/check-native-gui.sh`.
+These fixtures do not register a shell extension or send email.
+The native SHA256 row inspects the visible checksum dialog through Windows UI
+Automation and compares its digest to independently computed input bytes.
+Two Benchmark rows close the actual normal/total dialogs and require the helper
+to join with the original successful exit policy.
+
+`native_mapi` reuses the production native GUI entry with an exact private
+provider, checked before dispatch. SDK Unicode and ANSI exports record the
+original envelope and copy attachments while the synchronous call is active.
+The suite checks independent archive bytes, recipient/flags, provider Cancel,
+missing-export refusal, cwd restoration and temp lifetime/cleanup. ANSI uses
+ASCII paths because the original fallback converts through the system code page.
+`native_shell_email` drives the File Manager's actual File email actions,
+source Add modal, error/Cancel selection and EN/RU normal/compact menu reports.
+Run both through `scripts/check-native-email.sh` on the interactive Windows
+runner. No fixture calls a real mail provider or changes shell registration.
+
+`file_manager_startup` supplies the original native command-line string to
+FM.cpp and constructs the actual MainWindow/CApp with the resulting options.
+It checks initial quoted Unicode ZIP binding, forced-type/broken refusal,
+encrypted-open Cancel, relative folders and the original ignored-tail policy,
+with unchanged fixture bytes. Windows additionally launches actual7zFM.exe,
+observes the archive window or refusal message in its own process and closes it.
+`scripts/check-fm-startup.sh` builds the app and runs this suite plus the direct
+app_lifecycle/shell_menu_window consumers; use the interactive Windows runner.
+Use `Q_OS_WIN` for Windows-only QtTest slots and inspect registered row totals:
+the Windows MOC setup omitted process slots guarded by `_WIN32`, even though
+the C++ compiler built their bodies. A green suite alone did not prove launch
+coverage until those slots appeared in the actual test result.
+
+`native_properties_window` is Windows-only. It drives actual File/Info commands
+for disposable Unicode/spaced file/folder fixtures in flat/non-flat and four
+view modes, observes and closes the native property sheet, and checks preserved
+selection/bytes. A missing-file case forbids the old portable fallback.
+`properties_runtime` retains archive collector/aggregate coverage on Windows;
+Unix additionally covers the portable filesystem presentation. `language_ui`
+uses archive Properties on Windows because native OS labels do not follow app
+language. `alt_streams_command` checks the original Windows ADS Properties
+refusal rather than expecting an extra dialog. Public collector projections
+in `properties`/`source_properties` remain separate metadata/geometry fixtures.
+Run these consumers in one snapshot with `scripts/check-properties-ui.sh`.
+For Windows native visibility/focus, run it through
+`python3 scripts/hyperv-runner.py run windows --interactive -- scripts/check-properties-ui.sh`.
+The existing logged-on runner desktop is required; an SSH session0 hidden window
+cannot satisfy the exposed-owner/visible-sheet assertions. See
+[runner transport](hyperv-runners.md) for lifecycle and failure evidence.
+Its Windows native subset also includes `native_shell_data`: source HDROP/IDLIST
+selection and FILE_ATTRIBUTES_ARRAY parsing, malformed input refusal and a real
+shell IDataObject for a disposable Unicode file. It also compares recursive
+native HMENU against the source-generated tree for cascade, icon and1/20-item
+selections, retaining foreign host entries and numeric Test dispatch with
+unchanged bytes. Run this focused consumer with `scripts/check-native-shell.sh`
+on Windows; its fixture does not need engine/SFX runtime preparation.
+COM extension/installed-consumer coverage remains separate.
+`native_shell_com` loads the real source DLL through public exports, covers
+factory identity/aggregation/unload and four interfaces, keeps enumerated children
+after root release, checks nested commands and actual icon extraction, and calls
+a separate native host executable without Qt application/linkage. It also checks
+the shared Windows settings path against changing host identities. Both suites
+run through `scripts/check-native-shell.sh`; registration, installed Explorer and
+native process/map/email scenarios remain separate required consumers.
+`native_shell_launch` adds a native host without Qt that loads the actual DLL,
+initializes it from a real Windows Shell data object and invokes its Unicode
+Extract verbs, including damaged-archive refusal. It releases every COM interface and unloads the DLL after the
+source map/event acknowledgement, while the real GUI helper still runs.
+The tests require exact Unicode/spaced extracted bytes or visible Extract
+dialog cancellation with exit255, preserving archives, source and output
+sentinel. A test-only job limits cleanup to the host and its own helper.
+Run it through `scripts/check-native-shell.sh` on the interactive Windows guest;
+this does not establish installed-extension or Explorer-registration acceptance.
+`scripts/check-windows-package.sh` also runs these consumers against a private
+CMake installation, restricting helper PATH to installed binaries and Windows.
+`windows_package_verification` independently exercises the actual pre-install
+CMake script with Unicode/spaced disposable paths: matching provenance, wrong
+producer/repository/revision/platform/architecture, modified or missing binary
+and missing recorded checksum. It runs on every platform without installing.
+The native sheet observer identifies the unique disposable filename across shell
+processes/proxy owners, requires visible tabs, and closes hidden sheets on failure.
+The same runner script includes loaded filesystem projections, source drag paths,
+spool publication and failed/cancelled spool cleanup. Language-dialog reports are
+written before geometry assertions so platform failures retain widget evidence.
+
 Use [What to test](#what-to-test) for coverage and
 [Qt layout checks](#проверка-компоновки-qt) for report producers.
 The port-specific entries below include dated coverage checkpoints; they do
@@ -22,6 +130,33 @@ real native System Copy to the runner's disposable clipboard, Unicode/spaced
 selection and source selection clearing. Stale QAction generation rejection
 remains covered. Native icons/owner-drawn rendering and installed COM UX remain
 outside this focused evidence.
+`native_menu_presentation` additionally checks real GDI bitmap/checkmark pixels,
+native state, lazy IContextMenu2 population, command dispatch and COM/HMENU/icon
+lifetime. Windows interactive3ab31803 passes this fixture and the real System
+and MainWindow consumers (3 suites,0 skips). This earlier subset is not a
+rendered Windows comparison.
+Later75ab1f20 also passes native IContextMenu2/3 owner-draw measurement/painting,
+WM_MENUCHAR, mouse/Return, callback bitmap icon modes and owner-drawn submenu
+dispatch/disabled-parent cases. Final1c7b58c0 adds premultiplied/zero-alpha,
+transparent-edge and top-down/bottom-up GDI regressions: all three suites pass,
+14/5/21 Qt rows with zero failures/skips. The multicolor fixture detects vertical
+inversion independently of the production conversion.
+
+`scripts/check-native-menu-reference.sh` builds the pinned original native FM
+in a separate snapshot with private registry settings, then builds/runs
+`native_rendered_system_menu`. The CMake test is registered only when that
+reference manifest exists. It compares real source File/System runtime rows
+with the Qt bridge and captures only the two affected menus with
+`SEVENZIP_CAPTURE_SCREENSHOTS=1`. Snapshot0a46f9dd passes1/1 in10.69s,
+three Qt rows, zero skips, with22 original/raw/Qt rows. JSON also records native
+DPI/menu font and Qt font/style. Both affected PNGs were reviewed. Ordinary menu
+subset checks do not imply this separately registered reference was present.
+
+The installed-package consumer023fc5e5 passes3/3 suites32.83s: five verifier
+cases, actual installed7zFM success/refusal, and source DLL/COM/map/helper
+extraction/Cancel/damaged-input refusal. Registration uses only the reserved
+project class in the authorized guest and is removed before helper waits.
+Explorer handler registration/Menu policies remain separate P2-09.3 scope.
 Eight current-build EN/RU980/640 reports were reviewed:29 root rows with
 System/7-Zip first,19 native child rows, no clipping; canonical Copy verb and
 OS-language labels are preserved. The later Linux ownership safety regression

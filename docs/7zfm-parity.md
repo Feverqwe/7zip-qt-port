@@ -1,5 +1,80 @@
 # Сверка с Windows 7zFM
 
+## P2-09.2 — Native Windows component (принят, 2026-10-04)
+
+Итоговая приёмка компонента заменяет промежуточные ограничения ниже.
+Проверены native Properties, COM/DLL, GUI/map, email, startup и установленный
+consumer. Реальная регистрация Explorer handlers и Menu policies остаётся
+P2-09.3. Provenance и отдельные результаты —
+[audit](upstream-port-audit.md#p2-092--native-windows-component-accepted-2026-10-04).
+
+System presentation проверена с реально запущенным оригинальным7zFM pinned
+revision:22 строки исходного HWND/HMENU, raw query и Qt совпадают по порядку,
+состояниям и группировке. Два PNG affected меню просмотрены; исправлена
+вертикальная инверсия Share icon. Отдельные GDI regressions проверяют обе
+ориентации DIB, прозрачность, owner-drawn строки/подменю, callback icons и
+IContextMenu2/3 keyboard/mouse messages. Windows1c7b58c0 проходит3/3 suites,
+reference0a46f9dd —1/1 без skips.
+
+При96DPI обе стороны используют Segoe UI9pt; QWindows11Style оставляет свои
+24px строки, отступы, цвет фона и скругление вместо native22px строк/9px
+separators. Это Qt style adaptation; точное совпадение пикселей и другие DPI
+не заявлены. Системные verbs сохраняют язык Windows независимо от app locale.
+Воспроизводимый reference и изоляция настроек описаны в
+[Windows UI reference](windows-ui-reference.md#pinned-runtime-system-menu-reference).
+
+Исходные IContextMenu/IShellExtInit/IExplorerCommand/IEnumExplorerCommand и DLL
+factory теперь подключены к одному command owner. Windowsfcf2fe1c прошёл2/2
+native suites1.79s: реальный DLL consumer, legacy selection/HMENU, nested children
+после освобождения root, icon extraction и native host без QCoreApplication.
+Это source/runtime evidence; installed Explorer, оставшиеся GUI/map consumers, native System
+rendering и полная UX-приёмка компонента остаются открытыми. Проектный CLSID
+отдельный от официального7-Zip; filename7-zip.dll сохранён в каталоге проекта.
+
+Windows email теперь использует исходный Update.cpp/MAPI, включая Unicode-first,
+ANSI fallback, восстановление cwd и lifetime временного вложения. Пять процессных
+сценариев с частным тестовым provider прошли; реальные почтовые аккаунты не
+используются. Три исходные File Manager email-команды доступны по native update
+capabilities; snapshotf9834a5a прошёл оба email suites2/2 за11.47s, включая14
+File-menu rows: success/selection, visible Add Cancel и missing-export refusal,
+без skips. Текущие двенадцать
+EN/RU normal/compact JSON сохраняют исходный порядок трёх строк, Unicode captions
+и fullyVisible=true: menu334×78 EN и373×78 RU, rows24px. Это проверка геометрии,
+а не rendered comparison с Windows7zFM. На Unix применимой MAPI-ветви нет.
+
+Windows FM startup теперь передаёт исходные path/type options прямо в CApp::Create
+при создании окна. Сохраняются original quoted-string splitting, активный суффикс
+`-t`, saved-panel fallback и WM_CREATE refusal: ошибка до появления File Manager,
+тихий E_ABORT и FALSE/0. Qt отображает исходное сообщение через QMessageBox и
+выполняет event loop; окно не открывается повторно после default startup.
+Desktopb6182130 подтвердил фактический7zFM.exe: Unicode ZIP с `-tzip`, отказ с
+`-t7z`, visible state и нормальное завершение обоих своих процессов. Ранее2ed23e18
+проверял только in-process startup, поскольку MOC пропустил process slots.
+Это runtime/command evidence; installed extension, native System rendering и
+полная UX-приёмка остаются открытыми.
+
+Эталон — pinned PanelMenu.cpp::Properties/InvokeSystemCommand и исходные
+interface tables FSFolder/AltStreamsFolder. File Properties и toolbar Info теперь
+входят в CPanel::Properties: Windows filesystem вызывает системный property sheet
+через исходный IContextMenu verb, архив — исходный CListViewDialog collector.
+Системные подписи следуют языку Windows, а не языку приложения. Windows ADS
+сохраняет исходную no-op ветвь: provider не имеет IGetFolderArcProps и исключён
+из InvokeSystemCommand. Прежнее дополнительное Qt-окно здесь удалено из workflow.
+На Windows11 fixture подтвердил HWND, правильный заголовок и visible=0.
+Явный SW_SHOWNORMAL в snapshot0296e0a7 не устранил скрытое состояние;
+предположение о нулевом nShow как причине не подтвердилось. Причина и
+доступность системного окна пользователю остаются предметом диагностики.
+Последующая диагностика отделила SSH session0 от активного console desktop:
+тот же file consumer проходит в session1 с exposed owner и visible native sheet.
+Полный16-row consumer и missing-selection refusal затем прошли через
+воспроизводимый `--interactive` runner в snapshotd12dce13; завершённая задача
+удалена. Это runtime evidence всех four-view/flat/file/folder состояний,
+а не rendered pixel-parity приёмка.
+Unix не имеет Win32 COM property provider и использует прежний portable source
+collector для filesystem. Нативный Windows fixture и остальные .2 consumers
+ещё проверяются; runtime/visual приёмка не заявлена. Provenance и проверки —
+в [audit](upstream-port-audit.md#p2-092--native-windows-component-accepted-2026-10-04).
+
 ## P2-09 — Shell popup (в работе, 2026-10-03)
 
 Native System WIP 2026-10-04: перенесены исходные PanelMenu PIDL/query bodies и

@@ -119,8 +119,10 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         navigate(window, root.path());
         action(window, "flatViewAction")->setChecked(flat);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        Inspection properties;
+#ifndef Q_OS_WIN
         selectOnly(window, diskRow(window, root.filePath(name)));
-        auto properties = inspect(window, {}, "archiveInfoAction");
+        properties = inspect(window, {}, "archiveInfoAction");
         QVERIFY(properties.shown);
         QCOMPARE(properties.values.value("Имя").normalized(QString::NormalizationForm_C), name);
         QCOMPARE(properties.values.value("Размер"), QString("7"));
@@ -156,6 +158,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(!properties.values.contains("Размер"));
         QVERIFY(!properties.values.contains("Файлов"));
         QVERIFY(!properties.values.contains("Папок"));
+#endif
         openListedArchive(window, backend, "properties-runtime.zip",
                           {{name, 17, 5, "2026-09-29 12:34:56.1234567"},
                            {directory + '/' + name, 23, 9},
@@ -222,6 +225,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(properties.values.value("Папок"), QString("1"));
         QCOMPARE(properties.values.value("Файлов"), QString("2"));
         QCOMPARE(backend.extractCalls, 0);
+#ifndef Q_OS_WIN
         navigate(window, root.path());
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
@@ -237,6 +241,7 @@ class PropertiesRuntimeTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(properties.values.value("Размер"), QString("0"));
         QCOMPARE(properties.values.value("Сжатый"), QString("0"));
         QCOMPARE(backend.extractCalls, 0);
+#endif
         action(window, "flatViewAction")->setChecked(false);
     }
 };

@@ -4,7 +4,7 @@
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "Windows/PropVariant.h"
 #include "layout_inspection.h"
-#include "propertiesdialog.h"
+#include "property_projection_support.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include "qtlocationfolder.h"
@@ -66,12 +66,12 @@ class SourcePropertiesTests final : public QObject {
         CPanel panel(opening.Folder);
         CRecordVector<UInt32> indices;
         indices.Add(0);
-        PropertiesDialog dialog(panel, indices);
+        PropertyProjection dialog(panel, indices);
         QCOMPARE(value(dialog, name(kpidSize)), QString("18 446 744 073 709 551 615"));
         QCOMPARE(value(dialog, "Comment"), fullValue());
         indices.Clear();
         indices.Add(1);
-        PropertiesDialog unavailable(panel, indices);
+        PropertyProjection unavailable(panel, indices);
         QCOMPARE(value(unavailable, "Checksum"), QString("data:1024"));
         CMyComPtr<IArchiveGetRawProps> raw;
         QCOMPARE(opening.Folder.QueryInterface(IID_IArchiveGetRawProps, &raw), HRESULT(S_OK));
@@ -120,7 +120,7 @@ class SourcePropertiesTests final : public QObject {
         CPanel panel(opening.Folder);
         CRecordVector<UInt32> indices;
         indices.Add(0);
-        PropertiesDialog dialog(panel, indices);
+        PropertyProjection dialog(panel, indices);
         QCOMPARE(value(dialog, name(kpidName)).normalized(QString::NormalizationForm_C), file);
         QVERIFY(value(dialog, name(kpidPhySize)).toUInt() > 0);
         QVERIFY(!value(dialog, name(kpidType)).isEmpty());
@@ -179,13 +179,13 @@ class SourcePropertiesTests final : public QObject {
         agent->_archiveLink.NonOpen_ErrorInfo.ErrorFlags = kpv_ErrorFlags_CrcError;
         CPanel panel(folder);
         CRecordVector<UInt32> indices;
-        PropertiesDialog dialog(panel, indices);
+        PropertyProjection dialog(panel, indices);
         QCOMPARE(value(dialog, "Comment"), full);
         QVERIFY(!value(dialog, name(kpidErrorFlags)).isEmpty());
         QStringList paths;
         for (unsigned i = 0; i < dialog.Strings.Size(); ++i)
             if (ToQString(dialog.Strings[i]) == name(kpidPath))
-                paths.append(ToQString(dialog.Values[i]));
+                paths.append(QDir::fromNativeSeparators(ToQString(dialog.Values[i])));
         QCOMPARE(paths, QStringList({"inner.7z", "inside/file", path, "rejected.child"}));
         dialog.resize(size);
         dialog.show();

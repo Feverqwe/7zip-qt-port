@@ -226,7 +226,7 @@ class ShellContextTests final : public QObject {
         QVERIFY(context); // Upstream retains every successful query, including zero items.
         QVERIFY(tree.Items.empty());
         QVERIFY(context->_fileNames.IsEmpty());
-        QCOMPARE(context->InvokeCommand(0), E_INVALIDARG);
+        QCOMPARE(context->InvokeCommand(0u), E_INVALIDARG);
     }
     void sourceCompressionKeepsRawInputsNamingAndEmailPolicy() {
         CWorkflow service;
@@ -347,9 +347,13 @@ class ShellContextTests final : public QObject {
         menu._attribs.FirstDirIndex = 0;
         NQtShellMenu::CMenuHandle directoryTree;
         QCOMPARE(menu.QueryContextMenu(&directoryTree, 0, 0, 400, 0x100), HRESULT(0));
-        QCOMPARE(menu.QueryContextMenu(nullptr, 0, 400, 1, 0), E_INVALIDARG);
+        QCOMPARE(
+            menu.QueryContextMenu(static_cast<NQtShellMenu::CMenuHandle *>(nullptr), 0, 400, 1, 0),
+            E_INVALIDARG);
         menu._fileNames.Clear();
-        QCOMPARE(menu.QueryContextMenu(nullptr, 0, 0, 400, 0), HRESULT(0));
+        QCOMPARE(
+            menu.QueryContextMenu(static_cast<NQtShellMenu::CMenuHandle *>(nullptr), 0, 0, 400, 0),
+            HRESULT(0));
     }
     void extractionNamingPoliciesAndVerbsKeepRawPaths() {
         QTemporaryDir fixture;

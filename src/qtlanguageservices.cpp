@@ -5,6 +5,9 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#ifdef _WIN32
+#include "Windows/DLL.h"
+#endif
 
 static void InitLanguageResources() { Q_INIT_RESOURCE(upstream_languages); }
 
@@ -36,7 +39,13 @@ const BundledLanguageFiles &BundledFiles() {
 } // namespace
 
 QString QtLanguageDirectory() {
+#ifdef _WIN32
+    const QString installed = QDir::fromNativeSeparators(QString::fromWCharArray(
+                                  fs2us(NWindows::NDLL::GetModuleDirPrefix()))) +
+                              "/Lang";
+#else
     const QString installed = QCoreApplication::applicationDirPath() + "/Lang";
+#endif
     if (QDir(installed).exists())
         return installed;
     return BundledFiles().path();

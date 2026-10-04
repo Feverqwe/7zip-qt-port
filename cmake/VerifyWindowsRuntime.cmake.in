@@ -1,0 +1,21 @@
+# Refuse an absent, stale or modified engine before installing any app files.
+file(READ "@SEVENZIP_WINDOWS_RUNTIME@/runtime.json" runtime_record)
+string(JSON runtime_producer GET "${runtime_record}" producer)
+string(JSON runtime_revision GET "${runtime_record}" revision)
+string(JSON runtime_system GET "${runtime_record}" system)
+string(JSON runtime_repository GET "${runtime_record}" repository)
+string(JSON runtime_architecture GET "${runtime_record}" architecture)
+if(NOT runtime_producer STREQUAL "sevenzip-desktop/build-codec-runtime-windows" OR
+    NOT runtime_revision STREQUAL "@sfx_upstream_revision@" OR
+    NOT runtime_system STREQUAL "Windows" OR
+    NOT runtime_repository STREQUAL "@windows_runtime_repository@" OR
+    NOT runtime_architecture STREQUAL "@windows_runtime_architecture@")
+    message(FATAL_ERROR "Windows package requires the current pinned official codec runtime")
+endif()
+foreach(runtime_file IN ITEMS 7z.exe 7z.dll 7zz.exe)
+    string(JSON expected_hash GET "${runtime_record}" files "${runtime_file}" sha256)
+    file(SHA256 "@SEVENZIP_WINDOWS_RUNTIME@/${runtime_file}" actual_hash)
+    if(NOT actual_hash STREQUAL expected_hash)
+        message(FATAL_ERROR "Official runtime checksum mismatch: ${runtime_file}")
+    endif()
+endforeach()

@@ -1,6 +1,8 @@
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "property_projection_support.h"
 #include "qtlocationfolder.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -50,29 +52,17 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(file.write("hello"), qint64(5));
         }
         QVERIFY(QDir().mkdir(QStringLiteral("папка")));
-        MainWindow window;
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
-        auto *action = window.findChild<QAction *>("selectedPropertiesAction");
-        QVERIFY(table && action);
-        QCOMPARE(table->rowCount(), 3);
-        table->selectAll();
-        bool checked = false;
-        QTimer::singleShot(0, [&] {
-            auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
-            QVERIFY(dialog);
-            const auto closeDialog = qScopeGuard([dialog] { dialog->reject(); });
-            QCOMPARE(dialog->windowTitle(), QString("Свойства"));
-            QCOMPARE(value(*dialog, "Файлов"), QString("2"));
-            QCOMPARE(value(*dialog, "Папок"), QString("1"));
-            QCOMPARE(value(*dialog, "Размер"), QString("10"));
-            QCOMPARE(value(*dialog, "Сжатый"), QString("10"));
-            QCOMPARE(QDir::fromNativeSeparators(value(*dialog, "Имя")),
-                     QFileInfo(temporary.path()).canonicalFilePath() + '/');
-            checked = true;
-            dialog->reject();
-        });
-        action->trigger();
-        QVERIFY(checked);
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temporary.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        CPanel panel(folder);
+        PropertyProjection dialog(panel, allIndices(folder));
+        QCOMPARE(dialog.windowTitle(), QString("Свойства"));
+        QCOMPARE(value(dialog, "Файлов"), QString("2"));
+        QCOMPARE(value(dialog, "Папок"), QString("1"));
+        QCOMPARE(value(dialog, "Размер"), QString("10"));
+        QCOMPARE(value(dialog, "Сжатый"), QString("10"));
+        QCOMPARE(QDir::fromNativeSeparators(value(dialog, "Имя")),
+                 QFileInfo(temporary.path()).canonicalFilePath() + '/');
         QVERIFY(QDir::setCurrent(original));
     }
 
@@ -81,7 +71,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(folder);
         CPanel panel(folder);
         panel.SetCurrentFolderPrefix("archive.7z");
-        PropertiesDialog dialog(panel, allIndices(folder));
+        PropertyProjection dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Сжатый"), QString("6"));
         QCOMPARE(value(dialog, "Размер"), QString("15"));
         QCOMPARE(value(dialog, "Файлов"), QString("2"));
@@ -119,7 +109,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
                                      ArchiveEntry{QStringLiteral("другой.txt"), 4, 2}});
         QVERIFY(folder);
         CPanel panel(folder);
-        PropertiesDialog dialog(panel, allIndices(folder));
+        PropertyProjection dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Размер"), QString("24"));
         QCOMPARE(value(dialog, "Сжатый"), QString("10"));
         QCOMPARE(value(dialog, "Файлов"), QString("3"));
@@ -131,7 +121,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(folder);
         CPanel panel(folder);
         panel.SetCurrentFolderPrefix("archive.7z");
-        PropertiesDialog dialog(panel, allIndices(folder));
+        PropertyProjection dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Имя"), QStringLiteral("файл 😀.txt"));
         QCOMPARE(value(dialog, "Размер"), QString("12 345"));
         QVERIFY(value(dialog, "Изменён").isNull());
@@ -155,7 +145,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(folder);
         CPanel panel(folder);
         panel.SetCurrentFolderPrefix("archive.zip" + QString("/long path/").repeated(150));
-        PropertiesDialog dialog(panel, allIndices(folder));
+        PropertyProjection dialog(panel, allIndices(folder));
         dialog.resize(size);
         dialog.show();
         QApplication::processEvents();
@@ -180,25 +170,19 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write("fixture"), qint64(7));
         file.close();
-        MainWindow window;
-        auto *table = window.findChild<QTableWidget *>("archiveTable");
-        auto *action = window.findChild<QAction *>("selectedPropertiesAction");
-        QVERIFY(table && action);
-        QCOMPARE(table->rowCount(), 1);
-        table->selectRow(0);
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temporary.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        CPanel panel(folder);
+        const auto indices = allIndices(folder);
+        QCOMPARE(indices.Size(), unsigned(1));
         int inspected = 0;
         auto inspect = [&] {
-            QTimer::singleShot(0, [&] {
-                auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
-                QVERIFY(dialog);
-                QCOMPARE(value(*dialog, "Имя").normalized(QString::NormalizationForm_C), name);
-                QCOMPARE(value(*dialog, "Размер"), QString("7"));
-                QCOMPARE(value(*dialog, "Сжатый"), QString("7"));
-                QVERIFY(!value(*dialog, "Изменен").isEmpty());
-                ++inspected;
-                dialog->reject();
-            });
-            action->trigger();
+            PropertyProjection dialog(panel, indices);
+            QCOMPARE(value(dialog, "Имя").normalized(QString::NormalizationForm_C), name);
+            QCOMPARE(value(dialog, "Размер"), QString("7"));
+            QCOMPARE(value(dialog, "Сжатый"), QString("7"));
+            QVERIFY(!value(dialog, "Изменен").isEmpty());
+            ++inspected;
         };
         inspect(); // Also primes upstream's lazy packed-size cache on Windows.
         QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
@@ -236,7 +220,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(value(*dialog, "Имя"), QString("unknown.txt"));
             // The undefined item fields are omitted before the separator;
             // source folder totals are still enumerated afterward.
-            auto *properties = dynamic_cast<PropertiesDialog *>(dialog);
+            auto *properties = dynamic_cast<CListViewDialog *>(dialog);
             QVERIFY(properties);
             for (unsigned i = 0; i < properties->Strings.Size(); ++i) {
                 const QString name = ToQString(properties->Strings[i]);

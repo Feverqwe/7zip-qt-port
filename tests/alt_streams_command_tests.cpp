@@ -67,9 +67,17 @@ class AltStreamsCommandTests final : public QObject, protected MainWindowTestSup
         QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
         action(window, "selectedPropertiesAction")->trigger();
         responder.stop();
+#ifdef Q_OS_WIN
+        // Upstream AltStreamsFolder has no IGetFolderArcProps and is excluded
+        // by InvokeSystemCommand's filesystem/drives guard. Do not invent a
+        // portable property dialog for that original no-op branch.
+        QVERIFY(!propertiesSeen);
+        QCOMPARE(table(window)->rowCount(), 1);
+#else
         QVERIFY(propertiesSeen);
         QVERIFY(values.contains(streamName));
         QVERIFY(values.contains(QStringLiteral("13")));
+#endif
         auto *remove = action(window, "deleteAction");
         QVERIFY(remove->isEnabled());
         for (QMessageBox::StandardButton answer : {QMessageBox::Cancel, QMessageBox::Yes}) {

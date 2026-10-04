@@ -1,17 +1,129 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/FM.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Partial port: WM_CLOSE, WM_COMMAND/toolbar dispatch and IsLargePageSupported.
-// Link type/privilege initialization is also ported; other startup/window
-// placement/drop retain their mandatory plan owners.
+// WinMain exception policy, WinMain2's active command-line body and WM_CREATE
+// path/refusal flow are also ported. Qt/CApp services own widget construction,
+// the event loop and per-window cleanup; window placement retains its plan owner.
+#include "7zip/UI/FileManager/StringUtils.h"
+#include "7zip/UI/GUI/ExtractRes.h"
 #include "App.h"
+#include "Common/MyException.h"
 #include "Common/MyWindows.h"
+#include "Common/StringConvert.h"
+#include "FormatUtils.h"
+#include "LangUtils.h"
 #include "MyLoadMenu.h"
+#include "ProgressDialog2.h"
+#include "Windows/FileFind.h"
+#include "Windows/FileName.h"
 #include "qtfilemanagercommandservices.h"
+#include "qtfilemanagerstartup.h"
 #include "qtfilemanagerwindowservices.h"
 #include "qtlinkservices.h"
+#include <QMessageBox>
 #ifdef _WIN32
+#include "../../../../../third_party/7zip/C/DllSecur.h"
 #include "Windows/MemoryLock.h"
 #endif
+
+static void ErrorMessage(const wchar_t *s) {
+    QMessageBox::critical(nullptr, QStringLiteral("7-Zip"), QString::fromWCharArray(s));
+}
+
+static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
+
+int NQtFileManager::WinMain(const std::function<int()> &main2) {
+    // Original WinMain exception/exit policy. CApp's per-window RAII release
+    // joins external workers before this handler, replacing the global launcher.
+    try {
+#ifdef _WIN32
+        My_SetDefaultDllDirectories();
+#endif
+        return main2();
+    } catch (const CNewException &) {
+        ErrorMessage(LangString(IDS_MEM_ERROR));
+        return 1;
+    } catch (const UString &s) {
+        ErrorMessage(s);
+        return 1;
+    } catch (const AString &s) {
+        ErrorMessage(s.Ptr());
+        return 1;
+    } catch (const wchar_t *s) {
+        ErrorMessage(s);
+        return 1;
+    } catch (const char *s) {
+        ErrorMessage(s);
+        return 1;
+    } catch (int v) {
+        AString e("Error: ");
+        e.Add_UInt32((unsigned)v);
+        ErrorMessage(e);
+        return 1;
+    } catch (...) {
+        ErrorMessage("Unknown error");
+        return 1;
+    }
+}
+
+QtFileManagerStartup WinMain2(const UString &nativeCommandLine) {
+    QtFileManagerStartup startup;
+    UString &g_MainPath = startup.FullPath;
+    UString &g_ArcFormat = startup.ArcFormat;
+    // Original WinMain2 command-line body; Qt supplies GetCommandLineW's
+    // string. The commented-out alternate parsers are not active upstream.
+    UString commandsString;
+    UString programString;
+    SplitStringToTwoStrings(nativeCommandLine, programString, commandsString);
+    commandsString.Trim();
+    UString paramString, tailString;
+    SplitStringToTwoStrings(commandsString, paramString, tailString);
+    paramString.Trim();
+    tailString.Trim();
+    if (tailString.IsPrefixedBy("-t"))
+        g_ArcFormat = tailString.Ptr(2);
+    if (!paramString.IsEmpty())
+        g_MainPath = paramString;
+
+    // Original WM_CREATE path preparation, before CApp::Create.
+    bool &needOpenArc = startup.NeedOpenArc;
+    UString fullPath = g_MainPath;
+    if (!fullPath.IsEmpty()) {
+        if (!NWindows::NFile::NName::IsAbsolutePath(fullPath)) {
+            FString fullPathF;
+            if (NWindows::NFile::NName::GetFullPath(us2fs(fullPath), fullPathF))
+                fullPath = fs2us(fullPathF);
+        }
+        if (NWindows::NFile::NFind::DoesFileExist_FollowLink(us2fs(fullPath)))
+            needOpenArc = true;
+    }
+    startup.FullPath = fullPath;
+    return startup;
+}
+
+void CheckFileManagerStartup(HRESULT res, const QtFileManagerStartup &startup,
+                             const COpenResult &openRes) {
+    // Native WM_CREATE returns -1 on refusal; the Qt entry catches this
+    // construction failure before showing the File Manager window.
+    if (res == E_ABORT)
+        throw QtFileManagerStartupFailure{};
+    const bool needOpenArc = startup.NeedOpenArc;
+    const UString &fullPath = startup.FullPath;
+    if ((needOpenArc && !openRes.ArchiveIsOpened) || res != S_OK) {
+        UString m("Error");
+        if (res == S_FALSE || res == S_OK)
+            m = MyFormatNew(openRes.Encrypted ? IDS_CANT_OPEN_ENCRYPTED_ARCHIVE
+                                              : IDS_CANT_OPEN_ARCHIVE,
+                            fullPath);
+        else if (res != S_OK)
+            m = HResultToMessage(res);
+        if (!openRes.ErrorMessage.IsEmpty()) {
+            m.Add_LF();
+            m += openRes.ErrorMessage;
+        }
+        throw QtFileManagerStartupFailure{m};
+    }
+}
 
 static void ExecuteCommand(unsigned commandID, CApp &g_App,
                            IQtFileManagerMenuCommandServices &services) {

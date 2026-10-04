@@ -50,9 +50,9 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
         return E_NOTIMPL;
     CMyComPtr<IProgress> progress = new CBatchOpenProgress(callback);
     CMyComPtr<IFolderFolder> folder;
-    const HRESULT result = _manager->OpenFolderFile(nullptr, options.filePath,
-                                                    _openType.IsEmpty() ? nullptr : _openType.Ptr(),
-                                                    &folder, progress);
+    auto *manager = static_cast<QtArchiveFolderManager *>(_manager.Interface());
+    const HRESULT result = manager->OpenArchive(
+        options, _openType.IsEmpty() ? nullptr : _openType.Ptr(), &folder, progress);
     if (result != S_OK)
         return result;
     auto *agent = dynamic_cast<CAgentFolder *>(folder.Interface());

@@ -550,6 +550,7 @@ class CPanel : public QObject {
                         class IQtPanelPluginMenuServices *plugins = nullptr);
     bool InvokePluginCommand(unsigned id, class IQtPanelPluginServices &services);
 #ifdef _WIN32
+    void InvokeSystemCommand(const char *command);
     HRESULT CreateShellContextMenu(const CRecordVector<UInt32> &operatedIndices,
                                    CMyComPtr<IContextMenu> &systemContextMenu);
     HRESULT InvokeShellContextMenu(unsigned offset, IContextMenu *systemContextMenu);
@@ -605,6 +606,7 @@ class CPanel : public QObject {
     bool _lastFocusedIsList = true;
     QString GetItemsInfoString(const CRecordVector<UInt32> &indices) const;
     void Properties(const CRecordVector<UInt32> &operatedIndices, CListViewDialog &message) const;
+    void Properties();
     static QString FoldersHistory(CFolderHistory &history, const QString &settingsPath,
                                   QWidget *parent);
     static void SetBookmark(CFastFolders &fastFolders, unsigned index,

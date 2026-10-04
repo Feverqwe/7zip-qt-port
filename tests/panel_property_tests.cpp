@@ -122,12 +122,9 @@ class PanelPropertyTests : public QObject {
         props.Add({kpidCRC, L"", CPropVariant(UInt32(0x00deadbe))});
         props.Add({kpidIsDir, L"", CPropVariant(false)});
         CPropVariant date;
-        date.vt = VT_FILETIME;
         const UInt64 ticks = UInt64(11644473600ULL) * 10000000 + 1234567;
-        date.filetime.dwLowDateTime = UInt32(ticks);
-        date.filetime.dwHighDateTime = UInt32(ticks >> 32);
-        date.wReserved1 = k_PropVar_TimePrec_1ns;
-        date.wReserved2 = 89;
+        const FILETIME ft{UInt32(ticks), UInt32(ticks >> 32)};
+        date.SetAsTimeFrom_FT_Prec_Ns100(ft, k_PropVar_TimePrec_1ns, 89);
         props.Add({kpidMTime, L"", date});
         props.Add({999, L"Свойство й", CPropVariant(L"значение с пробелом")});
         props.Add({123456, L"", CPropVariant(UInt32(42))});

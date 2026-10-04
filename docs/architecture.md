@@ -18,8 +18,10 @@ offset routing and success-only selection clearing. QtFileManagerShellMenu rende
 the source tree and transports commands to QtShellArchiveServices. CFileMenu's
 regular-item projection starts at the already rendered plugin prefix; there is
 no second Qt copy of shell command-generation rules. Windows System query/invoke
-is connected through the native COM/HMENU presentation bridge. System Properties,
-source email and extension packaging remain pending. Available source
+is connected through the native COM/HMENU presentation bridge. Windows Properties
+and source MAPI email use their retained native owners. The installed native
+component and System presentation are accepted under P2-09.2; actual Explorer
+handler registration and Menu policy remain P2-09.3. Available source
 Open/Extract/Test/Hash and direct Add/generation commands use the real
 popup and program File menu; unsupported transports stay disabled.
 
@@ -44,7 +46,44 @@ own their workflows.
 Toolbar Info now shares source IDM_PROPERTIES with File Properties; the
 independent archive summary extension and window have been removed. Original
 Properties supplies item and folder/archive sections, including empty archives.
-Native Windows System Properties remains part of the pending System transport.
+Source CPanel::Properties now dispatches Windows filesystem items to the native
+IContextMenu string verb; archive items use its retained collector and source
+CListViewDialog. Unix uses that portable source collector for filesystem items.
+Native shell HMENU presentation uses the same typed ContextMenu.cpp tree as Qt;
+its Win32 adapter owns insertion/submenu transfer and maps the tree's icon tag
+to the module's original MenuLogo bitmap. Command generation and invocation stay
+in their source owner. Windows builds the same CZipContextMenu owner with its
+four original COM interfaces into the source shell DLL. Each default/native
+object owns its process transport, including enumerated children; injected
+in-app consumers retain their existing lifetime. Source factory/unload and a
+host without QCoreApplication are tested. Installed COM activation and GUI/map/
+email consumers retain the same source owners; actual Explorer handler
+registration remains separate Menu integration scope.
+The redundant PropertiesDialog production wrapper has been removed; native
+Windows runtime acceptance is recorded under P2-09.2 in the audit.
+
+Windows NDLL::MyGetModuleFileName resolves the module containing its source
+implementation, then retains the upstream GetModuleFileName/directory algorithm.
+This serves both EXE and shell DLL callers without host-executable substitution
+or a mutable module-instance global. POSIX retains the Qt executable-path service.
+Windows settings use a fixed project config directory for both app and DLL,
+and installed languages are resolved adjacent to the containing module. These
+services do not adopt Explorer's application identity or executable directory.
+
+QtArchiveBatchOpen carries source COpenOptions through QtArchiveFolderManager
+and ArchiveBackend to NativeArchiveReader. ArchiveCodecCatalog binds its retained
+codec owner before invoking the original CArchiveLink::Open3; source excluded
+formats, properties and layered types are preserved. The Qt service pointer is
+cleared at that boundary to avoid re-entering the transport. GUI extraction also
+passes the original ArcType string unchanged to the backend listing transport;
+the widgets do not construct or serialize archive command types.
+
+Windows email commands reuse the retained Common/Update.cpp MAPI body through
+the same source UpdateGUI service. File Manager presentation derives email
+availability from the ordinary source Add capabilities; Unix retains an explicit
+unavailable transport. The native process sender's `-seml.` selects the source
+temporary attachment lifetime, while the in-process CompressCall2 options keep
+their original archive policy. Qt does not implement a second mail workflow.
 
 The full source Common UpdateArchive/Compress orchestration and its TempFiles,
 UpdateCallback, UpdatePair and UpdateProduce dependencies belong to
@@ -114,8 +153,16 @@ IQtExtractPathPolicy checks source-corrected containment and occupied/link ances
 before creation. QtArchiveBatchOpen validates each actual listing before the
 source loop. ArchiveBackend invokes native extraction after count/path-order
 proof, retaining reader/catalog lifetime. Agent borrows metadata/path choices
-only while CopyTo's worker is joined. Startup openPath delegates to existing
-native navigation; it does not implement a second opener.
+only while CopyTo's worker is joined. macOS/Linux startup openPath delegates to
+existing native navigation; it does not implement a second opener. Windows FM
+startup uses FM.cpp's original quoted-string/type parsing and path preparation.
+Per-launch QtFileManagerStartup replaces its globals and feeds the original
+CApp::Create/BindToPath during MainWindow construction. ArchiveBackend discovery
+finishes before an initial archive bind. A typed failure transports the original
+WM_CREATE refusal to the Qt entry, preserving silent E_ABORT and InitInstance's
+FALSE return without showing a partly constructed File Manager. WinMain's
+exception policy remains in FM.cpp under a narrow namespace because the native
+Windows entrypoint cannot be overloaded; Qt supplies widgets and its event loop.
 
 Metadata storage choices flow from original CompressDialog bool pairs and
 handler capabilities through the Add request into original CDirItems and
@@ -333,8 +380,15 @@ source shell tree through QtFileManagerShellMenu. On Windows, QtNativeShellMenu
 retains the source-created System IContextMenu/HMENU for one generation and
 renders the generated tree; CPanel owns PIDL resolution and the original numeric
 invocation body. The shared dispatch rejects stale QAction generations. Native
-owner-drawn rendering and third-party handler message coverage still need
-Windows acceptance; incomplete archive shell transports stay disabled.
+HMENU presentation is isolated in QtNativeShellMenuPresentation: it copies GDI
+item/checkmark pixels into owned Qt icons and retains the provider through lazy
+submenu initialization. Generation and invocation remain in the source owners.
+Native IContextMenu2/3 measure/draw and printable mnemonic messages feed the
+Qt presentation boundary, including callback icons and owner-drawn submenus.
+Provider state remains alive through row widgets and message filters. GDI
+pixels are copied into owned images before native handles are released;
+failed measurement disables the affected unrenderable row. Command generation
+and invocation remain in CPanel. Incomplete archive shell transports stay disabled.
 ZIP item comments follow source CPanel::ChangeComment, Agent::CommentItem and
 CAgentFolder::SetProperty. The shared source worker/callback invokes the source
 ZIP IOutArchive behind ArchiveBackend::updateNativeComment; widgets never build
@@ -585,7 +639,7 @@ PanelMenu now calls the original typed property helper for every successfully
 read item property and for numeric aggregate totals. sevenzip_panel links the
 existing native property formatter owner sevenzip_filesystem; no duplicate
 formatting implementation is added. Window Properties passes its bound focused
-CPanel and source operated indices directly to PropertiesDialog; metadata is
+CPanel through its source Properties entry; metadata is
 not rebuilt from rows/QFileInfo or another proxy. Packed aggregate visibility
 now follows the original unconditional branch. Raw/archive-level/shell
 capabilities retain their mandatory owners.

@@ -46,6 +46,22 @@ produces `7z.exe`, `7z.dll`, `7zz.exe`, license and runtime manifest. All three
 compile on Windows11 ARM64; both clients report26.03. Do not install test-only
 codec fixtures in a production runtime.
 
+Windows CMake installation places the Qt application, original7zFM/7zG entry
+aliases, project shell DLL and official7z/7zz/7z.dll runtime together in `bin`.
+`cmake --install build/dev --prefix <private-directory>` deploys Qt runtime,
+platform plugins and compiler runtime using Qt's own deployment script. It
+first checks the prepared runtime's producer, repository, pinned revision,
+architecture and binary SHA256 values. Runtime provenance and7-Zip license are
+installed under `share`; installation does not register shell handlers or
+write associations. `SEVENZIP_WINDOWS_RUNTIME` can select another prepared
+runtime directory at configure time.
+
+`scripts/check-windows-package.sh` builds and installs into the snapshot's
+`build/windows-package`, then exercises its actual DLL and GUI helper with
+only package/system paths in the child process environment. Run it on the
+interactive Windows runner. This private test layout is not a release package
+or final license/distribution acceptance; those belong to P3-04.
+
 ## Dependencies
 
 - C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, Git, clang-format

@@ -39,7 +39,8 @@ ArchiveBackend *ArchiveBackend::createIndependentBackend(QObject *parent) const 
 
 HRESULT ArchiveBackend::openNativeArchive(const QString &path, const QString &type,
                                           IOpenCallbackUI *callback,
-                                          std::shared_ptr<ArchiveNativeOpen> &reader) const {
+                                          std::shared_ptr<ArchiveNativeOpen> &reader,
+                                          const COpenOptions *options) const {
     reader.reset();
     const auto catalog = codecCatalog();
     // Standalone callers and missing-module discovery retain the existing
@@ -47,7 +48,7 @@ HRESULT ArchiveBackend::openNativeArchive(const QString &path, const QString &ty
     if (!catalog || catalog->result() != S_OK)
         return S_OK;
     auto opened = std::make_shared<ArchiveNativeOpen>(catalog);
-    const HRESULT result = opened->Open(path, type, callback);
+    const HRESULT result = opened->Open(path, type, callback, options);
     if (result == S_OK)
         reader = std::move(opened);
     return result;

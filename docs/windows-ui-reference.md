@@ -165,3 +165,33 @@ Null не означает отсутствие текста. `dpiAwareness`: 0 
 
 Скрипт требует проверки на настоящей Windows; его выполнение на macOS
 не подтверждает корректность Win32/PInvoke или визуальную точность.
+
+## Pinned runtime System menu reference
+
+`scripts/check-native-menu-reference.sh` проверяет affected File/System popup
+на разрешённом RUNNER-WINDOWS x64 с активным desktop:
+
+```bash
+python3 scripts/hyperv-runner.py run windows --interactive -- scripts/check-native-menu-reference.sh
+```
+
+Сначала `build-windows-reference.ps1` извлекает закреплённый upstream commit
+в отдельный snapshot и собирает оригинальные FileManager makefile/resources
+через MSVC/nmake. Sibling checkout остаётся read-only. Entry wrapper включает
+полный исходный FM.cpp с alias имени WinMain. Два product-path macro в
+RegistryUtils.cpp/ViewSettings.cpp заменяются уникальным private HKCU path;
+это сохраняет исходные function bodies и registry view системных providers.
+Fixture отказывает при существующем key, отмечает owner PID и удаляет только
+свой key. Original7zFM normal exit и cleanup проверяются тестом; emergency
+cleanup требует совпадающий marker. Официальная регистрация не меняется.
+
+`build/windows-reference/reference.json` содержит source repository/full
+revision, hashes оригинальных и adapted files, wrapper и executable. Только
+при наличии этого manifest CMake регистрирует `native_rendered_system_menu`.
+Тест открывает настоящий native7zFM File/System menu на disposable Unicode
+файле и сравнивает его runtime HMENU с raw source query и Qt projection.
+Он пишет в `build/dev/ui-reports/` два `native-system-rendered-*.json` с rows,
+font/DPI/style и два affected PNG при `SEVENZIP_CAPTURE_SCREENSHOTS=1`.
+Этот comparator относится только к System popup и не заменяет общий capture
+выше. Другая машина/DPI требует своей серии. Приёмка и observed adaptations —
+в [parity](7zfm-parity.md) и [audit](upstream-port-audit.md).

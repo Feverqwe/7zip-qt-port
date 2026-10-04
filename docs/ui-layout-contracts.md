@@ -8,7 +8,10 @@ inserted before the 7-Zip group when requested; native System is connected on
 Windows and unavailable on Unix. Cascaded source Open archive, Open archive submenu, Extract files,
 Test archive and Add to archive remain in source query order. Available Open/
 Extract/Test/Hash, direct Add to7z/ZIP and SHA256 generation use concrete services;
-modal Add uses the source fixed-selection dialog; email remains disabled.
+modal Add uses the source fixed-selection dialog. Windows email commands follow
+the same native Add/update capabilities and retained MAPI workflow; Unix email
+remains unavailable. The native_shell_email consumer checks all three original
+email rows in EN/RU at980×620/640×400, including geometry and Unicode filenames.
 No additional separator is inserted by Qt between plugins and CFileMenu: the
 corresponding source append-separator block is commented out.
 shell_menu_window checks actual popup/independent Open success, forced-type
@@ -19,6 +22,17 @@ EN and201×115 RU, fully exposed; their nested Open-as menu is intentionally
 hidden until activated. One affected EN submenu PNG was inspected specifically
 for the source bitmap mask/rendering. These checks do not establish rendered
 Windows pixel parity or complete native-extension UX acceptance.
+
+P2-09.2 System presentation acceptance compares actual pinned Windows7zFM
+File/System with the same source panel/provider query and Qt projection:
+22 rows at96DPI preserve order, grouping, state and icons. Reference and Qt
+PNGs were reviewed, including Share orientation. Both fonts are Segoe UI9pt;
+QWindows11Style supplies24px rows/padding/rounded frame versus native22px rows
+and9px separators. The adapter copies source GDI icons and forwards native
+measure/draw/mnemonic messages for owner-drawn rows, submenus and callback
+icons. Failed measurement disables that row. Geometry reports continue to
+check EN/RU normal/compact popup visibility. This affected-state comparison
+does not establish exact pixel parity or other DPI/platform rendering.
 
 shell_update_window additionally checks direct Add7z/ZIP/generation success,
 broken existing archive refusal, selection and result appearance. Its eight

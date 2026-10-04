@@ -228,6 +228,18 @@ HRESULT ArchiveCodecCatalog::openArchive(CArchiveLink &link, const QString &path
     options.excludedFormats = &excluded;
     options.props = nullptr;
     options.filePath = path.toStdWString().c_str();
+    return openArchive(link, options, callback);
+}
+
+HRESULT ArchiveCodecCatalog::openArchive(CArchiveLink &link, const COpenOptions &requested,
+                                         IOpenCallbackUI *callback) const {
+    if (result_ != S_OK)
+        return result_;
+    COpenOptions options = requested;
+    // The source type indexes refer to this retained catalog or its copied
+    // metadata table. Factories always come from the lifetime owner here.
+    options.codecs = codecs_;
+    options.QtOpenService = nullptr;
     return link.Open3(options, callback);
 }
 
