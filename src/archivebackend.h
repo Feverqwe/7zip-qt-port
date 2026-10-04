@@ -339,6 +339,7 @@ class ArchiveBackend : public QObject {
     quint64 copyGeneration_ = 0;
     quint64 hashGeneration_ = 0;
     quint64 creationGeneration_ = 0;
+    quint64 volumeGeneration_ = 0;
     QTimer workerProgressTimer_{this};
     QMutex workerProgressMutex_;
     quint64 workerProgressGeneration_ = 0;

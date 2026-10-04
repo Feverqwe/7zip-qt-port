@@ -1,6 +1,17 @@
 # Сверка с Windows 7zFM
 
-## P2-10.2 — большие Qt списки (active, 2026-10-04)
+## P2-10.3 — volume progress (принят, 2026-10-05)
+
+Создание томов использует тот же latest-state worker transport, что Hash и
+creation scan/deletion: промежуточные callbacks исходного CopyCoder объединяются
+до GUI timer, pause/cancel checkpoints выполняются в исходных точках. Joined
+completion завершает delivery до terminal result; generation исключает события
+предыдущего worker при повторном запуске. CopyCoder, CMultiOutStream, exclusive
+publication и rollback не меняются. Это Qt transport adaptation; layout/text
+Progress/Messages сохранены. Scope принят на трёх ОС (audit § P2-10.3);
+filesystem Copy/Move и Split/Combine progress остаются в P2-10.4.
+
+## P2-10.2 — большие Qt списки (принят, 2026-10-05)
 
 Исходные FSFolder/AgentFolder owners, indices, property/selection и comparator
 сохранены. Windows ListView refresh заменён постепенной публикацией Qt rows;
@@ -24,7 +35,7 @@ progress использует modal DialogBoxParam. Это исключает п
 
 Layout/grouping/order не меняются. Public 4096-item disk/archive fixtures
 проверяют heartbeat, normal 980×620 и compact 640×480 JSON, navigation/close и
-stale turns. Приёмка трёх ОС и parent ещё не завершена. Эти проверки структуры
+stale turns. Scope принят на трёх ОС; parent открыт до P2-10.3. Эти проверки структуры
 не доказывают pixel parity с rendered Windows reference.
 
 ## P2-10.1 — worker scheduling (принят, 2026-10-04)
@@ -37,7 +48,7 @@ CProgressSync и timer presentation: промежуточные имена и п
 объединяться, итоговые результаты/ошибки HashCalc сохраняются. События завершённой
 фазы не доставляются после её terminal result. Это transport adaptation без
 изменения структуры Progress/Messages и без утверждения pixel parity.
-Полная отзывчивость Qt rows/icons и parent P2-10 остаются для P2-10.2.
+Полная отзывчивость Qt rows/icons принята в P2-10.2; parent открыт до P2-10.3.
 Windows native separators приводятся исходным ReplaceSlashes_OsToUnix только
 для comparison/validation совместимых mutations; raw listing не меняется.
 Итоговый macOS gate236/236 PASS95.26s; snapshot90ef1e7f Windows9/9 PASS42.83s,

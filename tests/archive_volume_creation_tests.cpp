@@ -3,6 +3,8 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include <QCryptographicHash>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QMessageBox>
 #include <QProcess>
@@ -72,6 +74,117 @@ class ArchiveVolumeCreationTests final : public QObject {
                 QTest::newRow(qPrintable(format + "-protected" + suffix))
                     << format << true << russian;
             }
+    }
+    void volumeBurstBoundsGuiDeliveryAndKeepsArchiveBytes() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath(QStringLiteral("источник с пробелом.bin"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        const QByteArray block(8 << 20, 'v');
+        for (int i = 0; i < 16; ++i)
+            QCOMPARE(file.write(block), qint64(block.size()));
+        file.close();
+        const QString target = fixture.filePath("output.7z");
+        CompressionOptions options;
+        options.level = 0;
+        options.VolumeSizes.Add(32 << 20);
+        ArchiveBackend backend(nullptr, engine());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        QElapsedTimer elapsed;
+        int deliveries = 0;
+        int queuedDeliveries = -1;
+        connect(&backend, &ArchiveBackend::progress, &backend, [&](int, const QString &detail) {
+            if (detail != "Creating archive volumes")
+                return;
+            if (++deliveries == 1) {
+                elapsed.start();
+                // The worker starts after this initial signal returns. Occupy
+                // the GUI on its next turn while source CopyCoder keeps running.
+                QTimer::singleShot(0, &backend, [&] {
+                    const int before = deliveries;
+                    QTest::qSleep(200);
+                    QCoreApplication::sendPostedEvents(&backend, QEvent::MetaCall);
+                    queuedDeliveries = deliveries - before;
+                });
+            }
+        });
+        backend.create(target, {source}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 1, 30000);
+        QVERIFY2(finished.first().first().toBool(), qPrintable(finished.first().at(1).toString()));
+        QVERIFY(deliveries > 0);
+        QVERIFY2(
+            queuedDeliveries >= 0 && queuedDeliveries <= 2,
+            qPrintable(
+                QString("%1 queued volume callbacks after GUI occupation").arg(queuedDeliveries)));
+        const qint64 limit = elapsed.elapsed() / 20 + 4;
+        QVERIFY2(deliveries <= limit, qPrintable(QString("%1 volume deliveries in %2 ms; limit %3")
+                                                     .arg(deliveries)
+                                                     .arg(elapsed.elapsed())
+                                                     .arg(limit)));
+        const int delivered = deliveries;
+        QTest::qWait(50);
+        QCOMPARE(deliveries, delivered);
+        QVERIFY(!backend.busy());
+        const QString extracted = fixture.filePath("extracted");
+        QVERIFY(runEngine({"x", "-y", "-o" + extracted, "--", target + ".001"}));
+        QFile output(QDir(extracted).filePath(QFileInfo(source).fileName()));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QVERIFY(output.open(QIODevice::ReadOnly));
+        QCOMPARE(output.size(), file.size());
+        QCryptographicHash sourceHash(QCryptographicHash::Sha256),
+            outputHash(QCryptographicHash::Sha256);
+        QVERIFY(sourceHash.addData(&file));
+        QVERIFY(outputHash.addData(&output));
+        QCOMPARE(outputHash.result(), sourceHash.result());
+        QVERIFY(
+            QDir(fixture.path())
+                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
+                .isEmpty());
+    }
+    void joinedVolumeCancelThenRestartKeepsNewCompletion() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath(QStringLiteral("источник с пробелом.bin"));
+        const QByteArray bytes(500000, 'r');
+        QVERIFY(writeFile(source, bytes));
+        const QString cancelled = fixture.filePath("cancelled.7z"),
+                      restarted = fixture.filePath("restarted.7z");
+        CompressionOptions options;
+        options.level = 0;
+        options.VolumeSizes.Add(64 << 10);
+        ArchiveBackend backend(nullptr, engine());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        bool paused = false;
+        connect(&backend, &ArchiveBackend::progress, &backend, [&](int, const QString &detail) {
+            if (paused || detail != "Creating archive volumes")
+                return;
+            paused = true;
+            QCOMPARE(backend.setPaused(true), HRESULT(S_OK));
+            QTimer::singleShot(20, &backend, [&] {
+                backend.cancelAndWait();
+                backend.create(restarted, {source}, {}, false, options);
+            });
+        });
+        backend.create(cancelled, {source}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.count(), 2, 30000);
+        QVERIFY(paused);
+        QVERIFY(!finished.first().first().toBool());
+        QCOMPARE(finished.first().at(1).toString(), QString("Operation canceled."));
+        QVERIFY2(finished.last().first().toBool(), qPrintable(finished.last().at(1).toString()));
+        QCOMPARE(backend.lastResult(), HRESULT(S_OK));
+        QTest::qWait(100);
+        QCOMPARE(finished.count(), 2);
+        QVERIFY(!backend.busy());
+        QVERIFY(QDir(fixture.path()).entryList({"cancelled.7z.*"}, QDir::Files).isEmpty());
+        QVERIFY(
+            runEngine({"x", "-y", "-o" + fixture.filePath("extracted"), "--", restarted + ".001"}));
+        QCOMPARE(readFile(fixture.filePath("extracted/" + QFileInfo(source).fileName())), bytes);
+        QCOMPARE(readFile(source), bytes);
+        QVERIFY(
+            QDir(fixture.path())
+                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
+                .isEmpty());
     }
     void createVariableVolumes() {
         QFETCH(QString, format);

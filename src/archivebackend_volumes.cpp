@@ -26,21 +26,20 @@ void ArchiveBackend::startVolumeOutput() {
     volumeOutput_ = std::make_unique<QtArchiveVolumeOutput>(
         createTemporary_, createVolumeTarget_, createVolumeSizes_, createSetArcMTime_,
         createNativeSfx_ ? createSfxModule_ : QString(), createTarget_);
-    volumeOutput_->Progress = [this](quint64 done, quint64 total) {
+    const quint64 generation = ++volumeGeneration_;
+    const quint64 progressGeneration = beginWorkerProgress();
+    const QString caption =
+        QtLocalText("Creating archive volumes", QStringLiteral("Создание архивных томов"));
+    volumeOutput_->Progress = [this, progressGeneration, caption](quint64 done, quint64 total) {
         const int percent = total ? int(100.0 * double(done) / double(total)) : 0;
-        QMetaObject::invokeMethod(
-            this,
-            [this, percent] {
-                if (job_ == Job::CreateVolumes)
-                    emit progress(percent, QtLocalText("Creating archive volumes",
-                                                       QStringLiteral("Создание архивных томов")));
-            },
-            Qt::QueuedConnection);
+        postWorkerProgress(progressGeneration, percent, caption);
     };
-    connect(volumeOutput_.get(), &QThread::finished, this, &ArchiveBackend::finishVolumeOutput);
-    emit progress(
-        0, QtLocalText("Creating archive volumes", QStringLiteral("Создание архивных томов")));
-    if (volumeOutput_)
+    connect(volumeOutput_.get(), &QThread::finished, this, [this, generation] {
+        if (volumeOutput_ && volumeGeneration_ == generation)
+            finishVolumeOutput();
+    });
+    emit progress(0, caption);
+    if (volumeOutput_ && volumeGeneration_ == generation)
         volumeOutput_->start();
 }
 
@@ -48,6 +47,7 @@ void ArchiveBackend::finishVolumeOutput() {
     if (!volumeOutput_)
         return;
     volumeOutput_->wait();
+    finishWorkerProgress();
     lastResult_ = volumeOutput_->Result;
     if (cancelled_)
         lastResult_ = E_ABORT;

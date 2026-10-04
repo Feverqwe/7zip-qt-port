@@ -18,8 +18,12 @@ that Refresh becomes available and actually invokes the backend after completion
 The latter reproduces retained source notification guards acquired too early.
 The integrated responsiveness script also runs flat/selection/two-panel/auto-
 refresh and nested/temp-chain/application binding lifecycle consumers.
-Use its `workers` argument for the nine backend/native-worker suites and `lists`
-for the eleven GUI consumers (`all` is the default). Windows symlink fixtures
+Use its `workers` argument for the ten backend/native-worker suites and `lists`
+for the eleven GUI consumers (`all` is the default).
+The `volumes` scope checks creation, SFX creation/lifecycle and
+the actual MainWindow Add-to-Archive volume consumer together in one snapshot.
+Creation input deletion is covered by `archive_creation_lifecycle` in `workers`.
+Windows symlink fixtures
 require the privileged SSH token, while native focus/popups require an
 interactive desktop; run these scopes separately on the shared Windows guest.
 Native Windows UI suites share a CTest desktop lock. The large-list suite's
@@ -41,6 +45,14 @@ Its cancel regression fails with the former synchronous QFile copy.
 result and temporarily occupies the GUI for200ms. Delivery is bounded by elapsed
 milliseconds/20+4; restoring per-callback queueing produces4100 deliveries in208ms
 against limit14. Joined cancel/restart must discard obsolete progress/completion.
+`archive_volume_creation` additionally creates a128MiB level0 fixture with32MiB
+volumes, occupies the GUI for200ms after the volume worker starts, then drains
+backend MetaCall events. At most two volume progress deliveries may be queued;
+the previous transport leaves32, independently of the total operation duration.
+Normal delivery uses the same elapsed/20+4 ceiling. Actual extraction and streaming
+SHA256 verify source/output byte equality. Joined paused cancellation immediately
+restarts creation on the same backend and requires exactly two terminal results,
+the new successful archive and no cancelled outputs or private staging residue.
 `filesystem_scanner` waits for a2048-file native load without GUI pumping, then
 requires at most two progress deliveries with the final2050-item count. Existing
 ordered32-row batches, progress/presentation restart and close-time joins remain
@@ -50,8 +62,8 @@ direct consumers. The2050-item load/projection deadline is15s.
 folder selection, indices and limited/full prefixes within15s, without creating
 an OS path of that depth. A4096-level path fixture verifies original1024-level
 reduction and selected real archive index. These source fixtures do not measure
-Qt row/icon rendering or establish acceptance of full UI responsiveness; that
-remaining scope is P2-10.2. Timing thresholds are reproducible regression ceilings,
+Qt row/icon rendering; that separate scope is covered by `large_list_window`
+in P2-10.2. Timing thresholds are reproducible regression ceilings,
 not a performance promise for arbitrary storage or archive sizes.
 
 Native fixture benchmark samples,2026-10-04 (15s ceiling for each scenario;

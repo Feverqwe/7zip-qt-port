@@ -12,7 +12,7 @@ publication cannot remove an existing caller-owned output. Normal local-filesyst
 QFile rename supplies exclusive publication; unusual filesystem fallback behavior
 is outside verified coverage.
 
-Hash and creation scan/deletion callbacks update one latest progress snapshot
+Hash, creation scan/deletion and volume-output callbacks update one latest progress snapshot
 under a mutex. A 33ms GUI timer delivers it without per-callback queued events;
 generation tokens reject obsolete posts and finished deliveries. Joining a phase
 stops its timer and discards remaining transient progress before its terminal

@@ -1,5 +1,45 @@
 # Ревизия происхождения кода 7zFM
 
+## P2-10.3 — bounded volume progress (accepted, 2026-10-05)
+
+Reviewed original full CPP/7zip/Compress/CopyCoder.cpp::CCopyCoder::Code/CopyStream,
+CPP/7zip/UI/Common/Update.cpp::Compress volume/SFX output branch and
+CPP/7zip/UI/FileManager/ProgressDialog2.cpp::CProgressSync/UpdateStatInfo/OnTimer,
+plus current QtArchiveVolumeOutput, backend create/finish/cancelAndWait and
+creation-deletion consumers. Source repository https://github.com/ip7z/7zip.git,
+commit0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Existing CopyCoder128KiB reads,
+progress every4MiB, CMultiOutStream output and Update/SFX bodies are unchanged;
+no new borrowed dependency or revision. Their full provenance remains in P1-06.
+
+The external CLI volume worker lacked source-dialog timer sampling and queued
+every callback. Its public128MiB regression first fails with32 queued callbacks
+after200ms occupied GUI, while25 other Qt cases pass. The initial elapsed-only
+ceiling did not expose this backlog, so the test drains the backend's MetaCall
+events separately. The narrow adapter now uses the existing mutex snapshot/33ms
+GUI timer from P2-10.1; native checkpoints, exclusive stage publication, rollback,
+source bytes and algorithm remain unchanged. A separate volume generation guards
+queued finished signals and the worker start after its initial public progress
+signal. Joining stops snapshot delivery before releasing the worker or emitting
+the terminal result. Fixtures also cover immediate restart after paused joined
+cancel, exact extracted bytes by streamingSHA256, no post-terminal progress,
+occupied outputs, EN/RU, SFX and the creation-deletion consumer. Focused macOS
+consumers pass4/4 in5.31s; unsandboxed full gate passes formatting, all targets
+and237/237 in115.75s. Baseline verifies409 exact/195 adapted/3 local unchanged.
+Snapshota887b250 worker scope passes Windows10/10 in41.53s and Linux10/10
+in12.32s; retrieved actual LastTest has no skipped/failed Qt cases, including
+all26 volume cases. Snapshot8377ef3c direct consumers pass Linux5/5 in7.95s.
+Windows passes four consumers, but the fifth creation-deletion suite fails only
+three native symlink setup fixtures under the Limited desktop token. That suite
+already passes all24 cases using the privileged worker token in a887b250.
+The script's desktop `volumes` scope therefore keeps the four creation/SFX/UI
+consumers; native-link deletion stays in `workers`, without changing product,
+fixture behavior, privileges or OS policy. Final desktop1779c543 passes Windows
+4/4 in44.58s and Linux4/4 in6.97s. Retrieved actual LastTest verifies all26 volume,
+24 SFX creation,10 SFX lifecycle and11 UI volume cases on both OS, with no skips.
+This accepts the integrated P2-10.3 component on all three tested platforms.
+Parent acceptance additionally requires P2-10.4's source progress snapshot for
+filesystem Copy/Move and Split/Combine callers; this child does not accept it.
+
 ## P2-10.2 — full Qt list projection (accepted, 2026-10-05)
 
 Reviewed original FileManager/FSFolder.cpp::LoadItems/LoadSubItems/SetFlatMode,
