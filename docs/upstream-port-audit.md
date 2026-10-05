@@ -161,6 +161,79 @@ startup/dispatch consumers. It does not accept stable Windows full performance,
 Finder/native event integration, packaged launch workflows or whole P3-05
 body/resource/dependency closure. No sibling upstream files are changed.
 
+## P3-04 — own-code notice preparation (active, 2026-10-05)
+
+The user selected MIT for the project's own Qt/UI/integration code, superseding
+their earlier GPL choice. Root LICENSE records that choice; inherited 7-Zip,
+Qt and dependency notices retain their existing owners and licenses.
+Both install routes include the root notice in a separate sevenzip-desktop
+directory alongside the existing 7zip notices. No borrowed source or license
+text was relicensed. Sequential macOS Qt6.12 format/all-target/full244/244
+PASS83.17s. A fresh Release Qt6.12 runtime installation produced a signed
+12,434,024-byte ZIP with exact root MIT text; package SHA256
+`542ac18ed2d492f12c72ad4ad3559a74bbf365840f9415cbb3e3272fc9b95bb5`.
+Its inside-out ad-hoc and deep/strict signature verification passed.
+This is notice preparation, not whole P3-04 acceptance: three-platform packages,
+relocated clean-environment archive workflows and missing-dependency scenarios
+remain mandatory. No publish/signing identity or upstream change was made.
+
+## P3-03.3.4 — callback property display (active, 2026-10-05)
+
+Source: https://github.com/ip7z/7zip.git, full commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Reviewed original FileManager/PanelItems.cpp::RefreshListCtrl callback insertion,
+PanelListNotify.cpp::SetItemText property/raw/time formatting,
+Panel.cpp::OnNotify notification suppression, FSFolder.cpp::GetProperty packed
+size caching, and current CPanel/columns/row/refresh/statistics consumers.
+The existing adapted CPanel::GetItemText remains the sole source formatter;
+no borrowed bodies, manifest revisions or C/C++ boundaries changed.
+
+Qt's previous row publication eagerly formatted every visible metadata cell.
+ArchiveTableItem now requests source metadata on display/edit demand, using the
+table's owning panel rather than the focused panel. Other roles keep their direct
+path. Qt caches formatted display text until source statistics/time invalidation;
+the native provider retains authoritative property values and sort comparison.
+The table retains its displayed folder identity, checks item count before demand,
+and obeys the original notification guard while a nested archive reopen can
+release the old proxy. Window teardown disconnects callbacks and releases the
+retained identity before CApp's member lifetime ends. Timestamp and statistics
+consumers invalidate display text, including hidden cells, without eagerly
+fetching properties. Name/path/selection roles and source sorting are preserved.
+This is a C++17 Qt presentation adapter to Win32 callback text, not a replacement
+property algorithm. Root-only adaptations remain outside the borrowed manifest.
+
+Public panel_columns provider-demand/cache/notify regression is RED with the
+previous static projection; folder_size_view hidden subfile-count regression is
+RED in normal/compact before hidden-cell invalidation. Both are GREEN after their
+fixes. Final focused3/3 PASS5.67s; sequential unsandboxed macOS arm64 Qt6.12.0
+format/all-target/full244/244 PASS89.92s. Current disk/archive normal/compact and
+folder-statistics JSONs show the table enabled, visible and fully visible.
+4096-row Mac projections take235/144ms disk and122/85ms archive, maximum GUI
+gap55/53/23/22ms, first heartbeat32 rows. These are this OS's results only.
+
+Original snapshot `20261005T172432Z-e157bc55`, SHA
+`24e6d1133998d931cafa60209e0cc4eab05d72f76878810cc6a8960549f644fe`,
+preserves Linux helper exit126 and its same-SHA Bash retry's Qt6.4 deployment
+configuration failure. Windows Qt6.8.3 Highest interactive focused6/7 PASS133.41s
+fails only large-list disk-compact's unchanged15s limit (13 Qt passes/1failure);
+45 original guest/local artifacts are SHA256-verified. Neither failure is
+replaced with a passing gate. Final snapshot `20261005T173918Z-d21a05dd`, SHA
+`f12e11d4d4b1a670327727d3da2b6e079eef3324c3c25e0d04f56446b382654a`,
+selects the already installed Linux Qt6.12.0 kit: focused8/8 PASS12.53s,
+format/all-target/full240/240 PASS183.40s; 626 original guest/local artifacts
+are SHA256-verified. Windows Qt6.12 and whole-platform performance/network acceptance remain
+open; no deadline, required skip or source property policy has been relaxed.
+
+Windows Qt6.12.0 installation and live probe now pass. Snapshot
+`20261005T175900Z-2a0f6f8f`, SHA
+`9577adf3c7538619b7907e5145549cc8ffa18521108e747c79c1bb1515456e78`,
+uses that kit in CMake and passes7/8 focused suites131.60s. The callback/hidden
+statistics consumers pass; large_list_window has13 Qt passes/1failure/0skips:
+disk-normal18,752ms exceeds the unchanged15s deadline, maximum GUI gap424ms.
+Disk-compact9,344ms, archive-normal9,850ms and archive-compact9,910ms are retained.
+47 original guest/local artifacts are SHA256-verified. The focused failure
+prevented this snapshot's full gate; this is not Windows whole-gate acceptance.
+
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
 P3-03.3.2 accepts only the native_open_commands modal fixture correction. Frozen

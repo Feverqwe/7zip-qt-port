@@ -148,11 +148,8 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
                           QString(),
                           GetExtensionPtr(QStringView(nativeName)).toString(),
                           QString::number(sourceIndex)};
-    for (int col : {2, 3, 4})
-        if (!table_->isColumnHidden(col))
-            values[col] = sourceColumnText(sourceIndex, col);
     for (int col = 7; col < table_->columnCount(); ++col)
-        values << (table_->isColumnHidden(col) ? QString() : sourceColumnText(sourceIndex, col));
+        values << QString();
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
         item->setData(Qt::UserRole + 1, directory);

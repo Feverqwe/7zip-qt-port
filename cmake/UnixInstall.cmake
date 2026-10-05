@@ -18,6 +18,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so"
     DESTINATION "${runtime_destination}")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/LICENSE.txt"
     DESTINATION "${notices_destination}/7zip")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    DESTINATION "${notices_destination}/sevenzip-desktop")
 qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
     NO_TRANSLATIONS)
 install(SCRIPT "${unix_deploy_script}")

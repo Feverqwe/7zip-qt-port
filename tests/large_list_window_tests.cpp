@@ -78,6 +78,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         QTRY_VERIFY_WITH_TIMEOUT(heartbeatRows >= 0, 15000);
         QTRY_VERIFY_WITH_TIMEOUT(list->isEnabled() && list->rowCount() >= count, 15000);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        const qint64 readyMs = elapsed.elapsed();
         if (guiTime.elapsed() - lastHeartbeat > maxGuiGap) {
             maxGuiGap = guiTime.elapsed() - lastHeartbeat;
             maxGuiGapRows = list->rowCount();
@@ -87,8 +88,10 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(UiInspection::fullyVisible(*list, window));
         QVERIFY(UiInspection::writeReport(
             window, QString("large-%1-%2").arg(archive ? "archive" : "disk").arg(size.width())));
+        const qint64 reportMs = elapsed.elapsed() - readyMs;
         qInfo("full %s projection: %d items in %lld ms, heartbeat at %d rows, max GUI gap %lld ms",
               archive ? "archive" : "disk", count, elapsed.elapsed(), heartbeatRows, maxGuiGap);
+        qInfo("commands ready after %lld ms; widget report took %lld ms", readyMs, reportMs);
         const QString reports = qEnvironmentVariable("SEVENZIP_UI_REPORT_DIR");
         if (!reports.isEmpty()) {
             QFile report(QDir(reports).filePath(QString("large-%1-%2-benchmark.json")
@@ -97,6 +100,8 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(report.open(QIODevice::WriteOnly));
             const QJsonObject values{{"items", count},
                                      {"elapsedMs", elapsed.elapsed()},
+                                     {"readyMs", readyMs},
+                                     {"reportMs", reportMs},
                                      {"heartbeatRows", heartbeatRows},
                                      {"maxGuiGapMs", maxGuiGap},
                                      {"maxGuiGapRows", maxGuiGapRows}};

@@ -33,6 +33,13 @@ MainWindow::~MainWindow() {
         app_.Save();
         app_.ReleaseApp();
     }
+    // QWidget destroys its children after CApp's member lifetime ends. Stop
+    // callback text before that teardown and release retained folder owners.
+    for (auto &ui : panelUi_)
+        if (auto *table = dynamic_cast<FileTable *>(ui.table)) {
+            table->sourcePanel = nullptr;
+            table->textFolder.Release();
+        }
 }
 
 void MainWindow::startVolume(VolumeOperation::Mode mode) {

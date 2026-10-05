@@ -1047,8 +1047,12 @@ width, order, visibility and sort restore separately for filesystem and archive
 folder types. Raw values and sorting follow the source interface when a folder
 provides it. The external `7zz` listing currently has no binary raw provider,
 so this does not claim visible NTFS/security/reparse values for real archives;
-full archive raw-value transport remains P1-10. Hidden columns are read when
-shown, avoiding work during ordinary row publication. The normal/compact
+full archive raw-value transport remains P1-10. Filesystem/archive metadata text
+is requested through the source panel when Qt displays a cell, following upstream
+callback text. Hidden columns do not trigger bulk reads when shown. Timestamp and
+calculated-statistics changes invalidate cached text even in hidden columns;
+source notification guards suppress reads during archive proxy replacement.
+The normal/compact
 four-view JSON confirms layout and control visibility, not pixel fidelity.
 P0-06.3 adds the source View → Time menu examples for day, minute, second,
 100 ns and nanosecond levels, plus UTC. Current panel time values use the

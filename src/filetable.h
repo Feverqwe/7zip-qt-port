@@ -1,6 +1,8 @@
 #pragma once
 
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/IFolder.h"
+#include "Common/MyCom.h"
 #include "Common/MyWindows.h"
 #include <QListView>
 #include <QTableWidget>
@@ -16,6 +18,7 @@ class FileTable : public QTableWidget {
     bool fullRowHighlight() const { return fullRowHighlight_; }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
+    CMyComPtr<IFolderFolder> textFolder;
     std::function<void()> dragStarter;
     QVector<PROPID> propertyIds;
     QVector<bool> rawProperties;
@@ -53,5 +56,11 @@ class FileIconList final : public QListView {
 class ArchiveTableItem : public QTableWidgetItem {
   public:
     using QTableWidgetItem::QTableWidgetItem;
+    QVariant data(int role) const override;
+    void setData(int role, const QVariant &value) override;
     bool operator<(const QTableWidgetItem &other) const override;
+
+  private:
+    mutable QVariant sourceText_;
+    mutable bool sourceTextDefined_ = false;
 };

@@ -108,11 +108,8 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
                           entry.modified,
                           GetExtensionPtr(QStringView(name)).toString(),
                           QString::number(sourceOrder)};
-    for (int col : {2, 3, 4})
-        if (!table_->isColumnHidden(col))
-            values[col] = sourceColumnText(index, col);
     for (int col = 7; col < table_->columnCount(); ++col)
-        values << (table_->isColumnHidden(col) ? QString() : sourceColumnText(index, col));
+        values << QString();
     for (int col = 0; col < values.size(); ++col) {
         auto *item = new ArchiveTableItem(values[col]);
         item->setData(Qt::UserRole, entry.path);

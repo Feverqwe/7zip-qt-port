@@ -968,6 +968,13 @@ menu actions use the original command IDs and `MyLoadMenu` dispatch; unchanged
 `PropIDUtils`/`PropVariantConv` format typed `FILETIME` cells. `MainWindow`
 redraws those cells on level/UTC changes and persists the choice through
 QSettings; sort comparison continues to read typed folder properties.
+Filesystem/archive metadata text follows the original callback display policy:
+`ArchiveTableItem` asks its table's owning `CPanel::GetItemText` on display/edit
+demand and caches only formatted text. `FileTable::textFolder` retains the shown
+folder identity; source notification guards prevent callbacks during proxy
+replacement. Column changes do not enumerate properties. Time/statistics changes
+invalidate cached cells, including hidden statistics; numerical interaction roles
+remain synchronized. Window teardown detaches the callback before CApp is destroyed.
 
 `CPanel::SelectSpec/SelectByType/SelectAll/InvertSelection` own the upstream
 indexed status vector and selection rules. `mainwindow_selection.cpp` keeps the

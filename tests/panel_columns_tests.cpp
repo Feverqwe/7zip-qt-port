@@ -20,6 +20,7 @@ class RawPropertyFolder final : public IFolderFolder,
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
   public:
+    unsigned rawRequests = 0;
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
 };
@@ -84,6 +85,7 @@ Z7_COM7F_IMF(RawPropertyFolder::GetRawPropInfo(UInt32 index, BSTR *name, PROPID 
 }
 Z7_COM7F_IMF(RawPropertyFolder::GetRawProp(UInt32 index, PROPID id, const void **data, UInt32 *size,
                                            UInt32 *type)) {
+    ++rawRequests;
     if (index >= 2 || id != kpidCRC)
         return E_INVALIDARG;
     static const Byte crc[] = {0xde, 0xad, 0xbe, 0xef};
@@ -120,6 +122,45 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
         QCOMPARE(panel.GetItemText(0, raw), QString());
         QVERIFY(panel.CompareItemIndices(0, 1, kpidCRC, true) < 0);
         QVERIFY(panel.CompareItemIndices(0, 1, kpidName) > 0);
+    }
+
+    void tableRequestsSourceTextOnlyForDisplay() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        auto *provider = new RawPropertyFolder;
+        CMyComPtr<IFolderFolder> folder = provider;
+        CPanel panel(folder);
+        panel.AttachFolderManager(nullptr, temp.filePath("settings.ini"));
+        QCOMPARE(panel.InitColumns(), S_OK);
+        FileTable list(2, 8);
+        list.sourcePanel = &panel;
+        list.textFolder = folder;
+        list.propertyIds.fill(kpidNoProperty, 8);
+        list.propertyIds[7] = kpidCRC;
+        for (int row = 0; row < 2; ++row) {
+            auto *item = new ArchiveTableItem("stale projection");
+            item->setData(Qt::UserRole + 6, row);
+            list.setItem(row, 7, item);
+        }
+        QCOMPARE(provider->rawRequests, 0u);
+        QCOMPARE(list.item(1, 7)->data(Qt::UserRole + 6).toUInt(), 1u);
+        QCOMPARE(provider->rawRequests, 0u);
+        QCOMPARE(list.item(1, 7)->text(), QString("DEADBEEF"));
+        QCOMPARE(provider->rawRequests, 1u);
+        QCOMPARE(list.item(1, 7)->text(), QString("DEADBEEF"));
+        QCOMPARE(provider->rawRequests, 1u);
+        QCOMPARE(list.item(0, 7)->text(), QString());
+        QCOMPARE(provider->rawRequests, 2u);
+        {
+            CPanel::CDisableNotify guard(panel);
+            list.item(1, 7)->setData(Qt::DisplayRole, QVariant());
+            QCOMPARE(list.item(1, 7)->text(), QString());
+            QCOMPARE(provider->rawRequests, 2u);
+        }
+        QCOMPARE(list.item(1, 7)->text(), QString("DEADBEEF"));
+        QCOMPARE(provider->rawRequests, 3u);
+        list.setRowCount(0);
+        QCOMPARE(provider->rawRequests, 3u);
     }
 
     void sourceCatalogAndHeaderSettingsPersist() {

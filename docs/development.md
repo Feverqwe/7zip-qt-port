@@ -96,6 +96,9 @@ To package an existing Release build, run `python3 scripts/package.py
 `--icu-license <license-file>` if the deployed Qt kit uses ICU. The script uses
 a fresh CMake installation and writes only runtime archives to `build/packages`.
 Source inputs stay private. macOS packages have verified ad-hoc signatures.
+The install includes the project's MIT notice under `Notices/sevenzip-desktop`
+in the macOS bundle or `share/licenses/sevenzip-desktop/sevenzip-desktop`
+on Linux/Windows; engine and dependency notices remain separate.
 Windows additionally requires `--vc-runtime <Microsoft.VC143.CRT-directory>`
 and `--vc-notices <Visual-Studio-Redist.txt>`; only imported CRT DLLs are copied.
 See [CI and release helper](ci.md) for exact artifact scope and release commands.

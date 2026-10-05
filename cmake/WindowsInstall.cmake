@@ -23,6 +23,8 @@ install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/runtime.json"
     DESTINATION share/sevenzip-desktop)
 install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/7zip)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    DESTINATION share/licenses/sevenzip-desktop/sevenzip-desktop)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx"
     "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx.json" DESTINATION bin)
 qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT windows_deploy_script

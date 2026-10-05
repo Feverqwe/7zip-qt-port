@@ -84,6 +84,45 @@ void FileIconList::startDrag(Qt::DropActions actions) {
         QListView::startDrag(actions);
 }
 
+QVariant ArchiveTableItem::data(int role) const {
+    if (role != Qt::DisplayRole && role != Qt::EditRole)
+        return QTableWidgetItem::data(role);
+    // PanelItems inserts callback text; PanelListNotify formats only requested
+    // cells. Keep the owning panel, rather than the currently focused panel,
+    // authoritative when Qt paints either side of a two-panel window.
+    const auto *table = dynamic_cast<const FileTable *>(tableWidget());
+    const int col = column();
+    if (table && table->sourcePanel && col != 0 && col != 1 && col != 5 && col != 6) {
+        // Native OnNotify suppresses callbacks while archive reopening can
+        // invalidate the old proxy inside a nested event loop.
+        if (!table->sourcePanel->ShouldProcessNotifications())
+            return sourceTextDefined_ ? sourceText_ : QTableWidgetItem::data(role);
+        const QVariant index = QTableWidgetItem::data(Qt::UserRole + 6);
+        const CPropColumns &columns = table->sourcePanel->GetColumns();
+        const int property = columns.FindItem_for_PropID(table->propertyId(col));
+        if (index.isValid() && property >= 0 && table->textFolder &&
+            table->sourcePanel->GetFolder() == table->textFolder) {
+            if (!sourceTextDefined_) {
+                UInt32 count = 0;
+                if (index.toUInt() != UInt32(-1) &&
+                    (table->textFolder->GetNumberOfItems(&count) != S_OK ||
+                     index.toUInt() >= count))
+                    return QVariant();
+                sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), columns[property]);
+                sourceTextDefined_ = true;
+            }
+            return sourceText_;
+        }
+    }
+    return QTableWidgetItem::data(role);
+}
+
+void ArchiveTableItem::setData(int role, const QVariant &value) {
+    if (role == Qt::DisplayRole || role == Qt::EditRole || role == Qt::UserRole + 6)
+        sourceTextDefined_ = false;
+    QTableWidgetItem::setData(role, value);
+}
+
 bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {
     // Qt reverses the whole comparison for descending order. Compensate only
     // the folder grouping: upstream reverses property order after this check.

@@ -1,8 +1,8 @@
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 
-// Qt's table stores display text; repainting its viewport alone cannot project
-// newly calculated source properties. Do not reload the folder or lose its stats.
+// Keep the numeric size role used by interaction in sync with source stats.
+// Display text is requested from the source panel when Qt paints a cell.
 void MainWindow::redrawSourceProperties() {
     auto &panel = app_.GetFocusedPanel();
     if (!table_ || !panel.GetFolder() || app_.QtOperations().closed())
@@ -18,10 +18,9 @@ void MainWindow::redrawSourceProperties() {
         const UInt32 index = name->data(Qt::UserRole + 6).toUInt();
         for (int column = 0; column < table_->columnCount(); ++column) {
             auto *item = table_->item(row, column);
-            if (!item || table_->isColumnHidden(column) || column == 0 || column == 1 ||
-                column == 5 || column == 6)
+            if (!item || column == 0 || column == 1 || column == 5 || column == 6)
                 continue;
-            item->setText(sourceColumnText(index, column));
+            item->setData(Qt::DisplayRole, QVariant());
             if (fileTable->propertyId(column) == kpidSize) {
                 NWindows::NCOM::CPropVariant size;
                 panel.GetFolder()->GetProperty(index, kpidSize, &size);
@@ -32,5 +31,6 @@ void MainWindow::redrawSourceProperties() {
         }
     }
     table_->setSortingEnabled(sorting);
+    table_->viewport()->update();
     refreshActions();
 }

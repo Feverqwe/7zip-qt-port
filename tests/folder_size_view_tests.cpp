@@ -46,6 +46,10 @@ class FolderSizeViewTests final : public QObject, protected MainWindowTestSuppor
             return value;
         };
         QCOMPARE(property(folder, kpidSize).vt, VARTYPE(VT_EMPTY));
+        const int filesColumn = view->columnForProperty(kpidNumSubFiles);
+        QVERIFY(filesColumn >= 0);
+        view->setColumnHidden(filesColumn, true);
+        QCOMPARE(view->item(filesystemRow(window, folder), filesColumn)->text(), QString());
         view->selectRow(filesystemRow(window, folder));
         QVERIFY(action(window, "viewFileAction")->isEnabled());
         QVERIFY(!action(window, "editFileAction")->isEnabled());
@@ -62,6 +66,7 @@ class FolderSizeViewTests final : public QObject, protected MainWindowTestSuppor
         QCOMPARE(property(folder, kpidSize).vt, VARTYPE(VT_UI8));
         QCOMPARE(property(folder, kpidSize).uhVal.QuadPart, UInt64(8));
         QCOMPARE(property(folder, kpidNumSubFiles).uhVal.QuadPart, UInt64(2));
+        QCOMPARE(view->item(filesystemRow(window, folder), filesColumn)->text(), QString("2"));
         QCOMPARE(property(folder, kpidNumSubDirs).uhVal.QuadPart, UInt64(1));
         QCOMPARE(property("empty", kpidSize).vt, VARTYPE(VT_UI8));
         QCOMPARE(property("empty", kpidSize).uhVal.QuadPart, UInt64(0));
