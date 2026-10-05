@@ -2053,6 +2053,15 @@ if(BUILD_TESTING)
     get_target_property(codec_catalog_backend_sources archive_backend_tests SOURCES)
     list(REMOVE_ITEM codec_catalog_backend_sources tests/archive_backend_tests.cpp)
     get_target_property(codec_catalog_backend_libraries archive_backend_tests LINK_LIBRARIES)
+    qt_add_executable(archive_workflow_tests tests/archive_workflow_tests.cpp
+        ${codec_catalog_backend_sources}
+        src/filetransferoperation.cpp src/filetransferoperation.h
+        src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h)
+    target_include_directories(archive_workflow_tests PRIVATE src tests)
+    target_link_libraries(archive_workflow_tests PRIVATE
+        ${codec_catalog_backend_libraries} sevenzip_filesystem)
+    add_test(NAME archive_workflow COMMAND archive_workflow_tests -silent)
+    set_tests_properties(archive_workflow PROPERTIES TIMEOUT 60)
     qt_add_executable(codec_catalog_tests tests/codec_catalog_tests.cpp ${codec_catalog_backend_sources})
     target_include_directories(codec_catalog_tests PRIVATE src)
     target_link_libraries(codec_catalog_tests PRIVATE ${codec_catalog_backend_libraries} sevenzip_location)

@@ -81,7 +81,7 @@ capabilities, а не только по старой ссылке на parent; �
 Если код уже реализован другим чатом, сначала проверить bodies и current checks,
 затем учесть результат, а не реализовывать повторно.
 
-Текущий счёт: **42/47 завершённых пакетов; 5 остаётся** (2026-10-05).
+Текущий счёт: **43/47 завершённых пакетов; 4 остаётся** (2026-10-05).
 Добавлен P2-11; исторические счётчики в evidence не пересчитываются.
 P0: 12/12; P1: 18/18; P2: 10/11; P3: 1/6. P0-01–P0-12, P1-01–P1-18, P2-01–P2-10 и P3-01
 закрыты по строкам ниже; незавершённые обязательные функции сохраняют owners.
@@ -266,8 +266,8 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |
-| [ ] | P3-02 | Сквозная regression/security traceability | Принятые P0/P1 scenarios; relevant P2 rows; P1-17/18 для полной приёмки | todo — матрицу принятого scope можно собирать до P1-17/18 |
-| [ ] | P3-03 | CI и реальные Windows/macOS/Linux checks | можно начать рано; final после P2 | todo — Windowsfull3ee10fb1 session0 190/225 PASS1340.05s,35 failed suites требуют разбора. Последние P2-09.2 macOSfull232/232 PASS78.49s и Linuxfull6e4afbef228/228 PASS162.39s; Windows installed/component checks — audit. Полный Windows native desktop gate и cross-platform final gate не приняты; проверить фактическую регистрацию platform-specific QtTest slots/rows перед claims |
+| [x] | P3-02 | Сквозная regression/security traceability | Принятые P0/P1 scenarios; relevant P2 rows; P1-17/18 для полной приёмки | done — audit § P3-02; matrix41 packages/147 consumers/25 critical named slots, integrated ZIP/7z lifetime and shown/masked report privacy. New rows pass3OS,1919 logs/JSON scanned with no fixture payload leaks; macOS full242/242100.96s/Linux238/238193.91s. Windows full247/248 and unchanged failed large-list retry explicitly retained, performance remains P3-03; native network/Finder/packages/omissions/final UX not accepted. 2026-10-05 |
+| [ ] | P3-03 | CI и реальные Windows/macOS/Linux checks | можно начать рано; final после P2 | active — current snapshot b04b3b53 Linuxfull238/238193.91s, Windows Highest session1 full247/2481066.12s: only large_list_window disk-normal exceeds unchanged15s, original647 artifacts SHA-verified. macOS pinned-runtime full242/242100.96s. Actual required Windows security/COM/native GUI rows run; Windows network_folder still skips and needs native proof. Historical session0 3ee10fb1 failures retained in audit. CI config/static check, stable Windows full, native Finder .1 and rendered/platform final acceptance remain mandatory. 2026-10-05 |
 | [ ] | P3-03.1 | Нативная проверка archive drag-out в Finder: реальные bytes, Unicode/пробелы, отмена, исходный архив и temp lifetime | P1-16; обязательна для приёмки P3-03/P3-06 | blocked — Computer Use отказал в доступе к sevenzip_desktop, native transfer не выполнялся; отдельный пункт по поручению пользователя 2026-10-02, synthetic/fake receiver tests не заменяют Finder proof |
 | [ ] | P3-04 | Engine/Qt/resources/packages/licenses | P2-01, P2-02, P1-14, P1-15, P3-03 | todo |
 | [ ] | P3-05 | Полная сверка omitted scope/dependency closure | Принятый scope P0–P2, включая P2-11, P3-01; P1-17/18 для полной приёмки | todo — аудит принятого scope можно начать до P1-17/18 |

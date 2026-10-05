@@ -80,11 +80,17 @@ class CompressionEncryptionTests final : public QObject {
         QVERIFY(!repeat->isVisible());
         QVERIFY(!repeatLabel->isVisible());
         QCOMPARE(repeat->echoMode(), QLineEdit::Normal);
+        const QString shownReport = UiInspection::dump(dialog);
+        QVERIFY(!shownReport.contains("shown password"));
+        QVERIFY(!shownReport.contains("different"));
         show->setChecked(false);
         QVERIFY(repeat->isVisible());
         QVERIFY(repeatLabel->isVisible());
         QCOMPARE(repeat->text(), QString("different"));
         QCOMPARE(repeat->echoMode(), QLineEdit::Password);
+        const QString maskedReport = UiInspection::dump(dialog);
+        QVERIFY(!maskedReport.contains("shown password"));
+        QVERIFY(!maskedReport.contains("different"));
         show->setChecked(true);
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         QVERIFY(!headers->isEnabled());

@@ -1,5 +1,56 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-02 — regression/security traceability (accepted, 2026-10-05)
+
+The new docs/regression-matrix.md maps all41 accepted functional P0/P1/P2
+packages to source owners, integration boundaries and registered CTest consumers,
+plus concrete security/Cancel/lifetime slots. Its147 consumer names were checked
+against current registration; four Windows-only consumers are platform-specific.
+The new archive_workflow public fixture reuses ArchiveBackend and the existing
+FileTransferOperation/source FSFolderCopy, with ZIP/7z disposable Unicode/spaced
+files. One backend lifetime covers create/list/select/extract/edit/rejected unsafe
+replace/update/relist/Test/full extract and canceled/successful Move. It verifies
+original disk inputs, retained archive members, exact edited bytes, unchanged
+archive across filesystem transfer and absence of private stage residue.
+It uses actual source listing names after normalized fixture lookup: macOS native
+decomposed Unicode is not an archive-index alias. compression_encryption now
+requires both shown and masked JSON report dumps to omit both password inputs.
+No production algorithm, borrowed body, resource, UI workflow or baseline changes.
+The new target consumes existing authoritative shared backend/transfer objects.
+macOS arm64/Qt6.11.2 focused archive_workflow/compression_encryption2/2 PASS1.35s.
+After preparing the pinned26.03 dynamic runtime and standalone7zz, the full
+unsandboxed formatting/all-target gate passes242/242100.96s; archive_workflow
+has4 Qt passes, compression_encryption11 and external_codecs13, all zero failures
+or skips. An earlier242/242102.42s gate skipped external_codecs and is retained
+as incomplete fixture evidence, not the accepted runtime result.
+Frozen snapshot20261005T085136Z-b04b3b53, revisiondd3fded plus this test scope,
+SHA225ff011fe0e5ede7f0084d789d5c5be494a99f030a045da65730536f3ed6438:
+Linux x64 full formatting/all-target238/238 PASS193.91s,626 guest/local artifacts
+SHA-verified. macOS/Linux each have15 Windows-only Qt skips: WIM reparse2,
+NTFS extraction2, registry revision1 and metadata controls/storage10; required
+Unix native module/engine fixtures run. Ten fixture markers were scanned in
+1919 current three-platform logs/JSON artifacts without payload hits;
+wrong-password matches are only QtTest row labels. Windows x64/Qt6.8.3 Highest
+interactive session1 full formatting/all-target gate completes247/2481066.12s;
+only large_list_window disk-normal exceeds the unchanged15s limit. Its original
+647 artifacts are guest/local SHA-verified before retry. Required Windows
+archive_workflow4, compression_encryption11, external_codecs13, source_link_extract11,
+source_extract_advanced15, source_metadata_storage12, association_services8,
+file_manager_startup11 and native_gui_workflow12 Qt passes have zero failures/skips.
+The three Windows skips are POSIX link cleanup/stat2 and the still-unverified
+native network-folder fixture1; the latter remains mandatory P3-03/P3-05.
+Root production units remain Mac140/Win140/Linux138, each compiled once as
+C++17/Objective-C++17; C entries/distinct remain46/44,47/45,46/44 with no forced
+C++ language. Baseline409 exact/195 adapted/3 local verified. The unchanged
+large-list retry also fails:13 Qt passes/1 failure,137221ms, disk-normal refresh
+needs19150ms versus15000ms. Its647 separate guest/local SHA-verified artifacts
+retain the original full result; no threshold or production code changed.
+This accepts the P3-02 traceability, security/privacy and new transition coverage
+with these recorded limits. It does not accept stable full Windows performance,
+native network/Finder, source omission closure, installed packages or final UX.
+The repeated existing large-list failure has a concrete P3-03 owner; neither
+the full247/248 result nor its failed retry is reported as a passing gate.
+
 ## Windows Console opening error labels (accepted, 2026-10-05)
 
 Inspected original CPP/7zip/UI/Console/List.cpp error printing and retained

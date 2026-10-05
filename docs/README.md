@@ -18,6 +18,7 @@
 | Владельцы компонентов, lifetime и границы UI/backend | [Архитектура](architecture.md) |
 | Установка, toolchain, сборка, запуск и native runtime | [Разработка](development.md) |
 | Поведение, покрытие и выбор регрессионных проверок | [Тестирование](testing.md) |
+| Сценарий → source owner → CTest, критические отказы/Cancel/security | [Regression matrix](regression-matrix.md) |
 | Контролы, состояния, normal/compact геометрия и widget JSON | [UI contracts](ui-layout-contracts.md) |
 | Извлечение ресурсов и resource-to-widget comparison | [UI reference tooling](ui-reference.md) |
 | Сбор настоящего Windows runtime reference | [Windows reference](windows-ui-reference.md) |

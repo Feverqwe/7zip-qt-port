@@ -1,5 +1,11 @@
 # Regression strategy
 
+The [regression/security matrix](regression-matrix.md) maps every accepted P0–P2
+scenario to its source owner and registered CTest consumers. It also names the
+critical failure/Cancel/lifetime regressions and the integrated `archive_workflow`
+ZIP/7z transition test. Platform acceptance and current run evidence remain with
+P3-02/P3-03 in the checklist and audit.
+
 `compression` compares properties from public native CInfo requests with the
 retained source GetCompressionProperties output for PPMd order/memory and LZMA2
 fast bytes/threads. Invalid native fields must fail before output/engine work.
