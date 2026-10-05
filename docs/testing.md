@@ -56,6 +56,13 @@ completion returns to the owning thread, and cancellation/deadline discard the
 catalog only after joining. Destruction must join without delivering a stale
 callback; restart after failure/cancel must deliver exactly once. Disposable
 Unicode marker paths identify native entry/exit, not production diagnostics.
+`filesystem_comment` checks the source filesystem property writer and its actual
+File Comment consumer: Unicode/spaces, quoted UTF-8/BOM, preserved other pairs
+and permissions, trim/empty deletion, invalid input and flat nested refusal,
+failed save with the original HRESULT policy, unchanged source files, Ctrl+Z/
+Escape and selected rows. EN/RU normal/compact dialog reports accompany public
+command checks. Filesystem row identity uses the existing native-name role;
+archive-relative path roles are not filesystem identities.
 `temp_cleanup` creates a real native directory symlink and checks refused
 navigation, confirmed native deletion and unchanged external data/link. Its
 disposable QTemporaryFile is destroyed before deletion to release the Windows

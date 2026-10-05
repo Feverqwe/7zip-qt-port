@@ -295,6 +295,42 @@ bool CFSFolder::LoadComments() {
     return _comments.ReadFromString(unicodeString);
 }
 
+bool CFSFolder::SaveComments() {
+    AString utf;
+    {
+        UString unicode;
+        _comments.SaveToString(unicode);
+        ConvertUnicodeToUTF8(unicode, utf);
+    }
+    if (!utf.IsAscii())
+        utf.Insert(0, "\xEF\xBB\xBF"
+                      "\r\n");
+
+    FString path = _path + kDescriptionFileName;
+    NWindows::NFile::NIO::COutFile file;
+#ifdef _WIN32
+    // We must set same attrib. COutFile::CreateAlways can fail, if file has another attrib.
+    DWORD attrib = FILE_ATTRIBUTE_NORMAL;
+    {
+        NWindows::NFile::NFind::CFileInfo fi;
+        if (fi.Find(path))
+            attrib = fi.Attrib;
+    }
+    if (!file.Create_ALWAYS_with_Attribs(path, attrib))
+        return false;
+    UInt32 processed;
+    file.Write(utf, utf.Len(), processed);
+#else
+    // The portable source writer keeps existing POSIX permissions on truncation.
+    if (!file.Create_ALWAYS(path))
+        return false;
+    size_t processed;
+    file.write_full(utf, utf.Len(), processed);
+#endif
+    _commentsAreLoaded = false;
+    return true;
+}
+
 bool CFSFolder::ReadFileInfo(CDirItem &di) {
     di.FileInfo_WasRequested = true;
 #ifdef _WIN32
@@ -801,8 +837,38 @@ Z7_COM7F_IMF(CFSFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress
 }
 
 // CopyTo is implemented with the upstream copy state in FSFolderCopy.cpp.
-Z7_COM7F_IMF(CFSFolder::SetProperty(UInt32, PROPID, const PROPVARIANT *, IProgress *)) {
-    return E_NOTIMPL;
+Z7_COM7F_IMF(CFSFolder::SetProperty(UInt32 index, PROPID propID, const PROPVARIANT *value,
+                                    IProgress * /* progress */)) {
+    if (index >= Files.Size())
+        return E_INVALIDARG;
+    CDirItem &fi = Files[index];
+    if (fi.Parent >= 0)
+        return E_NOTIMPL;
+    switch (propID) {
+    case kpidComment: {
+        UString filename = fs2us(fi.Name);
+        filename.Trim();
+        if (value->vt == VT_EMPTY)
+            _comments.DeletePair(filename);
+        else if (value->vt == VT_BSTR) {
+            CTextPair pair;
+            pair.ID = filename;
+            pair.ID.Trim();
+            pair.Value.SetFromBstr(value->bstrVal);
+            pair.Value.Trim();
+            if (pair.Value.IsEmpty())
+                _comments.DeletePair(filename);
+            else
+                _comments.AddPair(pair);
+        } else
+            return E_INVALIDARG;
+        SaveComments();
+        break;
+    }
+    default:
+        return E_NOTIMPL;
+    }
+    return S_OK;
 }
 // These two unavailable bodies are also the original upstream implementation.
 Z7_COM7F_IMF(CFSFolder::CopyFrom(Int32, const wchar_t *, const wchar_t *const *, UInt32,

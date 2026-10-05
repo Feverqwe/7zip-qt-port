@@ -119,12 +119,16 @@ class MainShellTests final : public QObject {
         QCOMPARE(actionNames(*tools),
                  QStringList({"settingsAction", "|", "benchmarkAction", "|", "tempDirAction"}));
         QCOMPARE(actionNames(*help), QStringList({"helpContentsAction", "|", "aboutAction"}));
-        for (const char *name : {"commentAction", "diffAction", "linkAction", "benchmarkAction"}) {
+        for (const char *name : {"diffAction", "linkAction", "benchmarkAction"}) {
             auto *action = window.findChild<QAction *>(name);
             QVERIFY(action);
             QVERIFY(!action->isEnabled());
             QVERIFY(action->property("nativeCommandID").isValid());
         }
+        auto *comment = window.findChild<QAction *>("commentAction");
+        QVERIFY(comment);
+        QCOMPARE(comment->property("nativeCommandID").toUInt(), unsigned(IDM_COMMENT));
+        QCOMPARE(comment->shortcut(), QKeySequence(Qt::CTRL | Qt::Key_Z));
         auto *streams = window.findChild<QAction *>("altStreamsAction");
         QVERIFY(streams);
 #ifdef Q_OS_WIN

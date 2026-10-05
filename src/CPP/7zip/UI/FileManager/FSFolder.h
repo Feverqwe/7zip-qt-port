@@ -7,6 +7,7 @@
 #include "Common/MyVector.h"
 #include "TextPairs.h"
 #include "Windows/FileFind.h"
+#include "qtfolderpropertycapabilities.h"
 #include <QFileDevice>
 #include <QFileInfo>
 #include <QString>
@@ -51,12 +52,14 @@ class CFSFolder final : public IFolderFolder,
                         public IFolderSetFlatMode,
                         public IFolderWasChanged,
                         public IFolderOperations,
+                        public IQtFolderPropertyCapabilities,
                         public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_7(IFolderFolder, IArchiveGetRawProps, IFolderCalcItemFullSize, IFolderClone,
                          IFolderSetFlatMode, IFolderWasChanged, IFolderOperations)
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
+    bool CanComment() const override { return true; }
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     Z7_IFACE_COM7_IMP(IFolderCalcItemFullSize)
@@ -96,6 +99,7 @@ class CFSFolder final : public IFolderFolder,
     bool _commentsAreLoaded = false;
     CPairsStorage _comments;
     bool LoadComments();
+    bool SaveComments();
     bool ReadFileInfo(CDirItem &item);
     void ReadChangeTime(CDirItem &item);
 #ifdef _WIN32

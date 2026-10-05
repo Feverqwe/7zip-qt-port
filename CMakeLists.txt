@@ -2296,6 +2296,12 @@ if(BUILD_TESTING)
     set_tests_properties(native_rar_ui PROPERTIES TIMEOUT 45 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_rar_ui.ini")
     qt_add_executable(native_comment_ui_tests tests/native_comment_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    qt_add_executable(filesystem_comment_tests tests/filesystem_comment_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(filesystem_comment_tests PRIVATE src tests)
+    target_link_libraries(filesystem_comment_tests PRIVATE ${options_window_libraries})
+    add_test(NAME filesystem_comment COMMAND filesystem_comment_tests -silent)
+    set_tests_properties(filesystem_comment PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/filesystem_comment.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     target_include_directories(native_comment_ui_tests PRIVATE src tests)
     target_link_libraries(native_comment_ui_tests PRIVATE ${options_window_libraries})
     if(SEVENZIP_CODEC_MODULE)
@@ -2567,7 +2573,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_folder_sync native_archive_properties ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

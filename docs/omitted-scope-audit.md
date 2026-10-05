@@ -109,6 +109,11 @@ source port. Existing read-side comment tests do not prove editing. Original
 GetPrefix/GetItemFullSize candidates in this review are inside comments and do
 not create additional functional gaps. A preliminary qualified-name comparison
 only locates candidates; it is not a body-completeness verifier.
+P3-05.6 now restores those original writer bodies and the shared capability;
+direct property and actual File Comment/Ctrl+Z consumers pass on macOS, including
+failure policy, Cancel and normal/compact EN/RU reports. Platform/full evidence
+is maintained in [the port audit](upstream-port-audit.md#p3-056--filesystem-description-comments-2026-10-06);
+this does not close the remaining body/resource/dependency reconciliation.
 
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,

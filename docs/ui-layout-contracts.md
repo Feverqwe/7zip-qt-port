@@ -958,6 +958,13 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
   which omits QMessageBox window captions, the caption is the visible message
   heading and HRESULT detail is informative text. Tests exercise real writer
   refusal on both languages and ordinary/AES ZIP.
+- Filesystem comments use the same source dialog, focused name/title and
+  IDS_COMMENT2 prompt. `filesystem_comment` checks existing value, EN/RU,
+  normal360×150/compact260×150, File Comment and Ctrl+Z, OK and Escape, selected
+  rows and unchanged file bytes. Eight filesystem-comment-en/ru-0/1-360/260 JSON
+  show a fitted prompt, editable combo and separately visible/enabled OK/Cancel.
+  The source FSFolder writer trims the accepted comment; ZIP's raw whitespace
+  behavior remains separate. No new dialog or rendered Windows parity is claimed.
 
 Qt layouts replace OnSize. Plain-text wrapping handles Qt label rendering;
 the native AddString behavior is adapted by restoring initial edit text after

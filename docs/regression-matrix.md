@@ -28,7 +28,7 @@ production access is added for this matrix.
 | P0-12 selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |
 | P1-01 disk/archive transfer routes | CApp::OnCopy/PanelCopy/Agent; backend snapshot/rollback | `ui_operations`, `ui_copy_same`, `archive_transfer_backup`, `source_update_backend` |
 | P1-02 copy/merge/cross-volume Move | FSFolderCopy/CCopyStateIO; exclusive transaction | `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `worker_window_progress` |
-| P1-03 create/rename/delete/trash | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations` |
+| P1-03 create/rename/delete/trash/comments | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations`, `filesystem_comment` |
 | P1-04 archive mutation/publish | ArchiveFolder/AgentOut; ArchiveBackend native/CLI transport | `source_update_backend`, `archive_mutation`, `codec_update`, `ui_archive_states` |
 | P1-05 Add/update/path modes | CompressDialog/UpdateGUI/UpdatePair; Qt controls/backend | `source_compress_dialog`, `shell_update_window`, `ui_update_modes`, `source_update_backend` |
 | P1-06 archive volumes | CArchiveLink/CMultiOutStream; leased volume publication | `archive_volume_creation`, `volume_workflow`, `ui_archive_volumes` |

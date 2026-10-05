@@ -713,6 +713,17 @@ native self-Test/Extract, AES/header encryption, missing/occupied/cancel и
 пиксельная Windows parity не подтверждена. External codecs и focused consumers
 проверены на трёх платформах; полный macOS gate197/197 PASS107.31s.
 
+Filesystem File → Comment теперь вызывает исходные FSFolder::SetProperty/
+SaveComments и CPairsStorage. Сохраняются trim, удаление пустого значения,
+UTF-8/BOM и другие пары descript.ion; source файл не меняется. Ctrl+Z, OK,
+Escape, focused item и выделенные строки проверяются через общий source dialog.
+Для flat nested item исходный setter возвращает E_NOTIMPL. Исходный setter
+игнорирует false от SaveComments: при отказе записи возвращается S_OK, а reload
+показывает старые данные. Эта особенность не заменена новой error policy.
+Windows сохраняет исходные file attributes; POSIX использует portable source
+Create_ALWAYS/write_full и сохраняет permissions существующего файла. Windows/
+Linux execution и rendered Windows reference этого компонента ещё не проверены.
+
 Текущая external-codec интеграция использует официальный dynamic Console7z;
 standalone7zz внешние модули не загружает. Codecs/Formats enumeration, ABI checks
 и warnings сохраняют исходные LoadCodecs bodies. Несовпадение native/engine

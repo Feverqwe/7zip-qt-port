@@ -65,6 +65,58 @@ roots are the explicit platform adaptation. Parent P3-03/P3-06 remain open for
 their other required platform/workflow checks. Final docs-only follow-up passed
 git diff --check; code is unchanged since the passing full gate.
 
+## P3-05.6 — filesystem description comments (2026-10-06)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed
+`CPP/7zip/UI/FileManager/FSFolder.cpp/.h` LoadComments, SaveComments,
+SetProperty/GetProperty, Files/CDirItem Parent and cache resets; TextPairs.cpp/.h
+CPairsStorage lookup, serialization and trim handling; PanelOperations.cpp
+ChangeComment and MyLoadMenu.cpp Comment/read-only/hash dispatch; ComboDialog
+resources/OnOK and existing Qt source property-worker callers. Original
+SaveComments and complete SetProperty branches are restored in their original
+module with original names/types/control flow. Windows attribute-aware file
+creation/write stays native. POSIX selects the existing portable source
+Create_ALWAYS/write_full, preserving existing permissions; no Qt serializer,
+format parser, new I/O algorithm or upstream edits. Existing UTFConvert,
+FileIO/FileFind, CPairsStorage and notices are reused unchanged. The provider's
+existing Qt capability interface now permits CPanel's shared command state to
+reach the source dialog/worker. No second command-availability owner is added.
+
+Invalid index/type/unsupported property and flat nested Parent branches retain
+their source HRESULTs. Empty and trimmed-empty remove a pair; non-ASCII output
+retains source UTF-8 BOM/CRLF; other loaded pairs and source file bytes remain.
+SetProperty ignores SaveComments's false return and write success remains
+unchecked in the original flow. A directory at descript.ion proves the same
+S_OK failure policy without privileged filesystem assumptions; reload finds no
+persisted comment. This source limitation is explicit rather than corrected by
+an independent error policy. Direct callers must prime existing pairs through
+the source read path, as ChangeComment already does.
+
+Direct property RED2Qt before restoration; initial UI fixture used an archive
+path role and a macOS-normalized filename, so those failed/timeout logs were
+retained and the fixture corrected to the filesystem native-name role and
+Cyrillic/CJK without an OS-composed letter. A separate real File Comment RED
+with the old FS provider capability absent proves disabled state; after
+restoration the same command passes. Public tests include success, invalid
+input, empty/delete, flat nested refusal, write refusal policy, Ctrl+Z/Escape,
+OK, other-pair/byte/permission preservation and source selection restoration.
+The cohesive component test stays in its own suite; the UI case's dialog
+responder and scoped fixture account for the function-size review trigger.
+
+macOS27.0.1 arm64 Qt6.12 focused filesystem_comment/fs_folder/native_comment_ui
+3/3 PASS5.06s. Eight EN/RU normal/compact JSON reviewed at360×150/260×150:
+fitted prompt, editable combo and separate visible/enabled OK/Cancel. Final
+affected4/4 PASS4.88s also covers main_shell and source ShowDots parent guard.
+First full246/247 failed only the old always-disabled Comment shell assertion;
+second full246/247 failed the new fixture's assumption that ShowDots defaults
+on. Both failed logs are retained. The shell now checks source command ID/
+shortcut; the component proves enabled focused-file and disabled parent states
+with ShowDots explicitly enabled. Final unsandboxed formatting/all-targets/
+247CTest PASS104.05s on unchanged production code. Native Windows test platform is registered;
+Windows/Linux execution and rendered reference are unverified. Parent P3-05
+remains open for remaining source bodies/resources/dependencies.
+
 ## P3-03.9 — native editor prompt failure investigation (2026-10-06)
 
 Frozen `20261005T223534Z-e1fa25e5` whole Windows gate finishes251/252,

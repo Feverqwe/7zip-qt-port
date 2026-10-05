@@ -2,6 +2,15 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Filesystem item comments belong to the retained CFSFolder provider. SaveComments
+serializes its original CPairsStorage and writes descript.ion through upstream
+file I/O; SetProperty retains source validation, trim/delete and cache transitions.
+The provider implements the existing IQtFolderPropertyCapabilities readiness
+boundary so CPanel's shared command state enables Comment. Source ChangeComment,
+shared ComboDialog and existing property worker own interaction, selection and
+completion. Widgets supply no description-file parser or serializer. Original
+SetProperty ignores SaveComments failure; reload reveals the unsaved result.
+
 `cmake/SharedPortObjects.cmake` assigns cohesive production source groups to
 object-library owners after all app/test targets, source-derived registrations
 and startup fixtures have been declared. Backend, compression presentation,
