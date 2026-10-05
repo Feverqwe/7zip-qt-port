@@ -96,6 +96,20 @@ parent/NonOpen levels, with a process-only fallback. Native interface/module
 lifetime and accepted partial-chain transport corrections pass their consumers
 on3OS; see [the port audit](upstream-port-audit.md#p3-055--native-archive-property-levels-and-codec-owners-accepted-property-scope-2026-10-06).
 
+Review on 2026-10-06 also confirms an active filesystem comment gap (P3-05.6).
+Original FSFolder.cpp SaveComments serializes CTextPairs to UTF-8, preserves
+existing file attributes, writes descript.ion and invalidates the read cache;
+SetProperty implements kpidComment for direct children, including empty/BSTR,
+trim/delete and invalid index/type branches. The adapted SetProperty still
+returns E_NOTIMPL for every call and omits SaveComments. Original
+PanelOperations.cpp ChangeComment and MyLoadMenu.cpp permit writable filesystem
+folders; the current CPanel::CanComment accepts only the archive capability.
+The writer, capability and actual command/dialog consumers need an integrated
+source port. Existing read-side comment tests do not prove editing. Original
+GetPrefix/GetItemFullSize candidates in this review are inside comments and do
+not create additional functional gaps. A preliminary qualified-name comparison
+only locates candidates; it is not a body-completeness verifier.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
