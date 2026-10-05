@@ -154,8 +154,15 @@ the new suite passes7Qt on each OS.11 immutable focused artifacts per guest have
 matching guest/local SHA. Twelve normal/compact JSON across3OS were reviewed:
 list518×307/338×187 on macOS,518×310/338×190 on Linux,518×306/338×186 on Windows,
 all fully visible/enabled.10 production/test/CMake inputs equal frozen source bytes.
-Fresh full Linux242/242 PASS193.85s,640guest/localSHA; Windows gate is still
-running under P3-03. Temporary wrapper was
+Fresh full Linux242/242 PASS193.85s,640guest/localSHA; Windows full251/252
+FAIL922.64s,661guest/localSHA. Its only failed suite is archive_external_edit:
+editor-no/viewer-yes do not observe the native update prompt in the existing
+five-second wait,13Qtpass/2fail/0skip42.038s. The new native-property consumers
+pass; this does not accept whole Windows validation. The only two whole-gate
+Windows skips are POSIX directory-link/lstat fixtures. Codec cold failure does
+not recur in this one run; stable timing is still unproven. Original failed
+status/logs/source snapshot remain intact; privacy review scans1985Mac/Linux/
+Windows logs/JSON with0 fixture payload violations. Temporary wrapper was
 removed after both source transfers; original snapshot retains it.2095 local/
 prior-snapshot logs/JSON scanned with0 fixture-password payload violations.
 This accepts P3-05.5's native property/owner/partial-open component. Parent P3-05
