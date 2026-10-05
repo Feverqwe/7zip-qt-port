@@ -65,6 +65,27 @@ roots are the explicit platform adaptation. Parent P3-03/P3-06 remain open for
 their other required platform/workflow checks. Final docs-only follow-up passed
 git diff --check; code is unchanged since the passing full gate.
 
+## P3-03.9 — native editor prompt failure investigation (2026-10-06)
+
+Frozen `20261005T223534Z-e1fa25e5` whole Windows gate finishes251/252,
+922.64s,661guest/localSHA; only archive_external_edit fails. Its editor-no and
+viewer-yes rows do not observe externalUpdatePrompt in the unchanged five-second
+wait. Source revision `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from
+https://github.com/ip7z/7zip.git: reviewed PanelItemOpen.cpp MyThreadFunction,
+CChildProcesses/Wait and Panel.h WasChanged_from_TempFileInfo, plus their current
+IQtProcessServices/native-handle, QtExternalGuiCall readiness and MainWindow
+CanHandleExternalUpdate callers. Baseline file metadata is captured before
+launch, and original size/timestamp and child-process decisions remain in use.
+These reads do not yet prove which completion/readiness phase causes the failure.
+
+The existing public test assertion now reports child-finished marker, temporary
+file size, backend busy and active-modal object name on failure. It retains the
+same QTRY deadline and adds no extra wait, production hook or archive payload
+logging. macOS affected archive_external_edit PASS6.74s after the localized
+diagnostic addition; production remains the code verified by full246/246 in
+P3-03.8.1. Windows execution of that diagnostic is still pending. No functional
+fix or stable whole Windows acceptance is claimed.
+
 ## P3-03.8.1 — owned codec discovery loader (2026-10-06)
 
 Reviewed source https://github.com/ip7z/7zip.git, full revision
@@ -99,8 +120,15 @@ native deadline query2100ms; production code/deadline are unchanged. Final
 affected3/3 PASS6.43s after that adjustment. The new test is one cohesive public
 probe-lifecycle scenario; its scoped environment/marker setup accounts for the
 function-size review trigger, with no test access to probe internals.
-Linux/Windows loader validation and real cold
-runtime-copy/DLL/version-process phase timing are not yet verified. This does
+Linux snapshot `20261005T230017Z-5b0d305c`, source SHA256
+`a557425799c2997e7cbd66a840db90c48488ab126073fb0a8ae54f42df795891`,
+contains the committed6896b96 loader; its five changed code/test/CMake inputs
+match the committed bytes. Ten focused consumers pass with0skip, including
+archive_external_edit15Qt, codec_probe13Qt and codec_update73Qt. Two immutable
+focused logs have matching guest/local SHA; native probe process/start50ms,
+total656ms (cancel/failure) or2169ms (deadline), maximum heartbeat gap11ms.
+Linux full format/build/242CTest PASS187.89s. Windows loader validation and real
+cold runtime-copy/DLL/version-process phase timing are not yet verified. This does
 not establish the cause of the earlier Windows5750ms ready signal or accept
 parent P3-03.8's stable cold five-second completion requirement.
 

@@ -141,7 +141,15 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         responder.start(1);
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
-        QTRY_VERIFY(asked);
+        QTRY_VERIFY2(
+            asked,
+            qPrintable(QString("editor finished=%1, temporary bytes=%2, backend busy=%3, modal=%4")
+                           .arg(QFileInfo::exists(control + ".finished"))
+                           .arg(QFileInfo(temporary).size())
+                           .arg(backend.busy())
+                           .arg(QApplication::activeModalWidget()
+                                    ? QApplication::activeModalWidget()->objectName()
+                                    : QStringLiteral("none"))));
         QVERIFY(geometry);
         QTRY_VERIFY(!QDir(temporaryDirectory).exists());
         responder.stop();
