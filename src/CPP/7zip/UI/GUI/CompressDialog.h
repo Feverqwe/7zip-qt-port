@@ -237,6 +237,12 @@ class CCompressDialog {
     int _encryptionMethod_Index = -1;
     int _default_encryptionMethod_Index = -1;
     static int FindRegistryFormat(const NCompression::CInfo &registry, const QString &name);
+    static unsigned FindRegistryFormat_Always(NCompression::CInfo &registry, const QString &name);
+    static void SaveOptionsInMem(NCompression::CInfo &registry, const QString &format,
+                                 NCompressDialog::CInfo &Info, UInt32 blockLogSize,
+                                 const QString &memUse, bool saveParameters);
+    static bool OnOK(UInt64 memUsage, const NCompressDialog::CSystemInfo &system,
+                     const NCompression::CMemUse &memUse, UString &message);
     void SetEncryptionMethod(const NCompression::CInfo &registry);
     QString GetEncryptionMethodSpec() const;
     enum EPasswordError { kPasswordOK, kPasswordUseAscii, kPasswordTooLong, kPasswordNotMatch };

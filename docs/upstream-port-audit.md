@@ -47,6 +47,7 @@ new review/remediation, not another feature implementation.
 | F: `filetransferoperation.*`, `qtfiletransfertransaction.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Original recursion/deletion bodies reviewed; integrated transaction extraction preserves existing policies and sole worker state. Direct/window consumers and object ownership verified on three OS | Resolved P2-11.7 |
 | B: `CMakeLists.txt`, `cmake/SharedPortObjects.cmake`, app/backend/dialog targets | Same authoritative production sources were recompiled per test; late source/link cloning and test TU macros require separate ownership | Twelve shared production groups plus Windows GUI entry; definitions, resources, ABI/platform links, late consumers and sole moc/source ownership verified on all three OS | Resolved P2-11.4 |
 | R: `mainwindow_archive_transfer.cpp`, `archivebackend_transfer.cpp`, `qtarchivetransferbackup.h` | Original App.cpp OnCopy owns staged panel transfer; Compress/CopyCoder.cpp CopyStream owns stream copying. Widget previously performed archive backup and a manual byte-restoration loop | Backup/publication moved behind ArchiveBackend; original stream copying, real two-panel Move success/Cancel/rollback and publication refusal verified on three OS | Resolved P2-11.8 |
+| S: `createarchivedialog_preferences.cpp`, `createarchivedialog_resources.cpp`, source `CompressDialog.cpp/.h` | Original FindRegistryFormat_Always/SaveOptionsInMem and OnOK memory refusal had functional bodies in widget glue | Source module owns profile creation, spec persistence/big-dictionary marker and memory refusal; Qt reads typed controls and presents source results. Previous-format/Auto/constructor/Cancel and direct compression/SFX consumers verified on three OS | Resolved P2-11.9 |
 
 ### Retained adapter review and remaining coverage
 
@@ -578,6 +579,47 @@ formatting/all-target build/full Mac gate passes 241/241 in 103.66s, with 136 ro
 TUs each compiled once. Its full LastTest log is retained separately. This accepts
 R's boundary and consumers; final integrated platform and inventory acceptance
 remain P2-11/P3. No UI layout or text is changed.
+
+### P2-11.9 — source compression persistence and memory guard (accepted, 2026-10-05)
+
+Reviewed original CPP/7zip/UI/GUI/CompressDialog.cpp/.h
+FindRegistryFormat_Always, SaveOptionsInMem, OnOK, GetDictSpec/GetOrderSpec/
+GetNumThreadsSpec/GetBlockSizeSpec and their FormatChanged/SFX/OnOK callers;
+original ZipRegistry CInfo/CFormatOptions, source memory calculation and
+SetErrorMessage_MemUsage dependencies, at https://github.com/ip7z/7zip.git,
+full commit 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Current Qt constructor,
+format/method/control-change callers and registry/control ownership were inspected.
+
+The source CompressDialog module now owns FindRegistryFormat_Always and the
+SaveOptionsInMem body, including the original 32-bit dictionary sentinel/large-value
+marker. Qt reads existing controls into the original NCompressDialog::CInfo spec
+snapshot and passes the previous format, block log and memory string; native
+GetComboValue(control,1) all-ones specs replace Qt's Auto=0 at the control boundary.
+It deliberately does not reuse compressionOptions during format notifications,
+because the visible format has already changed while the stored profile is old.
+The existing missing-Params constructor guard and unconstructed encryption value
+are preserved; original unused DictionaryChain branches remain omitted.
+
+The original OnOK memory refusal is an overload returning its source message
+instead of calling a Win32 message box. Existing native calculations/CMemUse/system
+fields stay authoritative. The previous Qt adaptation for unknown RAM with no
+explicit memory limit is retained; Win32 GetItemText fallback remains replaced by
+the existing resource-language lookup. Qt presents the unchanged error text.
+No DTO field, archive writer, format algorithm or layout is added. Borrowed paths,
+notices and source baseline remain intact; these newly adapted source bodies are
+recorded here without adding another borrowed file.
+
+Main focused preferences/dictionary/limit/source-dialog pass 4/4 in 2.24s;
+resources pass separately 1/1 in 1.14s. The unsandboxed formatting/all-target
+build/full Mac gate passes 241/241 in 101.86s, with its LastTest log preserved.
+Frozen snapshot 611e4f7c is based on integrated 5fbe9ba plus the four exact S
+source files, including the accepted F/R/B/U/W boundaries. Linux passes all 13
+compression/source/SFX/window suites in 19.61s; Windows passes them in 72.18s.
+Actual Qt rows include preferences11, dictionary7, limit10, resources16,
+source-dialog13 and shell-update43, all without failures/skips on all three OS.
+Both guest runs preserve 86 SHA256-verified local/guest artifacts, including 82
+current widget JSON reports. These checks accept S's source ownership and direct
+consumers; entire root inventory and final platform/UX acceptance remain open.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

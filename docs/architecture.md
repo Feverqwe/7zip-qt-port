@@ -1018,6 +1018,13 @@ compression UI and backend preflight, avoiding a second message implementation;
 the existing RAM calculation and engine boundary remain unchanged. Qt adapters
 convert native UString/AString output for presentation only. Real decoder RAM
 callbacks remain a separate required capability in P1-18.
+The same source module owns FindRegistryFormat_Always, SaveOptionsInMem and
+OnOK's memory refusal. Qt reads controls into the original CInfo spec snapshot,
+converts Auto=0 to native all-ones specs, and passes the previous format during
+format notifications. Source code owns profile creation and the large-dictionary
+registry marker; the constructor's missing-Params guard preserves loaded options.
+Source OnOK returns its memory-error text for Qt to display before settings save;
+the existing unknown-RAM/no-explicit-limit adaptation remains unchanged.
 QtBindResourceText preserves the native static-control RC fallback independently
 of LangString's dynamic-message fallback. Language bindings update presentation
 without reinitializing inputs; composite CPU/RAM rows use Qt focus proxies to

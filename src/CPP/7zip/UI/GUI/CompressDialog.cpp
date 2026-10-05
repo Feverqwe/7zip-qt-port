@@ -194,6 +194,72 @@ int CCompressDialog::FindRegistryFormat(const NCompression::CInfo &registry, con
     return -1;
 }
 
+unsigned CCompressDialog::FindRegistryFormat_Always(NCompression::CInfo &registry,
+                                                    const QString &name) {
+    const int index = FindRegistryFormat(registry, name);
+    if (index >= 0)
+        return (unsigned)index;
+    {
+        NCompression::CFormatOptions fo;
+        fo.FormatID = name;
+        return registry.Formats.Add(fo);
+    }
+}
+
+// Original SaveOptionsInMem body. Qt supplies native spec values from controls,
+// retaining the previous format during a format-change notification.
+void CCompressDialog::SaveOptionsInMem(NCompression::CInfo &registry, const QString &format,
+                                       NCompressDialog::CInfo &Info, UInt32 blockLogSize,
+                                       const QString &memUse, bool saveParameters) {
+    const unsigned index = FindRegistryFormat_Always(registry, format);
+    NCompression::CFormatOptions &fo = registry.Formats[index];
+    // Qt constructs controls in phases; a missing Params control cannot replace
+    // a loaded value before its presentation has been constructed.
+    if (saveParameters) {
+        Info.Options.Trim();
+        fo.Options = Info.Options;
+    }
+    fo.Level = Info.Level;
+    {
+        const UInt64 dict64 = Info.Dict64;
+        UInt32 dict32;
+        if (dict64 == (UInt64)(Int64)-1)
+            dict32 = (UInt32)(Int32)-1;
+        else {
+            dict32 = (UInt32)dict64;
+            if (dict64 != dict32)
+                dict32 = (UInt32)(Int32)-2;
+        }
+        fo.Dictionary = dict32;
+    }
+    fo.Order = Info.Order;
+    fo.Method = QString::fromWCharArray(Info.Method.Ptr());
+    fo.EncryptionMethod = Info.EncryptionMethod;
+    fo.NumThreads = Info.NumThreads;
+    fo.BlockLogSize = blockLogSize;
+    fo.MemUse = memUse;
+}
+
+// Original OnOK memory refusal. Native calculation/system fields are supplied
+// by the existing control binding; Qt displays the returned source message.
+bool CCompressDialog::OnOK(UInt64 memUsage, const NCompressDialog::CSystemInfo &system,
+                           const NCompression::CMemUse &memUse, UString &message) {
+    if (memUsage != (UInt64)(Int64)-1 && (memUse.IsDefined || system.RamSizeDefined)) {
+        const UInt64 limit = NCompressDialog::Get_MemUse_Bytes(memUse, system);
+        if (memUsage > limit) {
+            UString usage;
+            LangString_OnlyFromLangFile(IDS_MEM_REQUIRED_MEM_SIZE, usage);
+            if (usage.IsEmpty()) {
+                usage = LangString(IDT_COMPRESS_MEMORY);
+                usage.RemoveChar(L':');
+            }
+            SetErrorMessage_MemUsage(message, memUsage, system.RamSize, limit, usage);
+            return false;
+        }
+    }
+    return true;
+}
+
 QString CCompressDialog::GetEncryptionMethodSpec() const {
     UString s;
     if (!_encryptionMethod.isEmpty() && _encryptionMethod_Index >= 0 &&

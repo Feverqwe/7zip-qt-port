@@ -18,14 +18,7 @@ int CreateArchiveDialog::FindRegistryFormat(const QString &name) const {
 }
 
 unsigned CreateArchiveDialog::FindRegistryFormat_Always(const QString &name) {
-    const int index = FindRegistryFormat(name);
-    if (index >= 0)
-        return (unsigned)index;
-    {
-        NCompression::CFormatOptions fo;
-        fo.FormatID = name;
-        return m_RegistryInfo.Formats.Add(fo);
-    }
+    return CCompressDialog::FindRegistryFormat_Always(m_RegistryInfo, name);
 }
 
 NCompression::CFormatOptions &CreateArchiveDialog::Get_FormatOptions() {
@@ -34,36 +27,23 @@ NCompression::CFormatOptions &CreateArchiveDialog::Get_FormatOptions() {
 
 void CreateArchiveDialog::SaveOptionsInMem() {
     // Upstream saves the format that was selected before FormatChanged.
-    NCompression::CFormatOptions &fo = Get_FormatOptions();
-    if (parameters_) {
-        fo.Options = parameters_->text().toStdWString().c_str();
-        fo.Options.Trim();
-    }
-    fo.Level = level_->currentData().toUInt();
-    {
-        // Qt Auto uses 0; upstream uses the all-ones sentinel.
-        const UInt64 dict64 = dictionary_->currentData().toULongLong();
-        UInt32 dict32;
-        if (dict64 == 0)
-            dict32 = (UInt32)(Int32)-1;
-        else {
-            dict32 = (UInt32)dict64;
-            if (dict64 != dict32)
-                dict32 = (UInt32)(Int32)-2;
-        }
-        fo.Dictionary = dict32;
-    }
-    fo.Order = wordSize_->currentData().toUInt();
-    if (fo.Order == 0)
-        fo.Order = (UInt32)(Int32)-1;
-    fo.Method = QString::fromWCharArray(archiveNameState_.GetMethodSpec().Ptr());
-    fo.NumThreads = threads_->currentData().toUInt();
-    if (fo.NumThreads == 0)
-        fo.NumThreads = (UInt32)(Int32)-1;
-    fo.BlockLogSize = solidBlock_->currentData().toUInt();
-    fo.MemUse = memUse_->currentData().toString();
-    if (encryption_)
-        fo.EncryptionMethod = GetEncryptionMethodSpec();
+    NCompressDialog::CInfo info;
+    if (parameters_)
+        info.Options = parameters_->text().toStdWString().c_str();
+    info.Level = level_->currentData().toUInt();
+    // Qt Auto uses 0; source GetComboValue(control, 1) returns all ones.
+    const UInt64 dictionary = dictionary_->currentData().toULongLong();
+    info.Dict64 = dictionary ? dictionary : UInt64(-1);
+    const UInt32 order = wordSize_->currentData().toUInt();
+    info.Order = order ? order : UInt32(-1);
+    info.Method = archiveNameState_.GetMethodSpec();
+    const UInt32 threads = threads_->currentData().toUInt();
+    info.NumThreads = threads ? threads : UInt32(-1);
+    info.EncryptionMethod =
+        encryption_ ? GetEncryptionMethodSpec() : Get_FormatOptions().EncryptionMethod;
+    CCompressDialog::SaveOptionsInMem(m_RegistryInfo, registryFormat_, info,
+                                      solidBlock_->currentData().toUInt(),
+                                      memUse_->currentData().toString(), parameters_ != nullptr);
 }
 
 void CreateArchiveDialog::SetMemUseCombo() {

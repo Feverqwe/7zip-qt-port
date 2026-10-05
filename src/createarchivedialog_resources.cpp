@@ -83,20 +83,10 @@ bool CreateArchiveDialog::checkMemoryUsage() {
         format_->currentText(), method, UInt32(options.Level),
         options.NumThreads != UInt32(-1) ? options.NumThreads : threads.AutoNumThreads, GetDict2(),
         solidBlock_->currentData().toUInt(), decompressMem);
-    if (memUsage != UInt64(-1) && (options.MemUsage.IsDefined || system_.RamSizeDefined)) {
-        const UInt64 limit = NCompressDialog::Get_MemUse_Bytes(options.MemUsage, system_);
-        if (memUsage > limit) {
-            UString usage;
-            LangString_OnlyFromLangFile(IDS_MEM_REQUIRED_MEM_SIZE, usage);
-            if (usage.IsEmpty()) {
-                usage = LangString(IDT_COMPRESS_MEMORY);
-                usage.RemoveChar(L':');
-            }
-            UString message;
-            SetErrorMessage_MemUsage(message, memUsage, system_.RamSize, limit, usage);
-            QMessageBox::warning(this, windowTitle(), QString::fromWCharArray(message.Ptr()));
-            return false;
-        }
+    UString message;
+    if (!CCompressDialog::OnOK(memUsage, system_, options.MemUsage, message)) {
+        QMessageBox::warning(this, windowTitle(), QString::fromWCharArray(message.Ptr()));
+        return false;
     }
     return true;
 }
