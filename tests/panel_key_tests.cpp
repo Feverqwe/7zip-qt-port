@@ -246,7 +246,9 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(rightTable->isEnabled());
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
+        QVERIFY(static_cast<FileTable *>(rightTable)->sourcePanel->ShouldProcessNotifications());
         action(window, "flatViewAction")->setChecked(true);
+        QVERIFY(action(window, "flatViewAction")->isChecked());
         leftAddress->setFocus();
         QTRY_VERIFY(leftAddress->hasFocus());
         rightAddress->setFocus();

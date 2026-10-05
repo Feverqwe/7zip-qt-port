@@ -2474,6 +2474,19 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/worker-window-progress.ini")
 endif()
 
+if(BUILD_TESTING)
+    get_target_property(panel_folder_sync_sources panel_key_tests SOURCES)
+    list(REMOVE_ITEM panel_folder_sync_sources tests/panel_key_tests.cpp)
+    get_target_property(panel_folder_sync_libraries panel_key_tests LINK_LIBRARIES)
+    qt_add_executable(panel_folder_sync_tests tests/panel_folder_sync_tests.cpp
+        ${panel_folder_sync_sources})
+    target_include_directories(panel_folder_sync_tests PRIVATE src tests)
+    target_link_libraries(panel_folder_sync_tests PRIVATE ${panel_folder_sync_libraries})
+    add_test(NAME panel_folder_sync COMMAND panel_folder_sync_tests -silent)
+    set_tests_properties(panel_folder_sync PROPERTIES TIMEOUT 90 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-folder-sync.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+endif()
+
 # Apply startup isolation after registering every consumer, including Language.
 # Parallel CTest runs share these generated artifact directories. Keep their
 # writers separate while allowing independent tests to run concurrently.
@@ -2535,7 +2548,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

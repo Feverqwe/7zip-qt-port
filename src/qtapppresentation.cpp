@@ -66,10 +66,25 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
 }
 
 CPanelCallback *QtAppPresentation::PanelCallback(unsigned) {
-    // Commands/title use CApp's native entry. Two-panel/drop integration remains
-    // mandatory P0-08. Native focus callbacks
-    // are owned by CApp::m_PanelCallbackImp, not this presentation service.
+    // Source callbacks, including folder synchronization, belong to
+    // CApp::m_PanelCallbackImp. This service supplies Qt presentation only.
     return nullptr;
+}
+
+void QtAppPresentation::RefreshFolder(unsigned index) {
+    window_.withPanelProjection(index, [this] { window_.renderBoundFolder(); });
+}
+
+void QtAppPresentation::PrepareFolderChange(unsigned index) {
+    window_.withPanelProjection(index, [this] {
+        window_.filesystemScanner_->cancel();
+        window_.listProjection_->cancel();
+        window_.scanningDisk_ = false;
+        window_.scanningArchive_ = false;
+        window_.scanSelectedState_.reset();
+        window_.scanSelectedPaths_.reset();
+        window_.setState(window_.state_);
+    });
 }
 
 QString QtAppPresentation::DefaultCopyDestination(unsigned) const {

@@ -131,6 +131,46 @@ class AppLifecycleTests : public QObject {
             QVERIFY(!panel.ShouldProcessNotifications());
     }
 
+    void scanGuardsFollowOnlyPublishingPanels() {
+        CApp app;
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Scan, 1));
+        QVERIFY(!app.Panels[0].ShouldProcessNotifications());
+        QVERIFY(app.Panels[1].ShouldProcessNotifications());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Scan, 3));
+        QVERIFY(!app.Panels[0].ShouldProcessNotifications());
+        QVERIFY(!app.Panels[1].ShouldProcessNotifications());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Scan, 2));
+        QVERIFY(app.Panels[0].ShouldProcessNotifications());
+        QVERIFY(!app.Panels[1].ShouldProcessNotifications());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Operation));
+        QVERIFY(!app.Panels[0].ShouldProcessNotifications());
+        QVERIFY(!app.Panels[1].ShouldProcessNotifications());
+        QVERIFY(app.QtOperations().Begin(QtAppOperationState::Kind::Scan, 1));
+        QVERIFY(!app.Panels[0].ShouldProcessNotifications());
+        QVERIFY(app.Panels[1].ShouldProcessNotifications());
+        app.QtOperations().End();
+        QVERIFY(app.Panels[0].ShouldProcessNotifications());
+        QVERIFY(app.Panels[1].ShouldProcessNotifications());
+    }
+
+    void closedFolderCallbacksDoNotRebindReleasedPanels() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        CApp app;
+        app.NumPanels = 2;
+        COpenResult opened;
+        for (auto &panel : app.Panels) {
+            QCOMPARE(panel.BindToPath(ToUString(fixture.path()), UString(), opened), S_OK);
+            panel.LoadFullPath();
+        }
+        app.ReleaseApp();
+        app.OnSetSameFolder(0);
+        app.OnSetSubFolder(0);
+        QVERIFY(!app.Panels[0].GetFolder());
+        QVERIFY(!app.Panels[1].GetFolder());
+        QVERIFY(app.QtOperations().closed());
+    }
+
     void createdPanelCallbacksKeepIndependentFocusAndStopAfterRelease() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

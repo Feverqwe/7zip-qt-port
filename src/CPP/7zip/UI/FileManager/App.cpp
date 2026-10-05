@@ -25,6 +25,8 @@
 #include <QFileInfo>
 #include <QWidget>
 
+static const unsigned kParentIndex = (unsigned)(int)-1;
+
 CApp::CApp() : _qtOperations(Panels) {
     CreateDragTarget();
     SetPanels_AutoRefresh_Mode();
@@ -233,16 +235,64 @@ HRESULT CApp::CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<U
     return result;
 }
 
-void CApp::OnSetSameFolder(unsigned index) {
+void CApp::OnSetSameFolder(unsigned srcPanelIndex) {
+    if (_qtOperations.closed())
+        return;
+    if (NumPanels <= 1)
+        return;
+    const CPanel &srcPanel = Panels[srcPanelIndex];
+    CPanel &destPanel = Panels[1 - srcPanelIndex];
     if (_presentation)
-        if (auto *callback = _presentation->PanelCallback(index))
-            callback->OnSetSameFolder();
+        _presentation->PrepareFolderChange(1 - srcPanelIndex);
+    destPanel.BindToPathAndRefresh(srcPanel._currentFolderPrefix);
+    if (_presentation)
+        _presentation->RefreshFolder(1 - srcPanelIndex);
 }
 
-void CApp::OnSetSubFolder(unsigned index) {
+void CApp::OnSetSubFolder(unsigned srcPanelIndex) {
+    if (_qtOperations.closed())
+        return;
+    if (NumPanels <= 1)
+        return;
+    const CPanel &srcPanel = Panels[srcPanelIndex];
+    CPanel &destPanel = Panels[1 - srcPanelIndex];
+    const int focusedItem = srcPanel._selectionList.GetFocusedItem();
+    if (focusedItem < 0)
+        return;
+    const unsigned realIndex = srcPanel.GetRealItemIndex(focusedItem);
+    if (!srcPanel.IsItem_Folder(realIndex))
+        return;
+
+    CMyComPtr<IFolderFolder> newFolder;
+    if (realIndex == kParentIndex) {
+        if (srcPanel._folder->BindToParentFolder(&newFolder) != S_OK)
+            return;
+        if (!newFolder) {
+            {
+                const UString parentPrefix = srcPanel.GetParentDirPrefix();
+                COpenResult openRes;
+                if (_presentation)
+                    _presentation->PrepareFolderChange(1 - srcPanelIndex);
+                destPanel.BindToPath(parentPrefix, UString(), openRes);
+            }
+            destPanel.RefreshListCtrl();
+            if (_presentation)
+                _presentation->RefreshFolder(1 - srcPanelIndex);
+            return;
+        }
+    } else {
+        if (srcPanel._folder->BindToFolder(realIndex, &newFolder) != S_OK)
+            return;
+    }
+    if (!newFolder)
+        return;
     if (_presentation)
-        if (auto *callback = _presentation->PanelCallback(index))
-            callback->OnSetSubFolder();
+        _presentation->PrepareFolderChange(1 - srcPanelIndex);
+    destPanel.CloseOpenFolders();
+    destPanel.SetNewFolder(newFolder);
+    destPanel.RefreshListCtrl();
+    if (_presentation)
+        _presentation->RefreshFolder(1 - srcPanelIndex);
 }
 
 HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const UString &arcFormat,

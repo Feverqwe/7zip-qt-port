@@ -571,6 +571,19 @@ visible panels. `panel_key` writes `two-panel-disk-table-640.json`,
 fully visible at 980×620 and 640×400. JSON confirms Qt structure and clipping
 only; rendered Windows parity remains unverified.
 
+`panel_folder_sync` extends this contract with Alt+Up (same folder) and
+Alt+Left/Right (focused child or parent). Source focus remains in its panel;
+the destination's pending list is disabled until source indices, sorting and
+selection are coherent. Its address remains available during Scan. Commands
+on the ready source panel remain available. Each panel publishes independently;
+only destination replacement or close cancels that destination's pending list.
+Current reports `alt-folder-{same-small,sub-left-small,sub-right-large}-{980,640}`
+and `alt-archive-{small,large}-{980,640}` check both address rows and lists.
+For a directly shared native archive folder with no destination parent stack,
+the address presents its native relative folder prefix without a leading
+archive separator. The archive resource retains the engine path separately.
+Rendered Windows parity for these states remains unverified.
+
 ### Mixed and restored panels (P0-08.2)
 
 The same 7zFM panel structure applies when either side displays an archive.

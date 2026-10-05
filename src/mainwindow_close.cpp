@@ -77,9 +77,11 @@ void MainWindow::quiesceOperations() {
     disconnect(backend_, nullptr, this, nullptr);
     if (overwriteDialog_)
         overwriteDialog_->reject();
-    disconnect(filesystemScanner_, nullptr, this, nullptr);
-    listProjection_->cancel();
-    filesystemScanner_->cancelAndWait();
+    for (const auto &ui : panelUi_) {
+        disconnect(ui.filesystemScanner, nullptr, this, nullptr);
+        ui.listProjection->cancel();
+        ui.filesystemScanner->cancelAndWait();
+    }
     backend_->cancelAndWait();
     if (fileTransfer_) {
         disconnect(fileTransfer_, nullptr, this, nullptr);

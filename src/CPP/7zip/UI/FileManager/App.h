@@ -49,6 +49,8 @@ class IQtAppPresentation {
     virtual void Initialize(CApp &app) = 0;
     virtual bool CreatePanel(CPanel &panel, unsigned index) = 0;
     virtual CPanelCallback *PanelCallback(unsigned index) = 0;
+    virtual void RefreshFolder(unsigned) {}
+    virtual void PrepareFolderChange(unsigned) {}
     virtual QString DefaultCopyDestination(unsigned) const { return {}; }
     virtual void ExecuteCopy(bool, bool, unsigned, const QString &, const CRecordVector<UInt32> &,
                              bool, bool) {}

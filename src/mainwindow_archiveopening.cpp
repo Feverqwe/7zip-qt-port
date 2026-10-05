@@ -259,6 +259,8 @@ void MainWindow::goParent() {
 }
 
 QString MainWindow::archiveDisplayPath() const {
+    if (displayArchive_.isEmpty())
+        return archiveFolder_;
     return displayArchive_ +
            (archiveFolder_.isEmpty() ? QString() : QStringLiteral(" / ") + archiveFolder_);
 }

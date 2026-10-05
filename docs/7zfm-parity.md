@@ -1,5 +1,25 @@
 # Сверка с Windows 7zFM
 
+## P3-05.4 — Alt-arrow folder synchronization (принят scope команд, 2026-10-06)
+
+Эталон — pinned App.cpp OnSetSameFolder/OnSetSubFolder и PanelKey.cpp
+VK_UP/LEFT/RIGHT. Alt+Up назначает другой панели текущую папку; Alt+Left/Right
+назначает выбранную папку или parent. Одна панель, отсутствие focus item,
+обычный файл и отказ binding сохраняют исходные no-op ветви. Стрелка затем
+передаётся list control, как в исходном OnKeyDown. Фокус остаётся в источнике.
+
+Qt публикует большие списки асинхронно отдельно для каждой панели: Scan
+отключает только её список и оставляет адрес доступным; при отключении списка
+фокус переходит в адрес той же панели, чтобы не изменить владельца незавершённого
+запуска. Смена фокуса не отменяет публикацию. Новый callback отменяет только
+предыдущую публикацию назначения; modal Open/Operation по-прежнему блокирует
+обе панели. Прямо связанная архивная папка сохраняет исходный относительный
+prefix без копирования parent stack; Qt не добавляет перед ним пустой separator.
+Native resource остаётся владельцем engine path после ухода источника из архива.
+Normal/compact JSON и public regressions проверены на macOS, Linux и нативном
+Windows desktop. Full macOS проходит; fresh full Linux/Windows выполняются.
+Rendered Windows parity этих состояний пока не подтверждена.
+
 ## P3-05.1 — Unix source startup/dispatch (принят scope callers, 2026-10-05)
 
 Unix production entry теперь использует исходные FM format/path/refusal handlers
@@ -1351,7 +1371,7 @@ reference не проверены. Open/test/extract приёмка остаёт
 | Сравнение и сортировка | `PanelSort.cpp`, `CompareFileNames_ForFolderList()`; `resource.rc`, View → Arrange | Сравнение имён перенесено в `src/CPP/7zip/UI/FileManager/PanelSort.cpp`: `2.txt` идёт перед `10.txt`, сравнение без учёта регистра. Qt-таблица вызывает эту функцию из `src/filetable.cpp`. Меню и Ctrl+F3–F7 выбирают имя, тип, дату, размер или исходный порядок. Для архива исходный порядок берётся из загрузки элементов `CAgentFolder`, для обычной папки — из перечисления ОС. Правила `CompareItems()` и `SortItemsWithPropID()` сверены с upstream `0766b73`: папки остаются перед файлами в обоих направлениях, повторный выбор свойства меняет направление, размер/сжатый размер/дата начинают с убывания; свойство и направление сохраняются при обновлении и переходах. В плоском виде сравниваются базовое имя, префикс папки и индекс загрузки, а не отображаемый относительный путь; расширение включает последнюю точку, в том числе у dotfiles и папок (`FSFolder.cpp::GetExtensionPtr`, `Agent.cpp::GetExtension`). Точное сравнение всех свойств и режим сортировки двух панелей 7zFM ещё не перенесены. |
 | Контекстное меню списка | `PanelMenu.cpp`, `OnContextMenu()`, `CreateFileMenu()` | Состав зависит от выделения и режима каталога/архива; добавлены команды фона и свойства одного объекта. Нет расширений оболочки Windows, 7-Zip submenu и полного набора операций. |
 | Свойства выделения | `PanelMenu.cpp::Properties`, `ListViewDialog.cpp`, `UI/Agent/AgentProxy.cpp::CalculateSizes` | Двухколоночный список свойств, сводка и вложенные counts используют перенесённые методы. Для папок архива размеры берутся из CProxyArc; сводка суммирует все выбранные строки по upstream, включая выбранных потомков. Рекурсивный размер папок файловой системы, форматные и сырые свойства 7zFM пока не включены. |
-| Клавиатура списка | `PanelKey.cpp`, `OnKeyDown()` | Enter открывает папку, архив или файл; Backspace, F2–F7, Delete/Shift+Delete, Ctrl/Cmd+A, Ctrl+N, Alt+F12, Ctrl+F3–F7 и обновление работают в реализованных режимах. F3/F4 disk/archive файла запускают external viewer/editor по native focused index. Alt-Up/Left/Right синхронизация папок двух панелей отсутствует; source callbacks и callers остаются P3-05.4. F3 folder-size disabled до P1-10. |
+| Клавиатура списка | `PanelKey.cpp`, `OnKeyDown()` | Enter открывает папку, архив или файл; Backspace, F2–F7, Delete/Shift+Delete, Ctrl/Cmd+A, Ctrl+N, Alt+F12, Ctrl+F3–F7 и обновление работают в реализованных режимах. F3/F4 disk/archive файла запускают external viewer/editor по native focused index. Alt-Up/Left/Right используют исходные callbacks синхронизации папок двух панелей; проверка и Qt-адаптации описаны в разделе P3-05.4. F3 folder-size disabled до P1-10. |
 | Главное меню | `resource.rc`; `MyLoadMenu.cpp`, `OnMenuActivating()` | Работают основные «Файл», «Правка», «Вид», «Избранное», включая View/Edit и Open Inside/Outside с ограничениями ниже. Оригинал формирует File динамически и содержит больше команд: Diff, Link и Alternate Streams; также есть Tools и Help. |
 | Контрольные суммы | `resource.rc`, `PanelCrc.cpp`, `MyLoadMenu.cpp` | Подменю CRC содержит все 11 методов оригинала. Для выделенных файлов и папок файловой системы запускается `7zz h`; выбранные записи архива сначала извлекаются через backend во временную папку. Вывод и итог доступны в журнале, отмена останавливает текущий этап. В Windows 7zFM отдельное окно итогов и потоковое хеширование архива без временных файлов. |
 | Открытие, просмотр и правка файла | `PanelItems.cpp`, `EditItem()`; `PanelItemOpen.cpp`, `StartEditApplication()`/`OpenItemInArchive()` | Enter/двойной щелчок используют системное приложение; архивный файл извлекается во временную папку с source lifetime. Disk/archive F3/F4 используют настроенную внешнюю программу без ограничения размера/UTF-8. Windows сохраняет default notepad.exe; POSIX пустой viewer использует association, editor требует настройки. Known/child processes отслеживаются; после правки Yes обновляет архив, No/Cancel удаляют копию, read-only/error сохраняют её. Короткий unchanged process сохраняет copy до закрытия owner; активный process продолжает работать после закрытия окна. POSIX inherited group сохраняет lineage orphan child; daemon, покинувший группу, может не обнаружиться. Дополнительные текстовые команды Qt сохраняют прежние ограничения. VerCtrl подключён в P1-08.3. |

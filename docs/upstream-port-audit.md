@@ -65,6 +65,72 @@ roots are the explicit platform adaptation. Parent P3-03/P3-06 remain open for
 their other required platform/workflow checks. Final docs-only follow-up passed
 git diff --check; code is unchanged since the passing full gate.
 
+## P3-05.4 — same/subfolder source callbacks (accepted callback scope, 2026-10-06)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: reviewed original
+`CPP/7zip/UI/FileManager/App.cpp` CApp::OnSetSameFolder/OnSetSubFolder and
+CPanelCallbackImp callers; `PanelKey.cpp` OnKeyDown VK_UP/LEFT/RIGHT branches;
+Panel.h callback/folder/selection types; PanelFolderChange BindToPathAndRefresh,
+SetNewFolder, LoadFullPath; FSFolder Init/BindToFolder/BindToParentFolder; Agent
+folder binding and retained engine resource. The two App bodies replace the
+callback stubs, preserving one-panel, missing-focus, non-folder, parent fallback,
+failed/null bind, CloseOpenFolders and RefreshListCtrl control flow. Qt replaces
+the source listView focused-item query with the existing selection adapter.
+Original kParentIndex is retained locally, as in other adapted translation
+units. The native Alt branches retain default list-arrow handling and coexist
+with the existing Alt/Shift/keypad consumers. Licenses/notices remain unchanged.
+
+Qt-only adaptations: released app owners refuse late callbacks; presentation
+cancels a destination's old asynchronous generation before native rebinding
+and renders that destination afterward. Each existing scanner/projection is
+now per-panel; no new filesystem walk, archive logic, Qt notification filter
+or dependency is introduced. Scoped projection retains the callback's panel
+without moving source focus or canceling publication on a focus switch. Scan
+guards follow the actual publishing panel mask, while modal Open/Operation
+guards retain both panels. Disabling a Qt list can synchronously focus another
+panel: the address in the busy panel receives focus and presentation policy
+updates cannot retarget the remaining scan setup. Shutdown joins both workers.
+Directly shared archive folders retain the native relative prefix; the Qt
+display omits an empty archive separator, and their engine resource remains
+owned after the source panel leaves the archive. No parent-stack copying or
+independent archive navigation rule was introduced.
+
+Public macOS regression initially fails three Alt scenarios, with the previous
+55 Qt scenarios passing. Final focused folder-sync passes17Qt/0fail/0skip in
+1.33s; direct shared consumers pass5/5 in8.78s. Ten current-build normal/compact
+JSON reports are reviewed: each compact panel318px wide, address combo240×24,
+table310×232, all relevant controls fully visible/enabled in ready states;
+normal panels488px wide, combos410×24, tables480×452. Tests include Unicode/
+spaces, both subfolder arrows, one-panel/no-focused-item/file no-ops, parent/
+virtual root, failed native bind, destination replacement, close during scan,
+and 3/512-item archive-provider lifetime after source departure. New independent
+suite `panel_folder_sync` is registered for all consumers and native Windows
+UI transport. macOS unsandboxed full245/245 PASS102.43s, including final
+closed-owner and relative archive-address checks. First Linux/Windows snapshot
+`20261005T213912Z-fbced9e7`, SHA256
+`5ae3d5fc9bbb70e9760324e5b81202d0283bc94064cd07c75b5aa89b322e638d`,
+retains failed wrapper and corrected diagnostic results: Linux focused9/9 passes,
+then full build exhausts disk; Windows focused8/9, with two archive assertions
+using unnormalized native separators. The fixture now normalizes those paths;
+macOS focused1/1 passes in1.42s after rebuilding it. Completed own build outputs
+were removed only after evidence/hash and inactive-process checks. Fresh snapshot
+`20261005T215349Z-81d1be19`, SHA256
+`928a99a80fd7695271b655b2a31bb73f663306c3bfa8ce1f90445cbe0ec66df8`,
+uses official runtime/SFX, a built original 7zFM reference and the logged-on
+Windows desktop (Highest, session1). Focused consumers pass9/9 on Linux18.50s
+and Windows191.04s; folder-sync17Qt, keys55, lifecycle16, scanner14, selection18,
+navigation10, flat8, large-list14 and network3 all have0fail/0skip. Each guest's
+69 immutable focused files have matching guest/local SHA. Ten Linux and ten
+Windows Alt-state JSON reports were reviewed, with both panels' addresses and
+lists visible/enabled at normal/compact sizes. Windows4096-row benchmarks retain
+exact publication count, ready9.869–11.178s and GUI gap157–200ms, within unchanged
+15s/250ms limits. The18 production/test/CMake inputs match frozen snapshot bytes.
+This accepts the callback/keyboard/publication component P3-05.4. Fresh full
+Linux/Windows gates continue under P3-03; parent P3-05 remains open for remaining
+body/dependency scope. Rendered Windows parity for these newly exposed states
+remains unverified.
+
 ## P3-05.3 — ClassDefs/native GUID dependency boundary (reviewed, 2026-10-05)
 
 Source repository https://github.com/ip7z/7zip.git, revision

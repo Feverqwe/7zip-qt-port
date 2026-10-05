@@ -10,7 +10,7 @@ class QtAppOperationState {
   public:
     enum class Kind { Idle, Scan, Open, Operation };
     explicit QtAppOperationState(CPanel (&panels)[2]) : panels_(panels) {}
-    bool Begin(Kind kind);
+    bool Begin(Kind kind, unsigned scanningPanels = 3);
     void End();
     void Close();
     void ResetForCreate();

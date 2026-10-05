@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include <QScopeGuard>
 
 // Qt keeps each panel's controls and presentation state while CPanel owns the
 // bound folder, selection and source navigation state. The active fields in
@@ -28,6 +29,12 @@ void MainWindow::storePanelUi(unsigned index) {
     ui.viewMode = viewMode_;
     ui.flatDisk = flatDisk_;
     ui.flatArchive = flatArchive_;
+    ui.scanningDisk = scanningDisk_;
+    ui.scanningArchive = scanningArchive_;
+    ui.filesystemScanner = filesystemScanner_;
+    ui.listProjection = listProjection_;
+    ui.pendingSelection = scanSelectedState_;
+    ui.pendingSelectedPaths = scanSelectedPaths_;
     ui.autoRefreshSnapshot = autoRefreshSnapshot_;
     ui.autoRefreshTopPath = autoRefreshTopPath_;
     ui.autoRefreshScrollValue = autoRefreshScrollValue_;
@@ -58,6 +65,12 @@ void MainWindow::restorePanelUi(unsigned index) {
     viewMode_ = ui.viewMode;
     flatDisk_ = ui.flatDisk;
     flatArchive_ = ui.flatArchive;
+    scanningDisk_ = ui.scanningDisk;
+    scanningArchive_ = ui.scanningArchive;
+    filesystemScanner_ = ui.filesystemScanner;
+    listProjection_ = ui.listProjection;
+    scanSelectedState_ = ui.pendingSelection;
+    scanSelectedPaths_ = ui.pendingSelectedPaths;
     autoRefreshSnapshot_ = ui.autoRefreshSnapshot;
     autoRefreshTopPath_ = ui.autoRefreshTopPath;
     autoRefreshScrollValue_ = ui.autoRefreshScrollValue;
@@ -70,17 +83,6 @@ void MainWindow::activatePanelUi(unsigned index) {
         app_.SetFocusedPanel(projectedPanel_);
         return;
     }
-    if (scanningDisk_ || scanningArchive_) {
-        panelUi_[projectedPanel_].pendingSelection = scanSelectedState_;
-        panelUi_[projectedPanel_].pendingSelectedPaths = scanSelectedPaths_;
-        listProjection_->cancel();
-        scanningArchive_ = false;
-        filesystemScanner_->cancel();
-        scanningDisk_ = false;
-        scanSelectedState_.reset();
-        scanSelectedPaths_.reset();
-        panelUi_[projectedPanel_].needsRescan = true;
-    }
     storePanelUi(projectedPanel_);
     restorePanelUi(index);
     projectedPanel_ = index;
@@ -88,19 +90,53 @@ void MainWindow::activatePanelUi(unsigned index) {
     viewActions_[viewMode_]->setChecked(true);
     flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
     sortActions_[static_cast<int>(sortMode_)]->setChecked(true);
-    if (panelUi_[index].needsRescan) {
-        panelUi_[index].needsRescan = false;
-        auto selection = std::move(panelUi_[index].pendingSelection);
-        panelUi_[index].pendingSelection.reset();
-        auto paths = std::move(panelUi_[index].pendingSelectedPaths);
-        panelUi_[index].pendingSelectedPaths.reset();
-        refreshCurrent(selection ? &*selection : nullptr);
-        if (paths)
-            selectPaths(*paths);
-    } else
-        setState(state_); // A cancelled scan must release guards for the ready panel.
+    setState(state_);
     refreshActions();
     app_.RefreshTitle(true);
+}
+
+unsigned MainWindow::scanningPanelMask() const {
+    unsigned mask = 0;
+    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
+        if (index == projectedPanel_
+                ? scanningDisk_ || scanningArchive_
+                : panelUi_[index].scanningDisk || panelUi_[index].scanningArchive)
+            mask |= 1u << index;
+    }
+    return mask;
+}
+
+void MainWindow::withPanelProjection(unsigned index, const std::function<void()> &body) {
+    if (app_.QtOperations().closed() || index >= kNumPanelsMax || !panelUi_[index].container)
+        return;
+    if (index == projectedPanel_) {
+        body();
+        return;
+    }
+    const unsigned original = projectedPanel_;
+    const QPointer<MainWindow> guard(this);
+    const QString status = statusBar()->currentMessage();
+    storePanelUi(original);
+    restorePanelUi(index);
+    projectedPanel_ = index;
+    app_.SetFocusedPanel(index);
+    ++panelProjectionDepth_;
+    const auto restore = qScopeGuard([&] {
+        if (!guard)
+            return;
+        storePanelUi(index);
+        restorePanelUi(original);
+        projectedPanel_ = original;
+        app_.SetFocusedPanel(original);
+        --panelProjectionDepth_;
+        const QSignalBlocker flatBlock(flatView_);
+        flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
+        if (!app_.QtOperations().closed()) {
+            refreshActions();
+            statusBar()->showMessage(status);
+        }
+    });
+    body();
 }
 
 void MainWindow::togglePanels() {

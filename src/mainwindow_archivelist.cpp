@@ -10,6 +10,7 @@
 #include "qtfilemanagercommands.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
+#include <QScopedValueRollback>
 
 void MainWindow::renderArchiveFolder() {
     listProjection_->cancel();
@@ -50,16 +51,19 @@ void MainWindow::renderArchiveFolder() {
         path_->setText(archiveDisplayPath());
         listProjection_->start(
             folderOwner, archiveFolder->GetNumberOfItems(),
-            [this, archiveFolder, prefix, flat](quint32 index) {
-                appendArchiveEntry(*archiveFolder, index, prefix, flat);
+            [this, owner = projectedPanel_, archiveFolder, prefix, flat](quint32 index) {
+                withPanelProjection(
+                    owner, [&] { appendArchiveEntry(*archiveFolder, index, prefix, flat); });
             },
-            [this] {
-                scanningArchive_ = false;
-                applySortMode(true);
-                completeListSelection();
-                setState(State::Viewing);
-                statusBar()->showMessage(
-                    QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
+            [this, owner = projectedPanel_] {
+                withPanelProjection(owner, [this] {
+                    scanningArchive_ = false;
+                    applySortMode(true);
+                    completeListSelection();
+                    setState(State::Viewing);
+                    statusBar()->showMessage(
+                        QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
+                });
             });
         return;
     }
@@ -136,17 +140,22 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
 }
 
 void MainWindow::setState(State state) {
-    const auto kind = state == State::Loading             ? QtAppOperationState::Kind::Open
-                      : state == State::Operating         ? QtAppOperationState::Kind::Operation
-                      : scanningDisk_ || scanningArchive_ ? QtAppOperationState::Kind::Scan
-                                                          : QtAppOperationState::Kind::Idle;
-    if (!app_.QtOperations().Begin(kind))
+    const unsigned scanningPanels = scanningPanelMask();
+    const auto kind = state == State::Loading     ? QtAppOperationState::Kind::Open
+                      : state == State::Operating ? QtAppOperationState::Kind::Operation
+                      : scanningPanels            ? QtAppOperationState::Kind::Scan
+                                                  : QtAppOperationState::Kind::Idle;
+    if (!(panelProjectionDepth_ && app_.QtOperations().blocking()) &&
+        !app_.QtOperations().Begin(kind, scanningPanels))
         return;
     state_ = state;
     refreshActions();
 }
 
 void MainWindow::refreshActions() {
+    // Disabling a view can synchronously move native Qt focus. Keep the
+    // current source transition bound until its caller finishes scheduling.
+    QScopedValueRollback<unsigned> projection(panelProjectionDepth_, panelProjectionDepth_ + 1);
     app_.RefreshTitle();
     const bool navigating = !app_.QtOperations().closed() && !app_.QtOperations().blocking();
     const bool idle = navigating && !scanningDisk_ && !scanningArchive_;
@@ -159,9 +168,14 @@ void MainWindow::refreshActions() {
         const auto &ui = panelUi_[index];
         if (!ui.container || !ui.table || !ui.iconList || !ui.path)
             continue;
-        const bool projecting = index == projectedPanel_ && (scanningDisk_ || scanningArchive_);
-        const bool panelIdle =
-            navigating && (index != projectedPanel_ || (!scanningDisk_ && !scanningArchive_));
+        const bool projecting = index == projectedPanel_ ? scanningDisk_ || scanningArchive_
+                                                         : ui.scanningDisk || ui.scanningArchive;
+        const bool panelIdle = navigating && !projecting;
+        QWidget *focused = QApplication::focusWidget();
+        if (projecting && focused &&
+            (ui.table == focused || ui.table->isAncestorOf(focused) || ui.iconList == focused ||
+             ui.iconList->isAncestorOf(focused)))
+            ui.path->setFocus();
         // RefreshListCtrl disables redraw until native sorting and selection
         // restoration finish. Keep that policy across Qt's asynchronous batches.
         ui.table->setUpdatesEnabled(!projecting);

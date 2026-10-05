@@ -216,8 +216,9 @@ void MainWindow::updateFilesystemIcons() {
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
-    if (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress ||
-        event->type() == QEvent::KeyPress) {
+    if (!panelProjectionDepth_ &&
+        (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress ||
+         event->type() == QEvent::KeyPress)) {
         const unsigned panelIndex = panelIndexFor(watched);
         if (panelIndex < kNumPanelsMax && panelIndex != projectedPanel_ && app_.NumPanels == 2)
             activatePanelUi(panelIndex);

@@ -35,6 +35,15 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         return true;
     }
     CPanel &panel = app_.GetFocusedPanel();
+    if (key->modifiers().testFlag(Qt::AltModifier) &&
+        (key->key() == Qt::Key_Up || key->key() == Qt::Key_Left || key->key() == Qt::Key_Right)) {
+        if (key->key() == Qt::Key_Up)
+            app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnSetSameFolder();
+        else if (key->key() == Qt::Key_Left || key->key() == Qt::Key_Right)
+            app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnSetSubFolder();
+        // Native OnKeyDown leaves these arrows to the list control afterward.
+        return false;
+    }
     if (panel._mySelectMode) {
         if (key->key() == Qt::Key_Shift) {
             panel.BeginShiftSelection();

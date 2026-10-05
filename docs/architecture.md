@@ -519,14 +519,21 @@ until the shared table/icon model is coherent. Native selection snapshots and
 post-operation path selection wait for completion and survive panel switches.
 Sorting is enabled once with the desired source property/order; its comparator
 remains CPanel::CompareItemIndices.
-Archive projection also preserves RefreshListCtrl's redraw suppression until
+Disk and archive projection preserve RefreshListCtrl's redraw suppression until
 sorting and selection finish, using Qt widget update control across batches.
 The synchronous source guards end before an idle operation acquires retained
 scan guards; otherwise a flat-view change would retain disabled notification
-flags after completion. Filesystem batches keep their existing incremental
-redraw because suppressing their accumulated layout causes a long final pause.
-Cancelling projection during a panel switch releases scan guards before commands
-are projected for the ready destination panel. View-mode switching retains the
+flags after completion. Widget updates resume after final sorting and selection.
+Each panel retains its own FilesystemScanner, QtFolderProjection, scan flags,
+selection snapshot and viewport state. Changing focus switches the presentation
+fields without canceling that panel's publication. Worker signals and archive
+batches project into their captured panel, then restore the focused panel's
+fields, actions and status. Scan guards cover only panels with pending rows;
+Open/Operation still covers both. A synchronous Qt focus change while disabling
+a busy list cannot retarget the caller's remaining scan setup: the address in
+that same panel receives focus and the transition retains its source context.
+Folder synchronization cancels only the destination's previous publication
+before rebinding; close cancels and joins both scanners. View-mode switching retains the
 captured source panel and control pointers across synchronous Qt focus events;
 the new view restores list focus just as upstream changes the same ListView's
 style. Normal Windows folders use the source change-notification watcher instead
@@ -622,9 +629,9 @@ releasing/rebinding it, quiesces its current workers, then saves and releases
 the app owner. ReleaseApp disables all panels before any ReleasePanel call.
 P0-08.1 projects each panel's Qt controls, location, view and sort through
 `mainwindow_twopanel.cpp`; QSplitter replaces Win32 `MoveSubWindows` geometry.
-The two CPanel instances remain authoritative for folder and selection. The
-single scanner cancels a pending flat scan on focus transfer and restarts it
-when that panel is active again. Disk auto-refresh polls both visible panels,
+The two CPanel instances remain authoritative for folder and selection.
+Per-panel asynchronous publication follows the lifetime described above and
+survives focus transfer. Disk auto-refresh polls both visible panels,
 and command availability uses only the active projection. P0-08.2 extends this
 projection to mixed disk/archive and archive/archive, restores the CWindowInfo
 panel count/focus and QSplitter coordinate, and uses the opposite

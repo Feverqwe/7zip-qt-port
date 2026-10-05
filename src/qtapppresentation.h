@@ -11,6 +11,8 @@ class QtAppPresentation final : public IQtAppPresentation {
     void Initialize(CApp &app) override;
     bool CreatePanel(CPanel &panel, unsigned index) override;
     CPanelCallback *PanelCallback(unsigned index) override;
+    void RefreshFolder(unsigned index) override;
+    void PrepareFolderChange(unsigned index) override;
     QString DefaultCopyDestination(unsigned index) const override;
     void ExecuteCopy(bool move, bool copyToSame, unsigned sourceIndex, const QString &destination,
                      const CRecordVector<UInt32> &indices, bool useDestPanel,
