@@ -698,3 +698,31 @@ void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
               {"d", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, entry});
     });
 }
+
+bool ArchiveBackend::publishProcessMutation() {
+    if (!QFile::rename(createTarget_, addBackup_)) {
+        QFile::remove(createTemporary_);
+        emit finished(false, QtLocalText("Could not replace archive: %1",
+                                         QStringLiteral("Не удалось заменить архив: %1"))
+                                 .arg(createTarget_));
+        return false;
+    }
+    if (!QFile::rename(createTemporary_, createTarget_)) {
+        const bool restored = QFile::rename(addBackup_, createTarget_);
+        QFile::remove(createTemporary_);
+        emit finished(
+            false, restored
+                       ? QtLocalText("Could not save updated archive: %1",
+                                     QStringLiteral("Не удалось сохранить обновлённый архив: %1"))
+                             .arg(createTarget_)
+                       : QtLocalText("Could not restore archive. Backup: %1",
+                                     QStringLiteral("Не удалось восстановить архив. Копия: %1"))
+                             .arg(addBackup_));
+        return false;
+    }
+    QFile::remove(addBackup_);
+    listed_ = false;
+    entries_.clear();
+    listedSourceArchives_.remove(createTarget_);
+    return true;
+}

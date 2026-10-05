@@ -48,6 +48,42 @@ new review/remediation, not another feature implementation.
 | B: `CMakeLists.txt`, `cmake/SharedPortObjects.cmake`, app/backend/dialog targets | Same authoritative production sources were recompiled per test; late source/link cloning and test TU macros require separate ownership | Twelve shared production groups plus Windows GUI entry; definitions, resources, ABI/platform links, late consumers and sole moc/source ownership verified on all three OS | Resolved P2-11.4 |
 | R: `mainwindow_archive_transfer.cpp`, `archivebackend_transfer.cpp`, `qtarchivetransferbackup.h` | Original App.cpp OnCopy owns staged panel transfer; Compress/CopyCoder.cpp CopyStream owns stream copying. Widget previously performed archive backup and a manual byte-restoration loop | Backup/publication moved behind ArchiveBackend; original stream copying, real two-panel Move success/Cancel/rollback and publication refusal verified on three OS | Resolved P2-11.8 |
 | S: `createarchivedialog_preferences.cpp`, `createarchivedialog_resources.cpp`, source `CompressDialog.cpp/.h` | Original FindRegistryFormat_Always/SaveOptionsInMem and OnOK memory refusal had functional bodies in widget glue | Source module owns profile creation, spec persistence/big-dictionary marker and memory refusal; Qt reads typed controls and presents source results. Previous-format/Auto/constructor/Cancel and direct compression/SFX consumers verified on three OS | Resolved P2-11.9 |
+| J: `archivebackend.cpp`, `archivebackend_completion.cpp`, `archivebackend_listing.cpp`, `archivebackend_mutations.cpp` | QProcess completion mixed stage dispatch, archive publication/rollback and CLI listing projection. Original Update.cpp publication and FileDir.cpp CTempFile::MoveTo lack the existing restoration policy; Console/List.cpp has no inverse parser | One backend state owner; separated completion, mutation publication and listing projection preserve success/failure/Cancel and stage order; direct consumers and sole object ownership verified | Resolved P2-11.10 |
+
+### P2-11.10 — backend process completion boundary (accepted, 2026-10-05)
+
+P2-11.10 moves the existing CLI completion bodies,
+without introducing another process/job owner or changing archive algorithms.
+At the pinned registry revision, `CPP/7zip/UI/Common/Update.cpp::UpdateArchive`
+deletes the original before `MyMoveFile_with_Progress`, retaining temporary output
+on failure; `CPP/Windows/FileDir.cpp::CTempFile::MoveTo` also deletes first.
+`CPP/7zip/UI/Common/WorkDir.cpp::CWorkDirTempFile::MoveToOriginal` delegates to
+that operation. None supplies the existing target-to-backup, publish, restore
+sequence. That process-boundary policy is retained in the backend mutation owner.
+`CPP/7zip/UI/Console/List.cpp` prints the listing/property labels: the existing
+inverse transport parser and result projection remain together. Source update,
+extract and native reader/writer bodies are not copied again or reorganized.
+The extracted C++17 units share the backend's original state, QObject signals,
+QProcess and joined worker lifetime; only private helper declarations are added.
+The late-consumer source list and shared backend object group include the same
+completion unit. Existing public mutation/backend/source-update/GUI/create/
+volume/SFX tests exercise the moved code. No UI text/layout changes are made.
+After task-owned clang-format, reconstructing the original complete() from the
+four private methods matches all1940 functional tokens, including string/character
+literals. The three completion methods have63/50/61 body lines. No new archive
+implementation is borrowed: existing per-module baselines/notices remain intact.
+Main focused8/8 PASS4.50s; unsandboxed full gate passes formatting, all-target
+build and241/241 CTest101.09s on macOS arm64. The full log is retained at
+`build/review/p211-j-main-full-lasttest.log`. Its compile database has137 root
+production units, each once, including the new completion unit.
+Fresh integrated snapshot `20261005T075633Z-003d3531` passes Linux8/8 in15.92s
+and Windows interactive Highest8/8 in63.28s. Actual Qt totals on each OS are
+backend45, mutation24, sourceUpdate76, updateWindow11, compression21, volume26,
+SfxCreation24 and SfxLifecycle10, all zero failed/skipped. Thirteen guest/local
+artifacts per guest are SHA-256 verified and retained under that snapshot's
+evidence directory. Private helpers retain QObject/process/worker lifetime;
+no test-only internals are exposed. Whole-root inventory and final integrated
+platform/UX acceptance remain P2-11/P3; focused guests do not replace that gate.
 
 ### Retained adapter review and remaining coverage
 

@@ -310,6 +310,12 @@ Original FileDir/FileName/FileFind/FileIO/TimeUtils and the Qt owned-temp
 identity/registry services used by FileDir are foundation units in
 sevenzip_common. FileStreams/LoadCodecs/source RAR handler consumers therefore
 have the same dependency closure without depending on filesystem UI modules.
+`archivebackend_completion.cpp` owns CLI terminal failure/cancellation, ordered
+stage continuation and success signal delivery, using the same ArchiveBackend
+state as the process transport. Mutation publication/restoration stays in
+`archivebackend_mutations.cpp`; listing result projection stays beside its inverse
+Console/List parser in `archivebackend_listing.cpp`. These private methods add
+no second job, process or mutable archive owner.
 `archivebackend_sourceplan.cpp` owns local source callback-plan validation,
 KeepName output selection and asynchronous stage orchestration. Other individual
 update/mutation transports remain in archivebackend_sourceupdate.cpp. Native

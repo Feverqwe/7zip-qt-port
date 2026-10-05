@@ -269,6 +269,10 @@ class ArchiveBackend : public QObject {
     };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
     void complete(int exitCode, QProcess::ExitStatus status);
+    bool advanceProcessJob(Job completed);
+    bool failProcessJob(Job completed, int exitCode, QProcess::ExitStatus status);
+    bool publishProcessMutation();
+    void finishProcessListing();
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static QList<ArchiveEntry> parseListing(const QString &output);

@@ -144,3 +144,57 @@ QMap<QString, QString> ArchiveBackend::parseArchiveHeaderProperties(const QStrin
     }
     return properties;
 }
+
+void ArchiveBackend::finishProcessListing() {
+    QString listing = QString::fromUtf8(listingOutput_);
+    listing.replace("\r\n", "\n");
+    listing.replace('\r', '\n');
+    entries_ = parseListing(listing);
+    listed_ = true;
+    ArchiveInfo info;
+    const QString header = listing.section(QStringLiteral("----------\n"), 0, 0);
+    info.properties = parseArchiveHeaderProperties(header);
+    for (const QString &line : header.split('\n')) {
+        if (line.startsWith(QStringLiteral("Type = ")))
+            info.format = line.mid(7);
+        else if (line.startsWith(QStringLiteral("Physical Size = "))) {
+            bool valid = false;
+            const qint64 size = line.mid(16).toLongLong(&valid);
+            if (valid)
+                info.physicalSize = size;
+        } else if (line.startsWith(QStringLiteral("Total Physical Size = "))) {
+            bool valid = false;
+            const qint64 size = line.mid(22).toLongLong(&valid);
+            if (valid)
+                info.totalPhysicalSize = size;
+        } else if (line.startsWith(QStringLiteral("Volumes = "))) {
+            bool valid = false;
+            const int count = line.mid(10).toInt(&valid);
+            if (valid && count > 0)
+                info.volumeCount = count;
+        } else if (line.startsWith(QStringLiteral("Offset = "))) {
+            bool valid = false;
+            const qint64 offset = line.mid(9).toLongLong(&valid);
+            if (valid)
+                info.offset = offset;
+        }
+    }
+    assignDefaultEntryNames(info.format);
+    for (const ArchiveEntry &entry : entries_) {
+        if (entry.directory)
+            ++info.folders;
+        else {
+            ++info.files;
+            if (entry.size >= 0)
+                info.unpackedSize += entry.size;
+        }
+    }
+    info.encrypted = output_.contains(QStringLiteral("Encrypted = +")) ||
+                     header.contains(QStringLiteral("7zAES"));
+    encrypted_ = info.encrypted;
+    const QFileInfo listedFile(archive_);
+    listedSourceArchives_.insert(archive_, {listedFile.size(), listedFile.lastModified(),
+                                            listedFile.metadataChangeTime(), entries_, encrypted_});
+    emit infoReady(info);
+    emit entriesReady(entries_);
+}
