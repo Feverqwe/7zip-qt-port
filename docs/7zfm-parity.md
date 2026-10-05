@@ -428,7 +428,12 @@ MIME/UTType действует на все aliases этого типа. External
 проверяется; обнаруженный конфликт обновляет строку и требует нового выбора.
 Проверка не является atomic OS transaction, а native ошибка может последовать
 за частичным изменением. Options остаётся открытым для просмотра ошибки.
-Тесты используют только fake registration services; реальные OS associations
+Windows revision detection now omits an absent ProgID instead of enumerating
+the entire Classes root. Unrelated registrations no longer invalidate that
+association; repeated Options initialization avoids the root scan. The native
+missing-association regression and two Options openings pass on Windows;
+the P2-11.4 prerequisite in the port audit records the current full-gate status.
+Исходные проверки этого шага использовали fake registration services; OS associations
 в разработке не менялись. macOS full gate219/219PASS67.46s, последующие
 локальные проверки9/9PASS3.21s; Windows12/12PASS25.26s и Linux12/12PASS3.17s.
 Полные Windows/Linux gates и установленная native регистрация остаются P3.

@@ -1,5 +1,10 @@
 #include "qtassociationplatform.h"
 #include <QtTest>
+#ifdef _WIN32
+#include <QScopeGuard>
+#include <QSettings>
+#include <QUuid>
+#endif
 
 namespace {
 class CFakePlatform final : public IQtAssociationPlatform {
@@ -38,6 +43,33 @@ class CFakePlatform final : public IQtAssociationPlatform {
 class AssociationServicesTests final : public QObject {
     Q_OBJECT
   private slots:
+    void absentAssociationRevisionIgnoresUnrelatedClasses() {
+#ifdef _WIN32
+        const QString token = QUuid::createUuid().toString(QUuid::Id128);
+        const UString extension(qPrintable("sevenzipdesktop_missing_" + token));
+        QSettings unrelated("HKEY_CURRENT_USER\\Software\\Classes\\SevenzipDesktopRevision." +
+                                token,
+                            QSettings::NativeFormat);
+        const auto cleanup = qScopeGuard([&] {
+            unrelated.remove("");
+            unrelated.sync();
+        });
+        unrelated.setValue("PrivateFixture", 1);
+        unrelated.sync();
+        QCOMPARE(unrelated.status(), QSettings::NoError);
+        const auto platform = CreateNativeAssociationPlatform();
+        QtAssociationRecord before, after;
+        QCOMPARE(platform->Read(0, extension, before), LONG(0));
+        QVERIFY(before.info.ProgramKey.IsEmpty());
+        unrelated.setValue("PrivateFixture", 2);
+        unrelated.sync();
+        QCOMPARE(platform->Read(0, extension, after), LONG(0));
+        QVERIFY(after.info.ProgramKey.IsEmpty());
+        QCOMPARE(after.revision, before.revision);
+#else
+        QSKIP("Native Windows registry revision contract.");
+#endif
+    }
     void nativeTypeAliasesFollowOwnWritesAndStillRejectExternalChanges() {
         auto native = std::make_shared<CFakePlatform>();
         native->scope = "fixture:0:application/gzip";

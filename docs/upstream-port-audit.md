@@ -204,6 +204,38 @@ compression/volume/SFX UI consumers also pass on Windows; its full244 gate has
 three unrelated parser/modal fixture failures, so global platform acceptance
 remains open. No layout/text changes; registry U/W/F/B are independently owned.
 
+### Windows association revision prerequisite (verified, 2026-10-05)
+
+Reviewed original RegistryAssociations.cpp CShellExtInfo::ReadFromRegistry and
+AddShellExtensionInfo/DeleteShellExtensionInfo, SystemPage.cpp OnInit/AddIcon
+and retained FilePlugins.cpp CExtDatabase::Read/IFolderManager callers at
+https://github.com/ip7z/7zip.git, commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. The original reader clears ProgramKey
+for an absent association and reads only the extension and its DefaultIcon.
+Existing copied/adapted scope, dependencies, notices and baseline remain unchanged.
+
+The Qt Windows platform's added external-change fingerprint previously passed
+an empty ProgramKey to QSettings::beginGroup, so allKeys recursively included
+the entire Software/Classes root. An unrelated key could then invalidate an
+absent association, and System initialization repeatedly scanned that root.
+A two-line guard omits that empty path; actual extension, nonempty ProgID,
+7-Zip registration and UserChoice paths keep their existing fingerprint rules.
+No upstream equivalent provides the added external-change fingerprint itself;
+the original association reader/writer algorithms remain authoritative.
+
+A public native Read regression uses a unique absent extension and an unrelated
+private current-user Classes key, removing only its fixture key on completion.
+Windows d0448530 reproduces differing revisions: seven Qt rows pass, the new row
+fails, zero skips. The earlier 5e272186 run had omitted the new slot through a
+moc conditional and is explicitly not regression proof. The slot is now always
+registered; its body documents a Windows-specific skip on other platforms.
+Corrected native desktop b9119814 passes association_services and
+list_settings_runtime in 10.10s, respectively eight and five Qt rows with zero
+skips. Its trace proves the second System page completes and Options returns.
+Six artifacts are SHA-256 verified locally and on the guest. Production traces
+existed only in the isolated diagnostic checkout; the final main snapshot has
+none. Final full Windows verification remains pending.
+
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 
 Reviewed original CPP/7zip/UI/FileManager/FSFolderCopy.cpp::CCopyStateIO::MyCopyFile,

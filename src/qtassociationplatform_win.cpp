@@ -18,6 +18,8 @@ QByteArray registryRevision(unsigned group, const UString &ext,
     const QString extension = QString::fromWCharArray(ext.Ptr());
     for (const QString &path :
          {"." + extension, QString::fromWCharArray(info.ProgramKey.Ptr()), "7-Zip." + extension}) {
+        if (path.isEmpty())
+            continue;
         classes.beginGroup(path);
         for (const QString &key : classes.allKeys())
             stream << path << key << classes.value(key);
