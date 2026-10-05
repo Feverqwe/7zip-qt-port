@@ -3,7 +3,16 @@
 #include "qtlocationfolder.h"
 
 FilesystemFolderLoader::FilesystemFolderLoader(QString directory, QObject *parent, bool flat)
-    : QThread(parent), directory_(std::move(directory)), flat_(flat) {}
+    : QThread(parent), directory_(std::move(directory)), flat_(flat) {
+    // CFSFolder::Init arms native notifications. Their owner thread must outlive
+    // the worker: the published folder is polled after that worker has exited.
+    // Keep only the original LoadItems walk in run(), as in native panel binding.
+    try {
+        result_ = CreateFilesystemFolder(directory_, &folder_);
+    } catch (...) {
+        result_ = E_OUTOFMEMORY;
+    }
+}
 
 void FilesystemFolderLoader::cancel() { canceled_ = true; }
 
@@ -16,10 +25,10 @@ IFolderFolder *FilesystemFolderLoader::takeFolder() {
 void FilesystemFolderLoader::run() {
     if (canceled_) {
         result_ = E_ABORT;
+        folder_.Release();
         return;
     }
     try {
-        result_ = CreateFilesystemFolder(directory_, &folder_);
         if (result_ != S_OK)
             return;
         auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder_);

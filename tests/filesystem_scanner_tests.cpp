@@ -24,6 +24,48 @@ class FilesystemScannerTests : public QObject {
         }
     }
   private slots:
+    void publishedFolderKeepsNativeNotificationsAfterWorkerExit() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile file(fixture.filePath(QStringLiteral("исходный файл 空.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("before"), qint64(6));
+        file.close();
+        FilesystemScanner scanner;
+        CMyComPtr<IFolderFolder> retained;
+        connect(&scanner, &FilesystemScanner::folderReady, &scanner,
+                [&](IFolderFolder *folder) { retained = folder; });
+        QSignalSpy completed(&scanner, &FilesystemScanner::completed);
+        scanner.start(fixture.path(), false);
+        QTRY_COMPARE(completed.size(), 1);
+        QVERIFY(retained);
+        CMyComPtr<IFolderWasChanged> changes;
+        QCOMPARE(retained.QueryInterface(IID_IFolderWasChanged, &changes), S_OK);
+        QVERIFY(changes);
+        Int32 changed = -1;
+        QCOMPARE(changes->WasChanged(&changed), S_OK);
+        QCOMPARE(changed, Int32(0));
+#ifdef Q_OS_WIN
+        // The published native owner must still observe subsequent real writes.
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("after"), qint64(5));
+        file.close();
+        bool observedChange = false;
+        HRESULT pollResult = S_OK;
+        const auto observeChange = [&] {
+            if (!observedChange) {
+                pollResult = changes->WasChanged(&changed);
+                observedChange = pollResult == S_OK && changed != 0;
+            }
+            return observedChange;
+        };
+        // QTRY_VERIFY reevaluates its condition after the successful poll.
+        // WasChanged consumes notifications, so retain the observed signal.
+        QTRY_VERIFY(observeChange());
+        QCOMPARE(pollResult, S_OK);
+#endif
+    }
+
     void nonFlatWorkerKeepsNativeDirectChildrenOnly() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

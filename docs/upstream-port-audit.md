@@ -496,6 +496,47 @@ lifetime SIGBUS was fixed before removal; sandboxed focused timing failures
 are retained and do not replace the unsandboxed results. No production
 performance fix or whole Windows acceptance is claimed.
 
+P3-03.7 now isolates the notification-owner boundary with a public scanner
+regression. Fresh Windows snapshot `20261005T202004Z-9f044ceb`, SHA256
+`c2088a3a96388eb418d9b0d43879904d49b5bb3a1f4483aee788bf592a8a8f40`,
+fails1/1 in4.74s (13Qtpass/1fail/0skip): immediately after worker exit, the
+immutable published folder reports WasChanged1 instead of0. Five original
+artifacts are guest/local SHA256-verified. The test also requires subsequent
+real Windows writes to remain observable. Original source at
+`https://github.com/ip7z/7zip.git`, commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, was reviewed:
+FileManager/FSFolder.cpp Init/WasChanged/LoadItems/Clone and native CPanel
+BindToPath callers. Clone creates an empty owner and cannot retain the loaded
+item cache. Instead the existing Qt loader's CreateFilesystemFolder→Init call
+moves to its caller-thread construction; original LoadItems/flat walk and
+callback cancellation remain in run(). Early cancellation releases the prepared
+folder. No borrowed body, native notification filter or filesystem algorithm
+changes. This restores the native binding lifetime while retaining Qt worker
+enumeration. macOS affected5/5 PASS5.53s and unsandboxed full244/244
+PASS99.65s; final scanner1/1 PASS1.42s. Same-source snapshot
+`20261005T202546Z-21568cde`, SHA256
+`c234c4d71e53cc30dd24314cbea584eb6aecfb2bf7d148182100337358438a23`,
+passes Linux focused6/6 in9.36s and full240/240 in189.83s (626 artifacts
+guest/local SHA256-verified). Windows focused/full large-list tests both
+pass14Qt/0fail/0skip with the original15s readiness and250ms gap limits.
+The four full-run cases publish4096 rows each, readiness9107..9490ms and
+maximum gaps147..228ms. Windows full248/250 fails in1010.18s (649 artifacts
+guest/local SHA256-verified): the new real-write test consumed its notification
+again when QTRY_VERIFY reevaluated the successful condition, and unchanged
+external-codec discovery exceeded its default5s wait. These failures remain
+in the original evidence; they are not rewritten as a passing full gate.
+
+The final regression retains the observed native signal across QTRY_VERIFY
+reevaluations. A separate Windows executable uses the frozen production
+objects and unchanged generated moc, substituting only that corrected test
+object:14Qt/0fail/0skip PASS3971ms, including immutable-folder and subsequent
+real-write checks. Seven sources/commands/log/session artifacts are guest/local
+SHA256-verified under `build/review/windows-scanner-latched`, with origin SHA
+recorded separately. The unchanged external-codec test passes a separate retry
+1/1 in4.84s; this does not establish cold-start stability. P3-03.7 is accepted
+as a bounded notification-lifetime fix; parent P3-03 stable performance and
+whole-platform acceptance remain open. No timeout or coverage was weakened.
+
 Current-kit native System-menu reference also passes on snapshot27c52b66 after
 a separate capacity retry on the same source SHA:1/1 in10.60s,3Qt/0fail/0skip.
 The original combined job's disk-full link failure and the first retry's cmd
