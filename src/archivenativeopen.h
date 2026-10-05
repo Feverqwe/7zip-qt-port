@@ -28,9 +28,11 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     HRESULT Close();
     const CArc &arc() const { return *link_.GetArc(); }
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }
+    bool hasVolumes() const { return !link_.VolumePaths.IsEmpty(); }
     bool hasCommentWriter() const;
     const CArcInfoEx *formatInfo() const;
     bool hasNativeRarExtractor() const;
     bool hasNativeHashExtractor() const;
     QString transportType() const { return transportType_; }
+    void CopyVolumeMetadata(CArchiveLink &link) const;
 };

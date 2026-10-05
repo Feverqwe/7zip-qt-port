@@ -42,7 +42,7 @@ new review/remediation, not another feature implementation.
 | H: `qtlistview.{h,cpp}`, `qtfilelisthover.{h,cpp}` | ListViewDialog.cpp OnInit's TRACKSELECT style; CListView dialogs, MainWindow table/icons and TempBrowse. Two own400ms timer/state implementations | One existing hover adapter; public enable/disable/leave/modifiers/removal/close/wheel/hide, all dialog/main/temp consumers and unchanged normal/compact geometry | Resolved P2-11.1 |
 | C: `archivebackend.h`, `archivebackend_mutations.cpp`, `createarchivedialog_source.cpp`, compression controls and consumers | CompressDialog.h NCompressDialog::CInfo already inherited, but five lower-case fields separately owned Level/Method/NumThreads/Dict64/Order; two conversions | Source DTO is authoritative; native autos, validation, format/property/settings/error semantics and actual compression/Add/direct backend/UI verified on three OS | Resolved P2-11.2 |
 | U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks already usable; own fallback reconstructs four callback plans even with native writer | Prefer proven native writer/index order, preserve CommonUpdate no property reset and DoOperation explicit property calls; fallback needs concrete absent-writer/index evidence. Mutation/edit/nested/update/cancel/security checks | Pending component migration |
-| V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreates names | Reuse retained source-link metadata when available; preserve Split outer streams, physical-size/source deletion accounting and absent-native fallback. Batch/volume/SFX/extract checks | Pending component migration |
+| V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreated names | Retained source-link metadata now owns accounting and volume/readiness decisions; Split outer streams and absent-native fallback preserved. Batch/volume/SFX/extract checked on three OS | Resolved P2-11.3 |
 | W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*` | ProgressDialog2.cpp CProgressSync owns pause/stop, but is in panel library which already depends on filesystem; own Qt wake/checkpoint loops repeated | Resolve dependency/transport ownership before reuse; preserve immediate wake, atomic cancel/publication and joined lifetime. Hash/creation/preparation/volume success/failure/pause/cancel/restart | Pending boundary review |
 | F: `filetransferoperation.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Review upstream recursion/deletion bodies and extract cohesive Qt transaction boundary where needed, retaining no-overwrite/cancel/link/failure-injection behavior; direct file and window consumers | Pending complete review |
 | B: `CMakeLists.txt`, app/backend/dialog target sources | Same authoritative production sources recompiled per test; consumers have test-only macro variants and late source/link cloning | Share cohesive production objects only after verifying definitions, moc ownership, resources, ABI/platform libraries and all late consumers. Keep test TU definitions and source C language; full three-OS gate | Pending build-boundary review |
@@ -172,6 +172,37 @@ Current Mac/Windows/Linux compression JSON preserves exposed controls, source
 values and compact scrolling; no
 borrowed body/path/revision or UI layout changes. Baseline verification passes
 409 exact/195 adapted/3 local paths. Other registry rows remain independently owned.
+
+### P2-11.3 — retained source volume accounting (accepted, 2026-10-05)
+
+Inspected original CPP/7zip/UI/Common/OpenArchive.cpp CArchiveLink::Open2,
+its COpenCallbackImp volume stream/path/size accumulation, source Extract.cpp
+batch skip/accounting consumers, current ArchiveNativeOpen/QtArchiveBatchOpen
+and resource update/readiness callers. Source repository and full revision are
+https://github.com/ip7z/7zip.git at0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+No borrowed bodies, notices, dependencies or baseline revision changed.
+
+ArchiveNativeOpen now exposes actual retained-link volume presence and copies
+its VolumePaths/VolumesSize. The batch adapter uses those source values, including
+an empty list for a normal archive. Its previous numbered-file reconstruction is
+used only without a native reader. Resource RequiresOuterOpen/TransportFormat
+use that same native state while preserving nested streams, source read-only
+flags and offset constraints. A false process volume count no longer disables
+a proven single-file writer, and an omitted count cannot lose source batch
+volume accounting. File/process transport and final publication stay unchanged.
+
+Four public batch rows use actual128-byte ZIP volumes with Unicode/spaces and
+compare to the original native link. They cover missing/untrusted process count,
+missing first volume and native-open E_ABORT, with exact surviving/source bytes,
+joined worker, zero process listing on refusal and no opened link after failure.
+The fifth regression checks normal ZIP writer readiness with a false10001 count.
+macOS focused4/4 and current full238/238103.48s pass. Linux final direct5/5 and
+current full234/234194.36s pass; Windows a5cc8449 passes all five direct suites
+(archive_open_options/source_extract_backend/source_extract_advanced/
+shell_archive_services/codec_creation), with no QTest failures/skips. The49
+compression/volume/SFX UI consumers also pass on Windows; its full244 gate has
+three unrelated parser/modal fixture failures, so global platform acceptance
+remains open. No layout/text changes; registry U/W/F/B are independently owned.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

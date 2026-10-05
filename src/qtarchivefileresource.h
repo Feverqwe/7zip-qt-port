@@ -13,6 +13,7 @@ struct IProgress;
 class ArchiveBackend;
 class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
+struct CArchiveLink;
 class CProgressSync;
 struct IInArchive;
 struct IArchiveUpdateCallback;
@@ -73,6 +74,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT GetNumberOfArchiveProperties(UInt32 *count) const;
     HRESULT GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type) const;
     HRESULT ConfigureArc(CArc &arc, const CCodecs *codecs = nullptr) const;
+    bool CopyNativeVolumeMetadata(CArchiveLink &link) const;
     void AttachCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> codecs) {
         _codecs = std::move(codecs);
     }

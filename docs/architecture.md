@@ -1114,6 +1114,12 @@ official engine bytes to the source test callbacks. Split `.001` keeps automatic
 outer handler detection instead of forcing its inner codec. Source batch Extract
 uses VolumePaths to skip repeated numbered inputs. Filesystem batch TestArchives
 is not yet exposed by this command.
+The retained native CArchiveLink owns VolumePaths and VolumesSize. Batch opening
+copies that exact accounting into its source link; it does not reconstruct volume
+names from the process listing when a native reader exists. Native volume/nested
+state also determines outer-stream detection and read-only update availability.
+Process volume counts and numbered-file fallback remain only for absent native
+readers; an untrusted count cannot disable a proven ordinary archive writer.
 
 The independent `FileViewerDialog`, its 16 MiB preview limit, menu aliases and
 MainWindow extraction/update wrappers were retired in P2-09. Original

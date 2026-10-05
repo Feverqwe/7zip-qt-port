@@ -51,11 +51,11 @@ void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> 
 }
 
 bool QtArchiveFileResource::RequiresOuterOpen() const {
-    return Info.volumeCount > 1 || _nativeNested;
+    return _nativeNested || (_nativeOpen ? _nativeOpen->hasVolumes() : Info.volumeCount > 1);
 }
 
 QString QtArchiveFileResource::TransportFormat() const {
-    return _nativeNested ? _nativeOpenType : (Info.volumeCount > 1 ? QString() : Info.format);
+    return _nativeNested ? _nativeOpenType : (RequiresOuterOpen() ? QString() : Info.format);
 }
 
 bool QtArchiveFileResource::HasUpdateService() const {
@@ -195,6 +195,13 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
                               : file.size());
     arc.ArcStreamOffset = 0;
     return arc.ReadBasicProps(arc.Archive, 0, S_OK);
+}
+
+bool QtArchiveFileResource::CopyNativeVolumeMetadata(CArchiveLink &link) const {
+    if (!_nativeOpen)
+        return false;
+    _nativeOpen->CopyVolumeMetadata(link);
+    return true;
 }
 
 HRESULT QtArchiveFileResource::Update(ISequentialOutStream *output, IInArchive *metadata,

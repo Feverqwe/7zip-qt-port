@@ -41,6 +41,11 @@ HRESULT ArchiveNativeOpen::Close() {
     return result;
 }
 
+void ArchiveNativeOpen::CopyVolumeMetadata(CArchiveLink &link) const {
+    link.VolumePaths = link_.VolumePaths;
+    link.VolumesSize = link_.VolumesSize;
+}
+
 bool ArchiveNativeOpen::hasCommentWriter() const {
     if (!link_.IsOpen || link_.Arcs.Size() != 1 || arc().IsReadOnly || arc().ArcStreamOffset != 0)
         return false;

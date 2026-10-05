@@ -1782,6 +1782,13 @@ corrupted second-volume data, and cancel during open/test/byte extraction restor
 command availability and quiesce backend. Read-only mutation commands stay disabled.
 `browse_dialog` selects `.001` with the standard archive filter.
 `source_extract_backend` checks the native batch loop skips following VolumePaths.
+`archive_open_options` compares batch VolumePaths/VolumesSize to a direct original
+CArchiveLink for real Unicode/space ZIP volumes. Missing or untrusted process
+counts preserve source accounting; missing first volume and native-open Cancel
+leave no opened link, skip process listing and preserve surviving input bytes.
+A normal ZIP with an invented process count retains empty native volume metadata
+and its public update capability. The open/extract/shell/creation consumers cover
+the source metadata and readiness boundary together.
 The test autoanswerer acts only on the active modal widget: clicking underlying
 progress Close during its final message can invoke nested Cancel and hang the test.
 

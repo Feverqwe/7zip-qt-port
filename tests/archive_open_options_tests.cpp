@@ -5,18 +5,36 @@
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
+#include "qtarchivebatchopen.h"
+#include "qtarchiveproperties.h"
 #include "qtshellarchiveservices.h"
 #include "rar_memory_fixture.h"
 #include "source_extract_fixture.h"
 #include <QApplication>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
+#include <future>
 
 namespace {
+class VolumeMetadataBackend final : public ArchiveBackend {
+  public:
+    int reportedVolumes = 1;
+    int listingCalls = 0;
+    void openFolder(const QString &, const QString &, const QString & = {}) override {
+        ++listingCalls;
+        ArchiveInfo info;
+        info.format = "zip";
+        info.volumeCount = reportedVolumes;
+        emit infoReady(info);
+        emit entriesReady({ArchiveEntry{SourceExtractFixture::kName, 2048, 2048}});
+        emit finished(true, {});
+    }
+};
 class FinalMessageDismissal {
     QTimer timer;
 
@@ -183,6 +201,124 @@ class ArchiveOpenOptionsTests final : public QObject {
         QCOMPARE(backend.openNativeArchive(archive, {}, &cancel, reader, &options), E_ABORT);
         QVERIFY(!reader);
         QCOMPARE(SourceExtractFixture::readFile(archive), bytes);
+    }
+    void batchRetainsSourceVolumeAccounting_data() {
+        QTest::addColumn<int>("reportedVolumes");
+        QTest::addColumn<int>("outcome");
+        QTest::newRow("missing-process-count") << 1 << 0;
+        QTest::newRow("untrusted-process-count") << 10001 << 0;
+        QTest::newRow("missing-first-volume") << 1 << 1;
+        QTest::newRow("cancel-native-open") << 1 << 2;
+    }
+    void batchRetainsSourceVolumeAccounting() {
+        QFETCH(int, reportedVolumes);
+        QFETCH(int, outcome);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray bytes(2048, 'x');
+        QVERIFY(
+            SourceExtractFixture::writeFile(fixture.filePath(SourceExtractFixture::kName), bytes));
+        const QString name = QStringLiteral("тома 空 with spaces.zip");
+        QProcess engine;
+        engine.setWorkingDirectory(fixture.path());
+        engine.start(QStandardPaths::findExecutable("7zz"),
+                     {"a", "-tzip", "-mx0", "-v128b", name, SourceExtractFixture::kName});
+        QVERIFY(engine.waitForFinished(10000));
+        QCOMPARE(engine.exitCode(), 0);
+        const QString archive = fixture.filePath(name + ".001");
+        VolumeMetadataBackend backend;
+        backend.reportedVolumes = reportedVolumes;
+        load(backend);
+        const auto catalog = backend.codecCatalog();
+        CArchiveLink original;
+        QCOMPARE(catalog->openArchive(original, archive, "zip.split", nullptr), S_OK);
+        QVERIFY(!original.VolumePaths.IsEmpty());
+        const UStringVector expectedPaths = original.VolumePaths;
+        const UInt64 expectedSize = original.VolumesSize;
+        QCOMPARE(original.Close(), S_OK);
+        original.Release();
+        if (outcome == 1)
+            QVERIFY(QFile::remove(archive));
+        QMap<QString, QByteArray> before;
+        for (const QString &part : QDir(fixture.path()).entryList({name + ".*"}, QDir::Files))
+            before.insert(part, SourceExtractFixture::readFile(fixture.filePath(part)));
+        CObjectVector<COpenType> types;
+        QVERIFY(catalog->parseOpenTypes("zip.split", types));
+        COpenOptions options;
+        options.types = &types;
+        options.props = nullptr;
+        options.filePath = archive.toStdWString().c_str();
+        QtArchiveBatchOpen opener(backend);
+        opener.SetOpenType(UString("zip.split"));
+        CArchiveLink adapted;
+        CancelOpen cancelled;
+        auto worker = std::async(std::launch::async, [&] {
+            return opener.Open(adapted, options, outcome == 2 ? &cancelled : nullptr);
+        });
+        const auto cancel = qScopeGuard([&] {
+            if (worker.valid() &&
+                worker.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                backend.cancelAndWait();
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(
+            worker.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 10000);
+        const HRESULT result = worker.get();
+        if (outcome == 0) {
+            QCOMPARE(result, S_OK);
+            QCOMPARE(adapted.VolumePaths.Size(), expectedPaths.Size());
+            FOR_VECTOR(i, expectedPaths)
+            QCOMPARE(QString::fromWCharArray(adapted.VolumePaths[i].Ptr()),
+                     QString::fromWCharArray(expectedPaths[i].Ptr()));
+            QCOMPARE(adapted.VolumesSize, expectedSize);
+            QCOMPARE(backend.listingCalls, 1);
+        } else {
+            if (outcome == 2)
+                QCOMPARE(result, E_ABORT);
+            else
+                QVERIFY(result != S_OK);
+            QVERIFY(!adapted.IsOpen);
+            QCOMPARE(backend.listingCalls, 0);
+        }
+        for (auto i = before.cbegin(); i != before.cend(); ++i)
+            QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(i.key())), i.value());
+        QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(SourceExtractFixture::kName)),
+                 bytes);
+        QVERIFY(!backend.busy());
+    }
+    void nativeSingleArchiveRetainsWriterDespiteProcessVolumeCount() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray bytes(2048, 'x');
+        const QString archive = SourceExtractFixture::makeArchive(fixture.path(), bytes);
+        QVERIFY(!archive.isEmpty());
+        const QByteArray before = SourceExtractFixture::readFile(archive);
+        VolumeMetadataBackend backend;
+        backend.reportedVolumes = 10001;
+        load(backend);
+        CObjectVector<COpenType> types;
+        QVERIFY(backend.codecCatalog()->parseOpenTypes("zip", types));
+        COpenOptions options;
+        options.types = &types;
+        options.props = nullptr;
+        options.filePath = archive.toStdWString().c_str();
+        QtArchiveBatchOpen opener(backend);
+        opener.SetOpenType(UString("zip"));
+        CArchiveLink adapted;
+        auto worker =
+            std::async(std::launch::async, [&] { return opener.Open(adapted, options, nullptr); });
+        const auto cancel = qScopeGuard([&] {
+            if (worker.valid() &&
+                worker.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                backend.cancelAndWait();
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(
+            worker.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 10000);
+        QCOMPARE(worker.get(), S_OK);
+        QVERIFY(adapted.VolumePaths.IsEmpty());
+        QCOMPARE(adapted.VolumesSize, UInt64(0));
+        QVERIFY(ArchiveUpdateEnabled(adapted.GetArc()->Archive));
+        QVERIFY(!adapted.GetArc()->IsReadOnly);
+        QCOMPARE(SourceExtractFixture::readFile(archive), before);
     }
 };
 QTEST_MAIN(ArchiveOpenOptionsTests)

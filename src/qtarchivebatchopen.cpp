@@ -79,7 +79,9 @@ HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options
     arc.DefaultName =
         GetDefaultName2(ExtractFileNameFromPath(options.filePath), UString(), UString());
     RINOK(resource->ConfigureArc(arc, options.codecs))
-    if (resource->Info.volumeCount > 1) {
+    // Open2 records the exact volumes actually used by its retained callback.
+    // Keep that source accounting even when the process listing omits a count.
+    if (!resource->CopyNativeVolumeMetadata(link) && resource->Info.volumeCount > 1) {
         const QFileInfo first(QString::fromWCharArray(options.filePath));
         const QString name = first.fileName();
         if (!name.endsWith(QStringLiteral(".001")) || resource->Info.volumeCount > 10000)
