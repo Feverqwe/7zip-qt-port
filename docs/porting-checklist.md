@@ -259,6 +259,8 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 | [x] | P2-11.11 | Compression request/source memory refusal и creation boundary | P2-11.2/.4/.9/.10; registry K | done — audit § P2-11.11; original OnOK единственный owner отказа по памяти, create() и остальные properties/switches сохранены. Main focused10/10PASS6.71s/fullMac241/241PASS100.13s; snapshotf066976b Windows10/10PASS61.11s/Linux10/10PASS16.08s, все Qt rows без skips,23/23 guest/local artifacts SHA256 verified, каждый root TU собирается один раз. Whole inventory и final P3 открыты. 2026-10-05 |
 
+| [x] | P2-11.12 | Panel construction/columns/refresh projection и удаление неиспользуемого Add wrapper | P2-11.4/.10/.11; registry P | done — audit § P2-11.12; source CPanel owners и projection tokens сохранены. Main focused11/11PASS18.70s/fullMac241/241PASS101.78s; Linuxee14695211/11PASS25.04s. Windows10/11PASS181.05s: large-list disk-normal превысил15s; unchanged session1 retry1/1PASS109.03s,14Qt rows без skips, threshold сохранён. Original39/retry41/Linux40 artifacts SHA256 verified. Whole inventory и стабильный final P3 gate открыты. 2026-10-05 |
+
 ## P3 — приёмка, обновления и поставка
 
 | Готов | ID | Результат | После | Статус / evidence |

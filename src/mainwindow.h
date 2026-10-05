@@ -191,6 +191,7 @@ class MainWindow : public QMainWindow {
     void selectPaths(const QStringList &paths);
     void completeListSelection();
     void refreshCurrent(const CSelectedState *preserved = nullptr);
+    HRESULT reloadPanelPresentation(unsigned index, const CSelectedState &selection);
     void startFilesystemListing(bool sourceAlreadyBound);
     void restoreListSelection(const CSelectedState &selection);
     struct FilesystemSignature;
@@ -235,7 +236,6 @@ class MainWindow : public QMainWindow {
     void renameSelected();
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);
-    void addSources(const QStringList &sources);
     QStringList selectedArchivePaths();
     QStringList archivePathsForIndices(const CRecordVector<UInt32> &indices);
     QStringList selectedArchiveItemsPaths();

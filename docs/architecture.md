@@ -316,6 +316,11 @@ state as the process transport. Mutation publication/restoration stays in
 `archivebackend_mutations.cpp`; listing result projection stays beside its inverse
 Console/List parser in `archivebackend_listing.cpp`. These private methods add
 no second job, process or mutable archive owner.
+MainWindow panel construction remains in mainwindow_panel.cpp; source-column
+projection/persistence/context/time redraw belongs to mainwindow_columns.cpp.
+mainwindow_refresh.cpp owns Qt refresh/reopen/change observation/viewport and
+reload projection. Native CPanel still owns catalog, selection and reload guards;
+the constructor registers the existing callback without retaining its workflow body.
 `archivebackend_compression.cpp` validates public native compression requests and
 projects the original method properties into CLI switches. Both dialog submission
 and backend preflight delegate memory refusal to source CCompressDialog::OnOK.

@@ -87,45 +87,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
         });
     for (unsigned index = 0; index < kNumPanelsMax; ++index)
         app_.Panels[index].AttachReloadPresentation([this, index](const CSelectedState &selection) {
-            if (!panelUi_[index].container || app_.QtOperations().active())
-                return S_OK;
-            const unsigned original = projectedPanel_;
-            const QString originalStatus = statusBar()->currentMessage();
-            if (index != original)
-                activatePanelUi(index);
-            const auto restore = qScopeGuard([&] {
-                if (index != original) {
-                    activatePanelUi(original);
-                    statusBar()->showMessage(originalStatus);
-                }
-            });
-            if (state_ == State::Viewing) {
-                const HRESULT loaded = app_.Panels[index].GetFolder()->LoadItems();
-                if (loaded != S_OK)
-                    return loaded;
-                renderBoundFolder();
-                restoreListSelection(selection);
-                return S_OK;
-            }
-            if (state_ != State::Filesystem)
-                return S_OK;
-            if (!QFileInfo(directory_).isDir()) {
-                autoRefreshSnapshot_.clear();
-                autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
-                table_->clearSelection();
-                table_->setRowCount(0);
-                statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") +
-                                         directory_);
-                refreshActions();
-                return S_OK;
-            }
-            const int firstRow = table_->rowAt(0);
-            autoRefreshTopPath_ = firstRow >= 0 && table_->item(firstRow, 1)
-                                      ? table_->item(firstRow, 1)->text()
-                                      : QString();
-            autoRefreshScrollValue_ = table_->verticalScrollBar()->value();
-            refreshCurrent(&selection);
-            return S_OK;
+            return reloadPanelPresentation(index, selection);
         });
     installEventFilter(this);
     const unsigned focusedPanel =

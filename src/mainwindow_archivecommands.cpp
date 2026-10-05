@@ -305,36 +305,3 @@ void MainWindow::testArchive() {
     begin(QtLangText(IDS_PROGRESS_TESTING), archive_);
     backend_->test(archive_, archivePassword_);
 }
-
-void MainWindow::addSources(const QStringList &sources) {
-    if (app_.QtOperations().closed())
-        return;
-    QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Viewing || app_.GetFocusedPanel().IsThereReadOnlyFolder() ||
-        info_.encrypted || sources.isEmpty())
-        return;
-    previousState_ = state_;
-    updatingArchive_ = true;
-    setState(State::Operating);
-    operationName_ = QtLangText(IDS_PROGRESS_COMPRESSING);
-    bool success = false;
-    bool messageDisplayed = false;
-    QString message;
-    HRESULT result;
-    {
-        QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
-        ArchiveProgressOperation operation(*backend_,
-                                           [this, sources] { backend_->add(archive_, sources); });
-        operation.MainWindow = this;
-        result = operation.Create(ToUString(operationName_), this);
-        success = result == S_OK && operation.succeeded();
-        message = result == S_OK ? operation.resultMessage()
-                                 : QString::fromWCharArray(HResultToMessage(result).Ptr());
-        messageDisplayed = operation.MessagesDisplayed;
-        if (result == S_OK)
-            result = operation.Result;
-    }
-    // This update's messages/errors were displayed by the source dialog.
-    // Existing state completion still owns refresh/selection restoration.
-    backendFinished(success, message, result, messageDisplayed);
-}

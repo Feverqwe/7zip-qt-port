@@ -1765,6 +1765,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     if("src/mainwindow.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
             src/mainwindow_propertyinvalidation.cpp
+            src/mainwindow_columns.cpp src/mainwindow_refresh.cpp
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
