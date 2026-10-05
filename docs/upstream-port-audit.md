@@ -22,10 +22,10 @@ skips. macOS focused opening/backend/external/lifetime4/4 and full238/238103.48s
 Linux current full234/234194.36s pass. Full current Windows gate remains separately
 owned; this accepts the narrow transport correction, not whole-platform acceptance.
 
-## P2-11 — own glue registry (active, 2026-10-05)
+## P2-11 — own glue registry (accepted, 2026-10-05)
 
-The review starts from bcb86e7 and the248 root src C++/header/Objective-C++ files,
-not borrowed-module line counts. Current macOS compile commands contain133 unique
+The initial review started from bcb86e7 and the248 root src C++/header/Objective-C++ files,
+not borrowed-module line counts. That initial macOS compile database contained133 unique
 local translation units, all C++17;45 upstream C entries represent43 distinct
 paths compiled as C, without C++ language flags. The two native Apple bridges
 use Objective-C++17. CMake retains LANGUAGES C CXX and Apple-only OBJCXX. Windows/
@@ -167,7 +167,8 @@ change rows and retained-body reasons above, rather than treating file counts
 as proof of source parity. Borrowed `src/CPP` and `third_party/7zip` modules
 remain in the per-module baseline/audit and P3-05 dependency/omission closure.
 Listed CTest consumers select the component; their dated acceptance evidence
-remains with its owner. Parent acceptance is still pending.
+remains with its owner. All twelve remediation rows are accepted; final parent
+evidence and retained responsibility decisions follow the table.
 
 | Component and exact files | Source basis / disposition | Direct consumers |
 | --- | --- | --- |
@@ -201,11 +202,11 @@ This composition is retained because no usable original archive Move body exists
 and the plan requires it; it is not claimed as identical Windows 7zFM behavior.
 Real Finder, rendered UX, installed native integration and final complete platform
 gates remain P3 evidence, independently of this integration-code review.
-### Retained adapter review and remaining coverage
+### Retained adapter review
 
-Reviewed bodies provide concrete retention reasons below. Final P2-11 acceptance
-must also account for every root file/header and settle all rows above; this
-checkpoint does not claim the entire inventory has been resolved.
+Reviewed bodies provide concrete retention reasons below. The exact register
+above accounts for every root file/header; all remediation rows are settled.
+The following component reasons also preserve the original investigation scope.
 
 | Files/component | Source basis / retained integration responsibility | Direct consumers/checks |
 | --- | --- | --- |
@@ -225,18 +226,20 @@ checkpoint does not claim the entire inventory has been resolved.
 | `qtpaneldrag*`, `qtfilemanagerdrag*`, `qttempbrowsepresentation.cpp` | Original OnDrag/Drop/transfer owns command policy; Qt typed MIME/materialization/recipient lifetime and leased temporary browser are presentation/OS transport | drag_drop/archive, panel_key, temp_cleanup; actual Finder remains P3-03.1 |
 | `qttaskbarprogress*`, `qtlauncherprogress.*` | Source taskbar progress projected through Windows interface, Linux launcher DBus or NSDockTile; Apple bridge avoids native BOOL ABI conflict | taskbar_progress, launcher_progress |
 
-Remaining inventory coverage is explicit rather than inferred from those groups:
-`mainwindow*` and `qtapppresentation.*` (view construction/state/focus/synchronous
-source-call lifecycle); `archivebackend*` and `archiveprogressoperation.*`
-(process/validation/phase/error ownership); `createarchivedialog*` and
-`archivesfxmodule.*` (original CompressDialog presentation/DTO and official SFX
-module discovery); `qtappoperationstate.*`, `qtfilemanagercommands.*`,
-`qtfilemanagercommandworkflows.cpp`, `qtfilemanagershellmenu.*`, `main.cpp`,
-`qtfilemanagermain.cpp`, `qtguimain.cpp` (CApp command/readiness and native FM/GUI
-entry); `volumeoperations.*` (source Split/Combine worker); `qtprogresscontrols.*`,
-`qtdialogscreenservices.*`, `qtcompressoptionscontrols.*`, `qtverctrlfileservices.*`
-(source control/platform service projection). Each needs a final component
-disposition and consumer check after the corresponding remediation row.
+The remaining presentation groups retain these reviewed responsibilities:
+`mainwindow*`/`qtapppresentation.*` project existing source commands, focus and
+synchronous-call lifetime; `archivebackend*`/`archiveprogressoperation.*` own
+process arguments, validation, phase/error delivery and native operation lifetime.
+`createarchivedialog*`/`archivesfxmodule.*` bind the original CompressDialog DTO
+and source capabilities to Qt and locate the official SFX binary. There is no
+second compression profile owner after C/S/K. `qtappoperationstate.*` retains
+per-window call/close guards; command/workflow/menu/startup units connect CApp,
+WndProc, native FM/GUI entries and Qt services. Command availability remains
+authoritative in QtFileManagerCommands; widgets do not construct engine syntax.
+`volumeoperations.*` schedules original Split/Combine, and control/screen/version
+services replace Win32 presentation and OS calls. No usable portable upstream
+Qt implementation supplies these services. Their exact consumers are in the
+register and accepted feature/component evidence, not inferred from filenames.
 The small interface/alias headers (`combodialog.h`, `copydialog.h`,
 `extractdialog.h`, `settingsdialog.h`, `qtfmoptionsdialog.h`,
 `qtcompressoptionsdialog.h`, `qtmodalresult.h`, `qtfolderpropertycapabilities.h`,
@@ -245,8 +248,41 @@ drag-model contracts) keep native declarations/typed boundaries rather than
 independent archive algorithms. COptionsDialog's moved declaration retains its
 source name/body and keeps Widgets out of the engine DTO header. Bounded
 extraction path/link checking belongs to ArchiveBackend; source normalization,
-link and write algorithms remain authoritative. Final header/include/consumer
-closure remains part of the inventory check.
+link and write algorithms remain authoritative. Native typed interfaces retain
+only declarations or small forwarding bodies; actual all-target compilation
+and direct consumers verify their include/ABI closure.
+
+### P2-11 parent acceptance (2026-10-05)
+
+The final register has258 distinct existing root paths in20 components, exactly
+matching current src root .cpp/.h/.mm files. Twelve integrated remediation rows
+are implemented in verified integrated commits, ending with97c9e14. No new borrowed revision or
+notice change is introduced by the final extraction. Baseline verification
+reports409 exact/195 adapted/3 local paths at the pinned upstream revision.
+Actual compile databases from the last integrated panel snapshot show:
+macOS138 C++17 plus2 Objective-C++17 root units; Windows140 C++17 root units;
+Linux138 C++17 root units. Each appears once. C entries/distinct paths are
+46/44,47/45 and46/44 respectively, compiled as C without forced C++ flags.
+Repeated C paths belong to separate targets; they are the same authoritative file.
+
+Large custom files remain explicit review decisions: archivebackend.cpp550
+retains process construction/lifetime and public dispatch after J/K; native
+codecs390 and source-update589 retain one provider/callback bridge; filesystem
+transaction402 retains its exclusive-stage/merge/rollback scope after F.
+Fileoperations405 and menus373 retain source-command presentation; commands399
+owns capability projection; native-shell presentation375 owns native menu ABI.
+Further generic extraction would separate the same cohesive service or alter
+borrowed callback control flow. Long native-command/control builders remain
+reviewed presentation wiring. No size-only rewrite of upstream modules is made.
+
+All remediations preserve source algorithms, Cancel/error/worker lifetime and
+consumer behavior, with the dated public regressions and full macOS gates above.
+Latest full macOS formatting/build241/241 passes; the last extraction's Linux
+eleven consumers pass, and Windows ten pass plus unchanged large-list retry.
+The original Windows timing failure remains preserved and final stable full
+Windows/Linux gates, real Finder proof, packages, omitted-branch closure and
+rendered EN/RU UX acceptance remain mandatory P3 work. Parent P2-11 accepts
+the integration-code register and remediations, not final product acceptance.
 
 ### P2-11.1 — shared hover presentation (accepted, 2026-10-05)
 

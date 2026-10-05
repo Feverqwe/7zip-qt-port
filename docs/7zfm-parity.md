@@ -29,8 +29,10 @@ Public wheel/hide-show regression сначала воспроизводит дв
 24 Mac,24 Windows и24 Linux JSON history/hash/temp/progress проверены: видимые затронутые
 контролы полностью помещаются в owner, порядок и разделение сохранены.
 Scope принят на трёх ОС (audit § P2-11.1); rendered pixel parity остаётся P3-06.
-Windows temp-cleanup directory-link fixture имеет прежний skip; исправление
-этого security coverage gap остаётся в P3-02 и не входит в hover acceptance.
+Прежний Windows skip temp-cleanup directory-link fixture устранён отдельным
+проверенным шагом: native fixture создаёт настоящий directory link, а текущие
+полные Windows запуски выполняют suite без этого пропуска. Глобальная матрица
+платформенных проверок остаётся в P3-02.
 
 ## P2-10.4 — filesystem/split progress (принят, 2026-10-05)
 
@@ -1889,7 +1891,11 @@ F5 в открытом архиве теперь показывает тот ж�
 запись и старые байты назначения. Вторая filesystem панель обновляется после
 F5/F6; disk→disk F5/F6 также обновляет обе панели. Исходный
 `CAgentFolder::CopyTo(moveMode)` сам возвращает `E_NOTIMPL`, поэтому
-двухстадийный F6 — локальная адаптация, а полный `CApp::OnCopy` и
+двухстадийный F6 — требуемое планом расширение: копирование и удаление
+после успешной записи цели, а не идентичное поведение Windows 7zFM.
+Проверка original App.cpp::OnCopy подтверждает передачу moveMode прямо в
+этот отказ. Backend rollback и Cancel этого расширения проверены в P2-11.8.
+На дату исходного шага полный `CApp::OnCopy` и
 archive destination остаются P1-01.2/.3. Отдельная команда Extract сохраняет
 свой ExtractDialog и параметры. CopyDialog resource order/тексты проверены
 на 440×250 и 340×220 в current-build JSON; Windows rendered parity и
