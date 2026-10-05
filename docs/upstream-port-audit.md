@@ -248,6 +248,30 @@ This accepts bounded Release packaging/relocation on the existing runner, not
 a new clean OS image, global native UX or final P3-04/P3-06 acceptance. macOS
 relocated-package and final three-platform acceptance remain mandatory.
 
+## P3-04.3 — relocated macOS runtime bundle consumers (2026-10-05)
+
+The already audited Qt6.12 Release/BUILD_TESTING=OFF arm64 ZIP from own-code
+notice preparation is tested by artifact identity:12,434,024 bytes, SHA256
+`542ac18ed2d492f12c72ad4ad3559a74bbf365840f9415cbb3e3272fc9b95bb5`.
+This is relocation of that retained artifact, not a rebuild of the current
+notification-owner WIP. macOS27.0.1 build26A434; Qt6.12.0. Original source
+engine/module/SFX provenance remains upstream
+`https://github.com/ip7z/7zip.git` at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. No source or implementation changes.
+
+ditto preserves the app bundle/symlinks in a fresh Unicode/spaced location.
+Deep/strict ad-hoc signature verification succeeds before testing. Child
+PATH=/usr/bin:/bin, new application settings and removed Qt/DYLD/codec/SDK
+overrides exercise native Cocoa without an offscreen plugin. Actual packaged
+7zG Add/Test/Extract and adjacent Resources/7zip/7z formats/list succeed;
+Unicode/spaced filenames and binary bytes match exactly. Damaged ZIP and removal
+of the disposable packaged7z.so each return source fatal exit2. The installed
+MIT notice matches root LICENSE byte-for-byte; all eight smoke scenarios pass.
+Original ZIP remains unchanged. Commands and original results are retained in
+build/review/p304-macos-smoke.py and p304-macos-package-smoke.json/.log.
+This accepts existing-host artifact relocation, not a new clean macOS image,
+new-source final package builds, global native UX or final P3-04/P3-06 acceptance.
+
 ## P3-03.3.4 — callback property display (accepted component, 2026-10-05)
 
 Source: https://github.com/ip7z/7zip.git, full commit
