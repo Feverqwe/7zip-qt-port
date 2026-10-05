@@ -145,7 +145,7 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
                           file.absoluteFilePath(),
                           directory ? QString() : sizeValue.toString(),
                           QString(),
-                          file.lastModified().toString(Qt::ISODate),
+                          QString(),
                           GetExtensionPtr(QStringView(nativeName)).toString(),
                           QString::number(sourceIndex)};
     for (int col : {2, 3, 4})

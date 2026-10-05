@@ -64,6 +64,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
             guiTime.start();
             heartbeat.start();
             QTimer::singleShot(0, &window, [&] { heartbeatRows = list->rowCount(); });
+            QVERIFY(!list->updatesEnabled());
         });
         QElapsedTimer elapsed;
         elapsed.start();
@@ -82,6 +83,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
             maxGuiGapRows = list->rowCount();
         }
         heartbeat.stop();
+        QVERIFY(list->updatesEnabled());
         QVERIFY(UiInspection::fullyVisible(*list, window));
         QVERIFY(UiInspection::writeReport(
             window, QString("large-%1-%2").arg(archive ? "archive" : "disk").arg(size.width())));
@@ -329,6 +331,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(!window.isVisible());
         else {
             QVERIFY(list->isEnabled());
+            QVERIFY(list->updatesEnabled());
             QVERIFY(rows <= 2);
             QVERIFY(filesystemRow(window, "only.txt") >= 0);
         }

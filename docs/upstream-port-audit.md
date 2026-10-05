@@ -1,5 +1,56 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
+
+The original b04b3b53 full/retry large-list failures remain as recorded in P3-02;
+they are not passing platform gates. Original source PanelListNotify.cpp property
+display/GetProperty/ConvertPropertyToShortString2 and FSFolder.cpp::GetProperty
+at0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 were inspected with their current
+CPanel::GetItemText/sourceColumnText and column visibility callers.
+mainwindow_filelist.cpp previously read QFileInfo::lastModified for every disk
+row, then replaced the visible timestamp with the source cached CDirItem MTime.
+It now leaves that initial hidden cell empty, like the packed-size cell; the
+existing source property projection fills visible dates and the existing header
+handler fills newly shown columns. No borrowed body, timestamp/sort/format policy,
+baseline, UI text/layout or timeout is changed. This removes redundant native
+metadata work. Alone it does not fix the timing:625d0cdf Windows focused3/4
+passes130.16s, large-list13 Qt passes/1failure118945ms; disk-normal26933ms/
+GUIgap465ms, disk-compact11970/204ms. Its23 original artifacts are SHA-verified.
+macOS arm64 Qt6.11.2 focused projection/columns/scanner4/4 PASS5.54s and full
+unsandboxed formatting/all-target242/242 PASS92.51s. Fresh integrated snapshot
+20261005T093314Z-625d0cdf, revision12830a8 plus this narrow change, SHA
+9f418a71d61f02db241b74e0d68be5f2a6ab9217f6e7e052fa8989e4b01acf24 runs
+focused consumers followed by the full gate in each same build: Linux full
+238/238 PASS185.27s,626 SHA-verified artifacts; Windows stops after focused failure.
+
+Source PanelItems.cpp::RefreshListCtrl disables redraw before filling and restores
+it after sort/selection. The current Qt policy already did this across archive
+batches, but excluded scanningDisk. A deterministic public updatesEnabled
+regression fails both disk normal/compact rows on macOS before the fix (12 Qt
+passes/2failures3.13s), independently of Windows speed. refreshActions now applies
+the same flag to disk/archive projections; the event loop and status/progress
+remain active, and completion/navigation restores updates. No timeout changes.
+Current Mac projection/columns/scanner/two-panel/navigation6/6 PASS6.06s.
+Snapshot20261005T094614Z-34ba55ef now runs6 focused consumers then whole gates.
+Current full Mac242/242 PASS94.55s and Linux238/238 PASS193.69s; Linux626 artifacts
+guest/local SHA-verified. Windows focused6/6 PASS118.82s, large-list14 Qt passes
+zero failures/skips102055ms, reaches the following full formatting/all-target
+gate. Its focused log and8 normal/compact JSONs are separately SHA-verified
+before full results can replace them. Windows full subsequently fails246/248
+in852.18s: filesystem_selection_runtime SEGFAULT in sourcePathsAcrossViewsAndConsumers
+and disk-normal19505ms/GUIgap423ms at0rows. Its647 original artifacts are guest/local
+SHA-verified; focused evidence remains separate. An unchanged same-build native
+selection diagnostic passes18 Qt cases/0failures/0skips11.94s, without replacing
+the original crash. Stable Windows full, required native network coverage and
+parent acceptance remain pending; old failures are not replaced.
+
+P3-03.3.1 accepts only the integrated source redraw/cached-date policy and its
+completion/navigation regression: macOS full242/24294.55s and Linux238/238193.69s
+pass; all6 Windows focused consumers pass. The Windows full results above remain
+failed and do not establish performance or parent acceptance. No timing threshold
+or required fixture is relaxed. This narrow component is committed separately
+from the independently tested Unix entrypoint work.
+
 ## P3-03.2 — local CI configuration (accepted, 2026-10-05)
 
 The complete `.github/workflows/check.yml` uses existing project runtime/SFX,

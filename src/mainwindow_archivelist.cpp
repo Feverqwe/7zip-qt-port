@@ -162,7 +162,7 @@ void MainWindow::refreshActions() {
         const auto &ui = panelUi_[index];
         if (!ui.container || !ui.table || !ui.iconList || !ui.path)
             continue;
-        const bool projecting = index == projectedPanel_ && scanningArchive_;
+        const bool projecting = index == projectedPanel_ && (scanningDisk_ || scanningArchive_);
         const bool panelIdle =
             navigating && (index != projectedPanel_ || (!scanningDisk_ && !scanningArchive_));
         // RefreshListCtrl disables redraw until native sorting and selection

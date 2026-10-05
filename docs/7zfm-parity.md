@@ -64,10 +64,14 @@ filesystem Copy/Move и Split/Combine progress приняты отдельно �
 model. Refresh и выбор созданного файла восстанавливаются после завершения,
 переключение панели отменяет старую публикацию и сохраняет pending selection.
 Сортировка при включении Qt выполняется один раз с исходным property/order.
-Для архивного списка сохраняется исходная политика SetRedraw: Qt updates
+Для disk и archive списка сохраняется исходная политика SetRedraw: Qt updates
 выключены до завершения сортировки и восстановления выделения. Статус и address
-продолжают обрабатывать события. Filesystem публикуется с постепенной redraw,
-чтобы не переносить всю стоимость layout на финальное отображение.
+продолжают обрабатывать события. Исправление P3-03.3 от 2026-10-05 включает
+disk projection в ту же политику: source `RefreshListCtrl` не перерисовывает
+частично заполненный список. Qt batches продолжают возвращаться в event loop,
+а окончательная таблица отображается после source sort/selection; navigation
+и ошибки восстанавливают updates. Предыдущее исключение для filesystem redraw
+не устранило Windows timing failures и заменено этой source policy.
 Смена Qt view сохраняет panel owner и фокус списка: upstream меняет style
 того же ListView. Отмена scan при смене панели освобождает guards для команд
 готовой панели. Обычные Windows folders обновляются через исходный watcher;
