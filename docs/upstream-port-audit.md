@@ -216,7 +216,7 @@ an independent guest copy passes all6 tests in0.046s without modifying the
 original source snapshot. Original Windows full failure is retained; this
 localized fixture check does not accept its whole gate.
 
-## P3-03.3.4 — callback property display (active, 2026-10-05)
+## P3-03.3.4 — callback property display (accepted component, 2026-10-05)
 
 Source: https://github.com/ip7z/7zip.git, full commit
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
@@ -273,6 +273,17 @@ Disk-compact9,344ms, archive-normal9,850ms and archive-compact9,910ms are retain
 47 original guest/local artifacts are SHA256-verified. The focused failure
 prevented this snapshot's full gate; this is not Windows whole-gate acceptance.
 
+Final original Windows snapshot `20261005T180727Z-3ebcd2be`, SHA256
+`b07e7a78d1f22fecf4981e1c3303854798b8b4eee7895a6bd5dbf14c7a1e9476`,
+completes Qt6.12.0 Highest interactive formatting/all-target/full247/249 in846.42s.
+Only runtime_package's Python path separator fixture and external_editors_ui's
+native minimum-height fixture fail; all source callback/hidden-statistics
+consumers and full large_list_window pass.646 original artifacts are guest/local
+SHA256-verified. The earlier focused timing failure remains recorded. This
+accepts callback text, source notification/lifetime guard and invalidation on
+three OS; the failed whole gate, required native network skip and stable Windows
+timing still belong to parent P3-03. A fresh correction snapshot is required.
+
 ## P3-03.4 — one address Enter transition (accepted component, 2026-10-05)
 
 Source: `https://github.com/ip7z/7zip.git`, full revision
@@ -296,7 +307,8 @@ Qt6.12.0 formatting/all-target/full244/244 PASS91.04s. Fresh Linux/Windows
 validation and Windows performance acceptance remain pending. Fresh Linux
 snapshot `20261005T182031Z-beeaa1cf`, SHA256
 `2cba1666a42e6c90b3b203ee8243ceb217dd60f7fb704561be3ba294bc7a95c1`,
-passes10/10 focused consumers in21.39s; its full gate is still running.
+passes10/10 focused consumers in21.39s and formatting/all-target/full240/240
+in182.39s;626 original guest/local artifacts are SHA256-verified.
 This accepts the bounded address-key component on macOS and its Linux consumers;
 it does not accept parent P3-03 or claim a passing Windows performance result.
 
