@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QTableWidget>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <QtTest>
 
 namespace {
@@ -120,14 +121,17 @@ class NativeOpenCommandsTests : public QObject {
         CSelectedState selection;
         panel.SaveSelectedState(selection);
         bool sawError = false;
-        QTimer::singleShot(0, &table, [&] {
+        QTimer answer;
+        connect(&answer, &QTimer::timeout, &table, [&] {
             auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
-            if (box && box->objectName() == "panelArchiveError") {
+            if (box && box->isVisible() && box->objectName() == "panelArchiveError") {
                 sawError = true;
                 box->accept();
             }
         });
+        answer.start(1);
         panel.OpenSelectedItems(false);
+        answer.stop();
         QVERIFY(sawError);
         QVERIFY(services.paths.isEmpty());
     }

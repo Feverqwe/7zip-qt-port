@@ -98,6 +98,23 @@ body/resource/dependency closure. No sibling upstream files are changed.
 
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
+P3-03.3.2 accepts only the native_open_commands modal fixture correction. Frozen
+31754f94 full gate timed out because its one-shot observer could precede the
+visible active QMessageBox. The fixture now polls the public active modal widget
+with a stack-owned timer and stops after the original OpenSelectedItems returns;
+the original twenty-item refusal and zero external side-effect assertions remain.
+No production source, deadline, performance threshold or required skip changes.
+macOS focused1/1 PASS0.51s and full243/243 PASS99.87s; full log retained at
+build/review/p303-modal-main-full-lasttest.log. Fresh snapshot7a063225, SHA
+fb5cd9dfe4de881b18491ad370f5f9e94453c9fc8b2b4635cbe1046ad88190a3,
+builds and runs native_open_commands plus filesystem_selection_runtime:
+Linux2/2 PASS1.99s and Windows native interactive2/2 PASS21.18s. Each platform
+has23 Qt passes, zero failures/skips; four original artifacts per guest are
+guest/local SHA-verified. A passing selection diagnostic does not erase its
+older full crash. The current Windows31754f94 full246/248 failure1002.00s and
+both large disk timing failures remain recorded in P3-05.1. Stable full gate and
+native network coverage still keep this parent open.
+
 The original b04b3b53 full/retry large-list failures remain as recorded in P3-02;
 they are not passing platform gates. Original source PanelListNotify.cpp property
 display/GetProperty/ConvertPropertyToShortString2 and FSFolder.cpp::GetProperty
