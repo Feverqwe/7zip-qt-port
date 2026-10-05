@@ -17,6 +17,12 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         return true;
     }
     if (address) {
+        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+            // PanelFolderChange's CBENF_RETURN is one navigation. Consuming the
+            // edit key prevents QComboBox from also activating its history row.
+            navigateTo(path_->text());
+            return true;
+        }
         if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
             pathCombo_->hidePopup();
             app_.GetFocusedPanel().SetFocusToList();

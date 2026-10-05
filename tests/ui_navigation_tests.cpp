@@ -33,6 +33,41 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
     }
 
   private slots:
+    void addressEnterPublishesOneFolder_data() {
+        QTest::addColumn<int>("key");
+        QTest::newRow("return") << int(Qt::Key_Return);
+        QTest::newRow("keypad-enter") << int(Qt::Key_Enter);
+    }
+    void addressEnterPublishesOneFolder() {
+        QFETCH(int, key);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QFile file(temp.filePath(QStringLiteral("файл с пробелом.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "flatViewAction")->setChecked(false);
+        auto *view = table(window);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        int published = 0;
+        connect(view->model(), &QAbstractItemModel::rowsInserted, &window,
+                [&](const QModelIndex &, int first, int last) { published += last - first + 1; });
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key(key));
+        QTRY_VERIFY(view->isEnabled() &&
+                    filesystemRow(window, QFileInfo(file.fileName()).fileName()) >= 0);
+        QCOMPARE(published, view->rowCount());
+        // Enter on a history entry is still a single explicit refresh.
+        published = 0;
+        address->setFocus();
+        QTest::keyClick(address, Qt::Key(key));
+        QTRY_VERIFY(view->isEnabled() &&
+                    filesystemRow(window, QFileInfo(file.fileName()).fileName()) >= 0);
+        QCOMPARE(published, view->rowCount());
+    }
+
     void archiveFolderHistoryRestoresPersistentLocations() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

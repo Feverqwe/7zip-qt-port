@@ -234,6 +234,39 @@ Disk-compact9,344ms, archive-normal9,850ms and archive-compact9,910ms are retain
 47 original guest/local artifacts are SHA256-verified. The focused failure
 prevented this snapshot's full gate; this is not Windows whole-gate acceptance.
 
+## P3-03.4 — one address Enter transition (accepted component, 2026-10-05)
+
+Source: `https://github.com/ip7z/7zip.git`, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/PanelFolderChange.cpp::{OnNotifyComboBoxEnter,
+OnNotifyComboBoxEndEdit,OnCommand}`: CBENF_RETURN navigates once; CBN_SELENDOK
+owns selection from the address list. Reviewed the original bodies and current
+PanelKey, address signals, history publication and filesystem scan consumers.
+The existing C++17 Qt edit-key adapter consumes Return/Enter before QComboBox
+can additionally activate the newly published history row. Direct returnPressed
+and explicit history activation retain their existing consumers. No archive,
+folder or path algorithm is replaced; the borrowed baseline revision is unchanged.
+
+Public ui_navigation row-publication regression is RED for both keys: one key
+publishes two rows for a one-file folder. It is GREEN for a new address and an
+existing history address after key consumption. Local focused navigation/key/
+large-list consumers pass3/3 in8.42s. An initial full gate after removing the
+direct signal connection failed six existing signal consumers; its original log
+is retained. Restoring that connection gives sequential unsandboxed macOS arm64
+Qt6.12.0 formatting/all-target/full244/244 PASS91.04s. Fresh Linux/Windows
+validation and Windows performance acceptance remain pending. Fresh Linux
+snapshot `20261005T182031Z-beeaa1cf`, SHA256
+`2cba1666a42e6c90b3b203ee8243ceb217dd60f7fb704561be3ba294bc7a95c1`,
+passes10/10 focused consumers in21.39s; its full gate is still running.
+This accepts the bounded address-key component on macOS and its Linux consumers;
+it does not accept parent P3-03 or claim a passing Windows performance result.
+
+The original Windows Qt6.12 snapshot3ebcd2be focused7/8 fails131.84s, with only
+disk-compact exceeding15s. Diagnostic ready/report times are18698/41ms for that
+row,9810/43ms for disk-normal and9617/44ms,9760/42ms for archive rows. Thus JSON
+writing does not explain the timing failure. These measurements do not establish
+that the Enter fix resolves Windows timing. All thresholds remain unchanged.
+
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
 P3-03.3.2 accepts only the native_open_commands modal fixture correction. Frozen
