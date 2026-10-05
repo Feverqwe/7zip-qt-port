@@ -27,6 +27,8 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
                  const COpenOptions *requested = nullptr);
     HRESULT Close();
     const CArc &arc() const { return *link_.GetArc(); }
+    const CArchiveLink &archiveLink() const { return link_; }
+    const CCodecs &nativeCodecs() const;
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }
     bool hasVolumes() const { return !link_.VolumePaths.IsEmpty(); }
     bool hasCommentWriter() const;
@@ -34,5 +36,6 @@ class ArchiveNativeOpen final : private IOpenCallbackUI {
     bool hasNativeRarExtractor() const;
     bool hasNativeHashExtractor() const;
     QString transportType() const { return transportType_; }
+    QString resolvedOpenType() const;
     void CopyVolumeMetadata(CArchiveLink &link) const;
 };

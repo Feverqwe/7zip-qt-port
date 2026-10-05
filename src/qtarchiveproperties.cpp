@@ -31,9 +31,10 @@ class CFolderArchiveProperties final : public IInArchive,
     }
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
+    // Native interfaces must release before their module/catalog lease.
+    CMyComPtr<IUnknown> _resource;
     CMyComPtr<IFolderFolder> _properties;
     CMyComPtr<IArchiveGetRawProps> _rawProps;
-    CMyComPtr<IUnknown> _resource;
     QtArchiveFileResource *_resourceSpec;
     void BindRawProperties() {
         _rawProps.Release();
@@ -51,7 +52,7 @@ class CFolderArchiveProperties final : public IInArchive,
 
   public:
     CFolderArchiveProperties(IFolderFolder *properties, IUnknown *resource)
-        : _properties(properties), _resource(resource),
+        : _resource(resource), _properties(properties),
           _resourceSpec(dynamic_cast<QtArchiveFileResource *>(resource)) {
         BindRawProperties();
     }

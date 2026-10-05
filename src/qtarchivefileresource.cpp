@@ -58,6 +58,11 @@ bool QtArchiveFileResource::RequiresOuterOpen() const {
 }
 
 QString QtArchiveFileResource::TransportFormat() const {
+    // The source opener accepts a good outer chain with a rejected inner file.
+    // CLI autodetection would retry that rejected level and fail the listing;
+    // stop at the exact handler chain already accepted by OpenArchive.
+    if (_nativeOpen && !_nativeOpen->archiveLink().NonOpen_ArcPath.IsEmpty())
+        return _nativeOpen->resolvedOpenType();
     return _nativeNested ? _nativeOpenType : (RequiresOuterOpen() ? QString() : Info.format);
 }
 
@@ -207,6 +212,14 @@ bool QtArchiveFileResource::CopyNativeVolumeMetadata(CArchiveLink &link) const {
         return false;
     _nativeOpen->CopyVolumeMetadata(link);
     return true;
+}
+
+const CArchiveLink *QtArchiveFileResource::NativeArchiveLink() const {
+    return _nativeOpen ? &_nativeOpen->archiveLink() : nullptr;
+}
+
+const CCodecs *QtArchiveFileResource::NativeArchiveCodecs() const {
+    return _nativeOpen ? &_nativeOpen->nativeCodecs() : nullptr;
 }
 
 HRESULT QtArchiveFileResource::Update(ISequentialOutStream *output, IInArchive *metadata,

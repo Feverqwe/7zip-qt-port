@@ -77,6 +77,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type) const;
     HRESULT ConfigureArc(CArc &arc, const CCodecs *codecs = nullptr) const;
     bool CopyNativeVolumeMetadata(CArchiveLink &link) const;
+    const CArchiveLink *NativeArchiveLink() const;
+    const CCodecs *NativeArchiveCodecs() const;
     void AttachCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> codecs) {
         _codecs = std::move(codecs);
     }

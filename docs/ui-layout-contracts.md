@@ -396,6 +396,11 @@ exposure. The same source dialog shows archive/folder properties with zero
 operated indices, tested through actual Info on an empty archive. These checks
 validate source workflow/Qt geometry, not native Windows System Properties
 or pixel parity.
+`native_archive_properties` adds `native-error-type-{zip,7z}-{540,360}.json`:
+the original Error Type row presents the rejected native handler while the
+archive's Type remains the accepted handler. The same properties list remains
+fully visible at540×360 and360×240. This checks values/grouping/geometry, not
+rendered Windows pixel parity.
 Split confirmation reference: pinned PanelSplitFile.cpp's IDs7304/7305 and
 MB_YESNOCANCEL. `volume_workflow` checks original EN/RU100-part text and decisions
 with normal1100×640/compact640×380 main windows. Twelve

@@ -2326,6 +2326,17 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME native_folder_opening COMMAND native_folder_opening_tests -silent)
     set_tests_properties(native_folder_opening PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(native_archive_properties_tests tests/native_archive_properties_tests.cpp
+        tests/layout_inspection.cpp ${codec_update_sources})
+    target_include_directories(native_archive_properties_tests PRIVATE src tests)
+    target_link_libraries(native_archive_properties_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_archive_properties_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_archive_properties COMMAND native_archive_properties_tests -silent)
+    set_tests_properties(native_archive_properties PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_archive_opening_tests tests/native_archive_opening_tests.cpp)
     target_include_directories(native_archive_opening_tests PRIVATE src)
     target_link_libraries(native_archive_opening_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -2548,7 +2559,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_folder_sync ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync native_archive_properties ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

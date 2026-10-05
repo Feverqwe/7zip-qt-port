@@ -166,8 +166,10 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
     std::shared_ptr<ArchiveNativeOpen> nativeOpen;
     RINOK(_backend.openNativeArchive(path, format, &nativeProgress, nativeOpen, options))
     resource->AttachNativeOpen(std::move(nativeOpen));
+    const auto *nativeLink = resource->NativeArchiveLink();
+    const bool partialNativeOpen = nativeLink && !nativeLink->NonOpen_ArcPath.IsEmpty();
     const QString listingFormat =
-        resource->RequiresOuterOpen() ? resource->TransportFormat() : format;
+        resource->RequiresOuterOpen() || partialNativeOpen ? resource->TransportFormat() : format;
     const QString password = ui && ui->PasswordIsDefined
                                  ? QString::fromWCharArray(ui->Password.Ptr())
                                  : nativeProgress.Password;

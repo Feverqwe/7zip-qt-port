@@ -1113,6 +1113,16 @@ transport, clipboard and full detail; normal/compact geometry and JSON cover the
 list/buttons. Direct consumers are `properties`, `panel_property`,
 `archive_opening`, `archive_backend`, property catalogs and source update/extract.
 
+`native_archive_properties` compares real mislabeled ZIP/7z with the original
+opener's retained format/error metadata and drives the public property collector.
+It replaces the backend catalog while properties remain bound, checks the module
+lease survives until all folder/native interfaces release, and verifies unchanged
+archive bytes. Real Split/TAR, rejected TAR in Split and concatenated ZIP parser
+cover levels, original property info, parent-item size/info, Parser type and final
+NonOpen error type/warning. Normal/compact reports check the error-type row and
+visible properties list; standalone `source_properties` still covers process-only
+metadata, sparse values and full text.
+
 `folder_size_view` checks native keyboard F3 over a Unicode/space tree and an
 empty directory, multi-directory operated selection with focus on a file,
 defined zero, recursive file/directory totals, display text, stable provider,

@@ -4,6 +4,18 @@
 
 ArchiveNativeOpen::~ArchiveNativeOpen() { Close(); }
 
+const CCodecs &ArchiveNativeOpen::nativeCodecs() const { return catalog_->nativeCodecs(); }
+
+QString ArchiveNativeOpen::resolvedOpenType() const {
+    QStringList types;
+    for (unsigned i = link_.Arcs.Size(); i != 0; --i) {
+        const int index = link_.Arcs[i - 1].FormatIndex;
+        types.append(index < 0 ? QStringLiteral("#")
+                               : QString::fromWCharArray(nativeCodecs().GetFormatNamePtr(index)));
+    }
+    return types.join('.');
+}
+
 HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenCallbackUI *callback,
                                 const COpenOptions *requested) {
     callback_ = callback;

@@ -1,5 +1,19 @@
 # Сверка с Windows 7zFM
 
+## P3-05.5 — native archive diagnostics (принят scope свойств, 2026-10-06)
+
+Исходные Agent GetArcProp/GetTypeOfArc и Properties теперь читают retained native
+levels и точный catalog owner. Type показывает принятый handler, Error Type —
+отвергнутый; Parser сохраняет исходное имя. Замена backend catalog не меняет
+значение индексов уже открытого архива. NonOpen-уровень использует исходные
+diagnostics и CFfpOpen warning flow; diagnostics успешно открытого уровня
+остаются в Properties, как в оригинальном GetFolderError/CFfpOpen.
+Accepted outer chain с отказом внутреннего binding остаётся доступной через
+точные принятые handlers; CLI не повторяет отвергнутый native level.
+Process-only metadata сохраняет прежний fallback. Public properties и normal/
+compact geometry проверены на macOS, Linux и нативном Windows desktop; full macOS
+проходит. Fresh full Linux/Windows выполняются; rendered parity пока не принята.
+
 ## P3-05.4 — Alt-arrow folder synchronization (принят scope команд, 2026-10-06)
 
 Эталон — pinned App.cpp OnSetSameFolder/OnSetSubFolder и PanelKey.cpp
@@ -17,7 +31,8 @@ Qt публикует большие списки асинхронно отде�
 prefix без копирования parent stack; Qt не добавляет перед ним пустой separator.
 Native resource остаётся владельцем engine path после ухода источника из архива.
 Normal/compact JSON и public regressions проверены на macOS, Linux и нативном
-Windows desktop. Full macOS и Linux проходят; fresh full Windows выполняется.
+Windows desktop. Full macOS и Linux проходят; fresh full Windows250/251 имеет
+таймаут external_codecs, подробности — source audit/P3-03.
 Rendered Windows parity этих состояний пока не подтверждена.
 
 ## P3-05.1 — Unix source startup/dispatch (принят scope callers, 2026-10-05)

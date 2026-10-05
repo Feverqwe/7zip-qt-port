@@ -65,6 +65,63 @@ roots are the explicit platform adaptation. Parent P3-03/P3-06 remain open for
 their other required platform/workflow checks. Final docs-only follow-up passed
 git diff --check; code is unchanged since the passing full gate.
 
+## P3-05.5 — native archive property levels and codec owners (accepted property scope, 2026-10-06)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed original Agent.cpp
+GetArcNumLevels/GetArcProp/GetArcNumProps/GetArcPropInfo and their MainItemProperty
+counterparts, Agent.h GetTypeOfArc, PanelMenu Properties, FileFolderPluginOpen
+GetFolderLevels/GetFolderError, CArchiveLink Open/Open3/Release and CArcErrorInfo/
+ReadBasicProps, ParseOpenTypes/ParseType, and Split/Gzip stream interfaces.
+The original property bodies now read the retained native CArchiveLink and
+resolve indices against its exact retained CCodecs owner. Both kpidErrorType
+branches and Parser type are restored. Parent-item property calls preserve their
+original level/SubfileIndex flow. Process-only readers retain transported metadata;
+no native indices are copied into that unrelated table. The operation facade's
+innermost type resolves by identity into the native link for existing comment
+callers. New getters are narrow const Qt integration boundaries; no engine format,
+stream parser, native archive algorithm, dependency or borrowed notice changes.
+
+Public mislabeled ZIP/7z regression initially fails2Qt because error type is
+VT_EMPTY. After restoration, source property collection exposes the rejected
+handler. Original CFfpOpen returns only NonOpen diagnostics in ErrorMessage;
+the initial opened-level warning expectation was corrected after source review,
+with its failed log retained. A real module-unload crash after catalog replacement
+was traced with LLDB to CFolderArchiveProperties: _resource released before its
+native _rawProps interface. Member order now retains the module through every
+native interface release. Tests require the catalog to survive replacement and
+expire only after all bound owners release, and require original bytes unchanged.
+
+Real Split/TAR and concatenated ZIP parser check levels, type/path, native property
+info and parent-item size/info. Gzip cannot supply a seekable IInArchiveGetStream;
+its invalid multi-level fixture result was retained and replaced with source Split.
+Split with rejected inner TAR exposes final NonOpen metadata. It initially fails
+the application opening because CLI autodetection retries the rejected inner level,
+despite the original opener accepting the outer chain. The Qt adapter serializes
+the already accepted handler names in original ParseOpenTypes order, terminating
+before the rejected file. Original code has typed native inputs, not an existing
+retained-link-to-CLI formatter; this narrow process boundary adds no detection rule.
+Both native levels and catalog remain authoritative.
+
+macOS Qt6.12 arm64 focused8/8 PASS1.35s; final new suite PASS0.89s, including
+normal/compact reports for the error-type row. Four JSON reviewed: dialog540×360/
+360×240, properties list518×307/338×187, enabled and fully visible. Full unsandboxed
+format/all-target build/246CTest PASS105.49s. Fresh Linux/Windows validation
+uses snapshot `20261005T223534Z-e1fa25e5`, SHA256
+`766f4fa05080ec46d4333880436b7f9892df5b23636237da6b38c4c09431414d`,
+with official runtime/SFX, original Windows reference and Highest session1.
+Its14 focused consumers pass on Linux17.04s and native Windows51.61s, all0skip;
+the new suite passes7Qt on each OS.11 immutable focused artifacts per guest have
+matching guest/local SHA. Twelve normal/compact JSON across3OS were reviewed:
+list518×307/338×187 on macOS,518×310/338×190 on Linux,518×306/338×186 on Windows,
+all fully visible/enabled.10 production/test/CMake inputs equal frozen source bytes.
+Fresh full Linux/Windows gates are still running under P3-03. Temporary wrapper was
+removed after both source transfers; original snapshot retains it.2095 local/
+prior-snapshot logs/JSON scanned with0 fixture-password payload violations.
+This accepts P3-05.5's native property/owner/partial-open component. Parent P3-05
+remains open for other source-body/dependency scope;
+rendered Windows parity is unverified.
+
 ## P3-05.4 — same/subfolder source callbacks (accepted callback scope, 2026-10-06)
 
 Source repository https://github.com/ip7z/7zip.git, full revision
@@ -129,7 +186,7 @@ exact publication count, ready9.869–11.178s and GUI gap157–200ms, within unc
 This accepts the callback/keyboard/publication component P3-05.4. Fresh full
 Linux passes241/241 in189.39s, with636 guest/local SHA-verified artifacts;
 its platform skips are Windows-only metadata/reparse/registry contracts.
-The fresh full Windows gate continues under P3-03; parent P3-05 remains open for remaining
+The fresh full Windows gate fails250/251 under P3-03; parent P3-05 remains open for remaining
 body/dependency scope. Rendered Windows parity for these newly exposed states
 remains unverified.
 
@@ -610,8 +667,12 @@ scanner/key/large-list/network consumers9/9 in191.04s, all0skip. Its production
 inputs equal committed42aacc9; macOS full245/245 and Linux full241/241189.39s
 pass (636 Linux artifacts guest/local SHA-verified). Native Windows focused
 large-list publishes exactly4096 rows in each case, ready9869..11178ms and
-maximum gaps157..200ms under unchanged limits. Full Windows251 is still running;
-this is no whole-platform acceptance. Historical failures above remain intact.
+maximum gaps157..200ms under unchanged limits. Full Windows250/251 fails
+in1031.92s: unchanged external_codecs incompatibleModuleIsSkippedWithSourceError
+misses its5s signal wait (Qt reports5750ms would suffice).659 full artifacts have
+matching guest/local SHA. No deadline/coverage change or whole-platform acceptance
+is inferred. Historical failures above remain intact; native/source performance
+consumers pass again.
 
 Current-kit native System-menu reference also passes on snapshot27c52b66 after
 a separate capacity retry on the same source SHA:1/1 in10.60s,3Qt/0fail/0skip.

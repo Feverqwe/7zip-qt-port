@@ -171,9 +171,7 @@ class CAgent final : public IFolderArcProps, public ISetProperties, public CMyUn
     FString _hashBaseFolderPrefix;
     bool ThereIsPathProp = false;
     const CArc &GetArc() const { return _archiveLink.Arcs.Back(); }
-    // Process-backed CArc indexes belong to a different catalog. Resolve its
-    // detected type through the retained transport name, not global codecs.
-    UString GetTypeOfArc(const CArc &) const { return ArchiveType; }
+    UString GetTypeOfArc(const CArc &arc) const;
     IInArchive *GetArchive() const {
         if (_archiveLink.Arcs.IsEmpty())
             return NULL;
@@ -214,6 +212,8 @@ class CAgent final : public IFolderArcProps, public ISetProperties, public CMyUn
     IUnknown *GetEngineResource() const { return _engineResource; }
 
   private:
+    const CArchiveLink &GetArchivePropertyLink() const;
+    const CCodecs *GetArchivePropertyCodecs() const;
     HRESULT ReadItems();
     CMyComPtr<IUnknown> _engineResource;
 };

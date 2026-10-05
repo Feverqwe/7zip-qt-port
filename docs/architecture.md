@@ -336,6 +336,15 @@ integration branch. With a valid codec catalog, QtArchiveFolderManager invokes
 ArchiveBackend::openNativeArchive in the source worker before process listing.
 ArchiveNativeOpen owns the original CArchiveLink and its exact catalog lease;
 the folder resource delegates archive-level properties to the native reader.
+CAgent's IFolderArcProps methods enumerate that retained native link, including
+its original levels, parent-item properties and final NonOpen diagnostics.
+Format/error indices resolve against the reader's own catalog; replacing the
+backend catalog cannot reinterpret them. The file-only operation facade retains
+its separate index mapping; process-only readers keep the transport metadata
+fallback. Native raw interfaces release before the resource's module lease.
+For an accepted outer chain with a rejected inner file, process listing uses the
+exact accepted handler chain in original ParseOpenTypes order instead of retrying
+the failed inner detection. Original opener/format/stream algorithms are unchanged.
 Its stable callback proxy detaches the opening UI after Open3, since source
 volume streams can retain COpenCallbackImp. Resource/transport Close releases
 native handlers and streams before source publication or private-file cleanup.
