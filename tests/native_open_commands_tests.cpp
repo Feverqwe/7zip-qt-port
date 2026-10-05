@@ -79,7 +79,10 @@ class NativeOpenCommandsTests : public QObject {
         QStringList expected = {fixture.filePath(QStringLiteral("первый й.txt")),
                                 fixture.filePath(QStringLiteral("second.txt"))};
         expected.sort();
-        QCOMPARE(services.paths, expected);
+        QStringList actual = services.paths;
+        for (QString &path : actual)
+            path = QDir::fromNativeSeparators(path);
+        QCOMPARE(actual, expected);
     }
     void insideUsesFocusedFolderInsteadOfOtherSelectedFile() {
         QTemporaryDir fixture;

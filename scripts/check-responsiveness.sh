@@ -8,7 +8,7 @@ lists=(large_list_window flat_view panel_selected_state panel_key panel_auto_ref
 volumes=(archive_volume_creation sfx_creation sfx_lifecycle ui_archive_volumes)
 files=(worker_window_progress ui_copy_same ui_operations language_file_transfer
     file_transfer volume_operations volume_workflow app_lifecycle_window)
-hover=(list_activation list_view_dialog folder_history panel_key properties_runtime
+hover=(list_activation list_view_dialog folder_history list_settings_runtime panel_key properties_runtime
     temp_cleanup hash_results progress_dialog)
 case "${1:-all}" in
     workers) suites=("${workers[@]}") ;;

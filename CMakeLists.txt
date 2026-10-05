@@ -2446,7 +2446,7 @@ if(BUILD_TESTING AND WIN32)
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
-            progress_dialog language_dialog
+            progress_dialog language_dialog fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}

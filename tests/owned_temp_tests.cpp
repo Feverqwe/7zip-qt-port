@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/Windows/FileDir.h"
 #include "Common/StringConvert.h"
+#include "native_link_fixture.h"
 #include "qtownedtempdir.h"
 #include "qtownedtempregistry.h"
 #include <QDir>
@@ -163,21 +164,18 @@ class OwnedTempTests : public QObject {
         }
     }
     void linkedRootAndLinkedObjectAreRejected() {
-#ifdef Q_OS_WIN
-        QSKIP("Windows symlink creation requires a platform-capable fixture.");
-#else
         QtOwnedTempRegistry registry;
         const QString target = fixture.filePath("user target");
         QVERIFY(QDir().mkpath(target));
         QVERIFY(write(target + "/keep.txt"));
         const QString link = fixture.filePath("directory link");
-        QVERIFY(QFile::link(target, link));
+        QVERIFY(CreateNativeSymbolicLink(link, target));
+        QVERIFY(QFileInfo(link).isSymLink());
         QVERIFY(!registry.RegisterCreated(link));
         QtOwnedTempRegistry linked(link);
         QVERIFY(!linked.RegisterCreated(target));
         QVERIFY(linked.Entries().isEmpty());
         QVERIFY(QFileInfo::exists(target + "/keep.txt"));
-#endif
     }
     void nativeFileIsActiveThroughWriteAndPublication() {
         QtOwnedTempRegistry registry;

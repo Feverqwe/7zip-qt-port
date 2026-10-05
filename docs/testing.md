@@ -20,6 +20,26 @@ remain covered. A fresh unmodified move restarts the same400ms dwell without
 confirming the dialog. QWindow QPA moves make Windows delivery deterministic.
 The responsiveness script's `hover` scope builds/checks these direct consumers
 in one snapshot; normal/compact geometry remains in their existing suites.
+It also includes `list_settings_runtime`, which checks loaded SingleClick options,
+both views and native System context entries. Its responder waits for the owned
+visible menu and a higher public thread loop level before inspecting/closing it;
+Qt 6.8.3 opens the popup before entering its exec loop, so a timer during native
+creation can otherwise close too early. See the pinned
+[Qt menu implementation](https://raw.githubusercontent.com/qt/qtbase/v6.8.3/src/widgets/widgets/qmenu.cpp).
+QWindow mouse events retain hover/scroll/modifier/drag/leave/removed-row assertions
+without depending on OS cursor notification delivery.
+Windows path fixtures normalize the compared physical path separators while
+retaining source-index/order and forged-display-path assertions. The version
+control subprocess helper reads QCoreApplication arguments so Unicode comes
+from the Windows command line. `volume_mounts` binds the actual native drive
+containing its disposable directory and compares drive label/size/path with
+QStorageInfo; the injected Unix mount namespace remains a separate platform case.
+`codec_probe` checks overlapping Start on an actually running held probe;
+startup failure can complete synchronously on Windows and still emits once.
+`temp_cleanup` creates a real native directory symlink and checks refused
+navigation, confirmed native deletion and unchanged external data/link. Its
+disposable QTemporaryFile is destroyed before deletion to release the Windows
+handle; a scoped cleanup guard removes the file if the fixture fails.
 
 `worker_window_progress` exercises public MainWindow Copy, Split and Combine
 with64MiB Unicode/space fixtures. It joins each discovered public QThread without

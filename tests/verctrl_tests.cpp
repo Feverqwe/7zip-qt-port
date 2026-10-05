@@ -290,9 +290,9 @@ int main(int argc, char **argv) {
     if (argc >= 3 && QByteArray(argv[1]) == "--ver-diff") {
         QCoreApplication app(argc, argv);
         QJsonArray args;
-        for (int i = 3; i < argc; ++i)
-            args.append(QString::fromLocal8Bit(argv[i]));
-        return write(QString::fromLocal8Bit(argv[2]), QJsonDocument(args).toJson()) ? 0 : 1;
+        for (const QString &argument : app.arguments().mid(3))
+            args.append(argument);
+        return write(app.arguments()[2], QJsonDocument(args).toJson()) ? 0 : 1;
     }
     QApplication app(argc, argv);
     VerCtrlTests tests;

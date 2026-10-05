@@ -121,7 +121,7 @@ class NativeRarUiTests final : public QObject, protected MainWindowTestSupport {
         QTimer responder;
         connect(&responder, &QTimer::timeout, this, [&] {
             if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                refused = box->text().contains("../escape.bin");
+                refused = QDir::fromNativeSeparators(box->text()).contains("../escape.bin");
                 box->accept();
             }
         });

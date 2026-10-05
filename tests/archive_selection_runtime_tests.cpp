@@ -26,6 +26,11 @@ class PathHashBackend : public ControlledBackend {
 class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
+    static QStringList portablePaths(QStringList paths) {
+        for (QString &path : paths)
+            path = QDir::fromNativeSeparators(path);
+        return paths;
+    }
     static void selectOnly(MainWindow &window, int row) {
         QVERIFY(row >= 0);
         auto *view = table(window);
@@ -100,7 +105,7 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         // mode. Descendant files must be selected as their own flat items.
         if (flat)
             expected = {"root.bin"};
-        QStringList actual = backend.streamEntries;
+        QStringList actual = portablePaths(backend.streamEntries);
         expected.sort();
         actual.sort();
         QCOMPARE(actual, expected);
@@ -178,7 +183,7 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         corruptPresentationPath(window, rootRow);
         window.extractTo(destination.path(), true);
         QCOMPARE(backend.extractCalls, 1);
-        QCOMPARE(backend.lastSelected, expected); // Source archive order, overlap deduplicated.
+        QCOMPARE(portablePaths(backend.lastSelected), expected); // Source order, deduplicated.
         backend.cancel();
         QVERIFY(action(window, "copyAction")->isEnabled());
         closeNextDialog(window, destination.path(), false);
@@ -187,7 +192,7 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         closeNextDialog(window, destination.path(), true);
         action(window, "copyAction")->trigger();
         QCOMPARE(backend.extractCalls, 2);
-        QCOMPARE(backend.lastSelected, expected);
+        QCOMPARE(portablePaths(backend.lastSelected), expected);
         QTimer::singleShot(0, &window, [] { dismissWarnings(); });
         backend.fail("fixture extraction failure");
         QVERIFY(action(window, "copyAction")->isEnabled());
@@ -197,7 +202,7 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         closeNextDialog(window, destination.path(), true);
         action(window, "moveAction")->trigger();
         QCOMPARE(backend.extractCalls, 3);
-        QCOMPARE(backend.lastSelected, expected);
+        QCOMPARE(portablePaths(backend.lastSelected), expected);
         backend.cancel();
         QCOMPARE(backend.removeCalls, 0); // Cancelled move must not remove archive entries.
         action(window, "hashSHA256Action")->trigger();
@@ -219,7 +224,7 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         selectOnly(window, row);
         corruptPresentationPath(window, row);
         window.extractTo("/temporary/fixture destination", true);
-        QCOMPARE(backend.lastSelected, QStringList{"b/same.txt"});
+        QCOMPARE(portablePaths(backend.lastSelected), QStringList{"b/same.txt"});
         backend.cancel();
         action(window, "flatViewAction")->setChecked(false);
     }

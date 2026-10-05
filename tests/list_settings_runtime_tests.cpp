@@ -4,10 +4,12 @@
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
+#include <QScopeGuard>
 
 #include <QCheckBox>
 #include <QMouseEvent>
 #include <QScrollBar>
+#include <QThread>
 
 namespace {
 struct CurrentDirectoryGuard {
@@ -18,6 +20,14 @@ struct CurrentDirectoryGuard {
 bool writeFile(const QString &path) {
     QFile file(path);
     return file.open(QIODevice::WriteOnly) && file.write("file") == 4;
+}
+
+void moveOver(QAbstractItemView &view, const QModelIndex &index) {
+    auto *window = view.window();
+    QTest::mouseMove(window->windowHandle(),
+                     view.viewport()->mapTo(window, QPoint(1, view.viewport()->height() - 2)));
+    QTest::mouseMove(window->windowHandle(),
+                     view.viewport()->mapTo(window, view.visualRect(index).center()));
 }
 
 QString screenshotPath(const QString &name) {
@@ -90,19 +100,37 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         if (qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1)
             QVERIFY(files->viewport()->grab().save(
                 screenshotPath(QStringLiteral("list-settings-full-row.png"))));
-        QTimer::singleShot(0, [&] {
-            auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
-            QVERIFY(menu);
+        const int outerLoopLevel = QThread::currentThread()->loopLevel();
+        bool menuInspected = false;
+        QTimer inspectMenu;
+        connect(&inspectMenu, &QTimer::timeout, &window, [&] {
+            auto *menu = window.findChild<QMenu *>("panelContextMenu");
+            // Native popup creation can dispatch timers before QMenu::exec
+            // enters its nested loop. Closing then cannot finish that loop.
+            if (!menu || !menu->isVisible() ||
+                QThread::currentThread()->loopLevel() <= outerLoopLevel)
+                return;
+            inspectMenu.stop();
+            menuInspected = true;
+            const auto close = qScopeGuard([&] { menu->close(); });
             bool found = false;
-            for (QAction *item : menu->actions())
+            for (QAction *item : menu->actions()) {
+#ifdef Q_OS_WIN
+                found |= item->objectName() == QStringLiteral("systemContextGroup") &&
+                         item->isEnabled() && item->menu() && !item->menu()->actions().isEmpty();
+#else
                 found |= item->objectName() == QStringLiteral("systemContextGroup") &&
                          !item->isEnabled();
+#endif
+            }
             QVERIFY(found);
             menu->close();
         });
+        inspectMenu.start(5);
         QVERIFY(QMetaObject::invokeMethod(
             files, "customContextMenuRequested", Qt::DirectConnection,
             Q_ARG(QPoint, files->visualItemRect(files->item(1, 0)).center())));
+        QVERIFY(menuInspected);
 
         MainWindow reopened;
         QCOMPARE(table(reopened)->rowCount(), 2);
@@ -152,6 +180,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         MainWindow window;
         window.resize(640, 400);
         window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
         auto *files = table(window);
         auto *icons = window.findChild<QListView *>("iconList");
         QCOMPARE(icons->accessibleName(), QStringLiteral("File list"));
@@ -162,12 +191,12 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
                                                 : static_cast<QAbstractItemView *>(icons);
             const QModelIndex target = files->model()->index(4, 0);
             view->scrollTo(target);
-            QTest::mouseMove(view->viewport(), view->visualRect(target).center());
+            moveOver(*view, target);
             QTRY_COMPARE_WITH_TIMEOUT(files->currentRow(), 4, 1200);
             QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(), path);
             const QModelIndex delayed = files->model()->index(12, 0);
             view->scrollTo(delayed);
-            QTest::mouseMove(view->viewport(), view->visualRect(delayed).center());
+            moveOver(*view, delayed);
             view->verticalScrollBar()->setValue(view->verticalScrollBar()->maximum());
             QTest::qWait(550);
             QCOMPARE(files->currentRow(), 4);
@@ -192,7 +221,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
             QTest::qWait(450);
             QCOMPARE(files->currentRow(), 4);
             view->scrollTo(delayed);
-            QTest::mouseMove(view->viewport(), view->visualRect(delayed).center());
+            moveOver(*view, delayed);
             QEvent leave(QEvent::Leave);
             QApplication::sendEvent(view->viewport(), &leave);
             QTest::qWait(450);
@@ -202,7 +231,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         const QString focusedName = files->item(files->currentRow(), 0)->text();
         const QModelIndex removed = files->model()->index(12, 0);
         icons->scrollTo(removed);
-        QTest::mouseMove(icons->viewport(), icons->visualRect(removed).center());
+        moveOver(*icons, removed);
         QVERIFY(QFile::remove(files->item(12, 1)->text()));
         action(window, "refreshAction")->trigger();
         QCOMPARE(files->rowCount(), 59);

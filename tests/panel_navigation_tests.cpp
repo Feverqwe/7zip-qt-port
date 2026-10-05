@@ -153,7 +153,8 @@ class PanelNavigationTests : public QObject {
         QVERIFY(!panel.GetParentFolders().Back().ParentFolder);
         QCOMPARE(panel.GetParentFolders().Back().ParentFolderPath, diskPrefix);
         panel.LoadFullPath();
-        QCOMPARE(ToQString(panel.GetCurrentFolderPrefix()), ToQString(diskPrefix) + name + '/');
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix())),
+                 QDir::fromNativeSeparators(ToQString(diskPrefix) + name + '/'));
         panel.CloseOneLevel();
         QCOMPARE(panel.GetParentFolders().Size(), unsigned(0));
         QVERIFY(!panel.GetFolder());

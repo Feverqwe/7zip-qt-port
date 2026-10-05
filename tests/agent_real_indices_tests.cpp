@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "Windows/PropVariant.h"
 #include "qtlocationfolder.h"
+#include <QDir>
 #include <QtTest>
 
 class AgentRealIndicesTests : public QObject {
@@ -30,7 +31,7 @@ class AgentRealIndicesTests : public QObject {
             if (folder->GetProperty(i, kpidPrefix, &prefix) == S_OK && prefix.vt == VT_BSTR)
                 fullPath = QString::fromWCharArray(prefix.bstrVal);
             fullPath += QString::fromWCharArray(name.bstrVal);
-            if (fullPath == path)
+            if (QDir::fromNativeSeparators(fullPath) == path)
                 return (int)i;
         }
         return -1;

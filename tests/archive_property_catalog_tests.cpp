@@ -5,6 +5,7 @@
 #include "qtlocationfolder.h"
 #include "qtpanelfolder.h"
 
+#include <QDir>
 #include <QTest>
 
 using NWindows::NCOM::CPropVariant;
@@ -237,7 +238,7 @@ class ArchivePropertyCatalogTests : public QObject {
         }
         CPropVariant prop;
         QCOMPARE(folder->GetProperty(0, kpidPath, &prop), S_OK);
-        QCOMPARE(QString::fromWCharArray(prop.bstrVal), item.RelPath);
+        QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(prop.bstrVal)), item.RelPath);
         QCOMPARE(folder->GetProperty(0, kpidSize, &prop), S_OK);
         QCOMPARE(prop.vt, VARTYPE(VT_UI8));
         QCOMPARE(prop.uhVal.QuadPart, UInt64(0xFFFFFFFFFFFFFFFFULL));

@@ -85,7 +85,9 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
             }
         }
         window.extractTo(temp.path(), true);
-        QCOMPARE(backend.lastSelected, QStringList{"dir2/common.txt"});
+        QCOMPARE(backend.lastSelected.size(), 1);
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.first()),
+                 QString("dir2/common.txt"));
         backend.cancel();
     }
 

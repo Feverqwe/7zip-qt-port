@@ -36,7 +36,6 @@ class CodecProbeTests : public QObject {
             result = std::move(value);
             ++calls;
         }));
-        QVERIFY(!probe.Start(engine, "unused", {}));
         QTRY_COMPARE(calls, 1);
         QCOMPARE(result.result, E_FAIL);
         QVERIFY(!result.error.isEmpty());
@@ -67,6 +66,8 @@ class CodecProbeTests : public QObject {
                 ++calls;
             },
             cancel ? 2000 : 100));
+        QVERIFY(probe.active());
+        QVERIFY(!probe.Start(engine, "unused", {}));
         if (cancel)
             probe.Cancel(); // Also exercises cancellation while QProcess is Starting.
         QTRY_COMPARE(calls, 1);

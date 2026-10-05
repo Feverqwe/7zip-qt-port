@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "layout_inspection.h"
+#include "native_link_fixture.h"
 #include "qtlangcontrols.h"
 #include "qtownedtempdir.h"
 #include <QComboBox>
@@ -14,6 +15,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
 #include <QTextBrowser>
@@ -58,52 +60,68 @@ class TempCleanupTests : public QObject {
     void ownedFileCleanupAndLinkNavigationNeverReachUserTargets() {
         QTemporaryDir root;
         QTemporaryDir outside;
-        QTemporaryFile temporary(QDir::tempPath() + QStringLiteral("/cleanup файл-XXXXXX.txt"));
         QVERIFY(root.isValid() && outside.isValid());
-        QVERIFY(temporary.open());
-        temporary.close();
+        QString temporaryPath;
+        {
+            QTemporaryFile temporary(QDir::tempPath() + QStringLiteral("/cleanup файл-XXXXXX.txt"));
+            QVERIFY(temporary.open());
+            temporaryPath = temporary.fileName();
+            temporary.setAutoRemove(false);
+        }
+        const auto cleanup = qScopeGuard([&] { QFile::remove(temporaryPath); });
         QVERIFY(file(outside.filePath("keep.txt")));
         const QString link = root.filePath("external link");
-        if (!QFile::link(outside.path(), link) || !QFileInfo(link).isSymLink())
-            QSKIP("OS does not provide a directory symlink for this fixture");
-        QVERIFY(inactive(root.path()) && inactive(temporary.fileName()));
+        QVERIFY(CreateNativeSymbolicLink(link, outside.path()));
+        QVERIFY(QFileInfo(link).isSymLink());
+        QVERIFY(inactive(root.path()) && inactive(temporaryPath));
         bool blocked = false, deleted = false, fileSelected = false, asked = false;
-        QStringList visibleNames;
+        bool linkSelected = false;
+        QStringList visibleNames, messages;
         QTimer::singleShot(0, qApp, [&] {
             auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
             if (!dialog)
                 return;
             auto *list = dialog->findChild<QTreeWidget *>("tempList");
-            select(*dialog, root.path());
-            QTest::keyClick(list, Qt::Key_Return);
-            QTimer::singleShot(0, dialog, [&] {
+            bool enteringLink = false;
+            QTimer answers;
+            connect(&answers, &QTimer::timeout, dialog, [&] {
                 if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                    blocked = box->text().contains("blocked", Qt::CaseInsensitive);
-                    box->button(QMessageBox::Ok)->click();
+                    messages.append(box->text());
+                    if (box->standardButtons().testFlag(QMessageBox::Yes)) {
+                        asked = true;
+                        box->button(QMessageBox::Yes)->click();
+                    } else {
+                        blocked |=
+                            enteringLink && box->text().contains("blocked", Qt::CaseInsensitive);
+                        box->button(QMessageBox::Ok)->click();
+                    }
                 }
             });
+            answers.start(5);
+            select(*dialog, root.path());
             QTest::keyClick(list, Qt::Key_Return);
+            select(*dialog, link);
+            linkSelected = row(*dialog, link) && row(*dialog, link)->isSelected();
+            enteringLink = true;
+            QTest::keyClick(list, Qt::Key_Return);
+            enteringLink = false;
             QTest::keyClick(list, Qt::Key_Backspace);
             for (int i = 0; i < list->topLevelItemCount(); ++i)
                 visibleNames.append(list->topLevelItem(i)->text(0));
-            select(*dialog, temporary.fileName());
-            fileSelected = row(*dialog, temporary.fileName()) &&
+            select(*dialog, temporaryPath);
+            fileSelected = row(*dialog, temporaryPath) &&
                            dialog->findChild<QPushButton *>("tempDelete")->isEnabled();
-            QTimer::singleShot(0, dialog, [&] {
-                if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                    asked = box->standardButtons().testFlag(QMessageBox::Yes);
-                    box->button(QMessageBox::Yes)->click();
-                }
-            });
             dialog->findChild<QPushButton *>("tempDelete")->click();
-            deleted = !QFileInfo::exists(temporary.fileName());
+            deleted = !QFileInfo::exists(temporaryPath);
+            answers.stop();
             dialog->reject();
         });
         MyBrowseForTempFolder(nullptr);
-        QVERIFY(blocked);
+        QVERIFY2(linkSelected, qPrintable(messages.join('|')));
+        QVERIFY2(blocked, qPrintable(messages.join('|')));
         QVERIFY2(fileSelected, qPrintable(visibleNames.join('|')));
         QVERIFY(asked);
-        QVERIFY(deleted);
+        QVERIFY2(deleted, qPrintable(messages.join('|')));
         QVERIFY(QFileInfo::exists(outside.filePath("keep.txt")));
         QVERIFY(QFileInfo(link).isSymLink());
     }

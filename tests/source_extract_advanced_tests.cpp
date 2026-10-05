@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/GUI/ExtractDialog.h"
 #include "archivecodeccatalog.h"
 #include "layout_inspection.h"
+#include "native_link_fixture.h"
 #include "native_security_fixture.h"
 #include "qtarchivebatchextract.h"
 #include "qtlangcontrols.h"
@@ -334,11 +335,8 @@ class SourceExtractAdvancedTests final : public QObject {
         QVERIFY(writeFile(victim, "preserved"));
         QVERIFY(QDir().mkpath(destination));
         const QString link = QDir(destination).filePath(leaf);
-#ifdef Q_OS_WIN
-        QSKIP("Native symlink prerequisite is covered by Windows link fixtures.");
-#else
-        QVERIFY(QFile::link(victim, link));
-#endif
+        QVERIFY(CreateNativeSymbolicLink(link, victim));
+        QVERIFY(QFileInfo(link).isSymLink());
         ArchiveBackend backend;
         ExtractionOptions options;
         options.ElimDup.SetTrueTrue();

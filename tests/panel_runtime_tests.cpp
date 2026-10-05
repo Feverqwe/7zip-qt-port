@@ -78,8 +78,8 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
                                                        "Files: 1    ( 7 bytes )\n"
                                                        "Size: 18 bytes\n\n");
         QVERIFY2(summary.startsWith(expected), qPrintable(summary));
-        QVERIFY(summary.contains("source-summary.zip/"));
-        QVERIFY(summary.contains("  " + directory + '/'));
+        QVERIFY(QDir::fromNativeSeparators(summary).contains("source-summary.zip/"));
+        QVERIFY(QDir::fromNativeSeparators(summary).contains("  " + directory + '/'));
         QVERIFY(summary.contains("  " + file));
         QCOMPARE(backend.extractCalls, 0);
         selectOnly(view, rowWithPath(window, "unknown"));
@@ -148,7 +148,8 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
                 const QString relPath = (QString::fromWCharArray(prefix.bstrVal) +
                                          QString::fromWCharArray(sourceName.bstrVal))
                                             .normalized(QString::NormalizationForm_C);
-                QCOMPARE(view->item(row, 0)->text(), relPath);
+                QCOMPARE(QDir::fromNativeSeparators(view->item(row, 0)->text()),
+                         QDir::fromNativeSeparators(relPath));
             }
         }
         selectOnly(view, diskRow(window, root.filePath(name)));

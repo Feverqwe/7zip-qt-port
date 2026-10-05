@@ -1,12 +1,44 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/FSDrives.h"
 #include "Windows/PropVariant.h"
+#include <QStorageInfo>
 #include <QTemporaryDir>
 #include <QtTest>
 
 class VolumeMountTests final : public QObject {
     Q_OBJECT
   private slots:
+#ifdef Q_OS_WIN
+    void nativeDriveContainsDisposableFixture() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString drive = QFileInfo(fixture.path()).absoluteFilePath().left(2);
+        CMyComPtr<IFolderFolder> drives = new CFSDrives;
+        QCOMPARE(drives->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(drives->GetNumberOfItems(&count), S_OK);
+        UInt32 index = count;
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant name;
+            QCOMPARE(drives->GetProperty(i, kpidName, &name), S_OK);
+            if (name.vt == VT_BSTR && QString::fromWCharArray(name.bstrVal) == drive)
+                index = i;
+        }
+        QVERIFY(index < count);
+        NWindows::NCOM::CPropVariant size;
+        QCOMPARE(drives->GetProperty(index, kpidTotalSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, UInt64(QStorageInfo(fixture.path()).bytesTotal()));
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(drives->BindToFolder(index, &folder), S_OK);
+        QVERIFY(folder);
+        NWindows::NCOM::CPropVariant path;
+        QCOMPARE(folder->GetFolderProperty(kpidPath, &path), S_OK);
+        QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)), drive + '/');
+        QVERIFY(QFileInfo(fixture.path()).isDir());
+    }
+#else
     void mountedVolumeCanOpenThenDisappear() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -38,6 +70,7 @@ class VolumeMountTests final : public QObject {
         QCOMPARE(drives->BindToFolder(UInt32(0), &folder), E_FAIL);
         QVERIFY(!folder);
     }
+#endif
 };
 
 QTEST_MAIN(VolumeMountTests)
