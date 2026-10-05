@@ -1,5 +1,26 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03.2 — local CI configuration (accepted, 2026-10-05)
+
+The complete `.github/workflows/check.yml` uses existing project runtime/SFX,
+baseline, formatting/build/CTest scripts without duplicating source algorithms.
+Official upstream https://github.com/ip7z/7zip.git is SHA-pinned at
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17; builders use private archives, leaving
+the source checkout unchanged. Qt6.8.3 and Unix primary tools are pinned, action
+refs use verified complete commits. `docs/ci.md` owns jobs/tool versions and
+limits. No borrowed module/body, dependency provenance or UI changes.
+
+Ubuntu24.04/macOS15 hosted jobs run the full gate; the dedicated Windows job is
+manual-only and requires the authorized interactive/elevated native guest. It
+does not execute PR code automatically on that guest or provision an agent.
+Testing logs, widget JSON, compile database/cache, runtime/SFX provenance and
+task-owned failure buffers are retained; pipe failure through tee is preserved.
+Actionlint, embedded shellcheck and git diff --check pass locally. Current actual
+three-platform project gate evidence remains in P3-02, including the failed
+Windows large-list full/retry, rather than being described as a GitHub result.
+No workflow publication, hosting, runner registration or GitHub execution was
+performed; this accepts local configuration only, not P3-03 parent or final UX.
+
 ## P3-02 — regression/security traceability (accepted, 2026-10-05)
 
 The new docs/regression-matrix.md maps all41 accepted functional P0/P1/P2

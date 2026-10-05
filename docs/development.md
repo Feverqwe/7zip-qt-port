@@ -81,7 +81,8 @@ brew install cmake ninja qtbase sevenzip clang-format
 On Linux, install CMake, Ninja, Qt 6 base development files, clang-format,
 pkg-config and GLib/GIO development files (`libglib2.0-dev` on Ubuntu). The native
 association adapter links `gio-unix-2.0`. On Windows, use a Qt 6 Widgets kit plus
-CMake, Ninja, and a C++17 compiler; CI uses MSYS2 UCRT64. Point
+CMake, Ninja, and a C++17 compiler. The configured native Windows CI job uses
+the recorded MSVC2022/Qt6.8.3 kit; see [CI jobs and limits](ci.md). Point
 `CMAKE_PREFIX_PATH` to Qt when CMake cannot locate it.
 
 ## Local commands
