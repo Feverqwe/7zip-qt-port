@@ -65,6 +65,45 @@ roots are the explicit platform adaptation. Parent P3-03/P3-06 remain open for
 their other required platform/workflow checks. Final docs-only follow-up passed
 git diff --check; code is unchanged since the passing full gate.
 
+## P3-03.8.1 — owned codec discovery loader (2026-10-06)
+
+Reviewed source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/Common/LoadCodecs.cpp/.h` IsSupportedDll, LoadDll,
+LoadCodecs/LoadFormats, LoadDllsFromFolder, Load, SetLibCodecs and CCodecs/CCodecLib
+ownership; `CPP/7zip/UI/Agent/Agent.cpp` LoadGlobalCodecs/FreeGlobalCodecs and
+Open callers; `CPP/7zip/UI/GUI/GUI.cpp` Main2 loading caller. Original loading is
+synchronous; it supplies no asynchronous Qt process-version/runtime-image delivery
+owner. All original loading bodies, ABI checks, enumeration, dependencies and
+notices remain unchanged. ArchiveCodecProbe's local scheduling now runs the
+existing ArchiveCodecCatalog constructor in a joined QThread with immutable
+inputs; the constructor still owns image copying and those source calls.
+No new codec registration/discovery algorithm or borrowed module is added.
+Qt owns queued completion, cancellation/deadline state and thread lifetime.
+
+Four slow-module public regressions initially fail because GUI delivery cannot
+observe native loading until it has already completed. After the change they
+check GUI heartbeat/owning-thread callback, cancel and deadline, restart and
+destruction with joined native exit and no stale callback. Native DLL entrypoints
+have no interruption interface; cancellation discards their result after join,
+and destruction waits for them. The five-second default is unchanged and also
+covers the native phase. Only test fixtures deliberately hold a compatibility
+query; production has no timing hooks or test-specific branches.
+
+macOS Qt6.12 focused codec_probe/catalog/external_codecs3/3 PASS4.81s,
+new probe13Qt/0skip. Direct native phase observation: process/start159–850ms,
+total744–1482ms, maximum GUI heartbeat gap24–41ms with600ms native query.
+Full unsandboxed format/all-target build/246CTest PASS102.20s. A localized
+test-fixture adjustment leaves1500ms cold process-start headroom and holds the
+native deadline query2100ms; production code/deadline are unchanged. Final
+affected3/3 PASS6.43s after that adjustment. The new test is one cohesive public
+probe-lifecycle scenario; its scoped environment/marker setup accounts for the
+function-size review trigger, with no test access to probe internals.
+Linux/Windows loader validation and real cold
+runtime-copy/DLL/version-process phase timing are not yet verified. This does
+not establish the cause of the earlier Windows5750ms ready signal or accept
+parent P3-03.8's stable cold five-second completion requirement.
+
 ## P3-05.5 — native archive property levels and codec owners (accepted property scope, 2026-10-06)
 
 Source https://github.com/ip7z/7zip.git, full revision
@@ -115,7 +154,8 @@ the new suite passes7Qt on each OS.11 immutable focused artifacts per guest have
 matching guest/local SHA. Twelve normal/compact JSON across3OS were reviewed:
 list518×307/338×187 on macOS,518×310/338×190 on Linux,518×306/338×186 on Windows,
 all fully visible/enabled.10 production/test/CMake inputs equal frozen source bytes.
-Fresh full Linux/Windows gates are still running under P3-03. Temporary wrapper was
+Fresh full Linux242/242 PASS193.85s,640guest/localSHA; Windows gate is still
+running under P3-03. Temporary wrapper was
 removed after both source transfers; original snapshot retains it.2095 local/
 prior-snapshot logs/JSON scanned with0 fixture-password payload violations.
 This accepts P3-05.5's native property/owner/partial-open component. Parent P3-05

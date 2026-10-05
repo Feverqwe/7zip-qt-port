@@ -50,6 +50,12 @@ containing its disposable directory and compares drive label/size/path with
 QStorageInfo; the injected Unix mount namespace remains a separate platform case.
 `codec_probe` checks overlapping Start on an actually running held probe;
 startup failure can complete synchronously on Windows and still emits once.
+Its test-only slow module runs through the original LoadCodecs compatibility
+query. Public probe tests check that heartbeat remains responsive during loading,
+completion returns to the owning thread, and cancellation/deadline discard the
+catalog only after joining. Destruction must join without delivering a stale
+callback; restart after failure/cancel must deliver exactly once. Disposable
+Unicode marker paths identify native entry/exit, not production diagnostics.
 `temp_cleanup` creates a real native directory symlink and checks refused
 navigation, confirmed native deletion and unchanged external data/link. Its
 disposable QTemporaryFile is destroyed before deletion to release the Windows

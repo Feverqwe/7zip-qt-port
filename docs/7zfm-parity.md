@@ -717,6 +717,10 @@ native self-Test/Extract, AES/header encryption, missing/occupied/cancel и
 standalone7zz внешние модули не загружает. Codecs/Formats enumeration, ABI checks
 и warnings сохраняют исходные LoadCodecs bodies. Несовпадение native/engine
 deployment вызывает отказ. Working plugins сохраняются при нерабочем модуле;
+Qt codec discovery загружает каталог и его runtime snapshot в собственном
+потоке, сохраняя отзывчивость event loop; публикация остаётся в GUI-потоке.
+Cancel/deadline отбрасывают результат после join. Уже исполняющийся DLL
+entrypoint безопасно прервать нельзя: закрытие владельца ждёт его завершения.
 source About повторно показывает codec errors, startup status показывает их
 без открытия модального окна. Immutable native readers удерживают собственные
 DLL images: исходный SetCodecs и per-instance fallback используют этот каталог,

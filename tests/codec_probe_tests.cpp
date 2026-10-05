@@ -1,6 +1,7 @@
 #include "archivecodecprobe.h"
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
@@ -16,6 +17,97 @@ class CodecProbeTests : public QObject {
     }
 
   private slots:
+    void nativeModuleLoadingKeepsEventLoopResponsive_data() {
+        QTest::addColumn<QString>("mode");
+        QTest::newRow("failure") << "failure";
+        QTest::newRow("cancel") << "cancel";
+        QTest::newRow("deadline") << "deadline";
+        QTest::newRow("destroy") << "destroy";
+    }
+    void nativeModuleLoadingKeepsEventLoopResponsive() {
+        QFETCH(QString, mode);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString engine = Fixture(temporary, "matching");
+        const QString entered = temporary.filePath(QStringLiteral("начало 空"));
+        const QString finished = temporary.filePath(QStringLiteral("конец 空"));
+        const QByteArray oldEntered = qgetenv("SEVENZIP_SLOW_CODEC_ENTERED");
+        const QByteArray oldFinished = qgetenv("SEVENZIP_SLOW_CODEC_FINISHED");
+        const QByteArray oldDelay = qgetenv("SEVENZIP_SLOW_CODEC_DELAY");
+        qputenv("SEVENZIP_SLOW_CODEC_ENTERED", entered.toUtf8());
+        qputenv("SEVENZIP_SLOW_CODEC_FINISHED", finished.toUtf8());
+        // Leave cold process startup headroom while still expiring during the
+        // native query. The normal/cancel/destruction rows need only 600ms.
+        qputenv("SEVENZIP_SLOW_CODEC_DELAY", mode == "deadline" ? "2100" : "600");
+        const auto restore = qScopeGuard([&] {
+            if (oldEntered.isNull())
+                qunsetenv("SEVENZIP_SLOW_CODEC_ENTERED");
+            else
+                qputenv("SEVENZIP_SLOW_CODEC_ENTERED", oldEntered);
+            if (oldFinished.isNull())
+                qunsetenv("SEVENZIP_SLOW_CODEC_FINISHED");
+            else
+                qputenv("SEVENZIP_SLOW_CODEC_FINISHED", oldFinished);
+            if (oldDelay.isNull())
+                qunsetenv("SEVENZIP_SLOW_CODEC_DELAY");
+            else
+                qputenv("SEVENZIP_SLOW_CODEC_DELAY", oldDelay);
+        });
+        auto probe = std::make_unique<ArchiveCodecProbe>();
+        ArchiveCodecProbeResult result;
+        int calls = 0;
+        QElapsedTimer elapsed;
+        elapsed.start();
+        qint64 previous = 0, maximumGap = 0;
+        QTimer heartbeat;
+        heartbeat.setInterval(10);
+        connect(&heartbeat, &QTimer::timeout, this, [&] {
+            const auto now = elapsed.elapsed();
+            maximumGap = qMax(maximumGap, now - previous);
+            previous = now;
+        });
+        heartbeat.start();
+        QVERIFY(probe->Start(
+            engine, QString::fromUtf8(SLOW_CODEC_FIXTURE),
+            [&](auto value) {
+                QCOMPARE(QThread::currentThread(), thread());
+                result = std::move(value);
+                ++calls;
+            },
+            mode == "deadline" ? 1500 : 5000));
+        QTRY_VERIFY(QFileInfo::exists(entered));
+        // Discovery remains owned and cancellable while the DLL query is running.
+        QVERIFY(probe->active());
+        QVERIFY(!QFileInfo::exists(finished));
+        QVERIFY(!probe->Start(engine, "unused", {}));
+        const auto processAndStart = elapsed.elapsed();
+        if (mode == "destroy") {
+            heartbeat.stop();
+            probe.reset(); // Joins the loader; no queued completion may escape destruction.
+            QVERIFY(QFileInfo::exists(finished));
+            QCoreApplication::processEvents();
+            QCOMPARE(calls, 0);
+            return;
+        }
+        if (mode == "cancel")
+            probe->Cancel();
+        QTRY_COMPARE(calls, 1);
+        heartbeat.stop();
+        qInfo() << "native discovery ms: process/start" << processAndStart << "total"
+                << elapsed.elapsed() << "heartbeat gap" << maximumGap;
+        QVERIFY2(maximumGap < 250, qPrintable(QString::number(maximumGap)));
+        QVERIFY(QFileInfo::exists(finished));
+        QVERIFY(!probe->active());
+        QCOMPARE(result.result, mode == "failure" ? E_FAIL : E_ABORT);
+        QVERIFY(!result.error.isEmpty());
+        if (mode != "failure")
+            QVERIFY(!result.catalog);
+        // Restart after joined cancellation/failure must deliver once again.
+        QVERIFY(probe->Start(engine, temporary.filePath("missing module"), [&](auto) { ++calls; }));
+        QTRY_COMPARE(calls, 2);
+        QVERIFY(!probe->active());
+    }
+
     void engineFailureAndMalformedVersion_data() {
         QTest::addColumn<QString>("mode");
         QTest::newRow("missing") << "missing";

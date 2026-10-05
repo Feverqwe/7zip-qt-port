@@ -120,6 +120,12 @@ ArchiveCodecProbe::~ArchiveCodecProbe() {
         process_.kill();
         process_.waitForFinished(3000);
     }
+    if (loader_) {
+        disconnect(loader_.get(), nullptr, this, nullptr);
+        // Native DLL entrypoints cannot be interrupted safely. Their immutable
+        // inputs/result and module leases must outlive the joined load.
+        loader_->wait();
+    }
 }
 
 bool ArchiveCodecProbe::Start(const QString &engine, const QString &module,
@@ -149,36 +155,59 @@ void ArchiveCodecProbe::Cancel() {
 }
 
 void ArchiveCodecProbe::Finish(int exitCode, QProcess::ExitStatus status) {
-    if (!active_)
+    if (!active_ || loader_)
         return;
-    deadline_.stop();
     const QByteArray remaining = process_.readAll();
     output_.append(remaining.left(qMax(0, 8192 - int(output_.size()))));
     ArchiveCodecProbeResult result;
     if (cancelled_ || timedOut_) {
-        result.result = E_ABORT;
-        result.error =
-            timedOut_ ? QtLocalText("7zz version detection timed out.",
-                                    "Истекло время определения версии 7zz.")
-                      : QtLocalText("Codec discovery cancelled.", "Поиск модуля форматов отменён.");
-    } else if (status != QProcess::NormalExit || exitCode != 0) {
+        Complete(std::move(result));
+        return;
+    }
+    if (status != QProcess::NormalExit || exitCode != 0) {
         result.error = QtLocalText("Could not determine the version of official 7zz.",
                                    "Не удалось определить версию официального 7zz.");
     } else if (const UInt32 version = EngineVersion(output_)) {
-        try {
-            const QStringList libraries = EngineLibraries(output_);
-            const QString module = explicitModule_ ? module_ : DeploymentModule(libraries, module_);
-            result.catalog = std::make_shared<ArchiveCodecCatalog>(module, version, libraries,
-                                                                   process_.program());
-            result.result = result.catalog->result();
-            result.error = result.catalog->error();
-        } catch (...) {
-            result.error = QtLocalText("Could not load codec metadata.",
-                                       "Не удалось загрузить сведения о форматах.");
-        }
+        const QStringList libraries = EngineLibraries(output_);
+        const QString module = explicitModule_ ? module_ : DeploymentModule(libraries, module_);
+        const QString engine = process_.program();
+        auto loaded = std::make_shared<ArchiveCodecProbeResult>();
+        // CCodecs::LoadDll/LoadDllsFromFolder/SetLibCodecs and runtime copying
+        // stay inside the existing catalog owner. Only their scheduling changes.
+        loader_.reset(QThread::create([loaded, module, version, libraries, engine] {
+            try {
+                loaded->catalog =
+                    std::make_shared<ArchiveCodecCatalog>(module, version, libraries, engine);
+                loaded->result = loaded->catalog->result();
+                loaded->error = loaded->catalog->error();
+            } catch (...) {
+                loaded->error = QtLocalText("Could not load codec metadata.",
+                                            "Не удалось загрузить сведения о форматах.");
+            }
+        }));
+        connect(loader_.get(), &QThread::finished, this, [this, loaded] {
+            loader_->wait();
+            loader_.reset();
+            Complete(std::move(*loaded));
+        });
+        loader_->start();
+        return;
     } else
         result.error = QtLocalText("The 7zz version banner is missing or invalid.",
                                    "Строка версии 7zz отсутствует или некорректна.");
+    Complete(std::move(result));
+}
+
+void ArchiveCodecProbe::Complete(ArchiveCodecProbeResult result) {
+    deadline_.stop();
+    if (cancelled_ || timedOut_) {
+        result.catalog.reset();
+        result.result = E_ABORT;
+        result.error =
+            timedOut_
+                ? QtLocalText("Codec discovery timed out.", "Истекло время поиска модуля форматов.")
+                : QtLocalText("Codec discovery cancelled.", "Поиск модуля форматов отменён.");
+    }
     active_ = false;
     const auto completion = std::move(completion_);
     if (completion)

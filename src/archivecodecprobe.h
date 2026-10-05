@@ -3,6 +3,7 @@
 #include "archivecodeccatalog.h"
 #include <QObject>
 #include <QProcess>
+#include <QThread>
 #include <QTimer>
 #include <functional>
 #include <memory>
@@ -17,6 +18,7 @@ struct ArchiveCodecProbeResult {
 class ArchiveCodecProbe final : public QObject {
     QProcess process_;
     QTimer deadline_;
+    std::unique_ptr<QThread> loader_;
     QByteArray output_;
     QString module_;
     std::function<void(ArchiveCodecProbeResult)> completion_;
@@ -25,6 +27,7 @@ class ArchiveCodecProbe final : public QObject {
     bool timedOut_ = false;
     bool explicitModule_ = false;
     void Finish(int exitCode, QProcess::ExitStatus status);
+    void Complete(ArchiveCodecProbeResult result);
 
   public:
     explicit ArchiveCodecProbe(QObject *parent = nullptr);

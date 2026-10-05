@@ -14,6 +14,17 @@ unit definitions; each QObject header has one generated moc owner. Incomplete
 source groups are configure errors rather than silently mixed implementations.
 Borrowed C sources keep their C compiler and required engine/module variants.
 
+ArchiveCodecProbe owns both the asynchronous version process and a joined codec
+loader thread. The loader captures immutable module/version/library/engine inputs
+and constructs the existing ArchiveCodecCatalog, including its private runtime
+image and original CCodecs loading calls. It touches no QProcess, probe flags or
+widgets. The probe receives its result on its QObject thread only after joining;
+ArchiveBackend retains its queued catalog publication. Cancel/deadline discard
+the completed catalog. Native DLL entrypoints cannot be interrupted safely, so
+cancel and destruction join any active load before releasing module leases.
+The unchanged five-second discovery deadline now also covers native loading;
+delivery can follow the deadline while an uninterruptible entrypoint finishes.
+
 Archive update preparation belongs to ArchiveBackend. Its CopyPrepare phase
 runs the retained CCopyStateIO::MyCopyFile in QtArchiveCopyPreparation; source
 mutation/plan and compatibility Add/Delete/Rename/Replace consumers resume their
