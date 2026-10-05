@@ -216,6 +216,38 @@ an independent guest copy passes all6 tests in0.046s without modifying the
 original source snapshot. Original Windows full failure is retained; this
 localized fixture check does not accept its whole gate.
 
+## P3-04.2 — Windows Release runtime ZIP and relocated consumers (2026-10-05)
+
+Frozen source snapshot `20261005T191436Z-27c52b66`, SHA256
+`619deba1803cc77b74fe2ec6b87589f46b86bfde21b598f978a2d7d893c8a50b488d7`,
+builds a separate `build/package-release` tree with Release/BUILD_TESTING=OFF,
+Windows11 x64/MSVC19.44/Qt6.12.0. It reuses the original official engine/module
+and SFX inputs at upstream `https://github.com/ip7z/7zip.git` commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. No borrowed body or package
+implementation changed. CMake install and scripts/package.py follow the Release
+workflow: runtime application/entrypoints, shell DLL, official7z.exe/7z.dll,
+SFX, Qt/plugin closure, imported VC143 CRT DLLs and original notices. The CRT
+installer and source/build/debug payload are excluded.
+
+`sevenzip-desktop-0.1.0-windows-x86_64.zip` is28,224,845 bytes, SHA256
+`22e50efb61cf3681de86684f9ad3f4f5150ad645f5534339f14077a0280d88f7`.
+Thirteen original package/build/smoke artifacts have guest/local SHA256
+verification. The local ZIP payload guard and byte-exact own-code MIT notice
+comparison pass. Private Qt6.12 source/checksum/ICU notice inputs were separately
+checksum-verified; VC143 notices accompany the imported app-local CRT closure.
+
+An interactive session1 smoke extracts a disposable copy to a fresh Unicode/
+spaced location, sets a new USERPROFILE/APPDATA/LOCALAPPDATA/settings file and
+limits child PATH to Windows/System32, removing Qt/SDK/codec overrides. Actual
+packaged7zG Add/Test/Extract succeeds with Unicode/spaced names and exact binary
+bytes; packaged7z lists formats and the resulting ZIP, using its adjacent7z.dll.
+Damaged ZIP and removal of that disposable7z.dll each return source fatal exit2;
+all eight smoke scenarios pass. The original runtime ZIP is retained unchanged.
+No shell registration, association, installer, publish or upstream write occurs.
+This accepts bounded Release packaging/relocation on the existing runner, not
+a new clean OS image, global native UX or final P3-04/P3-06 acceptance. macOS
+relocated-package and final three-platform acceptance remain mandatory.
+
 ## P3-03.3.4 — callback property display (accepted component, 2026-10-05)
 
 Source: https://github.com/ip7z/7zip.git, full commit
