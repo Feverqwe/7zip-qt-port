@@ -44,7 +44,7 @@ new review/remediation, not another feature implementation.
 | U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks replace redundant native-writer fallback plans | Native writer/index/path/ADS proof, source properties lifecycle, prefix publication, errors/Cancel and actual commands verified on three OS; concrete absent-writer transport fallback retained | Resolved P2-11.5 |
 | V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreated names | Retained source-link metadata now owns accounting and volume/readiness decisions; Split outer streams and absent-native fallback preserved. Batch/volume/SFX/extract checked on three OS | Resolved P2-11.3 |
 | W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*`, `qtworkerprogress.*` | Original ProgressDialog2.cpp CProgressSync owns worker flags/checkpoints through a Core-only target; optional source event preserves single-worker immediate wake | Eight public checkpoint rows and direct consumers pass on all three OS; native dialog polling, atomic cancel/publication and joined lifetime retained | Resolved P2-11.6 |
-| F: `filetransferoperation.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Review upstream recursion/deletion bodies and extract cohesive Qt transaction boundary where needed, retaining no-overwrite/cancel/link/failure-injection behavior; direct file and window consumers | Pending complete review |
+| F: `filetransferoperation.*`, `qtfiletransfertransaction.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Original recursion/deletion bodies reviewed; integrated transaction extraction preserves existing policies and sole worker state. Direct/window consumers and object ownership verified on three OS | Resolved P2-11.7 |
 | B: `CMakeLists.txt`, `cmake/SharedPortObjects.cmake`, app/backend/dialog targets | Same authoritative production sources were recompiled per test; late source/link cloning and test TU macros require separate ownership | Twelve shared production groups plus Windows GUI entry; definitions, resources, ABI/platform links, late consumers and sole moc/source ownership verified on all three OS | Resolved P2-11.4 |
 
 ### Retained adapter review and remaining coverage
@@ -475,6 +475,65 @@ platform evidence. Final Linux d20a669f passes formatting, all-target build and
 the explicit Windows-only association skip. All 626 artifacts are SHA-256
 verified locally and on the guest. The subsequent Windows runtime and final
 Linux direct-consumer checks pass as recorded at this section's acceptance.
+
+### P2-11.7 — filesystem transaction boundary (accepted, 2026-10-05)
+
+Reviewed original CPP/7zip/UI/FileManager/FSFolderCopy.cpp CopyFolder,
+CopyFile_Ask and CCopyStateIO, FSFolder.cpp CFsFolderStat::Enumerate, and
+CPP/Windows/FileDir.cpp RemoveDirWithSubItems/RemoveDirAlways_if_Empty, including
+their callers and dependencies, at https://github.com/ip7z/7zip.git, full commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. The existing adapted FSFolderCopy
+remains authoritative for copy recursion, overwrite callbacks and progress.
+No borrowed body, notice, dependency revision or baseline is changed here.
+
+The original immediate per-entry Move workflow has no whole-batch staging,
+publication and rollback equivalent. Its statistics traversal ignores enumeration
+errors and lacks the required strict source-type preflight. Recursive directory
+deletion would delete skipped merge sources; the single-directory empty remover
+does not supply the postorder written-source ledger cleanup. These concrete
+differences justify retaining the existing narrow Qt policies rather than
+replacing them with algorithms having different safety semantics.
+
+QtFileTransferTransaction owns the moved filesystem
+transaction bodies, with named target-preflight and completion/rollback phases.
+FileTransferOperation retains QThread lifetime, immutable input, cancellation,
+overwrite waiting and public signals. One stack transaction references that
+worker through a private friendship; it does not duplicate mutable operation
+state. Synchronous source callbacks remain within its lifetime. The per-item
+stage/publish loop remains together to preserve its early exits and rollback
+ordering; its size is a reviewed exception, not a copied new workflow.
+All 16 original source consumers register the new implementation/header pair;
+the shared production FileTransfer owner now includes that pair, so the moved
+transaction has one authoritative object across app/window/direct consumers.
+After phase extraction, file_transfer/file_transfer_direct/language_file_transfer
+build and pass 3/3 in 0.22s on macOS. Full isolated validation and integration
+with the shared production object owner, Windows/Linux and window consumers
+remain pending. The isolated full Mac gate passes 237/238 in 101.95s; only
+shell_update_window fails because this checkout has no official SFX module.
+Preparing it from the pinned read-only source, then repeating that consumer,
+sfx_creation/sfx_lifecycle and the three direct transfer suites passes 6/6 in
+8.40s without source changes. FileTransfer19/Direct6/Language12/FSFolderCopy11
+Qt rows passed in the full run. The extraction is now integrated on the main
+branch after the separately accepted B/U/W commits. Main file_transfer,
+file_transfer_direct, language_file_transfer, ui_copy_same and
+worker_window_progress pass 5/5 in 2.33s. The integrated unsandboxed macOS
+formatting/all-target build/full gate passes 240/240 in 100.34s; its LastTest
+evidence is retained separately from subsequent focused runs. Fresh full
+snapshot f9eb439e passes Linux formatting/all-target build and 236/236 in
+189.27s; 626 guest/local artifacts are SHA256 verified. Mac135 and Linux133
+root translation units each compile once, including the moved transaction.
+Actual FileTransfer19/Direct6/Language12/FSFolderCopy11 and MainWindowOperations34
+Qt rows pass without skips on both platforms. Windows f9eb439e passes formatting
+and all-target build with 135 root TUs compiled once. All affected suites pass:
+FileTransfer18/Direct6/Language12/FSFolderCopy11 and MainWindowOperations34 have
+no failures/skips; the Windows-only source metadata12/ADSUI5 also pass.
+The full run finishes 245/246 in 997.00s: archive_external_edit alone fails its
+editor-yes prompt wait. Repeating that suite on the unchanged snapshot and desktop
+session passes 1/1 in 10.80s, with all 15 Qt rows and no skips. Original 646 and
+separate retry 647 guest/local artifacts are SHA256 verified; the initial failure
+is not overwritten or described as a clean full Windows gate. No code or timeout
+change was made for the retry. This accepts F's verified boundary and consumers;
+whole-inventory acceptance and a stable final platform gate remain P2-11/P3.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

@@ -117,7 +117,7 @@ sevenzip_share_port_objects(sevenzip_split_dialog src/CPP/7zip/UI/FileManager/Sp
 sevenzip_share_port_objects(sevenzip_panel_split src/CPP/7zip/UI/FileManager/PanelSplitFile.h
     src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp)
 sevenzip_share_port_objects(sevenzip_file_transfer src/filetransferoperation.h
-    src/filetransferoperation.cpp)
+    src/filetransferoperation.cpp src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h)
 sevenzip_share_port_objects(sevenzip_filesystem_scan src/filesystemscanner.h
     src/filesystemscanner.cpp)
 sevenzip_share_port_objects(sevenzip_volume_operations src/volumeoperations.h

@@ -1163,8 +1163,13 @@ lifecycle for permanent deletion. `IQtTrashService` delegates ordinary Delete
 to the desktop's Trash/Recycle Bin; Qt refreshes and restores source selection
 after each result. A test-only callback driver remains in `tests/`.
 
-`FileTransferOperation` owns copying/moving on a worker and the transaction
-wrapper that stages, publishes and rolls back targets. `CFSFolder::CopyTo`,
+`FileTransferOperation` owns the joined worker, immutable transfer inputs,
+cancellation, overwrite interaction and public result/progress signals.
+Its stack-owned `QtFileTransferTransaction` stages, publishes and rolls back
+filesystem targets, with separate target-preflight and completion phases.
+A private friendship lets the transaction use that existing worker state and
+emit its signals; no second cancellation/result owner is introduced.
+`CFSFolder::CopyTo`,
 `CopyFileSystemItems`, `CCopyState`, `CopyFolder` and `CopyFile_Ask` in
 `FSFolderCopy.cpp` own source copy/move control flow and callbacks;
 `CCopyStateIO::MyCopyFile` is the portable byte-transfer branch.
