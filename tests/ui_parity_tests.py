@@ -32,17 +32,18 @@ void PlainFunction() { }
             self.skipTest("Extraction requires clang/gcc; comparison does not")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "ids.h").write_text("#define IDD_TEST 100\n#define IDC_PATH 101\n")
+            (root / "ids.h").write_text("#define IDD_TEST 100\n#define IDC_PATH 101\n",
+                                      encoding="utf-8")
             (root / "common.rc").write_text(
                 '#include <windows.h>\n#define X 8\n#define W (100 + X)\n'
-                '#define BUTTON(t,id,x) PUSHBUTTON t,id,x,40,30,12\n')
+                '#define BUTTON(t,id,x) PUSHBUTTON t,id,x,40,30,12\n', encoding="utf-8")
             resource = '#include "ids.h"\n#include "common.rc"\n'
             resource += 'IDD_TEST DIALOG 0,0,W,80 STYLE WS_POPUP FONT 8,"Font"\n'
             resource += 'CAPTION "Unicode окно"\nBEGIN\n'
             resource += 'COMBOBOX IDC_PATH,X,10,W-X,70,CBS_DROPDOWN | WS_TABSTOP\n'
             resource += 'BUTTON("OK",IDOK,20)\n'
             resource += '#ifdef UNDER_CE\nLTEXT "CE",IDC_CE,0,0,10,10\n#endif\nEND\n'
-            (root / "dialog.rc").write_text(resource)
+            (root / "dialog.rc").write_text(resource, encoding="utf-8")
             text, dependencies, opaque = preprocess(root, "dialog.rc", compiler)
             dialog = parse_dialogs(text)[0]
             self.assertEqual(dialog["id"], "IDD_TEST")
@@ -112,7 +113,7 @@ class CompareTests(unittest.TestCase):
              "enabled": True, "bounds": [8, 20, 80, 20]}]}
 
     def check(self):
-        Path(self.temp.name, "normal.json").write_text(json.dumps(self.report))
+        Path(self.temp.name, "normal.json").write_text(json.dumps(self.report), encoding="utf-8")
         return compare(self.reference, self.contract, self.temp.name)
 
     def test_matching_report_passes(self):
@@ -167,13 +168,13 @@ class CompareTests(unittest.TestCase):
         hidden.update(name="field-hidden", reports=["hidden.json"])
         hidden["assert"] = [{"id": "IDC_PATH", "property": "visible", "equals": False}]
         self.contract["states"].append(hidden)
-        Path(self.temp.name, "hidden.json").write_text(json.dumps(self.report))
+        Path(self.temp.name, "hidden.json").write_text(json.dumps(self.report), encoding="utf-8")
         self.report["children"][1]["visible"] = True
         self.contract["states"][0]["assert"].append(
             {"id": "IDC_PATH", "property": "visible", "equals": True})
         self.assertTrue(self.check()["passed"])
         # A broken toggle leaves the field visible in the supposedly hidden state.
-        Path(self.temp.name, "hidden.json").write_text(json.dumps(self.report))
+        Path(self.temp.name, "hidden.json").write_text(json.dumps(self.report), encoding="utf-8")
         self.assertFalse(self.check()["passed"])
 
 

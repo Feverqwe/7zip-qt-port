@@ -101,7 +101,7 @@ def preprocess(root, resource, compiler):
         copy(root / resource)
         command = [compiler, "-E", "-P", "-x", "c", "-undef", "-nostdinc",
                    "-DRC_INVOKED", str(stage / resource)]
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        result = subprocess.run(command, capture_output=True, encoding="utf-8", check=True)
         return result.stdout, dependencies, sorted(opaque)
 
 

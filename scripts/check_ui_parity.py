@@ -160,12 +160,14 @@ def main():
     try:
         if args.command == "extract":
             result = extract(args.upstream, args.resource, args.source, args.compiler)
-            Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+            Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+                                         encoding="utf-8")
             print(f"Extracted {len(result['dialogs'])} dialog(s) to {args.output}")
             return 0
         result = compare(read(args.reference), read(args.contract), args.reports)
         if args.output:
-            Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+            Path(args.output).write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n",
+                                         encoding="utf-8")
         for error in result["errors"]:
             print(error, file=sys.stderr)
         print(f"{'PASS' if result['passed'] else 'FAIL'}: {len(result['checked'])} reports; "

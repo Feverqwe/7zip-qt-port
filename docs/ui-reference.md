@@ -17,6 +17,10 @@ compares it with a reviewed contract and the existing Qt widget JSON reports.
 It runs without Windows. Python 3.9+ and the standard library are sufficient
 for comparison; extraction additionally needs clang or GCC on PATH (or
 `--compiler /path/to/compiler`). MSVC's preprocessor is not supported yet.
+Resource inputs, staged preprocessor inputs/output and generated JSON use UTF-8
+explicitly, including on Windows with a different system code page.
+`ui_parity_tool` checks that a Unicode caption survives preprocessing; this
+regression runs on Windows, macOS and Linux.
 
 Maintained contracts cover Copy/Move (six upstream controls), the archive
 password prompt (all five controls) and the progress presentation subset (all
