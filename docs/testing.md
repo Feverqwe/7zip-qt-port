@@ -2291,13 +2291,21 @@ consumers проверяются `copy_dialog`, `extract_dialog`, `volume_operat
 `QT_QPA_PLATFORM=offscreen`, без обращения к пользовательским файлам.
 Нативное оформление и Windows super/device path требуют проверки на ОС.
 
-P1-11.3: `network_folder` подставляет сетевой mount с Unicode/пробелами,
+P1-11.3: Unix `network_folder` подставляет сетевой mount с Unicode/пробелами,
 проверяет source `CNetFolder` properties/binding и отказ для исчезнувшего
 или недоступного пути. `root_navigation` проходит root → «Сеть» → Back,
 проверяет доступность Parent и пишет normal/compact widget JSON. Соседние
-`volume_mount`/`panel_path` проверяют shared navigation. Live network и
-credentials в тестах не используются; Windows/Linux runtime остаётся
-непроверенным.
+`volume_mount`/`panel_path` проверяют shared navigation. Unix fixture не
+использует live network или credentials.
+
+P3-03.5: Windows target выбирает отдельный native fixture вместо прежнего
+required skip. Он создаёт временный локальный SMB share с доступом только
+текущего SID, проверяет исходный WNet/CNetFolder → CFSFolder, UNC bytes и
+исчезновение ресурса. Нужны запущенные LanmanServer/LanmanWorkstation и token
+с правом создания share; внешний сервер, пользовательские credentials и
+изменение policy не нужны. Windows Qt6.12 snapshot27c52b66 прошёл этот
+native scenario без skips; исходный focused log сохранён отдельно от следующей
+menu reference проверки. Это не проверка remote credentials/UI; см. audit.
 
 P3-01: `upstream_baseline` проверяет exact-byte отказ и old→new report для
 адаптированного и неизменённого модуля в локальных временных Git fixtures.

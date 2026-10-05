@@ -342,6 +342,56 @@ the snapshot's whole gate is still running. The original failure remains
 historical evidence. This accepts the Editor fixture only: parent P3-03 and
 rendered Windows pixel parity remain open.
 
+## P3-03.5 — native Windows network fixture (accepted component, 2026-10-05)
+
+Reviewed upstream `CPP/7zip/UI/FileManager/NetFolder.cpp/.h`:
+`CNetFolder::Init`, `LoadItems`, `GetProperty`, `BindToFolder`,
+`BindToParentFolder`; dependencies are `CPP/Windows/Net.cpp/.h` resource
+information/enumeration and `FileManager/FSFolder.cpp::CFSFolder::Init`.
+Baseline is `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from
+https://github.com/ip7z/7zip.git. Existing Windows bodies remain authoritative;
+no production body, dependency or omitted branch is changed by this fixture.
+
+CMake now selects `native_network_folder_tests.cpp` on Windows and the existing
+mount-provider fixture on Unix. The native fixture creates a uniquely named
+local SMB resource containing a Unicode/spaces filename and binary bytes;
+its share descriptor grants access only to the current user SID. It exercises
+original WNet server enumeration, share properties and binding to CFSFolder,
+then reads the actual UNC bytes. Deleting only the owned share tests stale
+binding refusal and refreshed enumeration, while the local bytes remain intact.
+Scope guards clean the share after failed assertions. It uses no user archive,
+external server, credential prompt or network/security-policy change.
+
+Upstream Net.cpp offers client resource/connection wrappers, without local
+share creation/deletion or a current-user SID extractor. SecurityUtils.h's
+CAccessToken exposes privilege adjustment but keeps its handle private. These
+test-specific setup/cleanup and SID/SDDL calls therefore use the Windows SDK;
+they add no second application network implementation.
+
+This replaces a required Windows QSKIP, not an optional applicability branch.
+It requires running LanmanServer/LanmanWorkstation and a token allowed to create
+the isolated local share. Read-only runner inspection confirmed both services
+running. The fixture's single scenario includes creation, observation and
+cleanup together so every failure keeps the ownership guard in scope.
+macOS focused `network_folder` 1/1 PASS verifies the retained Unix fixture;
+final unsandboxed formatting/all-target/full244/244 PASS102.07s.
+Fresh interactive Windows snapshot `20261005T191436Z-27c52b66`, SHA256
+`619deba1803cc77b74fe2ec6b87589f46b86bfde21b598f978a2d7d893c8a214`,
+source8394704 plus this fixture, passes network1/1 in1.10s (3 Qt cases,
+0fail,0skip). The original focused log is retained with guest/local SHA256
+verification, alongside8 final reference artifacts and5 extra artifacts.
+The first snapshot2f492305 failed compilation before share creation because
+NetShareDel's SDK signature needs mutable LPWSTR; wstring::data fixes both
+calls. Original logs remain. The successful network snapshot's combined
+runner status remains failed because the later reference target exhausted disk.
+Its independent same-SHA capacity retry passes native menu1/1 in10.60s
+(3 Qt cases,0fail,0skip) after restoring32.7GB free space. Only generated
+build/dev outputs of two completed task snapshots were removed, after
+reverifying1293 retained evidence files; source/runtime/log/evidence remain.
+This accepts the bounded
+native network scenario, not a new whole Windows gate or remote credentials/UI.
+Parent P3-03 stays open for stable performance and remaining platform scopes.
+
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
 P3-03.3.2 accepts only the native_open_commands modal fixture correction. Frozen

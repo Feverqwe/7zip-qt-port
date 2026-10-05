@@ -10,9 +10,6 @@ class NetworkFolderTests final : public QObject {
     Q_OBJECT
   private slots:
     void mountedShareCanOpenThenDisappear() {
-#ifdef _WIN32
-        QSKIP("Windows network service requires platform runtime verification");
-#else
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString share = fixture.filePath(QStringLiteral("общий ресурс с пробелом"));
@@ -51,7 +48,6 @@ class NetworkFolderTests final : public QObject {
         QCOMPARE(network->LoadItems(), S_OK);
         QCOMPARE(network->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(0));
-#endif
     }
 };
 
