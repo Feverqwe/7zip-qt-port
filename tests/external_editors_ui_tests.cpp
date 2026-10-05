@@ -68,7 +68,10 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
-                QCOMPARE(dialog.size(), size);
+                // Native styles determine the six-page sheet's minimum size.
+                // Keep checking actual field/footer clipping at the compact request.
+                QCOMPARE(dialog.width(), size.width());
+                QCOMPARE(dialog.size(), size.expandedTo(dialog.minimumSize()));
                 for (const char *name : {"viewerCommand", "editorCommand", "diffCommand"}) {
                     auto *edit = dialog.findChild<QLineEdit *>(name);
                     auto *browse = dialog.findChild<QPushButton *>(QString(name) + "Browse");

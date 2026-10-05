@@ -814,7 +814,12 @@ OK/Cancel/Apply; Apply is initially disabled, tracks source modified flags and
 resets after applying. Cancel after Apply retains committed values. Browse Cancel
 preserves the command; selecting a program replaces it and drops old parameters.
 `external_editors_ui` checks unclipped fields/buttons, separated controls and
-footer at 640×390/520×380 and writes external-editor-options widget JSON.
+footer at requested 640×390/520×380 and writes external-editor-options widget JSON.
+Width remains exact; height may expand to the six-page sheet's native minimum.
+On 2026-10-05 Qt6.12 Windows reports 640×390/520×390; macOS reports
+640×390/520×380. All command fields, Browse buttons and footer remain visible
+and separated in both states. The test compares the actual size to the requested
+size expanded by `minimumSize`, while retaining the clipping assertions.
 These reports validate Qt geometry and resource structure; rendered Windows
 parity remains unverified.
 

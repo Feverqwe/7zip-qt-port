@@ -318,6 +318,30 @@ row,9810/43ms for disk-normal and9617/44ms,9760/42ms for archive rows. Thus JSON
 writing does not explain the timing failure. These measurements do not establish
 that the Enter fix resolves Windows timing. All thresholds remain unchanged.
 
+## P3-03.6 — Editor fixture native minimum (accepted, 2026-10-05)
+
+Reference: `CPP/7zip/UI/FileManager/EditPage2.rc`, `EditPage.cpp`,
+`OptionsDialog.cpp` and `CPP/Windows/Control/PropertyPage.cpp` at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip.git. Six original property pages determine the
+sheet minimum. No production layout/body or copied dependency changes.
+The original Windows whole gate rejected a compact test expecting exactly
+520×380 while Qt's native sheet required 520×390. The test now compares the
+requested size expanded by `minimumSize`, retaining exact width and every
+field/Browse/footer visibility and separation assertion.
+
+macOS focused Editor/package2/2 PASS and the final all-target unsandboxed
+`scripts/check.sh`244/244 PASS82.35s. Fresh interactive Windows snapshot
+`20261005T183845Z-a2c659ac`, source6dab845 plus the fixture, archive SHA256
+`ea78c97f31fec0872c1bd01f5011c7fb0a9156234409ae2d073537e75dd1836c`,
+passes `external_editors_ui` (10 Qt cases,0fail,0skip). Its current-build JSON
+reports640×390/520×390 with unclipped controls; macOS reports640×390/520×380.
+Saved focused log and reports have guest/local SHA256 verification. The
+12-test Windows focused set has11passes and a large-list timing failure198.06s;
+the snapshot's whole gate is still running. The original failure remains
+historical evidence. This accepts the Editor fixture only: parent P3-03 and
+rendered Windows pixel parity remain open.
+
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
 P3-03.3.2 accepts only the native_open_commands modal fixture correction. Frozen
