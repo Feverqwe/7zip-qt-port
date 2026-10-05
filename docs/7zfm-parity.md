@@ -17,7 +17,7 @@ Qt публикует большие списки асинхронно отде�
 prefix без копирования parent stack; Qt не добавляет перед ним пустой separator.
 Native resource остаётся владельцем engine path после ухода источника из архива.
 Normal/compact JSON и public regressions проверены на macOS, Linux и нативном
-Windows desktop. Full macOS проходит; fresh full Linux/Windows выполняются.
+Windows desktop. Full macOS и Linux проходят; fresh full Windows выполняется.
 Rendered Windows parity этих состояний пока не подтверждена.
 
 ## P3-05.1 — Unix source startup/dispatch (принят scope callers, 2026-10-05)

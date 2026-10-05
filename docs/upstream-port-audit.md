@@ -127,7 +127,9 @@ lists visible/enabled at normal/compact sizes. Windows4096-row benchmarks retain
 exact publication count, ready9.869–11.178s and GUI gap157–200ms, within unchanged
 15s/250ms limits. The18 production/test/CMake inputs match frozen snapshot bytes.
 This accepts the callback/keyboard/publication component P3-05.4. Fresh full
-Linux/Windows gates continue under P3-03; parent P3-05 remains open for remaining
+Linux passes241/241 in189.39s, with636 guest/local SHA-verified artifacts;
+its platform skips are Windows-only metadata/reparse/registry contracts.
+The fresh full Windows gate continues under P3-03; parent P3-05 remains open for remaining
 body/dependency scope. Rendered Windows parity for these newly exposed states
 remains unverified.
 
@@ -602,6 +604,14 @@ recorded separately. The unchanged external-codec test passes a separate retry
 1/1 in4.84s; this does not establish cold-start stability. P3-03.7 is accepted
 as a bounded notification-lifetime fix; parent P3-03 stable performance and
 whole-platform acceptance remain open. No timeout or coverage was weakened.
+
+The P3-05.4 snapshot81d1be19 subsequently passes the same affected Windows
+scanner/key/large-list/network consumers9/9 in191.04s, all0skip. Its production
+inputs equal committed42aacc9; macOS full245/245 and Linux full241/241189.39s
+pass (636 Linux artifacts guest/local SHA-verified). Native Windows focused
+large-list publishes exactly4096 rows in each case, ready9869..11178ms and
+maximum gaps157..200ms under unchanged limits. Full Windows251 is still running;
+this is no whole-platform acceptance. Historical failures above remain intact.
 
 Current-kit native System-menu reference also passes on snapshot27c52b66 after
 a separate capacity retry on the same source SHA:1/1 in10.60s,3Qt/0fail/0skip.

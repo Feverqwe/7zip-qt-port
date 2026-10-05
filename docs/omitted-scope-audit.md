@@ -76,6 +76,22 @@ The RefreshListCtrl selection stage and actual Qt row publication remain
 separate presentation phases, now connected for the destination without
 canceling its work when source focus is restored.
 
+Review on 2026-10-06 identifies another active body gap, owned by P3-05.5:
+original Agent.cpp::GetArcProp resolves kpidErrorType from codec names for both
+an opened CArc and the final NonOpen level, and kpidType calls GetTypeOfArc.
+Current Agent.cpp omits both error-type branches and uses one ArchiveType;
+Agent.h::GetTypeOfArc likewise returns that transport type. Native opening now
+retains an exact catalog and CArchiveLink, so the old unavailable-codec comments
+do not establish an N/A disposition. QtArchiveFileResource::ConfigureArc maps
+FormatIndex only when a caller supplies CCodecs; it does not carry native
+ErrorInfo/NonOpen metadata. QtArchiveBatchOpen and Agent::Init have different
+index-owner boundaries. PanelMenu property levels and FileFolderPluginOpen
+warnings consume these properties; source_properties currently checks nonempty
+type and synthetic NonOpen flags, not real rejected-format diagnostics. The
+required component must review original bodies, native link levels, catalog
+lifetime/replacement and process-only fallback together before adapting them;
+copying indices between catalogs is not a valid repair.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
