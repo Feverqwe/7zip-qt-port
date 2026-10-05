@@ -303,14 +303,19 @@ existing history address after key consumption. Local focused navigation/key/
 large-list consumers pass3/3 in8.42s. An initial full gate after removing the
 direct signal connection failed six existing signal consumers; its original log
 is retained. Restoring that connection gives sequential unsandboxed macOS arm64
-Qt6.12.0 formatting/all-target/full244/244 PASS91.04s. Fresh Linux/Windows
-validation and Windows performance acceptance remain pending. Fresh Linux
+Qt6.12.0 formatting/all-target/full244/244 PASS91.04s. Windows performance
+acceptance remains pending. Fresh Linux
 snapshot `20261005T182031Z-beeaa1cf`, SHA256
 `2cba1666a42e6c90b3b203ee8243ceb217dd60f7fb704561be3ba294bc7a95c1`,
 passes10/10 focused consumers in21.39s and formatting/all-target/full240/240
 in182.39s;626 original guest/local artifacts are SHA256-verified.
-This accepts the bounded address-key component on macOS and its Linux consumers;
-it does not accept parent P3-03 or claim a passing Windows performance result.
+Fresh interactive Windows snapshot `20261005T183845Z-a2c659ac`, SHA256
+`ea78c97f31fec0872c1bd01f5011c7fb0a9156234409ae2d073537e75dd1836c`,
+passes navigation/key consumers and all-target/full249/249 in935.02s;
+647 original guest/local artifacts are SHA256-verified. The earlier focused
+set11/12 fails198.06s on the unchanged large-list deadline, so the combined
+runner result remains failed. This accepts the bounded address-key component
+on three platforms; it does not accept parent P3-03 or stable Windows timing.
 
 The original Windows Qt6.12 snapshot3ebcd2be focused7/8 fails131.84s, with only
 disk-compact exceeding15s. Diagnostic ready/report times are18698/41ms for that
@@ -338,7 +343,9 @@ passes `external_editors_ui` (10 Qt cases,0fail,0skip). Its current-build JSON
 reports640×390/520×390 with unclipped controls; macOS reports640×390/520×380.
 Saved focused log and reports have guest/local SHA256 verification. The
 12-test Windows focused set has11passes and a large-list timing failure198.06s;
-the snapshot's whole gate is still running. The original failure remains
+the snapshot's whole gate subsequently passes249/249 in935.02s with647
+guest/local SHA256-verified artifacts. Combined runner status remains failed
+because of its original focused failure. The original failure remains
 historical evidence. This accepts the Editor fixture only: parent P3-03 and
 rendered Windows pixel parity remain open.
 
@@ -393,6 +400,45 @@ native network scenario, not a new whole Windows gate or remote credentials/UI.
 Parent P3-03 stays open for stable performance and remaining platform scopes.
 
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
+
+Latest Qt6.12 Windows snapshot a2c659ac passes its whole249/249 gate935.02s,
+with647 guest/local SHA256-verified artifacts. Its earlier focused11/12 set
+fails198.06s on disk-normal: ready18651ms/report43ms/max GUI gap415ms at0rows.
+The whole gate's four ready times are9457/9247ms (disk normal/compact) and
+9612/9643ms (archive), with maximum gaps194/197/141/148ms; LargeList has14Qt
+cases,0fail,0skip. Thus a whole passing run does not establish cold-run
+stability. Its remaining three Qt skips are two POSIX-only fixtures and the
+required Windows network branch. Native network replacement is P3-03.5.
+The benchmark now also records first/last public row publication times and the
+number of inserted rows, through the existing model signal; no internal test
+access or deadline changes. Same frozen Windows27c52b66 diagnostic run fails
+1/1 in99.69s: disk-normal publishes8192 rows for4096 items, first41ms,
+last18526ms, ready18718ms, maximum gap396ms at0rows. The other three cases
+publish4096 rows each, ready9479..10114ms, maximum gaps150..199ms. All17
+final artifacts are guest/local SHA256-verified. Separate diagnostic binaries
+reuse its objects with two private Qt presentation objects carrying logs;
+they preserve the frozen source and original binaries. A fresh isolated
+TEMP/work-directory reproduction identifies native OnTimer→reload after
+the first publication; no portable-signature mismatch is logged. A process
+with TEMP outside the startup folder passes its single case in9391ms.
+This is diagnostic evidence, not a performance fix or acceptance.
+Additional public address/history/removal counters have scoped observation
+lifetimes. macOS final formatting/all-target/full244/244 PASS103.95s;
+the intermediate observer-lifetime SIGBUS and two focused timing failures
+remain unaccepted intermediate results. Windows validation of these extra
+counters remains pending.
+
+Current-kit native System-menu reference also passes on snapshot27c52b66 after
+a separate capacity retry on the same source SHA:1/1 in10.60s,3Qt/0fail/0skip.
+The original combined job's disk-full link failure and the first retry's cmd
+path error remain recorded; their statuses are not overwritten. The pinned
+original7zFM executable SHA256 is
+`e0a75075331dcec383f1e0af567fbba8053b0b1e26edf2815b255c8a50b488d7`.
+Its source makefile/FM.cpp and private registry-entry adapter provenance are
+saved in reference.json. Runtime native/raw/Qt21-row menu state comparisons,
+96DPI Segoe UI font data and both affected PNGs are reviewed; Qt style spacing
+remains the documented adaptation. This does not accept other rendered dialogs
+or the new whole250-test gate. [Reference procedure](windows-ui-reference.md#pinned-runtime-system-menu-reference).
 
 P3-03.3.2 accepts only the native_open_commands modal fixture correction. Frozen
 31754f94 full gate timed out because its one-shot observer could precede the

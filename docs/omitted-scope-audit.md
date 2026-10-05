@@ -63,6 +63,18 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+Review on 2026-10-05 also found an active two-panel omission. Upstream
+`FileManager/PanelKey.cpp::CPanel::OnKeyDown` invokes `OnSetSameFolder` for
+Alt-Up and `OnSetSubFolder` for Alt-Left/Right. Upstream `App.cpp` binds the
+destination panel to the source prefix or its focused folder, including the
+parent/provider branch, then refreshes the destination. Adapted App.cpp instead
+delegates to `IQtAppPresentation::PanelCallback`, whose Qt implementation returns
+null; the Qt key adapter has no corresponding Alt-arrow branches. Thus these
+commands are currently absent despite the retained symbol names. P3-05.4 owns
+their source-body port and public two-panel regressions. Destination publication
+must also be reviewed: the current `RefreshListCtrl` overloads restore selection,
+whereas actual Qt folder publication is a separate presentation boundary.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
