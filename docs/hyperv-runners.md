@@ -13,6 +13,19 @@ were refreshed from htopQt's modified worktree on 2026-10-04 (base commit
 The source script's SHA256 was
 `f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
 
+Current runner selection follows CI's Qt6.12.0. It explicitly sets
+`CMAKE_PREFIX_PATH` and prepends the selected kit's bin directory:
+`/home/runner/sevenzip-desktop/tools/Qt/6.12.0/gcc_64` and
+`C:/runner/sevenzip-desktop/tools/Qt/6.12.0/msvc2022_64`.
+`probe` queries that kit's qmake rather than the system default. Install/select
+the kit before checks; the helper does not download Qt or change global PATH.
+The Linux project kit currently links to the already installed
+`/home/runner/htopQt/qt612-release-20261004/qt`, including QtDBus. Windows kit
+was installed with the repository's verified aqt adapter; both live probes
+confirm6.12.0. Linux full240/240 passed; Windows runtime validation is pending.
+Earlier systemQt6.4.2 and
+WindowsQt6.8.3 results below remain historical evidence, not Qt6.12 checks.
+
 ```sh
 python3 scripts/hyperv-runner.py probe linux
 python3 scripts/hyperv-runner.py probe windows

@@ -23,6 +23,11 @@ ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "build/runners/hyperv"
 KEY = Path.home() / ".ssh/id_ed25519"
 READY = Path.home() / ".codex/skills/runners/scripts/hyperv_ready.py"
+QT_VERSION = "6.12.0"
+QT_KITS = {
+    "linux": f"/home/runner/sevenzip-desktop/tools/Qt/{QT_VERSION}/gcc_64",
+    "windows": f"C:/runner/sevenzip-desktop/tools/Qt/{QT_VERSION}/msvc2022_64",
+}
 
 
 def invoke(args, **kwargs):
@@ -120,7 +125,8 @@ printf '/source.tar.gz\\n/source.tar\\n/check.log\\n/upstream.bundle\\n/upstream
 git add -A
 git -c user.name='Runner snapshot' -c user.email='runner@example.invalid' commit -qm 'Runner snapshot'
 export CMAKE_BUILD_PARALLEL_LEVEL=4 SEVENZIP_SCRIPT_OUTPUT=compact
-export PATH="/home/runner/sevenzip-desktop/tools/formatter/bin:$PATH"
+export CMAKE_PREFIX_PATH="{QT_KITS['linux']}"
+export PATH="{QT_KITS['linux']}/bin:/home/runner/sevenzip-desktop/tools/formatter/bin:$PATH"
 # The VM has no accelerated GPU. Serialize native display fixtures to avoid
 # competing software compositors and foreground-input timing failures.
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
@@ -144,8 +150,8 @@ export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"
         kit = "C:/runner/htopqt"
         commands = ['@echo off', f'call "{kit}/VS/VC/Auxiliary/Build/vcvars64.bat"',
                     'if errorlevel 1 exit /b %errorlevel%',
-                    f'set "PATH={root}/build/codec-runtime;C:/runner/sevenzip-desktop/tools/formatter/Scripts;{kit}/Python;{kit}/Python/Scripts;{kit}/Git/bin;{kit}/Qt/6.8.3/msvc2022_64/bin;%PATH%"',
-                    f'set "CMAKE_PREFIX_PATH={kit}/Qt/6.8.3/msvc2022_64"',
+                    f'set "PATH={root}/build/codec-runtime;C:/runner/sevenzip-desktop/tools/formatter/Scripts;{kit}/Python;{kit}/Python/Scripts;{kit}/Git/bin;{QT_KITS["windows"]}/bin;%PATH%"',
+                    f'set "CMAKE_PREFIX_PATH={QT_KITS["windows"]}"',
                     'set "CC=cl.exe"',
                     'set "CXX=cl.exe"',
                     'set "CMAKE_BUILD_PARALLEL_LEVEL=4"',
@@ -312,11 +318,13 @@ def probe_platform(platform):
     """Capture each guest's probe output so parallel results stay readable."""
     record = discover(platform)
     if platform == "linux":
-        script = "set -euo pipefail\nuname -a\ncmake --version\ngcc --version\nqmake6 -query QT_VERSION\n/home/runner/sevenzip-desktop/tools/formatter/bin/clang-format --version\n"
+        script = ("set -euo pipefail\nuname -a\ncmake --version\ngcc --version\n"
+                  f"{QT_KITS['linux']}/bin/qmake -query QT_VERSION\n"
+                  "/home/runner/sevenzip-desktop/tools/formatter/bin/clang-format --version\n")
     else:
         script = "Get-CimInstance Win32_OperatingSystem | Select Caption,Version,OSArchitecture | ConvertTo-Json; "
         for tool in ["C:/runner/htopqt/Python/Scripts/cmake.exe --version",
-                     "C:/runner/htopqt/Qt/6.8.3/msvc2022_64/bin/qmake.exe -query QT_VERSION",
+                     f"{QT_KITS['windows']}/bin/qmake.exe -query QT_VERSION",
                      "C:/runner/sevenzip-desktop/tools/formatter/Scripts/clang-format.exe --version"]:
             script += f"& {tool}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}; "
     return remote(record, script, capture_output=True)
