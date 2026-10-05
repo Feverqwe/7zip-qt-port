@@ -45,7 +45,7 @@ new review/remediation, not another feature implementation.
 | V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreated names | Retained source-link metadata now owns accounting and volume/readiness decisions; Split outer streams and absent-native fallback preserved. Batch/volume/SFX/extract checked on three OS | Resolved P2-11.3 |
 | W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*` | ProgressDialog2.cpp CProgressSync owns pause/stop, but is in panel library which already depends on filesystem; own Qt wake/checkpoint loops repeated | Resolve dependency/transport ownership before reuse; preserve immediate wake, atomic cancel/publication and joined lifetime. Hash/creation/preparation/volume success/failure/pause/cancel/restart | Pending boundary review |
 | F: `filetransferoperation.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Review upstream recursion/deletion bodies and extract cohesive Qt transaction boundary where needed, retaining no-overwrite/cancel/link/failure-injection behavior; direct file and window consumers | Pending complete review |
-| B: `CMakeLists.txt`, app/backend/dialog target sources | Same authoritative production sources recompiled per test; consumers have test-only macro variants and late source/link cloning | Share cohesive production objects only after verifying definitions, moc ownership, resources, ABI/platform libraries and all late consumers. Keep test TU definitions and source C language; full three-OS gate | Pending build-boundary review |
+| B: `CMakeLists.txt`, `cmake/SharedPortObjects.cmake`, app/backend/dialog targets | Same authoritative production sources were recompiled per test; late source/link cloning and test TU macros require separate ownership | Twelve shared production groups plus Windows GUI entry; definitions, resources, ABI/platform links, late consumers and sole moc/source ownership verified on all three OS | Resolved P2-11.4 |
 
 ### Retained adapter review and remaining coverage
 
@@ -203,6 +203,84 @@ shell_archive_services/codec_creation), with no QTest failures/skips. The49
 compression/volume/SFX UI consumers also pass on Windows; its full244 gate has
 three unrelated parser/modal fixture failures, so global platform acceptance
 remains open. No layout/text changes; registry U/W/F/B are independently owned.
+
+### P2-11.4 — production object ownership (accepted, 2026-10-05)
+
+Final integrated macOS formatting/all-target build/full gate passes 240/240 in
+102.40s; compile database970 has134 root production TUs, each compiled once.
+Linux final full d20a669f passes 235/235 in190.58s; its959 commands have132
+root production TUs, each compiled once. Windows 4b4d50c2 builds all targets;
+1012 commands have134 root production TUs once, with47 C entries. Its four
+test failures and resolution are retained below: unchanged external/large
+retry passes2/2 in124.91s, and fresh b872c1c6 passes all nine native-update/UI/
+checkpoint/Options consumers in58.54s after the separately owned ADS correction.
+All actual Qt rows in those Windows consumers have zero failures/skips; the
+full and focused artifacts are respectively647 and28 guest/local SHA-256
+verified files. These checks accept the shared source/moc/build owners and
+robust Options fixture. They do not declare a fresh global Windows gate passing;
+final whole-platform and rendered UX acceptance retain their P3 owners.
+
+Reviewed every app/test source consumer and its late source additions/clones,
+compile definitions, include paths, generated moc/resources, platform link
+closure and startup/environment registration before sharing the production
+objects. The source bodies and language boundaries remain authoritative at their
+existing paths. No new upstream algorithm, borrowed file, dependency revision,
+notice or baseline change; original per-module records and pinned source
+https://github.com/ip7z/7zip.git at
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 remain unchanged.
+
+The late CMake helper snapshots existing consumers and shares only complete
+cohesive groups: ArchiveBackend, compression UI, MainWindow/command/drag/menu
+integration, native menu presentation, original CompressDialog, Agent/AgentProxy,
+PanelSelect, SplitDialog, PanelSplitFile, FileTransferOperation, FilesystemScanner
+and VolumeOperations. A Windows-only thirteenth owner shares qtguimain.cpp for
+the app and native MAPI host; their previous definitions were identical. A
+partial source group fails configuration. Tests keep their own TU definitions
+and resource/platform libraries. QObject headers move with their sole moc owner;
+production source and generated metaobjects are linked into every direct consumer.
+
+macOS full format/all-target gate passes 238/238 in 103.48s; its compile database
+has 133 unique root production TUs, each compiled once. Linux current full passes
+234/234 in 194.36s with 131 root TUs compiled once. The prior Windows full
+a5cc8449 builds all targets and passes 241/244; its three fixture failures are
+separately repaired. It reveals the final repeated GUI entry, now shared in
+01389c3d's compile database: 1007 commands, 133 unique root production TUs,
+no duplicates and 47 C entries. Both 01389c3d and isolated 6812d916 pass format
+and build all 239 executables; CTest passes 243/244 in 1041.47s and 1066.95s.
+Only list_settings_runtime times out. Its focused nine-suite run 7c962557
+passes in 61.70s with no skips, but does not close the full-suite failure.
+Diagnostic full 9db15dd5 passes 243/244 in 1095.84s. Its stderr proves that the
+context menu opens, is inspected and returns normally; the remaining timeout
+occurs at the second Options invocation. A fixture helper now waits for the
+owned dialog to be visible in its modal loop before accepting it, rather than
+using an unconditional singleShot. The inspected
+[Qt 6.8.3 QDialog::exec body](https://github.com/qt/qtbase/blob/v6.8.3/src/widgets/dialogs/qdialog.cpp#L506)
+calls show before installing its event loop, so acceptance during native show
+can precede that loop; this is the fixture-race hypothesis, not a proven product
+failure. macOS focused list_settings_runtime
+passes 1/1 in 6.42s, and the subsequent full gate passes 238/238 in 99.72s.
+Fresh isolated Windows B full 676ebd54 passes 243/244 in 1081.11s and repeats
+the second Options timeout: the visible/modal-loop helper does not resolve it.
+All 647 artifacts are SHA-256 verified locally and on the guest. Diagnostic
+382fc123 localizes the wait inside the second Options constructor; fd0f406d
+reaches all other pages and stalls constructing SystemPage. An unrelated native
+association-revision defect is reproduced and repaired below. Final combined
+Windows B/U/W gate b7579d33 passes formatting but fails before CTest: a resource
+update lambda mixed the original RINOK int result and Windows HRESULT returns.
+Its declared return type now preserves the existing HRESULT transport contract.
+Repeat 4b4d50c2 passes formatting/all-target build and 241/245 in 897.62s;
+external_codecs exceeds its wait, source_metadata_storage refuses ADS,
+alt_streams_archive_ui times out and large_list_window exceeds its projection
+limit. The final compile database has 1012 commands and 134 root production TUs,
+each compiled once. Actual native-update73/UI24/checkpoint8/list5/association8
+Qt rows all pass with zero skips. All 647 artifacts are SHA-256 verified on the
+guest and locally. An unchanged desktop retry of external_codecs/large_list_window
+passes 2/2 in 124.91s at their original limits, with separately preserved evidence.
+Fresh native-update validation b872c1c6 resolves the ADS consumers below.
+The full gate history remains distinct from the accepted build-owner scope.
+Engine C sources and required module-specific variants retain their compiler,
+definitions and paths; root Qt glue remains C++17, Apple native bridges
+Objective-C++17. No source renaming, body reordering or UI geometry change.
 
 ### Windows association revision prerequisite (verified, 2026-10-05)
 

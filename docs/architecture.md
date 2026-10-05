@@ -2,6 +2,17 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+`cmake/SharedPortObjects.cmake` assigns cohesive production source groups to
+object-library owners after all app/test targets, source-derived registrations
+and startup fixtures have been declared. Backend, compression presentation,
+MainWindow integration, native menu presentation, source compression/Agent/
+selection/Split, file transfer, filesystem scanning and volume operations each
+compile once. Windows additionally shares the GUI entry between the app and
+MAPI host. Consumers retain their link libraries, resources and test translation
+unit definitions; each QObject header has one generated moc owner. Incomplete
+source groups are configure errors rather than silently mixed implementations.
+Borrowed C sources keep their C compiler and required engine/module variants.
+
 Archive update preparation belongs to ArchiveBackend. Its CopyPrepare phase
 runs the retained CCopyStateIO::MyCopyFile in QtArchiveCopyPreparation; source
 mutation/plan and compatibility Add/Delete/Rename/Replace consumers resume their

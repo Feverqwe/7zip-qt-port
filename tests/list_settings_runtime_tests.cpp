@@ -22,6 +22,35 @@ bool writeFile(const QString &path) {
     return file.open(QIODevice::WriteOnly) && file.write("file") == 4;
 }
 
+bool setListOptions(MainWindow &window, QAction *settingsAction, bool enabled) {
+    const int outerLoop = QThread::currentThread()->loopLevel();
+    QTimer finishOptions;
+    bool applied = false;
+    QObject::connect(&finishOptions, &QTimer::timeout, &window, [&] {
+        auto *dialog = window.findChild<QDialog *>("settingsDialog");
+        // Native page discovery can process events during construction. Wait
+        // until the owned dialog is visible and its modal loop is running.
+        if (!dialog || !dialog->isVisible() || QThread::currentThread()->loopLevel() <= outerLoop)
+            return;
+        finishOptions.stop();
+        const auto closeOnFailure = qScopeGuard([dialog] {
+            if (dialog->isVisible())
+                dialog->reject();
+        });
+        for (const char *name : {"showDotsOption", "fullRowOption", "showSystemMenuOption"}) {
+            auto *option = dialog->findChild<QCheckBox *>(name);
+            if (!option)
+                return;
+            option->setChecked(enabled);
+        }
+        dialog->accept();
+        applied = dialog->result() == QDialog::Accepted;
+    });
+    finishOptions.start(5);
+    settingsAction->trigger();
+    return applied;
+}
+
 void moveOver(QAbstractItemView &view, const QModelIndex &index) {
     auto *window = view.window();
     QTest::mouseMove(window->windowHandle(),
@@ -52,17 +81,12 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         QVERIFY(writeFile(temp.filePath(QStringLiteral("child.txt"))));
         MainWindow window;
         window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *files = static_cast<FileTable *>(table(window));
         QCOMPARE(files->rowCount(), 1);
 
-        QTimer::singleShot(0, [&] {
-            auto *dialog = window.findChild<QDialog *>("settingsDialog");
-            QVERIFY(dialog);
-            for (const char *name : {"showDotsOption", "fullRowOption", "showSystemMenuOption"})
-                dialog->findChild<QCheckBox *>(name)->setChecked(true);
-            dialog->accept();
-        });
-        action(window, "settingsAction")->trigger();
+        QVERIFY(setListOptions(window, action(window, "settingsAction"), true));
         QCOMPARE(files->rowCount(), 2);
         QCOMPARE(files->item(0, 0)->text(), QStringLiteral(".."));
         QCOMPARE(files->item(0, 0)->data(Qt::UserRole + 6).toUInt(), quint32(-1));
@@ -142,15 +166,12 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
             QVERIFY(
                 UiInspection::writeReport(reopened, QStringLiteral("list-settings-%1").arg(width)));
         }
+        reopened.close();
+        window.raise();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
 
-        QTimer::singleShot(0, [&] {
-            auto *dialog = window.findChild<QDialog *>("settingsDialog");
-            QVERIFY(dialog);
-            for (const char *name : {"showDotsOption", "fullRowOption", "showSystemMenuOption"})
-                dialog->findChild<QCheckBox *>(name)->setChecked(false);
-            dialog->accept();
-        });
-        action(window, "settingsAction")->trigger();
+        QVERIFY(setListOptions(window, action(window, "settingsAction"), false));
         QCOMPARE(files->rowCount(), 1);
         QVERIFY(!files->fullRowHighlight());
         files->selectRow(0);

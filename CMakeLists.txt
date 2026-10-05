@@ -2433,6 +2433,10 @@ if(BUILD_TESTING AND SEVENZIP_CODEC_MODULE)
     endforeach()
 endif()
 
+# Startup isolation and test fixtures inspect the original consumer source lists.
+# Share production objects only after those registrations are complete.
+include(cmake/SharedPortObjects.cmake)
+
 # The Windows offscreen plugin uses FreeType rather than the native Windows
 # font database. Without a separately supplied font directory its fallback box
 # metrics do not describe the application's controls. Compare these dialog and
