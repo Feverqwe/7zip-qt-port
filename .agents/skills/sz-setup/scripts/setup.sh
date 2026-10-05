@@ -30,12 +30,14 @@ ensure_link() {
   link_path=$1
   link_target=$2
   if [ -L "$link_path" ]; then
-    ln -sfn "$link_target" "$link_path"
+    MSYS="${MSYS:+$MSYS }winsymlinks:nativestrict" ln -sfn "$link_target" "$link_path"
   elif [ -e "$link_path" ]; then
     echo "Refusing to replace non-symlink: $link_path" >&2
     exit 1
   else
-    ln -s "$link_target" "$link_path"
+    # Git Bash must create a real link rather than silently copying docs.
+    # Native link privilege/Developer Mode remains an OS prerequisite.
+    MSYS="${MSYS:+$MSYS }winsymlinks:nativestrict" ln -s "$link_target" "$link_path"
   fi
 }
 
