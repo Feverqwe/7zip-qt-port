@@ -17,6 +17,11 @@ HRESULT ArchiveBackend::listingFailureResult(int exitCode, QProcess::ExitStatus 
         return E_FAIL;
     QString output = output_;
     QString archive = archive_;
+#ifdef Q_OS_WIN
+    // Console/List prints the native Windows path, while Qt callers can pass
+    // forward separators. Keep the source error label exact after conversion.
+    archive = QDir::toNativeSeparators(archive);
+#endif
 #ifdef Q_OS_MACOS
     // The engine prints filesystem-native NFD names on macOS. Compare the
     // transport label canonically without changing source/archive entry names.

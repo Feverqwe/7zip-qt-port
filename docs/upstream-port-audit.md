@@ -1,5 +1,27 @@
 # Ревизия происхождения кода 7zFM
 
+## Windows Console opening error labels (accepted, 2026-10-05)
+
+Inspected original CPP/7zip/UI/Console/List.cpp error printing and retained
+OpenArchive.cpp opening-result consumers at
+https://github.com/ip7z/7zip.git, commit0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+The file-only ArchiveBackend transport compares the original Console error label
+to distinguish S_FALSE (unrecognized/encrypted/type-specific opening refusal)
+from E_FAIL. Windows prints native separators while Qt callers can supply `/`;
+the mismatch incorrectly returned E_FAIL and broke native opening/probe consumers.
+archivebackend_listing.cpp now converts only the expected Windows physical path
+to native separators before exact comparison. Existing macOS canonical comparison,
+source/archive entry names, I/O failures and other error branches are preserved.
+No borrowed body, dependency or baseline changes; no new opening algorithm.
+
+Four public process-fixture rows cover ordinary-file, wrong-password, explicit-
+type refusal and I/O failure with Unicode/spaces and unchanged input bytes.
+The previous Windows full96d637fc reproduces the real opening S_FALSE failures;
+current backend76 cases and ten direct consumers pass in f5d4ebde42.52s without
+skips. macOS focused opening/backend/external/lifetime4/4 and full238/238103.48s,
+Linux current full234/234194.36s pass. Full current Windows gate remains separately
+owned; this accepts the narrow transport correction, not whole-platform acceptance.
+
 ## P2-11 — own glue registry (active, 2026-10-05)
 
 The review starts from bcb86e7 and the248 root src C++/header/Objective-C++ files,

@@ -9,6 +9,39 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     Q_OBJECT
 
   private slots:
+    void nativePathListingFailure_data() {
+        QTest::addColumn<QString>("error");
+        QTest::addColumn<HRESULT>("result");
+        QTest::newRow("not-archive") << "ERROR: %1 : Cannot open the file as archive\n" << S_FALSE;
+        QTest::newRow("wrong-password")
+            << "ERROR: %1 : Cannot open encrypted archive. Wrong password?\n"
+            << S_FALSE;
+        QTest::newRow("specific-type")
+            << "ERROR: %1 : %1\nOpen ERROR: Cannot open the file as [zip] archive\n"
+            << S_FALSE;
+        QTest::newRow("io-failure") << "ERROR: %1 : opening : fixture I/O error\n" << E_FAIL;
+    }
+    void nativePathListingFailure() {
+        QFETCH(QString, error);
+        QFETCH(HRESULT, result);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = fixture.filePath(QStringLiteral("не архив 空 with spaces.bin"));
+        writeFile(archive, "ordinary bytes");
+        qputenv("SEVENZIP_TEST_HELPER", "listing-failure");
+        qputenv("SEVENZIP_TEST_LISTING", error.arg(QDir::toNativeSeparators(archive)).toUtf8());
+        const auto restore = qScopeGuard([] {
+            qunsetenv("SEVENZIP_TEST_HELPER");
+            qunsetenv("SEVENZIP_TEST_LISTING");
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        backend.list(archive);
+        await(backend, false);
+        QCOMPARE(backend.lastResult(), result);
+        QFile source(archive);
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QCOMPARE(source.readAll(), QByteArray("ordinary bytes"));
+    }
     void windowsPasswordPromptThroughProcessPipe() {
         QTemporaryDir fixture;
         const QString archive = fixture.filePath("fixture.7z");

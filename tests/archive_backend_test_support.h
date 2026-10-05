@@ -53,9 +53,9 @@ inline int backendTestMain(int argc, char **argv, QObject *tests) {
             }
             return 0;
         }
-        if (mode == "listing") {
+        if (mode == "listing" || mode == "listing-failure") {
             writeOutput(qgetenv("SEVENZIP_TEST_LISTING"));
-            return 0;
+            return mode == "listing" ? 0 : 2;
         }
         if (mode == "windows-password-prompt") {
             writeOutput("\nEnter password (will not be echoed):");
