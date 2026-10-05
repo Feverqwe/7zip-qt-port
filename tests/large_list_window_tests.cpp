@@ -44,6 +44,10 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         bool scheduled = false;
         int heartbeatRows = -1;
         QElapsedTimer guiTime;
+        QElapsedTimer elapsed;
+        qint64 firstRowMs = -1;
+        qint64 lastRowMs = -1;
+        int publishedRows = 0;
         qint64 lastHeartbeat = 0;
         qint64 maxGuiGap = 0;
         int maxGuiGapRows = 0;
@@ -57,16 +61,22 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
             }
             lastHeartbeat = now;
         });
-        connect(list->model(), &QAbstractItemModel::rowsInserted, &window, [&] {
-            if (scheduled)
-                return;
-            scheduled = true;
-            guiTime.start();
-            heartbeat.start();
-            QTimer::singleShot(0, &window, [&] { heartbeatRows = list->rowCount(); });
-            QVERIFY(!list->updatesEnabled());
-        });
-        QElapsedTimer elapsed;
+        connect(list->model(), &QAbstractItemModel::rowsInserted, &window,
+                [&](const QModelIndex &, int first, int last) {
+                    if (elapsed.isValid()) {
+                        lastRowMs = elapsed.elapsed();
+                        if (firstRowMs < 0)
+                            firstRowMs = lastRowMs;
+                        publishedRows += last - first + 1;
+                    }
+                    if (scheduled)
+                        return;
+                    scheduled = true;
+                    guiTime.start();
+                    heartbeat.start();
+                    QTimer::singleShot(0, &window, [&] { heartbeatRows = list->rowCount(); });
+                    QVERIFY(!list->updatesEnabled());
+                });
         elapsed.start();
         if (archive)
             openListedArchive(window, backend, fixture.filePath("fixture.zip"), entries);
@@ -102,6 +112,9 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
                                      {"elapsedMs", elapsed.elapsed()},
                                      {"readyMs", readyMs},
                                      {"reportMs", reportMs},
+                                     {"firstRowMs", firstRowMs},
+                                     {"lastRowMs", lastRowMs},
+                                     {"publishedRows", publishedRows},
                                      {"heartbeatRows", heartbeatRows},
                                      {"maxGuiGapMs", maxGuiGap},
                                      {"maxGuiGapRows", maxGuiGapRows}};

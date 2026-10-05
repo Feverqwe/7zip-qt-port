@@ -422,11 +422,23 @@ TEMP/work-directory reproduction identifies native OnTimer→reload after
 the first publication; no portable-signature mismatch is logged. A process
 with TEMP outside the startup folder passes its single case in9391ms.
 This is diagnostic evidence, not a performance fix or acceptance.
-Additional public address/history/removal counters have scoped observation
-lifetimes. macOS final formatting/all-target/full244/244 PASS103.95s;
-the intermediate observer-lifetime SIGBUS and two focused timing failures
-remain unaccepted intermediate results. Windows validation of these extra
-counters remains pending.
+Further private source probes identify `CFSFolder::WasChanged` returning1
+while `_portableFolderChanged` is false. The source folder path agrees with
+the displayed folder. A probe waiting1100ms after publication repeats the
+native reload and ends with redraw still disabled during the next projection;
+this deliberate diagnostic wait does not change the committed test. Six
+private probes retain58 guest/local SHA256-verified artifacts, including
+copied source, compile/link commands and original logs. Logging perturbs timer
+phase: an intervening probe passes before the timer fires, so it is not proof
+of stability.
+Exploratory address/history/removal counters were removed; the permanent
+change consists only of first/last/publication-count metrics. Its exact body
+already ran in frozen27c52b66 and macOS full244/244 PASS102.07s. A later
+exploratory version passes macOS full244/244 PASS103.95s; after removing the
+extra counters, unsandboxed focused1/1 PASS3.64s. The intermediate observer
+lifetime SIGBUS was fixed before removal; sandboxed focused timing failures
+are retained and do not replace the unsandboxed results. No production
+performance fix or whole Windows acceptance is claimed.
 
 Current-kit native System-menu reference also passes on snapshot27c52b66 after
 a separate capacity retry on the same source SHA:1/1 in10.60s,3Qt/0fail/0skip.
