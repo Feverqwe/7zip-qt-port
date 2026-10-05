@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/drag_event_position.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -87,7 +88,8 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
         answer.start(1);
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(input)});
-        QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QDragEnterEvent enter(DragEventPosition(QPoint(5, 5)), Qt::CopyAction, &mime,
+                              Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table(window)->viewport(), &enter);
         QVERIFY(enter.isAccepted());
         QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);

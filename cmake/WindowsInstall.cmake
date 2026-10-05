@@ -18,10 +18,13 @@ install(TARGETS sevenzip_desktop sevenzip_shell RUNTIME DESTINATION bin LIBRARY 
 install(FILES "$<TARGET_FILE:sevenzip_desktop>" DESTINATION bin RENAME 7zFM.exe)
 install(FILES "$<TARGET_FILE:sevenzip_desktop>" DESTINATION bin RENAME 7zG.exe)
 install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/7z.exe" "${SEVENZIP_WINDOWS_RUNTIME}/7z.dll"
-    "${SEVENZIP_WINDOWS_RUNTIME}/7zz.exe" DESTINATION bin)
+    DESTINATION bin)
 install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/runtime.json"
     DESTINATION share/sevenzip-desktop)
 install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/7zip)
-qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT windows_deploy_script)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx.json" DESTINATION bin)
+qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT windows_deploy_script
+    NO_TRANSLATIONS)
 install(SCRIPT "${windows_deploy_script}")

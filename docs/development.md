@@ -47,7 +47,8 @@ compile on Windows11 ARM64; both clients report26.03. Do not install test-only
 codec fixtures in a production runtime.
 
 Windows CMake installation places the Qt application, original7zFM/7zG entry
-aliases, project shell DLL and official7z/7zz/7z.dll runtime together in `bin`.
+aliases, project shell DLL and official `7z.exe`/`7z.dll` runtime together in `bin`.
+The prepared standalone `7zz.exe` is a development fallback and is not installed.
 `cmake --install build/dev --prefix <private-directory>` deploys Qt runtime,
 platform plugins and compiler runtime using Qt's own deployment script. It
 first checks the prepared runtime's producer, repository, pinned revision,
@@ -70,7 +71,9 @@ or final license/distribution acceptance; those belong to P3-04.
 - Official `7zz`, or the prepared dynamic `7z`/module runtime for external codecs
 - Qt 6 DBus for the Linux launcher service; Unix launcher regression tests also
   need `dbus-daemon` to create their own private bus. macOS builds with testing
-  enabled require Qt DBus; Cocoa-only production builds do not.
+  enabled require Qt DBus and libdbus alongside `dbus-daemon`; Cocoa-only
+  production builds do not. The two private-bus tests set the discovered libdbus
+  directory in their own loader environment for official Qt kits.
 
 On macOS with Homebrew:
 
@@ -82,10 +85,20 @@ On Linux, install CMake, Ninja, Qt 6 base development files, clang-format,
 pkg-config and GLib/GIO development files (`libglib2.0-dev` on Ubuntu). The native
 association adapter links `gio-unix-2.0`. On Windows, use a Qt 6 Widgets kit plus
 CMake, Ninja, and a C++17 compiler. The configured native Windows CI job uses
-the recorded MSVC2022/Qt6.8.3 kit; see [CI jobs and limits](ci.md). Point
+MSVC2022/Qt6.12.0 kit; see [CI builds and artifacts](ci.md). Point
 `CMAKE_PREFIX_PATH` to Qt when CMake cannot locate it.
 
 ## Local commands
+
+CI uses Release builds with testing disabled; local checks remain unchanged.
+To package an existing Release build, run `python3 scripts/package.py
+--qt-source <matching-qtbase.tar.xz> --qt-sha256 <checksum-file>`; add
+`--icu-license <license-file>` if the deployed Qt kit uses ICU. The script uses
+a fresh CMake installation and writes only runtime archives to `build/packages`.
+Source inputs stay private. macOS packages have verified ad-hoc signatures.
+Windows additionally requires `--vc-runtime <Microsoft.VC143.CRT-directory>`
+and `--vc-notices <Visual-Studio-Redist.txt>`; only imported CRT DLLs are copied.
+See [CI and release helper](ci.md) for exact artifact scope and release commands.
 
 ```sh
 sh .agents/skills/sz-setup/scripts/setup.sh

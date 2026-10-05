@@ -31,7 +31,7 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
         arguments.append("-t" + format);
     sourceExtractSelection_.reset();
     QString selection = entry;
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     // QProcess encodes arguments as filesystem names (NFD on macOS). Archive
     // item names are not filesystem arguments: retain their exact UTF-8 bytes.
     if (QFile::encodeName(entry) != entry.toUtf8()) {

@@ -1,4 +1,4 @@
-name: Source port checks
+name: Release Build
 
 on:
   push:
@@ -9,28 +9,43 @@ permissions:
   contents: read
 
 concurrency:
-  group: checks-${{ github.workflow }}-${{ github.ref }}
+  group: build-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  QT_VERSION: '6.12.0'
+  CMAKE_BUILD_PARALLEL_LEVEL: '4'
+
 jobs:
-  unix:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: ubuntu-24.04
+          - platform: linux-x64
+            runner: ubuntu-24.04
             qt-host: linux
-            qt-arch: gcc_64
-          - runner: macos-15
+            qt-arch: linux_gcc_64
+            qt-archives: qtbase qtwayland icu
+            cmake-args: ''
+          - platform: windows-x64
+            runner: windows-2022
+            qt-host: windows
+            qt-arch: win64_msvc2022_64
+            qt-archives: qtbase
+            cmake-args: ''
+          - platform: macos-arm64
+            runner: macos-14
             qt-host: mac
             qt-arch: clang_64
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 90
-    env:
-      CMAKE_BUILD_PARALLEL_LEVEL: 4
-      SEVENZIP_CTEST_JOBS: 1
-      SEVENZIP_SCRIPT_OUTPUT: compact
-      LIBGL_ALWAYS_SOFTWARE: 1
+            qt-archives: qtbase
+            cmake-args: '-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4'
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -44,130 +59,91 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: '3.12'
-      - name: Linux native dependencies
+      - name: Require tag to match application version
+        if: github.ref_type == 'tag'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python scripts/release.py --check-tag "$RELEASE_TAG"
+      - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build pkg-config libglib2.0-dev dbus-daemon libgl1-mesa-dev libxkbcommon0 libxcb-cursor0
-      - name: Pinned tools and Qt
-        shell: bash
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config libglib2.0-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 \
+            libwayland-client0 libwayland-cursor0 libwayland-egl1 patchelf
+      - name: Configure Windows toolchain
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Install macOS build tools
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Install official Qt kit
+        if: runner.os != 'Windows'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt-host }}
+          arch: ${{ matrix.qt-arch }}
+          archives: ${{ matrix.qt-archives }}
+          cache: true
+      - name: Install official Windows Qt kit
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          python -m pip install clang-format==23.1.2 aqtinstall==3.3.0 ninja==1.12.1
-          python -m aqt install-qt '${{ matrix.qt-host }}' desktop 6.8.3 '${{ matrix.qt-arch }}' --outputdir build/qt
-          mkdir -p build/ci-tmp
-          python - <<'PY'
-          import os
-          from pathlib import Path
-          root = Path.cwd()
-          kit = root / 'build/qt/6.8.3/${{ matrix.qt-arch }}'
-          assert (kit / 'bin').is_dir()
-          with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write(f'CMAKE_PREFIX_PATH={kit}\n')
-              env.write(f'SEVENZIP_CODEC_MODULE_DIR={root / "build/codec-runtime"}\n')
-              env.write(f'TMPDIR={root / "build/ci-tmp"}\n')
-          with open(os.environ['GITHUB_PATH'], 'a') as paths:
-              paths.write(f'{kit / "bin"}\n{root / "build/codec-runtime"}\n')
-          PY
-      - name: Verify source and build official runtime
-        shell: bash
+          python -m pip install aqtinstall==3.3.0 py7zr==1.1.0 ninja==1.12.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/install-qt-windows.py --version "$env:QT_VERSION" --outputdir "$env:GITHUB_WORKSPACE/Qt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $qt = Join-Path $env:GITHUB_WORKSPACE "Qt/$env:QT_VERSION/msvc2022_64"
+          "QT_ROOT_DIR=$qt" >> $env:GITHUB_ENV
+          "$qt/bin" >> $env:GITHUB_PATH
+      - name: Select Qt and fetch private license inputs
         run: |
-          python scripts/upstream_baseline.py verify --upstream upstream
+          echo "CMAKE_PREFIX_PATH=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          python scripts/ci-qt-source.py
+      - name: Build official Unix runtime
+        if: runner.os != 'Windows'
+        run: |
           ./scripts/build-codec-runtime.sh "$PWD/upstream"
           ./scripts/build-sfx.sh "$PWD/upstream"
-          task_engine_snapshot="$(mktemp -d "$PWD/build/.standalone-XXXXXX")"
-          trap 'rm -rf -- "$task_engine_snapshot"' EXIT
-          git -C upstream archive HEAD | tar -x -C "$task_engine_snapshot"
-          make -s -C "$task_engine_snapshot/CPP/7zip/Bundles/Alone2" -f makefile.gcc -j4
-          cp "$task_engine_snapshot/CPP/7zip/Bundles/Alone2/_o/7zz" build/codec-runtime/7zz
-      - name: Toolchain diagnostics and full gate
-        shell: bash
+      - name: Build official Windows runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          python --version
-          cmake --version
-          c++ --version
-          clang-format --version
-          qmake -query QT_VERSION
-          set -o pipefail
-          ./scripts/check.sh 2>&1 | tee build/ci-check.log
-      - name: Preserve diagnostics
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+          ./scripts/build-codec-runtime.ps1 -UpstreamCheckout upstream -Architecture x64
+          ./scripts/build-sfx.ps1 -UpstreamCheckout upstream -Architecture x64
+      - name: Build Release application
+        run: |
+          cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF ${{ matrix.cmake-args }}
+          cmake --build build/release
+      - name: Package runtime only
+        if: runner.os != 'Windows'
+        run: |
+          python scripts/package.py \
+            --qt-source "build/qt-source/qtbase-everywhere-src-${QT_VERSION}.tar.xz" \
+            --qt-sha256 "build/qt-source/qtbase-everywhere-src-${QT_VERSION}.tar.xz.sha256" \
+            --icu-license build/qt-source/icu-73.2-LICENSE
+      - name: Package Windows runtime only
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $crt = Join-Path $env:VCToolsRedistDir 'x64/Microsoft.VC143.CRT'
+          $notices = Join-Path $env:VSINSTALLDIR 'Licenses/1033/Redist.txt'
+          python scripts/package.py `
+            --qt-source "build/qt-source/qtbase-everywhere-src-$env:QT_VERSION.tar.xz" `
+            --qt-sha256 "build/qt-source/qtbase-everywhere-src-$env:QT_VERSION.tar.xz.sha256" `
+            --vc-runtime "$crt" --vc-notices "$notices"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: checks-${{ matrix.runner }}-${{ github.run_attempt }}
-          retention-days: 14
+          name: sevenzip-desktop-${{ matrix.platform }}
           path: |
-            build/dev/Testing/
-            build/dev/ui-reports/
-            build/dev/compile_commands.json
-            build/dev/CMakeCache.txt
-            build/codec-runtime/runtime.json
-            build/sfx/*.json
-            build/ci-check.log
-            build/ci-tmp/sevenzip-script.*
-
-  # Windows native UI/privilege tests require the authorized guest's interactive
-  # desktop. A hosted service/session0 is not an equivalent acceptance runner.
-  windows:
-    # Never execute pull-request code automatically on the privileged shared VM.
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, Windows, X64, sevenzip-desktop]
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          repository: ip7z/7zip
-          ref: 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17
-          path: upstream
-          persist-credentials: false
-      - name: Require native acceptance environment
-        shell: powershell
-        run: |
-          if ($env:COMPUTERNAME -ne 'RUNNER-WINDOWS') { throw 'Use the authorized Windows guest.' }
-          if ([Diagnostics.Process]::GetCurrentProcess().SessionId -eq 0) { throw 'Native UI requires an interactive desktop.' }
-          $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
-          if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Native link/security fixtures require an elevated test parent.' }
-      - name: Pinned runtime and full gate
-        shell: cmd
-        run: |
-          call C:\runner\htopqt\VS\VC\Auxiliary\Build\vcvars64.bat
-          if errorlevel 1 exit /b %errorlevel%
-          set "PATH=%CD%\build\codec-runtime;C:\runner\sevenzip-desktop\tools\formatter\Scripts;C:\runner\htopqt\Python;C:\runner\htopqt\Python\Scripts;C:\runner\htopqt\Git\bin;C:\runner\htopqt\Qt\6.8.3\msvc2022_64\bin;%PATH%"
-          set "CMAKE_PREFIX_PATH=C:\runner\htopqt\Qt\6.8.3\msvc2022_64"
-          set "SEVENZIP_CODEC_MODULE_DIR=%CD%\build\codec-runtime"
-          set "CC=cl.exe"
-          set "CXX=cl.exe"
-          set "CMAKE_BUILD_PARALLEL_LEVEL=4"
-          set "SEVENZIP_CTEST_JOBS=1"
-          set "SEVENZIP_SCRIPT_OUTPUT=compact"
-          if not exist build\ci-tmp mkdir build\ci-tmp
-          set "TMPDIR=%CD%\build\ci-tmp"
-          python scripts/upstream_baseline.py verify --upstream upstream
-          if errorlevel 1 exit /b %errorlevel%
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-codec-runtime.ps1 -UpstreamCheckout upstream -Architecture x64
-          if errorlevel 1 exit /b %errorlevel%
-          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-sfx.ps1 -UpstreamCheckout upstream -Architecture x64
-          if errorlevel 1 exit /b %errorlevel%
-          cmake --version
-          clang-format --version
-          qmake -query QT_VERSION
-          powershell -NoProfile -Command "(Get-Command cl.exe).FileVersionInfo.FileVersion"
-          bash -o pipefail -c "./scripts/check.sh 2>&1 | tee build/ci-check.log"
-          exit /b %errorlevel%
-      - name: Preserve diagnostics
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: checks-windows-${{ github.run_attempt }}
-          retention-days: 14
-          path: |
-            build/dev/Testing/
-            build/dev/ui-reports/
-            build/dev/compile_commands.json
-            build/dev/CMakeCache.txt
-            build/codec-runtime/runtime.json
-            build/sfx/*.json
-            build/ci-check.log
-            build/ci-tmp/sevenzip-script.*
+            build/packages/sevenzip-desktop-*.zip
+            build/packages/sevenzip-desktop-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7

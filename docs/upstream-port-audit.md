@@ -231,6 +231,10 @@ from the independently tested Unix entrypoint work.
 
 ## P3-03.2 — local CI configuration (accepted, 2026-10-05)
 
+Historical configuration evidence below is superseded for job/tool/artifact scope
+by [Qt 6.12 build/runtime packaging](#qt-612-buildruntime-packaging-adaptation-2026-10-05)
+and [current CI](ci.md); the recorded validation remains historical.
+
 The complete `.github/workflows/check.yml` uses existing project runtime/SFX,
 baseline, formatting/build/CTest scripts without duplicating source algorithms.
 Official upstream https://github.com/ip7z/7zip.git is SHA-pinned at
@@ -9824,3 +9828,48 @@ occupied Yes/No, self/child refusal), `ui_copy_same` (Shift F5/F6 filesystem,
 и отличающимся выделением). Полный unsandboxed `./scripts/check.sh`
 прошёл 145/145 CTest на macOS arm64/Qt 6.11.2, 2026-10-01.
 Windows/Linux runtime и rendered Windows reference локально не проверены.
+
+## Qt 6.12 build/runtime packaging adaptation (2026-10-05)
+
+The engine and SFX still build unchanged from
+`https://github.com/ip7z/7zip.git` at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/Console`, `CPP/7zip/Bundles/Format7zF`,
+`CPP/7zip/Bundles/Alone2` (Windows), `CPP/7zip/Bundles/SFXCon` (Unix),
+and `CPP/7zip/Bundles/SFXWin` (Windows). Existing pinned builders, portable
+types and runtime boundaries remain authoritative. Upstream's native build
+files do not deploy a Qt application: cross-platform CMake runtime installation,
+Qt deployment, artifact filtering and macOS signing are project integration.
+No archive algorithm or upstream module is replaced by this packaging glue.
+
+`scripts/release.{py,sh}` and the Windows Qt repository-layout adapter are
+transferred from the user-selected htopQt checkout, with application naming and
+build-only CI messages adapted. Its Qt 6.12.0/ICU license pins and inside-out
+ad-hoc signing sequence are retained. Source archives serve only as private
+license extraction inputs. [CI](ci.md) owns artifact scope, source exclusion,
+signing limits and release helper behavior.
+
+Qt 6.12 deprecates `Q_OS_MAC`; the macOS-only adaptations in
+`src/CPP/7zip/UI/FileManager/PanelOperations.cpp::CPanel::ChangeComment`,
+`src/archivebackend_sourceextract.cpp::ArchiveBackend::extractSourceEntry`
+and the corresponding comment UI regression now use `Q_OS_MACOS`.
+The inspected upstream `CPP/7zip/UI/FileManager/PanelOperations.cpp` retains
+the original comment workflow; this change only updates Qt platform detection.
+The existing caption and Unicode selection adaptations preserve their behavior.
+
+Test-only deprecated UTC construction now uses `QTimeZone::UTC`; drag fixtures
+select `QPointF` on Qt 6.12 and retain `QPoint` for older kits. On macOS the two
+DBus fixtures discover the installed libdbus and set their own loader environment:
+official Qt kits load that library dynamically, unlike the previous Homebrew
+kit. The production application does not acquire a Homebrew path dependency.
+
+Validation on 2026-10-05, macOS arm64 with the official Qt 6.12.0 kit:
+unsandboxed `scripts/check.sh` formatting/all-target build and 244/244 CTest PASS
+(91.03s). Changed consumers passed 10/10; final runtime-package fixtures passed
+again after plugin/ZIP filtering. `actionlint`, release tag validation and
+`git diff --check` pass. Release app/test rebuilds have no deprecated diagnostics.
+The final 11.9 MiB ZIP contains only the app, Qt Core/Gui/Widgets/DBus frameworks,
+Cocoa/style/ICO plugins, pinned engine/module/SFX and notices. A relocated
+clean-path launch, engine format discovery, deep/strict signature verification,
+source-payload guard and post-signing SFX checksum all pass. Linux/Windows builds
+and GitHub execution remain unverified for this change; no release/push ran.

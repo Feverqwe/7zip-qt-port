@@ -505,7 +505,11 @@ if(APPLE)
 endif()
 if(WIN32)
     include(cmake/WindowsInstall.cmake)
+else()
+    include(cmake/UnixInstall.cmake)
 endif()
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
+    CONTENT "{\"version\":\"${PROJECT_VERSION}\",\"qt_version\":\"${Qt6_VERSION}\"}\n")
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
@@ -552,6 +556,15 @@ if(BUILD_TESTING)
         target_link_libraries(taskbar_adapter_tests PRIVATE sevenzip_linux_taskbar private_bus_fixture Qt6::Test)
         add_test(NAME taskbar_adapter COMMAND taskbar_adapter_tests -silent)
         set_tests_properties(taskbar_adapter PROPERTIES TIMEOUT 30)
+        if(APPLE)
+            # Official Qt kits load libdbus dynamically; Homebrew's Qt links it.
+            get_filename_component(test_dbus_bin_dir "${DBUS_DAEMON_EXECUTABLE}" DIRECTORY)
+            find_library(SEVENZIP_TEST_DBUS_LIBRARY NAMES dbus-1
+                HINTS "${test_dbus_bin_dir}/../lib" REQUIRED)
+            get_filename_component(test_dbus_library_dir "${SEVENZIP_TEST_DBUS_LIBRARY}" DIRECTORY)
+            set_property(TEST launcher_progress taskbar_adapter APPEND PROPERTY ENVIRONMENT
+                "DYLD_LIBRARY_PATH=${test_dbus_library_dir}:$ENV{DYLD_LIBRARY_PATH}")
+        endif()
     endif()
     qt_add_executable(password_dialog_tests tests/password_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(password_dialog_tests PRIVATE tests)
@@ -580,6 +593,8 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME runtime_package COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/package_tests.py)
     add_test(NAME windows_package_verification COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/windows_package_tests.py)
     add_test(NAME upstream_baseline COMMAND ${Python3_EXECUTABLE}

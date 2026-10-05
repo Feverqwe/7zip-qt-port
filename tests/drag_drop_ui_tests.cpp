@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "filetable.h"
+#include "fixtures/drag_event_position.h"
 #include "layout_inspection.h"
 #include "qtownedtempregistry.h"
 #include "qtpaneldragtransport.h"
@@ -172,7 +173,8 @@ class DragDropUiTests final : public QObject {
         const QPoint point = table->visualRect(destination).center();
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(file.fileName())});
-        QDragEnterEvent enter(point, Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QDragEnterEvent enter(DragEventPosition(point), Qt::CopyAction, &mime, Qt::LeftButton,
+                              Qt::NoModifier);
         QCoreApplication::sendEvent(table->viewport(), &enter);
         QVERIFY(enter.isAccepted());
         QVERIFY(destination.data(Qt::UserRole + 19).toBool());
@@ -235,7 +237,8 @@ class DragDropUiTests final : public QObject {
         QVERIFY(view->dragEnabled());
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(source)});
-        QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QDragEnterEvent enter(DragEventPosition(QPoint(5, 5)), Qt::CopyAction, &mime,
+                              Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(view->viewport(), &enter);
         QVERIFY(enter.isAccepted());
         bool questionShown = false;
@@ -382,14 +385,14 @@ class DragDropUiTests final : public QObject {
         QtPanelDragTransport transport(sourceTable, [&](QDrag &drag, Qt::DropActions) {
             const auto modifiers = move ? Qt::ShiftModifier : Qt::ControlModifier;
             const auto button = right ? Qt::RightButton : Qt::LeftButton;
-            QDragEnterEvent self(QPoint(5, 5), Qt::CopyAction | Qt::MoveAction, drag.mimeData(),
-                                 button, modifiers);
+            QDragEnterEvent self(DragEventPosition(QPoint(5, 5)), Qt::CopyAction | Qt::MoveAction,
+                                 drag.mimeData(), button, modifiers);
             QCoreApplication::sendEvent(sourceTable->viewport(), &self);
             sourceRefused = !self.isAccepted();
             QDragLeaveEvent leave;
             QCoreApplication::sendEvent(sourceTable->viewport(), &leave);
-            QDragEnterEvent enter(point, Qt::CopyAction | Qt::MoveAction, drag.mimeData(), button,
-                                  modifiers);
+            QDragEnterEvent enter(DragEventPosition(point), Qt::CopyAction | Qt::MoveAction,
+                                  drag.mimeData(), button, modifiers);
             QCoreApplication::sendEvent(view->viewport(), &enter);
             entered = enter.isAccepted();
             highlighted = folder.data(Qt::UserRole + 19).toBool();

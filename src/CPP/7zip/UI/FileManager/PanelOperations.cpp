@@ -167,7 +167,7 @@ void CPanel::ChangeComment() {
                             ToQString(NWindows::NError::MyFormatMessage(result)), QMessageBox::Ok,
                             GetParent());
             box.setObjectName("commentUpdateError");
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
             // Native macOS message boxes omit window captions. Keep the
             // original source caption visible as the message heading.
             box.setInformativeText(box.text());

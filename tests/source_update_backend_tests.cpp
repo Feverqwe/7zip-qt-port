@@ -23,6 +23,7 @@
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QTimeZone>
 #include <QtTest>
 #include <vector>
 
@@ -403,7 +404,7 @@ class SourceUpdateBackendTests final : public QObject {
         const QByteArray original = readFile(archive);
         QFile disk(source);
         QVERIFY(disk.open(QIODevice::ReadWrite));
-        QVERIFY(disk.setFileTime(QDateTime::fromSecsSinceEpoch(1500000000, Qt::UTC),
+        QVERIFY(disk.setFileTime(QDateTime::fromSecsSinceEpoch(1500000000, QTimeZone::UTC),
                                  QFileDevice::FileModificationTime));
         disk.close();
         ArchiveBackend backend(nullptr, enginePath());
@@ -872,7 +873,7 @@ class SourceUpdateBackendTests final : public QObject {
         QVERIFY(writeFile(QDir(oldRoot).filePath("newer.txt"), "archive newer"));
         QVERIFY(writeFile(QDir(oldRoot).filePath("older.txt"), "archive older"));
         QVERIFY(writeFile(QDir(oldRoot).filePath("archive-only.txt"), "archive only"));
-        const QDateTime baseline = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        const QDateTime baseline = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone::UTC);
         for (const QString &name : archiveNames) {
             QFile file(QDir(oldRoot).filePath(name));
             QVERIFY(file.open(QIODevice::ReadWrite));
@@ -927,7 +928,7 @@ class SourceUpdateBackendTests final : public QObject {
         QVERIFY(writeFile(source, "new bytes"));
         QFile timestamped(source);
         QVERIFY(timestamped.open(QIODevice::ReadWrite));
-        const QDateTime modified = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        const QDateTime modified = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone::UTC);
         QVERIFY(timestamped.setFileTime(modified, QFileDevice::FileModificationTime));
         timestamped.close();
         ArchiveBackend backend(nullptr, enginePath());
@@ -1336,7 +1337,7 @@ class SourceUpdateBackendTests final : public QObject {
         const QString entry = QStringLiteral("inside/имя с пробелом.bin");
         QVERIFY(writeFile(QDir(root).filePath(entry), "payload"));
         QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
-        const QDateTime originalTime = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        const QDateTime originalTime = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone::UTC);
         QFile keep(QDir(root).filePath("keep.bin"));
         QVERIFY(keep.open(QIODevice::ReadWrite));
         QVERIFY(keep.setFileTime(originalTime, QFileDevice::FileModificationTime));
@@ -1553,7 +1554,7 @@ class SourceUpdateBackendTests final : public QObject {
         const QString entry = QStringLiteral("inside/имя с пробелом.bin");
         QVERIFY(writeFile(QDir(root).filePath(entry), "protected payload"));
         QVERIFY(writeFile(QDir(root).filePath("keep.bin"), "keep"));
-        const QDateTime originalTime = QDateTime::fromSecsSinceEpoch(1700000000, Qt::UTC);
+        const QDateTime originalTime = QDateTime::fromSecsSinceEpoch(1700000000, QTimeZone::UTC);
         QFile keep(QDir(root).filePath("keep.bin"));
         QVERIFY(keep.open(QIODevice::ReadWrite));
         QVERIFY(keep.setFileTime(originalTime, QFileDevice::FileModificationTime));

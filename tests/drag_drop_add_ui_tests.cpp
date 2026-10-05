@@ -1,4 +1,5 @@
 #include "archivecodeccatalog.h"
+#include "fixtures/drag_event_position.h"
 #include "window_state_support.h"
 
 class DragDropAddUiTests final : public QObject {
@@ -34,7 +35,8 @@ class DragDropAddUiTests final : public QObject {
         QTRY_VERIFY(table->isEnabled());
         QMimeData mime;
         mime.setUrls({QUrl::fromLocalFile(input.fileName())});
-        QDragEnterEvent enter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton, Qt::NoModifier);
+        QDragEnterEvent enter(DragEventPosition(QPoint(5, 5)), Qt::CopyAction, &mime,
+                              Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table->viewport(), &enter);
         QVERIFY(enter.isAccepted());
         QString archiveName, format, error;

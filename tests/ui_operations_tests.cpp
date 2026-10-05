@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/drag_event_position.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -694,8 +695,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "copyAction")->isEnabled());
         backend.cancel();
         QVERIFY(action(window, "copyAction")->isEnabled());
-        QDragEnterEvent archiveEnter(QPoint(5, 5), Qt::CopyAction, &mime, Qt::LeftButton,
-                                     Qt::NoModifier);
+        QDragEnterEvent archiveEnter(DragEventPosition(QPoint(5, 5)), Qt::CopyAction, &mime,
+                                     Qt::LeftButton, Qt::NoModifier);
         QCoreApplication::sendEvent(table(window)->viewport(), &archiveEnter);
         QDropEvent archiveDrop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::LeftButton,
                                Qt::NoModifier);

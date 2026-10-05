@@ -1,5 +1,13 @@
 # Regression strategy
 
+`runtime_package` checks source/build-payload rejection, runtime alias boundaries,
+development-file pruning, matching Qt license input hashes/versions and release
+version/tag validation using disposable fixtures, plus imported Windows CRT
+dependency closure without the installer. `windows_package_verification`
+continues to check engine provenance and checksums before installation.
+Packaging uses these local checks; [CI](ci.md) performs compilation and runtime
+packaging with testing disabled.
+
 The [regression/security matrix](regression-matrix.md) maps every accepted P0–P2
 scenario to its source owner and registered CTest consumers. It also names the
 critical failure/Cancel/lifetime regressions and the integrated `archive_workflow`

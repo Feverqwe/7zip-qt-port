@@ -136,7 +136,7 @@ class NativeCommentUiTests final : public QObject, protected MainWindowTestSuppo
                 if (box->icon() == QMessageBox::Critical)
                     errors.append(box->objectName());
                 if (box->objectName() == "commentUpdateError") {
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
                     QCOMPARE(box->text(), QStringLiteral("Set Comment Error"));
                     QVERIFY(!box->informativeText().isEmpty());
 #else
