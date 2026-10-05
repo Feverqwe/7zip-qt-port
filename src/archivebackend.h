@@ -26,6 +26,7 @@ class ArchiveSfxModule;
 class ArchiveCodecProbe;
 class ArchiveNativeOpen;
 class QtOwnedTempDir;
+class QtArchiveTransferBackup;
 struct IOpenCallbackUI;
 struct IUpdateCallbackUI2;
 struct CUpdateOptions;
@@ -159,6 +160,8 @@ class ArchiveBackend : public QObject {
                         const QString &password = {}, bool encryptHeaders = false,
                         const CompressionOptions &options = {});
     virtual void add(const QString &archive, const QStringList &sources);
+    std::unique_ptr<QtArchiveTransferBackup>
+    saveArchiveTransferDestination(const QString &path) const;
     virtual void remove(const QString &archive, const QStringList &paths);
     virtual void renameEntry(const QString &archive, const QString &oldPath,
                              const QString &newPath);

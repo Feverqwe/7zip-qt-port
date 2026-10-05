@@ -46,6 +46,7 @@ new review/remediation, not another feature implementation.
 | W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*`, `qtworkerprogress.*` | Original ProgressDialog2.cpp CProgressSync owns worker flags/checkpoints through a Core-only target; optional source event preserves single-worker immediate wake | Eight public checkpoint rows and direct consumers pass on all three OS; native dialog polling, atomic cancel/publication and joined lifetime retained | Resolved P2-11.6 |
 | F: `filetransferoperation.*`, `qtfiletransfertransaction.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Original recursion/deletion bodies reviewed; integrated transaction extraction preserves existing policies and sole worker state. Direct/window consumers and object ownership verified on three OS | Resolved P2-11.7 |
 | B: `CMakeLists.txt`, `cmake/SharedPortObjects.cmake`, app/backend/dialog targets | Same authoritative production sources were recompiled per test; late source/link cloning and test TU macros require separate ownership | Twelve shared production groups plus Windows GUI entry; definitions, resources, ABI/platform links, late consumers and sole moc/source ownership verified on all three OS | Resolved P2-11.4 |
+| R: `mainwindow_archive_transfer.cpp`, `archivebackend_transfer.cpp`, `qtarchivetransferbackup.h` | Original App.cpp OnCopy owns staged panel transfer; Compress/CopyCoder.cpp CopyStream owns stream copying. Widget previously performed archive backup and a manual byte-restoration loop | Backup/publication moved behind ArchiveBackend; original stream copying, real two-panel Move success/Cancel/rollback and publication refusal verified on three OS | Resolved P2-11.8 |
 
 ### Retained adapter review and remaining coverage
 
@@ -534,6 +535,49 @@ separate retry 647 guest/local artifacts are SHA256 verified; the initial failur
 is not overwritten or described as a clean full Windows gate. No code or timeout
 change was made for the retry. This accepts F's verified boundary and consumers;
 whole-inventory acceptance and a stable final platform gate remain P2-11/P3.
+
+### P2-11.8 — archive transfer rollback boundary (accepted, 2026-10-05)
+
+The final window-file review found a destination-archive snapshot and manual
+1MiB restore loop in MainWindow::transferBetweenArchivePanels. Inspected original
+CPP/7zip/UI/FileManager/App.cpp CApp::OnCopy staged CopyTo/CopyFrom callers,
+adapted CApp::CopyArchiveToArchive and source DeleteItems, and original
+CPP/7zip/Compress/CopyCoder.cpp CCopyCoder::Code/CopyStream plus Common/FileStreams
+and Windows/FileIO dependencies, at https://github.com/ip7z/7zip.git, full commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. The original staged panel workflow has
+no destination snapshot restored after a later source Delete refusal; this
+existing safety adaptation remains necessary. Its byte loop has a usable source
+implementation and does not belong in a widget.
+
+In an isolated checkout based on f6e409e, ArchiveBackend provides a leased
+QtArchiveTransferBackup. The window requests the snapshot and restoration result;
+it retains source command invocation, confirmations, errors and panel refresh.
+QFile::copy remains the existing filename/permission service for the snapshot,
+and QSaveFile retains atomic publication. The restore byte loop is replaced by
+original CInFileStream and NCompress::CopyStream with a narrow sequential Qt
+output adapter. No archive format, update algorithm or borrowed body is changed.
+The shared backend object owner registers the implementation for all consumers.
+
+Focused archive_transfer_backup/ui_operations pass 2/2 in 7.84s on macOS,
+including empty/large Unicode destination bytes, absent-input refusal,
+publication refusal preserving a replacement directory, and the existing real
+two-panel archive Copy/Move with Delete Cancel rollback. The isolated unsandboxed
+formatting/all-target build/full Mac gate passes 241/241 in 99.89s. Its LastTest
+log is saved before the subsequent test-only registry isolation edit; the affected
+backup test passes again in 0.38s, with six Qt rows and no skips. Fresh Linux
+snapshot 56e65b26 passes the two direct/window suites in 8.71s; four guest/local
+artifacts are SHA256 verified. Windows snapshot 364aed17 passes the same two
+suites in 31.51s after the previous desktop gate and unchanged retry completed.
+Both guest runs execute MainWindowOperations34 and ArchiveTransferBackup6 Qt
+rows without failures/skips, with four SHA256-verified guest/local artifacts each.
+These isolated snapshots are based on f6e409e; they include R and exclude F's
+behavior-preserving extraction. R is integrated after the separate F acceptance
+commit cd90da6, with byte-identical source/test files and both shared object
+memberships retained. Main focused checks pass 2/2 in 8.23s, then the unsandboxed
+formatting/all-target build/full Mac gate passes 241/241 in 103.66s, with 136 root
+TUs each compiled once. Its full LastTest log is retained separately. This accepts
+R's boundary and consumers; final integrated platform and inventory acceptance
+remain P2-11/P3. No UI layout or text is changed.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

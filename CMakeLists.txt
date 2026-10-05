@@ -1782,7 +1782,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp src/archivebackend_sourceplan.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
             src/archivebackend_creation.cpp src/archivebackend_hash.cpp src/archivebackend_preparation.cpp
-            src/archivebackend_workerprogress.cpp)
+            src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
+            src/qtarchivetransferbackup.h)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
@@ -2098,6 +2099,12 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME native_update_path COMMAND native_update_path_tests -silent)
     set_tests_properties(native_update_path PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(archive_transfer_backup_tests tests/archive_transfer_backup_tests.cpp
+        ${codec_update_sources})
+    target_include_directories(archive_transfer_backup_tests PRIVATE src tests)
+    target_link_libraries(archive_transfer_backup_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME archive_transfer_backup COMMAND archive_transfer_backup_tests -silent)
+    set_tests_properties(archive_transfer_backup PROPERTIES TIMEOUT 30)
     get_target_property(source_link_options_sources compression_preferences_tests SOURCES)
     list(REMOVE_ITEM source_link_options_sources tests/compression_preferences_tests.cpp)
     set(source_link_storage_sources ${codec_update_sources} ${source_link_options_sources})

@@ -48,7 +48,8 @@ sevenzip_share_port_objects(sevenzip_archive_backend src/archivebackend.h
     src/archivebackend_sourceupdate.cpp
     src/archivebackend_validation.cpp
     src/archivebackend_volumes.cpp
-    src/archivebackend_workerprogress.cpp)
+    src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
+    src/qtarchivetransferbackup.h)
 
 sevenzip_share_port_objects(sevenzip_compress_presentation src/createarchivedialog.h
     src/createarchivedialog.cpp

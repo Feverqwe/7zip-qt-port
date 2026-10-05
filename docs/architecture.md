@@ -247,7 +247,8 @@ no-copy rename reuse FileLink/FileDir operations, with a POSIX rename adapter
 that lets callers handle EXDEV without reading target bytes. Source FSFolder
 owns Windows raw reparse properties and no-follow deletion; FSFolderCopy owns
 leaf-link copy/move, progress and native file/new-folder metadata preservation.
-FileTransferOperation retains staging, publication, cancellation and rollback.
+FileTransferOperation retains the joined worker and cancellation;
+QtFileTransferTransaction owns staging, publication and rollback.
 Destination links remain refused; source links are leaves, including dangling
 and cyclic targets. POSIX edit stages a replacement in the same parent before
 rename. Archive link storage/extraction and their security policy have separate
@@ -1261,8 +1262,14 @@ panels after success. P1-01.3 now routes normal F5/F6 selection, destination
 dialog and panel classification through mirrored `CApp::OnCopy`; the Qt
 presentation adapter dispatches into filesystem, archive-source extraction
 and archive-destination operations. Archive→archive uses source `CopyTo` to a
-temporary folder and target `CopyFrom`; Qt owns F6 delete ordering, byte
-rollback and both-panel refresh. `ArchiveBackend` restores per-archive listed
+temporary folder and target `CopyFrom`; Qt presents the F6 delete confirmation
+and refreshes both panels. `ArchiveBackend::saveArchiveTransferDestination`
+provides a leased `QtArchiveTransferBackup` spanning target publication and source
+Delete. It retains the existing snapshot filename/permission service and restores
+bytes through original `CInFileStream`/`NCompress::CopyStream`, with a narrow
+`QSaveFile` output adapter for atomic publication. The widget requests restoration
+after a source Delete refusal and handles its result; it no longer owns a byte
+copy loop. `ArchiveBackend` restores per-archive listed
 entries/encryption for the active panel before Test/Extract/mutation. The
 Shift+F5/F6 `copyToSame` branch and filesystem copy internals remain open
 through P1-01.3/P1-02.

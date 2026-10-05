@@ -3,10 +3,9 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
+#include "qtarchivetransferbackup.h"
 #include "qtlangcontrols.h"
-#include "qtownedtempdir.h"
 #include "qttrashservice.h"
-#include <QSaveFile>
 #include <QScopedValueRollback>
 
 bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool move) {
@@ -32,10 +31,11 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
         return true;
     UStringVector messages;
     HRESULT result;
-    QtOwnedTempDir rollback;
+    std::unique_ptr<QtArchiveTransferBackup> rollback;
     const QString destinationArchive = panelUi_[destinationIndex].archive;
-    const QString backup = rollback.filePath(QStringLiteral("archive-backup"));
-    if (move && (!rollback.isValid() || !QFile::copy(destinationArchive, backup))) {
+    if (move)
+        rollback = backend_->saveArchiveTransferDestination(destinationArchive);
+    if (move && !rollback) {
         QMessageBox::warning(this, QtLangText(IDS_MOVING),
                              QtLocalText("Could not save destination archive for rollback.",
                                          "Не удалось сохранить целевой архив для отката."));
@@ -53,17 +53,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             source.RefreshListCtrl(selected);
         }
         if (result != S_OK) {
-            QFile saved(backup);
-            QSaveFile restore(destinationArchive);
-            bool restored = saved.open(QIODevice::ReadOnly) && restore.open(QIODevice::WriteOnly);
-            while (restored && !saved.atEnd()) {
-                const QByteArray chunk = saved.read(1024 * 1024);
-                restored = !chunk.isEmpty() && restore.write(chunk) == chunk.size();
-            }
-            if (restored)
-                restored = restore.commit();
-            else
-                restore.cancelWriting();
+            const bool restored = rollback->restore();
             activatePanelUi(destinationIndex);
             refreshCurrent();
             activatePanelUi(sourceIndex);
