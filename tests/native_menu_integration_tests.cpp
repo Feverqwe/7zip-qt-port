@@ -1,3 +1,5 @@
+// This Windows-only desktop fixture uses Vista's parent-process attribute API.
+#define Z7_WIN32_WINNT_MIN 0x0600
 #include "Common/MyTypes.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
@@ -128,12 +130,109 @@ class OwnedRegistration {
 
 class NativeMenuIntegrationTests final : public QObject {
     Q_OBJECT
+    void OpenStandardDesktopProcess(HANDLE parent, HANDLE &shell) {
+        DWORD pid = 0;
+        QVERIFY(GetWindowThreadProcessId(GetShellWindow(), &pid));
+        HANDLE process =
+            OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_CREATE_PROCESS, FALSE, pid);
+        QVERIFY(process);
+        auto closeProcess = qScopeGuard([&] { CloseHandle(process); });
+        HANDLE token = nullptr;
+        QVERIFY(OpenProcessToken(process, TOKEN_QUERY, &token));
+        const auto closeToken = qScopeGuard([&] { CloseHandle(token); });
+        DWORD bytes = 0;
+        QByteArray ownUser(sizeof(TOKEN_USER) + SECURITY_MAX_SID_SIZE, 0);
+        QByteArray shellUser(ownUser.size(), 0);
+        QVERIFY(
+            GetTokenInformation(parent, TokenUser, ownUser.data(), DWORD(ownUser.size()), &bytes));
+        QVERIFY(GetTokenInformation(token, TokenUser, shellUser.data(), DWORD(shellUser.size()),
+                                    &bytes));
+        QVERIFY(EqualSid(reinterpret_cast<TOKEN_USER *>(ownUser.data())->User.Sid,
+                         reinterpret_cast<TOKEN_USER *>(shellUser.data())->User.Sid));
+        DWORD ownSession = 0, shellSession = 0;
+        QVERIFY(
+            GetTokenInformation(parent, TokenSessionId, &ownSession, sizeof(ownSession), &bytes));
+        QVERIFY(GetTokenInformation(token, TokenSessionId, &shellSession, sizeof(shellSession),
+                                    &bytes));
+        QCOMPARE(shellSession, ownSession);
+        TOKEN_ELEVATION elevation{};
+        QVERIFY(GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &bytes));
+        QVERIFY(!elevation.TokenIsElevated);
+        shell = process;
+        closeProcess.dismiss();
+    }
+    void RunStandardTokenChild(HANDLE token, const QTemporaryDir &fixture,
+                               const QProcessEnvironment &environment) {
+        HANDLE shell = nullptr;
+        OpenStandardDesktopProcess(token, shell);
+        QVERIFY(shell);
+        const auto closeShell = qScopeGuard([&] { CloseHandle(shell); });
+        SIZE_T attributeBytes = 0;
+        InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeBytes);
+        QVERIFY(attributeBytes > 0);
+        QByteArray attributes(qsizetype(attributeBytes), 0);
+        auto *list = reinterpret_cast<LPPROC_THREAD_ATTRIBUTE_LIST>(attributes.data());
+        QVERIFY(InitializeProcThreadAttributeList(list, 1, 0, &attributeBytes));
+        const auto deleteAttributes = qScopeGuard([&] { DeleteProcThreadAttributeList(list); });
+        QVERIFY(UpdateProcThreadAttribute(list, 0, PROC_THREAD_ATTRIBUTE_PARENT_PROCESS, &shell,
+                                          sizeof(shell), nullptr, nullptr));
+        const std::wstring application =
+            QDir::toNativeSeparators(QCoreApplication::applicationFilePath()).toStdWString();
+        const QString log = fixture.filePath("standard-token-child.txt");
+        std::wstring command =
+            (QStringLiteral("\"") + QString::fromStdWString(application) +
+             "\" sourcePageRegistersRequeriesActivatesAndUnregisters -silent -o \"" +
+             QDir::toNativeSeparators(log) + ",txt\"")
+                .toStdWString();
+        const QString block = environment.toStringList().join(QChar(0)) + QChar(0) + QChar(0);
+        STARTUPINFOEXW startup{};
+        startup.StartupInfo.cb = sizeof(startup);
+        startup.lpAttributeList = list;
+        PROCESS_INFORMATION process{};
+        // The desktop token belongs to this same user and session. Run the per-user COM
+        // consumer with its ordinary token even when privileged fixtures drive
+        // the parent gate; no registry lookup override or security policy change.
+        QVERIFY2(CreateProcessW(
+                     application.c_str(), command.data(), nullptr, nullptr, FALSE,
+                     CREATE_UNICODE_ENVIRONMENT | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
+                     const_cast<ushort *>(block.utf16()), nullptr, &startup.StartupInfo, &process),
+                 qPrintable(QString("CreateProcessW error %1").arg(GetLastError())));
+        OwnedRegistration emergency(process.dwProcessId);
+        const auto stop = qScopeGuard([&] {
+            if (WaitForSingleObject(process.hProcess, 0) == WAIT_TIMEOUT) {
+                TerminateProcess(process.hProcess, 1);
+                WaitForSingleObject(process.hProcess, 5000);
+            }
+            emergency.Clear();
+            CloseHandle(process.hThread);
+            CloseHandle(process.hProcess);
+        });
+        QCOMPARE(WaitForSingleObject(process.hProcess, 45000), DWORD(WAIT_OBJECT_0));
+        DWORD code = 1;
+        QVERIFY(GetExitCodeProcess(process.hProcess, &code));
+        QFile output(log);
+        QVERIFY(output.open(QIODevice::ReadOnly));
+        const QByteArray text = output.readAll();
+        QVERIFY2(code == 0, text.constData());
+        emergency.Clear();
+        QVERIFY(emergency.Absent());
+    }
     void RunUnicodeSettingsChild() {
         QTemporaryDir fixture;
         QProcess child;
         auto environment = QProcessEnvironment::systemEnvironment();
         environment.insert("SEVENZIP_MENU_TEST_CHILD", "1");
         environment.insert("SEVENZIP_SETTINGS_PATH", fixture.filePath("menu 空.ini"));
+        HANDLE token = nullptr;
+        QVERIFY(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token));
+        const auto closeToken = qScopeGuard([&] { CloseHandle(token); });
+        TOKEN_ELEVATION elevation{};
+        DWORD bytes = 0;
+        QVERIFY(GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &bytes));
+        if (elevation.TokenIsElevated) {
+            RunStandardTokenChild(token, fixture, environment);
+            return;
+        }
         child.setProcessEnvironment(environment);
         child.start(QCoreApplication::applicationFilePath(),
                     {"sourcePageRegistersRequeriesActivatesAndUnregisters", "-silent"});
@@ -224,6 +323,13 @@ class NativeMenuIntegrationTests final : public QObject {
             RunUnicodeSettingsChild();
             return;
         }
+        HANDLE token = nullptr;
+        QVERIFY(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token));
+        const auto closeToken = qScopeGuard([&] { CloseHandle(token); });
+        TOKEN_ELEVATION elevation{};
+        DWORD bytes = 0;
+        QVERIFY(GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &bytes));
+        QVERIFY(!elevation.TokenIsElevated);
         OwnedRegistration owned;
         QCOMPARE(owned.Reserve(), LONG(ERROR_SUCCESS));
         QTemporaryDir fixture;

@@ -34,6 +34,17 @@ active runner logon; it does not log in, supply credentials or fall back to a
 noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
 verify backend/COM data consumers, but hidden windows do not prove UI acceptance.
 
+`native_menu_integration` exercises real per-user COM registration under an
+ordinary user token. When privileged link/security fixtures require an elevated
+parent gate, this test launches its own child using the desktop process as its
+parent, following [Microsoft's parent-process API technique](https://devblogs.microsoft.com/oldnewthing/20190425-00/?p=102443).
+It first verifies the same user SID and session and an unelevated desktop token;
+the child independently checks elevation before registration and activation.
+The fixture waits for its child, reports its assertions and removes only registry
+entries bearing that child's ownership marker. It changes no UAC/security policy,
+uses no alternate credentials and retains the ordinary-token path for the default
+interactive runner. Its required Vista API declarations apply only to this test.
+
 The general entry point is `run <linux|windows|all> [runner-options] --
 <project-script> [script-arguments]`. Examples:
 
