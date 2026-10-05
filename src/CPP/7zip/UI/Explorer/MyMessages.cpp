@@ -2,6 +2,9 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // MyMessages.cpp
 
+bool g_DisableUserQuestions = false;
+
+#ifdef _WIN32
 #include "Common/MyWindows.h"
 
 #include "7zip/UI/Explorer/MyMessages.h"
@@ -12,8 +15,6 @@
 #include "../FileManager/LangUtils.h"
 
 using namespace NWindows;
-
-bool g_DisableUserQuestions = false;
 
 void ShowErrorMessage(HWND window, LPCWSTR message) {
     if (!g_DisableUserQuestions)
@@ -34,3 +35,4 @@ static void ShowErrorMessageDWORD(HWND window, DWORD errorCode) {
 }
 
 void ShowLastErrorMessage(HWND window) { ShowErrorMessageDWORD(window, ::GetLastError()); }
+#endif

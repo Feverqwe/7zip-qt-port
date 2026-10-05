@@ -14,6 +14,74 @@ as functional acceptance. Remaining bodies/branches/resources/ClassDefs closure,
 native transport proof and whole P3-05 remain open. git diff --check passes;
 documentation-only scope requires no runtime or appearance check.
 
+## P3-05.1 — Unix FM/GUI production consumers (accepted scope, 2026-10-05)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Original FM.cpp::WinMain2,
+GUI.cpp::Main2/WinMain, complete ArchiveCommandLine.cpp::Parse1/Parse2,
+their headers, callers and progress question policy were inspected. Unix main
+previously bypassed source startup and never compiled the GUI dispatcher.
+All platforms now compile the existing Qt FM/GUI entry owners. Windows keeps
+GetCommandLineW and its tokenizer. Unix supplies already decoded argv values:
+FM's new typed overload shares the original format/path/DoesFileExistNeedArc body
+without trimming literal pathname whitespace or stripping quotes; GUI passes
+the native vector to the original parser and unchanged command branches.
+
+ArchiveCommandLine.cpp moves from exact third_party to its upstream-relative
+src path. Parse1/Parse2, switches, list-file/censor/update/mapping control flow
+are retained. Includes resolve through the existing portable/adapted headers.
+Only its POSIX program-argv directory fallback is omitted: all consumers already
+use the authoritative adapted Windows/DLL.cpp::GetModuleDirPrefix and Qt native
+executable path. This avoids duplicate symbols and competing module paths.
+Common/CommandLineParser.cpp and ListFileUtils.cpp remain unchanged dependencies,
+now compiled on Unix too. Whole-file clang-format is recorded separately from
+this functional omission/include adaptation. The reproducible manifest verifies
+408 exact/196 adapted/3 local paths at the same revision. MyMessages.cpp retains
+its single process question flag on all platforms; its native HWND bodies remain
+Windows-only. ProgressDialog2 uses that existing GUI policy on Unix as well;
+per-operation Qt overrides remain available.
+
+Qt main preserves the association event receiver and independent openPath window
+lifetime. Copied 7zG/7zFM Unix entries select the same production bodies; macOS
+uses argv[0] for this dispatch because bundle executable metadata can resolve
+applicationFilePath to the principal binary. No Finder automation/acceptance is
+provided by these changes. The GUI source exception/exit policy and lazy engine
+factory remain unchanged. Win32 security initialization stays Windows-only;
+Unix error/information presentation uses QMessageBox with source messages.
+
+Seven typed FM cases exercise real catalog/binding plus a separate Qt process
+calling the shared production RunSevenzipFileManager body: quoted Unicode paths,
+forced/wrong format, broken/encrypted Cancel, relative folders with literal outer
+spaces and source-ignored tail. The helper observes public widgets and closes
+them; it does not expose internals or prove native desktop integration. Unix
+7zG subprocess cases perform Add/Test/Extract/excluded-handler/broken refusal,
+official-engine verification and exact bytes, preserving source/archive/sentinel.
+Initial GUI regression found omitted Unix progress -y policy; the RED log is
+retained at build/review/p305-unix-gui-red-lasttest.log. macOS arm64 Qt6.11.2
+focused2/2 PASS2.58s and full formatting/all-target gate243/243 PASS87.56s;
+the startup wrapper's four consumers pass2.46s. The ordered full log is retained
+at build/review/p305-main-full-lasttest.log. Root integration compiles each of
+its142 translation units once, including the parser and FM/GUI entry owners;
+ProgressDialog2 retains separate sync-only and presentation variants.
+
+Frozen snapshot20261005T102806Z-31754f94, SHA
+2923d12c3f932592bd00798a08985fdb780ab18c5240517ac79001696588736d,
+contains this component and the separately accepted redraw policy. Linux's
+original build stopped with ENOSPC before tests; that failed check.log remains.
+After removing only verified closed task builds, the same snapshot/build retry
+passes focused10/10 in14.78s and full239/239 in190.13s. Its626 artifacts are
+guest/local SHA-verified. Unix GUI and FM cases have zero skips. Windows native
+interactive focused10/10 passes49.63s; full246/248 fails1002.00s with
+native_open_commands timeout and both disk large-list timing failures. Its647
+original artifacts are guest/local SHA-verified. Those failures remain P3-03.3
+work; no timeout, performance limit or required fixture is relaxed. The separate
+modal-fixture correction is excluded from this source component's commit.
+
+P3-05.1 accepts these production callers, parser dependency and observable
+startup/dispatch consumers. It does not accept stable Windows full performance,
+Finder/native event integration, packaged launch workflows or whole P3-05
+body/resource/dependency closure. No sibling upstream files are changed.
+
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
 The original b04b3b53 full/retry large-list failures remain as recorded in P3-02;

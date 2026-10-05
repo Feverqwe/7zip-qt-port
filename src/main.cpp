@@ -1,29 +1,29 @@
 #include "desktopidentity.h"
 #include "mainwindow.h"
 #include "qtassociationfileopen.h"
+#include "qtfilemanagerstartup.h"
+#include "qtguicommand.h"
 
 #include <QApplication>
 #include <QFileInfo>
 #include <QTimer>
-#ifdef Q_OS_WIN
-#include "qtfilemanagerstartup.h"
-#include "qtguicommand.h"
-#endif
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setApplicationName("Sevenzip Desktop");
     app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
 #ifdef Q_OS_WIN
-    if (QFileInfo(app.applicationFilePath())
-            .fileName()
-            .compare(QStringLiteral("7zG.exe"), Qt::CaseInsensitive) == 0)
-        return RunSevenzipGUI(app);
-    if (!app.arguments().contains("--smoke-test"))
-        return RunSevenzipFileManager(app);
+    const QString guiName = QStringLiteral("7zG.exe");
+    const QString entryName = QFileInfo(app.applicationFilePath()).fileName();
+#else
+    const QString guiName = QStringLiteral("7zG");
+    // macOS resolves applicationFilePath through CFBundleExecutable, including
+    // when the copied GUI entry is launched from the same bundle directory.
+    const QString entryName = QFileInfo(app.arguments().value(0)).fileName();
 #endif
+    if (entryName.compare(guiName, Qt::CaseInsensitive) == 0)
+        return RunSevenzipGUI(app);
     QtAssociationFileOpen associatedFiles(app);
-    MainWindow window;
     QObject::connect(&associatedFiles, &QtAssociationFileOpen::OpenRequested, &app,
                      [](const QString &path) {
                          // LaunchServices can target an already busy application.
@@ -35,13 +35,9 @@ int main(int argc, char *argv[]) {
                          receiver->show();
                      });
     associatedFiles.Activate();
-    if (app.arguments().contains("--smoke-test")) {
-        QTimer::singleShot(0, &app, &QCoreApplication::quit);
-    } else {
-        window.show();
-        if (app.arguments().size() > 1)
-            QTimer::singleShot(0, &window,
-                               [&window, &app] { window.openPath(app.arguments().at(1)); });
-    }
+    if (!app.arguments().contains("--smoke-test"))
+        return RunSevenzipFileManager(app);
+    MainWindow window;
+    QTimer::singleShot(0, &app, &QCoreApplication::quit);
     return app.exec();
 }

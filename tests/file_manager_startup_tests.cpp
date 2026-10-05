@@ -3,6 +3,8 @@
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
 #include "source_extract_fixture.h"
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QScopeGuard>
 #include <QSignalSpy>
 #include <QtTest>
@@ -54,19 +56,31 @@ class FileManagerStartupTests final : public QObject {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<QString>("tail");
         QTest::addColumn<bool>("refused");
-        QTest::newRow("quoted-unicode-auto") << QString("zip") << QString() << false;
-        QTest::newRow("quoted-unicode-forced-zip") << QString("zip") << QString(" -tzip") << false;
-        QTest::newRow("wrong-forced-type") << QString("zip") << QString(" -t7z") << true;
-        QTest::newRow("broken-archive") << QString("broken") << QString(" -tzip") << true;
-        QTest::newRow("encrypted-open-cancel") << QString("encrypted") << QString(" -t7z") << true;
-        QTest::newRow("relative-folder") << QString("folder") << QString() << false;
-        QTest::newRow("source-ignored-tail")
-            << QString("zip") << QString(" -ignored -t7z") << false;
+        QTest::addColumn<bool>("typed");
+        const auto rows = [](bool typed) {
+            const auto row = [typed](const char *name, const QString &kind, const QString &tail,
+                                     bool refused) {
+                QTest::newRow(qPrintable(QString(typed ? "argv-%1" : "%1").arg(name)))
+                    << kind << tail << refused << typed;
+            };
+            row("quoted-unicode-auto", "zip", {}, false);
+            row("quoted-unicode-forced-zip", "zip", " -tzip", false);
+            row("wrong-forced-type", "zip", " -t7z", true);
+            row("broken-archive", "broken", " -tzip", true);
+            row("encrypted-open-cancel", "encrypted", " -t7z", true);
+            row("relative-folder", "folder", {}, false);
+            row("source-ignored-tail", "zip", " -ignored -t7z", false);
+        };
+        rows(false);
+#ifndef Q_OS_WIN
+        rows(true);
+#endif
     }
     void initialNativeBinding() {
         QFETCH(QString, kind);
         QFETCH(QString, tail);
         QFETCH(bool, refused);
+        QFETCH(bool, typed);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString cwd = QDir::currentPath();
@@ -79,8 +93,11 @@ class FileManagerStartupTests final : public QObject {
         const bool encrypted = kind == "encrypted";
         QString path = fixture.filePath(encrypted ? QStringLiteral("архив 空 with spaces.7z")
                                                   : QStringLiteral("архив 空 with spaces.zip"));
+        if (typed)
+            path.insert(path.lastIndexOf('.'), QStringLiteral(" \"literal quote\""));
         if (kind == "folder") {
-            path = QStringLiteral("каталог 空 with spaces");
+            path = typed ? QStringLiteral(" каталог 空 \"quoted\" with spaces ")
+                         : QStringLiteral("каталог 空 with spaces");
             QVERIFY(SourceExtractFixture::writeFile(fixture.filePath(path + "/" + name), bytes));
         } else if (kind == "broken") {
             QVERIFY(SourceExtractFixture::writeFile(path, "invalid ZIP fixture"));
@@ -98,7 +115,8 @@ class FileManagerStartupTests final : public QObject {
             kind == "folder" ? QByteArray() : SourceExtractFixture::readFile(path);
         const QString line = QStringLiteral("\"C:\\Sevenzip Desktop\\7zFM.exe\" \"") + path +
                              QStringLiteral("\"") + tail;
-        const auto startup = WinMain2(ToUString(line));
+        const auto startup = typed ? WinMain2(ToUString(path), ToUString(tail.trimmed()))
+                                   : WinMain2(ToUString(line));
         QCOMPARE(startup.NeedOpenArc, kind != "folder");
         QCOMPARE(QDir::fromNativeSeparators(ToQString(startup.FullPath)),
                  QFileInfo(path).absoluteFilePath());
@@ -137,6 +155,33 @@ class FileManagerStartupTests final : public QObject {
         QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(name)), bytes);
         if (kind != "folder")
             QCOMPARE(SourceExtractFixture::readFile(path), original);
+#ifndef Q_OS_WIN
+        if (typed) {
+            QProcess process;
+            auto environment = QProcessEnvironment::systemEnvironment();
+            environment.insert("SEVENZIP_PROBE_MEMBER", name);
+            environment.insert("SEVENZIP_SETTINGS_PATH", fixture.filePath("probe-settings.ini"));
+            process.setProcessEnvironment(environment);
+            process.setWorkingDirectory(fixture.path());
+            QStringList arguments{path};
+            arguments.append(tail.split(' ', Qt::SkipEmptyParts));
+            process.start(QString::fromUtf8(SEVENZIP_FM_PROBE), arguments);
+            QVERIFY(process.waitForStarted(5000));
+            QVERIFY2(process.waitForFinished(35000), "production FM entry did not finish");
+            QCOMPARE(process.exitStatus(), QProcess::NormalExit);
+            QCOMPARE(process.exitCode(), 0);
+            const auto report = QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+            QVERIFY(!report.isEmpty());
+            QCOMPARE(report.value("bound").toBool(), !refused);
+            QCOMPARE(report.value("refusal").toBool(), refused && !encrypted);
+            QCOMPARE(report.value("password").toBool(), encrypted);
+            QVERIFY(!report.value("timeout").toBool());
+            QCOMPARE(report.value("exitCode").toInt(), 0);
+            QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(name)), bytes);
+            if (kind != "folder")
+                QCOMPARE(SourceExtractFixture::readFile(path), original);
+        }
+#endif
     }
 #ifdef Q_OS_WIN
     void actualFileManagerProcess_data() {

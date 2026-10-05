@@ -7,7 +7,13 @@
 int RunSevenzipFileManager(QApplication &application) {
     return NQtFileManager::WinMain([&] {
         LoadLangOneTime();
+#ifdef Q_OS_WIN
         const auto startup = WinMain2(UString(GetCommandLineW()));
+#else
+        const QStringList arguments = application.arguments();
+        const auto startup = WinMain2(UString(arguments.value(1).toStdWString().c_str()),
+                                      UString(arguments.mid(2).join(' ').toStdWString().c_str()));
+#endif
         ArchiveBackend backend;
         if (startup.NeedOpenArc) {
             // The source first archive open loads Global_Codecs synchronously.

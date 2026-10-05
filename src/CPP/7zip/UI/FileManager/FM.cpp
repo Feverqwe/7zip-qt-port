@@ -67,9 +67,6 @@ int NQtFileManager::WinMain(const std::function<int()> &main2) {
 }
 
 QtFileManagerStartup WinMain2(const UString &nativeCommandLine) {
-    QtFileManagerStartup startup;
-    UString &g_MainPath = startup.FullPath;
-    UString &g_ArcFormat = startup.ArcFormat;
     // Original WinMain2 command-line body; Qt supplies GetCommandLineW's
     // string. The commented-out alternate parsers are not active upstream.
     UString commandsString;
@@ -80,6 +77,15 @@ QtFileManagerStartup WinMain2(const UString &nativeCommandLine) {
     SplitStringToTwoStrings(commandsString, paramString, tailString);
     paramString.Trim();
     tailString.Trim();
+    return WinMain2(paramString, tailString);
+}
+
+QtFileManagerStartup WinMain2(const UString &paramString, const UString &tailString) {
+    // Unix argv is already decoded by the OS/Qt. Keep literal quotes and
+    // pathname whitespace rather than passing it through the Win32 tokenizer.
+    QtFileManagerStartup startup;
+    UString &g_MainPath = startup.FullPath;
+    UString &g_ArcFormat = startup.ArcFormat;
     if (tailString.IsPrefixedBy("-t"))
         g_ArcFormat = tailString.Ptr(2);
     if (!paramString.IsEmpty())

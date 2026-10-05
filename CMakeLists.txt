@@ -124,17 +124,17 @@ target_compile_definitions(sevenzip_hash_registry PRIVATE Z7_EXTERNAL_CODECS)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
+target_sources(sevenzip_common PRIVATE
+    third_party/7zip/CPP/Common/CommandLineParser.cpp
+    third_party/7zip/CPP/Common/ListFileUtils.cpp
+    src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp)
+target_include_directories(sevenzip_common PRIVATE
+    src/CPP/Common src/CPP/7zip/UI/Common)
 if(WIN32)
     target_sources(sevenzip_common PRIVATE third_party/7zip/C/DllSecur.c)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Common/Random.cpp)
-    target_sources(sevenzip_common PRIVATE
-        third_party/7zip/CPP/Common/CommandLineParser.cpp
-        third_party/7zip/CPP/Common/ListFileUtils.cpp
-        third_party/7zip/CPP/7zip/UI/Common/ArchiveCommandLine.cpp)
-    target_include_directories(sevenzip_common PRIVATE
-        src/CPP/Common src/CPP/7zip/UI/Common)
     set_source_files_properties(third_party/7zip/CPP/Common/ListFileUtils.cpp
-        third_party/7zip/CPP/7zip/UI/Common/ArchiveCommandLine.cpp PROPERTIES
+        src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     set_source_files_properties(src/CPP/7zip/UI/Common/CompressCall.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
@@ -293,11 +293,11 @@ qt_add_resources(sevenzip_panel upstream_shell_icons
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
+target_sources(sevenzip_panel PRIVATE src/CPP/7zip/UI/Explorer/MyMessages.cpp)
 if(WIN32)
     target_sources(sevenzip_panel PRIVATE
         src/CPP/7zip/UI/FileManager/AltStreamsFolder.cpp
         src/CPP/7zip/UI/FileManager/AltStreamsFolder.h
-        src/CPP/7zip/UI/Explorer/MyMessages.cpp
         src/wincontextmenuservices.cpp src/wincontextmenuservices.h
         src/winshellmenupresentation.cpp src/winshellmenupresentation.h)
     target_link_libraries(sevenzip_panel PUBLIC shell32)
@@ -433,9 +433,9 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
 target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
+target_sources(sevenzip_location PRIVATE src/CPP/7zip/UI/GUI/GUI.cpp src/qtguicommand.h)
+target_include_directories(sevenzip_location PRIVATE src/CPP/Common src/CPP/7zip/UI/Common)
 if(WIN32)
-    target_sources(sevenzip_location PRIVATE src/CPP/7zip/UI/GUI/GUI.cpp src/qtguicommand.h)
-    target_include_directories(sevenzip_location PRIVATE src/CPP/Common src/CPP/7zip/UI/Common)
     set_source_files_properties(src/CPP/7zip/UI/GUI/GUI.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
 endif()
@@ -479,13 +479,20 @@ qt_add_executable(sevenzip_desktop
 
 target_include_directories(sevenzip_desktop PRIVATE src)
 target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
+target_sources(sevenzip_desktop PRIVATE src/qtguimain.cpp src/qtfilemanagermain.cpp)
 if(WIN32)
-    target_sources(sevenzip_desktop PRIVATE src/qtguimain.cpp src/qtfilemanagermain.cpp)
     add_custom_command(TARGET sevenzip_desktop POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
             "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG.exe"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
             "$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM.exe"
+        VERBATIM)
+else()
+    add_custom_command(TARGET sevenzip_desktop POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
+            "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
+            "$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM"
         VERBATIM)
 endif()
 
@@ -2366,11 +2373,31 @@ if(BUILD_TESTING)
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
     if(SEVENZIP_CODEC_MODULE)
+        if(NOT WIN32)
+            qt_add_executable(file_manager_entry_probe tests/fixtures/file_manager_entry_probe.cpp
+                src/qtfilemanagermain.cpp ${metadata_ui_sources})
+            target_include_directories(file_manager_entry_probe PRIVATE src tests)
+            target_link_libraries(file_manager_entry_probe PRIVATE ${metadata_ui_libraries})
+            qt_add_executable(unix_gui_entry_tests tests/unix_gui_entry_tests.cpp)
+            target_include_directories(unix_gui_entry_tests PRIVATE src tests)
+            target_link_libraries(unix_gui_entry_tests PRIVATE sevenzip_common Qt6::Test)
+            target_compile_definitions(unix_gui_entry_tests PRIVATE
+                "SEVENZIP_NATIVE_GUI=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zG\"")
+            add_dependencies(unix_gui_entry_tests sevenzip_desktop)
+            add_test(NAME unix_gui_entry COMMAND unix_gui_entry_tests -silent)
+            set_tests_properties(unix_gui_entry PROPERTIES TIMEOUT 180 ENVIRONMENT
+                "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/unix-gui-entry.ini")
+        endif()
         qt_add_executable(file_manager_startup_tests tests/file_manager_startup_tests.cpp ${metadata_ui_sources})
         target_include_directories(file_manager_startup_tests PRIVATE src tests)
         target_link_libraries(file_manager_startup_tests PRIVATE ${metadata_ui_libraries})
         target_compile_definitions(file_manager_startup_tests PRIVATE
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+        if(NOT WIN32)
+            target_compile_definitions(file_manager_startup_tests PRIVATE
+                "SEVENZIP_FM_PROBE=\"$<TARGET_FILE:file_manager_entry_probe>\"")
+            add_dependencies(file_manager_startup_tests file_manager_entry_probe)
+        endif()
         if(WIN32)
             target_compile_definitions(file_manager_startup_tests PRIVATE
                 "SEVENZIP_NATIVE_FM=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM.exe\"")

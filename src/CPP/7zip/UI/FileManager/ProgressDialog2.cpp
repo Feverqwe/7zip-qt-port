@@ -28,9 +28,7 @@
 using namespace NWindows;
 
 #ifndef SEVENZIP_PROGRESS_SYNC_ONLY
-#ifdef _WIN32
 extern bool g_DisableUserQuestions;
-#endif
 
 static const unsigned kCloseMessage = 0x8000 + 1; // Source WM_APP + 1.
 static const unsigned kCreateDelay = 500;         // Desktop source, not Windows CE.
@@ -340,11 +338,9 @@ CProgressDialog::CProgressDialog(QWidget *parent, const UString &title)
       WaitMode(false), MessagesDisplayed(false), CompressingMode(true), ShowCompressionInfo(true),
       _numPostedMessages(0), _numAutoSizeMessages(0), _numMessages(0), _timer(0), _title(title),
       IconID(-1), MainWindow(nullptr) {
-#ifdef _WIN32
-    // Native GUI Parse1 sets the original process policy before constructing
+    // GUI Parse1 sets the original process policy before constructing
     // workers. Keep the existing per-operation Qt override for other callers.
     DisableUserQuestions = g_DisableUserQuestions;
-#endif
     if (_dialogCreatedEvent.Create() != S_OK)
         throw 1334987;
     if (_createDialogEvent.Create() != S_OK)

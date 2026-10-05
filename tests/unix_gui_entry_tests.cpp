@@ -1,0 +1,76 @@
+#include "source_extract_fixture.h"
+#include <QProcess>
+#include <QtTest>
+
+class UnixGuiEntryTests final : public QObject {
+    Q_OBJECT
+  private slots:
+    void sourceDispatch_data() {
+        QTest::addColumn<QString>("command");
+        QTest::addColumn<bool>("excluded");
+        QTest::addColumn<bool>("broken");
+        QTest::newRow("create") << QString("a") << false << false;
+        QTest::newRow("test") << QString("t") << false << false;
+        QTest::newRow("extract") << QString("x") << false << false;
+        QTest::newRow("excluded-handler") << QString("x") << true << false;
+        QTest::newRow("broken-archive") << QString("t") << false << true;
+    }
+    void sourceDispatch() {
+        QFETCH(QString, command);
+        QFETCH(bool, excluded);
+        QFETCH(bool, broken);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray bytes("Unix source GUI entry payload");
+        const QString original = SourceExtractFixture::makeArchive(fixture.path(), bytes);
+        QVERIFY(!original.isEmpty());
+        const QString archive =
+            fixture.filePath(QStringLiteral("архив 密碼 with spaces \"literal quotes\".zip"));
+        QVERIFY(QFile::rename(original, archive));
+        if (broken)
+            QVERIFY(SourceExtractFixture::writeFile(archive, "broken ZIP"));
+        const QByteArray before = SourceExtractFixture::readFile(archive);
+        const QString output = fixture.filePath(QStringLiteral("выход 空 \"quoted\""));
+        const QString sentinel = QDir(output).filePath("existing.bin");
+        QVERIFY(SourceExtractFixture::writeFile(sentinel, "keep"));
+        QStringList arguments{command, "-y", "-o" + output};
+        if (excluded)
+            arguments << "-stxzip";
+        const QString created = fixture.filePath(QStringLiteral("новый 空 \"quoted\".zip"));
+        if (command == "a")
+            arguments << "-tzip" << "--" << created << SourceExtractFixture::kName;
+        else
+            arguments << "--" << archive;
+        QProcess helper;
+        helper.setWorkingDirectory(fixture.path());
+        helper.start(QString::fromUtf8(SEVENZIP_NATIVE_GUI), arguments);
+        QVERIFY(helper.waitForStarted(5000));
+        QVERIFY2(helper.waitForFinished(30000), "source GUI dispatch did not complete");
+        QCOMPARE(helper.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(helper.exitCode(), excluded || broken ? 2 : 0);
+        const QString extracted = QDir(output).filePath(SourceExtractFixture::kName);
+        if (command == "x" && !excluded)
+            QCOMPARE(SourceExtractFixture::readFile(extracted), bytes);
+        else
+            QVERIFY(!QFileInfo::exists(extracted));
+        if (command == "a") {
+            QProcess verify;
+            verify.start(QStandardPaths::findExecutable("7zz"), {"t", "--", created});
+            QVERIFY(verify.waitForFinished(10000));
+            QCOMPARE(verify.exitCode(), 0);
+            QProcess extract;
+            extract.start(QStandardPaths::findExecutable("7zz"),
+                          {"x", "-y", "-o" + output, "--", created});
+            QVERIFY(extract.waitForFinished(10000));
+            QCOMPARE(extract.exitCode(), 0);
+            QCOMPARE(SourceExtractFixture::readFile(extracted), bytes);
+        }
+        QCOMPARE(SourceExtractFixture::readFile(sentinel), QByteArray("keep"));
+        QCOMPARE(SourceExtractFixture::readFile(archive), before);
+        QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(SourceExtractFixture::kName)),
+                 bytes);
+    }
+};
+
+QTEST_GUILESS_MAIN(UnixGuiEntryTests)
+#include "unix_gui_entry_tests.moc"

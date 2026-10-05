@@ -4,7 +4,9 @@
 // Original Main2 dispatcher and WinMain exception/exit-code policy.
 // Qt startup/platform initialization and retained engine factories are supplied
 // by the entry/service owners; archive work remains behind ArchiveBackend.
+#ifdef _WIN32
 #include "../../../../../third_party/7zip/C/DllSecur.h"
+#endif
 #include "../FileManager/LangUtils.h"
 #include "7zip/UI/Common/ArchiveCommandLine.h"
 #include "7zip/UI/Common/ExitCode.h"
@@ -19,13 +21,22 @@
 #include "UpdateGUI.h"
 #include "qtguicommand.h"
 #include "qtshellarchiveservices.h"
+#ifndef _WIN32
+#include <QCoreApplication>
+#include <QMessageBox>
+#endif
 
 using namespace NWindows;
 extern bool g_DisableUserQuestions;
 
 static void ErrorMessage(LPCWSTR message) {
-    if (!g_DisableUserQuestions)
+    if (!g_DisableUserQuestions) {
+#ifdef _WIN32
         MessageBoxW(NULL, message, L"7-Zip", MB_ICONERROR | MB_OK);
+#else
+        QMessageBox::critical(nullptr, QStringLiteral("7-Zip"), QString::fromWCharArray(message));
+#endif
+    }
 }
 
 static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
@@ -53,14 +64,24 @@ static void ThrowException_if_Error(HRESULT res) {
 
 static int Main2(const QtGUIServiceFactory &factory) {
     UStringVector commandStrings;
+#ifdef _WIN32
     NCommandLineParser::SplitCommandLine(GetCommandLineW(), commandStrings);
+#else
+    for (const QString &argument : QCoreApplication::arguments())
+        commandStrings.Add(UString(argument.toStdWString().c_str()));
+#endif
 
 #ifndef UNDER_CE
     if (commandStrings.Size() > 0)
         commandStrings.Delete(0);
 #endif
     if (commandStrings.Size() == 0) {
+#ifdef _WIN32
         MessageBoxW(NULL, L"Specify command", L"7-Zip", 0);
+#else
+        QMessageBox::information(nullptr, QStringLiteral("7-Zip"),
+                                 QStringLiteral("Specify command"));
+#endif
         return 0;
     }
 
@@ -85,7 +106,7 @@ static int Main2(const QtGUIServiceFactory &factory) {
         codecs->GetCodecsErrorMessage(s);
         if (!s.IsEmpty()) {
             if (!g_DisableUserQuestions)
-                MessageBoxW(NULL, s, L"7-Zip", MB_ICONERROR);
+                ErrorMessage(s);
         }
     }
 #endif
@@ -279,7 +300,9 @@ static int Main2(const QtGUIServiceFactory &factory) {
 
 int SevenzipGUI(const QtGUIServiceFactory &factory) {
     try {
+#ifdef _WIN32
         My_SetDefaultDllDirectories();
+#endif
         return Main2(factory);
     } catch (const CNewException &) {
         return ShowMemErrorMessage();

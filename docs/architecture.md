@@ -7,8 +7,9 @@ object-library owners after all app/test targets, source-derived registrations
 and startup fixtures have been declared. Backend, compression presentation,
 MainWindow integration, native menu presentation, source compression/Agent/
 selection/Split, file transfer, filesystem scanning and volume operations each
-compile once. Windows additionally shares the GUI entry between the app and
-MAPI host. Consumers retain their link libraries, resources and test translation
+compile once. GUI and FM entry bodies have shared object owners; Windows reuses
+the GUI entry in its MAPI host, and Unix reuses FM entry in its public-widget
+startup probe. Consumers retain their link libraries, resources and test translation
 unit definitions; each QObject header has one generated moc owner. Incomplete
 source groups are configure errors rather than silently mixed implementations.
 Borrowed C sources keep their C compiler and required engine/module variants.

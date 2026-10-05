@@ -18,6 +18,7 @@ struct QtFileManagerStartupFailure {
 };
 
 QtFileManagerStartup WinMain2(const UString &nativeCommandLine);
+QtFileManagerStartup WinMain2(const UString &nativePath, const UString &nativeTail);
 void CheckFileManagerStartup(HRESULT result, const QtFileManagerStartup &startup,
                              const COpenResult &openRes);
 namespace NQtFileManager {

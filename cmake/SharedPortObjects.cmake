@@ -106,9 +106,9 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
 sevenzip_share_port_objects(sevenzip_native_menu_presentation src/qtnativeshellmenupresentation.h
     src/qtnativeshellmenupresentation.cpp)
 
-if(WIN32)
-    sevenzip_share_port_objects(sevenzip_gui_entry src/qtguicommand.h src/qtguimain.cpp)
-endif()
+sevenzip_share_port_objects(sevenzip_gui_entry src/qtguicommand.h src/qtguimain.cpp)
+sevenzip_share_port_objects(sevenzip_file_manager_entry src/qtfilemanagerstartup.h
+    src/qtfilemanagermain.cpp)
 
 sevenzip_share_port_objects(sevenzip_compress_source src/CPP/7zip/UI/GUI/CompressDialog.h
     src/CPP/7zip/UI/GUI/CompressDialog.cpp)

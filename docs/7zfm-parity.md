@@ -1,5 +1,16 @@
 # Сверка с Windows 7zFM
 
+## P3-05.1 — Unix source startup/dispatch (принят scope callers, 2026-10-05)
+
+Unix production entry теперь использует исходные FM format/path/refusal handlers
+и GUI parser/dispatch. Windows сохраняет native command-line tokenizer; Unix
+передаёт декодированные argv без удаления буквальных кавычек и пробелов пути.
+Исходная `-y` policy подавляет progress questions и на Unix. Win32 messages здесь
+заменены QMessageBox с исходными текстами; layout новых форм не вводится.
+LaunchServices event receiver сохраняет отдельные окна с существующим openPath
+consumer. Qt helper и offscreen subprocess tests не подтверждают native Finder
+или rendered Windows parity; эти проверки остаются в P3-03/P3-06.
+
 ## P2-11.5 — native update transport (принят, 2026-10-05)
 
 При доказанной привязке metadata к native indexes исходные update callbacks

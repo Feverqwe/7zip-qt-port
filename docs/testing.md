@@ -224,6 +224,13 @@ It checks initial quoted Unicode ZIP binding, forced-type/broken refusal,
 encrypted-open Cancel, relative folders and the original ignored-tail policy,
 with unchanged fixture bytes. Windows additionally launches actual7zFM.exe,
 observes the archive window or refusal message in its own process and closes it.
+Unix also passes decoded native argv through the shared typed source startup;
+seven rows preserve literal quotes and folder whitespace. A separate offscreen
+Qt process calls the production RunSevenzipFileManager entry, observes public
+binding/refusal/password widgets and closes them, preserving fixture bytes.
+`unix_gui_entry` launches the actual copied 7zG binary for Add/Test/Extract,
+excluded-handler and broken-archive refusal; official 7zz verifies created bytes.
+These tests cover Unix entry/dispatch/lifetime, not Finder or desktop integration.
 `scripts/check-fm-startup.sh` builds the app and runs this suite plus the direct
 app_lifecycle/shell_menu_window consumers; use the interactive Windows runner.
 Use `Q_OS_WIN` for Windows-only QtTest slots and inspect registered row totals:
