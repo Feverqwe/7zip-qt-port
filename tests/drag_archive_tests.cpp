@@ -182,6 +182,9 @@ class DragArchiveTests : public QObject {
         QTest::newRow("drag-cancelled") << 2;
         QTest::newRow("extraction-cancelled") << 3;
         QTest::newRow("recipient-refused-drop") << 4;
+#ifdef Q_OS_MACOS
+        QTest::newRow("native-qt-ignore-unconfirmed") << 5;
+#endif
     }
     void nativeArchiveDragDeliversBytesAndProtectsUnconfirmedReceiver() {
         QFETCH(int, outcome);
@@ -245,7 +248,7 @@ class DragArchiveTests : public QObject {
         QByteArray deliveredBytes;
         int calls = 0;
         bool claimDenied = false;
-        QtPanelDragTransport transport(&list, [&](QDrag &drag, Qt::DropActions actions) {
+        QtPanelDragTransport::Executor executor = [&](QDrag &drag, Qt::DropActions actions) {
             ++calls;
             auto *mime = dynamic_cast<const QtPanelDragMime *>(drag.mimeData());
             if (!mime || mime->urls().size() != 1 || !(actions & Qt::CopyAction))
@@ -260,7 +263,10 @@ class DragArchiveTests : public QObject {
             if (outcome == 0)
                 mime->Data().FinishExternalReceiver();
             return outcome == 2 || outcome == 4 ? Qt::IgnoreAction : Qt::MoveAction;
-        });
+        };
+        if (outcome == 5)
+            executor = {}; // The offscreen platform returns IgnoreAction from real QDrag::exec.
+        QtPanelDragTransport transport(&list, std::move(executor));
         app.Panels[0].AttachDragServices(&transport);
         QStringList errors;
         QTimer responder;
@@ -283,11 +289,20 @@ class DragArchiveTests : public QObject {
             QVERIFY(row->isSelected());
             return;
         }
-        QCOMPARE(calls, 1);
+        if (outcome == 5) {
+            QCOMPARE(calls, 0);
+            const auto entries = QtOwnedTempRegistry().Entries();
+            QCOMPARE(entries.size(), 1);
+            ownedRoot = entries.front().path;
+            delivered = QDir(ownedRoot).filePath(listed.front().path);
+            deliveredBytes = Read(delivered);
+            claimDenied = !QtOwnedTempRegistry().ClaimForDeletion(entries.front());
+        } else
+            QCOMPARE(calls, 1);
         QCOMPARE(deliveredBytes, payload);
         QVERIFY(claimDenied);
-        QCOMPARE(row->isSelected(), outcome == 2 || outcome == 4);
-        if (outcome == 1) {
+        QCOMPARE(row->isSelected(), outcome == 2 || outcome == 4 || outcome == 5);
+        if (outcome == 1 || outcome == 5) {
             QCOMPARE(Read(delivered), payload);
             QtOwnedTempRegistry registry;
             bool found = false;

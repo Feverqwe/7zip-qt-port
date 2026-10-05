@@ -82,7 +82,7 @@ class DragDropUiTests final : public QObject {
                                       Q_ARG(int, Row(*table, name)), Q_ARG(int, 0));
             QtOwnedTempRegistry registry;
             for (const auto &entry : registry.Entries()) {
-                if (QFileInfo(entry.path).fileName().startsWith("7zE")) {
+                if (entry.active && QFileInfo(entry.path).fileName().startsWith("7zE")) {
                     dragRoots.append(entry.path);
                     protectedActiveRoot |= entry.active && !registry.ClaimForDeletion(entry);
                 }
@@ -120,8 +120,29 @@ class DragDropUiTests final : public QObject {
         QVERIFY(window.isVisible());
         QVERIFY(!backend.busy());
         QTRY_VERIFY(Row(*table, name) >= 0 && table->item(Row(*table, name), 0)->isSelected());
-        for (const QString &path : dragRoots)
+        for (const QString &path : dragRoots) {
+#ifdef Q_OS_MACOS
+            // Default Cocoa IgnoreAction does not confirm that Finder stopped
+            // reading. The live controller must keep these exposed bytes safe.
+            QFile delivered(QDir(path).filePath(name));
+            QVERIFY(delivered.open(QIODevice::ReadOnly));
+            QCOMPARE(delivered.readAll(), QByteArray("controller bytes"));
+            delivered.close();
+            QtOwnedTempRegistry registry;
+            bool found = false;
+            for (const auto &entry : registry.Entries()) {
+                if (entry.path != path)
+                    continue;
+                found = true;
+                QVERIFY(entry.externallyProtected && !entry.active);
+                QVERIFY(!registry.ClaimForDeletion(entry));
+            }
+            QVERIFY(found);
+            QVERIFY(QDir(path).removeRecursively()); // Only this fixture's extracted root.
+#else
             QVERIFY(!QFileInfo::exists(path));
+#endif
+        }
         QVERIFY(original.open(QIODevice::ReadOnly));
         QCOMPARE(original.readAll(), originalBytes);
     }

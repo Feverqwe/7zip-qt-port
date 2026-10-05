@@ -32,6 +32,7 @@ class QtPanelDragTransport final : public IQtPanelDragServices {
 
   private:
     QPointer<QWidget> widget_;
+    const bool nativeExecutor_;
     Executor executor_;
     Compression compression_;
     bool active_ = false;

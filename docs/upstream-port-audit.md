@@ -1,5 +1,70 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03.1 — Finder drag-out lifetime correction (2026-10-05)
+
+Source repository https://github.com/ip7z/7zip.git, revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17; original
+`CPP/7zip/UI/FileManager/PanelDrag.cpp` `CPanel::OnDrag`,
+`CDropSource::QueryContinueDrag`, `CDataObject::CopyFromPanelTo_Folder`,
+effect/temporary-directory comments and current typed transfer callers reviewed.
+No upstream file or adapted algorithm changed: only local Qt transport's
+receiver-completion decision and public regression changed. Dependencies remain
+QDrag/QMimeData and the existing owned-temp lease; no borrowed files added.
+
+User manually dragged the disposable ZIP's binary Unicode/spaced item into
+Finder twice on macOS 27.0.1, Qt 6.11.2, base
+f4959976abc92f9d9fef33ff47019170149cc42e, at 19:13:57/19:14:04 Moscow time.
+Both attempts returned -8058. Finder's CopyEngine recorded NSCocoaErrorDomain
+Code 4/file missing and a Move attempt. Reading only the drag pasteboard showed
+public.file-url naming the extracted item; the temporary root was already gone.
+Destination stayed empty; source ZIP's expected digest is retained in the
+disposable fixture baseline. This is failed native evidence, not acceptance.
+
+[Qt 6.11.2 Cocoa dragging implementation](https://github.com/qt/qtbase/blob/v6.11.2/src/plugins/platforms/cocoa/qnsview_dragging.mm)
+does not set the accepted external action while currentDrag exists. Its native
+IgnoreAction cannot prove receiver cancellation. `QtPanelDragTransport` now
+keeps archive bytes protected for that ambiguous default macOS executor outcome.
+Typed completed/cancelled internal recipients and authoritative controlled
+executor cancellations still release protection. Native Escape/refusal may
+retain a protected root; no timer or guessed delay authorizes deletion, and
+source selection stays marked when Qt reports IgnoreAction. Native retry and
+cancellation evidence are recorded below; arbitrary receiver completion is not
+inferred from that single transfer.
+
+`drag_archive` adds a macOS row using real default QDrag::exec on the offscreen
+platform. It fails before the fix (owned entries 0 rather than 1), and checks
+retained payload bytes, immutable source ZIP, inactive protected ownership and
+cleanup refusal after native IgnoreAction. This checks the conservative transport
+contract; offscreen IgnoreAction is not native Finder proof.
+
+Validation of the task diff on macOS arm64, 2026-10-05: affected app/test targets
+built, final six focused drag/temp suites PASS 3.34s. First full gate retained
+242/243 PASS with two old UI cancellation expectations failing inside drag_drop_ui;
+those table/icon rows now check readable bytes, inactive external protection and
+cleanup refusal after default native IgnoreAction. Final unsandboxed check.sh
+format/all-target build/243 CTest PASS 98.93s. Windows/Linux checks were not run
+for this correction; the new conservative native branch is macOS-only.
+
+User retried in a fresh corrected app process and confirmed successful Finder
+transfer without error. The received binary item is 1,048,576 bytes with SHA-256
+fbbab289f7f94b25736c58be46a994c441fd02552cc6022352e3d86d2fab7c83, exactly matching
+the input; original ZIP SHA-256 remains
+5a261e25676a704cabeb4c79ead71a8e80f421c0731a9ec324164cdefdeaff83.
+Finder moved the temporary item; its owned root remains externally protected
+after app drag return. This confirms native recipient lifetime for that transfer,
+not a native completion acknowledgement for arbitrary receivers.
+User then confirmed native Escape cancellation. The cancelled destination has
+no payload; received bytes still match and original ZIP still has its baseline
+digest. The cancelled drag's temporary payload remains readable with the same
+SHA-256 and external protection, consistent with the documented conservative
+cleanup boundary. No successful cancellation is inferred from automation.
+P3-03.1 accepted on macOS, 2026-10-05: native transfer, Unicode/spaces, exact bytes,
+source preservation, actual failure/fix/retry and manual Escape verified.
+Automatic native receiver completion/cleanup is not claimed; protected retained
+roots are the explicit platform adaptation. Parent P3-03/P3-06 remain open for
+their other required platform/workflow checks. Final docs-only follow-up passed
+git diff --check; code is unchanged since the passing full gate.
+
 ## P3-05.3 — ClassDefs/native GUID dependency boundary (reviewed, 2026-10-05)
 
 Source repository https://github.com/ip7z/7zip.git, revision

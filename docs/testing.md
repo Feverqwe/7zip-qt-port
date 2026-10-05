@@ -902,9 +902,17 @@ filesystem→Add creation/re-extraction. A focused11/11 run passed7.44s before t
 latest naming/header fixtures; final drag_drop_add_ui passed0.55s and the full
 unsandboxed check.sh formatting/build/179 tests passed67.66s on macOS arm64
 Qt6.11.2 2026-10-02. Eight current 980×620/640×400 JSON reports were reviewed.
-Native Finder proof is a separate mandatory P3-03.1 check, open because Computer
-Use denied app access. It does not block implementation acceptance of P1-16;
-P3-03/P3-06 acceptance requires it. Windows/Linux runtime remains unverified.
+The macOS `native-qt-ignore-unconfirmed` row uses default QDrag::exec on the
+offscreen platform and checks that an ambiguous IgnoreAction retains readable,
+externally protected archive bytes after source return. Controlled cancellations
+still check cleanup. Native Escape/refusal may retain protected temporary data.
+Native Finder proof remains mandatory P3-03.1: manual attempts on 2026-10-05
+failed -8058 with premature temp deletion; the corrected transport's manual
+retry delivered exact bytes and preserved the ZIP. User confirmed native Escape;
+cancelled destination stays empty and temporary bytes remain protected/readable.
+P3-03.1 accepted manually on macOS 2026-10-05; see audit § P3-03.1 for native
+lifetime/cleanup limits. Parent P3-03/P3-06 remain open. Windows/Linux runtime
+for this correction remains unverified.
 
 P1-15.2 accepted: owned_temp observes native/Qt ownership, last copied lease, retained
 external protection/restart, unowned names, replacement identity, links and

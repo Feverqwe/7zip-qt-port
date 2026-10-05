@@ -816,8 +816,16 @@ SingleClick при source drag приостановлены. Qt на macOS от�
 удаления по таймеру. Native promise/delayed materialization не заявлены.
 Qt Add всегда ждёт свой backend/progress вместо отдельного nonmodal 7zG.
 Автоматические native/Qt receiver tests и normal/compact JSON выполнены;
-Finder ещё не проверен (отдельный обязательный P3-03.1): Computer Use не получил
-доступ к sevenzip_desktop. Эта проверка требуется для итоговой приёмки P3-03/P3-06.
+Ручная Finder-проверка 2026-10-05 выявила -8058: временный файл удалялся до
+получения Finder. macOS transport сохраняет временные bytes даже при нативном
+IgnoreAction: такой результат Qt не подтверждает отмену внешнего получения.
+Подтверждённая отмена controlled executor/typed target допускает cleanup;
+нативный Escape может сохранить защищённый temp вместо его удаления.
+Ручной повтор исправления успешен: received bytes совпадают по SHA-256,
+исходный ZIP не изменён. Пользователь подтвердил нативный Escape; папка
+назначения отменённого переноса пуста, временные bytes сохранены под external
+protection. P3-03.1 принят вручную на macOS 2026-10-05; Computer Use недоступен.
+Остальные требования итоговой приёмки P3-03/P3-06 остаются открытыми.
 Windows/Linux runtime и rendered Windows reference остаются unverified.
 
 P1-15.2 accepted: source Delete Temporary Files is connected. It lists only registered
