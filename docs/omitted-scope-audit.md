@@ -33,13 +33,40 @@ copying both into one library would create two implementations of the same
 symbols. Existing FM/GUI presentation and progress tests apply to ProgressDialog2,
 and the original SFX bundle compiles its own selected engine/application sources.
 
+## ClassDefs and native GUID dependencies reviewed on 2026-10-05
+
+Original `FileManager/ClassDefs.cpp` has no runtime algorithm: after StdAfx and
+MyWindows it includes MyInitGuid before Agent.h, MyWindowsNew.h and
+Explorer/MyExplorerCommand.h. This order selects GUID definitions rather than
+external declarations. The adapted upstream-relative ClassDefs remains the
+single portable interface owner in `sevenzip_common`: IArchive, ICoder,
+IPassword, IFolder, Agent and IFolderArchive retain their original GUID values.
+These dependencies are explicit because the adapted Agent header has a narrower
+dependency surface. MyInitGuid supplies IID_IUnknown on Unix; Windows uses the
+platform libraries as its original comments specify.
+
+The native headers remain exact, live third_party dependencies even though they
+are absent from the portable definition unit:
+
+| Dependency and original role | Current caller and definition boundary |
+| --- | --- |
+| `FileManager/MyWindowsNew.h`: taskbar COM declarations/GUIDs and old SDK fallback | Windows ProgressDialog2.h includes it. CProgressDialog uses CLSID_TaskbarList/IID_ITaskbarList3 in CoCreateInstance and retains its native taskbar operations. Modern MSVC selects system SDK declarations; sevenzip_common publicly links uuid and ole32. Unix selects the existing Qt taskbar adapter. |
+| `Explorer/MyExplorerCommand.h`: shell item/command/enumerator declarations and old SDK fallback | Windows ContextMenu.h includes it before the four original COM bases. QueryInterface and EnumSubCommands retain native interfaces. Modern MSVC selects SDK declarations; system GUID definitions come from uuid. Unix excludes Windows COM bases while retaining the source command owner. |
+| `Common/MyInitGuid.h`: one definition owner per GUID | The shell DLL's adapted DllExportsExplorer.cpp includes shared interface declarations before MyInitGuid, then refreshes MyWindows' definition macro to define only the project shell CLSID. It does not define a second portable interface set. Its distinct CLSID avoids registering over upstream 7-Zip. |
+
+Current Windows MSVC all-target builds and native progress/shell consumers
+provide link/runtime evidence for the selected SDK branch; the port audit's
+P3-05.1 records the latest frozen checks and failed whole-gate limits. This review
+does not claim execution of old MinGW/old SDK/Windows CE fallback branches or
+native taskbar behavior on other operating systems. These retained declarations
+do not require a new project GUID implementation. No source/header changes.
+
 ## Remaining reconciliation
 
-P3-05 remains open. ClassDefs portable interface GUIDs and native SDK `uuid`
-dependencies need their recorded caller closure, rather than a blanket omission
-of MyWindowsNew/MyExplorerCommand. Every claimed full source body and resource,
+P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
+every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
 must be reconciled against its owning functional audit. The source entrypoint gap
-found by this review is tracked as P3-05.1 and is being tested separately.
+found by this review is accepted in the bounded P3-05.1 caller component.
 Engine/Qt packaging, notices and own-code licensing belong to P3-04; final
 rendered/native UX acceptance belongs to P3-06.

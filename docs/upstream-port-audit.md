@@ -1,5 +1,19 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.3 — ClassDefs/native GUID dependency boundary (reviewed, 2026-10-05)
+
+Source repository https://github.com/ip7z/7zip.git, revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Original FileManager/ClassDefs.cpp,
+Common/MyInitGuid.h, FileManager/MyWindowsNew.h, Explorer/MyExplorerCommand.h,
+their current ProgressDialog2/ContextMenu callers, DllExportsExplorer definition
+order and CMake libraries were inspected. The full disposition is owned by
+[omitted scope](omitted-scope-audit.md#classdefs-and-native-guid-dependencies-reviewed-on-2026-10-05).
+Native headers are exact live dependencies, not blanket omissions. Portable GUIDs
+have one ClassDefs owner; modern MSVC native GUIDs use SDK/uuid, shell DLL defines
+only its own CLSID. Old SDK/MinGW/CE branch execution is not claimed. Docs-only
+diff check; no manifest/source changes. Remaining UI bodies/resources and native
+workflow evidence still keep parent P3-05 open.
+
 ## P3-05.2 — missing UI translation-unit dispositions (reviewed, 2026-10-05)
 
 The [omitted-scope review](omitted-scope-audit.md) records the six missing paths
