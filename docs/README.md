@@ -11,6 +11,7 @@
 | Текущие статусы, счётчик и выбор следующего доступного шага | [Чеклист](porting-checklist.md) |
 | Короткое поручение продолжить план | [Стартовый запрос](porting-chat-prompt.md) |
 | Происхождение модулей, copied/adapted/omitted scope, причины отклонений и датированные свидетельства переноса | [Source audit](upstream-port-audit.md) |
+| Bodies/callers и границы omitted UI modules при итоговой сверке | [Omitted scope](omitted-scope-audit.md) |
 | Машиночитаемый baseline borrowed files | [Manifest](upstream-baseline.json) |
 | Процедура сравнения и обновления upstream | [Upstream update](upstream-update.md) |
 | Реальные сценарии, команды и платформенные ограничения | [7zFM parity](7zfm-parity.md) |

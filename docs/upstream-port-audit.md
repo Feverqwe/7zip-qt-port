@@ -1,5 +1,19 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.2 — missing UI translation-unit dispositions (reviewed, 2026-10-05)
+
+The [omitted-scope review](omitted-scope-audit.md) records the six missing paths
+from the original109 FileManager/Agent/GUI/Common translation units, after full
+body/header and makefile/caller inspection at the same pinned0766b733 revision.
+It distinguishes empty/comment-only/PCH transport from active EnumFormatEtc
+presentation and legacy ProgressDialog installer bodies. These active modules
+are not called inactive; Qt MIME transport and original SFXWin/SFXCon bundle
+selection provide explicit ownership boundaries. No code/body is copied or
+modified in this documentation component. Filename coverage103/109 is not used
+as functional acceptance. Remaining bodies/branches/resources/ClassDefs closure,
+native transport proof and whole P3-05 remain open. git diff --check passes;
+documentation-only scope requires no runtime or appearance check.
+
 ## P3-03.3 — Windows full-gate follow-up (active, 2026-10-05)
 
 The original b04b3b53 full/retry large-list failures remain as recorded in P3-02;
