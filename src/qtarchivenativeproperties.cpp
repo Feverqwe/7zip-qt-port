@@ -2,6 +2,7 @@
 #include "Windows/PropVariant.h"
 #include "archivenativeopen.h"
 #include "qtarchivefileresource.h"
+#include <QSet>
 
 void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
     _nativeItemOrder = false;
@@ -14,20 +15,50 @@ void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
         return;
     // The source Agent proxy currently comes from the file-only item transport.
     // Never feed its real indexes to another handler without proving the order.
+    QSet<QString> paths;
     for (UInt32 i = 0; i < count; ++i) {
-        NWindows::NCOM::CPropVariant original, presented;
-        if (native->GetProperty(i, kpidPath, &original) != S_OK ||
-            metadata->GetProperty(i, kpidPath, &presented) != S_OK || original.vt != VT_BSTR ||
-            presented.vt != VT_BSTR ||
-            QString::fromWCharArray(original.bstrVal).normalized(QString::NormalizationForm_C) !=
-                QString::fromWCharArray(presented.bstrVal).normalized(QString::NormalizationForm_C))
+        UString original;
+        NWindows::NCOM::CPropVariant presented;
+        if (_nativeOpen->arc().GetItem_Path(i, original) != S_OK ||
+            metadata->GetProperty(i, kpidPath, &presented) != S_OK || presented.vt != VT_BSTR ||
+            QString::fromWCharArray(original.Ptr()) != QString::fromWCharArray(presented.bstrVal))
             return;
+        const QString path = QString::fromWCharArray(original.Ptr());
+        // Repeated names cannot establish which physical native index the
+        // independent metadata row describes. Refuse an ambiguous mapping.
+        if (paths.contains(path))
+            return;
+        paths.insert(path);
     }
     _nativeItemOrder = true;
 }
 
 IInArchive *QtArchiveFileResource::NativeItemProperties() const {
     return _nativeItemOrder && _nativeOpen ? _nativeOpen->arc().Archive.Interface() : nullptr;
+}
+
+bool QtArchiveFileResource::HasNativeUpdateService() const {
+    CMyComPtr<IOutArchive> writer;
+    auto *native = NativeItemProperties();
+    return native && native->QueryInterface(IID_IOutArchive, (void **)&writer) == S_OK && writer;
+}
+
+bool QtArchiveFileResource::HasNativePropertyService() const {
+    CMyComPtr<ISetProperties> properties;
+    auto *native = NativeItemProperties();
+    return HasUpdateService() && _setProperties && native &&
+           native->QueryInterface(IID_ISetProperties, (void **)&properties) == S_OK && properties;
+}
+
+HRESULT QtArchiveFileResource::SetNativeProperties(const wchar_t *const *names,
+                                                   const PROPVARIANT *values, UInt32 count) {
+    if (!HasNativePropertyService())
+        return E_NOINTERFACE;
+    RINOK(_setProperties(names, values, count))
+    // Explicit source properties take precedence over the optional Qt CInfo
+    // projection. The source DoOperation's empty call resets that choice.
+    _nativePropertiesExplicit = count != 0;
+    return S_OK;
 }
 
 bool QtArchiveFileResource::HasCommentService() const {

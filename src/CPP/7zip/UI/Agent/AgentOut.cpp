@@ -17,9 +17,21 @@
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
 #include "qtarchivefileresource.h"
+#include <memory>
 
 using namespace NWindows;
 using namespace NCOM;
+
+Z7_COM7F_IMF(CAgent::SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
+                                   UInt32 numProps)) {
+    m_PropNames.Clear();
+    m_PropValues.Clear();
+    for (UInt32 i = 0; i < numProps; i++) {
+        m_PropNames.Add(names[i]);
+        m_PropValues.Add(values[i]);
+    }
+    return S_OK;
+}
 
 HRESULT CAgent::SetFolder(IFolderFolder *folder) {
     _updatePathPrefix.Empty();
@@ -391,16 +403,15 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
             FOR_VECTOR(i, m_PropNames)
             names.Add((const wchar_t *)m_PropNames[i]);
 
-            CPropVariant *propValues = new CPropVariant[m_PropValues.Size()];
+            std::unique_ptr<CPropVariant[]> propValues(new CPropVariant[m_PropValues.Size()]);
             try {
                 FOR_VECTOR(i, m_PropValues)
                 propValues[i] = m_PropValues[i];
-                RINOK(setProperties->SetProperties(names.ConstData(), propValues, names.Size()))
+                RINOK(
+                    setProperties->SetProperties(names.ConstData(), propValues.get(), names.Size()))
             } catch (...) {
-                delete[] propValues;
                 return E_FAIL;
             }
-            delete[] propValues;
         }
     }
     m_PropNames.Clear();

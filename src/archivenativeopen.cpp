@@ -16,9 +16,27 @@ HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenC
     if (requested) {
         COpenOptions options = *requested;
         options.filePath = path.toStdWString().c_str();
-        return catalog_->openArchive(link_, options, this);
+        RINOK(catalog_->openArchive(link_, options, this))
+    } else {
+        RINOK(catalog_->openArchive(link_, path, type, this))
     }
-    return catalog_->openArchive(link_, path, type, this);
+    // A handler can initially scan its own SFX prefix, leaving Offset positive
+    // and ArcStreamOffset zero. The source ReOpen establishes a tail stream
+    // and retains the physical input for ArchiveFolderOut's prefix publisher.
+    if (!hasNestedStream() && !hasVolumes() && !arc().IsReadOnly && arc().GetGlobalOffset() > 0) {
+        CMyComPtr<IOutArchive> writer;
+        if (arc().Archive.QueryInterface(IID_IOutArchive, &writer) == S_OK && writer) {
+            CMyComPtr2_Create<IArchiveOpenCallback, COpenCallbackImp> progress;
+            progress->Callback = this;
+            COpenOptions options;
+            options.props = nullptr;
+            options.codecs = nullptr;
+            options.filePath = path.toStdWString().c_str();
+            options.callback = progress;
+            RINOK(link_.ReOpen(options))
+        }
+    }
+    return S_OK;
 }
 
 HRESULT ArchiveNativeOpen::Open_CheckBreak() {

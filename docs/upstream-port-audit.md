@@ -41,7 +41,7 @@ new review/remediation, not another feature implementation.
 | --- | --- | --- | --- |
 | H: `qtlistview.{h,cpp}`, `qtfilelisthover.{h,cpp}` | ListViewDialog.cpp OnInit's TRACKSELECT style; CListView dialogs, MainWindow table/icons and TempBrowse. Two own400ms timer/state implementations | One existing hover adapter; public enable/disable/leave/modifiers/removal/close/wheel/hide, all dialog/main/temp consumers and unchanged normal/compact geometry | Resolved P2-11.1 |
 | C: `archivebackend.h`, `archivebackend_mutations.cpp`, `createarchivedialog_source.cpp`, compression controls and consumers | CompressDialog.h NCompressDialog::CInfo already inherited, but five lower-case fields separately owned Level/Method/NumThreads/Dict64/Order; two conversions | Source DTO is authoritative; native autos, validation, format/property/settings/error semantics and actual compression/Add/direct backend/UI verified on three OS | Resolved P2-11.2 |
-| U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks already usable; own fallback reconstructs four callback plans even with native writer | Prefer proven native writer/index order, preserve CommonUpdate no property reset and DoOperation explicit property calls; fallback needs concrete absent-writer/index evidence. Mutation/edit/nested/update/cancel/security checks | Pending component migration |
+| U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks replace redundant native-writer fallback plans | Native writer/index/path/ADS proof, source properties lifecycle, prefix publication, errors/Cancel and actual commands verified on three OS; concrete absent-writer transport fallback retained | Resolved P2-11.5 |
 | V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreated names | Retained source-link metadata now owns accounting and volume/readiness decisions; Split outer streams and absent-native fallback preserved. Batch/volume/SFX/extract checked on three OS | Resolved P2-11.3 |
 | W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*` | ProgressDialog2.cpp CProgressSync owns pause/stop, but is in panel library which already depends on filesystem; own Qt wake/checkpoint loops repeated | Resolve dependency/transport ownership before reuse; preserve immediate wake, atomic cancel/publication and joined lifetime. Hash/creation/preparation/volume success/failure/pause/cancel/restart | Pending boundary review |
 | F: `filetransferoperation.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Review upstream recursion/deletion bodies and extract cohesive Qt transaction boundary where needed, retaining no-overwrite/cancel/link/failure-injection behavior; direct file and window consumers | Pending complete review |
@@ -312,7 +312,114 @@ list_settings_runtime in 10.10s, respectively eight and five Qt rows with zero
 skips. Its trace proves the second System page completes and Options returns.
 Six artifacts are SHA-256 verified locally and on the guest. Production traces
 existed only in the isolated diagnostic checkout; the final main snapshot has
-none. Final full Windows verification remains pending.
+none. The later 4b4d50c2 full gate confirms list5/association8 with zero skips;
+four other suites fail as recorded above, so global Windows acceptance is open.
+
+### P2-11.5 — native update transport (accepted, 2026-10-05)
+
+Final macOS formatting/all-target/full gate passes240/240 in102.40s. Fresh
+Windows b872c1c6 and Linux b762e6b7 build and pass all nine direct suites in
+58.54s and19.43s. Actual nativePath10/codec73/UI24/checkpoint8/list5/link12/
+sourceUpdate76 Qt rows pass with zero skips on both guests. Windows additionally
+passes metadata12/ADSUI5 without skips; Linux ADSUI5 passes and metadata has only
+its ten explicit Windows-only skips. Their28/24 artifacts are guest/local
+SHA-256 verified. The earlier full Linux235 gate and Windows full/all-target
+history remain recorded separately; fresh global Windows/Linux acceptance is P3.
+This resolves registry U, including its surfaced ADS guard defect, and accepts
+the source/native-writer component rather than the still-open P2-11 inventory.
+
+Reviewed original AgentOut.cpp::CommonUpdate/DoOperation/DeleteItems/RenameItem,
+ArchiveFolderOut.cpp::CommonUpdateOperation, UpdateCallback.cpp property/stream/
+crypto/raw callbacks, OpenArchive.cpp::CArc::GetItem_Path and
+PanelOperations.cpp::CThreadFolderOperations::DoOperation, plus their retained
+callers and interfaces. Source repository https://github.com/ip7z/7zip.git,
+commit 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Existing copies and dependency
+baselines remain at that revision. The original Agent::SetProperties body and
+Agent.h ISetProperties interface are restored from that same pinned source;
+no new source module or update algorithm is introduced.
+
+The resource uses the retained handler's IOutArchive and original update callback
+when its metadata indexes are proven. The backend owns writer calls and path
+validation; the original work-dir publisher, reader reopening and callback
+interfaces retain their lifetimes. Only E_NOINTERFACE permits the writer-query
+fallback; a native writer error/cancellation returns directly. CArc::GetItem_Path
+supplies original missing-path/default-name rules. Exact names replace NFC
+identity assumptions; repeated names cannot prove a mapping and disable update
+readiness. Changed properties keep the existing backend path policy, including
+explicit absolute-path mode, before the handler receives them.
+
+PanelOperations keeps its original worker dispatch/Create/return sequence and
+now attaches the existing folder progress service for all operation types;
+comment retains its native-only service. The resource checks original Sync before
+and after update, before publication, including zero-item writers without progress
+callbacks. No new pause/stop algorithm. The property facade now forwards native
+ISetProperties through ArchiveBackend, advertising it only when the actual
+handler supports it and the native index mapping is proven. Original Agent
+vectors remain the sole owner of explicit properties; a resource flag makes
+them take precedence over optional Qt CInfo projection, resets on native reopen
+and on the source empty-property call. CommonUpdate keeps its no-reset behavior
+and DoOperation keeps its explicit/reset calls. Restored COM interfaces require
+existing owners to retain IFolderArcProps instead of an ambiguous IUnknown cast.
+The property-array allocation uses RAII so native setter failure also releases
+it before the original early return. Native single-archive SFX uses original
+CArchiveLink::ReOpen/CArc::ReOpen to establish ArcStreamOffset and retain the
+physical InStream after a handler initially scans its own prefix. ConfigureArc
+passes that source stream/offset to the original ArchiveFolderOut publisher's
+CopyStream_ExactSize/CTailOutStream branch; no prefix algorithm is recreated.
+Process-only offsets, nested chains and volume sets remain guarded. Six public
+SFX file/plan success/failure/cancel rows first reproduce refusal and then prove
+byte-identical prefix retention and unchanged archives on failure/cancellation.
+The current full macOS gate passes 238/238 in 99.72s and Linux 84047a43 passes
+234/234 in 194.28s, each with native update 73 and UI24 Qt rows, zero skips.
+Linux's 626 artifacts are SHA-256 verified locally and on the guest. Windows
+runtime proof remains pending; this record does
+not accept registry U or parent P2-11.
+
+Public regression evidence: native writer selection RED38; disabling only the
+path guard reproduces 18 unsafe Rename/CreateFolder publications; restoring NFC
+comparison reproduces the Unicode mapping failure; native ZIP duplicate-name
+fixture reproduces the ambiguous mapping failure. Current codec_update has 66
+passing rows before the property bridge, including seven writer formats, failure/cancel, Unicode/spaces,
+source-plan/file entrypoints and paused zero-item deletion. codec_commands_ui
+passes 24 rows using source Sync for active Copy cancellation and source Delete
+confirmation for instant zero-item handlers. macOS format/all-target/full gate
+238/238 passes in 104.18s with both suites at zero skips. Linux full 4fad7f5c
+passes format/all-target build and 234/234 tests in 190.01s; both suites also
+have zero skips, and 626 artifacts are SHA-256 verified locally and on the guest.
+The added public source-properties regression checks native stored/compressed
+ZIP bytes, repeated updates/reset, invalid-property refusal and no external
+mutation. Disabling only explicit-property precedence reproduces its failure;
+the corrected focused suite passes 1/1 in 2.27s with 67 Qt rows, zero skips.
+The properties bridge full gates pass on macOS 238/238 in 100.67s and Linux
+c043b35c 234/234 in 184.59s, both with codec67/UI24 zero skips; the latter's
+626 artifacts are verified locally and on the guest. The subsequent SFX scope
+has the macOS/Linux gates above; Windows runtime proof remains pending.
+The existing focused native-update suite grew past the file-size review trigger
+to cover this same writer/callback/index contract; a separate target is deferred
+until a further responsibility is introduced. Tests use private fixtures and the official
+writer; no real user archive, native policy change or upstream write.
+
+Windows 4b4d50c2 exposes four native WIM Add failures before the expected
+success/failure/cancel callback: the new ordinary-file path guard rejected the
+NTFS stream colon. Reviewed original UpdateCallback.cpp::GetProperty's explicit
+kpidIsAltStream, OpenArchive.cpp::FindAltStreamColon_in_Path/CArc::GetItem and
+ExtractingFilePath.cpp::Correct_AltStream_Name, their types and callers at the
+same pinned revision. Validation now uses the original colon finder and stream
+correction separately from the ordinary base-path policy, only for an explicitly
+marked stream. The original optional :$DATA suffix is accepted. Unmarked paths
+retain ordinary validation; stream flags with invalid types, malformed names,
+empty names or unsafe base paths are refused before UpdateItems. No decoder or
+new stream-name algorithm is added.
+The separate public native_update_path suite keeps this validation contract out
+of the existing writer lifecycle suite. With the previous validator, five of
+eight malicious marked-stream paths reach the real ZIP writer on macOS; the
+test verifies refusal before any output bytes and unchanged archive input.
+Restoring the source-based guard gives ten Qt passes including init/cleanup.
+Final affected native_update_path/codec_update/source_metadata_storage/
+alt_streams_archive_ui passes 4/4 in 3.28s on macOS: respectively10/73/2/5
+passes, with ten explicit Windows-only metadata skips. Full macOS and fresh
+Windows/Linux nine-consumer validation now passes as recorded above. The earlier
+RED and focused checkpoints remain historical evidence of the final correction.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

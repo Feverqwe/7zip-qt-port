@@ -32,7 +32,7 @@ class AgentCapabilityTests : public QObject {
         const QList<ArchiveEntry> entries = {{QStringLiteral("папка/имя.txt"), 7, 3}};
         QCOMPARE(CreateArchiveMetadata(entries, &metadata), S_OK);
         auto *agentSpec = new CAgent;
-        CMyComPtr<IUnknown> agent = agentSpec;
+        CMyComPtr<IFolderArcProps> agent = agentSpec;
         QCOMPARE(agentSpec->Init(entries, metadata, UString("zip"), resource), S_OK);
         CMyComPtr<IFolderFolder> root;
         QCOMPARE(agentSpec->BindToRootFolder(&root), S_OK);

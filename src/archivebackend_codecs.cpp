@@ -3,6 +3,7 @@
 #include "7zip/IPassword.h"
 #include "7zip/UI/Common/DefaultName.h"
 #include "7zip/UI/Common/SetProperties.h"
+#include "CPP/7zip/UI/Common/ExtractingFilePath.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/7zip/UI/Common/Update.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
@@ -14,6 +15,57 @@
 #include "qtlanguageservices.h"
 #include <QFileInfo>
 #include <cerrno>
+
+namespace {
+HRESULT ValidateNativeUpdatePaths(UInt32 count, IArchiveUpdateCallback *callback,
+                                  bool allowAbsolute = false) {
+    if (!callback)
+        return E_INVALIDARG;
+    for (UInt32 i = 0; i < count; ++i) {
+        Int32 newData, newProps;
+        UInt32 originalIndex;
+        RINOK(callback->GetUpdateItemInfo(i, &newData, &newProps, &originalIndex))
+        if (!newProps)
+            continue;
+        NWindows::NCOM::CPropVariant path;
+        RINOK(callback->GetProperty(i, kpidPath, &path))
+        // Single-stream handlers may have no stored filename. An unchanged
+        // item without new properties preserves its original archive name.
+        if (path.vt == VT_EMPTY)
+            continue;
+        if (path.vt != VT_BSTR)
+            return E_INVALIDARG;
+        const QString requested = QString::fromWCharArray(path.bstrVal);
+        // Original UpdateCallback marks enumerated NTFS streams explicitly.
+        // Validate the base path and source-corrected stream name separately;
+        // an unmarked colon must never bypass ordinary path validation.
+        NWindows::NCOM::CPropVariant stream;
+        RINOK(callback->GetProperty(i, kpidIsAltStream, &stream))
+        if (stream.vt != VT_EMPTY && stream.vt != VT_BOOL)
+            return E_INVALIDARG;
+        if (stream.vt != VT_BOOL || stream.boolVal != VARIANT_TRUE) {
+            if (!ArchiveBackend::sourceUpdatePathIsSafe(requested, allowAbsolute))
+                return E_INVALIDARG;
+            continue;
+        }
+        if (requested.contains(QChar(0)))
+            return E_INVALIDARG;
+        const int colon = FindAltStreamColon_in_Path(path.bstrVal);
+        if (colon <= 0 ||
+            !ArchiveBackend::sourceUpdatePathIsSafe(requested.left(colon), allowAbsolute))
+            return E_INVALIDARG;
+        UString name(path.bstrVal + colon + 1);
+        UString corrected = name;
+        Correct_AltStream_Name(corrected);
+        // The original correction accepts the optional NTFS :$DATA suffix.
+        if (name.Len() >= 6 && StringsAreEqualNoCase_Ascii(name.RightPtr(6), ":$DATA"))
+            name.DeleteFrom(name.Len() - 6);
+        if (name != corrected)
+            return E_INVALIDARG;
+    }
+    return S_OK;
+}
+} // namespace
 
 void ArchiveBackend::assignDefaultEntryNames(const QString &format) {
     CArc arc;
@@ -76,6 +128,7 @@ HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeO
         return E_NOTIMPL;
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
+    RINOK(ValidateNativeUpdatePaths(count, callback))
     return writer->UpdateItems(output, count, callback);
 }
 
@@ -126,17 +179,26 @@ HRESULT ArchiveBackend::updateSourceArchive(
     return S_OK;
 }
 
-HRESULT ArchiveBackend::updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,
-                                         ISequentialOutStream *output, UInt32 count,
-                                         IArchiveUpdateCallback *callback) const {
-    if (!reader || !reader->arc().IsTree || reader->arc().IsReadOnly || reader->hasNestedStream() ||
-        reader->arc().ArcStreamOffset != 0)
+HRESULT ArchiveBackend::setNativeArchiveProperties(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                                   const wchar_t *const *names,
+                                                   const PROPVARIANT *values, UInt32 count) const {
+    if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly || reader->hasNestedStream())
+        return E_NOTIMPL;
+    CMyComPtr<ISetProperties> properties;
+    RINOK(reader->arc().Archive.QueryInterface(IID_ISetProperties, &properties))
+    return properties->SetProperties(names, values, count);
+}
+
+HRESULT ArchiveBackend::updateNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                            ISequentialOutStream *output, UInt32 count,
+                                            IArchiveUpdateCallback *callback) const {
+    if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly || reader->hasNestedStream())
         return E_NOTIMPL;
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
-    // Original ArchiveFolderOut calls the handler with its source callback.
-    // Tree/ADS parent indexes and raw properties cannot pass through a flat
-    // command-line mutation plan without losing their source meaning.
+    RINOK(ValidateNativeUpdatePaths(count, callback))
+    // AgentOut::CommonUpdate retains the handler's properties and calls it
+    // directly with the original callback, including tree/raw/crypto services.
     return writer->UpdateItems(output, count, callback);
 }
 
@@ -144,11 +206,11 @@ HRESULT ArchiveBackend::updateNativeArchive(const std::shared_ptr<ArchiveNativeO
                                             ISequentialOutStream *output, UInt32 count,
                                             IArchiveUpdateCallback *callback,
                                             const CompressionOptions &options) const {
-    if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly ||
-        reader->hasNestedStream() || reader->arc().ArcStreamOffset != 0)
+    if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly || reader->hasNestedStream())
         return E_NOTIMPL;
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
+    RINOK(ValidateNativeUpdatePaths(count, callback, options.PathMode == NWildcard::k_AbsPath))
     const auto *format = reader->formatInfo();
     if (!format || (options.SymLinks.Val && !format->Flags_SymLinks()) ||
         (options.HardLinks.Val && !format->Flags_HardLinks()) ||

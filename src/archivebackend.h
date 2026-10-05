@@ -127,9 +127,12 @@ class ArchiveBackend : public QObject {
                                 CUpdateErrorInfo &errorInfo, IOpenCallbackUI *openCallback,
                                 IUpdateCallbackUI2 *callback, bool needSetPath,
                                 const std::shared_ptr<const ArchiveCodecCatalog> &catalog) const;
-    HRESULT updateNativeTree(const std::shared_ptr<ArchiveNativeOpen> &reader,
-                             ISequentialOutStream *output, UInt32 count,
-                             IArchiveUpdateCallback *callback) const;
+    HRESULT updateNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                ISequentialOutStream *output, UInt32 count,
+                                IArchiveUpdateCallback *callback) const;
+    HRESULT setNativeArchiveProperties(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                       const wchar_t *const *names, const PROPVARIANT *values,
+                                       UInt32 count) const;
     HRESULT updateNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback,

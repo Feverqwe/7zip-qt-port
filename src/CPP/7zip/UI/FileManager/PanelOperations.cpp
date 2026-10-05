@@ -96,9 +96,9 @@ HRESULT CThreadFolderOperations::DoOperation(CPanel &panel, const UString &progr
     MainAddTitle = progressTitle + L' ';
 
     std::unique_ptr<IQtProgressTransport> transport;
-    if (OpType == FOLDER_TYPE_COMMENT)
-        if (auto *services = dynamic_cast<IQtProgressServices *>(FolderOperations.Interface()))
-            transport = services->CreateNativeProgressTransport(*this);
+    if (auto *services = dynamic_cast<IQtProgressServices *>(FolderOperations.Interface()))
+        transport = OpType == FOLDER_TYPE_COMMENT ? services->CreateNativeProgressTransport(*this)
+                                                  : services->CreateProgressTransport(*this);
     RINOK(Create(progressTitle, MainWindow))
     return Result;
 }

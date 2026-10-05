@@ -1,5 +1,22 @@
 # Сверка с Windows 7zFM
 
+## P2-11.5 — native update transport (принят, 2026-10-05)
+
+При доказанной привязке metadata к native indexes исходные update callbacks
+передаются обработчику напрямую; его ошибка или Cancel не запускают повторную
+CLI mutation. Исходные explicit properties и reset сохраняются. Для одного
+native SFX исходный ReOpen создаёт tail stream, а исходный publisher сохраняет
+префикс. Process-only offsets, nested chains и volume sets остаются ограничены
+возможностями transport. Переход к native writer не меняет layout диалогов.
+
+Qt metadata transport пока не доказывает физические indexes при повторяющихся
+именах: такой архив доступен для чтения, изменение отключено. Это отличие от
+непосредственного native index owner Windows 7zFM. Канонически эквивалентные
+Unicode-строки также не считаются доказательством тождественности indexes.
+Маркированные NTFS streams проходят отдельные исходные правила colon/name и
+общую проверку базового пути. Компонент принят на трёх ОС; evidence — audit
+§ P2-11.5. Общая rendered UX/platform приёмка остаётся в P3.
+
 ## P2-11.1 — единый hover-selection (принят, 2026-10-05)
 
 Исходный ListViewDialog.cpp OnInit применяет LVS_EX_TRACKSELECT вместе с

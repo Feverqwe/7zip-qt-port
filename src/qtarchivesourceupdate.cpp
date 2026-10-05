@@ -49,9 +49,30 @@ void QtArchiveFileResource::AttachProgressService(ArchiveBackend &backend) {
 void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const QString &format) {
     AttachReopenService(backend, format);
     AttachProgressService(backend);
+    _setProperties = [this, &backend](const wchar_t *const *names, const PROPVARIANT *values,
+                                      UInt32 count) {
+        return backend.setNativeArchiveProperties(_nativeOpen, names, values, count);
+    };
     _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
-                                       UInt32 count, IArchiveUpdateCallback *callback) {
+                                       UInt32 count, IArchiveUpdateCallback *callback) -> HRESULT {
         _outputMTime.reset();
+        if (auto *native = NativeItemProperties()) {
+            CMyComPtr<IOutArchive> writer;
+            const HRESULT query = native->QueryInterface(IID_IOutArchive, (void **)&writer);
+            if (query != E_NOINTERFACE) {
+                RINOK(query)
+                if (const auto *source = dynamic_cast<CArchiveUpdateCallback *>(callback);
+                    source && source->CommentIndex >= 0 && source->Comment) {
+                    if (!HasCommentService())
+                        return E_NOTIMPL;
+                    return backend.updateNativeComment(_nativeOpen, output, count, callback);
+                }
+                if (_compressionOptions && !_nativePropertiesExplicit)
+                    return backend.updateNativeArchive(_nativeOpen, output, count, callback,
+                                                       *_compressionOptions);
+                return backend.updateNativeArchive(_nativeOpen, output, count, callback);
+            }
+        }
         if (_compressionOptions &&
             (_compressionOptions->SymLinks.Val || _compressionOptions->HardLinks.Val ||
              _compressionOptions->AltStreams.Val || _compressionOptions->NtSecurity.Val)) {
@@ -60,8 +81,6 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
             return backend.updateNativeArchive(_nativeOpen, output, count, callback,
                                                *_compressionOptions);
         }
-        if (NativeItemProperties() && _nativeOpen->arc().IsTree)
-            return backend.updateNativeTree(_nativeOpen, output, count, callback);
         if (const auto *source = dynamic_cast<CArchiveUpdateCallback *>(callback);
             source && source->CommentIndex >= 0 && source->Comment) {
             if (!HasCommentService())

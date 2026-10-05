@@ -20,18 +20,24 @@ bool writeFile(const QString &path, const QByteArray &bytes) {
 }
 class CMessageAnswers {
     QTimer timer_;
+    bool cancelQuestions_;
 
   public:
     QStringList Errors;
-    CMessageAnswers() {
+    bool CancelledQuestion = false;
+    explicit CMessageAnswers(bool cancelQuestions = false) : cancelQuestions_(cancelQuestions) {
         QObject::connect(&timer_, &QTimer::timeout, &timer_, [this] {
             auto *widget = QApplication::activeModalWidget();
             if (auto *box = qobject_cast<QMessageBox *>(widget)) {
                 if (box->icon() == QMessageBox::Warning || box->icon() == QMessageBox::Critical)
                     Errors.append(box->text());
-                if (box->icon() == QMessageBox::Question && box->button(QMessageBox::Yes))
-                    box->button(QMessageBox::Yes)->click();
-                else
+                if (box->icon() == QMessageBox::Question && box->button(QMessageBox::Yes)) {
+                    if (cancelQuestions_ && box->button(QMessageBox::Cancel)) {
+                        CancelledQuestion = true;
+                        box->button(QMessageBox::Cancel)->click();
+                    } else
+                        box->button(QMessageBox::Yes)->click();
+                } else
                     box->accept();
             } else if (widget && widget->objectName() == "progressDialog") {
                 auto *close = widget->findChild<QPushButton *>("IDCANCEL");
@@ -43,7 +49,7 @@ class CMessageAnswers {
     }
 };
 // Stop at the first visible native progress event, before its OnInit releases
-// callback waiters. A polling timer can run after a small WIM update commits.
+// callback waiters. A polling timer can run after a small native update commits.
 class CNativeCancel final : public QObject {
     bool &observed_;
 
@@ -184,10 +190,10 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         });
         bool observedStart = false;
         std::unique_ptr<CNativeCancel> nativeCancel;
-        if (format == "wim" && cancel)
+        if (cancel)
             nativeCancel = std::make_unique<CNativeCancel>(observedStart);
         const auto connection = connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
-            if (format == "wim" && cancel)
+            if (cancel)
                 return; // Native writer cancellation belongs to its source Sync.
             if (!observedStart) {
                 observedStart = true;
@@ -237,24 +243,18 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         const QByteArray before = readFile(archive);
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
-        CMessageAnswers messages;
+        CMessageAnswers messages(cancel);
         MainWindow window(&backend);
         window.show();
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
         QTRY_VERIFY(action(window, "deleteAction")->isEnabled());
-        bool observed = false;
-        const auto connection = connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
-            if (!observed) {
-                observed = true;
-                if (cancel)
-                    backend.cancel();
-            }
-        });
+        QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         action(window, "deleteAction")->trigger();
-        disconnect(connection);
-        QVERIFY(observed);
+        QCOMPARE(messages.CancelledQuestion, cancel);
+        if (cancel)
+            QCOMPARE(processes.size(), 0);
         QCOMPARE(messages.Errors.isEmpty(), cancel || format == "xz");
         if (cancel || format == "bzip2")
             QCOMPARE(readFile(archive), before);

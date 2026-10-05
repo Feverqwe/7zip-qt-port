@@ -5,6 +5,7 @@
 #include "7zip/UI/Common/ArchiveOpenCallback.h"
 #include "CPP/7zip/UI/Common/OpenArchive.h"
 #include "CPP/7zip/UI/Common/WorkDir.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Common/StringConvert.h"
 #include "Windows/FileDir.h"
 #include "Windows/PropVariant.h"
@@ -38,12 +39,14 @@ QtArchiveFileResource::~QtArchiveFileResource() {
 
 HRESULT QtArchiveFileResource::CloseNativeOpen() {
     _nativeItemOrder = false;
+    _nativePropertiesExplicit = false;
     auto reader = std::move(_nativeOpen);
     return reader ? reader->Close() : S_OK;
 }
 
 void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader) {
     _nativeItemOrder = false;
+    _nativePropertiesExplicit = false;
     _nativeNested = reader && reader->hasNestedStream();
     _nativeReadOnly = reader && reader->arc().IsReadOnly;
     _nativeOpenType = reader ? reader->transportType() : QString();
@@ -59,11 +62,12 @@ QString QtArchiveFileResource::TransportFormat() const {
 }
 
 bool QtArchiveFileResource::HasUpdateService() const {
-    // The process writer publishes one physical archive, not a volume set or
-    // a reconstructed chain of native container streams. Source folder
-    // read-only state must reflect this transport constraint as well.
-    return bool(_update) && _offset == 0 && !RequiresOuterOpen() && !_nativeReadOnly &&
-           (!_nativeOpen || !_nativeOpen->arc().IsTree || NativeItemProperties());
+    // The original publisher can preserve a native SFX prefix when its source
+    // input stream and offset are retained. A process-only plan cannot do so.
+    const bool preservesPrefix = HasNativeUpdateService() && _nativeOpen->arc().InStream &&
+                                 _nativeOpen->arc().ArcStreamOffset != 0;
+    return bool(_update) && (_offset == 0 || preservesPrefix) && !RequiresOuterOpen() &&
+           !_nativeReadOnly && (!_nativeOpen || NativeItemProperties());
 }
 
 HRESULT QtArchiveFileResource::ApplyOutputMTime(CWorkDirTempFile &file) const {
@@ -168,6 +172,7 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
         arc.IsReadOnly = native.IsReadOnly;
         arc.FileSize = native.FileSize;
         arc.ArcStreamOffset = native.ArcStreamOffset;
+        arc.InStream = native.InStream;
         arc.GetRawProps.Release();
         arc.GetRootProps.Release();
         arc.IsTree = false;
@@ -184,7 +189,7 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
             arc.Ask_Aux = native.Ask_Aux;
             arc.Ask_INode = native.Ask_INode;
         }
-        return arc.ReadBasicProps(arc.Archive, 0, S_OK);
+        return arc.ReadBasicProps(arc.Archive, native.ArcStreamOffset, S_OK);
     }
     if (_codecs && _codecs->result() == S_OK)
         arc.SetDefaultName(_codecs->nativeCodecs(), _codecs->formatIndex(Info.format));
@@ -208,7 +213,13 @@ HRESULT QtArchiveFileResource::Update(ISequentialOutStream *output, IInArchive *
                                       UInt32 count, IArchiveUpdateCallback *callback) {
     if (!_update)
         return E_NOTIMPL;
-    return _update(output, metadata, count, callback);
+    // A zero-item handler may never report progress. Use the source Sync at
+    // both sides of the worker boundary, before the publisher can move output.
+    if (_sync) {
+        RINOK(_sync->CheckStop())
+    }
+    RINOK(_update(output, metadata, count, callback))
+    return _sync ? _sync->CheckStop() : S_OK;
 }
 
 HRESULT QtArchiveFileResource::ReOpen(IFolderFolder **metadata, IArchiveOpenCallback *callback) {
@@ -222,6 +233,7 @@ HRESULT QtArchiveFileResource::Extract(IInArchive *metadata, const UInt32 *indic
 
 std::unique_ptr<IQtProgressTransport>
 QtArchiveFileResource::CreateProgressTransport(CProgressDialog &dialog, bool nativeWorker) {
+    nativeWorker = nativeWorker || HasNativeUpdateService();
     if (_compressionOptions && NativeItemProperties()) {
         const auto &options = *_compressionOptions;
         nativeWorker = nativeWorker || options.SymLinks.Val || options.HardLinks.Val ||

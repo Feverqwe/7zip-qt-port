@@ -339,8 +339,18 @@ CreateArchiveDialog projects eligible formats and original format control flags;
 fixed censor paths supply naming inputs and parameter eligibility. Existing
 archive update services use native UpdateEnabled capabilities. Single-stream
 KeepName replacements use the original input and a separate output to preserve
-source default-name identity. Other callback plans use staged publication; CLI
-Add replaces referenced files, while Delete handles only omitted items.
+source default-name identity. With a retained native writer and proven unique
+item indexes, update passes the original callback directly to IOutArchive behind
+ArchiveBackend. Exact CArc paths include source default names; ambiguous native
+mapping makes the folder read-only for update. Source Sync checks bracket the
+writer before the original work-dir publisher moves output. The native SFX
+path first uses source CArchiveLink::ReOpen to retain its physical
+prefix input and ArcStreamOffset; the original publisher copies that prefix and
+writes through CTailOutStream. Explicit source ISetProperties forwards through
+the backend and takes precedence over optional CInfo projection; the original
+DoOperation reset and CommonUpdate no-reset behavior are preserved. The process-only
+fallback still uses staged plans: CLI Add replaces referenced files, while Delete
+handles only omitted items. A failed native writer never selects that fallback.
 Copied mutation staging retains the physical archive basename in its own private
 subdirectory, preserving source DefaultName for pathless handlers. Mutation
 commands use the source exact archive-name mode (-sae), including extensionless

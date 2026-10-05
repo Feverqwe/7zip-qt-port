@@ -15,6 +15,7 @@ bool ArchiveUpdateEnabled(IInArchive *archive) {
 namespace {
 class CFolderArchiveProperties final : public IInArchive,
                                        public IOutArchive,
+                                       public ISetProperties,
                                        public IArchiveGetRawProps,
                                        public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IInArchive)
@@ -23,6 +24,10 @@ class CFolderArchiveProperties final : public IInArchive,
     }
     else if (_resourceSpec && _resourceSpec->HasUpdateService() && iid == IID_IOutArchive) {
         *outObject = static_cast<IOutArchive *>(this);
+    }
+    else if (_resourceSpec && _resourceSpec->HasNativePropertyService() &&
+             iid == IID_ISetProperties) {
+        *outObject = static_cast<ISetProperties *>(this);
     }
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
@@ -52,8 +57,14 @@ class CFolderArchiveProperties final : public IInArchive,
     }
     Z7_IFACE_COM7_IMP(IInArchive)
     Z7_IFACE_COM7_IMP(IOutArchive)
+    Z7_IFACE_COM7_IMP(ISetProperties)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
 };
+
+Z7_COM7F_IMF(CFolderArchiveProperties::SetProperties(const wchar_t *const *names,
+                                                     const PROPVARIANT *values, UInt32 count)) {
+    return _resourceSpec ? _resourceSpec->SetNativeProperties(names, values, count) : E_NOTIMPL;
+}
 
 Z7_COM7F_IMF(CFolderArchiveProperties::GetParent(UInt32 index, UInt32 *parent, UInt32 *type)) {
     return _rawProps ? _rawProps->GetParent(index, parent, type) : E_NOTIMPL;

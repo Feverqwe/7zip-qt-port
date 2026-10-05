@@ -160,7 +160,7 @@ class ArchiveUpdateCallbackTests final : public QObject {
         }
         CMyComPtr<IFolderFolder> metadata =
             new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
-        CMyComPtr2_Create<IUnknown, CAgent> agent;
+        CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
         QCOMPARE(agent->Init({}, metadata, UString("zip")), S_OK);
         auto *engine = new CRecordingArchive(agent->GetArchive());
         CMyComPtr<IInArchive> engineOwner = engine;

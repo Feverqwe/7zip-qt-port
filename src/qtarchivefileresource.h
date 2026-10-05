@@ -49,6 +49,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool _nativeNested = false;
     bool _nativeReadOnly = false;
     bool _nativeItemOrder = false;
+    bool _nativePropertiesExplicit = false;
+    std::function<HRESULT(const wchar_t *const *, const PROPVARIANT *, UInt32)> _setProperties;
     QString _nativeOpenType;
 
   public:
@@ -101,6 +103,10 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
         return _compressionOptions;
     }
     bool HasUpdateService() const;
+    bool HasNativeUpdateService() const;
+    bool HasNativePropertyService() const;
+    HRESULT SetNativeProperties(const wchar_t *const *names, const PROPVARIANT *values,
+                                UInt32 count);
     bool RequiresOuterOpen() const;
     QString TransportFormat() const;
     bool HasExtractService() const;

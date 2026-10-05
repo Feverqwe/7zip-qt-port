@@ -111,7 +111,7 @@ void CAgentFolder::Init(const CProxyArc *proxy, const CProxyArc2 *proxy2, unsign
     _isAltStreamFolder = false;
     if (_proxy2)
         _isAltStreamFolder = _proxy2->IsAltDir(proxyDirIndex);
-    _agent = (IUnknown *)agent;
+    _agent = static_cast<IFolderArcProps *>(agent);
     _agentSpec = agent;
     _archiveType = agent->ArchiveType;
 }

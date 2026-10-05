@@ -141,10 +141,11 @@ class CAgentFolder final : public IFolderFolder,
 
 // Partial source owner: proxy lifetime/root binding only. Engine operations remain
 // behind ArchiveBackend; IInFolderArchive is not advertised by this adapter.
-class CAgent final : public IFolderArcProps, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_1(IFolderArcProps)
+class CAgent final : public IFolderArcProps, public ISetProperties, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IFolderArcProps, ISetProperties)
   public:
     Z7_IFACE_COM7_IMP(IFolderArcProps)
+    Z7_IFACE_COM7_IMP(ISetProperties)
     CAgent();
     ~CAgent();
     HRESULT Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,

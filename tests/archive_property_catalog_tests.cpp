@@ -147,7 +147,7 @@ class ArchivePropertyCatalogTests : public QObject {
         items.Add(item);
         CMyComPtr<IFolderFolder> metadata = new QtPanelFolder("", items);
         auto *agentSpec = new CAgent;
-        CMyComPtr<IUnknown> agent = agentSpec;
+        CMyComPtr<IFolderArcProps> agent = agentSpec;
         QCOMPARE(agentSpec->Init({ArchiveEntry{"file.txt", 9, 4}}, metadata, UString(L"7z")), S_OK);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(agentSpec->BindToRootFolder(&folder), S_OK);
@@ -186,7 +186,7 @@ class ArchivePropertyCatalogTests : public QObject {
         metadataSpec->FailCount = countFailure;
         metadataSpec->FailDescriptor = !countFailure;
         auto *agentSpec = new CAgent;
-        CMyComPtr<IUnknown> agent = agentSpec;
+        CMyComPtr<IFolderArcProps> agent = agentSpec;
         QCOMPARE(agentSpec->Init({}, metadata, UString(L"7z")), S_OK);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(agentSpec->BindToRootFolder(&folder), E_FAIL);

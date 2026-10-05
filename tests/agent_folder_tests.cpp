@@ -214,7 +214,7 @@ class AgentFolderTests : public QObject {
         items.Add(item);
         CMyComPtr<IFolderFolder> props = new QtPanelFolder("archive.zip", items);
         auto *agentSpec = new CAgent;
-        CMyComPtr<IUnknown> agent = agentSpec;
+        CMyComPtr<IFolderArcProps> agent = agentSpec;
         QCOMPARE(agentSpec->Init(entries, props, UString("zip")), S_OK);
         QCOMPARE(agentSpec->Init({}, props, UString("other")), E_FAIL);
         CMyComPtr<IFolderFolder> rootFolder;
@@ -252,7 +252,7 @@ class AgentFolderTests : public QObject {
 
     void agentRootRejectsMissingMetadataAndEmptyArchiveIsValid() {
         auto *agentSpec = new CAgent;
-        CMyComPtr<IUnknown> owner = agentSpec;
+        CMyComPtr<IFolderArcProps> owner = agentSpec;
         CMyComPtr<IFolderFolder> rootFolder;
         QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), E_FAIL);
         QVERIFY(!rootFolder);
