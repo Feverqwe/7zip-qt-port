@@ -62,7 +62,7 @@ class CompressionMemoryTests final : public QObject {
             method->setCurrentText(methodName);
             QCOMPARE(dictionary->itemText(0), QStringLiteral("*  500 KB"));
         }
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         dialog.show();
         dictionary->setCurrentIndex(0);
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
@@ -75,10 +75,10 @@ class CompressionMemoryTests final : public QObject {
             QVERIFY(UiInspection::writeReport(
                 dialog, QString("memory-%1-%2-%3").arg(methodName, formatName).arg(size.width())));
         }
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         level->setCurrentIndex(level->findData(0u));
         QVERIFY(!dictionary->isEnabled());
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
     }
     void fixedDictionary_data() {
         QTest::addColumn<QString>("methodName");
@@ -103,7 +103,7 @@ class CompressionMemoryTests final : public QObject {
             level->setCurrentIndex(level->findData(unsigned(value)));
             method->setCurrentText(methodName);
             QCOMPARE(dictionary->itemText(0), QStringLiteral("*  %1").arg(sizeText));
-            QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+            QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         }
         dialog.show();
         const QString screenshots = QDir::currentPath() + "/ui-screenshots";
@@ -149,8 +149,8 @@ class CompressionMemoryTests final : public QObject {
         QCOMPARE(file.write(contents), qint64(contents.size()));
         file.close();
         CompressionOptions options;
-        options.method = methodName;
-        options.dictionaryBytes = validSize;
+        options.Method = methodName.toStdWString().c_str();
+        options.Dict64 = validSize ? validSize : UInt64(-1);
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir.filePath("memory." + formatName);
@@ -169,7 +169,7 @@ class CompressionMemoryTests final : public QObject {
         QVERIFY(restored.open(QIODevice::ReadOnly));
         QCOMPARE(restored.readAll(), contents);
         const QString invalid = dir.filePath("invalid." + formatName);
-        options.dictionaryBytes = invalidSize;
+        options.Dict64 = invalidSize;
         backend.create(invalid, {source}, {}, false, options);
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.takeFirst()[0].toBool());
@@ -177,7 +177,7 @@ class CompressionMemoryTests final : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         QVERIFY(file.resize(8 << 20));
         file.close();
-        options.dictionaryBytes = validSize;
+        options.Dict64 = validSize ? validSize : UInt64(-1);
         backend.create(invalid, {source}, {}, false, options);
         QVERIFY(backend.busy());
         backend.cancel();

@@ -28,13 +28,6 @@ NCompressDialog::CInfo CreateArchiveDialog::sourceInfo() const {
     info.ArcPath = target().toStdWString().c_str();
     info.FormatIndex = codecs_ ? codecs_->formatIndex(options.format) : -1;
     info.Password = password();
-    info.Level = UInt32(options.level);
-    info.Method = archiveNameState_.GetMethodSpec();
-    info.Dict64 = options.dictionaryBytes ? UInt64(options.dictionaryBytes) : UInt64(-1);
-    info.OrderMode =
-        NCompressDialog::GetOrderMode(NCompressDialog::GetMethodID(options.method, options.format));
-    info.Order = options.wordSize ? UInt32(options.wordSize) : UInt32(-1);
-    info.NumThreads = options.threads ? UInt32(options.threads) : UInt32(-1);
     info.EncryptHeadersIsAllowed = encryptHeaders_ && encryptHeaders_->isEnabled();
     info.EncryptHeaders = encryptHeaders();
     return info;

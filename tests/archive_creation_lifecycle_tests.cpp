@@ -257,7 +257,7 @@ class ArchiveCreationLifecycleTests final : public QObject {
         QVERIFY(writeFile(input, bytes));
         const QString archive = fixture.filePath("result." + format);
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.DeleteAfterCompressing = true;
         if (volumes)
             options.VolumeSizes.Add(2048);

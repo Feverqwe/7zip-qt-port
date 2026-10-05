@@ -1068,8 +1068,14 @@ snapshots. `NCompression::CInfo` persists ArcPaths and ArcType.
 Qt controls. `CCompressDialog::CheckPassword` is shared with ArchiveBackend;
 the backend validates encryption settings before staging and owns 7zz arguments.
 `NCompression::CFormatOptions` and `CInfo` hold per-format profiles through
-QSettings. `CMemUse` parses memory limits. `CompressionOptions` carries confirmed
-values to the backend, which repeats validation before starting the operation.
+QSettings. `CMemUse` parses memory limits. `CompressionOptions` inherits the
+original NCompressDialog::CInfo fields as the sole request values; the wrapper
+adds only format/SFX path transport and initializes native Level to the existing
+public default5. Dict64/Order/NumThreads retain the original unsigned(-1) auto
+sentinels, and Method remains UString with GetMethodSpec's empty automatic choice.
+sourceInfo adds archive/dialog context without converting a second parameter set.
+The backend repeats validation before starting the operation and feeds the
+original property parser; Qt converts strings only at control/helper boundaries.
 
 `createarchivedialog_advanced.cpp` binds the original COptionsDialog to an
 in-memory format profile and exposes the native parameter field and summary.

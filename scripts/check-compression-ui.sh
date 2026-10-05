@@ -2,6 +2,19 @@
 # Focused Add dialog and its actual File Manager/shell consumers.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+if [[ "${1:-}" == --backend && "$#" == 1 ]]; then
+    ./scripts/build.sh dev archive_backend_tests source_update_backend_tests codec_creation_tests \
+        codec_update_tests external_codec_tests archive_creation_lifecycle_tests \
+        archive_volume_creation_tests source_link_storage_tests source_metadata_storage_tests \
+        language_source_update_tests
+    ./scripts/ctest.sh --preset dev --output-on-failure \
+        -R '^(archive_backend|source_update_backend|codec_creation|codec_update|external_codecs|archive_creation_lifecycle|archive_volume_creation|source_link_storage|source_metadata_storage|language_source_update)$'
+    exit
+fi
+if [[ "$#" != 0 ]]; then
+    printf 'Usage: %s [--backend]\n' "$0" >&2
+    exit 2
+fi
 ./scripts/build.sh dev sevenzip_desktop source_compress_dialog_tests shell_menu_window_tests \
     shell_update_window_tests compression_tests compression_advanced_tests \
     compression_path_tests language_ui_tests codec_commands_ui_tests codec_creation_ui_tests \

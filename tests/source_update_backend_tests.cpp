@@ -809,7 +809,7 @@ class SourceUpdateBackendTests final : public QObject {
         plan.removed = {"input.bin"};
         plan.fileRoot = sourceRoot;
         CompressionOptions invalid;
-        invalid.level = 99;
+        invalid.Level = 99;
         ArchiveBackend rejected(nullptr, enginePath());
         QSignalSpy rejectedFinished(&rejected, &ArchiveBackend::finished);
         rejected.updateSourcePlan(archive, plan, output, "zip", {}, invalid);

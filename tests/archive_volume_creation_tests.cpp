@@ -87,7 +87,7 @@ class ArchiveVolumeCreationTests final : public QObject {
         file.close();
         const QString target = fixture.filePath("output.7z");
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.VolumeSizes.Add(32 << 20);
         ArchiveBackend backend(nullptr, engine());
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
@@ -151,7 +151,7 @@ class ArchiveVolumeCreationTests final : public QObject {
         const QString cancelled = fixture.filePath("cancelled.7z"),
                       restarted = fixture.filePath("restarted.7z");
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.VolumeSizes.Add(64 << 10);
         ArchiveBackend backend(nullptr, engine());
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
@@ -201,7 +201,7 @@ class ArchiveVolumeCreationTests final : public QObject {
         QVERIFY(writeFile(second, b));
         const QString target = fixture.filePath(QStringLiteral("архив с пробелом.") + format);
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.VolumeSizes.Add(64 << 10);
         options.VolumeSizes.Add(128 << 10);
         if (format == "zip" && protectedArchive)
@@ -311,7 +311,7 @@ class ArchiveVolumeCreationTests final : public QObject {
         if (mode == 0)
             QVERIFY(writeFile(occupied, "occupied"));
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.VolumeSizes.Add(64 << 10);
         ArchiveBackend backend(nullptr, engine());
         QSignalSpy finished(&backend, &ArchiveBackend::finished);

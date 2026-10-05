@@ -5,6 +5,9 @@
 #include <QProgressBar>
 #include <QScopeGuard>
 #include <QTreeWidget>
+#ifdef Q_OS_WIN
+#include "native_properties_fixture.h"
+#endif
 
 class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -128,7 +131,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(QMetaObject::invokeMethod(table(window), "cellDoubleClicked", Qt::DirectConnection,
                                           Q_ARG(int, archiveRow), Q_ARG(int, 0)));
         QCOMPARE(backend.listCalls, 1);
-        QCOMPARE(backend.lastArchive, QFileInfo(archive.fileName()).canonicalFilePath());
+        QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive),
+                 QFileInfo(archive.fileName()).canonicalFilePath());
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "backAction")->isEnabled());
         action(window, "backAction")->trigger();
@@ -357,7 +361,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     void contextMenuFollowsSelectionAndLocation() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
-        QFile file(temp.filePath(QStringLiteral("имя с пробелом.txt")));
+        const QString name = QFileInfo(temp.path()).fileName() + QStringLiteral(" имя с пробелом");
+        QFile file(temp.filePath(name));
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
         ControlledBackend backend;
@@ -369,7 +374,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QStringList commands;
         QHash<QString, bool> enabled;
         auto capture = [&] {
-            QTimer::singleShot(0, [&] {
+            QTimer::singleShot(0, &window, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
                 QVERIFY(menu);
                 for (QAction *item : menu->actions()) {
@@ -387,8 +392,21 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(commands.contains("Create Folder"));
         QVERIFY(enabled.value(QStringLiteral("Rena&me")));
         QVERIFY(!commands.contains("Refresh"));
+#ifdef Q_OS_WIN
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        std::atomic<bool> stop{false};
+        auto observer = std::async(std::launch::async, NativePropertiesFixture::ObserveAndClose,
+                                   name, reinterpret_cast<HWND>(window.winId()), std::cref(stop));
+        const auto finish = qScopeGuard([&] { stop = true; });
+        action(window, "selectedPropertiesAction")->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(
+            observer.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 15000);
+        const auto sheet = observer.get();
+        QVERIFY2(sheet.window && sheet.tabs && sheet.visible, qPrintable(sheet.diagnostic));
+        QTRY_VERIFY(!IsWindow(sheet.window));
+#else
         QStringList properties;
-        QTimer::singleShot(0, [&] {
+        QTimer::singleShot(0, &window, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             QVERIFY(dialog);
             auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
@@ -398,9 +416,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             dialog->reject();
         });
         action(window, "selectedPropertiesAction")->trigger();
-        QVERIFY(properties.contains(QStringLiteral("имя с пробелом.txt")));
+        QVERIFY(properties.contains(name));
         QVERIFY(properties.contains(
             QDir::fromNativeSeparators(QFileInfo(temp.path()).canonicalFilePath() + '/')));
+#endif
         commands.clear();
         view->clearSelection();
         capture();

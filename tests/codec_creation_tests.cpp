@@ -48,7 +48,7 @@ class CodecCreationTests final : public QObject, protected ArchiveBackendTestSup
         load(backend);
         CompressionOptions options;
         options.format = format;
-        options.level = format == "tar" || format == "wim" ? 0 : 5;
+        options.Level = format == "tar" || format == "wim" ? 0 : 5;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);

@@ -167,7 +167,7 @@ class SourceMetadataStorageTests final : public QObject {
         QVERIFY(resource && resource->HasUpdateService());
         QCOMPARE(folder->LoadItems(), S_OK);
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.NtSecurity.Def = options.AltStreams.Def = true;
         options.NtSecurity.Val = security;
         options.AltStreams.Val = streams;

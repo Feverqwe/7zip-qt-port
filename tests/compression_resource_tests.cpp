@@ -122,13 +122,13 @@ class CompressionResourceTests final : public QObject {
         QVERIFY(hardware->text().startsWith("/ "));
         QVERIFY(threads->itemText(0).startsWith("*  "));
         threads->setCurrentIndex(threads->findData(2u));
-        QCOMPARE(dialog.compressionOptions().threads, 2);
+        QCOMPARE(dialog.compressionOptions().NumThreads, 2);
         method->setCurrentText("BZip2");
-        QCOMPARE(dialog.compressionOptions().threads, 0);
+        QCOMPARE(dialog.compressionOptions().NumThreads, UInt32(-1));
         method->setCurrentText("PPMd");
         QVERIFY(!threads->isEnabled());
         QCOMPARE(threads->count(), 1);
-        QCOMPARE(dialog.compressionOptions().threads, 0);
+        QCOMPARE(dialog.compressionOptions().NumThreads, UInt32(-1));
         QVERIFY(memory->text().startsWith(QStringLiteral("18 MB / ")));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QVERIFY(memory->text().startsWith(QStringLiteral("3 MB / ")));
@@ -185,9 +185,9 @@ class CompressionResourceTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         CompressionOptions options;
-        options.method = methodName;
-        options.threads = threads;
-        options.dictionaryBytes = dictionary;
+        options.Method = methodName.toStdWString().c_str();
+        options.NumThreads = threads ? UInt32(threads) : UInt32(-1);
+        options.Dict64 = dictionary ? dictionary : UInt64(-1);
         const QString target = dir.filePath("threads." + formatName);
         backend.create(target, {source}, {}, false, options);
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
@@ -205,7 +205,7 @@ class CompressionResourceTests final : public QObject {
         QVERIFY(restored.open(QIODevice::ReadOnly));
         QCOMPARE(restored.readAll(), contents);
         const QString invalid = dir.filePath("invalid." + formatName);
-        options.threads = 513;
+        options.NumThreads = 513;
         backend.create(invalid, {source}, {}, false, options);
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.takeFirst()[0].toBool());
@@ -213,7 +213,7 @@ class CompressionResourceTests final : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         QVERIFY(file.resize(8 << 20));
         file.close();
-        options.threads = threads;
+        options.NumThreads = threads ? UInt32(threads) : UInt32(-1);
         backend.create(invalid, {source}, {}, false, options);
         QVERIFY(backend.busy());
         backend.cancel();

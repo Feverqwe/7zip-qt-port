@@ -308,13 +308,18 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
     if (level_) {
         if (encryption_)
             options.EncryptionMethod = GetEncryptionMethodSpec();
-        options.level = level_->currentData().toInt();
-        options.method = methodName();
-        options.threads = threads_->currentData().toInt();
+        options.Level = level_->currentData().toInt();
+        options.Method = archiveNameState_.GetMethodSpec();
+        options.OrderMode = NCompressDialog::GetOrderMode(
+            NCompressDialog::GetMethodID(methodName(), options.format));
+        const UInt32 threads = threads_->currentData().toUInt();
+        options.NumThreads = threads ? threads : UInt32(-1);
         options.MemUsage = Get_MemUse_Spec();
-        options.dictionaryBytes =
+        const UInt64 dictionary =
             dictionary_->isEnabled() ? dictionary_->currentData().toULongLong() : 0;
-        options.wordSize = wordSize_->isEnabled() ? wordSize_->currentData().toInt() : 0;
+        options.Dict64 = dictionary ? dictionary : UInt64(-1);
+        const UInt32 order = wordSize_->isEnabled() ? wordSize_->currentData().toUInt() : 0;
+        options.Order = order ? order : UInt32(-1);
         options.SolidIsSpecified = solidBlock_->isEnabled();
         NCompressDialog::OnOK(
             solidBlock_->isEnabled() ? solidBlock_->currentData().toUInt() : UInt32(-1), options);

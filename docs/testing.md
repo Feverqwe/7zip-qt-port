@@ -1,5 +1,17 @@
 # Regression strategy
 
+`compression` compares properties from public native CInfo requests with the
+retained source GetCompressionProperties output for PPMd order/memory and LZMA2
+fast bytes/threads. Invalid native fields must fail before output/engine work.
+This catches the former legacy fields shadowing inherited CInfo values. All
+creation, Add, shell, SFX, volume, metadata and compression fixtures use the same
+native field types and unsigned(-1) auto sentinels; UI automatic Method is empty
+just like sourceInfo. Visible method names and raw engine byte checks are retained.
+`scripts/check-compression-ui.sh` checks49 Add/dialog/shell consumers;
+`--backend` builds/checks ten backend/native creation/update/module/lifecycle
+consumers in the same snapshot. Windows native link/security fixtures need a
+privileged token; desktop focus/modal consumers require an interactive session.
+
 `list_activation` covers the shared source-style hover presentation used by
 history/properties/hash/message lists, the temporary browser and main lists.
 Public wheel and hide/show fixtures first reproduce delayed selection after
@@ -241,6 +253,14 @@ producer/repository/revision/platform/architecture, modified or missing binary
 and missing recorded checksum. It runs on every platform without installing.
 The native sheet observer identifies the unique disposable filename across shell
 processes/proxy owners, requires visible tabs, and closes hidden sheets on failure.
+`native_properties_fixture.h` shares this observer with filesystem selection and
+archive-state consumers. Windows Properties checks invoke the actual shell sheet
+from an exposed window; other platforms inspect the source collector's Qt list.
+The selection fixture restores both source indices before exercising Hash/Add
+with deliberately forged display paths. Context-menu responders are bound to
+the fixture window, and close the menu even when an assertion fails. Path checks
+normalize native separators. Unicode mnemonic collision checks send complete
+key sequences through the QWindow, including modifier transitions and text.
 The same runner script includes loaded filesystem projections, source drag paths,
 spool publication and failed/cancelled spool cleanup. Language-dialog reports are
 written before geometry assertions so platform failures retain widget evidence.

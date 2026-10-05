@@ -21,9 +21,9 @@ class CompressionOrderTests final : public QObject {
         QCOMPARE(actual, expected);
         QVERIFY(word->itemText(0).contains("32"));
         word->setCurrentIndex(word->findData(48));
-        QCOMPARE(dialog.compressionOptions().wordSize, 48);
+        QCOMPARE(dialog.compressionOptions().Order, 48);
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(dialog.compressionOptions().wordSize, 0);
+        QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
         QVERIFY(word->itemText(0).contains("64"));
         word->setCurrentIndex(0);
         dialog.show();
@@ -40,7 +40,7 @@ class CompressionOrderTests final : public QObject {
         }
         method->setCurrentText("BZip2");
         QVERIFY(!word->isEnabled());
-        QCOMPARE(dialog.compressionOptions().wordSize, 0);
+        QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
         method->setCurrentText("LZMA");
         QVERIFY(word->isEnabled());
         QCOMPARE(word->count(), expected.size());
@@ -73,7 +73,7 @@ class CompressionOrderTests final : public QObject {
         level->setCurrentIndex(level->findData(9u));
         dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
         QVERIFY(word->itemText(0).contains("128"));
-        QCOMPARE(dialog.compressionOptions().wordSize, 0);
+        QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -88,7 +88,7 @@ class CompressionOrderTests final : public QObject {
         }
         level->setCurrentIndex(level->findData(0u));
         QVERIFY(!word->isEnabled());
-        QCOMPARE(dialog.compressionOptions().wordSize, 0);
+        QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
     }
     void upstreamPpmdOrderChoices_data() {
         QTest::addColumn<QString>("formatName");
@@ -123,7 +123,7 @@ class CompressionOrderTests final : public QObject {
                                   : value == 5        ? 6
                                                       : 4;
             QCOMPARE(word->itemText(0), QStringLiteral("*  %1").arg(autoOrder));
-            QCOMPARE(dialog.compressionOptions().wordSize, 0);
+            QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
         }
         word->setCurrentIndex(word->findData(expected.last()));
         dialog.show();
@@ -140,7 +140,7 @@ class CompressionOrderTests final : public QObject {
         }
         method->setCurrentText("BZip2");
         QVERIFY(!word->isEnabled());
-        QCOMPARE(dialog.compressionOptions().wordSize, 0);
+        QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
     }
     void createsWithPortedWordSizes_data() {
         QTest::addColumn<int>("word");
@@ -168,9 +168,9 @@ class CompressionOrderTests final : public QObject {
         file.close();
         ArchiveBackend backend;
         CompressionOptions options;
-        options.method = methodName;
-        options.dictionaryBytes = methodName == "LZMA2" ? 1 << 20 : 0;
-        options.wordSize = word;
+        options.Method = methodName.toStdWString().c_str();
+        options.Dict64 = methodName == "LZMA2" ? UInt64(1 << 20) : UInt64(-1);
+        options.Order = word;
         const QString target = dir.filePath("word." + suffix);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
@@ -203,15 +203,15 @@ class CompressionOrderTests final : public QObject {
         file.close();
         ArchiveBackend backend;
         CompressionOptions options;
-        options.method = methodName;
-        options.wordSize = invalidWord;
+        options.Method = methodName.toStdWString().c_str();
+        options.Order = invalidWord;
         const QString target = dir.filePath("cancel." + suffix);
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         backend.create(target, {source}, {}, false, options);
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.takeFirst()[0].toBool());
         QVERIFY(!QFileInfo::exists(target));
-        options.wordSize = validWord;
+        options.Order = validWord;
         backend.create(target, {source}, {}, false, options);
         QVERIFY(backend.busy());
         backend.cancel();

@@ -187,7 +187,7 @@ class SourceLinkStorageTests final : public QObject, protected ArchiveBackendTes
         QVERIFY(resource && resource->HasUpdateService());
         QCOMPARE(folder->LoadItems(), S_OK);
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.SymLinks.SetTrueTrue();
         if (hardLinks)
             options.HardLinks.SetTrueTrue();

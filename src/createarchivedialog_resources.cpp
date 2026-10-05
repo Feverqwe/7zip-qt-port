@@ -72,16 +72,16 @@ NCompression::CMemUse CreateArchiveDialog::Get_MemUse_Spec() const {
 
 bool CreateArchiveDialog::checkMemoryUsage() {
     const auto options = compressionOptions();
-    const auto method = options.level == 0
+    const auto method = options.Level == 0
                             ? NCompressDialog::kCopy
-                            : NCompressDialog::GetMethodID(options.method, format_->currentText());
+                            : NCompressDialog::GetMethodID(methodName(), format_->currentText());
     const auto threads = NCompressDialog::SetNumThreads2(
-        format_->currentText(), method, UInt32(options.level), GetDict2(),
+        format_->currentText(), method, UInt32(options.Level), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, options.MemUsage);
     UInt64 decompressMem;
     const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
-        format_->currentText(), method, UInt32(options.level),
-        options.threads ? UInt32(options.threads) : threads.AutoNumThreads, GetDict2(),
+        format_->currentText(), method, UInt32(options.Level),
+        options.NumThreads != UInt32(-1) ? options.NumThreads : threads.AutoNumThreads, GetDict2(),
         solidBlock_->currentData().toUInt(), decompressMem);
     if (memUsage != UInt64(-1) && (options.MemUsage.IsDefined || system_.RamSizeDefined)) {
         const UInt64 limit = NCompressDialog::Get_MemUse_Bytes(options.MemUsage, system_);

@@ -161,32 +161,33 @@ class CompressionPreferencesTests final : public QObject {
             set(dialog, "compressionSolidBlock", 64);
             choose(dialog, "256M");
             format(dialog)->setCurrentText("zip");
-            QCOMPARE(dialog.compressionOptions().level, 5);
-            QCOMPARE(dialog.compressionOptions().method, QString("Deflate"));
+            QCOMPARE(dialog.compressionOptions().Level, 5);
+            QVERIFY(dialog.compressionOptions().Method.IsEmpty());
             set(dialog, "compressionLevel", 9);
             set(dialog, "compressionWordSize", 258);
             set(dialog, "compressionThreads", 1);
             choose(dialog, "384M");
             format(dialog)->setCurrentText("7z");
             const auto options = dialog.compressionOptions();
-            QCOMPARE(options.level, 7);
-            QCOMPARE(options.method, QString("PPMd"));
-            QCOMPARE(options.dictionaryBytes, quint64(1 << 20));
-            QCOMPARE(options.wordSize, 16);
-            QCOMPARE(options.threads, 0);
+            QCOMPARE(options.Level, 7);
+            QCOMPARE(QString::fromWCharArray(options.Method.Ptr()), QString("PPMd"));
+            QCOMPARE(options.Dict64, quint64(1 << 20));
+            QCOMPARE(options.Order, 16);
+            QCOMPARE(options.NumThreads, UInt32(-1));
             QCOMPARE(options.SolidBlockSize, UInt64(-1));
             dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             QCOMPARE(dialog.result(), int(QDialog::Accepted));
         }
         CreateArchiveDialog restored(dir_.path(), {source_});
-        QCOMPARE(restored.compressionOptions().method, QString("PPMd"));
-        QCOMPARE(restored.compressionOptions().dictionaryBytes, quint64(1 << 20));
+        QCOMPARE(QString::fromWCharArray(restored.compressionOptions().Method.Ptr()),
+                 QString("PPMd"));
+        QCOMPARE(restored.compressionOptions().Dict64, quint64(1 << 20));
         format(restored)->setCurrentText("zip");
         const auto zip = restored.compressionOptions();
-        QCOMPARE(zip.level, 9);
-        QCOMPARE(zip.method, QString("Deflate"));
-        QCOMPARE(zip.wordSize, 258);
-        QCOMPARE(zip.threads, 1);
+        QCOMPARE(zip.Level, 9);
+        QVERIFY(zip.Method.IsEmpty());
+        QCOMPARE(zip.Order, 258);
+        QCOMPARE(zip.NumThreads, 1);
         QCOMPARE(limit(restored)->currentData().toString(), QString("384M"));
         restored.show();
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
@@ -228,11 +229,11 @@ class CompressionPreferencesTests final : public QObject {
         saved.sync();
         CreateArchiveDialog dialog(dir_.path(), {source_});
         auto options = dialog.compressionOptions();
-        QCOMPARE(options.level, 5);
-        QCOMPARE(options.method, QString("LZMA2"));
-        QCOMPARE(options.dictionaryBytes, quint64(0));
-        QCOMPARE(options.wordSize, 0);
-        QCOMPARE(options.threads, 0);
+        QCOMPARE(options.Level, 5);
+        QVERIFY(options.Method.IsEmpty());
+        QCOMPARE(options.Dict64, UInt64(-1));
+        QCOMPARE(options.Order, UInt32(-1));
+        QCOMPARE(options.NumThreads, UInt32(-1));
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         NCompression::CInfo loaded;
@@ -245,7 +246,7 @@ class CompressionPreferencesTests final : public QObject {
         cancelled.findChild<QComboBox *>("compressionLevel")->setCurrentIndex(0);
         cancelled.reject();
         CreateArchiveDialog restarted(dir_.path());
-        QCOMPARE(restarted.compressionOptions().level, 5);
+        QCOMPARE(restarted.compressionOptions().Level, 5);
     }
     void levelChangeResetsProfile_data() {
         QTest::addColumn<QString>("formatName");
@@ -268,21 +269,21 @@ class CompressionPreferencesTests final : public QObject {
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         auto *dict = dialog.findChild<QComboBox *>("compressionDictionary");
         auto *solid = dialog.findChild<QComboBox *>("compressionSolidBlock");
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(1 << 20));
+        QCOMPARE(dialog.compressionOptions().Dict64, quint64(1 << 20));
         method->setCurrentText("LZMA");
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
-        QCOMPARE(dialog.compressionOptions().wordSize, 0);
-        QCOMPARE(dialog.compressionOptions().threads, 0);
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
+        QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
+        QCOMPARE(dialog.compressionOptions().NumThreads, UInt32(-1));
         QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
         method->setCurrentIndex(method->findData(-1));
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(1 << 20));
-        QCOMPARE(dialog.compressionOptions().wordSize, 48);
-        QCOMPARE(dialog.compressionOptions().threads, 1);
+        QCOMPARE(dialog.compressionOptions().Dict64, quint64(1 << 20));
+        QCOMPARE(dialog.compressionOptions().Order, 48);
+        QCOMPARE(dialog.compressionOptions().NumThreads, 1);
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(32 << 20));
         dict->setCurrentIndex(dict->findData(QVariant::fromValue(quint64(2 << 20))));
         QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
-        QCOMPARE(dialog.compressionOptions().wordSize, 48);
-        QCOMPARE(dialog.compressionOptions().threads, 1);
+        QCOMPARE(dialog.compressionOptions().Order, 48);
+        QCOMPARE(dialog.compressionOptions().NumThreads, 1);
         for (const UInt32 block : {UInt32(0), UInt32(64)}) {
             solid->setCurrentIndex(solid->findData(block));
             const quint64 size = block == 0 ? quint64(3 << 20) : quint64(4 << 20);
@@ -310,16 +311,17 @@ class CompressionPreferencesTests final : public QObject {
         info.Save(settingsPath_);
         CreateArchiveDialog dialog(dir_.path(), {source_});
         format(dialog)->setCurrentText(formatName);
-        QCOMPARE(dialog.compressionOptions().method, QString("PPMd"));
-        QCOMPARE(dialog.compressionOptions().wordSize, 12);
+        QCOMPARE(QString::fromWCharArray(dialog.compressionOptions().Method.Ptr()),
+                 QString("PPMd"));
+        QCOMPARE(dialog.compressionOptions().Order, 12);
         dialog.findChild<QComboBox *>("compressionLevel")
             ->setCurrentIndex(dialog.findChild<QComboBox *>("compressionLevel")->findData(7u));
         auto options = dialog.compressionOptions();
-        QCOMPARE(options.level, 7);
-        QCOMPARE(options.method, formatName == "7z" ? QString("LZMA2") : QString("Deflate"));
-        QCOMPARE(options.dictionaryBytes, quint64(0));
-        QCOMPARE(options.wordSize, 0);
-        QCOMPARE(options.threads, 0);
+        QCOMPARE(options.Level, 7);
+        QVERIFY(options.Method.IsEmpty());
+        QCOMPARE(options.Dict64, UInt64(-1));
+        QCOMPARE(options.Order, UInt32(-1));
+        QCOMPARE(options.NumThreads, UInt32(-1));
         QVERIFY(!options.SolidIsSpecified);
         QCOMPARE(limit(dialog)->currentData().toString(), QString("256M"));
         // Store also resets the specs and disables dependent controls.
@@ -340,8 +342,8 @@ class CompressionPreferencesTests final : public QObject {
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         CreateArchiveDialog restarted(dir_.path());
         format(restarted)->setCurrentText(formatName);
-        QCOMPARE(restarted.compressionOptions().level, 0);
-        QCOMPARE(restarted.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(restarted.compressionOptions().Level, 0);
+        QCOMPARE(restarted.compressionOptions().Dict64, UInt64(-1));
         QCOMPARE(limit(restarted)->currentData().toString(), QString("256M"));
     }
     void autoClearsSavedLimit() {

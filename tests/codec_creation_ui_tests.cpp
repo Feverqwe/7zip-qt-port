@@ -95,7 +95,7 @@ class CodecCreationUiTests final : public QObject {
         const auto options = dialog.compressionOptions();
         QCOMPARE(options.format, type);
         if (type == "tar")
-            QCOMPARE(options.method, QStringLiteral("POSIX"));
+            QCOMPARE(QString::fromWCharArray(options.Method.Ptr()), QStringLiteral("POSIX"));
         buttons->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         ArchiveBackend backend(nullptr, engine_);

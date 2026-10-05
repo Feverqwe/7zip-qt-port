@@ -40,7 +40,7 @@ new review/remediation, not another feature implementation.
 | Row and files | Source owner, consumers and finding | Required change / verification | Review state |
 | --- | --- | --- | --- |
 | H: `qtlistview.{h,cpp}`, `qtfilelisthover.{h,cpp}` | ListViewDialog.cpp OnInit's TRACKSELECT style; CListView dialogs, MainWindow table/icons and TempBrowse. Two own400ms timer/state implementations | One existing hover adapter; public enable/disable/leave/modifiers/removal/close/wheel/hide, all dialog/main/temp consumers and unchanged normal/compact geometry | Resolved P2-11.1 |
-| C: `archivebackend.h`, `archivebackend_mutations.cpp`, `createarchivedialog_source.cpp`, compression controls and consumers | CompressDialog.h NCompressDialog::CInfo already inherited, but five lower-case fields separately own Level/Method/NumThreads/Dict64/Order; two conversions | Use source DTO once; preserve native auto sentinels, validation, format/property/settings/error semantics; actual compression/Add/direct backend/UI on three OS | Pending component migration |
+| C: `archivebackend.h`, `archivebackend_mutations.cpp`, `createarchivedialog_source.cpp`, compression controls and consumers | CompressDialog.h NCompressDialog::CInfo already inherited, but five lower-case fields separately owned Level/Method/NumThreads/Dict64/Order; two conversions | Source DTO is authoritative; native autos, validation, format/property/settings/error semantics and actual compression/Add/direct backend/UI verified on three OS | Resolved P2-11.2 |
 | U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks already usable; own fallback reconstructs four callback plans even with native writer | Prefer proven native writer/index order, preserve CommonUpdate no property reset and DoOperation explicit property calls; fallback needs concrete absent-writer/index evidence. Mutation/edit/nested/update/cancel/security checks | Pending component migration |
 | V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreates names | Reuse retained source-link metadata when available; preserve Split outer streams, physical-size/source deletion accounting and absent-native fallback. Batch/volume/SFX/extract checks | Pending component migration |
 | W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*` | ProgressDialog2.cpp CProgressSync owns pause/stop, but is in panel library which already depends on filesystem; own Qt wake/checkpoint loops repeated | Resolve dependency/transport ownership before reuse; preserve immediate wake, atomic cancel/publication and joined lifetime. Hash/creation/preparation/volume success/failure/pause/cancel/restart | Pending boundary review |
@@ -124,6 +124,54 @@ temp/progress JSON reports were retrieved/reviewed: every visible affected
 control fully inside its normal/compact owner, grouping/order/separation retained.
 The native Windows interactive desktop was used for focus/window consumers;
 rendered pixel parity remains P3-06. This resolves registry row H, not P2-11.
+
+### P2-11.2 — canonical source compression DTO (accepted, 2026-10-05)
+
+Read original CompressDialog.h CInfo and control spec accessors, full OnOK,
+GetMethodSpec/GetMethodID/SetMethod2, UpdateGUI.cpp SetOutProperties and current
+request producer/sourceInfo/backend validation/creation/SFX bodies and callers.
+The five lower-case request fields shadowed inherited native CInfo values:
+setting native Level/Method/Dict64/Order/NumThreads did not reach the backend.
+They are removed; all request consumers now use the original fields. The wrapper
+initializes native Level to the previous public default5 (source SetLevel2's
+normal default). Backend validation still requires a supported explicit0–9 level;
+the other native auto values are UInt32/64(-1), not a second zero convention.
+QString conversion occurs only at Qt method helpers/presentation; Method retains
+UString and source GetMethodSpec's empty auto/store choice. UI method names,
+selection, settings, memory/format validation and source property parser remain
+their existing owners. sourceInfo drops its duplicate five-field conversion.
+
+Public source-DTO property comparisons cover PPMd order/memory and LZMA2 fast-
+bytes/threads, matching the actual retained GetCompressionProperties output.
+Separate invalid native level/method/thread/dictionary/order rows reproduce the
+previously ignored fields. Fixtures follow source capability tables: PPMd uses
+auto threads, LZMA2 explicit2;128KiB is invalid for the tested LZMA2 dictionary,
+while3MiB is valid and must not be called invalid. Existing zero-auto fixture
+inputs/expectations were migrated to native sentinels, with success/extracted
+bytes/failure/cancel checks retained. The unrelated shell-launch method fields
+were excluded from the validated177-occurrence request-field migration.
+Focused compression/source_compress_dialog/resources/preferences/dictionary/
+order/solid/memory/limit pass9/9 in2.94s on macOS arm64 Qt6.11.2; the unsandboxed
+full gate passes238/238 in105.58s. The added compression script's backend scope
+passes10/10 locally in4.62s and in snapshot20261004T224014Z-cbd2b6e7 on Windows
+in44.71s/Linux in17.70s. Actual Windows native metadata/link fixtures have no
+skips; ten Windows-only metadata cases are inapplicable on Linux. Linux UI
+snapshot20261004T223624Z-23e6eaf4 passes49/49 in75.16s with no QTest skips.
+Windows Highest interactive full snapshot20261005T011510Z-a5cc8449 passes all49
+script-defined UI consumers with zero QTest failures/skips, including all six
+native metadata UI cases. Its unrelated resource parser/temp/list-settings
+fixture failures remain separately owned; whole Windows gate is not accepted.
+Current Windows backend scopef5d4ebde passes10/10 in42.52s without skips.
+macOS current full238/238 passes103.48s; Linux current full234/234 passes194.36s.
+Windows Properties consumers use an exposed-window observer for the real
+native property sheet; unique extensionless disposable filenames avoid the
+OS extension-display setting changing its caption. Main command/panel/language
+fixtures activate their requested window before asserting native focus; native
+rendering and command outcomes remain checked, with no Qt Properties substitute.
+Current Mac/Windows/Linux compression JSON preserves exposed controls, source
+values and compact scrolling; no
+borrowed body/path/revision or UI layout changes. Baseline verification passes
+409 exact/195 adapted/3 local paths. Other registry rows remain independently owned.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

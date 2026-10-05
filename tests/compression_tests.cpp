@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
+#include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -22,6 +23,61 @@ class CompressionTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void nativeInfoDrivesBackendProperties_data() {
+        QTest::addColumn<QString>("method");
+        QTest::addColumn<UInt32>("threads");
+        QTest::newRow("PPMd-order") << QString("PPMd") << UInt32(-1);
+        QTest::newRow("LZMA2-fast-bytes-threads") << QString("LZMA2") << UInt32(2);
+    }
+    void nativeInfoDrivesBackendProperties() {
+        QFETCH(QString, method);
+        QFETCH(UInt32, threads);
+        CompressionOptions options;
+        options.Level = 7;
+        options.Method = method.toStdWString().c_str();
+        options.Dict64 = 1 << 20;
+        options.Order = 8;
+        options.OrderMode = method == "PPMd";
+        options.NumThreads = threads;
+        CObjectVector<CProperty> actual;
+        QString error;
+        QVERIFY2(ArchiveBackend::compressionProperties("7z", {}, false, options, &actual, &error),
+                 qPrintable(error));
+        const auto expected = NCompressDialog::GetCompressionProperties(options, true);
+        QCOMPARE(actual.Size(), expected.Size());
+        FOR_VECTOR(i, expected) {
+            QCOMPARE(QString::fromWCharArray(actual[i].Name.Ptr()),
+                     QString::fromWCharArray(expected[i].Name.Ptr()));
+            QCOMPARE(QString::fromWCharArray(actual[i].Value.Ptr()),
+                     QString::fromWCharArray(expected[i].Value.Ptr()));
+        }
+    }
+    void invalidNativeInfoIsRejected_data() {
+        QTest::addColumn<QString>("field");
+        for (const char *field : {"level", "method", "threads", "dictionary", "order"})
+            QTest::newRow(field) << QString::fromLatin1(field);
+    }
+    void invalidNativeInfoIsRejected() {
+        QFETCH(QString, field);
+        CompressionOptions options;
+        options.Level = 5;
+        options.Method = L"LZMA2";
+        if (field == "level")
+            options.Level = 10;
+        else if (field == "method")
+            options.Method = L"invalid";
+        else if (field == "threads")
+            options.NumThreads = 513;
+        else if (field == "dictionary")
+            options.Dict64 = 128 << 10;
+        else
+            options.Order = 1;
+        CObjectVector<CProperty> properties;
+        QString error;
+        QVERIFY(
+            !ArchiveBackend::compressionProperties("7z", {}, false, options, &properties, &error));
+        QVERIFY(!error.isEmpty());
+    }
     void formatOptionsAndPasswordConfirmation() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -54,14 +110,14 @@ class CompressionTests : public QObject {
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(4 << 20))));
         wordSize->setCurrentIndex(wordSize->findData(64));
         solidBlock->setCurrentIndex(solidBlock->findData(24u));
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(4 << 20));
-        QCOMPARE(dialog.compressionOptions().wordSize, 64);
+        QCOMPARE(dialog.compressionOptions().Dict64, quint64(4 << 20));
+        QCOMPARE(dialog.compressionOptions().Order, 64);
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(16 << 20));
         level->setCurrentIndex(0);
         QVERIFY(!dictionary->isEnabled());
         QVERIFY(!wordSize->isEnabled());
         QVERIFY(!solidBlock->isEnabled());
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, 0);
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         QVERIFY(!dialog.compressionOptions().SolidIsSpecified);
         level->setCurrentIndex(level->findData(9u));
         method->setCurrentText("BZip2");
@@ -70,12 +126,12 @@ class CompressionTests : public QObject {
         solidBlock->setCurrentIndex(solidBlock->findData(0u));
         threads->setCurrentIndex(threads->findData(2u));
         const CompressionOptions options = dialog.compressionOptions();
-        QCOMPARE(options.level, 9);
-        QCOMPARE(options.method, QStringLiteral("BZip2"));
-        QCOMPARE(options.threads, 2);
+        QCOMPARE(options.Level, 9);
+        QCOMPARE(QString::fromWCharArray(options.Method.Ptr()), QStringLiteral("BZip2"));
+        QCOMPARE(options.NumThreads, 2);
         QVERIFY(options.SolidIsSpecified);
-        QCOMPARE(options.dictionaryBytes, 0);
-        QCOMPARE(options.wordSize, 0);
+        QCOMPARE(options.Dict64, UInt64(-1));
+        QCOMPARE(options.Order, UInt32(-1));
         QCOMPARE(options.SolidBlockSize, quint64(0));
 
         format->setCurrentText("zip");
@@ -241,13 +297,13 @@ class CompressionTests : public QObject {
 
         const QString target = temp.filePath("archive." + format);
         CompressionOptions options;
-        options.level = level;
-        options.method = method;
-        options.threads = method == "PPMd" && format == "7z" ? 0 : 2;
+        options.Level = level;
+        options.Method = method.toStdWString().c_str();
+        options.NumThreads = method == "PPMd" && format == "7z" ? UInt32(-1) : 2;
         // Exercise level/method/solid transport with a bounded dictionary.
         // Level 9's default needs >2 GiB even for this 8 KiB fixture and can
         // correctly fail the source memory gate in the shared runner guest.
-        options.dictionaryBytes = method == "LZMA2" ? quint64(1 << 20) : 0;
+        options.Dict64 = method == "LZMA2" ? UInt64(1 << 20) : UInt64(-1);
         options.SolidIsSpecified = format == "7z";
         options.SolidBlockSize = 0;
         ArchiveBackend backend;
@@ -283,9 +339,9 @@ class CompressionTests : public QObject {
         file.close();
 
         CompressionOptions options;
-        options.method = "LZMA2";
-        options.dictionaryBytes = 1 << 20;
-        options.wordSize = 64;
+        options.Method = "LZMA2";
+        options.Dict64 = 1 << 20;
+        options.Order = 64;
         options.SolidIsSpecified = true;
         options.SolidBlockSize = 16 << 20;
         const QString target = temp.filePath("archive.7z");
@@ -312,8 +368,8 @@ class CompressionTests : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
         CompressionOptions options;
-        options.method = "BZip2";
-        options.dictionaryBytes = 4 << 20;
+        options.Method = "BZip2";
+        options.Dict64 = 4 << 20;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = temp.filePath("invalid.7z");
@@ -331,7 +387,7 @@ class CompressionTests : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
         CompressionOptions options;
-        options.method = "invalid";
+        options.Method = "invalid";
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = temp.filePath("invalid.7z");

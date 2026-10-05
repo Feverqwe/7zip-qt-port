@@ -37,12 +37,12 @@ class CompressionDictionaryTests final : public QObject {
         QVERIFY(dictionary->itemText(0).contains("32 MB"));
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(3 << 20))));
         level->setCurrentIndex(level->findData(9u));
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         QVERIFY(dictionary->itemText(0).contains(sizeof(size_t) == 8 ? "256 MB" : "64 MB"));
         level->setCurrentIndex(level->findData(1u));
         QVERIFY(dictionary->itemText(0).contains("256 KB"));
         method->setCurrentText("LZMA");
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -56,7 +56,7 @@ class CompressionDictionaryTests final : public QObject {
         }
         level->setCurrentIndex(level->findData(0u));
         QVERIFY(!dictionary->isEnabled());
-        QCOMPARE(dialog.compressionOptions().dictionaryBytes, quint64(0));
+        QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
     }
     void createsAndChecksArchive_data() {
         QTest::addColumn<quint64>("size");
@@ -77,8 +77,8 @@ class CompressionDictionaryTests final : public QObject {
         QCOMPARE(file.write(QByteArray(8192, 'x')), qint64(8192));
         file.close();
         CompressionOptions options;
-        options.method = methodName;
-        options.dictionaryBytes = size;
+        options.Method = methodName.toStdWString().c_str();
+        options.Dict64 = size;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir.filePath("dictionary." + suffix);
@@ -98,8 +98,8 @@ class CompressionDictionaryTests final : public QObject {
         QVERIFY(file.resize(8 << 20));
         file.close();
         CompressionOptions options;
-        options.method = "LZMA2";
-        options.dictionaryBytes = 128 << 10;
+        options.Method = "LZMA2";
+        options.Dict64 = 128 << 10;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir.filePath("invalid.7z");
@@ -107,7 +107,7 @@ class CompressionDictionaryTests final : public QObject {
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.takeFirst()[0].toBool());
         QVERIFY(!QFileInfo::exists(target));
-        options.dictionaryBytes = 3 << 20;
+        options.Dict64 = 3 << 20;
         backend.create(target, {source}, {}, false, options);
         QVERIFY(backend.busy());
         backend.cancel();

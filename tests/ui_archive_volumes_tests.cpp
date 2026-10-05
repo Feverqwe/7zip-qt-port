@@ -58,7 +58,7 @@ class UiArchiveVolumesTests final : public QObject, protected MainWindowTestSupp
             return false;
         const QString target = QDir(directory).filePath("volumes." + format);
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.VolumeSizes.Add(128 << 10);
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.create(target, {source, other}, password, !password.isEmpty() && format == "7z",

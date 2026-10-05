@@ -165,7 +165,7 @@ class CompressionAdvancedTests final : public QObject {
             QVERIFY(file.setFileTime(accessed, QFileDevice::FileAccessTime));
         }
         CompressionOptions options;
-        options.level = 0;
+        options.Level = 0;
         options.SetArcMTime.SetTrueTrue();
 #ifdef Q_OS_WIN
         options.PreserveATime.SetTrueTrue();

@@ -3,6 +3,9 @@
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "archivecodeccatalog.h"
 #include "window_state_support.h"
+#ifdef Q_OS_WIN
+#include "native_properties_fixture.h"
+#endif
 
 class FilesystemPathBackend : public ControlledBackend {
   public:
@@ -133,7 +136,8 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         QVERIFY(temporary.isValid());
         const QDir root(QFileInfo(temporary.path()).canonicalFilePath());
         const QString directory = QStringLiteral("папка й с пробелом");
-        const QString name = QStringLiteral("одинаковое й.txt");
+        const QString name =
+            QFileInfo(temporary.path()).fileName() + QStringLiteral(" одинаковое й");
         QVERIFY(root.mkdir(directory));
         createFile(root.filePath(name));
         createFile(root.filePath(directory + '/' + name));
@@ -144,6 +148,7 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
                  S_OK);
 #endif
         MainWindow window(&backend);
+        window.show();
         action(window, "flatViewAction")->setChecked(false);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(root.path());
@@ -162,13 +167,36 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
             table(window)->selectionModel()->select(table(window)->model()->index(row, 0),
                                                     QItemSelectionModel::Select |
                                                         QItemSelectionModel::Rows);
-        // Properties supplies a display prefix without its native separator.
+#ifdef Q_OS_WIN
+        // A unique single-item caption identifies this fixture's native sheet.
+        // Restore both source indices before testing Hash and Add consumers.
+        table(window)->clearSelection();
+        table(window)->selectRow(firstRow);
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        std::atomic<bool> stop{false};
+        auto observer = std::async(std::launch::async, NativePropertiesFixture::ObserveAndClose,
+                                   name, reinterpret_cast<HWND>(window.winId()), std::cref(stop));
+        const auto finish = qScopeGuard([&] { stop = true; });
+        action(window, "selectedPropertiesAction")->trigger();
+        QTRY_VERIFY_WITH_TIMEOUT(
+            observer.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 15000);
+        const auto sheet = observer.get();
+        QVERIFY2(sheet.window && sheet.tabs && sheet.visible, qPrintable(sheet.diagnostic));
+        QTRY_VERIFY(!IsWindow(sheet.window));
+        for (int row : {firstRow, secondRow})
+            table(window)->selectionModel()->select(table(window)->model()->index(row, 0),
+                                                    QItemSelectionModel::Select |
+                                                        QItemSelectionModel::Rows);
+#else
+        // The portable Properties collector supplies a display prefix without
+        // its native separator.
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
             dialog->reject();
         });
         action(window, "selectedPropertiesAction")->trigger();
+#endif
         for (int row : {firstRow, secondRow}) {
             table(window)->item(row, 1)->setText(root.filePath("forged/display-only.txt"));
             table(window)->item(row, 0)->setData(Qt::UserRole + 1, true);

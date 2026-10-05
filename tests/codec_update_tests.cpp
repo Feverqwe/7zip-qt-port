@@ -161,7 +161,7 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         if (sourcePlan) {
             CompressionOptions options;
             options.format = format;
-            options.level = format == "tar" || format == "wim" ? 0 : 5;
+            options.Level = format == "tar" || format == "wim" ? 0 : 5;
             resource->SetCompressionOptions(options);
         }
         std::unique_ptr<ArchiveBackend> faultBackend;

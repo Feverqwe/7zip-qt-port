@@ -3,6 +3,7 @@
 #include "window_state_support.h"
 
 #include <QMenuBar>
+#include <QScopeGuard>
 
 namespace {
 struct CurrentDirectoryGuard {
@@ -66,12 +67,19 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(status(leftPanel, "focusedSizeStatus")->text(), QStringLiteral("7"));
         QVERIFY(!status(leftPanel, "focusedDateStatus")->text().isEmpty());
 
-        QTimer::singleShot(0, [&] {
+        QTimer::singleShot(0, &window, [&] {
             auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
             QVERIFY(menu);
+            const auto close = qScopeGuard([&] { menu->close(); });
             QCOMPARE(menu->objectName(), QStringLiteral("panelContextMenu"));
             QCOMPARE(menu->actions().first()->objectName(), QStringLiteral("systemContextGroup"));
+#ifdef Q_OS_WIN
+            QVERIFY(menu->actions().first()->isEnabled());
+            QVERIFY(menu->actions().first()->menu());
+            QVERIFY(!menu->actions().first()->menu()->actions().isEmpty());
+#else
             QVERIFY(!menu->actions().first()->isEnabled());
+#endif
             QCOMPARE(menu->actions().at(1)->objectName(), QStringLiteral("sevenZipContextGroup"));
             QVERIFY(!menu->actions().at(1)->isEnabled());
             QVERIFY(menu->actions().contains(window.findChild<QAction *>("openItemAction")));

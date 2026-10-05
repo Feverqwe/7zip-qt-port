@@ -64,14 +64,10 @@ struct ArchiveInfo {
 };
 
 struct CompressionOptions : NCompressDialog::CInfo {
+    CompressionOptions() { Level = 5; }
     QString SfxModule;
     // Stable native handler name at the process boundary; never a CLI switch.
     QString format;
-    int level = 5;
-    QString method;
-    int threads = 0;             // 0 lets 7-Zip choose.
-    quint64 dictionaryBytes = 0; // 0 lets 7-Zip choose.
-    int wordSize = 0;            // 0 lets 7-Zip choose.
 };
 
 struct ExtractionOptions {

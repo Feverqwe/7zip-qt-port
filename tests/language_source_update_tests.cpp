@@ -55,7 +55,7 @@ class LanguageSourceUpdateTests final : public QObject {
         QVERIFY(!result.first().toBool());
         QCOMPARE(result.at(1).toString(),
                  QString::fromWCharArray(LangString(IDS_PASSWORD_USE_ASCII).Ptr()));
-        options.method = "invalid";
+        options.Method = "invalid";
         backend.create(target, {source}, {}, false, options);
         QCOMPARE(finished.size(), 1);
         result = finished.takeFirst();

@@ -44,7 +44,7 @@ class SourceCompressDialogTests final : public QObject {
         QCOMPARE(method->currentText(), QString("*  LZMA2"));
         QCOMPARE(method->currentData().toInt(), -1);
         QVERIFY(dialog.sourceInfo().Method.IsEmpty());
-        QCOMPARE(dialog.compressionOptions().method, QString("LZMA2"));
+        QVERIFY(dialog.compressionOptions().Method.IsEmpty());
         method->setCurrentText("PPMd");
         QCOMPARE(QString::fromWCharArray(dialog.sourceInfo().Method.Ptr()), QString("PPMd"));
         format->setCurrentText("zip");

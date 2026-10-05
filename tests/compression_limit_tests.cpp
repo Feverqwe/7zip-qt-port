@@ -189,8 +189,8 @@ class CompressionLimitTests final : public QObject {
         file.close();
         ArchiveBackend backend;
         CompressionOptions options;
-        options.method = "PPMd";
-        options.dictionaryBytes = 1 << 20;
+        options.Method = "PPMd";
+        options.Dict64 = 1 << 20;
         options.MemUsage.Parse(spec);
         const QString target = dir.filePath("limit." + format);
         QSignalSpy done(&backend, &ArchiveBackend::finished);

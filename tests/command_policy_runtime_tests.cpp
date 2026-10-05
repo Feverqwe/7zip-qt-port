@@ -29,7 +29,8 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(inside->isEnabled());
         inside->trigger();
         QCOMPARE(address->text(), QFileInfo(directory).canonicalFilePath());
-        QVERIFY(window.windowTitle().startsWith(QFileInfo(directory).canonicalFilePath()));
+        QVERIFY(QDir::fromNativeSeparators(window.windowTitle())
+                    .startsWith(QFileInfo(directory).canonicalFilePath()));
         QCOMPARE(opened, 0);
         QCOMPARE(backend.listCalls, 0);
     }

@@ -51,23 +51,23 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     }
 #endif
     const QStringList methods = NCompressDialog::GetMethodNames(suffix);
-    if (options.level < 0 || options.level > 9 ||
-        !(formatInfo.LevelsMask & (UInt32(1) << options.level)) || options.threads < 0 ||
-        (!options.method.isEmpty() && !methods.contains(options.method))) {
+    const QString requestedMethod = QString::fromWCharArray(options.Method.Ptr());
+    if (options.Level > 9 || !(formatInfo.LevelsMask & (UInt32(1) << options.Level)) ||
+        (!requestedMethod.isEmpty() && !methods.contains(requestedMethod))) {
         *error = QtLocalText("Invalid compression parameters for the selected format.",
                              "Недопустимые параметры сжатия для выбранного формата.");
         return false;
     }
-    const QString method = options.method.isEmpty() ? (suffix == "7z"      ? QStringLiteral("LZMA2")
-                                                       : methods.isEmpty() ? QString()
-                                                                           : methods.front())
-                                                    : options.method;
+    const QString method = requestedMethod.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
+                                                        : methods.isEmpty() ? QString()
+                                                                            : methods.front())
+                                                     : requestedMethod;
     const auto methodID =
-        options.level == 0 ? NCompressDialog::kCopy : NCompressDialog::GetMethodID(method, suffix);
-    const auto dictionary = NCompressDialog::SetDictionary2(methodID, UInt32(options.level));
-    const UInt64 dict = options.dictionaryBytes ? options.dictionaryBytes
-                        : dictionary.AutoDict   ? UInt64(dictionary.AutoDict)
-                                                : UInt64(-1);
+        options.Level == 0 ? NCompressDialog::kCopy : NCompressDialog::GetMethodID(method, suffix);
+    const auto dictionary = NCompressDialog::SetDictionary2(methodID, UInt32(options.Level));
+    const UInt64 dict = options.Dict64 != UInt64(-1) ? options.Dict64
+                        : dictionary.AutoDict        ? UInt64(dictionary.AutoDict)
+                                                     : UInt64(-1);
     const auto system = NCompressDialog::GetSystemInfo();
     UInt32 blockSizeLog = UInt32(-1);
     if (options.SolidIsSpecified) {
@@ -83,8 +83,8 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
                 }
     }
     const auto threadOptions = NCompressDialog::SetNumThreads2(
-        suffix, methodID, UInt32(options.level), dict, blockSizeLog, system, options.MemUsage);
-    if (options.threads != 0 && !threadOptions.Values.contains(UInt32(options.threads))) {
+        suffix, methodID, UInt32(options.Level), dict, blockSizeLog, system, options.MemUsage);
+    if (options.NumThreads != UInt32(-1) && !threadOptions.Values.contains(options.NumThreads)) {
         *error = QtLocalText("The thread count is invalid for the selected compression method.",
                              "Число потоков не подходит для выбранного метода сжатия.");
         return false;
@@ -92,7 +92,7 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     bool validSolid = !options.SolidIsSpecified;
     if (options.SolidIsSpecified) {
         const auto solid = NCompressDialog::SetSolidBlockSize2(
-            suffix, UInt32(options.level), NCompressDialog::GetMethodID(method, suffix),
+            suffix, UInt32(options.Level), NCompressDialog::GetMethodID(method, suffix),
             UInt64(-1));
         for (UInt32 log : solid.Values) {
             NCompressDialog::CInfo info;
@@ -103,15 +103,16 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
             }
         }
     }
-    if ((options.dictionaryBytes != 0 &&
+    if ((options.Dict64 != UInt64(-1) &&
          (!NCompressDialog::SetDictionary2(NCompressDialog::GetMethodID(method, suffix),
-                                           UInt32(options.level))
-               .Values.contains(options.dictionaryBytes))) ||
-        (options.wordSize != 0 &&
+                                           UInt32(options.Level))
+               .Values.contains(options.Dict64))) ||
+        (options.Order != UInt32(-1) &&
          !NCompressDialog::SetOrder2(NCompressDialog::GetMethodID(method, suffix),
-                                     UInt32(options.level))
-              .Values.contains(options.wordSize)) ||
-        !validSolid || (options.level == 0 && (options.dictionaryBytes || options.wordSize))) {
+                                     UInt32(options.Level))
+              .Values.contains(options.Order)) ||
+        !validSolid ||
+        (options.Level == 0 && (options.Dict64 != UInt64(-1) || options.Order != UInt32(-1)))) {
         *error = QtLocalText("The dictionary, word or solid block size is invalid "
                              "for the selected compression method.",
                              "Размер словаря, слова или непрерывного блока не подходит "
@@ -120,8 +121,8 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     }
     UInt64 decompressMemory;
     const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
-        suffix, methodID, UInt32(options.level),
-        options.threads ? UInt32(options.threads) : threadOptions.AutoNumThreads, dict,
+        suffix, methodID, UInt32(options.Level),
+        options.NumThreads != UInt32(-1) ? options.NumThreads : threadOptions.AutoNumThreads, dict,
         blockSizeLog, decompressMemory);
     const UInt64 memLimit = NCompressDialog::Get_MemUse_Bytes(options.MemUsage, system);
     if ((options.MemUsage.IsDefined || system.RamSizeDefined) && memUsage != UInt64(-1) &&
@@ -154,16 +155,12 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
                 .Ptr());
         return false;
     }
-    // Qt request fields become the original GUI property DTO. Source
+    // The request already carries the original GUI property DTO. Source
     // SetOutProperties/parser owns method selection, overrides and time props.
     NCompressDialog::CInfo info = options;
-    info.Level = UInt32(options.level);
-    info.Method =
-        options.level || suffix == "tar" ? UString(method.toStdWString().c_str()) : UString();
-    info.Dict64 = options.dictionaryBytes ? UInt64(options.dictionaryBytes) : UInt64(-1);
+    if (options.Level == 0 && suffix != "tar")
+        info.Method.Empty();
     info.OrderMode = NCompressDialog::GetOrderMode(methodID);
-    info.Order = options.wordSize ? UInt32(options.wordSize) : UInt32(-1);
-    info.NumThreads = options.threads ? UInt32(options.threads) : UInt32(-1);
     info.EncryptHeadersIsAllowed = !password.isEmpty() && suffix == "7z";
     info.EncryptHeaders = encryptHeaders;
     if (password.isEmpty())
@@ -239,10 +236,12 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     if (options.SFXMode) {
         const auto module = sfxModule(options.SfxModule);
         const auto method =
-            options.level == 0
+            options.Level == 0
                 ? NCompressDialog::kCopy
-                : NCompressDialog::GetMethodID(
-                      options.method.isEmpty() ? QString("LZMA2") : options.method, suffix);
+                : NCompressDialog::GetMethodID(options.Method.IsEmpty()
+                                                   ? QString("LZMA2")
+                                                   : QString::fromWCharArray(options.Method.Ptr()),
+                                               suffix);
         if (suffix != "7z" || !NCompressDialog::IsMethodSupportedBySfx(method) ||
             !module.available()) {
             lastResult_ = E_INVALIDARG;

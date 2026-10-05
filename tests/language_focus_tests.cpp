@@ -48,10 +48,10 @@ class LanguageFocusTests : public QObject {
         if (!mnemonic.isEmpty()) {
             const auto pressMnemonic = [&] {
                 const auto key = mnemonic[0];
-                QKeyEvent press(QEvent::KeyPress, key.key(), key.keyboardModifiers());
-                QKeyEvent release(QEvent::KeyRelease, key.key(), key.keyboardModifiers());
-                QApplication::sendEvent(&dialog, &press);
-                QApplication::sendEvent(&dialog, &release);
+                // Deliver a complete Unicode key sequence through the window,
+                // including Alt transitions and the shortcut override phase.
+                QTest::sendKeyEvent(QTest::Click, dialog.windowHandle(), key.key(),
+                                    QString(QChar(ushort(key.key()))), key.keyboardModifiers());
             };
             pressMnemonic();
             QWidget *first = dialog.focusWidget();

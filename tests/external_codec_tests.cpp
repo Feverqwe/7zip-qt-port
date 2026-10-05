@@ -262,7 +262,7 @@ class ExternalCodecTests final : public QObject {
         const QString archive = fixture.filePath("bzip2.zip");
         CompressionOptions options;
         options.format = "zip";
-        options.method = "BZip2";
+        options.Method = "BZip2";
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.create(archive, {input}, {}, false, options);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);

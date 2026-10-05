@@ -109,8 +109,8 @@ class CompressionSolidTests final : public QObject {
         }
         ArchiveBackend backend;
         CompressionOptions options;
-        options.method = "LZMA2";
-        options.dictionaryBytes = 1 << 20;
+        options.Method = "LZMA2";
+        options.Dict64 = 1 << 20;
         options.SolidIsSpecified = specified;
         options.SolidBlockSize = blockSize;
         const QString target = dir.filePath("block.7z");
@@ -147,8 +147,8 @@ class CompressionSolidTests final : public QObject {
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         CompressionOptions options;
-        options.method = "LZMA2";
-        options.dictionaryBytes = 1 << 20;
+        options.Method = "LZMA2";
+        options.Dict64 = 1 << 20;
         options.SolidIsSpecified = true;
         options.SolidBlockSize = 3 << 20;
         const QString target = dir.filePath("invalid.7z");
@@ -157,19 +157,19 @@ class CompressionSolidTests final : public QObject {
         QVERIFY(!done.takeFirst()[0].toBool());
         QVERIFY(!QFileInfo::exists(target));
         options.SolidBlockSize = quint64(-1);
-        options.level = 0;
-        options.dictionaryBytes = 0;
+        options.Level = 0;
+        options.Dict64 = UInt64(-1);
         backend.create(target, {source}, {}, false, options);
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.takeFirst()[0].toBool());
-        options.level = 5;
-        options.method = "Deflate";
+        options.Level = 5;
+        options.Method = "Deflate";
         const QString zip = dir.filePath("invalid.zip");
         backend.create(zip, {source}, {}, false, options);
         QCOMPARE(done.size(), 1);
         QVERIFY(!done.takeFirst()[0].toBool());
         QVERIFY(!QFileInfo::exists(zip));
-        options.method = "LZMA2";
+        options.Method = "LZMA2";
         backend.create(target, {source}, {}, false, options);
         QVERIFY(backend.busy());
         backend.cancel();
