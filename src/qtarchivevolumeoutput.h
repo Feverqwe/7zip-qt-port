@@ -2,10 +2,9 @@
 #include "Common/MyTypes.h"
 #include "Common/MyVector.h"
 #include "Common/MyWindows.h"
-#include <QMutex>
+#include "qtworkerprogress.h"
 #include <QStringList>
 #include <QThread>
-#include <QWaitCondition>
 #include <functional>
 
 // CLI integration: split the completed engine output using the original
@@ -28,9 +27,6 @@ class QtArchiveVolumeOutput final : public QThread {
     QString source_, target_;
     QString sfxModule_, sfxTarget_;
     CRecordVector<UInt64> sizes_;
-    QMutex mutex_;
-    QWaitCondition resumed_;
-    bool stopped_ = false;
-    bool paused_ = false;
+    QtWorkerProgress progress_;
     bool setArcMTime_ = false;
 };

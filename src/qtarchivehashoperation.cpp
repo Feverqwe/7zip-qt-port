@@ -3,28 +3,14 @@
 #include "Windows/ErrorMsg.h"
 #include "archivecodeccatalog.h"
 #include <QFileInfo>
-#include <QMutexLocker>
 
 QtArchiveHashOperation::QtArchiveHashOperation(QStringList paths, QStringList methods,
                                                std::shared_ptr<const ArchiveCodecCatalog> catalog)
     : catalog_(std::move(catalog)), paths_(std::move(paths)), methods_(std::move(methods)) {}
 
-void QtArchiveHashOperation::cancel() {
-    QMutexLocker lock(&mutex_);
-    stopped_ = true;
-    resumed_.wakeAll();
-}
-void QtArchiveHashOperation::setPaused(bool paused) {
-    QMutexLocker lock(&mutex_);
-    paused_ = paused;
-    resumed_.wakeAll();
-}
-HRESULT QtArchiveHashOperation::CheckBreak() {
-    QMutexLocker lock(&mutex_);
-    while (paused_ && !stopped_)
-        resumed_.wait(&mutex_);
-    return stopped_ ? E_ABORT : S_OK;
-}
+void QtArchiveHashOperation::cancel() { progress_.cancel(); }
+void QtArchiveHashOperation::setPaused(bool paused) { progress_.setPaused(paused); }
+HRESULT QtArchiveHashOperation::CheckBreak() { return progress_.checkpoint(); }
 HRESULT QtArchiveHashOperation::StartScanning() { return CheckBreak(); }
 HRESULT QtArchiveHashOperation::ScanProgress(const CDirItemsStat &st, const FString &path, bool) {
     if (Progress)

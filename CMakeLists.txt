@@ -165,6 +165,13 @@ endif()
 include(cmake/native_zip.cmake)
 include(cmake/native_rar.cmake)
 
+add_library(sevenzip_progress_sync STATIC
+    src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp
+    src/qtworkerprogress.cpp src/qtworkerprogress.h)
+target_compile_definitions(sevenzip_progress_sync PRIVATE SEVENZIP_PROGRESS_SYNC_ONLY)
+target_include_directories(sevenzip_progress_sync PUBLIC src)
+target_link_libraries(sevenzip_progress_sync PUBLIC Qt6::Core sevenzip_common)
+
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelCrc.cpp
     src/CPP/7zip/UI/Common/ArchiveName.cpp
@@ -259,6 +266,8 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/NetFolder.cpp src/CPP/7zip/UI/FileManager/NetFolder.h
     src/CPP/7zip/UI/FileManager/PanelListNotify.cpp src/CPP/7zip/UI/FileManager/Panel.h)
 set_target_properties(sevenzip_panel PROPERTIES AUTOUIC OFF)
+target_compile_definitions(sevenzip_panel PRIVATE SEVENZIP_PROGRESS_PRESENTATION_ONLY)
+target_link_libraries(sevenzip_panel PUBLIC sevenzip_progress_sync)
 qt_add_resources(sevenzip_panel upstream_progress_icons
     PREFIX "/upstream/7zip/UI/FileManager"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
@@ -379,7 +388,7 @@ endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
-target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common sevenzip_zip)
+target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common sevenzip_zip sevenzip_progress_sync)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
 string(JSON sfx_upstream_revision GET "${sfx_baseline_json}" revision)
 target_compile_definitions(sevenzip_filesystem PRIVATE
@@ -688,6 +697,10 @@ if(BUILD_TESTING)
     qt_add_executable(progress_sync_tests tests/progress_sync_tests.cpp)
     target_link_libraries(progress_sync_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME progress_sync COMMAND progress_sync_tests -silent)
+    qt_add_executable(worker_checkpoint_tests tests/worker_checkpoint_tests.cpp)
+    target_link_libraries(worker_checkpoint_tests PRIVATE sevenzip_progress_sync Qt6::Test)
+    add_test(NAME worker_checkpoint COMMAND worker_checkpoint_tests -silent)
+    set_tests_properties(worker_checkpoint PROPERTIES TIMEOUT 10)
     qt_add_executable(progress_wait_tests tests/progress_wait_tests.cpp)
     target_link_libraries(progress_wait_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME progress_wait COMMAND progress_wait_tests -silent)

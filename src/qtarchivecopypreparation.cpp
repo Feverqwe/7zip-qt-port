@@ -5,7 +5,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QMutexLocker>
 #include <new>
 
 QtArchiveCopyPreparation::QtArchiveCopyPreparation(QString source, QString output)
@@ -17,24 +16,11 @@ QtArchiveCopyPreparation::~QtArchiveCopyPreparation() {
     wait();
 }
 
-void QtArchiveCopyPreparation::cancel() {
-    QMutexLocker lock(&mutex_);
-    canceled_ = true;
-    resumed_.wakeAll();
-}
+void QtArchiveCopyPreparation::cancel() { progress_.cancel(); }
 
-void QtArchiveCopyPreparation::setPaused(bool paused) {
-    QMutexLocker lock(&mutex_);
-    paused_ = paused;
-    resumed_.wakeAll();
-}
+void QtArchiveCopyPreparation::setPaused(bool paused) { progress_.setPaused(paused); }
 
-HRESULT QtArchiveCopyPreparation::checkpoint() {
-    QMutexLocker lock(&mutex_);
-    while (paused_ && !canceled_)
-        resumed_.wait(&mutex_);
-    return canceled_ ? E_ABORT : S_OK;
-}
+HRESULT QtArchiveCopyPreparation::checkpoint() { return progress_.checkpoint(); }
 
 int QtArchiveCopyPreparation::percent() const {
     if (!total_)
@@ -80,10 +66,9 @@ void QtArchiveCopyPreparation::run() try {
 }
 
 HRESULT QtArchiveCopyPreparation::publish() {
-    QMutexLocker lock(&mutex_);
-    if (canceled_)
-        return E_ABORT;
-    if (Result != S_OK || !staging_)
-        return Result;
-    return QFile::rename(staging_->filePath("archive"), output_) ? S_OK : E_FAIL;
+    return progress_.withPublicationGuard([this] {
+        if (Result != S_OK || !staging_)
+            return Result;
+        return QFile::rename(staging_->filePath("archive"), output_) ? S_OK : E_FAIL;
+    });
 }

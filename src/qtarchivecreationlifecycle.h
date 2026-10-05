@@ -1,9 +1,8 @@
 #pragma once
 #include "qtarchivedeleteinputs.h"
-#include <QMutex>
+#include "qtworkerprogress.h"
 #include <QStringList>
 #include <QThread>
-#include <QWaitCondition>
 
 // Prepare a native snapshot before creation, then run native deletion only
 // after every CLI stage and output-volume publication has succeeded.
@@ -23,9 +22,6 @@ class QtArchiveCreationLifecycle final : public QThread {
     HRESULT scan();
     QtArchiveDeleteInputs inputs_;
     QStringList sources_;
-    QMutex mutex_;
-    QWaitCondition resumed_;
+    QtWorkerProgress progress_;
     bool deleting_ = false;
-    bool paused_ = false;
-    bool stopped_ = false;
 };

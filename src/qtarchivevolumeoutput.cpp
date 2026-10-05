@@ -10,7 +10,6 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
-#include <QMutexLocker>
 
 namespace {
 class CVolumeProgress final : public ICompressProgressInfo, public CMyUnknownImp {
@@ -35,22 +34,9 @@ QtArchiveVolumeOutput::QtArchiveVolumeOutput(QString source, QString target,
     : source_(std::move(source)), target_(std::move(target)), sfxModule_(std::move(sfxModule)),
       sfxTarget_(std::move(sfxTarget)), sizes_(std::move(sizes)), setArcMTime_(setArcMTime) {}
 
-void QtArchiveVolumeOutput::cancel() {
-    QMutexLocker lock(&mutex_);
-    stopped_ = true;
-    resumed_.wakeAll();
-}
-void QtArchiveVolumeOutput::setPaused(bool paused) {
-    QMutexLocker lock(&mutex_);
-    paused_ = paused;
-    resumed_.wakeAll();
-}
-HRESULT QtArchiveVolumeOutput::checkpoint() {
-    QMutexLocker lock(&mutex_);
-    while (paused_ && !stopped_)
-        resumed_.wait(&mutex_);
-    return stopped_ ? E_ABORT : S_OK;
-}
+void QtArchiveVolumeOutput::cancel() { progress_.cancel(); }
+void QtArchiveVolumeOutput::setPaused(bool paused) { progress_.setPaused(paused); }
+HRESULT QtArchiveVolumeOutput::checkpoint() { return progress_.checkpoint(); }
 
 HRESULT QtArchiveVolumeOutput::createVolumes() {
     RINOK(checkpoint())

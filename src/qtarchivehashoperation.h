@@ -1,9 +1,8 @@
 #pragma once
 #include "CPP/7zip/UI/Common/HashCalc.h"
-#include <QMutex>
+#include "qtworkerprogress.h"
 #include <QStringList>
 #include <QThread>
-#include <QWaitCondition>
 #include <functional>
 #include <memory>
 
@@ -48,8 +47,5 @@ class QtArchiveHashOperation final : public QThread, private IHashCallbackUI {
     UInt64 files_ = 0;
     quint64 total_ = 0;
     bool currentIsFolder_ = false;
-    QMutex mutex_;
-    QWaitCondition resumed_;
-    bool paused_ = false;
-    bool stopped_ = false;
+    QtWorkerProgress progress_;
 };

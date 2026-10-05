@@ -43,7 +43,7 @@ new review/remediation, not another feature implementation.
 | C: `archivebackend.h`, `archivebackend_mutations.cpp`, `createarchivedialog_source.cpp`, compression controls and consumers | CompressDialog.h NCompressDialog::CInfo already inherited, but five lower-case fields separately owned Level/Method/NumThreads/Dict64/Order; two conversions | Source DTO is authoritative; native autos, validation, format/property/settings/error semantics and actual compression/Add/direct backend/UI verified on three OS | Resolved P2-11.2 |
 | U: `qtarchivesourceupdate.cpp`, `qtarchiveproperties.cpp`, `archivebackend_codecs.cpp` | AgentOut.cpp CommonUpdate/DoOperation and original IOutArchive::UpdateItems callbacks replace redundant native-writer fallback plans | Native writer/index/path/ADS proof, source properties lifecycle, prefix publication, errors/Cancel and actual commands verified on three OS; concrete absent-writer transport fallback retained | Resolved P2-11.5 |
 | V: `qtarchivebatchopen.cpp`, `archivenativeopen.*`, `qtarchivefileresource.*` | OpenArchive.cpp CArchiveLink::Open2 already records actual callback-used VolumePaths/VolumesSize; own .001 enumeration recreated names | Retained source-link metadata now owns accounting and volume/readiness decisions; Split outer streams and absent-native fallback preserved. Batch/volume/SFX/extract checked on three OS | Resolved P2-11.3 |
-| W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*` | ProgressDialog2.cpp CProgressSync owns pause/stop, but is in panel library which already depends on filesystem; own Qt wake/checkpoint loops repeated | Resolve dependency/transport ownership before reuse; preserve immediate wake, atomic cancel/publication and joined lifetime. Hash/creation/preparation/volume success/failure/pause/cancel/restart | Pending boundary review |
+| W: `qtarchivehashoperation.*`, `qtarchivecreationlifecycle.*`, `qtarchivevolumeoutput.*`, `qtarchivecopypreparation.*`, `qtworkerprogress.*` | Original ProgressDialog2.cpp CProgressSync owns worker flags/checkpoints through a Core-only target; optional source event preserves single-worker immediate wake | Eight public checkpoint rows and direct consumers pass on all three OS; native dialog polling, atomic cancel/publication and joined lifetime retained | Resolved P2-11.6 |
 | F: `filetransferoperation.*`, `qtfiletransfercopycallback.*`, window file operations | FSFolderCopy.cpp owns copy/move/checkpoints; Qt transaction merge/rollback/remove-source combines orchestration and filesystem actions | Review upstream recursion/deletion bodies and extract cohesive Qt transaction boundary where needed, retaining no-overwrite/cancel/link/failure-injection behavior; direct file and window consumers | Pending complete review |
 | B: `CMakeLists.txt`, `cmake/SharedPortObjects.cmake`, app/backend/dialog targets | Same authoritative production sources were recompiled per test; late source/link cloning and test TU macros require separate ownership | Twelve shared production groups plus Windows GUI entry; definitions, resources, ABI/platform links, late consumers and sole moc/source ownership verified on all three OS | Resolved P2-11.4 |
 
@@ -420,6 +420,61 @@ alt_streams_archive_ui passes 4/4 in 3.28s on macOS: respectively10/73/2/5
 passes, with ten explicit Windows-only metadata skips. Full macOS and fresh
 Windows/Linux nine-consumer validation now passes as recorded above. The earlier
 RED and focused checkpoints remain historical evidence of the final correction.
+
+### P2-11.6 — shared source worker checkpoint (accepted, 2026-10-05)
+
+Final macOS formatting/all-target/full gate passes240/240 in102.40s, Linux
+d20a669f full235/235 in190.58s, and Windows 4b4d50c2 builds all targets and
+passes all eight checkpoint Qt rows. Fresh b872c1c6 Windows and b762e6b7 Linux
+each pass all nine direct suites in58.54s/19.43s, including the final concurrent
+publication row, with checkpoint8 and sourceUpdate76 at zero failures/skips.
+The full Linux626/Windows647 and focused Windows28/Linux24 artifacts are
+guest/local SHA-256 verified. This accepts registry W; the four unrelated full
+Windows failures/resolution retain their records above, and whole-platform P3
+acceptance remains separate. No UI layout change or upstream revision change.
+
+Reviewed original ProgressDialog2.cpp/.h CProgressSync constructor, CheckStop,
+Set_Paused/Set_Stopped, source dialog callbacks and native worker callers,
+Windows/Synchronization.h CAutoResetEvent and C/Threads.c event/critical-section
+bodies. Source repository https://github.com/ip7z/7zip.git, full commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Existing dependency revisions,
+source notices and C/C++ compilation languages remain unchanged.
+
+The four hash, creation-lifecycle, volume-output and copy-preparation adapters
+now delegate their checkpoint state to original CProgressSync through the narrow
+QtWorkerProgress owner. Their duplicated Qt pause/stop flags and wait loops are
+removed. Original CProgressSync keeps its flag precedence, lock and loop. An
+optional original CAutoResetEvent wakes a single worker immediately; configuration
+precedes worker start. Native dialog callbacks retain the original polling mode
+because they may have multiple concurrent callers. Event initialization errors
+return through HRESULT. The unchanged C event implementation remains compiled as C.
+
+ProgressDialog2 retains its source path and bodies. CMake compiles its Sync and
+presentation portions separately, with one authoritative object per function:
+sevenzip_progress_sync depends only on Qt Core/common, and the panel presentation
+depends on that library. This resolves the filesystem-to-panel cycle without
+moving or cloning source functions. The adapter's publication mutex preserves
+copy preparation's atomic cancellation/publication ordering; it owns no second
+pause/stop state. Worker phase algorithms, result snapshots and joined lifetime
+remain with their existing owners.
+
+Public Qt Core tests cover stop precedence, clean next owner, pause/resume,
+paused cancellation, signals preceding waits and refusal to publish after cancel.
+The focused five-suite gate passes in 3.28s. Unsandboxed macOS formatting,
+all-target build and full CTest pass 239/239 in 99.65s. Linux 4a585a31 passes
+formatting, all-target build and 235/235 in 187.87s; its 626 artifacts are
+SHA-256 verified locally and on the guest. Each platform has seven checkpoint
+Qt rows with zero skips and all direct consumers passing. Windows runtime
+checks remain pending; registry W and parent P2-11 remain open. No UI layout change.
+The added public concurrent-publication row verifies that Cancel waits for an
+already entered publication action and stops subsequent checkpoints. The final
+macOS gate passes 239/239 in 99.26s, with eight checkpoint Qt rows and the
+explicit Windows-only association skip. This extends the earlier seven-row
+platform evidence. Final Linux d20a669f passes formatting, all-target build and
+235/235 in 190.58s, with eight checkpoint Qt rows, codec73/UI24/list5 and only
+the explicit Windows-only association skip. All 626 artifacts are SHA-256
+verified locally and on the guest. The subsequent Windows runtime and final
+Linux direct-consumer checks pass as recorded at this section's acceptance.
 
 ## P2-10.4 — source worker progress snapshot (accepted, 2026-10-05)
 

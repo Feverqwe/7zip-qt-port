@@ -2,7 +2,6 @@
 #include "CPP/7zip/UI/Common/EnumDirItems.h"
 #include "Common/StringConvert.h"
 #include "qtlanguageservices.h"
-#include <QMutexLocker>
 
 namespace {
 class CCreationScanCallback final : public IDirItemsCallback {
@@ -28,22 +27,9 @@ QtArchiveCreationLifecycle::QtArchiveCreationLifecycle(QStringList sources,
     inputs_.SymLinks = symLinks;
 }
 
-void QtArchiveCreationLifecycle::cancel() {
-    QMutexLocker lock(&mutex_);
-    stopped_ = true;
-    resumed_.wakeAll();
-}
-void QtArchiveCreationLifecycle::setPaused(bool paused) {
-    QMutexLocker lock(&mutex_);
-    paused_ = paused;
-    resumed_.wakeAll();
-}
-HRESULT QtArchiveCreationLifecycle::checkpoint() {
-    QMutexLocker lock(&mutex_);
-    while (paused_ && !stopped_)
-        resumed_.wait(&mutex_);
-    return stopped_ ? E_ABORT : S_OK;
-}
+void QtArchiveCreationLifecycle::cancel() { progress_.cancel(); }
+void QtArchiveCreationLifecycle::setPaused(bool paused) { progress_.setPaused(paused); }
+HRESULT QtArchiveCreationLifecycle::checkpoint() { return progress_.checkpoint(); }
 void QtArchiveCreationLifecycle::beginDeletion() {
     deleting_ = true;
     Result = E_FAIL;

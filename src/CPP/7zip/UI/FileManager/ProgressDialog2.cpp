@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ProgressDialog2.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ProgressDialog2.h"
+#ifndef SEVENZIP_PROGRESS_SYNC_ONLY
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "Common/IntToString.h"
@@ -19,12 +20,14 @@
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QTimerEvent>
+#endif
 #ifndef _WIN32
 #include <QThread>
 #endif
 
 using namespace NWindows;
 
+#ifndef SEVENZIP_PROGRESS_SYNC_ONLY
 #ifdef _WIN32
 extern bool g_DisableUserQuestions;
 #endif
@@ -37,18 +40,20 @@ static const unsigned IDCLOSE = 8;
 static const unsigned IDYES = 6;
 #endif
 
-static const DWORD kPauseSleepTime = 100;
-
 static const UInt32 kLangIDs[] = {IDT_PROGRESS_ELAPSED, IDT_PROGRESS_REMAINING,  IDT_PROGRESS_TOTAL,
                                   IDT_PROGRESS_SPEED,   IDT_PROGRESS_PROCESSED,  IDT_PROGRESS_RATIO,
                                   IDT_PROGRESS_ERRORS,  IDB_PROGRESS_BACKGROUND, IDB_PAUSE};
 static const UInt32 kLangIDs_Colon[] = {IDT_PROGRESS_PACKED, IDT_PROGRESS_FILES};
+#endif
+
+static const DWORD kPauseSleepTime = 100;
 
 #define UNDEFINED_VAL ((UInt64)(Int64) - 1)
 #define INIT_AS_UNDEFINED(v) v = UNDEFINED_VAL;
 #define IS_UNDEFINED_VAL(v) ((v) == UNDEFINED_VAL)
 #define IS_DEFINED_VAL(v) ((v) != UNDEFINED_VAL)
 
+#ifndef SEVENZIP_PROGRESS_PRESENTATION_ONLY
 CProgressSync::CProgressSync()
     : _stopped(false), _paused(false), _filesProgressMode(false), _isDir(false),
       _totalBytes(UNDEFINED_VAL), _completedBytes(0), _totalFiles(UNDEFINED_VAL), _curFiles(0),
@@ -66,17 +71,28 @@ bool CProgressSync::Get_Paused() {
     return _paused;
 }
 
+WRes CProgressSync::EnableSingleWorkerWake() {
+    CRITICAL_LOCK
+    return _pauseWake.CreateIfNotCreated_Reset();
+}
+
 HRESULT CProgressSync::CheckStop() {
     for (;;) {
         {
             CRITICAL_LOCK
             CHECK_STOP
         }
+        if (_pauseWake.IsCreated()) {
+            const WRes result = _pauseWake.Lock();
+            if (result != 0)
+                return HRESULT_FROM_WIN32(result);
+        } else {
 #ifdef _WIN32
-        ::Sleep(kPauseSleepTime);
+            ::Sleep(kPauseSleepTime);
 #else
-        QThread::msleep(kPauseSleepTime);
+            QThread::msleep(kPauseSleepTime);
 #endif
+        }
     }
 }
 
@@ -203,7 +219,9 @@ void CProgressSync::AddError_Code_Name(HRESULT systemError, const wchar_t *name)
         s = "Error";
     AddError_Message_Name(s, name);
 }
+#endif // SEVENZIP_PROGRESS_PRESENTATION_ONLY
 
+#ifndef SEVENZIP_PROGRESS_SYNC_ONLY
 #define UINT_TO_STR_2(val)                                                                         \
     {                                                                                              \
         s[0] = (wchar_t)('0' + (val) / 10);                                                        \
@@ -1300,3 +1318,4 @@ UString HResultToMessage(HRESULT errorCode) {
     else
         return NError::MyFormatMessage(errorCode);
 }
+#endif // SEVENZIP_PROGRESS_SYNC_ONLY

@@ -1,9 +1,8 @@
 #pragma once
 #include "Common/MyWindows.h"
-#include <QMutex>
+#include "qtworkerprogress.h"
 #include <QString>
 #include <QThread>
-#include <QWaitCondition>
 #include <atomic>
 #include <memory>
 
@@ -14,10 +13,7 @@ class QtArchiveCopyPreparation final : public QThread {
     QString source_;
     QString output_;
     std::unique_ptr<QtOwnedTempDir> staging_;
-    QMutex mutex_;
-    QWaitCondition resumed_;
-    bool paused_ = false;
-    bool canceled_ = false;
+    QtWorkerProgress progress_;
     std::atomic<quint64> completed_{0};
     quint64 total_ = 0;
     HRESULT checkpoint();

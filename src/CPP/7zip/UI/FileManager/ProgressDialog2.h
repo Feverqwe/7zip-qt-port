@@ -9,6 +9,7 @@
 #include "Windows/ErrorMsg.h"
 #include "Windows/Synchronization.h"
 #include "Windows/Thread.h"
+#ifndef SEVENZIP_PROGRESS_SYNC_ONLY
 #include "qtprogresscontrols.h"
 #include "qtprogresstransport.h"
 #include <QPointer>
@@ -18,6 +19,7 @@
 #else
 #include "qtprogresswait.h"
 #include "qttaskbarprogress.h"
+#endif
 #endif
 
 void GetTimeString(UInt64 timeValue, wchar_t *s);
@@ -40,6 +42,7 @@ struct CProgressFinalMessage {
 class CProgressSync {
     bool _stopped;
     bool _paused;
+    NWindows::NSynchronization::CAutoResetEvent _pauseWake;
 
   public:
     bool _filesProgressMode;
@@ -68,12 +71,19 @@ class CProgressSync {
     void Set_Stopped(bool val) {
         NWindows::NSynchronization::CCriticalSectionLock lock(_cs);
         _stopped = val;
+        if (_pauseWake.IsCreated())
+            _pauseWake.Set();
     }
     bool Get_Paused();
     void Set_Paused(bool val) {
         NWindows::NSynchronization::CCriticalSectionLock lock(_cs);
         _paused = val;
+        if (_pauseWake.IsCreated())
+            _pauseWake.Set();
     }
+    // Configure before starting the one checkpoint thread. Native dialog
+    // callbacks keep the original polling mode, including multiple callers.
+    WRes EnableSingleWorkerWake();
     void Set_FilesProgressMode(bool filesProgressMode) {
         NWindows::NSynchronization::CCriticalSectionLock lock(_cs);
         _filesProgressMode = filesProgressMode;
@@ -99,6 +109,7 @@ class CProgressSync {
     bool ThereIsMessage() const { return !Messages.IsEmpty() || FinalMessage.ThereIsMessage(); }
 };
 
+#ifndef SEVENZIP_PROGRESS_SYNC_ONLY
 // Source dialog owner. Application consumers migrate in P0-10.1/P0-10.2.
 class CProgressDialog : public CQtProgressDialog {
     bool _isDir;
@@ -293,5 +304,7 @@ class CProgressThreadVirt : public CProgressDialog {
         return isError ? FinalMessage.ErrorMessage : FinalMessage.OkMessage;
     }
 };
+
+#endif // SEVENZIP_PROGRESS_SYNC_ONLY
 
 #endif

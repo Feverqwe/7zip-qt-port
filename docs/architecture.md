@@ -32,6 +32,13 @@ FilesystemFolderLoader likewise keeps an atomic count, polled by the GUI scanner
 and delivered once at completion before folder ownership. Source cancellation
 checks still execute for every native callback. These are external-worker Qt
 transports; source CProgressSync/CProgressDialog remain the dialog owners.
+The four hash, creation-lifecycle, volume-output and copy-preparation workers
+delegate pause/stop checkpoints to CProgressSync through QtWorkerProgress.
+Its Core-only source target separates Sync from panel presentation without
+moving original functions. A source auto-reset event supplies immediate wake
+for each single checkpoint worker; native dialog callbacks retain their original
+polling mode. Copy preparation keeps an atomic cancel/publication mutex in this
+adapter, separate from the source pause/stop state.
 Filesystem Copy/Move and Split/Combine presentation feeds that existing
 CProgressSync directly from worker callbacks. Only its mutex-protected source
 state and the callback's local byte accumulator are accessed on the worker;
