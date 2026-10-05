@@ -1783,7 +1783,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
             src/archivebackend_creation.cpp src/archivebackend_hash.cpp src/archivebackend_preparation.cpp
             src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
-            src/archivebackend_completion.cpp
+            src/archivebackend_completion.cpp src/archivebackend_compression.cpp
             src/qtarchivetransferbackup.h)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()

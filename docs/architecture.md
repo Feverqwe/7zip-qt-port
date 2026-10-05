@@ -316,6 +316,11 @@ state as the process transport. Mutation publication/restoration stays in
 `archivebackend_mutations.cpp`; listing result projection stays beside its inverse
 Console/List parser in `archivebackend_listing.cpp`. These private methods add
 no second job, process or mutable archive owner.
+`archivebackend_compression.cpp` validates public native compression requests and
+projects the original method properties into CLI switches. Both dialog submission
+and backend preflight delegate memory refusal to source CCompressDialog::OnOK.
+`archivebackend_creation.cpp` owns creation planning and delete-input lifecycle;
+`archivebackend_mutations.cpp` owns changes to an existing archive and publication.
 `archivebackend_sourceplan.cpp` owns local source callback-plan validation,
 KeepName output selection and asynchronous stage orchestration. Other individual
 update/mutation transports remain in archivebackend_sourceupdate.cpp. Native

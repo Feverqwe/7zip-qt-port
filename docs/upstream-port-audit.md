@@ -49,6 +49,7 @@ new review/remediation, not another feature implementation.
 | R: `mainwindow_archive_transfer.cpp`, `archivebackend_transfer.cpp`, `qtarchivetransferbackup.h` | Original App.cpp OnCopy owns staged panel transfer; Compress/CopyCoder.cpp CopyStream owns stream copying. Widget previously performed archive backup and a manual byte-restoration loop | Backup/publication moved behind ArchiveBackend; original stream copying, real two-panel Move success/Cancel/rollback and publication refusal verified on three OS | Resolved P2-11.8 |
 | S: `createarchivedialog_preferences.cpp`, `createarchivedialog_resources.cpp`, source `CompressDialog.cpp/.h` | Original FindRegistryFormat_Always/SaveOptionsInMem and OnOK memory refusal had functional bodies in widget glue | Source module owns profile creation, spec persistence/big-dictionary marker and memory refusal; Qt reads typed controls and presents source results. Previous-format/Auto/constructor/Cancel and direct compression/SFX consumers verified on three OS | Resolved P2-11.9 |
 | J: `archivebackend.cpp`, `archivebackend_completion.cpp`, `archivebackend_listing.cpp`, `archivebackend_mutations.cpp` | QProcess completion mixed stage dispatch, archive publication/rollback and CLI listing projection. Original Update.cpp publication and FileDir.cpp CTempFile::MoveTo lack the existing restoration policy; Console/List.cpp has no inverse parser | One backend state owner; separated completion, mutation publication and listing projection preserve success/failure/Cancel and stage order; direct consumers and sole object ownership verified | Resolved P2-11.10 |
+| K: `archivebackend_compression.cpp`, `archivebackend_creation.cpp`, `archivebackend_mutations.cpp` | Request-to-source-properties validation, CLI creation planning and existing-archive mutation shared one file; memory refusal duplicated original CompressDialog::OnOK | One source-owned memory refusal; separate immutable compression request projection, creation lifecycle and mutation publication; direct success/refusal/Cancel consumers and object ownership verified on three OS | Resolved P2-11.11 |
 
 ### P2-11.10 — backend process completion boundary (accepted, 2026-10-05)
 
@@ -84,6 +85,44 @@ artifacts per guest are SHA-256 verified and retained under that snapshot's
 evidence directory. Private helpers retain QObject/process/worker lifetime;
 no test-only internals are exposed. Whole-root inventory and final integrated
 platform/UX acceptance remain P2-11/P3; focused guests do not replace that gate.
+
+### P2-11.11 — compression request and creation boundary (accepted, 2026-10-05)
+
+The new C++17 backend compression unit
+retains source `NCompressDialog::CInfo`, original format/method/dictionary/order/
+thread/solid/memory calculations, `GetCompressionProperties` and
+`CheckDeleteAfterCompressingActionSet`. Strict public-request field checks and
+projection into Console switches remain integration code: original OnOK reads
+Win32 controls and does not validate arbitrary externally supplied DTO values.
+The former backend memory refusal now calls the source `CCompressDialog::OnOK`
+already accepted in P2-11.9; language lookup, required/RAM/limit message and the
+unknown-RAM/unspecified-limit guard have one implementation. Original OnOK's
+body/callers/types were reviewed again at the registry's pinned full revision.
+Creation moves to the existing creation/lifecycle unit; all1186 functional tokens
+of its body, including literals, match after formatting. Compression properties
+and switches match except that source-owned memory call. The mutation unit is
+335 lines, compression176 and creation274. The two longer methods were reviewed:
+immutable request validation remains together; creation collects complete root/
+path/collision/destination checks before installing one asynchronous job state.
+These coherent phases remain intact rather than adding another mutable plan owner.
+Upstream bodies/module organization are unchanged; no new borrowed file/revision
+or source language change is introduced. The shared object and late-consumer
+lists include the same new unit. Existing public compression_memory/limit tests
+exercise success/refusal/cancel, Unicode bytes, native error text and preserved
+input/output; no internal-only tests are added. Main focused10/10 PASS6.71s;
+the unsandboxed full macOS gate passes formatting/all-target build and241/241
+CTest100.13s, saved at `build/review/p211-k-main-full-lasttest.log`.
+The first full attempt stopped at a task-owned documentation trailing space
+before build/tests; corrected diff passes the complete gate above.
+Fresh integrated snapshot `20261005T080746Z-f066976b` passes Linux10/10 in16.08s
+and Windows interactive Highest10/10 in61.11s. Actual Qt totals are
+sourceUpdate76, updateWindow11, backend45, mutation24, compression21, volume26,
+SfxCreation24, SfxLifecycle10, compressionMemory14 and compressionLimit10,
+all zero failures/skips on each OS. Twenty-three guest/local artifacts per guest
+are SHA-256 verified. Mac/Windows138 and Linux136 root production units each
+compile once; the compression unit belongs to the shared backend object owner.
+No UI layout/text changes require new appearance inspection. Whole-root inventory
+and final P3 platform/UX acceptance remain open.
 
 ### Retained adapter review and remaining coverage
 

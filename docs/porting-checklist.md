@@ -257,6 +257,8 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 | [x] | P2-11.10 | Граница CLI completion, publication/rollback и listing projection | P2-11.4/.5/.7/.9; registry J | done — audit § P2-11.10; один backend state/process owner, сохранены stage order/Cancel/error/messages и все1940 functional tokens. Main focused8/8PASS4.50s/fullMac241/241PASS101.09s; snapshot003d3531 Windows8/8PASS63.28s/Linux8/8PASS15.92s, все Qt rows без skips,13/13 guest/local artifacts SHA256 verified. Whole inventory и final P3 открыты. 2026-10-05 |
 
+| [x] | P2-11.11 | Compression request/source memory refusal и creation boundary | P2-11.2/.4/.9/.10; registry K | done — audit § P2-11.11; original OnOK единственный owner отказа по памяти, create() и остальные properties/switches сохранены. Main focused10/10PASS6.71s/fullMac241/241PASS100.13s; snapshotf066976b Windows10/10PASS61.11s/Linux10/10PASS16.08s, все Qt rows без skips,23/23 guest/local artifacts SHA256 verified, каждый root TU собирается один раз. Whole inventory и final P3 открыты. 2026-10-05 |
+
 ## P3 — приёмка, обновления и поставка
 
 | Готов | ID | Результат | После | Статус / evidence |
