@@ -177,6 +177,45 @@ This is notice preparation, not whole P3-04 acceptance: three-platform packages,
 relocated clean-environment archive workflows and missing-dependency scenarios
 remain mandatory. No publish/signing identity or upstream change was made.
 
+## P3-04.1 — Linux runtime archive and relocated consumers (2026-10-05)
+
+Frozen source snapshot `20261005T181408Z-e5c5b06f`, based on local commit
+`e31d722a697432e8c037ff59cc8176b4e4a1e457`, SHA256
+`fad1c551704c1b9b2c0a28b2bd8fc1d08be2beb6feb5d4e7d8b3d06b23216394`,
+builds Release with BUILD_TESTING=OFF using Ubuntu24.04.5 x64/GCC13.3/Qt6.12.0.
+The existing pinned engine/module/SFX builders retain upstream
+`https://github.com/ip7z/7zip.git` at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; no borrowed source changes.
+CMake installation/Qt dependency deployment and scripts/package.py produce
+the explicit runtime payload, enforce the source/build-file exclusion guard,
+and include checksum-verified Qt/ICU and original 7-Zip/MIT notices.
+
+`sevenzip-desktop-0.1.0-linux-x86_64.tar.gz` is34,051,702 bytes, SHA256
+`d0b6609c59432bb64e87a577b3ce1aa257844846bdbf479e916b7599bce00248`;
+the guest/local artifact copies match. The archive was extracted into a new
+Unicode/spaced directory with a new HOME/settings file, PATH=/usr/bin:/bin,
+and no SDK/Qt library/codec-module environment overrides. Installed 7z reports
+its adjacent packaged7z.so. Installed7zG creates a ZIP, tests and extracts it;
+installed7z lists it. Unicode/spaced filenames and binary payload match exactly.
+Broken ZIP and a removed packaged7z.so both return the source fatal exit2.
+The installed own-code notice matches root LICENSE byte-for-byte.
+
+The first xcb attempt failed because this guest has no display:0; its console
+log remains. The subsequent native xcb/Xvfb run passes all eight recorded checks
+without an offscreen plugin. This proves relocation and ordinary system-library
+compatibility on this Ubuntu runner, not deployment to another clean OS image,
+interactive desktop UX, Windows packaging or whole P3-04/P3-06 acceptance.
+The temporary build helper is removed after the frozen run; reproducible commands
+are cmake Release configure/build followed by scripts/package.py with the three
+matching private Qt-source/checksum/ICU-license inputs documented in CI.
+
+The first Qt6.12 Windows full gate exposed platform separators in a Python
+package fixture's expected path list. The fixture now compares as_posix(),
+preserving exact expected payload paths. Local runtime_package passes1/1;
+an independent guest copy passes all6 tests in0.046s without modifying the
+original source snapshot. Original Windows full failure is retained; this
+localized fixture check does not accept its whole gate.
+
 ## P3-03.3.4 — callback property display (active, 2026-10-05)
 
 Source: https://github.com/ip7z/7zip.git, full commit

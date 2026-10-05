@@ -65,7 +65,7 @@ class PackageTests(unittest.TestCase):
                 path.write_text("fixture")
             package.prune_development(root)
             package.validate_payload(root)
-            self.assertEqual(sorted(str(path.relative_to(root)) for path in root.rglob("*")
+            self.assertEqual(sorted(path.relative_to(root).as_posix() for path in root.rglob("*")
                                     if path.is_file()), ["Notices/LICENSE.txt",
                                                          "imageformats/libqico.dylib", "runtime.dylib"])
 
