@@ -2,6 +2,13 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Column initialization keeps Name at source logical index zero while retaining
+the saved visual header order, including Name moved after other visible columns.
+Refresh and reopening must retain that order and widths in both panes under
+EN/RU at980×620/640×400. Direct InitColumns clears native marks before property
+enumeration, including unchanged column catalogs; it does not clear published
+Qt rows or their widget selection. Subsequent source restoration owns marks.
+
 Column header menus retain source property order/checks/first-item protection,
 toggle the owning panel's source visible catalog and append a newly shown column
 after all visible columns. Hide/show after moving a column must follow that append

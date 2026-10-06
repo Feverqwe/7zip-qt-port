@@ -63,8 +63,11 @@ void MainWindow::configureColumns(bool initialized) {
             table_->setColumnHidden(column, true);
     }
     const CPropColumns &visible = panel.GetVisibleColumns();
+    CIntArr columnOrder;
+    const bool ordered = panel.GetColumnOrder(columnOrder);
     FOR_VECTOR(i, visible) {
-        const int column = fileTable->columnForProperty(visible[i].ID);
+        const int column =
+            fileTable->columnForProperty(visible[ordered ? unsigned(columnOrder[i]) : i].ID);
         if (column >= 0)
             table_->horizontalHeader()->moveSection(table_->horizontalHeader()->visualIndex(column),
                                                     int(i));

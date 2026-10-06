@@ -8,6 +8,13 @@ control bytes. Sixteen normal/compact widget reports cover the resulting views.
 `panel_columns` supplies the existing settings/reopen consumer checks. These
 macOS checks do not establish native Windows/Linux or rendered Windows parity.
 
+`panel_column_initialization` checks direct InitColumns mark reset with an
+unchanged real filesystem catalog, retained rows/widget selection and subsequent
+source restoration. Four EN/RU both-pane scenarios move Name to the end, retain
+its source logical index zero and187px width through Refresh and reopening, and
+preserve the peer/provider/selection/control bytes. Eight normal/compact widget
+reports cover the resulting views; native/rendered Windows acceptance remains.
+
 `panel_deleted_draw` covers the source deleted-item foreground through a focused
 IFolderFolder/IGetFolderArcProps/IFolderArcProps fixture. Sixteen both-pane EN/RU
 table/icon and standard/alternative scenarios check all-cell/source-index color,

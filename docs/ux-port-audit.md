@@ -108,7 +108,12 @@ archive-level flag получает потребителя. Table/icon/selection
 в конец, скрытие сортируемой колонки меняет metadata без немедленной сортировки.
 EN/RU обе панели, active/inactive owner, Cancel, move/resize/Refresh и focus
 проверены; Qt сохраняет скрытые logical sections и пишет компактный visible order.
-Текущие native checks и rendered Windows reference обязательны. Сверка тел
+Текущие native checks и rendered Windows reference обязательны.
+InitColumns также исправила принудительное возвращение Name в начало: source
+логический индекс сохраняется отдельно от visual order, который теперь переживает
+Refresh/reopen в обеих панелях EN/RU. Прямой вызов очищает source marks до
+enumeration, сохраняя Qt rows/selection до следующего restoration consumer.
+Focused и normal/compact JSON проверки пройдены на macOS. Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.

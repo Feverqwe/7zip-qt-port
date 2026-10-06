@@ -1652,6 +1652,46 @@ Qt6.12.0; all six final input hashes remain unchanged. Current native Windows/Li
 duplicate/direct InitColumns consumers, whole-module/109-module/cold-stable and
 P3-06 acceptance remain open.
 
+### Source column initialization marks and visual order, 2026-10-06
+
+Restored the mark-clear, equal-column early return and DeleteColumn/AddColumn
+rebuild phases of `CPP/7zip/UI/FileManager/PanelItems.cpp::InitColumns` from
+upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Reviewed complete original/adapted bodies,
+CPropColumn/CPropColumns equality/name-first comparison, SaveListViewInfo,
+ViewSettings, load/publication callers and source selection restoration.
+No dependency copy, language conversion, upstream modification or notice removal.
+
+Original logical Name-first column indices are separate from visual header order.
+The original CIntArr initialization/permutation/error check is extracted into
+GetColumnOrder in the same authoritative module. Qt consumes that source phase
+after creating physical sections, using its existing property-index resolver;
+invalid order retains logical ordering, like the native omitted SetColumnOrderArray
+call. This replaces Qt's independent forced Name-first visual order. InitColumns
+clears marks before enumeration even for unchanged catalogs; Qt rows/widget
+selection remain with their publication/restoration owners. Existing safe
+provider/count guards and settings-path adapter remain outside these restored phases.
+
+Actual previous-product RED5/2QtPASS0.64s catches direct retained marks and four
+EN/RU both-pane Name-order resets after Refresh. Three snapshots/hashes/log are
+frozen in build/review/column-init-red. The new focused public suite uses a real
+local filesystem provider: unchanged-catalog mark reset with retained rows/widget
+selection and later source restoration, plus Name moved to the visual end with
+187px width, Refresh/reopen, source logical Name index zero, peer/provider/
+selection/control bytes. Eight normal980×620/compact640×400 current widget reports
+expose both panes/addresses/header/status and retain grouping/order; no rendered
+Windows pixel proof is inferred.
+
+Affected seven-target build and sequential focused7/7PASS7.44s include new7QtPASS,
+zero failure/skip. Baseline verification passes408 exact/196 adapted/3 local paths.
+Final inputs/logs/eight reports are retained in build/review/column-init-final.
+Mandatory unsandboxed check.sh passes formatting, all-target build and272/272
+CTest in152.47s on macOS27.0.1 arm64 with official Qt6.12.0. All five final
+input hashes remain unchanged.
+Remaining raw/duplicate property mapping, broader schema/equality/error consumers,
+native Windows/Linux/current rendered/cold-stable/109-module and P3-06 acceptance
+remain open; this component does not close PanelItems or P3-05.15.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

@@ -10,6 +10,12 @@ visible sections when publishing source order. Hiding the sorted column changes
 the source sort metadata and header indicator without sorting rows until Refresh.
 Header popup/move/resize callbacks project their owning pane temporarily, and
 popup exit restores the previous widget focus.
+InitColumns clears source marks on every call, including unchanged catalogs,
+and retains the original equal-column early return and DeleteColumn/AddColumn
+rebuild. Name-first source logical indices are separate from header visual order.
+Its original CIntArr permutation validation is extracted as GetColumnOrder in
+PanelItems; configureColumns consumes it after creating Qt sections. Qt rows and
+widget selection are published/restored by their existing owners.
 
 Copy/Move destination defaults belong to CApp::OnCopy: it reads the destination
 panel's source GetFsPath and applies the retained filesystem-path reducer only

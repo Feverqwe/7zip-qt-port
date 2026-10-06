@@ -621,6 +621,8 @@ class CPanel : public QObject {
     int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,
                            bool isRawProp = false) const;
     HRESULT InitColumns();
+    // Original native column-order validation, consumed during Qt publication.
+    bool GetColumnOrder(CIntArr &columns) const;
     void AddColumn(const CPropColumn &prop);
     void DeleteColumn(unsigned index);
     // Qt's popup supplies the selected source catalog index.

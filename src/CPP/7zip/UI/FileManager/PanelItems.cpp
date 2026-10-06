@@ -118,6 +118,7 @@ static int ItemProperty_Compare_NameFirst(void *const *a1, void *const *a2, void
 
 HRESULT CPanel::InitColumns() {
     SaveListViewInfo(_visibleColumns);
+    _selectedStatusVector.Clear();
     if (!_folder)
         return E_FAIL;
     const UString oldType = _typeIDString;
@@ -209,11 +210,36 @@ HRESULT CPanel::InitColumns() {
             newColumns.Add(prop);
     }
     newColumns.Sort(ItemProperty_Compare_NameFirst, NULL);
-    _visibleColumns.Clear();
+    if (newColumns.IsEqualTo(_visibleColumns))
+        return S_OK;
+    for (;;) {
+        const unsigned numColumns = _visibleColumns.Size();
+        if (numColumns == 0)
+            break;
+        DeleteColumn(numColumns - 1);
+    }
     FOR_VECTOR(columnIndex, newColumns)
-    _visibleColumns.Add(newColumns[columnIndex]);
+    AddColumn(newColumns[columnIndex]);
     _needSaveInfo = true;
     return S_OK;
+}
+
+bool CPanel::GetColumnOrder(CIntArr &columns) const {
+    // InitColumns' SetColumnOrderArray phase is deferred until Qt has created
+    // its physical sections. Source logical indices remain name-first.
+    columns.Alloc(_visibleColumns.Size());
+    unsigned i;
+    for (i = 0; i < _visibleColumns.Size(); i++)
+        columns[i] = -1;
+    bool orderError = false;
+    for (i = 0; i < _visibleColumns.Size(); i++) {
+        const CPropColumn &prop = _visibleColumns[i];
+        if (prop.Order < (int)_visibleColumns.Size() && columns[prop.Order] == -1)
+            columns[prop.Order] = (int)i;
+        else
+            orderError = true;
+    }
+    return !orderError;
 }
 
 void CPanel::SaveListViewInfo(const CPropColumns &visibleColumns) {

@@ -119,6 +119,13 @@ catalog. Показ добавляет колонку в конец; скрыт�
 владельца заголовка, выход из popup восстанавливает прежний widget focus.
 EN/RU обе панели и active/inactive consumers проверены на macOS; текущие native
 Windows/Linux и rendered Windows проверки остаются открытыми.
+InitColumns теперь очищает исходные marks также при прямом вызове и сохраняет
+исходный equal-column early return/rebuild. Логический Name остаётся первым,
+а визуальный порядок берётся из исходного проверенного массива; перенос Name
+в конец сохраняется после Refresh и reopening. Qt применяет массив после
+создания физических секций, сохраняя rows/widget selection в их прежних owners.
+Direct marks/restoration и EN/RU обе панели/order/width/bytes проверены на macOS;
+raw/duplicate schemas и текущая native/rendered приёмка остаются открытыми.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном
