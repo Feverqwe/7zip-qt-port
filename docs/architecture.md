@@ -103,6 +103,14 @@ publication. Worker-loaded filesystem folders skip only the already completed
 flat-mode/load calls. Qt renders the resulting source columns without reloading
 them; row directory flags use CPanel's validated cache. Resetting the same archive
 folder after load would discard that cache and is no longer part of publication.
+The original local numItems is retained across split Qt phases in an optional
+loaded-count value. Load consumes the written GetNumberOfItems count regardless
+of its HRESULT; unwritten outputs start at zero in this adapter. Namespace
+publication and selection restoration reuse that value instead of querying the
+provider again. Release/rebind invalidate it; a new load starts with the known
+empty count so failed loads do not query metadata during mark projection.
+Pre-populated Qt view attachment before any load retains its checked-count boundary;
+source Get_ItemIndices_All keeps its separate original HRESULT policy.
 The original drop-highlight row/name belong to CPanel, shared with PanelDrag's
 target-path/type consumers. Both extracted Refresh phases clear them before
 loading/restoration errors. Qt can retain published rows during restoration;
@@ -186,7 +194,7 @@ success and returns failure to the retained CPanel::OnReload error owner.
 Namespace and filesystem Refresh use that original owner; archive manual refresh
 keeps its existing reopen transport pending the remaining reconciliation.
 Namespace publication cancels the old projection and publishes the bound address
-before loading, unless the timer flag suppresses that update. Load/count/icon
+before loading, unless the timer flag suppresses that update. Load/property/icon
 failures clear partial rows and share the successful terminal path for restoring
 sorting and notification guards before leaving the Qt operation state. Thus a
 Parent reload failure leaves both panes usable for recovery without rebinding

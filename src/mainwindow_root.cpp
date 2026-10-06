@@ -52,12 +52,10 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
                                          "Не удалось прочитать корневую папку."));
         return result;
     };
-    UInt32 count = 0;
     HRESULT result = panel.LoadListItems();
-    if (result == S_OK)
-        result = folder->GetNumberOfItems(&count);
     if (result != S_OK)
         return finish(result);
+    const UInt32 count = panel.GetLoadedItemCount();
     recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     configureColumns(true);
     for (UInt32 index = 0; index < count; ++index) {

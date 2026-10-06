@@ -94,6 +94,7 @@ void CPanel::ReleaseFolder() {
     _itemSystemIcons.Clear();
     _folderGetSystemIconIndex.Release();
     _listLoadResult = S_OK;
+    _loadedItemCount.reset();
     _selectedStatusVector.Clear();
 }
 

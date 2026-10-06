@@ -24,6 +24,8 @@ class LoadFolder final : public IFolderFolder,
     HRESULT directoryResult = S_OK;
     HRESULT countResult = S_OK;
     HRESULT loadedCountResult = S_OK;
+    std::optional<UInt32> itemCount = 2;
+    unsigned countCalls = 0;
     VARTYPE directoryType = VT_BOOL;
     bool directory = true;
     bool reverseNames = false;

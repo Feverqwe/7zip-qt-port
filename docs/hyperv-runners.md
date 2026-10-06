@@ -26,6 +26,16 @@ confirm6.12.0. Linux full240/240 passed; Windows runtime validation is pending.
 Earlier systemQt6.4.2 and
 WindowsQt6.8.3 results below remain historical evidence, not Qt6.12 checks.
 
+Capacity preflight, 2026-10-07 MSK: both authenticated x64 guest/toolchain probes
+pass with Qt 6.12.0 and clang-format 23.1.2. Host D: has 654,816,464,896 bytes free;
+guest Linux root has 3,002,368 bytes and Windows C: has 57,950,208 bytes free.
+Fresh snapshot/runtime/all-target acceptance builds do not fit these guest
+volumes. No cleanup, VHDX compaction/growth, disk change or new source sync was
+performed. The runners skill forbids automatic deletion/compaction in response
+to capacity warnings. Evidence: build/review/load-count-final/{hyperv-storage.log,
+hyperv-probe.log,linux-guest-space.log,windows-guest-space.log}. This preflight
+does not provide current application, package or rendered Windows acceptance.
+
 ```sh
 python3 scripts/hyperv-runner.py probe linux
 python3 scripts/hyperv-runner.py probe windows

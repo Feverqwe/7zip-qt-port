@@ -1735,6 +1735,85 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source Refresh loaded-count consumers, 2026-10-07
+
+Reviewed complete original PanelItems::RefreshListCtrl467–960, especially its
+unchecked GetNumberOfItems550 followed by directory validation, insertion,
+selection/focus/sort/status, and the separate Get_ItemIndices_All checked-count
+policy. Full pin 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Reviewed current LoadListItemsImpl, namespace/
+filesystem/archive publication, restoration, PanelSelect mark projection,
+AttachSelectionView, ReleaseFolder/SetNewFolder, Parent/OnReload/timer and
+post-Copy/Move continuation consumers. C++ remains in existing mirrored
+PanelItems.cpp/Panel.h/PanelFolderChange.cpp; dependencies/notices/licenses and
+baseline revision are unchanged. No upstream edits or new borrowed module.
+
+LoadListItemsImpl now consumes the written count without RINOK, restoring the
+original body/control flow. A narrowly scoped optional retains native numItems
+across Qt's split load/publication/restoration phases. A load starts with known
+empty rows/marks and installs the written count after successful preparation;
+folder release/rebind invalidates it. Namespace publication uses that count
+instead of making a second query; the selection-size helper also uses it.
+Late count metadata cannot resize source indices/marks during restoration and
+paint. The unloaded pre-populated Qt attachment boundary retains its existing
+checked query and providerless fallback; this does not close that broader
+integration disposition. Get_ItemIndices_All retains its own original checked
+HRESULT. Worker LoadItems E_ABORT and property/type/icon failures are unchanged.
+
+Necessary defined-output adaptation: count starts at zero when the provider
+leaves it unwritten; upstream leaves its local uninitialized. Written zero/two
+under S_FALSE/E_FAIL/E_ABORT follows the native policy. An E_ABORT from this
+metadata query is not a LoadItems cancellation. Existing native providers write
+their count; controlled interface coverage does not establish a native unwritten
+output result, three-platform runtime or archive-operation cancellation.
+
+New panel_load_count covers 72 EN/RU both-pane detail/icon Refresh/timer/recovery
+consumers with written zero/two/unwritten counts and all three statuses. It
+preserves owning provider/selection, peer and Unicode control bytes, including
+late metadata results after publication and alternative mark projection. A
+direct nine-combination lifecycle case requires exactly one load-stage query,
+no restoration/mark requery, and Release/rebind invalidation. The cohesive
+scenario remains component-local; its sequential fixture/interactions/assertions
+exceed the function-size review trigger without adding another responsibility.
+The original LoadFolder fixture defaults stay two/S_OK; optional outputs and
+query accounting extend only controlled metadata scenarios.
+
+Existing namespace result/reload/timer/command, Parent and actual filesystem
+Copy/Move count rows are retained with successful publication expectations.
+Their previous error assertions represented an independent port policy, not the
+unchecked original count call. Load/property/type/icon errors, worker failure/
+Cancel, source/output/peer bytes and recovery remain covered by those suites.
+Actual pre-fix RED: 72 failures/2 Qt passes, 0 skips; CTest 2.00s, retained with
+11 frozen inputs in build/review/load-count-red. First six focused suites pass
+10.44s before adding the direct lifecycle case. First full unsandboxed gate passes
+format/all-target build and 280/280 CTest in 163.87s, before final early-return
+coverage. Original PanelSelect::UpdateSelection135–151 has no new count query.
+Two added failure/Cancel regressions reproduce a remaining mark-projection
+metadata query after LoadItems had already returned: 75 Qt passes/2 failures,
+0 skips, CTest 2.92s (build/review/load-count-early-red). Keeping the known empty
+count at load start preserves the original early RINOK and prevents that query;
+recovery still consumes a written count despite its metadata HRESULT. First-gate
+logs/inputs remain in load-count-first-gate. Final six focused suites pass 10.53s.
+Final mandatory unsandboxed check.sh passes formatting/all-target build and
+280/280 CTest in 162.48s on macOS 27.0.1 arm64 with official Qt 6.12.0.
+panel_load_count passes 77 Qt checks, 0 failures/skips (2.461s). All 19 frozen
+inputs, including 11 code/build/test files, remain unchanged at gate completion.
+The 432 current normal/compact reports expose all 1,728 affected visible views/
+addresses fully. Snapshots, hashes, full/focused logs and reports are retained
+in build/review/load-count-final. Final evidence/runner-prerequisite updates are
+documentation-only; git diff --check passes.
+
+Fresh read-only Hyper-V preflight on 2026-10-07 MSK confirms both x64 guests,
+Qt 6.12.0/formatter 23.1.2 and authenticated readiness. Host D: has
+654,816,464,896 bytes free, but Linux guest root has only 3,002,368 bytes and
+Windows guest C: only 57,950,208 bytes. Fresh acceptance builds cannot fit.
+No source sync/build, deletion, compaction, disk resizing or policy changes were
+performed. Logs are retained with this component; runner prerequisites belong
+to docs/hyperv-runners.md. These probes do not verify application runtime.
+Whole Refresh/OnNotify/full-body, providerless-helper and native ADS/device/zone,
+current Windows/Linux/rendered/cold-stable/package and P3-05.15/P3-06 acceptance
+remain mandatory.
+
 ### Source item activation notification consumers, 2026-10-07
 
 Reviewed original PanelListNotify.cpp::OnNotifyActivateItems536–548 and

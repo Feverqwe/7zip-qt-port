@@ -164,8 +164,14 @@ load failures before publishing rows. A failed reload leaves no stale rows and
 restores notification guards; a later valid reload recovers the same list.
 Inspect the empty namespace/error state at980×620/640×400 through the existing
 address/list/toolbar contract. No new dialog layout is introduced by validation.
-OnReload retains the original HRESULT message for load/property/count failures,
-including E_ABORT. The post-Copy selection stage must return that result before
+OnReload retains the original HRESULT message for load/property failures,
+including LoadItems E_ABORT. GetNumberOfItems uses its written count regardless
+of HRESULT; an unwritten output is initialized to zero by the Qt adapter.
+Count metadata E_ABORT is not a load-operation Cancel. Inspect EN/RU both-pane
+detail/icon written-zero/written-two/unwritten Refresh/timer/recovery states at
+980×620/640×400; retain peer, selection and bytes. Parent and post-Copy/Move must
+publish written counts without reporting that metadata status as a load failure.
+The post-Copy selection stage must return an actual load/property failure before
 reading failed provider state. Check both source roles for Copy/Move: output bytes, input
 retention/deletion, marks, notification guards, source focus/title and successful
 recovery on the next valid peer reload.

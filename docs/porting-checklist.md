@@ -306,6 +306,13 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: Refresh load/publication/selection сохраняют original
+written-count policy; Parent и post-Copy/Move count HRESULT больше не трактуется
+как load failure. 72 EN/RU both-pane detail/icon consumers, lifecycle/query-count
+и существующие operation-error/Cancel consumers покрывают компонент.
+[Evidence](upstream-port-audit.md#source-refresh-loaded-count-consumers-2026-10-07).
+Статус active; full-body/native3OS/final acceptance остаются открытыми.
+
 P3-05.15, 2026-10-07: source OnNotifyActivateItems подключён к Enter и
 двойному щелчку table/icon с исходной политикой всех Ctrl/Shift/Alt сочетаний.
 256 real FS/ZIP EN/RU both-pane сценариев, notify guards, 16 folder-error/recovery

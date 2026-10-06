@@ -11,7 +11,9 @@ Z7_COM7F_IMF(LoadFolder::LoadItems()) {
     return loadResult;
 }
 Z7_COM7F_IMF(LoadFolder::GetNumberOfItems(UInt32 *count)) {
-    *count = 2;
+    ++countCalls;
+    if (itemCount)
+        *count = *itemCount;
     return countResult;
 }
 Z7_COM7F_IMF(LoadFolder::WasChanged(Int32 *wasChanged)) {

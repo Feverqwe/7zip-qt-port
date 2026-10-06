@@ -151,6 +151,11 @@ consumers;32 detail/icon recovery/rebind reports покрывают EN/RU обе
 per-type widths/order/visibility и отдельные Type/Name changes с сохранением
 selection/peer focus. Normal/compact EN/RU обе панели проверены на macOS;
 [evidence](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07).
+Refresh written-count policy теперь совпадает с оригиналом: count HRESULT не
+заменяет валидные rows ошибкой, включая Parent/post-Copy/Move. Qt хранит один
+numItems между load/publication/selection и задаёт ноль для unwritten output.
+EN/RU обе панели, detail/icon, Refresh/timer/recovery и bytes покрыты текущими
+consumers; [evidence](upstream-port-audit.md#source-refresh-loaded-count-consumers-2026-10-07).
 Enter/double-click теперь используют original OnNotifyActivateItems и все
 Ctrl/Shift/Alt сочетания, включая Properties/Outside, в table/icon обеих панелей.
 EN/RU real FS/ZIP, guards, Cancel Properties, folder-error/recovery и normal/compact

@@ -153,7 +153,8 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         driver.start(0);
         QTest::keyClick(sourceView, move ? Qt::Key_F6 : Qt::Key_F5);
         QVERIFY(submitted);
-        QTRY_VERIFY(!shown.isEmpty() && action(window, "refreshAction")->isEnabled());
+        QTRY_VERIFY((phase == "count" || !shown.isEmpty()) &&
+                    action(window, "refreshAction")->isEnabled());
         driver.stop();
         if (phase == "worker") {
             QVERIFY(restarted);
@@ -162,7 +163,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(expected != S_OK);
             disconnect(restart);
         }
-        QCOMPARE(shown, ToQString(HResultToMessage(expected)));
+        QCOMPARE(shown, phase == "count" ? QString() : ToQString(HResultToMessage(expected)));
         QFile result(QDir(output).filePath(name));
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), bytes);
@@ -171,7 +172,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(sourceFile.open(QIODevice::ReadOnly));
             QCOMPARE(sourceFile.readAll(), bytes);
         }
-        QCOMPARE(peerView->rowCount(), 0);
+        QCOMPARE(peerView->rowCount(), phase == "count" ? peerRows : 0);
         QVERIFY(sourceView->selectionModel()->selectedRows().isEmpty());
         QVERIFY(sourceView->sourcePanel->ShouldProcessNotifications());
         QVERIFY(peerView->sourcePanel->ShouldProcessNotifications());

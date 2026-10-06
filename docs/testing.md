@@ -1,5 +1,20 @@
 # Regression strategy
 
+`panel_load_count` covers 72 EN/RU both-pane detail/icon Refresh/timer/recovery
+scenarios with written zero/two or unwritten GetNumberOfItems outputs under
+S_FALSE/E_FAIL/E_ABORT. Native Refresh consumes written counts without testing
+that HRESULT; the Qt boundary initializes an unwritten count to zero. A direct
+nine-combination lifecycle check requires one load-time count query, then no
+additional query for restoration/mark projection, and verifies Release/rebind.
+Failure and LoadItems Cancel leave a known empty count so alternative selection
+does not query metadata from the failed provider; recovery retains written-count policy.
+Late metadata statuses cannot resize published source indices. 432 geometry
+reports accompany provider/selection/peer and Unicode control-byte checks.
+Existing panel_list_load, navigation_reload and panel_copy_reload count rows now
+assert successful publication; load/property/type/icon failures and actual worker
+Cancel retain their error/recovery assertions. This is controlled interface
+coverage, not native archive-operation cancellation or current three-OS acceptance.
+
 `panel_activation` covers physical Return/double-click through the original
 OnNotifyActivateItems modifier policy: 256 FS/real ZIP EN/RU both-pane detail/icon
 cases, notification guards, cancelled Properties, peer/selection and unchanged

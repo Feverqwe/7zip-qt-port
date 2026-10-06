@@ -2,6 +2,15 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+Refresh теперь использует записанный GetNumberOfItems count независимо от HRESULT,
+как upstream. Qt сохраняет этот numItems между load/publication/selection; поздний
+count не меняет опубликованные source indices. Для незаписанного output Qt задаёт
+ноль вместо исходного неинициализированного значения. Parent и post-Copy/Move
+публикуют валидный count без ложной ошибки. E_ABORT самого LoadItems сохраняет
+отказ/Cancel; E_ABORT метаданных count следует отдельной исходной политике.
+EN/RU обе панели, detail/icon, Refresh/timer/recovery и bytes проверены на macOS;
+current Windows/Linux и исходный unwritten-output runtime не подтверждены.
+
 App::OnCopy сохраняет начальные проверки, выбор, Copy dialog и исходные
 destination/default/refusal/classification branches. Пустая цель peer остаётся
 пустой, однопанельный путь сокращается исходным reducer. Multi-directory и parent

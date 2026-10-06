@@ -69,16 +69,17 @@ class NavigationReloadTests final : public QObject, protected MainWindowTestSupp
         view->selectRow(0);
         view->setFocus();
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
-        const HRESULT expected = phase == "cancel" ? E_ABORT
-                                 : phase == "type" ? E_FAIL
-                                                   : E_INVALIDARG;
+        const HRESULT expected = phase == "count"    ? S_OK
+                                 : phase == "cancel" ? E_ABORT
+                                 : phase == "type"   ? E_FAIL
+                                                     : E_INVALIDARG;
         parentSpec->loadResult = phase == "load" || phase == "cancel" ? expected : S_OK;
         parentSpec->directoryType = phase == "type" ? VT_UI4 : VT_BOOL;
-        parentSpec->loadedCountResult = phase == "count" ? expected : S_OK;
+        parentSpec->loadedCountResult = phase == "count" ? E_INVALIDARG : S_OK;
         parentSpec->attributeResult = phase == "icon" ? expected : S_OK;
         action(window, "parentFolderAction")->trigger();
         QCOMPARE(panel.GetFolder(), (IFolderFolder *)parent);
-        QCOMPARE(view->rowCount(), 0);
+        QCOMPARE(view->rowCount(), phase == "count" ? 2 : 0);
         QVERIFY2(panel.ShouldProcessNotifications() && view->isEnabled() &&
                      action(window, "refreshAction")->isEnabled() && address->text().isEmpty(),
                  qPrintable(QString("notify=%1 view=%2 refresh=%3 address=%4")

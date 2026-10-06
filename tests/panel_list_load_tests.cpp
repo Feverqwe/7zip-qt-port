@@ -261,9 +261,10 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         panel.OnReload();
         QCOMPARE(view->rowCount(), 2);
         view->selectRow(0);
-        const HRESULT expected = phase == "cancel" ? E_ABORT
-                                 : phase == "type" ? E_FAIL
-                                                   : E_INVALIDARG;
+        const HRESULT expected = phase == "count"    ? S_OK
+                                 : phase == "cancel" ? E_ABORT
+                                 : phase == "type"   ? E_FAIL
+                                                     : E_INVALIDARG;
         if (phase == "load" || phase == "cancel")
             spec->loadResult = expected;
         else if (phase == "property")
@@ -271,7 +272,7 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         else if (phase == "type")
             spec->directoryType = VT_UI4;
         else
-            spec->loadedCountResult = expected;
+            spec->loadedCountResult = E_INVALIDARG;
         if (caller == "result")
             QCOMPARE(panel.RefreshListCtrl_SaveFocused(), expected);
         else {
@@ -288,14 +289,14 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
                         action(window, "refreshAction")->trigger();
                 },
                 QString("panel-reload-hresult-%1").arg(QTest::currentDataTag()));
-            QCOMPARE(shown, ToQString(HResultToMessage(expected)));
+            QCOMPARE(shown, phase == "count" ? QString() : ToQString(HResultToMessage(expected)));
         }
-        QCOMPARE(view->rowCount(), 0);
+        QCOMPARE(view->rowCount(), phase == "count" ? 2 : 0);
         QVERIFY(panel.ShouldProcessNotifications());
         CSelectedState failedSelection;
         QCOMPARE(panel.RefreshListCtrl(failedSelection), expected);
         const QString repeated = closeError(window, [&] { panel.OnReload(); });
-        QCOMPARE(repeated, ToQString(HResultToMessage(expected)));
+        QCOMPARE(repeated, phase == "count" ? QString() : ToQString(HResultToMessage(expected)));
         spec->loadResult = spec->directoryResult = spec->countResult = spec->loadedCountResult =
             S_OK;
         spec->directoryType = VT_BOOL;

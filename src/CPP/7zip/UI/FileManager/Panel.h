@@ -636,6 +636,8 @@ class CPanel : public QObject {
     void ShowColumnsContextMenu(unsigned index);
     // Source load stage; workers carry their original result before properties.
     HRESULT LoadListItems(bool itemsLoaded = false, HRESULT loadedResult = S_OK);
+    // Original RefreshListCtrl numItems retained across Qt publication phases.
+    UInt32 GetLoadedItemCount() const { return _loadedItemCount.value_or(0); }
     HRESULT GetItemIcon(unsigned index, QIcon &icon);
     void SaveListViewInfo(const CPropColumns &visibleColumns);
     const CPropColumns &GetColumns() const { return _columns; }
@@ -735,6 +737,7 @@ class CPanel : public QObject {
     bool _iconIsArcFolder = false;
     // Retain the source early-return result across Qt row publication.
     HRESULT _listLoadResult = S_OK;
+    std::optional<UInt32> _loadedItemCount;
     HRESULT LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult);
     HRESULT LoadItemIcon(UInt32 index);
     UString _currentFolderPrefix;

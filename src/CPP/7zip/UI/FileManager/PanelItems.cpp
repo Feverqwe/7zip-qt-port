@@ -312,6 +312,8 @@ unsigned CPanel::GetRealItemIndex(int indexInListView) const {
 }
 
 UInt32 CPanel::GetFolderItemCount() const {
+    if (_loadedItemCount)
+        return *_loadedItemCount;
     if (!_folder)
         return UInt32(_selectionList.GetItemCount());
     UInt32 numItems;
@@ -410,6 +412,8 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
     m_DropHighlighted_SubFolderName.Empty();
     if (!_folder)
         return itemsLoaded ? loadedResult : S_OK;
+    // The native early-return path has cleared rows/marks, with no count query.
+    _loadedItemCount = 0;
     _dontShowMode = false;
     CDisableTimerProcessing timerProcessing(*this);
     CDisableNotify disableNotify(*this);
@@ -434,8 +438,8 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
     }
     RINOK(InitColumns())
     UInt32 numItems = 0;
-    // Qt row publication already requires this count call to succeed.
-    RINOK(_folder->GetNumberOfItems(&numItems)) {
+    _folder->GetNumberOfItems(&numItems);
+    {
         NWindows::NCOM::CPropVariant prop;
         _isDirVector.ClearAndSetSize(numItems);
         bool *vec = _isDirVector.NonConstData();
@@ -493,6 +497,7 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
         _itemIconIndices[i] = -1;
         _itemSystemIcons[i] = false;
     }
+    _loadedItemCount = numItems;
     return S_OK;
 }
 
