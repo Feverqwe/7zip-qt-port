@@ -10,6 +10,7 @@
 #include "Windows/FileName.h"
 
 #include "../Common/LoadCodecs.h"
+#include "7zip/Common/FileStreams.h"
 
 #include "../GUI/HashGUI.h"
 
@@ -24,14 +25,21 @@ using namespace NFile;
 
 static const UInt32 kBufSize = (1 << 15);
 
-static bool QtCrcRead(NIO::CInFile &file, void *data, UInt32 size, UInt32 &processed) {
 #ifdef _WIN32
-    return file.Read(data, size, processed);
+using QtCrcFile = CInFileStream;
+#else
+using QtCrcFile = NIO::CInFile;
+#endif
+
+static HRESULT QtCrcRead(QtCrcFile &file, void *data, UInt32 size, UInt32 &processed) {
+#ifdef _WIN32
+    // The source stream supplies bounded, aligned device reads and ordinary file I/O.
+    return static_cast<ISequentialInStream &>(file).Read(data, size, &processed);
 #else
     size_t read = 0;
     const bool result = file.ReadFull(data, size, read);
     processed = (UInt32)read;
-    return result;
+    return result ? S_OK : GetLastError_noZero_HRESULT();
 #endif
 }
 
@@ -265,7 +273,7 @@ HRESULT CThreadCrc::ProcessVirt() {
         error = 0;
         Hash.InitForNewFile();
         if (!fi.IsDir()) {
-            NIO::CInFile inFile;
+            QtCrcFile inFile;
             tempPath = Enumerator.BasePrefix_for_Open;
             tempPath += path;
             if (!inFile.Open(tempPath)) {
@@ -282,8 +290,9 @@ HRESULT CThreadCrc::ProcessVirt() {
             UInt64 progress_Prev = 0;
             for (;;) {
                 UInt32 size;
-                if (!QtCrcRead(inFile, buf, kBufSize, size)) {
-                    error = GetNormalizedError();
+                const HRESULT readResult = QtCrcRead(inFile, buf, kBufSize, size);
+                if (readResult != S_OK) {
+                    error = static_cast<DWORD>(readResult);
                     AddErrorMessage(error, path);
                     UInt64 errorSize = 0;
                     if (inFile.GetLength(errorSize))
@@ -353,7 +362,7 @@ HRESULT CApp::CalculateCrc2(const UString &methodName, const CExternalCodecs *ex
 
         UString basePrefix = srcPanel.GetFsPath();
         UString basePrefix2 = basePrefix;
-        if (basePrefix2.Back() == ':') {
+        if (!basePrefix2.IsEmpty() && basePrefix2.Back() == ':') {
             const int pos = basePrefix2.ReverseFind_PathSepar();
             if (pos >= 0)
                 basePrefix2.DeleteFrom((unsigned)(pos + 1));

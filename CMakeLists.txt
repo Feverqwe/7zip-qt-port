@@ -2063,6 +2063,18 @@ if(BUILD_TESTING)
     get_target_property(options_window_sources settings_tests SOURCES)
     list(REMOVE_ITEM options_window_sources tests/settings_tests.cpp)
     get_target_property(options_window_libraries settings_tests LINK_LIBRARIES)
+    qt_add_executable(namespace_hash_tests tests/namespace_hash_tests.cpp
+        tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(namespace_hash_tests PRIVATE src tests)
+    target_link_libraries(namespace_hash_tests PRIVATE ${options_window_libraries})
+    if(WIN32)
+        target_sources(namespace_hash_tests PRIVATE tests/fixtures/read_only_virtual_disk.cpp
+            tests/fixtures/read_only_virtual_disk.h)
+        target_link_libraries(namespace_hash_tests PRIVATE virtdisk)
+    endif()
+    add_test(NAME namespace_hash COMMAND namespace_hash_tests -silent)
+    set_tests_properties(namespace_hash PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/namespace-hash.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(WIN32)
         qt_add_executable(fs_drives_device_ui_tests tests/fs_drives_device_ui_tests.cpp
             tests/fixtures/read_only_virtual_disk.cpp tests/fixtures/read_only_virtual_disk.h
@@ -2619,7 +2631,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

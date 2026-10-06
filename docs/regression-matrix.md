@@ -72,6 +72,7 @@ cleanup. It adds transition coverage to the separate operation regressions.
 | Interrupted update/cancel preserves original and permits reuse | `archive_mutation::cancelledReplacementPreservesArchive/addFailureAndCancellation`; `source_update_backend::cancellationInNativeTransactionKeepsOriginalArchive`; `owned_temp_publication`; `archive_workflow` |
 | Partial Move/overwrite failure cannot silently discard sources | `file_transfer::crossVolumeDeleteFailureReportsPartialMove/directoryMergeCancelRestoresOriginalTree`; `ui_operations::archivePanelsCopyAndMoveThroughStaging`; `archive_transfer_backup` |
 | Device image Copy/Cancel/failure preserves its read-only source | Windows `fs_drives_device::sourceCopyUsesReadOnlyPrivateDevice(cancel/failure/skip/move)`; `fs_drives_device_ui::sourceDeviceNamespaceAndF5` |
+| Namespace Hash availability; private device SHA256 success/Cancel/refusal/recovery and ADS digest | `namespace_hash` (all-platform capability guard; Windows native read-only VHD/ADS, EN/RU result geometry and unchanged input) |
 | Process startup/error/fragmented output/reset | `archive_backend::missingExecutable/createFailureAndRetry`; `archive_mutation::fragmentedOutputAndError`; `codec_probe` |
 | External child/temp lifetime and pending modal close | `archive_external_lifetime`, `archive_external_security`, `temp_detached_launch`, `owned_temp` |
 | Window destruction joins workers and rejects obsolete callbacks | `worker_window_progress`, `large_list_window`, `app_lifecycle_window`, `binding_lifecycle`, `archive_preparation` |

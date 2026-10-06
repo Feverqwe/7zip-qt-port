@@ -19,7 +19,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
     }
 
   private slots:
-    void logicalDrivesDisableUnfinishedConsumers() {
+    void logicalDrivesAllowHashWithoutCopy() {
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
@@ -37,7 +37,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
         view->setCurrentCell(0, 0);
         view->selectRow(0);
         QTRY_VERIFY(!action(window, "copyAction")->isEnabled());
-        QVERIFY(!action(window, "hashCRC32Action")->isEnabled());
+        QVERIFY(action(window, "hashCRC32Action")->isEnabled());
         QCOMPARE(backend.listCalls, 0);
     }
     void sourceDeviceNamespaceAndF5_data() {
@@ -82,8 +82,9 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
         QCOMPARE(view->item(row, 0)->data(Qt::UserRole + 1).toBool(), false);
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         for (const char *command : {"moveAction", "deleteAction", "renameAction",
-                                    "createFolderAction", "createFileAction", "hashCRC32Action"})
+                                    "createFolderAction", "createFileAction"})
             QVERIFY(!action(window, command)->isEnabled());
+        QVERIFY(action(window, "hashCRC32Action")->isEnabled());
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();

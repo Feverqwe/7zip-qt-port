@@ -195,9 +195,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
                 FindMethod_Index(&providers, AString("LZMA"), false, method, streams, filter) >= 0;
         }
     }
-    // The drives provider's copy interface does not yet give the namespace
-    // dispatcher a hash consumer; keep unfinished commands disabled.
-    if (panel.DoesItSupportOperations() && !panel.IsFSDrivesFolder()) {
+    if (panel.DoesItSupportOperations()) {
         const auto catalog = w.backend_->codecCatalog();
         CExternalCodecs providers;
         if (w.backend_->loadHashProviders(providers) == S_OK) {

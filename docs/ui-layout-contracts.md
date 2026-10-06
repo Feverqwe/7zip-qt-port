@@ -1,5 +1,15 @@
 # Text specifications and geometry checks
 
+### Namespace Hash result consumers (P3-05.8, validation active)
+
+`namespace_hash` invokes original PanelCrc/HashGUI results for Windows private
+device and ADS fixtures. The existing ListView contract applies: two-column
+propertiesList, then listViewButtons, with source OK/Cancel captions and roles.
+EN/RU success and recovery inspect540/420×360 reports: rows and footer fully
+exposed, vertically separate, buttons ordered without overlap and at least their
+size hints. Twenty current native reports pass; rendered pixel parity and final
+platform acceptance remain pending. Cancellation produces no successful result.
+
 ### Standard source dialog buttons (P3-05.9, accepted button scope)
 
 Reference: pinned LangUtils.cpp::kLangPairs/LangSetDlgItems, GuiCommon.rc and

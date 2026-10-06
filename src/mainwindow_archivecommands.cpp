@@ -22,7 +22,10 @@ void MainWindow::calculateHash(const QString &method) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if ((state_ != State::Filesystem && state_ != State::Viewing) ||
+    const CPanel &panel = app_.GetFocusedPanel();
+    const bool filesystemNamespace =
+        state_ == State::Namespace && panel.Is_IO_FS_Folder() && panel.DoesItSupportOperations();
+    if ((state_ != State::Filesystem && state_ != State::Viewing && !filesystemNamespace) ||
         sourceOperatedIndices().IsEmpty())
         return;
     previousState_ = state_;

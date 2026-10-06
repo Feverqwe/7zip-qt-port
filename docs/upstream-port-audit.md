@@ -1,5 +1,57 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.8 — source namespace Hash consumer (validation active, 2026-10-06)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Reviewed original
+`CPP/7zip/UI/FileManager/PanelCrc.cpp` bodies and CApp/Panel callers,
+Is_IO_FS_Folder/GetFsPath, FSDrives/AltStreams providers, Windows FileFind
+device/stream discovery and FileIO device-size/read dependencies. Existing
+CalculateCrc2/CDirEnumerator/CThreadCrc remain authoritative: source scanning,
+32KiB reads, progress, cancellation, errors and hash-result presentation are
+reused without a new digest or device-reading implementation.
+
+Qt calculateHash now accepts an operations-capable filesystem namespace;
+the centralized command policy no longer excludes Windows FSDrives from its
+existing hash-provider lookup. Unix mounted-volume providers without operations
+retain disabled Hash. Logical Windows drives still refuse Copy. The source
+base-prefix test adds an empty-string guard before Back(): GetFsPath intentionally
+returns empty for logical Computer drives. Physical and ADS prefixes retain the
+original handling; no source enumeration or read algorithm is replaced.
+
+The first native integration passes availability/ADS but all six VHD rows fail
+on success or recovery with ERROR_SECTOR_NOT_FOUND: the original raw CInFile
+loop reads past this device's end. Reviewed complete unchanged
+`CPP/7zip/Common/FileStreams.cpp/.h` Read/Open/size/alignment bodies and callers.
+The Windows input adapter now reuses that existing CInFileStream through its
+public ISequentialInStream interface, including the original Z7_DEVICE_FILE
+bounded/aligned reads. The upstream module remains exact in third_party and
+compiled once in sevenzip_common; Unix retains its existing CInFile/ReadFull.
+Read failures preserve the source HRESULT, error count and progress reporting.
+This necessary native-device adaptation preserves PanelCrc's hash loop and
+cancellation cadence rather than recreating device I/O or hiding an end error.
+
+Test-only native SDK fixtures own read-only, no-letter32MiB VHDs and Unicode/space
+ADS files. They compare SHA256 with an independent oracle, assert no engine job,
+unchanged input/selection and EN/RU normal/compact results. VHD cancellation and
+sharing refusal both attempt recovery while the owned attachment remains live.
+Before the fix, native Windows regression has2Qt pass/9fail/0skip3421ms:
+logical/device Hash disabled and ADS dispatch produces no result. Original full
+gate and derived RED logs are preserved separately. Final native regression
+passes11Qt/0skip7460ms; nine affected suites pass24.02s, all required native cases
+without skips. Forty-six immutable guest/local SHA artifacts include earlier
+failures, final logs and20 EN/RU normal/compact result reports. Report review
+confirms rows/footer exposure and separation, source button captions/order and
+size hints. Final unsandboxed Mac format/build/full249PASS103.64s. Fresh Linux
+first-integration f979d559 format passes but linking fails with ENOSPC before
+CTest; source/logs remain preserved. Final native same-snapshot format/build/full
+passes256/256967.73s;753 guest/local SHA artifacts are retained separately from
+the original255-suite failure. Six amended source inputs identify this derived
+gate without overwriting source.tar or the original run.json. Linux capacity and
+final Linux checks remain pending; a warm passing native full does not establish
+the parent cold/stable requirement.
+Rendered Windows pixel parity and parent/final acceptance remain open.
+
 ## P3-05.9 — source standard-button language mapping (accepted button scope, 2026-10-06)
 
 Repository https://github.com/ip7z/7zip.git, full source revision
@@ -35,7 +87,11 @@ language_dialog passes7 Qt cases/0skip1230ms and language_standard_buttons
 passes27/0skip2988ms, CTest1.81/3.61s. Forty-nine immutable guest/local SHA
 artifacts preserve those completed sections and48 reports; footer source
 captions, exposure, width/height hints and pairwise separation pass review.
-The full Windows255 gate remains active under P3-03. This accepts the shared
+The full Windows255 gate completed251/255PASS1194.85s, with733 guest/local SHA
+artifacts. Failures are native_mapi wide-keep exit2, external_codecs callback5150ms,
+codec_probe failure callback7350ms (both5000ms deadline), and large-list
+disk-normal gap265ms/250ms at4096 rows. Their causes and stable/cold acceptance
+remain P3-03; language suites pass independently. This accepts the shared
 standard-button consumer scope; rendered parity, remaining language helpers
 in P3-05.10 and parent/final acceptance remain open.
 
@@ -70,13 +126,14 @@ Qt namespace rendering reads
 source kpidIsDir; F5's device destination uses existing CPanel::CopyTo and source
 progress/callback transport. Source CopyTo always calls CopyFileSpec with
 writeToDisk=false; Move, CopyFrom and mutators remain E_NOTIMPL. Inactive commented
-physical-folder binding is not enabled. Broader native open/hash consumer review
-and full omitted-scope acceptance remain pending. P3-05.8 owns the original
-drive/device Hash consumer, currently disabled by the centralized transport policy.
+physical-folder binding is not enabled. Broader native open consumer review
+and full omitted-scope acceptance remain pending. P3-05.8 above records the later
+drive/device Hash consumer and its separate validation.
 The new operations interface also applies to logical Computer drives; centralized
 Copy availability excludes that non-device mode, which original CopyTo refuses
 and the Qt dispatcher does not consume. A public logical-drive regression guards
-against exposing Copy/Hash commands without a working consumer.
+against exposing Copy without a working consumer; the later Hash integration
+deliberately replaces its disabled-Hash assertion with enabled availability.
 P3-05.9 owns the shared LangSetDlgItems standard-button mapping: the RU Copy
 reports expose an English Cancel footer, not corrected by this provider port.
 

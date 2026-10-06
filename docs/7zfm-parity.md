@@ -665,6 +665,15 @@ Qt skips. Rendered Windows pixel parity и полная приёмка всег�
 
 ## P2-03 — CRC/Hash/Test (принят, 2026-10-03)
 
+P3-05.8 подключает исходный расчёт к Windows logical/device namespaces и ADS.
+Logical-drive Copy остаётся недоступной; Hash дисков проверяет availability без
+чтения дисков пользователя. Фактический device SHA256, отмена, отказ чтения и
+повторная попытка проверяются только на собственном read-only/no-letter VHD.
+Нативное чтение использует исходный CInFileStream с границей размера и выравниванием;
+это устраняет sector-not-found при достижении конца устройства. Unix список томов
+без operations-интерфейса сохраняет disabled Hash. Native11Qt/0skip и20EN/RU
+normal/compact result JSON проверены; Linux full и общая приёмка ещё открыты.
+
 Эталон — исходные PanelCrc.cpp, PanelCopy.cpp, HashGUI.cpp и Agent.cpp.
 Команда CRC использует исходные выбранные индексы, scan/read и отдельное окно
 результатов с двумя колонками. Внутри архива исходный hash callback получает

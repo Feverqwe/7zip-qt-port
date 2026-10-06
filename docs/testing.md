@@ -732,6 +732,11 @@ parity and whole-plan platform acceptance remain P3.
 P2-03 accepted checks: `native_hash_workflow` exercises complete source HashCalc
 scan totals, known digests, multiple methods/`*`, pause/cancel, Hash file writer,
 reader and verifier (good/CRC/read failure/Cancel), plus original HashCalcGUI.
+`namespace_hash` checks namespace command availability on all platforms. On
+Windows it invokes source SHA256 on disposable read-only SDK VHDs and Unicode
+ADS files in EN/RU, with independent digests, unchanged inputs, no engine job,
+normal/compact result geometry, cancellation/sharing refusal and recovery.
+Logical-drive checks inspect availability only and never hash host volumes.
 `checksum` checks backend source hashing and actual FS/archive actions, encrypted
 ZIP, wrong password, password cancellation and corrupted stored ZIP. The source
 checksum command has a modal scan/hash/result lifecycle; there is no second

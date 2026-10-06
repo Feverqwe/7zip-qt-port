@@ -121,9 +121,12 @@ the native FileIO/FileFind Z7_DEVICE_FILE dependency. P3-05.7 now restores those
 provider bodies and actual F5 destination consumer; direct6/UI4 old-product RED
 becomes native focused GREEN, with full gates pending. See the port audit.
 The provider's new operations interface must not enable unsupported consumers:
-Qt calculateHash still accepts only filesystem/archive states, so logical-drive
-and device Hash are disabled pending the original PanelCrc/CApp consumer
-integration in P3-05.8. Logical-drive Copy stays disabled: original CopyTo
+P3-05.8 connects the original PanelCrc/CApp consumer to operations-capable
+filesystem namespaces. Its native old-product regression confirms disabled
+logical/device Hash and no-op ADS dispatch; integration now passes ADS and
+availability; the later source CInFileStream adapter resolves private VHD
+end-of-device errors. Final native affected9/full256 and Mac full249 pass;
+Linux final checks and parent acceptance remain pending. Logical-drive Copy stays disabled: original CopyTo
 refuses non-device mode and the Qt namespace dispatcher has no such consumer.
 
 Its new current-build EN/RU Copy reports also expose an existing presentation
@@ -146,6 +149,17 @@ normal/compact widget reports show English Speed but Russian «Скорость:
 the pinned original removes that trailing colon. The original colon,
 remove-colon and window helper bodies and actual reload/fallback consumers
 must be reconciled together. P3-05.9's standard-button table does not close them.
+
+Review on 2026-10-06 also finds an active RootFolder caller omission, P3-05.11.
+Original CRootFolder::BindToFolder(const wchar_t *, ...) normalizes the path,
+tries CFSFolder::Init, then creates CNetFolder/Init(name2) on Windows when that
+fails for a separator-led path. The adapted branch returns E_NOTIMPL with an
+old P1-11 comment. Existing native CNetFolder::Init uses original
+GetResourceInformation and retains enumeration/parent services, so an unavailable
+implementation is not a reason to omit this caller. Accepted own-share
+enumeration/binding does not prove server/container address fallback. Restore
+the original branch with its actual navigation consumers and an owned local
+native fixture before declaring RootFolder binding complete.
 
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
