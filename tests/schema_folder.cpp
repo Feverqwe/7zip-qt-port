@@ -3,11 +3,14 @@
 
 Z7_COM7F_IMF(SchemaFolder::LoadItems()) { return items->LoadItems(); }
 Z7_COM7F_IMF(SchemaFolder::GetNumberOfItems(UInt32 *count)) {
+    ++countQueries;
     return items->GetNumberOfItems(count);
 }
 Z7_COM7F_IMF(SchemaFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value)) {
     if (id != kpidCRC)
         return items->GetProperty(index, id, value);
+    if (crcResult != S_OK)
+        return crcResult;
     NWindows::NCOM::CPropVariant prop = UInt32(0x12345678);
     return prop.Detach(value);
 }

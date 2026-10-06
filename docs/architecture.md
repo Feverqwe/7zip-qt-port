@@ -30,6 +30,11 @@ tables without that map retain physical column zero as their fallback.
 Icon/list views use the same source logical-zero mapping after schema publication
 and menu mutation. Their shared model forwards the existing physical-zero row
 icon to that mapped primary cell; no extra provider or icon query is introduced.
+Callback text uses the source index from successful row publication and the
+owning descriptor/provider. It does not re-enumerate the item count before
+GetItemText; the property/raw-property result owns its error/empty text.
+Load-time count validation, notification/provider guards, row deletion and
+generation checks remain in their existing owners.
 SaveListViewInfo receives the owning header projection in source visible logical
 order, updates that visible snapshot and serializes the original visible/hidden
 settings flow. It does not rewrite the property catalog. Menu re-addition uses

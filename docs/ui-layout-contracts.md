@@ -38,6 +38,11 @@ Inspect only the affected icon/list view for appearance captures, with both pane
 EN/RU at980×620/640×400; preserve selection and the focused peer across mutations.
 With no source-visible descriptors, Qt retains physical-zero metadata captions
 and row icons. Native rendering of this empty-catalog fallback is unverified.
+Published cell text uses its source item index without another count call.
+A later count error must not blank a valid name/generic/raw property; property
+errors retain source generic error text or empty raw text. Preserve notify/cache
+and provider guards, selection/peer focus, and invalidate old model indices on
+rebind. Inspect both panes EN/RU detail/icon recovery and rebind at980×620/640×400.
 
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.

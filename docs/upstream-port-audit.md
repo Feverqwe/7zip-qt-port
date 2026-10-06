@@ -1735,6 +1735,66 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source published-cell callback and count consumers, 2026-10-06
+
+Reviewed complete original/adapted PanelListNotify::SetItemText/GetItemText and
+LVN_GETDISPINFOW caller, item/source-index types, PanelItems load/row-delete phases,
+ReleaseFolder and Qt namespace/filesystem/archive row publication, notify guards,
+QtAppOperationState, FilesystemScanner and QtFolderProjection generation/cancel
+consumers. Full upstream pin remains0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original callback text resolves the published
+real index/visible descriptor and calls GetProperty/GetRawProp directly; it does
+not ask GetNumberOfItems before each cell. Parent, fast-name/prefix, raw-data,
+generic-error/size/BSTR/short-string branches remain in their existing source
+formatter. No new module/dependency/language/notice, engine or upstream changes.
+
+ArchiveTableItem's independent five-line count/range precondition is removed.
+It previously erased valid uncached names/properties when a later count call
+returned non-S_OK, even though the source item/property remained valid. Source
+load-time count validation still owns publication readiness; successful loaders
+publish their source indices and clear old rows before rebuilding. Notification/
+provider identity/text-suppression guards, callback cache and generation/cancel
+checks remain unchanged. The port does not synthesize properties for arbitrary
+indices or redefine count failure during loading. This restores reuse of the
+already adapted source callback rather than adding a replacement validation or
+formatter algorithm.
+
+Existing SchemaFolder gains count-query observation and a configurable CRC
+property HRESULT, with defaults unchanged. New panel_cell_text has eight EN/RU
+both-pane detail/icon scenarios: later count S_FALSE/E_FAIL/E_ABORT leaves valid
+uncached names/generic CRC/raw CRC intact with zero count queries; property
+S_FALSE/E_FAIL/E_ABORT still gives native generic Error/empty raw text. Recovery,
+cached/uncached notify guards and provider mismatch remain covered. Actual rebind
+deletes old rows, invalidates a retained QPersistentModelIndex and renders new
+names without further queries to the old raw provider. Peer focus/provider/rows,
+selection, Unicode control bytes and zero backend calls remain checked. Property
+E_ABORT is not archive-operation cancellation evidence. Native Windows CMake
+registration is present; execution/rendered/native acceptance remains open.
+
+Actual old-product RED8/2QtPASS0.214s catches blank names at the first S_FALSE
+count stage; five frozen input snapshots/hashes and logs are in
+build/review/cell-text-red. Initial fixture compilation had an unrelated-derived
+reference conditional; its explicit QWidget cast was fixed before this RED.
+Affected nine-target build and fresh sequential focused9/9PASS16.24s pass on
+macOS27.0.1 arm64, official Qt6.12.0; new suite10QtPASS0.311s/zero failures/skips.
+32 current980×620/640×400 whole-window recovery/rebind JSON reports expose affected
+detail/icon views, peer views, addresses and status without unexpected clipping.
+Public model checks supply text evidence; geometry reports do not prove Windows
+pixels. The cohesive test keeps property/count/guard/rebind invariants together,
+with geometry reporting
+in a separate helper; production changes are only the five-line removal. Five
+final hashes/snapshots, logs and geometry/reports reside in
+build/review/cell-text-final. Mandatory unsandboxed gate terminated0: formatting,
+all-target build and276/276PASS143.62s on the same macOS/Qt configuration; all five
+hashes remain unchanged. Baseline verification passes408 exact/196 adapted/3 local
+paths. Current Windows/Linux execution and rendered Windows parity are unverified.
+
+This closes the bounded valid-published-index/count/property/error/guard/rebind
+consumer. Broader filesystem/default/type/equality/schema/error consumers,
+notification/snapshot boundaries, real deleted/ADS-device-zone/current3OS,
+remaining full-body/109-module/cold-stable/package and P3-05.15/P3-06 acceptance
+remain required. Source-index publication preconditions remain authoritative.
+
 ### Source icon/list primary-column consumers, 2026-10-06
 
 Reviewed full original PanelListNotify::SetItemText152–522 and LVN_GETDISPINFOW caller,

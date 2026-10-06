@@ -168,6 +168,11 @@ Large/small icon и list modes также используют первый sour
 lifecycle; текущая native/rendered Windows приёмка остаётся открытой.
 При пустом каталоге Qt сохраняет metadata captions/icon физической колонки0;
 native appearance этой fallback-схемы не подтверждён.
+Callback text больше не требует повторного item count перед GetItemText: поздний
+S_FALSE/E_FAIL/E_ABORT счётчика не гасит valid published name/generic/raw cells.
+Ошибки самих свойств сохраняют native Error/empty text; load-time validation и
+notify/provider guards сохранены. EN/RU обе панели detail/icon recovery/rebind
+проверяются отдельно от archive-operation cancellation и native приёмки.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном

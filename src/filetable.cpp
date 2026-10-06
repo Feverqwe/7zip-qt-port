@@ -310,11 +310,6 @@ QVariant ArchiveTableItem::data(int role) const {
         if (index.isValid() && property && table->textFolder &&
             table->sourcePanel->GetFolder() == table->textFolder) {
             if (!sourceTextDefined_) {
-                UInt32 count = 0;
-                if (index.toUInt() != UInt32(-1) &&
-                    (table->textFolder->GetNumberOfItems(&count) != S_OK ||
-                     index.toUInt() >= count))
-                    return QVariant();
                 sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), *property);
                 if (col == 0)
                     sourceText_ = (QTableWidgetItem::data(Qt::UserRole + 5).toString() +

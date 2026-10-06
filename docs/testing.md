@@ -1,5 +1,14 @@
 # Regression strategy
 
+`panel_cell_text` covers eight both-pane EN/RU detail/icon scenarios with valid
+published indices and later S_FALSE/E_FAIL/E_ABORT count results. Uncached names,
+generic CRC and raw CRC retain source text without count queries. Property failures
+still produce native generic `Error: ` or empty raw text; recovery, notify/cache
+guards, mismatched provider, real rebind/old-index invalidation, peer focus/selection
+and Unicode control bytes are checked.32 normal/compact recovery/rebind reports
+cover the affected views. These controlled interface results do not prove archive
+operation cancellation or current native Windows/Linux acceptance.
+
 `panel_column_changes` extends the existing SchemaFolder fixture without changing
 its defaults. Eight both-pane EN/RU cases retain written generic/raw counts under
 S_FALSE/E_FAIL and recover; sixteen same-provider cases cover all four view modes

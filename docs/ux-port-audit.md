@@ -143,6 +143,10 @@ Label-only highlight теперь следует первому source logical s
 Icon/list projection теперь следует тому же source subitem для текста и значка,
 включая menu hide/re-add raw Name и append-порядок. Lifecycle охватывает четыре
 режима, EN/RU обе панели, peer focus/selection и normal/compact geometry.
+Callback publication также удаляет лишний count gate перед source GetItemText:
+валидные опубликованные cells сохраняются при позднем count HRESULT. Property
+error/empty text, notify/provider guards и rebind/selection/peer остаются проверяемыми
+consumers;32 detail/icon recovery/rebind reports покрывают EN/RU обе панели на Mac.
 Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и

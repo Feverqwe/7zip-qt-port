@@ -26,6 +26,8 @@ class SchemaFolder final : public IFolderFolder, public IArchiveGetRawProps, pub
     PROPID rawId = kpidCRC;
     unsigned rawQueries = 0;
     HRESULT rawResult = S_OK;
+    HRESULT crcResult = S_OK;
+    unsigned countQueries = 0;
     SchemaFolder() { items->directory = false; }
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
