@@ -80,6 +80,12 @@ reports inspect the resulting panels. Windows adds16 outer-quoted routes; they
 exercise the source preprocessing shared by Qt and BindToPathAndRefresh. These
 conditional cases require native Windows execution; Mac runs only the16 ordinary
 routes. The existing source binding algorithm remains authoritative.
+Its timer-draft consumers also cover both panels/EN-RU/small filesystem,
+301-item worker and flat scanning, comparing timer reload with manual Refresh.
+They verify editable text/cursor/selection/focus, native count/prefix/title,
+peer selection/provider and private control bytes. Bound namespace and real ZIP
+OnReload callers cover the same source flag. Worker publication may replace its
+provider; synchronous reload retains it. Geometry probes use980×620/640×400.
 
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,

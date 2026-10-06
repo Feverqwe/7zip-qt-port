@@ -80,6 +80,9 @@ Missing-address descendants теперь проверены через source cl
 actual address/title/focus и unchanged peer/bytes;32 panel reports покрывают
 оба размера. Qt transport получает исходное Windows outer-quote handling через
 общий helper, с native-only conditional routes для последующей проверки.
+Исходный CalledFromTimer теперь сохраняет адресный draft, cursor/selection и
+focus при обновлении списка; manual Refresh публикует текущий путь. Проверки
+обоих roles/EN-RU охватывают малый/worker/flat FS и bound root/ZIP consumers.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing

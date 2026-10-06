@@ -21,14 +21,14 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         }
     });
     if (state_ == State::Viewing) {
-        const HRESULT loaded = renderBoundFolder();
+        const HRESULT loaded = renderBoundFolder(!selection.CalledFromTimer);
         if (loaded != S_OK)
             return loaded;
         restoreListSelection(selection);
         return S_OK;
     }
     if (state_ == State::Namespace) {
-        const HRESULT loaded = renderRootFolder();
+        const HRESULT loaded = renderRootFolder(!selection.CalledFromTimer);
         if (loaded != S_OK)
             return loaded;
         restoreListSelection(selection);
@@ -55,7 +55,8 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
 }
 
 HRESULT MainWindow::refreshFilesystem(const CSelectedState &selection, bool sourceAlreadyBound) {
-    const HRESULT loaded = showDirectory(directory_, false, sourceAlreadyBound);
+    const HRESULT loaded =
+        showDirectory(directory_, false, sourceAlreadyBound, !selection.CalledFromTimer);
     if (loaded != S_OK)
         return loaded;
     restoreListSelection(selection);

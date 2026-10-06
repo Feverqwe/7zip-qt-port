@@ -664,6 +664,62 @@ bytes. No native build, cleanup or resize ran; scoped cleanup questions remain
 unanswered. Native quoted-input execution, current three-platform/rendered,
 remaining full RefreshListCtrl stages and parent/final acceptance remain open.
 
+### Source timer reload address-publication policy, 2026-10-06
+
+Reviewed original PanelItems.cpp::RefreshListCtrl (full467–950 body),
+RefreshListCtrl_SaveFocused/OnReload/OnTimer, CSelectedState and
+PanelFolderChange.cpp::LoadFullPathAndShow and their Qt reload/render consumers
+at upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original RefreshListCtrl skips
+LoadFullPathAndShow when CalledFromTimer. Qt retained the state flag but its
+renderers unconditionally rewrote the address, losing an unsubmitted draft.
+
+Transport !CalledFromTimer as updateAddress through existing filesystem,
+bound-folder, namespace and archive rendering calls. Skip both direct edit
+assignment and ShowCurrentPath for timer reload, including current-image/history
+publication; manual reload/navigation keep their existing publication. Row
+loading, selection transport, worker completion and source prefix/title remain
+with existing owners. No new fallback/archive algorithm or borrowed dependency;
+baseline408 exact/196 adapted/3 local verified. Original notices/languages and
+upstream checkout remain unchanged. No unrelated large-file extraction: this
+fix passes one source policy through existing boundaries with small bodies.
+
+New address_navigation consumers include24 both-role EN/RU filesystem rows:
+small,301-item worker and flat scanning, timer versus manual Refresh. Twelve
+timer rows reproduce actual draft loss before the fix. They verify text, cursor,
+selection and address focus, native count/prefix/title, peer provider/selection,
+zero engine listings and exact private control bytes. Synchronous provider
+identity is retained; worker publication replaces its provider by existing design.
+Sixteen bound root/real ZIP OnReload rows separately cover the same flag; they
+do not claim automatic archive/namespace polling. Existing source binding tests
+remain. Eighty current980×620/640×400 reload reports inspect both address/list
+groups as enabled/visible/fullyVisible. The longer fixture keeps one complete
+public reload workflow; archive creation/extraction reuses the existing fixture.
+
+Actual original-product RED:30 Qt passes/12 draft failures4.19s, frozen in
+build/review/source-timer-address-red/final-LastTest.log. Initial fixture also
+assumed worker identity and failed8 manual rows; corrected against its existing
+publication contract without weakening draft/count/path/bytes checks. Initial
+bound fixture using ControlledBackend did not complete archive open: exact own
+process36642 was interrupted after confirmed live diagnosis, seven suites6/7
+pass70.27s. Real backend then exposed8 focus assertions15.57s; waiting for
+navigation focus failed8 rows144.09s. Process37237 stack confirms QTest wait at
+line61. These are not final proof. Final fixture waits for window activation,
+drains Enter navigation callbacks, establishes address focus before draft/reload
+and checks that reload preserves it. No reacquisition after reload.
+
+Final seven focused suites pass27.02s with zero Qt failures/skips:
+address58, auto-refresh5, filesystem-reload34, copy-reload34, root-command24,
+persisted-location11 and navigation10. Eight input hashes, focused log and80
+geometry reports are frozen in build/review/source-timer-address-final.
+Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes formatting,
+all-target build and258/258 CTest120.03s. Eight inputs remain unchanged from
+focused validation; full log/validation manifest are frozen in that directory.
+No native runner call/cleanup/resize ran in this iteration; prior storage
+constraints and unanswered cleanup questions remain. Current Windows/Linux/rendered,
+remaining full row/icon/dots/redraw/status stages and parent/final acceptance
+remain mandatory; this does not close RefreshListCtrl or P3-05.15.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

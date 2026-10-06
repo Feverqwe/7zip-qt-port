@@ -75,6 +75,12 @@ its prefix/title and list focus, preserving peer selection and input bytes.
 Verify both panels/EN-RU/absolute-relative/trailing separator at980×620/640×400;
 Windows also strips original outer quotes before Qt path classification.
 Native quoted-route execution and whole RefreshListCtrl acceptance remain required.
+Source CalledFromTimer suppresses address publication during reload. Preserve
+the draft text, cursor, selected text and address focus while updating rows;
+ordinary Refresh must publish the current folder instead. Check both panels,
+EN/RU, small/bounded-worker/flat filesystem and bound namespace/archive callers,
+with peer state, native prefix/title and private control bytes unchanged.
+Inspect resulting address/list groups at980×620/640×400.
 
 ### Persisted source locations (P3-05.14, required scope)
 

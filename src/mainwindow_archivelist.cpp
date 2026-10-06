@@ -14,7 +14,7 @@
 #include "qtpaneladdresscombo.h"
 #include <QScopedValueRollback>
 
-HRESULT MainWindow::renderArchiveFolder() {
+HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
     listProjection_->cancel();
     scanningArchive_ = false;
     scanSelectedState_.reset();
@@ -38,7 +38,9 @@ HRESULT MainWindow::renderArchiveFolder() {
     recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';
     table_->setSortingEnabled(false);
-    static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(archiveDisplayPath(), false);
+    if (updateAddress)
+        static_cast<QtPanelAddressCombo *>(pathCombo_)
+            ->ShowCurrentPath(archiveDisplayPath(), false);
     configureColumns(true);
     appendParentEntry();
     if (archiveFolder->GetNumberOfItems() > 256) {

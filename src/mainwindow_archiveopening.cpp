@@ -108,7 +108,7 @@ bool MainWindow::isNestedArchive() const {
     return app_.Panels[app_.GetFocusedPanelIndex()].GetParentFolders().Size() > 1;
 }
 
-HRESULT MainWindow::renderBoundFolder() {
+HRESULT MainWindow::renderBoundFolder(bool updateAddress) {
     if (app_.QtOperations().closed())
         return E_ABORT;
     QtAppOperationState::CallScope call(app_.QtOperations());
@@ -117,7 +117,7 @@ HRESULT MainWindow::renderBoundFolder() {
     panel.LoadFullPath();
     if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder() ||
         panel.IsAltStreamsFolder()) {
-        const HRESULT loaded = renderRootFolder();
+        const HRESULT loaded = renderRootFolder(updateAddress);
         if (loaded != S_OK)
             return loaded;
         if (selection) {
@@ -130,8 +130,9 @@ HRESULT MainWindow::renderBoundFolder() {
         const QString directory = panel.GetFolder()
                                       ? QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder())))
                                       : returnDirectory_;
-        const HRESULT loaded = showDirectory(directory.isEmpty() ? returnDirectory_ : directory,
-                                             false, panel.GetFolder() && panel.IsFSFolder());
+        const HRESULT loaded =
+            showDirectory(directory.isEmpty() ? returnDirectory_ : directory, false,
+                          panel.GetFolder() && panel.IsFSFolder(), updateAddress);
         if (loaded == S_OK && selection)
             restoreListSelection(*selection);
         refreshActions();
@@ -175,7 +176,7 @@ HRESULT MainWindow::renderBoundFolder() {
     // Keep operation guards until rows and native selection agree. The enum
     // here selects Qt presentation; the app owner still blocks commands.
     state_ = State::Viewing;
-    const HRESULT loaded = renderArchiveFolder();
+    const HRESULT loaded = renderArchiveFolder(updateAddress);
     if (loaded == S_OK && selection)
         restoreListSelection(*selection);
     setState(State::Viewing);

@@ -110,6 +110,10 @@ preprocessing is extracted into PrepareBindPath for both original and Qt callers
 Native Windows quoted-route acceptance and other
 post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
+CalledFromTimer now reaches Qt filesystem/root/archive address publication;
+timer reload skips edit/current-image/history updates as the original source
+does, while ordinary reload publishes its path. Remaining row/icon/dots/redraw
+and full-module/platform acceptance are separate obligations.
 
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`
 with the602-line adapted module at project

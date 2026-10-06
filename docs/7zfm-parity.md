@@ -71,6 +71,10 @@ outer-quote block, что BindToPathAndRefresh. Absolute/relative/trailing separ
 проверены под EN/RU с обеих панелей; Windows quoted runtime ещё обязателен.
 Остальные post-Copy failures требуют сверки;
 текущие Windows/Linux и rendered проверки остаются обязательными.
+Timer reload теперь передаёт исходный CalledFromTimer в Qt renderers:
+набранный адрес, cursor/selection и focus сохраняются при обновлении списка.
+Обычный Refresh публикует текущий путь. Малый/worker/flat filesystem и bound
+root/ZIP callers покрыты отдельно; native three-platform acceptance обязательна.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

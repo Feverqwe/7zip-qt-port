@@ -1701,7 +1701,7 @@ if(BUILD_TESTING)
     qt_add_executable(address_navigation_tests tests/address_navigation_tests.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(address_navigation_tests PRIVATE src tests)
     target_link_libraries(address_navigation_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
-    target_sources(address_navigation_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    target_sources(address_navigation_tests PRIVATE src/mainwindow_selectionpaths.cpp tests/external_editor_fixture.cpp)
     add_test(NAME address_navigation COMMAND address_navigation_tests -silent)
     set_tests_properties(address_navigation PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/address-navigation-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")

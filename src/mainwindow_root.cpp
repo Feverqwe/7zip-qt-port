@@ -6,7 +6,7 @@
 
 // Source namespace folders own item names, order and binding. This file presents
 // their IFolderFolder items in the same list used by disk and archive views.
-HRESULT MainWindow::renderRootFolder() {
+HRESULT MainWindow::renderRootFolder(bool updateAddress) {
     auto &panel = app_.GetFocusedPanel();
     if (!panel.GetFolder())
         return S_OK;
@@ -40,11 +40,12 @@ HRESULT MainWindow::renderRootFolder() {
     entries_.clear();
     autoRefreshSnapshot_.clear();
     static_cast<FileTable *>(table_)->filesystem = false;
-    static_cast<QtPanelAddressCombo *>(pathCombo_)
-        ->ShowCurrentPath(drives || network || streams
-                              ? QString::fromWCharArray(GetFolderPath(folder))
-                              : QString(),
-                          false);
+    if (updateAddress)
+        static_cast<QtPanelAddressCombo *>(pathCombo_)
+            ->ShowCurrentPath(drives || network || streams
+                                  ? QString::fromWCharArray(GetFolderPath(folder))
+                                  : QString(),
+                              false);
     recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     configureColumns(true);
     for (UInt32 index = 0; index < count; ++index) {

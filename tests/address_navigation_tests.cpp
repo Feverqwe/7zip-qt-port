@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "external_editor_fixture.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -11,6 +12,208 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
     }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void boundReloadPreservesTimerDraft_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("archive");
+        QTest::addColumn<bool>("timer");
+        for (unsigned index : {0u, 1u})
+            for (const QString language : {"-", "ru"})
+                for (bool archive : {false, true})
+                    for (bool timer : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(index)
+                                                     .arg(language)
+                                                     .arg(archive)
+                                                     .arg(timer)))
+                            << index << language << archive << timer;
+    }
+    void boundReloadPreservesTimerDraft() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(QString, language);
+        QFETCH(bool, archive);
+        QFETCH(bool, timer);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString entry = QStringLiteral("entry 文件.txt");
+        const QString zip = fixture.filePath(QStringLiteral("archive space δ.zip"));
+        QVERIFY(writeFile(fixture.filePath(entry), "archive control"));
+        if (archive)
+            QVERIFY(ExternalEditorFixture::createArchive(fixture.path(), zip, entry));
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        address->setFocus();
+        if (archive) {
+            address->setText(zip);
+            QTest::keyClick(address, Qt::Key_Return);
+            QTRY_COMPARE(view->rowCount(), 1);
+            QVERIFY(view->sourcePanel->IsArcFolder());
+            window.activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(&window));
+            QApplication::processEvents();
+        } else {
+            action(window, "openRootAction")->trigger();
+            action(window, "parentFolderAction")->trigger();
+            QVERIFY(view->sourcePanel->IsRootFolder());
+        }
+        const int count = view->rowCount();
+        const QString published = address->text();
+        const QString title = window.windowTitle();
+        const UString prefix = view->sourcePanel->GetCurrentFolderPrefix();
+        CMyComPtr<IFolderFolder> folder = view->sourcePanel->GetFolder();
+        const QString draft = QStringLiteral("draft 文件/not opened");
+        address->setFocus();
+        QVERIFY(address->hasFocus());
+        address->setText(draft);
+        address->setSelection(2, 5);
+        const int cursor = address->cursorPosition();
+        const QString selected = address->selectedText();
+        view->sourcePanel->OnReload(timer);
+        QCOMPARE(view->rowCount(), count);
+        QCOMPARE(address->text(), timer ? draft : published);
+        if (timer) {
+            QCOMPARE(address->selectionStart(), 2);
+            QCOMPARE(address->selectedText(), selected);
+            QCOMPARE(address->cursorPosition(), cursor);
+        }
+        QVERIFY(address->hasFocus());
+        QCOMPARE(view->sourcePanel->GetFolder(), (IFolderFolder *)folder);
+        QVERIFY(view->sourcePanel->GetCurrentFolderPrefix() == prefix);
+        QCOMPARE(window.windowTitle(), title);
+        QVERIFY(view->sourcePanel->ShouldProcessNotifications());
+        if (archive)
+            QCOMPARE(ExternalEditorFixture::contents(zip, entry), QByteArray("archive control"));
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::writeReport(window, QString("address-bound-reload-%1-%2")
+                                                          .arg(QTest::currentDataTag())
+                                                          .arg(size.width())));
+        }
+    }
+    void reloadPreservesTimerDraft_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<int>("mode");
+        QTest::addColumn<bool>("timer");
+        for (unsigned index : {0u, 1u})
+            for (const QString language : {"-", "ru"})
+                for (int mode : {0, 1, 2})
+                    for (bool timer : {false, true})
+                        QTest::newRow(qPrintable(
+                            QString("%1-%2-%3-%4").arg(index).arg(language).arg(mode).arg(timer)))
+                            << index << language << mode << timer;
+    }
+    void reloadPreservesTimerDraft() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(QString, language);
+        QFETCH(int, mode);
+        QFETCH(bool, timer);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString folder = fixture.filePath(QStringLiteral("folder space δ"));
+        const QString peer = fixture.filePath("peer");
+        QVERIFY(QDir().mkpath(folder) && QDir().mkpath(peer));
+        QVERIFY(writeFile(QDir(peer).filePath("peer.txt"), "peer control"));
+        const int count = mode == 1 ? 301 : 1;
+        for (int i = 0; i < count; ++i)
+            QVERIFY(writeFile(QDir(folder).filePath(QString("control-%1.txt").arg(i)), "control"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
+        auto *peerAddress = peerUi->findChild<QLineEdit *>("archivePath");
+        peerAddress->setFocus();
+        peerAddress->setText(peer);
+        QTest::keyClick(peerAddress, Qt::Key_Return);
+        auto *peerView =
+            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        QTRY_COMPARE(peerView->rowCount(), 1);
+        peerView->selectRow(0);
+        CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
+        peerView->sourcePanel->Set_AutoRefresh_Mode(false);
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        address->setFocus();
+        address->setText(folder);
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(view->rowCount(), count);
+        QTRY_VERIFY(view->sourcePanel->ShouldProcessNotifications());
+        if (mode == 2) {
+            action(window, "flatViewAction")->trigger();
+            QTRY_VERIFY(view->sourcePanel->ShouldProcessNotifications());
+            QTRY_COMPARE(view->rowCount(), count);
+        }
+        auto &panel = *view->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> sourceFolder = panel.GetFolder();
+        const QString draft = QStringLiteral("../draft 文件/not opened");
+        address->setFocus();
+        address->setText(draft);
+        address->setSelection(3, 7);
+        const int cursor = address->cursorPosition();
+        const QString selected = address->selectedText();
+        QVERIFY(writeFile(QDir(folder).filePath(QStringLiteral("new 文件.txt")), "new control"));
+        if (timer) {
+            panel.Set_AutoRefresh_Mode(true);
+            panel.MarkPortableFolderChanged();
+            panel.OnTimer();
+            panel.Set_AutoRefresh_Mode(false);
+        } else
+            action(window, "refreshAction")->trigger();
+        QTRY_COMPARE(view->rowCount(), count + 1);
+        QTRY_VERIFY(panel.ShouldProcessNotifications());
+        if (timer) {
+            QCOMPARE(address->text(), draft);
+            QCOMPARE(address->selectionStart(), 3);
+            QCOMPARE(address->selectedText(), selected);
+            QCOMPARE(address->cursorPosition(), cursor);
+        } else
+            QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(address->text())), folder);
+        QVERIFY(address->hasFocus());
+        if (mode == 0)
+            QCOMPARE(panel.GetFolder(), (IFolderFolder *)sourceFolder);
+        UInt32 loadedCount = 0;
+        QCOMPARE(panel.GetFolder()->GetNumberOfItems(&loadedCount), S_OK);
+        QCOMPARE(loadedCount, UInt32(count + 1));
+        QCOMPARE(
+            QDir::cleanPath(QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix()))),
+            folder);
+        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(window.windowTitle())), folder);
+        QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)peerFolder);
+        QCOMPARE(peerView->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(peerAddress->text(), peer);
+        for (const auto &pair :
+             {qMakePair(QDir(folder).filePath("control-0.txt"), QByteArray("control")),
+              qMakePair(QDir(peer).filePath("peer.txt"), QByteArray("peer control")),
+              qMakePair(QDir(folder).filePath(QStringLiteral("new 文件.txt")),
+                        QByteArray("new control"))}) {
+            QFile file(pair.first);
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(file.readAll(), pair.second);
+        }
+        QCOMPARE(backend.listCalls, 0);
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("address-reload-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+    }
     void missingAddressUsesSourceAncestor_data() {
         QTest::addColumn<unsigned>("sourceIndex");
         QTest::addColumn<QString>("language");

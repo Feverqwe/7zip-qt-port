@@ -16,7 +16,8 @@
 #include <QScopedValueRollback>
 #include <QScrollBar>
 
-HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound) {
+HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound,
+                                  bool updateAddress) {
     if (app_.QtOperations().closed())
         return E_ABORT;
     QtAppOperationState::CallScope call(app_.QtOperations());
@@ -57,21 +58,22 @@ HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourc
     table_->clearSelection();
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
-    path_->setText(directory_);
+    if (updateAddress)
+        path_->setText(directory_);
     static_cast<FileTable *>(table_)->filesystem = true;
-    return startFilesystemListing(sourceAlreadyBound);
+    return startFilesystemListing(sourceAlreadyBound, updateAddress);
 }
 
-HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
+HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateAddress) {
     COpenResult opened;
     auto &panel = app_.GetFocusedPanel();
     HRESULT result =
         sourceAlreadyBound ? S_OK : panel.BindToPath(ToUString(directory_), UString(), opened);
     CMyComPtr<IFolderFolder> folder = panel.GetFolder();
     if (result == S_OK && !panel.IsFSFolder()) {
-        return renderBoundFolder();
+        return renderBoundFolder(updateAddress);
     }
-    if (result == S_OK)
+    if (result == S_OK && updateAddress)
         static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(directory_, true);
     if (flatDisk_) {
         scanningDisk_ = true;

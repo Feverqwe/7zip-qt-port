@@ -186,8 +186,9 @@ class MainWindow : public QMainWindow {
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
     void handleSelectionClick(int row);
-    HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
-    HRESULT renderRootFolder();
+    HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false,
+                          bool updateAddress = true);
+    HRESULT renderRootFolder(bool updateAddress = true);
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     void appendParentEntry();
     void updateParentEntry();
@@ -196,7 +197,7 @@ class MainWindow : public QMainWindow {
     void completeListSelection();
     void refreshCurrent(const CSelectedState *preserved = nullptr);
     HRESULT reloadPanelPresentation(unsigned index, const CSelectedState &selection);
-    HRESULT startFilesystemListing(bool sourceAlreadyBound);
+    HRESULT startFilesystemListing(bool sourceAlreadyBound, bool updateAddress);
     HRESULT refreshFilesystem(const CSelectedState &selection, bool sourceAlreadyBound);
     void restoreListSelection(const CSelectedState &selection);
     struct FilesystemSignature;
@@ -217,10 +218,10 @@ class MainWindow : public QMainWindow {
     enum class RootLocation { Namespace, Drives };
     void goRoot(bool remember = true, RootLocation location = RootLocation::Namespace);
     QString archiveDisplayPath() const;
-    HRESULT renderBoundFolder();
+    HRESULT renderBoundFolder(bool updateAddress = true);
     bool isNestedArchive() const;
     void showArchiveFolder(const QString &folder);
-    HRESULT renderArchiveFolder();
+    HRESULT renderArchiveFolder(bool updateAddress = true);
     void appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix, bool flat);
     void setState(State state);
     void refreshActions();
