@@ -2,6 +2,17 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Address dropdown paths and hierarchy belong to CPanel's retained
+PanelFolderChange bodies and per-panel ComboBoxPaths. QtPanelAddressCombo supplies
+the combo control, indentation painting, cached Qt icons, logical-drive/mount
+service and queued list focus. It delegates binding/publication to the existing
+MainWindow navigation boundary. Stored source paths bypass the typed-relative
+address and legacy displayed-archive separator conversion; typed Enter keeps
+those existing presentation adaptations. PanelKey routes Enter/Escape through
+the original edit handlers once. FolderHistory remains the source history owner
+and its dialog; command availability reads that history, rather than dropdown
+row count. No widget builds an archive operation or its command-line syntax.
+
 Filesystem item comments belong to the retained CFSFolder provider. SaveComments
 serializes its original CPairsStorage and writes descript.ion through upstream
 file I/O; SetProperty retains source validation, trim/delete and cache transitions.

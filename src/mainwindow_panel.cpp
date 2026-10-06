@@ -4,6 +4,7 @@
 #include "qtfilelisthover.h"
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
+#include "qtpaneladdresscombo.h"
 #include "qtstatuslabel.h"
 
 void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
@@ -31,7 +32,15 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
             QString(action == up_ ? "panelParentButton%1" : "panelBackButton%1").arg(index));
         navigation->addWidget(button);
     }
-    pathCombo_ = new QComboBox(central);
+    pathCombo_ = new QtPanelAddressCombo(
+        app_.Panels[index],
+        [this, index](const QString &path, bool sourcePath) {
+            if (app_.QtOperations().closed())
+                return E_ABORT;
+            activatePanelUi(index);
+            return navigateTo(path, sourcePath);
+        },
+        central);
     pathCombo_->setObjectName("pathCombo");
     pathCombo_->setEditable(true);
     pathCombo_->setInsertPolicy(QComboBox::NoInsert);
@@ -43,7 +52,6 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     pathCombo_->installEventFilter(this);
     path_->setProperty("languagePlaceholder", true);
     QtBindLocalText(path_, "Path to folder or archive", "Путь к папке или архиву", true);
-    refreshPathHistory();
     navigation->addWidget(pathCombo_);
     layout->addLayout(navigation);
     createFileTable(central);
@@ -87,9 +95,6 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     central->setObjectName(QStringLiteral("filePanel%1").arg(index));
     panelSplitter_->addWidget(central);
     statusBar()->showMessage("Готово");
-    connect(path_, &QLineEdit::returnPressed, this, [this] { navigateTo(path_->text()); });
-    connect(pathCombo_, &QComboBox::activated, this,
-            [this](int index) { navigateTo(pathCombo_->itemText(index)); });
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)
             activateRow(row);

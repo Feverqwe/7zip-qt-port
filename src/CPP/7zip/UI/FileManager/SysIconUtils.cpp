@@ -164,5 +164,9 @@ int CExtToIconMap::GetIconIndex(DWORD attrib, const wchar_t *fileName) {
 QIcon CExtToIconMap::GetIcon(DWORD attrib, const QString &fileName) {
     const std::wstring name = fileName.toStdWString();
     const int index = GetIconIndex(attrib, name.c_str());
+    return GetIcon(index);
+}
+
+QIcon CExtToIconMap::GetIcon(int index) const {
     return index >= 0 && index < _icons.size() ? _icons[index] : QIcon();
 }

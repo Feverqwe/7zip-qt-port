@@ -1,0 +1,50 @@
+#pragma once
+
+#include "Common/MyString.h"
+#include "Common/MyWindows.h"
+#include <QComboBox>
+#include <functional>
+
+class CPanel;
+enum class QtAddressCommand { DropDown, SelectionAccepted };
+enum class QtAddressEditReason { Escape, Return };
+
+// Control/platform services for the original PanelFolderChange address bodies.
+class IQtPanelAddressCombo {
+  public:
+    virtual ~IQtPanelAddressCombo() = default;
+    virtual void ResetContent() = 0;
+    virtual void InsertItem(const UString &name, int iconIndex, unsigned indent,
+                            bool namespaceItem) = 0;
+    virtual int GetCurSel() const = 0;
+    virtual void SetCurSel(int index) = 0;
+    virtual int GetIconIndex(const UString &path, DWORD attributes) = 0;
+    virtual void GetLogicalDriveStrings(FStringVector &paths) = 0;
+    virtual UString GetText() const = 0;
+    virtual void SetText(const UString &text) = 0;
+    virtual HRESULT BindToPathAndRefresh(const UString &path, bool sourcePath) = 0;
+    virtual void SetFocusToList() = 0;
+};
+
+class QtPanelAddressCombo final : public QComboBox, public IQtPanelAddressCombo {
+  public:
+    QtPanelAddressCombo(CPanel &panel, std::function<HRESULT(const QString &, bool)> navigate,
+                        QWidget *parent);
+    void showPopup() override;
+    void ResetContent() override;
+    void InsertItem(const UString &name, int iconIndex, unsigned indent,
+                    bool namespaceItem) override;
+    int GetCurSel() const override;
+    void SetCurSel(int index) override;
+    int GetIconIndex(const UString &path, DWORD attributes) override;
+    void GetLogicalDriveStrings(FStringVector &paths) override;
+    UString GetText() const override;
+    void SetText(const UString &text) override;
+    HRESULT BindToPathAndRefresh(const UString &path, bool sourcePath) override;
+    void SetFocusToList() override;
+
+  private:
+    bool eventFilter(QObject *object, QEvent *event) override;
+    CPanel &panel_;
+    std::function<HRESULT(const QString &, bool)> navigate_;
+};

@@ -441,7 +441,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(commands.contains("P&roperties"));
     }
 
-    void addressComboKeepsVisitedPaths() {
+    void addressDropdownKeepsSourceHierarchySeparateFromHistory() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         const QString folder = temp.filePath(QStringLiteral("папка с пробелом"));
@@ -455,15 +455,24 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         address->setText(folder);
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(address->text(), QFileInfo(folder).canonicalFilePath());
-        QVERIFY(combo->findText(QFileInfo(QDir::currentPath()).canonicalFilePath()) >= 0);
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        QVERIFY(settings.value("FolderHistory")
+                    .toStringList()
+                    .contains(QFileInfo(folder).canonicalFilePath()));
         const QString archive = temp.filePath("archive.7z");
         openListedArchive(window, backend, archive, {});
-        QVERIFY(combo->findText(QFileInfo(archive).absoluteFilePath()) >= 0);
-        const int folderIndex = combo->findText(QFileInfo(folder).canonicalFilePath());
-        QVERIFY(folderIndex >= 0);
-        QVERIFY(QMetaObject::invokeMethod(combo, "activated", Qt::DirectConnection,
-                                          Q_ARG(int, folderIndex)));
-        QCOMPARE(address->text(), QFileInfo(folder).canonicalFilePath());
+        combo->showPopup();
+        QApplication::processEvents();
+        QVERIFY(combo->findText(QStringLiteral("archive.7z")) >= 0);
+        const int parent = combo->findText(QFileInfo(temp.path()).fileName());
+        QVERIFY(parent >= 0);
+        auto *popup = combo->view();
+        const QModelIndex index = popup->model()->index(parent, 0);
+        popup->scrollTo(index);
+        QApplication::processEvents();
+        QTest::mouseClick(popup->viewport(), Qt::LeftButton, Qt::NoModifier,
+                          popup->visualRect(index).center());
+        QTRY_COMPARE(QDir::cleanPath(address->text()), QFileInfo(temp.path()).canonicalFilePath());
     }
 };
 

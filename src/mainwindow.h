@@ -170,7 +170,6 @@ class MainWindow : public QMainWindow {
     static QIcon toolbarIcon(int kind);
     static QString toolbarSettingsPath();
     void recordVisitedPath(const QString &path);
-    void refreshPathHistory();
     void showFoldersHistory();
     void refreshBookmarks();
     void saveBookmark(int index);
@@ -206,7 +205,7 @@ class MainWindow : public QMainWindow {
     void InvertSelection();
     void SelectSpec(bool select);
     void SelectByType(bool select);
-    void navigateTo(const QString &path);
+    HRESULT navigateTo(const QString &path, bool sourceAddress = false);
     void activateRow(int row);
     void goBack();
     void goUp();

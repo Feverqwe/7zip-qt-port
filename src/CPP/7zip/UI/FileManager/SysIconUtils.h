@@ -30,6 +30,7 @@ struct CExtToIconMap {
     void Clear();
     int GetIconIndex(DWORD attrib, const wchar_t *fileName);
     QIcon GetIcon(DWORD attrib, const QString &fileName);
+    QIcon GetIcon(int index) const;
 
   private:
     int QueryIconIndex(DWORD attrib, const QString &fileName);

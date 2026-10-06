@@ -1,5 +1,23 @@
 # Сверка с Windows 7zFM
 
+## P3-05.12 — исходный адресный список (проверка платформ открыта, 2026-10-06)
+
+Выпадающий список адреса теперь строит исходный CPanel: текущая иерархия пути,
+границы архивов и отдельные пути привязки, затем виртуальные namespace entries.
+Выбор имени родительского компонента открывает полный исходный путь, а история
+посещений остаётся в Folders History. Enter/Escape используют исходные edit
+handlers; Escape возвращает текущий source prefix с его native separator.
+Qt рисует indentation/иконки и доставляет отложенный фокус списка. Запрос
+фокуса не перехватывает уже выбранную другую панель или control — адаптация
+порядка Qt events. Unix использует смонтированные тома и отдельный Volumes;
+Windows сохраняет исходные Documents/Computer/drives/Network.
+
+macOS public consumers проверяют диск, ZIP/nested ZIP, обе панели, выбор,
+Escape и сохранность байтов; четыре EN/RU normal/compact JSON проверены.
+Полный gate250/250 прошёл. Native Windows UNC/device/refusal, Linux runtime,
+отдельный current-edit-image workflow, rendered Windows reference и итоговая
+приёмка остаются открытыми; geometry/source resources не доказывают pixels.
+
 ## P3-05.5 — native archive diagnostics (принят scope свойств, 2026-10-06)
 
 Исходные Agent GetArcProp/GetTypeOfArc и Properties теперь читают retained native

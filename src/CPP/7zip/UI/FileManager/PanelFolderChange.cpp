@@ -14,6 +14,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "qtlangcontrols.h"
+#include "qtpaneladdresscombo.h"
 
 static const UInt32 kParentIndex = (UInt32)-1;
 
@@ -448,6 +449,227 @@ UString GetFolderPath(IFolderFolder *folder) {
                 return (wchar_t *)prop.bstrVal;
     }
     return UString();
+}
+
+// Original AddComboBoxItem/OnComboBoxCommand; Qt supplies control, icon,
+// drive/mount and application delivery services. Source path construction and
+// archive-link boundaries remain in this module.
+bool CPanel::OnNotifyComboBoxEnter(const UString &s, IQtPanelAddressCombo &header) {
+    if (header.BindToPathAndRefresh(s, false) == S_OK) {
+        header.SetFocusToList();
+        return TRUE;
+    }
+    return FALSE;
+}
+
+bool CPanel::OnNotifyComboBoxEndEdit(QtAddressEditReason reason, IQtPanelAddressCombo &header,
+                                     bool &result) {
+    if (reason == QtAddressEditReason::Escape) {
+        header.SetText(_currentFolderPrefix);
+        header.SetFocusToList();
+        result = FALSE;
+        return true;
+    }
+    if (reason == QtAddressEditReason::Return) {
+        result = OnNotifyComboBoxEnter(header.GetText(), header);
+        return true;
+    }
+    return false;
+}
+
+void CPanel::AddComboBoxItem(IQtPanelAddressCombo &header, const UString &name, int iconIndex,
+                             unsigned indent, bool addToList) {
+    header.InsertItem(name, iconIndex, indent, addToList);
+    if (addToList) {
+        UString s = name;
+        s.Add_PathSepar();
+        ComboBoxPaths.Add(s);
+    }
+}
+
+bool CPanel::OnComboBoxCommand(QtAddressCommand code, IQtPanelAddressCombo &header) {
+    switch (code) {
+    case QtAddressCommand::DropDown: {
+        ComboBoxPaths.Clear();
+        header.ResetContent();
+
+        UString sumPath;
+        UStringVector pathParts;
+        unsigned indent = 0;
+        {
+            UString path = _currentFolderPrefix;
+            // path = "\\\\.\\y:\\"; // for debug
+            UString prefix0;
+            if (path.IsPrefixedBy_Ascii_NoCase("\\\\")) {
+                const int separ = FindCharPosInString(path.Ptr(2), '\\');
+                if (separ > 0 && (separ > 1 || path[2] != '.')) // "\\\\.\\" will be processed later
+                {
+                    const UString s = path.Left(2 + separ);
+                    prefix0 = s;
+                    prefix0.Add_PathSepar();
+                    AddComboBoxItem(
+                        header, s, header.GetIconIndex(prefix0, FILE_ATTRIBUTE_DIRECTORY), indent++,
+                        false); // addToList
+                    ComboBoxPaths.Add(prefix0);
+                }
+            }
+
+            unsigned rootPrefixSize = NWindows::NFile::NName::GetRootPrefixSize(path);
+
+            sumPath = path;
+
+            if (rootPrefixSize <= prefix0.Len()) {
+                rootPrefixSize = prefix0.Len();
+                sumPath.DeleteFrom(rootPrefixSize);
+            } else {
+                // rootPrefixSize > prefix0.Len()
+                sumPath.DeleteFrom(rootPrefixSize);
+
+                NWindows::NFile::NFind::CFileInfo info;
+                DWORD attrib = FILE_ATTRIBUTE_DIRECTORY;
+                if (info.Find(us2fs(sumPath)) && info.IsDir())
+                    attrib = info.GetWinAttrib();
+                UString s = sumPath.Ptr(prefix0.Len());
+                if (!s.IsEmpty()) {
+                    const wchar_t c = s.Back();
+                    if (IS_PATH_SEPAR(c))
+                        s.DeleteBack();
+                }
+                UString path_for_icon = sumPath;
+#ifdef _WIN32
+                NWindows::NFile::NName::If_IsSuperPath_RemoveSuperPrefix(path_for_icon);
+#endif
+
+                AddComboBoxItem(header, s, header.GetIconIndex(path_for_icon, attrib), indent++,
+                                false); // addToList
+                ComboBoxPaths.Add(sumPath);
+            }
+
+            path.DeleteFrontal(rootPrefixSize);
+            SplitPathToParts(path, pathParts);
+        }
+
+        // it's expected that pathParts.Back() is empty, because _currentFolderPrefix has
+        // PathSeparator.
+        unsigned next_Arc_index = 0;
+        int iconIndex_Computer;
+        const UString name_Computer = RootFolder_GetName_Computer(iconIndex_Computer);
+
+        // const bool is_devicePrefix = (sumPath.IsEqualTo("\\\\.\\"));
+
+        if (pathParts.Size() > 1)
+            if (!sumPath.IsEmpty() || pathParts.Size() != 2 || pathParts[0] != name_Computer)
+                for (unsigned i = 0; i + 1 < pathParts.Size(); i++) {
+                    UString name = pathParts[i];
+                    sumPath += name;
+
+                    bool isRootDir_inLink = false;
+                    if (next_Arc_index < _parentFolders.Size()) {
+                        const CFolderLink &link = _parentFolders[next_Arc_index];
+                        if (link.VirtualPath == sumPath) {
+                            isRootDir_inLink = true;
+                            next_Arc_index++;
+                        }
+                    }
+
+                    int iconIndex = -1;
+                    DWORD attrib =
+                        isRootDir_inLink ? FILE_ATTRIBUTE_ARCHIVE : FILE_ATTRIBUTE_DIRECTORY;
+                    if (next_Arc_index == 0 || (next_Arc_index == 1 && isRootDir_inLink)) {
+#ifdef _WIN32
+                        if (i == 0 && NWindows::NFile::NName::IsDevicePath(us2fs(sumPath))) {
+                            UString path = name;
+                            path.Add_PathSepar();
+                            attrib = FILE_ATTRIBUTE_ARCHIVE;
+                            // FILE_ATTRIBUTE_DIRECTORY;
+                        } else
+#endif
+                        {
+                            NWindows::NFile::NFind::CFileInfo info;
+                            if (info.Find(us2fs(sumPath)))
+                                attrib = info.GetWinAttrib();
+                        }
+                        iconIndex = header.GetIconIndex(sumPath, attrib);
+                    }
+
+                    if (iconIndex < 0)
+                        iconIndex = header.GetIconIndex(name, attrib);
+                    // iconIndex = -1; // for debug
+                    if (iconIndex < 0 && isRootDir_inLink)
+                        iconIndex = 0; // default file
+
+                    sumPath.Add_PathSepar();
+
+                    ComboBoxPaths.Add(sumPath);
+                    if (name.IsEmpty())
+                        name.Add_PathSepar();
+                    AddComboBoxItem(header, name, iconIndex, indent++,
+                                    false); // addToList
+                }
+
+#ifndef UNDER_CE
+
+#ifdef _WIN32
+        {
+            int iconIndex;
+            const UString name = RootFolder_GetName_Documents(iconIndex);
+            // iconIndex = -1; // for debug
+            AddComboBoxItem(header, name, iconIndex, 0, true);
+        }
+#endif
+        AddComboBoxItem(header, name_Computer, iconIndex_Computer, 0, true);
+#ifndef _WIN32
+        {
+            CRootFolder root;
+            root.Init();
+            NWindows::NCOM::CPropVariant name;
+            static_cast<IFolderFolder &>(root).GetProperty(1, kpidName, &name);
+            if (name.vt == VT_BSTR)
+                AddComboBoxItem(header, UString(name.bstrVal), -1, 0, true);
+        }
+#endif
+        {
+            FStringVector driveStrings;
+            header.GetLogicalDriveStrings(driveStrings);
+            FOR_VECTOR(i, driveStrings) {
+                FString s = driveStrings[i];
+                ComboBoxPaths.Add(fs2us(s));
+                int iconIndex2 = header.GetIconIndex(fs2us(s), FILE_ATTRIBUTE_DIRECTORY);
+                if (!s.IsEmpty()) {
+                    const FChar c = s.Back();
+                    if (IS_PATH_SEPAR(c))
+                        s.DeleteBack();
+                }
+                // iconIndex2 = -1; // for debug
+                AddComboBoxItem(header, fs2us(s), iconIndex2, 1, false);
+            }
+        }
+        {
+            int iconIndex;
+            const UString name = RootFolder_GetName_Network(iconIndex);
+            AddComboBoxItem(header, name, iconIndex, 0, true);
+        }
+
+#endif
+
+        return false;
+    }
+
+    case QtAddressCommand::SelectionAccepted: {
+        int index = header.GetCurSel();
+        if (index >= 0 && (unsigned)index < ComboBoxPaths.Size()) {
+            const UString path = ComboBoxPaths[index];
+            header.SetCurSel(-1);
+            // header.SetText(pass); // it's fix for selecting by mouse.
+            if (header.BindToPathAndRefresh(path, true) == S_OK) {
+                header.SetFocusToList();
+                return true;
+            }
+        }
+        return false;
+    }
+    }
+    return false;
 }
 
 void CPanel::SetBookmark(CFastFolders &fastFolders, unsigned index,

@@ -260,24 +260,26 @@ void MainWindow::createFile() {
 
 void MainWindow::openPath(const QString &path) { navigateTo(QFileInfo(path).absoluteFilePath()); }
 
-void MainWindow::navigateTo(const QString &path) {
+HRESULT MainWindow::navigateTo(const QString &path, bool sourceAddress) {
     if (state_ == State::Loading || state_ == State::Operating)
-        return;
+        return E_ABORT;
     if (state_ == State::Viewing && path == archiveDisplayPath())
-        return;
+        return S_OK;
     // A typed relative address belongs to the displayed filesystem folder.
     // CPanel::BindToPath still resolves the resulting native path.
-    const QString nativeAddress = state_ == State::Filesystem && QDir::isRelativePath(path)
-                                      ? QDir(directory_).filePath(path)
-                                      : path;
+    const QString nativeAddress =
+        !sourceAddress && state_ == State::Filesystem && QDir::isRelativePath(path)
+            ? QDir(directory_).filePath(path)
+            : path;
     const QFileInfo info(nativeAddress);
-    if (info.isDir())
+    if (!sourceAddress && info.isDir())
         showDirectory(nativeAddress, true);
-    else if (info.isFile() && !info.isSymLink())
+    else if (!sourceAddress && info.isFile() && !info.isSymLink())
         openArchive(nativeAddress);
     else {
         QString nativePath = nativeAddress;
-        nativePath.replace(QStringLiteral(" / "), QStringLiteral("/"));
+        if (!sourceAddress)
+            nativePath.replace(QStringLiteral(" / "), QStringLiteral("/"));
         auto &panel = app_.GetFocusedPanel();
         HRESULT result;
         {
@@ -288,7 +290,9 @@ void MainWindow::navigateTo(const QString &path) {
         renderBoundFolder();
         if (result != S_OK && result != E_ABORT)
             statusBar()->showMessage(QtLocalText("Path not found: ", "Путь не найден: ") + path);
+        return result;
     }
+    return S_OK;
 }
 
 void MainWindow::activateRow(int row) {

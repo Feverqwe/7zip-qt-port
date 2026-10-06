@@ -206,17 +206,19 @@ history and icon; return/escape handlers preserve commit/restore semantics.
 RootFolder_GetName_Computer/Network/Documents are active dependencies of these
 handlers, not unused source functions that can be dismissed by name search.
 
-Current MainWindow::refreshPathHistory instead puts FolderHistory strings in
+At discovery, MainWindow::refreshPathHistory instead put FolderHistory strings in
 QComboBox, and activation navigates to itemText; it has no source path hierarchy,
 indentation, virtual entries or separate ComboBoxPaths. MainWindow's visited
 history and the accepted FoldersHistory dialog remain valid separate consumers,
 but they do not replace the original address dropdown. Existing Enter/parent
-tests do not exercise CBN_DROPDOWN/SELENDOK. Required integrated work must reuse
-these original bodies and source folder/path owners, adapting only Qt combo,
-icon, drive/mount and focus services. Verify disk and archive/nested paths,
-both panels, EN/RU, activation/refusal/escape and unchanged input bytes; inspect
-normal/compact widget JSON and native Windows UNC/device consumers. No source
-code or completed-address claim is introduced by this review.
+tests did not exercise CBN_DROPDOWN/SELENDOK. The integrated implementation
+now reuses these original bodies and source folder/path owners with Qt combo,
+icon, drive/mount and focus services. Disk, ZIP/nested ZIP, both panels, EN/RU,
+activation/escape/input preservation and normal/compact JSON have public Mac
+coverage; source history stays in FoldersHistory. Source Enter bypass and stale
+posted focus were corrected through the original handler and a narrow Qt focus
+delivery guard. Native Windows UNC/device consumers, ADS refusal contract and
+whole/platform/rendered acceptance still require validation; see the port audit.
 
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,

@@ -46,12 +46,26 @@ enum {
 static const char *const kVolPrefix = "\\\\.";
 #endif
 
+// Qt owns namespace icons rather than a Win32 image-list index. The source
+// helpers still own translated names; the address control supplies Qt icons.
+UString RootFolder_GetName_Computer(int &iconIndex) {
+    iconIndex = -1;
+    return LangString(IDS_COMPUTER);
+}
+UString RootFolder_GetName_Network(int &iconIndex) {
+    iconIndex = -1;
+    return LangString(IDS_NETWORK);
+}
+UString RootFolder_GetName_Documents(int &iconIndex) {
+    iconIndex = -1;
+    return LangString(IDS_DOCUMENTS);
+}
+
 void CRootFolder::Init() {
-    _names[ROOT_INDEX_COMPUTER] = LangString(IDS_COMPUTER);
-    _iconIndices[ROOT_INDEX_COMPUTER] = -1;
+    _names[ROOT_INDEX_COMPUTER] = RootFolder_GetName_Computer(_iconIndices[ROOT_INDEX_COMPUTER]);
 #ifdef USE_WIN_PATHS
-    _names[ROOT_INDEX_DOCUMENTS] = LangString(IDS_DOCUMENTS);
-    _names[ROOT_INDEX_NETWORK] = LangString(IDS_NETWORK);
+    _names[ROOT_INDEX_DOCUMENTS] = RootFolder_GetName_Documents(_iconIndices[ROOT_INDEX_DOCUMENTS]);
+    _names[ROOT_INDEX_NETWORK] = RootFolder_GetName_Network(_iconIndices[ROOT_INDEX_NETWORK]);
     _names[ROOT_INDEX_VOLUMES] = kVolPrefix;
     _iconIndices[ROOT_INDEX_DOCUMENTS] = -1;
     _iconIndices[ROOT_INDEX_NETWORK] = -1;
@@ -61,8 +75,7 @@ void CRootFolder::Init() {
     const auto mounts = QtLocalText("Volumes", "Тома").toStdWString();
     _names[ROOT_INDEX_MOUNTS] = mounts.c_str();
     _iconIndices[ROOT_INDEX_MOUNTS] = -1;
-    _names[ROOT_INDEX_NETWORK] = LangString(IDS_NETWORK);
-    _iconIndices[ROOT_INDEX_NETWORK] = -1;
+    _names[ROOT_INDEX_NETWORK] = RootFolder_GetName_Network(_iconIndices[ROOT_INDEX_NETWORK]);
 #endif
 }
 Z7_COM7F_IMF(CRootFolder::LoadItems()) {

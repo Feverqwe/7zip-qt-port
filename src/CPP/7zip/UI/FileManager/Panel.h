@@ -59,6 +59,9 @@ class QWidget;
 class CVirtFileSystem;
 class CZipContextMenu;
 class IQtContextMenuServices;
+class IQtPanelAddressCombo;
+enum class QtAddressCommand;
+enum class QtAddressEditReason;
 #ifdef _WIN32
 struct IContextMenu;
 #endif
@@ -490,6 +493,12 @@ class CPanel : public QObject {
     void CloseOneLevel();
     void CloseOpenFolders();
     void LoadFullPath();
+    bool OnComboBoxCommand(QtAddressCommand code, IQtPanelAddressCombo &header);
+    bool OnNotifyComboBoxEnter(const UString &text, IQtPanelAddressCombo &header);
+    bool OnNotifyComboBoxEndEdit(QtAddressEditReason reason, IQtPanelAddressCombo &header,
+                                 bool &result);
+    void AddComboBoxItem(IQtPanelAddressCombo &header, const UString &name, int iconIndex,
+                         unsigned indent, bool addToList);
     void SetToRootFolder();
     HRESULT BindToPath(const UString &fullPath, const UString &arcFormat, COpenResult &openRes);
     HRESULT BindToPathAndRefresh(const UString &path);
@@ -638,6 +647,7 @@ class CPanel : public QObject {
     bool eventFilter(QObject *watched, QEvent *event) override;
     QPointer<QWidget> _listView;
     QPointer<QWidget> _headerComboBox;
+    UStringVector ComboBoxPaths;
     QtPanelList _selectionList;
     CRecordVector<bool> _selectedStatusVector;
     CMyComPtr<IFolderFolder> _folder;

@@ -86,7 +86,6 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             openRow(window, rowWithPath(window, folder));
             auto *combo = window.findChild<QComboBox *>("pathCombo");
             QVERIFY(combo);
-            QCOMPARE(combo->itemText(0), location);
             QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"),
                                QSettings::IniFormat);
             QVERIFY(settings.value("FolderHistory").toStringList().contains(location));
@@ -95,11 +94,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         MainWindow window(&backend);
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         auto *address = window.findChild<QLineEdit *>("archivePath");
-        const int index = combo->findText(location);
-        QVERIFY(index >= 0);
         backend.queueList(entries);
-        QVERIFY(
-            QMetaObject::invokeMethod(combo, "activated", Qt::DirectConnection, Q_ARG(int, index)));
+        acceptHistoryLocation(window, location);
         QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), archivePath);
         QCOMPARE(address->text(), location);
         QCOMPARE(table(window)->rowCount(), 1);
@@ -119,8 +115,10 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         address->setText(location);
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(address->text(), location);
-        QCOMPARE(combo->itemText(0), location);
-        QCOMPARE(combo->findText(location), 0);
+        combo->showPopup();
+        QApplication::processEvents();
+        QVERIFY(combo->findText(QStringLiteral("внутри")) >= 0);
+        combo->hidePopup();
 
         // Reopening after the deepest folder disappears uses its surviving parent.
         address->setText(temp.path());

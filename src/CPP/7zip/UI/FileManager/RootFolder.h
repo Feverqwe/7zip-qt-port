@@ -10,6 +10,9 @@
 #include "7zip/UI/FileManager/IFolder.h"
 
 const unsigned kNumRootFolderItems_Max = 4;
+UString RootFolder_GetName_Computer(int &iconIndex);
+UString RootFolder_GetName_Network(int &iconIndex);
+UString RootFolder_GetName_Documents(int &iconIndex);
 
 Z7_CLASS_IMP_NOQIB_2(CRootFolder, IFolderFolder, IFolderGetSystemIconIndex)
 UString _names[kNumRootFolderItems_Max];

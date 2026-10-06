@@ -114,18 +114,6 @@ void MainWindow::recordVisitedPath(const QString &path) {
         return;
     app_.AppState.FolderHistory.AddString(ToUString(path));
     app_.AppState.FolderHistory.Save(toolbarSettingsPath());
-    refreshPathHistory();
-}
-
-void MainWindow::refreshPathHistory() {
-    const QString current = path_->text();
-    UStringVector paths;
-    app_.AppState.FolderHistory.GetList(paths);
-    const QSignalBlocker blocker(pathCombo_);
-    pathCombo_->clear();
-    FOR_VECTOR(i, paths)
-    pathCombo_->addItem(ToQString(paths[i]));
-    path_->setText(current);
 }
 
 void MainWindow::showFoldersHistory() {
@@ -133,7 +121,6 @@ void MainWindow::showFoldersHistory() {
         return;
     const QString selected =
         CPanel::FoldersHistory(app_.AppState.FolderHistory, toolbarSettingsPath(), this);
-    refreshPathHistory();
     if (!selected.isNull())
         navigateTo(selected);
     else

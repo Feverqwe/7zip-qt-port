@@ -12,9 +12,12 @@ platform disposition. The visited-path history remains in FoldersHistory.
 Selecting a row binds its stored source path and returns focus to the list;
 Escape restores the current address. Each panel uses its own current prefix.
 Check EN/RU normal980×620/compact640×400 widget JSON, popup order/indentation,
-visible text, address/list exposure and keyboard selection/refusal. Current Qt
-history-only dropdown does not satisfy this source contract; no new geometry
-or rendered Windows acceptance is asserted here.
+visible text, address/list exposure and keyboard selection/refusal. The former
+history-only dropdown did not satisfy this source contract. Current Mac public
+selection/EN-RU geometry coverage is recorded in the port audit; native/platform
+and rendered Windows acceptance remains open. Escape restores the bound source
+prefix, including its native separator, and posts list focus. A newer focus
+interaction outside that panel cancels its stale Qt delivery.
 
 ### Source caption helpers (P3-05.10, validation active)
 

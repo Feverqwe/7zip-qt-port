@@ -1,5 +1,14 @@
 # Regression strategy
 
+`address_combo` exercises actual popup selection of a parent component and the
+Computer namespace, EN/RU980×620/640×400 geometry, real ZIP hierarchy selection
+with unchanged archive/input bytes, separate panel paths, source Enter and
+Escape restoration/list focus. Source history persistence/restart/refusal remain
+in `ui_navigation` through the FoldersHistory dialog. The owned native SMB
+consumer also selects its server from the share's source dropdown, then reopens
+only the owned share. Windows uses the native font/plugin and desktop lock.
+See the port audit for completed checks and pending native/platform acceptance.
+
 Windows `network_folder` checks both direct CNetFolder and original RootFolder
 server fallback with the same private current-SID-only SMB fixture.
 `native_network_navigation` checks actual typed server address, normal/flat EN/RU

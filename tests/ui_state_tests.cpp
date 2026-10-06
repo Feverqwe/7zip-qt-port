@@ -203,9 +203,17 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         action(window, "foldersHistoryAction")->trigger();
         QCOMPARE(address->text(), canonicalFirst);
         MainWindow reopened(&backend);
-        auto *combo = reopened.findChild<QComboBox *>("pathCombo");
-        QVERIFY(combo->findText(canonicalFirst) >= 0);
-        QCOMPARE(combo->findText(canonicalSecond), -1);
+        QTimer::singleShot(0, &reopened, [&] {
+            auto *dialog = reopened.findChild<QDialog *>("foldersHistoryDialog");
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            auto *list = dialog->findChild<QTreeWidget *>("foldersHistoryList");
+            QVERIFY(list);
+            QCOMPARE(list->findItems(canonicalFirst, Qt::MatchExactly).size(), 1);
+            QCOMPARE(list->findItems(canonicalSecond, Qt::MatchExactly).size(), 0);
+        });
+        QVERIFY(action(reopened, "foldersHistoryAction")->isEnabled());
+        action(reopened, "foldersHistoryAction")->trigger();
     }
 
     void favoritesFollowFoldersAndArchivePaths() {

@@ -79,6 +79,25 @@ class NativeNetworkNavigationTests final : public QObject, protected MainWindowT
         QCOMPARE(address->text(), QFileInfo(fixture.sharePath()).canonicalFilePath());
         QCOMPARE(read(fixture.sharePath() + NativeNetworkShare::fileName()),
                  NativeNetworkShare::payload());
+        auto *combo = window.findChild<QComboBox *>("pathCombo");
+        QVERIFY(combo);
+        combo->showPopup();
+        QApplication::processEvents();
+        QString serverLabel = fixture.server();
+        if (serverLabel.endsWith('\\'))
+            serverLabel.chop(1);
+        QCOMPARE(
+            QDir::toNativeSeparators(combo->itemText(0)).compare(serverLabel, Qt::CaseInsensitive),
+            0);
+        auto *popup = combo->view();
+        const QModelIndex serverIndex = popup->model()->index(0, 0);
+        popup->scrollTo(serverIndex);
+        QApplication::processEvents();
+        QTest::mouseClick(popup->viewport(), Qt::LeftButton, Qt::NoModifier,
+                          popup->visualRect(serverIndex).center());
+        QTRY_VERIFY_WITH_TIMEOUT(filesystemRow(window, fixture.name()) >= 0, 5000);
+        openRow(window, filesystemRow(window, fixture.name()));
+        QTRY_VERIFY_WITH_TIMEOUT(filesystemRow(window, NativeNetworkShare::fileName()) >= 0, 5000);
         action(window, "parentFolderAction")->trigger();
         QTRY_VERIFY_WITH_TIMEOUT(filesystemRow(window, fixture.name()) >= 0, 5000);
         QCOMPARE(QDir::toNativeSeparators(address->text())

@@ -1,6 +1,6 @@
 # Ревизия происхождения кода 7zFM
 
-## P3-05.12 — RootFolder/address consumer reconciliation (remaining implementation, 2026-10-06)
+## P3-05.12 — RootFolder/address consumer reconciliation (implementation validation active, 2026-10-06)
 
 Compared complete RootFolder.cpp/.h and active PanelFolderChange address
 construction/edit/selection bodies and dependencies at
@@ -8,14 +8,77 @@ construction/edit/selection bodies and dependencies at
 https://github.com/ip7z/7zip.git. The [omitted-scope review](omitted-scope-audit.md#rootfolder-and-address-combo-consumer-review-2026-10-06)
 records retained root bodies, POSIX entries, Documents platform service,
 CSIDL/icon boundary, ADS refusal-code difference and the missing original
-hierarchical address dropdown. Current MainWindow history population and
+hierarchical address dropdown. At discovery, MainWindow history population and
 itemText activation are independent glue, not the original ComboBoxPaths
 construction/binding algorithm. The [text contract](ui-layout-contracts.md#source-address-dropdown-p3-0512-required-remaining-scope)
 defines the source reference and required integrated consumers/checks before
-UI implementation. No source copy, behavior change, regression result or
-platform/rendered acceptance is claimed by this docs-only review; diff check
-passes. The existing P0-04/P1-11 bounded accepted workflows remain historical
+UI implementation. The initial docs-only review copied no code and passed diff
+check; subsequent implementation is recorded below. The existing P0-04/P1-11
+bounded accepted workflows remain historical
 evidence and do not close this active source omission.
+
+The integrated implementation now copies OnComboBoxCommand's hierarchy/UNC
+prefix/root-prefix/path-parts/archive-link/virtual-entry construction and stored
+path selection, AddComboBoxItem's path association, and OnNotifyComboBoxEnter/
+EndEdit return/escape branches into the authoritative PanelFolderChange module.
+RootFolder_GetName_Computer/Network/Documents again supply the source names.
+Typed IQtPanelAddressCombo replaces ComboBoxEx/notification/platform calls;
+QtPanelAddressCombo paints indentation, supplies cached QIcons, queries original
+Windows MyGetLogicalDriveStrings or existing POSIX mounts, and posts list focus
+through Qt's event queue. A queued request applies only while focus still belongs
+to its panel, preserving a newer interaction in another panel/control: Qt can
+deliver synchronous focus changes before its zero-delay request. Native CSIDL
+image indices remain a Qt icon adaptation;
+the existing icon cache has a narrow indexed QIcon accessor. POSIX adds the
+already-owned RootFolder Volumes entry and skips Windows Documents/device/CE
+services. Original algorithms, folder owners and notices remain; formatting is
+separate from functional adaptation. No sibling source is edited.
+
+MainWindow's independent history-only dropdown population is removed. Its
+navigation boundary returns the source binding HRESULT for virtual/archival
+paths and accepts a stored-source-path flag, preserving exact source paths
+without typed-relative/display-separator rewriting. Existing file transport
+startup remains asynchronous. FolderHistory stays persistent and its dialog
+remains usable: centralized availability now reads the original history owner
+instead of the unrelated dropdown count. PanelKey's prior direct Enter bypass
+now calls original EndEdit, retaining the one-navigation key consumption and
+adding the source focus/escape behavior. No independent navigation/path
+construction or archive syntax is added to the widget.
+
+Actual old-product address regression fails to find its current parent component
+(2 Qt pass/1 fail/0 skip); its log is frozen separately. Integration public
+consumers verify mouse selection of parent/Computer, current EN/RU hierarchy,
+real ZIP and nested ZIP folder selection and original bytes, two independent panels and posted
+Enter/Escape focus. The history test now restores persistent locations through
+the source FoldersHistory dialog rather than asserting the removed dropdown
+substitute. An initial two-panel focus regression exposed the remaining direct
+PanelKey Enter bypass; it is corrected through the source handler. Test fixtures
+also reset their own settings and wait for posted focus before another panel
+interaction. Focused address/ui_navigation/root suites pass3/3 in1.54s.
+Initial full250 finishes244/250 passed194.64s; six failed suites retain their
+log separately. Besides history-only fixture assumptions, shared consumers
+expose a queued focus request stealing a newer panel interaction. The scoped
+Qt focus adaptation above corrects it without changing the source path algorithm.
+History restart/deletion consumers now check the actual source dialog. Seven
+affected consumers pass8.60s after these changes; the final close guard prevents
+the new widget callback from retargeting a closed application. Twenty current
+source/build/test SHA inputs are frozen for the subsequent final full gate.
+Four current macOS normal/compact EN/RU widget JSON reports pass an independent
+menu/toolbar/address/list/status order, exposure and size-hint review. Full Mac
+format/all-target/full gate passes250/250 in105.54s, including AddressCombo9 Qt
+pass/0 fail/0 skip, navigation10, operations34, PanelKey55, main shell6 and codec
+commands24 Qt pass/0 fail/0 skip. All twenty frozen inputs remain SHA-identical
+through the final gate. Four final EN/RU geometry reports are frozen/reviewed
+separately from the initial full failure. Baseline verification passes408 exact/
+196 adapted/3 local across the pinned revision. Fresh read-only capacity probes
+report Windows121425920 bytes and Linux12533760 bytes available, with no check
+processes; both scoped cleanup questions remain unanswered and no deletion or
+resize is performed. Windows/Linux current build/runtime, native
+UNC/device selection, ADS refusal-code regression and rendered/final acceptance
+remain open. No passing whole-module or platform gate is inferred from these
+focused consumers. LoadFullPathAndShow's complete current-icon presentation
+disposition must also be reconciled; dropdown/cache icons alone do not prove
+that separate ComboBoxEx edit-image workflow.
 
 ## P3-05.11 — source UNC root binding and Qt consumer (validation active, 2026-10-06)
 

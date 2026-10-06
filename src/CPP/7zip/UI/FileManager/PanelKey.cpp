@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "7zip/UI/FileManager/resource.h"
 #include "mainwindow.h"
+#include "qtpaneladdresscombo.h"
 
 // Qt adapter for PanelKey.cpp::OnKeyDown and Panel.cpp::CMyComboBoxEdit.
 bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
@@ -17,11 +18,18 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         return true;
     }
     if (address) {
-        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter ||
+            key->key() == Qt::Key_Escape) {
             // PanelFolderChange's CBENF_RETURN is one navigation. Consuming the
             // edit key prevents QComboBox from also activating its history row.
-            navigateTo(path_->text());
-            return true;
+            if (auto *header = dynamic_cast<IQtPanelAddressCombo *>(pathCombo_)) {
+                bool result;
+                app_.GetFocusedPanel().OnNotifyComboBoxEndEdit(key->key() == Qt::Key_Escape
+                                                                   ? QtAddressEditReason::Escape
+                                                                   : QtAddressEditReason::Return,
+                                                               *header, result);
+                return true;
+            }
         }
         if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
             pathCombo_->hidePopup();
