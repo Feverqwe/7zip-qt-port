@@ -116,29 +116,28 @@ bool CPanel::CanComment() const {
     return folder && folder->CanComment();
 }
 
-void CPanel::ChangeComment() {
+bool CPanel::ChangeComment(CSelectedState &state) {
     if (IsHashFolder())
-        return;
+        return false;
     if (!CheckBeforeUpdate(IDS_COMMENT))
-        return;
+        return false;
     CDisableTimerProcessing disableTimerProcessing2(*this);
     const int index = _selectionList.GetFocusedItem();
     if (index < 0)
-        return;
+        return false;
     const unsigned realIndex = GetRealItemIndex(index);
     if (realIndex == kParentIndex)
-        return;
-    CSelectedState state;
+        return false;
     SaveSelectedState(state);
     UString comment;
     {
         NWindows::NCOM::CPropVariant propVariant;
         if (_folder->GetProperty(realIndex, kpidComment, &propVariant) != S_OK)
-            return;
+            return false;
         if (propVariant.vt == VT_BSTR)
             comment = propVariant.bstrVal;
         else if (propVariant.vt != VT_EMPTY)
-            return;
+            return false;
     }
     const UString name = GetItemRelPath2(realIndex);
     UString title = name;
@@ -148,7 +147,7 @@ void CPanel::ChangeComment() {
                      GetParent());
     dlg.BindLanguage(0, IDS_COMMENT2);
     if (dlg.exec() != QDialog::Accepted)
-        return;
+        return false;
 
     CDisableNotify disableNotify(*this);
     // Qt runs the unchanged source property operation on its existing worker
@@ -177,7 +176,9 @@ void CPanel::ChangeComment() {
             box.exec();
         }
     }
-    RefreshListCtrl(state);
+    // The original reaches RefreshListCtrl here even after operation errors.
+    // Qt must load the provider before restoring this captured source state.
+    return true;
 }
 
 bool CPanel::CorrectFsPath(const UString &path2, UString &result) {

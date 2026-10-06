@@ -914,6 +914,13 @@ Escape, focused item и выделенные строки проверяются
 Для flat nested item исходный setter возвращает E_NOTIMPL. Исходный setter
 игнорирует false от SaveComments: при отказе записи возвращается S_OK, а reload
 показывает старые данные. Эта особенность не заменена новой error policy.
+Escape/Cancel в Comment теперь сохраняет исходный ранний выход без reload:
+внешний файл, добавленный во время диалога, появляется после явного Refresh.
+После принятия выполняется загрузка перед восстановлением исходного выбора;
+отказ/отмена загрузки очищает старые строки и допускает последующее обновление.
+Результат reload здесь по-прежнему не вызывает нового сообщения об ошибке,
+как в исходном ChangeComment. EN/RU, обе панели и normal/compact состояния
+проверены на macOS; текущая native Windows/Linux проверка этого изменения открыта.
 Windows сохраняет исходные file attributes; POSIX использует portable source
 Create_ALWAYS/write_full и сохраняет permissions существующего файла. Windows/
 Linux execution и rendered Windows reference этого компонента ещё не проверены.

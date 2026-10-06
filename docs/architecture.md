@@ -200,6 +200,12 @@ boundary so CPanel's shared command state enables Comment. Source ChangeComment,
 shared ComboDialog and existing property worker own interaction, selection and
 completion. Widgets supply no description-file parser or serializer. Original
 SetProperty ignores SaveComments failure; reload reveals the unsaved result.
+ChangeComment hands its source-captured CSelectedState and a reload-phase flag
+to the Qt command consumer. Early returns, including dialog Cancel, restore the
+previous presentation state without loading. Accepted operations reach provider
+loading before selection restoration; failed loading does not restore old rows.
+This signature adaptation transports the original void handler's final Refresh
+phase across the Qt publication boundary and removes the duplicate Qt snapshot.
 
 `cmake/SharedPortObjects.cmake` assigns cohesive production source groups to
 object-library owners after all app/test targets, source-derived registrations

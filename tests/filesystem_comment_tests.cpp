@@ -7,6 +7,7 @@
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
+#include <atomic>
 
 namespace {
 bool Write(const QString &path, const QByteArray &bytes) {
@@ -45,6 +46,137 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         return -1;
     }
   private slots:
+    void commentReloadBoundary_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("outcome");
+        for (unsigned index : {0u, 1u})
+            for (const QString language : {"-", "ru"})
+                for (const QString outcome : {"cancel", "accepted", "load-cancel", "load-failure"})
+                    QTest::newRow(
+                        qPrintable(QString("%1-%2-%3").arg(index).arg(language).arg(outcome)))
+                        << index << language << outcome;
+    }
+    void commentReloadBoundary() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(QString, language);
+        QFETCH(QString, outcome);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
+        CFmSettings preferences;
+        preferences.Load(settings);
+        preferences.ShowDots = false;
+        preferences.Save(settings);
+        const auto resetLanguage = qScopeGuard([&] {
+            SaveRegLang(L"-", settings);
+            ReloadLang(settings);
+        });
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("comment 文件.bin");
+        QVERIFY(Write(fixture.filePath(name), "original bytes"));
+        QVERIFY(Write(fixture.filePath("peer.bin"), "peer bytes"));
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(view->rowCount(), 2);
+        int row = -1;
+        for (int i = 0; i < view->rowCount(); ++i)
+            if (view->item(i, 0)->data(Qt::UserRole + 3).toString() == name)
+                row = i;
+        QVERIFY(row >= 0);
+        view->selectRow(row);
+        view->setFocus();
+        auto &panel = *view->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> folder = panel.GetFolder();
+        auto *filesystem = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
+        QVERIFY(filesystem);
+        auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
+        auto *peerView =
+            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        peerView->sourcePanel->Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
+        const int peerRows = peerView->rowCount();
+        std::atomic<unsigned> loads{0};
+        bool observed = false;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [&] {
+            auto *dialog = dynamic_cast<CComboDialog *>(QApplication::activeModalWidget());
+            if (!dialog || observed)
+                return;
+            observed = true;
+            const auto close = qScopeGuard([&] {
+                if (dialog->isVisible())
+                    dialog->reject();
+            });
+            QVERIFY(Write(fixture.filePath("added δ.txt"), "external bytes"));
+            filesystem->CheckBreak = [&](const QString &) {
+                ++loads;
+                if (outcome == "load-failure")
+                    throw std::bad_alloc();
+                return outcome != "load-cancel";
+            };
+            dialog->findChild<QComboBox *>("comboValue")->setEditText("saved 空");
+            if (outcome == "cancel")
+                QTest::keyClick(dialog, Qt::Key_Escape);
+            else
+                dialog->accept();
+        });
+        responder.start(2);
+        QTRY_VERIFY(action(window, "commentAction")->isEnabled());
+        action(window, "commentAction")->trigger();
+        responder.stop();
+        QVERIFY(observed);
+        const unsigned calls = loads.load();
+        filesystem->CheckBreak = {};
+        if (outcome == "cancel") {
+            QCOMPARE(calls, 0u);
+            QCOMPARE(view->rowCount(), 2);
+            QCOMPARE(view->currentRow(), row);
+            QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
+            QVERIFY(!QFileInfo::exists(fixture.filePath("descript.ion")));
+        } else {
+            QVERIFY(calls > 0);
+            QCOMPARE(view->rowCount(), outcome == "accepted" ? 4 : 0);
+            QVERIFY(Read(fixture.filePath("descript.ion")).contains("saved 空"));
+        }
+        QVERIFY(panel.ShouldProcessNotifications());
+        QVERIFY(peerView->sourcePanel->ShouldProcessNotifications());
+        QVERIFY(view->updatesEnabled());
+        QVERIFY(peerView->updatesEnabled());
+        QVERIFY(view->isEnabled());
+        QVERIFY(peerView->isEnabled());
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)folder);
+        QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)peerFolder);
+        QCOMPARE(peerView->rowCount(), peerRows);
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*view, window));
+            QVERIFY(UiInspection::fullyVisible(*peerView, window));
+            QVERIFY(UiInspection::fullyVisible(*address, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("comment-reload-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+        action(window, "refreshAction")->trigger();
+        QTRY_COMPARE(view->rowCount(), outcome == "cancel" ? 3 : 4);
+        QCOMPARE(Read(fixture.filePath(name)), QByteArray("original bytes"));
+        QCOMPARE(Read(fixture.filePath("peer.bin")), QByteArray("peer bytes"));
+        QCOMPARE(Read(fixture.filePath("added δ.txt")), QByteArray("external bytes"));
+    }
     void sourceWriterPreservesOtherPairsAndClears() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

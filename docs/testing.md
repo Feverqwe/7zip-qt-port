@@ -368,6 +368,13 @@ failed save with the original HRESULT policy, unchanged source files, Ctrl+Z/
 Escape and selected rows. EN/RU normal/compact dialog reports accompany public
 command checks. Filesystem row identity uses the existing native-name role;
 archive-relative path roles are not filesystem identities.
+Sixteen both-pane EN/RU `commentReloadBoundary` cases also verify that Escape
+does not enumerate or publish an externally added item, while accepted Comment
+reloads. Source load cancellation/allocation failure clears stale rows, releases
+guards and recovers through explicit Refresh. Current normal/compact panel JSON
+and view/update-enabled checks cover terminal states; payload and peer bytes,
+provider identity and peer rows stay intact. This caller preserves upstream's
+ignored reload-result policy; it does not introduce an extra error dialog.
 The native shortcut fixture waits for an active window and observed modal dialog
 before stopping its responder, covering asynchronous Windows shortcut delivery.
 Windows `fs_drives_device` and `fs_drives_device_ui` use SDK-created disposable

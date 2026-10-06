@@ -1229,6 +1229,13 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
   show a fitted prompt, editable combo and separately visible/enabled OK/Cancel.
   The source FSFolder writer trims the accepted comment; ZIP's raw whitespace
   behavior remains separate. No new dialog or rendered Windows parity is claimed.
+  The source Escape/Cancel path does not reload the folder. An externally added
+  item while the dialog is open remains unpublished until explicit Refresh;
+  selection, focus, provider and peer rows stay intact. Accepted Comment reaches
+  the source reload phase even after operation failure. Load failure/cancellation
+  leaves no stale rows and releases guards; a later explicit Refresh recovers.
+  Preserve the original ignored reload-result policy in this operation caller.
+  Inspect both panes in EN/RU at 980×620/640×400 after Cancel and terminal load.
 
 Qt layouts replace OnSize. Plain-text wrapping handles Qt label rendering;
 the native AddString behavior is adapted by restoring initial edit text after

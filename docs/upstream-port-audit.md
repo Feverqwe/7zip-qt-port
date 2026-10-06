@@ -1289,7 +1289,57 @@ body/dependency requirements. This documentation review introduces no source
 copy or functional change and does not extend the phase tests into module or
 platform acceptance.
 
+### Source Comment reload boundary (2026-10-06)
+
+Reference: full upstream revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip.git, `PanelOperations.cpp::ChangeComment`,
+`PanelItems.cpp::RefreshListCtrl`, `Panel.h` guards and folder interfaces.
+Reviewed original handler, adapted property worker, Qt command/presentation
+state, filesystem and native ZIP consumers. Original dialog Cancel returns
+before Refresh; accepted operations reach Refresh even after a property error.
+The native void handler ignores the reload HRESULT. Qt formerly always loaded
+after the handler, including Cancel, and restored twice around that load.
+
+Retain the source guards, validation, state capture, dialog and property/error
+branches. Adapt its signature to return the final reload-phase flag and hand
+out the original CSelectedState: this transports the source void handler's
+Refresh phase to the existing asynchronous Qt publisher. Early returns report
+no reload; the Qt consumer restores its previous presentation state. Accepted
+operations load before restoring the source state, and restore only on S_OK
+through the existing deferred-selection owner. Remove the duplicate Qt state
+capture and premature restoration. Preserve the ignored reload-result policy,
+without a new error dialog. No new algorithm/class/dependency/borrowed path,
+source language/license or upstream change.
+
+Actual old-product RED4/21 Qt passes, focused1FAIL1.31s: EN/RU and both pane
+roles enumerate four entries after Escape, where the source performs no load.
+Four frozen old code/test inputs, hashes and actual log are retained in
+build/review/comment-reload-red. Sixteen new cases cover Cancel, accepted
+Comment, source load cancellation and allocation failure; explicitly disabled
+polling keeps the operation responsible for loading. An externally added file
+is unpublished after Cancel until explicit Refresh. Accepted comments persist,
+failed loads leave no stale rows, a later Refresh recovers, and payload/peer/
+external bytes, providers, peer rows and terminal guards remain intact.
+Expanded final checks also require both views enabled with updates restored.
+Initial four-target build/focused4PASS8.40s; final affected rebuild/focused
+4/4PASS7.83s, including 25 filesystem/17 native UI/10 native property/76 Refresh
+Qt passes, all zero failures/skips. Thirty-two current EN/RU normal980×620 and
+compact640×400 reports expose both tables/addresses and visible status labels;
+public geometry assertions and JSON inspection pass. Baseline verifies
+408 exact/196 adapted/3 local paths; inventory is unchanged. Final inputs,
+focused log and reports are frozen in build/review/comment-reload-final.
+Mandatory unsandboxed full gate passes formatting, all-target build and
+267/267 CTest in 133.49s on macOS arm64 with official Qt 6.12.0. All four final
+code/test hashes remain unchanged; the full LastTest log is frozen alongside
+the focused evidence. No current native Windows/Linux execution is claimed.
+
+Remaining Rename/navigation/drop/external-update redraw/result boundaries,
+whole-module review and current native Windows/Linux/rendered/cold-stable/
+P3-06 acceptance stay mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
+
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at
 project e314301c908b7b8e4ab8a27d016fe037f05650b8 and upstream

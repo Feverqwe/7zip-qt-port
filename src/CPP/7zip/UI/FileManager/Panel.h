@@ -600,7 +600,8 @@ class CPanel : public QObject {
     HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection,
                         const CRecordVector<UInt32> *explicitIndices = nullptr);
     bool CanComment() const;
-    void ChangeComment();
+    // Qt performs the source reload phase after the modal operation returns.
+    bool ChangeComment(CSelectedState &state);
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
