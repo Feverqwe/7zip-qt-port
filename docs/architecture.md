@@ -66,9 +66,13 @@ Selection restoration also follows the original RefreshListCtrl name/prefix
 walk: request the borrowed fast name before the existing property fallback,
 reuse that name in matching, and request a prefix only in flat mode. A NULL fast
 prefix uses the original property/BSTR branch and exception policy. GetFlatMode
-selects the retained disk/archive flag at the Qt integration boundary. The
-populated-list adapter without a native provider keeps its existing relative
-path transport. Sorted Qt rows still map through source indices; displayed name
+selects the retained disk/archive flag at the Qt integration boundary. Refresh
+returns S_OK immediately without a provider, after clearing drop paint/target,
+before retained load errors, pending selection, guards, sorting or status. A
+late callback after provider release cannot treat retained Qt rows as a folder.
+The snapshot constructor and archive transport use real QtPanelFolder providers;
+their selection restoration retains the same source walk. Sorted Qt rows still
+map through source indices; displayed name
 formatting is independent of saved native names and marks.
 After matching rows, RefreshListCtrl uses the original notification guard's
 SetMemMode_Enable/Restore before restoring focus. This permits Qt's focus

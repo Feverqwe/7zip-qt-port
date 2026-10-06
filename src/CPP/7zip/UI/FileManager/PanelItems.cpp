@@ -550,6 +550,8 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     _selectionList.SetItemState_DropHighlighted(m_DropHighlighted_SelectionIndex, false);
     m_DropHighlighted_SelectionIndex = -1;
     m_DropHighlighted_SubFolderName.Empty();
+    if (!_folder)
+        return S_OK;
     RINOK(_listLoadResult)
     _dontShowMode = false;
     if (_selectionList.GetItemCount() == 0)
@@ -564,8 +566,7 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     _selectionIsDefined = false;
     const UInt32 numItems = (UInt32)_selectionList.GetItemCount();
     const UInt32 numFolderItems = GetFolderItemCount();
-    // Qt can also refresh an already populated list without a native provider.
-    const bool showDots = _showDots && (!_folder || !IsRootFolder());
+    const bool showDots = _showDots && !IsRootFolder();
     _selectedStatusVector.ClearAndReserve(numFolderItems);
     for (UInt32 i = 0; i < numFolderItems; ++i)
         _selectedStatusVector.AddInReserved(false);
@@ -603,7 +604,7 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
         if (_folderGetItemName)
             _folderGetItemName->GetItemName(realIndex, &name, &nameLen);
         if (!name) {
-            itemName = _folder ? GetItemName(realIndex) : _selectionList.GetItemName(i);
+            itemName = GetItemName(realIndex);
             name = itemName;
         }
         bool selected = false;
@@ -612,27 +613,23 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
             (state.FocusedName_Defined && focusedNamePure == name) ||
             (needCheckSlash && NWindows::NFile::NName::FindSepar(name) >= 0)) {
             relPath.Empty();
-            if (!_folder)
-                relPath = GetItemRelPath(realIndex);
-            else {
-                if (GetFlatMode()) {
-                    const wchar_t *prefix = NULL;
-                    if (_folderGetItemName) {
-                        unsigned prefixLen = 0;
-                        _folderGetItemName->GetItemPrefix(realIndex, &prefix, &prefixLen);
-                        if (prefix)
-                            relPath = prefix;
-                    }
-                    if (!prefix) {
-                        NWindows::NCOM::CPropVariant prop;
-                        if (_folder->GetProperty(realIndex, kpidPrefix, &prop) != S_OK)
-                            throw 2723400;
-                        if (prop.vt == VT_BSTR)
-                            relPath.SetFromBstr(prop.bstrVal);
-                    }
+            if (GetFlatMode()) {
+                const wchar_t *prefix = NULL;
+                if (_folderGetItemName) {
+                    unsigned prefixLen = 0;
+                    _folderGetItemName->GetItemPrefix(realIndex, &prefix, &prefixLen);
+                    if (prefix)
+                        relPath = prefix;
                 }
-                relPath += name;
+                if (!prefix) {
+                    NWindows::NCOM::CPropVariant prop;
+                    if (_folder->GetProperty(realIndex, kpidPrefix, &prop) != S_OK)
+                        throw 2723400;
+                    if (prop.vt == VT_BSTR)
+                        relPath.SetFromBstr(prop.bstrVal);
+                }
             }
+            relPath += name;
             if (relPath == state.FocusedName)
                 cursorIndex = (int)i;
             if (state.SelectedNames.FindInSorted(relPath) != -1)

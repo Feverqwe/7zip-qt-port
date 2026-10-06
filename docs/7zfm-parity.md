@@ -119,8 +119,11 @@ RefreshListCtrl. Сортировка и уведомления восстана
 переиспользует имя при matching и читает prefix только в flat mode. NULL от fast
 interface включает исходный property fallback; exception policy не заменяется
 новой HRESULT validation. Сохранённые native names/marks/focus не зависят от
-форматирования display name или порядка Qt rows. Прежний populated-list adapter
-без native provider сохраняет свой transport. Copy/reload потребители остаются
+форматирования display name или порядка Qt rows. Без provider Refresh сохраняет
+исходный ранний S_OK после сброса drop target: callback после освобождения папки
+не меняет выбор, фокус, guards или статус и не ставит pending restore. Snapshot
+transport имеет настоящий QtPanelFolder и сохраняет обычное восстановление.
+Copy/reload потребители остаются
 частью обязательной текущей платформенной приёмки.
 После matching исходные SetMemMode_Enable/Restore разрешают callbacks перед
 восстановлением фокуса. Qt current-cell signal может запросить uncached имя

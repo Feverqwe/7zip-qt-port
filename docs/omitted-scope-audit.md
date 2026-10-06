@@ -73,7 +73,7 @@ boundary; it does not close the whole `PanelItems.cpp` module or P3-05.15.
 
 | Original phase | Current authoritative owner and adaptation |
 | --- | --- |
-| Clear drop target; return for absent folder | Both `LoadListItemsImpl` and restoration clear the panel-owned target and retained Qt paint. Load retains the source absent-folder return. Restoration also supports already populated Qt rows; its absent-provider fallback needs a separate disposition. `CPanel(prefix, items)` is not evidence for that fallback: it constructs a real `QtPanelFolder` provider, also used by archive transport. |
+| Clear drop target; return for absent folder | Both `LoadListItemsImpl` and restoration clear the panel-owned target and retained Qt paint. Restoration now retains the original absent-folder S_OK before load HRESULT, pending selection, guards, sorting or status. Its independent providerless name/prefix/showDots fallback is removed. `CPanel(prefix, items)` and archive transport construct real `QtPanelFolder` providers; their restoration still uses the source walk. Sixteen initial/released-provider, empty/retained-parent-row, enabled/disabled-guard and stale-load-result scenarios cover no-op restoration followed by provider-backed recovery. |
 | Reset text suppression; publish path unless timer | Path/address publication is in `renderBoundFolder`, `renderRootFolder` and `showDirectory`, with `CalledFromTimer` passed through `reloadPanelPresentation`. The source `_dontShowMode` reset is now retained at load/restoration; it suppresses post-Rename source/Qt callback text, including cached cells. `ShouldProcessNotifications` separately gates guarded row construction. Their source/GUI regressions are recorded in the port audit; native provider/platform closure remains separate. |
 | Disable redraw/notifications; delete old rows; reset marks/group | `LoadListItemsImpl` owns deletion and source resets under timer/notify guards. `QtPanelList::DeleteListItems` removes model rows. Native `_thereAre_ListView_Items` and `_enableItemChangeNotify` are not retained fields; Qt model signals are gated by the panel notification flag. `mainwindow_archivelist.cpp::refreshActions` controls updates while scanning/projecting. Terminal redraw after success, failure and cancellation remains an integration review requirement. |
 | Set flat mode; LoadItems; InitColumns; count and directory validation | `LoadListItemsImpl` retains these source branches. Worker-loaded FS passes its retained HRESULT instead of enumerating twice. The count HRESULT is checked explicitly before Qt publication. Directory VT_BOOL/VT_EMPTY validation and cache clearing retain the source failure contract. |
@@ -95,7 +95,7 @@ Its Comment row now records the subsequent integrated caller correction. Existin
 RED/GREEN and geometry evidence remains bounded to the individual phase fixes
 in [the port audit](upstream-port-audit.md#source-refresh-alternative-selection-anchor-2026-10-06).
 Next work must exercise the outstanding operation-to-render result consumers,
-remaining native Rename workflows, terminal redraw and absent-provider disposition,
+remaining native Rename workflows, terminal redraw and remaining provider boundaries,
 then reconcile remaining `PanelItems` bodies/dependencies/resources. A green
 whole repository gate alone does not establish those source-body dispositions
 or current Windows/Linux/rendered/cold-stable acceptance.

@@ -6,6 +6,85 @@ class PanelProcessingTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void absentFolderRefreshPreservesPresentation_data() {
+        QTest::addColumn<bool>("released");
+        QTest::addColumn<bool>("populated");
+        QTest::addColumn<bool>("disabled");
+        QTest::addColumn<bool>("failedLoad");
+        for (bool released : {false, true})
+            for (bool populated : {false, true})
+                for (bool disabled : {false, true})
+                    for (bool failed : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(released)
+                                                     .arg(populated)
+                                                     .arg(disabled)
+                                                     .arg(failed)))
+                            << released << populated << disabled << failed;
+    }
+
+    void absentFolderRefreshPreservesPresentation() {
+        QFETCH(bool, released);
+        QFETCH(bool, populated);
+        QFETCH(bool, disabled);
+        QFETCH(bool, failedLoad);
+        CObjectVector<CPanelItem> items;
+        CPanelItem entry;
+        entry.RelPath = QStringLiteral("control 文件.txt");
+        items.Add(entry);
+        CPanel panel;
+        QTableWidget table(0, 1);
+        table.setSelectionBehavior(QAbstractItemView::SelectRows);
+        panel.AttachSelectionView(&table);
+        if (released) {
+            panel.SetNewFolder(new QtPanelFolder(QStringLiteral("/fixture/"), items));
+            panel.ReleaseFolder();
+        }
+        QVERIFY(!panel.GetFolder());
+        // A queued restoration can outlive provider teardown. Keep a parent row
+        // in the attached view to prove it does not become a provider substitute.
+        if (populated) {
+            table.setRowCount(1);
+            auto *parent = new QTableWidgetItem("..");
+            parent->setData(Qt::UserRole + 6, UInt32(-1));
+            table.setItem(0, 0, parent);
+            table.selectRow(0);
+        }
+        if (disabled)
+            panel.Disable_Processing_Timer_Notify_StatusBar();
+        if (failedLoad)
+            QCOMPARE(panel.LoadListItems(true, E_ABORT), HRESULT(E_ABORT));
+        int statusCalls = 0;
+        panel.AttachStatusPresentation([&](const CPanelStatus &) { ++statusCalls; });
+        QSignalSpy selection(table.selectionModel(), &QItemSelectionModel::selectionChanged);
+        QSignalSpy focus(&table, &QTableWidget::currentCellChanged);
+        CSelectedState saved;
+        saved.FocusedName = L"unused 文件.txt";
+        saved.FocusedName_Defined = true;
+        QCOMPARE(panel.RefreshListCtrl(saved), HRESULT(S_OK));
+        QCOMPARE(table.rowCount(), populated ? 1 : 0);
+        QCOMPARE(table.selectionModel()->selectedRows().size(), populated ? 1 : 0);
+        QCOMPARE(table.currentRow(), populated ? 0 : -1);
+        QCOMPARE(selection.count(), 0);
+        QCOMPARE(focus.count(), 0);
+        QCOMPARE(statusCalls, 0);
+        QCOMPARE(panel.ShouldProcessNotifications(), !disabled);
+        QVERIFY(!panel.TakeRefreshSelection());
+        // The ordinary snapshot transport has a provider and must still restore.
+        panel.SetNewFolder(new QtPanelFolder(QStringLiteral("/fixture/"), items));
+        QCOMPARE(panel.LoadListItems(), HRESULT(S_OK));
+        table.setRowCount(1);
+        auto *item = new QTableWidgetItem(entry.RelPath);
+        item->setData(Qt::UserRole + 6, 0u);
+        table.setItem(0, 0, item);
+        saved.FocusedName = ToUString(entry.RelPath);
+        saved.SelectedNames.Add(saved.FocusedName);
+        QCOMPARE(panel.RefreshListCtrl(saved), HRESULT(S_OK));
+        QCOMPARE(table.selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(statusCalls, 1);
+        QVERIFY(panel.ShouldProcessNotifications());
+    }
+
     void nestedNotifyGuardsRestoreAfterException() {
         CPanel panel;
         QVERIFY(panel.ShouldProcessNotifications());

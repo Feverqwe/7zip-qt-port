@@ -1495,6 +1495,48 @@ Qt6.12.0; all five input hashes remain unchanged. Current native Windows/Linux
 execution and rendered Windows parity are unverified.
 Whole-module/native ADS/archive navigation/full-plan acceptance remains open.
 
+### Source Refresh absent-folder return, 2026-10-06
+
+Original `CPP/7zip/UI/FileManager/PanelItems.cpp::RefreshListCtrl` returns S_OK
+after resetting drop state when `_folder` is absent, before suppression reset,
+address/load/restoration guards, sorting and status. This branch is restored in
+the adapted module from upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. The retained Qt load HRESULT is checked only
+after that original guard. Independent providerless name/prefix/showDots branches
+in this function are removed; the fast-name/flat-prefix source walk is unchanged
+for a present folder. No new algorithm, dependency, language or source file is
+introduced; unrelated count/snapshot helpers remain outside this correction.
+
+Reviewed constructors/default state in Panel.h/App.cpp, ReleaseFolder/SetNewFolder
+and pending navigation in PanelFolderChange, selection publication in
+mainwindow_selection, source Copy completion, Rename and PanelItemOpen callbacks.
+`CPanel(prefix, items)` and the archive transport construct a real QtPanelFolder,
+so retained view rows do not justify a providerless restoration implementation.
+ReleaseFolder clears the provider, records and load result; a delayed restoration
+must not reinterpret a surviving presentation as an IFolderFolder. Source timer/
+notify state is preserved across the absent-folder return. Provider-backed callers
+retain existing source matching, completion and asynchronous transport.
+
+Sixteen public lifecycle rows in the existing focused panel_processing suite
+cover default/released provider, empty/retained-parent view, enabled/disabled
+guards and stale E_ABORT. They observe rows/selected rows/focus, Qt signals,
+status publication and pending selection, then bind a real snapshot provider and
+verify successful restoration/status in every case. This changes source state
+logic without introducing UI geometry/text changes. The initial fixture build
+failed because the source-private parent sentinel was named directly; the fixture
+now supplies its established public row-role UInt32(-1) value without exposing
+internals. Actual old-product RED16/5QtPASS0.51s and two input snapshots/hashes/log
+are frozen in build/review/source-refresh-absent-red. The new branch and removed
+fallback are narrowly formatted; affected ten-target build and focused10/10PASS
+14.13s, all Qt cases zero failures/skips. Baseline verification passes408 exact/
+196 adapted/3 local paths. This does not close the whole PanelItems module,
+remaining operation/render consumers, native platforms or P3-06 acceptance.
+Mandatory unsandboxed full gate passes formatting/all-target build and269/269
+CTest in139.30s on macOS arm64 with official Qt6.12.0. Two final input hashes
+remain unchanged; focused/full logs and hashes are frozen in
+build/review/source-refresh-absent-final. No current Windows/Linux execution or
+rendered parity is claimed by this lifecycle correction.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

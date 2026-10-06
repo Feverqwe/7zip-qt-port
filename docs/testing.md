@@ -1,5 +1,12 @@
 # Regression strategy
 
+`panel_processing` checks Refresh's original absent-folder early return in16
+initial/released-provider, empty/retained-parent-row, enabled/disabled-guard and
+stale E_ABORT scenarios. Public view signals, selected rows/focus, status callback
+and pending selection prove no restoration occurs without a provider; binding a
+real QtPanelFolder then verifies normal selection/status recovery in every case.
+This is a source state/lifecycle regression, with no layout or text change.
+
 `panel_list_load` checks the source load/property stage and its namespace consumer.
 It verifies flat-before-load/columns order, worker-loaded publication without a
 second load, cached directory flags and replacement, and VT_EMPTY file semantics.
