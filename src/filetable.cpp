@@ -6,6 +6,7 @@
 #include <QKeyEvent>
 #include <QMimeData>
 #include <QPainter>
+#include <QSignalBlocker>
 #include <QStyledItemDelegate>
 #include <QUrl>
 
@@ -62,6 +63,12 @@ FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows
 const CPropColumn *FileTable::sourceColumn(int column) const {
     if (!sourcePanel || column < 0)
         return nullptr;
+    if (column < visibleColumnIndices.size()) {
+        const int index = visibleColumnIndices[column];
+        const CPropColumns &visible = sourcePanel->GetVisibleColumns();
+        if (index >= 0 && unsigned(index) < visible.Size())
+            return &visible[unsigned(index)];
+    }
     const CPropColumns &columns = sourcePanel->GetColumns();
     if (!sourceColumnIndices.isEmpty()) {
         const int index = column < sourceColumnIndices.size() ? sourceColumnIndices[column] : -1;
@@ -83,6 +90,8 @@ int FileTable::columnForCatalogProperty(unsigned index) const {
 int FileTable::columnForVisibleProperty(unsigned index) const {
     if (!sourcePanel || index >= sourcePanel->GetVisibleColumns().Size())
         return -1;
+    if (!visibleColumnIndices.isEmpty())
+        return visibleColumnIndices.indexOf(int(index));
     const CPropColumns &visible = sourcePanel->GetVisibleColumns();
     const CPropColumn &prop = visible[index];
     unsigned occurrence = 0;
@@ -98,6 +107,67 @@ int FileTable::columnForVisibleProperty(unsigned index) const {
         }
     }
     return -1;
+}
+
+void FileTable::removeSourceColumn(unsigned index) {
+    const int column = visibleColumnIndices.indexOf(int(index));
+    if (column >= 0)
+        setColumnHidden(column, true);
+    for (int &visible : visibleColumnIndices) {
+        if (visible == int(index))
+            visible = -1;
+        else if (visible > int(index))
+            --visible;
+    }
+}
+
+void FileTable::appendSourceColumn(unsigned catalogIndex) {
+    const QSignalBlocker blocked(this);
+    const QSignalBlocker selectionBlocked(selectionModel());
+    const QModelIndexList selected = selectionModel()->selectedRows();
+    int column = -1;
+    for (int candidate = 0; candidate < sourceColumnIndices.size(); ++candidate)
+        if (sourceColumnIndices[candidate] == int(catalogIndex) &&
+            visibleColumnIndices[candidate] < 0) {
+            column = candidate;
+            break;
+        }
+    const unsigned index = sourcePanel->GetVisibleColumns().Size() - 1;
+    const CPropColumn &prop = sourcePanel->GetVisibleColumns()[index];
+    if (column < 0) {
+        column = columnCount();
+        propertyIds.append(prop.ID);
+        rawProperties.append(prop.IsRawProp);
+        sourceColumnIndices.append(int(catalogIndex));
+        visibleColumnIndices.append(-1);
+        setColumnCount(column + 1);
+        auto *label = new QTableWidgetItem(ToQString(prop.Name));
+        label->setData(Qt::InitialSortOrderRole, CPanel::GetDefaultSortAscending(prop.ID)
+                                                     ? Qt::AscendingOrder
+                                                     : Qt::DescendingOrder);
+        setHorizontalHeaderItem(column, label);
+        for (int row = 0; row < rowCount(); ++row) {
+            const auto *primary = dynamic_cast<const ArchiveTableItem *>(item(row, 0));
+            if (!primary)
+                continue;
+            auto *cell = new ArchiveTableItem(*primary);
+            cell->setData(Qt::DisplayRole, QVariant());
+            cell->setData(Qt::DecorationRole, QVariant());
+            cell->setFlags(cell->flags() & ~Qt::ItemIsEditable);
+            cell->setTextAlignment(GetColumnAlign(prop.ID, prop.Type));
+            setItem(row, column, cell);
+        }
+    } else {
+        for (int row = 0; row < rowCount(); ++row)
+            if (auto *cell = item(row, column))
+                cell->setData(Qt::DisplayRole, QVariant());
+    }
+    visibleColumnIndices[column] = int(index);
+    setColumnWidth(column, qMax(32, int(prop.Width)));
+    setColumnHidden(column, false);
+    horizontalHeader()->moveSection(horizontalHeader()->visualIndex(column), columnCount() - 1);
+    for (const QModelIndex &row : selected)
+        selectionModel()->select(model()->index(row.row(), column), QItemSelectionModel::Select);
 }
 
 void FileTable::setFullRowHighlight(bool enabled) {

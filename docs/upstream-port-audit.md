@@ -1734,6 +1734,58 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source duplicate-ID column menu projection, 2026-10-06
+
+Reviewed complete original `CPP/7zip/UI/FileManager/PanelItems.cpp`
+`ShowColumnsContextMenu`, `AddColumn`, `DeleteColumn`, their InitColumns/save
+callers and CPropColumns first-ID lookup; source pin remains
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 at
+https://github.com/ip7z/7zip.git. Existing authoritative source mutation bodies,
+formatter/alignment, dependencies, languages and notices remain unchanged.
+Win32 physical insert/delete transport is projected through FileTable; no
+upstream or archive-engine change is made.
+
+Native hiding removes the first visible PropID, even when the clicked catalog
+entry is a later raw descriptor. Showing appends a copy even if that descriptor
+is already visible. The Qt adapter now keeps a separate visible logical-index
+map, hides the native deleted section and shifts later indices. Append reuses an
+unmapped catalog section or allocates another section with callback cells copied
+from each row's existing source identity, cleared text/icon cache, source alignment
+and retained selection. Each visible copy saves its own width/order; catalog
+checks remain native and can differ from the remaining visible copies. Repeated
+catalog-ID commands are enabled again, with only the first entry protected.
+The focused adapters stay below file/function extraction triggers; no unrelated
+cleanup or CMake/dependency expansion is included.
+
+Actual previous-product RED catches disabled commands and absent mutations in
+eight cases (2QtPASS/8FAIL,0.82s); four frozen inputs and log are retained in
+build/review/column-duplicates-red. Extended panel_column_schema cases cover
+EN/RU both panes, peer focus, first-ID generic removal, appended second raw
+instance, callback text/alignment/source indices, independent193/211px widths,
+repeated toggles/reuse, selected rows and Refresh/peer/Unicode bytes. Existing
+notification/E_FAIL/E_ABORT/recovery assertions remain. Thirty-two normal980×620
+and compact640×400 reports cover both duplicate-visible and post-Refresh states;
+visible affected panels/tables/paths/headers/status are fully exposed. New colors,
+fonts or icon styles are not introduced; rendered Windows parity is unverified.
+
+An initial added focus assertion assumed the embedded archivePath line edit;
+Qt's actual focus target was its pathCombo. The failed run and subsequent60.02s
+fixture timeout are retained separately, not used as product RED. The corrected
+test captures the actual pre-popup widget, checks window focus, reactivates the
+offscreen window and checks application focus, as existing menu consumers do.
+Affected nine-target build and fresh sequential focused9/9PASS13.97s, zero
+failures/skips, pass on macOS27.0.1 arm64/official Qt6.12.0. Baseline verification
+passes408 exact/196 adapted/3 local. Final hashes/logs/reports are retained in
+build/review/column-duplicates-final. Mandatory unsandboxed check.sh completed
+with exit0: formatting, all-target build and273/273 CTest pass in149.47s on the
+same macOS/Qt toolchain. All four final code/test hashes remain unchanged.
+
+This closes the bounded duplicate-ID menu projection, not the whole column
+module. Duplicate-ID sorting, broader schema/default-column/same-provider/error
+consumers, real archive schemas, operation-to-render/body closure, current native
+Windows/Linux/rendered reference,109-module/cold-stable/packages and
+P3-05.15/P3-06 acceptance remain required.
+
 ### Source column descriptor publication, 2026-10-06
 
 Original `CPP/7zip/UI/FileManager/PanelListNotify.cpp::SetItemText` reads the
@@ -1755,7 +1807,8 @@ occurrence, rather than collapsing the first ID. Legacy standalone adapters with
 no publication map keep their existing ID binding. Namespace rows now apply
 source GetColumnAlign, matching the native column presentation policy.
 
-Repeated catalog-ID menu commands remain disabled as unfinished under AGENTS.md:
+At this publication checkpoint, repeated catalog-ID menu commands were disabled
+as unfinished under AGENTS.md (superseded by the menu projection above):
 native ShowColumnsContextMenu removes the first visible ID, and Qt's complete
 delete/add projection for duplicate descriptors is not yet ported. This temporary
 observable difference and duplicate sorting acceptance remain mandatory, rather

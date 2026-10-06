@@ -4,9 +4,12 @@
 and raw CRC/Size entries with the same ID. Eight both-pane EN/RU cases check
 separate sections/text/alignment/widths, owning provider after peer focus, guards,
 RawProp E_FAIL/E_ABORT/recovery, header Cancel, source duplicate saved-ID behavior,
-selection/peer/control bytes and Refresh. Sixteen normal/compact reports cover
-both panels. The fixture does not establish actual archive-format or duplicate-ID
-menu/sort workflow acceptance; native/rendered Windows remains open.
+selection/peer/control bytes and Refresh. Native duplicate-ID menu consumers
+also cover first-visible-ID removal, appending a second raw instance, callback
+text/alignment/source indices, independent193/211px widths, repeated hide/show,
+selection and peer focus. Thirty-two normal/compact reports cover both panels
+before and after Refresh. The fixture does not establish actual archive-format
+or duplicate-ID sort acceptance; native/rendered Windows remains open.
 
 `panel_column_menu` covers both panes, EN/RU and active/inactive header owners:
 source catalog order/checks/first-entry protection, Cancel, hide/show append after

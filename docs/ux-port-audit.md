@@ -123,7 +123,10 @@ Raw/generic publication также исправлена: Qt больше не с
 с точным descriptor исходной колонки и не вытесняет generic Size raw-колонкой.
 Namespace alignment теперь следует исходному GetColumnAlign. EN/RU обе панели,
 неактивный provider/peer, RawProp errors/Cancel/recovery и16 JSON проверены на Mac.
-Duplicate-ID menu/sort workflows ещё требуют сверки и native/rendered проверки.
+Duplicate-ID menu теперь следует исходным first-visible-ID delete и append-new-copy:
+повторные пункты доступны, новые секции сохраняют callback/source indices, отдельные
+ширины и selection/peer focus. EN/RU обе панели и32 normal/compact JSON проверены
+на Mac. Duplicate-ID sort и текущие native/rendered проверки остаются обязательными.
 Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и

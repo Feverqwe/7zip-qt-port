@@ -18,6 +18,7 @@ void MainWindow::configureColumns(bool initialized) {
                               kpidMTime, kpidExtension, kpidNoProperty};
     fileTable->rawProperties.fill(false, 7);
     fileTable->sourceColumnIndices.fill(-1, 7);
+    fileTable->visibleColumnIndices.clear();
     QStringList labels;
     for (PROPID id : fileTable->propertyIds)
         labels << (id == kpidNoProperty ? QtLocalText("Order", "Порядок")
@@ -64,6 +65,13 @@ void MainWindow::configureColumns(bool initialized) {
             table_->setColumnHidden(column, true);
     }
     const CPropColumns &visible = panel.GetVisibleColumns();
+    QVector<int> visibleIndices(table_->columnCount(), -1);
+    FOR_VECTOR(i, visible) {
+        const int column = fileTable->columnForVisibleProperty(i);
+        if (column >= 0)
+            visibleIndices[column] = int(i);
+    }
+    fileTable->visibleColumnIndices = visibleIndices;
     CIntArr columnOrder;
     const bool ordered = panel.GetColumnOrder(columnOrder);
     FOR_VECTOR(i, visible) {
@@ -118,21 +126,22 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
         QAction *option = menu.addAction(ToQString(prop.Name));
         option->setCheckable(true);
         option->setChecked(prop.IsVisible);
-        // Repeated-ID toggle projection still needs the native deletion/add
-        // consumer port. Keep that unfinished command disabled.
-        option->setEnabled(i != 0 && columns.FindItem_for_PropID(prop.ID) == int(i));
-        connect(option, &QAction::toggled, this, [this, column, index = i](bool) {
+        option->setEnabled(i != 0);
+        connect(option, &QAction::toggled, this, [this, index = i](bool) {
             auto &source = app_.GetFocusedPanel();
+            const int removed =
+                source.GetColumns()[index].IsVisible
+                    ? source.GetVisibleColumns().FindItem_for_PropID(source.GetColumns()[index].ID)
+                    : -1;
             source.ShowColumnsContextMenu(index);
             const bool visible = source.GetColumns()[index].IsVisible;
             {
                 const QSignalBlocker blocker(table_->horizontalHeader());
-                table_->setColumnHidden(column, !visible);
-                if (visible) {
-                    table_->setColumnWidth(column, qMax(32, int(source.GetColumns()[index].Width)));
-                    table_->horizontalHeader()->moveSection(
-                        table_->horizontalHeader()->visualIndex(column), table_->columnCount() - 1);
-                }
+                auto *view = static_cast<FileTable *>(table_);
+                if (visible)
+                    view->appendSourceColumn(index);
+                else if (removed >= 0)
+                    view->removeSourceColumn(unsigned(removed));
             }
             sortColumn_ = static_cast<FileTable *>(table_)->columnForProperty(source._sortID);
             sortOrder_ = source._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;

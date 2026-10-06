@@ -61,6 +61,8 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         peer->sourcePanel->Set_AutoRefresh_Mode(false);
         const int peerRows = peer->rowCount();
         peerUi->findChild<QLineEdit *>("archivePath")->setFocus();
+        QWidget *const focused = QApplication::focusWidget();
+        QVERIFY(focused);
         const int generic = propertyColumn(*view, spec->rawId, false);
         const int raw = propertyColumn(*view, spec->rawId, true);
         QVERIFY(generic >= 0);
@@ -96,13 +98,15 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         QTimer::singleShot(0, [&] {
             auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
             QVERIFY(menu);
-            QCOMPARE(menu->actions().size(), int(panel.GetColumns().Size()));
-            QVERIFY(!menu->actions()[rawSource]->isEnabled());
             menu->close();
+            QCOMPARE(menu->actions().size(), int(panel.GetColumns().Size()));
+            QVERIFY(menu->actions()[rawSource]->isEnabled());
         });
         QVERIFY(QMetaObject::invokeMethod(view->horizontalHeader(), "customContextMenuRequested",
                                           Qt::DirectConnection, Q_ARG(QPoint, QPoint(10, 5))));
         QVERIFY(panel.GetColumns().IsEqualTo(catalog));
+        window.activateWindow();
+        QTRY_COMPARE(QApplication::focusWidget(), focused);
         const unsigned queries = spec->rawQueries;
         {
             CPanel::CDisableNotify guard(panel);
@@ -119,6 +123,65 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         spec->rawResult = S_OK;
         view->item(0, raw)->setData(Qt::DisplayRole, QVariant());
         QCOMPARE(view->item(0, raw)->text(), reserved ? QString("deadbeef") : QString("DEADBEEF"));
+        auto toggleRaw = [&] {
+            QTimer::singleShot(0, [&] {
+                auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+                if (menu) {
+                    menu->actions()[rawSource]->trigger();
+                    menu->close();
+                }
+            });
+            return QMetaObject::invokeMethod(view->horizontalHeader(), "customContextMenuRequested",
+                                             Qt::DirectConnection, Q_ARG(QPoint, QPoint(10, 5)));
+        };
+        QVERIFY(toggleRaw());
+        QVERIFY(!panel.GetColumns()[rawSource].IsVisible);
+        QCOMPARE(panel.GetVisibleColumns().Size(), 3u);
+        QVERIFY(view->isColumnHidden(generic));
+        QVERIFY(!view->isColumnHidden(raw));
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+        QVERIFY(toggleRaw());
+        QCOMPARE(panel.GetVisibleColumns().Size(), 4u);
+        const int appended = view->columnForVisibleProperty(3);
+        QVERIFY(appended >= 0);
+        QVERIFY(appended != raw);
+        QVERIFY(!view->isColumnHidden(appended));
+        QCOMPARE(view->horizontalHeader()->sectionSize(appended), 100);
+        QCOMPARE(view->horizontalHeader()->logicalIndex(view->columnCount() - 1), appended);
+        for (int row = 0; row < view->rowCount(); ++row) {
+            QVERIFY(view->item(row, appended));
+            QCOMPARE(view->item(row, appended)->data(Qt::UserRole + 6),
+                     view->item(row, 0)->data(Qt::UserRole + 6));
+            QCOMPARE(view->item(row, appended)->text(), view->item(row, raw)->text());
+            QCOMPARE(view->item(row, appended)->textAlignment(),
+                     GetColumnAlign(spec->rawId, VT_EMPTY));
+        }
+        view->horizontalHeader()->resizeSection(appended, 211);
+        QCOMPARE(panel.GetVisibleColumns()[2].Width, UInt32(193));
+        QCOMPARE(panel.GetVisibleColumns()[3].Width, UInt32(211));
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(window.focusWidget(), focused);
+        window.activateWindow();
+        QTRY_COMPARE(QApplication::focusWidget(), focused);
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*view, window));
+            QVERIFY(UiInspection::fullyVisible(*peer, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("column-duplicates-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+        QVERIFY(toggleRaw());
+        QVERIFY(view->isColumnHidden(raw));
+        QVERIFY(!view->isColumnHidden(appended));
+        QCOMPARE(view->columnForVisibleProperty(2), appended);
+        QVERIFY(toggleRaw());
+        QCOMPARE(panel.GetVisibleColumns().Size(), 4u);
+        QCOMPARE(view->columnForVisibleProperty(3), raw);
+        QCOMPARE(view->horizontalHeader()->sectionSize(raw), 100);
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         panel.OnReload();
         QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);

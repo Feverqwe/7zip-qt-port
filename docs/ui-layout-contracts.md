@@ -8,10 +8,11 @@ Requested cells/alignment use that exact source descriptor, not the first ID.
 Visible logical order and widths persist through the source save flow; duplicate
 saved IDs retain upstream first-match initialization policy. Inspect both panes
 EN/RU normal980×620/compact640×400, owning provider/selection/peer, header Cancel,
-notification guards and Refresh. Source duplicate-ID menu mutations need their
-own consumer review; publication evidence does not close that workflow.
-Keep repeated catalog-ID menu entries disabled until their native delete/add
-projection is ported; retain ordinary unique-ID commands.
+notification guards and Refresh. Duplicate-ID menu entries follow the native
+catalog checks: hiding removes the first visible PropID, showing appends a new
+instance even if that descriptor is already visible. Each visible instance has
+its own logical index, section, requested cells and width. Inspect normal/compact
+geometry before Refresh as well as after it, with selected rows and peer focus.
 
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.

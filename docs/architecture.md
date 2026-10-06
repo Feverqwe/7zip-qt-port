@@ -24,13 +24,16 @@ InitColumns instead supplies the saved width for that initialization/reopening.
 FileTable records the source catalog index for every published section. Generic
 and raw entries with the same ID retain separate descriptors; raw or repeated
 reserved IDs receive additional sections. Cells, alignment and timestamp refresh
-resolve that owning descriptor. Visible width/order publication also matches type,
-raw flag, name and occurrence, retaining source logical order. Standalone adapters
+resolve that owning descriptor. Initial publication matches type/raw/name and
+occurrence; a separate section-to-visible-index map then retains source logical
+order across native first-ID deletions and appended descriptor copies. Standalone adapters
 without a publication map retain their previous ID binding. Namespace rows now
-apply the same source alignment as filesystem/archive rows. Duplicate-ID menu
-mutations and sorting remain separate required consumers in the port audit.
-Repeated catalog-ID menu entries are disabled while their native removal/addition
-projection is unfinished; ordinary unique-ID column commands remain enabled.
+apply the same source alignment as filesystem/archive rows. Column menus enable
+all entries except the protected first entry. Qt hides the section for the native
+deleted index, shifts subsequent mappings and reuses an unmapped catalog section
+or creates an additional section for each appended copy. New callback cells retain
+their row source index and selection; each copy persists its own width/order.
+Duplicate-ID sorting remains a required consumer in the port audit.
 
 Copy/Move destination defaults belong to CApp::OnCopy: it reads the destination
 panel's source GetFsPath and applies the retained filesystem-path reducer only

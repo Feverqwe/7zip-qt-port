@@ -24,9 +24,12 @@ class FileTable : public QTableWidget {
     QVector<PROPID> propertyIds;
     QVector<bool> rawProperties;
     QVector<int> sourceColumnIndices;
+    QVector<int> visibleColumnIndices;
     const CPropColumn *sourceColumn(int column) const;
     int columnForCatalogProperty(unsigned index) const;
     int columnForVisibleProperty(unsigned index) const;
+    void removeSourceColumn(unsigned index);
+    void appendSourceColumn(unsigned catalogIndex);
     PROPID propertyId(int column) const {
         return column >= 0 && column < propertyIds.size() ? propertyIds[column] : kpidNoProperty;
     }
