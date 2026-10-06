@@ -33,7 +33,15 @@ all entries except the protected first entry. Qt hides the section for the nativ
 deleted index, shifts subsequent mappings and reuses an unmapped catalog section
 or creates an additional section for each appended copy. New callback cells retain
 their row source index and selection; each copy persists its own width/order.
-Duplicate-ID sorting remains a required consumer in the port audit.
+Sorting uses source SetSortRawStatus's first catalog-ID flag rather than the
+clicked descriptor's raw flag; published raw metadata remains immutable. The
+FileTable header inherits Qt gestures and completes the native click callback
+after Qt's automatic mouse sort. OnColumnClick delegates to the original source
+toggle; projection then restores its direction on the clicked section. Explicit
+programmatic sorts keep their requested direction. Sort actions map by PropID,
+including raw Size sections; existing standalone comparison adapters without a
+published catalog retain their explicitly supplied flags. Broader schema and
+native acceptance remain in the port audit.
 
 Copy/Move destination defaults belong to CApp::OnCopy: it reads the destination
 panel's source GetFsPath and applies the retained filesystem-path reducer only

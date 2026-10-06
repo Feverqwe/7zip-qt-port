@@ -348,7 +348,7 @@ class CPanel : public QObject {
     static bool GetDefaultSortAscending(PROPID propID);
     void SetSortRawStatus();
     void SortItemsWithPropID(PROPID propID);
-    void OnColumnClick(PROPID propID, bool ascending);
+    void OnColumnClick(PROPID propID);
     bool _mySelectMode = false;
     bool _selectionIsDefined = false;
     bool _selectMark = false;

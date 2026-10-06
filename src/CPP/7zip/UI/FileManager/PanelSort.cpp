@@ -127,7 +127,7 @@ static std::optional<int> CompareRawItems(IArchiveGetRawProps *props, UInt32 fir
 }
 
 // The source CompareItems2/CompareItems property loop, adapted to source item
-// indices and the raw-column flag held by Qt rows.
+// indices and the source catalog's raw-sort flag.
 int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID, bool isRawProp) const {
     if (first == UInt32(-1))
         return -1;
@@ -221,10 +221,7 @@ void CPanel::SortItemsWithPropID(PROPID propID) {
     _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
 }
 
-void CPanel::OnColumnClick(PROPID propID, bool ascending) {
-    // Qt has applied its indicator direction using the shared source default.
-    _sortID = propID;
-    _ascending = ascending;
-    SetSortRawStatus();
-    _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
+void CPanel::OnColumnClick(PROPID propID) {
+    // Qt carries the clicked source-visible property instead of NMLISTVIEW.
+    SortItemsWithPropID(propID);
 }

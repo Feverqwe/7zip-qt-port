@@ -5,12 +5,51 @@
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QMimeData>
+#include <QMouseEvent>
 #include <QPainter>
+#include <QScopedValueRollback>
 #include <QSignalBlocker>
 #include <QStyledItemDelegate>
 #include <QUrl>
 
 namespace {
+class FileColumnHeader final : public QHeaderView {
+  public:
+    using QHeaderView::QHeaderView;
+    bool columnClick = false;
+    bool dispatchingClick = false;
+    std::function<void()> sortClick;
+
+  protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        {
+            const QScopedValueRollback<bool> click(dispatchingClick,
+                                                   event->button() == Qt::LeftButton);
+            QHeaderView::mousePressEvent(event);
+        }
+        finishSortClick();
+    }
+    void mouseReleaseEvent(QMouseEvent *event) override {
+        {
+            const QScopedValueRollback<bool> click(dispatchingClick,
+                                                   event->button() == Qt::LeftButton);
+            QHeaderView::mouseReleaseEvent(event);
+        }
+        finishSortClick();
+    }
+
+  private:
+    void finishSortClick() {
+        if (!sortClick)
+            return;
+        auto action = std::move(sortClick);
+        sortClick = {};
+        columnClick = true;
+        action();
+        columnClick = false;
+    }
+};
+
 bool sameColumnIdentity(const CPropColumn &left, const CPropColumn &right) {
     return left.ID == right.ID && left.Type == right.Type && left.IsRawProp == right.IsRawProp &&
            left.Name == right.Name;
@@ -58,6 +97,26 @@ QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent) {
 
 FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows, columns, parent) {
     setItemDelegate(CreateFileRowDelegate(this));
+    setHorizontalHeader(new FileColumnHeader(Qt::Horizontal, this));
+    horizontalHeader()->setSectionsClickable(true);
+}
+
+bool FileTable::takeSourceColumnClick() {
+    auto *header = dynamic_cast<FileColumnHeader *>(horizontalHeader());
+    if (!header)
+        return false;
+    const bool clicked = header->columnClick;
+    header->columnClick = false;
+    return clicked;
+}
+
+bool FileTable::deferSourceColumnClick(std::function<void()> action) {
+    auto *header = dynamic_cast<FileColumnHeader *>(horizontalHeader());
+    if (!header || !header->dispatchingClick)
+        return false;
+    // Finish Qt's automatic sort before projecting the source click result.
+    header->sortClick = std::move(action);
+    return true;
 }
 
 const CPropColumn *FileTable::sourceColumn(int column) const {
@@ -292,9 +351,11 @@ bool ArchiveTableItem::operator<(const QTableWidgetItem &other) const {
         if (columnIndex >= 0 && columnIndex < table->columnCount()) {
             const UInt32 first = data(Qt::UserRole + 6).toUInt();
             const UInt32 second = other.data(Qt::UserRole + 6).toUInt();
-            return table->sourcePanel->CompareItemIndices(first, second,
-                                                          table->propertyId(columnIndex),
-                                                          table->isRawProperty(columnIndex)) < 0;
+            return table->sourcePanel->CompareItemIndices(
+                       first, second, table->propertyId(columnIndex),
+                       table->sourceColumnIndices.isEmpty()
+                           ? table->isRawProperty(columnIndex)
+                           : table->sourcePanel->_isRawSortProp != 0) < 0;
         }
     }
     return QTableWidgetItem::operator<(other);

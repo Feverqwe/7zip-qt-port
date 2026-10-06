@@ -1090,10 +1090,11 @@ column persistence remain presentation. No new sorting/path algorithm or module
 dependency, no language/license/path changes; format affected borrowed lines.
 
 Original OnColumnClick decodes NMLISTVIEW/visible-column property and forwards
-to the source sort command. Qt's indicator notification already carries its
+to the source sort command. At this earlier checkpoint, Qt's notification carried its
 explicit direction and has applied native model sorting. Its adapted signature
 accepts the mapped property/direction, retains source order/raw state and ensures
-focused visibility, avoiding a second toggle. Qt's initial-role defaults come
+focused visibility, avoiding a second toggle. This direction adaptation is
+superseded by the duplicate-ID sorting review below. Qt's initial-role defaults come
 from the extracted source switch. This native notification adaptation is explicit;
 it is not a byte-identical Win32 handler or a rendered Windows parity claim.
 Header signals are projected into their owning panel via the existing projection
@@ -1733,6 +1734,70 @@ CTest in199.77s on macOS27.0.1 arm64 with official Qt6.12.0; all four final
 input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
+
+### Source duplicate-ID header sorting, 2026-10-06
+
+Reviewed complete original/adapted `CPP/7zip/UI/FileManager/PanelSort.cpp`
+SetSortRawStatus, SortItemsWithPropID, OnColumnClick, CompareItems/CompareItems2,
+PanelListNotify's LVN_COLUMNCLICK caller, visible/catalog types and existing
+QtPanelList/QtAppPresentation/FileTable/header consumers. Agent::CompareItems
+and its generic Size/CRC and raw branches, plus existing metadata raw interfaces,
+supply the fixture without a new provider or sorting algorithm. Full upstream
+pin remains0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Source module boundaries, C++ language, notices
+and dependencies remain; no upstream or engine changes are made.
+
+Original OnColumnClick now again calls SortItemsWithPropID; Qt carries the
+visible property's ID instead of NMLISTVIEW. The first catalog matching ID owns
+the raw flag. A click on another section of that same ID toggles direction,
+including generic/raw and appended copies. Published comparisons use that
+source flag; standalone comparison adapters without a catalog keep their explicit
+flags. QtAppPresentation no longer rewrites a descriptor's raw metadata during
+sort resolution. Header action mapping also uses PropID, so raw Size checks Size.
+
+FileTable's private QHeaderView subclass delegates press/release gestures to Qt
+and invokes the captured source click after Qt's automatic mouse sort finishes.
+The callback is synchronous, window guarded and consumed once; no timer or new
+gesture/resize/move algorithm is used. Source direction/flag are then projected
+onto the clicked section under a header signal blocker. Explicit programmatic
+sorts keep their requested direction. Physical clicks focus the owning list;
+existing inactive programmatic sort consumers preserve active focus/peer state.
+New glue remains within the focused existing owners and below extraction triggers.
+
+Actual previous-product RED16/2QtPASS1.00s catches opposite row order with empty
+raw data and missing direction toggles across sections; seven frozen inputs/log
+are retained in build/review/column-sort-red. Initial fixture focus assumptions
+were corrected before that RED: opening needed window reactivation, and a real
+header click focuses the owning table. Those logs are not product RED. During
+implementation, private-header clickability and Qt signal ordering failures are
+retained separately: after correcting clickability, direction passed but Qt's
+remaining mouse handler overwrote row order. Synchronous post-handler dispatch
+fixes that integration boundary. Additional action RED4/14QtPASS1.39s catches
+raw Size's unchecked action; three snapshots/log are in column-sort-action-red.
+
+New focused panel_column_sort has16 EN/RU both-pane generic-first/raw-first cases
+using existing controlled Agent metadata with generic/raw CRC or Size and empty/
+nonempty raw bytes. It checks first-catalog flag, toggles/defaults, source-index
+row order, clicked indicator, Size action, selection/focus/peer/provider/control
+bytes, explicit directions after resize, append-copy clicks and Refresh. The
+normal/compact copies and post-Refresh states produce64 widget reports, with
+visible affected panels/tables/paths/headers/status fully exposed. Native Windows
+registration is present; execution and rendered Windows parity are unverified.
+The fixture does not prove a real archive schema or format workflow.
+
+Affected11-target build and fresh sequential focused11/11PASS17.67s, zero
+failures/skips, pass on macOS27.0.1 arm64/official Qt6.12.0. Baseline verification
+passes408 exact/196 adapted/3 local paths. Eight final inputs/hashes, logs and
+64 reports are retained in build/review/column-sort-final. Mandatory unsandboxed
+check.sh completed with exit0: formatting, all-target build and274/274 CTest pass
+in143.97s on the same macOS/Qt toolchain. All eight final code/test/build hashes
+remain unchanged.
+
+The bounded overlapping CRC/Size header/menu sorting consumer is closed; broader
+schema/default/no-Name/raw-Name/same-provider/error/equality consumers, native
+real archive/deleted/ADS/device/zone acceptance, current Windows/Linux/rendered,
+operation-to-render/full-body/109-module/cold-stable/packages and
+P3-05.15/P3-06 acceptance remain required.
 
 ### Source duplicate-ID column menu projection, 2026-10-06
 

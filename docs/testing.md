@@ -1,5 +1,15 @@
 # Regression strategy
 
+`panel_column_sort` uses the existing Agent/archive metadata interfaces with
+overlapping generic/raw CRC or Size and empty/nonempty raw values. Sixteen cases
+cover both panes, EN/RU and generic-first/raw-first physical clicks: first catalog
+raw flag, source direction toggling across sections, row source-index order,
+clicked indicator, Size action, selection/focus/peer state and control bytes.
+Explicit sort directions, resize, appended copies and Refresh retain that
+policy. Sixty-four normal/compact reports cover copies and post-Refresh views.
+This controlled metadata fixture does not prove real format/native/rendered
+acceptance; existing raw-only Agent and source-command consumers remain required.
+
 `panel_column_schema` uses a forwarding native-folder fixture to publish generic
 and raw CRC/Size entries with the same ID. Eight both-pane EN/RU cases check
 separate sections/text/alignment/widths, owning provider after peer focus, guards,

@@ -137,13 +137,21 @@ Qt publication теперь сохраняет source catalog index для ка�
 rows используют исходный GetColumnAlign, как остальные списки. Сохранение видимых
 колонок учитывает Type/raw/name/occurrence; исходная first-match политика saved
 duplicate IDs остаётся. EN/RU обе панели с peer focus, guards, RawProp error/Cancel
-и Refresh проверены на macOS. Duplicate-ID sort, broader schema и текущая
+и Refresh проверены на macOS. Broader schema и текущая
 native/rendered приёмка остаются открытыми.
 Повторные catalog-ID пункты меню снова доступны по исходной политике: скрытие
 удаляет первый visible ID, показ добавляет новый экземпляр, даже если raw descriptor
 уже видим. Qt отдельно хранит visible logical index и при необходимости создаёт
 дополнительную секцию с callback cells. Ширины экземпляров, selection/peer focus,
 повторные hide/show и normal/compact состояния до/после Refresh проверены на Mac.
+Сортировка повторных PropID также следует source: raw-флаг берётся у первого
+catalog entry, любой клик того же PropID переключает направление, включая другую
+generic/raw секцию и append-копию. Qt завершает автоматический mouse sort перед
+source handler, затем показывает его направление на нажатой секции. Физический
+клик фокусирует owning list; явные программные запросы сохраняют direction и
+inactive-owner поведение. Отметка Size определяется PropID.16 EN/RU обе панели,
+пустой raw/selection/peer/Refresh и64 normal/compact reports проверены на Mac;
+реальные схемы архивов и текущая native/rendered приёмка остаются открытыми.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном

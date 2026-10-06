@@ -30,6 +30,8 @@ class FileTable : public QTableWidget {
     int columnForVisibleProperty(unsigned index) const;
     void removeSourceColumn(unsigned index);
     void appendSourceColumn(unsigned catalogIndex);
+    bool takeSourceColumnClick();
+    bool deferSourceColumnClick(std::function<void()> action);
     PROPID propertyId(int column) const {
         return column >= 0 && column < propertyIds.size() ? propertyIds[column] : kpidNoProperty;
     }

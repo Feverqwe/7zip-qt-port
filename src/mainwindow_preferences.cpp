@@ -94,20 +94,42 @@ void MainWindow::applySortMode(bool enableSorting) {
 
 void MainWindow::sortIndicatorChanged(unsigned index, int column, Qt::SortOrder order) {
     const bool active = index == projectedPanel_;
-    withPanelProjection(index, [this, column, order, active] {
+    withPanelProjection(index, [this, index, column, order, active] {
+        auto *view = static_cast<FileTable *>(table_);
+        if (view->deferSourceColumnClick(
+                [window = QPointer<MainWindow>(this), index, column, order] {
+                    if (window)
+                        window->sortIndicatorChanged(index, column, order);
+                }))
+            return;
         sortColumn_ = column;
         sortOrder_ = order;
         auto &panel = app_.GetFocusedPanel();
-        panel.OnColumnClick(static_cast<FileTable *>(table_)->propertyId(column),
-                            order == Qt::AscendingOrder);
+        {
+            const QSignalBlocker blocked(table_->horizontalHeader());
+            if (view->takeSourceColumnClick()) {
+                panel.OnColumnClick(view->propertyId(column));
+                sortOrder_ = panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
+            } else {
+                // Explicit Qt sort requests retain their requested direction.
+                panel._sortID = view->propertyId(column);
+                panel._ascending = order == Qt::AscendingOrder;
+                panel.SetSortRawStatus();
+            }
+            // Qt's initial automatic sort precedes this signal consumer. Project
+            // the authoritative source flag/order onto the clicked section.
+            table_->sortItems(column, sortOrder_);
+        }
         if (!configuringColumns_) {
-            const int mode = column == 5   ? 1
-                             : column == 4 ? 2
-                             : column == 2 ? 3
-                             : column == 6 ? 4
-                                           : 0;
+            const PROPID property = view->propertyId(column);
+            const int mode = property == kpidExtension    ? 1
+                             : property == kpidMTime      ? 2
+                             : property == kpidSize       ? 3
+                             : property == kpidNoProperty ? 4
+                                                          : 0;
             sortMode_ = static_cast<SortMode>(mode);
-            if (active && (column == 0 || column == 2 || column == 4 || column == 5 || column == 6))
+            if (active && (property == kpidName || property == kpidSize || property == kpidMTime ||
+                           property == kpidExtension || property == kpidNoProperty))
                 sortActions_[mode]->setChecked(true);
             saveColumns();
         }

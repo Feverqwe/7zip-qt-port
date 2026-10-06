@@ -13,6 +13,13 @@ catalog checks: hiding removes the first visible PropID, showing appends a new
 instance even if that descriptor is already visible. Each visible instance has
 its own logical index, section, requested cells and width. Inspect normal/compact
 geometry before Refresh as well as after it, with selected rows and peer focus.
+Sorting those sections uses the first catalog PropID's raw flag. Clicking any
+section of the currently sorted PropID toggles the source direction, including
+switching between generic/raw sections or appended copies. Keep the indicator
+on the clicked section and map sort actions by PropID. Physical clicks focus the
+owning list; explicit programmatic sorts retain their requested direction and
+existing inactive-owner focus behavior. Inspect both panes EN/RU, empty raw data,
+selection/peer state and copies/Refresh at980×620/640×400.
 
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.
@@ -1053,7 +1060,11 @@ properties pass the original raw flag to the provider comparator. Header and sor
 remain in sync.
 Sort commands use the source property toggle; a newly chosen Size, PackSize,
 CTime, ATime or MTime starts descending, all other properties ascending. Qt
-headers use the same source default. Sorting retains native selected indices
+headers use the same source default. A repeated PropID toggles even through
+another generic/raw section; the source catalog owns its first-match raw flag.
+The Qt header completes its automatic mouse sort before the source handler's
+result is projected. Explicit programmatic direction requests remain explicit.
+Sorting retains native selected indices
 and ensures the focused row is visible, including a row moved outside the old
 viewport. Reload retains the chosen property and direction.
 The source restoration phase sorts after matching the focused name and before

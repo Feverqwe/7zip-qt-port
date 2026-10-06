@@ -126,7 +126,11 @@ Namespace alignment теперь следует исходному GetColumnAlig
 Duplicate-ID menu теперь следует исходным first-visible-ID delete и append-new-copy:
 повторные пункты доступны, новые секции сохраняют callback/source indices, отдельные
 ширины и selection/peer focus. EN/RU обе панели и32 normal/compact JSON проверены
-на Mac. Duplicate-ID sort и текущие native/rendered проверки остаются обязательными.
+на Mac. Duplicate-ID sort теперь использует первый catalog raw-флаг и исходный
+toggle по PropID через generic/raw/append секции. Qt сигнал применяется после
+автоматического mouse sort; индикатор остаётся на нажатой секции, Size action
+привязана к PropID.16 EN/RU обе панели с empty raw, selection/peer/Refresh и64
+normal/compact JSON проверены на Mac. Текущие native/rendered проверки обязательны.
 Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
