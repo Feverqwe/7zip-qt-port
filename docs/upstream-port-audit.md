@@ -1382,6 +1382,76 @@ unsandboxed full gate passes formatting/all-target build and 267/267 CTest in
 unchanged; the full log is frozen with the focused evidence. Current native
 Windows/Linux and the remaining Rename/body/platform acceptance remain open.
 
+### Source Rename saved state and deferred text (2026-10-06)
+
+Pinned original `PanelOperations.cpp::OnEndLabelEdit`,
+`Panel.cpp::kReLoadMessage`, `PanelItems.cpp::RefreshListCtrl`,
+`PanelListNotify.cpp::SetItemText`, guards/fields and source filesystem/Agent
+interfaces reviewed at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip.git. Original Rename saves selected names before
+operation, captures raw prefix/name, assigns new focused name on success or old
+name on error, defines focus/SelectFocused, enables `_dontShowMode` and posts the
+reload message. That message calls Refresh with the saved state and ignores its
+HRESULT. Qt formerly omitted the saved state and used independent path/name
+construction plus `selectPaths`, losing an additional selection made while editing.
+
+Restore those source state/branch/flag phases. Use the existing pending refresh
+channel in place of Win32 PostMsg; the already queued Qt editor completion loads
+its bound provider and restores that source state only after S_OK publication,
+including deferred batches. Restore the original boolean `_dontShowMode`, its
+load/restoration reset and formatter early return. Qt DisplayRole checks the
+same flag before its cache, while raw roles and EditRole remain available.
+Timer/notify guards from the preceding source step remain intact. No new archive,
+selection or name algorithm, source language/license/dependency/upstream change.
+Qt rejection adapts native FALSE: restore editor text and selection without
+loading. Existing archive slash/empty-name refusal remains at the same boundary.
+No new reload error policy is introduced.
+
+Extract the cohesive editor/rejection/completion Qt glue to
+src/mainwindow_rename.cpp (110 lines); fileoperations falls to334 lines. The
+source functions remain in their upstream module. Twelve validated CMake source
+registrations plus the shared widgets object registration include the new owner,
+with no duplicate implementation. The new focused panel_rename_state suite is
+registered for native Qt on Windows; current execution is macOS only.
+
+Actual old-product RED8/2 Qt passes, focused1FAIL0.54s: real FS Rename leaves both
+cached text and pending state untouched. Frozen eight old code/test/build inputs,
+hashes/log in build/review/source-rename-state-red. A fresh fixture build first
+failed its missing explicit Panel.h include, then passed. Its later selection
+checks initially skipped the normal initial restoration phase, so marks stayed
+empty; adding that production phase fixes the fixture without weakening claims.
+Eight source cases cover success/collision, standard/alternative mode, cancelled
+load/recovery, focus flags, selected names, raw roles and exact payload/peer bytes.
+
+Eight additional EN/RU both-pane actual editor cases expose the old terminal
+selection policy: scoped RED8/10 passes, focused1FAIL0.74s, one selected row
+instead of two. Only old `selectPaths` policy is restored for this RED; the new
+source phases stay installed, so this is not unchanged old HEAD evidence.
+Three input snapshots/hashes/log are frozen in source-rename-caller-red.
+The old first GUI driver failed to await collision completion, leaving its
+responder too early; confirmed own PID12321 was terminated after132.57s.
+That failed log is retained separately; the corrected responder waits for the
+actual message and completes in0.97s. Extra four early-name rejection cases
+verify no enumeration. Final twelve editor cases preserve provider/peer rows/
+prefix and selection; current24 normal980×620/compact640×400 reports expose
+both tables/addresses/toolbar/status groups and nonempty labels without clipping.
+Wrong reset insertion initially matched GetItemIcon's result guard; diff review
+corrected it to Refresh before final verification. A formatted temporary-policy
+restore patch failed without mutation, then was applied to the actual lines.
+
+Final affected eight-target build and focused8/8PASS18.96s, all Qt cases zero
+failures/skips, including new22 Rename cases and existing real ZIP raw-name/
+Escape/invalid-slash consumers. Ten final input hashes, focused log and24 reports
+are frozen in build/review/source-rename-state-final. Current native ADS,
+archive failure/parent-chain, Windows/Linux/rendered/cold-stable and complete
+module/P3-06 acceptance remain mandatory.
+Baseline verification passes 408 exact/196 adapted/3 local paths. Mandatory
+unsandboxed full gate passes formatting/all-target build and 268/268 CTest in
+138.02s on macOS arm64 with official Qt 6.12.0. All ten final code/test/build
+input hashes remain unchanged; the full LastTest log is frozen alongside the
+focused evidence. No current native Windows/Linux execution is claimed.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

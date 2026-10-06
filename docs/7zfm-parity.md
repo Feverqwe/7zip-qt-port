@@ -97,8 +97,12 @@ Rename читает EditRole, как original OnEndLabelEdit читает тек
 Исходные блокировки таймера и уведомлений восстановлены внутри OnEndLabelEdit:
 вложенные события GUI во время worker Rename не запускают reload. Success,
 failure и E_ABORT восстанавливают предыдущее состояние, включая внешние
-блокировки; реальные filesystem bytes проверены на macOS. Интервал подавления
-текста после операции и текущая native Windows/Linux проверка остаются открытыми.
+блокировки; реальные filesystem bytes проверены на macOS. После операции
+сохраняются исходные selected names, новое/прежнее имя фокуса и SelectFocused;
+Qt больше не заменяет выбор одним путём. `_dontShowMode` подавляет callback-текст
+до начала загрузки, включая Qt-кэш, сохраняя raw roles/EditRole. Ранний отказ
+имени возвращает старый текст и выбор без reload. EN/RU и обе панели проверены
+через inline editor; native Windows/Linux/ADS проверка остаётся открытой.
 Пока callbacks запрещены, имя остаётся cached или пустым. Реальный ZIP проверяет
 точное новое имя/bytes, Escape и invalid-name refusal. Windows marker appearance
 и native conditional interface требуют текущей Windows/rendered проверки.

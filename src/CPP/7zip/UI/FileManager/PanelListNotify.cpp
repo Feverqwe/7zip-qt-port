@@ -127,6 +127,8 @@ CPanelStatus CPanel::Refresh_StatusBar() const {
 }
 
 QString CPanel::GetItemText(UInt32 itemIndex, const CPropColumn &property) const {
+    if (_dontShowMode)
+        return QString();
     const PROPID propID = property.ID;
     if (!_folder || itemIndex == UInt32(-1))
         return propID == kpidName ? QStringLiteral("..") : QString();

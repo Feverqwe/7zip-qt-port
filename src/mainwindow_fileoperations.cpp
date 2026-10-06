@@ -16,6 +16,7 @@
 #include <QScopedValueRollback>
 
 namespace {
+
 NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
     const QFileInfo source(path);
     NOverwriteDialog::CFileInfo info;
@@ -330,100 +331,4 @@ void MainWindow::deleteSelected(bool toRecycleBin) {
         QMessageBox::warning(this, QStringLiteral("7-Zip"),
                              QtLocalText("Could not delete all selected items.",
                                          "Не удалось удалить все выбранные объекты."));
-}
-
-void MainWindow::renameSelected() {
-    const auto &panel = app_.GetFocusedPanel();
-    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
-    if (state_ != State::Filesystem && state_ != State::Viewing && !streams)
-        return;
-    const bool archive = state_ == State::Viewing;
-    if (!rename_->isEnabled())
-        return;
-    const QStringList paths = archive ? selectedArchiveItemsPaths() : selectedFilesystemPaths();
-    if (paths.size() != 1)
-        return;
-    if (!archive && QFileInfo(paths.first()).isSymLink())
-        return;
-    const auto indices = sourceOperatedIndices();
-    if (indices.Size() != 1)
-        return;
-    int row = -1;
-    for (int i = 0; i < table_->rowCount(); ++i)
-        if (table_->item(i, 0) &&
-            table_->item(i, 0)->data(Qt::UserRole + 6).toUInt() == indices[0]) {
-            row = i;
-            break;
-        }
-    if (row < 0)
-        return;
-    auto *item = table_->item(row, 0);
-    if (!item || item->data(Qt::UserRole + 6).isNull())
-        return;
-    renameEditingItem_ = item;
-    renameOriginalPath_ = paths.first();
-    renameSourceIndex_ = item->data(Qt::UserRole + 6).toUInt();
-    renameActivationPending_ = true;
-    const QString nameHint =
-        archive || streams ? ToQString(app_.GetFocusedPanel().GetItemName(indices[0])) : QString();
-    if (viewStack_->currentWidget() == iconList_) {
-        const QModelIndex modelIndex = table_->model()->index(row, 0);
-        iconList_->scrollTo(modelIndex);
-        iconList_->edit(modelIndex);
-        if (archive || streams)
-            if (auto *editor = iconList_->findChild<QLineEdit *>()) {
-                editor->setText(nameHint);
-                editor->selectAll();
-            }
-    } else {
-        table_->scrollToItem(item);
-        table_->editItem(item);
-        if (archive || streams)
-            if (auto *editor = table_->findChild<QLineEdit *>()) {
-                editor->setText(nameHint);
-                editor->selectAll();
-            }
-    }
-}
-
-void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
-                                        const QString &name) {
-    const bool archive = state_ == State::Viewing;
-    const auto &panel = app_.GetFocusedPanel();
-    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
-    if (state_ != State::Filesystem && !archive && !streams)
-        return;
-    if (!archive && !streams && QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_)
-        return;
-    if (archive && (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-                    name.contains('\\'))) {
-        renderBoundFolder();
-        selectPaths({originalPath});
-        QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                             QtLocalText("Invalid file name.", "Недопустимое имя файла."));
-        return;
-    }
-    const HRESULT result = app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
-    if (result != S_OK && result != E_ABORT)
-        QMessageBox::warning(
-            this, "Sevenzip Desktop",
-            QtLocalText("Could not rename the item.", "Не удалось переименовать объект."));
-    if (streams) {
-        const QString target = ToQString(app_.GetFocusedPanel().GetCurrentFolderPrefix()) + name;
-        renderBoundFolder();
-        selectPaths({result == S_OK ? target : originalPath});
-        return;
-    }
-    if (archive) {
-        renderBoundFolder();
-        const QString prefix = originalPath.section('/', 0, -2);
-        selectPaths(
-            {result == S_OK ? (prefix.isEmpty() ? name : prefix + '/' + name) : originalPath});
-        return;
-    }
-    showDirectory(directory_, false);
-    if (result == S_OK)
-        selectPaths({QDir(QFileInfo(originalPath).absolutePath()).filePath(name)});
-    else
-        selectPaths({originalPath});
 }

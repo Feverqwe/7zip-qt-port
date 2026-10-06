@@ -2,6 +2,15 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Rename completion uses original OnEndLabelEdit's saved selected names and raw
+prefix/name, focusing the new name on success and the old name on error/Cancel.
+Do not replace the saved selection with a single Qt path. After the worker,
+source callback text is suppressed until the next load begins; raw item roles
+and editor values stay available. Verify real filesystem success/collision/
+load cancellation, standard/alternative marks, preserved peer bytes and recovery.
+Existing name-view/editor normal/compact geometry remains the presentation
+contract; source text suppression does not change grouping or widget geometry.
+
 Reference: pinned App.cpp::OnCopy/Reduce_Path_To_RealFileSystemPath,
 PanelKey Shift consumers, CopyDialog.cpp/.rc and Panel/Agent/FSFolder CopyTo/
 CopyFrom interfaces. Keep the original title/prompt/summary/history and focused

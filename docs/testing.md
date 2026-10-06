@@ -123,6 +123,17 @@ then restore both guards, including an existing outer guard. Explicit OnTimer
 after completion confirms restoration; disposable Unicode payload bytes remain
 exact. This covers the operation interval, not the later deferred-editor text
 suppression boundary or current native Windows/Linux execution.
+`panel_rename_state` covers that deferred state/text boundary separately. Eight
+real filesystem success/collision, standard/alternative and load-cancellation
+cases verify source saved names/focus flags, blank cached DisplayRole with raw
+EditRole/source indices retained, selection restoration, recovery and exact
+payload/peer bytes. Twelve actual inline-editor cases cover both pane roles and
+EN/RU success/collision/invalid-name rejection, including an additional selection
+while editing. Rejection must not enumerate; operation completion preserves the
+captured selection and provider/peer identity. Twenty-four current normal/compact
+reports cover both panels. The responder waits for the actual collision message
+before teardown; an earlier driver omitted that wait and required termination.
+Windows uses the native Qt test platform configuration; execution remains open.
 Large-list navigation/close drivers identify partial publication through the
 existing raw-name model role, preserving cancellation assertions while source
 name display callbacks are suppressed.

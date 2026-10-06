@@ -79,6 +79,7 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow_dialogs.cpp
     src/mainwindow_filelist.cpp
     src/mainwindow_fileoperations.cpp
+    src/mainwindow_rename.cpp
     src/mainwindow_language.cpp
     src/mainwindow_menus.cpp
     src/mainwindow_panel.cpp

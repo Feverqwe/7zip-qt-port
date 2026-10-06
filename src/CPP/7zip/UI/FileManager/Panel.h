@@ -362,6 +362,7 @@ class CPanel : public QObject {
     void SetFlatModeForDisk(bool enabled) { _flatModeForDisk = enabled; }
     // Qt notification adapters replace the Win32 OnNotify entry point.
     bool ShouldProcessNotifications() const { return _processNotify; }
+    bool ShouldDisplayItemText() const { return !_dontShowMode; }
     void Disable_Processing_Timer_Notify_StatusBar() {
         _processTimer = false;
         _processNotify = false;
@@ -669,6 +670,7 @@ class CPanel : public QObject {
     bool _processTimer = true;
     bool _processNotify = true;
     bool _processStatusBar = true;
+    bool _dontShowMode = false;
     bool eventFilter(QObject *watched, QEvent *event) override;
     QPointer<QWidget> _listView;
     QPointer<QWidget> _headerComboBox;

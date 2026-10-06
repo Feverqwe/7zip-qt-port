@@ -387,6 +387,7 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
     m_DropHighlighted_SubFolderName.Empty();
     if (!_folder)
         return itemsLoaded ? loadedResult : S_OK;
+    _dontShowMode = false;
     CDisableTimerProcessing timerProcessing(*this);
     CDisableNotify disableNotify(*this);
     _selectionList.DeleteListItems();
@@ -550,6 +551,7 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     m_DropHighlighted_SelectionIndex = -1;
     m_DropHighlighted_SubFolderName.Empty();
     RINOK(_listLoadResult)
+    _dontShowMode = false;
     if (_selectionList.GetItemCount() == 0)
         _refreshSelection = state;
     CDisableTimerProcessing timerProcessing(*this);

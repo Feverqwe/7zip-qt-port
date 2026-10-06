@@ -92,6 +92,9 @@ QVariant ArchiveTableItem::data(int role) const {
     // authoritative when Qt paints either side of a two-panel window.
     const auto *table = dynamic_cast<const FileTable *>(tableWidget());
     const int col = column();
+    if (table && table->sourcePanel && role == Qt::DisplayRole &&
+        !table->sourcePanel->ShouldDisplayItemText())
+        return QString();
     if (table && table->sourcePanel && col != 1 && col != 5 && col != 6 &&
         (col != 0 || role == Qt::DisplayRole)) {
         // Native OnNotify suppresses callbacks while archive reopening can

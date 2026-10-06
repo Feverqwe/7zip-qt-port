@@ -893,8 +893,16 @@ OnEndLabelEdit retains the source timer guard from handler entry and notify guar
 around its Rename worker. Nested GUI events cannot reload the provider or query
 it through enabled notifications during the operation. RAII restores the prior
 guard state on success/error/cancellation, including an enclosing operation guard.
-The Qt editor's deferred completion and post-operation text suppression remain
-separate from this source operation interval.
+The Qt editor and completion live in mainwindow_rename.cpp, registered with the
+shared widgets object owner. The source handler saves selection before Rename,
+sets the new/old focused name and passes that state through the existing pending
+refresh channel. Completion loads the bound provider and restores only after
+successful publication, including deferred batches. `_dontShowMode` suppresses
+callback DisplayRole text, including cached Qt cells, between the operation and
+the load/restoration phase; raw roles and editor values remain independent.
+Early validation rejection resets the Qt editor without loading and retains
+selection, adapting the native FALSE edit result. The source error/Cancel policy
+is preserved; remaining native ADS/platform acceptance stays separate.
 Filesystem Delete now follows the mirrored PanelOperations.cpp source
 confirmation and worker. `IQtTrashService` is the platform boundary for
 ordinary Delete; Shift+Delete uses source `IFolderOperations::Delete` and the

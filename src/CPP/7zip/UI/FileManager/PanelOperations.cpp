@@ -240,14 +240,30 @@ HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
             return E_INVALIDARG;
         newName = correctName;
     }
+    CSelectedState state;
+    SaveSelectedState(state);
     if (realIndex == kParentIndex)
         return E_INVALIDARG;
+    const UString prefix = GetItemPrefix(realIndex);
+    const UString oldName = GetItemName(realIndex);
     CDisableNotify disableNotify(*this);
     CThreadFolderOperations op(FOLDER_TYPE_RENAME);
     op.FolderOperations = _folderOperations;
     op.Index = realIndex;
     op.Name = newName;
-    return op.DoOperation(*this, LangString(IDS_RENAMING), LangString(IDS_ERROR_RENAMING));
+    const HRESULT result =
+        op.DoOperation(*this, LangString(IDS_RENAMING), LangString(IDS_ERROR_RENAMING));
+    if (result == S_OK)
+        state.FocusedName = prefix + newName;
+    else
+        state.FocusedName = prefix + oldName;
+    state.FocusedName_Defined = true;
+    state.SelectFocused = true;
+    _dontShowMode = true;
+    // Qt already queued the editor completion; its publisher takes this source
+    // reload state instead of posting a second native list message.
+    _refreshSelection = std::move(state);
+    return result;
 }
 
 HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelectedState &state,
