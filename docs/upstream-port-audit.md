@@ -1280,6 +1280,15 @@ Final evidence: build/review/source-refresh-group-final. Whole remaining
 Refresh/redraw/error/caller/module and current Windows/Linux/rendered/cold-stable/
 P3-06 acceptance remain mandatory.
 
+Follow-up whole-function phase/caller map is recorded in
+[omitted scope](omitted-scope-audit.md#refreshlistctrl-phase-and-caller-map-2026-10-06).
+It identifies the outer loading consumers for navigation, Comment, Rename and
+CopyFromNoAsk, distinguishes Qt signal/model/redraw adapters from native fields,
+and retains concrete open renderer-result, Rename suppression and remaining
+body/dependency requirements. This documentation review introduces no source
+copy or functional change and does not extend the phase tests into module or
+platform acceptance.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

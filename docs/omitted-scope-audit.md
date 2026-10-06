@@ -63,6 +63,42 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+### RefreshListCtrl phase and caller map, 2026-10-06
+
+Reviewed against the full revision linked above: the active original
+`PanelItems.cpp::RefreshListCtrl`, its `SaveFocused`/`OnReload` wrappers,
+`Panel.h::DeleteListItems`, `PanelListNotify.cpp::SetItemText`, and the operation
+and navigation consumers below. This maps one function and its integration
+boundary; it does not close the whole `PanelItems.cpp` module or P3-05.15.
+
+| Original phase | Current authoritative owner and adaptation |
+| --- | --- |
+| Clear drop target; return for absent folder | Both `LoadListItemsImpl` and restoration clear the panel-owned target and retained Qt paint. Load retains the source absent-folder return. Restoration also supports already populated Qt rows; its absent-provider fallback needs a separate disposition. `CPanel(prefix, items)` is not evidence for that fallback: it constructs a real `QtPanelFolder` provider, also used by archive transport. |
+| Reset text suppression; publish path unless timer | Path/address publication is in `renderBoundFolder`, `renderRootFolder` and `showDirectory`, with `CalledFromTimer` passed through `reloadPanelPresentation`. Qt callback suppression uses `ShouldProcessNotifications`; this is not a literal port of `_dontShowMode`. Rename's deferred-editor interval must be reviewed separately from guarded row construction. |
+| Disable redraw/notifications; delete old rows; reset marks/group | `LoadListItemsImpl` owns deletion and source resets under timer/notify guards. `QtPanelList::DeleteListItems` removes model rows. Native `_thereAre_ListView_Items` and `_enableItemChangeNotify` are not retained fields; Qt model signals are gated by the panel notification flag. `mainwindow_archivelist.cpp::refreshActions` controls updates while scanning/projecting. Terminal redraw after success, failure and cancellation remains an integration review requirement. |
+| Set flat mode; LoadItems; InitColumns; count and directory validation | `LoadListItemsImpl` retains these source branches. Worker-loaded FS passes its retained HRESULT instead of enumerating twice. The count HRESULT is checked explicitly before Qt publication. Directory VT_BOOL/VT_EMPTY validation and cache clearing retain the source failure contract. |
+| Deleted-item properties; icon interface/attributes; insert callback rows | Deleted-item metadata and icon-interface selection remain in `LoadListItemsImpl`; `LoadItemIcon` runs the extracted source icon branch during bounded GUI publication. Native callback text is supplied by `ArchiveTableItem::data` and source `GetItemText`. Native LVITEM, insertion and system image-list services are Qt/platform adapters, not copied Win32 presentation. |
+| Parent row, fast-name/flat-prefix selection, restore notify | GUI publication creates source-indexed rows; restoration walks those rows and retains source name/prefix matching and mark vectors. The source notification restoration precedes focus callbacks. Native parent selection and Qt alternative single-focus adaptation have separate recorded regressions. |
+| Named focus; source sort; positional fallback; EnsureVisible; final status | Restoration now retains that order, resets the group anchor before the walk, updates Qt mark paint and publishes the original four-part status through the weak owning-pane callback. Initial renderer/header sorting is a separate Qt publication step; it does not substitute for this source sort phase. |
+
+| Active caller route | Load and completion boundary |
+| --- | --- |
+| Explicit reload, timer, filesystem/namespace Refresh, post-Copy destination | `RefreshListCtrl_SaveFocused` invokes the attached `reloadPanelPresentation`; synchronous render HRESULT reaches original `OnReload`. FS workers retain their load result through the source load stage and deferred restoration. `QtAppPresentation::CompleteCopyIfReady` waits for the operation owner before destination reload and source completion. |
+| Parent/root/drives/AltStreams, same/subfolder, address binding | Source folder changes clear old rows and save pending selection. `goParent`, `goRoot`, `QtFileManagerCommands::OpenAltStreams`, `QtAppPresentation::RefreshFolder` and the address navigation callback then render the bound provider. `renderBoundFolder` takes pending selection before load and restores it only on successful publication. These void operation callers still require result/error-consumer review. |
+| Comment | `ChangeComment` performs its source property operation and calls restoration. `QtFileManagerCommands::Comment` subsequently calls `renderBoundFolder`, restores its captured selection and refreshes actions. The outer load exists; its HRESULT is not consumed there. This is distinct from the direct property-operation result already presented by the source owner. |
+| Rename | Qt `itemChanged` captures raw EditRole/source index and queues `finishFilesystemRename` after the editor callback. The source operation returns HRESULT; Qt renders and selects the new or old path even after operation failure. Original Win32 `_dontShowMode=true`/PostMsg is replaced by this event transport and existing guards. Their full interval and renderer-result handling remain open. |
+| Drop into archive / CopyFromNoAsk | `PanelDrag::CompressDropFiles` reaches source `CopyFromNoAsk` for an empty destination folder path. It restores selection after CopyFrom; `QtFileManagerDrag::RefreshPanels` subsequently calls `refreshCurrent` for visible panes. That outer reload prevents treating this caller as selection-only completion, but its error/cancellation and archive reopen results still need closure. |
+| Archive Refresh and external update | `refreshCurrent` reopens through `ReOpenArchiveFolder`, then renders/restores; `runExternalArchiveUpdate` renders after a successful operation. They do not share the synchronous `OnReload` result consumer for every renderer call. Source `PanelItemOpen` continuations and `Panel::OnCreate` remain to be reconciled with their full consumers. |
+
+No functional edits, new source copies or manifest changes by this map. Existing
+RED/GREEN and geometry evidence remains bounded to the individual phase fixes
+in [the port audit](upstream-port-audit.md#source-refresh-alternative-selection-anchor-2026-10-06).
+Next work must exercise the outstanding operation-to-render result consumers,
+Rename suppression interval, terminal redraw and absent-provider disposition,
+then reconcile remaining `PanelItems` bodies/dependencies/resources. A green
+whole repository gate alone does not establish those source-body dispositions
+or current Windows/Linux/rendered/cold-stable acceptance.
+
 ### App complete body/caller review, 2026-10-06
 
 Follow-up dependency review: the complete original
