@@ -1,5 +1,22 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.12 — RootFolder/address consumer reconciliation (remaining implementation, 2026-10-06)
+
+Compared complete RootFolder.cpp/.h and active PanelFolderChange address
+construction/edit/selection bodies and dependencies at
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. The [omitted-scope review](omitted-scope-audit.md#rootfolder-and-address-combo-consumer-review-2026-10-06)
+records retained root bodies, POSIX entries, Documents platform service,
+CSIDL/icon boundary, ADS refusal-code difference and the missing original
+hierarchical address dropdown. Current MainWindow history population and
+itemText activation are independent glue, not the original ComboBoxPaths
+construction/binding algorithm. The [text contract](ui-layout-contracts.md#source-address-dropdown-p3-0512-required-remaining-scope)
+defines the source reference and required integrated consumers/checks before
+UI implementation. No source copy, behavior change, regression result or
+platform/rendered acceptance is claimed by this docs-only review; diff check
+passes. The existing P0-04/P1-11 bounded accepted workflows remain historical
+evidence and do not close this active source omission.
+
 ## P3-05.11 — source UNC root binding and Qt consumer (validation active, 2026-10-06)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

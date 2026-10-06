@@ -1,5 +1,21 @@
 # Text specifications and geometry checks
 
+### Source address dropdown (P3-05.12, required remaining scope)
+
+Reference: pinned PanelFolderChange.cpp::LoadFullPathAndShow,
+OnComboBoxCommand and AddComboBoxItem, with RootFolder names and source path
+bindings. The dropdown presents the current path hierarchy with indentation,
+then the original Windows Documents/Computer/drives/Network entries. Display
+names and binding paths are distinct; UNC server and archive-link boundaries
+follow the source algorithm. POSIX drive/mount substitutions need an explicit
+platform disposition. The visited-path history remains in FoldersHistory.
+Selecting a row binds its stored source path and returns focus to the list;
+Escape restores the current address. Each panel uses its own current prefix.
+Check EN/RU normal980×620/compact640×400 widget JSON, popup order/indentation,
+visible text, address/list exposure and keyboard selection/refusal. Current Qt
+history-only dropdown does not satisfy this source contract; no new geometry
+or rendered Windows acceptance is asserted here.
+
 ### Source caption helpers (P3-05.10, validation active)
 
 Reference: pinned LangUtils colon/remove-colon/window bodies and actual

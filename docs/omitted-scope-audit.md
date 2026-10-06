@@ -175,6 +175,49 @@ and unsupported Copy availability; both use existing source type/interface
 boundaries. Final native consumers/geometry pass; whole/final platform and parent
 acceptance remain open. See the port audit for scope and preserved RED evidence.
 
+### RootFolder and address-combo consumer review, 2026-10-06
+
+Compared full original/adapted RootFolder.cpp/.h and the original
+PanelFolderChange.cpp address handlers, including their live callers. Root
+count/name/directory properties, name matching, root/parent properties and
+folder binding retain source bodies. Windows keeps four ordered root entries;
+POSIX adds mounted volumes/network to its original Computer→`/` entry, as
+recorded by P1-11. GetMyDocsPath replaces the SHGetSpecialFolderPath platform
+service with QStandardPaths and preserves source path normalization. NT4 dynamic
+lookup, ANSI fallback and Windows CE build transport are outside supported Qt6
+desktop targets. Root icon indices are currently `-1`; Qt renders generic
+namespace icons rather than using source CSIDL helpers. This presentation
+boundary is incomplete for the address consumer, not proof of icon parity.
+
+The ADS failure branch differs: original RootFolder::BindToFolder converts any
+failed CAltStreamsFolder::Init to E_INVALIDARG; adaptation uses RINOK and exposes
+the native HRESULT. Existing positive root-stream tests and direct provider
+refusal do not prove this root-level error contract. A Windows regression must
+cover missing/deleted Unicode/space base paths, cleared result pointer and
+unchanged control-file bytes before restoring the original branch.
+
+The larger active omission is owned by P3-05.12. Original
+PanelFolderChange.cpp::OnComboBoxCommand(CBN_DROPDOWN) constructs the current
+path hierarchy with indentation, UNC server prefix, source archive-link
+boundaries, Documents/Computer, logical drives and Network. AddComboBoxItem
+keeps ComboBoxPaths separate from displayed text; CBN_SELENDOK binds that path
+and returns focus to the list. LoadFullPathAndShow supplies the current address,
+history and icon; return/escape handlers preserve commit/restore semantics.
+RootFolder_GetName_Computer/Network/Documents are active dependencies of these
+handlers, not unused source functions that can be dismissed by name search.
+
+Current MainWindow::refreshPathHistory instead puts FolderHistory strings in
+QComboBox, and activation navigates to itemText; it has no source path hierarchy,
+indentation, virtual entries or separate ComboBoxPaths. MainWindow's visited
+history and the accepted FoldersHistory dialog remain valid separate consumers,
+but they do not replace the original address dropdown. Existing Enter/parent
+tests do not exercise CBN_DROPDOWN/SELENDOK. Required integrated work must reuse
+these original bodies and source folder/path owners, adapting only Qt combo,
+icon, drive/mount and focus services. Verify disk and archive/nested paths,
+both panels, EN/RU, activation/refusal/escape and unchanged input bytes; inspect
+normal/compact widget JSON and native Windows UNC/device consumers. No source
+code or completed-address claim is introduced by this review.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
