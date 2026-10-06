@@ -153,7 +153,13 @@ fallback. Benchmark, Edit and Progress use those helpers; plain Benchmark/Link/
 Progress standard controls use the existing source table. Mac regressions/full
 pass, followed by final native consumers/full; Linux and parent acceptance remain open. See the
 port audit for bounded evidence. P3-05.9 alone did not close this omission, and
-these helper consumers do not establish whole-module LangUtils reconciliation.
+these helper consumers alone did not establish whole-module reconciliation.
+The subsequent complete LangUtils.cpp/.h body/dependency review is recorded in
+the port audit under P3-05.10: original load/reload/default lookup, Windows locale
+table, all caption helpers and ten active window callers have explicit owners;
+Qt directory/locale/synchronization/controls and Unicode-only build boundaries
+are recorded. This closes that module's body disposition, while final Linux
+runtime and reconciliation of the other UI modules remain required.
 
 Review on 2026-10-06 also finds an active RootFolder caller omission, P3-05.11.
 Original CRootFolder::BindToFolder(const wchar_t *, ...) normalizes the path,

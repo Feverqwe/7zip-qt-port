@@ -46,9 +46,20 @@ pass without skips, alongside device Copy, namespace Hash and operation consumer
 Fourteen final SHA artifacts preserve eight exact source/test inputs, logs and
 eight current geometry reports. Mac initial five suites pass7.35s and full249
 passes102.72s before the final capability adjustment; final six suites pass14.82s.
-Final Mac format/all-target/full passes249/249102.97s; native full is running.
-Final Linux capacity/check,
-rendered Windows parity and parent/final acceptance remain open.
+Final Mac format/all-target/full passes249/249102.97s. Implementation commit
+c8176f75f5a2cf5e654bad736db1f6e4444fb9ca retains the eight verified inputs.
+Final native formatting/all-target build passes; full gate finishes255/257
+passed865.62s. VerCtrl's source-buffer-size fixture cannot resize its file to
+256 MiB + 1 byte; the subsequent capacity probe reports202420224 bytes free.
+ArchiveExternalEdit's large-file Viewer case fails temporary-file removal;
+its cause is not established by the capacity probe. This differs from the
+earlier update-failure prompt timeout. All761 guest/local SHA artifacts are
+preserved in the separate evidence-network-root-full directory; earlier phases
+remain intact. Final Linux capacity/check, stable Windows gate, rendered Windows
+parity and parent/final acceptance remain open. No cache deletion or disk resize
+is performed while the scoped cleanup questions remain unanswered. A subsequent
+unchanged-binary Highest desktop repeat passes archive_external_edit in12.79s;
+that isolated pass does not explain or supersede the preserved full-gate failure.
 
 ## P3-05.10 — source caption helpers (validation active, 2026-10-06)
 
@@ -77,7 +88,45 @@ Local conditional 2→402/9→409 mapping is removed. Ordinary text rebinding cl
 that adapter flag, allowing Progress's later IDS_CLOSE binding to retain `&Close`.
 Roles, signals, operation state and cancellation handlers are unchanged. Qt/native
 presentation services remain local; upstream checkout and language assets are
-unchanged. No entire-module LangUtils reconciliation is claimed by this scope.
+unchanged. The helper implementation alone did not reconcile the entire module;
+the following body review records its remaining boundaries.
+
+### LangUtils complete body/dependency review, 2026-10-06
+
+Compared the complete pinned LangUtils.cpp/.h with their adapted counterparts,
+including globals, compile branches and callers, rather than counting filenames.
+All active desktop body groups have these dispositions:
+
+| Original body/dependency | Current authoritative body or narrow replacement |
+| --- | --- |
+| LangOpen; CLang storage/parser | Original `CLang::Open(..., "7-Zip")`; portable Common/Lang implementation is reused. No Qt parser/catalog replacement. |
+| GetLangDirPrefix; NDLL module directory | Windows still calls original NDLL; POSIX uses Qt application directory. Existing installed Lang takes precedence; bundled files are staged to owned native paths because CLang consumes files. Explicit directory injection supports deterministic fixtures. |
+| LoadLangOneTime; g_Loaded; critical section | Original one-time/reload sequence; recursive Qt mutex supplies synchronization, also protecting existing public readers and caption helpers. |
+| LangSetDlgItemText, LangSetDlgItems/kLangPairs, Colon, RemoveColon, WindowText | Original lookup/table/loops/colon rules; typed Qt item/window services replace HWND/GetDlgItem/SetText. Missing selected entries retain the supplied resource caption. Initial binding and LanguageChange use the same source helpers. |
+| LangString overloads, AddLangString, OnlyFromLangFile | Original selected-file lookup, resource fallback or empty-first policy. ResourceString owns compiled upstream STRINGTABLE fallback and bundled upstream English; native DLL overload retains LoadStringW for its separate HINSTANCE. |
+| kLangs, FindShortNames, Lang_GetShortNames_for_DefaultLang | Windows retains exact active table and primary/sub-language algorithm, including system/user mismatch refusal. POSIX supplies QLocale regional/primary names because Windows LANGID services do not exist there. |
+| OpenDefaultLang | Original bounded two attempts, regional before primary, filename construction and successful language-ID assignment. |
+| ReloadLang; ReadRegLang | Original clear/default/explicit `-`/separator/dot rules; existing QSettings/path boundary replaces Registry storage. |
+
+Original Z7_LANG-off header inlines select English-only resources; this Qt build
+always supports the selected language through the active bodies, so the disabled
+language build configuration is not provided. The non-Unicode g_IsNT guard
+targets obsolete Win9x; supported Qt6 Windows targets use Unicode/NT. Commented
+locale diagnostics, unused UI-language API experiment and trailing commented
+table entries are not active runtime bodies. These are explicit platform/build
+dispositions, not unsupported active desktop branches silently removed.
+
+Reviewed all ten active original window-helper bindings: About, Password,
+Messages, Mem, Split, Overwrite, Link, Benchmark, Compress and COptionsDialog.
+Their existing Qt resource/window bindings reach the source helper; Compress
+Options uses the source IDS_OPTIONS resource whose English text is exactly the
+RC caption `Options`. Nonempty option checkbox captions are rebound through
+QtBindResourceText after control registration, preserving RC fallback. The
+Extract window-helper line is commented upstream and is not an active caller.
+Original ordinary, colon/remove-colon and standard-control callers remain owned
+by their per-dialog functional/resource audits and P3-05.9/.10 tests. This review
+closes LangUtils body disposition, not all109 UI modules, final Linux runtime,
+rendered parity or the parent acceptance gate.
 
 Actual old-product Benchmark regression fails on Russian `Скорость:` versus
 source `Скорость` (8 Qt pass/1 fail/0 skip). Public language fixtures cover
