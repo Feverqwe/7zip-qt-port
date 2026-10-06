@@ -180,7 +180,8 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
     c.filesystemStreams = panel.GetFolder() && panel.IsAltStreamsFolder();
-    c.copy = !panel.IsFSDrivesFolder() || panel.IsDeviceDrivesPrefix();
+    c.copy = panel.DoesItSupportOperations() &&
+             (!panel.IsFSDrivesFolder() || panel.IsDeviceDrivesPrefix());
     c.root = panel.GetFolder() && panel.IsRootFolder();
     {
         const auto catalog = w.backend_->codecCatalog();

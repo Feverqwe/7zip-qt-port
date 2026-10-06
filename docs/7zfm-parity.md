@@ -2018,6 +2018,18 @@ SMB/NFS/AFP/SSH/WebDAV ресурсы из системного списка т�
 640×400 в current-build JSON на macOS arm64. Реальные remote services,
 Windows/Linux runtime и rendered Windows visual parity не проверены.
 
+P3-03.5 проверяет собственную локальную Windows share; P3-05.11 восстанавливает
+исходный RootFolder fallback для введённого UNC-сервера. CPanel выбирает
+CNetFolder даже при Qt-классификации адреса как каталога, в том числе при
+включённом Flat View. Открытие собственной share, родитель с сохранением фокуса,
+отказ после удаления и обновление проверены в реальном окне EN/RU. Qt отключает
+Copy без source IFolderOperations, используя ту же границу, на которой исходный
+CApp::OnCopy отказывает в операции. Copy операций файлов/архивов и устройств
+сохраняется; metadata providers не получают независимого Copy workflow.
+Восемь обычных/компактных native JSON подтверждают структуру и геометрию.
+Внешние серверы, credential prompts и rendered Windows pixel parity этим
+локальным fixture не проверены; полная platform/parent приёмка остаётся открытой.
+
 ## P1-01.1 — F5/F6 между двумя панелями и из архива (2026-09-30)
 
 F5 в открытом архиве теперь показывает тот же CopyDialog, что и файловая

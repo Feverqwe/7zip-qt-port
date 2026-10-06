@@ -1,5 +1,55 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.11 — source UNC root binding and Qt consumer (validation active, 2026-10-06)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Reviewed complete original
+`CPP/7zip/UI/FileManager/RootFolder.cpp::CRootFolder::BindToFolder`, NetFolder
+Init/bind/parent, CPanel BindToPath/OpenParentFolder and CApp::OnCopy, with
+folder interfaces and existing Windows Net/FileName/FileIO dependencies.
+Restored the original Windows separator-led fallback after failed CFSFolder
+Init: construct CNetFolder, assign subFolder and Init(name2). Normalization,
+filesystem-first ordering and original native resource discovery remain.
+Existing NetFolder/NWindows::NNet are authoritative; no enumeration, UNC path
+algorithm, credentials or archive transport implementation is added. Unix
+mounted-network policy and portable source dependencies remain as before.
+Notices remain; formatting is separate from adaptation.
+
+Actual old-product direct binding returns E_NOTIMPL (3 Qt pass/1 fail/0 skip).
+The actual address consumer also crashes in CFSFolder::GetRelPath: Qt reports
+the UNC server as a directory, then the independent listing shortcut casts
+the source namespace to CFSFolder. Existing native binding now runs before
+normal/flat listing, and non-FS results use the existing renderBoundFolder
+dispatcher before any filesystem cast. This narrow Qt type/presentation service
+uses original CPanel's provider choice; scan, sort, hash and worker algorithms
+remain. The first integration passes direct binding and all four server-address
+rows reach the namespace, but Copy remains enabled without IFolderOperations.
+Centralized availability now requires original DoesItSupportOperations, matching
+CApp::OnCopy's existing refusal and disabling an unsupported command. Logical
+drives remain Copy-disabled; operations-capable device/file/archive Copy remains.
+
+Tests extract the existing native current-SID-only SDK share fixture for reuse.
+Both direct provider and root fallback open an owned local share, read exact
+Unicode/space binary bytes, refuse a stale share and reload without changing
+source bytes. Separate actual-window EN/RU normal/flat consumers enter the server
+address, open only that share, return with source focus, refuse after its deletion,
+refresh and assert no engine work. Eight980×620/640×400 reports pass independent
+menu/toolbar/address/list/status order, exposure and size-hint review. No external
+host, live user archive, remote credential or global-network enumeration fixture
+is used; those are not proven by this local scenario. The initial crash's single
+orphan share was identified by owned snapshot path/name, one28-byte file and SHA
+before removing only its publication; diagnostic input bytes were retained.
+
+Native RED and first-integration failure each retain six immutable guest/local
+SHA artifacts. Final six suites pass38.03s; direct4 Qt and actual-window6 Qt
+pass without skips, alongside device Copy, namespace Hash and operation consumers.
+Fourteen final SHA artifacts preserve eight exact source/test inputs, logs and
+eight current geometry reports. Mac initial five suites pass7.35s and full249
+passes102.72s before the final capability adjustment; final six suites pass14.82s.
+Final Mac format/all-target/full passes249/249102.97s; native full is running.
+Final Linux capacity/check,
+rendered Windows parity and parent/final acceptance remain open.
+
 ## P3-05.10 — source caption helpers (validation active, 2026-10-06)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

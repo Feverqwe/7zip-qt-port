@@ -195,9 +195,11 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(const wchar_t *name, IFolderFolder **resu
         subFolder = fsFolderSpec;
         if (fsFolderSpec->Init(us2fs(name2)) != S_OK) {
 #ifdef USE_WIN_PATHS
-            if (IS_PATH_SEPAR(name2[0]))
-                return E_NOTIMPL; // original network fallback is still required P1-11
-            else
+            if (IS_PATH_SEPAR(name2[0])) {
+                CNetFolder *netFolderSpec = new CNetFolder;
+                subFolder = netFolderSpec;
+                netFolderSpec->Init(name2);
+            } else
 #endif
                 return E_INVALIDARG;
         }

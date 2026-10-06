@@ -1009,6 +1009,12 @@ unsupported; archive ADS remains a portable source namespace.
 Windows uses upstream `NWindows::NNet`, while POSIX lists already mounted
 network shares through `qtvolumemounts` and binds them to source `CFSFolder`.
 Qt command availability enables Parent/Back for the virtual child folder.
+Windows RootFolder's original filesystem-first binding falls back to CNetFolder
+for server/container addresses. Qt's directory classification does not choose
+the source provider: normal/flat listing first binds through CPanel and dispatches
+namespace results through renderBoundFolder before accessing CFSFolder state.
+Central Copy availability requires the source operations interface, retaining
+CApp::OnCopy's unsupported-provider boundary.
 `CPanel::_timestampLevel` and `CApp` carry the source time-level state. Qt View
 menu actions use the original command IDs and `MyLoadMenu` dispatch; unchanged
 `PropIDUtils`/`PropVariantConv` format typed `FILETIME` cells. `MainWindow`

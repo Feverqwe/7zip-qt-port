@@ -1075,7 +1075,8 @@ if(BUILD_TESTING)
         target_link_libraries(fs_drives_device_tests PRIVATE sevenzip_filesystem Qt6::Test virtdisk)
         add_test(NAME fs_drives_device COMMAND fs_drives_device_tests -silent)
         set_tests_properties(fs_drives_device PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE)
-        qt_add_executable(network_folder_tests tests/native_network_folder_tests.cpp)
+        qt_add_executable(network_folder_tests tests/native_network_folder_tests.cpp
+            tests/fixtures/native_network_share.cpp tests/fixtures/native_network_share.h)
         target_link_libraries(network_folder_tests PRIVATE netapi32 advapi32)
     else()
         qt_add_executable(network_folder_tests tests/network_folder_tests.cpp)
@@ -2063,6 +2064,17 @@ if(BUILD_TESTING)
     get_target_property(options_window_sources settings_tests SOURCES)
     list(REMOVE_ITEM options_window_sources tests/settings_tests.cpp)
     get_target_property(options_window_libraries settings_tests LINK_LIBRARIES)
+    if(WIN32)
+        qt_add_executable(native_network_navigation_tests tests/native_network_navigation_tests.cpp
+            tests/fixtures/native_network_share.cpp tests/fixtures/native_network_share.h
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(native_network_navigation_tests PRIVATE src tests)
+        target_link_libraries(native_network_navigation_tests PRIVATE ${options_window_libraries}
+            netapi32 advapi32)
+        add_test(NAME native_network_navigation COMMAND native_network_navigation_tests -silent)
+        set_tests_properties(native_network_navigation PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-network-navigation.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     qt_add_executable(namespace_hash_tests tests/namespace_hash_tests.cpp
         tests/layout_inspection.cpp ${options_window_sources})
     target_include_directories(namespace_hash_tests PRIVATE src tests)
@@ -2631,7 +2643,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

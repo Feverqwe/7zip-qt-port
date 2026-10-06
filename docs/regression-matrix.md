@@ -36,7 +36,7 @@ production access is added for this matrix.
 | P1-08 external View/Edit/Diff/VerCtrl | PanelItemOpen/EditItem/VerCtrl; OS process and GUI delivery | `archive_external_edit`, `archive_external_lifetime`, `archive_external_security`, `external_editors_ui`, `verctrl` |
 | P1-09 nested parent write chain | PanelItemOpen/AgentOut; retained resource/parent publication | `nested_edit_chain`, `nested_update`, `owned_temp_publication` |
 | P1-10 properties/raw/folder size | PropertyName/PropIDUtils/Agent/Panel; typed native property projection, retained native levels/catalog diagnostics | `source_properties`, `native_archive_properties`, `properties_runtime`, `property_formatting`, `folder_size_view` |
-| P1-11 root/mount/network/Browse/device image | RootFolder/FSDrives/NetFolder; platform mount service and original device CopyTo | `root_navigation`, `volume_mount`, `network_folder`, `browse_dialog`, `fs_drives_device`, `fs_drives_device_ui` (Windows) |
+| P1-11 root/mount/network/Browse/device image | RootFolder/FSDrives/NetFolder; platform mount service and original device CopyTo | `root_navigation`, `volume_mount`, `network_folder`, `browse_dialog`, `fs_drives_device`, `fs_drives_device_ui`, `native_network_navigation` (Windows) |
 | P1-12 Options Apply/Cancel | OptionsDialog/*Page; Qt page container | `options_dialog`, `options_integration`, `options_window`, `fm_settings` |
 | P1-13 Edit/Menu policies | EditPage/MenuPage/RegistryContextMenu; OS registration service | `external_editors_ui`, `menu_page`, `context_menu_settings`, `shell_registry` |
 | P1-14 language/fallback/focus | CLang/LangUtils/*Dialog; Qt LanguageChange/bindings | `language`, `language_ui`, `language_dialog`, `language_standard_buttons`, `language_focus`, `language_source_update` |

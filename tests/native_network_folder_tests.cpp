@@ -1,35 +1,14 @@
 #include "7zip/PropID.h"
 #include "CPP/7zip/UI/FileManager/NetFolder.h"
+#include "CPP/7zip/UI/FileManager/RootFolder.h"
 #include "Windows/PropVariant.h"
+#include "fixtures/native_network_share.h"
 #include <QDir>
 #include <QFile>
-#include <QScopeGuard>
-#include <QTemporaryDir>
-#include <QUuid>
 #include <QtTest>
 #include <lm.h>
-#include <sddl.h>
 
 namespace {
-QString currentUserSid() {
-    HANDLE token = nullptr;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
-        return {};
-    const auto close = qScopeGuard([&] { CloseHandle(token); });
-    DWORD needed = 0;
-    GetTokenInformation(token, TokenUser, nullptr, 0, &needed);
-    if (!needed)
-        return {};
-    QByteArray info(int(needed), '\0');
-    if (!GetTokenInformation(token, TokenUser, info.data(), needed, &needed))
-        return {};
-    LPWSTR text = nullptr;
-    if (!ConvertSidToStringSidW(reinterpret_cast<TOKEN_USER *>(info.data())->User.Sid, &text))
-        return {};
-    const auto free = qScopeGuard([&] { LocalFree(text); });
-    return QString::fromWCharArray(text);
-}
-
 int findShare(IFolderFolder &folder, const QString &name) {
     UInt32 count = 0;
     if (folder.GetNumberOfItems(&count) != S_OK)
@@ -47,45 +26,38 @@ int findShare(IFolderFolder &folder, const QString &name) {
 class NativeNetworkFolderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void nativeShareCanOpenThenDisappear_data() {
+        QTest::addColumn<bool>("fromRoot");
+        QTest::newRow("direct-network-provider") << false;
+        QTest::newRow("root-server-fallback") << true;
+    }
     void nativeShareCanOpenThenDisappear() {
-        QTemporaryDir fixture(
-            QDir(QDir::tempPath()).filePath(QStringLiteral("sevenzip native сеть 空 XXXXXX")));
-        QVERIFY(fixture.isValid());
-        const QString name =
-            QStringLiteral("Sevenzip test ") + QUuid::createUuid().toString(QUuid::WithoutBraces);
-        const QString fileName = QStringLiteral("файл 空 с пробелом.txt");
-        const QByteArray payload("native network fixture\0bytes", 28);
-        QFile file(fixture.filePath(fileName));
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        QCOMPARE(file.write(payload), qint64(payload.size()));
-        file.close();
-        const QString sid = currentUserSid();
-        QVERIFY(!sid.isEmpty());
-        const std::wstring sddl = QString("D:P(A;;FA;;;%1)").arg(sid).toStdWString();
-        PSECURITY_DESCRIPTOR descriptor = nullptr;
-        QVERIFY(ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl.c_str(), SDDL_REVISION_1,
-                                                                     &descriptor, nullptr));
-        const auto free = qScopeGuard([&] { LocalFree(descriptor); });
-        std::wstring nativeName = name.toStdWString();
-        std::wstring nativePath = QDir::toNativeSeparators(fixture.path()).toStdWString();
-        SHARE_INFO_502 info{};
-        info.shi502_netname = nativeName.data();
-        info.shi502_type = STYPE_DISKTREE;
-        info.shi502_max_uses = SHI_USES_UNLIMITED;
-        info.shi502_path = nativePath.data();
-        info.shi502_security_descriptor = descriptor;
-        DWORD parameter = 0;
-        QCOMPARE(NetShareAdd(nullptr, 502, reinterpret_cast<LPBYTE>(&info), &parameter),
-                 NET_API_STATUS(NERR_Success));
-        bool shared = true;
-        const auto remove = qScopeGuard([&] {
-            if (shared)
-                NetShareDel(nullptr, nativeName.data(), 0);
-        });
-        const QString server = QStringLiteral("\\\\") + QSysInfo::machineHostName() + "\\";
-        CMyComPtr<IFolderFolder> network = new CNetFolder;
-        static_cast<CNetFolder *>((IFolderFolder *)network)
-            ->Init(UString(server.toStdWString().c_str()));
+        QFETCH(bool, fromRoot);
+        NativeNetworkShare fixture;
+        const QString error = fixture.create();
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        const QString name = fixture.name();
+        const QString fileName = NativeNetworkShare::fileName();
+        const QByteArray payload = NativeNetworkShare::payload();
+        QFile file(fixture.filePath());
+        const QString server = fixture.server();
+        CMyComPtr<IFolderFolder> network;
+        if (fromRoot) {
+            CMyComPtr<IFolderFolder> root = new CRootFolder;
+            static_cast<CRootFolder *>((IFolderFolder *)root)->Init();
+            // CFSFolder cannot bind a server container: original RootFolder must
+            // delegate this exact local UNC address to CNetFolder.
+            QCOMPARE(root->BindToFolder(server.toStdWString().c_str(), &network), S_OK);
+            QVERIFY(network);
+        } else {
+            network = new CNetFolder;
+            static_cast<CNetFolder *>((IFolderFolder *)network)
+                ->Init(UString(server.toStdWString().c_str()));
+        }
+        NWindows::NCOM::CPropVariant type;
+        QCOMPARE(network->GetFolderProperty(kpidType, &type), S_OK);
+        QCOMPARE(type.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(type.bstrVal), QString("NetFolder"));
         QCOMPARE(network->LoadItems(), S_OK);
         const int index = findShare(*network, name);
         QVERIFY(index >= 0);
@@ -105,8 +77,7 @@ class NativeNetworkFolderTests final : public QObject {
         QCOMPARE(received.readAll(), payload);
         received.close();
         folder.Release();
-        QCOMPARE(NetShareDel(nullptr, nativeName.data(), 0), NET_API_STATUS(NERR_Success));
-        shared = false;
+        QCOMPARE(fixture.remove(), static_cast<unsigned long>(NERR_Success));
         QVERIFY(network->BindToFolder(UInt32(index), &folder) != S_OK);
         QVERIFY(!folder);
         QCOMPARE(network->LoadItems(), S_OK);

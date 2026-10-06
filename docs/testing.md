@@ -1,5 +1,15 @@
 # Regression strategy
 
+Windows `network_folder` checks both direct CNetFolder and original RootFolder
+server fallback with the same private current-SID-only SMB fixture.
+`native_network_navigation` checks actual typed server address, normal/flat EN/RU
+states, source share opening/parent focus, stale-share refusal/refresh, unchanged
+binary bytes and no archive engine calls. Its eight normal/compact server JSON
+reports follow the main-shell geometry contract. Device Copy, namespace Hash and
+`ui_operations` remain direct consumers of the shared Copy capability boundary.
+Fixtures use the owned local server only; external hosts and credentials remain
+outside this proof. See the port audit for current gates and preserved failures.
+
 `language` exercises original colon/remove-colon/window helpers through public
 Qt bindings, partial language files, missing RC entries and live reload. It also
 checks native standard-control mapping on plain buttons and Progress's subsequent

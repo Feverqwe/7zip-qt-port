@@ -151,20 +151,23 @@ remove-colon and window helper bodies and actual reload/fallback consumers
 are now integrated into initial/reload bindings with original missing-entry RC
 fallback. Benchmark, Edit and Progress use those helpers; plain Benchmark/Link/
 Progress standard controls use the existing source table. Mac regressions/full
-pass; native final bindings, Linux and parent acceptance remain open. See the
+pass, followed by final native consumers/full; Linux and parent acceptance remain open. See the
 port audit for bounded evidence. P3-05.9 alone did not close this omission, and
 these helper consumers do not establish whole-module LangUtils reconciliation.
 
 Review on 2026-10-06 also finds an active RootFolder caller omission, P3-05.11.
 Original CRootFolder::BindToFolder(const wchar_t *, ...) normalizes the path,
 tries CFSFolder::Init, then creates CNetFolder/Init(name2) on Windows when that
-fails for a separator-led path. The adapted branch returns E_NOTIMPL with an
+fails for a separator-led path. The adapted branch returned E_NOTIMPL with an
 old P1-11 comment. Existing native CNetFolder::Init uses original
 GetResourceInformation and retains enumeration/parent services, so an unavailable
 implementation is not a reason to omit this caller. Accepted own-share
-enumeration/binding does not prove server/container address fallback. Restore
-the original branch with its actual navigation consumers and an owned local
-native fixture before declaring RootFolder binding complete.
+enumeration/binding did not prove server/container address fallback. The original
+branch and actual typed-address/flat/parent/refusal consumers are now integrated
+with an owned local native fixture. The regression exposed an unsafe Qt FS cast
+and unsupported Copy availability; both use existing source type/interface
+boundaries. Final native consumers/geometry pass; whole/final platform and parent
+acceptance remain open. See the port audit for scope and preserved RED evidence.
 
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,

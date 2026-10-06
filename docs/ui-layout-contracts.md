@@ -688,6 +688,17 @@ checks address and list visibility at both sizes. These reports establish Qt
 geometry, not Windows pixel appearance; live shares and Windows rendering
 remain unverified.
 
+P3-05.11 restores the original Windows server/container address fallback.
+`native_network_navigation` enters an owned local server in EN/RU normal/flat
+states, opens only its private share and returns with source focus. Eight
+`network-server-{language}-{flat}-{width}.json` reports at980×620/640×400
+check menu/toolbar/address/list/status order, full exposure and size hints.
+Source-backed binding chooses the namespace even when Qt classifies its address
+as a directory. Copy and mutations remain disabled without source operations;
+Parent/Back stay available. Current native reports pass. Owned local SMB bytes/
+refusal are proven by public tests; external shares/credentials and rendered
+Windows pixel parity remain unverified.
+
 ### Source extraction prompts (P0-04.1 prerequisite)
 
 `extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with

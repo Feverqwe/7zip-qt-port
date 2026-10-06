@@ -62,17 +62,21 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
 }
 
 void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
+    COpenResult opened;
+    auto &panel = app_.GetFocusedPanel();
+    HRESULT result =
+        sourceAlreadyBound ? S_OK : panel.BindToPath(ToUString(directory_), UString(), opened);
+    CMyComPtr<IFolderFolder> folder = panel.GetFolder();
+    if (result == S_OK && !panel.IsFSFolder()) {
+        renderBoundFolder();
+        return;
+    }
     if (flatDisk_) {
         scanningDisk_ = true;
         setState(State::Filesystem);
         statusBar()->showMessage(QtLangText(IDS_SCANNING));
         filesystemScanner_->start(directory_);
     } else {
-        COpenResult opened;
-        auto &panel = app_.GetFocusedPanel();
-        HRESULT result =
-            sourceAlreadyBound ? S_OK : panel.BindToPath(ToUString(directory_), UString(), opened);
-        CMyComPtr<IFolderFolder> folder = panel.GetFolder();
         if (result == S_OK) {
             panel.LoadFullPath();
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
