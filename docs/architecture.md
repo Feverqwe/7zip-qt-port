@@ -64,7 +64,12 @@ the same load-stage RINOK before properties/selection, retaining the bound
 provider and result. Its source message appears before ending async publication;
 retained scan guards cover that modal phase. Copy completion waits until the
 temporary panel projection is restored before changing source focus/title.
-Missing-folder navigation and the remaining complete-function review stay open.
+Missing-folder reload also runs the source load stage, clearing native items and
+marks rather than only Qt rows. CFSFolder uses original Windows Next(fi), which
+ends enumeration on errors; the POSIX adapter mirrors that end-of-walk behavior.
+Initial binding still validates missing paths. The existing missing-folder status
+and auto-refresh snapshot support recovery when the directory returns. Missing-
+address navigation and the remaining complete-function review stay open.
 
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its

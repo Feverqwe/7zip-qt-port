@@ -186,19 +186,18 @@ HRESULT CFSFolder::LoadSubItems(int dirItem, const FString &relPrefix) {
         for (;;) {
             if (CheckBreak && !CheckBreak(QtPath(_path + relPrefix)))
                 return E_ABORT;
-            bool found;
 #ifdef _WIN32
-            if (!enumerator.Next(fi, found))
-                return E_FAIL;
+            if (!enumerator.Next(fi))
+                break;
 #else
+            bool found;
             NWindows::NFile::NFind::CDirEntry entry;
-            if (!enumerator.Next(entry, found))
-                return E_FAIL;
-            if (found && !enumerator.Fill_FileInfo(entry, fi, false))
+            // Original Windows Next(fi) ends the walk on an enumeration error.
+            if (!enumerator.Next(entry, found) || !found)
+                break;
+            if (!enumerator.Fill_FileInfo(entry, fi, false))
                 return E_FAIL;
 #endif
-            if (!found)
-                break;
             if (fi.IsDir()) {
                 fi.Size = 0;
                 bool recurse = _flatMode;

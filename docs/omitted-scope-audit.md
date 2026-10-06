@@ -98,7 +98,12 @@ The source message precedes scan completion. The Qt continuation waits until
 temporary peer projection is restored before changing source focus/title.
 Both-role EN/RU normal/flat/navigation/Refresh and real Copy/Move peer consumers
 check old-generation rejection, provider/result/bytes and recovery.
-Missing-folder adaptation and other
+Missing-folder reload now runs the source load stage to clear native items/marks;
+CFSFolder restores original Windows Next(fi) end-of-walk semantics, with POSIX
+enumeration errors ending the walk too. Initial missing binding still fails.
+Both-role EN/RU standard/alternative Refresh/timer and restore consumers cover
+native count/operated indices, provider/guards and control bytes.
+Missing-address navigation and other
 post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
 

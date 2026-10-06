@@ -13,6 +13,89 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
     }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void missingFolderClearsNativeItems_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("alternative");
+        QTest::addColumn<bool>("timer");
+        for (unsigned index : {0u, 1u})
+            for (const QString language : {"-", "ru"})
+                for (bool alternative : {false, true})
+                    for (bool timer : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(index)
+                                                     .arg(language)
+                                                     .arg(alternative)
+                                                     .arg(timer)))
+                            << index << language << alternative << timer;
+    }
+    void missingFolderClearsNativeItems() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(QString, language);
+        QFETCH(bool, alternative);
+        QFETCH(bool, timer);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.setValue("FM/AlternativeSelection", alternative);
+        settings.sync();
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString path = fixture.filePath(QStringLiteral("missing 文件"));
+        const QString moved = fixture.filePath("retained");
+        QVERIFY(QDir().mkpath(path));
+        QVERIFY(writeControl(QDir(path).filePath(QStringLiteral("control δ.txt"))));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(path);
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        QTRY_COMPARE(view->rowCount(), 1);
+        view->setFocus();
+        action(window, "selectAllAction")->trigger();
+        auto &panel = *view->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> folder = panel.GetFolder();
+        CRecordVector<UInt32> indices;
+        panel.Get_ItemIndices_OperSmart(indices);
+        QCOMPARE(indices.Size(), 1u);
+        QVERIFY(QDir().rename(path, moved));
+        if (timer) {
+            panel.Set_AutoRefresh_Mode(true);
+            panel.MarkPortableFolderChanged();
+            panel.OnTimer();
+            panel.Set_AutoRefresh_Mode(false);
+        } else
+            action(window, "refreshAction")->trigger();
+        QCOMPARE(view->rowCount(), 0);
+        UInt32 count = 42;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        panel.Get_ItemIndices_OperSmart(indices);
+        QVERIFY(indices.IsEmpty());
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)folder);
+        QVERIFY(panel.ShouldProcessNotifications());
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::writeReport(window, QString("filesystem-missing-%1-%2")
+                                                          .arg(QTest::currentDataTag())
+                                                          .arg(size.width())));
+        }
+        QVERIFY(QDir().rename(moved, path));
+        panel.OnReload();
+        QCOMPARE(view->rowCount(), 1);
+        QFile control(QDir(path).filePath(QStringLiteral("control δ.txt")));
+        QVERIFY(control.open(QIODevice::ReadOnly));
+        QCOMPARE(control.readAll(), QByteArray("control"));
+    }
     void workerFailureRetainsSourceResult_data() {
         QTest::addColumn<unsigned>("sourceIndex");
         QTest::addColumn<QString>("language");

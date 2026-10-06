@@ -66,7 +66,11 @@ and show the source message before async completion. Check both panels, EN/RU,
 normal/flat navigation and Refresh, old-generation rejection and successful
 worker recovery. A Copy/Move peer failure must restore source focus/title only
 after temporary projection ends; inspect resulting panels at1100×640/640×400.
-Missing-folder adaptation
+When a bound folder disappears, Refresh/timer must clear native items/operated
+indices as well as visible rows. Preserve provider/guards/command recovery and
+the existing missing-folder status; restoring the directory recovers control
+bytes. Inspect both panels/EN-RU/standard-alternative empty views at980×620/640×400.
+Missing-address navigation
 and whole RefreshListCtrl acceptance remain separate required checks.
 
 ### Persisted source locations (P3-05.14, required scope)

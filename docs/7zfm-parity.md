@@ -59,7 +59,12 @@ selection, сохраняет provider и показывает source error пе
 async publication. После временной peer projection исходная OnCopy continuation
 восстанавливает source title/focus. Реальный worker failure, superseded generation,
 normal/flat, EN/RU и Copy/Move consumers проверяют восстановление и bytes.
-Missing-folder adaptation и остальные post-Copy failures требуют сверки;
+Missing-folder reload теперь очищает native items/marks через load stage,
+сохраняя provider и последующее восстановление. Исходный Windows Next(fi)
+завершает перечисление при ошибке; POSIX adapter повторяет этот контракт.
+Initial binding missing path по-прежнему отказывает. Проверены обе панели,
+EN/RU, Refresh/timer и standard/alternative selection, с контрольными байтами.
+Missing-address navigation и остальные post-Copy failures требуют сверки;
 текущие Windows/Linux и rendered проверки остаются обязательными.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)

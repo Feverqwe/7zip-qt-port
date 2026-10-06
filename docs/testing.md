@@ -65,6 +65,12 @@ elsewhere. They retain the existing byte/marks/focus/title/provider/recovery
 assertions and inspect eight normal/compact resulting-panel reports. A retained
 initial failing run catches completion inside a temporary peer projection:
 wrong source title and peer recovery path. Completion now waits for that scope.
+Sixteen additional filesystem_reload rows rename the currently bound directory
+away, reload through Refresh/timer from both panels under EN/RU and standard/
+alternative selection, then restore it. Native count and operated indices must
+be empty along with Qt rows; provider/guards/Refresh remain usable and restored
+control bytes survive. Thirty-two normal/compact reports inspect the empty view.
+The actual RED bypasses native loading and leaves one stale source item in16 rows.
 
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,
@@ -1754,7 +1760,9 @@ injects a progress allocation exception, and verifies no partial/stale records,
 ordered count progress and a successful later reload.
 `fs_folder` checks normal/flat reload, Unicode, base-relative prefixes, typed
 file size/time/attributes versus uncalculated directory size, source type/path/
-catalog descriptors, invalid indices and failure clearing stale rows. It also
+catalog descriptors, invalid indices and missing reload clearing stale rows with
+the original S_OK empty-enumeration contract. Cancellation/allocation failures
+still verify partial-state cleanup and recovery separately. It also
 checks name/index/flat binding, ancestor/root, child flat defaults, missing/file
 rejection and WasChanged identity. Windows root-to-FSDrives/rebind is conditional
 and still requires execution on Windows.

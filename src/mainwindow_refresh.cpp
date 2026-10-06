@@ -37,6 +37,7 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
     if (state_ != State::Filesystem)
         return S_OK;
     if (!QFileInfo(directory_).isDir()) {
+        const HRESULT loaded = app_.GetFocusedPanel().LoadListItems();
         autoRefreshSnapshot_.clear();
         autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
         table_->clearSelection();
@@ -44,7 +45,7 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") +
                                  directory_);
         refreshActions();
-        return S_OK;
+        return loaded;
     }
     const int firstRow = table_->rowAt(0);
     autoRefreshTopPath_ =

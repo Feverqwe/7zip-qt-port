@@ -580,6 +580,52 @@ input/validation manifests and geometry review are frozen in the final directory
 Current Windows/Linux/rendered focus, missing-folder workflow, remaining full
 RefreshListCtrl presentation/timer and P3-05.15/P3-06 acceptance remain mandatory.
 
+### Missing-folder source reload and enumeration contract, 2026-10-06
+
+Reviewed original CPP/7zip/UI/FileManager/FSFolder.cpp::LoadSubItems/LoadItems,
+PanelItems.cpp::RefreshListCtrl/OnReload/OnTimer and both CEnumerator::Next
+overloads/Win32 and POSIX dependencies in CPP/Windows/FileFind.cpp/.h at full
+upstream commit0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original FSFolder uses Windows Next(fi), whose
+false result ends the walk on both EOF and enumeration error. The Qt port had
+selected the checked Next(fi,found) overload and changed that source behavior.
+
+Restore original Windows Next(fi) end-of-walk branch. POSIX has only a CDirEntry
+plus found/error interface, so its narrow adapter also breaks on enumeration
+failure/end before obtaining file metadata. Its existing Fill_FileInfo failure,
+no-follow recursion, cancellation/progress, COM exception and binding validation
+adapters remain unchanged; this is not a whole FSFolder/module closure. Initial
+missing binding still fails, worker Init failure still reaches its error owner,
+and Cancel/allocation failures still clear partial records and return errors.
+No reusable dependency/new borrowed module; pinned notices/languages unchanged,
+baseline verified408 exact/196 adapted/3 local.
+
+Qt missing-folder reload now runs CPanel::LoadListItems before recording its
+absent snapshot/status and refreshing commands. It clears source records,
+directory cache and native marks, not just the visible Qt rows. Existing
+missing-folder status and automatic recreation recovery are retained; the result
+comes from source loading rather than an unconditional local S_OK. New-address
+navigation is separate from this bound-folder reload integration.
+
+Sixteen both-role EN/RU standard/alternative Refresh/timer consumers rename
+their private Unicode directory away and restore it. Source count/operated
+indices must be zero, provider/guards/Refresh remain usable, rows and exact
+control bytes recover. Thirty-two current980×620/640×400 reports inspect both
+address/list groups and enabled/exposed state. The existing provider test now
+expects original S_OK/zero items on missing enumeration, preserving its missing
+binding/interface checks; failure/Cancel/allocation tests remain intact.
+An initial three-suite check passed2/3, failing only that obsolete E_FAIL
+expectation; it is not final validation. Actual RED bypasses native load:18 Qt
+passes/16 stale count failures5.38s, frozen build/review/source-missing-reload-red.
+Final seven focused suites pass11.14s, zero Qt failures/skips; four input hashes,
+focused log and geometry review are retained in source-missing-reload-final.
+Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes formatting,
+all-target build and257/257 CTest116.22s. Four inputs remain unchanged from focused
+validation. Full/focused logs, manifests and32 current panel JSON/geometry review
+are frozen in the final directory; no current Windows/Linux/rendered claim.
+Current Windows/Linux/rendered, missing-address/full RefreshListCtrl stages,
+remaining native branches and P3-05.15/P3-06 acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

@@ -395,7 +395,7 @@ class FsFolderTests : public QObject {
         QCOMPARE(count, UInt32(1));
     }
 
-    void failedReloadClearsStaleRowsAndUnavailableInterfaces() {
+    void missingReloadUsesSourceEmptyEnumerationAndUnavailableInterfaces() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         QFile file(temp.filePath("old"));
@@ -406,7 +406,7 @@ class FsFolderTests : public QObject {
         QCOMPARE(folder->LoadItems(), S_OK);
         QVERIFY(QFile::remove(file.fileName()));
         QVERIFY(QDir().rmdir(temp.path()));
-        QCOMPARE(folder->LoadItems(), E_FAIL);
+        QCOMPARE(folder->LoadItems(), S_OK);
         UInt32 count = 99;
         QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(0));

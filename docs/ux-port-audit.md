@@ -73,7 +73,10 @@ peer Copy/Move проверяют Cancel/ошибку и восстановле�
 message до завершения async publication. Временная peer projection больше не
 получает source state при завершении Copy/Move; title/focus и peer recovery
 проверены, включая normal/compact resulting-panel reports.
-Missing-folder adaptation и остальная full/post-Copy error и
+Missing-folder reload больше не оставляет скрытые native items/marks после
+очистки Qt rows: source enumeration и восстановление проверены с обеими
+selection modes, EN/RU и обеими панелями, с32 empty-view reports.
+Missing-address navigation и остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
