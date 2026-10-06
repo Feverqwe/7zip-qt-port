@@ -39,8 +39,9 @@
 Полная сверка App.cpp выделяет
 [P3-05.15](upstream-port-audit.md#p3-0515--source-copymove-destination-and-continuation-reconciliation-required-scope-2026-10-06):
 восстановить исходный выбор/классификацию destination и Copy/Move continuation,
-включая пустую цель peer, original refusals/options и selection/focus после
-асинхронного результата. Принятый архивный Move/rollback сохраняется. Existing
+пустая цель peer и однопанельный reducer уже восстановлены с F5/F6/Cancel/EN-RU
+normal/compact consumers. Original refusals/options и selection/focus после
+асинхронного результата ещё требуют reconciliation. Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 
 Сверка полного PanelFolderChange также выявила обязательный

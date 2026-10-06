@@ -51,7 +51,6 @@ class IQtAppPresentation {
     virtual CPanelCallback *PanelCallback(unsigned index) = 0;
     virtual void RefreshFolder(unsigned) {}
     virtual void PrepareFolderChange(unsigned) {}
-    virtual QString DefaultCopyDestination(unsigned) const { return {}; }
     virtual void ExecuteCopy(bool, bool, unsigned, const QString &, const CRecordVector<UInt32> &,
                              bool, bool) {}
     virtual void SetListSettings(unsigned index, const CFmSettings &settings) = 0;

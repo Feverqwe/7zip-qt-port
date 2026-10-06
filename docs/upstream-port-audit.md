@@ -10,10 +10,19 @@ https://github.com/ip7z/7zip.git, is recorded in
 All37 top-level active bodies, CButtonInfo::GetText, toolbar arrays and relevant
 inline/state dependencies were reviewed; commented CheckFolderPath/IsFsPath/
 GetFocusedPanelIndex are distinguished from the active reducer and inline getter.
-No additional module/dependency is copied by this docs-only review.
+No additional module/dependency was copied by that initial docs-only review.
 
-Current OnCopy is a partial port: original directory reduction/default target,
-Windows root/ADS refusals, possibleToUseDestPanel/destIsFsPath and Is_IO_FS_Folder
+OnCopy now retains the original destPanel.GetFsPath default and one-panel
+Reduce_Path_To_RealFileSystemPath body in the authoritative App.cpp. The reducer
+uses the existing portable FileFind/FileName dependencies; adaptations are
+qualified namespaces, formatting and the existing Qt dialog string boundary.
+No additional borrowed module or platform implementation is introduced.
+IQtAppPresentation/QtAppPresentation's independent DefaultCopyDestination hook
+is removed. MainWindow's separately used Extract-dialog default remains outside
+this Copy change. Source names, paths, notices and the pinned baseline remain.
+
+Current OnCopy is still a partial port: Windows root/ADS refusals,
+possibleToUseDestPanel/destIsFsPath and Is_IO_FS_Folder
 routing, full-path naming, option flags and post-operation selection/refresh
 continuation require reconciliation. The Qt default fallback and repeated
 state-based execution classification do not establish absence of usable source
@@ -34,6 +43,26 @@ Review checks pass git diff --check and reproducible baseline verification
 active-body census records the original/adapted SHA and all37 top-level bodies;
 CButtonInfo/data/inline interfaces were reviewed manually. Filename/census/manifest
 checks do not replace the required functional consumers or close P3-05.
+
+Destination-default follow-up has an actual previous-product RED: F5 to a drives
+peer displayed the source folder instead of an empty target (6 Qt pass/1 fail).
+Current public ui_copy_same rows cover F5/F6, drives/root peer, EN/RU440×250 and
+360×200, Cancel, unchanged Unicode control bytes, no output and no engine calls.
+A real ZIP checks one-panel reduction to the existing parent before the retained
+focused-versus-selected Shift Copy/Move success cases. The offscreen driver
+explicitly activates the window between Cancel and the next command; this is not
+evidence of rendered native focus parity. Sixteen current-build JSON reports were
+inspected for grouping/order, sizes, visible/enabled controls, prompt fit and
+destination/browse separation. The Copy controls remain within both contract sizes.
+
+Validation on macOS27.0.1 arm64/Qt6.12.0: focused Copy suites2/2PASS1.18s,
+CopyDialog9/UiCopySame22 Qt pass, zero fail/skip; mandatory unsandboxed check.sh
+passes formatting, all-target build and252/252 CTest111.62s. Six tested code/test/
+build inputs retain their pre-gate SHA. RED, focused/full logs, input manifest and
+sixteen reviewed reports are frozen separately under build/review/source-copy-
+destination-{red,final}. Remaining source classification/options/naming/completion,
+native Windows/Linux, ADS/device, cold-stable/current-package/clean-OS/rendered
+and P3-06 acceptance remain mandatory. This component does not close P3-05.15.
 
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 

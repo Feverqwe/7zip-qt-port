@@ -87,10 +87,6 @@ void QtAppPresentation::PrepareFolderChange(unsigned index) {
     });
 }
 
-QString QtAppPresentation::DefaultCopyDestination(unsigned) const {
-    return window_.copyDefaultDestination();
-}
-
 void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceIndex,
                                     const QString &destination,
                                     const CRecordVector<UInt32> &indices, bool useDestPanel,

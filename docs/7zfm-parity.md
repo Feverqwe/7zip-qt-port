@@ -4,8 +4,9 @@
 
 Текущий App::OnCopy сохраняет начальные проверки, выбор и Copy dialog, но часть
 destination/default/refusal/classification flow заменена Qt state branches.
-Исходный reducer доступен; пустая цель peer не должна получать самостоятельный
-fallback текущей папки. FS/ADS/archive flags, option policy, naming и завершение
+Исходный reducer и destPanel.GetFsPath теперь восстановлены в App.cpp:
+пустая цель peer остаётся пустой, однопанельный путь сокращается до существующей
+папки исходным алгоритмом. FS/ADS/archive flags, option policy, naming и завершение
 selection/refresh/focus требуют исходного body и интегрированных consumers.
 Принятый архивный Move остаётся отдельной требуемой композицией Copy/Delete/
 rollback: оригинальный Agent Move возвращает E_NOTIMPL. P3-05.15 открыт;

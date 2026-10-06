@@ -1,11 +1,109 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "copydialog.h"
+#include "layout_inspection.h"
 #include "window_state_support.h"
 
 class UiCopySameTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString("-"), settings);
+        ReloadLang(settings);
+    }
+
+    void drivePeerLeavesCopyDestinationEmpty_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QSize>("size");
+        QTest::addColumn<bool>("move");
+        QTest::addColumn<bool>("root");
+        for (const char *language : {"-", "ru"})
+            for (const QSize size : {QSize(440, 250), QSize(360, 200)})
+                for (bool move : {false, true})
+                    for (bool root : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(language)
+                                                     .arg(size.width())
+                                                     .arg(move)
+                                                     .arg(root)))
+                            << QString::fromLatin1(language) << size << move << root;
+    }
+    void drivePeerLeavesCopyDestinationEmpty() {
+        QFETCH(QString, language);
+        QFETCH(QSize, size);
+        QFETCH(bool, move);
+        QFETCH(bool, root);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("контроль δ.txt");
+        QFile input(fixture.filePath(name));
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("control bytes"), qint64(13));
+        input.close();
+
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *left = window.findChild<QWidget *>("filePanel0");
+        auto *right = window.findChild<QWidget *>("filePanel1");
+        QVERIFY(left && right);
+        auto *address = left->findChild<QLineEdit *>("archivePath");
+        auto *source = left->findChild<QTableWidget *>("archiveTable");
+        auto *peer = right->findChild<QTableWidget *>("archiveTable");
+        QVERIFY(address && source && peer);
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(source->rowCount(), 1);
+        peer->setFocus();
+        QTRY_VERIFY(peer->hasFocus());
+        action(window, "openRootAction")->trigger();
+        QVERIFY(static_cast<FileTable *>(peer)->sourcePanel->IsFSDrivesFolder());
+        if (root) {
+            action(window, "parentFolderAction")->trigger();
+            QVERIFY(static_cast<FileTable *>(peer)->sourcePanel->IsRootFolder());
+        }
+        QVERIFY(static_cast<FileTable *>(peer)->sourcePanel->GetFsPath().IsEmpty());
+        source->selectRow(0);
+        source->setCurrentCell(0, 0);
+        source->setFocus();
+        QTRY_VERIFY(source->hasFocus());
+        bool dialogSeen = false;
+        bool inspected = false;
+        QString initial;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            if (!dialog)
+                return;
+            dialogSeen = true;
+            dialog->resize(size);
+            dialog->layout()->activate();
+            initial = dialog->findChild<QComboBox *>("copyDestination")->currentText();
+            inspected =
+                UiInspection::fullyVisible(*dialog->findChild<QComboBox *>("copyDestination"),
+                                           *dialog) &&
+                UiInspection::writeReport(*dialog, QString("source-copy-default-%1-%2-%3-%4")
+                                                       .arg(language)
+                                                       .arg(size.width())
+                                                       .arg(move)
+                                                       .arg(root));
+            dialog->reject();
+        });
+        QTest::keyClick(source, move ? Qt::Key_F6 : Qt::Key_F5);
+        QVERIFY(dialogSeen);
+        QVERIFY(inspected);
+        QCOMPARE(initial, QString());
+        QVERIFY(input.open(QIODevice::ReadOnly));
+        QCOMPARE(input.readAll(), QByteArray("control bytes"));
+        QCOMPARE(QDir(fixture.path()).entryList(QDir::Files), QStringList{name});
+        QCOMPARE(backend.listCalls, 0);
+    }
 
     void shiftF5CopiesFocusedFileWithNewName() {
         QTemporaryDir fixture;
@@ -161,12 +259,33 @@ class UiCopySameTests final : public QObject, protected MainWindowTestSupport {
         MainWindow window(&backend);
         window.openArchive(archive);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *view = table(window);
         QTRY_COMPARE(view->rowCount(), 2);
         const int focused = filesystemRow(window, QStringLiteral("first file.txt"));
         const int selected = filesystemRow(window, QStringLiteral("second file.txt"));
         QVERIFY(focused >= 0);
         QVERIFY(selected >= 0);
+        view->selectRow(focused);
+        view->setCurrentCell(focused, 0);
+        view->setFocus();
+        QTRY_VERIFY(view->hasFocus());
+        bool defaultSeen = false;
+        QString ordinaryDefault;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            if (!dialog)
+                return;
+            defaultSeen = true;
+            ordinaryDefault = dialog->findChild<QComboBox *>("copyDestination")->currentText();
+            dialog->reject();
+        });
+        QTest::keyClick(view, Qt::Key_F5);
+        QVERIFY(defaultSeen);
+        QCOMPARE(QDir::fromNativeSeparators(ordinaryDefault), fixture.path() + '/');
+        QCOMPARE(view->rowCount(), 2);
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         view->selectRow(selected);
         view->setCurrentCell(focused, 0, QItemSelectionModel::NoUpdate);
         view->setFocus();

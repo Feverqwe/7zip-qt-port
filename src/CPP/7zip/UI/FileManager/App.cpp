@@ -15,6 +15,7 @@
 #include "LangUtils.h"
 #include "Panel.h"
 #include "ViewSettings.h"
+#include "Windows/FileFind.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
@@ -86,6 +87,27 @@ void CApp::RefreshTitlePanel(unsigned index, bool always) {
     RefreshTitle(always);
 }
 
+// Reduces path to the part that exists on disk (or the root prefix).
+// The source helper normalizes the result with WCHAR_PATH_SEPARATOR.
+static void Reduce_Path_To_RealFileSystemPath(UString &path) {
+    unsigned prefixSize = NWindows::NFile::NName::GetRootPrefixSize(path);
+    while (!path.IsEmpty()) {
+        if (NWindows::NFile::NFind::DoesDirExist_FollowLink(us2fs(path))) {
+            NWindows::NFile::NName::NormalizeDirPathPrefix(path);
+            break;
+        }
+        int pos = path.ReverseFind_PathSepar();
+        if (pos < 0) {
+            path.Empty();
+            break;
+        }
+        path.DeleteFrom((unsigned)(pos + 1));
+        if ((unsigned)pos + 1 == prefixSize)
+            break;
+        path.DeleteFrom((unsigned)pos);
+    }
+}
+
 void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
     if (!_presentation || srcPanelIndex >= kNumPanelsMax)
         return;
@@ -122,7 +144,9 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
             srcPanel.Get_ItemIndices_OperSmart(indices);
             if (indices.IsEmpty())
                 return;
-            destPath = ToUString(_presentation->DefaultCopyDestination(srcPanelIndex));
+            destPath = destPanel.GetFsPath();
+            if (NumPanels == 1)
+                Reduce_Path_To_RealFileSystemPath(destPath);
         }
     }
 

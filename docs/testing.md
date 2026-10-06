@@ -1,5 +1,13 @@
 # Regression strategy
 
+`ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
+the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,
+check unchanged Unicode control bytes, no output and no engine request, and
+emit sixteen Copy dialog geometry reports. A real ZIP consumer checks one-panel
+default reduction to its existing filesystem parent before the established
+focused-versus-selected Shift Copy/Move operations. Full OnCopy routing and
+current native/platform acceptance remain in P3-05.15 and the port audit.
+
 `persisted_location` verifies source-prefix bookmarks in both-panel drive view,
 empty-slot root binding and root Save clearing, and exact virtual locations for
 real ZIP/nested ZIP. It checks already-open chain reuse and original containing-
