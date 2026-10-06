@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
+#include <QBrush>
 #include <QHeaderView>
 #include <QLabel>
 
@@ -22,6 +23,120 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
   private slots:
+    void refreshResetsAlternativeGroupAnchor_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("russian");
+        QTest::addColumn<bool>("icons");
+        QTest::addColumn<bool>("showDots");
+        QTest::addColumn<QString>("caller");
+        for (unsigned pane : {0u, 1u})
+            for (bool russian : {false, true})
+                for (bool icons : {false, true})
+                    for (bool showDots : {false, true})
+                        for (const char *caller : {"restore", "refresh", "timer"})
+                            QTest::newRow(qPrintable(QString("%1-%2-%3-%4-%5")
+                                                         .arg(pane)
+                                                         .arg(russian)
+                                                         .arg(icons)
+                                                         .arg(showDots)
+                                                         .arg(caller)))
+                                << pane << russian << icons << showDots
+                                << QString::fromLatin1(caller);
+    }
+    void refreshResetsAlternativeGroupAnchor() {
+        QFETCH(unsigned, pane);
+        QFETCH(bool, russian);
+        QFETCH(bool, icons);
+        QFETCH(bool, showDots);
+        QFETCH(QString, caller);
+        language(russian);
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.setValue("FM/AlternativeSelection", true);
+        settings.setValue("FM/ShowDots", showDots);
+        settings.sync();
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        for (int i = 0; i < 7; ++i) {
+            QFile file(root.filePath(QString("file%1 δ.txt").arg(i)));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(QByteArray(i + 1, 'x')), qint64(i + 1));
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.resize(980, 620);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *widget = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
+        auto *peerTable = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        CMyComPtr<IFolderFolder> peerProvider = peerTable->sourcePanel->GetFolder();
+        const UString peerPrefix = peerTable->sourcePanel->GetCurrentFolderPrefix();
+        auto *address = widget->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(root.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *table = static_cast<FileTable *>(widget->findChild<QTableWidget *>("archiveTable"));
+        QTRY_COMPARE(table->rowCount(), showDots ? 8 : 7);
+        action(window, icons ? "viewMode0Action" : "viewMode3Action")->trigger();
+        QAbstractItemView *view =
+            icons ? static_cast<QAbstractItemView *>(widget->findChild<QListView *>("iconList"))
+                  : table;
+        QVERIFY(view && view->isVisible());
+        QCOMPARE(view->selectionMode(), QAbstractItemView::SingleSelection);
+        auto click = [&](int row, Qt::KeyboardModifiers modifiers) {
+            const QModelIndex index = table->model()->index(row, 0);
+            view->scrollTo(index);
+            QTest::mouseClick(view->viewport(), Qt::LeftButton, modifiers,
+                              view->visualRect(index).center());
+        };
+        click(3, Qt::ControlModifier);
+        QCOMPARE(table->currentRow(), 3);
+        auto &panel = *table->sourcePanel;
+        QVERIFY(panel.IsItemMarked(table->item(3, 0)->data(Qt::UserRole + 6).toUInt()));
+        if (caller == "restore") {
+            CSelectedState state;
+            panel.SaveSelectedState(state);
+            QCOMPARE(panel.RefreshListCtrl(state), S_OK);
+        } else if (caller == "timer") {
+            panel.Set_AutoRefresh_Mode(true);
+            panel.MarkPortableFolderChanged();
+            panel.OnTimer();
+        } else
+            action(window, "refreshAction")->trigger();
+        QCOMPARE(table->currentRow(), 3);
+        click(4, Qt::ShiftModifier);
+        CRecordVector<UInt32> indices;
+        panel.Get_ItemIndices_Selected(indices);
+        QCOMPARE(indices.Size(), showDots ? 4u : 5u);
+        for (unsigned i = 0; i < unsigned(table->rowCount()); ++i) {
+            const UInt32 source = table->item(int(i), 0)->data(Qt::UserRole + 6).toUInt();
+            const bool marked = i <= 4 && source != UInt32(-1);
+            QVERIFY(panel.IsItemMarked(source) == marked);
+            QCOMPARE(table->item(int(i), 0)->data(Qt::BackgroundRole).value<QBrush>().color() ==
+                         QColor(255, 192, 192),
+                     marked);
+        }
+        QCOMPARE(table->currentRow(), 4);
+        QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(widget->findChild<QLabel *>("selectedSizeStatus")->text(),
+                 showDots ? QStringLiteral("10") : QStringLiteral("15"));
+        QCOMPARE(peerTable->sourcePanel->GetFolder(), peerProvider.Interface());
+        QCOMPARE(peerTable->sourcePanel->GetCurrentFolderPrefix(), peerPrefix);
+        for (int i = 0; i < 7; ++i) {
+            QFile file(root.filePath(QString("file%1 δ.txt").arg(i)));
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(file.readAll(), QByteArray(i + 1, 'x'));
+        }
+        for (const QSize geometry : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(geometry);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*view, window));
+            QVERIFY(UiInspection::writeReport(window, QString("source-refresh-group-%1-%2")
+                                                          .arg(QTest::currentDataTag())
+                                                          .arg(geometry.width())));
+        }
+    }
     void failedLoadDoesNotPublishCompletion_data() {
         QTest::addColumn<HRESULT>("result");
         QTest::newRow("failure") << E_FAIL;

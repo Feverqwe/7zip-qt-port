@@ -1036,6 +1036,11 @@ The Qt page follows the resource order: Show `..`, real file icons, full-row
 selection, grid lines, single click, alternative selection, system menu, large
 pages, extraction-memory label and checkbox/edit/arrows/RAM row, then OK/Cancel.
 Alternative selection is enabled and persists the source mark mode.
+Refresh resets the source group anchor to the first list row, independently of
+restored focus. The next Shift-click marks that original inclusive row range;
+a shown `..` remains excluded from operated indices. Ctrl-click starts a new
+anchor. Selection colours, single focused row, totals and peer state stay in
+sync after direct restoration, menu Refresh and timer reload.
 The page has no heading absent from the resource.
 Large pages are capability-gated Windows controls; source extraction-memory
 edit validation preserves raw input until Apply. The six-page property sheet

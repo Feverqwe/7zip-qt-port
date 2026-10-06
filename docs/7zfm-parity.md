@@ -1501,6 +1501,11 @@ indices не включают sentinel. Qt command availability допускае
 Open Outside для выбранного родителя через исходные handlers. Проверены обе
 панели/EN-RU/standard-alternative/hidden dots/small-worker-flat consumers;
 native/rendered acceptance остаётся открытой.
+В альтернативном выборе Refresh сбрасывает начало Shift-группы на первую
+строку, независимо от восстановленного фокуса. Последующий Shift-click следует
+исходному диапазону; `..` исключён из marks/operated indices. Проверены прямое
+восстановление, menu Refresh и таймер для обеих панелей, EN/RU, table/icons и
+показанной/скрытой строки `..` с сохранением файлов и соседней панели.
 FullRow в табличном виде переключает окраску всей строки
 либо только имени. На macOS/Linux ShowSystemMenu добавляет действие открытия
 каталога в системном файловом менеджере; это уже, чем Windows shell menu.

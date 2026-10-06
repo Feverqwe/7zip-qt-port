@@ -1231,6 +1231,55 @@ Final evidence: build/review/source-refresh-completion-final. Whole remaining
 Refresh/drop/redraw/status/full-body and current native Windows/Linux/rendered/
 cold-stable/P3-06 acceptance remain mandatory.
 
+### Source Refresh alternative-selection anchor (2026-10-06)
+
+Pinned upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: review complete active RefreshListCtrl,
+PanelSelect OnLeftClick/OnArrowWithShift/OnShiftSelectMessage, notification/key
+callers and source group fields, plus Qt click/selection/Refresh/timer consumers.
+The original Refresh resets _startGroupSelect to0 and _selectionIsDefined to
+false after clearing the old list, before restoring selection/focus. It does
+not overwrite the anchor with the restored current row at the end. The extracted
+load phase already retains that reset; Qt's restoration tail incorrectly replaces
+it, changing the next alternative-selection Shift-click's source range.
+
+Retain the same initial reset in the restoration phase and remove both tail
+assignments. Existing source range, parent exclusion and Qt mark/focus adapters
+remain unchanged. No new selection algorithm, class, dependency, borrowed path,
+source language/license change or upstream edit. Standard selection still uses
+its existing Qt model; the changed group anchor belongs to source mark mode.
+
+Actual old-product RED24/28 Qt passes, focused1FAIL2.22s: direct/menu/timer,
+EN/RU, both pane roles and table/icons mark2 instead of5 items after restored
+focus at row3. Frozen test/source snapshots and three input hashes/logs in
+build/review/source-refresh-group-red. Expanding to shown/hidden dots yields
+actual RED48/28 Qt passes, focused1FAIL2.62s: the additional twenty-four parent
+scenarios mark2 instead of4 while retaining the original parent exclusion.
+Frozen snapshots/hashes/logs in source-refresh-group-dots-red. Both RED scopes
+precede the product fix; the original assertions remain intact.
+First fresh test build is repeated after correcting its checks to map view rows
+through public source params; filesystem enumeration order is not assumed.
+An attempted formatted patch match failed without mutation, then was reapplied
+to the actual lines. Initial affected five targets and CTest5/5PASS7.93s,
+including new76 Qt passes, confirm the source reset and old selection/key cases.
+Final affected build and 16/16 focused CTest PASS38.53s; all Qt cases have zero
+failures/skips. Ninety-six current EN/RU table/icon reports at 980×620/640×400
+keep both current views/addresses/toolbar/status groups and nonempty labels
+fully visible. Source params map the marks; parent rows remain unmarked, native
+single focus/size totals/peer provider/path and all seven control bytes pass.
+Baseline verifies 408 exact/196 adapted/3 local paths; inventory is unchanged.
+Complete-body phase comparison verifies the original two initial resets and no
+restored-focus assignment. Its first helper slice stopped at the upstream early
+null-folder return; corrected full-body extraction passes without product edits.
+Mandatory unsandboxed full gate: formatting/all-target build and 267/267 CTest
+PASS132.07s on macOS arm64 with official Qt 6.12.0. Both source/test hashes are
+unchanged; final focused/full LastTest logs, reports and phase comparison are
+frozen with the input manifest.
+
+Final evidence: build/review/source-refresh-group-final. Whole remaining
+Refresh/redraw/error/caller/module and current Windows/Linux/rendered/cold-stable/
+P3-06 acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

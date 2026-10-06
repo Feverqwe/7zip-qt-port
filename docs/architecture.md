@@ -1145,7 +1145,7 @@ FocusedName plus selected Qt row to permit Open/Open Outside. The original
 OpenSelectedItems then inserts the parent sentinel and dispatches OpenFolder or
 OpenFolderExternal; the Qt gate does not implement another parent navigation.
 The hover adapter changes selection after dwell without invoking navigation.
-AlternativeSelection still needs the source marked-item state (P0-07.2).
+AlternativeSelection uses the source vector and adapters detailed below.
 Normal refresh restores after loading/sorting; flat refresh holds a pending
 snapshot until scanner completion and discards it on navigation. Archive refresh,
 flat-mode changes and edit results use the same source state. Pending snapshots
@@ -1253,6 +1253,11 @@ Shift-arrow and Insert; `PanelKey.cpp` and the window's clicked signals adapt
 Qt event timing. `QtPanelList` paints marks through the shared model, so table
 and icon views show the same state. Source operated indices drive commands
 even when only one Qt focus row is selected.
+Refresh resets the original group anchor to row zero before restoring marks
+and focus; it does not derive that anchor from the restored current row. The
+next Shift-click uses PanelSelect's original range and parent exclusion, while
+Ctrl-click establishes its next anchor. Direct restoration and menu/timer
+publication share this source phase.
 `PanelSort.cpp` owns source typed-property, name/prefix and item-index sorting;
 `filetable.cpp` passes bound source indices and property IDs to the panel and
 adapts descending folder grouping and drag data to Qt. `PanelKey.cpp` dispatches

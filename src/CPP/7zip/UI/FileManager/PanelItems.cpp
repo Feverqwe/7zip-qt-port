@@ -558,6 +558,8 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     if (focusedPos < 0)
         focusedPos = 0;
     _selectionList.ClearSelection();
+    _startGroupSelect = 0;
+    _selectionIsDefined = false;
     const UInt32 numItems = (UInt32)_selectionList.GetItemCount();
     const UInt32 numFolderItems = GetFolderItemCount();
     // Qt can also refresh an already populated list without a native provider.
@@ -651,8 +653,6 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
         SetFocusedSelectedItem(focusedPos, showDots && (focusedPos == 0));
     }
     _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
-    _selectionIsDefined = false;
-    _startGroupSelect = _selectionList.GetFocusedItem();
     UpdateSelection();
     Refresh_StatusBar();
     return S_OK;

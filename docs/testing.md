@@ -168,6 +168,11 @@ labels update after a suppressed selection change on active/inactive panes;
 all four parts and peer/focus stability are checked. Failure/Cancel skip the
 completion publisher. Current normal/compact sort/status reports inspect both
 panes; native Windows execution is configured but remains required.
+Its alternative-selection consumers also Ctrl-click, restore through direct/
+menu/timer routes and Shift-click the source range from row zero. Both panes,
+EN/RU, table/icons and shown/hidden parent rows verify marks/paint, single focus,
+selected size, peer provider/path and seven unchanged Unicode control files.
+Ninety-six current normal/compact group reports cover these forty-eight cases.
 
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
