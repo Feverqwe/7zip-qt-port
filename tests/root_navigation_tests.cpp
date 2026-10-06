@@ -6,6 +6,10 @@
 
 class RootNavigationTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    static void openRootNamespace(MainWindow &window) {
+        action(window, "openRootAction")->trigger();
+        action(window, "parentFolderAction")->trigger();
+    }
   private slots:
     void sourceRootHotSwitchPreservesItemsAndSelection() {
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -14,7 +18,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        action(window, "openRootAction")->trigger();
+        openRootNamespace(window);
         auto *view = table(window);
         QTableWidgetItem *computer = nullptr;
         for (int row = 0; row < view->rowCount(); ++row)
@@ -48,7 +52,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         MainWindow window(&backend);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *view = table(window);
-        action(window, "openRootAction")->trigger();
+        openRootNamespace(window);
         int networkRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
             if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 2u)
@@ -79,15 +83,18 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         MainWindow window(&backend);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *view = table(window);
-        action(window, "openRootAction")->trigger();
+        openRootNamespace(window);
         int mountsRow = -1;
         for (int row = 0; row < view->rowCount(); ++row)
             if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 1u)
                 mountsRow = row;
         QVERIFY(mountsRow >= 0);
+        view->setCurrentCell(mountsRow, 0);
         view->selectRow(mountsRow);
+        QVERIFY(action(window, "openItemAction")->isEnabled());
         action(window, "openItemAction")->trigger();
-        QVERIFY(window.windowTitle().contains(QStringLiteral("Volumes")));
+        QVERIFY2(window.windowTitle().contains(QStringLiteral("Volumes")),
+                 qPrintable(window.windowTitle() + " address=" + address->text()));
         QVERIFY(view->rowCount() > 0);
         QVERIFY(!action(window, "createFolderAction")->isEnabled());
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
@@ -120,6 +127,7 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         auto *root = action(window, "openRootAction");
         QCOMPARE(root->property("nativeCommandID").toUInt(), unsigned(IDM_OPEN_ROOT_FOLDER));
         root->trigger();
+        action(window, "parentFolderAction")->trigger();
 #ifdef Q_OS_WIN
         QCOMPARE(view->rowCount(), 4);
 #else
@@ -197,7 +205,8 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         view->setFocus();
         QTest::keyClick(view, Qt::Key_Backslash);
         QVERIFY(view->rowCount() > 0);
-        QVERIFY(address->text().isEmpty());
+        QVERIFY(!address->text().isEmpty());
+        QVERIFY(static_cast<FileTable *>(view)->sourcePanel->IsFSDrivesFolder());
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
@@ -221,7 +230,8 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         backend.cancel();
         root->trigger();
         QVERIFY(table(window)->rowCount() > 0);
-        QVERIFY(window.findChild<QLineEdit *>("archivePath")->text().isEmpty());
+        QVERIFY(!window.findChild<QLineEdit *>("archivePath")->text().isEmpty());
+        QVERIFY(static_cast<FileTable *>(table(window))->sourcePanel->IsFSDrivesFolder());
     }
 };
 

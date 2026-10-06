@@ -210,7 +210,8 @@ class MainWindow : public QMainWindow {
     void goBack();
     void goUp();
     void goParent();
-    void goRoot(bool remember = true);
+    enum class RootLocation { Namespace, Drives };
+    void goRoot(bool remember = true, RootLocation location = RootLocation::Namespace);
     QString archiveDisplayPath() const;
     void renderBoundFolder();
     bool isNestedArchive() const;

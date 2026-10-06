@@ -93,6 +93,7 @@ class NamespaceHashTests final : public QObject, protected MainWindowTestSupport
     }
     static void rootChild(MainWindow &window, unsigned index) {
         action(window, "openRootAction")->trigger();
+        action(window, "parentFolderAction")->trigger();
         auto *view = table(window);
         int child = -1;
         for (int row = 0; row < view->rowCount(); ++row)

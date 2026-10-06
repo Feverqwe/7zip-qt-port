@@ -7,6 +7,8 @@
 #include "AppState.h"
 #include "CPP/Common/Wildcard.h"
 #include "Common/StringConvert.h"
+#include "FSDrives.h"
+#include "FSFolder.h"
 #include "LangUtils.h"
 #include "ListViewDialog.h"
 #include "Panel.h"
@@ -390,6 +392,20 @@ void CPanel::OpenRootFolder() {
     RefreshListCtrl(UString(), 0, UStringVector());
     _listView.EnsureVisible(_listView.GetFocusedItem(), false);
     */
+}
+
+void CPanel::OpenDrivesFolder() {
+    CloseOpenFolders();
+#ifdef UNDER_CE
+    NFsFolder::CFSFolder *folderSpec = new NFsFolder::CFSFolder;
+    SetNewFolder(folderSpec);
+    folderSpec->InitToRoot();
+#else
+    CFSDrives *folderSpec = new CFSDrives;
+    SetNewFolder(folderSpec);
+    folderSpec->Init();
+#endif
+    RefreshListCtrl();
 }
 
 #ifdef _WIN32

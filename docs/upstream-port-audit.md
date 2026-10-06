@@ -1,6 +1,6 @@
 # Ревизия происхождения кода 7zFM
 
-## P3-05.13 — source root-command target (required gap, 2026-10-06)
+## P3-05.13 — source root-command target (implementation validation active, 2026-10-06)
 
 Source https://github.com/ip7z/7zip.git at full revision
 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. resource.rc's
@@ -12,7 +12,7 @@ PanelFolderChange::OpenDrivesFolder closes open folders, constructs/sets CFSDriv
 initializes and refreshes it; CE instead selects the filesystem root service.
 Root namespace navigation remains a distinct original OpenRootFolder body.
 
-Current QtFileManagerCommands::OpenRootFolder delegates MainWindow::goRoot,
+At discovery QtFileManagerCommands::OpenRootFolder delegates MainWindow::goRoot,
 which calls CPanel::OpenRootFolder. Thus the actual command presents CRootFolder
 entries instead of the source drive view; the authoritative OpenDrivesFolder body
 is missing. PanelKey also binds backslash but omits the active slash route.
@@ -21,8 +21,50 @@ so its pass does not prove the command's destination. Current CFSDrives has the
 source Windows drive/device provider and explicit POSIX mounted-volume service;
 there is no need for a second enumerator. Source implementation, command/key
 consumers, namespace/back behavior and native/runtime/geometry checks remain
-mandatory under the distinct checklist ID. This review copies no functional code
-and does not close P3-05 or retract historical bounded navigation evidence.
+mandatory under the distinct checklist ID. That initial review copied no functional
+code and did not close P3-05 or retract historical bounded navigation evidence.
+
+The integrated iteration copies the original CApp::OpenRootFolder inline body
+into App.h and CPanel::OpenDrivesFolder into the authoritative PanelFolderChange
+module, with their original symbols, order, dependencies and notices. CFSDrives
+remains the single Windows provider/POSIX mounted-volume owner; its enumeration,
+device, I/O and binding bodies are unchanged. The CE filesystem-root branch is
+retained but not a supported desktop runtime claim. Qt command presentation now
+selects the source drive destination explicitly; Back's empty root marker still
+selects the distinct source namespace. The list key adapter maps ordinary slash,
+backslash and keypad slash characters to the same command, permitting Shift
+character translation and excluding Control/Alt/Meta combinations.
+
+Existing Qt filesystem history now stores a namespace's original folder prefix
+instead of replacing every namespace with an empty root marker. Back rebinds
+stored source paths through CPanel and the existing renderer; it does not invent
+a drive or archive path algorithm. Source provider choice, archive-link cleanup,
+peer panel state and centralized command availability remain authoritative.
+Root namespace tests now reach that namespace through drive view's original
+Parent command; native device/Hash fixtures retain their selected source branch.
+An existing same-row mount selection exposed stale command availability after
+original RefreshListCtrl restored focus under its notification guard. The Qt
+renderer now recomputes centralized availability after that guarded source call;
+the regression checks actual Open availability before activation. No selection
+algorithm or menu policy is duplicated.
+
+Actual previous-product RED reports empty address instead of Volumes/ (2 Qt
+pass/1 fail/0 skip). New public root_command consumers cover four routes, both
+panels, EN/RU normal/compact reports, exact drive provider, command state, Parent/
+Back, namespace-prefix history and real ZIP/nested ZIP link release with unchanged
+input bytes. Test-owned settings explicitly select English before per-row reload.
+Six affected consumers pass8.42s after the command-state fix; initial root consumer
+failure is preserved separately. Mandatory unsandboxed format/all-target/full gate
+passes251/251 in105.56s: RootCommand22, RootNavigation8, PanelKey55 and AddressCombo13
+Qt cases pass with0 fail/0 skip. All fifteen frozen code/build/test SHA inputs
+remain unchanged after the gate. Four final EN/RU two-panel widget JSON reports
+pass independent side-by-side, menu/toolbar/address/list/status order, exposure
+and combo size-hint review. Baseline verification passes408 exact/196 adapted/
+3 local paths at the recorded full revision. Fresh read-only guest probes show
+Windows114192384 bytes and Linux15966208 bytes free, with no check processes.
+The previous two scoped cleanup questions remain unanswered; no files/disks are
+removed or resized. Native Windows/Linux current runtime, device/Hash consumers,
+rendered reference, stable/cold and parent/final acceptance remain open.
 
 ## P3-05.12 — RootFolder/address consumer reconciliation (implementation validation active, 2026-10-06)
 

@@ -28,7 +28,7 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     }
     const QString next = info.canonicalFilePath();
     if (remember && state_ == State::Namespace)
-        history_.append(QString());
+        history_.append(ToQString(GetFolderPath(app_.GetFocusedPanel().GetFolder())));
     else if (remember && !directory_.isEmpty() && directory_ != next)
         history_.append(directory_);
     filesystemScanner_->cancel();

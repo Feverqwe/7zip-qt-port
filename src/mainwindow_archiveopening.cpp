@@ -118,8 +118,10 @@ void MainWindow::renderBoundFolder() {
     if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder() ||
         panel.IsAltStreamsFolder()) {
         renderRootFolder();
-        if (selection)
+        if (selection) {
             panel.RefreshListCtrl(*selection);
+            refreshActions();
+        }
         return;
     }
     if (!panel.IsArcFolder()) {
@@ -229,7 +231,7 @@ void MainWindow::goBack() {
         if (previous.isEmpty())
             goRoot(false);
         else
-            showDirectory(previous, false);
+            navigateTo(previous, true);
     }
 }
 

@@ -507,6 +507,7 @@ class CPanel : public QObject {
     UString GetParentDirPrefix() const;
     void OpenParentFolder();
     void OpenRootFolder();
+    void OpenDrivesFolder();
     const CObjectVector<CFolderLink> &GetParentFolders() const { return _parentFolders; }
     const UString &GetCurrentFolderPrefix() const { return _currentFolderPrefix; }
     // Borrowed interface for Qt property rendering; ownership stays in CPanel.

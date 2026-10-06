@@ -163,9 +163,10 @@ class PanelFolderSyncTests final : public QObject, protected MainWindowTestSuppo
         action(window, "twoPanelsAction")->trigger();
         table->setFocus();
         QTRY_VERIFY(table->hasFocus());
-        if (root)
+        if (root) {
             action(window, "openRootAction")->trigger();
-        else {
+            action(window, "parentFolderAction")->trigger();
+        } else {
             const auto dots = table->findItems("..", Qt::MatchExactly);
             QVERIFY(!dots.isEmpty());
             table->setCurrentCell(dots.first()->row(), 0);

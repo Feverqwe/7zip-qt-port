@@ -1,5 +1,19 @@
 # Сверка с Windows 7zFM
 
+## P3-05.13 — Root/drive view (проверка платформ открыта, 2026-10-06)
+
+Root-команда теперь вызывает исходные CApp::OpenRootFolder/CPanel::OpenDrivesFolder:
+закрывает архивные уровни и открывает существующий CFSDrives provider. Ordinary
+slash/backslash и keypad slash используют тот же dispatcher. Windows показывает
+исходный Computer/диски, Unix — ранее принятый mounted-volume сервис с prefix
+Volumes/Тома. Отдельный root namespace доступен через исходный Parent, а Back
+восстанавливает сохранённый prefix namespace вместо его подмены пустым root marker.
+После восстановления source selection Qt обновляет централизованные команды
+вне notification guard; выбранная уже текущая строка остаётся доступной для Open.
+Public consumers проверяют обе панели, ключи/команду, Parent/Back, ZIP/nested ZIP
+и байты. Native Windows/Linux, отрисовка и итоговая приёмка ещё не подтверждены;
+текущие проверки и происхождение записаны в port audit.
+
 ## P3-05.12 — исходный адресный список (проверка платформ открыта, 2026-10-06)
 
 Выпадающий список адреса теперь строит исходный CPanel: текущая иерархия пути,
@@ -44,8 +58,8 @@ Native/platform/refusal acceptance остаётся открытой.
 
 Сверка callers также выявила другой обязательный пропуск P3-05.13: исходная
 Root-команда и slash/backslash открывают drive view, тогда как текущий Qt service
-открывает отдельный root namespace. Исходная CFSDrives/provider уже есть;
-перенос OpenDrivesFolder и интеграция callers ещё обязательны, см. port audit.
+открывал отдельный root namespace. Исходная CFSDrives/provider уже была;
+интеграция OpenDrivesFolder/callers выполнена в следующей итерации выше.
 
 ## P3-05.5 — native archive diagnostics (принят scope свойств, 2026-10-06)
 

@@ -81,7 +81,7 @@ void MainWindow::renderRootFolder() {
     statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
 }
 
-void MainWindow::goRoot(bool remember) {
+void MainWindow::goRoot(bool remember, RootLocation location) {
     if (app_.QtOperations().closed() || state_ == State::Loading || state_ == State::Operating)
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
@@ -90,6 +90,9 @@ void MainWindow::goRoot(bool remember) {
     else if (remember && state_ == State::Viewing && !returnDirectory_.isEmpty())
         history_.append(returnDirectory_);
     setState(State::Operating);
-    app_.GetFocusedPanel().OpenRootFolder();
+    if (location == RootLocation::Drives)
+        app_.OpenRootFolder();
+    else
+        app_.GetFocusedPanel().OpenRootFolder();
     renderBoundFolder();
 }

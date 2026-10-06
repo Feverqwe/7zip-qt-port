@@ -236,10 +236,13 @@ Stale hierarchy selection now has EN/RU mouse/Return public coverage for origina
 deepest-existing-folder fallback and posted list focus. A retained window focus
 widget repairs the Qt popup activation boundary without overriding newer peer
 intent; see the port audit for actual RED, failed broad-null prototype and gates.
-This does not close all PanelFolderChange bodies: active OpenDrivesFolder is still
-missing and its App.h/Panel.cpp callers currently route to the distinct root
-namespace. That concrete source/UX gap is mandatory P3-05.13; the similar commented
-PanelKey branch must not be mistaken for absence of the active character route.
+The review also found active OpenDrivesFolder missing while its App.h/Panel.cpp
+callers routed to the distinct root namespace. P3-05.13 now copies that body and
+the original App.h inline caller, integrating command/character consumers with
+the existing drive provider. The similar commented PanelKey branch must not be
+mistaken for absence of the active Panel.cpp character route. Native/runtime,
+remaining body/platform dispositions and final acceptance stay open; the port
+audit owns the current validation scope.
 
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,

@@ -1,6 +1,6 @@
 # Text specifications and geometry checks
 
-### Source root command target (P3-05.13, required gap)
+### Source root command target (P3-05.13, implementation validation active)
 
 Reference: pinned resource.rc IDM_OPEN_ROOT_FOLDER, MyLoadMenu, App.h inline
 OpenRootFolder, PanelFolderChange::OpenDrivesFolder and Panel.cpp list WM_CHAR.
@@ -11,6 +11,10 @@ Do not substitute the separate root namespace's Computer/Documents/Network rows.
 Verify EN/RU normal/compact address/list/status geometry, command and both key
 routes, source provider choice, parent/back restoration, selection and input bytes.
 Native device/UNC and rendered Windows acceptance remain separate requirements.
+The integrated Qt command/key consumers use the retained source drive transition.
+The separate root namespace is reached through Parent; Back from a filesystem
+location restores its actual stored namespace prefix. After source selection
+restoration, same-row Open remains available. Current checks belong to the audit.
 
 ### Source address dropdown (P3-05.12, required remaining scope)
 

@@ -138,6 +138,7 @@ class CApp {
     unsigned GetFocusedPanelIndex() const { return LastFocusedPanel; }
     bool IsPanelVisible(unsigned index) const { return NumPanels > 1 || index == LastFocusedPanel; }
     CPanel &GetFocusedPanel() { return Panels[GetFocusedPanelIndex()]; }
+    void OpenRootFolder() { GetFocusedPanel().OpenDrivesFolder(); }
     void SetFocusToLastItem() { Panels[LastFocusedPanel].SetFocusToLastRememberedItem(); }
     int GetTimestampLevel() const { return Panels[LastFocusedPanel]._timestampLevel; }
     void SetTimestampLevel(int level) {

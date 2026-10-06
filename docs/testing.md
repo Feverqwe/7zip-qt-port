@@ -1,5 +1,17 @@
 # Regression strategy
 
+`root_command` asserts the actual Root/slash/backslash/keypad-slash destination is
+CFSDrives, not merely a nonempty list. EN/RU980×620/640×400 two-panel rows verify
+the source prefix/provider, peer panel state and input bytes, command capability,
+Parent and Back. Separate rows restore drive view from filesystem history and
+release real ZIP/nested ZIP links without changing archive/payload bytes. Four
+normal/compact reports follow the root-command text contract. Existing namespace
+navigation, synchronization, native device Copy and namespace Hash tests reach
+the separate root namespace through Parent, retaining their provider/workflow.
+An existing same-row mount regression asserts Open availability after guarded
+source restoration. Windows root_command uses the native plugin and desktop lock;
+see the port audit for actual checks and unverified platforms.
+
 `address_combo` exercises actual popup selection of a parent component and the
 Computer namespace, EN/RU980×620/640×400 geometry, real ZIP hierarchy selection
 with unchanged archive/input bytes, separate panel paths, source Enter and

@@ -25,14 +25,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
         window.show();
         action(window, "openRootAction")->trigger();
         auto *view = table(window);
-        int computer = -1;
-        for (int row = 0; row < view->rowCount(); ++row)
-            if (view->item(row, 0)->data(Qt::UserRole + 6).toUInt() == 0)
-                computer = row;
-        QVERIFY(computer >= 0);
-        view->setCurrentCell(computer, 0);
-        view->selectRow(computer);
-        action(window, "openItemAction")->trigger();
+        QVERIFY(static_cast<FileTable *>(view)->sourcePanel->IsFSDrivesFolder());
         QTRY_VERIFY(view->rowCount() > 0);
         view->setCurrentCell(0, 0);
         view->selectRow(0);
@@ -66,6 +59,7 @@ class FsDrivesDeviceUiTests final : public QObject, protected MainWindowTestSupp
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "openRootAction")->trigger();
+        action(window, "parentFolderAction")->trigger();
         auto *view = table(window);
         int volumes = -1;
         for (int row = 0; row < view->rowCount(); ++row)

@@ -30,9 +30,11 @@
 | Help/About и OS integration | FileManager/AboutDialog.rc/.cpp, HelpUtils.cpp, SystemPage.cpp, Explorer | Проверить самостоятельные экраны/команды и необходимые различия native платформ; не подменять исходный workflow новой формой. | Открыто |
 
 Конкретный пропуск Root/drive-view command зафиксирован в
-[P3-05.13 source audit](upstream-port-audit.md#p3-0513--source-root-command-target-required-gap-2026-10-06)
+[P3-05.13 source audit](upstream-port-audit.md#p3-0513--source-root-command-target-implementation-validation-active-2026-10-06)
 и text contract: проверка непустого списка и selection marks не доказывает
-исходную цель команды. Исправление и native/rendered приёмка обязательны.
+исходную цель команды. Исходный переход и consumers теперь интегрированы;
+проверки provider/prefix/Parent/Back/peer state добавлены. Native/rendered
+приёмка остаётся обязательной, текущие свидетельства — в source audit.
 
 Устаревшая `existingTarget` constructor-only ветвь Add удалена: поля path/format/
 browse/volumes/encryption больше не блокируются ради отдельного update workflow.

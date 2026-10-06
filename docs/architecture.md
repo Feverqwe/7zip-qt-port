@@ -2,6 +2,17 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Root-command routing follows original CApp::OpenRootFolder and
+CPanel::OpenDrivesFolder, which own archive release, CFSDrives creation and source
+refresh. The existing provider owns native drives/devices or POSIX mounts.
+MainWindow's explicit RootLocation distinguishes that command destination from
+the original root namespace used by Parent/empty history markers. Its filesystem
+history retains nonempty source namespace prefixes and Back rebinds them through
+CPanel. Root command, slash/backslash and keypad slash share one dispatcher;
+widgets implement no drive enumeration or path algorithm. After guarded source
+focus/selection restoration, the namespace renderer refreshes centralized command
+availability so a same-row selection does not leave stale disabled actions.
+
 Address dropdown paths and hierarchy belong to CPanel's retained
 PanelFolderChange bodies and per-panel ComboBoxPaths. QtPanelAddressCombo supplies
 the combo control, indentation painting, cached Qt icons, logical-drive/mount

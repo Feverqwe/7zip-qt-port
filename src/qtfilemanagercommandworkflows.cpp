@@ -116,7 +116,9 @@ void QtFileManagerCommands::SortItemsWithPropID(unsigned propID) {
                                                  : MainWindow::SortMode::Name;
     window_.setSortMode(mode);
 }
-void QtFileManagerCommands::OpenRootFolder() { window_.goRoot(); }
+void QtFileManagerCommands::OpenRootFolder() {
+    window_.goRoot(true, MainWindow::RootLocation::Drives);
+}
 void QtFileManagerCommands::OpenParentFolder() { window_.goParent(); }
 void QtFileManagerCommands::FoldersHistory() { window_.showFoldersHistory(); }
 void QtFileManagerCommands::ChangeFlatMode() {

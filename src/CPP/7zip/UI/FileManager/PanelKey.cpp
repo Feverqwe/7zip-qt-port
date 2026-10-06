@@ -95,7 +95,9 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
             parent_->trigger();
         return true;
     }
-    if (key->key() == Qt::Key_Backslash && key->modifiers() == Qt::NoModifier) {
+    // CMyListView::OnMessage handles the slash/backslash WM_CHAR routes.
+    if ((key->key() == Qt::Key_Backslash || key->key() == Qt::Key_Slash) &&
+        !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
         app_.ExecuteCommand(IDM_OPEN_ROOT_FOLDER);
         return true;
     }
