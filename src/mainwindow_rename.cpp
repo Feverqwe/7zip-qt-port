@@ -17,7 +17,7 @@ void rejectLabelEdit(CPanel &panel, QTableWidget &view, UInt32 sourceIndex) {
         }
     CSelectedState state;
     panel.SaveSelectedState(state);
-    panel.RefreshListCtrl(state);
+    panel.RestoreLoadedSelection(state);
 }
 
 } // namespace

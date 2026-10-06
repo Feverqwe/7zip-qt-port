@@ -265,9 +265,9 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
         CPanel::CDisableNotify disableNotify2(srcPanel);
         RefreshTitleAlways();
         if (copyToSame || move)
-            srcPanel.RefreshListCtrl(srcSelState);
+            srcPanel.RestoreLoadedSelection(srcSelState);
         if (!copyToSame) {
-            destPanel.RefreshListCtrl(destSelState);
+            destPanel.RestoreLoadedSelection(destSelState);
             srcPanel.KillSelection();
         }
         disableNotify1.Restore();

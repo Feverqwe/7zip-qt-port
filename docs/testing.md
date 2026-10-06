@@ -10,6 +10,21 @@ the tested Refresh. `ui_state` retains repeated nested-folder selection checks
 using the same bound provider. Its former backend-reopen expectations were
 independent Qt policy; actual reopen/operation failure and cancellation belong
 to their separate native-folder/backend consumers and remaining port scope.
+Each row also calls source RefreshListCtrl directly with saved state and requires
+another publication, the same provider and no engine request; the previous
+selection-only source method fails all64 checks.
+
+`drag_reload_completion` checks80 real ZIP Drop consumers across both panes,
+EN/RU, table/icon and standard/alternative selection: success, confirmation No,
+confirmation Cancel, controlled backend update failure and engine cancellation.
+It uses the official7zz transport, verifies that the injected backend path is
+actually reached, and closes the native final Progress only after its Close
+caption is available. Owner publication is success-only; both provider identities,
+peer rows/bytes, source marks/focus, terminal controls and dropped source bytes
+must survive. Successful payload is extracted by7zz and compared. Normal/compact
+reports cover both panes. Run unsandboxed: native update returned EACCES before
+the backend callback in the restricted sandbox. `drag_drop_ui` separately checks
+that cancelled archive source gestures retain their provider in table/icon modes.
 
 `panel_cell_text` also observes synchronous selectionChanged and background-role
 dataChanged during source Select All/Deselect All. Sixteen EN/RU both-pane

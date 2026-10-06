@@ -1705,6 +1705,12 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME archive_reload_command COMMAND archive_reload_command_tests -silent)
     set_tests_properties(archive_reload_command PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-reload-command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(drag_reload_completion_tests tests/drag_reload_completion_tests.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(drag_reload_completion_tests PRIVATE src tests)
+    target_link_libraries(drag_reload_completion_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(drag_reload_completion_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    add_test(NAME drag_reload_completion COMMAND drag_reload_completion_tests -silent)
+    set_tests_properties(drag_reload_completion PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/drag-reload-completion.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(panel_load_count_tests tests/panel_load_count_tests.cpp tests/panel_load_folder.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(panel_load_count_tests PRIVATE src tests)
     target_link_libraries(panel_load_count_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
@@ -2856,7 +2862,7 @@ if(BUILD_TESTING AND WIN32)
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key panel_list_load panel_item_icons panel_name_text panel_copy_reload filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
-            archive_reload_command panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
+            archive_reload_command drag_reload_completion panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}

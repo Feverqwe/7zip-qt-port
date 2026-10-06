@@ -132,6 +132,11 @@ class ArchiveReloadCommandTests final : public QObject, protected MainWindowTest
         QCOMPARE(restored.SelectedNames.Size(), selection.SelectedNames.Size());
         QCOMPARE(ToQString(restored.SelectedNames[0]), marked);
         QCOMPARE(ToQString(restored.FocusedName), ToQString(selection.FocusedName));
+        publication.clear();
+        QCOMPARE(panel.RefreshListCtrl(restored), S_OK);
+        QVERIFY(!publication.isEmpty());
+        QCOMPARE(processes.count(), 0);
+        QCOMPARE(panel.GetFolder(), provider.Interface());
         QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
         QVERIFY(panel.ShouldProcessNotifications());
         QVERIFY(list->updatesEnabled() && view->isEnabled());

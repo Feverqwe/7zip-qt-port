@@ -124,7 +124,7 @@ HRESULT MainWindow::renderBoundFolder(bool updateAddress) {
         if (loaded != S_OK)
             return loaded;
         if (selection) {
-            panel.RefreshListCtrl(*selection);
+            panel.RestoreLoadedSelection(*selection);
             refreshActions();
         }
         return S_OK;

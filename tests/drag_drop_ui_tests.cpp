@@ -71,6 +71,7 @@ class DragDropUiTests final : public QObject {
             window.findChild<QAction *>("viewMode0Action")->trigger();
         table->selectRow(Row(*table, name));
         table->setCurrentCell(Row(*table, name), 0);
+        CMyComPtr<IFolderFolder> provider = table->sourcePanel->GetFolder();
         finished.clear();
         bool extracted = false, closeRefused = false, protectedActiveRoot = false;
         QStringList dragRoots;
@@ -120,6 +121,7 @@ class DragDropUiTests final : public QObject {
             QVERIFY(extracted && closeRefused && protectedActiveRoot);
         QVERIFY(window.isVisible());
         QVERIFY(!backend.busy());
+        QCOMPARE(table->sourcePanel->GetFolder(), provider.Interface());
         QTRY_VERIFY(Row(*table, name) >= 0 && table->item(Row(*table, name), 0)->isSelected());
         for (const QString &path : dragRoots) {
 #ifdef Q_OS_MACOS

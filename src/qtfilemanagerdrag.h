@@ -33,7 +33,6 @@ class QtFileManagerDrag final : public QObject,
     CDataObject *ReadData(const QMimeData &);
     bool HandleRightDrag(QWidget &, QEvent &);
     void SuspendHover(bool suspended);
-    void RefreshPanels();
     MainWindow &window_;
     CDataObject external_;
     bool active_ = false, revoked_ = false;

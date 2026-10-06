@@ -4,7 +4,7 @@
 
 void MainWindow::completeListSelection() {
     if (scanSelectedState_)
-        app_.GetFocusedPanel().RefreshListCtrl(*scanSelectedState_);
+        app_.GetFocusedPanel().RestoreLoadedSelection(*scanSelectedState_);
     scanSelectedState_.reset();
     auto paths = std::move(scanSelectedPaths_);
     scanSelectedPaths_.reset();
@@ -16,7 +16,7 @@ void MainWindow::restoreListSelection(const CSelectedState &selection) {
     if (scanningDisk_ || scanningArchive_)
         scanSelectedState_ = selection;
     else
-        app_.GetFocusedPanel().RefreshListCtrl(selection);
+        app_.GetFocusedPanel().RestoreLoadedSelection(selection);
 }
 
 void MainWindow::handleSelectionClick(int row) {

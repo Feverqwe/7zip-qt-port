@@ -8,6 +8,13 @@ table/icon and standard/alternative selection at980×620/640×400; peer provider
 rows and private fixture bytes stay unchanged. Operation transport reopen is a
 separate scenario.
 
+Source RefreshListCtrl also publishes the bound list before restoring saved
+selection. Archive Drop reloads only after successful CopyFromNoAsk; confirmation
+No/Cancel and update failure/cancellation retain the list and both providers.
+The peer archive is not reopened or published. Inspect EN/RU both panes,
+table/icon and standard/alternative selection at980×620/640×400; terminal views
+must be enabled, preserve marks/focused names and restore redraw.
+
 After attempted external-file update, publish the owning archive list for success,
 failure and cancellation; retain source selection, peer focus/provider and edited
 temporary bytes on failure. Read-only worker refusal and changed-folder/missing-

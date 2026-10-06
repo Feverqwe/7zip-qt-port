@@ -86,8 +86,13 @@ owner to become idle before invoking this continuation once. It restores the
 captured source projection first; ReleaseApp discards the continuation. Ordinary
 two-panel filesystem Copy preserves source rows/current item, while Move,
 copyToSame and a shared single panel keep their required source publication.
-The existing providers still own row loading; full RefreshListCtrl dependency
-semantics remain subject to the source-body review in the audit.
+The existing providers still own row loading; RefreshListCtrl invokes the
+attached load/publication adapter before its extracted source selection tail.
+Qt render completion calls RestoreLoadedSelection directly to avoid recursive
+reload. Source requests retain their saved state while operation guards defer
+publication; the actual renderer consumes it. The Copy continuation runs after
+its existing Qt publication and uses the same extracted selection tail, without
+retrying an already completed load or concealing its failure.
 For ordinary Copy/Move, the Qt continuation also publishes the captured
 destination panel when output is elsewhere. Consumers mark an already requested
 destination refresh, avoiding duplicate publication. OnReload uses the existing
@@ -97,8 +102,11 @@ existing native-provider renderer instead of returning without loading rows.
 
 The Refresh command and Ctrl+R invoke original CApp::RefreshView/OnReload for
 every provider. Archive commands reload the bound CAgentFolder rather than
-reopening the physical archive. Operation/drop transport refreshCurrent remains
-a separate reopen boundary; it must not substitute for source command dispatch.
+reopening the physical archive. Drop uses the original CopyFromNoAsk success
+RefreshListCtrl; cancellation and failure return before that reload. The drag
+controller no longer reopens all visible archive panels after a gesture or Drop.
+Filesystem changes remain observable through the source panel timer. Other
+operation transport refreshCurrent callers remain a separate review boundary.
 
 CPanel::LoadListItems extracts the original RefreshListCtrl load/property stage:
 clear old rows/marks, retain timer/notify guards, set flat mode, load the folder,

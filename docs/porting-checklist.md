@@ -306,10 +306,16 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: source RefreshListCtrl подключён к load/publication перед
+исходным selection tail; Qt restoration вызывает отдельный narrow adapter.
+Удалён compensating all-visible ReOpen после drag/drop; CopyFromNoAsk сохраняет
+original success-only reload. [Evidence](upstream-port-audit.md#source-refresh-and-drag-drop-publication-2026-10-07).
+Статус active; остальные source/renderer/native3OS/final boundaries обязательны.
+
 P3-05.15, 2026-10-07: original CApp::RefreshView восстановлен для всех providers;
 manual archive Refresh/Ctrl+R больше не вызывает independent ReOpen.
 [Evidence](upstream-port-audit.md#source-bound-archive-refresh-command-2026-10-07).
-Статус active; operation/drop reopen, остальные source/native3OS/final boundaries
+Статус active; остальные operation/renderer/source/native3OS/final boundaries
 остаются обязательными.
 
 P3-05.15, 2026-10-07: external OnOpenItemChanged completion публикует original

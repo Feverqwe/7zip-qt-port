@@ -652,10 +652,10 @@ class CPanel : public QObject {
     const CPropColumns &GetVisibleColumns() const { return _visibleColumns; }
     QString GetItemText(UInt32 itemIndex, const CPropColumn &property) const;
     bool IsItem_AltStream(unsigned itemIndex) const;
-    // LoadListItems prepares source state; Qt publishes complete rows before
-    // this retained RefreshListCtrl focus/sort/selection/status phase.
     HRESULT RefreshListCtrl(const CSelectedState &state);
     HRESULT RefreshListCtrl();
+    // Qt publication completes the load stage before this source selection tail.
+    HRESULT RestoreLoadedSelection(const CSelectedState &state);
     // Qt loads rows after synchronous source navigation. Transfer its requested
     // selection to that presentation stage instead of deriving it again there.
     std::optional<CSelectedState> TakeRefreshSelection() {

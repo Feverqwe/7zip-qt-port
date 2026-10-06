@@ -585,6 +585,19 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     m_DropHighlighted_SubFolderName.Empty();
     if (!_folder)
         return S_OK;
+    if (_reloadPresentation) {
+        _refreshSelection = state;
+        return _reloadPresentation(state);
+    }
+    return RestoreLoadedSelection(state);
+}
+
+HRESULT CPanel::RestoreLoadedSelection(const CSelectedState &state) {
+    _selectionList.SetItemState_DropHighlighted(m_DropHighlighted_SelectionIndex, false);
+    m_DropHighlighted_SelectionIndex = -1;
+    m_DropHighlighted_SubFolderName.Empty();
+    if (!_folder)
+        return S_OK;
     RINOK(_listLoadResult)
     _dontShowMode = false;
     if (_selectionList.GetItemCount() == 0)
@@ -699,7 +712,7 @@ HRESULT CPanel::RefreshListCtrl_SaveFocused(bool onTimer) {
     CSelectedState state;
     SaveSelectedState(state);
     state.CalledFromTimer = onTimer;
-    return _reloadPresentation ? _reloadPresentation(state) : E_NOTIMPL;
+    return RefreshListCtrl(state);
 }
 
 void CPanel::OnReload(bool onTimer) {

@@ -231,7 +231,7 @@ class PanelLoadCountTests final : public QObject, protected MainWindowTestSuppor
         spec->itemCount.reset();
         HRESULT restored = E_FAIL;
         try {
-            restored = panel.RefreshListCtrl(after);
+            restored = panel.RestoreLoadedSelection(after);
             panel.SetAlternativeSelection(true);
             panel.SetAlternativeSelection(false);
         } catch (...) {

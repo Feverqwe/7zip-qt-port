@@ -197,7 +197,7 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(panel.IsFSFolder());
         QCOMPARE(view->rowCount(), 0);
         CSelectedState selection;
-        QCOMPARE(panel.RefreshListCtrl(selection), result);
+        QCOMPARE(panel.RestoreLoadedSelection(selection), result);
         QVERIFY(panel.ShouldProcessNotifications());
         QVERIFY(completed.isEmpty());
         QVERIFY(!scanner->isRunning());

@@ -59,18 +59,6 @@ void QtFileManagerDrag::SuspendHover(bool suspended) {
             ui.iconHover->SetSuspended(suspended);
     }
 }
-void QtFileManagerDrag::RefreshPanels() {
-    if (window_.app_.QtOperations().closed())
-        return;
-    const unsigned original = window_.projectedPanel_;
-    for (unsigned i = 0; i < kNumPanelsMax; ++i) {
-        if (!window_.panelUi_[i].container || !window_.app_.IsPanelVisible(i))
-            continue;
-        window_.activatePanelUi(i);
-        window_.refreshCurrent();
-    }
-    window_.activatePanelUi(original);
-}
 void QtFileManagerDrag::StartDrag(unsigned panel, bool rightButton) {
     if (revoked_ || active_ || panel >= kNumPanelsMax || window_.backend_->busy() ||
         window_.sourceArchiveProgress_ || window_.app_.QtOperations().closed() ||
@@ -87,7 +75,6 @@ void QtFileManagerDrag::StartDrag(unsigned panel, bool rightButton) {
     }
     window_.app_.DropTarget().ClearState();
     SuspendHover(false);
-    RefreshPanels();
 }
 HRESULT QtFileManagerDrag::DoDragDrop(CDataObject &data, CDropSource &source, DWORD allowed,
                                       DWORD &effect) {
@@ -237,8 +224,6 @@ bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
         drop.ignore();
     if (event.type() == QEvent::Drop) {
         SuspendHover(active_);
-        if (!active_ && result == S_OK && effect)
-            RefreshPanels();
     }
     return true;
 }

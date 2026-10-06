@@ -1735,6 +1735,97 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source Refresh and drag/drop publication, 2026-10-07
+
+Reviewed complete active original PanelItems::RefreshListCtrl467–975, its
+SaveFocused/OnReload and source call sites; PanelDrag::OnDrag1500–1802,
+Drop2505–2770, helpers/CompressDropFiles2775–2900, DragBegin/End2996–3007;
+PanelCopy::CopyFromNoAsk452–478 and CopyFrom worker; ArchiveFolderOut update
+publication/ReOpen/proxy restoration. Pin0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+retrievable https://github.com/ip7z/7zip.git. Qt render/selection/navigation,
+operation continuation, external-file completion and drag consumers reviewed.
+
+Original RefreshListCtrl owns load/publication followed by saved-state restoration.
+The port only performed its extracted selection tail for direct source callers;
+SaveFocused alone reached the renderer. Source RefreshListCtrl now dispatches
+the existing narrow load/publication adapter, and original SaveFocused calls it.
+Qt completed-row consumers invoke extracted RestoreLoadedSelection to prevent
+recursive reload. Its existing source name/prefix/mark/focus/sort/status algorithm
+is moved without changes. Callback-free provider fixtures retain their existing
+already-loaded restoration boundary; this does not claim full independent
+headless source loading. Existing operation guards/deferred completion remain.
+The renderer classifies the actual bound source provider rather than stale Qt
+navigation state, retaining the existing filesystem timer/viewport path.
+Source requests save the pending selection before dispatch; active operation
+guards leave it for the existing outer navigation/completion renderer. An actual
+reload consumes it before its explicit restoration. The already-published CApp
+Copy continuation uses the extracted source tail for its two original refresh
+sites, preserving its established asynchronous phase split and first load result.
+
+Original OnDrag does not reload on cancellation. CopyFromNoAsk returns early
+failure/Cancel and calls RefreshListCtrl only after successful CopyFrom; native
+ArchiveFolderOut already ReOpens the updated archive and restores its proxy.
+Removed QtFileManagerDrag::RefreshPanels and both outer calls that independently
+ReOpened every visible pane after source gestures or successful external Drop.
+Source CopyFromNoAsk now publishes only its owner at its original reload point;
+filesystem observation remains source OnTimer. No new archive/update/selection
+algorithm, dependency, language change, upstream edit or notice removal.
+
+Actual initial RED: cancelled source drag replaces provider in both table/icon
+cases; direct source RefreshListCtrl publishes no rows in all64 real native
+ZIP/7z source-command matrix cases. Logs/inputs retained in
+build/review/drag-refresh-red. Additional80-row real ZIP backend-transport matrix
+covers both panes/EN-RU/views/selection modes with success, No/Cancel, injected
+update failure and real engine cancellation. It requires actual backend dispatch,
+success-only publication, retained owner/peer providers, marks/focused name,
+terminal focus/notify/redraw and input/peer archive bytes, plus extracted success
+payload. This transport fixture is separate from the native-module reload matrix.
+With the identical corrected fixture, actual product HEAD2e7bac5 completed
+66QtPASS/16FAIL/0skip6.519s: all16 successful Drop cases replaced the owning
+provider. All9 task source files were SHA-snapshotted, temporarily restored to
+HEAD for that build/run and restored byte-for-byte afterward; matrix-inputs.json
+records the old-product inputs. No foreign changes existed or were altered.
+
+Initial matrix fixture timed out120.02s after a two-pane activation setup failure;
+subsequent setup explicitly activates before native opening and Drop. Its
+responder now handles the native Progress Close state as well as QMessageBox.
+A failed diagnostic build used an incorrect resource include; stale binary PID
+88464 was explicitly terminated (session32337 terminal143) and not counted as
+validation. A corrected unchanged diagnostic then proved sandbox EACCES before
+backend dispatch versus unsandboxed success. All evidence is retained; final
+matrix runs unsandboxed. Source dialog/update policy and deadlines are unchanged.
+
+Expanded first consumer run completed50/54 in92.71s. It exposed lost deferred
+navigation state (native parent focus/null-current test crash and eight parent-key
+cases), an unintended second Copy reload that hid four worker failures, and72
+loaded-count restoration cases now invoking full reload. Pending source state
+and already-published Copy phase are corrected; the count fixture explicitly
+calls RestoreLoadedSelection for its post-load count invariant. First consumer
+logs/hashes and task-specific native crash report retained in
+build/review/drag-refresh-consumer-first; source load failure expectations are
+preserved rather than weakened.
+The first full gate completed281/282 in187.96s. Its only failure was16 filesystem
+worker-failure cases checking the retained load result through what is now a
+full reload. They now call the extracted RestoreLoadedSelection tail and retain
+the existing following OnReload recovery/301-row/one-completion assertions.
+First gate logs and unchanged code hashes are in build/review/drag-refresh-first-gate.
+
+Final Mac27.0.1arm64/Qt6.12.0: UNSANDBOXED full format/all-target build/
+CTest282/282PASS183.05s (session35670 terminal0), all24 frozen input hashes
+unchanged. Archive source reload66QtPASS, Drop matrix82QtPASS, live drag16QtPASS,
+filesystem recovery34QtPASS, parent3QtPASS, Copy reload34QtPASS, panel key55QtPASS
+and loaded count77QtPASS, all0skip. Six affected consumers passed19.86s and final
+filesystem consumer4.06s before the gate. All288 current normal/compact reports
+(128source reload +160Drop) and1152 visible list/address controls are fully
+visible/enabled; report mtimes follow gate start and copies/SHA inspection are
+retained under build/review/drag-refresh-final. Final baseline408exact196adapted
+3local. Documentation-only validation follows the passing gate.
+Fresh authenticated native/toolchain/capacity probes are recorded in
+[runner prerequisites](hyperv-runners.md); no guest source sync/build, cleanup,
+compaction/growth or disk change occurred. Current Windows/Linux, renderer
+failure/async boundaries, remaining operation/full-body/109-module/cold-stable/
+package and whole P3-05.15/P3-06 acceptance remain mandatory.
+
 ### Source bound archive Refresh command, 2026-10-07
 
 Reviewed complete original App.h::CApp::RefreshView171 and RefreshAllPanels,

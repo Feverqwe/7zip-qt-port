@@ -5,8 +5,16 @@
 Refresh/Ctrl+R теперь использует original CApp::RefreshView/OnReload также для
 архивов. Команда перезагружает bound provider без повторного открытия физического
 файла. Прежняя Qt-ветка вызывала ReOpen, меняя provider и добавляя engine-запрос.
-Повторное открытие после transport operations/Drop остаётся отдельной границей;
+Повторное открытие после остальных transport operations остаётся отдельной границей;
 эта команда не заменяет закрытие и новое открытие внешне изменённого архива.
+
+Прямой source RefreshListCtrl теперь загружает и публикует список, затем
+восстанавливает выделение. После Drop исходный CopyFromNoAsk делает это только
+при успехе; ошибка и Cancel возвращаются раньше. Удалён общий Qt ReOpen всех
+видимых панелей после drag/drop, включая отменённый archive drag. Исходный
+ArchiveFolderOut уже владеет ReOpen при обновлении архива; FS timer наблюдает
+изменения файловой системы. Остальные operation/renderer/native boundaries
+остаются обязательными.
 
 После попытки записи внешней правки список архива публикуется также при ошибке
 и Cancel, как unconditional RefreshListCtrl в OnOpenItemChanged. Qt переносит

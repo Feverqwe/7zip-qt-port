@@ -10,6 +10,7 @@
 HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState &selection) {
     if (!panelUi_[index].container || app_.QtOperations().active())
         return S_OK;
+    app_.Panels[index].TakeRefreshSelection();
     const unsigned original = projectedPanel_;
     const QString originalStatus = statusBar()->currentMessage();
     if (index != original)
@@ -20,22 +21,29 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
             statusBar()->showMessage(originalStatus);
         }
     });
-    if (state_ == State::Viewing) {
+    const auto &panel = app_.Panels[index];
+    if (panel.IsArcFolder()) {
         const HRESULT loaded = renderBoundFolder(!selection.CalledFromTimer);
         if (loaded != S_OK)
             return loaded;
         restoreListSelection(selection);
         return S_OK;
     }
-    if (state_ == State::Namespace) {
+    if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder() ||
+        panel.IsAltStreamsFolder()) {
         const HRESULT loaded = renderRootFolder(!selection.CalledFromTimer);
         if (loaded != S_OK)
             return loaded;
         restoreListSelection(selection);
         return S_OK;
     }
-    if (state_ != State::Filesystem)
-        return S_OK;
+    if (state_ != State::Filesystem ||
+        QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder()))) != directory_) {
+        const HRESULT loaded = renderBoundFolder(!selection.CalledFromTimer);
+        if (loaded == S_OK)
+            restoreListSelection(selection);
+        return loaded;
+    }
     if (!QFileInfo(directory_).isDir()) {
         const HRESULT loaded = app_.GetFocusedPanel().LoadListItems();
         autoRefreshSnapshot_.clear();
@@ -79,7 +87,7 @@ void MainWindow::refreshCurrent(const CSelectedState *preserved) {
         else
             panel.SaveSelectedState(selection);
         renderRootFolder();
-        panel.RefreshListCtrl(selection);
+        panel.RestoreLoadedSelection(selection);
         refreshActions();
         return;
     }

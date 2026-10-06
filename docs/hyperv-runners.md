@@ -27,13 +27,17 @@ Earlier systemQt6.4.2 and
 WindowsQt6.8.3 results below remain historical evidence, not Qt6.12 checks.
 
 Capacity preflight, 2026-10-07 MSK: both authenticated x64 guest/toolchain probes
-pass with Qt 6.12.0 and clang-format 23.1.2. Host D: has 654,816,464,896 bytes free;
-guest Linux root has 3,002,368 bytes and Windows C: has 57,950,208 bytes free.
+pass with Qt 6.12.0 and clang-format 23.1.2. Refreshed at02:27MSK:
+host D: has 648,527,106,048 bytes free; guest Linux root has 2,981,888 bytes and
+Windows C: has 57,765,888 bytes free. Existing-volume inspection found no separate
+guest build volume (Linux has its root/boot/EFI partitions; Windows has C: and EFI).
 Fresh snapshot/runtime/all-target acceptance builds do not fit these guest
 volumes. No cleanup, VHDX compaction/growth, disk change or new source sync was
 performed. The runners skill forbids automatic deletion/compaction in response
-to capacity warnings. Evidence: build/review/load-count-final/{hyperv-storage.log,
-hyperv-probe.log,linux-guest-space.log,windows-guest-space.log}. This preflight
+to capacity warnings. The required storage helper records its monitoring sample
+under host D:. Current evidence: build/review/drag-refresh-final/{hyperv-storage.log,
+hyperv-probe.log,linux-guest-space.log,windows-guest-space.log,linux-volumes.log,
+windows-volumes.log}. Earlier samples remain historical. This preflight
 does not provide current application, package or rendered Windows acceptance.
 
 ```sh
