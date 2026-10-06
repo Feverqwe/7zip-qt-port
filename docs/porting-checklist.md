@@ -306,6 +306,13 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: UpdateSelection восстановил original item-change guard;
+callback text остаётся доступным во время Qt selection/mark signals. Внешний
+notify guard, исходные marks, обе панели EN/RU table/icon standard/alternative
+и compact geometry покрыты регрессией.
+[Evidence](upstream-port-audit.md#source-selection-projection-notification-scope-2026-10-07).
+Статус active; остальные full-body/native3OS/final acceptance обязательны.
+
 P3-05.15, 2026-10-07: Refresh load/publication/selection сохраняют original
 written-count policy; Parent и post-Copy/Move count HRESULT больше не трактуется
 как load failure. 72 EN/RU both-pane detail/icon consumers, lifecycle/query-count

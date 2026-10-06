@@ -2,6 +2,13 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+UpdateSelection восстановил исходный узкий `_enableItemChangeNotify` guard:
+синхронные Qt-сигналы выбора больше не скрывают callback names. Внешний
+CDisableNotify сохраняет подавление. Цвет альтернативных отметок проецируется
+Qt-ролями отдельно от исходного цикла выбора. EN/RU обе панели, table/icon,
+standard/alternative и normal/compact проверены на macOS; Windows/Linux и
+пиксельная сверка с rendered Windows остаются обязательными.
+
 Refresh теперь использует записанный GetNumberOfItems count независимо от HRESULT,
 как upstream. Qt сохраняет этот numItems между load/publication/selection; поздний
 count не меняет опубликованные source indices. Для незаписанного output Qt задаёт

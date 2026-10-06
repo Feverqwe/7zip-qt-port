@@ -1735,6 +1735,44 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source selection projection notification scope, 2026-10-07
+
+Reviewed original PanelSelect::UpdateSelection135–151, SelectSpec/SelectByType/
+SelectAll/InvertSelection and PanelListNotify::OnItemChanged/OnNotifyList, their
+selection-vector types, callers and Qt model/text consumers. Baseline remains
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 from https://github.com/ip7z/7zip.git.
+The original temporarily disables `_enableItemChangeNotify` only during its
+standard-mode selection loop, then restores the prior value and redraws. The
+adapted broad CDisableNotify also blocked uncached names inside synchronous Qt
+signals. The original mode/guard/loop/restoration body now lives in the same
+PanelSelect.cpp module; CListView state and redraw remain QtPanelList adapters.
+Existing bounded source-index checks and pre-populated-view sizing remain Qt
+integration boundaries; this component does not resolve unloaded/providerless
+count disposition. Alternative mark colors use a separate Qt role projection
+because native custom draw has no Qt equivalent. No new dependencies, source
+language change, upstream edit or license removal.
+
+Sixteen actual RED cases in build/review/selection-notify-red demonstrate the
+broader guard failure in both panes, EN/RU, table/icon and standard/alternative
+selection. The regression observes public selectionChanged/dataChanged, reads
+uncached callback names and the complete source marks during Select All and
+Deselect All, then checks outer guard retention/release, selected-row counts,
+cleared mark paint and owning/peer provider/focus. Current-build normal/compact
+geometry reports cover resulting views. Existing real FS/archive selection and
+load/restore consumers remain checked.
+
+Affected targets build; final focused six suites pass6/6 in6.01s. Mandatory
+unsandboxed check.sh passes formatting/all-target build and280/280 CTest in161.73s
+on macOS27.0.1 arm64 with official Qt6.12.0. All eight gate input hashes remain
+unchanged at completion; subsequent edits record validation in docs only.
+Baseline verification passes408 exact/196 adapted/3 local paths. Thirty-two
+current980×620/640×400 widget reports expose all128 relevant visible pane lists
+and addresses. Logs, frozen inputs and current reports are retained in
+build/review/selection-notify-final; previous-product RED16 is retained separately.
+
+Current Windows/Linux/native shell/rendered/full-body/109-module/cold-stable/
+package and whole P3-05.15/P3-06 acceptance remain open.
+
 ### Source Refresh loaded-count consumers, 2026-10-07
 
 Reviewed complete original PanelItems::RefreshListCtrl467–960, especially its

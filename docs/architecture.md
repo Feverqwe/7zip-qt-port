@@ -111,6 +111,10 @@ provider again. Release/rebind invalidate it; a new load starts with the known
 empty count so failed loads do not query metadata during mark projection.
 Pre-populated Qt view attachment before any load retains its checked-count boundary;
 source Get_ItemIndices_All keeps its separate original HRESULT policy.
+PanelSelect::UpdateSelection temporarily disables only item-change notification
+while applying source marks to Qt selection. Provider text/draw callbacks remain
+available; an existing outer CDisableNotify retains its suppression. Alternative
+mark colors are projected separately through Qt background roles.
 The original drop-highlight row/name belong to CPanel, shared with PanelDrag's
 target-path/type consumers. Both extracted Refresh phases clear them before
 loading/restoration errors. Qt can retain published rows during restoration;

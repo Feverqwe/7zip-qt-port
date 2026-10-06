@@ -1,5 +1,12 @@
 # Regression strategy
 
+`panel_cell_text` also observes synchronous selectionChanged and background-role
+dataChanged during source Select All/Deselect All. Sixteen EN/RU both-pane
+table/icon standard/alternative cases require uncached source names and the
+complete source mark vector during projection, preserve an outer notify guard,
+then verify selection counts, cleared mark paint, provider/peer/focus and normal/
+compact geometry. The original broader notify guard fails all sixteen cases.
+
 `panel_load_count` covers 72 EN/RU both-pane detail/icon Refresh/timer/recovery
 scenarios with written zero/two or unwritten GetNumberOfItems outputs under
 S_FALSE/E_FAIL/E_ABORT. Native Refresh consumes written counts without testing

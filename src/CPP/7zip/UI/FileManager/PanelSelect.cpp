@@ -18,13 +18,22 @@ void CPanel::EnsureSelectionVectorSize() {
 
 void CPanel::UpdateSelection() {
     EnsureSelectionVectorSize();
-    CDisableNotify disableNotify(*this);
+    if (!_mySelectMode) {
+        bool enableTemp = _enableItemChangeNotify;
+        _enableItemChangeNotify = false;
+        int numItems = _selectionList.GetItemCount();
+        for (int i = 0; i < numItems; i++) {
+            const unsigned realIndex = GetRealItemIndex(i);
+            if (realIndex != kParentIndex && realIndex < _selectedStatusVector.Size())
+                _selectionList.SetItemState_Selected(i, _selectedStatusVector[realIndex]);
+        }
+        _enableItemChangeNotify = enableTemp;
+    }
+    // Qt exposes alternative marks as model roles instead of custom-draw state.
     const int numItems = _selectionList.GetItemCount();
     for (int i = 0; i < numItems; i++) {
         const unsigned realIndex = GetRealItemIndex(i);
         if (realIndex != kParentIndex && realIndex < _selectedStatusVector.Size()) {
-            if (!_mySelectMode)
-                _selectionList.SetItemState_Selected(i, _selectedStatusVector[realIndex]);
             _selectionList.SetItemMarked(i, _mySelectMode && _selectedStatusVector[realIndex]);
         } else
             _selectionList.SetItemMarked(i, false);

@@ -2,6 +2,12 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Select All/Deselect All must keep callback names available during selection and
+mark-role signals, with the original source mark vector already authoritative.
+An outer notify guard still suppresses uncached text. Inspect both panes, EN/RU,
+table/icon and standard/alternative selection at980×620/640×400; peer focus and
+provider remain stable. Selection projection does not change control geometry.
+
 Activation uses source OnNotifyActivateItems for Return/double-click in table/icon:
 Alt alone shows Properties; Shift alone opens outside; other Ctrl/Shift/Alt
 combinations permit internal opening. Preserve both-pane ownership, selection,

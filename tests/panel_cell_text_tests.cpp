@@ -23,6 +23,128 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         }
     }
   private slots:
+    void selectionProjectionKeepsTextCallbacks_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("russian");
+        QTest::addColumn<bool>("icons");
+        QTest::addColumn<bool>("alternative");
+        for (unsigned pane : {0u, 1u})
+            for (bool russian : {false, true})
+                for (bool icons : {false, true})
+                    for (bool alternative : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(pane)
+                                                     .arg(russian)
+                                                     .arg(icons)
+                                                     .arg(alternative)))
+                            << pane << russian << icons << alternative;
+    }
+    void selectionProjectionKeepsTextCallbacks() {
+        QFETCH(unsigned, pane);
+        QFETCH(bool, russian);
+        QFETCH(bool, icons);
+        QFETCH(bool, alternative);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
+        ReloadLang(settings);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        ui->findChild<QLineEdit *>("archivePath")->setFocus();
+        action(window, "openRootAction")->trigger();
+        if (icons)
+            action(window, "viewMode0Action")->trigger();
+        auto *spec = new SchemaFolder;
+        CMyComPtr<IFolderFolder> provider = spec;
+        auto &panel = *view->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        panel.SetNewFolder(provider);
+        panel.LoadFullPath();
+        panel.OnReload();
+        QCOMPARE(view->rowCount(), 2);
+        panel.SelectAll(false);
+        view->setCurrentCell(0, 0, QItemSelectionModel::NoUpdate);
+        panel.SetAlternativeSelection(alternative);
+        auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
+        auto *peer = static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
+        peer->sourcePanel->Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
+        const int peerRows = peer->rowCount();
+        peerUi->findChild<QLineEdit *>("archivePath")->setFocus();
+        QWidget *const focused = window.focusWidget();
+        bool reading = false, outer = false, selected = false;
+        unsigned callbacks = 0;
+        bool valid = true;
+        const auto observe = [&] {
+            if (reading)
+                return;
+            reading = true;
+            ++callbacks;
+            valid &= panel.ShouldProcessNotifications() == !outer;
+            for (int row = 0; row < view->rowCount(); ++row) {
+                const UInt32 index = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
+                const QString expected =
+                    outer ? QString()
+                          : ToQString(index ? spec->items->secondName : spec->items->firstName);
+                view->item(row, 0)->setData(Qt::DisplayRole, QVariant());
+                valid &= view->item(row, 0)->text() == expected;
+                valid &= panel.IsItemMarked(index) == selected;
+            }
+            reading = false;
+        };
+        const auto selectionConnection = connect(
+            view->selectionModel(), &QItemSelectionModel::selectionChanged, &window, observe);
+        const auto paintConnection =
+            connect(view->model(), &QAbstractItemModel::dataChanged, &window,
+                    [&](const QModelIndex &, const QModelIndex &, const QList<int> &roles) {
+                        if (roles.contains(Qt::BackgroundRole))
+                            observe();
+                    });
+        const auto disconnectObservers = qScopeGuard([&] {
+            disconnect(selectionConnection);
+            disconnect(paintConnection);
+        });
+        for (bool guarded : {false, true}) {
+            outer = guarded;
+            std::unique_ptr<CPanel::CDisableNotify> guard;
+            if (outer)
+                guard = std::make_unique<CPanel::CDisableNotify>(panel);
+            for (bool state : {true, false}) {
+                selected = state;
+                const unsigned before = callbacks;
+                panel.SelectAll(state);
+                QVERIFY(callbacks > before);
+                QVERIFY2(valid,
+                         "Selection projection suppressed text callbacks or changed source marks");
+                QCOMPARE(panel.ShouldProcessNotifications(), !outer);
+                QCOMPARE(view->selectionModel()->selectedRows().size(),
+                         alternative ? 1 : (state ? 2 : 0));
+            }
+        }
+        disconnect(selectionConnection);
+        disconnect(paintConnection);
+        QVERIFY(panel.ShouldProcessNotifications());
+        for (int row = 0; row < view->rowCount(); ++row) {
+            const UInt32 index = view->item(row, 0)->data(Qt::UserRole + 6).toUInt();
+            QVERIFY(!panel.IsItemMarked(index));
+            QVERIFY(!view->item(row, 0)->data(Qt::BackgroundRole).isValid());
+            view->item(row, 0)->setData(Qt::DisplayRole, QVariant());
+            QCOMPARE(view->item(row, 0)->text(),
+                     ToQString(index ? spec->items->secondName : spec->items->firstName));
+        }
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
+        QCOMPARE(peer->sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
+        QCOMPARE(peer->rowCount(), peerRows);
+        QCOMPARE(window.focusWidget(), focused);
+        QWidget &visible =
+            icons ? static_cast<QWidget &>(*ui->findChild<QListView *>("iconList")) : *view;
+        reportViews(window, visible, *peer, "selection-notify");
+    }
     void publishedIndicesUseSourceProperties_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("russian");
