@@ -632,6 +632,8 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
         if (selected && !_mySelectMode)
             _selectionList.SelectItem((int)i);
     }
+    disableNotify.SetMemMode_Enable();
+    disableNotify.Restore();
     if (_selectionList.GetItemCount() > 0 && cursorIndex >= 0)
         SetFocusedSelectedItem(cursorIndex, _mySelectMode || state.SelectFocused);
     // Qt rows are sorted separately; item params preserve source folder indices.

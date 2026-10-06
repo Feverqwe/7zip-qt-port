@@ -104,6 +104,11 @@ interface включает исходный property fallback; exception policy 
 форматирования display name или порядка Qt rows. Прежний populated-list adapter
 без native provider сохраняет свой transport. Copy/reload потребители остаются
 частью обязательной текущей платформенной приёмки.
+После matching исходные SetMemMode_Enable/Restore разрешают callbacks перед
+восстановлением фокуса. Qt current-cell signal может запросить uncached имя
+и обновить доступность команд в этой фазе. Ошибка загрузки и Cancel до неё
+сохраняют защиту внешнего guard. Это порядок source notifications, без изменения
+геометрии или форматирования имён.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

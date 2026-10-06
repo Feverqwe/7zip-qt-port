@@ -46,7 +46,7 @@ class PanelProcessingTests : public QObject {
         QVERIFY(panel.ShouldProcessNotifications());
     }
 
-    void sourceRestoreSuppressesIntermediateQtConsumers() {
+    void sourceRestoreSuppressesIntermediateConsumersAndEnablesFinalFocus() {
         CObjectVector<CPanelItem> items;
         for (const QString &name :
              {QStringLiteral("первый й.txt"), QStringLiteral("второй й.txt")}) {
@@ -70,13 +70,19 @@ class PanelProcessingTests : public QObject {
         table.selectRow(1);
         QSignalSpy raw(table.selectionModel(), &QItemSelectionModel::selectionChanged);
         int consumerCalls = 0;
+        int focusConsumerCalls = 0;
         connect(table.selectionModel(), &QItemSelectionModel::selectionChanged, &table, [&] {
             if (panel.ShouldProcessNotifications())
                 ++consumerCalls;
         });
+        connect(&table, &QTableWidget::currentCellChanged, &table, [&] {
+            if (panel.ShouldProcessNotifications())
+                ++focusConsumerCalls;
+        });
         panel.RefreshListCtrl(saved);
         QVERIFY(raw.count() > 0);
         QCOMPARE(consumerCalls, 0);
+        QCOMPARE(focusConsumerCalls, 1);
         QVERIFY(panel.ShouldProcessNotifications());
         QCOMPARE(table.currentRow(), 0);
         QCOMPARE(table.selectionModel()->selectedRows().size(), 1);
@@ -89,9 +95,11 @@ class PanelProcessingTests : public QObject {
         QVERIFY(consumerCalls > 0);
         panel.Disable_Processing_Timer_Notify_StatusBar();
         consumerCalls = 0;
+        focusConsumerCalls = 0;
         panel.RefreshListCtrl(saved);
         QCOMPARE(consumerCalls, 0);
-        QVERIFY(!panel.ShouldProcessNotifications());
+        QCOMPARE(focusConsumerCalls, 1);
+        QVERIFY(panel.ShouldProcessNotifications());
     }
 };
 

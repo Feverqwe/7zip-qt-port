@@ -65,6 +65,11 @@ selects the retained disk/archive flag at the Qt integration boundary. The
 populated-list adapter without a native provider keeps its existing relative
 path transport. Sorted Qt rows still map through source indices; displayed name
 formatting is independent of saved native names and marks.
+After matching rows, RefreshListCtrl uses the original notification guard's
+SetMemMode_Enable/Restore before restoring focus. This permits Qt's focus
+callbacks to request uncached source text and update command availability.
+Failed loads return before that successful-publication phase; an outer guard
+continues to protect the failed provider.
 Original remaining property/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
 Namespace/archive renderers and the bound-folder renderer now return their

@@ -967,6 +967,43 @@ Windows execution are unverified.
 Remaining whole RefreshListCtrl/property/sort/redraw/status/post-Copy and native
 current3OS/rendered/cold-stable acceptance remain mandatory; .15/P3-06 stay open.
 
+### Source notification restoration before focus (2026-10-06)
+
+At upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, review RefreshListCtrl's notification/focus/
+sort/redraw tail and CDisableNotify bodies, native OnNotify callers and the
+QtPanelList/ArchiveTableItem/currentCellChanged/refreshActions consumers.
+Original RefreshListCtrl explicitly calls SetMemMode_Enable and Restore before
+setting focus and sorting, allowing native callbacks to request row names.
+Qt previously retained disabled notifications through the whole restoration.
+Copy those two original calls into the corresponding authoritative PanelItems
+phase, before matched/fallback focus. Keep original guard lifetime/destructor,
+load-error early return, timer guard and source indices. No new state machine,
+dependency, path or display policy; other property/sort/redraw/status stages
+remain under review, not implicitly accepted by this change.
+
+New panel_refresh_notifications uses the actual FileTable callback from public
+currentCellChanged, with eight fast/generic × matched/fallback × standard/
+alternative scenarios. It checks enabled callbacks, uncached displayed name,
+focus/native marks; failure/Cancel preserve the outer guard without focus.
+Actual previous-product RED:8 failures/4 Qt passes, focused1FAIL0.50s, all eight
+focus callbacks arrive disabled. Logs/old source/three input hashes are frozen
+in build/review/source-refresh-notifications-red. No text/layout change or new
+geometry is introduced. Final evidence: build/review/source-refresh-notifications-final.
+Focused10 passed30.81s with zero Qt failures/skips. First mandatory full gate
+passed262/263 in130.40s; panel_processing expected successful Refresh to retain
+disabled callbacks after return. Original SetMemMode_Enable explicitly enables
+that final phase. Update this existing regression to assert final-focus consumers
+run in both initially enabled/disabled states, preserving its assertions that
+intermediate selection consumers remain suppressed. The failed gate and three
+input hashes are frozen in build/review/source-refresh-notifications-full-failure.
+Localized panel_processing/panel_refresh_notifications passed2/2 in0.47s.
+Final mandatory unsandboxed format/all-target build/full263/263 passed129.65s
+on macOS27.0.1 arm64/Qt6.12.0; all four task input hashes remained unchanged
+across this final gate. Full/focused/LastTest/manifests are frozen in the final
+directory above. Baseline verification passed408 exact/196 adapted/3 local.
+Current Windows/Linux/rendered and remaining .15/P3-06 acceptance stay open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

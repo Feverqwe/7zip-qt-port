@@ -128,6 +128,12 @@ non-flat matching does not request prefixes. Four NULL-pointer combinations
 exercise original name/prefix fallback. This is selection logic coverage; no
 layout or display-text changes are introduced by that stage.
 
+`panel_refresh_notifications` checks first source-text requests from the public
+current-cell signal during matching or fallback focus, with fast/generic name
+providers and both selection styles. Failure and Cancel retain the outer
+notification guard and do not publish focus. It uses the actual FileTable
+callback and source indices rather than a replacement display model.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,
@@ -1635,8 +1641,10 @@ valid output. Caption availability does not accept an unintegrated update dialog
 
 `panel_processing` checks nested source notification guards, exception restoration,
 disabled-panel/memory-mode restoration and observable selection callbacks during
-source RefreshListCtrl. Intermediate callbacks are gated while final selection and
-later user notifications remain valid; full timer/dispatch workflows remain open.
+source RefreshListCtrl. Intermediate selection callbacks stay gated; final-focus
+callbacks run after original memory-mode restoration, including an initially
+disabled panel. Final selection and later user notifications remain valid;
+full timer/dispatch workflows remain open.
 
 `folder_link` checks original temporary/parent records through native cleanup,
 size/time change detection, virtual override, parent/zone-buffer lifetime and
