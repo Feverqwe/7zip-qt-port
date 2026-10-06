@@ -889,6 +889,12 @@ Filesystem CreateFolder/CreateFile and inline Rename now call the mirrored
 PanelOperations.cpp worker and IFolderOperations; Qt owns only the combo editor,
 table editor, refresh and visible selection. BrowseDialog.cpp owns source path
 correction.
+OnEndLabelEdit retains the source timer guard from handler entry and notify guard
+around its Rename worker. Nested GUI events cannot reload the provider or query
+it through enabled notifications during the operation. RAII restores the prior
+guard state on success/error/cancellation, including an enclosing operation guard.
+The Qt editor's deferred completion and post-operation text suppression remain
+separate from this source operation interval.
 Filesystem Delete now follows the mirrored PanelOperations.cpp source
 confirmation and worker. `IQtTrashService` is the platform boundary for
 ordinary Delete; Shift+Delete uses source `IFolderOperations::Delete` and the

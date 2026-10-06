@@ -94,6 +94,11 @@ name/prefix/size interfaces; FS сохраняет original Unicode-FString cond
 показывают исходное `Error: ` в ячейке. Qt сохраняет существующие NFC/flat-prefix
 display adaptations; операции и редактор используют исходные имена. Завершение
 Rename читает EditRole, как original OnEndLabelEdit читает текст редактора.
+Исходные блокировки таймера и уведомлений восстановлены внутри OnEndLabelEdit:
+вложенные события GUI во время worker Rename не запускают reload. Success,
+failure и E_ABORT восстанавливают предыдущее состояние, включая внешние
+блокировки; реальные filesystem bytes проверены на macOS. Интервал подавления
+текста после операции и текущая native Windows/Linux проверка остаются открытыми.
 Пока callbacks запрещены, имя остаётся cached или пустым. Реальный ZIP проверяет
 точное новое имя/bytes, Escape и invalid-name refusal. Windows marker appearance
 и native conditional interface требуют текущей Windows/rendered проверки.

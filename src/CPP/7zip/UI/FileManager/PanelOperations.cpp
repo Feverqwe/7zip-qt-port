@@ -228,6 +228,7 @@ HRESULT CPanel::CreateFile(const UString &enteredName, UString &createdName) {
 }
 
 HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
+    CDisableTimerProcessing disableTimerProcessing2(*this);
     if (!CheckBeforeUpdate(IDS_ERROR_RENAMING))
         return E_ABORT;
     if (!IsCorrectFsName(enteredName))
@@ -241,6 +242,7 @@ HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
     }
     if (realIndex == kParentIndex)
         return E_INVALIDARG;
+    CDisableNotify disableNotify(*this);
     CThreadFolderOperations op(FOLDER_TYPE_RENAME);
     op.FolderOperations = _folderOperations;
     op.Index = realIndex;

@@ -1338,6 +1338,50 @@ Remaining Rename/navigation/drop/external-update redraw/result boundaries,
 whole-module review and current native Windows/Linux/rendered/cold-stable/
 P3-06 acceptance stay mandatory.
 
+### Source Rename operation guards (2026-10-06)
+
+Reference: `PanelOperations.cpp::OnEndLabelEdit`, `Panel.h` guard bodies,
+`PanelItems.cpp::OnTimer` and operation worker/interfaces at full upstream
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip.git. Reviewed original handler and its notifications,
+Qt deferred editor/terminal consumers and existing source name tests. Original
+handler disables timer processing at entry and notifications before the Rename
+worker. Both guards were omitted by the adapted HRESULT handler; an outer Qt
+operation guard protected some consumers but did not establish source ownership.
+
+Restore the two original RAII declarations at their original phases, keeping
+validation, worker, result and Qt editor transport unchanged. No new algorithm,
+class, dependency, borrowed path, source language/license or upstream change.
+This fixes the operation interval; original `_dontShowMode`/deferred reload
+semantics and complete renderer-result handling are still separate open scope.
+
+Six deterministic cases use a forwarding IFolderFolder/IFolderOperations provider
+over real CFSFolder Rename and a blocking nested GUI invocation from the worker.
+Success, E_INVALIDARG and E_ABORT each run with/without existing outer guards.
+The nested GUI probe must see notifications disabled and no WasChanged query or
+reload; subsequent public OnTimer verifies restoration. Success renames actual
+Unicode input; failure/cancellation preserve it, with exact payload bytes.
+No internals are exposed for tests. Fixture initially used declaration macros
+for inline COM bodies; build failed, corrected to the existing implementation
+macro with override. All eighteen fixture methods are forwarding/stub transport;
+there is no second filesystem algorithm. Failed partial patch matching made no
+mutation. Fresh corrected builds pass without those warnings.
+
+Actual old-product RED3/21 Qt passes, focused1FAIL4.35s; final diagnostic RED3/
+21 passes, focused1FAIL4.26s reports notify1/reloads1/changeQueries1 for all three
+unguarded outcomes. Frozen two input snapshots/hashes/log in
+build/review/source-rename-guards-red. Source fix builds five targets and focused
+5/5PASS9.68s, including new24 name tests and unchanged 34 operation/25 filesystem
+Comment/17 native Comment/12 notification cases, all zero failures/skips.
+Code/test manifest and focused log are frozen in
+build/review/source-rename-guards-final. No appearance change is made; existing
+name/editor geometry coverage remains applicable. Baseline inventory is unchanged.
+Baseline verification passes 408 exact/196 adapted/3 local paths. Mandatory
+unsandboxed full gate passes formatting/all-target build and 267/267 CTest in
+139.27s on macOS arm64, official Qt 6.12.0. Both code/test hashes remain
+unchanged; the full log is frozen with the focused evidence. Current native
+Windows/Linux and the remaining Rename/body/platform acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

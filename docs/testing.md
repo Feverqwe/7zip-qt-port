@@ -116,6 +116,13 @@ disable name presentation, restore DisplayRole Rename input and restore the raw
 name fallback during suppressed notifications. Native Windows trailing-marker
 appearance and the conditional Windows filesystem interface remain unverified
 until current native checks.
+Six source Rename cases also run a deterministic nested GUI callback from the
+operation worker, using a forwarding provider over real CFSFolder Rename.
+Success, E_INVALIDARG and E_ABORT must suppress notification and timer reload,
+then restore both guards, including an existing outer guard. Explicit OnTimer
+after completion confirms restoration; disposable Unicode payload bytes remain
+exact. This covers the operation interval, not the later deferred-editor text
+suppression boundary or current native Windows/Linux execution.
 Large-list navigation/close drivers identify partial publication through the
 existing raw-name model role, preserving cancellation assertions while source
 name display callbacks are suppressed.
