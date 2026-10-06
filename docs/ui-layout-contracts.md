@@ -1,5 +1,23 @@
 # Text specifications and geometry checks
 
+### Persisted source locations (P3-05.14, required scope)
+
+Reference: pinned PanelFolderChange SetBookmark/OpenBookmark/FoldersHistory,
+App.h focused-panel forwards, MyLoadMenu bookmark popup/dispatch and
+ListViewDialog.rc. Keep ten Set/Open slots and original captions/shortcuts.
+Saving uses the focused panel's stable source prefix, including virtual archive
+links and namespace locations; an empty root prefix follows the original slot
+semantics, and opening an empty slot binds the original root namespace.
+Materialized temporary engine paths must not enter settings.
+Open/history selection bind the stored source location and publish the resulting
+panel through existing owners. Source deepest-existing-folder behavior remains
+authoritative; previously stored Qt display entries need explicit coverage.
+Verify menu availability/handler agreement, both panels, Unicode/spaces/literal
+` / `, nested archive close/reopen/restart, history editing/Cancel, operation
+guards, unchanged archive/input bytes and no unintended peer navigation. Inspect
+EN/RU normal980×620/compact640×400 address/list and bookmark/history widget JSON.
+Native device/UNC/ADS and rendered Windows acceptance remain separate checks.
+
 ### Source root command target (P3-05.13, implementation validation active)
 
 Reference: pinned resource.rc IDM_OPEN_ROOT_FOLDER, MyLoadMenu, App.h inline

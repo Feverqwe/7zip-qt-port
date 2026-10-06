@@ -1,5 +1,35 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
+
+Complete original/adapted PanelFolderChange body/caller/dependency review at
+project e314301c908b7b8e4ab8a27d016fe037f05650b8 and upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, is recorded in
+[omitted scope](omitted-scope-audit.md#panelfolderchange-complete-bodycaller-review-2026-10-06).
+It covers every active body, ANSI/CE notification transport, commented branches,
+folder links/guards, FM.mak/CMake and original/Qt consumers. This is one reviewed
+module, not109-module or runtime acceptance; no code/dependency copy is made.
+
+The remaining active SetBookmark/OpenBookmark and history consumers require
+source virtual prefixes instead of Qt display/engine paths. Current Namespace
+and nested guards differ from the original focused-panel callers; a drive Save
+action can be enabled but its handler returns without saving.
+Empty-slot Open is also disabled/ignored instead of the original empty root binding.
+Existing bounded mock/list persistence evidence remains valid but does not
+establish namespace/nested/restart or original source-address binding. The required component must
+reuse the existing CPanel binding and CFastFolders/CFolderHistory owners, cover
+old Qt display entries without corrupting literal paths, and retain operation
+guards, private fixtures and input bytes. The
+[text contract](ui-layout-contracts.md#persisted-source-locations-p3-0514-required-scope)
+defines its UI reference and integrated acceptance. Docs-only review requires
+diff check; implementation and current three-platform/final checks remain open.
+Review validation: git diff --check passes; current reproducible-baseline
+verification passes408 exact/196 adapted/3 local paths at the pinned revision.
+A declaration census confirms28 original bodies/helpers (including both
+wide/ANSI end-edit overloads) have explicit dispositions; the census supplements
+the manual body/caller review and is not a behavior or whole-port acceptance test.
+
 ## P3-05.13 — source root-command target (implementation validation active, 2026-10-06)
 
 Source https://github.com/ip7z/7zip.git at full revision

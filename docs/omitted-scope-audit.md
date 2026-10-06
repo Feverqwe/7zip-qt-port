@@ -63,6 +63,69 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+### PanelFolderChange complete body/caller review, 2026-10-06
+
+Reviewed the complete1122-line original
+`CPP/7zip/UI/FileManager/PanelFolderChange.cpp` against the857-line adapted
+module at project `e314301c908b7b8e4ab8a27d016fe037f05650b8`. Source is
+https://github.com/ip7z/7zip.git,
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; sibling HEAD was verified.
+The module is an active FM.mak input; CMake includes its authoritative adapted
+translation unit in sevenzip_panel. This is a body/disposition review of this
+module, not closure of all109 UI modules or a new runtime verification.
+
+| Original bodies | Current body and explicit boundary |
+| --- | --- |
+| ReleaseFolder, SetNewFolder, SetToRootFolder | COM release/query order and root construction retained. Qt deletes selection rows through its list adapter and resets pending refresh/cache vectors when releasing. The local comment claiming no complete list-load stage exists is historical: PanelItems now owns RefreshListCtrl, with a separate Qt publication phase. The resets are present adaptation, not evidence that source ownership is missing. |
+| DoesNameContainWildcard_SkipRoot, BindToPath | Original archive-link reuse/unwind, deepest existing filesystem ancestor, trailing-separator enumeration, root-prefix handling, Windows wildcard/ADS branches, OpenAsArc and archive/alternate-stream component traversal retained. POSIX enumeration uses existing CDirEntry rather than Windows CFileInfo. Failed per-component folder binding still stops at the existing ancestor as in source; HRESULT behavior must not be replaced with a new path validator. |
+| BindToPathAndRefresh | Original timer/notify guards, Windows outer-quote removal, BindToPath result and RefreshListCtrl retained. CApp same/subfolder callers use this body. MainWindow's address and history/bookmark consumers instead supply Qt/native publication; that boundary has the remaining caller debt described below. |
+| GetFolderPath, LoadFullPath | Original BSTR property/type check and parent-link ParentFolderPath+RelPath composition retained. The source virtual prefix differs from a materialized archive's engine path; CFolderLink/CTempFileInfo separate VirtualPath, FilePath and ParentFolderPath. |
+| GetRealIconIndex_for_DirPath, Find_FileExtension_DotPos_in_path, LoadFullPathAndShow | Source directory attribute/fallback, extension classification, root/device/archive-link branches and RefreshTitle retained. Qt replaces shell image indices and ComboBoxEx edit item with its existing icon cache/leading action; explicit displayed-path/history arguments preserve the earlier presentation policy. Current consumers and unverified native branches belong to P3-05.12/.13. |
+| OnNotifyComboBoxEnter, wide OnNotifyComboBoxEndEdit | Source success/focus and Escape/Return flow retained with typed Qt reasons and address services. Source GetUnicodeString is unnecessary at an already-wide UString boundary. The non-Unicode overload is an ANSI control transport duplicate, omitted for Qt6 Unicode controls; this is not an omitted independent navigation algorithm. |
+| AddComboBoxItem, OnComboBoxCommand | Source hierarchy, UNC server/root prefix, path parts, archive-link boundaries, separate ComboBoxPaths and selection binding retained. Qt replaces control/icon/drive services and bounds-checks its selected index. POSIX adds its documented Volumes entry/mount service; Windows Documents/drives and device/super-prefix branches remain. CE text indentation/header-refresh messages are unsupported desktop transport, not claimed runtime evidence. |
+| OnNotifyComboBox | Win32 notification dispatcher omitted. CPanel::eventFilter records editable-line/list FocusIn and invokes PanelWasFocused; Qt combo's typed end-edit callbacks deliver Return/Escape. The underlying handlers remain in CPanel; the commented Dropdown/Closeup/Selchange experiments are not active missing bodies. |
+| FoldersHistory | Original editable list, Cancel return, changed-list reverse insertion and focused path selection retained. Qt modal/settings services replace Create/GetParent; selected path is returned to MainWindow for publication. Existing tests establish list editing/persistence, not all original virtual-location consumers. |
+| SetBookmark, OpenBookmark | Current static helpers retain CFastFolders SetString/GetString but inject the stored prefix and return a path to Qt rather than using the bound CPanel/_appState and BindToPathAndRefresh. That adaptation is incomplete: the caller's display-path selection and restrictions differ from source. Required P3-05.14 below; this pair is not a fully reconciled port. |
+| GetParentDirPrefix, OpenParentFolder | Original separator/colon/device prefix logic, parent-provider binding, archive close/rebind and focused-name state retained. Source RefreshListCtrl selection is published by existing Qt consumers. |
+| CloseOneLevel, CloseOpenFolders | Original release/library transfer, parent-archive return, stack deletion and flat-mode restoration retained. Actual nested opening/materialization/update consumers are owned by PanelItemOpen and ArchiveBackend, not independently reimplemented here. |
+| OpenRootFolder, OpenDrivesFolder, OpenFolder, OpenAltStreams | Original distinct namespace/drive transitions, selection visibility and alternate-stream provider/fallback retained. P3-05.13 restored the missing drive body and active command/character callers. CE uses its retained filesystem-root branch; desktop Windows ADS remains native-only. RootFolder's separate ADS refusal HRESULT gap remains under the recorded root review. |
+
+Reviewed direct dependencies are Panel.h's folder links/guards/selection and
+callback services, AppState.h/CFastFolders/CFolderHistory, Common StringConvert
+and Wildcard/SplitPathToParts, Windows FileName/FileDir/Find/PropVariant,
+PropID and folder interfaces, FSDrives/CE FSFolder, RootFolder name services,
+LangUtils, ListViewDialog, ViewSettings and resource IDs. Source callers include
+App.h/MyLoadMenu, Panel.cpp notifications/characters, PanelItems refresh and
+App.cpp same/subfolder callbacks; Qt callers include address combo, root/disk/
+archive renderers, mainwindow_preferences and centralized command availability.
+Dependencies' full independent bodies remain with their own audits; reading
+their used interfaces here does not close those modules.
+
+The review found another mandatory active consumer gap, P3-05.14. Original
+SetBookmark stores `_currentFolderPrefix`, and original OpenBookmark binds that
+stored source path, including an empty slot's root binding. Source MyLoadMenu
+creates all ten Set and Open entries without the Qt nested/root/empty-slot
+prohibitions; App.h forwards to the focused CPanel. Current
+MainWindow::saveBookmark permits only Filesystem/Viewing and excludes nested
+archives, then saves directory_ or archiveDisplayPath. Drive/network/stream
+views are State::Namespace: drive Save can be enabled yet silently return,
+while separate root and nested Save are disabled centrally. Virtual archive
+prefixes are stable source locations, not materialized FilePath values, so the
+temporary-path exclusion does not justify forbidding their virtual bookmarks.
+Current empty-slot Open is disabled and its handler returns for an empty path,
+whereas source BindToPathAndRefresh receives that path and reaches root namespace.
+MainWindow openBookmark/showFoldersHistory use typed-address navigateTo rather
+than the source-address mode already used by the hierarchy dropdown. That mode
+joins relative input to the current disk directory and decodes the Qt ` / `
+separator; it must not reinterpret stored source prefixes or valid literal
+space-containing path components. History publication also excludes namespace
+and nested paths through the existing displayed-path/history policy. Existing
+mock bookmark/list tests do not prove these source consumers. Original binding,
+state/availability, persistent source locations, previously saved Qt display
+entries, both panels, nested return/restart, input preservation and geometry
+must be reconciled together before accepting the new component. No functional
+code is changed by this review.
+
 Review on 2026-10-05 also found an active two-panel omission. Upstream
 `FileManager/PanelKey.cpp::CPanel::OnKeyDown` invokes `OnSetSameFolder` for
 Alt-Up and `OnSetSubFolder` for Alt-Left/Right. Upstream `App.cpp` binds the

@@ -36,6 +36,13 @@
 проверки provider/prefix/Parent/Back/peer state добавлены. Native/rendered
 приёмка остаётся обязательной, текущие свидетельства — в source audit.
 
+Сверка полного PanelFolderChange также выявила обязательный
+[P3-05.14](upstream-port-audit.md#p3-0514--persisted-source-location-consumers-required-scope-2026-10-06):
+namespace/nested Save ограничения, отказ доступной drive-команды и обработка
+сохранённых путей расходятся с исходными consumers. Восстановить source virtual
+prefix, согласовать доступность/handler и проверить старые Qt display entries,
+историю, перезапуск и обе панели по новому text contract. Пока открыто.
+
 Устаревшая `existingTarget` constructor-only ветвь Add удалена: поля path/format/
 browse/volumes/encryption больше не блокируются ради отдельного update workflow.
 All-target build и12 affected suites PASS9.66s на macOS. Также удалены
