@@ -81,6 +81,11 @@ publication retains its existing asynchronous boundary. Original directory
 types/errors and delete-before-load are now covered by public regressions.
 Remaining complete RefreshListCtrl presentation/timer/HRESULT scope is still
 required; the source stage does not close the module review.
+Synchronous namespace/archive renderer results now reach the original OnReload
+HRESULT error consumer; namespace Refresh delegates to that owner. EN/RU direct/
+explicit/timer/command failure/Cancel/recovery consumers cover this seam. FS,
+async terminal and post-Copy failure behavior still require reconciliation;
+this remains a partial integration rather than complete RefreshListCtrl closure.
 
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`
 with the602-line adapted module at project

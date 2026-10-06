@@ -21,12 +21,16 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         }
     });
     if (state_ == State::Viewing) {
-        renderBoundFolder();
+        const HRESULT loaded = renderBoundFolder();
+        if (loaded != S_OK)
+            return loaded;
         restoreListSelection(selection);
         return S_OK;
     }
     if (state_ == State::Namespace) {
-        renderRootFolder();
+        const HRESULT loaded = renderRootFolder();
+        if (loaded != S_OK)
+            return loaded;
         restoreListSelection(selection);
         return S_OK;
     }

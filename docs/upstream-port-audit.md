@@ -368,6 +368,54 @@ the passing gate's exact inputs/log, and localized-LastTest.log records the late
 root/test check. Following AGENTS.md's localized-edit rule, the passing full gate
 is not repeated for this renderer line and regression; no wider code changed.
 
+### Synchronous reload HRESULT and source error consumer, 2026-10-06
+
+Original PanelItems.cpp::RefreshListCtrl_SaveFocused/OnReload/OnTimer, App.h
+RefreshView, MyLoadMenu refresh dispatch and Panel.cpp HRESULT error helpers
+were inspected before this change at upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, alongside load types and current callers.
+OnReload presents every non-S_OK result, including E_ABORT; its source body
+and HResultToMessage formatter remain authoritative and unchanged.
+
+Necessary Qt adaptation: renderRootFolder/renderArchiveFolder/renderBoundFolder
+return synchronous load HRESULT instead of discarding it. Namespace/archive
+reload callbacks return failure before applying saved selection. Archive render
+still restores its synchronous guards and finishes Qt state before returning;
+successful pending selection and asynchronous projection remain intact.
+Namespace Refresh command delegates to retained CPanel::OnReload, matching
+original App.h RefreshView. FS/archive manual refresh retains its existing
+reload/reopen transport pending remaining reconciliation. Root empty-folder
+handling precedes type queries; unsupported bound presentation returns E_NOTIMPL,
+closed presentation E_ABORT. No new copied file, dependency or error algorithm
+is introduced; the existing408 exact/196 adapted/3 local baseline remains.
+
+Forty EN/RU public consumers cover direct SaveFocused result, explicit reload,
+changed-folder timer and namespace command for load/property/count failure,
+wrong property type and load Cancel. Count failure is armed during LoadItems
+after saving the valid previous generation. They check exact source error text,
+empty old rows, restored notifications and successful recovery. The actual RED
+maps the callback's failing result to S_OK:4 Qt passes/44 missing-result/message
+failures, retained in build/review/source-panel-hresult-red. The final five
+focused suites pass15.05s: PanelListLoad48/Root24/UiCopyRouting83/
+UiArchiveStates13/FlatView8 Qt passes, zero failures/skips.
+Sixty current EN/RU message reports inspect error labels and standard buttons,
+visible/enabled/fit under both probes; platform autosizing is retained.
+Checks, seven input hashes and geometry review live in
+build/review/source-panel-hresult-final.
+Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes
+formatting, all-target build and255/255 CTest111.63s. Seven code/test hashes
+remain unchanged; focused/full logs and60 current message reports are retained
+with the manifest/geometry review. Baseline verification again confirms
+408 exact/196 adapted/3 local. These are current macOS checks; Windows/Linux
+and native rendered focus/geometry remain unverified for this change.
+
+Full RefreshListCtrl row/name/icon/dots/redraw/timer agreement, filesystem and
+async terminal errors, post-Copy failure handling, remaining native branches,
+current three-OS/rendered/cold-stable and P3-06 acceptance remain mandatory.
+The namespace error consumers do not prove every renderer failure branch or
+native archive failure at runtime. This component does not close P3-05.15.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

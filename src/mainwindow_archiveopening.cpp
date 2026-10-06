@@ -108,21 +108,23 @@ bool MainWindow::isNestedArchive() const {
     return app_.Panels[app_.GetFocusedPanelIndex()].GetParentFolders().Size() > 1;
 }
 
-void MainWindow::renderBoundFolder() {
+HRESULT MainWindow::renderBoundFolder() {
     if (app_.QtOperations().closed())
-        return;
+        return E_ABORT;
     QtAppOperationState::CallScope call(app_.QtOperations());
     auto &panel = app_.GetFocusedPanel();
     const auto selection = panel.TakeRefreshSelection();
     panel.LoadFullPath();
     if (panel.IsRootFolder() || panel.IsFSDrivesFolder() || panel.IsNetFolder() ||
         panel.IsAltStreamsFolder()) {
-        renderRootFolder();
+        const HRESULT loaded = renderRootFolder();
+        if (loaded != S_OK)
+            return loaded;
         if (selection) {
             panel.RefreshListCtrl(*selection);
             refreshActions();
         }
-        return;
+        return S_OK;
     }
     if (!panel.IsArcFolder()) {
         const QString directory = panel.GetFolder()
@@ -133,14 +135,14 @@ void MainWindow::renderBoundFolder() {
         if (selection)
             restoreListSelection(*selection);
         refreshActions();
-        return;
+        return S_OK;
     }
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
     if (!folder)
-        return;
+        return E_NOTIMPL;
     auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
     if (!resource)
-        return;
+        return E_NOTIMPL;
     archive_ = resource->EnginePath;
     info_ = resource->Info;
     const auto &parents = panel.GetParentFolders();
@@ -173,10 +175,11 @@ void MainWindow::renderBoundFolder() {
     // Keep operation guards until rows and native selection agree. The enum
     // here selects Qt presentation; the app owner still blocks commands.
     state_ = State::Viewing;
-    renderArchiveFolder();
-    if (selection)
+    const HRESULT loaded = renderArchiveFolder();
+    if (loaded == S_OK && selection)
         restoreListSelection(*selection);
     setState(State::Viewing);
+    return loaded;
 }
 
 void MainWindow::showArchiveFolder(const QString &folder) {

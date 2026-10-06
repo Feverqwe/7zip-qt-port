@@ -1,22 +1,32 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Windows/PropVariant.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
-class LoadFolder final : public IFolderFolder, public IFolderSetFlatMode, public CMyUnknownImp {
+class LoadFolder final : public IFolderFolder,
+                         public IFolderSetFlatMode,
+                         public IFolderWasChanged,
+                         public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
+    Z7_COM_QI_ENTRY(IFolderWasChanged)
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
   public:
     QStringList calls;
     HRESULT loadResult = S_OK;
     HRESULT directoryResult = S_OK;
+    HRESULT countResult = S_OK;
+    HRESULT loadedCountResult = S_OK;
     VARTYPE directoryType = VT_BOOL;
     bool directory = true;
     bool reverseNames = false;
+    bool changed = false;
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
+    Z7_IFACE_COM7_IMP(IFolderWasChanged)
 };
 
 Z7_COM7F_IMF(LoadFolder::SetFlatMode(Int32)) {
@@ -25,10 +35,16 @@ Z7_COM7F_IMF(LoadFolder::SetFlatMode(Int32)) {
 }
 Z7_COM7F_IMF(LoadFolder::LoadItems()) {
     calls << "load";
+    countResult = loadedCountResult;
     return loadResult;
 }
 Z7_COM7F_IMF(LoadFolder::GetNumberOfItems(UInt32 *count)) {
     *count = 2;
+    return countResult;
+}
+Z7_COM7F_IMF(LoadFolder::WasChanged(Int32 *wasChanged)) {
+    *wasChanged = BoolToInt(changed);
+    changed = false;
     return S_OK;
 }
 Z7_COM7F_IMF(LoadFolder::GetNumberOfProperties(UInt32 *count)) {
@@ -79,6 +95,30 @@ Z7_COM7F_IMF(LoadFolder::BindToParentFolder(IFolderFolder **folder)) {
 
 class PanelListLoadTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    static QString closeError(MainWindow &window, const std::function<void()> &reload,
+                              const QString &tag = {}) {
+        QString shown;
+        QTimer driver;
+        connect(&driver, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                    shown = box->text();
+                    if (!tag.isEmpty()) {
+                        for (const QSize size : {QSize(440, 250), QSize(360, 200)}) {
+                            box->resize(size);
+                            box->layout()->activate();
+                            QTest::qVerify(UiInspection::writeReport(
+                                               *box, tag + '-' + QString::number(size.width())),
+                                           "report", "Reload error geometry", __FILE__, __LINE__);
+                        }
+                    }
+                    box->accept();
+                }
+        });
+        driver.start(0);
+        reload();
+        return shown;
+    }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void loadedDirectoriesAreCachedAndReplaced() {
@@ -155,8 +195,10 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         spec->directoryResult = loadFailure ? S_OK : HRESULT(result);
         spec->directoryType = VARTYPE(type);
         spec->loadResult = loadFailure ? HRESULT(result) : S_OK;
-        action(window, "refreshAction")->trigger();
+        const QString shown =
+            closeError(window, [&] { action(window, "refreshAction")->trigger(); });
         QCOMPARE(view->rowCount(), 0);
+        QCOMPARE(shown, ToQString(HResultToMessage(result == S_OK ? E_FAIL : HRESULT(result))));
         QVERIFY(view->sourcePanel->ShouldProcessNotifications());
         QVERIFY(window.statusBar()->currentMessage().contains("Could not read root folder"));
         window.show();
@@ -175,6 +217,73 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         action(window, "refreshAction")->trigger();
         QCOMPARE(view->rowCount(), 2);
         QVERIFY(!view->item(0, 0)->data(Qt::UserRole + 1).toBool());
+    }
+    void namespaceReloadReturnsOriginalHRESULT_data() {
+        QTest::addColumn<QString>("phase");
+        QTest::addColumn<QString>("caller");
+        QTest::addColumn<QString>("language");
+        for (const char *phase : {"load", "cancel", "property", "type", "count"})
+            for (const char *caller : {"result", "reload", "timer", "command"})
+                for (const char *language : {"-", "ru"})
+                    QTest::newRow(
+                        qPrintable(QString("%1-%2-%3").arg(phase).arg(caller).arg(language)))
+                        << QString::fromLatin1(phase) << QString::fromLatin1(caller)
+                        << QString::fromLatin1(language);
+    }
+    void namespaceReloadReturnsOriginalHRESULT() {
+        QFETCH(QString, phase);
+        QFETCH(QString, caller);
+        QFETCH(QString, language);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        action(window, "openRootAction")->trigger();
+        auto *view = static_cast<FileTable *>(table(window));
+        auto *spec = new LoadFolder;
+        CMyComPtr<IFolderFolder> folder = spec;
+        auto &panel = *view->sourcePanel;
+        panel.SetNewFolder(folder);
+        panel.OnReload();
+        QCOMPARE(view->rowCount(), 2);
+        view->selectRow(0);
+        const HRESULT expected = phase == "cancel" ? E_ABORT
+                                 : phase == "type" ? E_FAIL
+                                                   : E_INVALIDARG;
+        if (phase == "load" || phase == "cancel")
+            spec->loadResult = expected;
+        else if (phase == "property")
+            spec->directoryResult = expected;
+        else if (phase == "type")
+            spec->directoryType = VT_UI4;
+        else
+            spec->loadedCountResult = expected;
+        if (caller == "result")
+            QCOMPARE(panel.RefreshListCtrl_SaveFocused(), expected);
+        else {
+            const QString shown = closeError(
+                window,
+                [&] {
+                    if (caller == "reload")
+                        panel.OnReload();
+                    else if (caller == "timer") {
+                        panel.Set_AutoRefresh_Mode(true);
+                        spec->changed = true;
+                        panel.OnTimer();
+                    } else
+                        action(window, "refreshAction")->trigger();
+                },
+                QString("panel-reload-hresult-%1").arg(QTest::currentDataTag()));
+            QCOMPARE(shown, ToQString(HResultToMessage(expected)));
+        }
+        QCOMPARE(view->rowCount(), 0);
+        QVERIFY(panel.ShouldProcessNotifications());
+        spec->loadResult = spec->directoryResult = spec->countResult = spec->loadedCountResult =
+            S_OK;
+        spec->directoryType = VT_BOOL;
+        panel.OnReload();
+        QCOMPARE(view->rowCount(), 2);
+        QVERIFY(action(window, "refreshAction")->isEnabled());
     }
 };
 

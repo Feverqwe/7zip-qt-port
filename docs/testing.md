@@ -14,6 +14,14 @@ An explicit namespace Name-sort consumer reverses provider names on reload and
 checks that every column retains its row's source index. The renderer suppresses
 Qt sorting while inserting complete rows; a retained missing-cell RED catches
 sorting during insertion. Original root's default provider order is preserved.
+Forty EN/RU reload rows exercise direct SaveFocused results, OnReload, changed-
+folder OnTimer and namespace Refresh for load/property/count failure, wrong
+directory type and E_ABORT. Count failure is armed by LoadItems so the existing
+SaveSelectedState reads the still-valid previous generation. Errors match the
+original HResultToMessage exactly; notifications restore, old rows disappear and
+a later valid reload recovers commands/rows. Sixty OS-managed normal/compact
+message reports inspect error exposure and standard buttons. The actual RED
+drops the callback's failing HRESULT and retains44 missing-result/message failures.
 
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,

@@ -6,21 +6,26 @@
 
 // Source namespace folders own item names, order and binding. This file presents
 // their IFolderFolder items in the same list used by disk and archive views.
-void MainWindow::renderRootFolder() {
+HRESULT MainWindow::renderRootFolder() {
     auto &panel = app_.GetFocusedPanel();
+    if (!panel.GetFolder())
+        return S_OK;
     const bool drives = panel.IsFSDrivesFolder();
     const bool network = panel.IsNetFolder();
     const bool streams = panel.IsAltStreamsFolder();
     if ((!panel.IsRootFolder() && !drives && !network && !streams) || !panel.GetFolder())
-        return;
+        return E_NOTIMPL;
     auto disableNotify = std::make_unique<CPanel::CDisableNotify>(panel);
     table_->setSortingEnabled(false);
     IFolderFolder *folder = panel.GetFolder();
     UInt32 count = 0;
-    if (panel.LoadListItems() != S_OK || folder->GetNumberOfItems(&count) != S_OK) {
+    HRESULT result = panel.LoadListItems();
+    if (result == S_OK)
+        result = folder->GetNumberOfItems(&count);
+    if (result != S_OK) {
         statusBar()->showMessage(
             QtLocalText("Could not read root folder.", "Не удалось прочитать корневую папку."));
-        return;
+        return result;
     }
     filesystemScanner_->cancel();
     listProjection_->cancel();
@@ -76,6 +81,7 @@ void MainWindow::renderRootFolder() {
     disableNotify.reset();
     setState(State::Namespace);
     statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
+    return S_OK;
 }
 
 void MainWindow::goRoot(bool remember, RootLocation location) {

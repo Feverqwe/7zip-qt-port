@@ -42,6 +42,12 @@ RefreshListCtrl: удаление старых строк до загрузки,
 не перечисляет её повторно. Ошибка directory property или Cancel загрузки
 namespace оставляет пустой список; последующая успешная загрузка восстанавливает
 его. Полные HRESULT presentation, icons/dots/timer и native-проверки остаются.
+Синхронный HRESULT namespace/archive renderer теперь возвращается в исходный
+OnReload; ошибку сопровождает его исходное сообщение, включая E_ABORT.
+Namespace Refresh идёт через тот же handler. Direct/explicit/timer/command
+consumers проверены под EN/RU с восстановлением списка после ошибки.
+Filesystem/async terminal и post-Copy failure semantics ещё требуют сверки;
+текущие Windows/Linux и rendered проверки остаются обязательными.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

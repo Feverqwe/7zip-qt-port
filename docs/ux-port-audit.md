@@ -60,6 +60,11 @@ Source load/property stage теперь общий для namespace/archive/FS r
 directory type. Existing flat/selection/Copy consumers и namespace error-state
 geometry проверяют эту границу; это не закрывает remaining RefreshListCtrl
 presentation и native/HRESULT/timer scope.
+Синхронные namespace/archive HRESULT больше не теряются renderer callback.
+Namespace Refresh использует исходный OnReload с исходным error message;
+EN/RU explicit/timer/command/failure/Cancel/recovery и60 OS-managed message
+reports проверяют эту границу. Остальная full/async/post-Copy error и
+native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 

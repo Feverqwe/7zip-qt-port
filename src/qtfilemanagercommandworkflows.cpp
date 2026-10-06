@@ -125,7 +125,12 @@ void QtFileManagerCommands::ChangeFlatMode() {
     window_.applyFlatView(
         !(window_.state_ == MainWindow::State::Viewing ? window_.flatArchive_ : window_.flatDisk_));
 }
-void QtFileManagerCommands::RefreshView() { window_.refreshCurrent(); }
+void QtFileManagerCommands::RefreshView() {
+    if (window_.state_ == MainWindow::State::Namespace)
+        window_.app_.GetFocusedPanel().OnReload();
+    else
+        window_.refreshCurrent();
+}
 void QtFileManagerCommands::SwitchStandardToolbar() { window_.app_.SwitchStandardToolbar(); }
 void QtFileManagerCommands::SwitchArchiveToolbar() { window_.app_.SwitchArchiveToolbar(); }
 void QtFileManagerCommands::SwitchButtonsLables() { window_.app_.SwitchButtonsLables(); }

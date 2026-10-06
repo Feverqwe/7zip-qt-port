@@ -44,6 +44,14 @@ focus return to the old pane from changing CApp's target halfway through loading
 Guards restore before the final command/title refresh.
 Original row-name/icon/parent/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
+Namespace/archive renderers and the bound-folder renderer now return their
+synchronous load HRESULT. The reload callback restores saved selection only on
+success and returns failure to the retained CPanel::OnReload error owner.
+Namespace Refresh uses that original owner; filesystem/archive manual refresh
+keep their existing reload/reopen transport pending the remaining reconciliation.
+Archive failure still finishes its Qt state after synchronous loading, with source
+guards restored before ending the operation. Async filesystem/projection terminal
+errors and complete Copy completion failure handling remain separate requirements.
 
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its

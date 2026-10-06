@@ -14,7 +14,7 @@
 #include "qtpaneladdresscombo.h"
 #include <QScopedValueRollback>
 
-void MainWindow::renderArchiveFolder() {
+HRESULT MainWindow::renderArchiveFolder() {
     listProjection_->cancel();
     scanningArchive_ = false;
     scanSelectedState_.reset();
@@ -26,11 +26,12 @@ void MainWindow::renderArchiveFolder() {
     disableNotify.emplace(panel);
     CMyComPtr<IFolderFolder> folderOwner = panel.GetFolder();
     if (!folderOwner)
-        return;
+        return S_OK;
     auto *archiveFolder = static_cast<CAgentFolder *>((IFolderFolder *)folderOwner);
     const bool flat = flatView_->isChecked();
-    if (panel.LoadListItems() != S_OK)
-        return;
+    const HRESULT loaded = panel.LoadListItems();
+    if (loaded != S_OK)
+        return loaded;
     static_cast<FileTable *>(table_)->filesystem = false;
     autoRefreshSnapshot_.clear();
     panel.LoadFullPath();
@@ -64,7 +65,7 @@ void MainWindow::renderArchiveFolder() {
                         QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
                 });
             });
-        return;
+        return S_OK;
     }
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
         appendArchiveEntry(*archiveFolder, index, prefix, flat);
@@ -72,6 +73,7 @@ void MainWindow::renderArchiveFolder() {
     statusBar()->showMessage(
         QtLocalText("%1 items", "%1 объектов").arg(archiveFolder->GetNumberOfItems()));
     refreshActions();
+    return S_OK;
 }
 
 void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,

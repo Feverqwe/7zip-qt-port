@@ -186,7 +186,7 @@ class MainWindow : public QMainWindow {
     bool handleSelectionKey(QKeyEvent *key);
     void handleSelectionClick(int row);
     void showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
-    void renderRootFolder();
+    HRESULT renderRootFolder();
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     void appendParentEntry();
     void updateParentEntry();
@@ -215,10 +215,10 @@ class MainWindow : public QMainWindow {
     enum class RootLocation { Namespace, Drives };
     void goRoot(bool remember = true, RootLocation location = RootLocation::Namespace);
     QString archiveDisplayPath() const;
-    void renderBoundFolder();
+    HRESULT renderBoundFolder();
     bool isNestedArchive() const;
     void showArchiveFolder(const QString &folder);
-    void renderArchiveFolder();
+    HRESULT renderArchiveFolder();
     void appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix, bool flat);
     void setState(State state);
     void refreshActions();

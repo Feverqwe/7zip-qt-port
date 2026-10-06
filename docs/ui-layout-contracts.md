@@ -48,6 +48,13 @@ load failures before publishing rows. A failed reload leaves no stale rows and
 restores notification guards; a later valid reload recovers the same list.
 Inspect the empty namespace/error state at980×620/640×400 through the existing
 address/list/toolbar contract. No new dialog layout is introduced by validation.
+OnReload retains the original HRESULT message for load/property/count failures,
+including E_ABORT. Verify direct result, explicit reload, changed-folder timer and
+namespace Refresh command under EN/RU; close the OS-managed error and recover
+through a valid reload. Inspect message text, standard button group and exposure
+under normal/compact probes, retaining platform autosizing. Archive synchronous
+load errors must also reach this callback; FS/worker terminal error presentation
+and whole RefreshListCtrl acceptance remain separate required checks.
 
 ### Persisted source locations (P3-05.14, required scope)
 
