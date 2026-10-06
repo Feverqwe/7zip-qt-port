@@ -93,7 +93,7 @@ void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
                     defer = count > 256;
                     return !defer;
                 };
-                result = folder->LoadItems();
+                result = panel.LoadListItems();
             }
             if (result == E_ABORT && defer) {
                 scanningDisk_ = true;
@@ -104,7 +104,7 @@ void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
             }
         }
         if (result == S_OK) {
-            configureColumns();
+            configureColumns(true);
             appendParentEntry();
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
             for (UInt32 i = 0; i < spec->Files.Size(); ++i)
@@ -130,12 +130,11 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
         autoRefreshSnapshot_.insert(file.absoluteFilePath(),
                                     filesystemSignature(file.absoluteFilePath()));
     IFolderFolder *folder = app_.GetFocusedPanel().GetFolder();
-    NWindows::NCOM::CPropVariant isDir, size, name, prefix;
-    folder->GetProperty(sourceIndex, kpidIsDir, &isDir);
+    NWindows::NCOM::CPropVariant size, name, prefix;
     folder->GetProperty(sourceIndex, kpidSize, &size);
     folder->GetProperty(sourceIndex, kpidName, &name);
     folder->GetProperty(sourceIndex, kpidPrefix, &prefix);
-    const bool directory = isDir.vt == VT_BOOL && isDir.boolVal != VARIANT_FALSE;
+    const bool directory = app_.GetFocusedPanel().IsItem_Folder(sourceIndex);
     const QString nativeName =
         name.vt == VT_BSTR ? QString::fromWCharArray(name.bstrVal) : file.fileName();
     const QString nativePrefix =

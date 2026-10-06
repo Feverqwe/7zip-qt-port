@@ -1,5 +1,20 @@
 # Regression strategy
 
+`panel_list_load` checks the source load/property stage and its namespace consumer.
+It verifies flat-before-load/columns order, worker-loaded publication without a
+second load, cached directory flags and replacement, and VT_EMPTY file semantics.
+Namespace rows must disappear on wrong directory type, property/load failure or
+load Cancel, with restored notifications and recovery after a valid reload.
+Eight normal980×620/compact640×400 error-state reports inspect the existing view.
+A retained failing run bypasses the source validation in the namespace renderer;
+it aborts on the invalid property through the old unvalidated state.
+Filesystem/flat/archive/auto-refresh/large-list/Copy consumers exercise the same
+stage with native providers. Current platform evidence belongs to the port audit.
+An explicit namespace Name-sort consumer reverses provider names on reload and
+checks that every column retains its row's source index. The renderer suppresses
+Qt sorting while inserting complete rows; a retained missing-cell RED catches
+sorting during insertion. Original root's default provider order is preserved.
+
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,
 check unchanged Unicode control bytes, no output and no engine request, and

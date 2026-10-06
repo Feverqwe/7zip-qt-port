@@ -21,9 +21,6 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         }
     });
     if (state_ == State::Viewing) {
-        const HRESULT loaded = app_.Panels[index].GetFolder()->LoadItems();
-        if (loaded != S_OK)
-            return loaded;
         renderBoundFolder();
         restoreListSelection(selection);
         return S_OK;

@@ -299,6 +299,75 @@ address/list and toolbar groups, visible/enabled/fit with unchanged panel order.
 Outside-peer probes supplement the existing64 EN/RU completion reports;
 they do not establish native rendered Windows/Linux or complete source parity.
 
+### Source list load/property stage integration, 2026-10-06
+
+After the complete function/caller/dependency review above, original
+PanelItems.cpp::RefreshListCtrl guards, row/mark reset, flat mode, LoadItems,
+InitColumns, directory-property cache/validation and non-FS deleted-item query
+are extracted into CPanel::LoadListItems in the same adapted upstream module.
+Original source is https://github.com/ip7z/7zip.git at full commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Existing notices remain intact;
+no new copied file or dependency is introduced. The directory loop preserves
+VT_BOOL/VT_EMPTY behavior, partial-cache clearing and HRESULT/E_FAIL branches.
+The count variable is initialized before the original unchecked count call.
+
+Necessary Qt adaptations: the existing provider-aware GetFlatMode supplies
+the source mode, QtPanelList removes model rows, and worker-loaded filesystem
+folders skip only the completed flat/load stage. Source InitColumns still runs
+before validation; configureColumns receives its already prepared catalog.
+Namespace, archive, bounded immediate filesystem and completed filesystem
+worker consumers use the stage, with directory presentation through IsItem_Folder.
+Archive publication no longer calls SetNewFolder on the same loaded folder:
+that releases the just-built cache. Archive OnReload also avoids its redundant
+pre-render LoadItems. The source selection/publication boundaries stay separate.
+
+Original names/prefixes, icons/slow/deleted presentation, dots, callback text,
+native redraw, sort/selection/viewport/status and complete reload HRESULT/timer
+presentation still need agreement with remaining Qt stages. LoadListItems is
+an extracted source stage, not a claim that the adapted void RefreshListCtrl
+already implements the complete original HRESULT body or109-module acceptance.
+
+New panel_list_load checks provider call order, cached directory flags, cache
+replacement, worker-loaded no-second-load and VT_EMPTY semantics. Public namespace
+consumers cover wrong property type, property/load failure, load Cancel and
+valid recovery, with restored notifications and empty old rows. Bypassing the
+namespace source validation reproduces an uncaught-int abort; this actual RED
+is retained in build/review/source-panel-load-red. The first integration run
+passed7/8 suites but aborted flat_view: provider loading preceded deletion of
+old rows. Restoring original delete-before-load fixes this; the first log is in
+source-panel-load-first. Eight focused suites now pass16.35s, zero Qt failure/skip.
+Eight980×620/640×400 namespace error reports inspect the unchanged toolbar,
+active-panel/address/list groups, enabled/visible/fit. Logs, input hashes and
+geometry review are retained in build/review/source-panel-load-final.
+The first full gate passes254/255 in139.20s but external_editors_ui exposes
+two flat retained-panel failures. Diagnostic source/Qt indices show projection1
+with focused source0 while enabling the new pane; its load deletes the old
+pane's rows. MainWindow::activatePanelUi now retains both existing CDisableNotify
+guards and the existing Qt projection-depth guard through control activation,
+then restores them before command/title refresh. This is native Qt focus
+transport adaptation, with original PanelWasFocused/SetFocusedPanel bodies
+unchanged. The existing Diff byte/argument/selection/fallback assertions are
+unchanged; all temporary diagnostics are removed. Four affected suites pass10.20s
+after this fix. First-full and diagnostic logs are retained separately.
+The subsequent mandatory unsandboxed gate passes formatting, all-target build
+and255/255 CTest111.43s on14 frozen code/test/build inputs. Twelve focused suites
+pass17.92s before that gate. A final localized namespace sort regression then
+reveals missing cells: the renderer must still disable Qt sorting until complete
+rows are inserted. Restoring its existing setSortingEnabled(false) fixes this.
+The test explicitly chooses Name sorting, since original root defaults to provider
+order; the initial contrary test expectation was a fixture error. Actual sort RED
+is7 Qt passes/one missing-cell failure, retained in source-panel-load-sort-red.
+The regression checks every column's source index after reversed provider names.
+Only the root renderer and new test change after the passing gate; affected
+checks and their final hashes are recorded separately. Current Windows/Linux,
+rendered, complete RefreshListCtrl and overall P3-06 acceptance remain open.
+Final localized build and four suites pass10.68s: PanelListLoad8/RootCommand24/
+NamespaceHash3/UiCopyRouting83 Qt passes, zero failures/skips. Final14 input hashes
+are frozen in localized-inputs.json; full-gate-inputs.json and LastTest.log retain
+the passing gate's exact inputs/log, and localized-LastTest.log records the later
+root/test check. Following AGENTS.md's localized-edit rule, the passing full gate
+is not repeated for this renderer line and regression; no wider code changed.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

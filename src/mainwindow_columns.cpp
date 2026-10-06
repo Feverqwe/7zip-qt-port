@@ -3,9 +3,9 @@
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
 
-void MainWindow::configureColumns() {
+void MainWindow::configureColumns(bool initialized) {
     auto &panel = app_.GetFocusedPanel();
-    if (panel.InitColumns() != S_OK)
+    if (!initialized && panel.InitColumns() != S_OK)
         return;
     configuringColumns_ = true;
     const QSignalBlocker blocked(table_->horizontalHeader());

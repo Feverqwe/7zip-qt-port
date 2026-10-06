@@ -1,7 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelItems.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // IFolder/variant property bodies retain upstream control flow. Qt list rows
-// remain a presentation snapshot pending the full folder-load port.
+// use the source load/property stages and a separate Qt row-publication stage.
 #include "../Common/ExtractingFilePath.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
@@ -372,6 +372,74 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
         if (!_mySelectMode && realIndex != kParentIndex)
             _selectedStatusVector[realIndex] = true;
     }
+}
+
+HRESULT CPanel::LoadListItems(bool itemsLoaded) {
+    if (!_folder)
+        return S_OK;
+    CDisableTimerProcessing timerProcessing(*this);
+    CDisableNotify disableNotify(*this);
+    _selectionList.DeleteListItems();
+    _selectedStatusVector.Clear();
+    _startGroupSelect = 0;
+    _selectionIsDefined = false;
+    if (!itemsLoaded) {
+        CMyComPtr<IFolderSetFlatMode> folderSetFlatMode;
+        _folder.QueryInterface(IID_IFolderSetFlatMode, &folderSetFlatMode);
+        if (folderSetFlatMode)
+            folderSetFlatMode->SetFlatMode(BoolToInt(GetFlatMode()));
+    }
+    _isDirVector.Clear();
+    IFolderFolder *folder = _folder;
+    if (!itemsLoaded) {
+        RINOK(_folder->LoadItems())
+    }
+    RINOK(InitColumns())
+    UInt32 numItems = 0;
+    _folder->GetNumberOfItems(&numItems);
+    {
+        NWindows::NCOM::CPropVariant prop;
+        _isDirVector.ClearAndSetSize(numItems);
+        bool *vec = _isDirVector.NonConstData();
+        HRESULT hres = S_OK;
+        unsigned i;
+        for (i = 0; i < numItems; i++) {
+            hres = folder->GetProperty(i, kpidIsDir, &prop);
+            if (hres != S_OK)
+                break;
+            bool v = false;
+            if (prop.vt == VT_BOOL)
+                v = VARIANT_BOOLToBool(prop.boolVal);
+            else if (prop.vt != VT_EMPTY)
+                break;
+            vec[i] = v;
+        }
+        if (i != numItems) {
+            _isDirVector.Clear();
+            if (hres == S_OK)
+                hres = E_FAIL;
+        }
+        RINOK(hres)
+    }
+    if (!IsFSFolder()) {
+        CMyComPtr<IGetFolderArcProps> getFolderArcProps;
+        _folder.QueryInterface(IID_IGetFolderArcProps, &getFolderArcProps);
+        _thereAreDeletedItems = false;
+        if (getFolderArcProps) {
+            CMyComPtr<IFolderArcProps> arcProps;
+            getFolderArcProps->GetFolderArcProps(&arcProps);
+            if (arcProps) {
+                UInt32 numLevels;
+                if (arcProps->GetArcNumLevels(&numLevels) != S_OK)
+                    numLevels = 0;
+                NWindows::NCOM::CPropVariant prop;
+                if (arcProps->GetArcProp(numLevels - 1, kpidIsDeleted, &prop) == S_OK)
+                    if (prop.vt == VT_BOOL && VARIANT_BOOLToBool(prop.boolVal))
+                        _thereAreDeletedItems = true;
+            }
+        }
+    }
+    return S_OK;
 }
 
 void CPanel::RefreshListCtrl(const CSelectedState &state) {

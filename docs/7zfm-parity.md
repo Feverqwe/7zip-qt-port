@@ -36,6 +36,12 @@ Qt учитывает уже начатую публикацию и ждёт с�
 continuation. Namespace OnReload повторно публикует существующий native provider.
 Эти consumers проверены отдельно от оставшейся полной загрузки RefreshListCtrl;
 текущие Windows/Linux и rendered evidence ещё требуются.
+Загрузка namespace/archive/filesystem теперь использует исходные stages
+RefreshListCtrl: удаление старых строк до загрузки, flat mode, columns,
+проверенный directory cache и deleted-item flag. Worker уже загруженной FS-папки
+не перечисляет её повторно. Ошибка directory property или Cancel загрузки
+namespace оставляет пустой список; последующая успешная загрузка восстанавливает
+его. Полные HRESULT presentation, icons/dots/timer и native-проверки остаются.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

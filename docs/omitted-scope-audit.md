@@ -74,6 +74,13 @@ stages remain separate from the retained selection stage; their remaining
 whole-body/native/HRESULT/timer acceptance is detailed in the
 [port audit](upstream-port-audit.md#unconditional-destination-publication-and-namespace-reload-2026-10-06).
 This is a function/dependency review, not another module-wide closure.
+Follow-up integration extracts source row/mark reset, flat/load/columns,
+directory validation/cache and deleted-item query into PanelItems::LoadListItems.
+Namespace/archive/immediate FS and worker-loaded FS consumers share it; Qt
+publication retains its existing asynchronous boundary. Original directory
+types/errors and delete-before-load are now covered by public regressions.
+Remaining complete RefreshListCtrl presentation/timer/HRESULT scope is still
+required; the source stage does not close the module review.
 
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`
 with the602-line adapted module at project

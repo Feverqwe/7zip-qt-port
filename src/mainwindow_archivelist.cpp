@@ -29,8 +29,7 @@ void MainWindow::renderArchiveFolder() {
         return;
     auto *archiveFolder = static_cast<CAgentFolder *>((IFolderFolder *)folderOwner);
     const bool flat = flatView_->isChecked();
-    archiveFolder->SetFlatMode(BoolToInt(flat));
-    if (archiveFolder->LoadItems() != S_OK)
+    if (panel.LoadListItems() != S_OK)
         return;
     static_cast<FileTable *>(table_)->filesystem = false;
     autoRefreshSnapshot_.clear();
@@ -38,9 +37,8 @@ void MainWindow::renderArchiveFolder() {
     recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';
     table_->setSortingEnabled(false);
-    app_.GetFocusedPanel().SetNewFolder(folderOwner);
     static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(archiveDisplayPath(), false);
-    configureColumns();
+    configureColumns(true);
     appendParentEntry();
     if (archiveFolder->GetNumberOfItems() > 256) {
         // Finish the synchronous source guards before retaining operation
@@ -78,9 +76,7 @@ void MainWindow::renderArchiveFolder() {
 
 void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
                                     bool flat) {
-    NWindows::NCOM::CPropVariant directory;
-    folder.GetProperty(index, kpidIsDir, &directory);
-    const bool isDir = directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
+    const bool isDir = app_.GetFocusedPanel().IsItem_Folder(index);
     const int realIndex = folder.GetRealIndex(index);
     ArchiveEntry entry;
     entry.directory = isDir;

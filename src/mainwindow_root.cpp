@@ -14,9 +14,10 @@ void MainWindow::renderRootFolder() {
     if ((!panel.IsRootFolder() && !drives && !network && !streams) || !panel.GetFolder())
         return;
     auto disableNotify = std::make_unique<CPanel::CDisableNotify>(panel);
+    table_->setSortingEnabled(false);
     IFolderFolder *folder = panel.GetFolder();
     UInt32 count = 0;
-    if (folder->LoadItems() != S_OK || folder->GetNumberOfItems(&count) != S_OK) {
+    if (panel.LoadListItems() != S_OK || folder->GetNumberOfItems(&count) != S_OK) {
         statusBar()->showMessage(
             QtLocalText("Could not read root folder.", "Не удалось прочитать корневую папку."));
         return;
@@ -33,9 +34,6 @@ void MainWindow::renderRootFolder() {
     archiveFolder_.clear();
     entries_.clear();
     autoRefreshSnapshot_.clear();
-    table_->clearSelection();
-    table_->setSortingEnabled(false);
-    table_->setRowCount(0);
     static_cast<FileTable *>(table_)->filesystem = false;
     static_cast<QtPanelAddressCombo *>(pathCombo_)
         ->ShowCurrentPath(drives || network || streams
@@ -43,15 +41,13 @@ void MainWindow::renderRootFolder() {
                               : QString(),
                           false);
     recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
-    configureColumns();
+    configureColumns(true);
     for (UInt32 index = 0; index < count; ++index) {
         NWindows::NCOM::CPropVariant name;
         if (folder->GetProperty(index, kpidName, &name) != S_OK || name.vt != VT_BSTR)
             continue;
         const QString nativeName = QString::fromWCharArray(name.bstrVal);
-        NWindows::NCOM::CPropVariant directory;
-        const bool isDirectory = folder->GetProperty(index, kpidIsDir, &directory) == S_OK &&
-                                 directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
+        const bool isDirectory = panel.IsItem_Folder(index);
         const int row = table_->rowCount();
         table_->insertRow(row);
         for (int column = 0; column < table_->columnCount(); ++column) {

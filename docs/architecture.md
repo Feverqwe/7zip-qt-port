@@ -30,6 +30,21 @@ filesystem/archive/namespace publication owners; completion waits for their scan
 owners before restoring the original saved states. Namespace reload invokes the
 existing native-provider renderer instead of returning without loading rows.
 
+CPanel::LoadListItems extracts the original RefreshListCtrl load/property stage:
+clear old rows/marks, retain timer/notify guards, set flat mode, load the folder,
+initialize columns, validate/cache directory properties and query deleted-item
+archive flags. Namespace, archive and small filesystem renderers call it before
+publication. Worker-loaded filesystem folders skip only the already completed
+flat-mode/load calls. Qt renders the resulting source columns without reloading
+them; row directory flags use CPanel's validated cache. Resetting the same archive
+folder after load would discard that cache and is no longer part of publication.
+Programmatic panel activation temporarily suppresses both source notify callbacks
+and Qt focus projection while controls are enabled. This prevents a synchronous
+focus return to the old pane from changing CApp's target halfway through loading.
+Guards restore before the final command/title refresh.
+Original row-name/icon/parent/sort/redraw/HRESULT presentation branches still
+require the remaining complete-function review recorded in the port audit.
+
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its
 main-window title target before deferred destruction. It cannot overwrite the

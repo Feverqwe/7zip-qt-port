@@ -88,7 +88,7 @@ void CPanel::ReleaseFolder() {
     _folderAltStreams.Release();
     _folderOperations.Release();
     _thereAreDeletedItems = false;
-    // No complete RefreshListCtrl folder-load stage exists yet to reset caches.
+    // Clear the source load-stage caches when a folder is released.
     _isDirVector.Clear();
     _selectedStatusVector.Clear();
 }

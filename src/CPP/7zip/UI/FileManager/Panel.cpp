@@ -126,9 +126,8 @@ int CPanel::FindDir_InOperatedList(const CRecordVector<UInt32> &operatedIndices)
     const UInt32 *indices = operatedIndices.ConstData();
     const unsigned numItems = operatedIndices.Size();
     for (unsigned i = 0; i < numItems; i++)
-        // Native directory cache is loaded by full RefreshListCtrl (P0-05).
-        // Query the same authoritative provider through existing IsItem_Folder
-        // until that complete cache owner is connected.
+        // The source load stage owns the cache; IsItem_Folder also supports
+        // provider queries before rows have been loaded.
         if (IsItem_Folder(indices[i]))
             return (int)i;
     return -1;

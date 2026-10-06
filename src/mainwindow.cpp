@@ -149,7 +149,16 @@ void MainWindow::connectFilesystemScanner() {
                         auto &panel = app_.GetFocusedPanel();
                         panel.SetNewFolder(folder);
                         panel.LoadFullPath();
-                        configureColumns();
+                        const HRESULT loaded = panel.LoadListItems(true);
+                        if (loaded != S_OK) {
+                            panelUi_[index].filesystemScanner->cancel();
+                            scanningDisk_ = false;
+                            setState(State::Filesystem);
+                            statusBar()->showMessage(QtLocalText("Could not read folder.",
+                                                                 "Не удалось прочитать папку."));
+                            return;
+                        }
+                        configureColumns(true);
                         appendParentEntry();
                     });
                 });

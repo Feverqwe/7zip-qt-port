@@ -43,6 +43,11 @@ preserved peer selection, successful bytes, overwrite Cancel and dialog Cancel.
 Disable polling in the regression so the operation itself must publish rows.
 Inspect the resulting address/list groups at1100×640/640×400. Namespace OnReload
 must republish its existing provider rows through the same renderer.
+Its source load stage must reject invalid directory-property types and property/
+load failures before publishing rows. A failed reload leaves no stale rows and
+restores notification guards; a later valid reload recovers the same list.
+Inspect the empty namespace/error state at980×620/640×400 through the existing
+address/list/toolbar contract. No new dialog layout is introduced by validation.
 
 ### Persisted source locations (P3-05.14, required scope)
 

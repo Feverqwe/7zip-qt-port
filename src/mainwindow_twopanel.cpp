@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "qtapppresentation.h"
 #include <QScopeGuard>
+#include <QScopedValueRollback>
 
 // Qt keeps each panel's controls and presentation state while CPanel owns the
 // bound folder, selection and source navigation state. The active fields in
@@ -84,14 +85,21 @@ void MainWindow::activatePanelUi(unsigned index) {
         app_.SetFocusedPanel(projectedPanel_);
         return;
     }
-    storePanelUi(projectedPanel_);
-    restorePanelUi(index);
-    projectedPanel_ = index;
-    app_.SetFocusedPanel(index);
-    viewActions_[viewMode_]->setChecked(true);
-    flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
-    sortActions_[static_cast<int>(sortMode_)]->setChecked(true);
-    setState(state_);
+    {
+        // Enabling Qt views can synchronously focus the previously active pane.
+        // Keep source callbacks and the Qt projection on this captured target.
+        CPanel::CDisableNotify sourceNotify(app_.Panels[projectedPanel_]);
+        CPanel::CDisableNotify targetNotify(app_.Panels[index]);
+        QScopedValueRollback<unsigned> projection(panelProjectionDepth_, panelProjectionDepth_ + 1);
+        storePanelUi(projectedPanel_);
+        restorePanelUi(index);
+        projectedPanel_ = index;
+        app_.SetFocusedPanel(index);
+        viewActions_[viewMode_]->setChecked(true);
+        flatView_->setChecked(state_ == State::Viewing ? flatArchive_ : flatDisk_);
+        sortActions_[static_cast<int>(sortMode_)]->setChecked(true);
+        setState(state_);
+    }
     refreshActions();
     app_.RefreshTitle(true);
 }

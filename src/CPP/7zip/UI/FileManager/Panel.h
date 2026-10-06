@@ -601,12 +601,15 @@ class CPanel : public QObject {
     int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,
                            bool isRawProp = false) const;
     HRESULT InitColumns();
+    // Source RefreshListCtrl load stage. Worker-loaded folders skip only LoadItems.
+    HRESULT LoadListItems(bool itemsLoaded = false);
     void SaveListViewInfo(const CPropColumns &visibleColumns);
     const CPropColumns &GetColumns() const { return _columns; }
     const CPropColumns &GetVisibleColumns() const { return _visibleColumns; }
     QString GetItemText(UInt32 itemIndex, const CPropColumn &property) const;
     bool IsItem_AltStream(unsigned itemIndex) const;
-    // Partial RefreshListCtrl: rows are loaded/sorted by the presentation owner.
+    // LoadListItems prepares source state; Qt publishes/sorts rows before this
+    // retained RefreshListCtrl selection stage restores the saved state.
     void RefreshListCtrl(const CSelectedState &state);
     void RefreshListCtrl();
     // Qt loads rows after synchronous source navigation. Transfer its requested

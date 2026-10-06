@@ -55,6 +55,11 @@ Unconditional destination publication теперь восстановлена д
 публикует provider rows. Success/Move/dialog Cancel/overwrite Cancel и resulting
 normal/compact geometry входят в focused consumers; полная source-load и
 native/platform приёмка остаются открытыми.
+Source load/property stage теперь общий для namespace/archive/FS renderers,
+включая удаление старых строк до смены provider indices и отказ при неверном
+directory type. Existing flat/selection/Copy consumers и namespace error-state
+geometry проверяют эту границу; это не закрывает remaining RefreshListCtrl
+presentation и native/HRESULT/timer scope.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 
