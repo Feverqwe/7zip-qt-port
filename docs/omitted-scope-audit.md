@@ -100,10 +100,14 @@ Both-role EN/RU normal/flat/navigation/Refresh and real Copy/Move peer consumers
 check old-generation rejection, provider/result/bytes and recovery.
 Missing-folder reload now runs the source load stage to clear native items/marks;
 CFSFolder restores original Windows Next(fi) end-of-walk semantics, with POSIX
-enumeration errors ending the walk too. Initial missing binding still fails.
+enumeration errors ending the walk too. Direct missing CFSFolder::Init still fails.
 Both-role EN/RU standard/alternative Refresh/timer and restore consumers cover
 native count/operated indices, provider/guards and control bytes.
-Missing-address navigation and other
+Typed missing descendants use the retained BindToPath closest-ancestor algorithm;
+both-role EN/RU absolute/relative/trailing-separator consumers check actual prefix,
+title/focus, peer provider/selection and control bytes. Source Windows outer-quote
+preprocessing is extracted into PrepareBindPath for both original and Qt callers.
+Native Windows quoted-route acceptance and other
 post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
 

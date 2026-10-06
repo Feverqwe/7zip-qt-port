@@ -127,7 +127,7 @@ void QtPanelAddressCombo::GetLogicalDriveStrings(FStringVector &paths) {
 UString QtPanelAddressCombo::GetText() const { return ToUString(currentText()); }
 void QtPanelAddressCombo::SetText(const UString &text) { lineEdit()->setText(ToQString(text)); }
 HRESULT QtPanelAddressCombo::BindToPathAndRefresh(const UString &path, bool sourcePath) {
-    return navigate_(ToQString(path), sourcePath);
+    return navigate_(ToQString(CPanel::PrepareBindPath(path)), sourcePath);
 }
 void QtPanelAddressCombo::SetFocusToList() {
     QTimer::singleShot(0, this, [this] {

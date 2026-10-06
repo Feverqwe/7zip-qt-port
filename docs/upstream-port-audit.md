@@ -623,8 +623,46 @@ Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes formattin
 all-target build and257/257 CTest116.22s. Four inputs remain unchanged from focused
 validation. Full/focused logs, manifests and32 current panel JSON/geometry review
 are frozen in the final directory; no current Windows/Linux/rendered claim.
-Current Windows/Linux/rendered, missing-address/full RefreshListCtrl stages,
+Current Windows/Linux/rendered and full RefreshListCtrl stages,
 remaining native branches and P3-05.15/P3-06 acceptance remain mandatory.
+
+### Missing-address source binding and Windows quote transport, 2026-10-06
+
+Reviewed complete original/adapted PanelFolderChange.cpp::BindToPath,
+BindToPathAndRefresh and OnNotifyComboBoxEnter, their guards/folder dependencies
+and QtPanelAddressCombo/MainWindow navigation consumers at upstream commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. The original binding algorithm already chooses
+the closest existing filesystem ancestor for a missing descendant. Direct
+CFSFolder::Init refusal is a different entry point. No fallback algorithm is
+added. Original BindToPathAndRefresh returns binding HRESULT after Refresh;
+that source return policy remains authoritative.
+
+Extract the original Windows-only outer-quote removal into
+CPanel::PrepareBindPath and share it with QtPanelAddressCombo before filesystem
+classification and relative-path resolution. Qt Enter previously bypassed that
+source preprocessing. POSIX strings remain unchanged. Names, source paths,
+guards and binding control flow remain; no dependencies or algorithms are
+replaced. Existing source notices/languages and baseline408 exact/196 adapted/
+3 local remain unchanged.
+
+New address_navigation covers16 ordinary EN/RU rows, both roles, absolute/
+relative input and trailing separators. Private Unicode fixtures verify source
+prefix/address/title, list focus, peer provider/selection, exact control bytes,
+absence of created missing directories and zero engine listings. Windows builds
+add16 quoted-input rows; these have not executed on Windows and no native RED
+is claimed. Thirty-two current980×620/640×400 widget JSON reports inspect both
+address/list groups as visible/enabled/fullyVisible.
+
+Six focused suites pass10.57s, zero Qt failures/skips. Final macOS27.0.1 arm64/
+Qt6.12.0 mandatory unsandboxed check.sh passes formatting, all-target build and
+258/258 CTest120.63s; five code/build/test input hashes remain unchanged.
+Full/focused logs, validation/input manifests and geometry reports are frozen
+in build/review/source-address-navigation-final. Read-only runner readiness
+passes, but current capacity is Linux0 available bytes and Windows109576192
+bytes. No native build, cleanup or resize ran; scoped cleanup questions remain
+unanswered. Native quoted-input execution, current three-platform/rendered,
+remaining full RefreshListCtrl stages and parent/final acceptance remain open.
 
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 

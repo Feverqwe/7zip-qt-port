@@ -72,6 +72,15 @@ be empty along with Qt rows; provider/guards/Refresh remain usable and restored
 control bytes survive. Thirty-two normal/compact reports inspect the empty view.
 The actual RED bypasses native loading and leaves one stale source item in16 rows.
 
+`address_navigation` covers source closest-ancestor fallback for missing typed
+descendants: both panels/EN-RU/absolute-relative/trailing separator. It checks
+actual address/source prefix/title, list focus, unchanged peer provider/selection,
+control bytes, absent output and zero backend listings. Thirty-two normal/compact
+reports inspect the resulting panels. Windows adds16 outer-quoted routes; they
+exercise the source preprocessing shared by Qt and BindToPathAndRefresh. These
+conditional cases require native Windows execution; Mac runs only the16 ordinary
+routes. The existing source binding algorithm remains authoritative.
+
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,
 check unchanged Unicode control bytes, no output and no engine request, and

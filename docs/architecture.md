@@ -67,9 +67,13 @@ temporary panel projection is restored before changing source focus/title.
 Missing-folder reload also runs the source load stage, clearing native items and
 marks rather than only Qt rows. CFSFolder uses original Windows Next(fi), which
 ends enumeration on errors; the POSIX adapter mirrors that end-of-walk behavior.
-Initial binding still validates missing paths. The existing missing-folder status
-and auto-refresh snapshot support recovery when the directory returns. Missing-
-address navigation and the remaining complete-function review stay open.
+Direct CFSFolder::Init still rejects a missing path. The existing missing-folder
+status and auto-refresh snapshot support recovery when the directory returns.
+CPanel::BindToPath resolves a typed missing descendant to its closest existing
+ancestor. The Qt address caller uses the same original outer-quote preprocessing
+as BindToPathAndRefresh, via the extracted PrepareBindPath helper; only Windows
+strips those quotes. Source binding still owns fallback and archive-chain reuse.
+Native quote execution and the remaining complete-function review stay open.
 
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its

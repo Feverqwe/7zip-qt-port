@@ -504,6 +504,8 @@ class CPanel : public QObject {
     void SetToRootFolder();
     HRESULT BindToPath(const UString &fullPath, const UString &arcFormat, COpenResult &openRes);
     HRESULT BindToPathAndRefresh(const UString &path);
+    // Share the original Windows quote handling with Qt address transport.
+    static UString PrepareBindPath(const UString &path);
     UString GetParentDirPrefix() const;
     void OpenParentFolder();
     void OpenRootFolder();

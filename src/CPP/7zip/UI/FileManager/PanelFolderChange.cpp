@@ -281,10 +281,7 @@ void CPanel::SetToRootFolder() {
     rootFolderSpec->Init();
 }
 
-HRESULT CPanel::BindToPathAndRefresh(const UString &path) {
-    CDisableTimerProcessing disableTimerProcessing(*this);
-    CDisableNotify disableNotify(*this);
-    COpenResult openRes;
+UString CPanel::PrepareBindPath(const UString &path) {
     UString s = path;
 #ifdef _WIN32
     if (!s.IsEmpty() && s[0] == '\"' && s.Back() == '\"') {
@@ -292,6 +289,14 @@ HRESULT CPanel::BindToPathAndRefresh(const UString &path) {
         s.Delete(0);
     }
 #endif
+    return s;
+}
+
+HRESULT CPanel::BindToPathAndRefresh(const UString &path) {
+    CDisableTimerProcessing disableTimerProcessing(*this);
+    CDisableNotify disableNotify(*this);
+    COpenResult openRes;
+    const UString s = PrepareBindPath(path);
     HRESULT res = BindToPath(s, UString(), openRes);
     RefreshListCtrl();
     return res;

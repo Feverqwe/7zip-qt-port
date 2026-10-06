@@ -76,7 +76,11 @@ message до завершения async publication. Временная peer pro
 Missing-folder reload больше не оставляет скрытые native items/marks после
 очистки Qt rows: source enumeration и восстановление проверены с обеими
 selection modes, EN/RU и обеими панелями, с32 empty-view reports.
-Missing-address navigation и остальная full/post-Copy error и
+Missing-address descendants теперь проверены через source closest ancestor с
+actual address/title/focus и unchanged peer/bytes;32 panel reports покрывают
+оба размера. Qt transport получает исходное Windows outer-quote handling через
+общий helper, с native-only conditional routes для последующей проверки.
+Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.

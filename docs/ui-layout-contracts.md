@@ -70,8 +70,11 @@ When a bound folder disappears, Refresh/timer must clear native items/operated
 indices as well as visible rows. Preserve provider/guards/command recovery and
 the existing missing-folder status; restoring the directory recovers control
 bytes. Inspect both panels/EN-RU/standard-alternative empty views at980×620/640×400.
-Missing-address navigation
-and whole RefreshListCtrl acceptance remain separate required checks.
+Typed missing descendants must publish the source closest existing ancestor,
+its prefix/title and list focus, preserving peer selection and input bytes.
+Verify both panels/EN-RU/absolute-relative/trailing separator at980×620/640×400;
+Windows also strips original outer quotes before Qt path classification.
+Native quoted-route execution and whole RefreshListCtrl acceptance remain required.
 
 ### Persisted source locations (P3-05.14, required scope)
 
