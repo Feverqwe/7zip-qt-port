@@ -66,6 +66,34 @@ The previous two scoped cleanup questions remain unanswered; no files/disks are
 removed or resized. Native Windows/Linux current runtime, device/Hash consumers,
 rendered reference, stable/cold and parent/final acceptance remain open.
 
+Follow-up live-language consumer review at the same pinned revision inspected
+OptionsDialog's active language apply path (menu/toolbars/ReloadLangItems followed
+by RefreshAllPanels), CApp::ReloadLangItems, CRootFolder::Init/LoadItems and the
+existing CFSDrives folder path property. The commented FM.cpp language-message
+branch is not an active caller. Qt's live LanguageChange already updates labels
+and root namespace names in place, but leaves bound drive prefixes and window
+title in the previous language. Actual previous-product RED has22 Qt pass/2 fail:
+both normal and pending-draft rows retain Volumes/ instead of Тома/.
+
+No additional source module or algorithm is introduced. The Qt address adapter
+reloads the existing CPanel::LoadFullPath and LoadFullPathAndShow path/icon/title
+stage for each bound CFSDrives panel, without adding history. Original prefix
+and pending editor text are compared before reload; Qt restores the draft when
+different. The live-language owner skips this stage while operations/source
+progress or source notification guards prevent safe projection. Rows, selection
+and the existing provider remain untouched; there is no drive re-enumeration or
+archive request. This narrower event presentation adapts the source refresh to
+Qt's existing pending-input contract. New public consumers check EN→RU→EN on
+both panels, focused title, retained selected row/command, Unicode pending draft,
+zero archive list calls and eight normal/compact widget reports.
+Four affected suites pass1.74s; mandatory unsandboxed format/all-target/full Mac
+gate passes251/251 in106.97s, RootCommand24/RootNavigation8/LanguageFocus5/
+LanguageDialog7 Qt cases with0 fail/0 skip. Four pre-gate source/test SHA inputs
+remain unchanged. Eight final widget JSON reports independently pass visibility,
+menu/toolbar/address/list/status order, side-by-side and combo size-hint review.
+Windows/Linux current runtime and all previously recorded final acceptance
+requirements remain open; this follow-up does not close P3-05.13 or its parent.
+
 ## P3-05.12 — RootFolder/address consumer reconciliation (implementation validation active, 2026-10-06)
 
 Compared complete RootFolder.cpp/.h and active PanelFolderChange address

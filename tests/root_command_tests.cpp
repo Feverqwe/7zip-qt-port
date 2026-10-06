@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "external_editor_fixture.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include "window_state_support.h"
 
 class RootCommandTests final : public QObject, protected MainWindowTestSupport {
@@ -124,6 +125,63 @@ class RootCommandTests final : public QObject, protected MainWindowTestSupport {
         action(window, "backAction")->trigger();
         QTRY_COMPARE(address->text(), drivePrefix(language));
         QVERIFY(static_cast<FileTable *>(table(window))->sourcePanel->IsFSDrivesFolder());
+        QCOMPARE(backend.listCalls, 0);
+    }
+    void liveLanguageUpdatesBothDriveAddresses_data() {
+        QTest::addColumn<bool>("pending");
+        QTest::newRow("bound") << false;
+        QTest::newRow("pending") << true;
+    }
+    void liveLanguageUpdatesBothDriveAddresses() {
+        QFETCH(bool, pending);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        QLineEdit *addresses[2];
+        QTableWidget *views[2];
+        for (unsigned i = 0; i < 2; ++i) {
+            auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(i));
+            QVERIFY(panel);
+            addresses[i] = panel->findChild<QLineEdit *>("archivePath");
+            views[i] = panel->findChild<QTableWidget *>("archiveTable");
+            addresses[i]->setFocus();
+            QTRY_VERIFY(addresses[i]->hasFocus());
+            action(window, "viewMode3Action")->trigger();
+            action(window, "openRootAction")->trigger();
+            QTRY_COMPARE(addresses[i]->text(), drivePrefix("-"));
+        }
+        views[1]->setCurrentCell(0, 0);
+        views[1]->selectRow(0);
+        auto *selected = views[1]->item(0, 0);
+        QVERIFY(selected && selected->isSelected());
+        const int count = views[1]->rowCount();
+        const QString edit = QStringLiteral("черновик / path 密碼");
+        if (pending)
+            addresses[0]->setText(edit);
+        for (const QString language : {QStringLiteral("ru"), QStringLiteral("-")}) {
+            SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+            ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+            QtNotifyLanguageChanged();
+            QCOMPARE(addresses[0]->text(), pending ? edit : drivePrefix(language));
+            QCOMPARE(addresses[1]->text(), drivePrefix(language));
+            QCOMPARE(window.windowTitle(), drivePrefix(language));
+            QCOMPARE(views[1]->rowCount(), count);
+            QCOMPARE(views[1]->item(0, 0), selected);
+            QVERIFY(selected->isSelected());
+            QVERIFY(action(window, "openItemAction")->isEnabled());
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                window.resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*addresses[0], window));
+                QVERIFY(UiInspection::fullyVisible(*addresses[1], window));
+                QVERIFY(UiInspection::writeReport(window, QString("root-language-%1-%2-%3")
+                                                              .arg(pending)
+                                                              .arg(language)
+                                                              .arg(size.width())));
+            }
+        }
         QCOMPARE(backend.listCalls, 0);
     }
     void rootCommandClosesArchiveLinks_data() {

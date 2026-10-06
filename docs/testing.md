@@ -12,6 +12,12 @@ An existing same-row mount regression asserts Open availability after guarded
 source restoration. Windows root_command uses the native plugin and desktop lock;
 see the port audit for actual checks and unverified platforms.
 
+The same suite switches EN→RU→EN with both panels already showing drives,
+with and without a Unicode address draft. It checks both addresses, the focused
+window title, the same selected row object and Open availability, eight
+normal/compact reports and no archive list call. This regression failed on the
+previous product because bound addresses retained the old language.
+
 `address_combo` exercises actual popup selection of a parent component and the
 Computer namespace, EN/RU980×620/640×400 geometry, real ZIP hierarchy selection
 with unchanged archive/input bytes, separate panel paths, source Enter and

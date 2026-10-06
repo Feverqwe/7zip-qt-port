@@ -15,6 +15,10 @@ The integrated Qt command/key consumers use the retained source drive transition
 The separate root namespace is reached through Parent; Back from a filesystem
 location restores its actual stored namespace prefix. After source selection
 restoration, same-row Open remains available. Current checks belong to the audit.
+Live EN→RU→EN updates both bound drive addresses and the focused window title.
+Preserve a pending address draft, existing drive rows and selection; verify both
+panels at normal/compact sizes. The header reload uses the source path/icon/title
+stage without adding history or enumerating the drive list again.
 
 ### Source address dropdown (P3-05.12, required remaining scope)
 

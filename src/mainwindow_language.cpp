@@ -7,6 +7,7 @@
 #include "filetable.h"
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
+#include "qtpaneladdresscombo.h"
 #include <QEvent>
 #include <QToolButton>
 
@@ -68,6 +69,11 @@ void MainWindow::reloadLangItems() {
                 table->setSortingEnabled(sorting);
             }
         }
+        auto &panel = app_.Panels[i];
+        if (!app_.QtOperations().blocking() && !sourceArchiveProgress_ &&
+            panel.ShouldProcessNotifications() && panel.GetFolder() && panel.IsFSDrivesFolder())
+            if (auto *address = dynamic_cast<QtPanelAddressCombo *>(panelUi_[i].pathCombo))
+                address->ReloadCurrentPath();
         if (auto *label = panelUi_[i].statusLabels[0]) {
             const CPanelStatus status = app_.Panels[i].Refresh_StatusBar();
             label->setText(ToQString(

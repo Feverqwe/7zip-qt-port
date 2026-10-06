@@ -104,6 +104,14 @@ void QtPanelAddressCombo::SetCurrentIcon(int index) {
 void QtPanelAddressCombo::ShowCurrentPath(const QString &displayPath, bool addToHistory) {
     panel_.LoadFullPathAndShow(*this, ToUString(displayPath), addToHistory);
 }
+void QtPanelAddressCombo::ReloadCurrentPath() {
+    const QString previousPrefix = ToQString(panel_.GetCurrentFolderPrefix());
+    const QString previousText = currentText();
+    panel_.LoadFullPath();
+    ShowCurrentPath(ToQString(panel_.GetCurrentFolderPrefix()), false);
+    if (previousText != previousPrefix)
+        lineEdit()->setText(previousText);
+}
 void QtPanelAddressCombo::GetLogicalDriveStrings(FStringVector &paths) {
 #ifdef _WIN32
     NWindows::NFile::NFind::MyGetLogicalDriveStrings(paths);
