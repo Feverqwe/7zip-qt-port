@@ -270,6 +270,26 @@ Real cold runtime-copy/DLL/version-process phase timing is not yet established;
 these checks do not prove the cause of the earlier Windows5750ms ready signal
 or accept parent P3-03.8's stable cold five-second completion requirement.
 
+Diagnostic-only derived snapshot `20261006T003724Z-20a5b738`, sourceSHA256
+`ff62d5b60a0a48c8721af5680850872bed9efc4c953c736dc41e2b15bcf002ad`,
+adds fixed-label monotonic phase/byte-count logging to four private integration
+copies, preserving native bodies and all deadlines. Their original/derived
+hashes and original files are retained; finally restores all original sources.
+Initial CTest uses -silent and suppresses qInfo phases: external_codecs13Qt
+passes all three rounds; first codec_probe round fails heartbeat636ms against
+unchanged250ms, later two rounds pass. This is derived diagnostic evidence,
+not an unchanged-product failure or full gate acceptance.
+
+Sequential native Session1/Highest verbose direct consumers reuse those saved
+derived binaries, keeping source files restored and preserving the initial
+batch/logs/token. Three external and three probe runs pass13Qt/0skip each.
+First-discovery warm timings: version-process117–151ms, image prepare4ms,
+main native load19–20ms, worker-to-GUI delivery4–9ms, backend ready165–198ms;
+SetLibCodecs takes under1ms. Logging contains no paths or payload; all27 retained
+artifacts have matching guest/local SHA256. These warm measurements do not prove
+which cold phase caused5750/6850ms. A fresh first-visible diagnostic is required;
+parent P3-03.8 remains active, and no speculative cache or deadline change is made.
+
 ## P3-05.5 — native archive property levels and codec owners (accepted property scope, 2026-10-06)
 
 Source https://github.com/ip7z/7zip.git, full revision
