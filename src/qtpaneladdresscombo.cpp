@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Windows/FileName.h"
 #include "qtvolumemounts.h"
+#include <QAction>
 #include <QApplication>
 #include <QKeyEvent>
 #include <QLineEdit>
@@ -39,6 +40,8 @@ QtPanelAddressCombo::QtPanelAddressCombo(CPanel &panel,
                                          QWidget *parent)
     : QComboBox(parent), panel_(panel), navigate_(std::move(navigate)) {
     setEditable(true);
+    currentIcon_ = lineEdit()->addAction(QIcon(), QLineEdit::LeadingPosition);
+    currentIcon_->setObjectName("currentAddressIcon");
     lineEdit()->installEventFilter(this);
     setItemDelegate(new AddressItemDelegate(this));
     connect(this, &QComboBox::activated, this,
@@ -84,6 +87,22 @@ void QtPanelAddressCombo::SetCurSel(int index) {
 }
 int QtPanelAddressCombo::GetIconIndex(const UString &path, DWORD attributes) {
     return g_Ext_to_Icon_Map.GetIconIndex(attributes, path);
+}
+int QtPanelAddressCombo::GetPathIconIndex(const UString &path, DWORD attributes) {
+    return g_Ext_to_Icon_Map.GetPathIconIndex(path, attributes);
+}
+int QtPanelAddressCombo::GetNamespaceIconIndex(const UString &name) {
+    const auto kind =
+        name == LangString(IDS_COMPUTER) ? QStyle::SP_ComputerIcon : QStyle::SP_DriveNetIcon;
+    return g_Ext_to_Icon_Map.GetPlatformIconIndex(QString::number(kind),
+                                                  style()->standardIcon(kind));
+}
+void QtPanelAddressCombo::SetCurrentIcon(int index) {
+    currentIcon_->setIcon(g_Ext_to_Icon_Map.GetIcon(index));
+    currentIcon_->setVisible(index >= 0);
+}
+void QtPanelAddressCombo::ShowCurrentPath(const QString &displayPath, bool addToHistory) {
+    panel_.LoadFullPathAndShow(*this, ToUString(displayPath), addToHistory);
 }
 void QtPanelAddressCombo::GetLogicalDriveStrings(FStringVector &paths) {
 #ifdef _WIN32

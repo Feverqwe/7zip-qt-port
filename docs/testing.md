@@ -9,6 +9,11 @@ consumer also selects its server from the share's source dropdown, then reopens
 only the owned share. Windows uses the native font/plugin and desktop lock.
 See the port audit for completed checks and pending native/platform acceptance.
 
+The same suite checks the closed editor's leading icon against the Qt platform
+provider for disk/ZIP/nested ZIP roots and subfolders, including returning to
+the outer archive or containing filesystem folder. It inspects the icon's public
+QAction and visible child geometry, without accessing panel/cache internals.
+
 Windows `network_folder` checks both direct CNetFolder and original RootFolder
 server fallback with the same private current-SID-only SMB fixture.
 `native_network_navigation` checks actual typed server address, normal/flat EN/RU

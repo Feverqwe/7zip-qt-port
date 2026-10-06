@@ -19,6 +19,9 @@ class IQtPanelAddressCombo {
     virtual int GetCurSel() const = 0;
     virtual void SetCurSel(int index) = 0;
     virtual int GetIconIndex(const UString &path, DWORD attributes) = 0;
+    virtual int GetPathIconIndex(const UString &path, DWORD attributes) = 0;
+    virtual int GetNamespaceIconIndex(const UString &name) = 0;
+    virtual void SetCurrentIcon(int index) = 0;
     virtual void GetLogicalDriveStrings(FStringVector &paths) = 0;
     virtual UString GetText() const = 0;
     virtual void SetText(const UString &text) = 0;
@@ -37,6 +40,10 @@ class QtPanelAddressCombo final : public QComboBox, public IQtPanelAddressCombo 
     int GetCurSel() const override;
     void SetCurSel(int index) override;
     int GetIconIndex(const UString &path, DWORD attributes) override;
+    int GetPathIconIndex(const UString &path, DWORD attributes) override;
+    int GetNamespaceIconIndex(const UString &name) override;
+    void SetCurrentIcon(int index) override;
+    void ShowCurrentPath(const QString &displayPath, bool addToHistory);
     void GetLogicalDriveStrings(FStringVector &paths) override;
     UString GetText() const override;
     void SetText(const UString &text) override;
@@ -47,4 +54,5 @@ class QtPanelAddressCombo final : public QComboBox, public IQtPanelAddressCombo 
     bool eventFilter(QObject *object, QEvent *event) override;
     CPanel &panel_;
     std::function<HRESULT(const QString &, bool)> navigate_;
+    QAction *currentIcon_ = nullptr;
 };

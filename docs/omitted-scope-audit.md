@@ -220,6 +220,18 @@ posted focus were corrected through the original handler and a narrow Qt focus
 delivery guard. Native Windows UNC/device consumers, ADS refusal contract and
 whole/platform/rendered acceptance still require validation; see the port audit.
 
+The separate LoadFullPathAndShow current-edit-image omission is now implemented
+through its original path/root/device/archive-link/extension classification and
+GetRealIconIndex_for_DirPath/Find_FileExtension_DotPos_in_path helpers. Original
+PanelItems::RefreshListCtrl and address-selection callers establish when this
+stage runs; Qt disk/archive/namespace renderers supply the same panel boundary.
+QFileIconProvider/Qt standard icons and a leading editor action replace native
+shell image-list/ComboBoxEx services. Existing displayed-path formatting and
+nested-history exclusion are explicit arguments, while the original native
+prefix remains authoritative for classification. CE edit-image omission is kept;
+Win32 device/super-prefix branches are retained on Windows. Current platform and
+rendered proof remains bounded by the port audit, not this body review.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm

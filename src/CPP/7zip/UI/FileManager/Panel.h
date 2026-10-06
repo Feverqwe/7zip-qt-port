@@ -493,6 +493,8 @@ class CPanel : public QObject {
     void CloseOneLevel();
     void CloseOpenFolders();
     void LoadFullPath();
+    void LoadFullPathAndShow(IQtPanelAddressCombo &header, const UString &displayPath,
+                             bool addToHistory);
     bool OnComboBoxCommand(QtAddressCommand code, IQtPanelAddressCombo &header);
     bool OnNotifyComboBoxEnter(const UString &text, IQtPanelAddressCombo &header);
     bool OnNotifyComboBoxEndEdit(QtAddressEditReason reason, IQtPanelAddressCombo &header,

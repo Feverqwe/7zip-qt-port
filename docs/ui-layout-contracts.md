@@ -19,6 +19,15 @@ and rendered Windows acceptance remains open. Escape restores the bound source
 prefix, including its native separator, and posts list focus. A newer focus
 interaction outside that panel cancels its stale Qt delivery.
 
+The closed editor also shows the current path icon, independently of popup
+selection. Reference: the same LoadFullPathAndShow body and SysIconUtils helpers.
+Disk folders and archive subfolders show a directory icon; an archive-link root
+shows its file icon, with extension fallback for a virtual nested archive. Parent
+navigation restores the corresponding outer archive or filesystem icon. Qt uses
+a leading QLineEdit action for the original ComboBoxEx edit image; the action and
+address/list must remain exposed in all four sizes/languages above. Namespace,
+UNC, Windows device and rendered icon/style acceptance still need native checks.
+
 ### Source caption helpers (P3-05.10, validation active)
 
 Reference: pinned LangUtils colon/remove-colon/window bodies and actual

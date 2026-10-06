@@ -2,6 +2,7 @@
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
+#include "qtpaneladdresscombo.h"
 
 // Source namespace folders own item names, order and binding. This file presents
 // their IFolderFolder items in the same list used by disk and archive views.
@@ -36,10 +37,11 @@ void MainWindow::renderRootFolder() {
     table_->setSortingEnabled(false);
     table_->setRowCount(0);
     static_cast<FileTable *>(table_)->filesystem = false;
-    if (drives || network || streams)
-        path_->setText(QString::fromWCharArray(GetFolderPath(folder)));
-    else
-        path_->clear(); // The source root's current folder prefix is empty.
+    static_cast<QtPanelAddressCombo *>(pathCombo_)
+        ->ShowCurrentPath(drives || network || streams
+                              ? QString::fromWCharArray(GetFolderPath(folder))
+                              : QString(),
+                          false);
     configureColumns();
     for (UInt32 index = 0; index < count; ++index) {
         NWindows::NCOM::CPropVariant name;

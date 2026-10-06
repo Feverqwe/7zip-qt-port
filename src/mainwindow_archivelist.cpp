@@ -10,6 +10,7 @@
 #include "qtfilemanagercommands.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
+#include "qtpaneladdresscombo.h"
 #include <QScopedValueRollback>
 
 void MainWindow::renderArchiveFolder() {
@@ -37,7 +38,8 @@ void MainWindow::renderArchiveFolder() {
     const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';
     table_->setSortingEnabled(false);
     app_.GetFocusedPanel().SetNewFolder(folderOwner);
-    app_.GetFocusedPanel().LoadFullPath();
+    static_cast<QtPanelAddressCombo *>(pathCombo_)
+        ->ShowCurrentPath(archiveDisplayPath(), !isNestedArchive());
     configureColumns();
     appendParentEntry();
     if (archiveFolder->GetNumberOfItems() > 256) {
@@ -48,7 +50,6 @@ void MainWindow::renderArchiveFolder() {
         disableTimerProcessing.reset();
         scanningArchive_ = true;
         setState(State::Viewing);
-        path_->setText(archiveDisplayPath());
         listProjection_->start(
             folderOwner, archiveFolder->GetNumberOfItems(),
             [this, owner = projectedPanel_, archiveFolder, prefix, flat](quint32 index) {
@@ -70,7 +71,6 @@ void MainWindow::renderArchiveFolder() {
     for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
         appendArchiveEntry(*archiveFolder, index, prefix, flat);
     applySortMode(true);
-    path_->setText(archiveDisplayPath());
     statusBar()->showMessage(
         QtLocalText("%1 items", "%1 объектов").arg(archiveFolder->GetNumberOfItems()));
     refreshActions();

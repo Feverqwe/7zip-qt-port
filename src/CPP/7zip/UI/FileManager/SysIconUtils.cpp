@@ -46,6 +46,36 @@ void CExtToIconMap::Clear() {
     _extMap_Compressed.Clear();
     _attribMap.Clear();
     _icons.clear();
+    _pathIcons.clear();
+    _platformIcons.clear();
+}
+
+int CExtToIconMap::GetPathIconIndex(const UString &path, DWORD attrib) {
+    const auto key = qMakePair(QString::fromWCharArray(path), attrib);
+    const auto found = _pathIcons.constFind(key);
+    if (found != _pathIcons.cend())
+        return found.value();
+    if (_pathIcons.size() >= (1u << 16))
+        return GetIconIndex(attrib, path);
+    QFileIconProvider provider;
+    const QFileInfo info(key.first);
+    QIcon icon = info.exists() ? provider.icon(info) : QIcon();
+    if (icon.isNull())
+        return GetIconIndex(attrib, path);
+    const int index = _icons.size();
+    _icons.append(icon);
+    _pathIcons.insert(key, index);
+    return index;
+}
+
+int CExtToIconMap::GetPlatformIconIndex(const QString &key, const QIcon &icon) {
+    const auto found = _platformIcons.constFind(key);
+    if (found != _platformIcons.cend())
+        return found.value();
+    const int index = _icons.size();
+    _icons.append(icon);
+    _platformIcons.insert(key, index);
+    return index;
 }
 
 int CExtToIconMap::QueryIconIndex(DWORD attrib, const QString &fileName) {

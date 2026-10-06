@@ -3,6 +3,8 @@
 #include "external_editor_fixture.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
+#include <QFileIconProvider>
+#include <QToolButton>
 
 class AddressComboTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -54,6 +56,16 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QTRY_COMPARE(table(window)->rowCount(), 1);
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         QVERIFY(combo);
+        auto *currentIcon = address->findChild<QAction *>("currentAddressIcon");
+        QVERIFY2(currentIcon, "The closed address editor must expose its current-path icon.");
+        QVERIFY(currentIcon->isVisible());
+        QVERIFY(!currentIcon->icon().isNull());
+        QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
+                 QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
+        const auto iconButtons = address->findChildren<QToolButton *>();
+        QVERIFY(!iconButtons.isEmpty());
+        for (const auto *button : iconButtons)
+            QVERIFY(UiInspection::fullyVisible(*button, window));
         combo->showPopup();
         QApplication::processEvents();
         QVERIFY2(combo->findText(QStringLiteral("родитель space")) >= 0,
@@ -121,10 +133,18 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
             QTRY_COMPARE(table(window)->item(0, 0)->text(), QStringLiteral("внешняя space"));
         }
         const QString archiveAddress = address->text();
+        auto *currentIcon = address->findChild<QAction *>("currentAddressIcon");
+        QVERIFY(currentIcon);
+        QVERIFY(!currentIcon->icon().isNull());
+        if (!nested)
+            QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
+                     QFileIconProvider().icon(QFileInfo(archive)).pixmap(16, 16).toImage());
         address->setText(archiveAddress + QStringLiteral(" / внешняя space/内側 密碼"));
         QTest::keyClick(address, Qt::Key_Return);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("keep.txt"));
+        QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
+                 QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
         combo->showPopup();
         QApplication::processEvents();
         QVERIFY(combo->findText(QStringLiteral("архив δ.zip")) >= 0);
@@ -137,6 +157,25 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         if (nested)
             QCOMPARE(ExternalEditorFixture::read(outer), originalOuter);
         QCOMPARE(ExternalEditorFixture::read(fixture.filePath(entry)), QByteArray("unchanged"));
+        action(window, "parentFolderAction")->trigger();
+        QTRY_COMPARE(address->text(), archiveAddress);
+        QFileIconProvider provider;
+        QIcon archiveIcon =
+            provider.icon(QFileInfo(nested ? fixture.filePath("missing.zip") : archive));
+        if (archiveIcon.isNull())
+            archiveIcon = provider.icon(QFileIconProvider::File);
+        QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
+                 archiveIcon.pixmap(16, 16).toImage());
+        action(window, "parentFolderAction")->trigger();
+        if (nested) {
+            QTRY_COMPARE(address->text(), outer);
+            QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
+                     QFileIconProvider().icon(QFileInfo(outer)).pixmap(16, 16).toImage());
+        } else {
+            QTRY_COMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
+            QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
+                     QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
+        }
     }
     void eachPanelUsesItsOwnHierarchyAndEscapeRestoresAddress() {
         QTemporaryDir fixture;

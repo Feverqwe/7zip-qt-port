@@ -11,6 +11,7 @@
 #include "ListViewDialog.h"
 #include "Panel.h"
 #include "RootFolder.h"
+#include "SysIconUtils.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "qtlangcontrols.h"
@@ -112,6 +113,137 @@ void CPanel::LoadFullPath() {
     }
     if (_folder)
         _currentFolderPrefix += GetFolderPath(_folder);
+}
+
+static int GetRealIconIndex_for_DirPath(IQtPanelAddressCombo &header, CFSTR path, DWORD attrib) {
+    attrib |= FILE_ATTRIBUTE_DIRECTORY; // optional
+    int index = -1;
+    if ((index = header.GetPathIconIndex(fs2us(path), attrib)) >= 0)
+        if (index >= 0)
+            return index;
+    return g_Ext_to_Icon_Map.GetIconIndex_DIR(attrib);
+}
+
+extern UString RootFolder_GetName_Computer(int &iconIndex);
+extern UString RootFolder_GetName_Network(int &iconIndex);
+extern UString RootFolder_GetName_Documents(int &iconIndex);
+
+static int Find_FileExtension_DotPos_in_path(const wchar_t *path) {
+    int dotPos = -1;
+    unsigned i;
+    for (i = 0;; i++) {
+        const wchar_t c = path[i];
+        if (c == 0)
+            return dotPos;
+        if (c == '.')
+            dotPos = (int)i;
+        else if (IS_PATH_SEPAR(c) || c == ':')
+            dotPos = -1;
+    }
+}
+
+void CPanel::LoadFullPathAndShow(IQtPanelAddressCombo &header, const UString &displayPath,
+                                 bool addToHistory) {
+    using namespace NWindows::NFile;
+    using namespace NFind;
+    LoadFullPath();
+    // Preserve the Qt display separator and existing nested-history policy.
+    if (addToHistory)
+        _appState->FolderHistory.AddString(displayPath);
+    header.SetText(displayPath);
+
+#ifndef UNDER_CE
+
+    int iconIndex_Current = -1;
+
+    UString path = _currentFolderPrefix;
+    // path = "\\\\.\\PhysicalDrive1\\"; // for debug
+    // path = "\\\\.\\y:\\"; // for debug
+    if (!path.IsEmpty()) {
+        const unsigned rootPrefixSize = NName::GetRootPrefixSize(path);
+        if (rootPrefixSize == 0 && path[0] != '\\') {
+            int iconIndex = -1;
+            UString name_Computer = RootFolder_GetName_Computer(iconIndex);
+            iconIndex = header.GetNamespaceIconIndex(name_Computer);
+            name_Computer.Add_PathSepar();
+            if (path == name_Computer || path.IsEqualTo("\\\\?\\"))
+                iconIndex_Current = iconIndex;
+            else {
+                UString name = RootFolder_GetName_Network(iconIndex);
+                iconIndex = header.GetNamespaceIconIndex(name);
+                name.Add_PathSepar();
+                if (path == name)
+                    iconIndex_Current = iconIndex;
+            }
+        }
+
+        if (iconIndex_Current < 0) {
+            if (rootPrefixSize == 0 || rootPrefixSize == path.Len()) {
+                DWORD attrib = FILE_ATTRIBUTE_DIRECTORY;
+                CFileInfo info;
+                if (info.Find(us2fs(path)))
+                    attrib = info.GetWinAttrib();
+#ifdef _WIN32
+                NName::If_IsSuperPath_RemoveSuperPrefix(path);
+#endif
+                iconIndex_Current = GetRealIconIndex_for_DirPath(header, us2fs(path), attrib);
+            }
+#ifdef _WIN32
+            else if (rootPrefixSize == NName::kDevicePathPrefixSize &&
+                     NName::IsDevicePath(us2fs(path.Left(path.Len() - 1)))) {
+                if (path.IsPrefixedBy_Ascii_NoCase("\\\\.\\"))
+                    path.DeleteFrontal(4);
+                if (path.Len() > 3) // is not "c:\\"
+                {
+                    // PhysicalDrive
+                    if (IS_PATH_SEPAR(path.Back()))
+                        path.DeleteBack();
+                }
+                iconIndex_Current = header.GetPathIconIndex(path, FILE_ATTRIBUTE_ARCHIVE);
+            }
+#endif
+            else {
+                if (IS_PATH_SEPAR(path.Back()))
+                    path.DeleteBack();
+                bool need_Fs_Check = true;
+                bool is_File = false;
+                if (!_parentFolders.IsEmpty()) {
+                    const CFolderLink &link = _parentFolders.Back();
+                    if (link.VirtualPath == path) {
+                        is_File = true;
+                        if (_parentFolders.Size() != 1)
+                            need_Fs_Check = false;
+                    } else
+                        need_Fs_Check = false;
+                }
+                if (need_Fs_Check) {
+                    CFileInfo info;
+                    const bool finded = info.Find(us2fs(path));
+                    DWORD attrib = FILE_ATTRIBUTE_DIRECTORY;
+                    if (finded)
+                        attrib = info.GetWinAttrib();
+                    iconIndex_Current = header.GetPathIconIndex(path, attrib);
+                }
+                if (iconIndex_Current <= 0 && is_File) {
+                    int dotPos = Find_FileExtension_DotPos_in_path(path);
+                    if (dotPos < 0)
+                        dotPos = (int)path.Len();
+                    iconIndex_Current =
+                        g_Ext_to_Icon_Map.GetIconIndex(FILE_ATTRIBUTE_ARCHIVE, path.Ptr(dotPos));
+                }
+            }
+        }
+    }
+
+    if (iconIndex_Current < 0)
+        iconIndex_Current = g_Ext_to_Icon_Map.GetIconIndex_DIR();
+    // if (iconIndex_Current < 0) iconIndex_Current = 0;
+    // iconIndex_Current = -1; // for debug
+    header.SetCurrentIcon(iconIndex_Current);
+
+#endif
+
+    RefreshTitle();
 }
 
 void CPanel::CloseOneLevel() {

@@ -11,6 +11,7 @@
 #include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
+#include "qtpaneladdresscombo.h"
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 #include <QScrollBar>
@@ -71,6 +72,8 @@ void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
         renderBoundFolder();
         return;
     }
+    if (result == S_OK)
+        static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(directory_, true);
     if (flatDisk_) {
         scanningDisk_ = true;
         setState(State::Filesystem);
@@ -78,7 +81,6 @@ void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
         filesystemScanner_->start(directory_);
     } else {
         if (result == S_OK) {
-            panel.LoadFullPath();
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
             bool defer = false;
             {

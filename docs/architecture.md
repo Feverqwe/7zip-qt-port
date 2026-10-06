@@ -13,6 +13,16 @@ the original edit handlers once. FolderHistory remains the source history owner
 and its dialog; command availability reads that history, rather than dropdown
 row count. No widget builds an archive operation or its command-line syntax.
 
+LoadFullPathAndShow owns current-path icon classification, including the source
+archive-link/virtual-file boundary and extension fallback. Qt supplies path and
+namespace QIcons through the existing CExtToIconMap index space; native shell
+indices are never mixed with those Qt indices. A leading QLineEdit action replaces
+ComboBoxEx's edit-item image. Disk, archive and namespace renderers call this
+source stage for their owning panel. Its explicit display-path/history arguments
+preserve the existing Qt archive separator and exclusion of nested virtual paths
+from persistent history; icon classification uses the native source prefix.
+The Qt platform path cache shares the source extension-cache capacity bound.
+
 Filesystem item comments belong to the retained CFSFolder provider. SaveComments
 serializes its original CPairsStorage and writes descript.ion through upstream
 file I/O; SetProperty retains source validation, trim/delete and cache transitions.
@@ -979,7 +989,7 @@ Confirmed history/bookmark edits still persist their individual collection
 immediately. Full `CApp`/`CPanel` lifecycle ownership remains migration work.
 `CFolderHistory` and `CFastFolders` own persistent navigation data.
 `CPanel::FoldersHistory`, `SetBookmark` and `OpenBookmark` connect that data to
-navigation. The address combo is a projection of history. `ViewSettings`
+navigation. The address combo projects the source current-path hierarchy. `ViewSettings`
 converts string vectors at the QSettings boundary; `MainWindow` supplies the
 complete displayed path to the navigation adapter.
 

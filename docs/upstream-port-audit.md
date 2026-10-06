@@ -76,9 +76,52 @@ processes; both scoped cleanup questions remain unanswered and no deletion or
 resize is performed. Windows/Linux current build/runtime, native
 UNC/device selection, ADS refusal-code regression and rendered/final acceptance
 remain open. No passing whole-module or platform gate is inferred from these
-focused consumers. LoadFullPathAndShow's complete current-icon presentation
-disposition must also be reconciled; dropdown/cache icons alone do not prove
-that separate ComboBoxEx edit-image workflow.
+focused consumers. The separate current-edit-image omission identified by this
+review is addressed in the subsequent iteration below.
+
+### Current address edit image — implementation/validation active
+
+At the same full revision/repository above, reviewed original
+PanelFolderChange.cpp::LoadFullPathAndShow, GetRealIconIndex_for_DirPath and
+Find_FileExtension_DotPos_in_path; PanelItems::RefreshListCtrl, Panel.cpp's CE
+message and OnComboBoxCommand selection callers; RootFolder name helpers,
+SysIconUtils shell/cache services, FileFind/FileName and CFolderLink dependencies.
+The three original bodies now reside in the authoritative PanelFolderChange
+module. Root/device/super-prefix, archive-link/virtual-file, filesystem-check and
+extension/directory fallback order remains. Portable GetWinAttrib and separator
+checks replace the corresponding platform services; Win32-only device and
+super-prefix calls stay guarded, and the original CE edit-image exclusion stays.
+Source notices and language remain; no upstream edit or second path algorithm.
+
+Typed header services replace shell image lookup and ComboBoxEx's edit item.
+QFileIconProvider supplies path icons, with the existing source attribute/
+extension cache as fallback; Qt standard namespace icons share that Qt index
+space. A bounded platform path cache prevents repeated requests from allocating
+an icon per refresh, and Clear resets the added caches. Native system-image-list
+indices remain separate. A leading QLineEdit action presents the selected icon
+without tying it to popup selection. Disk, archive (including asynchronous list
+projection), and namespace renderers call this stage for their own panel. Explicit
+display-path/history arguments preserve existing Qt archive formatting and
+nested-history exclusion; icon classification always reads the source native
+prefix. These are narrow existing presentation/persistence adaptations, not a
+change to source navigation or archive operations.
+
+The actual previous product fails six public icon rows (3 Qt pass/6 fail/0 skip);
+its RED log is frozen separately. Current regression checks folder, real ZIP root,
+virtual nested ZIP root, archive subfolders, and return to outer archive/disk,
+while preserving input bytes. EN/RU normal/compact rows inspect leading-action
+visibility and geometry. Focused address consumer passes in0.72s (9 Qt cases).
+Mandatory unsandboxed format/all-target/full gate passes250/250 in103.85s.
+AddressCombo9, PanelKey55 and MainShell6 Qt cases pass with0 fail/0 skip. All ten
+frozen code/test inputs remain SHA-identical after this gate. Four final EN/RU
+widget JSON reports are frozen and independently reviewed: main-shell order,
+combo size hints, editor and leading icon fully exposed. The Qt internal icon
+button follows the closed editor geometry (22×18, fitting the16×16 icon), rather
+than the standalone toolbutton size hint. Baseline verification passes408 exact/
+196 adapted/3 local paths at the recorded full revision. Windows/Linux current
+native paths, device/UNC icons and rendered style remain unverified; both previous
+scoped capacity-cleanup questions remain unanswered. Source ADS refusal and stale
+selection contracts, native/runtime/cold-stable and final acceptance remain open.
 
 ## P3-05.11 — source UNC root binding and Qt consumer (validation active, 2026-10-06)
 

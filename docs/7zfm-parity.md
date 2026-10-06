@@ -15,8 +15,22 @@ Windows сохраняет исходные Documents/Computer/drives/Network.
 macOS public consumers проверяют диск, ZIP/nested ZIP, обе панели, выбор,
 Escape и сохранность байтов; четыре EN/RU normal/compact JSON проверены.
 Полный gate250/250 прошёл. Native Windows UNC/device/refusal, Linux runtime,
-отдельный current-edit-image workflow, rendered Windows reference и итоговая
+rendered Windows reference и итоговая
 приёмка остаются открытыми; geometry/source resources не доказывают pixels.
+
+В следующей итерации перенесён отдельный LoadFullPathAndShow: значок закрытого
+адреса определяется исходным native prefix и границами архивов. Qt показывает
+его через leading action поля ввода вместо ComboBoxEx edit item; filesystem,
+archive и namespace renderers вызывают исходный этап своей панели. QFileIconProvider
+и Qt namespace icons заменяют shell image list, source extension/directory
+fallback сохранён. Прежнее отображение archive separator и исключение nested
+virtual paths из истории сохранены явными аргументами. Mac regression проверяет
+папки, ZIP/nested ZIP, возврат к внешнему архиву/диску и видимость значка;
+полный Mac gate этой итерации прошёл250/250 за103,85с. Четыре итоговых EN/RU
+JSON проверены: порядок, размеры combo, видимость редактора и leading icon.
+Внутренняя кнопка значка22×18 следует геометрии закрытого редактора и вмещает
+значок16×16; её standalone size hint не задаёт размер поля. Native Windows/Linux,
+device/UNC, rendered icon acceptance и итоговая приёмка остаются открытыми.
 
 ## P3-05.5 — native archive diagnostics (принят scope свойств, 2026-10-06)
 
