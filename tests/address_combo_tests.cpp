@@ -177,6 +177,84 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
                      QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
         }
     }
+    void staleHierarchySelectionUsesDeepestExistingFolder_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("keyboard");
+        for (const char *language : {"-", "ru"})
+            for (bool keyboard : {false, true})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(language).arg(keyboard)))
+                    << QString::fromLatin1(language) << keyboard;
+    }
+    void staleHierarchySelectionUsesDeepestExistingFolder() {
+        QFETCH(QString, language);
+        QFETCH(bool, keyboard);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString parent = fixture.filePath(QStringLiteral("исчезающий parent 密碼"));
+        const QString child = parent + QStringLiteral("/внутри space");
+        QVERIFY(QDir().mkpath(child));
+        const QString control = fixture.filePath(QStringLiteral("контроль δ.bin"));
+        const QByteArray bytes("unchanged\0binary", 16);
+        QVERIFY(ExternalEditorFixture::write(control, bytes));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *refresh = action(window, "autoRefreshAction");
+        QVERIFY(refresh);
+        if (refresh->isChecked())
+            refresh->trigger();
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        auto *combo = window.findChild<QComboBox *>("pathCombo");
+        QVERIFY(address && combo);
+        address->setFocus();
+        QTRY_VERIFY(address->hasFocus());
+        action(window, "viewMode3Action")->trigger();
+        address->setText(child);
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(table(window)->hasFocus());
+        address->setFocus();
+        QTRY_VERIFY(address->hasFocus());
+        combo->showPopup();
+        QApplication::processEvents();
+        const int index = combo->findText(QFileInfo(parent).fileName());
+        QVERIFY(index >= 0);
+        // Change only the owned empty directories after the source popup snapshot.
+        QVERIFY(QDir().rmdir(child));
+        QVERIFY(QDir().rmdir(parent));
+        QVERIFY(!QFileInfo::exists(parent));
+        if (keyboard) {
+            combo->view()->setCurrentIndex(combo->view()->model()->index(index, 0));
+            QTest::keyClick(combo->view(), Qt::Key_Return);
+        } else
+            selectPopupRow(*combo, index);
+        // Offscreen popup closure drops window activation. Re-activate only the
+        // test window; do not supply the list focus that the source handler owns.
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QTRY_COMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
+        QTRY_VERIFY2(
+            table(window)->hasFocus(),
+            qPrintable(QString("focus=%1 active=%2 tableEnabled=%3")
+                           .arg(QApplication::focusWidget()
+                                    ? QApplication::focusWidget()->objectName()
+                                    : QStringLiteral("none"))
+                           .arg(QApplication::activeWindow()
+                                    ? QApplication::activeWindow()->metaObject()->className()
+                                    : "none")
+                           .arg(table(window)->isEnabled())));
+        QCOMPARE(table(window)->rowCount(), 1);
+        QCOMPARE(table(window)->item(0, 0)->text(), QFileInfo(control).fileName());
+        QVERIFY(action(window, "createFolderAction")->isEnabled());
+        QCOMPARE(ExternalEditorFixture::read(control), bytes);
+        QCOMPARE(backend.listCalls, 0);
+        combo->showPopup();
+        QApplication::processEvents();
+        QCOMPARE(combo->findText(QFileInfo(parent).fileName()), -1);
+        combo->hidePopup();
+    }
     void eachPanelUsesItsOwnHierarchyAndEscapeRestoresAddress() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

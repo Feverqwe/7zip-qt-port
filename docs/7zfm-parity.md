@@ -32,6 +32,21 @@ JSON проверены: порядок, размеры combo, видимост�
 значок16×16; её standalone size hint не задаёт размер поля. Native Windows/Linux,
 device/UNC, rendered icon acceptance и итоговая приёмка остаются открытыми.
 
+Следующая регрессия проверяет stale-popup: после открытия списка удаляется
+только собственная пустая иерархия, выбор мышью/Enter в EN/RU приводит к ближайшей
+существующей папке — исходный успешный fallback, а не ошибка. Список, команды,
+контрольные байты и повторно построенный popup согласованы. При временно пустом
+application focus Qt использует сохранённый window focus widget: исходный запрос
+возвращает фокус списка, поздний выбор другой панели не перехватывается.
+Offscreen fixture повторно активирует только окно; production его не активирует.
+Mac full250/250PASS104,82с, address13Qt/0skip и четыре итоговых JSON проверены.
+Native/platform/refusal acceptance остаётся открытой.
+
+Сверка callers также выявила другой обязательный пропуск P3-05.13: исходная
+Root-команда и slash/backslash открывают drive view, тогда как текущий Qt service
+открывает отдельный root namespace. Исходная CFSDrives/provider уже есть;
+перенос OpenDrivesFolder и интеграция callers ещё обязательны, см. port audit.
+
 ## P3-05.5 — native archive diagnostics (принят scope свойств, 2026-10-06)
 
 Исходные Agent GetArcProp/GetTypeOfArc и Properties теперь читают retained native

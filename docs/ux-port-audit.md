@@ -29,6 +29,11 @@
 | Properties/Comment/Link/Split/Combine/Benchmark | Соответствующие FileManager и GUI .rc/.cpp | Проверить параметры вызова, набор контролов, условные состояния, action semantics и Help. | Открыто |
 | Help/About и OS integration | FileManager/AboutDialog.rc/.cpp, HelpUtils.cpp, SystemPage.cpp, Explorer | Проверить самостоятельные экраны/команды и необходимые различия native платформ; не подменять исходный workflow новой формой. | Открыто |
 
+Конкретный пропуск Root/drive-view command зафиксирован в
+[P3-05.13 source audit](upstream-port-audit.md#p3-0513--source-root-command-target-required-gap-2026-10-06)
+и text contract: проверка непустого списка и selection marks не доказывает
+исходную цель команды. Исправление и native/rendered приёмка обязательны.
+
 Устаревшая `existingTarget` constructor-only ветвь Add удалена: поля path/format/
 browse/volumes/encryption больше не блокируются ради отдельного update workflow.
 All-target build и12 affected suites PASS9.66s на macOS. Также удалены

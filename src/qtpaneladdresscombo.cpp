@@ -123,9 +123,12 @@ HRESULT QtPanelAddressCombo::BindToPathAndRefresh(const UString &path, bool sour
 }
 void QtPanelAddressCombo::SetFocusToList() {
     QTimer::singleShot(0, this, [this] {
-        // Qt can deliver a later synchronous panel focus before this posted
-        // request. Preserve that newer interaction instead of retargeting it.
+        // Popup closure can temporarily clear application focus. The window
+        // retains its intended focus widget, including a newer panel/control
+        // interaction. Setting list focus does not activate an inactive window.
         QWidget *focus = QApplication::focusWidget();
+        if (!focus)
+            focus = window()->focusWidget();
         if (focus && parentWidget()->isAncestorOf(focus))
             panel_.SetFocusToList();
     });

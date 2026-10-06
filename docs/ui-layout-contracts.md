@@ -1,5 +1,17 @@
 # Text specifications and geometry checks
 
+### Source root command target (P3-05.13, required gap)
+
+Reference: pinned resource.rc IDM_OPEN_ROOT_FOLDER, MyLoadMenu, App.h inline
+OpenRootFolder, PanelFolderChange::OpenDrivesFolder and Panel.cpp list WM_CHAR.
+The command/backslash/slash opens the drive list: Windows Computer prefix and
+original drives; POSIX retains the documented CFSDrives mounted-volume service.
+It closes archive links and uses the focused panel, leaving the peer intact.
+Do not substitute the separate root namespace's Computer/Documents/Network rows.
+Verify EN/RU normal/compact address/list/status geometry, command and both key
+routes, source provider choice, parent/back restoration, selection and input bytes.
+Native device/UNC and rendered Windows acceptance remain separate requirements.
+
 ### Source address dropdown (P3-05.12, required remaining scope)
 
 Reference: pinned PanelFolderChange.cpp::LoadFullPathAndShow,
@@ -18,6 +30,8 @@ selection/EN-RU geometry coverage is recorded in the port audit; native/platform
 and rendered Windows acceptance remains open. Escape restores the bound source
 prefix, including its native separator, and posts list focus. A newer focus
 interaction outside that panel cancels its stale Qt delivery.
+When popup closure temporarily clears application focus, the adapter uses the
+window's retained focus widget to preserve that guard and the source list request.
 
 The closed editor also shows the current path icon, independently of popup
 selection. Reference: the same LoadFullPathAndShow body and SysIconUtils helpers.

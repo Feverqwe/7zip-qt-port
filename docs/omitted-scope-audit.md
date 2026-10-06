@@ -232,6 +232,15 @@ prefix remains authoritative for classification. CE edit-image omission is kept;
 Win32 device/super-prefix branches are retained on Windows. Current platform and
 rendered proof remains bounded by the port audit, not this body review.
 
+Stale hierarchy selection now has EN/RU mouse/Return public coverage for original
+deepest-existing-folder fallback and posted list focus. A retained window focus
+widget repairs the Qt popup activation boundary without overriding newer peer
+intent; see the port audit for actual RED, failed broad-null prototype and gates.
+This does not close all PanelFolderChange bodies: active OpenDrivesFolder is still
+missing and its App.h/Panel.cpp callers currently route to the distinct root
+namespace. That concrete source/UX gap is mandatory P3-05.13; the similar commented
+PanelKey branch must not be mistaken for absence of the active character route.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm

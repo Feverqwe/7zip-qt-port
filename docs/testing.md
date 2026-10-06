@@ -14,6 +14,14 @@ provider for disk/ZIP/nested ZIP roots and subfolders, including returning to
 the outer archive or containing filesystem folder. It inspects the icon's public
 QAction and visible child geometry, without accessing panel/cache internals.
 
+EN/RU mouse/Return stale-popup rows delete only their owned empty current
+hierarchy after opening the popup, then select its stored parent path. They assert
+original S_OK deepest-existing-folder fallback, list focus, capability state,
+control bytes, no engine calls and a rebuilt popup without the deleted component.
+Offscreen tests reactivate their own window after popup closure, supplying no
+list focus. Existing panel_key/main_shell/codec_commands_ui consumers catch a
+delayed request overriding a newer peer-panel intent while Qt focus is inactive.
+
 Windows `network_folder` checks both direct CNetFolder and original RootFolder
 server fallback with the same private current-SID-only SMB fixture.
 `native_network_navigation` checks actual typed server address, normal/flat EN/RU

@@ -1,5 +1,29 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.13 — source root-command target (required gap, 2026-10-06)
+
+Source https://github.com/ip7z/7zip.git at full revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. resource.rc's
+IDM_OPEN_ROOT_FOLDER and MyLoadMenu dispatcher call CApp::OpenRootFolder; its
+App.h inline body calls GetFocusedPanel().OpenDrivesFolder, not OpenRootFolder.
+Panel.cpp::CMyListView::OnMessage routes slash/backslash characters to the same
+drive view (the similar PanelKey switch branch is commented). The active
+PanelFolderChange::OpenDrivesFolder closes open folders, constructs/sets CFSDrives,
+initializes and refreshes it; CE instead selects the filesystem root service.
+Root namespace navigation remains a distinct original OpenRootFolder body.
+
+Current QtFileManagerCommands::OpenRootFolder delegates MainWindow::goRoot,
+which calls CPanel::OpenRootFolder. Thus the actual command presents CRootFolder
+entries instead of the source drive view; the authoritative OpenDrivesFolder body
+is missing. PanelKey also binds backslash but omits the active slash route.
+Existing alternativeRootUsesSourceMarks only checks nonempty rows and marks,
+so its pass does not prove the command's destination. Current CFSDrives has the
+source Windows drive/device provider and explicit POSIX mounted-volume service;
+there is no need for a second enumerator. Source implementation, command/key
+consumers, namespace/back behavior and native/runtime/geometry checks remain
+mandatory under the distinct checklist ID. This review copies no functional code
+and does not close P3-05 or retract historical bounded navigation evidence.
+
 ## P3-05.12 — RootFolder/address consumer reconciliation (implementation validation active, 2026-10-06)
 
 Compared complete RootFolder.cpp/.h and active PanelFolderChange address
@@ -122,6 +146,34 @@ than the standalone toolbutton size hint. Baseline verification passes408 exact/
 native paths, device/UNC icons and rendered style remain unverified; both previous
 scoped capacity-cleanup questions remain unanswered. Source ADS refusal and stale
 selection contracts, native/runtime/cold-stable and final acceptance remain open.
+
+### Stale hierarchy selection and posted focus — validation active
+
+Reviewed complete BindToPath filesystem-prefix trimming, OnComboBoxCommand's
+stored-path selection and OnNotifyComboBoxEnter return/focus branches at the same
+revision. An absent path binds the deepest existing folder with S_OK; this is
+successful fallback, not a fabricated error result. New EN/RU mouse/Return rows
+open the real popup, remove only owned empty parent/child directories, then select
+the stale parent. They verify the fallback prefix/list, command availability,
+control bytes, no archive engine calls and a rebuilt popup without the old row.
+
+The initial focus check exposed an offscreen activation boundary. A narrowed
+actual-product RED reactivates only the test window and still finds pathCombo
+focused (2 Qt pass/1 fail/0 skip); it never supplies list focus. The queued Qt
+adapter previously discarded the source focus request while application focus
+was temporarily null. Unconditionally allowing null fixes this row but fails
+three existing peer-panel consumers; those failed logs remain separate. The
+final adapter consults window()->focusWidget() when application focus is null.
+That retained widget also records newer panel/control intent while inactive,
+preserving the cancellation guard without activating a production window.
+Source binding/path/command algorithms are unchanged. Five affected suites pass
+in7.95s. Mandatory unsandboxed format/all-target/full gate passes250/250 in104.82s:
+AddressCombo13, PanelKey55, MainShell6 and CodecCommandsUi24 Qt cases pass with0
+fail/0 skip. Both frozen code/test inputs remain SHA-identical; four final EN/RU
+widget reports pass an independent order/exposure review. Windows/Linux current
+runtime and native refusal/device/UNC/rendered acceptance remain open; this Mac
+fix does not establish platform acceptance. The separate root-command caller gap
+discovered during this review is recorded under P3-05.13 above.
 
 ## P3-05.11 — source UNC root binding and Qt consumer (validation active, 2026-10-06)
 
