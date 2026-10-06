@@ -2,6 +2,15 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Column-menu mutations belong to PanelItems::ShowColumnsContextMenu, with the
+source AddColumn/DeleteColumn vector bodies. Qt supplies the selected catalog
+index and popup transport, then projects visibility and appends newly shown
+sections. Hidden Qt logical sections remain allocated; saveColumns counts only
+visible sections when publishing source order. Hiding the sorted column changes
+the source sort metadata and header indicator without sorting rows until Refresh.
+Header popup/move/resize callbacks project their owning pane temporarily, and
+popup exit restores the previous widget focus.
+
 Copy/Move destination defaults belong to CApp::OnCopy: it reads the destination
 panel's source GetFsPath and applies the retained filesystem-path reducer only
 for one panel. QtAppPresentation supplies execution/presentation transport, with

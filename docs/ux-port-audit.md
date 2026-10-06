@@ -104,8 +104,11 @@ native marker rendering и full acceptance остаются открытыми.
 теперь восстановлен через исходный getter/policy и Qt model/delegate; прежний
 archive-level flag получает потребителя. Table/icon/selection/guard/reload/rebind
 и current red-pixel checks пройдены на macOS. Мутации header column menu
-остаются самостоятельной Qt-политикой. Их перенос, table/icon/both-pane/reload
-проверки и rendered Windows reference обязательны для приёмки. Сверка тел
+теперь принадлежат исходному ShowColumnsContextMenu: показ добавляет колонку
+в конец, скрытие сортируемой колонки меняет metadata без немедленной сортировки.
+EN/RU обе панели, active/inactive owner, Cancel, move/resize/Refresh и focus
+проверены; Qt сохраняет скрытые logical sections и пишет компактный visible order.
+Текущие native checks и rendered Windows reference обязательны. Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.

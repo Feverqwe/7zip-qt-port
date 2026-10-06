@@ -621,6 +621,10 @@ class CPanel : public QObject {
     int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,
                            bool isRawProp = false) const;
     HRESULT InitColumns();
+    void AddColumn(const CPropColumn &prop);
+    void DeleteColumn(unsigned index);
+    // Qt's popup supplies the selected source catalog index.
+    void ShowColumnsContextMenu(unsigned index);
     // Source load stage; workers carry their original result before properties.
     HRESULT LoadListItems(bool itemsLoaded = false, HRESULT loadedResult = S_OK);
     HRESULT GetItemIcon(unsigned index, QIcon &icon);

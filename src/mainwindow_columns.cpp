@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
+#include <QPointer>
 
 void MainWindow::configureColumns(bool initialized) {
     auto &panel = app_.GetFocusedPanel();
@@ -90,7 +91,10 @@ void MainWindow::saveColumns() {
             continue;
         CPropColumn prop = columns[i];
         prop.IsVisible = true;
-        prop.Order = table_->horizontalHeader()->visualIndex(column);
+        prop.Order = 0;
+        for (int visual = 0; visual < table_->horizontalHeader()->visualIndex(column); ++visual)
+            if (!table_->isColumnHidden(table_->horizontalHeader()->logicalIndex(visual)))
+                ++prop.Order;
         prop.Width = UInt32(table_->horizontalHeader()->sectionSize(column));
         visible.Add(prop);
     }
@@ -109,19 +113,32 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
             continue;
         QAction *option = menu.addAction(ToQString(prop.Name));
         option->setCheckable(true);
-        option->setChecked(!table_->isColumnHidden(column));
-        option->setEnabled(prop.ID != kpidName);
-        connect(option, &QAction::toggled, this, [this, column](bool visible) {
-            table_->setColumnHidden(column, !visible);
-            if (!visible && sortColumn_ == column) {
-                sortColumn_ = 0;
-                sortOrder_ = Qt::AscendingOrder;
-                applySortMode();
+        option->setChecked(prop.IsVisible);
+        option->setEnabled(i != 0);
+        connect(option, &QAction::toggled, this, [this, column, index = i](bool) {
+            auto &source = app_.GetFocusedPanel();
+            source.ShowColumnsContextMenu(index);
+            const bool visible = source.GetColumns()[index].IsVisible;
+            {
+                const QSignalBlocker blocker(table_->horizontalHeader());
+                table_->setColumnHidden(column, !visible);
+                if (visible)
+                    table_->horizontalHeader()->moveSection(
+                        table_->horizontalHeader()->visualIndex(column), table_->columnCount() - 1);
+            }
+            sortColumn_ = static_cast<FileTable *>(table_)->columnForProperty(source._sortID);
+            sortOrder_ = source._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
+            {
+                const QSignalBlocker blocker(table_->horizontalHeader());
+                table_->horizontalHeader()->setSortIndicator(sortColumn_, sortOrder_);
             }
             saveColumns();
         });
     }
+    const QPointer<QWidget> focused = QApplication::focusWidget();
     menu.exec(table_->horizontalHeader()->mapToGlobal(pos));
+    if (focused)
+        focused->setFocus(Qt::PopupFocusReason);
 }
 
 QString MainWindow::sourceColumnText(UInt32 itemIndex, int column) {

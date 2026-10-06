@@ -1,5 +1,13 @@
 # Regression strategy
 
+`panel_column_menu` covers both panes, EN/RU and active/inactive header owners:
+source catalog order/checks/first-entry protection, Cancel, hide/show append after
+a move, width and order after Refresh, sorted-column fallback without immediate
+row sorting, focus/selection/provider/peer preservation and unchanged Unicode
+control bytes. Sixteen normal/compact widget reports cover the resulting views.
+`panel_columns` supplies the existing settings/reopen consumer checks. These
+macOS checks do not establish native Windows/Linux or rendered Windows parity.
+
 `panel_deleted_draw` covers the source deleted-item foreground through a focused
 IFolderFolder/IGetFolderArcProps/IFolderArcProps fixture. Sixteen both-pane EN/RU
 table/icon and standard/alternative scenarios check all-cell/source-index color,

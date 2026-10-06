@@ -1610,6 +1610,48 @@ and270/270 CTest in144.46s on macOS arm64 with official Qt6.12.0; all eight fina
 input hashes remain unchanged. No native Windows/Linux or rendered Windows
 acceptance is claimed.
 
+### Source column-menu mutation consumer, 2026-10-06
+
+Restored `CPP/7zip/UI/FileManager/PanelItems.cpp::ShowColumnsContextMenu`,
+AddColumn/DeleteColumn vector bodies and Panel.h declarations from upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17, https://github.com/ip7z/7zip.git.
+Reviewed original bodies, OnRightClick/header caller, CPropColumn/CPropColumns,
+InitColumns/SaveListViewInfo/ViewSettings, sort state and Qt header consumers.
+The runtime CMenu has no separate dialog RC. Existing paths, C++ language,
+notices and pinned module baseline remain; no new dependency is copied.
+
+Qt supplies the selected catalog index instead of native cursor/Track command
+transport. Original toggle/append/order/sorted-hide fallback control flow remains
+in PanelItems. The adapter rejects disabled first/out-of-range indices; native
+popup cannot return these valid user choices. Physical Win32 insert/delete is
+replaced by Qt hide/show/move, retaining hidden logical sections. Newly shown
+columns append; persistence counts visible sections only. Hiding the sorted
+column updates source metadata and a blocked header indicator without sorting
+rows immediately, matching the original body. Header popup/move/resize project
+their owning pane, and popup exit restores prior widget focus.
+
+Actual previous-product RED8 catches old-position reinsertion and inactive-pane
+mutation; six snapshots/hashes/log are frozen in build/review/column-menu-red.
+Expanded RED8 catches immediate sorting after sorted-column hide; two input
+snapshots/hashes/log are in column-menu-sort-red. Cancel focus regression also
+has RED8/two inputs in column-menu-focus-red. The offscreen test explicitly
+reactivates the window after popup exit, while checking retained widget focus.
+Eight EN/RU both-pane active/inactive cases cover catalog order/checks/first-item
+protection, Cancel, move/resize/hide/show/Refresh, sort metadata/row order,
+provider/selection/peer/focus and unchanged Unicode control bytes. Existing
+panel_columns covers settings/reopen. Sixteen current980×620/640×400 JSON reports
+expose both views/addresses/header/menu/toolbar/status in the required order;
+this is structural evidence, not rendered Windows parity.
+
+Final affected four-target build and focused4/4PASS2.18s have no failed/skipped
+Qt cases. Baseline verification passes408 exact/196 adapted/3 local paths.
+Six input hashes, focused/full logs and sixteen reports are retained in
+build/review/column-menu-final. Mandatory unsandboxed check.sh passes formatting,
+all-target build and271/271 CTest in142.07s on macOS27.0.1 arm64 with official
+Qt6.12.0; all six final input hashes remain unchanged. Current native Windows/Linux, raw-property
+duplicate/direct InitColumns consumers, whole-module/109-module/cold-stable and
+P3-06 acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

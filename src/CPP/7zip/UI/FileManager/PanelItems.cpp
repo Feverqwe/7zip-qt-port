@@ -262,6 +262,31 @@ void CPanel::SaveListViewInfo(const CPropColumns &visibleColumns) {
     }
 }
 
+void CPanel::DeleteColumn(unsigned index) { _visibleColumns.Delete(index); }
+
+void CPanel::AddColumn(const CPropColumn &prop) { _visibleColumns.Add(prop); }
+
+void CPanel::ShowColumnsContextMenu(unsigned index) {
+    // Qt cannot select the disabled first entry or an out-of-range command.
+    if (index == 0 || index >= _columns.Size())
+        return;
+    CPropColumn &prop = _columns[index];
+    prop.IsVisible = !prop.IsVisible;
+    if (prop.IsVisible) {
+        prop.Order = (int)_visibleColumns.Size();
+        AddColumn(prop);
+    } else {
+        const int visibleIndex = _visibleColumns.FindItem_for_PropID(prop.ID);
+        if (visibleIndex >= 0) {
+            if (_sortID == prop.ID) {
+                _sortID = kpidName;
+                _ascending = true;
+            }
+            DeleteColumn((unsigned)visibleIndex);
+        }
+    }
+}
+
 unsigned CPanel::GetRealItemIndex(int indexInListView) const {
     quintptr param;
     if (!_selectionList.GetItemParam((unsigned)indexInListView, param))

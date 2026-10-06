@@ -131,12 +131,15 @@ void MainWindow::createFileTable(QWidget *central) {
     table_->setWordWrap(false);
     table_->setTextElideMode(Qt::ElideMiddle);
     table_->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    const unsigned columnOwner = projectedPanel_;
     connect(table_->horizontalHeader(), &QWidget::customContextMenuRequested, this,
-            [this](const QPoint &pos) { showColumnsMenu(pos); });
+            [this, columnOwner](const QPoint &pos) {
+                withPanelProjection(columnOwner, [this, pos] { showColumnsMenu(pos); });
+            });
     connect(table_->horizontalHeader(), &QHeaderView::sectionResized, this,
-            [this] { saveColumns(); });
+            [this, columnOwner] { withPanelProjection(columnOwner, [this] { saveColumns(); }); });
     connect(table_->horizontalHeader(), &QHeaderView::sectionMoved, this,
-            [this] { saveColumns(); });
+            [this, columnOwner] { withPanelProjection(columnOwner, [this] { saveColumns(); }); });
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
     tableHover_ = new QtFileListHover(*table_);

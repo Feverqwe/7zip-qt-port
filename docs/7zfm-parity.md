@@ -111,6 +111,14 @@ provider блокируют запрос, ошибка paint используе�
 getter сохраняет exception policy. EN/RU обе роли/reload/rebind/current captures
 проверены на macOS. Реальные deleted archives и rendered Windows/native3OS
 приёмка остаются открытыми.
+Header column menu теперь передаёт выбранный индекс исходному
+ShowColumnsContextMenu: порядок/отметки и запрет первого пункта берутся из source
+catalog. Показ добавляет колонку в конец; скрытие сортируемой меняет metadata
+на Name/ascending, сохраняя строки до Refresh. Qt держит скрытые logical sections
+и сохраняет компактный порядок только видимых. Popup/move/resize используют
+владельца заголовка, выход из popup восстанавливает прежний widget focus.
+EN/RU обе панели и active/inactive consumers проверены на macOS; текущие native
+Windows/Linux и rendered Windows проверки остаются открытыми.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном

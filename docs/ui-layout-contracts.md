@@ -2,6 +2,16 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Column header menus retain source property order/checks/first-item protection,
+toggle the owning panel's source visible catalog and append a newly shown column
+after all visible columns. Hide/show after moving a column must follow that append
+policy, while hiding the sorted column restores name/ascending metadata and the
+header indicator, preserving row order until Refresh. Context, resize
+and move callbacks on an inactive pane preserve active focus/provider/selection
+and peer header state. Cancel changes nothing. Persist visible compact order and
+width through source ViewSettings; inspect EN/RU both panes normal980×620 and
+compact640×400 menus, address/list/status groups and reload/reopen consumers.
+
 Deleted archive items retain source OnCustomDraw's red text (RGB255,0,0), enabled
 by default only when the archive reports deleted items. Use source item indices
 and the owning provider for every visible table cell and icon label; parent and
