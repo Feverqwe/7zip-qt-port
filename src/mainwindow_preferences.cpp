@@ -14,6 +14,21 @@
 #include <QMouseEvent>
 #include <QSignalBlocker>
 
+namespace {
+QString SavedSourcePath(QString path) {
+    // Earlier Qt settings used a display separator after the real archive.
+    // Convert only that boundary; spaces inside source path components survive.
+    const QString separator = QStringLiteral(" / ");
+    for (int pos = path.indexOf(separator); pos >= 0;
+         pos = path.indexOf(separator, pos + separator.size()))
+        if (QFileInfo(path.left(pos)).isFile()) {
+            path.replace(pos, separator.size(), QStringLiteral("/"));
+            break;
+        }
+    return path;
+}
+} // namespace
+
 void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     QMenu menu(this);
     QtFileManagerShellMenu shell(*this, menu);
@@ -122,18 +137,18 @@ void MainWindow::showFoldersHistory() {
     const QString selected =
         CPanel::FoldersHistory(app_.AppState.FolderHistory, toolbarSettingsPath(), this);
     if (!selected.isNull())
-        navigateTo(selected);
+        navigateTo(SavedSourcePath(selected), true);
     else
         refreshActions();
 }
 void MainWindow::refreshBookmarks() { MyLoadBookmarks(openBookmarks_, saveBookmarks_, app_); }
 
 void MainWindow::saveBookmark(int index) {
-    if (index < 0 || index >= 10 || (state_ != State::Filesystem && state_ != State::Viewing) ||
-        isNestedArchive())
+    if (index < 0 || index >= 10 || state_ == State::Loading || state_ == State::Operating)
         return;
-    CPanel::SetBookmark(app_.AppState.FastFolders, (unsigned)index,
-                        ToUString(state_ == State::Filesystem ? directory_ : archiveDisplayPath()));
+    auto &panel = app_.GetFocusedPanel();
+    panel.LoadFullPath();
+    CPanel::SetBookmark(app_.AppState.FastFolders, (unsigned)index, panel.GetCurrentFolderPrefix());
     app_.AppState.FastFolders.Save(toolbarSettingsPath());
     refreshActions();
 }
@@ -143,9 +158,7 @@ void MainWindow::openBookmark(int index) {
         return;
     const QString path =
         ToQString(CPanel::OpenBookmark(app_.AppState.FastFolders, (unsigned)index));
-    if (path.isEmpty())
-        return;
-    navigateTo(path);
+    navigateTo(SavedSourcePath(path), true);
 }
 
 void MainWindow::updateToolbar() {

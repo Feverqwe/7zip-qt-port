@@ -125,6 +125,10 @@ state/availability, persistent source locations, previously saved Qt display
 entries, both panels, nested return/restart, input preservation and geometry
 must be reconciled together before accepting the new component. No functional
 code is changed by this review.
+The subsequent P3-05.14 integration reconnects those consumers to source-prefix
+storage/history and source-address binding, including original empty-slot and
+open-chain/cold fallback semantics. The static state-service boundary is retained
+for Qt publication; current validation and platform limits are in the port audit.
 
 Review on 2026-10-05 also found an active two-panel omission. Upstream
 `FileManager/PanelKey.cpp::CPanel::OnKeyDown` invokes `OnSetSameFolder` for

@@ -39,9 +39,11 @@
 Сверка полного PanelFolderChange также выявила обязательный
 [P3-05.14](upstream-port-audit.md#p3-0514--persisted-source-location-consumers-required-scope-2026-10-06):
 namespace/nested Save ограничения, отказ доступной drive-команды и обработка
-сохранённых путей расходятся с исходными consumers. Восстановить source virtual
-prefix, согласовать доступность/handler и проверить старые Qt display entries,
-историю, перезапуск и обе панели по новому text contract. Пока открыто.
+сохранённых путей при обнаружении расходились с исходными consumers. Source
+virtual prefix, доступность/handler и saved-location binding восстановлены;
+старые Qt display entries, история, обе панели и original nested reuse/cold
+fallback имеют public coverage. Mac implementation gate и16EN/RU reports
+проверены; current native/platform/rendered приёмка остаётся открытой.
 
 Устаревшая `existingTarget` constructor-only ветвь Add удалена: поля path/format/
 browse/volumes/encryption больше не блокируются ради отдельного update workflow.

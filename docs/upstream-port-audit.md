@@ -30,6 +30,54 @@ A declaration census confirms28 original bodies/helpers (including both
 wide/ANSI end-edit overloads) have explicit dispositions; the census supplements
 the manual body/caller review and is not a behavior or whole-port acceptance test.
 
+The integrated follow-up retains the single existing CPanel static state-service
+adaptations of SetBookmark/OpenBookmark and CFastFolders/CFolderHistory bodies.
+Qt now supplies the bound focused panel's LoadFullPath prefix rather than its
+display path; no folder binding or source string/vector algorithm is copied into
+the widget. Source-address navigateTo uses the authoritative CPanel BindToPath
+and existing renderer/progress publication. Central command policy removes the
+extra root/nested/empty-slot prohibitions; operation/notification guards remain.
+Archive/namespace history records source prefixes separately from displayed
+header text, including nested chains. Filesystem history keeps its existing
+canonical absolute Qt path serialization. Original source names and module
+boundaries are unchanged; no additional borrowed dependency is introduced.
+
+SavedSourcePath is a narrow compatibility adapter for the project's former Qt
+display serialization, which has no upstream counterpart: only a ` / ` boundary
+whose preceding prefix is an existing file is converted. The remainder is passed
+unchanged to the source binder; literal spaces in components and stored old
+entries are preserved. This is not a second filesystem/archive binding algorithm.
+Source CAgentFolder::BindToFolder name/index bodies and proxy lookups were
+inspected at the same revision: they bind directories, not archive files.
+BindToPath reuses an already-open nested link but, after close/restart, stops at
+the containing outer archive when the next component is a file. The first test
+expecting automatic nested reopening was disproved by those original bodies;
+that failed consumer log is retained separately. Required regressions now assert
+exact open-chain reuse and the original cold fallback, without adding a new
+nested traversal implementation or weakening runtime timing limits.
+
+Actual previous-product RED has2 Qt pass/5 fail/0 skip: EN/RU drive Save is empty,
+empty Open disabled, ordinary ZIP persists display text and nested Save disabled.
+The initial two-panel fixture's ambiguous widget lookup was corrected before
+freezing that RED. New public persisted_location consumers cover both panels,
+source providers/prefixes, empty/root Save, real EN/RU ZIP/nested reuse/close/
+restart, history persistence, exact outer/inner/input bytes and old display
+entries through bookmark/history selection. POSIX literal ` / ` archive-folder
+components are tested; Windows uses ordinary Unicode/space names supported by
+its fixture filesystem. Existing bounded mock/history consumers now assert
+source serialization, retaining actual displayed-address expectations and their
+editing/Cancel/busy coverage. Six affected suites pass3.15s, including11
+PersistedLocation Qt cases with0 fail/0 skip. Sixteen normal/compact EN/RU reports
+cover drive/archive/history states. Native Windows plugin/desktop locking is
+registered; current Windows/Linux and rendered/final acceptance remain open.
+Mandatory unsandboxed format/all-target/full macOS gate passes252/252 in106.39s.
+Eight frozen code/build/test SHA inputs remain unchanged; final11
+PersistedLocation Qt cases pass0 fail/0 skip. Sixteen final widget JSON reports
+independently pass exposure, menu/toolbar/address/list/status order, panel
+placement, combo size hints and history footer review. The current baseline is
+unchanged. This verifies the implementation on macOS; current native Windows/
+Linux, device/UNC/ADS and rendered/cold-stable/parent acceptance remain required.
+
 ## P3-05.13 — source root-command target (implementation validation active, 2026-10-06)
 
 Source https://github.com/ip7z/7zip.git at full revision

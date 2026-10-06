@@ -33,13 +33,12 @@ void MainWindow::renderArchiveFolder() {
         return;
     static_cast<FileTable *>(table_)->filesystem = false;
     autoRefreshSnapshot_.clear();
-    if (!isNestedArchive())
-        recordVisitedPath(archiveDisplayPath());
+    panel.LoadFullPath();
+    recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     const QString prefix = archiveFolder_.isEmpty() ? QString() : archiveFolder_ + '/';
     table_->setSortingEnabled(false);
     app_.GetFocusedPanel().SetNewFolder(folderOwner);
-    static_cast<QtPanelAddressCombo *>(pathCombo_)
-        ->ShowCurrentPath(archiveDisplayPath(), !isNestedArchive());
+    static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(archiveDisplayPath(), false);
     configureColumns();
     appendParentEntry();
     if (archiveFolder->GetNumberOfItems() > 256) {

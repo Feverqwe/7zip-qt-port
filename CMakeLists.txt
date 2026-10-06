@@ -2079,6 +2079,13 @@ if(BUILD_TESTING)
     add_test(NAME root_command COMMAND root_command_tests -silent)
     set_tests_properties(root_command PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/root-command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(persisted_location_tests tests/persisted_location_tests.cpp
+        tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(persisted_location_tests PRIVATE src tests)
+    target_link_libraries(persisted_location_tests PRIVATE ${options_window_libraries})
+    add_test(NAME persisted_location COMMAND persisted_location_tests -silent)
+    set_tests_properties(persisted_location PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/persisted-location.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(WIN32)
         qt_add_executable(native_network_navigation_tests tests/native_network_navigation_tests.cpp
             tests/fixtures/native_network_share.cpp tests/fixtures/native_network_share.h
@@ -2658,7 +2665,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

@@ -42,6 +42,7 @@ void MainWindow::renderRootFolder() {
                               ? QString::fromWCharArray(GetFolderPath(folder))
                               : QString(),
                           false);
+    recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     configureColumns();
     for (UInt32 index = 0; index < count; ++index) {
         NWindows::NCOM::CPropVariant name;

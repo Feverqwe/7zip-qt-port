@@ -113,7 +113,8 @@ class BookmarkTests : public QObject, protected MainWindowTestSupport {
         const QStringList paths = settings.value("FolderShortcuts").toStringList();
         QCOMPARE(paths.size(), 10);
         QCOMPARE(paths[3], directory);
-        QCOMPARE(paths[7], location);
+        QCOMPARE(QDir::fromNativeSeparators(paths[7]),
+                 archivePath + QStringLiteral("/папка/внутри/"));
         ControlledBackend reopenedBackend;
         MainWindow reopened(&reopenedBackend);
         reopenedBackend.queueList({ArchiveEntry{QStringLiteral("папка/внутри/файл.txt"), 1, 1}});

@@ -17,6 +17,11 @@ Verify menu availability/handler agreement, both panels, Unicode/spaces/literal
 guards, unchanged archive/input bytes and no unintended peer navigation. Inspect
 EN/RU normal980×620/compact640×400 address/list and bookmark/history widget JSON.
 Native device/UNC/ADS and rendered Windows acceptance remain separate checks.
+Original BindToPath reuses an already open nested chain. After that chain closes,
+CAgentFolder::BindToFolder finds directories rather than opening archive files:
+a stored nested location stops at its containing outer archive. Verify this
+original fallback on close/restart as well as exact reuse while still open.
+History uses its existing540×360/360×240 dialog geometry contract.
 
 ### Source root command target (P3-05.13, implementation validation active)
 

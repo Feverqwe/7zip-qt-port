@@ -77,6 +77,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         archive.close();
         const QString folder = QStringLiteral("папка/внутри");
         const QString location = archivePath + " / " + folder;
+        const QString sourceLocation = QDir::toNativeSeparators(archivePath + '/' + folder + '/');
         const QList<ArchiveEntry> entries = {ArchiveEntry{folder + "/file.txt", 1, 1}};
         {
             ControlledBackend backend;
@@ -88,14 +89,14 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             QVERIFY(combo);
             QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"),
                                QSettings::IniFormat);
-            QVERIFY(settings.value("FolderHistory").toStringList().contains(location));
+            QVERIFY(settings.value("FolderHistory").toStringList().contains(sourceLocation));
         }
         ControlledBackend backend;
         MainWindow window(&backend);
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         auto *address = window.findChild<QLineEdit *>("archivePath");
         backend.queueList(entries);
-        acceptHistoryLocation(window, location);
+        acceptHistoryLocation(window, sourceLocation);
         QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), archivePath);
         QCOMPARE(address->text(), location);
         QCOMPARE(table(window)->rowCount(), 1);
@@ -104,7 +105,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         backend.queueList(entries);
-        acceptHistoryLocation(window, location);
+        acceptHistoryLocation(window, sourceLocation);
         QCOMPARE(QDir::fromNativeSeparators(backend.lastArchive), archivePath);
         QCOMPARE(address->text(), location);
 

@@ -359,11 +359,6 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_FOLDERS_HISTORY:
         return c.foldersHistory;
     }
-    if (id >= 830 && id < 840)
-        return !ToQString(CPanel::OpenBookmark(window_.app_.AppState.FastFolders, id - 830))
-                    .isEmpty();
-    if (id >= 810 && id < 820)
-        return !c.nested && !c.root;
     return true;
 }
 

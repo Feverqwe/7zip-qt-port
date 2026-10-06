@@ -1,5 +1,18 @@
 # Regression strategy
 
+`persisted_location` verifies source-prefix bookmarks in both-panel drive view,
+empty-slot root binding and root Save clearing, and exact virtual locations for
+real ZIP/nested ZIP. It checks already-open chain reuse and original containing-
+archive fallback after close/restart, stored history, unchanged outer/inner/input
+bytes and peer drafts without engine requests. EN/RU old Qt display entries are
+selected through bookmarks and history; POSIX fixtures include a literal ` / `
+inside archive directory names. Sixteen normal/compact drive/archive/history
+reports follow the text contracts. Existing bookmark/ui_navigation tests now
+assert source serialization while retaining their displayed address expectations;
+history editing/Cancel and busy commands remain covered by existing consumers.
+Windows uses the native plugin/desktop lock; actual current platform evidence
+and remaining acceptance belong to the port audit.
+
 `root_command` asserts the actual Root/slash/backslash/keypad-slash destination is
 CFSDrives, not merely a nonempty list. EN/RU980×620/640×400 two-panel rows verify
 the source prefix/provider, peer panel state and input bytes, command capability,

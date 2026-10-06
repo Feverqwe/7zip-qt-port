@@ -36,8 +36,13 @@ namespace QIcons through the existing CExtToIconMap index space; native shell
 indices are never mixed with those Qt indices. A leading QLineEdit action replaces
 ComboBoxEx's edit-item image. Disk, archive and namespace renderers call this
 source stage for their owning panel. Its explicit display-path/history arguments
-preserve the existing Qt archive separator and exclusion of nested virtual paths
-from persistent history; icon classification uses the native source prefix.
+preserve the existing Qt archive separator; icon classification uses the native
+source prefix. Archive/namespace renderers record stable source prefixes through
+CFolderHistory separately from displayed header text, including nested virtual
+locations. Bookmarks store the focused panel's source prefix in CFastFolders.
+Both saved-location consumers use source-address binding. Their narrow Qt
+compatibility conversion removes only a former display separator following a
+real archive file, preserving literal spaces in source components and stored data.
 The Qt platform path cache shares the source extension-cache capacity bound.
 
 Filesystem item comments belong to the retained CFSFolder provider. SaveComments
@@ -1084,7 +1089,7 @@ list and address keys through the window event filter.
 
 Nested archive navigation keeps the parent listing, folder, password and
 temporary directory on a stack. Returning to the parent or a listing failure
-restores that state. Temporary locations are excluded from persistent history
+restores that state. Materialized engine locations are excluded from persistent history
 and favorites. External-open copies remain owned by the window until it closes.
 Address signals are disconnected before window teardown.
 
