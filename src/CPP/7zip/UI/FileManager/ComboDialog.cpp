@@ -3,9 +3,9 @@
 // Qt layouts replace Win32 OnSize/control attachment; QString/QStringList
 // replace strings at the presentation boundary. OnOK keeps the raw value.
 #include "ComboDialog.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QComboBox>
-#include <QDialogButtonBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QVBoxLayout>
@@ -43,7 +43,7 @@ bool CComboDialog::OnInit() {
     _comboBox->setEditText(Value);
     layout->addWidget(_comboBox);
     layout->addStretch(1);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("comboButtons");
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CComboDialog::OnOK);

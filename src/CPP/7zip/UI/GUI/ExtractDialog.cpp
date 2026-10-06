@@ -6,8 +6,8 @@
 #include "../FileManager/HelpUtils.h"
 #include "7zip/UI/GUI/ExtractDialogRes.h"
 #include "7zip/UI/GUI/ExtractRes.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QEvent>
 #include <QGroupBox>
@@ -170,7 +170,7 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     hint->setWordWrap(true);
     layout->addWidget(hint);
     layout->addStretch();
-    auto *buttons = new QDialogButtonBox(
+    auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
     connect(buttons, &QDialogButtonBox::helpRequested, this, &CExtractDialog::OnHelp);
     auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);

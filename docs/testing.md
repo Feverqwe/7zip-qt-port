@@ -1,5 +1,14 @@
 # Regression strategy
 
+`language_standard_buttons` exercises the twelve source dialog consumers of
+LangSetDlgItems, all seven standard control mappings, initial EN/RU selection,
+live reload and absent-language resource fallback. It checks accepted/rejected
+signals stay quiet during reload and writes48 EN/RU normal/compact footer JSON
+reports at the existing text-contract sizes. `language_dialog` remains the
+pending-input/focus regression for those shared presentation updates. The new
+test uses the native Windows plugin/desktop lock on Windows, like its direct
+dialog consumers; see the port audit for current validation/acceptance.
+
 `runtime_package` checks source/build-payload rejection, runtime alias boundaries,
 development-file pruning, matching Qt license input hashes/versions and release
 version/tag validation using disposable fixtures, plus imported Windows CRT

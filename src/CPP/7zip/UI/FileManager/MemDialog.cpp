@@ -7,10 +7,10 @@
 #include "LangUtils.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QAbstractButton>
 #include <QCheckBox>
-#include <QDialogButtonBox>
 #include <QEvent>
 #include <QGroupBox>
 #include <QLabel>
@@ -87,7 +87,8 @@ void CMemDialog::BuildPresentation() {
     actions->addWidget(remember);
     layout->addWidget(group);
     layout->addStretch();
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons =
+        new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this, IDCONTINUE);
     buttons->setObjectName("memButtons");
     QtBindResourceText(buttons->button(QDialogButtonBox::Ok), 411, "Continue");
     connect(buttons, &QDialogButtonBox::accepted, this, &CMemDialog::OnContinue);

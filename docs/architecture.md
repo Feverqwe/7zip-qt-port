@@ -1074,7 +1074,12 @@ loading, LangUtils and ResourceString belong to sevenzip_filesystem alongside
 CLang and file I/O. These bodies use Core; Unix filesystem/transaction consumers
 resolve local message context without linking Widgets. Windows also links the
 shared icon module for the original FSDrives interface. Qt widget bindings remain in
-sevenzip_panel. FileTransferOperation publishes a typed completion kind before
+sevenzip_panel. The source standard-button table also stays in LangUtils;
+IQtLangDialogControls exposes text services without a Widgets dependency.
+QtLangButtonBox in sevenzip_panel maps native control IDs and reapplies source
+captions after Qt's LanguageChange reset. Source dialog consumers use it;
+native dialogs and the Options property-sheet footer keep their platform owner.
+FileTransferOperation publishes a typed completion kind before
 its result signal; MainWindow suppresses fully rolled-back cancellation and
 retains partial-move failures independently of translated message text. Qt text
 bindings and mainwindow_language.cpp supply presentation updates only, retaining

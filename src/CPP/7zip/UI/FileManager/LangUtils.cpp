@@ -3,7 +3,9 @@
 // Source load/reload/fallback bodies. Qt supplies module directory/default locale.
 #include "LangUtils.h"
 #include "RegistryUtils.h"
+#include "qtlangdialogcontrols.h"
 #include "qtlanguageservices.h"
+#include "qtmodalresult.h"
 #include <QDir>
 #include <QLocale>
 #include <QMutexLocker>
@@ -31,6 +33,34 @@ void LoadLangOneTime() {
         return;
     g_Loaded = true;
     ReloadLang();
+}
+
+void LangSetDlgItemText(IQtLangDialogControls &dialog, UInt32 controlID, UInt32 langID) {
+    QMutexLocker lock(&g_CriticalSection);
+    const wchar_t *s = g_Lang.Get(langID);
+    if (s)
+        dialog.SetItemText(controlID, s);
+}
+
+static const CIDLangPair kLangPairs[] = {{IDOK, 401},      {IDCANCEL, 402}, {IDYES, 406},
+                                         {IDNO, 407},      {IDCLOSE, 408},  {IDHELP, 409},
+                                         {IDCONTINUE, 411}};
+
+void LangSetDlgItems(IQtLangDialogControls &dialog, const UInt32 *ids, unsigned numItems) {
+    QMutexLocker lock(&g_CriticalSection);
+    unsigned i;
+    for (i = 0; i < Z7_ARRAY_SIZE(kLangPairs); i++) {
+        const CIDLangPair &pair = kLangPairs[i];
+        if (dialog.HasItem(pair.ControlID)) {
+            const wchar_t *s = g_Lang.Get(pair.LangID);
+            if (s)
+                dialog.SetItemText(pair.ControlID, s);
+        }
+    }
+    for (i = 0; i < numItems; i++) {
+        const UInt32 id = ids[i];
+        LangSetDlgItemText(dialog, id, id);
+    }
 }
 
 UString LangString(UInt32 langID) {

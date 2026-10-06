@@ -4,7 +4,7 @@
 // ES_READONLY/ES_MULTILINE/WS_HSCROLL/WS_VSCROLL/ES_WANTRETURN are retained.
 #include "EditDialog.h"
 #include "ViewSettings.h"
-#include <QDialogButtonBox>
+#include "qtlangbuttonbox.h"
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QVBoxLayout>
@@ -24,7 +24,7 @@ bool CEditDialog::OnInit() {
     setWindowTitle(ToQString(Title));
     _edit->setPlainText(ToQString(Text));
     layout->addWidget(_edit);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Close, this);
     buttons->setObjectName("editButtons");
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);

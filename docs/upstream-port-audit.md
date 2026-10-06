@@ -1,5 +1,44 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.9 — source standard-button language mapping (accepted button scope, 2026-10-06)
+
+Repository https://github.com/ip7z/7zip.git, full source revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Reviewed LangUtils.cpp/.h bodies,
+dialog OnInit callers, GuiCommon.rc and selected language resources. Restored
+CIDLangPair to its original LangUtils header owner (MyLoadMenu now reuses it),
+kLangPairs, LangSetDlgItemText and LangSetDlgItems in their original module.
+The original standard-table pass, selected-language lookup, missing-entry
+policy and custom-ID pass remain; IQtLangDialogControls replaces native
+GetDlgItem/CWindow text services. Existing recursive Qt mutex protects lookup.
+This scope does not claim complete LangUtils body reconciliation.
+
+QtLangButtonBox supplies native control IDs and original resource captions.
+Its changeEvent applies the source mapping after Qt's own standard-caption
+reset, preserving Memory's IDCONTINUE rather than resetting it to IDOK.
+Copy, Split, Combo, Password, Memory, Edit, ListView, About, Extract, Compress,
+compression options and BrowseDialog2 use this adapter; their existing roles,
+signals and functional handlers remain. The source Options property-sheet
+footer and Qt native dialogs keep their platform-owned language behavior.
+No second language-ID table or translated literal catalog is introduced.
+
+Old-product public regression: sixteen failing Qt rows across eight dialogs,
+with About unchanged, plus Memory reload-to-OK. Current macOS focused test
+passes27 Qt cases/0skip, covering twelve source dialog consumers, hot reload,
+all seven mappings and absent-language resource fallback. Unsandboxed macOS
+format/all-target/full248PASS102.99s; localized contract-size check passes four
+suites2.57s. Forty-eight EN/RU normal/compact reports reviewed: footer order,
+source captions, button size hints, clipping and exposure. Fresh Linux8d4f93c9
+uses the same27 frozen inputs and passes the full244 suites196.02s;
+696guest/local SHA artifacts and48 footer reports verified. Its27 Qt language
+cases have no skips. Native Windows1bee2e9c uses those same27 inputs: existing
+language_dialog passes7 Qt cases/0skip1230ms and language_standard_buttons
+passes27/0skip2988ms, CTest1.81/3.61s. Forty-nine immutable guest/local SHA
+artifacts preserve those completed sections and48 reports; footer source
+captions, exposure, width/height hints and pairwise separation pass review.
+The full Windows255 gate remains active under P3-03. This accepts the shared
+standard-button consumer scope; rendered parity, remaining language helpers
+in P3-05.10 and parent/final acceptance remain open.
+
 ## P3-05.7 — Windows device-image provider and F5 consumer (2026-10-06)
 
 Source repository https://github.com/ip7z/7zip.git, revision
@@ -71,8 +110,11 @@ exit preserved. Derived native_library/device/UI focused3PASS8.20s; full Windows
 286/266ms at4096 rows;685 guest/local SHA retained. Subsequent logical-drive
 availability regression fails on that candidate, then passes after the final
 centralized capability guard: UI7Qt/0skip and unchanged process_pause4Qt/0skip,
-focused2PASS4.68s with13 immutable SHA artifacts. A new full Windows gate runs
-on that final code; its result belongs to the remaining P3-03 platform acceptance.
+focused2PASS4.68s with13 immutable SHA artifacts. The final same-source Windows
+gate passes254/254 in808.73s;15 immutable logical-guard artifacts and a separate
+685SHA full evidence collection preserve the previous failed full results.
+Required native cases have no skips; only two explicit POSIX contracts skip.
+This warm replay does not establish cold codec or stable performance acceptance.
 
 Final eleven code inputs match Linuxaf428c09 archive and actual amended Windows
 sources. Mac final unsandboxed full247PASS106.55s. Linuxaf428c09 initially stops
@@ -80,7 +122,7 @@ at ENOSPC; after source/terminal/no-active/648SHA guards, only the previous own
 completed build/dev is removed. Same-source full retry242/243PASS127.56s has an
 unchanged temp_cleanup timeout;645SHA retained, then temp_cleanup and three
 command/root consumers pass4/4 in0.56s. The device-image component is accepted
-within this source/Copy scope. P3-03 full gates, P3-05.8/.9, parent omitted-scope
+within this source/Copy scope. P3-03 stable platform checks, P3-05.8/.9, parent omitted-scope
 acceptance and rendered Windows device parity remain open.
 
 ## P3-03.1 — Finder drag-out lifetime correction (2026-10-05)

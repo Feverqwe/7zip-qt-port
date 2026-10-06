@@ -1,5 +1,6 @@
 #include "qtcompressoptionscontrols.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
 #include <QComboBox>
@@ -126,7 +127,7 @@ void CQtCompressOptionsDialog::buildControls() {
     grid->addWidget(preserve, row, 0, 1, 3);
     layout->addWidget(time);
     layout->addStretch();
-    auto *buttons = new QDialogButtonBox(
+    auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
     buttons->setObjectName("compressOptionsButtons");
     connect(buttons, &QDialogButtonBox::helpRequested, this, [this] { OnHelp(); });

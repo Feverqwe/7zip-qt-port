@@ -1,5 +1,17 @@
 # Text specifications and geometry checks
 
+### Standard source dialog buttons (P3-05.9, accepted button scope)
+
+Reference: pinned LangUtils.cpp::kLangPairs/LangSetDlgItems, GuiCommon.rc and
+each dialog's resource/OnInit caller. Selected 7-Zip language controls OK,
+Cancel, Yes, No, Close, Help and Continue. Missing entries keep the resource
+caption; Memory uses IDCONTINUE. Hot reload preserves roles and pending input.
+Options property-sheet/native dialogs retain their platform language owner.
+`language_standard_buttons` checks twelve source consumers at their normal/
+compact sizes below and produces48 EN/RU footer reports per platform. Reports on all three platforms reviewed
+2026-10-06 show visible, separate standard controls and exact source captions;
+rendered Windows parity and parent/final acceptance remain pending.
+
 ### Source shell popup (P2-09, in progress)
 
 Reference: pinned PanelMenu.cpp::CreateFileMenu/CreateSevenZipMenu and Explorer

@@ -8,6 +8,7 @@
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
 #include "qtfilelisthover.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QApplication>
 #include <QComboBox>
@@ -120,7 +121,7 @@ void CBrowseDialog2::BuildControls() {
         QtLocalText("Sevenzip Desktop owned temporary files", "Временные файлы Sevenzip Desktop"));
     _filterCombo->setEnabled(false);
     layout->addWidget(_filterCombo);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Close, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Close, this);
     buttons->setObjectName("tempFooter");
     buttons->button(QDialogButtonBox::Help)->setObjectName("tempHelp");
     buttons->button(QDialogButtonBox::Close)->setObjectName("tempClose");

@@ -8,8 +8,8 @@
 #include "BrowseDialog.h"
 #include "qtlangcontrols.h"
 
+#include "qtlangbuttonbox.h"
 #include <QComboBox>
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
@@ -83,7 +83,7 @@ bool CCopyDialog::OnInit() {
     info->setFrameShape(QFrame::NoFrame);
     info->setLineWrapMode(QPlainTextEdit::NoWrap);
     layout->addWidget(info, 1);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("copyButtons");
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CCopyDialog::OnOK);

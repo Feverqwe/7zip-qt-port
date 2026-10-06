@@ -264,6 +264,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
     src/qtlangcontrols.cpp src/qtlangcontrols.h
+    src/qtlangbuttonbox.cpp src/qtlangbuttonbox.h
     src/qtstatuslabel.cpp src/qtstatuslabel.h
     src/CPP/7zip/UI/FileManager/PanelItems.cpp
     src/CPP/7zip/UI/FileManager/PanelOperations.cpp
@@ -351,6 +352,7 @@ add_library(sevenzip_filesystem STATIC
     src/qtownedtempdir.cpp src/qtownedtempdir.h
     third_party/7zip/CPP/Common/Lang.cpp
     src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
+    src/qtlangdialogcontrols.h
     src/qtlanguageservices.cpp src/qtlanguageservices.h
     src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
     "${resource_strings_header}"
@@ -929,6 +931,16 @@ if(BUILD_TESTING)
     target_include_directories(language_dialog_tests PRIVATE src tests)
     target_link_libraries(language_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME language_dialog COMMAND language_dialog_tests -silent)
+    qt_add_executable(language_standard_buttons_tests tests/language_standard_buttons_tests.cpp
+        tests/layout_inspection.cpp src/CPP/7zip/UI/FileManager/SplitDialog.cpp
+        src/createarchivedialog.cpp src/createarchivedialog_encryption.cpp
+        src/createarchivedialog_compression.cpp src/createarchivedialog_resources.cpp
+        src/createarchivedialog_preferences.cpp)
+    target_include_directories(language_standard_buttons_tests PRIVATE src tests)
+    target_link_libraries(language_standard_buttons_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME language_standard_buttons COMMAND language_standard_buttons_tests -silent)
+    set_tests_properties(language_standard_buttons PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language-standard-buttons.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(language_dialog PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     target_link_libraries(extract_prompt_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -2609,7 +2621,7 @@ if(BUILD_TESTING AND WIN32)
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
-            progress_dialog language_dialog fm_settings list_settings_runtime
+            progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}

@@ -9,9 +9,9 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "BrowseDialog.h"
 #include "SplitUtils.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QComboBox>
-#include <QDialogButtonBox>
 #include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -68,7 +68,7 @@ bool CSplitDialog::OnInit() {
     error_->hide();
     layout->addWidget(error_);
     layout->addStretch(1);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("splitButtons");
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CSplitDialog::OnOK);

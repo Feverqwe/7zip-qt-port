@@ -6,11 +6,11 @@
 #include "PropertyName.h"
 #include "RegistryUtils.h"
 #include "ViewSettings.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
-#include <QDialogButtonBox>
 #include <QKeyEvent>
 #include <QVBoxLayout>
 
@@ -78,7 +78,7 @@ bool CListViewDialog::OnInit() {
         _listView->SetColumnWidthAuto(1);
     StringsWereChanged = false;
     layout->addWidget(_listView);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("listViewButtons");
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CListViewDialog::OnOK);

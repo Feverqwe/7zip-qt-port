@@ -10,6 +10,13 @@
 
 extern UString g_LangID;
 extern CLang g_Lang;
+class IQtLangDialogControls;
+struct CIDLangPair {
+    UInt32 ControlID;
+    UInt32 LangID;
+};
+void LangSetDlgItemText(IQtLangDialogControls &dialog, UInt32 controlID, UInt32 langID);
+void LangSetDlgItems(IQtLangDialogControls &dialog, const UInt32 *ids, unsigned numItems);
 bool LangOpen(CLang &lang, CFSTR fileName);
 FString GetLangDirPrefix(const QString &directory = {});
 void Lang_GetShortNames_for_DefaultLang(AStringVector &names, unsigned &subLang);

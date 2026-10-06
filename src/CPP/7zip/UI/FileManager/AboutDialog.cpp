@@ -6,9 +6,9 @@
 #include "../Common/LoadCodecs.h"
 #include "7zip/MyVersion.h"
 #include "HelpUtils.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QDesktopServices>
-#include <QDialogButtonBox>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPixmap>
@@ -63,7 +63,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     layout->addWidget(license);
     connect(license, &QPushButton::clicked, this,
             [this] { ShowHelpWindow("general/license.htm", this); });
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok, this);
     auto *homepage = buttons->addButton("www.7-zip.org", QDialogButtonBox::ActionRole);
     homepage->setObjectName("aboutHomepage");
     homepage->setProperty("sourceControlID", IDB_ABOUT_HOMEPAGE);

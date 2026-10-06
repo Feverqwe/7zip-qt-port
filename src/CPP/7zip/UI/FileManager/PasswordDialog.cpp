@@ -3,9 +3,9 @@
 // Qt controls replace Win32 attachment/messages; functional handler flow stays.
 #include "PasswordDialog.h"
 #include "7zip/UI/FileManager/PasswordDialogRes.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
-#include <QDialogButtonBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QVBoxLayout>
@@ -43,7 +43,7 @@ bool CPasswordDialog::OnInit() {
     _showPassword->setChecked(ShowPassword);
     SetTextSpec();
     layout->addStretch(1);
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("passwordButtons");
     layout->addWidget(buttons);
     connect(_showPassword, &QCheckBox::clicked, this, &CPasswordDialog::OnButtonClicked);

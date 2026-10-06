@@ -926,8 +926,18 @@ P1-14.2 принят (macOS, full170/17063.11s): Password/Copy/Split/Create-fold
 общую подпись о файле. Split показывает исходную ошибку размера тома inline;
 Mem использует исходную системную ошибку. Extract сохраняет два доступных
 режима путей, исходные overwrite labels и исходный общий заголовок Extract.
-Qt standard buttons/native pickers сохраняют платформенные тексты. Остальные
-текущие формы/messages также подключены; Windows/Linux runtime не подтверждён.
+Первоначальная приёмка оставляла standard buttons/native pickers с платформенными
+текстами. P3-05.9 исправляет двенадцать исходных LangSetDlgItems consumers:
+Copy/Split/Combo/Password/Memory/Edit/ListView/About/Extract/Compress, compression
+options и BrowseDialog2. OK/Cancel/Yes/No/Close/Help/Continue теперь используют
+исходную таблицу выбранного языка; отсутствующий перевод сохраняет resource
+caption. Memory сохраняет Continue при смене языка. Qt определяет порядок и
+button roles; native pickers и Options property-sheet footer сохраняют своего
+платформенного владельца. Текущие language cases и normal/compact footer JSON
+проверены на macOS/Linux/native Windows; полный Windows gate продолжается,
+rendered и parent/final acceptance открыты. Остальные текущие формы/messages
+также подключены; исходная приёмка
+P1-14.2 сама по себе не подтверждает их Windows/Linux runtime.
 Split/Combine используют исходные заголовки прогресса и подтверждение числа частей;
 Open и продолжение hash — исходные IDS_OPENNING/IDS_CHECKSUM_CALCULATING.
 Qt/7zz staging получает локальные EN/RU-подписи; независимая команда журнала

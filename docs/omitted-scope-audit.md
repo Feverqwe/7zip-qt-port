@@ -130,11 +130,22 @@ Its new current-build EN/RU Copy reports also expose an existing presentation
 gap: the Russian label is translated but the standard Cancel footer remains
 English. Original LangUtils.cpp::LangSetDlgItems always maps standard control
 IDs through kLangPairs (IDOK401/IDCANCEL402 etc.) even when no dialog-specific
-IDs are supplied. Current CopyDialog constructs Qt standard buttons without
-that source language binding. P3-05.9 owns the shared standard-button source
-mapping and affected dialog consumers/geometry; Qt's own translation fallback
-does not establish parity with the selected 7zFM language. This discovery is
-not claimed corrected by the device Copy component.
+IDs are supplied. At discovery CopyDialog constructed Qt standard buttons
+without that source language binding. P3-05.9 now accepts the shared standard
+mapping and twelve dialog consumers with initial/reload/geometry cases on3OS;
+see the port audit. Qt's own translation fallback does not establish parity
+with the selected 7zFM language. The device Copy component did not itself
+correct this separate presentation gap.
+
+Further LangUtils body/caller review on 2026-10-06 identifies a concrete
+remaining caption gap, P3-05.10. Original BenchmarkDialog::OnInit applies
+LangSetDlgItems_RemoveColon to IDT_BENCH_SPEED after the ordinary language pass.
+The adapted OnInit retains that block behind unused Z7_LANG, while the Qt
+resource binding uses the translated string unchanged. Current macOS EN/RU
+normal/compact widget reports show English Speed but Russian «Скорость:»;
+the pinned original removes that trailing colon. The original colon,
+remove-colon and window helper bodies and actual reload/fallback consumers
+must be reconciled together. P3-05.9's standard-button table does not close them.
 
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,

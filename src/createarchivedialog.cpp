@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivecodeccatalog.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QScreen>
 #include <QScrollArea>
@@ -192,7 +193,7 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
 }
 
 void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
-    buttons_ = new QDialogButtonBox(
+    buttons_ = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
     const auto showHelp = [this] {
         CCompressDialog dialog;
