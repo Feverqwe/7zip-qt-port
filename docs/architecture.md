@@ -50,8 +50,8 @@ success and returns failure to the retained CPanel::OnReload error owner.
 Namespace and filesystem Refresh use that original owner; archive manual refresh
 keeps its existing reopen transport pending the remaining reconciliation.
 Archive failure still finishes its Qt state after synchronous loading, with source
-guards restored before ending the operation. Async filesystem/projection terminal
-errors remain separate requirements. CPanel retains the load-stage HRESULT across
+guards restored before ending the operation. Remaining terminal branches stay
+part of the complete-function review. CPanel retains the load-stage HRESULT across
 Qt row publication. Its source-signature RefreshListCtrl returns that failure
 before restoring selection, including the original OnCopy continuation. Empty
 row selection snapshots avoid querying a provider whose count already failed.
@@ -59,8 +59,12 @@ Replacing/releasing the folder resets the retained result.
 Synchronous filesystem reload keeps its already-bound CFSFolder and returns the
 load result through showDirectory/startFilesystemListing to OnReload. Selection
 restoration is skipped on failure. Other filesystem navigation retains binding;
-large/flat asynchronous listing still returns pending success, and its terminal
-HRESULT handoff requires the remaining source reconciliation.
+large/flat asynchronous listing returns pending success. A worker failure enters
+the same load-stage RINOK before properties/selection, retaining the bound
+provider and result. Its source message appears before ending async publication;
+retained scan guards cover that modal phase. Copy completion waits until the
+temporary panel projection is restored before changing source focus/title.
+Missing-folder navigation and the remaining complete-function review stay open.
 
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its

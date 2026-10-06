@@ -49,6 +49,23 @@ JSON probes inspect text exposure/fit. The retained RED restores the old rebind
 and loses32 results/messages. These controlled failures do not claim real memory
 exhaustion or every OS enumeration error.
 
+`filesystem_reload` checks actual worker failures from both panels under EN/RU,
+normal/flat listing and navigation/Refresh. A public scanner restart at its
+progress boundary supersedes a301-item generation with a missing Unicode path;
+the native worker supplies the failing HRESULT. The old generation emits no
+completion. Source error text/result and provider survive, rows disappear,
+commands/notification guards recover and the next valid worker publishes301
+rows with exact control bytes. Thirty-two OS-managed message JSON probes inspect
+exposure/fit. This tests the async error transport; it does not prove the separate
+address-navigation behavior for a missing folder.
+`panel_list_load` also checks that a supplied failed worker result returns before
+column/property queries. Four `panel_copy_reload` consumers cause the same actual
+worker failure on a301-item filesystem peer after successful Copy/Move output
+elsewhere. They retain the existing byte/marks/focus/title/provider/recovery
+assertions and inspect eight normal/compact resulting-panel reports. A retained
+initial failing run catches completion inside a temporary peer projection:
+wrong source title and peer recovery path. Completion now waits for that scope.
+
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,
 check unchanged Unicode control bytes, no output and no engine request, and

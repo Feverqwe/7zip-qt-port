@@ -376,13 +376,13 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
     }
 }
 
-HRESULT CPanel::LoadListItems(bool itemsLoaded) {
-    return _listLoadResult = LoadListItemsImpl(itemsLoaded);
+HRESULT CPanel::LoadListItems(bool itemsLoaded, HRESULT loadedResult) {
+    return _listLoadResult = LoadListItemsImpl(itemsLoaded, loadedResult);
 }
 
-HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded) {
+HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
     if (!_folder)
-        return S_OK;
+        return itemsLoaded ? loadedResult : S_OK;
     CDisableTimerProcessing timerProcessing(*this);
     CDisableNotify disableNotify(*this);
     _selectionList.DeleteListItems();
@@ -399,6 +399,8 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded) {
     IFolderFolder *folder = _folder;
     if (!itemsLoaded) {
         RINOK(_folder->LoadItems())
+    } else {
+        RINOK(loadedResult)
     }
     RINOK(InitColumns())
     UInt32 numItems = 0;

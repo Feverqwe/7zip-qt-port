@@ -516,6 +516,70 @@ Current Windows/Linux/rendered focus, missing-folder/async terminal handling,
 remaining RefreshListCtrl presentation/timer stages and complete P3-05.15/P3-06
 acceptance remain mandatory.
 
+### Worker load HRESULT and projection-safe Copy completion, 2026-10-06
+
+Reviewed original CPP/7zip/UI/FileManager/PanelItems.cpp::RefreshListCtrl load
+RINOK/columns/selection sequence, OnReload/OnTimer and App.cpp::OnCopy final
+guard/focus body at upstream commit0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, alongside existing FilesystemFolderLoader/
+Scanner result, generation and GUI-delivery callers. Original load failure
+returns before properties/selection; OnReload presents every non-S_OK result.
+The retained original OnCopy body remains authoritative and unchanged.
+
+Necessary async adapter: LoadListItems accepts the worker's already-computed
+HRESULT and applies its RINOK at the same pre-property boundary, retaining
+the error through selection. For an absent provider, that externally known
+worker failure is still returned; this explicit split-phase case has no Win32
+single-call counterpart. Native folderReady property failure and worker failed
+signals share failFilesystemListing. The latter no longer discards qint32 or
+releases the bound provider. It clears pending selection/viewport/rows and shows
+the original Panel HRESULT message before ending async publication. Retained
+scan guards cover this modal phase so completion cannot precede its error.
+This adapter is required by the existing off-thread enumeration transport;
+no new enumeration/selection/error algorithm, copied module or dependency.
+Source notices/languages preserved; verified baseline408 exact/196 adapted/
+3 local across the pinned revision.
+
+Copy completion must run after temporary peer projection ends. refreshActions
+keeps its existing widget/focus guard in a block, then calls completion only
+outside any remaining projection scope. Functional changes are that scope and
+condition; clang-format reindents the existing guarded block separately. This
+prevents storing source presentation state into the peer during final activation.
+No command-availability rule or original continuation is replaced.
+
+New filesystem_reload target has16 actual native-worker failure consumers:
+both panels/EN-RU/normal-flat/navigation-Refresh. Public scanner restart on the
+progress boundary supersedes a301-item generation with a missing Unicode path.
+Native failed HRESULT/text/provider remain exact, failed rows disappear and old
+generation emits no completion; the next valid worker recovers301 rows/control
+bytes/commands/guards. This proves the transport, not missing-address navigation.
+A focused load regression rejects supplied worker E_ABORT before columns/props.
+Four actual Copy/Move consumers from both source roles fail a301-item FS peer
+worker after successful output elsewhere; output/Copy-input/peer-seed bytes,
+Move deletion, marks, source focus/title, provider and worker recovery are checked.
+New target shares existing sources/libraries and native Windows plugin/lock;
+the focused Copy target now emits resulting-panel reports and has artifact locking.
+Long sequential consumers stay cohesive; component suites remain under400 lines.
+
+Initial four-suite integration run passed3/4, with Copy suite30 Qt passes/
+4 failures (wrong source title or recovery rows),35.43s. Frozen
+build/review/source-fs-worker-first records this concrete projection failure.
+Actual RED restores ReleaseFolder and omits source message:2 Qt passes/16 disabled
+Refresh failures259.21s, no abort. Frozen source-fs-worker-red includes the final
+terminal log and exact earlier test fixture; assertions were subsequently ordered
+to inspect error text before waiting on command availability. Timeout/coverage
+limits are unchanged. Final eight focused suites pass11.87s, zero Qt failures/
+skips; nine code/test/build input hashes and focused log are retained in
+build/review/source-fs-worker-final.
+Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes formatting,
+all-target build and257/257 CTest125.43s. Nine input hashes remain unchanged from
+focused validation. Thirty-two current error-message and eight normal/compact
+panel JSON reports inspect fitted error text and visible/enabled/fullyVisible
+address/list groups for both roles; OS autosizing is retained. Full/focused logs,
+input/validation manifests and geometry review are frozen in the final directory.
+Current Windows/Linux/rendered focus, missing-folder workflow, remaining full
+RefreshListCtrl presentation/timer and P3-05.15/P3-06 acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

@@ -69,7 +69,11 @@ reports проверяют эту границу. Post-Copy selection stage те
 Синхронный FS reload больше не теряет provider через повторную привязку;
 filesystem Refresh идёт через source OnReload. EN/RU обе роли и реальный FS
 peer Copy/Move проверяют Cancel/ошибку и восстановление, с48 message probes.
-Missing-folder adaptation и остальная full/async/post-Copy error и
+Реальная worker error теперь сохраняет HRESULT/provider и показывает source
+message до завершения async publication. Временная peer projection больше не
+получает source state при завершении Copy/Move; title/focus и peer recovery
+проверены, включая normal/compact resulting-panel reports.
+Missing-folder adaptation и остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.

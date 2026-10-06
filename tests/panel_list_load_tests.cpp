@@ -143,6 +143,20 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(panel.LoadListItems(), S_OK);
         QVERIFY(!panel.IsItem_Folder(0));
     }
+    void failedWorkerResultStopsBeforeProperties() {
+        auto *spec = new LoadFolder;
+        CMyComPtr<IFolderFolder> folder = spec;
+        CPanel panel(folder);
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        spec->calls.clear();
+        QCOMPARE(panel.LoadListItems(true, E_ABORT), E_ABORT);
+        QVERIFY(spec->calls.isEmpty());
+        CSelectedState state;
+        QCOMPARE(panel.RefreshListCtrl(state), E_ABORT);
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)folder);
+        QCOMPARE(panel.LoadListItems(true), S_OK);
+        QCOMPARE(spec->calls, (QStringList{"columns", "directory", "directory"}));
+    }
     void namespacePublicationRejectsInvalidDirectories_data() {
         QTest::addColumn<qint32>("result");
         QTest::addColumn<int>("type");

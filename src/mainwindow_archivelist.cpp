@@ -153,45 +153,48 @@ void MainWindow::setState(State state) {
 void MainWindow::refreshActions() {
     // Disabling a view can synchronously move native Qt focus. Keep the
     // current source transition bound until its caller finishes scheduling.
-    QScopedValueRollback<unsigned> projection(panelProjectionDepth_, panelProjectionDepth_ + 1);
-    app_.RefreshTitle();
-    const bool navigating = !app_.QtOperations().closed() && !app_.QtOperations().blocking();
-    const bool idle = navigating && !scanningDisk_ && !scanningArchive_;
-    refreshBookmarks();
-    if (commands_)
-        commands_->RefreshActions();
-    if (commands_ && !scanningDisk_ && !scanningArchive_)
-        refreshPanelStatus();
-    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
-        const auto &ui = panelUi_[index];
-        if (!ui.container || !ui.table || !ui.iconList || !ui.path)
-            continue;
-        const bool projecting = index == projectedPanel_ ? scanningDisk_ || scanningArchive_
-                                                         : ui.scanningDisk || ui.scanningArchive;
-        const bool panelIdle = navigating && !projecting;
-        QWidget *focused = QApplication::focusWidget();
-        if (projecting && focused &&
-            (ui.table == focused || ui.table->isAncestorOf(focused) || ui.iconList == focused ||
-             ui.iconList->isAncestorOf(focused)))
-            ui.path->setFocus();
-        // RefreshListCtrl disables redraw until native sorting and selection
-        // restoration finish. Keep that policy across Qt's asynchronous batches.
-        ui.table->setUpdatesEnabled(!projecting);
-        ui.iconList->setUpdatesEnabled(!projecting);
-        ui.table->setEnabled(panelIdle);
-        ui.iconList->setEnabled(panelIdle);
-        // Native archive progress is modal to the file manager. Qt disables
-        // its lists during the operation; disable the address controls too so
-        // focus cannot move to an inactive pane while its source guards block
-        // the corresponding focus notification.
-        ui.pathCombo->setEnabled(navigating);
-        ui.path->setReadOnly(!navigating);
+    {
+        QScopedValueRollback<unsigned> projection(panelProjectionDepth_, panelProjectionDepth_ + 1);
+        app_.RefreshTitle();
+        const bool navigating = !app_.QtOperations().closed() && !app_.QtOperations().blocking();
+        const bool idle = navigating && !scanningDisk_ && !scanningArchive_;
+        refreshBookmarks();
+        if (commands_)
+            commands_->RefreshActions();
+        if (commands_ && !scanningDisk_ && !scanningArchive_)
+            refreshPanelStatus();
+        for (unsigned index = 0; index < kNumPanelsMax; ++index) {
+            const auto &ui = panelUi_[index];
+            if (!ui.container || !ui.table || !ui.iconList || !ui.path)
+                continue;
+            const bool projecting = index == projectedPanel_
+                                        ? scanningDisk_ || scanningArchive_
+                                        : ui.scanningDisk || ui.scanningArchive;
+            const bool panelIdle = navigating && !projecting;
+            QWidget *focused = QApplication::focusWidget();
+            if (projecting && focused &&
+                (ui.table == focused || ui.table->isAncestorOf(focused) || ui.iconList == focused ||
+                 ui.iconList->isAncestorOf(focused)))
+                ui.path->setFocus();
+            // RefreshListCtrl disables redraw until native sorting and selection
+            // restoration finish. Keep that policy across Qt's asynchronous batches.
+            ui.table->setUpdatesEnabled(!projecting);
+            ui.iconList->setUpdatesEnabled(!projecting);
+            ui.table->setEnabled(panelIdle);
+            ui.iconList->setEnabled(panelIdle);
+            // Native archive progress is modal to the file manager. Qt disables
+            // its lists during the operation; disable the address controls too so
+            // focus cannot move to an inactive pane while its source guards block
+            // the corresponding focus notification.
+            ui.pathCombo->setEnabled(navigating);
+            ui.path->setReadOnly(!navigating);
+        }
+        const bool dragAvailable = idle && app_.GetFocusedPanel().DoesItSupportOperations() &&
+                                   (state_ == State::Filesystem || state_ == State::Viewing);
+        table_->setDragEnabled(dragAvailable);
+        iconList_->setDragEnabled(dragAvailable);
     }
-    const bool dragAvailable = idle && app_.GetFocusedPanel().DoesItSupportOperations() &&
-                               (state_ == State::Filesystem || state_ == State::Viewing);
-    table_->setDragEnabled(dragAvailable);
-    iconList_->setDragEnabled(dragAvailable);
-    if (appPresentation_)
+    if (appPresentation_ && !panelProjectionDepth_)
         appPresentation_->CompleteCopyIfReady();
 }
 

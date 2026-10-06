@@ -152,10 +152,7 @@ void MainWindow::connectFilesystemScanner() {
                         const HRESULT loaded = panel.LoadListItems(true);
                         if (loaded != S_OK) {
                             panelUi_[index].filesystemScanner->cancel();
-                            scanningDisk_ = false;
-                            setState(State::Filesystem);
-                            statusBar()->showMessage(QtLocalText("Could not read folder.",
-                                                                 "Не удалось прочитать папку."));
+                            failFilesystemListing(loaded);
                             return;
                         }
                         configureColumns(true);
@@ -198,26 +195,35 @@ void MainWindow::connectFilesystemScanner() {
                     QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
             });
         });
-        connect(scanner, &FilesystemScanner::failed, this, [this, index](qint32) {
-            withPanelProjection(index, [this] {
+        connect(scanner, &FilesystemScanner::failed, this, [this, index](qint32 result) {
+            withPanelProjection(index, [this, result] {
                 if (app_.QtOperations().closed())
                     return;
                 QtAppOperationState::CallScope call(app_.QtOperations());
-                scanningDisk_ = false;
-                scanSelectedState_.reset();
-                scanSelectedPaths_.reset();
-                autoRefreshTopPath_.clear();
-                autoRefreshScrollValue_ = -1;
-                table_->clearSelection();
-                table_->setRowCount(0);
-                app_.GetFocusedPanel().ReleaseFolder();
-                table_->setSortingEnabled(true);
-                setState(State::Filesystem);
-                statusBar()->showMessage(
-                    QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
+                app_.GetFocusedPanel().LoadListItems(true, HRESULT(result));
+                failFilesystemListing(HRESULT(result));
             });
         });
     }
     filesystemScanner_ = panelUi_[projectedPanel_].filesystemScanner;
     listProjection_ = panelUi_[projectedPanel_].listProjection;
+}
+
+void MainWindow::failFilesystemListing(HRESULT result) {
+    auto &panel = app_.GetFocusedPanel();
+    scanSelectedState_.reset();
+    scanSelectedPaths_.reset();
+    autoRefreshTopPath_.clear();
+    autoRefreshScrollValue_ = -1;
+    table_->clearSelection();
+    table_->setRowCount(0);
+    table_->setSortingEnabled(true);
+    // Keep the async publication pending until its error has been presented.
+    // The original OnCopy continuation then restores source focus last.
+    panel.MessageBox_Error_HRESULT(result);
+    if (app_.QtOperations().closed())
+        return;
+    scanningDisk_ = false;
+    setState(State::Filesystem);
+    statusBar()->showMessage(QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
 }

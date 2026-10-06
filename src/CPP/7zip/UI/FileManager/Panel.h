@@ -601,8 +601,8 @@ class CPanel : public QObject {
     int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,
                            bool isRawProp = false) const;
     HRESULT InitColumns();
-    // Source RefreshListCtrl load stage. Worker-loaded folders skip only LoadItems.
-    HRESULT LoadListItems(bool itemsLoaded = false);
+    // Source load stage; workers carry their original result before properties.
+    HRESULT LoadListItems(bool itemsLoaded = false, HRESULT loadedResult = S_OK);
     void SaveListViewInfo(const CPropColumns &visibleColumns);
     const CPropColumns &GetColumns() const { return _columns; }
     const CPropColumns &GetVisibleColumns() const { return _visibleColumns; }
@@ -690,7 +690,7 @@ class CPanel : public QObject {
     CRecordVector<bool> _isDirVector;
     // Retain the source early-return result across Qt row publication.
     HRESULT _listLoadResult = S_OK;
-    HRESULT LoadListItemsImpl(bool itemsLoaded);
+    HRESULT LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult);
     UString _currentFolderPrefix;
     bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
     UString GetItemPrefix(unsigned index) const;

@@ -92,7 +92,13 @@ Cancel, original focus/title/marks and recovery with real output bytes.
 Synchronous filesystem reload now retains its native provider and load HRESULT;
 filesystem Refresh uses source OnReload. Both roles/EN-RU direct/reload/timer/
 command and actual filesystem Copy/Move peers cover controlled Cancel/allocation
-failure and recovery. Missing-folder adaptation, async terminal and other
+failure and recovery. Actual async worker errors now enter the original load
+RINOK before properties/selection; the bound provider and HRESULT remain intact.
+The source message precedes scan completion. The Qt continuation waits until
+temporary peer projection is restored before changing source focus/title.
+Both-role EN/RU normal/flat/navigation/Refresh and real Copy/Move peer consumers
+check old-generation rejection, provider/result/bytes and recovery.
+Missing-folder adaptation and other
 post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
 

@@ -54,7 +54,12 @@ focus/title, notification guards и последующую успешную за
 HRESULT, включая Cancel и преобразованное COM allocation exception; ошибочное
 выделение не восстанавливается. Обе роли панелей и реальный FS peer после
 Copy/Move проверены с повторной загрузкой и контрольными байтами.
-Missing-folder adaptation, async terminal и остальные post-Copy failures требуют сверки;
+FS worker failure теперь передаёт исходный HRESULT в load stage до properties/
+selection, сохраняет provider и показывает source error перед завершением
+async publication. После временной peer projection исходная OnCopy continuation
+восстанавливает source title/focus. Реальный worker failure, superseded generation,
+normal/flat, EN/RU и Copy/Move consumers проверяют восстановление и bytes.
+Missing-folder adaptation и остальные post-Copy failures требуют сверки;
 текущие Windows/Linux и rendered проверки остаются обязательными.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
