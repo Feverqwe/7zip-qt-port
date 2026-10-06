@@ -167,6 +167,10 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.one = operated.Size() == 1;
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;
+    // SaveSelectedState leaves the parent's FocusedName undefined.
+    c.selectedParent =
+        c.focused && !selection.FocusedName_Defined &&
+        w.table_->selectionModel()->isRowSelected(selection.FocusedItem, QModelIndex());
     c.focusedFile = panel.IsFocusedFile();
     c.comment = panel.CanComment();
     CMyComPtr<IFolderCalcItemFullSize> calcItemFullSize;
@@ -292,9 +296,9 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case kMenuCmdID_Toolbar_Test:
         return c.archive;
     case IDM_OPEN:
-        return c.operated;
+        return c.operated || c.selectedParent;
     case IDM_OPEN_OUTSIDE:
-        return c.operated && !c.root;
+        return (c.operated || c.selectedParent) && !c.root;
     case IDM_OPEN_INSIDE:
     case IDM_OPEN_INSIDE_ONE:
     case IDM_OPEN_INSIDE_PARSER:

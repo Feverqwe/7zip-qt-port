@@ -720,6 +720,68 @@ constraints and unanswered cleanup questions remain. Current Windows/Linux/rende
 remaining full row/icon/dots/redraw/status stages and parent/final acceptance
 remain mandatory; this does not close RefreshListCtrl or P3-05.15.
 
+### Source parent-row reload selection and Open consumers, 2026-10-06
+
+Reviewed original PanelItems.cpp::RefreshListCtrl/SaveSelectedState/
+SetFocusedSelectedItem/OpenSelectedItems, PanelFolderChange.cpp::OpenFolder/
+OpenParentFolder, PanelItemOpen.cpp::OpenFolderExternal, PanelListNotify.cpp
+Enter handling and MyLoadMenu.cpp::CFileMenu::Load, their types/callers and Qt
+command/row-publication dependencies at upstream commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original RefreshListCtrl matches the inserted
+".." against FocusedName and selects fallback row0 in showDots mode. Qt had
+omitted both branches despite its existing source-sentinel parent presentation.
+
+Restore those source branches inside the existing Qt row walk, retaining
+showDots && !IsRootFolder for native providers. The existing populated-list
+adapter also supports a null provider, so its root test remains guarded.
+Sentinel exclusion from native marks/operated items is unchanged. Qt alternative
+selection still uses a selected focused row independently of native marks;
+hidden-dot controls exercise that existing adaptation. No new algorithm,
+dependency or public testing API; names/paths/notices/languages remain.
+Baseline verification passes408 exact/196 adapted/3 local. Small source changes
+remain focused; the longer regression fixture covers one public reload workflow
+with file/navigation helpers, without extracting unrelated UI glue.
+
+Enter revealed an additional consumer gap: Qt disabled Open because operated
+indices exclude a parent. Original OpenSelectedItems separately inserts a
+selected focused parent and dispatches OpenFolder or OpenFolderExternal. Central
+transport capabilities now derive selectedParent from original saved state's
+undefined FocusedName and selected Qt row. Open/Open Outside accept it while
+existing source menu/guard policy and handlers remain authoritative. No local
+parent-path algorithm is added. An initial attempt to use private GetRealItemIndex
+did not compile; the final implementation reuses public CSelectedState instead.
+
+New panel_parent_reload covers48 both-role EN/RU/standard-alternative/ShowDots
+on-off/small301-worker-flat rows, each with manual and timer reload. It checks
+focus/parent selection, marks/operated exclusion, icon/localized tooltip,
+prefix/title, peer provider/selection and exact private bytes. Twenty-four shown-
+parent rows invoke Open Outside through an intercepted launcher and Enter through
+the real source parent binding; no external application is launched.192 current
+980×620/640×400 JSON reports inspect both address/list groups as visible/enabled/
+fullyVisible. panel_selection adds two explicit ".." focused-name consumers
+against a different saved row, under both modes.
+
+Actual original-product RED: parent suite26 Qt passes/24 selection failures,
+selection suite5 passes/2 explicit-focus failures; focused2 fails8.43s, frozen
+build/review/source-parent-reload-red. First source-only fix exposed actual Enter
+path failures because Open was disabled. Exact own process47912 confirmed live,
+then interrupted after diagnosis; six other focused suites pass, overall6/7
+with interrupted parent233.61s/total250.99s. That log is frozen separately in
+source-parent-reload-open-red and is not final validation.
+
+Final nine focused suites pass32.44s, zero Qt failures/skips: parent50,
+selection7, list-settings5, copy-reload34, filesystem-reload34, list-load81,
+auto-refresh5, navigation10 and panel-key55. Six input hashes, focused log and192
+geometry reports are frozen in build/review/source-parent-reload-final.
+Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes formatting,
+all-target build and259/259 CTest128.94s. Six inputs remain unchanged from
+focused validation; full log/validation manifest are frozen in that directory.
+No native runner/cleanup/resize ran; previous storage constraints and unanswered
+cleanup questions remain. Current native Windows/Linux/rendered,
+remaining full row/icon/redraw/status stages, other source branches and parent/
+final acceptance remain mandatory; this does not close P3-05.15.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

@@ -1447,7 +1447,13 @@ hover/track-select: 400 ms, без открытия, с отменой при Ct
 leave и смене строки после scroll/removal. В 7zFM это системный Win32
 track-select interval, а Qt использует фиксированное ожидание.
 ShowDots добавляет исходный `..` в файловый и архивный список, но не в
-виртуальный root. FullRow в табличном виде переключает окраску всей строки
+виртуальный root. Reload сохраняет исходный выбор родительской строки при
+fallback focus0 и восстанавливает её по явному имени `..`. Native marks/operated
+indices не включают sentinel. Qt command availability допускает Open/Enter и
+Open Outside для выбранного родителя через исходные handlers. Проверены обе
+панели/EN-RU/standard-alternative/hidden dots/small-worker-flat consumers;
+native/rendered acceptance остаётся открытой.
+FullRow в табличном виде переключает окраску всей строки
 либо только имени. На macOS/Linux ShowSystemMenu добавляет действие открытия
 каталога в системном файловом менеджере; это уже, чем Windows shell menu.
 Полная сверка контекстного меню остаётся P0-09. Альтернативное выделение

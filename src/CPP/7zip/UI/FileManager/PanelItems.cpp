@@ -462,6 +462,8 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     _selectionList.ClearSelection();
     const UInt32 numItems = (UInt32)_selectionList.GetItemCount();
     const UInt32 numFolderItems = GetFolderItemCount();
+    // Qt can also refresh an already populated list without a native provider.
+    const bool showDots = _showDots && (!_folder || !IsRootFolder());
     _selectedStatusVector.ClearAndReserve(numFolderItems);
     for (UInt32 i = 0; i < numFolderItems; ++i)
         _selectedStatusVector.AddInReserved(false);
@@ -486,8 +488,11 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     }
     for (UInt32 i = 0; i < numItems; i++) {
         const unsigned realIndex = GetRealItemIndex(int(i));
-        if (realIndex == kParentIndex)
+        if (realIndex == kParentIndex) {
+            if (showDots && state.FocusedName == UString(".."))
+                cursorIndex = (int)i;
             continue;
+        }
         if (realIndex >= numFolderItems)
             throw 1;
         const UString name = _folder ? GetItemName(realIndex) : _selectionList.GetItemName(i);
@@ -512,8 +517,8 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     if (cursorIndex < 0 && _selectionList.GetItemCount() > 0) {
         if (focusedPos >= _selectionList.GetItemCount())
             focusedPos = _selectionList.GetItemCount() - 1;
-        // Current presentation has a parent toolbar button, no dots row.
-        SetFocusedSelectedItem(focusedPos, false);
+        // Select the initial parent row only in the original showDots mode.
+        SetFocusedSelectedItem(focusedPos, showDots && (focusedPos == 0));
     }
     _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
     _selectionIsDefined = false;

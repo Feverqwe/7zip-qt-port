@@ -1080,6 +1080,12 @@ model and selection model; it supplies relative names and control operations.
 `CSettingsPage` supplies the original list-option order; the Qt presentation
 maps ShowDots to a source-sentinel parent row, FullRow to a table paint delegate,
 and single-click track-select to one `QtFileListHover` per table/icon viewport.
+RefreshListCtrl retains the original explicit parent-name and fallback row0
+focus/selection policy. The sentinel stays outside native marked/operated items.
+Central command availability uses the source saved state's undefined parent
+FocusedName plus selected Qt row to permit Open/Open Outside. The original
+OpenSelectedItems then inserts the parent sentinel and dispatches OpenFolder or
+OpenFolderExternal; the Qt gate does not implement another parent navigation.
 The hover adapter changes selection after dwell without invoking navigation.
 AlternativeSelection still needs the source marked-item state (P0-07.2).
 Normal refresh restores after loading/sorting; flat refresh holds a pending

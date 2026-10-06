@@ -1869,6 +1869,15 @@ guards and removal of a hovered row. It writes 640×400/980×620 window JSON.
 `SEVENZIP_CAPTURE_SCREENSHOTS=1` also saves only the affected FullRow
 table viewport to `build/dev/ui-screenshots/list-settings-*.png` when paint
 inspection is needed. The runtime evidence is macOS-local.
+`panel_parent_reload` covers48 both-role EN/RU/standard-alternative/ShowDots
+on-off/small-worker-flat rows, with both manual and timer reload in each row.
+It verifies fallback focus/parent selection, sentinel exclusion from native
+marks/operated indices, icon/localized tooltip, peer state/prefix/title and
+private control bytes. Open Outside uses an intercepted association launcher,
+then Enter opens the actual parent through source commands.192 normal/compact
+JSON reports inspect the resulting panels. `panel_selection` also checks
+explicit parent-name focus against a different saved position under both
+selection modes. Native/rendered acceptance remains.
 `list_activation` covers settings-driven single/double-click in history,
 modified selection clicks, Alt/full-property detail, hover selection on/off,
 leaving the list and deleting a hovered row. Fixtures use a temporary INI.

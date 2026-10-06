@@ -83,6 +83,11 @@ actual address/title/focus и unchanged peer/bytes;32 panel reports покрыв
 Исходный CalledFromTimer теперь сохраняет адресный draft, cursor/selection и
 focus при обновлении списка; manual Refresh публикует текущий путь. Проверки
 обоих roles/EN-RU охватывают малый/worker/flat FS и bound root/ZIP consumers.
+Родительская строка теперь получает исходный fallback selection и явный
+name-based focus. Open/Enter/Open Outside сохраняют доступность для выбранного
+`..` через source handlers; native marks/operated indices исключают sentinel.
+Hidden-row/standard-alternative/small-worker-flat checks охватывают обе панели
+и EN/RU, с192 normal/compact reports и private control bytes.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing

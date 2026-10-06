@@ -81,6 +81,13 @@ ordinary Refresh must publish the current folder instead. Check both panels,
 EN/RU, small/bounded-worker/flat filesystem and bound namespace/archive callers,
 with peer state, native prefix/title and private control bytes unchanged.
 Inspect resulting address/list groups at980×620/640×400.
+When ShowDots exposes the parent row, source reload selects it when fallback
+focus is row0 and restores it for an explicit focused name of "..". Exclude the
+sentinel from native marks/operated indices. Open/Enter and Open Outside must
+remain available for that selected row through the original source handlers.
+Check hidden-row controls, both panels/EN-RU/standard-alternative selection,
+small/worker/flat reload and existing parent icon/tooltip, with peer and control
+bytes preserved. Inspect both groups at980×620/640×400.
 
 ### Persisted source locations (P3-05.14, required scope)
 

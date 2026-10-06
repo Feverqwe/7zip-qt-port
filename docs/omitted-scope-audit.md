@@ -112,7 +112,10 @@ post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
 CalledFromTimer now reaches Qt filesystem/root/archive address publication;
 timer reload skips edit/current-image/history updates as the original source
-does, while ordinary reload publishes its path. Remaining row/icon/dots/redraw
+does, while ordinary reload publishes its path. Original parent-name/fallback
+focus and dots selection now reach Qt rows. Central Open/Open Outside availability
+recognizes the selected parent via source saved state and leaves navigation with
+OpenSelectedItems/OpenFolder/OpenFolderExternal. Remaining row/icon/redraw
 and full-module/platform acceptance are separate obligations.
 
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`

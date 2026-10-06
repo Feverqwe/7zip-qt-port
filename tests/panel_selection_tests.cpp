@@ -92,6 +92,34 @@ class PanelSelectionTests final : public QObject {
         QCOMPARE(view.selectionModel()->selectedRows().size(), 0);
     }
 
+    void explicitParentNameRestoresFocus_data() {
+        QTest::addColumn<bool>("alternative");
+        QTest::newRow("standard") << false;
+        QTest::newRow("alternative") << true;
+    }
+    void explicitParentNameRestoresFocus() {
+        QFETCH(bool, alternative);
+        CPanel panel(QStringLiteral("/tmp/"), items());
+        QTableWidget view;
+        populate(view);
+        panel.AttachSelectionView(&view);
+        panel.SetAlternativeSelection(alternative);
+        panel._showDots = true;
+        CSelectedState state;
+        state.FocusedName = UString("..");
+        state.FocusedName_Defined = true;
+        state.FocusedItem = 3;
+        state.SelectFocused = true;
+        QCOMPARE(panel.RefreshListCtrl(state), S_OK);
+        QCOMPARE(view.currentRow(), 0);
+        QVERIFY(selected(view, 0));
+        CRecordVector<UInt32> indices;
+        panel.Get_ItemIndices_Selected(indices);
+        QVERIFY(indices.IsEmpty());
+        panel.Get_ItemIndices_Operated(indices);
+        QVERIFY(indices.IsEmpty());
+    }
+
     void alternativeMarkSourceTransitions() {
         CPanel panel(QStringLiteral("/tmp/"), items());
         QTableWidget view;
