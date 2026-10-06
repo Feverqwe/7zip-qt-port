@@ -97,7 +97,7 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     statusBar()->showMessage("Готово");
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)
-            activateRow(row);
+            activateRow(row, selectionClickModifiers_);
     });
     connect(table_, &QTableWidget::cellClicked, this,
             [this](int row, int) { activateSingleClickedRow(row); });
@@ -267,7 +267,7 @@ void MainWindow::createIconList(QWidget *central) {
     iconList_->addAction(parent_);
     connect(iconList_, &QListView::doubleClicked, this, [this](const QModelIndex &index) {
         if (!fileListSettings_.SingleClick)
-            activateRow(index.row());
+            activateRow(index.row(), selectionClickModifiers_);
     });
     connect(iconList_, &QListView::clicked, this,
             [this](const QModelIndex &index) { activateSingleClickedRow(index.row()); });
@@ -325,8 +325,8 @@ void MainWindow::activateSingleClickedRow(int row) {
     if (drag_ && drag_->Active())
         return;
     // Selection modifiers must keep the Qt multi-selection gesture intact.
-    const auto modifiers = QApplication::keyboardModifiers();
+    const auto modifiers = selectionClickModifiers_;
     if (fileListSettings_.SingleClick &&
         !(modifiers & (Qt::ControlModifier | Qt::MetaModifier | Qt::ShiftModifier)))
-        activateRow(row);
+        activateRow(row, modifiers);
 }

@@ -116,13 +116,11 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
         app_.ExecuteCommand(810 + key->key() - Qt::Key_0);
         return true;
     }
-    if (!(key->modifiers() &
-          (Qt::ControlModifier | Qt::MetaModifier | Qt::AltModifier | Qt::ShiftModifier))) {
-        if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
-            openItem_->isEnabled()) {
-            openItem_->trigger();
-            return true;
-        }
+    // Native list controls send LVN_ITEMACTIVATE for Enter, including modifiers.
+    if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
+        !key->modifiers().testFlag(Qt::MetaModifier)) {
+        activateItems(key->modifiers());
+        return true;
     }
     return false;
 }

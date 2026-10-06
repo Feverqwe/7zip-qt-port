@@ -250,7 +250,7 @@ void MainWindow::updateFilesystemIcons() {
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     if (!panelProjectionDepth_ &&
         (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress ||
-         event->type() == QEvent::KeyPress)) {
+         event->type() == QEvent::MouseButtonDblClick || event->type() == QEvent::KeyPress)) {
         const unsigned panelIndex = panelIndexFor(watched);
         if (panelIndex < kNumPanelsMax && panelIndex != projectedPanel_ && app_.NumPanels == 2)
             activatePanelUi(panelIndex);
@@ -262,10 +262,20 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     }
     const bool listViewport = (table_ && watched == table_->viewport()) ||
                               (iconList_ && watched == iconList_->viewport());
-    if (listViewport && event->type() == QEvent::MouseButtonPress) {
+    if (listViewport && (event->type() == QEvent::MouseButtonPress ||
+                         event->type() == QEvent::MouseButtonDblClick)) {
         const auto *mouse = static_cast<QMouseEvent *>(event);
         selectionClickModifiers_ = mouse->modifiers();
         selectionClickLeft_ = mouse->button() == Qt::LeftButton;
+    }
+    const bool listControl = watched == table_ || watched == iconList_ || listViewport;
+    if (listControl && event->type() == QEvent::ShortcutOverride) {
+        const auto *key = static_cast<QKeyEvent *>(event);
+        if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
+            !key->modifiers().testFlag(Qt::MetaModifier)) {
+            event->accept();
+            return true;
+        }
     }
     if (event->type() == QEvent::KeyPress &&
         handlePanelKey(watched, static_cast<QKeyEvent *>(event)))

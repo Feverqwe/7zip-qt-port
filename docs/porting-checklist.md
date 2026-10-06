@@ -306,6 +306,13 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: source OnNotifyActivateItems подключён к Enter и
+двойному щелчку table/icon с исходной политикой всех Ctrl/Shift/Alt сочетаний.
+256 real FS/ZIP EN/RU both-pane сценариев, notify guards, 16 folder-error/recovery
+consumers и normal/compact geometry покрывают этот компонент.
+[Датированное evidence](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
+Статус остаётся active: полный модуль и current native3OS/final acceptance открыты.
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

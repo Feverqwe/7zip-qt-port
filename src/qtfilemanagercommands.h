@@ -3,9 +3,11 @@
 #include "qtfilemanagercommandservices.h"
 #include <QHash>
 #include <QList>
+#include <functional>
 
 class QAction;
 class MainWindow;
+class CPanel;
 
 // Qt presentation and existing transport consumers for CApp's native entry.
 // Native menu policy is recomputed for execution, never read from QAction state.
@@ -15,6 +17,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();
+    void ActivateItems(Qt::KeyboardModifiers modifiers);
     bool CanExecuteCommand(unsigned id) override;
     bool IsShiftDown() const override;
     void InvokePluginCommand(unsigned id) override;
@@ -96,6 +99,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     void Bind(QAction *action, unsigned id);
     void BindToggle(QAction *action, unsigned id, bool CApp::*state);
     void OpenNative(bool internal, bool external, const wchar_t *type);
+    void RunNativeOpen(const std::function<void(CPanel &)> &open);
     MainWindow &window_;
     QHash<unsigned, QList<QAction *>> actions_;
 };

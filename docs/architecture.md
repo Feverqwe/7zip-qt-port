@@ -1254,6 +1254,12 @@ FocusedName plus selected Qt row to permit Open/Open Outside. The original
 OpenSelectedItems then inserts the parent sentinel and dispatches OpenFolder or
 OpenFolderExternal; the Qt gate does not implement another parent navigation.
 The hover adapter changes selection after dwell without invoking navigation.
+List activation goes through the source `CPanel::OnNotifyActivateItems`.
+Qt decodes mouse/key modifiers and prevents shortcut preemption; it owns no
+second modifier policy. `QtFileManagerCommands::ActivateItems` applies operation,
+notification and reentrancy guards, then shares `RunNativeOpen` with menu Open
+for selection snapshots, history and provider/state projection. Source Properties
+and OpenSelectedItems retain their original operation owners.
 AlternativeSelection uses the source vector and adapters detailed below.
 Normal refresh restores after loading/sorting; flat refresh holds a pending
 snapshot until scanner completion and discards it on navigation. Archive refresh,

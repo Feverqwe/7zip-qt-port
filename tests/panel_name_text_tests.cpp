@@ -260,11 +260,17 @@ class PanelNameTextTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(QTest::qWaitForWindowActive(&window));
         window.openArchive(zip);
         auto *view = static_cast<FileTable *>(table(window));
+        const auto currentEditor = [view]() -> QLineEdit * {
+            for (auto *editor : view->findChildren<QLineEdit *>())
+                if (editor->isVisible())
+                    return editor;
+            return nullptr;
+        };
         QTRY_COMPARE(view->rowCount(), 1);
         view->selectRow(0);
         QVERIFY(action(window, "renameAction")->isEnabled());
         action(window, "renameAction")->trigger();
-        auto *editor = view->findChild<QLineEdit *>();
+        auto *editor = currentEditor();
         QVERIFY(editor);
         editor->setText(renamed);
         QTest::keyClick(editor, Qt::Key_Return);
@@ -281,7 +287,7 @@ class PanelNameTextTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(ExternalEditorFixture::contents(zip, renamed), QByteArray("control"));
         view->selectRow(0);
         action(window, "renameAction")->trigger();
-        editor = view->findChild<QLineEdit *>();
+        editor = currentEditor();
         QVERIFY(editor);
         QCOMPARE(editor->text(), renamed);
         editor->setText("discarded.txt");
@@ -301,8 +307,9 @@ class PanelNameTextTests final : public QObject, protected MainWindowTestSupport
         closeError.start(0);
         view->selectRow(0);
         action(window, "renameAction")->trigger();
-        editor = view->findChild<QLineEdit *>();
+        editor = currentEditor();
         QVERIFY(editor);
+        QCOMPARE(editor->text(), renamed);
         editor->setText("bad/name.txt");
         QTest::keyClick(editor, Qt::Key_Return);
         QTRY_VERIFY(!message.isEmpty());

@@ -212,7 +212,8 @@ class MainWindow : public QMainWindow {
     void SelectSpec(bool select);
     void SelectByType(bool select);
     HRESULT navigateTo(const QString &path, bool sourceAddress = false);
-    void activateRow(int row);
+    void activateRow(int row, Qt::KeyboardModifiers modifiers);
+    void activateItems(Qt::KeyboardModifiers modifiers);
     void goBack();
     void goUp();
     void goParent();

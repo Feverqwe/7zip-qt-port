@@ -111,6 +111,15 @@ provider блокируют запрос, ошибка paint используе�
 getter сохраняет exception policy. EN/RU обе роли/reload/rebind/current captures
 проверены на macOS. Реальные deleted archives и rendered Windows/native3OS
 приёмка остаются открытыми.
+Enter и двойной щелчок table/icon теперь вызывают original OnNotifyActivateItems:
+Alt без Ctrl/Shift — Properties, только Shift — Open Outside, остальные
+Ctrl/Shift/Alt сочетания разрешают внутреннее открытие. Parent следует тому же
+source OpenSelectedItems. Qt декодирует модификаторы события и предотвращает
+повторную QAction activation; rename/notify/operation/modal guards сохраняются.
+Обе панели, EN/RU, FS/real ZIP, отмена Properties, удалённая папка и recovery
+проверены на macOS. Outside archive callback сохраняет source virtual prefix;
+это не приёмка OS association для архивной папки. Native Windows shell Properties,
+current Windows/Linux и rendered parity остаются открытыми.
 Изменение выбора теперь вызывает исходный OnItemChanged в owning CPanel,
 включая неактивную панель. Qt передаёт source index и изменение selected-state;
 guard/alternative mode сохраняют независимые marks. SaveSelectedState снова

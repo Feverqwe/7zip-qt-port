@@ -2,6 +2,14 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Activation uses source OnNotifyActivateItems for Return/double-click in table/icon:
+Alt alone shows Properties; Shift alone opens outside; other Ctrl/Shift/Alt
+combinations permit internal opening. Preserve both-pane ownership, selection,
+peer and notify guards. Inspect EN/RU FS/real ZIP at980×620/640×400 and Qt Properties
+at540×360/360×240; Cancel retains provider and selection. Native Windows filesystem
+property sheets require their own native acceptance. Removed-directory activation
+must show the source error and allow recovery without rebinding the owning panel.
+
 Each source catalog entry gets a separate Qt section, including generic/raw
 entries with the same PropID and raw entries for reserved Size properties.
 Requested cells/alignment use that exact source descriptor, not the first ID.

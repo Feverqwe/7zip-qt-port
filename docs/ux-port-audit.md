@@ -151,6 +151,11 @@ consumers;32 detail/icon recovery/rebind reports покрывают EN/RU обе
 per-type widths/order/visibility и отдельные Type/Name changes с сохранением
 selection/peer focus. Normal/compact EN/RU обе панели проверены на macOS;
 [evidence](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07).
+Enter/double-click теперь используют original OnNotifyActivateItems и все
+Ctrl/Shift/Alt сочетания, включая Properties/Outside, в table/icon обеих панелей.
+EN/RU real FS/ZIP, guards, Cancel Properties, folder-error/recovery и normal/compact
+reports покрывают macOS; native Windows shell sheets/current3OS/rendered остаются
+обязательными. [Evidence](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
 Source selected-state notifications также теперь обновляют owning-pane marks
 немедленно, включая inactive peer, через original OnItemChanged. Snapshot больше
 не перезаписывает marks при guard; deletion/alternative guards, source indices,

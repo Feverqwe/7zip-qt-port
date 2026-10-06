@@ -8,6 +8,7 @@
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtarchivereopen.h"
+#include "qtfilemanagercommands.h"
 #include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
@@ -301,17 +302,18 @@ HRESULT MainWindow::navigateTo(const QString &path, bool sourceAddress) {
     return S_OK;
 }
 
-void MainWindow::activateRow(int row) {
+void MainWindow::activateItems(Qt::KeyboardModifiers modifiers) {
+    if (!renameActivationPending_)
+        commands_->ActivateItems(modifiers);
+}
+
+void MainWindow::activateRow(int row, Qt::KeyboardModifiers modifiers) {
     if (renameActivationPending_)
         return;
     if (row < 0 || row >= table_->rowCount())
         return;
-    if (table_->item(row, 0)->data(Qt::UserRole + 6).toUInt() == UInt32(-1)) {
-        goParent();
-        return;
-    }
     if (!table_->selectionModel()->isRowSelected(row, QModelIndex()))
         table_->selectRow(row);
     table_->setCurrentCell(row, 0, QItemSelectionModel::NoUpdate);
-    app_.ExecuteCommand(IDM_OPEN);
+    activateItems(modifiers);
 }

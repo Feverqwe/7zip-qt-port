@@ -1735,6 +1735,81 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source item activation notification consumers, 2026-10-07
+
+Reviewed original PanelListNotify.cpp::OnNotifyActivateItems536–548 and
+OnNotifyList's LVN_ITEMACTIVATE/NM_DBLCLK/NM_RETURN routing, FM.cpp's
+g_LVN_ITEMACTIVATE_Support initialization, Panel.cpp::OnNotify/CMyListView,
+PanelKey.cpp, Panel.h declaration, resource.rc accelerators, and complete
+OpenSelectedItems/OpenFolder/OpenFolderExternal/OpenItem/Properties callers.
+Full pin 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Adapted C++ stays under
+src/CPP/7zip/UI/FileManager/{PanelListNotify.cpp,Panel.h,PanelKey.cpp}; existing
+notices/license/dependencies are retained, without a new module or upstream edits.
+
+The original activation body/symbol/formula is retained. Explicit Qt event flags
+replace IsKeyDown: Alt alone calls Properties; Shift alone disables internal open;
+all other Ctrl/Shift/Alt combinations permit internal open. Qt replaces the native
+ComCtl32-version notification switch with one Enter/double-click route for each
+owning table/icon control. ShortcutOverride prevents QAction Shift/Alt+Return
+from preempting or duplicating that route. Meta+Enter keeps the existing Qt route;
+single-click Meta gestures remain selection gestures.
+The handler's adapted public declaration serves production commands, not tests.
+
+QtFileManagerCommands retains its existing OpenNative history/state/provider
+projection in RunNativeOpen, shared with the notification adapter. Operation,
+reentrant-call, modal, notification, missing-provider and rename guards remain
+at the integration boundary. Source selection snapshots and OpenSelectedItems
+own parent/multiple-item policy; Qt no longer bypasses parent activation with
+goParent. Mouse-event modifiers replace asynchronous global-key lookup, including
+the existing single-click selection-modifier exclusion. No widget recreates
+archive arguments, extraction or source modifier policy.
+
+New panel_activation exercises 256 physical Return/double-click Ctrl/Shift/Alt
+combinations across both panes, EN/RU, detail/large-icon and real FS/official ZIP
+providers. Each checks guarded activation first, internal navigation or exact
+typed external callback or cancelled Properties, peer/provider/selection and
+unchanged Unicode/space archive/input bytes. Sixteen additional real removed-directory
+failures show the source error, retain provider/selection, then recover. Existing
+archive_item_open checks remain the archive failure/cancellation consumers.
+The cohesive data-driven suite stays component-local; its long scenario bodies
+retain sequential fixture/interaction/assertion order rather than distributing
+one workflow through shared window-state test helpers.
+
+Actual pre-fix matrix RED: 146 Qt passes/112 failures, 0 skips; CTest 11.46s,
+build/review/activation-red. Eight initial external-path oracle errors were
+corrected before that RED (initial artifacts kept separately). GetFsPath retains
+the native archive virtual prefix, so Outside callback coverage does not claim
+working OS association/extraction for virtual folders. Native Windows filesystem
+Properties rows explicitly skip the shell sheet; archive Qt Properties still run.
+Current macOS matrix yields 512 normal/compact window and 64 Properties reports.
+Rendered Windows/native Windows/Linux, broader OnNotify/full-body and all
+P3-05.15/P3-06 acceptance remain mandatory.
+
+First unsandboxed gate passed formatting/all-target build but failed
+panel_name_text: 278/279 CTest,177.96s. Isolated replay reproduced the missing
+invalid-name message; a visibility assertion proved that its third editor was
+already hidden after Escape (23 Qt passes/1 failure,4.33s). The old fixture sent
+Enter to a closed child awaiting DeferredDelete. Reviewed original
+PanelOperations::RenameFile478–486,
+OnBeginLabelEdit264–273 and OnEndLabelEdit, under the same full pin/dependencies.
+The regression addresses visible editors and checks the raw source name after
+Cancel/reopen before submitting an invalid name. No source rename algorithm,
+archive mutation or validation policy is replaced. Initial/isolated/probe logs
+are preserved in build/review/activation-first-gate and activation-rename-*.
+The existing EditRole already supplies the raw source name; production Rename
+is unchanged. Final focused activation/name/key/settings checks pass 4/4 in
+20.98s. Mandatory unsandboxed check.sh passes formatting/all-target build and
+279/279 CTest in 160.09s on macOS 27.0.1 arm64 with official Qt 6.12.0.
+panel_activation passes 274 Qt checks, 0 failures/skips (12.700s).
+All 20 frozen inputs, including 12 code/build/test files, are unchanged at gate
+completion. The 576 current widget reports expose all 2,112 affected visible
+list/address/Properties widgets fully; normal/compact order and bounds remain
+in build/review/activation-final with snapshots, hashes and focused/full logs.
+The final evidence paragraph is documentation-only; git diff --check passes.
+Current Windows/Linux/native shell/rendered/full-body and P3-05.15/P3-06 closure
+remain open.
+
 ### Source selection notification and snapshot consumers, 2026-10-07
 
 Reviewed original PanelListNotify::OnItemChanged524–534 and OnNotifyList's

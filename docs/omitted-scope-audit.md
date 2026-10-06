@@ -63,6 +63,13 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+Source PanelListNotify::OnNotifyActivateItems is now retained with explicit Qt
+event modifiers. The owning table/icon Return/double-click adapters replace the
+native ComCtl32 notification-version switch and share the existing OpenNative
+state/history projection. Parent/multiple-item behavior stays in OpenSelectedItems;
+the broader OnNotify/status/drag/rendered/platform review remains open.
+See [dated consumer evidence](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
+
 ### RefreshListCtrl phase and caller map, 2026-10-06
 
 Reviewed against the full revision linked above: the active original

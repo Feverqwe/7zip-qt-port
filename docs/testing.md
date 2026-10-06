@@ -1,5 +1,19 @@
 # Regression strategy
 
+`panel_activation` covers physical Return/double-click through the original
+OnNotifyActivateItems modifier policy: 256 FS/real ZIP EN/RU both-pane detail/icon
+cases, notification guards, cancelled Properties, peer/selection and unchanged
+archive/control bytes. Sixteen removed-directory failure/recovery cases exercise source
+errors without releasing the provider. 512 window and 64 Properties geometry reports
+cover normal/compact states. Missing official codecs explicitly skip; Windows
+filesystem shell Properties rows explicitly skip native-sheet acceptance.
+External callbacks are controlled; source archive virtual prefixes do not prove
+OS association or extraction. Existing `archive_item_open` retains archive
+failure/cancellation coverage. See [source review](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
+`panel_name_text` selects the current visible inline editor after Escape/reopen
+and checks the raw source name before invalid-name submission; closed editors
+awaiting Qt DeferredDelete are not interaction targets.
+
 `panel_item_changed` checks immediate source marks for inactive owning panes,
 guarded read-only snapshots, standard/alternative transitions and source Reload
 under EN/RU. A source-index/lifetime case covers parent, reordered source params,

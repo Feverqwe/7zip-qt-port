@@ -11,6 +11,16 @@
 #include <QItemSelectionModel>
 #include <vector>
 
+void CPanel::OnNotifyActivateItems(Qt::KeyboardModifiers modifiers) {
+    const bool alt = modifiers.testFlag(Qt::AltModifier);
+    const bool ctrl = modifiers.testFlag(Qt::ControlModifier);
+    const bool shift = modifiers.testFlag(Qt::ShiftModifier);
+    if (!shift && alt && !ctrl)
+        Properties();
+    else
+        OpenSelectedItems(!shift || alt || ctrl);
+}
+
 void CPanel::OnItemChanged(unsigned index, bool oldSelected, bool newSelected) {
     if (index == (UInt32)-1)
         return;

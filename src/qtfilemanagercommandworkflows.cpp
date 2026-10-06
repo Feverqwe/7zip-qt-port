@@ -18,6 +18,26 @@ bool QtFileManagerCommands::IsShiftDown() const {
 }
 
 void QtFileManagerCommands::OpenNative(bool internal, bool external, const wchar_t *type) {
+    RunNativeOpen([=](CPanel &panel) {
+        if (internal && !external)
+            panel.OpenFocusedItemAsInternal(type);
+        else
+            panel.OpenSelectedItems(internal);
+    });
+}
+
+void QtFileManagerCommands::ActivateItems(Qt::KeyboardModifiers modifiers) {
+    auto &operations = window_.app_.QtOperations();
+    auto &panel = window_.app_.GetFocusedPanel();
+    if (operations.closed() || operations.blocking() || operations.callActive() ||
+        window_.sourceArchiveProgress_ || !panel.ShouldProcessNotifications() ||
+        !panel.GetFolder() || QApplication::activeModalWidget())
+        return;
+    QtAppOperationState::CallScope call(operations);
+    RunNativeOpen([=](CPanel &owner) { owner.OnNotifyActivateItems(modifiers); });
+}
+
+void QtFileManagerCommands::RunNativeOpen(const std::function<void(CPanel &)> &open) {
     auto &w = window_;
     auto &panel = w.app_.GetFocusedPanel();
     CSelectedState selection;
@@ -33,10 +53,7 @@ void QtFileManagerCommands::OpenNative(bool internal, bool external, const wchar
     w.setState(MainWindow::State::Operating);
     {
         QScopedValueRollback<bool> source(w.sourceArchiveProgress_, true);
-        if (internal && !external)
-            panel.OpenFocusedItemAsInternal(type);
-        else
-            panel.OpenSelectedItems(internal);
+        open(panel);
     }
     if (wasFilesystem && panel.IsFSFolder() &&
         QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder()))) != previousDirectory)

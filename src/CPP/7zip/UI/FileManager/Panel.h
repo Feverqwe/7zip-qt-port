@@ -531,6 +531,8 @@ class CPanel : public QObject {
     void SetFocusToList();
     void SetFocusToPath();
     void SetFocusToLastRememberedItem();
+    // Qt's list activation adapter supplies the native notification modifiers.
+    void OnNotifyActivateItems(Qt::KeyboardModifiers modifiers);
     void AttachSelectionView(QAbstractItemView *view,
                              QtPanelList::SortColumnResolver sortColumn = {});
     void DeleteListItems() {
