@@ -587,13 +587,42 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
         }
         if (realIndex >= numFolderItems)
             throw 1;
-        const UString name = _folder ? GetItemName(realIndex) : _selectionList.GetItemName(i);
+        const wchar_t *name = NULL;
+        unsigned nameLen = 0;
+        UString itemName;
+        if (_folderGetItemName)
+            _folderGetItemName->GetItemName(realIndex, &name, &nameLen);
+        if (!name) {
+            itemName = _folder ? GetItemName(realIndex) : _selectionList.GetItemName(i);
+            name = itemName;
+        }
         bool selected = false;
         if (state.SelectedNames.Size() > 1 ||
             (state.SelectedNames.Size() == 1 && selectedName == name) ||
             (state.FocusedName_Defined && focusedNamePure == name) ||
-            (needCheckSlash && (name.Find(L'/') >= 0 || name.Find(L'\\') >= 0))) {
-            relPath = GetItemRelPath(realIndex);
+            (needCheckSlash && NWindows::NFile::NName::FindSepar(name) >= 0)) {
+            relPath.Empty();
+            if (!_folder)
+                relPath = GetItemRelPath(realIndex);
+            else {
+                if (GetFlatMode()) {
+                    const wchar_t *prefix = NULL;
+                    if (_folderGetItemName) {
+                        unsigned prefixLen = 0;
+                        _folderGetItemName->GetItemPrefix(realIndex, &prefix, &prefixLen);
+                        if (prefix)
+                            relPath = prefix;
+                    }
+                    if (!prefix) {
+                        NWindows::NCOM::CPropVariant prop;
+                        if (_folder->GetProperty(realIndex, kpidPrefix, &prop) != S_OK)
+                            throw 2723400;
+                        if (prop.vt == VT_BSTR)
+                            relPath.SetFromBstr(prop.bstrVal);
+                    }
+                }
+                relPath += name;
+            }
             if (relPath == state.FocusedName)
                 cursorIndex = (int)i;
             if (state.SelectedNames.FindInSorted(relPath) != -1)

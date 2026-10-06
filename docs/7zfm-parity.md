@@ -97,6 +97,13 @@ Rename читает EditRole, как original OnEndLabelEdit читает тек
 Пока callbacks запрещены, имя остаётся cached или пустым. Реальный ZIP проверяет
 точное новое имя/bytes, Escape и invalid-name refusal. Windows marker appearance
 и native conditional interface требуют текущей Windows/rendered проверки.
+Восстановление selection теперь использует исходный fast-name-first walk,
+переиспользует имя при matching и читает prefix только в flat mode. NULL от fast
+interface включает исходный property fallback; exception policy не заменяется
+новой HRESULT validation. Сохранённые native names/marks/focus не зависят от
+форматирования display name или порядка Qt rows. Прежний populated-list adapter
+без native provider сохраняет свой transport. Copy/reload потребители остаются
+частью обязательной текущей платформенной приёмки.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

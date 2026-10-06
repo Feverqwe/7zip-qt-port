@@ -41,6 +41,10 @@ class LoadFolder final : public IFolderFolder,
     UString prefix;
     HRESULT nameResult = S_OK;
     HRESULT prefixResult = S_OK;
+    bool fastNameDefined = true;
+    bool fastPrefixDefined = true;
+    unsigned namePropertyCalls = 0;
+    unsigned prefixPropertyCalls = 0;
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderWasChanged)

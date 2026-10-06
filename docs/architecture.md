@@ -57,7 +57,15 @@ cancel further failed publication and clear rows through their existing owners.
 QtFolderProjection completes once with the result and rejects replaced/cancelled
 generations. Root retains its existing portable namespace presentation; native
 Windows drive/network/stream rows use the bridged source icon.
-Original remaining row-prefix/selection/property/sort/redraw/HRESULT presentation branches still
+Selection restoration also follows the original RefreshListCtrl name/prefix
+walk: request the borrowed fast name before the existing property fallback,
+reuse that name in matching, and request a prefix only in flat mode. A NULL fast
+prefix uses the original property/BSTR branch and exception policy. GetFlatMode
+selects the retained disk/archive flag at the Qt integration boundary. The
+populated-list adapter without a native provider keeps its existing relative
+path transport. Sorted Qt rows still map through source indices; displayed name
+formatting is independent of saved native names and marks.
+Original remaining property/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
 Namespace/archive renderers and the bound-folder renderer now return their
 synchronous load HRESULT. The reload callback restores saved selection only on

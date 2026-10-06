@@ -120,6 +120,14 @@ Large-list navigation/close drivers identify partial publication through the
 existing raw-name model role, preserving cancellation assertions while source
 name display callbacks are suppressed.
 
+`panel_refresh_names` verifies the original selection-name walk with fast and
+generic providers, flat/non-flat modes, both selection styles, single/multiple
+saved names and reordered presentation rows. It checks native marks, focused
+row and property requests: defined fast pointers bypass failed generic properties;
+non-flat matching does not request prefixes. Four NULL-pointer combinations
+exercise original name/prefix fallback. This is selection logic coverage; no
+layout or display-text changes are introduced by that stage.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

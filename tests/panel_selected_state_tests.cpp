@@ -217,6 +217,7 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
             items.Add(item);
         }
         CPanel panel("", items);
+        panel.SetFlatModeForArc(true);
         panel.AttachSelectionView(&view);
         view.setCurrentCell(2, 0, QItemSelectionModel::NoUpdate);
         selectRow(&view, 0);

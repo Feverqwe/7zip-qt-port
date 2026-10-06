@@ -923,6 +923,50 @@ Native Windows interface/marker runtime, rendered/cold-stable/current3OS and
 remaining full RefreshListCtrl/name-prefix selection/redraw/status/post-Copy
 scope stay mandatory; P3-05.15 and final acceptance remain open.
 
+### Source selection name/prefix walk (2026-10-06)
+
+Upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: reviewed RefreshListCtrl complete affected
+name/selection body, CSelectedState, SetNewFolder/SaveSelectedState/OnReload/
+OnCopy continuation consumers, GetItemName/GetItemPrefix/GetItemRelPath and
+borrowed IFolderGetItemName types/dependencies. Existing Qt selection restoration
+always queried the generic name then GetItemRelPath, even with a defined fast
+interface and outside flat mode. Restore original fast-name-first/fallback,
+FindSepar predicate, conditional flat prefix, NULL prefix property/BSTR fallback
+and the original throw2723400 contract. Matching reuses the obtained name.
+Qt's sorted row maps its source realIndex; GetFlatMode replaces the single
+original flag with the existing disk/archive state. The null-provider populated
+list adapter keeps its existing relative-path transport. Original paths,
+symbols, notices, language, marks/focus/sort boundaries and authoritative bodies
+remain; no new name/path algorithm or dependency is introduced. Formatting is
+limited to affected borrowed lines, without unrelated extraction.
+
+New panel_refresh_names covers16 fast/generic/flat/non-flat/standard-alternative/
+single-multiple rows plus four defined/NULL name-prefix combinations, with
+reordered source indices, exact focus/marks/selected rows and observable property
+requests. Actual previous-product RED has16 failures/2 Qt passes:12 original
+property exceptions and four redundant generic-name requests. Frozen old source,
+fixture hashes/logs in build/review/source-refresh-names-red; focused1 fails0.49s.
+The NULL cases were added afterward; RED scope is explicitly the first16 rows.
+No name display/layout change is made in this selection stage; existing public
+Copy/reload/parent/name/large-list consumers exercise the integrated path.
+Initial focused10 passed32.36s. The first full gate passed260/262 in129.71s;
+two existing snapshot fixtures supplied flat relative paths with the panel's
+flat mode disabled. Original RefreshListCtrl only requests prefixes in flat
+mode; production menu/panel callers already synchronize that state. Enable
+flat mode in those two fixtures, retaining every source-index/focus/selection
+assertion. Frozen failed gate/logs/five input hashes are in
+build/review/source-refresh-names-full-failure. Localized panel_folder,
+panel_selected_state and panel_refresh_names passed3/3 in2.48s after the fixture
+correction. Final validation evidence is in
+build/review/source-refresh-names-final: mandatory unsandboxed format/all-target
+build/full262/262 passed130.46s on macOS27.0.1 arm64/Qt6.12.0. All seven task
+input hashes remained unchanged across that final gate. Baseline verification
+passed408 exact/196 adapted/3 local. Current native Windows/Linux and rendered
+Windows execution are unverified.
+Remaining whole RefreshListCtrl/property/sort/redraw/status/post-Copy and native
+current3OS/rendered/cold-stable acceptance remain mandatory; .15/P3-06 stay open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at
