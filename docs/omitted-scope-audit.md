@@ -83,8 +83,13 @@ Remaining complete RefreshListCtrl presentation/timer/HRESULT scope is still
 required; the source stage does not close the module review.
 Synchronous namespace/archive renderer results now reach the original OnReload
 HRESULT error consumer; namespace Refresh delegates to that owner. EN/RU direct/
-explicit/timer/command failure/Cancel/recovery consumers cover this seam. FS,
-async terminal and post-Copy failure behavior still require reconciliation;
+explicit/timer/command failure/Cancel/recovery consumers cover this seam.
+The selection stage retains the load HRESULT across Qt publication and returns
+it before querying failed provider state during OnCopy completion. Empty-row
+snapshots no longer read a failed count; ReleaseFolder clears the retained
+result. Both source roles/Copy/Move exercise load/property/type/count failure,
+Cancel, original focus/title/marks and recovery with real output bytes.
+FS/async terminal and other post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
 
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`

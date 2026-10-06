@@ -416,6 +416,56 @@ current three-OS/rendered/cold-stable and P3-06 acceptance remain mandatory.
 The namespace error consumers do not prove every renderer failure branch or
 native archive failure at runtime. This component does not close P3-05.15.
 
+### Post-Copy load failure and selection-stage HRESULT, 2026-10-06
+
+Reviewed original CPP/7zip/UI/FileManager/PanelItems.cpp::RefreshListCtrl,
+SaveSelectedState, SaveFocused and App.cpp::OnCopy completion, Panel.h signatures
+and ReleaseFolder callers at full upstream commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original load/property RINOK returns before
+selection; OnCopy intentionally ignores RefreshListCtrl's result, then releases
+guards and restores source focus. Its continuation remains unchanged.
+
+Necessary split-publication adapter: restore HRESULT RefreshListCtrl signatures
+and retain the source load-stage result until the selection stage. That stage
+returns a failed result before querying count or saving pending selection.
+ReleaseFolder resets this result. An empty Qt row snapshot clears imported marks
+without an extra provider count query; upstream SaveSelectedState reads native
+list/mark state and does not make that extra query. Qt's existing checked count
+requirement moves into the shared load owner: unlike original Windows' unchecked
+GetNumberOfItems call, a count failure is returned before publishing Qt rows.
+The separate Qt renderer had already required count success. No compression,
+provider, selection-matching or error-message algorithm is introduced. This is
+a narrow adaptation, not closure of the complete original RefreshListCtrl body.
+No newly borrowed file/dependency; baseline verification remains408 exact/
+196 adapted/3 local across the pinned revision.
+
+Forty existing EN/RU failure rows now verify the selection result and a second
+failed reload before valid recovery. A focused panel_copy_reload target adds20
+actual filesystem Copy/Move consumers: both source roles and peer load/property/
+type/count failure or load Cancel. They check exact output and retained Copy
+input bytes, Move input deletion, empty peer rows, source marks/focus/title,
+notification guards and subsequent valid peer reload. Shared LoadFolder fixture
+moves to test-only .h/.cpp; Windows registers native plugin/desktop lock.
+The sequential operation consumer remains over80 lines to keep its modal flow
+and resulting assertions together; it has one scenario responsibility, and the
+suite/fixture extraction avoids expanding the load-stage suite past400 lines.
+
+Actual RED removes only the retained-result guard: post-Copy count failure
+terminates with an uncaught int; load suite records7 passes/33 failures before
+the count exception. Both aborts and logs are retained in
+build/review/source-panel-copy-error-red. Restored current code passes ten
+focused suites10.53s with no Qt failures/skips; the final artifacts, eight code/
+test/build hashes and60 current message geometry reports are retained in
+build/review/source-panel-copy-error-final. Message labels remain visible,
+enabled, fully visible and fitted under both OS-managed size probes.
+Current Windows/Linux, rendered/native focus and FS/async terminal errors,
+remaining RefreshListCtrl stages and final P3-06 acceptance remain open.
+Final macOS27.0.1 arm64/Qt6.12.0 unsandboxed check.sh passes formatting,
+all-target build and256/256 CTest109.72s. Eight code/test/build inputs remain
+unchanged from the focused check. Full/focused logs, input/validation manifests
+and message geometry review are retained in the final artifact directory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

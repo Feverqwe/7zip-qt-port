@@ -22,6 +22,18 @@ original HResultToMessage exactly; notifications restore, old rows disappear and
 a later valid reload recovers commands/rows. Sixty OS-managed normal/compact
 message reports inspect error exposure and standard buttons. The actual RED
 drops the callback's failing HRESULT and retains44 missing-result/message failures.
+These rows also check selection-stage HRESULT and a second failing reload before
+recovery, including a provider whose count remains invalid after loading.
+The shared native-interface fixture lives in panel_load_folder.h/.cpp.
+
+`panel_copy_reload` checks actual filesystem Copy/Move followed by a failing
+namespace peer reload, from either source panel. Load/property/count errors,
+wrong directory type and load Cancel must leave the peer empty, preserve output
+bytes and Copy input bytes, delete only Move input, restore source focus/title,
+clear ordinary source marks and release notification guards. A subsequent valid
+peer reload must recover. It uses private Unicode paths and a modal driver;
+Windows uses the native plugin and desktop lock. Offscreen window activation
+does not establish native focus parity.
 
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,

@@ -330,7 +330,9 @@ void CPanel::Get_ItemIndices_OperSmart(CRecordVector<UInt32> &indices) const {
 
 void CPanel::SaveSelectedState(CSelectedState &s) {
     // Native marks are independent of focused-row selection in alternative mode.
-    if (!_mySelectMode) {
+    if (!_mySelectMode && _selectionList.GetItemCount() == 0)
+        _selectedStatusVector.Clear();
+    else if (!_mySelectMode) {
         const unsigned numItems = GetFolderItemCount();
         _selectedStatusVector.ClearAndReserve(numItems);
         for (unsigned i = 0; i < numItems; i++)
@@ -375,6 +377,10 @@ void CPanel::SetFocusedSelectedItem(int index, bool select) {
 }
 
 HRESULT CPanel::LoadListItems(bool itemsLoaded) {
+    return _listLoadResult = LoadListItemsImpl(itemsLoaded);
+}
+
+HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded) {
     if (!_folder)
         return S_OK;
     CDisableTimerProcessing timerProcessing(*this);
@@ -396,8 +402,8 @@ HRESULT CPanel::LoadListItems(bool itemsLoaded) {
     }
     RINOK(InitColumns())
     UInt32 numItems = 0;
-    _folder->GetNumberOfItems(&numItems);
-    {
+    // Qt row publication already requires this count call to succeed.
+    RINOK(_folder->GetNumberOfItems(&numItems)) {
         NWindows::NCOM::CPropVariant prop;
         _isDirVector.ClearAndSetSize(numItems);
         bool *vec = _isDirVector.NonConstData();
@@ -442,7 +448,8 @@ HRESULT CPanel::LoadListItems(bool itemsLoaded) {
     return S_OK;
 }
 
-void CPanel::RefreshListCtrl(const CSelectedState &state) {
+HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
+    RINOK(_listLoadResult)
     if (_selectionList.GetItemCount() == 0)
         _refreshSelection = state;
     CDisableTimerProcessing timerProcessing(*this);
@@ -510,11 +517,12 @@ void CPanel::RefreshListCtrl(const CSelectedState &state) {
     _selectionIsDefined = false;
     _startGroupSelect = _selectionList.GetFocusedItem();
     UpdateSelection();
+    return S_OK;
 }
 
-void CPanel::RefreshListCtrl() {
+HRESULT CPanel::RefreshListCtrl() {
     CSelectedState state;
-    RefreshListCtrl(state);
+    return RefreshListCtrl(state);
 }
 
 HRESULT CPanel::RefreshListCtrl_SaveFocused(bool onTimer) {

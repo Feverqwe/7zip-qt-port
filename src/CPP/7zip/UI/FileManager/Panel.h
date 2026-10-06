@@ -610,8 +610,8 @@ class CPanel : public QObject {
     bool IsItem_AltStream(unsigned itemIndex) const;
     // LoadListItems prepares source state; Qt publishes/sorts rows before this
     // retained RefreshListCtrl selection stage restores the saved state.
-    void RefreshListCtrl(const CSelectedState &state);
-    void RefreshListCtrl();
+    HRESULT RefreshListCtrl(const CSelectedState &state);
+    HRESULT RefreshListCtrl();
     // Qt loads rows after synchronous source navigation. Transfer its requested
     // selection to that presentation stage instead of deriving it again there.
     std::optional<CSelectedState> TakeRefreshSelection() {
@@ -688,6 +688,9 @@ class CPanel : public QObject {
   private:
     CMyComPtr<IFolderGetItemName> _folderGetItemName;
     CRecordVector<bool> _isDirVector;
+    // Retain the source early-return result across Qt row publication.
+    HRESULT _listLoadResult = S_OK;
+    HRESULT LoadListItemsImpl(bool itemsLoaded);
     UString _currentFolderPrefix;
     bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
     UString GetItemPrefix(unsigned index) const;

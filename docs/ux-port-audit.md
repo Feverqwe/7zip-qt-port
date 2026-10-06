@@ -63,7 +63,10 @@ presentation и native/HRESULT/timer scope.
 Синхронные namespace/archive HRESULT больше не теряются renderer callback.
 Namespace Refresh использует исходный OnReload с исходным error message;
 EN/RU explicit/timer/command/failure/Cancel/recovery и60 OS-managed message
-reports проверяют эту границу. Остальная full/async/post-Copy error и
+reports проверяют эту границу. Post-Copy selection stage теперь сохраняет
+исходный early return после load failure; обе source roles/Copy/Move проверяют
+ошибки, Cancel и повторную загрузку без исключения из count provider.
+Остальная full/async/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.

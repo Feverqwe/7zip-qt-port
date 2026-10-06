@@ -46,7 +46,11 @@ namespace оставляет пустой список; последующая �
 OnReload; ошибку сопровождает его исходное сообщение, включая E_ABORT.
 Namespace Refresh идёт через тот же handler. Direct/explicit/timer/command
 consumers проверены под EN/RU с восстановлением списка после ошибки.
-Filesystem/async terminal и post-Copy failure semantics ещё требуют сверки;
+После ошибки загрузки исходная post-Copy continuation теперь получает тот же
+HRESULT до восстановления выделения. Повторный reload пустого списка не читает
+невалидный count provider. Copy/Move consumers проверяют output, очистку marks,
+focus/title, notification guards и последующую успешную загрузку peer.
+Filesystem/async terminal и остальные post-Copy failure semantics требуют сверки;
 текущие Windows/Linux и rendered проверки остаются обязательными.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)

@@ -51,7 +51,11 @@ Namespace Refresh uses that original owner; filesystem/archive manual refresh
 keep their existing reload/reopen transport pending the remaining reconciliation.
 Archive failure still finishes its Qt state after synchronous loading, with source
 guards restored before ending the operation. Async filesystem/projection terminal
-errors and complete Copy completion failure handling remain separate requirements.
+errors remain separate requirements. CPanel retains the load-stage HRESULT across
+Qt row publication. Its source-signature RefreshListCtrl returns that failure
+before restoring selection, including the original OnCopy continuation. Empty
+row selection snapshots avoid querying a provider whose count already failed.
+Replacing/releasing the folder resets the retained result.
 
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its

@@ -49,7 +49,11 @@ restores notification guards; a later valid reload recovers the same list.
 Inspect the empty namespace/error state at980×620/640×400 through the existing
 address/list/toolbar contract. No new dialog layout is introduced by validation.
 OnReload retains the original HRESULT message for load/property/count failures,
-including E_ABORT. Verify direct result, explicit reload, changed-folder timer and
+including E_ABORT. The post-Copy selection stage must return that result before
+reading failed provider state. Check both source roles for Copy/Move: output bytes, input
+retention/deletion, marks, notification guards, source focus/title and successful
+recovery on the next valid peer reload.
+Verify direct result, explicit reload, changed-folder timer and
 namespace Refresh command under EN/RU; close the OS-managed error and recover
 through a valid reload. Inspect message text, standard button group and exposure
 under normal/compact probes, retaining platform autosizing. Archive synchronous
