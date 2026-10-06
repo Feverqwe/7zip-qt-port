@@ -307,7 +307,10 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         openRow(window, rowWithPath(window, QStringLiteral("пустая папка")));
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        const int beforeEmptyCopy = backend.extractCalls;
+        action(window, "copyAction")->trigger();
+        QCOMPARE(backend.extractCalls, beforeEmptyCopy);
         action(window, "upAction")->trigger();
         QCOMPARE(table(window)->rowCount(), 3);
     }
@@ -350,8 +353,8 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());
         QVERIFY(!action(window, "archiveInfoAction")->isEnabled());
-        QVERIFY(!action(window, "copyAction")->isEnabled());
-        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "moveAction")->isEnabled());
         QVERIFY(!action(window, "deleteAction")->isEnabled());
         QVERIFY(!action(window, "renameAction")->isEnabled());
 
@@ -374,7 +377,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(action(window, "archiveInfoAction")->isEnabled());
         QVERIFY(action(window, "selectAllAction")->isEnabled());
-        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
         table(window)->selectRow(0);
         QVERIFY(action(window, "copyAction")->isEnabled());
 
@@ -396,7 +399,10 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());
         QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        const int beforeEmptyArchiveCopy = backend.extractCalls;
+        action(window, "copyAction")->trigger();
+        QCOMPARE(backend.extractCalls, beforeEmptyArchiveCopy);
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(action(window, "archiveInfoAction")->isEnabled());
         QCOMPARE(window.statusBar()->currentMessage(), QStringLiteral("Архив открыт."));

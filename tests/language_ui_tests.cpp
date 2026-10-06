@@ -373,7 +373,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         auto *copy = window.findChild<QAction *>("copyAction");
         auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(copy));
         QVERIFY(button);
-        QCOMPARE(button->text(), QStringLiteral("Копировать в"));
+        QCOMPARE(button->text(), QStringLiteral("Копировать"));
         QtFmOptionsDialog restarted(settingsPath());
         QCOMPARE(restarted.findChild<QComboBox *>("languageChoice")->currentIndex(), 1);
         QCOMPARE(restarted.windowTitle(), QStringLiteral("Настройки"));

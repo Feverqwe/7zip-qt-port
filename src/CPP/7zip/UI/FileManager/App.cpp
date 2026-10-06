@@ -114,8 +114,8 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
     const unsigned destPanelIndex = (NumPanels <= 1) ? srcPanelIndex : (1 - srcPanelIndex);
     CPanel &srcPanel = Panels[srcPanelIndex];
     CPanel &destPanel = Panels[destPanelIndex];
-    CPanel::CDisableTimerProcessing disableTimerProcessing1(destPanel);
-    CPanel::CDisableTimerProcessing disableTimerProcessing2(srcPanel);
+    CPanel::CDisableTimerProcessing2 disableTimerProcessing1(&destPanel);
+    CPanel::CDisableTimerProcessing2 disableTimerProcessing2(&srcPanel);
 
     if (move) {
         if (!srcPanel.CheckBeforeUpdate(IDS_MOVE))
@@ -252,6 +252,10 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
         srcPanel.MessageBox_Error_UnsupportOperation();
         return;
     }
+    // Qt execution can return while the operation owner retains these guards.
+    // Unwind the source stack in reverse order before that owner snapshots it.
+    disableTimerProcessing2.Restore();
+    disableTimerProcessing1.Restore();
     _presentation->ExecuteCopy(move, copyToSame, srcPanelIndex, output, indices, useDestPanel,
                                useTemp);
 }

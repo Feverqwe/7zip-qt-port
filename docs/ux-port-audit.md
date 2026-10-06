@@ -44,6 +44,9 @@ normal/compact consumers. Original refusals/options и selection/focus посл�
 асинхронного результата ещё требуют reconciliation. Classification/refusals,
 path+HRESULT diagnostics и captured execution теперь восстановлены; staged
 options возвращены к исходным defaults, native metadata evidence ещё требуется.
+Menu/F5/F6 без marks теперь доходят до source OperSmart; EN/RU normal/compact
+summary/Cancel проверены. Timer guard handoff исправлен для одной/двух панелей;
+source selection/title/focus completion остаётся обязательным.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 

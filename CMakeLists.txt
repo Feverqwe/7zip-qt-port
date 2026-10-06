@@ -1148,7 +1148,7 @@ if(BUILD_TESTING)
     add_test(NAME ui_copy_same COMMAND ui_copy_same_tests -silent)
     set_tests_properties(ui_copy_same PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-copy-same-settings.ini")
-    qt_add_executable(ui_copy_routing_tests tests/ui_copy_routing_tests.cpp
+    qt_add_executable(ui_copy_routing_tests tests/ui_copy_routing_tests.cpp tests/layout_inspection.cpp
         ${copy_same_window_sources})
     target_include_directories(ui_copy_routing_tests PRIVATE src tests)
     target_link_libraries(ui_copy_routing_tests PRIVATE Qt6::Widgets Qt6::Test)

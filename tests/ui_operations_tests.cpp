@@ -1242,15 +1242,24 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             QVERIFY(!action(window, "copyAction")->isEnabled());
         });
         window.openArchive("second.zip");
-        QVERIFY(!action(window, "copyAction")->isEnabled());
-        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "moveAction")->isEnabled());
+        const int extractCalls = backend.extractCalls;
+        const int removeCalls = backend.removeCalls;
+        action(window, "copyAction")->trigger();
+        action(window, "moveAction")->trigger();
+        QCOMPARE(backend.extractCalls, extractCalls);
+        QCOMPARE(backend.removeCalls, removeCalls);
         QVERIFY(!action(window, "deleteAction")->isEnabled());
         QVERIFY(!action(window, "renameAction")->isEnabled());
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         QVERIFY(backend.prepareArchiveFixture("cancel.7z"));
         backend.queueListAction([&] { backend.cancel(); });
         window.openArchive("cancel.7z");
-        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QTRY_VERIFY(static_cast<FileTable *>(table(window))->sourcePanel->IsFSFolder());
+        QTRY_VERIFY(action(window, "copyAction")->isEnabled());
+        QCOMPARE(backend.extractCalls, extractCalls);
+        QCOMPARE(backend.removeCalls, removeCalls);
     }
     void moveSelectedOutOfArchive() {
         QTemporaryDir temp;
@@ -1330,7 +1339,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         backend.queueList({});
         backend.completeAdd();
         QCOMPARE(backend.listCalls, 2);
-        QVERIFY(!action(window, "moveAction")->isEnabled());
+        QVERIFY(action(window, "moveAction")->isEnabled());
     }
     void extractAskUsesSourceOverwriteDialog() {
         QTemporaryDir temp;

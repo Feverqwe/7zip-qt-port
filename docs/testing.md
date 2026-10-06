@@ -15,6 +15,8 @@ and single/multiple creation failures include the path and formatted HRESULT.
 Zero-error formatting follows the original E_FAIL fallback. Eight EN/RU error
 reports inspect the OS-managed message box's wrapped text; requested normal/
 compact probes do not override its platform autosizing.
+One/two-panel public OnTimer probes also verify no reload during the retained
+Copy operation and a reload after End, using the existing presentation seam.
 
 `ui_copy_routing` changes selection while the Copy dialog is open, then checks
 the captured first item through all eight filesystem/archive Copy/Move routes.
@@ -24,6 +26,11 @@ destination rows and source retention/deletion. Fixture inspection uses official
 an unlisted verifier. Both new suites and ui_copy_same use the native Windows
 plugin/desktop lock there. Native ADS/device/zone and full completion acceptance
 remain separate requirements; actual checks belong to the port audit.
+Thirty-two additional filesystem/archive F5/F6 and menu rows clear all marked
+items, require the source smart-selection dialog to include both Unicode files,
+cancel without writes and emit EN/RU440×250/360×200 geometry reports. Existing
+empty-archive command tests now verify the original enabled no-op with unchanged
+extract/delete counters; busy/loading and readonly/provider gates stay covered.
 
 `persisted_location` verifies source-prefix bookmarks in both-panel drive view,
 empty-slot root binding and root Save clearing, and exact virtual locations for

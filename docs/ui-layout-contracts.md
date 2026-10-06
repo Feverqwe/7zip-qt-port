@@ -22,6 +22,13 @@ message box owns wrapping and autosizing, without a fixed upstream dialog
 resource geometry; inspect text exposure/fit and standard button grouping under
 both size probes. Keep Copy dialog's existing normal/compact dimensions separate.
 Directory summary suffixes use original Add_PathSepar.
+Copy/Move menu and ordinary F5/F6 do not require marked rows: retain original
+CFileMenu availability and let OnCopy's OperSmart choose items. With no marks,
+verify the complete summary, Cancel and untouched input bytes in filesystem and
+archive views under EN/RU normal/compact geometry. Empty writable folders are
+an enabled no-op; busy/read-only/provider restrictions still apply. Retained
+timer/notify guards must survive async handoff and release before terminal
+synchronous panel refresh.
 
 ### Persisted source locations (P3-05.14, required scope)
 

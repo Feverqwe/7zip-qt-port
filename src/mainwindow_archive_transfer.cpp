@@ -49,11 +49,13 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     if (result == S_OK && messages.IsEmpty() && move) {
         result = source.DeleteItems(false, *trashService_, selected, &indices);
         if (result == S_OK) {
+            app_.QtOperations().End();
             renderBoundFolder();
             source.RefreshListCtrl(selected);
         }
         if (result != S_OK) {
             const bool restored = rollback->restore();
+            app_.QtOperations().End();
             activatePanelUi(destinationIndex);
             refreshCurrent();
             activatePanelUi(sourceIndex);
@@ -67,6 +69,10 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             }
         }
     }
+    // All native work (including Move rollback) is settled before publication.
+    // Keep a scan already started by the source refresh above.
+    if (app_.QtOperations().kind() == QtAppOperationState::Kind::Operation)
+        app_.QtOperations().End();
     if (result == S_OK && messages.IsEmpty()) {
         activatePanelUi(destinationIndex);
         refreshCurrent();

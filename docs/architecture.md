@@ -14,6 +14,16 @@ Move supplies the same captured indices to the existing Delete owner after
 publication, preserving its confirmation/guards and backend rollback. Remaining
 completion reconciliation is tracked in the port audit.
 
+Copy/Move availability follows original CFileMenu without requiring marked
+rows; CApp's OperSmart determines the request, including the empty-folder no-op.
+Busy/provider/read-only transport gates remain centralized. OnCopy releases its
+stack timer guards in reverse order using the existing idempotent source guard
+before QtAppPresentation retains timer/notify guards for execution. Async owners
+hold them through completion; synchronous native archive consumers release them
+after engine work/rollback and before panel projection and refresh, which may
+acquire a scan owner. This avoids restoring a stale disabled timer snapshot or
+blocking destination publication. Selection/title completion remains under review.
+
 Root-command routing follows original CApp::OpenRootFolder and
 CPanel::OpenDrivesFolder, which own archive release, CFSDrives creation and source
 refresh. The existing provider owns native drives/devices or POSIX mounts.

@@ -97,8 +97,15 @@ void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceI
     // restoration can activate the opposite pane; restore the Qt projection
     // for that captured source before executing the original request.
     window_.activatePanelUi(sourceIndex);
+    if (!window_.app_.QtOperations().Begin(QtAppOperationState::Kind::Operation))
+        return;
     window_.executeCopyDestination(move, copyToSame, sourceIndex, destination, indices,
                                    useDestPanel, useTemp);
+    if (window_.state_ != MainWindow::State::Operating &&
+        window_.app_.QtOperations().kind() == QtAppOperationState::Kind::Operation) {
+        window_.app_.QtOperations().End();
+        window_.refreshActions();
+    }
     if (window_.state_ != MainWindow::State::Operating && sourceIndex < kNumPanelsMax)
         window_.app_.Panels[sourceIndex].SetFocusToList();
 }

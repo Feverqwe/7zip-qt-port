@@ -25,11 +25,13 @@ class CopyPresentation final : public IQtAppPresentation {
     bool useDestination = false;
     bool useTemporary = false;
     CRecordVector<UInt32> copiedIndices;
+    CApp *owner = nullptr;
+    bool beginOperation = false;
     explicit CopyPresentation(QWidget &window) {
         for (auto &view : views)
             view = new QTableWidget(&window);
     }
-    void Initialize(CApp &) override {}
+    void Initialize(CApp &app) override { owner = &app; }
     bool CreatePanel(CPanel &panel, unsigned index) override {
         if (panel.GetFolder()->LoadItems() != S_OK)
             return false;
@@ -60,6 +62,8 @@ class CopyPresentation final : public IQtAppPresentation {
         useDestination = useDest;
         useTemporary = useTemp;
         copiedIndices = indices;
+        if (beginOperation)
+            owner->QtOperations().Begin(QtAppOperationState::Kind::Operation);
     }
 };
 
@@ -120,10 +124,55 @@ class AppCopyRoutingTests final : public QObject {
                             presentation, settings),
                  S_OK);
         QVERIFY(app.Panels[0].IsFSFolder());
-        QVERIFY(app.Panels[1].IsFSFolder());
+        if (app.NumPanels == 2)
+            QVERIFY(app.Panels[1].IsFSFolder());
         presentation.views[0]->selectAll();
     }
   private slots:
+    void asynchronousCopyRetainsThenRestoresSourceTimer_data() {
+        QTest::addColumn<unsigned>("panels");
+        QTest::newRow("one-panel") << 1u;
+        QTest::newRow("two-panels") << 2u;
+    }
+    void asynchronousCopyRetainsThenRestoresSourceTimer() {
+        QFETCH(unsigned, panels);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath("source");
+        const QString peer = fixture.filePath("peer");
+        QVERIFY(QDir().mkpath(source));
+        QVERIFY(QDir().mkpath(peer));
+        write(QDir(source).filePath("one.txt"));
+        QWidget window;
+        CopyPresentation presentation(window);
+        CApp app;
+        app.NumPanels = panels;
+        create(app, presentation, window, source, peer, fixture.filePath("settings.ini"));
+        unsigned reloads = 0;
+        CPanel &panel = app.Panels[0];
+        panel.Set_AutoRefresh_Mode(true);
+        panel.AttachReloadPresentation([&](const CSelectedState &) {
+            ++reloads;
+            return S_OK;
+        });
+        panel.MarkPortableFolderChanged();
+        panel.OnTimer();
+        QCOMPARE(reloads, 1u);
+        presentation.beginOperation = true;
+        const auto interaction = chooseDestination(app, window, peer + '/');
+        QVERIFY(interaction.shown);
+        QVERIFY(interaction.error.isEmpty());
+        QCOMPARE(presentation.executions, 1u);
+        QVERIFY(app.QtOperations().blocking());
+        panel.MarkPortableFolderChanged();
+        panel.OnTimer();
+        const unsigned whileOperating = reloads;
+        app.QtOperations().End();
+        panel.MarkPortableFolderChanged();
+        panel.OnTimer();
+        QCOMPARE(whileOperating, 1u);
+        QCOMPARE(reloads, 2u);
+    }
     void zeroErrorUsesSourceFailureMessage() {
         CPanel panel;
         QString shown;

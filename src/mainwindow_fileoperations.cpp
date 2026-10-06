@@ -272,6 +272,10 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
         QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
         result = target.CopyFrom(move, source.GetFsPath(), names, true, &messages);
     }
+    // The native call has completed. Release its retained source guards before
+    // changing the panel projection; refreshCurrent() can then own a scan.
+    if (app_.QtOperations().kind() == QtAppOperationState::Kind::Operation)
+        app_.QtOperations().End();
     if (result == S_OK) {
         activatePanelUi(destinationIndex);
         refreshCurrent();

@@ -130,6 +130,57 @@ Windows/Linux/device/ADS/zone, source selection/refresh/title/notify completion,
 cold-stable/current-package/clean-OS/rendered and whole P3-05/P3-06 acceptance
 remain required; no passing portable check closes those requirements.
 
+Menu/timer follow-up reviews the same pinned upstream's MyLoadMenu.cpp
+CFileMenu::Load, PanelKey.cpp F5/F6 callers, App.cpp OnCopy completion and
+Panel.h CDisableTimerProcessing/CDisableTimerProcessing2. Original Copy/Move
+availability does not require marked rows; removing that independent Qt gate
+lets retained OperSmart own the request. Busy/loading/hash/root/read-only and
+provider restrictions remain centralized. Empty writable folders are an enabled
+source no-op, verified through unchanged backend counters. No new selection
+algorithm, borrowed dependency, source-language change or upstream edit is added.
+
+The source stack timer guards use the existing idempotent
+CDisableTimerProcessing2 and Restore in reverse order before ExecuteCopy; the
+Qt owner then snapshots the enabled state and retains timer/notify guards until
+operation completion. This order matters when both references name one panel.
+Synchronous native archive Copy/Move releases ownership only after engine work,
+source deletion or checked rollback settles, before target projection/refresh;
+a scan begun by publication retains its own guards. These are narrow transport
+adaptations of the original synchronous guards, whose class bodies are unchanged.
+Selection/row/title/focus completion remains mandatory next work.
+
+Actual RED evidence: all32 no-marks filesystem/archive/menu/F5-F6 consumers
+failed the former Copy gate (10Qtpass/32fail); one/two-panel public OnTimer probes
+reloaded during the active operation (14Qtpass/2fail). Final probes suppress the
+active reload and restore the post-End reload. Introducing ownership initially
+blocked synchronous peer publication; existing actual copy consumers detected
+two ui_operations and three ui_copy_routing failures, corrected by the terminal
+handoff above. All eight captured-selection Copy/Move routes remain covered.
+Thirty-two EN/RU440×250/360×200 JSON reports check visible/enabled controls,
+prompt fit, order/grouping and destination/browse separation with Cancel and
+unchanged binary Unicode input/archive bytes. Rendered Windows parity is unverified.
+
+The first full gate exposed four legacy suites' selection-dependent command
+expectations. Their no-marks/empty-folder expectations now match CFileMenu with
+unchanged engine-call assertions; busy/loading expectations remain disabled.
+language_ui expects original g_StandardButtons IDS_BUTTON_COPY's short
+«Копировать», already bound by the existing reload adapter, rather than the
+longer File menu caption. The first full250/254PASS107.51s log is retained under
+build/review/source-copy-smart-timer-full-first. Focused routing/state/operations
+fourPASS7.93s and affected navigation/archive/key/language fourPASS5.68s are
+frozen separately under source-copy-smart-timer-final. Product RED logs remain
+under source-copy-smart-red and source-copy-timer-red.
+
+Final validation on macOS27.0.1 arm64/Qt6.12.0: mandatory unsandboxed check.sh
+passes formatting, all-target build and254/254 CTest109.09s. All thirteen
+code/test/build inputs retain their frozen SHA; final full log and32 geometry
+reports are in source-copy-smart-timer-final. AppCopyRouting16/UiCopyRouting42,
+UiState10/UiOperations34 and Navigation10/ArchiveStates13/PanelKey55/Language10
+Qt pass with zero fail/skip in the focused consumers. Baseline verification
+remains408 exact/196 adapted/3 local. Current Windows/Linux, native metadata,
+source selection/refresh/title/focus completion and cold-stable/current-package/
+clean-OS/rendered/P3-06 acceptance remain open. No native execution is claimed.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

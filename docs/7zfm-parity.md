@@ -16,6 +16,12 @@ separator к папкам. Qt MessageBox автоматически выбира
 rollback: оригинальный Agent Move возвращает E_NOTIMPL. P3-05.15 открыт;
 проверенные ранее сценарии не доказывают полного покрытия OnCopy. Полная сверка
 App и границы адаптаций записаны в omitted-scope/port audit.
+Copy/Move без отмеченных строк доступны по исходному CFileMenu; OperSmart
+выбирает исходные элементы, пустая writable-папка даёт no-op. Busy/provider/
+readonly ограничения сохраняются. Qt переносит timer/notify guards от modal
+стека к владельцу операции; synchronous archive publication начинается после
+окончания engine/rollback и освобождения guard. Это адаптация асинхронного
+transport, а не новый selection algorithm. Полная completion-сверка остаётся.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

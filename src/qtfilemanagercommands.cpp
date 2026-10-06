@@ -311,11 +311,11 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_VER_DIFF:
         return c.filesystem && c.oneFile;
     case IDM_COPY_TO:
-        return c.selected && !c.root && c.copy;
+        return !c.root && c.copy;
     case IDM_PROPERTIES:
         return c.archive || (c.selected && !c.root);
     case IDM_MOVE_TO:
-        return c.selected && (c.filesystem || c.filesystemStreams || c.writable);
+        return c.filesystem || c.filesystemStreams || c.writable;
     case IDM_DELETE:
         return c.selected && (c.filesystem || c.filesystemStreams || c.mutationWritable);
     case IDM_RENAME:

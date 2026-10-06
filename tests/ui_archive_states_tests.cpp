@@ -26,7 +26,9 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         MainWindow window(&backend);
         openListedArchive(window, backend, "archive.zip",
                           {ArchiveEntry{QStringLiteral("папка/δ space.txt"), 3, 3}});
-        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        QCOMPARE(backend.extractCalls, 0);
         QTimer::singleShot(0, &window, [] {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);

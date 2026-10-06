@@ -167,7 +167,12 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                  QFileInfo(QDir(right).filePath("nested")).canonicalFilePath());
         QCOMPARE(QFileInfo(leftAddress->text()).canonicalFilePath(),
                  QFileInfo(left).canonicalFilePath());
-        QVERIFY(!action(window, "copyAction")->isEnabled());
+        QVERIFY(action(window, "copyAction")->isEnabled());
+        const int extractCalls = backend.extractCalls;
+        const int removeCalls = backend.removeCalls;
+        action(window, "copyAction")->trigger();
+        QCOMPARE(backend.extractCalls, extractCalls);
+        QCOMPARE(backend.removeCalls, removeCalls);
         rightIcons->setFocus();
         QTest::keyClick(rightIcons, Qt::Key_Tab);
         QTRY_VERIFY(leftIcons->hasFocus());
