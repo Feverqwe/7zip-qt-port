@@ -138,8 +138,12 @@ contains exactly those three test changes plus the same temporary validation
 wrapper; four frozen input byte checks pass. Filesystem comments9Qt/0skip,
 all14 focused consumers and eight native EN/RU normal/compact reports pass;
 30 focused artifacts and two phase logs have matching guest/local SHA256.
-P3-05.6's writer/command component is accepted on three OS. The fresh Windows
-full gate is still running; rendered reference and parent P3-05's remaining
+P3-05.6's writer/command component is accepted on three OS. Its fresh Windows
+full run finishes241/252 PASS1183.71s under the Limited runner token, with
+669 artifacts guest/local SHA256 verified. Filesystem comments9Qt/0skip pass;
+11 privileged native fixture failures remain recorded in P3-03.10 below.
+The subsequent macOS full247/247 PASS85.08s verifies the committed shortcut
+and marker corrections. Rendered reference and parent P3-05's remaining
 source bodies/resources/dependencies remain open.
 
 ## P3-03.9 — native editor prompt failure investigation (2026-10-06)
@@ -162,8 +166,47 @@ logging. macOS affected archive_external_edit PASS6.74s after the localized
 diagnostic addition; production remains the code verified by full246/246 in
 P3-03.8.1. Windows focused execution in b70429b5 passes15Qt/0skip15.29s,
 including both previously failing rows. The fresh5da3edfc focused consumers also
-pass; its full gate is still running. No functional fix or stable whole Windows
+pass; full5da3edfc also passes15Qt/0skip11643ms. That whole gate fails on the
+Limited token's privileged fixtures, recorded in P3-03.10. No functional fix or stable whole Windows
 acceptance is claimed from these focused runs.
+
+## P3-03.10 — explicit native runner elevation (2026-10-06)
+
+Frozen Windows `20261005T235145Z-5da3edfc` finishes241/252 PASS1183.71s,
+669 guest/local SHA256 artifacts. This invocation mistakenly used the default
+Limited interactive principal rather than earlier private Highest validation.
+Failures: owned_temp, temp_cleanup, source_extract_advanced,
+source_link_extract, link_dialog, network_folder, archive_creation_lifecycle,
+filesystem_link, project_memory_setup, source_link_storage, archive_metadata_ui.
+Native symlink/security prerequisites are denied; project_memory_setup fails
+on its native `.codex/README.md` symlink, and NetShareAdd returns Access Denied5.
+No required Windows scenario is skipped or relaxed. Two POSIX-only skips remain
+explicit. Privacy inspection667 artifacts/10 markers finds no fixture payload
+leaks; five matching Qt row tags are permitted scenario identifiers.
+
+`hyperv-runner.py` and `hyperv_interactive.py` now accept explicit
+`--interactive --elevated` only for Windows-containing check/run requests.
+Default remains Limited; all's Linux path stays ordinary. Highest belongs only
+to the snapshot's owned scheduled task; the child verifies the actual native
+administrator token before invoking the unchanged check.cmd. Requested elevation
+in run.json is distinct from actual token evidence in interactive-session.txt.
+No product algorithm, deadline, UAC/account/user-rights or machine policy changes.
+The ordinary native COM consumer retains its desktop-token child.
+
+Offline17 regressions pass, including main routing, invalid combinations,
+Windows-only propagation, unchanged Limited payload and actual-token guard.
+Unsandboxed macOS format/all-targets/full247CTest PASS85.08s; affected offline17
+rerun passes after the localized CLI assertion. Fresh native validation
+`20261006T002830Z-28cc3a3c`, sourceSHA256
+`8b57e3a3bc7ad636866bfe9d930f703d9c53719e06318d8d4b7c2af8e4766cd2`,
+proves Session1/Highest/Elevated=True through the project helper. Focused4/4
+PASS7.80s: owned_temp11Qt, temp_cleanup11Qt, filesystem_link30Qt and ordinary
+native_menu_integration3Qt, all zero skips. The pinned original rendered 7zFM
+System-menu reference consumer also passes3Qt/0skip,1/1 PASS2.93s. Four immutable
+logs/token/reference artifacts have matching guest/local SHA256; eight snapshot
+inputs are verified against the working tree. Registered native full count253
+includes the rendered consumer. P3-03.10 accepts the scoped runner prerequisite;
+whole native checks remain in progress and parent P3-03 acceptance stays open.
 
 ## P3-03.8.1 — owned codec discovery loader (2026-10-06)
 

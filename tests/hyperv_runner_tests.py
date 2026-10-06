@@ -38,11 +38,16 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(args.upstream, Path("/fixture"))
         self.assertTrue(runner.parse_arguments(["check", "windows", "--interactive"]).interactive)
         self.assertTrue(runner.parse_arguments(["check", "all", "--interactive"]).interactive)
+        self.assertTrue(runner.parse_arguments(
+            ["check", "windows", "--interactive", "--elevated"]).elevated)
         for argv in (["probe", "linux", "--transport", "scp"],
                      ["run", "linux", "--preset", "release"],
                      ["check", "linux", "--"], ["probe", "all", "--"],
                      ["run", "all"], ["check", "linux", "--interactive"],
-                     ["probe", "windows", "--interactive"]):
+                     ["probe", "windows", "--interactive"],
+                     ["check", "windows", "--elevated"],
+                     ["check", "linux", "--interactive", "--elevated"],
+                     ["probe", "windows", "--elevated"]):
             with self.subTest(argv=argv), contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as error:
                     runner.parse_arguments(argv)
@@ -180,6 +185,11 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(args[0], ["linux", "windows"])
                 self.assertEqual(args[3], ["bash", *argv[5:]])
                 self.assertFalse(args[4])
+                elevated_argv = argv[:4] + ["--interactive", "--elevated"] + argv[4:]
+                with patch.object(runner.sys, "argv", elevated_argv), \
+                        patch.object(runner, "run_platforms", return_value=0) as run:
+                    self.assertEqual(runner.main(), 0)
+                self.assertEqual(run.call_args.args[-2:], (True, True))
                 with self.assertRaises(ValueError):
                     runner.script_command(["../outside.sh"], ["linux"])
 
@@ -198,19 +208,41 @@ class RunnerTests(unittest.TestCase):
                     patch.object(runner, "execute_check", side_effect=execute) as execute_mock, \
                     patch.object(runner, "invoke"):
                 code = runner.run_platforms(["linux", "windows"], "dev", state,
-                                            ["bash", "scripts/fixture.sh", "a b"], interactive=True)
+                                            ["bash", "scripts/fixture.sh", "a b"],
+                                            interactive=True, elevated=True)
             self.assertEqual(code, 1)
             snapshot.assert_called_once()
             self.assertEqual(execute_mock.call_count, 2)
             for call in execute_mock.call_args_list:
-                self.assertEqual(call.args[-1], call.args[1] == "windows")
+                self.assertEqual(call.args[-2:], (call.args[1] == "windows",) * 2)
             report = json.loads(next(state.glob("*/run.json")).read_text())
             self.assertEqual(report["status"], "failed")
             self.assertTrue(report["interactive"])
+            self.assertTrue(report["elevated"])
             self.assertEqual([item["interactive"] for item in report["platforms"]], [False, True])
+            self.assertEqual([item["elevated"] for item in report["platforms"]], [False, True])
             self.assertEqual([item["status"] for item in report["platforms"]], ["failed", "passed"])
             self.assertEqual({item["sha256"] for item in report["platforms"]}, {"same-sha"})
             self.assertEqual(report["platforms"][0]["exit_code"], 17)
+
+    def test_interactive_elevation_checks_actual_token_before_running_gate(self):
+        with self.assertRaises(ValueError):
+            runner.run_platforms(["windows"], "dev", Path("unused"), elevated=True)
+        with self.assertRaises(ValueError):
+            runner.run_platforms(["linux"], "dev", Path("unused"),
+                                 interactive=True, elevated=True)
+        root = "C:/runner/sevenzip-desktop/runs/20261006T010000Z-1234abcd"
+        for elevated, level in ((False, "Limited"), (True, "Highest")):
+            with self.subTest(elevated=elevated):
+                command = runner.interactive_command(root, elevated)
+                self.assertIn("-RunLevel " + level, command)
+                encoded = re.search(r"-EncodedCommand ([A-Za-z0-9+/=]+)", command).group(1)
+                child = base64.b64decode(encoded).decode("utf-16le")
+                self.assertIn("IsInRole", child)
+                self.assertIn("RunLevel=" + level + " Elevated=$elevated", child)
+                guard = "if (" + ("$true" if elevated else "$false") + " -and !$elevated)"
+                self.assertIn(guard, child)
+                self.assertLess(child.index(guard), child.index("& cmd.exe"))
 
     def test_custom_linux_script_preserves_arguments_and_failure_log(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -108,7 +108,8 @@ def snapshot(destination, upstream):
 
 
 def execute_check(record, platform, preset, archive, digest, root, command=None,
-                  prepare_runtime=True, output=None, mode="scp", previous=None, interactive=False):
+                  prepare_runtime=True, output=None, mode="scp", previous=None, interactive=False,
+                  elevated=False):
     transport = {} if output is None else {"stdout": output, "stderr": subprocess.STDOUT}
     payload = command_payload(preset, command)
     if platform == "linux":
@@ -184,7 +185,7 @@ export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"
         batch = "\r\n".join(commands) + "\r\n"
         encoded = base64.b64encode(batch.encode()).decode()
         payload_encoded = base64.b64encode(payload.encode("utf-8")).decode()
-        launch = (interactive_command(root) if interactive else
+        launch = (interactive_command(root, elevated) if interactive else
                   "& cmd.exe /d /c 'check.cmd > check.log 2>&1'\n$code=$LASTEXITCODE\n")
         script = f"""Set-Location '{root}'
 if ((Get-FileHash {archive.name} -Algorithm SHA256).Hash.ToLower() -ne '{digest}') {{ throw 'Snapshot hash mismatch' }}
@@ -228,9 +229,10 @@ def script_command(arguments, platforms):
 
 
 def run_platform(platform, local, archive, digest, preset, command, prepare_runtime, mode="rsync",
-                 interactive=False):
+                 interactive=False, elevated=False):
     result = {"platform": platform, "sha256": digest, "status": "running", "transport": mode,
-              "interactive": interactive and platform == "windows"}
+              "interactive": interactive and platform == "windows",
+              "elevated": elevated and platform == "windows"}
     directory = local / platform
     directory.mkdir()
     root = ("C:/runner/sevenzip-desktop/runs/" if platform == "windows" else
@@ -248,7 +250,7 @@ def run_platform(platform, local, archive, digest, preset, command, prepare_runt
             execute_check(record, platform, preset, archive, digest, root,
                           resolved, prepare_runtime, output, mode,
                           previous_snapshot(STATE, platform) if mode == "rsync" else None,
-                          interactive and platform == "windows")
+                          interactive and platform == "windows", elevated and platform == "windows")
             result.update(status="passed", exit_code=0)
         except subprocess.CalledProcessError as error:
             result.update(status="failed", exit_code=error.returncode, error=str(error))
@@ -283,7 +285,9 @@ def run_platform(platform, local, archive, digest, preset, command, prepare_runt
 
 
 def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=True, mode="rsync",
-                  interactive=False):
+                  interactive=False, elevated=False):
+    if elevated and (not interactive or "windows" not in platforms):
+        raise ValueError("Elevated fixtures require an interactive Windows guest")
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     local = STATE / (stamp + "-" + uuid.uuid4().hex[:8])
     local.mkdir(parents=True)
@@ -291,7 +295,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
     digest = snapshot(archive, upstream)
     summary = {"run_id": local.name, "sha256": digest, "command": command,
                "preset": preset, "prepare_runtime": prepare_runtime, "transport": mode,
-               "interactive": interactive,
+               "interactive": interactive, "elevated": elevated,
                "revision": subprocess.check_output(
                    ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                "status": "running", "platforms": []}
@@ -301,7 +305,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
         with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
             futures = [executor.submit(run_platform, platform, local, archive, digest,
                                        preset, command, prepare_runtime, mode,
-                                       interactive) for platform in platforms]
+                                       interactive, elevated) for platform in platforms]
             summary["platforms"] = [future.result() for future in futures]
         summary["status"] = ("passed" if all(item["status"] == "passed"
                                               for item in summary["platforms"]) else "failed")
@@ -363,6 +367,8 @@ def parse_arguments(argv):
         if action in ("check", "run"):
             subparser.add_argument("--interactive", action="store_true",
                                    help="run Windows checks in the logged-on runner's desktop session")
+            subparser.add_argument("--elevated", action="store_true",
+                                   help="use that runner's administrator token for privileged Windows fixtures (requires --interactive)")
             subparser.add_argument("--transport", choices=["rsync", "scp"], default="rsync",
                                    help="rsync delta transfer (default) or compressed archive over scp")
             subparser.add_argument("--upstream", type=Path, default=ROOT.parent / "7zip-upstream",
@@ -380,6 +386,8 @@ def parse_arguments(argv):
     args.platforms = ["linux", "windows"] if args.platform == "all" else [args.platform]
     if getattr(args, "interactive", False) and args.platform == "linux":
         parser.error("--interactive requires a Windows guest")
+    if getattr(args, "elevated", False) and not getattr(args, "interactive", False):
+        parser.error("--elevated requires --interactive and a Windows guest")
     args.command = None
     if args.action == "run":
         if not arguments:
@@ -398,7 +406,8 @@ def main():
     if args.action == "probe":
         return probe_platforms(args.platforms)
     return run_platforms(args.platforms, getattr(args, "preset", "dev"), args.upstream,
-                         args.command, not args.skip_runtime, args.transport, args.interactive)
+                         args.command, not args.skip_runtime, args.transport, args.interactive,
+                         args.elevated)
 
 
 if __name__ == "__main__":

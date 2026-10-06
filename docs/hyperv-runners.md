@@ -47,6 +47,15 @@ active runner logon; it does not log in, supply credentials or fall back to a
 noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
 verify backend/COM data consumers, but hidden windows do not prove UI acceptance.
 
+Full Windows gates also include privileged native symlink/security fixtures.
+Use `check windows --interactive --elevated` or `check all --interactive --elevated`
+for those gates; custom validation wrappers accept the same flags before `--`.
+`--elevated` selects `Highest` for this snapshot's owned scheduled task and checks
+the actual administrator token before running the command. Session evidence
+records requested run level and actual elevation. The default interactive mode
+keeps `Limited`; noninteractive/Linux-only elevation requests are rejected.
+No developer-mode, UAC, user-rights, account or machine policy is changed.
+
 `native_menu_integration` exercises real per-user COM registration under an
 ordinary user token. When privileged link/security fixtures require an elevated
 parent gate, this test launches its own child using the desktop process as its

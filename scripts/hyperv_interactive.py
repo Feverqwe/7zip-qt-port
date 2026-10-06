@@ -4,12 +4,13 @@ import base64
 import re
 
 
-def interactive_command(root):
+def interactive_command(root, elevated=False):
     if not re.fullmatch(r"C:/runner/sevenzip-desktop/runs/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}", root):
         raise ValueError("Interactive task requires a project-owned snapshot directory")
     # check.cmd supplies the same toolchain, engine, environment and command as
     # the SSH path. Only the Windows logon session changes; no shell UI or app
     # visibility workaround is injected into the product or its tests.
+    run_level = "Highest" if elevated else "Limited"
     child = f"""$ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 $root='{root}'
@@ -18,7 +19,11 @@ try {{
     Set-Location $root
     $session=(Get-Process -Id $PID).SessionId
     if ($session -eq 0) {{ throw 'Interactive runner entered session 0' }}
-    [IO.File]::WriteAllText("$root/interactive-session.txt", "Session=$session User=$env:USERNAME")
+    $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal=[Security.Principal.WindowsPrincipal]::new($identity)
+    $elevated=$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    [IO.File]::WriteAllText("$root/interactive-session.txt", "Session=$session User=$env:USERNAME RunLevel={run_level} Elevated=$elevated")
+    if ({'$true' if elevated else '$false'} -and !$elevated) {{ throw 'Elevated fixtures require an administrator runner token' }}
     & cmd.exe /d /c 'check.cmd > check.log 2>&1'
     $code=$LASTEXITCODE
 }} catch {{
@@ -32,7 +37,7 @@ exit $code
     return f"""$taskName='Sevenzip-check-'+[guid]::NewGuid().ToString('N')
 $user=[Security.Principal.WindowsIdentity]::GetCurrent().Name
 $action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -EncodedCommand {encoded}'
-$principal=New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+$principal=New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel {run_level}
 $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings | Out-Null
 Write-Output "Interactive task=$taskName user=$user"
