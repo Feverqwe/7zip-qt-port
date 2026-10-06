@@ -16,6 +16,11 @@ rebuild. Name-first source logical indices are separate from header visual order
 Its original CIntArr permutation validation is extracted as GetColumnOrder in
 PanelItems; configureColumns consumes it after creating Qt sections. Qt rows and
 widget selection are published/restored by their existing owners.
+FolderTypeID selects the source ViewSettings record. Descriptor Type/Name are
+fresh provider metadata and participate in CPropColumns equality; saved records
+contain PropID/visibility/width, not stale types or captions. The
+[real-provider workflow](testing.md) checks these existing boundaries without
+introducing another settings or schema owner.
 Schema enumeration consumes the written generic/raw counts without an extra
 HRESULT gate, matching upstream; individual property-info errors and generic
 IsDir remain skipped. Both counts retain zero initialization for an unwritten

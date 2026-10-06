@@ -12,6 +12,8 @@ Z7_COM7F_IMF(SchemaFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *val
     if (crcResult != S_OK)
         return crcResult;
     NWindows::NCOM::CPropVariant prop = UInt32(0x12345678);
+    if (!crcText.IsEmpty())
+        prop = crcText;
     return prop.Detach(value);
 }
 Z7_COM7F_IMF(SchemaFolder::GetFolderProperty(PROPID id, PROPVARIANT *value)) {
@@ -38,7 +40,8 @@ Z7_COM7F_IMF(SchemaFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id,
     const auto &property = properties[int(index)];
     if (property.result != S_OK)
         return property.result;
-    *name = nullptr;
+    *name =
+        property.name.IsEmpty() ? nullptr : ::SysAllocStringLen(property.name, property.name.Len());
     *id = property.id;
     *type = property.type;
     return S_OK;

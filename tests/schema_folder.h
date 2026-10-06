@@ -11,6 +11,7 @@ class SchemaFolder final : public IFolderFolder, public IArchiveGetRawProps, pub
         PROPID id;
         VARTYPE type;
         HRESULT result = S_OK;
+        UString name;
     };
     QVector<Property> properties{{kpidName, VT_BSTR}, {kpidSize, VT_UI8}, {kpidCRC, VT_UI4}};
     HRESULT propertyCountResult = S_OK;
@@ -27,6 +28,7 @@ class SchemaFolder final : public IFolderFolder, public IArchiveGetRawProps, pub
     unsigned rawQueries = 0;
     HRESULT rawResult = S_OK;
     HRESULT crcResult = S_OK;
+    UString crcText;
     unsigned countQueries = 0;
     SchemaFolder() { items->directory = false; }
     Z7_IFACE_COM7_IMP(IFolderFolder)

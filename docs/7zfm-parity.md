@@ -111,6 +111,13 @@ provider блокируют запрос, ошибка paint используе�
 getter сохраняет exception policy. EN/RU обе роли/reload/rebind/current captures
 проверены на macOS. Реальные deleted archives и rendered Windows/native3OS
 приёмка остаются открытыми.
+Реальные FS/ZIP/7z теперь проверены одним сценарием с отдельными settings по
+FolderTypeID: source defaults, Name width/order и ATime visibility восстанавливаются
+после namespace-перехода и повторного открытия архива. Смена только Type или
+только Name обновляет source visible descriptors, alignment и caption; ширина,
+selection и peer focus сохраняются. EN/RU обе панели и normal/compact geometry
+проверены на macOS; текущие Windows/Linux и rendered Windows остаются открытыми.
+Проверка не меняет production поведение; [evidence](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07).
 Header column menu теперь передаёт выбранный индекс исходному
 ShowColumnsContextMenu: порядок/отметки и запрет первого пункта берутся из source
 catalog. Показ добавляет колонку в конец; скрытие сортируемой меняет metadata

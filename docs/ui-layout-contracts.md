@@ -44,6 +44,15 @@ errors retain source generic error text or empty raw text. Preserve notify/cache
 and provider guards, selection/peer focus, and invalidate old model indices on
 rebind. Inspect both panes EN/RU detail/icon recovery and rebind at980×620/640×400.
 
+Walk filesystem → real ZIP/7z → same-provider namespace schema changes →
+filesystem → archive reopen. Fresh filesystem columns use source hidden-property
+defaults; archives expose their reported properties. Name starts160px and other
+columns100px. Persist filesystem Name width/order and shown ATime separately from
+archive Name width. Unchanged initialization retains the visible descriptor
+snapshot; changing only Type or only Name must rebuild it and update cell alignment
+or the header caption, preserving saved widths and selection/peer focus.
+Inspect all seven phases under EN/RU in both panes at980×620/640×400.
+
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.
 Refresh and reopening must retain that order and widths in both panes under

@@ -147,6 +147,10 @@ Callback publication также удаляет лишний count gate пере�
 валидные опубликованные cells сохраняются при позднем count HRESULT. Property
 error/empty text, notify/provider guards и rebind/selection/peer остаются проверяемыми
 consumers;32 detail/icon recovery/rebind reports покрывают EN/RU обе панели на Mac.
+Сквозной FS/real ZIP/7z/schema/reopen consumer теперь проверяет source defaults,
+per-type widths/order/visibility и отдельные Type/Name changes с сохранением
+selection/peer focus. Normal/compact EN/RU обе панели проверены на macOS;
+[evidence](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07).
 Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и

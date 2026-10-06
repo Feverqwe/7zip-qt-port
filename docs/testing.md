@@ -1,5 +1,15 @@
 # Regression strategy
 
+`native_column_workflow` walks disposable filesystem → real ZIP/7z → changing
+namespace schema → filesystem → reopened archive, using the official codec module.
+Eight both-pane EN/RU cases check source defaults, exact descriptor text/alignment,
+unchanged-column equality, separate type/name changes, and per-FolderTypeID
+visibility/order/width restoration. The peer uses an independent test provider;
+selection/focus and archive/input bytes remain checked.112 normal/compact reports
+cover seven phases. A missing official module explicitly skips this suite rather
+than claiming real-provider coverage. Current platform evidence is in the
+[port audit](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07).
+
 `panel_cell_text` covers eight both-pane EN/RU detail/icon scenarios with valid
 published indices and later S_FALSE/E_FAIL/E_ABORT count results. Uncached names,
 generic CRC and raw CRC retain source text without count queries. Property failures

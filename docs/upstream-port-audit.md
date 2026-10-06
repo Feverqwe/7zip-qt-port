@@ -1735,6 +1735,55 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source real-provider column workflow, 2026-10-07
+
+Reviewed full original/adapted PanelItems::GetColumnVisible/GetColumnWidth/
+GetColumnAlign/ItemProperty_Compare_NameFirst/InitColumns/SaveListViewInfo,
+Panel.h CPropColumn/CPropColumns equality, PropertyName::GetNameOfProperty,
+ViewSettings CColumnInfo/CListViewInfo Read/Save, folder-change and Qt header/
+publication consumers. Full revision remains
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Source defaults, per-type records and descriptor
+equality already own this behavior. No production body, borrowed dependency,
+baseline, language, notice or upstream file changes in this verification step.
+
+New native_column_workflow uses the official codec module with actual CAgentFolder
+ZIP/7z providers and a disposable Unicode/space filesystem fixture. Eight EN/RU
+both-pane scenarios walk FS → archive → namespace schema → FS → archive reopen.
+They check source visibility/160px Name/100px other defaults, namespace sort0
+versus FS/archive Name, exact catalog text/alignment, filesystem Name187px/end
+order/shown ATime versus archive Name213px, unchanged visible-column equality,
+and separate Type-only/Name-only rebuilds retaining CRC173px. Model index validity
+is checked across direct unchanged InitColumns; reload retains selected rows and
+peer focus. The peer has its own fixture-backed provider; final provider/rows,
+archive bytes and both input payloads stay unchanged.
+
+Existing SchemaFolder gains optional property names and CRC string values with
+unchanged defaults. CMake registers the focused suite, official-module definition,
+isolated settings and Windows native-platform override. Missing module causes an
+explicit skip, not real-provider acceptance. The cohesive workflow keeps the
+cross-provider settings assertions together; navigation/geometry/default checks
+are separate helpers. No production fix or old-product RED is claimed. Initial
+driver failure at qWaitForWindowActive after archive open was corrected by explicit
+activation; it is not product regression evidence.
+
+Affected ten-target build and fresh focused10/10PASS7.45s on macOS27.0.1 arm64,
+official Qt6.12.0; baseline verification passes408 exact/196 adapted/3 local paths.
+112 current-build980×620/640×400 JSON reports cover seven phases; text/alignment
+checks use the actual published cells. Final frozen inputs, geometry and mandatory
+full-gate evidence are recorded under build/review/native-columns-final.
+Mandatory unsandboxed check.sh terminated0: formatting, all-target build and
+277/277PASS143.31s on that macOS/Qt configuration. New suite10QtPASS0.933s,
+zero failures/skips; four code/test/CMake input hashes remain unchanged.
+Both panes/addresses and sampled compact RU headers/toolbar/status are fully
+exposed. Reports establish current Qt geometry, not rendered Windows pixels.
+
+This closes bounded FS/default/type/name/equality/per-type settings/reopen consumer
+coverage alongside the existing raw/duplicate/empty/schema/error suites. It does
+not close native deleted-archive/column acceptance, notification/snapshot boundaries,
+remaining109-module/full-body/post-Copy reconciliation, native ADS/device/zone,
+current three-platform/cold-stable/packages/clean-OS/rendered or P3-05.15/P3-06.
+
 ### Source published-cell callback and count consumers, 2026-10-06
 
 Reviewed complete original/adapted PanelListNotify::SetItemText/GetItemText and
