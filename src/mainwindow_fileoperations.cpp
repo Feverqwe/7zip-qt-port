@@ -275,6 +275,8 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
     FOR_VECTOR(i, indices) names.Add(source.GetItemRelPath2(indices[i]));
     if (names.IsEmpty())
         return true;
+    CSelectedState destinationSelection;
+    target.SaveSelectedState(destinationSelection);
     UStringVector messages;
     HRESULT result;
     {
@@ -282,12 +284,14 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
         result = target.CopyFrom(move, source.GetFsPath(), names, true, &messages);
     }
     // The native call has completed. Release its retained source guards before
-    // changing the panel projection; refreshCurrent() can then own a scan.
+    // changing the panel projection; source RefreshListCtrl can then own a scan.
     if (app_.QtOperations().kind() == QtAppOperationState::Kind::Operation)
         app_.QtOperations().End();
     if (result == S_OK) {
         activatePanelUi(destinationIndex);
-        refreshCurrent();
+        // CopyFrom already reopens the native archive and rebuilds its proxy.
+        // OnCopy reloads that provider with state saved before the update.
+        target.RefreshListCtrl(destinationSelection);
         appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         if (move)

@@ -306,6 +306,12 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: filesystem-to-archive Copy/Move публикует bound destination
+через source RefreshListCtrl с pre-update selection вместо второго ReOpen.
+[Evidence](upstream-port-audit.md#filesystem-to-archive-copy-publication-2026-10-07).
+Mac full283PASS205.12s;192 workflow rows/384 reports, all frozen inputs stable.
+Статус active; interarchive/rollback и остальные native/final boundaries обязательны.
+
 P3-05.15, 2026-10-07: source RefreshListCtrl подключён к load/publication перед
 исходным selection tail; Qt restoration вызывает отдельный narrow adapter.
 Удалён compensating all-visible ReOpen после drag/drop; CopyFromNoAsk сохраняет

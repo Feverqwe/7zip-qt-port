@@ -1,5 +1,19 @@
 # Regression strategy
 
+`copy_archive_refresh` exercises filesystem-to-archive F5/F6 through the real
+Copy dialog in both panes, EN/RU, source table/icon and standard/alternative
+selection; destination uses its table view.
+With the official codec module, its192 cases include native ZIP/7z and301-row ZIP
+publication, plus official7zz success, controlled update failure and engine
+cancellation. Injected transport cases must actually reach the backend update;
+cancellation is armed after archive opening. Assertions require the same bound
+destination provider, pre-update marked/focused names, source mark clearing and
+focus, terminal notify/redraw/enabled controls, unchanged failure archives and
+7zz-extracted control/payload bytes. Normal/compact reports inspect both panes.
+Without the native module the transport matrix contains96 cases. Run unsandboxed
+for native update filesystem access. Interarchive rollback and native-platform
+acceptance remain separate required consumers.
+
 `archive_reload_command` checks 64 real ZIP/7z QAction/Ctrl+R consumers across
 both panes, EN/RU, table/icon and standard/alternative selection. Model removal
 proves publication while provider identity, no engine request, marked names,

@@ -93,6 +93,11 @@ reload. Source requests retain their saved state while operation guards defer
 publication; the actual renderer consumes it. The Copy continuation runs after
 its existing Qt publication and uses the same extracted selection tail, without
 retrying an already completed load or concealing its failure.
+Filesystem-to-archive Copy/Move saves destination state before CopyFrom and
+publishes that same bound provider through RefreshListCtrl after success.
+ArchiveFolderOut already owns engine reopening and proxy restoration; the Qt
+completion no longer opens another provider. Failure/Cancel retain the existing
+unconditional destination OnReload and single-use source continuation.
 For ordinary Copy/Move, the Qt continuation also publishes the captured
 destination panel when output is elsewhere. Consumers mark an already requested
 destination refresh, avoiding duplicate publication. OnReload uses the existing

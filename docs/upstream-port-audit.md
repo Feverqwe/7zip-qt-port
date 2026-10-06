@@ -1735,6 +1735,72 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Filesystem-to-archive Copy publication, 2026-10-07
+
+Reviewed complete original CApp::OnCopy565–869 in
+CPP/7zip/UI/FileManager/App.cpp, PanelCopy::CopyFrom worker/CopyFromNoAsk,
+PanelItems::RefreshListCtrl and source ArchiveFolderOut publication/ReOpen/proxy
+restoration at pin0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+retrievable https://github.com/ip7z/7zip.git. Current QtAppPresentation execution,
+CopyFinished/CompleteCopyIfReady/CopyDestinationRefreshed, source continuation,
+mainwindow_fileoperations and reload/render/scan consumers were traced.
+
+Original OnCopy saves both selections before copying, refreshes the bound
+destination even on an operation error, then clears source marks/restores focus.
+Native ArchiveFolderOut already reopens the published archive and restores its
+existing folder proxy. The filesystem-to-archive Qt success path instead called
+refreshCurrent/ReOpenArchiveFolder, replacing that provider and taking a second
+selection snapshot after source indices could change. In
+src/mainwindow_fileoperations.cpp::transferToArchivePanel the adapter now saves
+destination state before CopyFrom, then calls the original RefreshListCtrl on
+that same provider after releasing retained operation guards. Its existing
+destination-refreshed marker prevents a duplicate publication; the original
+single-use CApp restoration/KillSelection/focus continuation remains unchanged.
+Failure/Cancel retain existing unconditional destination OnReload. Source Move
+filesystem refresh is unchanged. No new archive/selection/update algorithm,
+borrowed source copy, language change or baseline revision is introduced; this
+is narrow C++17/Qt publication transport around existing source bodies.
+
+The separate copy_archive_refresh fixture exercises real F5/F6 Copy dialogs,
+both panes/EN-RU/table-icon/standard-alternative selection. Native ZIP/7z success
+and301-row asynchronous native ZIP publication supplement official7zz transport
+success/failure/engine cancellation. Transport dispatch must occur, and Cancel
+is armed after opening. Provider identity, pre-update selected/focused names,
+source focus/cleared marks, terminal guards/redraw/enabled controls, failure
+archive bytes and independently extracted payload/control bytes are asserted.
+Normal/compact JSON covers both panes and addresses. This is not a rendered
+Windows pixel reference.
+
+Actual old product b2cfb5d with the corrected160-case fixture failed96 successful
+Copy/Move provider-identity checks;64 failure/Cancel cases passed (CTest22384,
+terminal8,12.47s;66QtPASS96FAIL0skip). Initial fixture diagnostics are retained:
+it first hooked UpdateFrom's plan only, while this CopyFrom uses updateSourceAdd,
+and armed cancellation before archive opening. Those setup failures are not
+counted as product RED. The corrected fixture requires backend dispatch and
+arms Cancel only after opening. Final matrix additionally covers32 native301-row
+cases, waiting for actual destination rows rather than assuming the active source
+panel's Refresh availability implies peer scan completion. First expanded run
+failed that synchronous test assumption; its evidence is retained. Final focused
+CTest47437 terminal0:3/3PASS24.77s, including192 Copy rows and existing
+ui_copy_routing/panel_copy_reload. Baseline54324 terminal0:408exact196adapted3local.
+Required UNSANDBOXED full gate24586 terminal0: formatting/all-target build and
+283/283 CTest PASS205.12s on macOS27.0.1arm64, Qt6.12.0. All10 frozen task input
+hashes matched at completion; only documentation evidence was updated afterward.
+Current Qt totals: CopyArchive194, routing83, CopyReload34 PASS, all0skip.
+Reviewed384 current normal/compact JSON reports, all newer than the gate start:
+1536 visible list/address controls fully visible and enabled. The source view
+varies table/icon; the destination view is a table in this bounded matrix.
+Artifacts under build/review/copy-archive-refresh-red and copy-archive-refresh-final
+retain failures, final/focused logs, frozen/verified hashes, copied reports and
+geometry inspection. No current Windows/Linux or rendered Windows validation is
+claimed. Native codec absence reduces this suite to96 transport cases; the
+recorded Mac gate executed all192 workflow rows without skips.
+
+Interarchive destination/rollback, other operation refreshCurrent callers,
+native ADS/device/zone, full-body/109-module and current three-platform/rendered/
+cold-stable/package/P3-06 acceptance remain required. This component does not
+close P3-05.15 or the whole goal.
+
 ### Source Refresh and drag/drop publication, 2026-10-07
 
 Reviewed complete active original PanelItems::RefreshListCtrl467–975, its

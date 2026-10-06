@@ -2,6 +2,13 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Filesystem-to-archive F5/F6 keeps the bound destination provider and its pre-update
+marked/focused names after native update. Source marks clear and focus returns
+to the source list; failure/Cancel still publish the destination through the
+existing Copy completion. Inspect both panes EN/RU, source table/icon, destination
+table and alternative selection at980×620/640×400, including301-row asynchronous ZIP publication.
+Both views and addresses must remain visible and enabled at terminal state.
+
 Manual Refresh/Ctrl+R uses the bound archive provider, retaining source selection
 and focus without an engine/reopen request. Inspect EN/RU both panes, ZIP/7z,
 table/icon and standard/alternative selection at980×620/640×400; peer provider,

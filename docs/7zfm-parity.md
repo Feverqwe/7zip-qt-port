@@ -2,6 +2,14 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+Copy/Move из файловой панели в архив больше не открывает второй provider после
+успешного CopyFrom. Как original OnCopy, список обновляется с состоянием,
+сохранённым до операции; ArchiveFolderOut уже выполнил engine ReOpen и восстановил
+proxy. Прежние отмеченные имена и фокус назначения сохраняются при изменении
+индексов. Ошибка/Cancel продолжают existing unconditional destination reload и
+source completion. Native ZIP/7z,301-row ZIP и transport success/failure/Cancel
+проверяются отдельной матрицей; Windows/Linux и rendered Windows приёмка открыты.
+
 Refresh/Ctrl+R теперь использует original CApp::RefreshView/OnReload также для
 архивов. Команда перезагружает bound provider без повторного открытия физического
 файла. Прежняя Qt-ветка вызывала ReOpen, меняя provider и добавляя engine-запрос.
