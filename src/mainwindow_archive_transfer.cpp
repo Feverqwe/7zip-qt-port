@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtarchivetransferbackup.h"
 #include "qtlangcontrols.h"
 #include "qttrashservice.h"
@@ -58,6 +59,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             app_.QtOperations().End();
             activatePanelUi(destinationIndex);
             refreshCurrent();
+            appPresentation_->CopyDestinationRefreshed(destinationIndex);
             activatePanelUi(sourceIndex);
             if (!restored) {
                 QMessageBox::warning(this, QtLangText(IDS_MOVING),
@@ -76,6 +78,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     if (result == S_OK && messages.IsEmpty()) {
         activatePanelUi(destinationIndex);
         refreshCurrent();
+        appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         statusBar()->showMessage(
             move

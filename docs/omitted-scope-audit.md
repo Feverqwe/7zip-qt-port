@@ -65,6 +65,16 @@ do not require a new project GUID implementation. No source/header changes.
 
 ### App complete body/caller review, 2026-10-06
 
+Follow-up dependency review: the complete original
+PanelItems.cpp::RefreshListCtrl body and SaveFocused/OnReload callers at the
+same upstream pin were inspected for the OnCopy continuation. The outside-peer
+destination publication and namespace reload gap are now adapted through the
+existing Qt owners. Load/columns/property/name/icon/parent/sort/redraw/status
+stages remain separate from the retained selection stage; their remaining
+whole-body/native/HRESULT/timer acceptance is detailed in the
+[port audit](upstream-port-audit.md#unconditional-destination-publication-and-namespace-reload-2026-10-06).
+This is a function/dependency review, not another module-wide closure.
+
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`
 with the602-line adapted module at project
 `c590f0f1f372f4a236662fac8f490a630d6ef964`. Source is

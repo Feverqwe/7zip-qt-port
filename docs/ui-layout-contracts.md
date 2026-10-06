@@ -37,6 +37,12 @@ EN/RU1100×640/640×400, including both address/list groups and toolbar. Do not
 let delayed progress destruction replace the restored title. Offscreen window
 activation may be restored by the driver; native focus/rendered parity still
 requires native evidence.
+Ordinary Copy/Move refreshes the captured destination panel even when typed
+output is outside it. Verify both source roles and bounded/301-item publication,
+preserved peer selection, successful bytes, overwrite Cancel and dialog Cancel.
+Disable polling in the regression so the operation itself must publish rows.
+Inspect the resulting address/list groups at1100×640/640×400. Namespace OnReload
+must republish its existing provider rows through the same renderer.
 
 ### Persisted source locations (P3-05.14, required scope)
 

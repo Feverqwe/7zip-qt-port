@@ -252,6 +252,53 @@ review are in build/review/source-copy-completion-final. Baseline remains
 semantics, remaining native/HRESULT/metadata branches, current Windows/Linux,
 cold-stable/current-package/clean-OS/rendered and P3-06 acceptance remain open.
 
+### Unconditional destination publication and namespace reload, 2026-10-06
+
+Before this adaptation, the complete original PanelItems.cpp::RefreshListCtrl
+body, its SaveFocused/OnReload callers, CSelectedState, folder interfaces and
+current publication consumers were reviewed at upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original OnCopy refreshes the destination panel
+for every ordinary accepted Copy/Move, including output outside that panel.
+Qt previously refreshed it only when output matched the displayed destination.
+
+QtAppPresentation now requests the retained panel OnReload after terminal
+execution if consumers have not already requested destination publication.
+It suppresses reentrant completion while requesting that publication and waits
+for its operation/scan owner before invoking the original saved-state body.
+The existing filesystem/archive consumers mark requested publication; the
+namespace callback now invokes its existing renderer/native IFolderFolder.
+No borrowed file, algorithm, provider or new dependency is added. Existing
+upstream provenance and408 exact/196 adapted/3 local baseline remain unchanged.
+
+This function review covers guards, path/title, flat-mode-before-LoadItems,
+columns, directory-property validation, names/prefixes, icons/slow/deleted items,
+parent row, saved selection, sort/focus/viewport/redraw/status and HRESULT
+returns. Commented diagnostics/virus/stream-mode branches are distinguished
+from active code. Qt still splits native load/row publication and the adapted
+RefreshListCtrl selection stage. Complete agreement for these stages, dots,
+native icon/property/error/timer branches and module-wide acceptance remains
+mandatory; requesting OnReload does not establish whole-body parity.
+
+Actual outside-peer RED retains four stale-list failures; namespace RED retains
+82 Qt passes/one missing-publication failure. The earlier wrong root action name
+was a fixture error, corrected before this product RED. Final consumers cover
+both source roles,1/301-row peers, Copy/Move/dialog Cancel/overwrite Cancel,
+retained seed selection and exact Unicode input/output bytes, with polling
+disabled. Dialog Cancel preserves old rows. Namespace reload republishes its
+native provider. The focused Copy suite remains cohesive at approximately420
+lines; small fixture/modal/report helpers are reused, with no second feature.
+Current checks and resulting geometry evidence are in
+build/review/source-copy-destination-final; this component leaves P3-05.15 open.
+Final macOS27.0.1 arm64/Qt6.12.0 checks: affected five suitesPASS14.78s
+(UiCopyRouting83,UiOperations34,UiCopySame22,RootCommand24,NamespaceHash3,
+zero Qt failures/skips). Mandatory unsandboxed check.sh passes formatting,
+all-target build and254/254 CTest108.49s. Seven changed code/test input hashes
+remain stable. Ninety-six current1100×640/640×400 reports retain both panel,
+address/list and toolbar groups, visible/enabled/fit with unchanged panel order.
+Outside-peer probes supplement the existing64 EN/RU completion reports;
+they do not establish native rendered Windows/Linux or complete source parity.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

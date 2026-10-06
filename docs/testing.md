@@ -42,6 +42,14 @@ The existing overwrite Cancel/Skip consumer verifies source marks are removed
 while inputs remain intact. One/two-panel CApp probes also check single-use
 completion and restored notifications. The lifecycle consumer rejects Close
 inside Copy's modal and permits it after Cancel, without engine calls.
+Sixteen outside-peer destination rows cover both source panels, small and
+301-item peers, Copy, Move, dialog Cancel and overwrite Cancel. Auto-refresh is
+disabled so polling cannot mask missing destination publication. A file created
+in the peer during the modal must appear after accepted execution, with retained
+seed selection and exact source/output bytes; dialog Cancel keeps the old list.
+Normal/compact resulting-panel reports cover these states. A public OnReload
+consumer clears the drives view and requires the existing native provider to
+publish rows again. Both scenarios have retained failing logs without their fix.
 
 `persisted_location` verifies source-prefix bookmarks in both-panel drive view,
 empty-slot root binding and root Save clearing, and exact virtual locations for

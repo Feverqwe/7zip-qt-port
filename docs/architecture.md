@@ -23,6 +23,12 @@ two-panel filesystem Copy preserves source rows/current item, while Move,
 copyToSame and a shared single panel keep their required source publication.
 The existing providers still own row loading; full RefreshListCtrl dependency
 semantics remain subject to the source-body review in the audit.
+For ordinary Copy/Move, the Qt continuation also publishes the captured
+destination panel when output is elsewhere. Consumers mark an already requested
+destination refresh, avoiding duplicate publication. OnReload uses the existing
+filesystem/archive/namespace publication owners; completion waits for their scan
+owners before restoring the original saved states. Namespace reload invokes the
+existing native-provider renderer instead of returning without loading rows.
 
 Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
 completion for queued close/error presentation, so the transport disconnects its

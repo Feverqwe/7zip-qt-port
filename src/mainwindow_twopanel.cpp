@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include <QScopeGuard>
 
 // Qt keeps each panel's controls and presentation state while CPanel owns the
@@ -210,5 +211,6 @@ void MainWindow::refreshTransferDestination(unsigned index) {
     const unsigned source = app_.GetFocusedPanelIndex();
     activatePanelUi(index);
     refreshCurrent();
+    appPresentation_->CopyDestinationRefreshed(index);
     activatePanelUi(source);
 }

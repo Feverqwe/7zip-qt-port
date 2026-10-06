@@ -127,6 +127,7 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                     app_.GetFocusedPanelIndex() == sourcePanel) {
                     activatePanelUi(destinationPanel);
                     refreshCurrent();
+                    appPresentation_->CopyDestinationRefreshed(destinationPanel);
                     activatePanelUi(sourcePanel);
                 }
                 if (app_.GetFocusedPanelIndex() == sourcePanel)
@@ -286,6 +287,7 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
     if (result == S_OK) {
         activatePanelUi(destinationIndex);
         refreshCurrent();
+        appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         if (move)
             refreshCurrent();

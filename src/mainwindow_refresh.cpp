@@ -28,6 +28,11 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         restoreListSelection(selection);
         return S_OK;
     }
+    if (state_ == State::Namespace) {
+        renderRootFolder();
+        restoreListSelection(selection);
+        return S_OK;
+    }
     if (state_ != State::Filesystem)
         return S_OK;
     if (!QFileInfo(directory_).isDir()) {

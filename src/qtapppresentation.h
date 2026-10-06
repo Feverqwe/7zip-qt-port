@@ -22,6 +22,7 @@ class QtAppPresentation final : public IQtAppPresentation {
     void MoveSubWindows() override;
     void CopyFinished();
     void CompleteCopyIfReady();
+    void CopyDestinationRefreshed(unsigned index);
 
   private:
     MainWindow &window_;
@@ -30,4 +31,5 @@ class QtAppPresentation final : public IQtAppPresentation {
     bool copyPending_ = false;
     bool copyExecuting_ = false;
     bool copyFinished_ = false;
+    bool copyRefreshDestination_ = false;
 };

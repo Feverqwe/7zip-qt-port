@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
 #include "qtfilemanagerdrag.h"
+#include <QScopedValueRollback>
 
 void QtAppPresentation::Initialize(CApp &app) {
     // Preserve the existing single-panel preferences when introducing the
@@ -102,6 +103,7 @@ void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceI
     copySource_ = sourceIndex;
     copyPending_ = true;
     copyFinished_ = false;
+    copyRefreshDestination_ = !copyToSame;
     copyExecuting_ = true;
     window_.executeCopyDestination(move, copyToSame, sourceIndex, destination, indices,
                                    useDestPanel, useTemp);
@@ -125,11 +127,27 @@ void QtAppPresentation::CopyFinished() {
 void QtAppPresentation::CompleteCopyIfReady() {
     if (!copyPending_ || copyExecuting_ || !copyFinished_ || window_.app_.QtOperations().active())
         return;
+    if (copyRefreshDestination_ && !window_.app_.QtOperations().closed()) {
+        copyRefreshDestination_ = false;
+        // Original OnCopy refreshes its destination panel even when the typed
+        // output is elsewhere. Its retained OnReload owner supplies row loading.
+        QScopedValueRollback<bool> publishing(copyExecuting_, true);
+        const unsigned destination = window_.app_.NumPanels <= 1 ? copySource_ : 1 - copySource_;
+        window_.app_.Panels[destination].OnReload();
+    }
+    if (window_.app_.QtOperations().active())
+        return;
     copyPending_ = false;
     if (!window_.app_.QtOperations().closed())
         window_.activatePanelUi(copySource_);
     window_.app_.CompleteCopy();
     window_.refreshActions();
+}
+
+void QtAppPresentation::CopyDestinationRefreshed(unsigned index) {
+    const unsigned destination = window_.app_.NumPanels <= 1 ? copySource_ : 1 - copySource_;
+    if (copyPending_ && index == destination)
+        copyRefreshDestination_ = false;
 }
 
 void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &settings) {

@@ -50,6 +50,11 @@ Source post-operation saved states/title/notify/focus body теперь выпо
 ordinary source marks; deferred progress больше не сбрасывает title. Оба source
 roles/EN-RU и normal/compact panel JSON проверены. Full RefreshListCtrl load
 semantics/native completion и остальные source branches ещё обязательны.
+Unconditional destination publication теперь восстановлена для цели вне peer,
+с retained selection и ожиданием bounded/worker load; namespace OnReload также
+публикует provider rows. Success/Move/dialog Cancel/overwrite Cancel и resulting
+normal/compact geometry входят в focused consumers; полная source-load и
+native/platform приёмка остаются открытыми.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 

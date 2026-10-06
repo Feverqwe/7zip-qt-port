@@ -30,6 +30,12 @@ Copy сохраняет source rows/current item; Move/Shift/shared single panel
 EN/RU оба source-panel roles, peer selection, bytes и normal/compact state
 проверяются public consumers; offscreen activation не доказывает native focus.
 Полная загрузка RefreshListCtrl и native/platform приёмка ещё обязательны.
+Destination panel теперь обновляется и при цели вне peer после Copy/Move или
+Cancel в overwrite dialog. Cancel самого Copy dialog сохраняет прежний список.
+Qt учитывает уже начатую публикацию и ждёт сканирования перед исходной
+continuation. Namespace OnReload повторно публикует существующий native provider.
+Эти consumers проверены отдельно от оставшейся полной загрузки RefreshListCtrl;
+текущие Windows/Linux и rendered evidence ещё требуются.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

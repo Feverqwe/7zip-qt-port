@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "copydialog.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -103,6 +104,103 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
     }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void sourceReloadPublishesNamespace() {
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        action(window, "openRootAction")->trigger();
+        auto *view = static_cast<FileTable *>(table(window));
+        QVERIFY(view->sourcePanel->IsFSDrivesFolder());
+        const int count = view->rowCount();
+        QVERIFY(count > 0);
+        view->setRowCount(0);
+        view->sourcePanel->OnReload();
+        QCOMPARE(view->rowCount(), count);
+        QCOMPARE(
+            view->item(0, 0)->text().normalized(QString::NormalizationForm_C),
+            ToQString(view->sourcePanel->GetItemName(0)).normalized(QString::NormalizationForm_C));
+    }
+    void outsidePeerStillRefreshesDestination_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<bool>("large");
+        QTest::addColumn<QString>("outcome");
+        for (unsigned sourceIndex : {0u, 1u})
+            for (bool large : {false, true})
+                for (const char *outcome : {"copy", "move", "dialog-cancel", "overwrite-cancel"})
+                    QTest::newRow(
+                        qPrintable(QString("%1-%2-%3").arg(sourceIndex).arg(large).arg(outcome)))
+                        << sourceIndex << large << QString::fromLatin1(outcome);
+    }
+    void outsidePeerStillRefreshesDestination() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(bool, large);
+        QFETCH(QString, outcome);
+        const bool cancel = outcome == "dialog-cancel";
+        const bool overwrite = outcome == "overwrite-cancel";
+        const bool move = outcome == "move";
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString input = fixture.filePath("input");
+        const QString peer = fixture.filePath("peer");
+        const QString output = fixture.filePath("output");
+        for (const QString &path : {input, peer, output})
+            QVERIFY(QDir().mkpath(path));
+        const QString name = QStringLiteral("payload δ.txt");
+        write(QDir(input).filePath(name), "control bytes");
+        write(QDir(peer).filePath("seed.txt"), "seed control");
+        if (overwrite)
+            write(QDir(output).filePath(name), "existing control");
+        const int originalRows = large ? 301 : 1;
+        for (int i = 1; i < originalRows; ++i)
+            write(QDir(peer).filePath(QString("item-%1").arg(i)), "control");
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *sourceView = openPanel(window, sourceIndex, input);
+        QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        auto *peerView = openPanel(window, 1 - sourceIndex, peer);
+        QTRY_COMPARE(peerView->rowCount(), originalRows);
+        QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        for (auto *view : {sourceView, peerView})
+            static_cast<FileTable *>(view)->sourcePanel->Set_AutoRefresh_Mode(false);
+        peerView->selectRow(row(*peerView, "seed.txt"));
+        sourceView->selectRow(row(*sourceView, name));
+        sourceView->setFocus();
+        QTRY_VERIFY(sourceView->hasFocus());
+        bool seen = false;
+        QTimer driver;
+        connect(&driver, &QTimer::timeout, &window, [&] {
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
+            if (dialog && dialog->isVisible() && !seen) {
+                seen = true;
+                write(QDir(peer).filePath("new while guarded.txt"), "new control");
+                dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(output + '/');
+                cancel ? dialog->reject() : dialog->accept();
+            }
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = dynamic_cast<COverwriteDialog *>(widget); box && box->isVisible())
+                    box->findChild<QPushButton *>("overwriteCancel")->click();
+        });
+        driver.start(1);
+        QTest::keyClick(sourceView, move ? Qt::Key_F6 : Qt::Key_F5);
+        QVERIFY(seen);
+        QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        QTRY_COMPARE_WITH_TIMEOUT(peerView->rowCount(), originalRows + (cancel ? 0 : 1), 1000);
+        QCOMPARE(QFileInfo::exists(QDir(output).filePath(name)), !cancel);
+        QCOMPARE(read(QDir(output).filePath(name)), cancel      ? QByteArray()
+                                                    : overwrite ? QByteArray("existing control")
+                                                                : QByteArray("control bytes"));
+        QCOMPARE(read(QDir(input).filePath(name)),
+                 move ? QByteArray() : QByteArray("control bytes"));
+        QCOMPARE(peerView->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(
+            peerView->item(peerView->selectionModel()->selectedRows().first().row(), 0)->text(),
+            QString("seed.txt"));
+        inspectCompletedPanels(
+            window, *sourceView, *peerView,
+            QString("copy-outside-peer-%1-%2-%3").arg(sourceIndex).arg(large).arg(outcome));
+    }
     void unselectedItemsReachSourceSmartCopy_data() {
         QTest::addColumn<bool>("archive");
         QTest::addColumn<bool>("move");
