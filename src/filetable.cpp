@@ -10,6 +10,10 @@
 #include <QUrl>
 
 namespace {
+bool sameColumnIdentity(const CPropColumn &left, const CPropColumn &right) {
+    return left.ID == right.ID && left.Type == right.Type && left.IsRawProp == right.IsRawProp &&
+           left.Name == right.Name;
+}
 class FileRowDelegate final : public QStyledItemDelegate {
   public:
     using QStyledItemDelegate::QStyledItemDelegate;
@@ -53,6 +57,47 @@ QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent) {
 
 FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows, columns, parent) {
     setItemDelegate(CreateFileRowDelegate(this));
+}
+
+const CPropColumn *FileTable::sourceColumn(int column) const {
+    if (!sourcePanel || column < 0)
+        return nullptr;
+    const CPropColumns &columns = sourcePanel->GetColumns();
+    if (!sourceColumnIndices.isEmpty()) {
+        const int index = column < sourceColumnIndices.size() ? sourceColumnIndices[column] : -1;
+        if (index < 0 || unsigned(index) >= columns.Size())
+            return nullptr;
+        const CPropColumn &prop = columns[unsigned(index)];
+        return prop.ID == propertyId(column) && prop.IsRawProp == isRawProperty(column) ? &prop
+                                                                                        : nullptr;
+    }
+    // Standalone adapters without a publication map retain their ID binding.
+    const int index = columns.FindItem_for_PropID(propertyId(column));
+    return index >= 0 ? &columns[unsigned(index)] : nullptr;
+}
+
+int FileTable::columnForCatalogProperty(unsigned index) const {
+    return sourceColumnIndices.indexOf(int(index));
+}
+
+int FileTable::columnForVisibleProperty(unsigned index) const {
+    if (!sourcePanel || index >= sourcePanel->GetVisibleColumns().Size())
+        return -1;
+    const CPropColumns &visible = sourcePanel->GetVisibleColumns();
+    const CPropColumn &prop = visible[index];
+    unsigned occurrence = 0;
+    for (unsigned previous = 0; previous < index; ++previous)
+        if (sameColumnIdentity(visible[previous], prop))
+            ++occurrence;
+    for (int column = 0; column < columnCount(); ++column) {
+        const CPropColumn *candidate = sourceColumn(column);
+        if (candidate && sameColumnIdentity(*candidate, prop)) {
+            if (occurrence == 0)
+                return column;
+            --occurrence;
+        }
+    }
+    return -1;
 }
 
 void FileTable::setFullRowHighlight(bool enabled) {
@@ -125,9 +170,8 @@ QVariant ArchiveTableItem::data(int role) const {
                        ? sourceText_
                        : (col == 0 ? QVariant(QString()) : QTableWidgetItem::data(role));
         const QVariant index = QTableWidgetItem::data(Qt::UserRole + 6);
-        const CPropColumns &columns = table->sourcePanel->GetColumns();
-        const int property = columns.FindItem_for_PropID(table->propertyId(col));
-        if (index.isValid() && property >= 0 && table->textFolder &&
+        const CPropColumn *property = table->sourceColumn(col);
+        if (index.isValid() && property && table->textFolder &&
             table->sourcePanel->GetFolder() == table->textFolder) {
             if (!sourceTextDefined_) {
                 UInt32 count = 0;
@@ -135,7 +179,7 @@ QVariant ArchiveTableItem::data(int role) const {
                     (table->textFolder->GetNumberOfItems(&count) != S_OK ||
                      index.toUInt() >= count))
                     return QVariant();
-                sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), columns[property]);
+                sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), *property);
                 if (col == 0)
                     sourceText_ = (QTableWidgetItem::data(Qt::UserRole + 5).toString() +
                                    sourceText_.toString())

@@ -1,5 +1,13 @@
 # Regression strategy
 
+`panel_column_schema` uses a forwarding native-folder fixture to publish generic
+and raw CRC/Size entries with the same ID. Eight both-pane EN/RU cases check
+separate sections/text/alignment/widths, owning provider after peer focus, guards,
+RawProp E_FAIL/E_ABORT/recovery, header Cancel, source duplicate saved-ID behavior,
+selection/peer/control bytes and Refresh. Sixteen normal/compact reports cover
+both panels. The fixture does not establish actual archive-format or duplicate-ID
+menu/sort workflow acceptance; native/rendered Windows remains open.
+
 `panel_column_menu` covers both panes, EN/RU and active/inactive header owners:
 source catalog order/checks/first-entry protection, Cancel, hide/show append after
 a move, catalog width on re-addition and order after Refresh, unchanged catalog

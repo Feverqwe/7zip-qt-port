@@ -92,6 +92,7 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
 #endif
             } else if (drives || network || streams || column >= 7)
                 item->setText(sourceColumnText(index, column));
+            item->setTextAlignment(sourceColumnAlignment(column));
             table_->setItem(row, column, item);
         }
     }

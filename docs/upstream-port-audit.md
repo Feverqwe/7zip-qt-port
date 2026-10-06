@@ -1734,6 +1734,62 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source column descriptor publication, 2026-10-06
+
+Original `CPP/7zip/UI/FileManager/PanelListNotify.cpp::SetItemText` reads the
+exact `_visibleColumns[item.iSubItem]` descriptor before its raw/generic branches.
+Reviewed complete original/adapted formatter, OnNotifyList caller, PanelItems
+InitColumns/SaveListViewInfo/Menu, CPropColumn/CPropColumns, native AddColumn
+alignment and existing Qt publication/cell/header/save/timestamp consumers at
+upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original formatter/alignment/duplicate saved-ID
+policy remain authoritative and unchanged; no dependency is copied or source
+language changed, and no upstream edit/notice removal is made.
+
+The old Qt first-ID lookup mixed generic/raw text and alignment, while raw Size
+overwrote the reserved generic Size section. FileTable now stores a catalog-index
+map; publication allocates separate sections for raw/repeated reserved IDs. Cells
+and alignment/timestamp consumers use the owning exact descriptor, preserving
+provider guards. Visible order/width projection matches ID/type/raw/name and
+occurrence, rather than collapsing the first ID. Legacy standalone adapters with
+no publication map keep their existing ID binding. Namespace rows now apply
+source GetColumnAlign, matching the native column presentation policy.
+
+Repeated catalog-ID menu commands remain disabled as unfinished under AGENTS.md:
+native ShowColumnsContextMenu removes the first visible ID, and Qt's complete
+delete/add projection for duplicate descriptors is not yet ported. This temporary
+observable difference and duplicate sorting acceptance remain mandatory, rather
+than being hidden by publication tests or treated as upstream policy.
+
+The fixture initially used a synthetic7-Zip type without archive interfaces;
+CTest timed out60.02s waiting on its unsupported reload message. Corrected to the
+existing RootFolder renderer after that process was terminal; timeout is not RED
+evidence. Actual previous-product RED8/2QtPASS0.65s then catches generic CRC text
+and missing generic Size. Seven snapshots/hashes/log are in column-schema-red.
+Descriptor correction exposed namespace alignment RED8/2QtPASS0.72s; four input
+snapshots/hashes/log are in build/review/column-schema-alignment-red.
+
+New SchemaFolder forwards existing LoadFolder through native folder/raw interfaces
+without changing defaults, and adds only test metadata/query controls. Eight
+both-pane EN/RU CRC/Size cases cover separate sections/text/alignment/widths,
+inactive owning provider, notification guard, RawProp E_FAIL/E_ABORT/recovery,
+header Cancel/disabled duplicate command, Refresh/source first-match saved-ID
+width, selection/peer and unchanged Unicode control bytes, with no engine calls.
+Sixteen normal980×620/compact640×400 widget reports expose both views/address/
+header/status groups. This artificial provider does not prove actual archive
+schema/format, duplicate menu/sort, native or rendered Windows acceptance.
+
+Final inputs/logs/reports are retained in build/review/column-schema-final.
+Affected nine-target build and fresh sequential focused9/9PASS12.06s include
+new10QtPASS, zero failures/skips. Baseline verification passes408 exact/196
+adapted/3 local paths. Eight final code/test/build input hashes are recorded.
+Mandatory unsandboxed check.sh passes formatting, all-target build and273/273
+CTest in241.52s on macOS27.0.1 arm64 with official Qt6.12.0; all eight final
+input hashes remain unchanged.
+Broader schema/error/default-column/same-provider reinitialization, duplicate-ID
+menu/sort, operation-to-render/body closure, current native Windows/Linux/rendered,
+109-module/cold-stable/packages and P3-05.15/P3-06 acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

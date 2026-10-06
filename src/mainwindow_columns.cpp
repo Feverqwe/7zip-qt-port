@@ -12,23 +12,16 @@ void MainWindow::configureColumns(bool initialized) {
     const QSignalBlocker blocked(table_->horizontalHeader());
     auto *fileTable = static_cast<FileTable *>(table_);
     const CPropColumns &columns = panel.GetColumns();
-    int extraCount = 0;
-    FOR_VECTOR(i, columns) {
-        const PROPID id = columns[i].ID;
-        if (id != kpidName && id != kpidSize && id != kpidPackSize && id != kpidMTime)
-            ++extraCount;
-    }
     table_->setRowCount(0);
     fileTable->textFolder = panel.GetFolder();
-    table_->setColumnCount(7 + extraCount);
     fileTable->propertyIds = {kpidName,  kpidPath,      kpidSize,      kpidPackSize,
                               kpidMTime, kpidExtension, kpidNoProperty};
-    fileTable->rawProperties.fill(false, 7 + extraCount);
+    fileTable->rawProperties.fill(false, 7);
+    fileTable->sourceColumnIndices.fill(-1, 7);
     QStringList labels;
     for (PROPID id : fileTable->propertyIds)
         labels << (id == kpidNoProperty ? QtLocalText("Order", "Порядок")
                                         : QString::fromWCharArray(GetNameOfProperty(id, nullptr)));
-    int next = 7;
     FOR_VECTOR(i, columns) {
         const CPropColumn &prop = columns[i];
         int column = -1;
@@ -40,13 +33,21 @@ void MainWindow::configureColumns(bool initialized) {
             column = 3;
         else if (prop.ID == kpidMTime)
             column = 4;
-        else {
-            column = next++;
+        if (column < 0 || prop.IsRawProp || fileTable->sourceColumnIndices[column] >= 0) {
+            column = fileTable->propertyIds.size();
             fileTable->propertyIds.append(prop.ID);
+            fileTable->rawProperties.append(false);
+            fileTable->sourceColumnIndices.append(-1);
             labels << ToQString(prop.Name);
         }
+        fileTable->sourceColumnIndices[column] = int(i);
         fileTable->rawProperties[column] = prop.IsRawProp;
         labels[column] = ToQString(prop.Name);
+    }
+    table_->setColumnCount(fileTable->propertyIds.size());
+    FOR_VECTOR(i, columns) {
+        const CPropColumn &prop = columns[i];
+        const int column = fileTable->columnForCatalogProperty(i);
         table_->setColumnWidth(column, qMax(32, int(prop.Width)));
         table_->setColumnHidden(column, !prop.IsVisible);
     }
@@ -59,7 +60,7 @@ void MainWindow::configureColumns(bool initialized) {
     for (int column : {1, 5, 6})
         table_->setColumnHidden(column, true);
     for (int column : {2, 3, 4}) {
-        if (columns.FindItem_for_PropID(fileTable->propertyId(column)) < 0)
+        if (!fileTable->sourceColumn(column))
             table_->setColumnHidden(column, true);
     }
     const CPropColumns &visible = panel.GetVisibleColumns();
@@ -67,7 +68,7 @@ void MainWindow::configureColumns(bool initialized) {
     const bool ordered = panel.GetColumnOrder(columnOrder);
     FOR_VECTOR(i, visible) {
         const int column =
-            fileTable->columnForProperty(visible[ordered ? unsigned(columnOrder[i]) : i].ID);
+            fileTable->columnForVisibleProperty(ordered ? unsigned(columnOrder[i]) : i);
         if (column >= 0)
             table_->horizontalHeader()->moveSection(table_->horizontalHeader()->visualIndex(column),
                                                     int(i));
@@ -89,7 +90,7 @@ void MainWindow::saveColumns() {
     CPropColumns visible;
     const CPropColumns &columns = panel.GetVisibleColumns();
     FOR_VECTOR(i, columns) {
-        const int column = fileTable->columnForProperty(columns[i].ID);
+        const int column = fileTable->columnForVisibleProperty(i);
         if (column < 0 || table_->isColumnHidden(column))
             continue;
         CPropColumn prop = columns[i];
@@ -111,13 +112,15 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
     QMenu menu(this);
     FOR_VECTOR(i, columns) {
         const CPropColumn &prop = columns[i];
-        const int column = fileTable->columnForProperty(prop.ID);
+        const int column = fileTable->columnForCatalogProperty(i);
         if (column < 0)
             continue;
         QAction *option = menu.addAction(ToQString(prop.Name));
         option->setCheckable(true);
         option->setChecked(prop.IsVisible);
-        option->setEnabled(i != 0);
+        // Repeated-ID toggle projection still needs the native deletion/add
+        // consumer port. Keep that unfinished command disabled.
+        option->setEnabled(i != 0 && columns.FindItem_for_PropID(prop.ID) == int(i));
         connect(option, &QAction::toggled, this, [this, column, index = i](bool) {
             auto &source = app_.GetFocusedPanel();
             source.ShowColumnsContextMenu(index);
@@ -149,28 +152,23 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
 QString MainWindow::sourceColumnText(UInt32 itemIndex, int column) {
     const auto *fileTable = static_cast<const FileTable *>(table_);
     const auto &panel = app_.GetFocusedPanel();
-    const CPropColumns &columns = panel.GetColumns();
-    const int index = columns.FindItem_for_PropID(fileTable->propertyId(column));
-    return index >= 0 ? panel.GetItemText(itemIndex, columns[index]) : QString();
+    const CPropColumn *prop = fileTable->sourceColumn(column);
+    return prop ? panel.GetItemText(itemIndex, *prop) : QString();
 }
 
 Qt::Alignment MainWindow::sourceColumnAlignment(int column) const {
     const auto *fileTable = static_cast<const FileTable *>(table_);
-    const CPanel &panel = app_.Panels[app_.GetFocusedPanelIndex()];
-    const CPropColumns &columns = panel.GetColumns();
-    const int index = columns.FindItem_for_PropID(fileTable->propertyId(column));
-    return index >= 0 ? GetColumnAlign(columns[index].ID, columns[index].Type)
-                      : Qt::AlignLeft | Qt::AlignVCenter;
+    const CPropColumn *prop = fileTable->sourceColumn(column);
+    return prop ? GetColumnAlign(prop->ID, prop->Type) : Qt::AlignLeft | Qt::AlignVCenter;
 }
 
 void MainWindow::redrawTimestampColumns() {
     if (!table_ || !app_.GetFocusedPanel().GetFolder())
         return;
     const auto *fileTable = static_cast<const FileTable *>(table_);
-    const CPropColumns &columns = app_.GetFocusedPanel().GetColumns();
     for (int column = 0; column < table_->columnCount(); ++column) {
-        const int index = columns.FindItem_for_PropID(fileTable->propertyId(column));
-        if (index < 0 || columns[index].Type != VT_FILETIME)
+        const CPropColumn *prop = fileTable->sourceColumn(column);
+        if (!prop || prop->Type != VT_FILETIME)
             continue;
         for (int row = 0; row < table_->rowCount(); ++row)
             if (auto *item = table_->item(row, column))

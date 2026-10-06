@@ -9,6 +9,7 @@
 #include <QVector>
 #include <functional>
 class CPanel;
+struct CPropColumn;
 QAbstractItemDelegate *CreateFileRowDelegate(QWidget *parent);
 
 class FileTable : public QTableWidget {
@@ -22,6 +23,10 @@ class FileTable : public QTableWidget {
     std::function<void()> dragStarter;
     QVector<PROPID> propertyIds;
     QVector<bool> rawProperties;
+    QVector<int> sourceColumnIndices;
+    const CPropColumn *sourceColumn(int column) const;
+    int columnForCatalogProperty(unsigned index) const;
+    int columnForVisibleProperty(unsigned index) const;
     PROPID propertyId(int column) const {
         return column >= 0 && column < propertyIds.size() ? propertyIds[column] : kpidNoProperty;
     }

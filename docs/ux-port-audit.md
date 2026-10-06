@@ -118,7 +118,13 @@ SaveListViewInfo выявила независимую запись Qt width/ord
 удалена. Hide/show снова берёт исходную catalog width; resize без hide/show
 сохраняется для следующего InitColumns/reopening. Прежняя регрессия173px после
 hide/show закрепляла Qt-допущение и исправлена; catalog/visible/saved metadata
-проверены отдельно. Сверка тел
+проверены отдельно.
+Raw/generic publication также исправлена: Qt больше не смешивает первый PropID
+с точным descriptor исходной колонки и не вытесняет generic Size raw-колонкой.
+Namespace alignment теперь следует исходному GetColumnAlign. EN/RU обе панели,
+неактивный provider/peer, RawProp errors/Cancel/recovery и16 JSON проверены на Mac.
+Duplicate-ID menu/sort workflows ещё требуют сверки и native/rendered проверки.
+Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.

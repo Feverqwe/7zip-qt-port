@@ -2,6 +2,17 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Each source catalog entry gets a separate Qt section, including generic/raw
+entries with the same PropID and raw entries for reserved Size properties.
+Requested cells/alignment use that exact source descriptor, not the first ID.
+Visible logical order and widths persist through the source save flow; duplicate
+saved IDs retain upstream first-match initialization policy. Inspect both panes
+EN/RU normal980×620/compact640×400, owning provider/selection/peer, header Cancel,
+notification guards and Refresh. Source duplicate-ID menu mutations need their
+own consumer review; publication evidence does not close that workflow.
+Keep repeated catalog-ID menu entries disabled until their native delete/add
+projection is ported; retain ordinary unique-ID commands.
+
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.
 Refresh and reopening must retain that order and widths in both panes under
