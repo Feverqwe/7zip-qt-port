@@ -205,8 +205,15 @@ native_menu_integration3Qt, all zero skips. The pinned original rendered 7zFM
 System-menu reference consumer also passes3Qt/0skip,1/1 PASS2.93s. Four immutable
 logs/token/reference artifacts have matching guest/local SHA256; eight snapshot
 inputs are verified against the working tree. Registered native full count253
-includes the rendered consumer. P3-03.10 accepts the scoped runner prerequisite;
-whole native checks remain in progress and parent P3-03 acceptance stays open.
+includes the rendered consumer. P3-03.10 accepts the scoped runner prerequisite.
+Subsequent focused14 finishes13/14 PASS108.76s, only external_codecs failing:
+its five-second ready assertion requires6850ms in initTestCase. Full gate is
+not reached. All39 terminal focused/build/UI artifacts are guest/local SHA256
+verified; original and Qt affected System-menu captures show the same labels,
+order, separators and states, with their native/Qt font and width adaptation.
+Privacy scan37 logs/JSON against10 fixture markers reports zero payload leaks.
+This narrow rendered comparison does not accept other dialogs or final P3-06.
+No mandatory test or deadline is weakened; parent P3-03.8 and P3-03 stay open.
 
 ## P3-03.8.1 — owned codec discovery loader (2026-10-06)
 
