@@ -138,14 +138,15 @@ class BookmarkTests : public QObject, protected MainWindowTestSupport {
         openRow(window, rowWithPath(window, "parent"));
         openRow(window, rowWithPath(window, "parent/deep"));
         action(window, "saveBookmark2Action")->trigger();
-        backend.queueList({ArchiveEntry{"parent/other.txt", 1, 1}});
-        action(window, "refreshAction")->trigger();
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        openListedArchive(window, backend, archivePath, {ArchiveEntry{"parent/other.txt", 1, 1}});
         const int calls = backend.listCalls;
         action(window, "openBookmark2Action")->trigger();
         QCOMPARE(backend.listCalls, calls);
         QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(), archivePath + " / parent");
         QVERIFY(QFile::remove(archivePath));
-        auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         action(window, "openBookmark2Action")->trigger();

@@ -2,6 +2,12 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+Refresh/Ctrl+R теперь использует original CApp::RefreshView/OnReload также для
+архивов. Команда перезагружает bound provider без повторного открытия физического
+файла. Прежняя Qt-ветка вызывала ReOpen, меняя provider и добавляя engine-запрос.
+Повторное открытие после transport operations/Drop остаётся отдельной границей;
+эта команда не заменяет закрытие и новое открытие внешне изменённого архива.
+
 После попытки записи внешней правки список архива публикуется также при ошибке
 и Cancel, как unconditional RefreshListCtrl в OnOpenItemChanged. Qt переносит
 исходный saved state до освобождения operation guards; результат записи остаётся

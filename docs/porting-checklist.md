@@ -306,6 +306,12 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: original CApp::RefreshView восстановлен для всех providers;
+manual archive Refresh/Ctrl+R больше не вызывает independent ReOpen.
+[Evidence](upstream-port-audit.md#source-bound-archive-refresh-command-2026-10-07).
+Статус active; operation/drop reopen, остальные source/native3OS/final boundaries
+остаются обязательными.
+
 P3-05.15, 2026-10-07: external OnOpenItemChanged completion публикует original
 unconditional Refresh после попытки записи, включая failure/Cancel; ранние
 refusal сохраняются. Optional saved selection отделён от update bool.

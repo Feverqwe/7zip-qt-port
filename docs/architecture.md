@@ -95,6 +95,11 @@ filesystem/archive/namespace publication owners; completion waits for their scan
 owners before restoring the original saved states. Namespace reload invokes the
 existing native-provider renderer instead of returning without loading rows.
 
+The Refresh command and Ctrl+R invoke original CApp::RefreshView/OnReload for
+every provider. Archive commands reload the bound CAgentFolder rather than
+reopening the physical archive. Operation/drop transport refreshCurrent remains
+a separate reopen boundary; it must not substitute for source command dispatch.
+
 CPanel::LoadListItems extracts the original RefreshListCtrl load/property stage:
 clear old rows/marks, retain timer/notify guards, set flat mode, load the folder,
 initialize columns, validate/cache directory properties and query deleted-item

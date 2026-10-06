@@ -85,6 +85,7 @@ class CApp {
     HRESULT CreateOnePanel(unsigned panelIndex, const UString &mainPath, const UString &arcFormat,
                            bool needOpenArc, COpenResult &openRes);
     void SetListSettings();
+    void RefreshView() { GetFocusedPanel().OnReload(); }
     void RefreshAllPanels() {
         for (unsigned i = 0; i < NumPanels; i++) {
             unsigned index = i;

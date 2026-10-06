@@ -145,10 +145,10 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         view->clearSelection();
         selectRow(view, rowWithPath(window, selected));
         view->setCurrentCell(rowWithPath(window, focused), 0, QItemSelectionModel::NoUpdate);
-        entries.append({folder + "/0 new.txt", 4, 4});
-        backend.queueList(entries);
+        QSignalSpy publication(view->model(), &QAbstractItemModel::rowsRemoved);
         action(window, "refreshAction")->trigger();
-        QCOMPARE(backend.listCalls, 2);
+        QCOMPARE(backend.listCalls, 1);
+        QVERIFY(!publication.isEmpty());
         QCOMPARE(view->currentRow(), rowWithPath(window, focused));
         QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
         QVERIFY(view->selectionModel()->isRowSelected(rowWithPath(window, selected), {}));
@@ -162,29 +162,32 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
             QCOMPARE(view->selectionModel()->selectedRows().size(), 1);
             QVERIFY(action(window, "copyAction")->isEnabled());
             QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
-            // Relative names from a removed folder must not select a namesake
-            // in its surviving parent after the folder fallback.
-            backend.queueList({{QStringLiteral("имя.txt"), 5, 5}});
+            publication.clear();
             action(window, "refreshAction")->trigger();
-            QCOMPARE(view->rowCount(), 1);
-            QVERIFY(view->selectionModel()->selectedRows().isEmpty());
+            QCOMPARE(backend.listCalls, 1);
+            QVERIFY(!publication.isEmpty());
+            QCOMPARE(view->currentRow(), rowWithPath(window, focused));
+            QVERIFY(view->selectionModel()->isRowSelected(rowWithPath(window, selected), {}));
         }
         action(window, "flatViewAction")->setChecked(false);
     }
 
-    void failedArchiveRefreshDiscardsPendingSnapshot_data() {
+    void failedArchiveOpenDiscardsPendingSnapshot_data() {
         QTest::addColumn<bool>("cancel");
         QTest::newRow("cancel") << true;
         QTest::newRow("failure") << false;
     }
 
-    void failedArchiveRefreshDiscardsPendingSnapshot() {
+    void failedArchiveOpenDiscardsPendingSnapshot() {
         QFETCH(bool, cancel);
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
         openListedArchive(window, backend, "first.zip", {{QStringLiteral("имя.txt"), 1, 1}});
         table(window)->selectRow(0);
+        const QString failedArchive = QFileInfo("failed-open.zip").absoluteFilePath();
+        QVERIFY(backend.prepareArchiveFixture(failedArchive));
+        const int calls = backend.listCalls;
         backend.queueListAction([&] {
             if (cancel)
                 backend.cancel();
@@ -194,8 +197,9 @@ class PanelSelectedStateTests : public QObject, protected MainWindowTestSupport 
         QTimer responder;
         connect(&responder, &QTimer::timeout, &window, [] { dismissWarnings(); });
         responder.start(10);
-        action(window, "refreshAction")->trigger();
+        window.openArchive(failedArchive);
         responder.stop();
+        QCOMPARE(backend.listCalls, calls + 1);
         QVERIFY(action(window, "createFolderAction")->isEnabled());
         openListedArchive(window, backend, "second.zip", {{QStringLiteral("имя.txt"), 2, 2}});
         QCOMPARE(table(window)->rowCount(), 1);

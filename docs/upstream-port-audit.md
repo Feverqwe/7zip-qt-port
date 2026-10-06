@@ -1735,6 +1735,67 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source bound archive Refresh command, 2026-10-07
+
+Reviewed complete original App.h::CApp::RefreshView171 and RefreshAllPanels,
+MyLoadMenu::OnMenuCommand's IDM_VIEW_REFRESH branch, resource.rc127 Ctrl+R,
+PanelKey::OnKeyDown Ctrl+R, PanelItems::OnReload1451–1456 and saved-state/load
+callers, AgentFolder::LoadItems and native ReOpen, plus Qt command/presentation
+consumers. Pin0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original RefreshView unconditionally calls the
+focused panel's OnReload; it does not replace the archive provider via ReOpen.
+Qt previously special-cased archive presentation into refreshCurrent instead.
+
+The exact inline RefreshView body now lives in upstream-relative App.h. The Qt
+dispatcher calls that owner for all providers; its independent state branch is
+removed. Existing OnReload HRESULT/message policy, load/publication/restoration
+and operation/drop reopen consumers retain their owners. No new algorithm,
+dependency, language change, upstream edit or notice removal. Manual Refresh
+does not reopen externally changed physical archive bytes; close/reopen and
+mutation transport are separate workflows.
+
+Actual previous-product RED64 catches one engine request from every QAction and
+Ctrl+R case after fixing shortcut setup. Initial RED had32 valid QAction failures
+and32 undelivered keyboard cases; waiting for activation alone then produced an
+authoritative120s CTest timeout. Offscreen native-open setup now explicitly
+activates its window before shortcut delivery, with no focus correction after
+the tested command. Original and corrected fixture inputs/logs are retained in
+build/review/archive-reload-red. Sixty-four real ZIP/7z both-pane EN/RU table/icon
+standard/alternative consumers require publication, same provider, zero engine
+requests, marked/focused names, selection, peer/redraw/focus and private input/
+archive bytes; normal/compact reports cover terminal views.
+
+The old ui_state nested-folder Refresh test expected backend ReOpen, added items,
+fallback on Cancel and a reopen error. Those expectations represented independent
+Qt command policy. It now checks repeated source reload, nested provider/address
+and selected-name retention without another listing. Actual reopen/update failure
+and cancellation remain separate native-folder/backend consumers and required
+remaining operation/drop scope; this component does not claim their closure.
+The new focused fixture is separate from the broader ui_state suite.
+
+The first full gate completed277/281 in240.14s. Four existing suites still
+expected the previous manual ReOpen policy. Native navigation now verifies
+cached size after Refresh and changed physical size after close/reopen;
+bookmarks set up a fresh archive before testing cached missing-folder binding.
+Selected-state and large-list consumers require real row publication without
+another engine listing, retaining focus/marks/command readiness. The former
+failed-Refresh fixture could pass without invoking its queued error; it now
+opens a separate archive and requires that backend call before failure/Cancel
+and next-open selection checks. Original failing gate inputs/log retained in
+build/review/archive-reload-first-gate.
+
+Final Mac27.0.1 arm64/Qt6.12.0 validation: focused6/6PASS26.43s, additional
+five affected consumers5/5PASS12.27s, full unsandboxed format/all-target build/
+CTest281/281PASS174.95s (session58881 terminal0). Archive command66QtPASS0skip;
+all16 frozen input SHA256 match after completion. Current128 normal/compact
+reports and512 visible list/address controls reviewed: fully visible/enabled,
+copied with hashes to build/review/archive-reload-final. Baseline verification
+remains408exact/196adapted/3local. Final evidence includes LastTest.log and
+verified-inputs.json; documentation-only validation update follows the gate.
+Current Windows/Linux,
+operation/drop renderer-failure/Cancel, remaining Refresh/full-body/109-module/
+cold-stable/package and whole P3-05.15/P3-06 acceptance remain mandatory.
+
 ### Source external update Refresh completion, 2026-10-07
 
 Reviewed complete original PanelItemOpen::OnOpenItemChanged1064–1100 and its

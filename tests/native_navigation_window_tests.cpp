@@ -55,11 +55,15 @@ class NativeNavigationWindowTests : public QObject {
         QCOMPARE(update.exitCode(), 0);
         refresh->trigger();
         QCOMPARE(table->rowCount(), 1);
-        QCOMPARE(table->item(0, 2)->text(), QStringLiteral("35"));
+        // OnReload loads the bound proxy; physical changes require reopening.
+        QCOMPARE(table->item(0, 2)->text(), QStringLiteral("6"));
         QCOMPARE(table->selectionModel()->selectedRows().size(), 1);
         parent->trigger();
         QCOMPARE(address->text(), QFileInfo(dir.path()).canonicalFilePath());
         QCOMPARE(table->item(table->currentRow(), 0)->text(), QStringLiteral("address.zip"));
+        window.openArchive(archive);
+        QCOMPARE(table->rowCount(), 1);
+        QCOMPARE(table->item(0, 2)->text(), QStringLiteral("35"));
     }
 };
 QTEST_MAIN(NativeNavigationWindowTests)

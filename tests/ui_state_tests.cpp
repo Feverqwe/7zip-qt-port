@@ -1,3 +1,4 @@
+#include "filetable.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 #include <QTreeWidget>
@@ -344,49 +345,23 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         openRow(window, rowWithPath(window, QStringLiteral("папка с пробелом")));
         QCOMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
-        ArchiveEntry second;
-        second.path = QStringLiteral("папка с пробелом/второй.txt");
-        backend.queueListAction([&] {
-            const auto finish = qScopeGuard([&] { backend.completeList({first, second}); });
-            QCOMPARE(backend.listCalls, 2);
-            QVERIFY(!action(window, "refreshAction")->isEnabled());
-            QVERIFY(!action(window, "createFolderAction")->isEnabled());
+        auto *list = static_cast<FileTable *>(table(window));
+        CMyComPtr<IFolderFolder> provider = list->sourcePanel->GetFolder();
+        const QString address = window.findChild<QLineEdit *>("archivePath")->text();
+        const int listings = backend.listCalls;
+        QSignalSpy publication(list->model(), &QAbstractItemModel::rowsRemoved);
+        for (int count = 1; count <= 3; ++count) {
             action(window, "refreshAction")->trigger();
-            QCOMPARE(backend.listCalls, 2);
-        });
-        action(window, "refreshAction")->trigger();
-        QCOMPARE(table(window)->rowCount(), 2);
-        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
-        QCOMPARE(table(window)
-                     ->item(table(window)->selectionModel()->selectedRows().first().row(), 0)
-                     ->text(),
-                 QStringLiteral("первый.txt"));
-        QVERIFY(window.findChild<QLineEdit *>("archivePath")
-                    ->text()
-                    .endsWith(QStringLiteral(" / папка с пробелом")));
-        QVERIFY(action(window, "refreshAction")->isEnabled());
-        backend.queueList({});
-        action(window, "refreshAction")->trigger();
-        QCOMPARE(table(window)->rowCount(), 0);
-        QVERIFY(!window.findChild<QLineEdit *>("archivePath")
-                     ->text()
-                     .endsWith(QStringLiteral(" / папка с пробелом")));
-        backend.queueListAction([&] { backend.cancel(); });
-        action(window, "refreshAction")->trigger();
-        QVERIFY(action(window, "createFolderAction")->isEnabled());
-        QVERIFY(action(window, "refreshAction")->isEnabled());
-        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
-
-        openListedArchive(window, backend, "example.7z", {first});
-        QTimer warningResponder;
-        connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
-        warningResponder.start(1);
-        backend.queueListAction(
-            [&] { backend.fail(QStringLiteral("Не удалось перечитать архив.")); });
-        action(window, "refreshAction")->trigger();
-        warningResponder.stop();
-        QVERIFY(action(window, "createFolderAction")->isEnabled());
-        QVERIFY(!action(window, "testArchiveAction")->isEnabled());
+            QCOMPARE(backend.listCalls, listings);
+            QCOMPARE(list->sourcePanel->GetFolder(), (IFolderFolder *)provider);
+            QCOMPARE(publication.count(), count);
+            QCOMPARE(list->rowCount(), 1);
+            QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
+            QCOMPARE(list->item(list->selectionModel()->selectedRows().first().row(), 0)->text(),
+                     QStringLiteral("первый.txt"));
+            QCOMPARE(window.findChild<QLineEdit *>("archivePath")->text(), address);
+            QVERIFY(action(window, "refreshAction")->isEnabled());
+        }
     }
 };
 

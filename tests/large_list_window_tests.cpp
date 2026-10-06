@@ -134,12 +134,11 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(selectedRow >= 0);
         list->setCurrentCell(selectedRow, 0);
         list->selectRow(selectedRow);
-        if (archive)
-            backend.queueList(entries);
         const int calls = backend.listCalls;
+        QSignalSpy publication(list->model(), &QAbstractItemModel::rowsRemoved);
         action(window, "refreshAction")->trigger();
-        if (archive)
-            QTRY_COMPARE(backend.listCalls, calls + 1);
+        QCOMPARE(backend.listCalls, calls);
+        QTRY_VERIFY(!publication.isEmpty());
         QTRY_VERIFY_WITH_TIMEOUT(list->isEnabled() && list->rowCount() >= count, 15000);
         QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(list->currentItem()->text(), selectedName);
@@ -170,10 +169,11 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         action(window, "openItemAction")->trigger();
         QTRY_VERIFY(list->isEnabled() && list->rowCount() >= 512);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-        backend.queueList(entries);
         const int calls = backend.listCalls;
+        QSignalSpy publication(list->model(), &QAbstractItemModel::rowsRemoved);
         action(window, "refreshAction")->trigger();
-        QTRY_COMPARE(backend.listCalls, calls + 1);
+        QCOMPARE(backend.listCalls, calls);
+        QTRY_VERIFY(!publication.isEmpty());
         QTRY_VERIFY(list->isEnabled() && list->rowCount() >= 512);
     }
     void largeArchiveFlatToggleRestoresCommands() {
@@ -193,10 +193,11 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
         auto *list = table(window);
         QTRY_VERIFY(list->isEnabled() && list->rowCount() >= 512);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-        backend.queueList(entries);
         const int calls = backend.listCalls;
+        QSignalSpy publication(list->model(), &QAbstractItemModel::rowsRemoved);
         action(window, "refreshAction")->trigger();
-        QTRY_COMPARE(backend.listCalls, calls + 1);
+        QCOMPARE(backend.listCalls, calls);
+        QTRY_VERIFY(!publication.isEmpty());
         QTRY_VERIFY(list->isEnabled() && list->rowCount() >= 512);
     }
     void createFileSelectionWaitsForCompleteNativeFolder() {

@@ -1,5 +1,16 @@
 # Regression strategy
 
+`archive_reload_command` checks 64 real ZIP/7z QAction/Ctrl+R consumers across
+both panes, EN/RU, table/icon and standard/alternative selection. Model removal
+proves publication while provider identity, no engine request, marked names,
+focused name, peer/focus/redraw and input/archive bytes prove source OnReload
+dispatch. Normal/compact reports cover resulting panes. The native-open setup
+activates its window before shortcut delivery; it does not adjust focus after
+the tested Refresh. `ui_state` retains repeated nested-folder selection checks
+using the same bound provider. Its former backend-reopen expectations were
+independent Qt policy; actual reopen/operation failure and cancellation belong
+to their separate native-folder/backend consumers and remaining port scope.
+
 `panel_cell_text` also observes synchronous selectionChanged and background-role
 dataChanged during source Select All/Deselect All. Sixteen EN/RU both-pane
 table/icon standard/alternative cases require uncached source names and the
@@ -2092,7 +2103,9 @@ presentation handles. `panel_key` covers address Tab and Alt+F1/F2 consumers.
 names, independent current/selected items, normal/flat filesystem refresh across
 four view modes, changed row ordering and fallback when the current file is
 removed. Archive cases cover four modes, normal/flat relative paths, duplicate
-basenames, a removed folder and failure/cancel snapshot reset. Mode changes
+basenames, repeated bound-provider reload without an engine request, and a
+separate failed/cancelled archive-open snapshot reset with a required backend
+call. Mode changes
 retain current separately from selected items. `archive_external_edit` and
 `external_editors_ui` exercise original external editing and its focused item.
 These are nonvisual state checks; geometry contracts are unchanged.
