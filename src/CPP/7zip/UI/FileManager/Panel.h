@@ -33,6 +33,7 @@
 #include <optional>
 
 class CFolderHistory;
+class QColor;
 class QIcon;
 struct CExternalCodecs;
 
@@ -615,6 +616,8 @@ class CPanel : public QObject {
     void GetFilePaths(const CRecordVector<UInt32> &operatedIndices, UStringVector &paths) const;
     UString GetItemFullPath(unsigned index) const;
     bool IsItem_Folder(UInt32 index) const;
+    bool IsItem_Deleted(unsigned itemIndex) const;
+    QColor OnCustomDraw(unsigned realIndex) const;
     int CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID,
                            bool isRawProp = false) const;
     HRESULT InitColumns();
@@ -688,6 +691,7 @@ class CPanel : public QObject {
     bool _flatModeForDisk = false;
     bool _flatModeForArc = false;
     bool _thereAreDeletedItems = false;
+    bool _markDeletedItems = true;
     CMyComPtr<IFolderManager> _folderManager;
     QString _settingsPath;
     bool _needSaveInfo = false;

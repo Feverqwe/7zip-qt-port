@@ -2,6 +2,17 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Deleted archive items retain source OnCustomDraw's red text (RGB255,0,0), enabled
+by default only when the archive reports deleted items. Use source item indices
+and the owning provider for every visible table cell and icon label; parent and
+ordinary items keep platform text color. Preserve alternative-selection pink
+background, focus/marks, peer state and bytes. Suppress provider queries during
+notification guards and reject a replaced provider. Verify on/off archive metadata,
+reload/rebind/reset and both pane roles under EN/RU table/icon, standard/alternative
+selection at980×620/640×400. Geometry reports do not establish color pixels;
+inspect the affected view capture when needed. Rendered Windows parity remains
+unverified without the matching native reference state.
+
 Parent navigation to a namespace provider that fails during load, directory
 validation, count or icon projection must leave an empty, usable view. Publish
 the bound source address before loading unless CalledFromTimer suppresses it,

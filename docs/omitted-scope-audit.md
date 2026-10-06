@@ -109,6 +109,8 @@ bodies plus four column helpers. Commented-out RefreshListCtrl overload and
 GetOperatedListViewIndices are excluded; neither supplies missing active logic.
 The adapted file has36 CPanel bodies, including extracted load/icon phases and
 Qt helpers. These counts are a review index, not functional acceptance.
+Subsequent corrections update the dispositions below; the body counts remain
+those of the original review snapshot.
 
 | Original bodies | Current owner / disposition |
 | --- | --- |
@@ -121,7 +123,7 @@ Qt helpers. These counts are a review index, not functional acceptance.
 | GetItemName(value), GetItemName(output-reference) | Value-returning BSTR/type/error/parent body remains. The output-reference overload is omitted; adapted Refresh/formatter/icon callers use the value body rather than a second property implementation. This omission does not justify removing the generic property fallback. |
 | GetItemName_for_Copy, GetItemPrefix, GetItemRelPath, GetItemRelPath2, Add_ItemRelPath2_To_String, GetItemFullPath | Same module retains out-name fallback, extraction name correction, property/fast-name append and Windows drive/device separator conditional. Existing path tests and Copy/Open consumers cover separate subsets; current native device/ADS acceptance remains mandatory. |
 | GetItem_BoolProp, IsItem_Folder, IsItem_AltStream, GetItem_UInt64Prop, GetItemSize | Same module retains variant/exception policy, parent values, directory cache and fast size. The cache is populated by the extracted load stage; no independent archive metadata policy replaces it. |
-| IsItem_Deleted | **Required missing consumer.** Original bool-property/parent body is absent. LoadListItems retains archive-level `_thereAreDeletedItems`, but PanelListNotify's original `_markDeletedItems` (default true) / OnCustomDraw red-foreground policy has no Qt counterpart. Qt currently supplies alternative-selection pink background and drop paint only. Restore the source property and draw-policy consumer with table/icon/both-pane/refresh/provider-boundary coverage; loaded archive metadata alone is not acceptance. |
+| IsItem_Deleted | Original bool-property/parent body is now restored. PanelListNotify retains `_markDeletedItems` (default true) / OnCustomDraw red-foreground policy; the existing archive-level flag gates it. ForegroundRole asks the owning guarded provider; the shared Qt delegate also carries it into HighlightedText so selected text stays red. Property/type exceptions remain in the source getter, while Qt paint uses the palette after an error. Table/icon/both-pane/reload/rebind/metadata/guard and current rendered-red regressions cover this consumer; real deleted-archive/native/rendered Windows acceptance remains open. |
 | SaveListViewInfo | Source saved visible/hidden columns, width/order, sort and equality logic remains, taking the owning Qt projection instead of GetColumn/LVCOLUMN. ViewSettings supplies the settings-path persistence adapter. MainWindow::saveColumns reads QHeaderView state; hidden/logical/visual indices need the complete column consumer review. |
 | OnRightClick, ShowColumnsContextMenu | Win32 notification/cursor/popup transport is replaced by the Qt header menu. **Remaining functional policy review:** MainWindow::showColumnsMenu currently owns toggling and sorted-column fallback independently. Reconcile those mutations with the source body before declaring column/menu ownership complete. Runtime source popup has no separate dialog RC layout. |
 | OnReload, OnTimer | Same module retains process/auto-refresh/folder/interface/change/result guards and OnReload error owner. The portable changed flag supplements native WasChanged; MainWindow polls only supported filesystem fallback state. Source timer coverage remains subject to current Windows/Linux and native provider acceptance. |
@@ -140,7 +142,7 @@ old virtual-list, NTFS-stream, icon-second-attempt and timing experiments are
 presentation/build or inactive branches, not missing active algorithms.
 
 This review adds no code, dependency copy or baseline change. Next available
-functional scope includes deleted-item draw policy and source column/menu
+functional scope includes native deleted-item acceptance and source column/menu
 mutations, alongside the operation-to-render consumers already listed above.
 Neither35 reviewed bodies nor a passing repository gate closes PanelItems,
 the109-module ledger, native platforms or final P3-06 acceptance.

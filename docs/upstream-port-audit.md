@@ -1545,9 +1545,11 @@ https://github.com/ip7z/7zip.git, is compared with project b834b9e in the
 It accounts for35 active CPanel bodies, four column helpers, commented/disabled
 branches, declarations, Qt/source callers and portable/presentation dependencies.
 This is review evidence, not whole-module or109-module functional acceptance.
-The map identifies missing IsItem_Deleted/OnCustomDraw foreground publication
-and independent Qt column-menu mutations as required remaining work; current
-load/selection/icon/Parent/Rename regressions do not establish those consumers.
+The initial map identified missing IsItem_Deleted/OnCustomDraw foreground
+publication and independent Qt column-menu mutations. The subsequent draw
+consumer correction is recorded below; column mutations and native deleted-item
+acceptance remain open. Load/selection/icon/Parent/Rename regressions alone do
+not establish those consumers.
 Original output-reference name getter, physical column insertion/removal and
 Win32 menu/PCH/debug transports have explicit dispositions rather than being
 inferred complete from matching paths. Direct InitColumns mark/order and
@@ -1556,6 +1558,57 @@ No functional source, test, dependency or baseline changes result from this
 review. Baseline verification passes408 exact/196 adapted/3 local paths;
 docs diff checks pass. The unchanged passing full gate is not repeated. Current
 native Windows/Linux/rendered/cold-stable and P3-06 acceptance remain open.
+
+### Source deleted-item draw consumer, 2026-10-06
+
+Restored original `CPP/7zip/UI/FileManager/PanelItems.cpp::IsItem_Deleted` and
+Panel.h's `_markDeletedItems=true` from upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17, https://github.com/ip7z/7zip.git.
+The parent/BOOL/VT_EMPTY/property/type exception body is unchanged apart from
+formatting. `PanelListNotify.cpp::OnCustomDraw` retains the original foreground
+condition and RGB255,0,0, adapting CDDS/LRESULT transport into QColor. Existing
+LoadListItems archive-level metadata supplies the condition; existing Qt mark
+background supplies the separate alternative-selection policy. No archive
+format, metadata classifier or new preference is introduced.
+
+`src/filetable.cpp` asks that policy through ForegroundRole by owning panel,
+source index and matching provider, while notifications are enabled. Property
+exceptions retain their public source behavior; Qt's paint boundary catches
+them and uses the platform palette rather than unwinding through its event loop.
+The shared row delegate carries a defined foreground into HighlightedText:
+Qt's normal selected-text paint otherwise overrides the source foreground.
+Table/icon roles share the same model; default text and pink marks remain.
+Native Win32 custom-draw stage/result plumbing is Qt presentation, not copied.
+
+A focused forwarding DeletedFolder fixture adds public archive-level properties
+around the existing LoadFolder item fixture without altering its defaults or
+expanding unrelated suites. Sixteen actual both-pane EN/RU/table/icon/standard-
+alternative scenarios cover every cell, rendered selected text, marks/focus,
+guards, provider mismatch, failed paint, metadata changes, rebind, peer rows/
+identity and Unicode control bytes. A direct source case checks parent/no-query,
+BOOL/VT_EMPTY and original2723400/2723401 exceptions. Windows native Qt execution
+is registered but not claimed. Actual old-product RED16/2QtPASS0.83s, eight input
+snapshots/hashes/log are frozen in build/review/deleted-draw-red. Role-only
+publication passed the initial eight suites18.23s, but current screenshots
+exposed selected white text. Added real painted-red regression reproduced RED8/
+11QtPASS0.85s; two snapshots/hashes/log are in deleted-draw-selected-red. The
+delegate palette correction passed eight suites14.49s. A formatted test patch
+failed without mutation and was reapplied to the actual lines. Current source
+variant/paint/provider behavior is bounded to these deterministic providers;
+real deleted-archive, Windows/Linux/rendered/cold-stable and whole-module/P3-06
+acceptance remain mandatory.
+Final affected eight-target build and fresh sequential focused8/8PASS12.93s,
+all Qt cases zero failures/skips, include new19 cases. Thirty-two normal980×620/
+compact640×400 reports expose the owning table/icon/address and fit visible labels;
+current selected/unselected-color transport is also checked in rendered red
+pixels, with affected-view captures inspected on macOS. The source property
+fixture does not represent real deleted-archive format acceptance. Eight final
+input hashes, focused/full logs and32 report/capture pairs are frozen in
+build/review/deleted-draw-final. Baseline verification passes408 exact/196 adapted/
+3 local paths. Mandatory unsandboxed full gate passes formatting/all-target build
+and270/270 CTest in144.46s on macOS arm64 with official Qt6.12.0; all eight final
+input hashes remain unchanged. No native Windows/Linux or rendered Windows
+acceptance is claimed.
 
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 

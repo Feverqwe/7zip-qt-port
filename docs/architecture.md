@@ -48,6 +48,15 @@ and Qt focus projection while controls are enabled. This prevents a synchronous
 focus return to the old pane from changing CApp's target halfway through loading.
 Guards restore before the final command/title refresh.
 The source icon phase is extracted into CPanel::LoadItemIcon/GetItemIcon.
+Deleted-item foreground remains in source PanelItems::IsItem_Deleted and the
+adapted PanelListNotify::OnCustomDraw policy, enabled by its original default
+and archive-level flag. ArchiveTableItem asks the owning source-index/provider
+through ForegroundRole only while notifications are allowed and provider
+identity matches. Qt paint catches provider exceptions and uses the palette;
+the public source property body retains its exception policy. FileRowDelegate
+also projects the foreground into HighlightedText, since Qt otherwise overrides
+it for selected rows. Table and icon views share that model/delegate boundary;
+existing alternative marks/background and normal items retain their own state.
 LoadListItems retains its slow-folder interface-query policy and initializes
 indices without walking icon properties. Qt asks for each icon inside existing
 bounded row publication. Positive system indices, attribute fallback, archive

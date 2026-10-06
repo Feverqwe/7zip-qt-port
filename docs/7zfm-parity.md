@@ -103,6 +103,14 @@ Qt больше не заменяет выбор одним путём. `_dontSh
 до начала загрузки, включая Qt-кэш, сохраняя raw roles/EditRole. Ранний отказ
 имени возвращает старый текст и выбор без reload. EN/RU и обе панели проверены
 через inline editor; native Windows/Linux/ADS проверка остаётся открытой.
+Deleted-item foreground теперь использует исходные IsItem_Deleted и OnCustomDraw:
+красный RGB255,0,0 при исходном default marking и archive-level deleted flag.
+Qt ForegroundRole и HighlightedText сохраняют цвет в table/icon, включая обычное
+выделение; alternative pink background не заменяется. Guards и несовпавший
+provider блокируют запрос, ошибка paint использует палитру Qt; исходный property
+getter сохраняет exception policy. EN/RU обе роли/reload/rebind/current captures
+проверены на macOS. Реальные deleted archives и rendered Windows/native3OS
+приёмка остаются открытыми.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном

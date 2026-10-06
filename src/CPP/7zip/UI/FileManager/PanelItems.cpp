@@ -726,6 +726,12 @@ bool CPanel::GetItem_BoolProp(UInt32 itemIndex, PROPID propID) const {
     throw 2723401;
 }
 
+bool CPanel::IsItem_Deleted(unsigned itemIndex) const {
+    if (itemIndex == kParentIndex)
+        return false;
+    return GetItem_BoolProp(itemIndex, kpidIsDeleted);
+}
+
 bool CPanel::IsItem_AltStream(unsigned itemIndex) const {
     if (itemIndex == kParentIndex)
         return false;

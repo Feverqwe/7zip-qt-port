@@ -101,7 +101,9 @@ native marker rendering и full acceptance остаются открытыми.
 Полная [карта PanelItems](omitted-scope-audit.md#panelitems-complete-body-map-2026-10-06)
 выявила ещё незавершённые исходные потребители: красный foreground удалённых
 архивных элементов (IsItem_Deleted / OnCustomDraw, default marking enabled)
-отсутствует, хотя archive-level flag загружается; мутации header column menu
+теперь восстановлен через исходный getter/policy и Qt model/delegate; прежний
+archive-level flag получает потребителя. Table/icon/selection/guard/reload/rebind
+и current red-pixel checks пройдены на macOS. Мутации header column menu
 остаются самостоятельной Qt-политикой. Их перенос, table/icon/both-pane/reload
 проверки и rendered Windows reference обязательны для приёмки. Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.

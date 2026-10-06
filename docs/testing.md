@@ -1,5 +1,15 @@
 # Regression strategy
 
+`panel_deleted_draw` covers the source deleted-item foreground through a focused
+IFolderFolder/IGetFolderArcProps/IFolderArcProps fixture. Sixteen both-pane EN/RU
+table/icon and standard/alternative scenarios check all-cell/source-index color,
+marks/focus/peer/Unicode bytes, guards, replaced provider, failed property paint,
+archive flag/item flag changes and provider rebind. A source case retains parent,
+VT_EMPTY, BOOL and property/type exception semantics. Thirty-two normal/compact
+widget reports and affected-view captures accompany actual rendered red-text
+checks, including selected text. These deterministic provider tests do not
+establish real deleted-archive/native-platform or rendered Windows acceptance.
+
 `panel_processing` checks Refresh's original absent-folder early return in16
 initial/released-provider, empty/retained-parent-row, enabled/disabled-guard and
 stale E_ABORT scenarios. Public view signals, selected rows/focus, status callback

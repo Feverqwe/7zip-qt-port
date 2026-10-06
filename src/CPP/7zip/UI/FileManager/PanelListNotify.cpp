@@ -7,7 +7,16 @@
 #include "Panel.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include <QColor>
 #include <vector>
+
+// CDDS_ITEMPREPAINT foreground policy; Qt model/delegate supplies draw stages.
+QColor CPanel::OnCustomDraw(unsigned realIndex) const {
+    if (_markDeletedItems && _thereAreDeletedItems)
+        if (IsItem_Deleted(realIndex))
+            return QColor(255, 0, 0);
+    return {};
+}
 
 #define SPACE_REPLACE_CHAR (wchar_t)(0x2423)
 #define SPACE_TERMINATOR_CHAR (wchar_t)(0x9C)

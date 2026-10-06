@@ -27,6 +27,10 @@ class FileRowDelegate final : public QStyledItemDelegate {
     void paint(QPainter *painter, const QStyleOptionViewItem &original,
                const QModelIndex &index) const override {
         QStyleOptionViewItem option(original);
+        const QVariant foreground = index.data(Qt::ForegroundRole);
+        if (foreground.isValid())
+            option.palette.setColor(QPalette::HighlightedText,
+                                    qvariant_cast<QBrush>(foreground).color());
         if (index.data(Qt::UserRole + 19).toBool())
             option.state |= QStyle::State_Selected;
         auto *table = dynamic_cast<const FileTable *>(parent());
@@ -85,6 +89,23 @@ void FileIconList::startDrag(Qt::DropActions actions) {
 }
 
 QVariant ArchiveTableItem::data(int role) const {
+    if (role == Qt::ForegroundRole) {
+        const auto *table = dynamic_cast<const FileTable *>(tableWidget());
+        if (!table || !table->sourcePanel || !table->sourcePanel->ShouldProcessNotifications() ||
+            !table->textFolder || table->sourcePanel->GetFolder() != table->textFolder)
+            return {};
+        const QVariant index = QTableWidgetItem::data(Qt::UserRole + 6);
+        if (!index.isValid())
+            return {};
+        // Provider exceptions cannot escape Qt's paint callback. The source
+        // property body retains its exception policy; failed paint uses the palette.
+        try {
+            const QColor color = table->sourcePanel->OnCustomDraw(index.toUInt());
+            return color.isValid() ? QVariant(QBrush(color)) : QVariant();
+        } catch (...) {
+            return {};
+        }
+    }
     if (role != Qt::DisplayRole && role != Qt::EditRole)
         return QTableWidgetItem::data(role);
     // PanelItems inserts callback text; PanelListNotify formats only requested
