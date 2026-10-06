@@ -40,8 +40,10 @@ six suites22.15s without Qt skips;183 immutable guest/local SHA artifacts retain
 that phase. Its nine-file full gate passes256/256990.94s with753 separate
 guest/local SHA artifacts. Final eleven-input native seven-consumer focus passes
 24.28s without Qt skips;193 immutable guest/local SHA artifacts retain current
-inputs/logs/reports and48 footer reports pass review. Its separate full gate is
-running. Eight final Mac Link footer reports also pass; compact content
+inputs/logs/reports and48 footer reports pass review. Its separate final
+format/all-target/full gate passes256/256931.02s with753 immutable guest/local
+SHA artifacts, preserving the initial-input full and original failed run.
+Eight final Mac Link footer reports also pass; compact content
 scrolling is assessed by the existing public test, not simultaneous exposure of
 every scrolled control. Linux capacity and final three-platform acceptance remain
 pending; neither earlier inputs nor a passing Mac gate establish final acceptance.

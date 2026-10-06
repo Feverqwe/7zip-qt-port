@@ -12,7 +12,7 @@ Link Cancel and Progress Cancel use source standard-control mappings; completed
 Progress rebinds to IDS_CLOSE. Existing form sizes/order and footer contracts
 apply. Current Mac48 EN/RU footer reports pass exposure, size hints, source
 captions and separation. Final native seven consumers and48 footer reports also
-pass; its full gate, Linux and rendered acceptance remain open.
+pass, followed by final native full256PASS. Linux and rendered acceptance remain open.
 
 ### Namespace Hash result consumers (P3-05.8, validation active)
 

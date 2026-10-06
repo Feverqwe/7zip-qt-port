@@ -954,8 +954,8 @@ resource `&View:`, Progress применяет исходное добавлен
 перевод сохраняет RC. Обычные кнопки Benchmark/Link/Progress используют ту же
 исходную таблицу, а завершённый Progress меняет привязку Cancel на IDS_CLOSE.
 Mac full249 и актуальные48 footer/8 Link JSON проверены; окончательные native
-семь consumers и48 footer JSON проверены. Полный gate этой native версии,
-Linux и rendered/parent acceptance остаются открыты.
+семь consumers и48 footer JSON проверены, полный gate этой native версии
+прошёл256/256. Linux и rendered/parent acceptance остаются открыты.
 Split/Combine используют исходные заголовки прогресса и подтверждение числа частей;
 Open и продолжение hash — исходные IDS_OPENNING/IDS_CHECKSUM_CALCULATING.
 Qt/7zz staging получает локальные EN/RU-подписи; независимая команда журнала
