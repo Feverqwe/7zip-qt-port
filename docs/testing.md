@@ -1,5 +1,20 @@
 # Regression strategy
 
+`panel_column_changes` extends the existing SchemaFolder fixture without changing
+its defaults. Eight both-pane EN/RU cases retain written generic/raw counts under
+S_FALSE/E_FAIL and recover; four same-provider cases walk generic info failure/
+IsDir omission/raw Name, raw-info E_ABORT/no Name, empty schema, unwritten count
+and recovery. They check native catalog/logical Name-first/default visibility,
+exact visible descriptors/text/alignment, no phantom Name, menu order/protection/
+Cancel, rows/selection/focus/peer/control bytes and no backend calls. Seventy-two
+normal/compact reports cover those transitions. Empty schemas have Qt's expected
+zero-height header; other visible headers and both panels remain fully exposed.
+Unwritten output uses the existing initialized-zero adaptation, not a claim
+about native uninitialized-variable behavior. Native/rendered acceptance remains.
+The real delegate paints selected/unselected primary cells differently and
+secondary cells identically under label-only selection, including raw Name and
+no-Name transitions; existing full-row/deleted/alternative consumers also run.
+
 `panel_column_sort` uses the existing Agent/archive metadata interfaces with
 overlapping generic/raw CRC or Size and empty/nonempty raw values. Sixteen cases
 cover both panes, EN/RU and generic-first/raw-first physical clicks: first catalog

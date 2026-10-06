@@ -24,24 +24,33 @@ Z7_COM7F_IMF(SchemaFolder::BindToParentFolder(IFolderFolder **folder)) {
     return items->BindToParentFolder(folder);
 }
 Z7_COM7F_IMF(SchemaFolder::GetNumberOfProperties(UInt32 *count)) {
-    *count = 3;
-    return S_OK;
+    if (writePropertyCount)
+        *count = UInt32(properties.size());
+    return propertyCountResult;
 }
 Z7_COM7F_IMF(SchemaFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type)) {
-    if (index >= 3)
+    ++propertyInfoQueries;
+    if (index >= unsigned(properties.size()))
         return E_INVALIDARG;
+    const auto &property = properties[int(index)];
+    if (property.result != S_OK)
+        return property.result;
     *name = nullptr;
-    *id = index == 0 ? kpidName : index == 1 ? kpidSize : kpidCRC;
-    *type = index == 0 ? VT_BSTR : index == 1 ? VT_UI8 : VT_UI4;
+    *id = property.id;
+    *type = property.type;
     return S_OK;
 }
 Z7_COM7F_IMF(SchemaFolder::GetNumRawProps(UInt32 *count)) {
-    *count = 1;
-    return S_OK;
+    if (writeRawCount)
+        *count = rawEnabled ? 1 : 0;
+    return rawCountResult;
 }
 Z7_COM7F_IMF(SchemaFolder::GetRawPropInfo(UInt32 index, BSTR *name, PROPID *id)) {
-    if (index != 0)
+    ++rawInfoQueries;
+    if (index != 0 || !rawEnabled)
         return E_INVALIDARG;
+    if (rawInfoResult != S_OK)
+        return rawInfoResult;
     *name = nullptr;
     *id = rawId;
     return S_OK;

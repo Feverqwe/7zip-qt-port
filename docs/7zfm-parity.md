@@ -152,6 +152,16 @@ source handler, затем показывает его направление н
 inactive-owner поведение. Отметка Size определяется PropID.16 EN/RU обе панели,
 пустой raw/selection/peer/Refresh и64 normal/compact reports проверены на Mac;
 реальные схемы архивов и текущая native/rendered приёмка остаются открытыми.
+InitColumns снова использует записанные generic/raw count без дополнительного
+HRESULT gate, сохраняя пропуск individual info errors и generic IsDir. Один
+provider/type повторно перечисляется при смене схемы. Qt скрывает резервный Name,
+если generic descriptor отсутствует; raw Name остаётся отдельной Name-first
+source секцией. Пустая схема не создаёт столбцов и сохраняет rows/selection/status,
+а Qt сворачивает пустой header до0px. Count остаётся initialized0 для незаписанного
+выхода; поведение native uninitialized count не подтверждено.12 EN/RU обе панели
+и72 normal/compact reports проверены на Mac; native/rendered проверки открыты.
+Выделение без FullRow рисуется в первом source logical subitem, в том числе
+raw Name и no-Name; скрытый физический Name больше не поглощает highlight.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном

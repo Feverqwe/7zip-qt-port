@@ -20,6 +20,17 @@ on the clicked section and map sort actions by PropID. Physical clicks focus the
 owning list; explicit programmatic sorts retain their requested direction and
 existing inactive-owner focus behavior. Inspect both panes EN/RU, empty raw data,
 selection/peer state and copies/Refresh at980×620/640×400.
+Re-enumerate a schema even for the same provider/type. Consume written generic/raw
+counts as upstream does, skip individual info errors and generic IsDir, and hide
+the reserved Qt Name section when no generic Name descriptor exists. A raw Name
+keeps its own source section and Name-first logical order. Empty schemas show no
+invented columns while preserving item/selection/status state; Qt collapses the
+empty header to zero height. Counter outputs start at zero if a failed provider
+leaves them unwritten; native behavior for unwritten outputs is unverified.
+Inspect count-status, raw-Name/no-Name/empty/unwritten/recovery transitions with
+header Cancel and both panes EN/RU at980×620/640×400.
+Label-only highlight belongs to source visible logical subitem zero, including
+raw Name or the first non-Name descriptor when reserved Qt Name is hidden.
 
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.

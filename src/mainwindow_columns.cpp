@@ -60,7 +60,7 @@ void MainWindow::configureColumns(bool initialized) {
                                           : Qt::DescendingOrder);
     for (int column : {1, 5, 6})
         table_->setColumnHidden(column, true);
-    for (int column : {2, 3, 4}) {
+    for (int column : {0, 2, 3, 4}) {
         if (!fileTable->sourceColumn(column))
             table_->setColumnHidden(column, true);
     }

@@ -16,6 +16,17 @@ rebuild. Name-first source logical indices are separate from header visual order
 Its original CIntArr permutation validation is extracted as GetColumnOrder in
 PanelItems; configureColumns consumes it after creating Qt sections. Qt rows and
 widget selection are published/restored by their existing owners.
+Schema enumeration consumes the written generic/raw counts without an extra
+HRESULT gate, matching upstream; individual property-info errors and generic
+IsDir remain skipped. Both counts retain zero initialization for an unwritten
+output. The same provider/type is re-enumerated, and Qt hides its reserved Name
+section when no generic descriptor exists. Raw Name owns a separate section;
+empty schemas retain rows/selection/status with no invented visible columns and
+Qt's zero-height empty header. Native rendering of that empty state remains
+unverified.
+Label-only selection paint resolves source visible logical subitem zero through
+the section map; it remains visible when reserved Name is hidden. Standalone
+tables without that map retain physical column zero as their fallback.
 SaveListViewInfo receives the owning header projection in source visible logical
 order, updates that visible snapshot and serializes the original visible/hidden
 settings flow. It does not rewrite the property catalog. Menu re-addition uses

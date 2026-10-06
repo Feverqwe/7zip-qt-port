@@ -128,8 +128,9 @@ HRESULT CPanel::InitColumns() {
     _ascending = _listViewInfo.Ascending;
     _columns.Clear();
     const bool isFsFolder = IsFSFolder() || IsAltStreamsFolder();
-    UInt32 numProps = 0;
-    if (_folder->GetNumberOfProperties(&numProps) == S_OK) {
+    {
+        UInt32 numProps = 0;
+        _folder->GetNumberOfProperties(&numProps);
         for (UInt32 i = 0; i < numProps; i++) {
             CMyComBSTR name;
             PROPID propID;
@@ -149,23 +150,22 @@ HRESULT CPanel::InitColumns() {
         }
     }
     if (_folderRawProps) {
-        UInt32 numRawProps = 0;
-        if (_folderRawProps->GetNumRawProps(&numRawProps) == S_OK) {
-            for (UInt32 i = 0; i < numRawProps; i++) {
-                CMyComBSTR name;
-                PROPID propID;
-                if (_folderRawProps->GetRawPropInfo(i, &name, &propID) != S_OK)
-                    continue;
-                CPropColumn prop;
-                prop.Type = VT_EMPTY;
-                prop.ID = propID;
-                prop.Name = GetNameOfProperty(propID, name);
-                prop.Order = -1;
-                prop.IsVisible = GetColumnVisible(propID, isFsFolder);
-                prop.Width = GetColumnWidth(propID, VT_BSTR);
-                prop.IsRawProp = true;
-                _columns.Add(prop);
-            }
+        UInt32 numProps = 0;
+        _folderRawProps->GetNumRawProps(&numProps);
+        for (UInt32 i = 0; i < numProps; i++) {
+            CMyComBSTR name;
+            PROPID propID;
+            if (_folderRawProps->GetRawPropInfo(i, &name, &propID) != S_OK)
+                continue;
+            CPropColumn prop;
+            prop.Type = VT_EMPTY;
+            prop.ID = propID;
+            prop.Name = GetNameOfProperty(propID, name);
+            prop.Order = -1;
+            prop.IsVisible = GetColumnVisible(propID, isFsFolder);
+            prop.Width = GetColumnWidth(propID, VT_BSTR);
+            prop.IsRawProp = true;
+            _columns.Add(prop);
         }
     }
     unsigned order = 0;

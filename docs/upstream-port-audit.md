@@ -1735,6 +1735,85 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source changing-column schema and enumeration consumers, 2026-10-06
+
+Reviewed full original/adapted `CPP/7zip/UI/FileManager/PanelItems.cpp::InitColumns`,
+GetColumnVisible/GetColumnWidth/GetColumnAlign, name-first/order/equality helpers,
+AddColumn/DeleteColumn/SaveListViewInfo, LoadListItems caller and original
+IFolderFolder/IArchiveGetRawProps declarations/macros. Qt publication/cell/menu/
+selection consumers remain in their existing owners. Full source pin remains
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. No engine, dependency, source-language, notice
+or upstream changes are made.
+
+Original InitColumns consumes the generic/raw written counts regardless of the
+count call's HRESULT; it skips individual info errors and generic IsDir instead.
+The adapted extra S_OK gates are removed, restoring those original loop bodies,
+scopes and raw counter name. Existing zero initialization of both counters is
+retained: it avoids using an indeterminate value when the output is unwritten.
+This defined empty-count adaptation is explicit; native uninitialized-variable
+behavior is neither reproduced nor claimed verified. Same provider/type still
+re-enumerates its schema; descriptor types, saved first-ID width/order and
+equality policy are unchanged.
+
+Qt's reserved Name section is now hidden when no generic Name descriptor exists,
+as already done for absent reserved Size/PackSize/MTime. A raw Name retains its
+own section and native Name-first logical index. Empty catalogs have no invented
+visible columns, while existing row metadata/selection/status consumers remain.
+Qt collapses their empty header to0px; this platform presentation is recorded,
+with native rendering still unverified. The correction is one visibility entry,
+with no new schema, formatting, width or layout algorithm.
+
+The resulting no-Name lifecycle exposed a second presentation consumer: the
+delegate narrowed label-only selection to physical Qt column0, now hidden.
+Reviewed native AddColumn's iSubItem=index, App::SetListSettings and
+CFmSettings::Load's default FullRow=false. The delegate now resolves native
+visible logical subitem0 through the existing section map, retaining physical0
+only for standalone unmapped tables. Full-row/deleted/alternative policies are
+unchanged. Actual delegate-image comparisons check primary selected/unselected
+paint differs and secondary paint remains identical. The previous delegate
+fails all four EN/RU both-pane schema cases in both raw-Name/no-Name phases:
+RED4/10QtPASS0.68s, zero skips; snapshots/logs are retained in
+build/review/column-changes-paint-red.
+
+Existing SchemaFolder gains controllable property arrays/count writes/results
+and individual info results/query counters; its default three generic/one raw
+descriptors and data remain unchanged. New panel_column_changes has eight
+both-pane EN/RU S_FALSE/E_FAIL written-count/recovery cases and four same-provider
+schema lifecycles: generic Name info E_FAIL/IsDir omission/raw Name, raw-info
+E_ABORT/no Name, empty schema, unwritten counts and recovery. Public consumers
+check catalog size/default visibility, raw Name-first logical index, exact cells/
+alignment/header labels, no phantom Name, menu order/checks/first-entry protection/
+Cancel, rows/selection/focus/peer/provider/Unicode bytes and zero backend calls.
+Raw-info E_ABORT is the original skipped-field result, not archive-operation
+cancellation coverage. Native Windows CMake registration is present; execution
+and rendered Windows parity are unverified.
+
+Actual previous-product RED12/2QtPASS0.74s catches eight dropped written schemas
+and four phantom Name sections; six frozen inputs/snapshots/log are retained in
+build/review/column-changes-red. Affected nine-target build passes. Fresh focused
+sequential9/9PASS12.31s, zero failures/skips, passes on macOS27.0.1 arm64 with
+official Qt6.12.0. Baseline verification passes408 exact/196 adapted/3 local.
+Seventy-two current980×620/640×400 reports expose both panels/paths/tables/status
+and nonempty headers; sixteen empty/unwritten headers have expected zero height.
+After the delegate correction, nine affected targets build and fresh sequential
+focused9/9PASS12.75s, zero failures/skips. Seven final inputs/hashes, snapshots,
+logs and geometry/reports are retained in build/review/column-changes-final.
+Initial unsandboxed gate passed formatting/build and274/275 tests but timed out
+native_rar_ui at45.02s; isolated unsandboxed rerun passed1/1 in0.68s. That timeout
+is retained as a failed gate, not regression proof or final acceptance. The full
+gate on the corrected delegate terminated0: formatting/all-target build and
+275/275PASS147.65s on the same macOS/Qt configuration; all seven input hashes
+remain unchanged. Final native_rar_ui and panel_column_changes have zero skips.
+The preceding timeout is not reproduced by this complete run. Current Windows/
+Linux execution and rendered Windows parity remain unverified.
+
+This closes the bounded written-count/no-Name/raw-Name/empty/same-provider
+consumer lifecycle. Broader filesystem/default/type/equality/schema/provider-error
+consumers, real archive schemas/deleted/ADS-device-zone acceptance, current
+Windows/Linux/rendered, remaining operation-to-render/full bodies/109-module/
+cold-stable/packages and P3-05.15/P3-06 acceptance remain required.
+
 ### Source duplicate-ID header sorting, 2026-10-06
 
 Reviewed complete original/adapted `CPP/7zip/UI/FileManager/PanelSort.cpp`

@@ -131,6 +131,15 @@ toggle по PropID через generic/raw/append секции. Qt сигнал �
 автоматического mouse sort; индикатор остаётся на нажатой секции, Size action
 привязана к PropID.16 EN/RU обе панели с empty raw, selection/peer/Refresh и64
 normal/compact JSON проверены на Mac. Текущие native/rendered проверки обязательны.
+Schema/error consumers также восстановили отсутствие лишнего Name при raw-only/
+no-Name/empty catalog и повторное перечисление одного provider/type. Source
+потребляет записанные count при S_FALSE/E_FAIL и пропускает individual info errors/
+IsDir; existing initialized-zero адаптация обрабатывает незаписанный выход.
+12 EN/RU обе панели с menu Cancel, selection/focus/peer/bytes/recovery и72 JSON
+проверены на Mac. Qt zero-height empty header записан как platform presentation;
+native/rendered приёмка остаётся обязательной.
+Label-only highlight теперь следует первому source logical subitem при raw Name
+и no-Name; фактическая delegate paint-регрессия ловит прежнее невидимое выделение.
 Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и

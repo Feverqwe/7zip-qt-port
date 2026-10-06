@@ -78,7 +78,8 @@ class FileRowDelegate final : public QStyledItemDelegate {
         if (index.data(Qt::UserRole + 19).toBool())
             option.state |= QStyle::State_Selected;
         auto *table = dynamic_cast<const FileTable *>(parent());
-        if (!table || table->fullRowHighlight() || index.column() == 0) {
+        const int primary = table ? table->columnForVisibleProperty(0) : -1;
+        if (!table || table->fullRowHighlight() || index.column() == (primary < 0 ? 0 : primary)) {
             QStyledItemDelegate::paint(painter, option, index);
             return;
         }
