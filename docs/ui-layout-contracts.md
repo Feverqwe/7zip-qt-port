@@ -1,5 +1,19 @@
 # Text specifications and geometry checks
 
+### Source caption helpers (P3-05.10, validation active)
+
+Reference: pinned LangUtils colon/remove-colon/window bodies and actual
+EditPage2/ProgressDialog2/BenchmarkDialog resources and OnInit callers.
+Translated Benchmark Speed loses exactly one trailing colon; missing entries
+retain the full resource caption. Edit viewer retains `&View:` fallback.
+Progress packed/files labels use original append-colon policy. Initial and live
+reload share these rules, preserving pending input. Benchmark Cancel/Help,
+Link Cancel and Progress Cancel use source standard-control mappings; completed
+Progress rebinds to IDS_CLOSE. Existing form sizes/order and footer contracts
+apply. Current Mac48 EN/RU footer reports pass exposure, size hints, source
+captions and separation. Final native seven consumers and48 footer reports also
+pass; its full gate, Linux and rendered acceptance remain open.
+
 ### Namespace Hash result consumers (P3-05.8, validation active)
 
 `namespace_hash` invokes original PanelCrc/HashGUI results for Windows private
@@ -129,7 +143,8 @@ Link Type contains Hard→File Symbolic→Directory Symbolic→Junction→WSL in
 order. Link is the default footer button, followed by Cancel. Qt scrolls the
 content at compact sizes; desktop-only Junction/WSL remain visibly disabled on
 POSIX with a platform reason. Source radio/type choices and errors remain owned
-by CLinkDialog; Qt controls bind original captions and the Cancel402 language ID.
+by CLinkDialog; Qt controls bind original captions and LangSetDlgItems maps
+IDCANCEL to its source language entry.
 Radio captions use the existing220-pixel language wrapping binding so native
 Windows EN/RU font metrics do not force horizontal clipping at360 pixels.
 `link_dialog` writes EN/RU520×500/360×300 JSON and checks named controls after

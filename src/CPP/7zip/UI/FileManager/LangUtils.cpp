@@ -63,6 +63,41 @@ void LangSetDlgItems(IQtLangDialogControls &dialog, const UInt32 *ids, unsigned 
     }
 }
 
+void LangSetDlgItems_Colon(IQtLangDialogControls &dialog, const UInt32 *ids, unsigned numItems) {
+    QMutexLocker lock(&g_CriticalSection);
+    for (unsigned i = 0; i < numItems; i++) {
+        const UInt32 id = ids[i];
+        const wchar_t *s = g_Lang.Get(id);
+        if (s) {
+            UString s2 = s;
+            s2.Add_Colon();
+            dialog.SetItemText(id, s2);
+        }
+    }
+}
+
+void LangSetDlgItems_RemoveColon(IQtLangDialogControls &dialog, const UInt32 *ids,
+                                 unsigned numItems) {
+    QMutexLocker lock(&g_CriticalSection);
+    for (unsigned i = 0; i < numItems; i++) {
+        const UInt32 id = ids[i];
+        const wchar_t *s = g_Lang.Get(id);
+        if (s) {
+            UString s2 = s;
+            if (!s2.IsEmpty() && s2.Back() == ':')
+                s2.DeleteBack();
+            dialog.SetItemText(id, s2);
+        }
+    }
+}
+
+void LangSetWindowText(IQtLangWindowText &window, UInt32 langID) {
+    QMutexLocker lock(&g_CriticalSection);
+    const wchar_t *s = g_Lang.Get(langID);
+    if (s)
+        window.SetText(s);
+}
+
 UString LangString(UInt32 langID) {
     QMutexLocker lock(&g_CriticalSection);
     const wchar_t *s = g_Lang.Get(langID);

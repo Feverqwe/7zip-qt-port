@@ -2,6 +2,7 @@
 #include "7zip/UI/FileManager/LinkDialogRes.h"
 #include "qtlangcontrols.h"
 #include "qtlinkservices.h"
+#include "qtmodalresult.h"
 #include <QGroupBox>
 #include <QLabel>
 #include <QPushButton>
@@ -14,8 +15,12 @@ QWidget *CQtLinkWindow::Register(unsigned id, const char *name, QWidget *view,
                                  const QString &caption) {
     controls_.insert(id, view);
     view->setObjectName(QString::fromLatin1(name));
-    if (!caption.isEmpty())
-        QtBindResourceText(view, id == 2 ? 402 : id, caption);
+    if (!caption.isEmpty()) {
+        if (id == IDCANCEL)
+            QtBindStandardResourceText(view, id, caption);
+        else
+            QtBindResourceText(view, id, caption);
+    }
     return view;
 }
 void CQtLinkWindow::AddPathRow(QVBoxLayout *layout, bool to) {

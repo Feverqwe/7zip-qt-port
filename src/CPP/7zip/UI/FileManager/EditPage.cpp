@@ -21,7 +21,7 @@ CEditPage::CEditPage(const QString &settingsPath, QWidget *parent)
     : QWidget(parent), _settingsPath(settingsPath) {
     setObjectName("editorPage");
     auto *layout = new QGridLayout(this);
-    const QString labels[] = {"&View", "&Editor:", "&Diff:"};
+    const QString labels[] = {"&View:", "&Editor:", "&Diff:"};
     const unsigned labelIDs[] = {IDT_EDIT_VIEWER, IDT_EDIT_EDITOR, IDT_EDIT_DIFF};
     const char *names[] = {"viewerCommand", "editorCommand", "diffCommand"};
     const unsigned edits[] = {IDE_EDIT_VIEWER, IDE_EDIT_EDITOR, IDE_EDIT_DIFF};

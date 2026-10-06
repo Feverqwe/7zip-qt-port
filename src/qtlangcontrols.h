@@ -14,6 +14,7 @@ void QtBindLangText(QObject *object, UInt32 id, const QString &englishFallback =
 // LangSetDlgItems keeps the original dialog resource caption when no translation exists.
 void QtBindResourceText(QObject *object, UInt32 id, const QString &resourceCaption,
                         bool accessibleOnly = false);
+void QtBindStandardResourceText(QObject *object, UInt32 controlID, const QString &resourceCaption);
 void QtReloadLangTexts(QWidget &root);
 QString QtWrapControlText(const QWidget &widget, const QString &text);
 void QtNotifyLanguageChanged();

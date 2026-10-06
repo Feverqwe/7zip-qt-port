@@ -943,10 +943,19 @@ options и BrowseDialog2. OK/Cancel/Yes/No/Close/Help/Continue теперь ис
 caption. Memory сохраняет Continue при смене языка. Qt определяет порядок и
 button roles; native pickers и Options property-sheet footer сохраняют своего
 платформенного владельца. Текущие language cases и normal/compact footer JSON
-проверены на macOS/Linux/native Windows; полный Windows gate продолжается,
+проверены на macOS/Linux/native Windows; исходный полный Windows gate завершён
+с четырьмя сбоями вне этих language suites, которые учитывает P3-03;
 rendered и parent/final acceptance открыты. Остальные текущие формы/messages
 также подключены; исходная приёмка
 P1-14.2 сама по себе не подтверждает их Windows/Linux runtime.
+P3-05.10 подключает исходные colon/remove-colon/window helpers к начальной
+загрузке и смене языка: Benchmark показывает исходное «Скорость», Edit сохраняет
+resource `&View:`, Progress применяет исходное добавление двоеточия. Отсутствующий
+перевод сохраняет RC. Обычные кнопки Benchmark/Link/Progress используют ту же
+исходную таблицу, а завершённый Progress меняет привязку Cancel на IDS_CLOSE.
+Mac full249 и актуальные48 footer/8 Link JSON проверены; окончательные native
+семь consumers и48 footer JSON проверены. Полный gate этой native версии,
+Linux и rendered/parent acceptance остаются открыты.
 Split/Combine используют исходные заголовки прогресса и подтверждение числа частей;
 Open и продолжение hash — исходные IDS_OPENNING/IDS_CHECKSUM_CALCULATING.
 Qt/7zz staging получает локальные EN/RU-подписи; независимая команда журнала

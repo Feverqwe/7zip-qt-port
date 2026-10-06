@@ -141,14 +141,19 @@ with the selected 7zFM language. The device Copy component did not itself
 correct this separate presentation gap.
 
 Further LangUtils body/caller review on 2026-10-06 identifies a concrete
-remaining caption gap, P3-05.10. Original BenchmarkDialog::OnInit applies
+caption gap, P3-05.10. Original BenchmarkDialog::OnInit applies
 LangSetDlgItems_RemoveColon to IDT_BENCH_SPEED after the ordinary language pass.
 The adapted OnInit retains that block behind unused Z7_LANG, while the Qt
-resource binding uses the translated string unchanged. Current macOS EN/RU
+resource binding used the translated string unchanged. Discovery macOS EN/RU
 normal/compact widget reports show English Speed but Russian «Скорость:»;
 the pinned original removes that trailing colon. The original colon,
 remove-colon and window helper bodies and actual reload/fallback consumers
-must be reconciled together. P3-05.9's standard-button table does not close them.
+are now integrated into initial/reload bindings with original missing-entry RC
+fallback. Benchmark, Edit and Progress use those helpers; plain Benchmark/Link/
+Progress standard controls use the existing source table. Mac regressions/full
+pass; native final bindings, Linux and parent acceptance remain open. See the
+port audit for bounded evidence. P3-05.9 alone did not close this omission, and
+these helper consumers do not establish whole-module LangUtils reconciliation.
 
 Review on 2026-10-06 also finds an active RootFolder caller omission, P3-05.11.
 Original CRootFolder::BindToFolder(const wchar_t *, ...) normalizes the path,

@@ -3,9 +3,13 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
+#include "qtmodalresult.h"
 #include <QComboBox>
 #include <QFile>
+#include <QLabel>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -72,6 +76,78 @@ class LanguageTests : public QObject {
         SaveRegLang(UString("-"), settings);
         ReloadLang(settings, directory.path());
         QVERIFY(g_Lang.IsEmpty());
+    }
+    void sourceCaptionHelpersPreserveMissingResourceAndReload() {
+        QTemporaryDir directory;
+        const QString settings = directory.filePath("helpers.ini");
+        QVERIFY(writeFile(directory.filePath("fixture.txt"),
+                          ";!@Lang2@!UTF-8!\n0\n7-Zip\nFixture\nNative name\n"
+                          "2322\nSpeed::\n2323\nWindow translated\n"));
+        SaveRegLang(UString("fixture"), settings);
+        ReloadLang(settings, directory.path());
+        QWidget window;
+        QLabel colon(&window), remove(&window), missingColon(&window), missingRemove(&window);
+        colon.setProperty("languageColon", true);
+        remove.setProperty("languageRemoveColon", true);
+        missingColon.setProperty("languageColon", true);
+        missingRemove.setProperty("languageRemoveColon", true);
+        QtBindResourceText(&window, 2323, "Window resource");
+        QtBindResourceText(&colon, 2322, "Colon resource:");
+        QtBindResourceText(&remove, 2322, "Remove resource:");
+        QtBindResourceText(&missingColon, 2324, "Missing colon:");
+        QtBindResourceText(&missingRemove, 2324, "Missing remove:");
+        QCOMPARE(window.windowTitle(), QString("Window translated"));
+        QCOMPARE(colon.text(), QString("Speed:::"));
+        QCOMPARE(remove.text(), QString("Speed:"));
+        QCOMPARE(missingColon.text(), QString("Missing colon:"));
+        QCOMPARE(missingRemove.text(), QString("Missing remove:"));
+        SaveRegLang(UString("missing"), settings);
+        ReloadLang(settings, directory.path());
+        QtNotifyLanguageChanged();
+        QCOMPARE(window.windowTitle(), QString("Window resource"));
+        QCOMPARE(colon.text(), QString("Colon resource:"));
+        QCOMPARE(remove.text(), QString("Remove resource:"));
+        QCOMPARE(missingColon.text(), QString("Missing colon:"));
+        QCOMPARE(missingRemove.text(), QString("Missing remove:"));
+        SaveRegLang(UString("fixture"), settings);
+        ReloadLang(settings, directory.path());
+        QtNotifyLanguageChanged();
+        QCOMPARE(window.windowTitle(), QString("Window translated"));
+        QCOMPARE(colon.text(), QString("Speed:::"));
+        QCOMPARE(remove.text(), QString("Speed:"));
+        SaveRegLang(UString("-"), settings);
+        ReloadLang(settings);
+    }
+    void sourceStandardControlBindingsPreserveResourceAndDynamicClose() {
+        QTemporaryDir directory;
+        const QString settings = directory.filePath("standard.ini");
+        QVERIFY(writeFile(directory.filePath("fixture.txt"),
+                          ";!@Lang2@!UTF-8!\n0\n7-Zip\nFixture\nNative name\n"
+                          "402\nFixture cancel\n"));
+        SaveRegLang(UString("fixture"), settings);
+        ReloadLang(settings, directory.path());
+        QWidget window;
+        QPushButton cancel(&window), help(&window);
+        QtBindStandardResourceText(&cancel, IDCANCEL, "Cancel resource");
+        QtBindStandardResourceText(&help, IDHELP, "Help resource");
+        QCOMPARE(cancel.text(), QString("Fixture cancel"));
+        QCOMPARE(help.text(), QString("Help resource"));
+        SaveRegLang(UString("missing"), settings);
+        ReloadLang(settings, directory.path());
+        QtNotifyLanguageChanged();
+        QCOMPARE(cancel.text(), QString("Cancel resource"));
+        QCOMPARE(help.text(), QString("Help resource"));
+        SaveRegLang(UString("fixture"), settings);
+        ReloadLang(settings, directory.path());
+        QtNotifyLanguageChanged();
+        QCOMPARE(cancel.text(), QString("Fixture cancel"));
+        // Progress rebinds the same native Cancel control to its dynamic Close text.
+        QtBindLangText(&cancel, 408, "Close");
+        QCOMPARE(cancel.text(), QString("&Close"));
+        QtNotifyLanguageChanged();
+        QCOMPARE(cancel.text(), QString("&Close"));
+        SaveRegLang(UString("-"), settings);
+        ReloadLang(settings);
     }
     void bundledLanguagePageApplyCancelAndGeometry() {
         QTemporaryDir directory;

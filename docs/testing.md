@@ -1,5 +1,14 @@
 # Regression strategy
 
+`language` exercises original colon/remove-colon/window helpers through public
+Qt bindings, partial language files, missing RC entries and live reload. It also
+checks native standard-control mapping on plain buttons and Progress's subsequent
+dynamic Close binding. `benchmark_lifecycle` asserts actual initial/reloaded Speed
+text in EN/RU, including the original remove-one-colon policy. Existing
+`language_dialog`, `language_standard_buttons`, `progress_dialog`, `link_dialog`
+and `external_editors_ui` remain the direct consumers and geometry regressions;
+see the port audit for platform-specific proof and pending acceptance.
+
 `language_standard_buttons` exercises the twelve source dialog consumers of
 LangSetDlgItems, all seven standard control mappings, initial EN/RU selection,
 live reload and absent-language resource fallback. It checks accepted/rejected

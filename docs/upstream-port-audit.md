@@ -1,5 +1,51 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.10 — source caption helpers (validation active, 2026-10-06)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Reviewed full original
+`CPP/7zip/UI/FileManager/LangUtils.cpp/.h` helper bodies, dependencies and
+EditPage/ProgressDialog2/BenchmarkDialog resources, OnInit handlers and callers.
+Copied LangSetDlgItems_Colon, LangSetDlgItems_RemoveColon and LangSetWindowText
+into their adapted original module. Original selected-file lookup, append-colon,
+remove-one-trailing-colon and missing-entry behavior remain; existing recursive
+Qt mutex replaces the platform critical-section service. No parser, catalog or
+translation algorithm is added. Formatting is separate from functional changes.
+
+IQtLangWindowText and existing IQtLangDialogControls supply narrow text services.
+Private QtLangCaption adapts original helper output to existing Qt presentation:
+caption, accessibility, wrapping and suffix application. Initial bindings and
+LanguageChange use the same source bodies. Window/resource captions preserve RC
+fallback when the selected file lacks an entry. Benchmark speed invokes original
+RemoveColon; Edit's viewer fallback retains exact `&View:` and Progress packed/
+files labels retain their resource captions until the original colon helper runs.
+The inactive Z7_LANG reference block is not a second functional implementation.
+
+Plain Benchmark Cancel/Help, Link Cancel and Progress Cancel now invoke original
+LangSetDlgItems with native control IDs through QtBindStandardResourceText.
+Local conditional 2→402/9→409 mapping is removed. Ordinary text rebinding clears
+that adapter flag, allowing Progress's later IDS_CLOSE binding to retain `&Close`.
+Roles, signals, operation state and cancellation handlers are unchanged. Qt/native
+presentation services remain local; upstream checkout and language assets are
+unchanged. No entire-module LangUtils reconciliation is claimed by this scope.
+
+Actual old-product Benchmark regression fails on Russian `Скорость:` versus
+source `Скорость` (8 Qt pass/1 fail/0 skip). Public language fixtures cover
+partial-resource fallback, initial/reload/window text, append/remove exactly one
+colon, standard-control lookup and dynamic Close. Final macOS focused seven
+consumer suites pass11.39s; unsandboxed format/all-target/full249PASS105.99s.
+Forty-eight final Mac EN/RU normal/compact footer reports pass caption, exposure,
+size-hint and separation review. Initial nine-file native helper focus passes
+six suites22.15s without Qt skips;183 immutable guest/local SHA artifacts retain
+that phase. Its nine-file full gate passes256/256990.94s with753 separate
+guest/local SHA artifacts. Final eleven-input native seven-consumer focus passes
+24.28s without Qt skips;193 immutable guest/local SHA artifacts retain current
+inputs/logs/reports and48 footer reports pass review. Its separate full gate is
+running. Eight final Mac Link footer reports also pass; compact content
+scrolling is assessed by the existing public test, not simultaneous exposure of
+every scrolled control. Linux capacity and final three-platform acceptance remain
+pending; neither earlier inputs nor a passing Mac gate establish final acceptance.
+
 ## P3-05.8 — source namespace Hash consumer (validation active, 2026-10-06)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

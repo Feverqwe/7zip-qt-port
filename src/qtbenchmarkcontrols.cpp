@@ -1,6 +1,7 @@
 #include "qtbenchmarkcontrols.h"
 #include "7zip/UI/GUI/BenchmarkDialogRes.h"
 #include "qtlangcontrols.h"
+#include "qtmodalresult.h"
 #include <QApplication>
 #include <QCloseEvent>
 #include <QFontDatabase>
@@ -52,12 +53,14 @@ QWidget *CQtBenchmarkWindow::Register(unsigned id, const char *name, QWidget *wi
     if (id == IDT_BENCH_CURRENT + 50 || id == IDT_BENCH_RESULTING + 50)
         captionId -= 50;
     const QString caption = ResourceCaption(captionId);
-    if (!caption.isEmpty())
-        QtBindResourceText(widget,
-                           captionId == 2   ? 402
-                           : captionId == 9 ? 409
-                                            : captionId,
-                           caption);
+    if (id == IDT_BENCH_SPEED)
+        widget->setProperty("languageRemoveColon", true);
+    if (!caption.isEmpty()) {
+        if (id == IDCANCEL || id == IDHELP)
+            QtBindStandardResourceText(widget, id, caption);
+        else
+            QtBindResourceText(widget, captionId, caption);
+    }
     return widget;
 }
 QLabel *CQtBenchmarkWindow::label(unsigned id, const char *name, const QString &text) {

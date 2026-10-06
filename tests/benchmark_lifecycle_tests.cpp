@@ -70,6 +70,10 @@ class BenchmarkLifecycleTests final : public QObject {
                          QString(language) == "ru"
                              ? QStringLiteral("Тестирование производительности")
                              : QString("Benchmark"));
+                if (!total)
+                    QCOMPARE(view->findChild<QLabel *>("IDT_BENCH_SPEED")->text(),
+                             QString(language) == "ru" ? QStringLiteral("Скорость")
+                                                       : QString("Speed"));
                 for (const QSize size : {QSize(960, 650), QSize(640, 400)}) {
                     view->resize(size);
                     QApplication::processEvents();

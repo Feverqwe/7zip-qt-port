@@ -403,10 +403,9 @@ bool CProgressDialog::OnInit() {
     for (UInt32 id : kLangIDs_Colon) {
         GetItem(id)->setProperty("languageColon", true);
         QString caption = static_cast<QLabel *>(GetItem(id))->text();
-        caption.chop(1); // RC already includes the colon retained without a translation.
         QtBindResourceText(GetItem(id), id, caption);
     }
-    QtBindResourceText(GetItem(IDCANCEL), 402, "Cancel");
+    QtBindStandardResourceText(GetItem(IDCANCEL), IDCANCEL, "Cancel");
     _hwndForTaskbar = MainWindow;
     if (!_hwndForTaskbar)
         _hwndForTaskbar = parentWidget();

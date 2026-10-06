@@ -1,5 +1,6 @@
 #include "qtlangcontrols.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "qtlangdialogcontrols.h"
 #include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
@@ -38,6 +39,21 @@ QString QtWrapControlText(const QWidget &widget, const QString &text) {
 }
 
 namespace {
+class QtLangCaption final : public IQtLangDialogControls, public IQtLangWindowText {
+    UInt32 id_;
+    QString text_;
+
+  public:
+    QtLangCaption(UInt32 id, const QString &fallback) : id_(id), text_(fallback) {}
+    bool HasItem(UInt32 id) const override { return id == id_; }
+    void SetItemText(UInt32 id, const wchar_t *text) override {
+        if (HasItem(id))
+            SetText(text);
+    }
+    void SetText(const wchar_t *text) override { text_ = QString::fromWCharArray(text); }
+    const QString &Text() const { return text_; }
+};
+
 void SetText(QObject *object) {
     if (auto *widget = qobject_cast<QWidget *>(object))
         if (object->property("languageToolTipEnglish").isValid())
@@ -51,14 +67,24 @@ void SetText(QObject *object) {
         id.isValid()
             ? QtLangText(id.toUInt(), object->property("languageFallback").toString())
             : QtLocalText(local.toString(), object->property("languageLocalRussian").toString());
-    if (id.isValid() && object->property("languageResourceCaption").isValid()) {
-        UString translated;
-        LangString_OnlyFromLangFile(id.toUInt(), translated);
-        text = translated.IsEmpty() ? object->property("languageResourceCaption").toString()
-                                    : QString::fromWCharArray(translated);
+    if (id.isValid()) {
+        const UInt32 languageID = id.toUInt();
+        const QVariant resource = object->property("languageResourceCaption");
+        const QVariant standard = object->property("languageStandardControl");
+        QtLangCaption caption(standard.isValid() ? standard.toUInt() : languageID,
+                              resource.isValid() ? resource.toString() : text);
+        if (standard.isValid())
+            LangSetDlgItems(caption, nullptr, 0);
+        else if (object->property("languageColon").toBool())
+            LangSetDlgItems_Colon(caption, &languageID, 1);
+        else if (object->property("languageRemoveColon").toBool())
+            LangSetDlgItems_RemoveColon(caption, &languageID, 1);
+        else if (auto *widget = qobject_cast<QWidget *>(object); widget && widget->isWindow())
+            LangSetWindowText(caption, languageID);
+        else if (resource.isValid())
+            LangSetDlgItemText(caption, languageID, languageID);
+        text = caption.Text();
     }
-    if (object->property("languageColon").toBool())
-        text += ':';
     text += object->property("languageSuffix").toString();
     if (auto *widget = qobject_cast<QWidget *>(object))
         text = QtWrapControlText(*widget, text);
@@ -110,22 +136,32 @@ void InstallLanguageFilter(QObject *object) {
             new QtLangTextFilter(window);
     }
 }
+void BindTextProperties(QObject *object, UInt32 id, const QString &fallback, bool resource,
+                        bool accessibleOnly) {
+    object->setProperty("languageID", id);
+    object->setProperty("languageResourceCaption", resource ? QVariant(fallback) : QVariant());
+    object->setProperty("languageFallback", fallback);
+    object->setProperty("languageAccessibleOnly", accessibleOnly);
+    object->setProperty("languageStandardControl", QVariant());
+    InstallLanguageFilter(object);
+}
 } // namespace
 
 void QtBindLangText(QObject *object, UInt32 id, const QString &englishFallback,
                     bool accessibleOnly) {
-    object->setProperty("languageID", id);
-    object->setProperty("languageResourceCaption", QVariant());
-    object->setProperty("languageFallback", englishFallback);
-    object->setProperty("languageAccessibleOnly", accessibleOnly);
-    InstallLanguageFilter(object);
+    BindTextProperties(object, id, englishFallback, false, accessibleOnly);
     SetText(object);
 }
 
 void QtBindResourceText(QObject *object, UInt32 id, const QString &resourceCaption,
                         bool accessibleOnly) {
-    QtBindLangText(object, id, resourceCaption, accessibleOnly);
-    object->setProperty("languageResourceCaption", resourceCaption);
+    BindTextProperties(object, id, resourceCaption, true, accessibleOnly);
+    SetText(object);
+}
+
+void QtBindStandardResourceText(QObject *object, UInt32 controlID, const QString &resourceCaption) {
+    BindTextProperties(object, controlID, resourceCaption, true, false);
+    object->setProperty("languageStandardControl", controlID);
     SetText(object);
 }
 
