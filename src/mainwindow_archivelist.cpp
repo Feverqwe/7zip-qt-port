@@ -214,9 +214,12 @@ void MainWindow::refreshActions() {
         appPresentation_->CompleteCopyIfReady();
 }
 
-void MainWindow::refreshPanelStatus() {
-    const CPanelStatus status = app_.GetFocusedPanel().Refresh_StatusBar();
-    const auto &labels = panelUi_[projectedPanel_].statusLabels;
+void MainWindow::refreshPanelStatus() { app_.GetFocusedPanel().Refresh_StatusBar(); }
+
+void MainWindow::showPanelStatus(unsigned index, const CPanelStatus &status) {
+    if (index >= kNumPanelsMax || app_.QtOperations().closed())
+        return;
+    const auto &labels = panelUi_[index].statusLabels;
     if (!labels[0])
         return;
     labels[0]->setText(

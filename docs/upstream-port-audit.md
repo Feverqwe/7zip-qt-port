@@ -1181,6 +1181,56 @@ Final evidence: build/review/source-refresh-drop-final. Whole Refresh/drop/
 redraw/status/body closure and current Windows/Linux/rendered/cold-stable/P3-06
 acceptance remain mandatory.
 
+### Source Refresh sort and status completion (2026-10-06)
+
+Pinned upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: review complete active RefreshListCtrl and its
+SaveFocused/OnReload/post-Copy callers, PanelSort status/order types/list calls,
+PanelListNotify Refresh_StatusBar calculation, and Qt publication/selection/
+action/language consumers. Original Refresh sorts after named focus and before
+positional fallback, then ensures visibility/redraw and publishes status. Qt's
+renderer sorting did not retain that source completion phase; direct restored
+rows could remain in publication order. Its status value was calculated only
+through independent action/language text updates, leaving stale labels when
+restoration emitted no native focus/selection signal.
+
+Restore SetSortRawStatus/source list SortItems at the original phase boundary,
+and final Refresh_StatusBar after the Qt selection/mark adapter. Reuse the
+original comparator and existing owning-column resolver; no second sort/default
+algorithm. Qt's initial model/header sorting/persistence remains presentation,
+while the source phase also sorts a complete previously unsorted publication.
+The source status calculation retains its original four parts; a narrow weak
+Qt publisher replaces four native SetText calls and also retains the existing
+returned value API. It addresses its owning pane without focus projection.
+Action and language consumers delegate to the same publisher; no duplicate
+widget text assignment. Native redraw remains in the existing async projection
+owner and is not claimed as complete RefreshListCtrl/module closure here.
+No new borrowed path/dependency, source language/license change or upstream edit.
+
+Actual old-product RED20/2 Qt passes, focused1FAIL1.25s: sixteen sort/fallback
+cases and four stale selected-size labels (6 instead of2). Six original source/
+header snapshots, eight input hashes and LastTest/focused logs are frozen in
+build/review/source-refresh-completion-red. Initial affected build and focused
+3/3PASS2.84s retain all assertions; later inactive-pane, real menu Refresh and
+failure/Cancel publisher checks are additional coverage, not retroactive RED.
+Expanded focused3/3PASS2.68s/new26 Qt passes precedes the last two guard cases.
+Final affected build and 19/19 focused CTest PASS27.58s; new28 Qt passes cover
+sixteen sort/focus/reload cases, eight active/inactive status cases and two
+failure/Cancel guards, with zero failures/skips. Forty-eight current EN/RU
+two-pane reports at 980×620/640×400 expose table/address/toolbar/status groups
+and all nonempty status labels without clipping. Baseline verifies
+408 exact/196 adapted/3 local paths; no provenance inventory changes.
+The existing source status calculation is unchanged byte-for-byte except for
+the two-line Qt publisher; this comparison does not claim byte identity with
+native SetText presentation. Mandatory unsandboxed full gate: formatting/
+all-target build and 267/267 CTest PASS132.35s on macOS arm64 with official
+Qt 6.12.0. All nine code/test/CMake input hashes remain unchanged; focused/full
+LastTest logs, forty-eight reports and the calculation comparison are frozen.
+
+Final evidence: build/review/source-refresh-completion-final. Whole remaining
+Refresh/drop/redraw/status/full-body and current native Windows/Linux/rendered/
+cold-stable/P3-06 acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

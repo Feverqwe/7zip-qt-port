@@ -2,6 +2,7 @@
 #include "mainwindow.h"
 #include "qtfilelisthover.h"
 #include "qtfilemanagerdrag.h"
+#include <QPointer>
 #include <QScopedValueRollback>
 
 void QtAppPresentation::Initialize(CApp &app) {
@@ -61,6 +62,11 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
             table->rawProperties[column] = raw != 0;
         return column;
     });
+    panel.AttachStatusPresentation(
+        [window = QPointer<MainWindow>(&window_), index](const CPanelStatus &status) {
+            if (window)
+                window->showPanelStatus(index, status);
+        });
     window_.storePanelUi(index);
     if (window_.drag_)
         window_.drag_->AttachPanel(index);

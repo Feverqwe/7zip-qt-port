@@ -642,7 +642,8 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     disableNotify.Restore();
     if (_selectionList.GetItemCount() > 0 && cursorIndex >= 0)
         SetFocusedSelectedItem(cursorIndex, _mySelectMode || state.SelectFocused);
-    // Qt rows are sorted separately; item params preserve source folder indices.
+    SetSortRawStatus();
+    _selectionList.SortItems(_sortID, _ascending, _isRawSortProp);
     if (cursorIndex < 0 && _selectionList.GetItemCount() > 0) {
         if (focusedPos >= _selectionList.GetItemCount())
             focusedPos = _selectionList.GetItemCount() - 1;
@@ -653,6 +654,7 @@ HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
     _selectionIsDefined = false;
     _startGroupSelect = _selectionList.GetFocusedItem();
     UpdateSelection();
+    Refresh_StatusBar();
     return S_OK;
 }
 

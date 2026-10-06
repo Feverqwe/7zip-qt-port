@@ -321,6 +321,9 @@ class CPanel : public QObject {
     void AttachInvalidationPresentation(std::function<void()> invalidate) {
         _invalidatePresentation = std::move(invalidate);
     }
+    void AttachStatusPresentation(std::function<void(const CPanelStatus &)> status) {
+        _statusPresentation = std::move(status);
+    }
     void InvalidateList() {
         if (_invalidatePresentation)
             _invalidatePresentation();
@@ -621,8 +624,8 @@ class CPanel : public QObject {
     const CPropColumns &GetVisibleColumns() const { return _visibleColumns; }
     QString GetItemText(UInt32 itemIndex, const CPropColumn &property) const;
     bool IsItem_AltStream(unsigned itemIndex) const;
-    // LoadListItems prepares source state; Qt publishes/sorts rows before this
-    // retained RefreshListCtrl selection stage restores the saved state.
+    // LoadListItems prepares source state; Qt publishes complete rows before
+    // this retained RefreshListCtrl focus/sort/selection/status phase.
     HRESULT RefreshListCtrl(const CSelectedState &state);
     HRESULT RefreshListCtrl();
     // Qt loads rows after synchronous source navigation. Transfer its requested
@@ -650,6 +653,7 @@ class CPanel : public QObject {
     std::function<bool(CPanel &)> _createPresentation;
     std::function<HRESULT(const CSelectedState &)> _reloadPresentation;
     std::function<void()> _invalidatePresentation;
+    std::function<void(const CPanelStatus &)> _statusPresentation;
     bool _portableFolderChanged = false;
     CAppState *_appState = nullptr;
     UINT _baseID = 0;

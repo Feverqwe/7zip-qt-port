@@ -227,6 +227,7 @@ class MainWindow : public QMainWindow {
     void setState(State state);
     void refreshActions();
     void refreshPanelStatus();
+    void showPanelStatus(unsigned panel, const CPanelStatus &status);
     void showSelectedProperties();
     void calculateHash(const QString &method);
     void begin(const QString &label, const QString &detail);

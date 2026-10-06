@@ -74,11 +74,8 @@ void MainWindow::reloadLangItems() {
             panel.ShouldProcessNotifications() && panel.GetFolder() && panel.IsFSDrivesFolder())
             if (auto *address = dynamic_cast<QtPanelAddressCombo *>(panelUi_[i].pathCombo))
                 address->ReloadCurrentPath();
-        if (auto *label = panelUi_[i].statusLabels[0]) {
-            const CPanelStatus status = app_.Panels[i].Refresh_StatusBar();
-            label->setText(ToQString(
-                MyFormatNew(app_.LangString_N_SELECTED_ITEMS, ToUString(status.selectedItems))));
-        }
+        if (panelUi_[i].statusLabels[0])
+            app_.Panels[i].Refresh_StatusBar();
     }
 }
 

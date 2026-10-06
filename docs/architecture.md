@@ -75,6 +75,12 @@ SetMemMode_Enable/Restore before restoring focus. This permits Qt's focus
 callbacks to request uncached source text and update command availability.
 Failed loads return before that successful-publication phase; an outer guard
 continues to protect the failed provider.
+The retained completion phase also calls SetSortRawStatus and source list sorting
+between named focus and positional fallback, then publishes Refresh_StatusBar
+after final selection. The existing source four-part calculation now invokes a
+weak per-panel Qt status adapter as well as returning its value. The adapter
+updates the owning pane directly without focus projection. Action/language
+refreshes use the same publisher; widget text assignment has one owner.
 Agent exposes the original IFolderCompare and both proxy comparators, including
 raw byte ordering, calculated folder statistics and natural flat prefixes.
 Panel sorting passes the raw flag only for the selected property; name/prefix

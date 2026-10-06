@@ -121,6 +121,8 @@ CPanelStatus CPanel::Refresh_StatusBar() const {
             }
         }
     }
+    if (_statusPresentation)
+        _statusPresentation(status);
     return status;
 }
 

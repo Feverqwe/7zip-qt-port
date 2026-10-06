@@ -161,6 +161,14 @@ peer provider/path, and re-enter/leave the current folder. Thirty-two current
 normal/compact reports inspect the affected views; Windows selects native Qt
 for these checks but its current execution remains required.
 
+`panel_refresh_completion` covers complete unsorted row publication followed by
+source restoration: both panes, EN/RU, both directions and named/positional
+focus retain source indices and survive actual menu Refresh. Visible status
+labels update after a suppressed selection change on active/inactive panes;
+all four parts and peer/focus stability are checked. Failure/Cancel skip the
+completion publisher. Current normal/compact sort/status reports inspect both
+panes; native Windows execution is configured but remains required.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

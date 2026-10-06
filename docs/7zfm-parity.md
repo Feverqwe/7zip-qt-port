@@ -1320,6 +1320,9 @@ Qt sorting. Header/actions use the source default/toggle policy:
 newly chosen Size/PackSize/CTime/ATime/MTime
 starts descending. Sorting ensures focused-row visibility. Inactive-header
 signals belong to their own source panel and preserve the peer/focus/menu state.
+Source Refresh sorts after named focus and before positional fallback. Its final
+status publication updates all four parts even when Qt emits no selection/focus
+signal, including a restored inactive pane, without changing peer labels/focus.
 The four view modes retain their existing behavior; raw columns and full controls are
 P0-06.2, time precision and UTC are P0-06.3. Normal/compact geometry is
 checked locally, with no rendered Windows comparison.

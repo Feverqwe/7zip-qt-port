@@ -993,6 +993,10 @@ CTime, ATime or MTime starts descending, all other properties ascending. Qt
 headers use the same source default. Sorting retains native selected indices
 and ensures the focused row is visible, including a row moved outside the old
 viewport. Reload retains the chosen property and direction.
+The source restoration phase sorts after matching the focused name and before
+choosing a fallback row by position. It publishes all four status parts after
+selection restoration even if Qt emits no focus/selection signal. The owning
+pane's labels update without switching focus or altering the peer's status.
 The list, address, toolbar and status keep their existing order and stay
 unclipped at 980×620 and 640×400. `panel_sort` writes
 `source-sort-flat-980.json` and `source-sort-flat-640.json`; these are current Qt
