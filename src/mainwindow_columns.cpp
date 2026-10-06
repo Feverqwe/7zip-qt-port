@@ -50,9 +50,11 @@ void MainWindow::configureColumns(bool initialized) {
         table_->setColumnHidden(column, !prop.IsVisible);
     }
     table_->setHorizontalHeaderLabels(labels);
-    for (int column : {2, 3, 4})
-        table_->horizontalHeaderItem(column)->setData(Qt::InitialSortOrderRole,
-                                                      Qt::DescendingOrder);
+    for (int column = 0; column < table_->columnCount(); ++column)
+        table_->horizontalHeaderItem(column)->setData(
+            Qt::InitialSortOrderRole, CPanel::GetDefaultSortAscending(fileTable->propertyId(column))
+                                          ? Qt::AscendingOrder
+                                          : Qt::DescendingOrder);
     for (int column : {1, 5, 6})
         table_->setColumnHidden(column, true);
     for (int column : {2, 3, 4}) {

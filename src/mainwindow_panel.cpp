@@ -178,23 +178,8 @@ void MainWindow::createFileTable(QWidget *central) {
     table_->viewport()->setAcceptDrops(true);
     table_->sortItems(0, Qt::AscendingOrder);
     connect(table_->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this,
-            [this](int column, Qt::SortOrder order) {
-                sortColumn_ = column;
-                sortOrder_ = order;
-                auto &panel = app_.GetFocusedPanel();
-                panel._sortID = static_cast<FileTable *>(table_)->propertyId(column);
-                panel._ascending = order == Qt::AscendingOrder;
-                if (!configuringColumns_) {
-                    const int mode = column == 5   ? 1
-                                     : column == 4 ? 2
-                                     : column == 2 ? 3
-                                     : column == 6 ? 4
-                                                   : 0;
-                    sortMode_ = static_cast<SortMode>(mode);
-                    if (column == 0 || column == 2 || column == 4 || column == 5 || column == 6)
-                        sortActions_[mode]->setChecked(true);
-                    saveColumns();
-                }
+            [this, owner = projectedPanel_](int column, Qt::SortOrder order) {
+                sortIndicatorChanged(owner, column, order);
             });
     table_->installEventFilter(this);
     table_->viewport()->installEventFilter(this);

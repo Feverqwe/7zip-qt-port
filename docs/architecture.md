@@ -79,6 +79,16 @@ tree. Native ConfigureArc retains the codec's raw/tree capabilities. Original
 Agent temporary prefix strings remain confined to GUI sorting. Its wide-name
 calls share PanelSort's existing UTF-16 comparison through a Qt conversion
 overload; no independent archive comparator is added.
+Sort commands delegate through the existing command service directly to source
+CPanel::SortItemsWithPropID. Its original toggle/default property policy,
+SetSortRawStatus and focused-row EnsureVisible replace MainWindow's independent
+mode switch. The default-property switch is extracted in the same source module
+for Qt header roles. QtPanelList translates the property/raw flag through the
+owning view's column resolver and sorts QTableView. Qt's indicator notification
+supplies its explicit direction to the adapted OnColumnClick; it also restores
+raw status and focused visibility. The header adapter projects its owning panel,
+preserving peer/focus/menu state for inactive-pane sorting. Qt retains column
+mapping, indicator, mode-action projection and persistence.
 Original remaining property/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
 Namespace/archive renderers and the bound-folder renderer now return their

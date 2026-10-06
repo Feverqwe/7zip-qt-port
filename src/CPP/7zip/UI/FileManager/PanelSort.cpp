@@ -184,3 +184,47 @@ int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID, bool 
         res = first < second ? -1 : first > second ? 1 : 0;
     return res;
 }
+
+void CPanel::SetSortRawStatus() {
+    _isRawSortProp = 0; // false;
+    FOR_VECTOR(i, _columns) {
+        const CPropColumn &prop = _columns[i];
+        if (prop.ID == _sortID) {
+            _isRawSortProp = prop.IsRawProp ? 1 : 0;
+            return;
+        }
+    }
+}
+
+bool CPanel::GetDefaultSortAscending(PROPID propID) {
+    switch (propID) {
+    case kpidSize:
+    case kpidPackSize:
+    case kpidCTime:
+    case kpidATime:
+    case kpidMTime:
+        return false;
+    default:
+        return true;
+    }
+}
+
+void CPanel::SortItemsWithPropID(PROPID propID) {
+    if (propID == _sortID)
+        _ascending = !_ascending;
+    else {
+        _sortID = propID;
+        _ascending = GetDefaultSortAscending(propID);
+    }
+    SetSortRawStatus();
+    _selectionList.SortItems(_sortID, _ascending, _isRawSortProp);
+    _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
+}
+
+void CPanel::OnColumnClick(PROPID propID, bool ascending) {
+    // Qt has applied its indicator direction using the shared source default.
+    _sortID = propID;
+    _ascending = ascending;
+    SetSortRawStatus();
+    _selectionList.EnsureVisible(_selectionList.GetFocusedItem());
+}

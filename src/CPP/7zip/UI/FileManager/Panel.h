@@ -338,6 +338,11 @@ class CPanel : public QObject {
     int _xSize = 0;
     PROPID _sortID = 0;
     bool _ascending = true;
+    Int32 _isRawSortProp = 0;
+    static bool GetDefaultSortAscending(PROPID propID);
+    void SetSortRawStatus();
+    void SortItemsWithPropID(PROPID propID);
+    void OnColumnClick(PROPID propID, bool ascending);
     bool _mySelectMode = false;
     bool _selectionIsDefined = false;
     bool _selectMark = false;
@@ -519,8 +524,9 @@ class CPanel : public QObject {
     void SetFocusToList();
     void SetFocusToPath();
     void SetFocusToLastRememberedItem();
-    void AttachSelectionView(QAbstractItemView *view) {
-        _selectionList.Attach(view);
+    void AttachSelectionView(QAbstractItemView *view,
+                             QtPanelList::SortColumnResolver sortColumn = {}) {
+        _selectionList.Attach(view, std::move(sortColumn));
         _selectionList.SetSingleSelection(_mySelectMode);
     }
     void UpdateSelection();

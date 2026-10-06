@@ -54,7 +54,13 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
     window_.flatArchive_ = panel.GetFlatModeForArc();
     panel.SetFlatModeForDisk(window_.flatDisk_);
     window_.createFilePanel(editMenu_, index);
-    panel.AttachSelectionView(window_.table_);
+    auto *table = static_cast<FileTable *>(window_.table_);
+    panel.AttachSelectionView(table, [table](PROPID property, Int32 raw) {
+        const int column = table->columnForProperty(property);
+        if (column >= 0 && column < table->rawProperties.size())
+            table->rawProperties[column] = raw != 0;
+        return column;
+    });
     window_.storePanelUi(index);
     if (window_.drag_)
         window_.drag_->AttachPanel(index);

@@ -1311,8 +1311,11 @@ typed property, then name, flat prefix and source index. An equal basename in
 `dir10` and `dir2` uses the source Agent's natural prefix order (`dir2` first).
 Providers without IFolderCompare retain the generic BSTR fallback. Agent now
 exposes its original comparator; raw columns carry the source raw flag through
-Qt sorting. The Qt header/action selection and four view modes keep
-their current behavior; raw property columns and full column controls are
+Qt sorting. Header/actions use the source default/toggle policy:
+newly chosen Size/PackSize/CTime/ATime/MTime
+starts descending. Sorting ensures focused-row visibility. Inactive-header
+signals belong to their own source panel and preserve the peer/focus/menu state.
+The four view modes retain their existing behavior; raw columns and full controls are
 P0-06.2, time precision and UTC are P0-06.3. Normal/compact geometry is
 checked locally, with no rendered Windows comparison.
 

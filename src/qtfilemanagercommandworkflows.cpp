@@ -109,12 +109,7 @@ void QtFileManagerCommands::SelectByType(bool select) { window_.SelectByType(sel
 void QtFileManagerCommands::Refresh_StatusBar() { window_.refreshActions(); }
 void QtFileManagerCommands::SetListViewMode(unsigned index) { window_.setViewMode(index); }
 void QtFileManagerCommands::SortItemsWithPropID(unsigned propID) {
-    const auto mode = propID == kpidExtension    ? MainWindow::SortMode::Type
-                      : propID == kpidMTime      ? MainWindow::SortMode::Date
-                      : propID == kpidSize       ? MainWindow::SortMode::Size
-                      : propID == kpidNoProperty ? MainWindow::SortMode::Unsorted
-                                                 : MainWindow::SortMode::Name;
-    window_.setSortMode(mode);
+    window_.app_.GetFocusedPanel().SortItemsWithPropID(propID);
 }
 void QtFileManagerCommands::OpenRootFolder() {
     window_.goRoot(true, MainWindow::RootLocation::Drives);

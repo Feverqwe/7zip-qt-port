@@ -1068,6 +1068,70 @@ frozen in the final directory below.
 Final evidence is in build/review/source-archive-sort-final. Current native
 Windows/Linux/rendered/cold-stable and remaining .15/P3-06 acceptance stay open.
 
+### Source sort commands and owning-panel header (2026-10-06)
+
+Upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: review complete PanelSort.cpp active bodies,
+commented historical SortItems branch, Panel.h raw/order types, App.h sort
+forwarder, MyLoadMenu sort IDs and current Qt command/header/list consumers.
+Original SortItemsWithPropID owns same-property toggle, default descending for
+Size/PackSize/CTime/ATime/MTime, raw status, sorting and focused EnsureVisible.
+The Qt switch duplicated part of this body, omitted focused visibility and
+assigned descending header roles only to three fixed columns.
+
+Copy SetSortRawStatus and restore SortItemsWithPropID in the authoritative
+source module. Extract only its default-property switch into the same CPanel's
+GetDefaultSortAscending so Qt header roles use one policy. Keep original field
+names, toggle and phase order. Replace Win32 list calls with QtPanelList sorting/
+EnsureVisible; its resolver maps the property/raw flag to the owning FileTable.
+Existing command services now delegate directly to the focused source panel;
+remove MainWindow's independent mode switch. Header mode/action mapping and
+column persistence remain presentation. No new sorting/path algorithm or module
+dependency, no language/license/path changes; format affected borrowed lines.
+
+Original OnColumnClick decodes NMLISTVIEW/visible-column property and forwards
+to the source sort command. Qt's indicator notification already carries its
+explicit direction and has applied native model sorting. Its adapted signature
+accepts the mapped property/direction, retains source order/raw state and ensures
+focused visibility, avoiding a second toggle. Qt's initial-role defaults come
+from the extracted source switch. This native notification adaptation is explicit;
+it is not a byte-identical Win32 handler or a rendered Windows parity claim.
+Header signals are projected into their owning panel via the existing projection
+guard. Inactive sorting preserves the active pane's provider/order/focus/menu.
+Extract the existing header adapter body from the constructor rather than adding
+another workflow lambda. Historical disabled SortItems bodies are not compiled;
+remaining RefreshListCtrl/drop/redraw/status and full module acceptance stay open.
+
+New panel_sort_commands checks real EN/RU CTime/ATime/MTime/Size header defaults,
+indicator/source state and normal/compact reports; menu sort moves focus across
+64 rows, preserves selected source index, toggles and retains state/focus through
+Refresh. An inactive-pane header scenario checks owner state and unchanged peer,
+focused address/menu. Actual old-product RED5/6 Qt passes, focused1FAIL0.74s:
+four wrong CTime/ATime roles and one offscreen focus. Old ten source/header
+snapshots, twelve hashes/logs in build/review/source-sort-commands-red.
+
+After that fix, a further owning-panel regression fails on the previously global
+header handler: right panel keeps kpidName instead of requested Size. Frozen
+peer RED1/11 Qt passes, focused1FAIL0.74s and three input hashes are in
+build/review/source-sort-commands-peer-red. Source fixes/owner projection retain
+all assertions. First fixture build used nonexistent setLanguage; it now uses
+the established SaveRegLang/ReloadLang interface. Header extraction initially
+captured index outside createFileTable scope; capture the actual projected owner.
+The final suite adds a production-bound raw command in both directions and
+Refresh/focus checks after the initial RED capture; these are not retroactive
+RED evidence. Final affected build and 12/12 focused CTest PASS32.46s, including
+13/13 Qt cases in panel_sort_commands with zero failures/skips. Sixteen current
+EN/RU reports at 980×620/640×400 retain toolbar/address/table/status order and
+full visibility. SetSortRawStatus matches the pinned body after whitespace
+normalization; the extracted switch and Qt list/header calls remain explicit
+adaptations. Baseline verifies 408 exact/196 adapted/3 local paths.
+Mandatory unsandboxed full gate: formatting/all-target build and 265/265 CTest
+PASS131.77s on macOS arm64, official Qt 6.12.0. All twelve code/test/CMake input
+hashes remain unchanged; focused/full LastTest logs, reports and body comparison
+are frozen with the input manifest.
+Final evidence: build/review/source-sort-commands-final. Current Windows/Linux/
+rendered/cold-stable and remaining .15/P3-06 acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

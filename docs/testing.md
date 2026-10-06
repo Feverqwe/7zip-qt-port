@@ -141,6 +141,17 @@ and virtual directory statistics. `native_folder_opening` additionally checks
 tree-proxy comparison on a real WIM: raw hashes match known Unicode/space input
 files, and source Panel/provider ordering agrees with those bytes.
 
+`panel_sort_commands` covers source initial CTime/ATime/MTime/Size directions in
+EN/RU through real header clicks, native sort state and normal/compact reports.
+Actual menu sorting moves the focused row across a long viewport and preserves
+its selected source index; repeated commands toggle direction. Refresh retains
+sort/focus.
+Raw source commands propagate the catalog flag through the owning column resolver
+and compare byte/length order in both directions. Inactive-pane header sorting
+preserves peer provider/sort state, focused address and active
+menu projection. Windows uses the native Qt platform for these geometry/focus
+checks; current native Windows execution remains required.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

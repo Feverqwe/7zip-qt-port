@@ -168,8 +168,8 @@ class MainWindow : public QMainWindow {
   private:
     void startVolume(VolumeOperation::Mode mode);
     void showItemContextMenu(const QPoint &globalPos);
-    void setSortMode(SortMode mode);
     void applySortMode(bool enableSorting = false);
+    void sortIndicatorChanged(unsigned panel, int column, Qt::SortOrder order);
     static QIcon toolbarIcon(int kind);
     static QString toolbarSettingsPath();
     void recordVisitedPath(const QString &path);

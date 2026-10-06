@@ -75,25 +75,13 @@ void MainWindow::showItemContextMenu(const QPoint &globalPos) {
     menu.exec(globalPos);
 }
 
-void MainWindow::setSortMode(SortMode mode) {
-    const int columns[] = {0, 5, 4, 2, 6};
-    const int column = columns[static_cast<int>(mode)];
-    if (column == sortColumn_)
-        sortOrder_ = sortOrder_ == Qt::AscendingOrder ? Qt::DescendingOrder : Qt::AscendingOrder;
-    else
-        sortOrder_ = column == 2 || column == 4 ? Qt::DescendingOrder : Qt::AscendingOrder;
-    sortColumn_ = column;
-    sortMode_ = mode;
-    sortActions_[static_cast<int>(mode)]->setChecked(true);
-    applySortMode();
-}
-
 void MainWindow::applySortMode(bool enableSorting) {
     if (!table_)
         return;
     auto &panel = app_.GetFocusedPanel();
     panel._sortID = static_cast<FileTable *>(table_)->propertyId(sortColumn_);
     panel._ascending = sortOrder_ == Qt::AscendingOrder;
+    panel.SetSortRawStatus();
     if (enableSorting && !table_->isSortingEnabled()) {
         // Enabling Qt sorting already sorts; configure the source order first.
         const QSignalBlocker blocker(table_->horizontalHeader());
@@ -102,6 +90,28 @@ void MainWindow::applySortMode(bool enableSorting) {
     } else
         table_->sortItems(sortColumn_, sortOrder_);
     saveColumns();
+}
+
+void MainWindow::sortIndicatorChanged(unsigned index, int column, Qt::SortOrder order) {
+    const bool active = index == projectedPanel_;
+    withPanelProjection(index, [this, column, order, active] {
+        sortColumn_ = column;
+        sortOrder_ = order;
+        auto &panel = app_.GetFocusedPanel();
+        panel.OnColumnClick(static_cast<FileTable *>(table_)->propertyId(column),
+                            order == Qt::AscendingOrder);
+        if (!configuringColumns_) {
+            const int mode = column == 5   ? 1
+                             : column == 4 ? 2
+                             : column == 2 ? 3
+                             : column == 6 ? 4
+                                           : 0;
+            sortMode_ = static_cast<SortMode>(mode);
+            if (active && (column == 0 || column == 2 || column == 4 || column == 5 || column == 6))
+                sortActions_[mode]->setChecked(true);
+            saveColumns();
+        }
+    });
 }
 
 QIcon MainWindow::toolbarIcon(int kind) {

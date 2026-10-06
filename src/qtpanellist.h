@@ -3,10 +3,16 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include <QAbstractItemView>
 #include <QPointer>
+#include <functional>
+#include <utility>
 
 class QtPanelList {
   public:
-    void Attach(QAbstractItemView *view) { view_ = view; }
+    using SortColumnResolver = std::function<int(PROPID, Int32)>;
+    void Attach(QAbstractItemView *view, SortColumnResolver sortColumn = {}) {
+        view_ = view;
+        sortColumn_ = std::move(sortColumn);
+    }
     bool IsBound() const { return view_ && view_->model() && view_->selectionModel(); }
     int GetItemCount() const;
     int GetSelectedCount() const;
@@ -24,6 +30,7 @@ class QtPanelList {
     void SetSingleSelection(bool enabled);
     void SetFocusedItem(int row);
     void EnsureVisible(int row);
+    void SortItems(PROPID property, bool ascending, Int32 raw);
     void Invalidate() {
         if (view_)
             view_->viewport()->update();
@@ -31,4 +38,5 @@ class QtPanelList {
 
   private:
     QPointer<QAbstractItemView> view_;
+    SortColumnResolver sortColumn_;
 };

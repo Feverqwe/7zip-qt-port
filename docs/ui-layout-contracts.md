@@ -984,8 +984,14 @@ index. The Agent interface compares flat prefixes naturally: equal `common.txt`
 names under `dir2` and `dir10` place `dir2` first. The generic property fallback
 for providers without IFolderCompare retains lexical BSTR order. Raw archive
 properties pass the original raw flag to the provider comparator. Header and sort action
-remain in sync. The list, address, toolbar and status keep their existing order
-and stay unclipped at 980×620 and 640×400. `panel_sort` writes
+remain in sync.
+Sort commands use the source property toggle; a newly chosen Size, PackSize,
+CTime, ATime or MTime starts descending, all other properties ascending. Qt
+headers use the same source default. Sorting retains native selected indices
+and ensures the focused row is visible, including a row moved outside the old
+viewport. Reload retains the chosen property and direction.
+The list, address, toolbar and status keep their existing order and stay
+unclipped at 980×620 and 640×400. `panel_sort` writes
 `source-sort-flat-980.json` and `source-sort-flat-640.json`; these are current Qt
 structure reports, not a rendered Windows comparison. P0-06.2 covers raw-column
 sorting and the column header menu; time precision controls remain P0-06.3.
