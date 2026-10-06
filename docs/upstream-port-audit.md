@@ -1537,6 +1537,26 @@ remain unchanged; focused/full logs and hashes are frozen in
 build/review/source-refresh-absent-final. No current Windows/Linux execution or
 rendered parity is claimed by this lifecycle correction.
 
+### PanelItems full body/caller map, 2026-10-06
+
+The complete original module at upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, is compared with project b834b9e in the
+[omitted-scope map](omitted-scope-audit.md#panelitems-complete-body-map-2026-10-06).
+It accounts for35 active CPanel bodies, four column helpers, commented/disabled
+branches, declarations, Qt/source callers and portable/presentation dependencies.
+This is review evidence, not whole-module or109-module functional acceptance.
+The map identifies missing IsItem_Deleted/OnCustomDraw foreground publication
+and independent Qt column-menu mutations as required remaining work; current
+load/selection/icon/Parent/Rename regressions do not establish those consumers.
+Original output-reference name getter, physical column insertion/removal and
+Win32 menu/PCH/debug transports have explicit dispositions rather than being
+inferred complete from matching paths. Direct InitColumns mark/order and
+providerless count/snapshot helpers remain part of consumer reconciliation.
+No functional source, test, dependency or baseline changes result from this
+review. Baseline verification passes408 exact/196 adapted/3 local paths;
+docs diff checks pass. The unchanged passing full gate is not repeated. Current
+native Windows/Linux/rendered/cold-stable and P3-06 acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

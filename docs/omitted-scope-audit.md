@@ -100,6 +100,51 @@ then reconcile remaining `PanelItems` bodies/dependencies/resources. A green
 whole repository gate alone does not establish those source-body dispositions
 or current Windows/Linux/rendered/cold-stable acceptance.
 
+### PanelItems complete body map, 2026-10-06
+
+Compared the complete original `CPP/7zip/UI/FileManager/PanelItems.cpp` at
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 from https://github.com/ip7z/7zip.git
+with the adapted module at project b834b9e. The original has35 active CPanel
+bodies plus four column helpers. Commented-out RefreshListCtrl overload and
+GetOperatedListViewIndices are excluded; neither supplies missing active logic.
+The adapted file has36 CPanel bodies, including extracted load/icon phases and
+Qt helpers. These counts are a review index, not functional acceptance.
+
+| Original bodies | Current owner / disposition |
+| --- | --- |
+| GetColumnVisible, GetColumnWidth, GetColumnAlign, ItemProperty_Compare_NameFirst | Same module retains visibility/width/name-first policy. Alignment replaces LVCFMT with Qt alignment plus vertical centering. PropertyName and original CPropColumn/CPropColumns supply names/types/order; no second schema. |
+| InitColumns | Same module retains folder/raw-property enumeration, property failures skipped, saved type/order/width, name protection, visible/name-first sorting and sort default. Qt configureColumns publishes physical columns. The original mark reset is performed by extracted LoadListItems, not every direct InitColumns call; direct caller and unchanged-column/reorder boundaries still need complete consumer disposition. |
+| DeleteColumn, AddColumn | Win32 LV_COLUMN insertion/removal and column-order-array transport are replaced by MainWindow::configureColumns and QHeaderView. No separate adapted CPanel methods exist. Data equality, raw/duplicate-ID mapping, name-first ordering and physical order/width consumers require the source-to-Qt column closure; path presence alone does not prove it. |
+| RefreshListCtrl() / RefreshListCtrl(state), RefreshListCtrl_SaveFocused, SetFocusedSelectedItem | Retained source restoration and extracted LoadListItems/LoadItemIcon with Qt row publication. The phase/caller map above owns remaining terminal/async/error boundaries. SaveFocused invokes the attached reload callback; source OnReload consumes its HRESULT. Pending state transfers synchronous source navigation to Qt publication. |
+| GetSelectedNames, SaveSelectedState, Get_ItemIndices_Selected, Get_ItemIndices_Operated, Get_ItemIndices_All, Get_ItemIndices_OperSmart | Same module retains source names/mark vectors, operated focused-row fallback and all-item/provider count. SaveSelectedState first synchronizes Qt standard selection into marks; alternative marks stay independent. GetFolderItemCount's providerless row-count helper remains outside the newly corrected absent-folder Refresh guard and needs disposition with snapshot/callback consumers. |
+| EditItem(bool), OpenFocusedItemAsInternal, OpenSelectedItems | Same module retains folder-size calculation/invalidation, parent refusal for editing, operated-item20 limit, selected-parent insertion and first internal-folder break. Qt commands call these bodies; PanelItemOpen owns actual external/internal opening and process/update continuations. Their complete workflow/platform acceptance is separate. |
+| GetItemName(value), GetItemName(output-reference) | Value-returning BSTR/type/error/parent body remains. The output-reference overload is omitted; adapted Refresh/formatter/icon callers use the value body rather than a second property implementation. This omission does not justify removing the generic property fallback. |
+| GetItemName_for_Copy, GetItemPrefix, GetItemRelPath, GetItemRelPath2, Add_ItemRelPath2_To_String, GetItemFullPath | Same module retains out-name fallback, extraction name correction, property/fast-name append and Windows drive/device separator conditional. Existing path tests and Copy/Open consumers cover separate subsets; current native device/ADS acceptance remains mandatory. |
+| GetItem_BoolProp, IsItem_Folder, IsItem_AltStream, GetItem_UInt64Prop, GetItemSize | Same module retains variant/exception policy, parent values, directory cache and fast size. The cache is populated by the extracted load stage; no independent archive metadata policy replaces it. |
+| IsItem_Deleted | **Required missing consumer.** Original bool-property/parent body is absent. LoadListItems retains archive-level `_thereAreDeletedItems`, but PanelListNotify's original `_markDeletedItems` (default true) / OnCustomDraw red-foreground policy has no Qt counterpart. Qt currently supplies alternative-selection pink background and drop paint only. Restore the source property and draw-policy consumer with table/icon/both-pane/refresh/provider-boundary coverage; loaded archive metadata alone is not acceptance. |
+| SaveListViewInfo | Source saved visible/hidden columns, width/order, sort and equality logic remains, taking the owning Qt projection instead of GetColumn/LVCOLUMN. ViewSettings supplies the settings-path persistence adapter. MainWindow::saveColumns reads QHeaderView state; hidden/logical/visual indices need the complete column consumer review. |
+| OnRightClick, ShowColumnsContextMenu | Win32 notification/cursor/popup transport is replaced by the Qt header menu. **Remaining functional policy review:** MainWindow::showColumnsMenu currently owns toggling and sorted-column fallback independently. Reconcile those mutations with the source body before declaring column/menu ownership complete. Runtime source popup has no separate dialog RC layout. |
+| OnReload, OnTimer | Same module retains process/auto-refresh/folder/interface/change/result guards and OnReload error owner. The portable changed flag supplements native WasChanged; MainWindow polls only supported filesystem fallback state. Source timer coverage remains subject to current Windows/Linux and native provider acceptance. |
+
+Dependencies reviewed: original/adapted Panel declarations, source selection/sort/
+notification/folder-change/open callers; MainWindow columns/selection/renderers,
+QtFileManagerCommands, FileTable delegate and QtPanelList; IFolderFolder,
+IFolderGetItemName/SystemIconIndex/RawProps/CalcItemFullSize/WasChanged,
+IGetFolderArcProps/IFolderArcProps, PropID/PropVariant/PropVariantConv,
+ExtractingFilePath, FileName, SysIconUtils, PropertyName and ViewSettings.
+Original FM.mak selects PanelItems/PanelListNotify/PropertyName/ViewSettings;
+CMake registers their authoritative adapted sources and exact PropertyName.rc.
+Original C/Sort and CObjectVector sorting remain portable dependencies, not a
+language conversion. Win32 Menu/ListView/PCH and debug/commented USE_EMBED_ITEM,
+old virtual-list, NTFS-stream, icon-second-attempt and timing experiments are
+presentation/build or inactive branches, not missing active algorithms.
+
+This review adds no code, dependency copy or baseline change. Next available
+functional scope includes deleted-item draw policy and source column/menu
+mutations, alongside the operation-to-render consumers already listed above.
+Neither35 reviewed bodies nor a passing repository gate closes PanelItems,
+the109-module ledger, native platforms or final P3-06 acceptance.
+
 ### App complete body/caller review, 2026-10-06
 
 Follow-up dependency review: the complete original

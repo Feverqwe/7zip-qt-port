@@ -98,6 +98,13 @@ branches, generic cell errors и suppression. Raw operation/editor names ост�
 отдельными от display text; Rename completion читает editor value. Public callback
 и real ZIP Rename/Cancel/refusal/bytes покрыты с14 normal/compact name reports;
 native marker rendering и full acceptance остаются открытыми.
+Полная [карта PanelItems](omitted-scope-audit.md#panelitems-complete-body-map-2026-10-06)
+выявила ещё незавершённые исходные потребители: красный foreground удалённых
+архивных элементов (IsItem_Deleted / OnCustomDraw, default marking enabled)
+отсутствует, хотя archive-level flag загружается; мутации header column menu
+остаются самостоятельной Qt-политикой. Их перенос, table/icon/both-pane/reload
+проверки и rendered Windows reference обязательны для приёмки. Сверка тел
+не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
