@@ -134,10 +134,12 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
                                         const CRecordVector<UInt32> &indices, bool useDestPanel,
                                         bool useTemp) {
     const bool streams = app_.GetFocusedPanel().IsAltStreamsFolder();
+    const bool devices =
+        app_.GetFocusedPanel().IsFSDrivesFolder() && app_.GetFocusedPanel().IsDeviceDrivesPrefix();
     if (sourceIndex != app_.GetFocusedPanelIndex() || indices.IsEmpty() ||
-        (state_ != State::Viewing && state_ != State::Filesystem && !streams))
+        (state_ != State::Viewing && state_ != State::Filesystem && !streams && !devices))
         return;
-    if (streams) {
+    if (streams || devices) {
         QtAppOperationState::CallScope call(app_.QtOperations());
         CCopyToOptions options;
         options.folder = ToUString(destination);

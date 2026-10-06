@@ -72,6 +72,16 @@ command checks. Filesystem row identity uses the existing native-name role;
 archive-relative path roles are not filesystem identities.
 The native shortcut fixture waits for an active window and observed modal dialog
 before stopping its responder, covering asynchronous Windows shortcut delivery.
+Windows `fs_drives_device` and `fs_drives_device_ui` use SDK-created disposable
+blank32MiB VHDs attached read-only without drive letters. They resolve the physical
+path only from their own live virtual-disk handle; real user disks are never
+fixtures. The direct suite covers exact image bytes, directory naming, failed
+destination, source partial-file Cancel, skip and refused Move/mutations. Native
+EN/RU F5 tests cover device file identity, command availability, Copy/dialog Cancel
+and normal/compact widget reports. The privileged interactive runner supplies an
+existing administrator token; the fixture restores its own process privilege
+state and detaches its VHD. Failure to create/attach/read the fixture fails the
+test, with no required skip. The suites run serially; UI uses the Windows plugin.
 `temp_cleanup` creates a real native directory symlink and checks refused
 navigation, confirmed native deletion and unchanged external data/link. Its
 disposable QTemporaryFile is destroyed before deletion to release the Windows

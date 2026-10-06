@@ -120,6 +120,9 @@ target_include_directories(sevenzip_common PUBLIC src/CPP third_party/7zip/CPP P
 target_include_directories(sevenzip_common PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_common PUBLIC Qt6::Core)
 target_compile_definitions(sevenzip_common PUBLIC Z7_EXTERNAL_CODECS)
+if(WIN32)
+    target_compile_definitions(sevenzip_common PUBLIC Z7_DEVICE_FILE)
+endif()
 target_compile_definitions(sevenzip_hash_registry PRIVATE Z7_EXTERNAL_CODECS)
 target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
@@ -132,6 +135,8 @@ target_include_directories(sevenzip_common PRIVATE
     src/CPP/Common src/CPP/7zip/UI/Common)
 if(WIN32)
     target_sources(sevenzip_common PRIVATE third_party/7zip/C/DllSecur.c)
+    target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp
+        third_party/7zip/CPP/Windows/FileSystem.h)
     target_sources(sevenzip_common PRIVATE third_party/7zip/CPP/Common/Random.cpp)
     set_source_files_properties(third_party/7zip/CPP/Common/ListFileUtils.cpp
         src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp PROPERTIES
@@ -171,6 +176,14 @@ add_library(sevenzip_progress_sync STATIC
 target_compile_definitions(sevenzip_progress_sync PRIVATE SEVENZIP_PROGRESS_SYNC_ONLY)
 target_include_directories(sevenzip_progress_sync PUBLIC src)
 target_link_libraries(sevenzip_progress_sync PUBLIC Qt6::Core sevenzip_common)
+
+add_library(sevenzip_system_icons STATIC
+    src/CPP/7zip/UI/FileManager/SysIconUtils.cpp src/CPP/7zip/UI/FileManager/SysIconUtils.h)
+set_target_properties(sevenzip_system_icons PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+target_link_libraries(sevenzip_system_icons PUBLIC Qt6::Widgets sevenzip_common)
+if(WIN32)
+    target_link_libraries(sevenzip_system_icons PUBLIC shell32)
+endif()
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelCrc.cpp
@@ -249,7 +262,6 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/FoldersPage.cpp src/CPP/7zip/UI/FileManager/FoldersPage.h
     src/CPP/7zip/UI/FileManager/PanelFolderChange.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
-    src/CPP/7zip/UI/FileManager/SysIconUtils.cpp src/CPP/7zip/UI/FileManager/SysIconUtils.h
     src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
     src/qtlangcontrols.cpp src/qtlangcontrols.h
     src/qtstatuslabel.cpp src/qtstatuslabel.h
@@ -292,7 +304,7 @@ qt_add_resources(sevenzip_panel upstream_shell_icons
     FILES third_party/7zip/CPP/7zip/UI/Explorer/MenuLogo.bmp)
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common)
+target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common sevenzip_system_icons)
 target_sources(sevenzip_panel PRIVATE src/CPP/7zip/UI/Explorer/MyMessages.cpp)
 if(WIN32)
     target_sources(sevenzip_panel PRIVATE
@@ -381,14 +393,17 @@ qt_add_resources(sevenzip_panel upstream_about PREFIX "/upstream/7zip/About"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
     FILES third_party/7zip/CPP/7zip/UI/FileManager/7zipLogo.ico)
 if(WIN32)
-    target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/FileSystem.cpp
-        third_party/7zip/CPP/Windows/Net.cpp third_party/7zip/CPP/Windows/Net.h)
+    target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/Net.cpp
+        third_party/7zip/CPP/Windows/Net.h)
     target_link_libraries(sevenzip_filesystem PUBLIC mpr)
 endif()
 target_include_directories(sevenzip_filesystem PUBLIC src)
 target_include_directories(sevenzip_filesystem PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows)
 target_link_libraries(sevenzip_filesystem PUBLIC Qt6::Core sevenzip_common sevenzip_zip sevenzip_progress_sync)
+if(WIN32)
+    target_link_libraries(sevenzip_filesystem PUBLIC sevenzip_system_icons)
+endif()
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/docs/upstream-baseline.json" sfx_baseline_json)
 string(JSON sfx_upstream_revision GET "${sfx_baseline_json}" revision)
 target_compile_definitions(sevenzip_filesystem PRIVATE
@@ -1043,6 +1058,11 @@ if(BUILD_TESTING)
     target_link_libraries(volume_mount_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME volume_mount COMMAND volume_mount_tests -silent)
     if(WIN32)
+        qt_add_executable(fs_drives_device_tests tests/fs_drives_device_tests.cpp
+            tests/fixtures/read_only_virtual_disk.cpp tests/fixtures/read_only_virtual_disk.h)
+        target_link_libraries(fs_drives_device_tests PRIVATE sevenzip_filesystem Qt6::Test virtdisk)
+        add_test(NAME fs_drives_device COMMAND fs_drives_device_tests -silent)
+        set_tests_properties(fs_drives_device PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE)
         qt_add_executable(network_folder_tests tests/native_network_folder_tests.cpp)
         target_link_libraries(network_folder_tests PRIVATE netapi32 advapi32)
     else()
@@ -2031,6 +2051,16 @@ if(BUILD_TESTING)
     get_target_property(options_window_sources settings_tests SOURCES)
     list(REMOVE_ITEM options_window_sources tests/settings_tests.cpp)
     get_target_property(options_window_libraries settings_tests LINK_LIBRARIES)
+    if(WIN32)
+        qt_add_executable(fs_drives_device_ui_tests tests/fs_drives_device_ui_tests.cpp
+            tests/fixtures/read_only_virtual_disk.cpp tests/fixtures/read_only_virtual_disk.h
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(fs_drives_device_ui_tests PRIVATE src tests)
+        target_link_libraries(fs_drives_device_ui_tests PRIVATE ${options_window_libraries} virtdisk)
+        add_test(NAME fs_drives_device_ui COMMAND fs_drives_device_ui_tests -silent)
+        set_tests_properties(fs_drives_device_ui PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/fs-drives-device-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     qt_add_executable(help_ui_tests tests/help_ui_tests.cpp ${options_window_sources})
     target_include_directories(help_ui_tests PRIVATE src tests)
     target_link_libraries(help_ui_tests PRIVATE ${options_window_libraries})
@@ -2577,7 +2607,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress
             progress_dialog language_dialog fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

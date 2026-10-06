@@ -46,18 +46,21 @@ void MainWindow::renderRootFolder() {
         if (folder->GetProperty(index, kpidName, &name) != S_OK || name.vt != VT_BSTR)
             continue;
         const QString nativeName = QString::fromWCharArray(name.bstrVal);
+        NWindows::NCOM::CPropVariant directory;
+        const bool isDirectory = folder->GetProperty(index, kpidIsDir, &directory) == S_OK &&
+                                 directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
         const int row = table_->rowCount();
         table_->insertRow(row);
         for (int column = 0; column < table_->columnCount(); ++column) {
             auto *item = new ArchiveTableItem;
             item->setData(Qt::UserRole + 6, index);
             item->setData(Qt::UserRole + 3, nativeName);
-            item->setData(Qt::UserRole + 1, !streams);
-            if (streams)
+            item->setData(Qt::UserRole + 1, isDirectory);
+            if (!isDirectory)
                 item->setData(Qt::UserRole, path_->text() + nativeName);
             if (column == 0) {
                 item->setText(nativeName.normalized(QString::NormalizationForm_C));
-                item->setIcon(QApplication::style()->standardIcon(streams  ? QStyle::SP_FileIcon
+                item->setIcon(QApplication::style()->standardIcon(!isDirectory ? QStyle::SP_FileIcon
                                                                   : drives ? QStyle::SP_DriveHDIcon
                                                                   : network
                                                                       ? QStyle::SP_DirIcon

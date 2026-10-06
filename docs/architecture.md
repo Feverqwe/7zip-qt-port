@@ -927,6 +927,13 @@ has its own Qt status strip beneath the list; the main-window status bar
 carries operation/scanner messages. Mirrored `SysIconUtils.cpp` keeps the source
 attribute/extension/split-number cache and asks Qt's platform icon provider
 for images. Widgets receive `QIcon` values rather than owning the cache.
+The entire module builds once in `sevenzip_system_icons`, shared by panel
+presentation and the Windows FSDrives icon interface. This avoids a reverse
+filesystem-to-panel dependency. Unix filesystem consumers retain their Core-only
+link boundary; Windows filesystem providers also link the shared icon target.
+The unchanged Windows FileSystem module belongs to sevenzip_common because
+native FileIO/FileFind device-size queries call MyGetDiskFreeSpace. This keeps
+common-only DLL consumers linked without depending on the filesystem UI owner.
 
 `CApp` now owns `CAppState` and two independent `CPanel` instances. The window
 binds the visible panel's list/address widgets through QPointer presentation
@@ -1063,9 +1070,10 @@ CLangPage owns the source language list/info/apply state. LangUtils is the nativ
 CLang lookup/reload owner, with source registry helpers on the explicit FM INI
 adapter. Immutable English fallback comes from source STRINGTABLE/en.ttt; bundled
 assets use pinned official release provenance and native-file staging. Language
-loading, LangUtils and ResourceString belong to Core-only sevenzip_filesystem
-alongside CLang and file I/O, so filesystem/transaction workers can resolve
-local message context without linking Widgets. Qt widget bindings remain in
+loading, LangUtils and ResourceString belong to sevenzip_filesystem alongside
+CLang and file I/O. These bodies use Core; Unix filesystem/transaction consumers
+resolve local message context without linking Widgets. Windows also links the
+shared icon module for the original FSDrives interface. Qt widget bindings remain in
 sevenzip_panel. FileTransferOperation publishes a typed completion kind before
 its result signal; MainWindow suppresses fully rolled-back cancellation and
 retains partial-move failures independently of translated message text. Qt text

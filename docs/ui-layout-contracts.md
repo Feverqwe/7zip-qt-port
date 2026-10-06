@@ -624,6 +624,21 @@ toolbar, address, table and panel status are fully visible; hidden optional
 status segments are not counted as clipping. Windows drive/resource layout
 still needs runtime verification.
 
+### Windows device namespace and F5 Copy (P3-05.7)
+
+Reference: pinned RootFolder/FSDrives provider, PanelKey/App::OnCopy and the
+existing resource.rc main shell/CopyDialog.rc contracts. Device rows are files
+by source kpidIsDir; Copy is available, Move and filesystem mutations disabled.
+The same menu → toolbar → address → list → per-panel status order remains.
+`fs_drives_device_ui` writes sixteen EN/RU success/Cancel current-build reports:
+namespace980×620/640×400 and Copy640×400/480×320. Native Windows Qt6.12.0 reports
+reviewed2026-10-06: compact address537×22/list632×227, panel status632×21 are
+fully visible. Compact Copy places label above path340×22/Browse81×26, selection
+458×212 below it and separate OK/Cancel81×26 at y283; all remain inside480×320.
+The source device properties use TotalSize, so the existing status Size field
+is not an independent device-length report. Hidden menus are not clipping.
+These reports verify native Qt grouping/geometry, not rendered 7zFM pixel parity.
+
 ### Network namespace (P1-11.3)
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

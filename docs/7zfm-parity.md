@@ -1931,6 +1931,29 @@ F7, F2 и Delete/Shift+Delete доступны в открытом верхне�
 `PasswordDialog.rc/.cpp`; геометрия и текст не менялись. Проверены macOS arm64
 и Qt runtime; Windows/Linux runtime и rendered Windows reference не проверены.
 
+## P3-05.7 — Windows device-image Copy (2026-10-06)
+
+Исходный `\\.\` namespace использует `CFSDrives`: логические тома и первые
+16 физических устройств, свойства размера и имена образов определяет source
+provider. F5 передаёт выбранные source indices в исходный `CPanel::CopyTo`;
+Qt отображает устройства файлами по kpidIsDir. Сохранены AskWrite, progress,
+4MiB buffer и исходная политика частичного файла при Cancel. Move, создание,
+удаление, переименование и запись в устройство не поддерживаются upstream.
+Hash логических дисков и устройств отключён до подключения namespace к его
+Qt dispatcher. Copy логических дисков также отключён: исходный CopyTo
+отказывает вне physical-device mode, а Qt consumer этого режима ещё отсутствует.
+Unix mount namespace сохраняет прежний platform adapter и возможности.
+
+Native read-only VHD регрессии старого продукта воспроизвели шесть direct
+и четыре EN/RU UI отказа. Исправленный компонент проходит четыре native suite
+на Windows, без skip; проверены16 EN/RU normal/compact JSON. Дополнительная
+регрессия доступности logical drives проходит RED→GREEN на Windows. Финальный
+macOS gate247PASS; Linux affected4PASS после full temp_cleanup timeout, Windows
+full252/254 с process_pause/large-list failures сохранён. Компонент Copy принят;
+полные platform gates и rendered 7zFM reference остаются обязательными в P3.
+Ресурсные Main Shell/Copy contracts подтверждают
+структуру, но не pixel parity устройства на Windows.
+
 ## P1-11.1 — системные тома на macOS/Linux (2026-09-30)
 
 В виртуальном корне добавлен пункт «Тома» после «Компьютер». Он открывает

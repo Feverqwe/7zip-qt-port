@@ -180,6 +180,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.oneFile = c.one && !panel.IsItem_Folder(operated[0]);
     c.filesystem = panel.GetFolder() && panel.IsFSFolder();
     c.filesystemStreams = panel.GetFolder() && panel.IsAltStreamsFolder();
+    c.copy = !panel.IsFSDrivesFolder() || panel.IsDeviceDrivesPrefix();
     c.root = panel.GetFolder() && panel.IsRootFolder();
     {
         const auto catalog = w.backend_->codecCatalog();
@@ -194,7 +195,9 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
                 FindMethod_Index(&providers, AString("LZMA"), false, method, streams, filter) >= 0;
         }
     }
-    if (panel.DoesItSupportOperations()) {
+    // The drives provider's copy interface does not yet give the namespace
+    // dispatcher a hash consumer; keep unfinished commands disabled.
+    if (panel.DoesItSupportOperations() && !panel.IsFSDrivesFolder()) {
         const auto catalog = w.backend_->codecCatalog();
         CExternalCodecs providers;
         if (w.backend_->loadHashProviders(providers) == S_OK) {
@@ -307,7 +310,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_VER_DIFF:
         return c.filesystem && c.oneFile;
     case IDM_COPY_TO:
-        return c.selected && !c.root;
+        return c.selected && !c.root && c.copy;
     case IDM_PROPERTIES:
         return c.archive || (c.selected && !c.root);
     case IDM_MOVE_TO:

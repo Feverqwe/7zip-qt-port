@@ -36,7 +36,7 @@ production access is added for this matrix.
 | P1-08 external View/Edit/Diff/VerCtrl | PanelItemOpen/EditItem/VerCtrl; OS process and GUI delivery | `archive_external_edit`, `archive_external_lifetime`, `archive_external_security`, `external_editors_ui`, `verctrl` |
 | P1-09 nested parent write chain | PanelItemOpen/AgentOut; retained resource/parent publication | `nested_edit_chain`, `nested_update`, `owned_temp_publication` |
 | P1-10 properties/raw/folder size | PropertyName/PropIDUtils/Agent/Panel; typed native property projection, retained native levels/catalog diagnostics | `source_properties`, `native_archive_properties`, `properties_runtime`, `property_formatting`, `folder_size_view` |
-| P1-11 root/mount/network/Browse | RootFolder/DrivesFolder/NetFolder; platform mount service | `root_navigation`, `volume_mount`, `network_folder`, `browse_dialog` |
+| P1-11 root/mount/network/Browse/device image | RootFolder/FSDrives/NetFolder; platform mount service and original device CopyTo | `root_navigation`, `volume_mount`, `network_folder`, `browse_dialog`, `fs_drives_device`, `fs_drives_device_ui` (Windows) |
 | P1-12 Options Apply/Cancel | OptionsDialog/*Page; Qt page container | `options_dialog`, `options_integration`, `options_window`, `fm_settings` |
 | P1-13 Edit/Menu policies | EditPage/MenuPage/RegistryContextMenu; OS registration service | `external_editors_ui`, `menu_page`, `context_menu_settings`, `shell_registry` |
 | P1-14 language/fallback/focus | CLang/LangUtils/*Dialog; Qt LanguageChange/bindings | `language`, `language_ui`, `language_dialog`, `language_focus`, `language_source_update` |
@@ -71,6 +71,7 @@ cleanup. It adds transition coverage to the separate operation regressions.
 | Case/Unicode equivalence and duplicate names do not prove native indices | `codec_update::canonicallyEquivalentMetadataDoesNotProveNativeIndexes/duplicateNamesDoNotProveNativeIndexes`; `extraction_options::flatNameCollision`; `archive_mutation::renameImplicitZipFolderAndRejectCollision` |
 | Interrupted update/cancel preserves original and permits reuse | `archive_mutation::cancelledReplacementPreservesArchive/addFailureAndCancellation`; `source_update_backend::cancellationInNativeTransactionKeepsOriginalArchive`; `owned_temp_publication`; `archive_workflow` |
 | Partial Move/overwrite failure cannot silently discard sources | `file_transfer::crossVolumeDeleteFailureReportsPartialMove/directoryMergeCancelRestoresOriginalTree`; `ui_operations::archivePanelsCopyAndMoveThroughStaging`; `archive_transfer_backup` |
+| Device image Copy/Cancel/failure preserves its read-only source | Windows `fs_drives_device::sourceCopyUsesReadOnlyPrivateDevice(cancel/failure/skip/move)`; `fs_drives_device_ui::sourceDeviceNamespaceAndF5` |
 | Process startup/error/fragmented output/reset | `archive_backend::missingExecutable/createFailureAndRetry`; `archive_mutation::fragmentedOutputAndError`; `codec_probe` |
 | External child/temp lifetime and pending modal close | `archive_external_lifetime`, `archive_external_security`, `temp_detached_launch`, `owned_temp` |
 | Window destruction joins workers and rejects obsolete callbacks | `worker_window_progress`, `large_list_window`, `app_lifecycle_window`, `binding_lifecycle`, `archive_preparation` |
@@ -82,8 +83,9 @@ have different requirements; native desktop tests require session1. Linux/macOS
 do not support every Windows ADS/NT-security/COM service. Actual compiled slots
 and data rows, with explicit platform applicability, must be checked before
 acceptance; a passing executable that skips its required fixture is insufficient.
-Current Windows full evidence includes two POSIX-only skipped fixtures and
-`network_folder::mountedShareCanOpenThenDisappear`, whose Windows native network
-service is still unverified. That explicit native gap belongs to P3-03/P3-05;
-the Unix mounted-share fixture does not establish Windows network acceptance.
+Windows native network coverage now uses its own current-user isolated share
+fixture in `network_folder`; acceptance and retained history belong to P3-03.5.
+The Unix mounted-share fixture remains separate. POSIX-only skip rows do not
+replace Windows required coverage; device fixtures fail when their prerequisites
+cannot be exercised.
 Finder drag-out cannot be accepted using fake receivers or these Qt tests.

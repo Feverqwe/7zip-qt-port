@@ -1,5 +1,88 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.7 — Windows device-image provider and F5 consumer (2026-10-06)
+
+Source repository https://github.com/ip7z/7zip.git, revision
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17. Original
+`CPP/7zip/UI/FileManager/FSDrives.cpp/.h` bodies, callers in RootFolder/App/PanelCopy,
+types, `FM.mak` device definition and Windows FileIO/FileFind dependencies reviewed.
+The adapted module now copies `CDriveInfo::GetDeviceFileIoName`, CPhysTempBuffer,
+CopyFileSpec, the physical-device LoadItems branch, GetFileSize, CopyTo, system
+icon method and refused mutators. The original first-sixteen enumeration, naming,
+4MiB copy loop, callback sequence and partial-file cancellation policy remain.
+Includes/types are adjusted to existing portable owners; formatting is separate
+from body adaptation. No new archive or image-format algorithm is implemented.
+
+Windows alone exposes the original IFolderOperations/IFolderGetSystemIconIndex
+interfaces. Existing Unix mounted-volume provider and its interface stay intact.
+`Z7_DEVICE_FILE` is a public Windows sevenzip_common definition, so original
+FileIO/FileFind and consumers share the same CFileBase layout and device-size
+logic. Allocation uses the original C/Alloc.h and C implementation.
+The unchanged native Windows FileSystem.cpp now belongs to sevenzip_common:
+Z7_DEVICE_FILE makes original FileIO/FileFind call MyGetDiskFreeSpace, including
+direct common-only DLL consumers. The module is compiled once, retaining its
+vendor path/body; filesystem providers inherit that common dependency.
+Native shell icons reuse the existing SysIconUtils adapter. Its entire authoritative module
+moves from the panel's source list into a shared sevenzip_system_icons target:
+filesystem providers and panel consumers can use it without a panel/filesystem
+dependency cycle or a duplicate shell helper. It retains its original path,
+symbols and bodies; the shared target owns Qt Widgets and native shell32 links.
+Qt namespace rendering reads
+source kpidIsDir; F5's device destination uses existing CPanel::CopyTo and source
+progress/callback transport. Source CopyTo always calls CopyFileSpec with
+writeToDisk=false; Move, CopyFrom and mutators remain E_NOTIMPL. Inactive commented
+physical-folder binding is not enabled. Broader native open/hash consumer review
+and full omitted-scope acceptance remain pending. P3-05.8 owns the original
+drive/device Hash consumer, currently disabled by the centralized transport policy.
+The new operations interface also applies to logical Computer drives; centralized
+Copy availability excludes that non-device mode, which original CopyTo refuses
+and the Qt dispatcher does not consume. A public logical-drive regression guards
+against exposing Copy/Hash commands without a working consumer.
+P3-05.9 owns the shared LangSetDlgItems standard-button mapping: the RU Copy
+reports expose an English Cancel footer, not corrected by this provider port.
+
+The new focused direct/UI regressions own a disposable blank32MiB SDK VHD,
+attached read-only with no drive letter. Upstream has no VHD fixture implementation;
+this test-only SDK integration reuses original CAccessToken and restores only
+its process privilege state. Six direct scenarios cover file/directory output,
+Cancel, failed destination, skip and Move refusal. Four EN/RU native F5 scenarios
+cover Copy/dialog Cancel and normal/compact geometry. Native old-product RED
+on snapshot2f03bc0e: direct6 failures at LoadItems E_NOTIMPL and UI4 missing device
+row, all0skip;17 guest/local SHA artifacts retained. Two earlier SDK build errors
+and the amended test-input SHA manifests are preserved separately. The RED
+snapshot uses unchanged production code and amended SDK test headers only.
+Corrected snapshotf9d071cd, ten final code inputs plus a temporary wrapper frozen
+at sourceSHA9fb141e759057c77c569ab4f824bf9db878dbf01d2b2d28f84cf22c14fd61f8b,
+passes four native focused suites9.01s: device8Qt/UI6Qt, all0skip. Twenty guest/local
+SHA artifacts include16 EN/RU normal/compact reports; grouping, order, control
+sizes, disabled states and clipping reviewed against the text contracts. First
+green candidate5fe92a62 fails compilation at missing QIcon include dependency;
+that failure prompted the shared icon target above and remains recorded.
+Mac affected4/4PASS0.84s; final unsandboxed format/all-target/full247PASS98.90s
+after shared-icon/capability changes. Fresh Linuxa9b4d83b full243PASS192.26s,
+648guest/localSHA, uses the same ten frozen code inputs before the Windows-only
+FileSystem target correction. Initial native full32d2ab70 sourceSHA
+d3e1bde6cb6ad207586b73a2ee342bba308da06fe561f19a959696a5df0750c7 fails127 while
+linking native_module_path_fixture: original FileIO/FileFind reference
+MyGetDiskFreeSpace without a common FileSystem owner. Its exact single-file
+CMake correction is recorded as original/amended SHA, with original log/token/
+exit preserved. Derived native_library/device/UI focused3PASS8.20s; full Windows
+252/254PASS1105.61s fails unchanged process_pause timeout and large-list heartbeat
+286/266ms at4096 rows;685 guest/local SHA retained. Subsequent logical-drive
+availability regression fails on that candidate, then passes after the final
+centralized capability guard: UI7Qt/0skip and unchanged process_pause4Qt/0skip,
+focused2PASS4.68s with13 immutable SHA artifacts. A new full Windows gate runs
+on that final code; its result belongs to the remaining P3-03 platform acceptance.
+
+Final eleven code inputs match Linuxaf428c09 archive and actual amended Windows
+sources. Mac final unsandboxed full247PASS106.55s. Linuxaf428c09 initially stops
+at ENOSPC; after source/terminal/no-active/648SHA guards, only the previous own
+completed build/dev is removed. Same-source full retry242/243PASS127.56s has an
+unchanged temp_cleanup timeout;645SHA retained, then temp_cleanup and three
+command/root consumers pass4/4 in0.56s. The device-image component is accepted
+within this source/Copy scope. P3-03 full gates, P3-05.8/.9, parent omitted-scope
+acceptance and rendered Windows device parity remain open.
+
 ## P3-03.1 — Finder drag-out lifetime correction (2026-10-05)
 
 Source repository https://github.com/ip7z/7zip.git, revision

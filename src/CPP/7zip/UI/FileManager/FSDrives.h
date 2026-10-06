@@ -18,13 +18,29 @@ struct CDriveInfo {
     bool KnownSize;
     bool KnownSizes;
     bool IsPhysicalDrive;
+#ifdef _WIN32
+    FString GetDeviceFileIoName() const;
+#endif
     CDriveInfo() : KnownSize(false), KnownSizes(false), IsPhysicalDrive(false) {}
 };
 
-class CFSDrives final : public IFolderFolder, public CMyUnknownImp {
+class CFSDrives final : public IFolderFolder,
+#ifdef _WIN32
+                        public IFolderOperations,
+                        public IFolderGetSystemIconIndex,
+#endif
+                        public CMyUnknownImp {
+#ifdef _WIN32
+    Z7_COM_UNKNOWN_IMP_3(IFolderFolder, IFolderOperations, IFolderGetSystemIconIndex)
+#else
     Z7_COM_UNKNOWN_IMP_1(IFolderFolder)
+#endif
   public:
     Z7_IFACE_COM7_IMP(IFolderFolder)
+#ifdef _WIN32
+    Z7_IFACE_COM7_IMP(IFolderOperations)
+    Z7_IFACE_COM7_IMP(IFolderGetSystemIconIndex)
+#endif
     explicit CFSDrives(QtVolumeMountProvider mountProvider = QtSystemVolumeMounts)
         : _mountProvider(std::move(mountProvider)) {}
     void Init(bool volMode = false, bool superMode = false) {
@@ -39,4 +55,7 @@ class CFSDrives final : public IFolderFolder, public CMyUnknownImp {
     QtVolumeMountProvider _mountProvider;
     HRESULT BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder);
     void AddExt(FString &s, unsigned index) const;
+#ifdef _WIN32
+    HRESULT GetFileSize(unsigned index, UInt64 &fileSize) const;
+#endif
 };

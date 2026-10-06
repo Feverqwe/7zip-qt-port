@@ -115,6 +115,27 @@ failure policy, Cancel and normal/compact EN/RU reports. Platform/full evidence
 is maintained in [the port audit](upstream-port-audit.md#p3-056--filesystem-description-comments-2026-10-06);
 this does not close the remaining body/resource/dependency reconciliation.
 
+Review on 2026-10-06 confirms the original FSDrives device-image branch was
+active and mandatory: LoadItems physical enumeration, GetFileSize, CopyTo and
+the native FileIO/FileFind Z7_DEVICE_FILE dependency. P3-05.7 now restores those
+provider bodies and actual F5 destination consumer; direct6/UI4 old-product RED
+becomes native focused GREEN, with full gates pending. See the port audit.
+The provider's new operations interface must not enable unsupported consumers:
+Qt calculateHash still accepts only filesystem/archive states, so logical-drive
+and device Hash are disabled pending the original PanelCrc/CApp consumer
+integration in P3-05.8. Logical-drive Copy stays disabled: original CopyTo
+refuses non-device mode and the Qt namespace dispatcher has no such consumer.
+
+Its new current-build EN/RU Copy reports also expose an existing presentation
+gap: the Russian label is translated but the standard Cancel footer remains
+English. Original LangUtils.cpp::LangSetDlgItems always maps standard control
+IDs through kLangPairs (IDOK401/IDCANCEL402 etc.) even when no dialog-specific
+IDs are supplied. Current CopyDialog constructs Qt standard buttons without
+that source language binding. P3-05.9 owns the shared standard-button source
+mapping and affected dialog consumers/geometry; Qt's own translation fallback
+does not establish parity with the selected 7zFM language. This discovery is
+not claimed corrected by the device Copy component.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
