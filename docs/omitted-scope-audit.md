@@ -63,6 +63,81 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+### App complete body/caller review, 2026-10-06
+
+Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`
+with the602-line adapted module at project
+`c590f0f1f372f4a236662fac8f490a630d6ef964`. Source is
+https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, with sibling HEAD verified.
+App.cpp remains an active FM.mak/CMake input. All37 top-level active function
+bodies, both SetButtonText overloads, CButtonInfo::GetText, toolbar arrays and
+associated App.h inline callers/state interfaces were inspected. This review
+does not establish closure of the other108 modules or current runtime parity.
+
+| Original bodies/data | Current authoritative implementation and boundary |
+| --- | --- |
+| CPanelCallbackImp OnTab, SetFocusToPath, OnCopy, OnSetSameFolder, OnSetSubFolder, PanelWasFocused, DragBegin, DragEnd, RefreshTitle | Original focused/opposite-panel forwarding retained. Qt uses the owning `_app` instead of process-global g_App; SetFocusToPath invokes the panel's Qt focus/dropdown service rather than a Win32 header handle. Source drag, copy and folder-change owners remain separate. |
+| CApp::ReloadLangItems, SetListSettings | Selected-count language lookup and settings-to-each-panel flow retained. Qt view/hover/selection adapters replace LVS style bit fields; original alternative selection, dots, icons and System-menu settings remain source state. Current language/address consumers are covered by P3-05.9–.14; this review is not another runtime gate. |
+| CApp::CreateOnePanel, Create, SwitchOnOffOnePanel | Saved path, callback binding, panel ID, state/settings/list mode/width/flat-mode ordering, main-panel creation order and source Create/binding retained. Qt presentation replaces child/menu/toolbar/window handles. The adaptation restores NumPanels on failed second-panel creation; original increments before returning an HRESULT failure. Lifecycle audits/tests own this deliberate failure-state correction. |
+| CApp::Save, ReleaseApp | Source state save, outer-parent path for open archive, list modes/flat flags, disabling processing for all panels before releasing any and COM/library teardown ordering retained. Qt Save reads prior list settings and skips uncreated panels to preserve their persistent values; Release first closes the operation owner and detaches command services. These are explicit lifetime/settings adaptations, not byte-identical bodies. |
+| CreateToolbar, CButtonInfo::GetText, g_StandardButtons/g_ArchiveButtons, SetButtonText overloads, AddButton, ReloadToolbars | Native toolbar/image-list/bitmap/ANSI versus Unicode control transport omitted. Current Qt presentation constructs the same seven source command/label groups and supplies platform icons/action text, tooltip storage and large/text/visibility settings. Win32 destroy/recreate is replaced by updating owned QActions/widgets; exact bitmap/rendered parity remains P3-06. The original arrays/lookup are data/presentation references, not archive-operation algorithms. |
+| SaveToolbarChanges and App.h ReadToolbar/SaveToolbar/SwitchStandardToolbar/SwitchArchiveToolbar/SwitchButtonsLables/SwitchLargeButtons | Original mask bits/defaults, toggle and Save→Reload→Move order retained in App.cpp with explicit settings path and Qt small-screen input. MoveSubWindows delegates Qt splitter/layout transport; original native geometry owner belongs to FM.cpp. CE command bars are outside supported Qt6 desktop targets. |
+| Reduce_Path_To_RealFileSystemPath | Active original directory-existence/root-prefix reduction is absent. Current MainWindow::copyDefaultDestination is an independent state-derived fallback through IQtAppPresentation. Required P3-05.15; no usable-source-absence justification exists for replacing this algorithm. |
+| AddSizeValue, AddValuePair1, AddValuePair2, AddPropValueToSum, CPanel::GetItemsInfoString | Source totals/sentinel propagation, language text, folder/file grouping, path/selected-name summary limit and ellipsis retained. QString return/size formatting are Qt string boundaries. Directory-name suffix currently adds `/` explicitly instead of original Add_PathSepar; native separator disposition must be reconciled with the Copy consumer. |
+| CApp::OnCopy | Initial capabilities, timer guards, focused versus OperSmart indices, dialog/history and some name/self-copy checks are retained. Destination classification and completion are a partial port, detailed below; the whole body cannot be claimed complete from those common branches. |
+| CApp::OnSetSameFolder, OnSetSubFolder | Original two-panel/provider/parent/close/bind branches retained, with Qt preparation and row publication outside the source flow. Accepted bounded P3-05.4 consumers own actual verification. |
+| CApp::OnNotify and tooltip buffers | Win32 TTN_GETDISPINFO/ANSI/wide tooltip transport replaced by QAction-owned localized tooltip strings. The commented GetFocusedPanelIndex experiment is omitted; active original App.h inline LastFocusedPanel getter remains. Commented CheckFolderPath/IsFsPath are not missing active implementations. |
+| CApp::RefreshTitle, RefreshTitlePanel | Original prefix/default title/PrevTitle/only-focused-panel suppression retained; QWidget title service and closed-owner guard replace MySetWindowText. |
+| AddUniqueStringToHead, CFolderHistory::Normalize/AddString | Original case-insensitive removal/insertion and100-entry limit retained with GUI-thread ownership instead of the native critical-section lock. Settings/language/virtual-location consumers are separate from the collection algorithm. |
+
+Direct interfaces/dependencies reviewed include App.h/AppState/Panel folder
+links, selection and timer/notify guards; source folder capability/prefix and
+CCopyToOptions; CopyDialog and its resource; FileName/FileDir/Find/PropVariantConv,
+FormatUtils, LangUtils, RegistryUtils/ViewSettings and source toolbar/summary IDs.
+CopyTo/CopyFrom's ExtractCallback/Agent/FSFolderCopy owners retain their own
+functional audits. Active callers are original App.h menu methods, MyLoadMenu,
+PanelKey/Panel callbacks, FM create/save/tooltip/layout handling and drag owners.
+Current consumers include QtAppPresentation, centralized command services,
+mainwindow_twopanel/fileoperations/archive_transfer, FileTransferOperation and
+ArchiveBackend publication/rollback. Their relevant bodies were traced rather
+than treating ExecuteCopy as an opaque transport.
+
+The mandatory remaining component is P3-05.15. Original OnCopy starts with
+destPanel.GetFsPath and applies Reduce_Path_To_RealFileSystemPath only for one
+panel; current DefaultCopyDestination instead falls back to directory_/
+returnDirectory_ when the peer prefix is empty. Original Windows single-leading
+backslash refusal and outside-peer IsAltPathPrefix refusal are missing from the
+current App body. Original possibleToUseDestPanel/destIsFsPath distinguish FS/
+ADS destinations from an archive and refuse root/drives; the Qt body sets
+useDestPanel for any matching operational provider. Its useSrcPanel check uses
+IsFSFolder instead of original Is_IO_FS_Folder, losing the source distinction
+for ADS/devices. Original normalized multi-item directory creation, path+HRESULT
+diagnostics and destination classification precede history and execution; current
+parent creation/direct-path routing is split among App and independent Qt state
+branches. Generic filesystem safety checks do not prove these source predicates.
+
+Original operation options include alternate streams and retain default zone
+policy. The custom CopyArchiveToArchive staging helper explicitly disables
+includeAltStreams and NeedRegistryZone; that difference needs an original-option/
+native-consumer disposition, not a claim of an unchanged staged branch. Original
+useFullItemPaths selects GetItemRelPath2 versus GetItemName_for_Copy; source/
+destination selections, notify guards, CopyTo/CopyFrom HRESULT/cancel handling,
+title/row refresh, KillSelection and focus restoration have Qt continuations
+which must preserve the original request while publishing asynchronously.
+Accepted archive Move remains a separate plan-required composition: original
+Agent CopyTo(moveMode) is E_NOTIMPL, so source Copy/Delete plus transactional
+rollback has no usable original Move body to substitute. This review does not
+remove that accepted extension or its checked failure/cancellation behavior.
+
+Required implementation must restore usable source destination/classification/
+option/control flow in App.cpp, retain narrow asynchronous/platform services and
+the accepted transaction owners, and cover default/refusal/FS/archive/ADS/device/
+direct/relative targets, focused versus operated items and both panels with
+success/failure/Cancel and unchanged control bytes. Existing Copy/Move and
+Shift/direct-path evidence stays valid for its bounded scenarios; it does not
+close this whole-body reconciliation. No code is changed by this review.
+
 ### PanelFolderChange complete body/caller review, 2026-10-06
 
 Reviewed the complete1122-line original

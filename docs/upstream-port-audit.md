@@ -1,5 +1,40 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — source Copy/Move destination and continuation reconciliation (required scope, 2026-10-06)
+
+Complete App.cpp/App.h body/data/caller review at project
+c590f0f1f372f4a236662fac8f490a630d6ef964 and upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, is recorded in
+[omitted scope](omitted-scope-audit.md#app-complete-bodycaller-review-2026-10-06).
+All37 top-level active bodies, CButtonInfo::GetText, toolbar arrays and relevant
+inline/state dependencies were reviewed; commented CheckFolderPath/IsFsPath/
+GetFocusedPanelIndex are distinguished from the active reducer and inline getter.
+No additional module/dependency is copied by this docs-only review.
+
+Current OnCopy is a partial port: original directory reduction/default target,
+Windows root/ADS refusals, possibleToUseDestPanel/destIsFsPath and Is_IO_FS_Folder
+routing, full-path naming, option flags and post-operation selection/refresh
+continuation require reconciliation. The Qt default fallback and repeated
+state-based execution classification do not establish absence of usable source
+logic. CopyArchiveToArchive's alternate-stream/zone overrides need explicit
+native evidence/disposition. The accepted archive Move transaction composition
+remains justified by original Agent CopyTo(moveMode)==E_NOTIMPL and the required
+plan extension; source predicates must be restored without discarding it.
+
+Earlier P1-01/02, P2-05/06/11 and Shift/direct-path acceptance remains bounded
+valid evidence. It does not prove complete original OnCopy flow. The new
+[text contract](ui-layout-contracts.md#source-copymove-destination-p3-0515-required-scope)
+defines integrated consumer/UX acceptance before implementation. Diff check and
+current baseline verification validate this review; implementation, actual new
+regressions and current three-platform/cold-stable/rendered/final acceptance
+remain required. No new runtime check is claimed for unchanged code.
+Review checks pass git diff --check and reproducible baseline verification
+(408 exact/196 adapted/3 local paths at the pinned revision). A supplementary
+active-body census records the original/adapted SHA and all37 top-level bodies;
+CButtonInfo/data/inline interfaces were reviewed manually. Filename/census/manifest
+checks do not replace the required functional consumers or close P3-05.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

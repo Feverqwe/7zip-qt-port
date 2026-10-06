@@ -1,5 +1,23 @@
 # Text specifications and geometry checks
 
+### Source Copy/Move destination (P3-05.15, required scope)
+
+Reference: pinned App.cpp::OnCopy/Reduce_Path_To_RealFileSystemPath,
+PanelKey Shift consumers, CopyDialog.cpp/.rc and Panel/Agent/FSFolder CopyTo/
+CopyFrom interfaces. Keep the original title/prompt/summary/history and focused
+versus operated selection. Ordinary destination begins with the source opposite-
+panel rule; one-panel reduction follows the original filesystem/root-prefix
+algorithm. Qt must not replace an empty peer target with its own current folder.
+Classify filesystem/ADS/archive/root/drives through source capabilities/prefixes,
+preserving relative/direct/multiple-item normalization, path diagnostics and
+unsupported root/ADS refusals before publication. Original copy options, naming,
+selection/row refresh, title and source focus must survive the async continuation.
+Accepted archive Move keeps its checked source Copy/Delete/rollback extension.
+Verify both panels, F5/F6 and Shift routes, success/failure/Cancel, Unicode/spaces,
+no unintended output/input changes and operation guards. Inspect EN/RU normal/
+compact Copy dialog and resulting panel JSON using their existing contracts.
+Native Windows ADS/device and rendered/cold-stable acceptance remain mandatory.
+
 ### Persisted source locations (P3-05.14, required scope)
 
 Reference: pinned PanelFolderChange SetBookmark/OpenBookmark/FoldersHistory,

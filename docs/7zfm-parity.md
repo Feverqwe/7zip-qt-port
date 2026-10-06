@@ -1,5 +1,17 @@
 # Сверка с Windows 7zFM
 
+## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
+
+Текущий App::OnCopy сохраняет начальные проверки, выбор и Copy dialog, но часть
+destination/default/refusal/classification flow заменена Qt state branches.
+Исходный reducer доступен; пустая цель peer не должна получать самостоятельный
+fallback текущей папки. FS/ADS/archive flags, option policy, naming и завершение
+selection/refresh/focus требуют исходного body и интегрированных consumers.
+Принятый архивный Move остаётся отдельной требуемой композицией Copy/Delete/
+rollback: оригинальный Agent Move возвращает E_NOTIMPL. P3-05.15 открыт;
+проверенные ранее сценарии не доказывают полного покрытия OnCopy. Полная сверка
+App и границы адаптаций записаны в omitted-scope/port audit.
+
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 
 Save хранит source prefix активной
