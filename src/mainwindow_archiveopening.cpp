@@ -17,31 +17,34 @@ bool MainWindow::canHandleExternalUpdate() const {
            !sourceArchiveProgress_ && !backend_->busy() && !QApplication::activeModalWidget();
 }
 
-bool MainWindow::runExternalArchiveUpdate(CPanel &panel, const std::function<bool()> &body) {
+bool MainWindow::runExternalArchiveUpdate(CPanel &panel, const QtArchiveUpdateBody &body) {
     if (!canHandleExternalUpdate())
         return false;
-    CSelectedState selection;
-    panel.SaveSelectedState(selection);
+    const QPointer<QWidget> focused = focusWidget();
+    std::optional<CSelectedState> selection;
     bool result;
     {
         QScopedValueRollback<bool> owner(sourceArchiveProgress_, true);
         app_.QtOperations().Begin(QtAppOperationState::Kind::Operation);
         const auto finish = qScopeGuard([&] { app_.QtOperations().End(); });
-        result = body();
+        result = body(selection);
     }
-    if (result) {
-        const unsigned previous = projectedPanel_;
+    if (selection) {
         unsigned index = 0;
         while (index < kNumPanelsMax && &app_.Panels[index] != &panel)
             ++index;
-        if (index < kNumPanelsMax) {
-            activatePanelUi(index);
-            renderBoundFolder();
-            restoreListSelection(selection);
-            activatePanelUi(previous);
-        }
+        if (index < kNumPanelsMax)
+            withPanelProjection(index, [&] {
+                if (renderBoundFolder() == S_OK)
+                    restoreListSelection(*selection);
+            });
     }
     refreshActions();
+    // Qt can clear the window's remembered focus when its address control is
+    // disabled during modal progress. Restore it after terminal publication.
+    if (!app_.QtOperations().closed() && focused && focused->isVisible() && focused->isEnabled() &&
+        !QApplication::activeModalWidget())
+        focused->setFocus(Qt::OtherFocusReason);
     return result;
 }
 

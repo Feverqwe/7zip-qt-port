@@ -2,6 +2,18 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+После попытки записи внешней правки список архива публикуется также при ошибке
+и Cancel, как unconditional RefreshListCtrl в OnOpenItemChanged. Qt переносит
+исходный saved state до освобождения operation guards; результат записи остаётся
+отдельным bool. Read-only worker и ранний отказ при смене папки/исчезновении
+элемента не запрашивают Refresh. Ошибка загрузки не продолжает восстановление
+выбора; отдельная диагностика ignored reload HRESULT не добавлена.
+Неактивная панель публикуется через существующий withPanelProjection. Qt-adapter
+сохраняет weak focused-control pointer до progress и возвращает фокус после
+включения terminal UI: отключение адреса может очистить remembered focus.
+48 EN/RU both-pane table/icon standard/alternative cases и normal/compact
+проверены на macOS; нативная Windows/Linux focus/rendered сверка остаётся открытой.
+
 UpdateSelection восстановил исходный узкий `_enableItemChangeNotify` guard:
 синхронные Qt-сигналы выбора больше не скрывают callback names. Внешний
 CDisableNotify сохраняет подавление. Цвет альтернативных отметок проецируется

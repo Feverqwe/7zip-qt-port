@@ -42,7 +42,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     folderManager_ = new QtArchiveFolderManager(*backend_);
     associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(
         fileOpener_,
-        [this](CPanel &panel, const std::function<bool()> &body) {
+        [this](CPanel &panel, const QtArchiveUpdateBody &body) {
             return runExternalArchiveUpdate(panel, body);
         },
         [this] { return canHandleExternalUpdate(); });

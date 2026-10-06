@@ -306,6 +306,12 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: external OnOpenItemChanged completion публикует original
+unconditional Refresh после попытки записи, включая failure/Cancel; ранние
+refusal сохраняются. Optional saved selection отделён от update bool.
+[Evidence](upstream-port-audit.md#source-external-update-refresh-completion-2026-10-07).
+Статус active; остальной Refresh/native3OS/final scope остаётся обязательным.
+
 P3-05.15, 2026-10-07: UpdateSelection восстановил original item-change guard;
 callback text остаётся доступным во время Qt selection/mark signals. Внешний
 notify guard, исходные marks, обе панели EN/RU table/icon standard/alternative

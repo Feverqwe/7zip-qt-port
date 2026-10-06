@@ -2,6 +2,12 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+After attempted external-file update, publish the owning archive list for success,
+failure and cancellation; retain source selection, peer focus/provider and edited
+temporary bytes on failure. Read-only worker refusal and changed-folder/missing-
+item exits precede Refresh. Inspect EN/RU both panes, standard/alternative and
+table/icon at980×620/640×400; terminal views must be enabled with redraw restored.
+
 Select All/Deselect All must keep callback names available during selection and
 mark-role signals, with the original source mark vector already authoritative.
 An outer notify guard still suppresses uncached text. Inspect both panes, EN/RU,

@@ -191,12 +191,32 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
     }
     void refusedUpdateRetainsEditedCopy_data() {
         QTest::addColumn<int>("outcome");
-        QTest::newRow("update-failure") << 1;
-        QTest::newRow("update-cancel") << 2;
-        QTest::newRow("read-only-archive") << 3;
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("russian");
+        QTest::addColumn<bool>("icons");
+        QTest::addColumn<bool>("alternative");
+        for (int outcome : {1, 2, 3})
+            for (unsigned pane : {0u, 1u})
+                for (bool russian : {false, true})
+                    for (bool icons : {false, true})
+                        for (bool alternative : {false, true})
+                            QTest::newRow(qPrintable(QString("%1-%2-%3-%4-%5")
+                                                         .arg(outcome)
+                                                         .arg(pane)
+                                                         .arg(russian)
+                                                         .arg(icons)
+                                                         .arg(alternative)))
+                                << outcome << pane << russian << icons << alternative;
     }
     void refusedUpdateRetainsEditedCopy() {
         QFETCH(int, outcome);
+        QFETCH(unsigned, pane);
+        QFETCH(bool, russian);
+        QFETCH(bool, icons);
+        QFETCH(bool, alternative);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
+        ReloadLang(settings);
         QTemporaryDir fixture;
         const QString name = QStringLiteral("сохранить правку.txt");
         const QString format = outcome == 3 ? "tar" : "zip";
@@ -215,9 +235,23 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         });
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
+        owner->findChild<QLineEdit *>("archivePath")->setFocus();
         window.openArchive(archive);
-        QTRY_COMPARE(table(window)->rowCount(), 1);
-        table(window)->selectRow(0);
+        QTRY_COMPARE(list->rowCount(), 1);
+        action(window, icons ? "viewMode0Action" : "viewMode3Action")->trigger();
+        list->selectRow(0);
+        list->sourcePanel->SetAlternativeSelection(alternative);
+        list->sourcePanel->Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> provider = list->sourcePanel->GetFolder();
+        auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
+        auto *peerList = static_cast<FileTable *>(peer->findChild<QTableWidget *>("archiveTable"));
+        peerList->sourcePanel->Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> peerProvider = peerList->sourcePanel->GetFolder();
+        const int peerRows = peerList->rowCount();
         QVERIFY(action(window, "editFileAction")->isEnabled());
         bool error = false;
         QString previousModalState;
@@ -263,6 +297,11 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         action(window, "editFileAction")->trigger();
         QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
         const QString temporary = QString::fromUtf8(read(control + ".ready"));
+        auto *peerAddress = peer->findChild<QLineEdit *>("archivePath");
+        peerAddress->setFocus();
+        QWidget *const focused = window.focusWidget();
+        QVERIFY(focused && peer->isAncestorOf(focused));
+        QSignalSpy refreshed(list->model(), &QAbstractItemModel::rowsRemoved);
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
         QTRY_VERIFY(error);
@@ -272,6 +311,29 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QCOMPARE(read(temporary), modified);
         QCOMPARE(read(archive), originalArchive);
         QCOMPARE(contents(archive, name), QByteArray("original"));
+        QCOMPARE(refreshed.isEmpty(), outcome == 3);
+        QCOMPARE(list->rowCount(), 1);
+        QCOMPARE(list->selectionModel()->selectedRows().size(), 1);
+        CRecordVector<UInt32> marks;
+        list->sourcePanel->Get_ItemIndices_Selected(marks);
+        QCOMPARE(marks.Size(), 1u);
+        QVERIFY(list->updatesEnabled());
+        QVERIFY(list->isEnabled());
+        QCOMPARE(list->sourcePanel->GetFolder(), (IFolderFolder *)provider);
+        QCOMPARE(peerList->sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
+        QCOMPARE(peerList->rowCount(), peerRows);
+        QTRY_COMPARE(window.focusWidget(), focused);
+        QWidget *visible =
+            icons ? static_cast<QWidget *>(owner->findChild<QListView *>("iconList")) : list;
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*visible, window));
+            QVERIFY(UiInspection::fullyVisible(*peerList, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("external-refresh-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
         QVERIFY(QDir(QFileInfo(temporary).absolutePath()).removeRecursively());
     }
     void deferredUpdateAndOwnerChanges_data() {

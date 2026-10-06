@@ -1735,6 +1735,68 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source external update Refresh completion, 2026-10-07
+
+Reviewed complete original PanelItemOpen::OnOpenItemChanged1064–1100 and its
+CopyFrom worker, MyThreadFunction changed-file/read-only/prompt/SendMessage
+branches, source selected state and Qt process/service/completion consumers.
+Full baseline0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original folder/index/name early exits precede
+saved selection and CopyFromFile. RefreshListCtrl(state) then runs regardless of
+update HRESULT, which separately controls the returned success boolean. Original
+read-only worker exits before this handler. Qt previously published only when
+that boolean was true, omitting the failure/Cancel load phase.
+
+Original bodies remain in PanelItemOpen.cpp. A narrow optional CSelectedState
+output records reaching its unconditional Refresh; QtArchiveUpdateBody carries
+it to the existing presentation owner after operation guards unwind. The output
+resets at entry, so early refusals cannot reuse an older completion. Qt no longer
+takes an independent earlier snapshot. Successful loading precedes restoration;
+failed loading does not restore stale rows, and native ignored reload-HRESULT
+diagnostic policy is retained. Default non-window external services still run
+the original body. No new functional selection/update algorithm or dependencies,
+language change, upstream edit or notice removal.
+
+Initial previous-product RED contains two valid omitted-publication failures
+(update failure/Cancel), plus an overbroad read-only expectation corrected after
+reviewing the original worker. The first correction passes the two valid cases;
+its retained read-only failure led to the proper no-refresh assertion, not a
+production change to the original early refusal. Evidence/logs and previous
+committed product are retained in build/review/external-refresh-red/final.
+The existing external editor suite now exercises48 both-pane EN/RU table/icon
+standard/alternative failure/Cancel/read-only outcomes with real private ZIP/TAR
+and fixture processes. It checks model publication, marks/selection, owning/peer
+provider/focus, terminal redraw/enabled state, original and retained edited bytes,
+and current normal/compact views. Direct source update covers stale index,
+successful completion and early changed-folder/missing-item/released-provider
+output reset. Existing successful Yes/No/Escape and deferred-owner consumers
+remain. The focused suite remains one external-edit workflow owner; splitting
+its437-line fixture is deferred to avoid unrelated lifecycle reorganization.
+
+Expanded consumers also exposed lost peer address focus in alternative selection.
+The original Qt completion activated the source pane to render. It now uses the
+existing withPanelProjection instead. A retained single-case RED after that
+change proves projection alone insufficient: Qt clears remembered window focus
+when modal-progress UI disables an address. The presentation adapter now retains
+a weak focused-control pointer and restores it after terminal refresh enables
+the UI, provided the app/control remain open/visible/enabled and no modal is active.
+This replaces native dialog focus transport, not source selection policy. The
+test compares the actual pre-dialog focus proxy rather than requiring the inner
+QLineEdit pointer; no test forces focus after the update. Initial matrix focus
+failures and the subsequent90s authoritative CTest timeout are retained. The
+specific alternative failure consumer passes with the final restoration.
+
+Final six-target build and sequential focused6/6 pass22.11s. The required
+unsandboxed check.sh passes formatting/all-target build and280/280 CTest in175.64s
+on macOS27.0.1 arm64 with official Qt6.12.0. All16 gate input hashes remain
+unchanged at terminal completion; subsequent changes record validation in docs
+only. Baseline verification passes408 exact/196 adapted/3 local paths. The96
+current980×620/640×400 widget reports expose all384 relevant visible lists and
+addresses, all enabled. Final logs, frozen inputs, LastTest and current reports
+remain in build/review/external-refresh-final. Native Windows/Linux,
+deterministic native archive render-failure, remaining Refresh/full-body/109-module/
+cold-stable/package and whole P3-05.15/P3-06 acceptance remain mandatory.
+
 ### Source selection projection notification scope, 2026-10-07
 
 Reviewed original PanelSelect::UpdateSelection135–151, SelectSpec/SelectByType/

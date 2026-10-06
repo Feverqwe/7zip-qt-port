@@ -2487,6 +2487,12 @@ literal argv с пробелами/Unicode/метасимволами без she
 `archive_external_edit` проверяет реальные ZIP F3/F4, Yes/No/Escape-Cancel,
 размер и selection после обновления, busy deferral, pending close, смену location
 и второй активной панели, failure/cancel и read-only TAR с сохранением правки.
+В 48 EN/RU both-pane table/icon standard/alternative случаях rowsRemoved
+подтверждает публикацию после failure/Cancel и её отсутствие при worker read-only
+refusal. Source marks, selection, provider, inactive peer/focus, redraw и исходные/
+временные bytes сохраняются; normal/compact JSON проверяет полученные views.
+`source_update_backend` отдельно проверяет optional completion при stale index,
+успехе и ранних missing-item/changed-folder/released-provider выходах.
 `archive_external_lifetime` проверяет дочерний процесс после выхода родителя,
 короткий/долгий неизменённый файл, ошибку запуска и wait error с retained copy.
 `archive_external_security` проверяет extraction failure/cancel, password cancel,

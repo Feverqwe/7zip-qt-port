@@ -1217,15 +1217,21 @@ class SourceUpdateBackendTests final : public QObject {
         const UString prefix = panel.GetCurrentFolderPrefix();
         const auto original = readFile(archive);
         QSignalSpy started(&backend, &ArchiveBackend::engineStarted);
-        QVERIFY(!panel.OnOpenItemChanged(temp, UString(L"different folder/"), false, UString()));
+        std::optional<CSelectedState> refresh = CSelectedState();
+        QVERIFY(!panel.OnOpenItemChanged(temp, UString(L"different folder/"), false, UString(),
+                                         &refresh));
+        QVERIFY(!refresh);
         QCOMPARE(started.size(), 0);
         QCOMPARE(readFile(archive), original);
         temp.RelPath = L"removed.bin";
-        QVERIFY(!panel.OnOpenItemChanged(temp, prefix, false, UString()));
+        refresh = CSelectedState();
+        QVERIFY(!panel.OnOpenItemChanged(temp, prefix, false, UString(), &refresh));
+        QVERIFY(!refresh);
         QCOMPARE(started.size(), 0);
         QCOMPARE(readFile(archive), original);
         temp.RelPath = L"исходное имя.bin";
-        QVERIFY(panel.OnOpenItemChanged(temp, prefix, false, UString()));
+        QVERIFY(panel.OnOpenItemChanged(temp, prefix, false, UString(), &refresh));
+        QVERIFY(refresh);
         QVERIFY(started.size() > 0);
         QVERIFY(!backend.busy());
         NWindows::NCOM::CPropVariant size;
@@ -1237,7 +1243,8 @@ class SourceUpdateBackendTests final : public QObject {
         QCOMPARE(readFile(QDir(extracted).filePath(entry)), QByteArray("source panel replacement"));
         QCOMPARE(readFile(QDir(extracted).filePath("untouched.bin")), QByteArray("keep"));
         panel.ReleaseFolder();
-        QVERIFY(!panel.OnOpenItemChanged(temp, prefix, false, UString()));
+        QVERIFY(!panel.OnOpenItemChanged(temp, prefix, false, UString(), &refresh));
+        QVERIFY(!refresh);
     }
     void existingDestinationAndUnsafeEntryAreRejected() {
         QTemporaryDir fixture;

@@ -33,6 +33,8 @@
 #include <optional>
 
 class CFolderHistory;
+struct CSelectedState;
+using QtArchiveUpdateBody = std::function<bool(std::optional<CSelectedState> &)>;
 class QColor;
 class QIcon;
 struct CExternalCodecs;
@@ -106,7 +108,7 @@ class IQtExternalFileServices {
     }
     virtual IQtProcessServices *ProcessServices() { return nullptr; }
     virtual bool CanHandleExternalUpdate() const { return true; }
-    virtual bool RunArchiveUpdate(CPanel &, const std::function<bool()> &body) { return body(); }
+    virtual bool RunArchiveUpdate(CPanel &, const QtArchiveUpdateBody &body);
     virtual HRESULT CreateKnownProcess(const UString &, const UString &, const UStringVector &,
                                        QWidget *, IQtProcessHandle *&process) {
         process = nullptr;
@@ -200,6 +202,11 @@ struct CSelectedState {
         : FocusedItem(-1), SelectFocused(true), FocusedName_Defined(false), CalledFromTimer(false) {
     }
 };
+
+inline bool IQtExternalFileServices::RunArchiveUpdate(CPanel &, const QtArchiveUpdateBody &body) {
+    std::optional<CSelectedState> selection;
+    return body(selection);
+}
 
 struct CTempFileInfo {
     // Narrow ownership adapter, copied with native nested/process temp records.
@@ -502,7 +509,8 @@ class CPanel : public QObject {
     HRESULT OnOpenItemChanged(UInt32 index, const wchar_t *fullFilePath, bool usePassword,
                               const UString &password);
     bool OnOpenItemChanged(const CTempFileInfo &tpi, const UString &fullPathFolderPrefix,
-                           bool usePassword, const UString &password);
+                           bool usePassword, const UString &password,
+                           std::optional<CSelectedState> *refreshSelection = nullptr);
     void CloseOneLevel();
     void CloseOpenFolders();
     void LoadFullPath();

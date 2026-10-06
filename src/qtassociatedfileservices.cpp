@@ -11,7 +11,7 @@ bool OpenAssociation(const QUrl &url) { return QDesktopServices::openUrl(url); }
 
 QtAssociatedFileServices::QtAssociatedFileServices(
     std::function<bool(const QUrl &)> opener,
-    std::function<bool(CPanel &, const std::function<bool()> &)> updateRunner,
+    std::function<bool(CPanel &, const QtArchiveUpdateBody &)> updateRunner,
     std::function<bool()> updateReady)
     : _opener(opener ? std::move(opener) : OpenAssociation), _updateRunner(std::move(updateRunner)),
       _updateReady(std::move(updateReady)) {}
@@ -19,8 +19,9 @@ QtAssociatedFileServices::QtAssociatedFileServices(
 bool QtAssociatedFileServices::CanHandleExternalUpdate() const {
     return !_updateReady || _updateReady();
 }
-bool QtAssociatedFileServices::RunArchiveUpdate(CPanel &panel, const std::function<bool()> &body) {
-    return _updateRunner ? _updateRunner(panel, body) : body();
+bool QtAssociatedFileServices::RunArchiveUpdate(CPanel &panel, const QtArchiveUpdateBody &body) {
+    return _updateRunner ? _updateRunner(panel, body)
+                         : IQtExternalFileServices::RunArchiveUpdate(panel, body);
 }
 
 HRESULT QtAssociatedFileServices::CreateKnownProcess(const UString &program,

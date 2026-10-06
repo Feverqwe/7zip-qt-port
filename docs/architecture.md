@@ -115,6 +115,15 @@ PanelSelect::UpdateSelection temporarily disables only item-change notification
 while applying source marks to Qt selection. Provider text/draw callbacks remain
 available; an existing outer CDisableNotify retains its suppression. Alternative
 mark colors are projected separately through Qt background roles.
+External-file update transports an optional source CSelectedState to its Qt
+completion. OnOpenItemChanged sets it only after reaching the original
+unconditional RefreshListCtrl call; update success remains a separate boolean.
+The caller publishes after operation guards unwind, including failure/Cancel,
+and restores selection only after successful loading. Changed-folder/missing-item
+and worker read-only exits do not request publication.
+Inactive-owner publication uses withPanelProjection. The adapter retains the
+window's focused control across modal progress and restores it after enabling
+terminal UI; Qt may otherwise clear remembered focus when disabling an address.
 The original drop-highlight row/name belong to CPanel, shared with PanelDrag's
 target-path/type consumers. Both extracted Refresh phases clear them before
 loading/restoration errors. Qt can retain published rows during restoration;

@@ -268,10 +268,10 @@ static THREAD_FUNC_DECL MyThreadFunction(void *param) {
                             [&] {
                                 return tpi->ExternalServices->RunArchiveUpdate(
                                            *tpi->Window,
-                                           [&] {
+                                           [&](std::optional<CSelectedState> &selection) {
                                                return tpi->Window->OnOpenItemChanged(
                                                    *tpi, tpi->FullPathFolderPrefix,
-                                                   tpi->UsePassword, tpi->Password);
+                                                   tpi->UsePassword, tpi->Password, &selection);
                                            })
                                            ? 1
                                            : 0;
@@ -1098,7 +1098,10 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
 // Native OnOpenItemChanged message body. A typed request replaces LPARAM and
 // the window handle; the external service retains the temp file during the call.
 bool CPanel::OnOpenItemChanged(const CTempFileInfo &tpi, const UString &fullPathFolderPrefix,
-                               bool usePassword, const UString &password) {
+                               bool usePassword, const UString &password,
+                               std::optional<CSelectedState> *refreshSelection) {
+    if (refreshSelection)
+        refreshSelection->reset();
     if (fullPathFolderPrefix != _currentFolderPrefix || !_folder)
         return false;
     UInt32 fileIndex = tpi.FileIndex;
@@ -1120,6 +1123,10 @@ bool CPanel::OnOpenItemChanged(const CTempFileInfo &tpi, const UString &fullPath
     CDisableNotify disableNotify(*this);
     HRESULT result = OnOpenItemChanged(fileIndex, fs2us(tpi.FilePath), usePassword, password);
     RefreshListCtrl(state);
+    // The Qt caller publishes rows after its operation guards unwind. Native
+    // RefreshListCtrl is unconditional here, independently of the update result.
+    if (refreshSelection)
+        *refreshSelection = state;
     if (result != S_OK)
         return false;
     return true;

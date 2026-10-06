@@ -109,7 +109,7 @@ class MainWindow : public QMainWindow {
     void reloadLangItems();
     void quiesceOperations();
     bool canHandleExternalUpdate() const;
-    bool runExternalArchiveUpdate(CPanel &panel, const std::function<bool()> &body);
+    bool runExternalArchiveUpdate(CPanel &panel, const QtArchiveUpdateBody &body);
     QMenu *createMenusAndToolbar();
     void createFileActions(QMenu *menu, QToolBar *toolbar);
     void createFileExtras(QMenu *menu, QToolBar *toolbar);
