@@ -113,9 +113,34 @@ second full246/247 failed the new fixture's assumption that ShowDots defaults
 on. Both failed logs are retained. The shell now checks source command ID/
 shortcut; the component proves enabled focused-file and disabled parent states
 with ShowDots explicitly enabled. Final unsandboxed formatting/all-targets/
-247CTest PASS104.05s on unchanged production code. Native Windows test platform is registered;
-Windows/Linux execution and rendered reference are unverified. Parent P3-05
-remains open for remaining source bodies/resources/dependencies.
+247CTest PASS104.05s on unchanged production code.
+
+Frozen `20261005T234212Z-b70429b5`, source SHA256
+`98ea69b437adeb7b9322354965cd18ebab325f94aa67a5ca55a21faba304e905`,
+matches the ten committed production/test/CMake inputs at29bb697. Linux Qt6.12
+focused14/14 PASS22.92s and full formatting/build/243CTest PASS190.59s;
+648 full artifacts and two focused logs have matching guest/local SHA256.
+Filesystem comments9Qt/0skip and eight EN/RU normal/compact JSON pass.
+The same Windows snapshot fails two Ctrl+Z cancel rows: the fixture stops its
+responder immediately after the key event without awaiting active-window or
+dialog delivery. codec_probe also times out at20s
+without observing its Unicode entry marker. Whole focused12/14 remains failed,
+and its full gate is not reached. These failures remain retained evidence.
+
+The localized fixture correction waits for the active window and observed dialog
+while the responder stays live. Slow-module marker paths use ASCII Base64 of
+UTF-8 and explicit decoding, avoiding a local-code-page interpretation of raw
+UTF-8 environment bytes on Windows. No production behavior, deadline, heartbeat
+threshold or scenario coverage changes. macOS final affected2/2 PASS5.40s.
+Fresh native Windows `20261005T235145Z-5da3edfc`, source SHA256
+`1f6107c955dab391c2fac79bb22fdfa4b72d340412b3a8f74d27113ce3464366`,
+contains exactly those three test changes plus the same temporary validation
+wrapper; four frozen input byte checks pass. Filesystem comments9Qt/0skip,
+all14 focused consumers and eight native EN/RU normal/compact reports pass;
+30 focused artifacts and two phase logs have matching guest/local SHA256.
+P3-05.6's writer/command component is accepted on three OS. The fresh Windows
+full gate is still running; rendered reference and parent P3-05's remaining
+source bodies/resources/dependencies remain open.
 
 ## P3-03.9 — native editor prompt failure investigation (2026-10-06)
 
@@ -135,8 +160,10 @@ file size, backend busy and active-modal object name on failure. It retains the
 same QTRY deadline and adds no extra wait, production hook or archive payload
 logging. macOS affected archive_external_edit PASS6.74s after the localized
 diagnostic addition; production remains the code verified by full246/246 in
-P3-03.8.1. Windows execution of that diagnostic is still pending. No functional
-fix or stable whole Windows acceptance is claimed.
+P3-03.8.1. Windows focused execution in b70429b5 passes15Qt/0skip15.29s,
+including both previously failing rows. The fresh5da3edfc focused consumers also
+pass; its full gate is still running. No functional fix or stable whole Windows
+acceptance is claimed from these focused runs.
 
 ## P3-03.8.1 — owned codec discovery loader (2026-10-06)
 
@@ -179,10 +206,19 @@ match the committed bytes. Ten focused consumers pass with0skip, including
 archive_external_edit15Qt, codec_probe13Qt and codec_update73Qt. Two immutable
 focused logs have matching guest/local SHA; native probe process/start50ms,
 total656ms (cancel/failure) or2169ms (deadline), maximum heartbeat gap11ms.
-Linux full format/build/242CTest PASS187.89s. Windows loader validation and real
-cold runtime-copy/DLL/version-process phase timing are not yet verified. This does
-not establish the cause of the earlier Windows5750ms ready signal or accept
-parent P3-03.8's stable cold five-second completion requirement.
+Linux full format/build/242CTest PASS187.89s. Later b70429b5 full243/243
+PASS190.59s and focused14/14 preserve the loader; native process/start50–51ms,
+total656–657ms or2121ms, maximum heartbeat gap11ms.
+Windows b70429b5's slow-module test times out without its Unicode marker; the
+localized ASCII environment transport correction described in P3-05.6 preserves
+Unicode filesystem paths and all four lifecycle rows. Fresh native5da3edfc
+codec_probe13Qt/0skip and all14 focused consumers pass. Two immutable phase logs
+have matching guest/local SHA256. Direct native process/start78–79ms,
+total689–690ms or2166ms, maximum heartbeat gap26–28ms; joined destruction passes.
+The bounded owned-loader component P3-03.8.1 is accepted on three OS.
+Real cold runtime-copy/DLL/version-process phase timing is not yet established;
+these checks do not prove the cause of the earlier Windows5750ms ready signal
+or accept parent P3-03.8's stable cold five-second completion requirement.
 
 ## P3-05.5 — native archive property levels and codec owners (accepted property scope, 2026-10-06)
 

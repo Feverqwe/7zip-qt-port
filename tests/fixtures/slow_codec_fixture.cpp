@@ -5,7 +5,7 @@
 
 namespace {
 void Mark(const char *name) {
-    QFile file(qEnvironmentVariable(name));
+    QFile file(QString::fromUtf8(QByteArray::fromBase64(qgetenv(name))));
     if (file.open(QIODevice::WriteOnly))
         file.write("observed");
 }

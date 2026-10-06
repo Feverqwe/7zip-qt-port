@@ -205,9 +205,11 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         responder.start(2);
         if (cancel) {
             window.activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(&window));
             table(window)->setFocus();
             QTRY_VERIFY(table(window)->hasFocus());
             QTest::keyClick(table(window), Qt::Key_Z, Qt::ControlModifier);
+            QTRY_VERIFY(observed);
         } else
             action(window, "commentAction")->trigger();
         responder.stop();

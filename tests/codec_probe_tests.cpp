@@ -34,8 +34,10 @@ class CodecProbeTests : public QObject {
         const QByteArray oldEntered = qgetenv("SEVENZIP_SLOW_CODEC_ENTERED");
         const QByteArray oldFinished = qgetenv("SEVENZIP_SLOW_CODEC_FINISHED");
         const QByteArray oldDelay = qgetenv("SEVENZIP_SLOW_CODEC_DELAY");
-        qputenv("SEVENZIP_SLOW_CODEC_ENTERED", entered.toUtf8());
-        qputenv("SEVENZIP_SLOW_CODEC_FINISHED", finished.toUtf8());
+        // Environment bytes use the local code page on Windows. Keep Unicode
+        // filesystem paths intact with an ASCII transport to the test module.
+        qputenv("SEVENZIP_SLOW_CODEC_ENTERED", entered.toUtf8().toBase64());
+        qputenv("SEVENZIP_SLOW_CODEC_FINISHED", finished.toUtf8().toBase64());
         // Leave cold process startup headroom while still expiring during the
         // native query. The normal/cancel/destruction rows need only 600ms.
         qputenv("SEVENZIP_SLOW_CODEC_DELAY", mode == "deadline" ? "2100" : "600");
