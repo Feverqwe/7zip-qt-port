@@ -126,6 +126,12 @@ InitColumns теперь очищает исходные marks также при
 создания физических секций, сохраняя rows/widget selection в их прежних owners.
 Direct marks/restoration и EN/RU обе панели/order/width/bytes проверены на macOS;
 raw/duplicate schemas и текущая native/rendered приёмка остаются открытыми.
+SaveListViewInfo больше не переписывает каталог `_columns` при Qt move/resize:
+обновляются visible snapshot и исходные persisted settings. Повторный показ через
+меню берёт Width из каталога, как native AddColumn; прежняя Qt-проверка сохранения
+173px после hide/show исправлена. Оставленный resize сохраняется и применяется
+при следующем InitColumns/reopening. Catalog/visible/saved metadata и EN/RU обе
+панели с active/inactive headers проверены на macOS; native/rendered checks открыты.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном

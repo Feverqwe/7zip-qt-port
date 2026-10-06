@@ -35,6 +35,40 @@ class PanelColumnInitializationTests final : public QObject, protected MainWindo
     }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void saveProjectionKeepsCatalogAndPersistsVisibleMetadata() {
+        QTemporaryDir fixture;
+        makeFixture(fixture);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        navigate(window, 0, fixture.path());
+        auto &view = *paneView(window, 0);
+        auto &panel = *view.sourcePanel;
+        const CPropColumns catalog = panel.GetColumns();
+        const CPropColumns logical = panel.GetVisibleColumns();
+        view.horizontalHeader()->resizeSection(0, 187);
+        view.horizontalHeader()->moveSection(view.horizontalHeader()->visualIndex(0),
+                                             view.columnCount() - 1);
+        QVERIFY(panel.GetColumns().IsEqualTo(catalog));
+        QCOMPARE(panel.GetVisibleColumns().Size(), logical.Size());
+        for (unsigned index = 0; index < logical.Size(); ++index)
+            QCOMPARE(panel.GetVisibleColumns()[index].ID, logical[index].ID);
+        QCOMPARE(panel.GetVisibleColumns()[0].Width, UInt32(187));
+        QCOMPARE(panel.GetVisibleColumns()[0].Order, int(logical.Size() - 1));
+        CListViewInfo saved;
+        saved.Read(panel.GetFolderTypeID(), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QVERIFY(saved.IsLoaded);
+        QVERIFY(saved.Columns.Size() >= logical.Size());
+        QCOMPARE(saved.Columns[logical.Size() - 1].PropID, PROPID(kpidName));
+        QCOMPARE(saved.Columns[logical.Size() - 1].Width, UInt32(187));
+        QCOMPARE(panel.InitColumns(), S_OK);
+        const int name = panel.GetColumns().FindItem_for_PropID(kpidName);
+        QVERIFY(name >= 0);
+        QCOMPARE(panel.GetColumns()[name].Width, UInt32(187));
+        QCOMPARE(panel.GetColumns()[name].Order, int(logical.Size() - 1));
+        QCOMPARE(backend.listCalls, 0);
+    }
     void directInitializationClearsSourceMarks() {
         QTemporaryDir fixture;
         makeFixture(fixture);

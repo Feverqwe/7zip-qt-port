@@ -87,7 +87,7 @@ void MainWindow::saveColumns() {
         return;
     const auto *fileTable = static_cast<FileTable *>(table_);
     CPropColumns visible;
-    const CPropColumns &columns = panel.GetColumns();
+    const CPropColumns &columns = panel.GetVisibleColumns();
     FOR_VECTOR(i, columns) {
         const int column = fileTable->columnForProperty(columns[i].ID);
         if (column < 0 || table_->isColumnHidden(column))
@@ -125,9 +125,11 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
             {
                 const QSignalBlocker blocker(table_->horizontalHeader());
                 table_->setColumnHidden(column, !visible);
-                if (visible)
+                if (visible) {
+                    table_->setColumnWidth(column, qMax(32, int(source.GetColumns()[index].Width)));
                     table_->horizontalHeader()->moveSection(
                         table_->horizontalHeader()->visualIndex(column), table_->columnCount() - 1);
+                }
             }
             sortColumn_ = static_cast<FileTable *>(table_)->columnForProperty(source._sortID);
             sortOrder_ = source._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;

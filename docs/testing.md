@@ -2,7 +2,8 @@
 
 `panel_column_menu` covers both panes, EN/RU and active/inactive header owners:
 source catalog order/checks/first-entry protection, Cancel, hide/show append after
-a move, width and order after Refresh, sorted-column fallback without immediate
+a move, catalog width on re-addition and order after Refresh, unchanged catalog
+after move/resize, sorted-column fallback without immediate
 row sorting, focus/selection/provider/peer preservation and unchanged Unicode
 control bytes. Sixteen normal/compact widget reports cover the resulting views.
 `panel_columns` supplies the existing settings/reopen consumer checks. These
@@ -14,6 +15,10 @@ source restoration. Four EN/RU both-pane scenarios move Name to the end, retain
 its source logical index zero and187px width through Refresh and reopening, and
 preserve the peer/provider/selection/control bytes. Eight normal/compact widget
 reports cover the resulting views; native/rendered Windows acceptance remains.
+Its SaveListViewInfo consumer also checks unchanged catalog/logical indices after
+header move/resize, visible width/order, persisted Name width/order, and their
+application at the next InitColumns. This supersedes the earlier Qt expectation
+that hide/show retained a resized width without initialization.
 
 `panel_deleted_draw` covers the source deleted-item foreground through a focused
 IFolderFolder/IGetFolderArcProps/IFolderArcProps fixture. Sixteen both-pane EN/RU

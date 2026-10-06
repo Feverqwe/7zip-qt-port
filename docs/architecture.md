@@ -16,6 +16,11 @@ rebuild. Name-first source logical indices are separate from header visual order
 Its original CIntArr permutation validation is extracted as GetColumnOrder in
 PanelItems; configureColumns consumes it after creating Qt sections. Qt rows and
 widget selection are published/restored by their existing owners.
+SaveListViewInfo receives the owning header projection in source visible logical
+order, updates that visible snapshot and serializes the original visible/hidden
+settings flow. It does not rewrite the property catalog. Menu re-addition uses
+the catalog Width, as native AddColumn does; a resize retained until the next
+InitColumns instead supplies the saved width for that initialization/reopening.
 
 Copy/Move destination defaults belong to CApp::OnCopy: it reads the destination
 panel's source GetFsPath and applies the retained filesystem-path reducer only

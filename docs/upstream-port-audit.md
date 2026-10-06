@@ -1692,6 +1692,48 @@ Remaining raw/duplicate property mapping, broader schema/equality/error consumer
 native Windows/Linux/current rendered/cold-stable/109-module and P3-06 acceptance
 remain open; this component does not close PanelItems or P3-05.15.
 
+### Source saved-column catalog boundary, 2026-10-06
+
+Complete reread of `CPP/7zip/UI/FileManager/PanelItems.cpp::SaveListViewInfo`,
+InitColumns/AddColumn/ShowColumnsContextMenu and their Qt consumers at upstream
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git, identified independent adapted catalog mutation.
+Original SaveListViewInfo reads visible physical width/order, serializes visible
+then hidden settings and retains its equality guard; it does not rewrite `_columns`.
+The extra visibility/order/width rewrite is removed. Qt supplies its projection
+in source visible logical order, preserving that snapshot's indices. Existing
+settings-path transport replaces Registry; no dependency copy, language change,
+upstream edit or notice removal.
+
+Native AddColumn reads catalog Width when re-adding a hidden column. Qt now
+applies that same width instead of retaining its hidden section's resized width.
+The earlier173px hide/show regression incorrectly accepted the independent Qt
+behavior; it now expects the source catalog width100px for the filesystem ATime
+fixture. A retained resize without hide/show still persists187px and applies at
+the next InitColumns/reopening. This corrects the earlier bounded width evidence;
+it does not change the preserved source policy for saved duplicate PropIDs.
+
+Actual previous-product RED9 across the two focused suites catches catalog
+changes after header move/resize; four input snapshots/hashes/log are frozen in
+build/review/column-save-catalog-red. Source-only correction exposes RED8 for the
+retained173px Qt section; four snapshots/hashes/log are in column-save-width-red.
+The direct real-provider regression checks catalog/logical indices, visible
+width/order, serialized Name width/order and their next InitColumns application.
+Eight EN/RU both-pane active/inactive menu consumers cover catalog/re-add width,
+Cancel, append, Refresh, sort/peer/selection/focus/provider/control bytes.
+Existing settings/reopen and selection/load consumers remain checked.
+
+Affected seven-target build and fresh sequential focused7/7PASS6.88s, zero Qt
+failure/skip. Baseline verification passes408 exact/196 adapted/3 local paths.
+Twenty-four current980×620/640×400 widget reports expose both panes/addresses/
+lists/headers/status in their existing order. Final four inputs, focused/full
+logs and reports are retained in build/review/column-save-final.
+Mandatory unsandboxed check.sh passes formatting/all-target build and272/272
+CTest in199.77s on macOS27.0.1 arm64 with official Qt6.12.0; all four final
+input hashes remain unchanged. Current native
+Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
+109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

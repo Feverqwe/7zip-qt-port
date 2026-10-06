@@ -113,7 +113,12 @@ InitColumns также исправила принудительное возв�
 логический индекс сохраняется отдельно от visual order, который теперь переживает
 Refresh/reopen в обеих панелях EN/RU. Прямой вызов очищает source marks до
 enumeration, сохраняя Qt rows/selection до следующего restoration consumer.
-Focused и normal/compact JSON проверки пройдены на macOS. Сверка тел
+Focused и normal/compact JSON проверки пройдены на macOS. Повторная сверка
+SaveListViewInfo выявила независимую запись Qt width/order в `_columns`: она
+удалена. Hide/show снова берёт исходную catalog width; resize без hide/show
+сохраняется для следующего InitColumns/reopening. Прежняя регрессия173px после
+hide/show закрепляла Qt-допущение и исправлена; catalog/visible/saved metadata
+проверены отдельно. Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.

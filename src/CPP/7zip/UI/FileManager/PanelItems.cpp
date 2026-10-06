@@ -247,15 +247,6 @@ void CPanel::SaveListViewInfo(const CPropColumns &visibleColumns) {
         return;
 
     _visibleColumns = visibleColumns;
-    FOR_VECTOR(i, _columns) {
-        CPropColumn &prop = _columns[i];
-        const int index = _visibleColumns.FindItem_for_PropID(prop.ID);
-        prop.IsVisible = index >= 0;
-        if (index >= 0) {
-            prop.Order = _visibleColumns[index].Order;
-            prop.Width = _visibleColumns[index].Width;
-        }
-    }
 
     CListViewInfo viewInfo;
     const PROPID sortPropID = _sortID;

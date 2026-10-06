@@ -123,14 +123,17 @@ class PanelColumnMenuTests final : public QObject, protected MainWindowTestSuppo
         const QString label = view.horizontalHeaderItem(column)->text();
         toggle(*view.horizontalHeader(), label);
         QVERIFY(!view.isColumnHidden(column));
+        const CPropColumns shownCatalog = panel.GetColumns();
+        const int catalogWidth = view.horizontalHeader()->sectionSize(column);
         view.horizontalHeader()->moveSection(view.horizontalHeader()->visualIndex(column), 1);
         view.horizontalHeader()->resizeSection(column, 173);
+        QVERIFY(panel.GetColumns().IsEqualTo(shownCatalog));
         toggle(*view.horizontalHeader(), label);
         QVERIFY(view.isColumnHidden(column));
         toggle(*view.horizontalHeader(), label);
         QVERIFY(!view.isColumnHidden(column));
         QCOMPARE(visibleOrder(view).last(), column);
-        QCOMPARE(view.horizontalHeader()->sectionSize(column), 173);
+        QCOMPARE(view.horizontalHeader()->sectionSize(column), catalogWidth);
         QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
         QCOMPARE(peer.sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
         QCOMPARE(visibleOrder(peer), peerOrder);
@@ -149,7 +152,7 @@ class PanelColumnMenuTests final : public QObject, protected MainWindowTestSuppo
         QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 3).toString(),
                  QStringLiteral("control 文件.txt"));
         QCOMPARE(visibleOrder(view).last(), column);
-        QCOMPARE(view.horizontalHeader()->sectionSize(column), 173);
+        QCOMPARE(view.horizontalHeader()->sectionSize(column), catalogWidth);
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();

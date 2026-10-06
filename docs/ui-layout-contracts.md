@@ -18,6 +18,11 @@ and move callbacks on an inactive pane preserve active focus/provider/selection
 and peer header state. Cancel changes nothing. Persist visible compact order and
 width through source ViewSettings; inspect EN/RU both panes normal980×620 and
 compact640×400 menus, address/list/status groups and reload/reopen consumers.
+SaveListViewInfo updates visible width/order and persisted settings without
+rewriting the property catalog. A menu hide/show re-adds the catalog width,
+as native AddColumn does; resizing before Refresh still persists that width for
+the next initialization/reopening. Catalog and visible logical indices remain
+separate from header visual order.
 
 Deleted archive items retain source OnCustomDraw's red text (RGB255,0,0), enabled
 by default only when the archive reports deleted items. Use source item indices
