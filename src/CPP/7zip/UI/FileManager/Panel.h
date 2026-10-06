@@ -532,9 +532,14 @@ class CPanel : public QObject {
     void SetFocusToPath();
     void SetFocusToLastRememberedItem();
     void AttachSelectionView(QAbstractItemView *view,
-                             QtPanelList::SortColumnResolver sortColumn = {}) {
-        _selectionList.Attach(view, std::move(sortColumn));
-        _selectionList.SetSingleSelection(_mySelectMode);
+                             QtPanelList::SortColumnResolver sortColumn = {});
+    void DeleteListItems() {
+        if (_selectionList.GetItemCount() != 0) {
+            const bool b = _enableItemChangeNotify;
+            _enableItemChangeNotify = false;
+            _selectionList.DeleteListItems();
+            _enableItemChangeNotify = b;
+        }
     }
     void UpdateSelection();
     void SelectSpec(const UString &mask, bool selectMode);
@@ -658,6 +663,7 @@ class CPanel : public QObject {
 
   private:
     friend class CApp;
+    void OnItemChanged(unsigned index, bool oldSelected, bool newSelected);
     friend class CThreadFolderOperations;
     QPointer<QWidget> _mainWindow;
     QPointer<QWidget> _parentWindow;
@@ -678,6 +684,7 @@ class CPanel : public QObject {
     // Original Create initializes these to true; Qt panels exist before Create is ported.
     bool _processTimer = true;
     bool _processNotify = true;
+    bool _enableItemChangeNotify = true;
     bool _processStatusBar = true;
     bool _dontShowMode = false;
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -685,6 +692,7 @@ class CPanel : public QObject {
     QPointer<QWidget> _headerComboBox;
     UStringVector ComboBoxPaths;
     QtPanelList _selectionList;
+    QMetaObject::Connection _itemChangedConnection;
     CRecordVector<bool> _selectedStatusVector;
     CMyComPtr<IFolderFolder> _folder;
     CMyComPtr<IFolderCompare> _folderCompare;

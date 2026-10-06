@@ -372,25 +372,6 @@ void CPanel::Get_ItemIndices_OperSmart(CRecordVector<UInt32> &indices) const {
 }
 
 void CPanel::SaveSelectedState(CSelectedState &s) {
-    // Native marks are independent of focused-row selection in alternative mode.
-    if (!_mySelectMode && _selectionList.GetItemCount() == 0)
-        _selectedStatusVector.Clear();
-    else if (!_mySelectMode) {
-        const unsigned numItems = GetFolderItemCount();
-        _selectedStatusVector.ClearAndReserve(numItems);
-        for (unsigned i = 0; i < numItems; i++)
-            _selectedStatusVector.AddInReserved(false);
-        for (int row = 0; row < _selectionList.GetItemCount(); ++row) {
-            const unsigned realIndex = GetRealItemIndex(row);
-            if (realIndex == kParentIndex)
-                continue;
-            if (realIndex >= numItems)
-                throw 1;
-            _selectedStatusVector[realIndex] = _selectionList.IsItemSelected(row);
-        }
-    } else
-        EnsureSelectionVectorSize();
-
     s.FocusedName_Defined = false;
     s.FocusedName.Empty();
     s.SelectFocused = true;
@@ -432,7 +413,7 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
     _dontShowMode = false;
     CDisableTimerProcessing timerProcessing(*this);
     CDisableNotify disableNotify(*this);
-    _selectionList.DeleteListItems();
+    DeleteListItems();
     _selectedStatusVector.Clear();
     _startGroupSelect = 0;
     _selectionIsDefined = false;
@@ -478,6 +459,11 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
         }
         RINOK(hres)
     }
+    // Native insertion adds one mark per source item before publishing its row.
+    // Qt publishes rows later; prepare the unselected vector at this boundary.
+    _selectedStatusVector.ClearAndReserve(numItems);
+    for (UInt32 i = 0; i < numItems; ++i)
+        _selectedStatusVector.AddInReserved(false);
     if (!IsFSFolder()) {
         CMyComPtr<IGetFolderArcProps> getFolderArcProps;
         _folder.QueryInterface(IID_IGetFolderArcProps, &getFolderArcProps);

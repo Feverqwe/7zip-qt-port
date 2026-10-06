@@ -81,6 +81,8 @@ class PanelColumnInitializationTests final : public QObject, protected MainWindo
         auto &panel = *view.sourcePanel;
         panel.SelectAll(true);
         QVERIFY(panel.IsItemMarked(0));
+        CSelectedState saved;
+        panel.SaveSelectedState(saved);
         CMyComPtr<IFolderFolder> provider = panel.GetFolder();
         const auto before = visibleOrder(view);
         const CPropColumns columns = panel.GetVisibleColumns();
@@ -91,6 +93,10 @@ class PanelColumnInitializationTests final : public QObject, protected MainWindo
         QCOMPARE(visibleOrder(view), before);
         QCOMPARE(view.rowCount(), 1);
         QCOMPARE(view.selectionModel()->selectedRows().size(), 1);
+        CSelectedState afterInitialization;
+        panel.SaveSelectedState(afterInitialization);
+        QCOMPARE(afterInitialization.SelectedNames.Size(), 0u);
+        QCOMPARE(panel.RefreshListCtrl(saved), S_OK);
         panel.OnReload();
         QCOMPARE(view.rowCount(), 1);
         QCOMPARE(view.selectionModel()->selectedRows().size(), 1);

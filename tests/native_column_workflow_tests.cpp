@@ -186,10 +186,15 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         focusPath(window, 1 - pane);
         QWidget *const focused = window.focusWidget();
         const CPropColumns unchanged = panel.GetVisibleColumns();
+        CSelectedState beforeInitialization;
+        panel.SaveSelectedState(beforeInitialization);
         const QPersistentModelIndex retained = list.model()->index(0, crc);
         QCOMPARE(panel.InitColumns(), S_OK);
         QVERIFY(panel.GetVisibleColumns().IsEqualTo(unchanged));
         QVERIFY(retained.isValid());
+        QVERIFY(!panel.IsItemMarked(0));
+        QCOMPARE(list.selectionModel()->selectedRows().size(), 2);
+        QCOMPARE(panel.RefreshListCtrl(beforeInitialization), S_OK);
         panel.OnReload();
         inspect(window, list, peer, "schema-original");
         spec->properties[1].type = VT_BSTR;

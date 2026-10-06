@@ -8,7 +8,54 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include <QColor>
+#include <QItemSelectionModel>
 #include <vector>
+
+void CPanel::OnItemChanged(unsigned index, bool oldSelected, bool newSelected) {
+    if (index == (UInt32)-1)
+        return;
+    // Don't change this code. It works only with such check
+    if (oldSelected != newSelected)
+        _selectedStatusVector[index] = newSelected;
+}
+
+void CPanel::AttachSelectionView(QAbstractItemView *view,
+                                 QtPanelList::SortColumnResolver sortColumn) {
+    disconnect(_itemChangedConnection);
+    _selectionList.Attach(view, std::move(sortColumn));
+    _selectionList.SetSingleSelection(_mySelectMode);
+    if (!_selectionList.IsBound())
+        return;
+    // A pre-populated Qt model is an integration input, unlike native Create.
+    EnsureSelectionVectorSize();
+    if (!_mySelectMode)
+        for (int row = 0; row < _selectionList.GetItemCount(); ++row) {
+            const unsigned index = GetRealItemIndex(row);
+            if (index < _selectedStatusVector.Size())
+                OnItemChanged(index, _selectedStatusVector[index],
+                              _selectionList.IsItemSelected(row));
+        }
+    _itemChangedConnection =
+        connect(view->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+                [this](const QItemSelection &selected, const QItemSelection &deselected) {
+                    if (!_processNotify || !_enableItemChangeNotify || _mySelectMode)
+                        return;
+                    const auto notify = [this](const QItemSelection &changes, bool newSelected) {
+                        for (const auto &range : changes) {
+                            if (range.left() != 0)
+                                continue;
+                            for (int row = range.top(); row <= range.bottom(); ++row) {
+                                quintptr index;
+                                if (_selectionList.GetItemParam(unsigned(row), index) &&
+                                    index < _selectedStatusVector.Size())
+                                    OnItemChanged(unsigned(index), !newSelected, newSelected);
+                            }
+                        }
+                    };
+                    notify(deselected, false);
+                    notify(selected, true);
+                });
+}
 
 // CDDS_ITEMPREPAINT foreground policy; Qt model/delegate supplies draw stages.
 QColor CPanel::OnCustomDraw(unsigned realIndex) const {

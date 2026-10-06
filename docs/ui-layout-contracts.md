@@ -59,6 +59,12 @@ Refresh and reopening must retain that order and widths in both panes under
 EN/RU at980×620/640×400. Direct InitColumns clears native marks before property
 enumeration, including unchanged column catalogs; it does not clear published
 Qt rows or their widget selection. Subsequent source restoration owns marks.
+Save selection before direct InitColumns; restore that source snapshot afterwards.
+Selection deltas update native marks immediately in their owning pane, including
+the inactive peer. Notification guards and alternative mode suppress ordinary
+selection deltas; SaveSelectedState reads marks without overwriting them. Preserve
+parent exclusion, sorted source indices and peer focus through source Reload.
+Inspect both pane roles EN/RU at980×620/640×400.
 
 Column header menus retain source property order/checks/first-item protection,
 toggle the owning panel's source visible catalog and append a newly shown column

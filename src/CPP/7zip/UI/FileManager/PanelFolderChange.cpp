@@ -80,7 +80,7 @@ void CPanel::OpenFolder(unsigned index) {
 
 void CPanel::ReleaseFolder() {
     _refreshSelection.reset();
-    _selectionList.DeleteListItems();
+    DeleteListItems();
     _folder.Release();
     _folderCompare.Release();
     _folderGetItemName.Release();

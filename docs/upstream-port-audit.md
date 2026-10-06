@@ -1735,6 +1735,93 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source selection notification and snapshot consumers, 2026-10-07
+
+Reviewed original PanelListNotify::OnItemChanged524–534 and OnNotifyList's
+LVN_ITEMCHANGED caller, Panel::OnNotify process guard, Panel.h DeleteListItems/
+constructor flags, PanelItems::SaveSelectedState/InitColumns/RefreshListCtrl
+mark allocation/insertion/restoration, ReleaseFolder and current Qt attachment,
+command availability, source-index and deferred publication callers. Full pin
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git; no additional module/dependency/language/notice
+or upstream edits. OnItemChanged remains in its original module/symbol: Qt
+decodes native lParam/old/new selected bits into index/bool arguments. Parent
+return and oldSelected!=newSelected assignment/control flow are retained.
+
+CPanel's existing AttachSelectionView now connects its owning selection model,
+including inactive panes; it disconnects the prior connection and QObject bounds
+the callback lifetime. Column-zero selection deltas map through source params.
+Process-notify, original enable-item-change and alternative-mode guards suppress
+ordinary callbacks. Invalid/unpublished indices are skipped at the Qt transport
+boundary, not used to invent marks. Original DeleteListItems toggle/restore now
+wraps actual Qt row deletion in load/release. Qt model row count replaces the
+native presentation-only there-are-list-items flag; outer notify guards remain.
+MainWindow attaches the source selection handler at the end of table construction,
+before its command/status listeners. The former post-panel attachment is removed;
+availability reads the updated source marks during the same Qt signal delivery.
+
+SaveSelectedState removes the independent19-line widget-to-marks reconstruction
+and reads source marks like upstream. Qt attachment seeds a pre-populated model
+once; native window creation has no pre-existing model input. Source loading now
+prepares false marks after validated count/directory properties and before deferred
+Qt publication. This replaces native reserve/AddInReserved-before-row-insertion;
+the existing restoration phase applies saved selected names. Count/load failures
+still stop publication. A direct InitColumns clears marks as upstream; two prior
+drivers now retain a snapshot before that call and explicitly restore it, preserving
+their rows/widget-selection/equality assertions. One also proves a post-clear
+snapshot contains no selected names. Rebuilding marks inside a later snapshot is
+no longer an accepted restoration mechanism.
+
+New panel_item_changed has four EN/RU both-pane inactive-owner scenarios:
+immediate marks, guarded snapshot, standard/alternative transitions, owning Reload,
+peer focus/selection and Unicode bytes. A focused source case covers parent and
+reordered indices, repeated selection, late count failure without snapshot
+enumeration, old-model disconnection, replacement view and deletion-time marks/
+release. Eight980×620/640×400 reports cover both panels. CMake has isolated settings
+and Windows native-platform registration. Actual pre-fix RED4/2QtPASS0.147s
+shows missing immediate marks and guarded snapshot overwriting them; five frozen
+input hashes/snapshots/logs reside in build/review/item-changed-red. Initial
+integration lacked load-time mark allocation and exposed a direct-InitColumns
+driver's dependence on the removed reconstruction; both are corrected at their
+source phases, not by weakening selection assertions. No separate late-count or
+teardown RED is claimed.
+The first mandatory full gate terminated8 (272/278PASS148.64s): six command/
+Properties/Rename/VerCtrl consumers exposed command listeners running before the
+source selection callback, or a direct Open fixture bypassing source mark allocation
+through folder.LoadItems. Its frozen inputs and logs remain separately in
+build/review/item-changed-first-gate. Moving the existing attachment before those
+listeners corrects the ordering; the new suite checks immediate single/multiple
+Rename availability as well. The direct Open fixture now uses panel.LoadListItems
+before manual row publication, retaining its exact external paths and20-item limit
+assertions. This failed integration gate is not the final proof.
+The corrected second full gate terminated8 (275/278PASS452.89s) with three
+timeouts in archive_external_lifetime/codec_update/codec_probe. macOS power logs
+confirm clamshell sleep00:29:55–00:34:59 for304s; codec_probe measured302282ms
+event-loop gap. All11 input hashes remained unchanged. Frozen logs/inputs and
+the two sleep/wake events are in build/review/item-changed-sleep-gate; those three
+suites then pass3/3 in6.05s. The sleep-interrupted gate is not acceptance evidence.
+Final affected21-target build/focused21/21PASS21.13s and mandatory unsandboxed
+gate terminate0: formatting, all-target build and278/278PASS124.33s. All11 frozen
+input hashes remain unchanged across this passing gate. Eight current JSON reports
+expose both panels/addresses/headers/toolbar/status at both contract sizes.
+A final visibility-only review retains OnItemChanged's original private access;
+the fixture repeats selection through Qt's public API instead of exposing that
+handler for tests. Only the header declaration and that test stimulus change after
+the gate; affected build/focused evidence and their final snapshots are recorded
+separately as post-review artifacts. No handler body or runtime policy changes.
+Post-review affected three-target build and fresh focused3/3PASS2.65s validate
+that private interface and public-event fixture; nine other input hashes match
+the passing gate. Final11 hashes and the two changed snapshots are retained in
+post-review-inputs.json/post-review-inputs. Baseline408 exact/196 adapted/3 local
+paths passes. Current native Windows/Linux and rendered Windows remain unverified.
+
+Focused build/tests, baseline, frozen final inputs, geometry and mandatory full
+gate evidence are recorded in build/review/item-changed-final. Current execution
+is macOS27.0.1 arm64/official Qt6.12.0; Windows/Linux/rendered acceptance remains
+unverified. This closes the bounded item-selection notification/snapshot consumer,
+not the whole OnNotify dispatcher, providerless count disposition, full-body/
+109-module/native ADS-device-zone/current3OS/cold-stable/package or P3-05.15/P3-06.
+
 ### Source real-provider column workflow, 2026-10-07
 
 Reviewed full original/adapted PanelItems::GetColumnVisible/GetColumnWidth/

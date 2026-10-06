@@ -26,7 +26,8 @@ bool writeFile(const QString &path) {
 
 void populate(CPanel &panel, QTableWidget &table) {
     panel.AttachSelectionView(&table);
-    QCOMPARE(panel.GetFolder()->LoadItems(), S_OK);
+    // The source load prepares marks before this fixture publishes Qt rows.
+    QCOMPARE(panel.LoadListItems(), S_OK);
     UInt32 count = 0;
     QCOMPARE(panel.GetFolder()->GetNumberOfItems(&count), S_OK);
     table.setRowCount(int(count));
@@ -74,7 +75,7 @@ class NativeOpenCommandsTests : public QObject {
         table.item(1, 0)->setData(Qt::UserRole + 6, 0u);
         table.item(0, 0)->setText("forged.txt");
         CSelectedState selection;
-        panel.SaveSelectedState(selection); // current Qt OnNotify synchronization boundary
+        panel.SaveSelectedState(selection);
         panel.OpenSelectedItems(false);
         services.paths.sort();
         QStringList expected = {fixture.filePath(QStringLiteral("первый й.txt")),

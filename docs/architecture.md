@@ -1182,8 +1182,13 @@ CPanel selection bits and property indices use source parameters; focus uses a
 presentation row. Legacy snapshots build a derived param-to-row map at Save/
 Refresh, while bound folders supply source name/prefix.
 Copy/Move summaries now use that active panel's bound folder and source operated
-indices. Qt selection is synchronized through SaveSelectedState until source
-OnNotify is connected; Get_ItemIndices_Operated retains the source selected-focus
+indices. Source OnItemChanged consumes owning-model selection deltas, including
+inactive panes, behind notification/alternative-mode guards. Table construction
+attaches that callback before command/status listeners. SaveSelectedState reads
+updated source marks during the same Qt signal without rebuilding them from the
+widget. Qt attachment seeds
+a pre-populated model once; source loading allocates marks before deferred row
+publication. Get_ItemIndices_Operated retains the source selected-focus
 fallback and parent exclusion. Native LoadFullPath supplies the current prefix.
 No row metadata copy is used for functional selection decisions.
 

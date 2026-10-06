@@ -151,8 +151,12 @@ consumers;32 detail/icon recovery/rebind reports покрывают EN/RU обе
 per-type widths/order/visibility и отдельные Type/Name changes с сохранением
 selection/peer focus. Normal/compact EN/RU обе панели проверены на macOS;
 [evidence](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07).
-Сверка тел
-не подтверждает текущую отрисовку или завершение всего модуля.
+Source selected-state notifications также теперь обновляют owning-pane marks
+немедленно, включая inactive peer, через original OnItemChanged. Snapshot больше
+не перезаписывает marks при guard; deletion/alternative guards, source indices,
+Reload/peer/bytes проверены в EN/RU обеих ролях с normal/compact reports.
+[Evidence](upstream-port-audit.md#source-selection-notification-and-snapshot-consumers-2026-10-07).
+Сверка тел не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing

@@ -111,6 +111,13 @@ provider блокируют запрос, ошибка paint используе�
 getter сохраняет exception policy. EN/RU обе роли/reload/rebind/current captures
 проверены на macOS. Реальные deleted archives и rendered Windows/native3OS
 приёмка остаются открытыми.
+Изменение выбора теперь вызывает исходный OnItemChanged в owning CPanel,
+включая неактивную панель. Qt передаёт source index и изменение selected-state;
+guard/alternative mode сохраняют независимые marks. SaveSelectedState снова
+только читает исходное состояние. Qt attachment и deferred publication имеют
+явные точки инициализации; direct InitColumns очищает marks и требует snapshot,
+сохранённый до вызова. EN/RU обе роли/Reload/peer/bytes проверены на macOS;
+current native/rendered и полная OnNotify приёмка остаются открытыми.
 Реальные FS/ZIP/7z теперь проверены одним сценарием с отдельными settings по
 FolderTypeID: source defaults, Name width/order и ATime visibility восстанавливаются
 после namespace-перехода и повторного открытия архива. Смена только Type или

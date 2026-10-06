@@ -1,5 +1,14 @@
 # Regression strategy
 
+`panel_item_changed` checks immediate source marks for inactive owning panes,
+guarded read-only snapshots, standard/alternative transitions and source Reload
+under EN/RU. A source-index/lifetime case covers parent, reordered source params,
+repeated selection, late count failure, replacement views and
+release. Eight normal/compact reports accompany peer focus/selection and Unicode
+control bytes. Direct InitColumns consumers save state before its native mark
+clear and restore that state explicitly; widget selection is not another snapshot
+authority. See the [dated source review](upstream-port-audit.md#source-selection-notification-and-snapshot-consumers-2026-10-07).
+
 `native_column_workflow` walks disposable filesystem → real ZIP/7z → changing
 namespace schema → filesystem → reopened archive, using the official codec module.
 Eight both-pane EN/RU cases check source defaults, exact descriptor text/alignment,
