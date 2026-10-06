@@ -89,7 +89,11 @@ it before querying failed provider state during OnCopy completion. Empty-row
 snapshots no longer read a failed count; ReleaseFolder clears the retained
 result. Both source roles/Copy/Move exercise load/property/type/count failure,
 Cancel, original focus/title/marks and recovery with real output bytes.
-FS/async terminal and other post-Copy failure behavior still require reconciliation;
+Synchronous filesystem reload now retains its native provider and load HRESULT;
+filesystem Refresh uses source OnReload. Both roles/EN-RU direct/reload/timer/
+command and actual filesystem Copy/Move peers cover controlled Cancel/allocation
+failure and recovery. Missing-folder adaptation, async terminal and other
+post-Copy failure behavior still require reconciliation;
 this remains a partial integration rather than complete RefreshListCtrl closure.
 
 Compared the complete1004-line original `CPP/7zip/UI/FileManager/App.cpp`

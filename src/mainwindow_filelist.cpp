@@ -16,15 +16,15 @@
 #include <QScopedValueRollback>
 #include <QScrollBar>
 
-void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound) {
+HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourceAlreadyBound) {
     if (app_.QtOperations().closed())
-        return;
+        return E_ABORT;
     QtAppOperationState::CallScope call(app_.QtOperations());
     const QFileInfo info(path);
     if (!info.isDir()) {
         statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") + path);
         path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
-        return;
+        return E_FAIL;
     }
     const QString next = info.canonicalFilePath();
     if (remember && state_ == State::Namespace)
@@ -59,18 +59,17 @@ void MainWindow::showDirectory(const QString &path, bool remember, bool sourceAl
     table_->setRowCount(0);
     path_->setText(directory_);
     static_cast<FileTable *>(table_)->filesystem = true;
-    startFilesystemListing(sourceAlreadyBound);
+    return startFilesystemListing(sourceAlreadyBound);
 }
 
-void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
+HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
     COpenResult opened;
     auto &panel = app_.GetFocusedPanel();
     HRESULT result =
         sourceAlreadyBound ? S_OK : panel.BindToPath(ToUString(directory_), UString(), opened);
     CMyComPtr<IFolderFolder> folder = panel.GetFolder();
     if (result == S_OK && !panel.IsFSFolder()) {
-        renderBoundFolder();
-        return;
+        return renderBoundFolder();
     }
     if (result == S_OK)
         static_cast<QtPanelAddressCombo *>(pathCombo_)->ShowCurrentPath(directory_, true);
@@ -100,7 +99,7 @@ void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
                 setState(State::Filesystem);
                 statusBar()->showMessage(QtLangText(IDS_SCANNING));
                 filesystemScanner_->start(directory_, false);
-                return;
+                return S_OK;
             }
         }
         if (result == S_OK) {
@@ -119,6 +118,7 @@ void MainWindow::startFilesystemListing(bool sourceAlreadyBound) {
             result == S_OK ? QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount())
                            : QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
     }
+    return result;
 }
 
 void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {

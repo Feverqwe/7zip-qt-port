@@ -466,6 +466,56 @@ all-target build and256/256 CTest109.72s. Eight code/test/build inputs remain
 unchanged from the focused check. Full/focused logs, input/validation manifests
 and message geometry review are retained in the final artifact directory.
 
+### Bound filesystem reload result and source Refresh consumer, 2026-10-06
+
+Reviewed original CPP/7zip/UI/FileManager/PanelItems.cpp::RefreshListCtrl,
+SaveFocused/OnReload/OnTimer, App.h::RefreshView, FSFolder.cpp::LoadItems/
+LoadSubItems and provider/callback types and Qt callers at upstream commit
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Original Refresh loads its existing provider;
+App Refresh calls focused OnReload and retains its non-S_OK error policy.
+The existing port's CFSFolder callback and source ComTry.h boundary already
+return E_ABORT or map an exception to E_OUTOFMEMORY; their implementations
+are unchanged by this iteration.
+
+Necessary Qt adaptation: showDirectory/startFilesystemListing return synchronous
+HRESULT, and renderBoundFolder passes FS failure through before restoring
+selection. A focused refreshFilesystem helper shares the existing Qt selection/
+viewport publication. OnReload reloads its already-bound CFSFolder rather than
+rebinding/losing it; filesystem Refresh now uses original OnReload, like namespace
+Refresh. New navigation and other operation refresh paths retain their existing
+binding transport. Large/flat worker publication still reports pending success;
+async terminal and missing-folder adaptations are explicitly outside this
+completed synchronous result seam. No new enumeration algorithm, copied module,
+error formatter, engine request or borrowed dependency. Baseline verified408
+exact/196 adapted/3 local, pinned notices and C/C++ boundaries unchanged.
+
+Thirty-two new EN/RU direct/reload/timer/command consumers from both panels
+use an actual CFSFolder, cause callback Cancel or controlled std::bad_alloc,
+verify original error text and provider identity, empty rows, retained selection
+HRESULT, notification guards, successful reload and exact untouched control
+bytes. The exception checks the existing COM policy, not real memory exhaustion.
+Eight additional real FS Copy/Move consumers reload a filesystem peer after
+successful output elsewhere; provider/peer seed bytes, output/Copy input bytes,
+Move deletion, marks/focus/title/guards and recovery are checked. Their shared
+sequential test flow remains longer than80 lines so setup, modal transition and
+result assertions can be reviewed together in the focused120→172-line suite.
+
+Actual RED restores only old FS rebind:48 Qt passes/32 lost-result or missing-
+message failures, no abort; retained build/review/source-fs-reload-red/LastTest.log.
+Restored final four focused suites pass14.09s: PanelListLoad80/CopyReload30/
+AutoRefresh5/UiCopyRouting83 Qt passes, zero failures/skips. Forty-eight current
+EN/RU OS-managed message probes have visible/enabled/fullyVisible/fitted labels,
+with platform autosizing retained. Focused log, seven code/test input hashes and
+geometry review are retained in build/review/source-fs-reload-final.
+Final macOS27.0.1 arm64/Qt6.12.0 mandatory unsandboxed check.sh passes formatting,
+all-target build and256/256 CTest108.51s. Seven input hashes remain unchanged;
+full/focused logs, validation manifest and48 message reports are frozen in the
+final artifact directory. These results verify this Mac snapshot only.
+Current Windows/Linux/rendered focus, missing-folder/async terminal handling,
+remaining RefreshListCtrl presentation/timer stages and complete P3-05.15/P3-06
+acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

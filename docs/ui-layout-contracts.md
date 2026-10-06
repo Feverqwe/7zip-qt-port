@@ -54,10 +54,14 @@ reading failed provider state. Check both source roles for Copy/Move: output byt
 retention/deletion, marks, notification guards, source focus/title and successful
 recovery on the next valid peer reload.
 Verify direct result, explicit reload, changed-folder timer and
-namespace Refresh command under EN/RU; close the OS-managed error and recover
+namespace/filesystem Refresh command under EN/RU; close the OS-managed error and recover
 through a valid reload. Inspect message text, standard button group and exposure
 under normal/compact probes, retaining platform autosizing. Archive synchronous
-load errors must also reach this callback; FS/worker terminal error presentation
+load errors must also reach this callback.
+Filesystem reload keeps its bound provider through controlled E_ABORT and
+allocation failure, empties failed rows, then recovers after a valid reload;
+inspect both source roles and the Copy/Move filesystem-peer completion consumer.
+Missing-folder adaptation, FS/worker terminal error presentation
 and whole RefreshListCtrl acceptance remain separate required checks.
 
 ### Persisted source locations (P3-05.14, required scope)

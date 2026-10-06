@@ -1,7 +1,9 @@
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "copydialog.h"
 #include "panel_load_folder.h"
 #include "window_state_support.h"
+#include <new>
 
 class PanelCopyReloadTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -11,19 +13,28 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         QTest::addColumn<unsigned>("sourceIndex");
         QTest::addColumn<bool>("move");
         QTest::addColumn<QString>("phase");
+        QTest::addColumn<bool>("filesystemPeer");
         for (unsigned index : {0u, 1u})
             for (bool move : {false, true})
                 for (const QString phase : {"load", "cancel", "property", "type", "count"})
                     QTest::newRow(qPrintable(QString("%1-%2-%3").arg(index).arg(move).arg(phase)))
-                        << index << move << phase;
+                        << index << move << phase << false;
+        for (unsigned index : {0u, 1u})
+            for (bool move : {false, true})
+                for (const QString phase : {"cancel", "allocation"})
+                    QTest::newRow(
+                        qPrintable(QString("fs-%1-%2-%3").arg(index).arg(move).arg(phase)))
+                        << index << move << phase << true;
     }
     void copyCompletionSurvivesPeerLoadFailure() {
         QFETCH(unsigned, sourceIndex);
         QFETCH(bool, move);
         QFETCH(QString, phase);
-        const HRESULT expected = phase == "cancel" ? E_ABORT
-                                 : phase == "type" ? E_FAIL
-                                                   : E_INVALIDARG;
+        QFETCH(bool, filesystemPeer);
+        const HRESULT expected = phase == "cancel"       ? E_ABORT
+                                 : phase == "allocation" ? E_OUTOFMEMORY
+                                 : phase == "type"       ? E_FAIL
+                                                         : E_INVALIDARG;
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString input = fixture.filePath("input");
@@ -40,17 +51,40 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
-        auto *peerView = static_cast<FileTable *>(
-            window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex))
-                ->findChild<QTableWidget *>("archiveTable"));
+        auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
+        auto *peerView =
+            static_cast<FileTable *>(peerUi->findChild<QTableWidget *>("archiveTable"));
         peerView->setFocus();
         QTRY_VERIFY(peerView->hasFocus());
-        action(window, "openRootAction")->trigger();
-        auto *spec = new LoadFolder;
-        CMyComPtr<IFolderFolder> folder = spec;
-        peerView->sourcePanel->SetNewFolder(folder);
-        peerView->sourcePanel->OnReload();
-        QCOMPARE(peerView->rowCount(), 2);
+        LoadFolder *spec = nullptr;
+        CMyComPtr<IFolderFolder> folder;
+        NFsFolder::CFSFolder *filesystem = nullptr;
+        const int peerRows = filesystemPeer ? 1 : 2;
+        const QString peerControl = fixture.filePath(QStringLiteral("peer/seed 文件.txt"));
+        if (filesystemPeer) {
+            const QString peer = fixture.filePath("peer");
+            QVERIFY(QDir().mkpath(peer));
+            QFile seed(peerControl);
+            QVERIFY(seed.open(QIODevice::WriteOnly));
+            QCOMPARE(seed.write("peer control"), qint64(12));
+            seed.close();
+            auto *peerAddress = peerUi->findChild<QLineEdit *>("archivePath");
+            QVERIFY(peerAddress);
+            peerAddress->setFocus();
+            peerAddress->setText(peer);
+            QTest::keyClick(peerAddress, Qt::Key_Return);
+            QTRY_COMPARE(peerView->rowCount(), peerRows);
+            folder = peerView->sourcePanel->GetFolder();
+            filesystem = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
+            QVERIFY(filesystem);
+        } else {
+            action(window, "openRootAction")->trigger();
+            spec = new LoadFolder;
+            folder = spec;
+            peerView->sourcePanel->SetNewFolder(folder);
+            peerView->sourcePanel->OnReload();
+            QCOMPARE(peerView->rowCount(), peerRows);
+        }
         peerView->selectRow(0);
         auto *sourceUi = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
         auto *address = sourceUi->findChild<QLineEdit *>("archivePath");
@@ -71,12 +105,20 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
             if (auto *dialog = window.findChild<CopyDialog *>("copyDialog");
                 dialog && dialog->isVisible() && !submitted) {
                 submitted = true;
-                spec->loadResult = phase == "cancel" ? E_ABORT
-                                   : phase == "load" ? E_INVALIDARG
-                                                     : S_OK;
-                spec->directoryResult = phase == "property" ? E_INVALIDARG : S_OK;
-                spec->directoryType = phase == "type" ? VT_UI4 : VT_BOOL;
-                spec->loadedCountResult = phase == "count" ? E_INVALIDARG : S_OK;
+                if (filesystem) {
+                    filesystem->CheckBreak = [phase](const QString &) {
+                        if (phase == "allocation")
+                            throw std::bad_alloc();
+                        return false;
+                    };
+                } else {
+                    spec->loadResult = phase == "cancel" ? E_ABORT
+                                       : phase == "load" ? E_INVALIDARG
+                                                         : S_OK;
+                    spec->directoryResult = phase == "property" ? E_INVALIDARG : S_OK;
+                    spec->directoryType = phase == "type" ? VT_UI4 : VT_BOOL;
+                    spec->loadedCountResult = phase == "count" ? E_INVALIDARG : S_OK;
+                }
                 dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(output + '/');
                 dialog->accept();
             }
@@ -108,11 +150,21 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(QTest::qWaitForWindowActive(&window));
         QTRY_VERIFY(sourceView->hasFocus());
         QCOMPARE(QDir::cleanPath(window.windowTitle()), input);
-        spec->loadResult = spec->directoryResult = spec->countResult = spec->loadedCountResult =
-            S_OK;
-        spec->directoryType = VT_BOOL;
+        QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)folder);
+        if (filesystem)
+            filesystem->CheckBreak = {};
+        else {
+            spec->loadResult = spec->directoryResult = spec->countResult = spec->loadedCountResult =
+                S_OK;
+            spec->directoryType = VT_BOOL;
+        }
         peerView->sourcePanel->OnReload();
-        QCOMPARE(peerView->rowCount(), 2);
+        QCOMPARE(peerView->rowCount(), peerRows);
+        if (filesystem) {
+            QFile seed(peerControl);
+            QVERIFY(seed.open(QIODevice::ReadOnly));
+            QCOMPARE(seed.readAll(), QByteArray("peer control"));
+        }
     }
 };
 

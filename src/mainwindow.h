@@ -185,7 +185,7 @@ class MainWindow : public QMainWindow {
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handleSelectionKey(QKeyEvent *key);
     void handleSelectionClick(int row);
-    void showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
+    HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false);
     HRESULT renderRootFolder();
     void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     void appendParentEntry();
@@ -195,7 +195,8 @@ class MainWindow : public QMainWindow {
     void completeListSelection();
     void refreshCurrent(const CSelectedState *preserved = nullptr);
     HRESULT reloadPanelPresentation(unsigned index, const CSelectedState &selection);
-    void startFilesystemListing(bool sourceAlreadyBound);
+    HRESULT startFilesystemListing(bool sourceAlreadyBound);
+    HRESULT refreshFilesystem(const CSelectedState &selection, bool sourceAlreadyBound);
     void restoreListSelection(const CSelectedState &selection);
     struct FilesystemSignature;
     void pollAutoRefresh();

@@ -126,7 +126,8 @@ void QtFileManagerCommands::ChangeFlatMode() {
         !(window_.state_ == MainWindow::State::Viewing ? window_.flatArchive_ : window_.flatDisk_));
 }
 void QtFileManagerCommands::RefreshView() {
-    if (window_.state_ == MainWindow::State::Namespace)
+    if (window_.state_ == MainWindow::State::Namespace ||
+        window_.state_ == MainWindow::State::Filesystem)
         window_.app_.GetFocusedPanel().OnReload();
     else
         window_.refreshCurrent();

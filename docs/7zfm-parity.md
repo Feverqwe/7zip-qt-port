@@ -44,13 +44,17 @@ namespace оставляет пустой список; последующая �
 его. Полные HRESULT presentation, icons/dots/timer и native-проверки остаются.
 Синхронный HRESULT namespace/archive renderer теперь возвращается в исходный
 OnReload; ошибку сопровождает его исходное сообщение, включая E_ABORT.
-Namespace Refresh идёт через тот же handler. Direct/explicit/timer/command
+Namespace и filesystem Refresh идут через тот же handler. Direct/explicit/timer/command
 consumers проверены под EN/RU с восстановлением списка после ошибки.
 После ошибки загрузки исходная post-Copy continuation теперь получает тот же
 HRESULT до восстановления выделения. Повторный reload пустого списка не читает
 невалидный count provider. Copy/Move consumers проверяют output, очистку marks,
 focus/title, notification guards и последующую успешную загрузку peer.
-Filesystem/async terminal и остальные post-Copy failure semantics требуют сверки;
+Синхронный FS reload сохраняет уже привязанный CFSFolder и возвращает load
+HRESULT, включая Cancel и преобразованное COM allocation exception; ошибочное
+выделение не восстанавливается. Обе роли панелей и реальный FS peer после
+Copy/Move проверены с повторной загрузкой и контрольными байтами.
+Missing-folder adaptation, async terminal и остальные post-Copy failures требуют сверки;
 текущие Windows/Linux и rendered проверки остаются обязательными.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)

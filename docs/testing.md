@@ -34,6 +34,20 @@ clear ordinary source marks and release notification guards. A subsequent valid
 peer reload must recover. It uses private Unicode paths and a modal driver;
 Windows uses the native plugin and desktop lock. Offscreen window activation
 does not establish native focus parity.
+Eight additional consumers use an actual filesystem peer, preserve its provider,
+and cause CheckBreak cancellation or a controlled allocation exception. They
+verify original E_ABORT/E_OUTOFMEMORY messages, unchanged peer control bytes and
+the same operation cleanup/recovery assertions.
+
+Thirty-two `panel_list_load` filesystem rows exercise direct SaveFocused,
+OnReload, changed-folder OnTimer and Refresh from both source panels under EN/RU.
+The existing CFSFolder callback returns Cancel or throws std::bad_alloc; the
+source COM boundary supplies E_OUTOFMEMORY. The existing provider must survive,
+failed rows must disappear, selection must retain the failure result, and a
+successful reload must recover exact control bytes/commands. Forty-eight message
+JSON probes inspect text exposure/fit. The retained RED restores the old rebind
+and loses32 results/messages. These controlled failures do not claim real memory
+exhaustion or every OS enumeration error.
 
 `ui_copy_same` checks ordinary F5/F6 defaults against an empty GetFsPath from
 the opposite drives/root panel. EN/RU normal/compact rows cancel the dialog,

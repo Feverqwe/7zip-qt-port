@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
@@ -5,6 +6,7 @@
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "window_state_support.h"
+#include <new>
 
 class PanelListLoadTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -34,6 +36,91 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
     }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void filesystemReloadPreservesProviderResult_data() {
+        QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<QString>("caller");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("cancel");
+        for (unsigned index : {0u, 1u})
+            for (const char *caller : {"result", "reload", "timer", "command"})
+                for (const char *language : {"-", "ru"})
+                    for (bool cancel : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(index)
+                                                     .arg(caller)
+                                                     .arg(language)
+                                                     .arg(cancel)))
+                            << index << QString::fromLatin1(caller) << QString::fromLatin1(language)
+                            << cancel;
+    }
+    void filesystemReloadPreservesProviderResult() {
+        QFETCH(unsigned, sourceIndex);
+        QFETCH(QString, caller);
+        QFETCH(QString, language);
+        QFETCH(bool, cancel);
+        const HRESULT expected = cancel ? E_ABORT : E_OUTOFMEMORY;
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString payload = fixture.filePath(QStringLiteral("source 文件 δ.txt"));
+        QFile file(payload);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("control"), qint64(7));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(sourceIndex));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        QTRY_COMPARE(view->rowCount(), 1);
+        auto &panel = *view->sourcePanel;
+        CMyComPtr<IFolderFolder> folder = panel.GetFolder();
+        auto *spec = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
+        QVERIFY(spec);
+        view->selectRow(0);
+        spec->CheckBreak = [cancel](const QString &) {
+            if (!cancel)
+                throw std::bad_alloc();
+            return false;
+        };
+        if (caller == "result")
+            QCOMPARE(panel.RefreshListCtrl_SaveFocused(), expected);
+        else {
+            const QString shown = closeError(
+                window,
+                [&] {
+                    if (caller == "reload")
+                        panel.OnReload();
+                    else if (caller == "timer") {
+                        panel.Set_AutoRefresh_Mode(true);
+                        panel.MarkPortableFolderChanged();
+                        panel.OnTimer();
+                    } else
+                        action(window, "refreshAction")->trigger();
+                },
+                QString("filesystem-reload-hresult-%1").arg(QTest::currentDataTag()));
+            QCOMPARE(shown, ToQString(HResultToMessage(expected)));
+        }
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)folder);
+        QCOMPARE(view->rowCount(), 0);
+        QVERIFY(panel.ShouldProcessNotifications());
+        CSelectedState selection;
+        QCOMPARE(panel.RefreshListCtrl(selection), expected);
+        spec->CheckBreak = {};
+        panel.OnReload();
+        QCOMPARE(panel.GetFolder(), (IFolderFolder *)folder);
+        QCOMPARE(view->rowCount(), 1);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("control"));
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+    }
     void loadedDirectoriesAreCachedAndReplaced() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

@@ -130,12 +130,12 @@ HRESULT MainWindow::renderBoundFolder() {
         const QString directory = panel.GetFolder()
                                       ? QDir::cleanPath(ToQString(GetFolderPath(panel.GetFolder())))
                                       : returnDirectory_;
-        showDirectory(directory.isEmpty() ? returnDirectory_ : directory, false,
-                      panel.GetFolder() && panel.IsFSFolder());
-        if (selection)
+        const HRESULT loaded = showDirectory(directory.isEmpty() ? returnDirectory_ : directory,
+                                             false, panel.GetFolder() && panel.IsFSFolder());
+        if (loaded == S_OK && selection)
             restoreListSelection(*selection);
         refreshActions();
-        return S_OK;
+        return loaded;
     }
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
     if (!folder)

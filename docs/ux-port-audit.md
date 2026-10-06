@@ -66,7 +66,10 @@ EN/RU explicit/timer/command/failure/Cancel/recovery и60 OS-managed message
 reports проверяют эту границу. Post-Copy selection stage теперь сохраняет
 исходный early return после load failure; обе source roles/Copy/Move проверяют
 ошибки, Cancel и повторную загрузку без исключения из count provider.
-Остальная full/async/post-Copy error и
+Синхронный FS reload больше не теряет provider через повторную привязку;
+filesystem Refresh идёт через source OnReload. EN/RU обе роли и реальный FS
+peer Copy/Move проверяют Cancel/ошибку и восстановление, с48 message probes.
+Missing-folder adaptation и остальная full/async/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.

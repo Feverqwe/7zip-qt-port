@@ -50,7 +50,18 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
     autoRefreshTopPath_ =
         firstRow >= 0 && table_->item(firstRow, 1) ? table_->item(firstRow, 1)->text() : QString();
     autoRefreshScrollValue_ = table_->verticalScrollBar()->value();
-    refreshCurrent(&selection);
+    return refreshFilesystem(selection, true);
+}
+
+HRESULT MainWindow::refreshFilesystem(const CSelectedState &selection, bool sourceAlreadyBound) {
+    const HRESULT loaded = showDirectory(directory_, false, sourceAlreadyBound);
+    if (loaded != S_OK)
+        return loaded;
+    restoreListSelection(selection);
+    if (!scanningDisk_) {
+        restoreAutoRefreshViewport();
+        refreshActions();
+    }
     return S_OK;
 }
 
@@ -76,12 +87,7 @@ void MainWindow::refreshCurrent(const CSelectedState *preserved) {
             selection = *preserved;
         else
             app_.GetFocusedPanel().SaveSelectedState(selection);
-        showDirectory(directory_, false);
-        restoreListSelection(selection);
-        if (!scanningDisk_) {
-            restoreAutoRefreshViewport();
-            refreshActions();
-        }
+        refreshFilesystem(selection, false);
     } else if (state_ == State::Viewing) {
         auto &panel = app_.GetFocusedPanel();
         CSelectedState selection;
