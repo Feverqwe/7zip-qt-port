@@ -152,6 +152,15 @@ preserves peer provider/sort state, focused address and active
 menu projection. Windows uses the native Qt platform for these geometry/focus
 checks; current native Windows execution remains required.
 
+`panel_refresh_drop` observes source target paths through the public CDropTarget
+API on both panels: restoration, completed worker result and actual filesystem
+load cover success/error/Cancel. A later leave must not clear an old row index
+in the new list. Sixteen EN/RU table/icon scenarios send real Qt drag events,
+run menu Refresh or source restoration, preserve selected control bytes and
+peer provider/path, and re-enter/leave the current folder. Thirty-two current
+normal/compact reports inspect the affected views; Windows selects native Qt
+for these checks but its current execution remains required.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

@@ -395,6 +395,9 @@ Reference: pinned `PanelDrag.cpp::PositionCursor`, its `LVIS_DROPHILITED`
 paint state, native right-drop popup pairs/masks and Copy-to-archive confirmation.
 Qt preserves per-panel path→view→status order. Hover highlights the folder through
 a separate paint role without changing selection; DragLeave/Drop removes it.
+Refresh clears the source panel's drop-folder name/index before loading or
+restoring rows, including failure/Cancel. A subsequent leave does not address
+an old row number in the new list; a new hover resolves its current folder.
 Source-panel and disabled-view drops are rejected. Hover/SingleClick stays
 suspended during the source operation, including archive byte preparation.
 `drag_drop_ui` covers table/icon targets in both directions, popup Copy/Cancel,

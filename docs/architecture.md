@@ -38,6 +38,11 @@ publication. Worker-loaded filesystem folders skip only the already completed
 flat-mode/load calls. Qt renders the resulting source columns without reloading
 them; row directory flags use CPanel's validated cache. Resetting the same archive
 folder after load would discard that cache and is no longer part of publication.
+The original drop-highlight row/name belong to CPanel, shared with PanelDrag's
+target-path/type consumers. Both extracted Refresh phases clear them before
+loading/restoration errors. Qt can retain published rows during restoration;
+the list adapter also clears their drop paint role before resetting the source
+fields. Drag highlighting uses that same adapter without changing selection.
 Programmatic panel activation temporarily suppresses both source notify callbacks
 and Qt focus projection while controls are enabled. This prevents a synchronous
 focus return to the old pane from changing CApp's target halfway through loading.

@@ -1132,6 +1132,55 @@ are frozen with the input manifest.
 Final evidence: build/review/source-sort-commands-final. Current Windows/Linux/
 rendered/cold-stable and remaining .15/P3-06 acceptance remain mandatory.
 
+### Source Refresh drop-highlight owner (2026-10-06)
+
+Pinned upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Review the complete active RefreshListCtrl body,
+its extracted load/restoration consumers, Panel.h fields/initialization and
+PanelDrag RemoveSelection/PositionCursor/IsFsFolderPath/GetFolderType/
+GetTargetPath/IsItSameDrive, enter/over/leave callers and Qt hit/paint services.
+The original drop-highlight index/name belong to CPanel and are reset at the
+start of Refresh before the null-folder/loading/error branches. Their former
+independent CDropTarget storage survives reload and retains an obsolete subfolder.
+
+Restore original int/UString fields in Panel.h; remove the independent target
+fields. Restore source panel references and RemoveSelection's name/index branch
+order; retain existing narrow Qt hit-testing and platform volume services.
+Copy the two initial resets into both extracted Refresh phases before their
+result guards. Qt restoration can retain published rows where native Refresh
+deletes/recreates them, so clear the paint role through QtPanelList before the
+resets. Both Qt drag presentation and Refresh share that single role adapter.
+Selection/source index semantics stay source-owned; no new path algorithm,
+borrowed module/dependency, language/path/license change or upstream mutation.
+
+Actual old-product RED12/2 Qt passes: both panel roles × load/restoration ×
+success/error/Cancel retain the obsolete destination. Focused1FAIL0.53s;
+four original source/header snapshots and six hashes/logs frozen in
+build/review/source-refresh-drop-red. Later live EN/RU table/icon consumers
+expose a retained-row paint defect after fields are restored: RED8/22 Qt passes,
+focused5/6PASS5.18s. Four snapshots/hashes/logs in source-refresh-drop-paint-red.
+Keep these separate scopes; actual filesystem-load cases are added after RED.
+The initial live-fixture build used private prefix storage and omitted the
+required QString normalization mode; corrected to public GetCurrentFolderPrefix
+and canonical normalization without exposing internals or weakening assertions.
+Final affected build and 15/15 focused CTest PASS14.34s; new suite36/36 Qt
+passes includes eighteen public target-path cases and sixteen live UI cases,
+with zero failures/skips. Thirty-two current EN/RU normal/compact reports keep
+both address/current-view/status groups and toolbar fully visible. Actual native
+filesystem loading also exercises E_OUTOFMEMORY/E_ABORT through its callback,
+in addition to completed transport HRESULT and restoration. Baseline verifies
+408 exact/196 adapted/3 local paths; no provenance inventory changes.
+Three target path/type consumer bodies match the pinned source after comment/
+whitespace normalization; paint/hit-test/volume adaptations remain explicit.
+Mandatory unsandboxed full gate: formatting/all-target build and 266/266 CTest
+PASS142.86s on macOS arm64 with official Qt 6.12.0. All nine code/test/CMake
+hashes are unchanged; final input manifest, focused/full LastTest, current
+reports and source comparison are frozen together.
+
+Final evidence: build/review/source-refresh-drop-final. Whole Refresh/drop/
+redraw/status/body closure and current Windows/Linux/rendered/cold-stable/P3-06
+acceptance remain mandatory.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

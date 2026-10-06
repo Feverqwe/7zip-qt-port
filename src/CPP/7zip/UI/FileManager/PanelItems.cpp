@@ -382,6 +382,9 @@ HRESULT CPanel::LoadListItems(bool itemsLoaded, HRESULT loadedResult) {
 }
 
 HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
+    _selectionList.SetItemState_DropHighlighted(m_DropHighlighted_SelectionIndex, false);
+    m_DropHighlighted_SelectionIndex = -1;
+    m_DropHighlighted_SubFolderName.Empty();
     if (!_folder)
         return itemsLoaded ? loadedResult : S_OK;
     CDisableTimerProcessing timerProcessing(*this);
@@ -543,6 +546,9 @@ HRESULT CPanel::GetItemIcon(unsigned index, QIcon &icon) {
 }
 
 HRESULT CPanel::RefreshListCtrl(const CSelectedState &state) {
+    _selectionList.SetItemState_DropHighlighted(m_DropHighlighted_SelectionIndex, false);
+    m_DropHighlighted_SelectionIndex = -1;
+    m_DropHighlighted_SubFolderName.Empty();
     RINOK(_listLoadResult)
     if (_selectionList.GetItemCount() == 0)
         _refreshSelection = state;

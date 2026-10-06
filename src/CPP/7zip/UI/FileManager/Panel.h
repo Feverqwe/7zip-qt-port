@@ -339,6 +339,8 @@ class CPanel : public QObject {
     PROPID _sortID = 0;
     bool _ascending = true;
     Int32 _isRawSortProp = 0;
+    int m_DropHighlighted_SelectionIndex = -1;
+    UString m_DropHighlighted_SubFolderName;
     static bool GetDefaultSortAscending(PROPID propID);
     void SetSortRawStatus();
     void SortItemsWithPropID(PROPID propID);

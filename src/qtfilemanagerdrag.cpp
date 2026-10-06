@@ -130,11 +130,7 @@ int QtFileManagerDrag::FolderAtPoint(unsigned i, int x, int y, UString &name) co
 }
 void QtFileManagerDrag::Highlight(unsigned i, int item, bool enabled) {
     const auto &ui = window_.panelUi_[i];
-    if (!ui.table || item < 0 || item >= ui.table->rowCount())
-        return;
-    for (int column = 0; column < ui.table->columnCount(); ++column)
-        ui.table->model()->setData(ui.table->model()->index(item, column), enabled,
-                                   Qt::UserRole + 19);
+    QtPanelList::SetItemState_DropHighlighted(ui.table, item, enabled);
 }
 bool QtFileManagerDrag::IsSameDrive(const UString &destination,
                                     const UStringVector &sources) const {

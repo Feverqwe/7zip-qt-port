@@ -80,6 +80,12 @@ void QtPanelList::SetSingleSelection(bool enabled) {
         view_->setSelectionMode(enabled ? QAbstractItemView::SingleSelection
                                         : QAbstractItemView::ExtendedSelection);
 }
+void QtPanelList::SetItemState_DropHighlighted(QAbstractItemView *view, int row, bool highlighted) {
+    if (!view || !view->model() || row < 0 || row >= view->model()->rowCount())
+        return;
+    for (int column = 0; column < view->model()->columnCount(); ++column)
+        view->model()->setData(view->model()->index(row, column), highlighted, Qt::UserRole + 19);
+}
 void QtPanelList::SetFocusedItem(int row) {
     view_->selectionModel()->setCurrentIndex(view_->model()->index(row, 0),
                                              QItemSelectionModel::NoUpdate);

@@ -118,8 +118,6 @@ class CDropTarget {
     bool m_TargetPath_NonEmpty_WasSent_ToDataObject = false;
     bool m_IsRightButton = false;
     CDataObject *m_DataObject = nullptr;
-    int m_DropHighlighted_SelectionIndex = -1;
-    UString m_DropHighlighted_SubFolderName;
     IQtDropTargetPresentation *presentation_ = nullptr;
     void RemoveSelection();
     bool SendToSource_TargetPath_enable(CDataObject *dataObject, bool enablePath);

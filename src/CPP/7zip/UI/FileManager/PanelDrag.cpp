@@ -246,12 +246,17 @@ void CPanel::OnDrag(bool isRightButton) {
         KillSelection();
 }
 void CDropTarget::RemoveSelection() {
-    if (m_Panel && m_DropHighlighted_SelectionIndex >= 0 && presentation_)
-        for (unsigned i = 0; i < kNumPanelsMax; ++i)
-            if (&App->Panels[i] == m_Panel)
-                presentation_->Highlight(i, m_DropHighlighted_SelectionIndex, false);
-    m_DropHighlighted_SelectionIndex = -1;
-    m_DropHighlighted_SubFolderName.Empty();
+    if (m_Panel) {
+        m_Panel->m_DropHighlighted_SubFolderName.Empty();
+        if (m_Panel->m_DropHighlighted_SelectionIndex >= 0) {
+            if (presentation_)
+                for (unsigned i = 0; i < kNumPanelsMax; ++i)
+                    if (&App->Panels[i] == m_Panel)
+                        presentation_->Highlight(i, m_Panel->m_DropHighlighted_SelectionIndex,
+                                                 false);
+            m_Panel->m_DropHighlighted_SelectionIndex = -1;
+        }
+    }
 }
 void CDropTarget::PositionCursor(int x, int y) {
     RemoveSelection();
@@ -284,11 +289,11 @@ void CDropTarget::PositionCursor(int x, int y) {
     if (!presentation_)
         return;
     const int index =
-        presentation_->FolderAtPoint((unsigned)hit, x, y, m_DropHighlighted_SubFolderName);
+        presentation_->FolderAtPoint((unsigned)hit, x, y, m_Panel->m_DropHighlighted_SubFolderName);
     if (index < 0)
         return;
-    m_DropHighlighted_SelectionIndex = index;
     presentation_->Highlight((unsigned)hit, index, true);
+    m_Panel->m_DropHighlighted_SelectionIndex = index;
 }
 bool CDropTarget::IsFsFolderPath() const {
     if (m_IsAppTarget || !m_Panel)
@@ -297,7 +302,7 @@ bool CDropTarget::IsFsFolderPath() const {
         return true;
     if (m_Panel->IsAltStreamsFolder())
         return true;
-    return m_Panel->IsFSDrivesFolder() && m_DropHighlighted_SelectionIndex >= 0;
+    return m_Panel->IsFSDrivesFolder() && m_Panel->m_DropHighlighted_SelectionIndex >= 0;
 }
 bool CDropTarget::IsItSameDrive() const {
     if (!m_Panel)
@@ -350,8 +355,8 @@ UString CDropTarget::GetTargetPath() const {
     if (!IsFsFolderPath())
         return UString();
     UString path = m_Panel->GetFsPath();
-    if (!m_DropHighlighted_SubFolderName.IsEmpty()) {
-        path += m_DropHighlighted_SubFolderName;
+    if (!m_Panel->m_DropHighlighted_SubFolderName.IsEmpty()) {
+        path += m_Panel->m_DropHighlighted_SubFolderName;
         path.Add_PathSepar();
     }
     return path;
@@ -378,7 +383,7 @@ UInt32 CDropTarget::GetFolderType() const {
     if (m_IsAppTarget || !m_Panel)
         return k_FolderType_None;
     if (m_Panel->IsFSFolder() ||
-        (m_Panel->IsFSDrivesFolder() && m_DropHighlighted_SelectionIndex >= 0))
+        (m_Panel->IsFSDrivesFolder() && m_Panel->m_DropHighlighted_SelectionIndex >= 0))
         return k_FolderType_Fs;
     if (m_Panel->IsAltStreamsFolder())
         return k_FolderType_AltStreams;
