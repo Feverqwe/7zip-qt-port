@@ -167,16 +167,18 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         const int directoryRow = rowWithPath(window, directory);
         const int rootRow = rowWithPath(window, "root.bin");
         QVERIFY(directoryRow >= 0 && rootRow >= 0);
-        selectOnly(window, directoryRow);
-        table(window)->selectionModel()->select(table(window)->model()->index(rootRow, 0),
-                                                QItemSelectionModel::Select |
-                                                    QItemSelectionModel::Rows);
+        const int childRow = flat ? rowWithPath(window, nested) : -1;
+        const auto selectRequest = [&] {
+            selectOnly(window, directoryRow);
+            for (const int row : {rootRow, childRow})
+                if (row >= 0)
+                    table(window)->selectionModel()->select(table(window)->model()->index(row, 0),
+                                                            QItemSelectionModel::Select |
+                                                                QItemSelectionModel::Rows);
+        };
+        selectRequest();
         if (flat) {
-            const int childRow = rowWithPath(window, nested);
             QVERIFY(childRow >= 0);
-            table(window)->selectionModel()->select(table(window)->model()->index(childRow, 0),
-                                                    QItemSelectionModel::Select |
-                                                        QItemSelectionModel::Rows);
             corruptPresentationPath(window, childRow);
         }
         corruptPresentationPath(window, directoryRow);
@@ -195,6 +197,8 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         QCOMPARE(portablePaths(backend.lastSelected), expected);
         QTimer::singleShot(0, &window, [] { dismissWarnings(); });
         backend.fail("fixture extraction failure");
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+        selectRequest();
         QVERIFY(action(window, "copyAction")->isEnabled());
         closeNextDialog(window, destination.path(), false);
         action(window, "moveAction")->trigger();
@@ -205,6 +209,8 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         QCOMPARE(portablePaths(backend.lastSelected), expected);
         backend.cancel();
         QCOMPARE(backend.removeCalls, 0); // Cancelled move must not remove archive entries.
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+        selectRequest();
         action(window, "hashSHA256Action")->trigger();
         QCOMPARE(backend.extractCalls, 4);
         QCOMPARE(backend.lastSelected, QStringList{"root.bin"}); // First source stream cancels.

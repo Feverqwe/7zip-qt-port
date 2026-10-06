@@ -20,8 +20,14 @@ class QtAppPresentation final : public IQtAppPresentation {
     void ShowPanel(unsigned index, bool visible) override;
     void ReloadToolbars(CApp &app) override;
     void MoveSubWindows() override;
+    void CopyFinished();
+    void CompleteCopyIfReady();
 
   private:
     MainWindow &window_;
     QMenu *editMenu_ = nullptr;
+    unsigned copySource_ = 0;
+    bool copyPending_ = false;
+    bool copyExecuting_ = false;
+    bool copyFinished_ = false;
 };

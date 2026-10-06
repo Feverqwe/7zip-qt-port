@@ -99,15 +99,37 @@ void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceI
     window_.activatePanelUi(sourceIndex);
     if (!window_.app_.QtOperations().Begin(QtAppOperationState::Kind::Operation))
         return;
+    copySource_ = sourceIndex;
+    copyPending_ = true;
+    copyFinished_ = false;
+    copyExecuting_ = true;
     window_.executeCopyDestination(move, copyToSame, sourceIndex, destination, indices,
                                    useDestPanel, useTemp);
+    copyExecuting_ = false;
     if (window_.state_ != MainWindow::State::Operating &&
         window_.app_.QtOperations().kind() == QtAppOperationState::Kind::Operation) {
         window_.app_.QtOperations().End();
         window_.refreshActions();
     }
-    if (window_.state_ != MainWindow::State::Operating && sourceIndex < kNumPanelsMax)
-        window_.app_.Panels[sourceIndex].SetFocusToList();
+    if (window_.state_ != MainWindow::State::Operating)
+        CopyFinished();
+}
+
+void QtAppPresentation::CopyFinished() {
+    if (!copyPending_)
+        return;
+    copyFinished_ = true;
+    CompleteCopyIfReady();
+}
+
+void QtAppPresentation::CompleteCopyIfReady() {
+    if (!copyPending_ || copyExecuting_ || !copyFinished_ || window_.app_.QtOperations().active())
+        return;
+    copyPending_ = false;
+    if (!window_.app_.QtOperations().closed())
+        window_.activatePanelUi(copySource_);
+    window_.app_.CompleteCopy();
+    window_.refreshActions();
 }
 
 void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &settings) {

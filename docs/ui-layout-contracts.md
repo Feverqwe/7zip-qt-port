@@ -29,6 +29,14 @@ archive views under EN/RU normal/compact geometry. Empty writable folders are
 an enabled no-op; busy/read-only/provider restrictions still apply. Retained
 timer/notify guards must survive async handoff and release before terminal
 synchronous panel refresh.
+After Copy publication verify original source/destination saved states: ordinary
+Copy/Move clears source marks, preserves the captured current item and peer
+selection, updates the source title and restores source list focus. Shift keeps
+its source saved-selection semantics. Inspect both source-panel roles under
+EN/RU1100×640/640×400, including both address/list groups and toolbar. Do not
+let delayed progress destruction replace the restored title. Offscreen window
+activation may be restored by the driver; native focus/rendered parity still
+requires native evidence.
 
 ### Persisted source locations (P3-05.14, required scope)
 

@@ -91,6 +91,16 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTest::keyClick(&sourceView, move ? Qt::Key_F6 : Qt::Key_F5);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
     }
+    static void inspectCompletedPanels(MainWindow &window, QTableWidget &source,
+                                       QTableWidget &target, const QString &tag) {
+        for (const QSize size : {QSize(1100, 640), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(source, window));
+            QVERIFY(UiInspection::fullyVisible(target, window));
+            QVERIFY(UiInspection::writeReport(window, tag + '-' + QString::number(size.width())));
+        }
+    }
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void unselectedItemsReachSourceSmartCopy_data() {
@@ -173,19 +183,30 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTest::addColumn<bool>("sourceArchive");
         QTest::addColumn<bool>("targetArchive");
         QTest::addColumn<bool>("move");
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<unsigned>("sourceIndex");
         for (bool sourceArchive : {false, true})
             for (bool targetArchive : {false, true})
                 for (bool move : {false, true})
-                    QTest::newRow(qPrintable(QString("%1-to-%2-%3")
-                                                 .arg(sourceArchive ? "archive" : "fs")
-                                                 .arg(targetArchive ? "archive" : "fs")
-                                                 .arg(move ? "move" : "copy")))
-                        << sourceArchive << targetArchive << move;
+                    for (const char *language : {"-", "ru"})
+                        for (unsigned sourceIndex : {0u, 1u})
+                            QTest::newRow(qPrintable(QString("%1-to-%2-%3-%4-%5")
+                                                         .arg(sourceArchive ? "archive" : "fs")
+                                                         .arg(targetArchive ? "archive" : "fs")
+                                                         .arg(move ? "move" : "copy")
+                                                         .arg(language)
+                                                         .arg(sourceIndex)))
+                                << sourceArchive << targetArchive << move
+                                << QString::fromLatin1(language) << sourceIndex;
     }
     void capturedItemsSurviveModalSelectionChange() {
         QFETCH(bool, sourceArchive);
         QFETCH(bool, targetArchive);
         QFETCH(bool, move);
+        QFETCH(QString, language);
+        QFETCH(unsigned, sourceIndex);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString input = fixture.filePath("input");
@@ -206,6 +227,8 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         write(seed, "seed control");
         if (targetArchive)
             createArchive(target, {seed});
+        else
+            write(QDir(output).filePath("seed.txt"), "seed control");
         const QByteArray sourceBefore = sourceArchive ? read(source) : QByteArray();
         ArchiveBackend backend;
         MainWindow window(&backend);
@@ -213,16 +236,17 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
-        QTableWidget *sourceView = openPanel(window, 0, source);
+        QTableWidget *sourceView = openPanel(window, sourceIndex, source);
         QTRY_COMPARE(static_cast<FileTable *>(sourceView)->sourcePanel->GetParentFolders().Size(),
                      sourceArchive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         QTRY_COMPARE(sourceView->rowCount(), 2);
-        QTableWidget *targetView = openPanel(window, 1, target);
+        QTableWidget *targetView = openPanel(window, 1 - sourceIndex, target);
         QTRY_COMPARE(static_cast<FileTable *>(targetView)->sourcePanel->GetParentFolders().Size(),
                      targetArchive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-        QTRY_COMPARE(targetView->rowCount(), targetArchive ? 1 : 0);
+        QTRY_COMPARE(targetView->rowCount(), 1);
+        targetView->selectRow(row(*targetView, "seed.txt"));
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         const int firstRow = row(*sourceView, first);
@@ -259,6 +283,29 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
             QCOMPARE(row(*sourceView, first) >= 0, !move);
         } else
             QCOMPARE(QFileInfo::exists(QDir(input).filePath(first)), !move);
+        QTRY_VERIFY_WITH_TIMEOUT(sourceView->selectionModel()->selectedRows().isEmpty(), 1000);
+        // The offscreen plugin loses its active window on modal close. Restore
+        // activation only; the source continuation must have remembered focus.
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QTRY_VERIFY_WITH_TIMEOUT(sourceView->hasFocus(), 1000);
+        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(window.windowTitle())),
+                 QDir::cleanPath(QDir::fromNativeSeparators(source)));
+        QVERIFY(sourceView->currentItem());
+        QCOMPARE(sourceView->currentItem()->text().normalized(QString::NormalizationForm_C),
+                 second);
+        QCOMPARE(targetView->selectionModel()->selectedRows().size(), 1);
+        QCOMPARE(
+            targetView->item(targetView->selectionModel()->selectedRows().first().row(), 0)->text(),
+            QString("seed.txt"));
+        QCOMPARE(read(QDir(output).filePath("seed.txt")), QByteArray("seed control"));
+        inspectCompletedPanels(window, *sourceView, *targetView,
+                               QString("copy-completed-%1-%2-%3-%4-%5")
+                                   .arg(sourceArchive)
+                                   .arg(targetArchive)
+                                   .arg(move)
+                                   .arg(language)
+                                   .arg(sourceIndex));
     }
 };
 

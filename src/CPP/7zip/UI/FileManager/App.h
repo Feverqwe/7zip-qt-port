@@ -6,6 +6,7 @@
 #include "Panel.h"
 #include "RegistryUtils.h"
 #include "qtappoperationstate.h"
+#include <functional>
 
 const unsigned kNumPanelsMax = 2;
 const int kMenuCmdID_Toolbar_Start = 1070;
@@ -109,6 +110,7 @@ class CApp {
     // Existing Qt command consumers remain behind this routing boundary until
     // their full application command bodies are ported in P0-03/P0-08.
     void OnCopy(bool move, bool copyToSame, unsigned index);
+    void CompleteCopy();
     HRESULT CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
                                  UStringVector *messages);
     void OnSetSameFolder(unsigned index);
@@ -161,4 +163,5 @@ class CApp {
     QPointer<QWidget> _window;
     IQtAppPresentation *_presentation = nullptr;
     QString _settingsPath;
+    std::function<void()> _copyContinuation;
 };

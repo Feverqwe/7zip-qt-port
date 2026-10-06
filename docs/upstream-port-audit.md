@@ -181,6 +181,77 @@ remains408 exact/196 adapted/3 local. Current Windows/Linux, native metadata,
 source selection/refresh/title/focus completion and cold-stable/current-package/
 clean-OS/rendered/P3-06 acceptance remain open. No native execution is claimed.
 
+Saved-state continuation follow-up uses the same full upstream revision/repository
+above: App.cpp::OnCopy's post-modal SaveSelectedState and post-operation body,
+PanelItems.cpp SaveSelectedState/RefreshListCtrl and PanelSelect.cpp KillSelection,
+Panel.h notify guards, PanelCopy.cpp progress callers and ProgressDialog2.cpp
+destructor/AddToTitle. CApp retains source/destination snapshots after the modal
+and the original conditional saved-state/title/notify/KillSelection/focus body
+as a deferred continuation. CompleteCopy transfers and clears that callback;
+ReleaseApp discards it. This narrow async entrypoint has no original standalone
+counterpart because the source completes synchronously. No new borrowed module,
+algorithm, language change or dependency beyond standard C++ functional storage
+is introduced; original paths/names/notices/baseline remain authoritative.
+
+QtAppPresentation restores the captured source projection and invokes the source
+continuation once only after terminal execution and idle operation/scan owners.
+Synchronous native calls and asynchronous filesystem/backend completions reach
+this same boundary. Ordinary two-panel filesystem Copy preserves source rows,
+matching the original conditional source refresh; Move/copyToSame/shared single
+panel retain existing publication. The existing row-loading providers remain
+authoritative. Original full RefreshListCtrl loading, unconditional destination
+refresh (including outside-peer targets), and the remaining native/HRESULT/
+metadata branches still require dependency/body reconciliation. Restoring saved
+state on published rows does not prove the entire original refresh body.
+
+Original PanelCopy sets progress MainTitle to7-Zip and the source progress
+destructor restores it before OnCopy's RefreshTitleAlways. Qt retained the
+completed dialog past that continuation and its destructor replaced the restored
+filesystem title with an empty MainTitle. The existing transport now supplies
+the original title default and disconnects its main-window title target before
+queued close/error presentation and deferred destruction. Source progress class
+algorithms are unchanged; application completion owns its final title.
+
+Actual previous-product RED records seven selection/focus failures before the
+suite's120.02s timeout in source-copy-completion-red. Intermediate diagnostics
+found offscreen active/focus both none on modal close; final driver restores only
+window activation, without setting focus. This is fixture handling, not native
+focus evidence. A subsequent first filesystem Copy assertion exposed a null
+current item after the unnecessary source reload, corrected by preserving rows.
+The first unguarded fixture assertion crashed rather than dereferencing a valid
+current item; the final test asserts its existence before checking its name.
+
+The current32 EN/RU real filesystem/archive Copy/Move rows run from either source
+panel and retain all captured payload/source-delete/untouched second/seed checks.
+They also require no ordinary source marks, captured current item and source
+focus/title, retained peer seed selection and exact seed bytes. Sixty-four
+1100×640/640×400 reports inspect both panel/address/table groups and toolbar;
+visible/enabled/fit and grouping/order are checked in current geometry. Existing
+Shift22 cases preserve focused-versus-selected behavior. One/two-panel public
+CApp probes check restored notifications and single-use completion; lifecycle
+checks modal Close refusal and later Cancel/Close without an engine request.
+The scenario reuses focused fixture/open/modal/report helpers; its remaining
+test body keeps one Copy request and byte/state verification together.
+
+Overwrite Cancel/Skip and controlled archive failure/Cancel now require source
+marks to clear with retained inputs/no Delete calls. Existing subsequent Rename,
+Move and Hash consumers explicitly repeat their intended selection. The first
+full252/254PASS110.41s exposed two legacy retained-selection expectations
+(archive_selection_runtime and alt_streams_archive_ui); its log is retained in
+source-copy-completion-full-first. Source ordering, forged Qt metadata, exact
+bytes and cancellation deletion assertions remain intact.
+
+Final macOS27.0.1 arm64/Qt6.12.0 validation: focused five suitesPASS7.54s,
+affected consumers twoPASS3.42s; AppCopy16/UiCopyRouting66/UiCopySame22/
+UiOperations34/AppLifecycleWindow10/ArchiveSelection20/ArchiveStreamsUI5 Qt
+pass with zero skip/fail. Mandatory unsandboxed check.sh passes formatting,
+all-target build and254/254 CTest108.63s. Fifteen code/test inputs retain
+their frozen SHA; focused/full logs, input manifest,64 panel reports and geometry
+review are in build/review/source-copy-completion-final. Baseline remains
+408 exact/196 adapted/3 local. Full RefreshListCtrl load/destination-refresh
+semantics, remaining native/HRESULT/metadata branches, current Windows/Linux,
+cold-stable/current-package/clean-OS/rendered and P3-06 acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

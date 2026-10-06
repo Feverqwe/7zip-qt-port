@@ -40,13 +40,16 @@
 [P3-05.15](upstream-port-audit.md#p3-0515--source-copymove-destination-and-continuation-reconciliation-required-scope-2026-10-06):
 восстановить исходный выбор/классификацию destination и Copy/Move continuation,
 пустая цель peer и однопанельный reducer уже восстановлены с F5/F6/Cancel/EN-RU
-normal/compact consumers. Original refusals/options и selection/focus после
-асинхронного результата ещё требуют reconciliation. Classification/refusals,
+normal/compact consumers. Classification/refusals,
 path+HRESULT diagnostics и captured execution теперь восстановлены; staged
 options возвращены к исходным defaults, native metadata evidence ещё требуется.
 Menu/F5/F6 без marks теперь доходят до source OperSmart; EN/RU normal/compact
 summary/Cancel проверены. Timer guard handoff исправлен для одной/двух панелей;
-source selection/title/focus completion остаётся обязательным.
+Source post-operation saved states/title/notify/focus body теперь выполняется
+после terminal execution и публикации, с сохранением peer selection и снятием
+ordinary source marks; deferred progress больше не сбрасывает title. Оба source
+roles/EN-RU и normal/compact panel JSON проверены. Full RefreshListCtrl load
+semantics/native completion и остальные source branches ещё обязательны.
 Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 

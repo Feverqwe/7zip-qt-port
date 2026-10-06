@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtlangcontrols.h"
 #include <QCoreApplication>
 
@@ -111,6 +112,7 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
     const bool finishedArchiveState = finishArchiveState(ok);
     if (transferDestination)
         refreshTransferDestination(*transferDestination);
+    appPresentation_->CopyFinished();
     if (finishedArchiveState)
         return;
     statusBar()->showMessage(resultMessage);
@@ -159,6 +161,10 @@ void MainWindow::closeProgressDialog(bool finished) {
     CProgressDialog *completed = progress_;
     progress_ = nullptr;
     completed->AttachTransport(nullptr);
+    // Source progress is destroyed before OnCopy refreshes the title. Qt keeps
+    // the completed dialog through queued close/error presentation; it must no
+    // longer overwrite the application owner's restored title on destruction.
+    completed->MainWindow = nullptr;
     progressTransport_.reset();
     if (finished) {
         completed->setObjectName("completedProgressDialog");

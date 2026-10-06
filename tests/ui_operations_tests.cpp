@@ -490,6 +490,8 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(copiedFile.open(QIODevice::ReadOnly));
         QCOMPARE(copiedFile.readAll(), QByteArray("original"));
         copiedFile.close();
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("имя с пробелом.txt")));
         QTimer warningTimer;
         bool renameAnswered = false;
         QString finalMessage;
@@ -527,6 +529,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 finalMessage + " :: " +
                 QDir(destination).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join(',')));
         QTimer cancelTimer;
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("имя с пробелом.txt")));
         bool cancelAnswered = false;
         connect(&cancelTimer, &QTimer::timeout, &window, [destination, &cancelAnswered] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
@@ -547,8 +550,10 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         cancelTimer.stop();
         QVERIFY(cancelAnswered);
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
         QVERIFY(QFileInfo::exists(source));
         QTimer moveErrorTimer;
+        table(window)->selectRow(filesystemRow(window, QStringLiteral("имя с пробелом.txt")));
         connect(&moveErrorTimer, &QTimer::timeout, &window, [destination] {
             for (QWidget *widget : QApplication::topLevelWidgets()) {
                 if (auto *dialog = qobject_cast<CopyDialog *>(widget);
@@ -567,6 +572,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         action(window, "moveAction")->trigger();
         QTRY_VERIFY(action(window, "moveAction")->isEnabled());
         moveErrorTimer.stop();
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
         QVERIFY(QFileInfo::exists(source));
         QVERIFY(QFileInfo::exists(copied));
 

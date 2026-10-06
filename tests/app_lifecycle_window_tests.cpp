@@ -131,6 +131,33 @@ class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport 
         QVERIFY(!ReadFlatView(0, settings));
     }
 
+    void copyModalRetainsApplicationLifetime() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile source(fixture.filePath("source.txt"));
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write("control"), qint64(7));
+        source.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        table(window)->selectRow(0);
+        bool guarded = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<QDialog *>("copyDialog");
+            QVERIFY(dialog && dialog->isVisible());
+            guarded = !window.close();
+            dialog->reject();
+        });
+        action(window, "copyAction")->trigger();
+        QVERIFY(guarded);
+        QCOMPARE(backend.extractCalls, 0);
+        QVERIFY(QFileInfo::exists(source.fileName()));
+        QVERIFY(window.close());
+    }
     void closeSavesGeometryAndIgnoresQueuedCompletion() {
         ControlledBackend backend;
         MainWindow window(&backend);

@@ -172,6 +172,12 @@ class AppCopyRoutingTests final : public QObject {
         panel.OnTimer();
         QCOMPARE(whileOperating, 1u);
         QCOMPARE(reloads, 2u);
+        app.CompleteCopy();
+        QVERIFY(presentation.views[0]->selectionModel()->selectedRows().isEmpty());
+        QVERIFY(panel.ShouldProcessNotifications());
+        presentation.views[0]->selectRow(0);
+        app.CompleteCopy();
+        QCOMPARE(presentation.views[0]->selectionModel()->selectedRows().size(), 1);
     }
     void zeroErrorUsesSourceFailureMessage() {
         CPanel panel;

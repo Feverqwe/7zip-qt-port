@@ -178,6 +178,8 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
         QTRY_COMPARE(QFileInfo(copied.fileName()).size(), qint64(20));
         QVERIFY2(copied.open(QIODevice::ReadOnly), qPrintable(copied.errorString()));
         QCOMPARE(copied.readAll(), QByteArray("archive stream bytes"));
+        QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
+        table(window)->selectRow(nativeRow(window, streamName));
         auto *rename = action(window, "renameAction");
         QVERIFY(rename->isEnabled());
         table(window)->setCurrentCell(nativeRow(window, streamName), 0);

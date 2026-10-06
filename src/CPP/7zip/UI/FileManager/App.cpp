@@ -252,12 +252,41 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
         srcPanel.MessageBox_Error_UnsupportOperation();
         return;
     }
+    CSelectedState srcSelState;
+    CSelectedState destSelState;
+    srcPanel.SaveSelectedState(srcSelState);
+    destPanel.SaveSelectedState(destSelState);
+    // The original post-operation body runs after Qt publishes both panels.
+    _copyContinuation = [this, move, copyToSame, srcPanelIndex, destPanelIndex, srcSelState,
+                         destSelState] {
+        CPanel &srcPanel = Panels[srcPanelIndex];
+        CPanel &destPanel = Panels[destPanelIndex];
+        CPanel::CDisableNotify disableNotify1(destPanel);
+        CPanel::CDisableNotify disableNotify2(srcPanel);
+        RefreshTitleAlways();
+        if (copyToSame || move)
+            srcPanel.RefreshListCtrl(srcSelState);
+        if (!copyToSame) {
+            destPanel.RefreshListCtrl(destSelState);
+            srcPanel.KillSelection();
+        }
+        disableNotify1.Restore();
+        disableNotify2.Restore();
+        srcPanel.SetFocusToList();
+    };
     // Qt execution can return while the operation owner retains these guards.
     // Unwind the source stack in reverse order before that owner snapshots it.
     disableTimerProcessing2.Restore();
     disableTimerProcessing1.Restore();
     _presentation->ExecuteCopy(move, copyToSame, srcPanelIndex, output, indices, useDestPanel,
                                useTemp);
+}
+
+void CApp::CompleteCopy() {
+    auto continuation = std::move(_copyContinuation);
+    _copyContinuation = nullptr;
+    if (continuation && !_qtOperations.closed())
+        continuation();
 }
 
 HRESULT CApp::CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
@@ -550,6 +579,7 @@ void CApp::Save() {
 }
 
 void CApp::ReleaseApp() {
+    _copyContinuation = nullptr;
     _qtOperations.Close();
     _qtCommandServices = nullptr;
     // 24.09: ReleasePanel() will stop panel timer processing.

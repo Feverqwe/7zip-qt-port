@@ -31,6 +31,17 @@ items, require the source smart-selection dialog to include both Unicode files,
 cancel without writes and emit EN/RU440×250/360×200 geometry reports. Existing
 empty-archive command tests now verify the original enabled no-op with unchanged
 extract/delete counters; busy/loading and readonly/provider gates stay covered.
+The captured-item matrix now runs32 EN/RU routes from either source panel.
+After publication it checks empty ordinary source marks, the captured current
+item/focus/title, retained peer seed selection and exact untouched seed bytes;
+64 normal1100×640/compact640×400 panel reports inspect the resulting state.
+Offscreen loses the active window on modal close: the driver restores window
+activation only, without setting the focused control. This is not native focus
+verification. Ordinary two-panel filesystem Copy must preserve source rows.
+The existing overwrite Cancel/Skip consumer verifies source marks are removed
+while inputs remain intact. One/two-panel CApp probes also check single-use
+completion and restored notifications. The lifecycle consumer rejects Close
+inside Copy's modal and permits it after Cancel, without engine calls.
 
 `persisted_location` verifies source-prefix bookmarks in both-panel drive view,
 empty-slot root binding and root Save clearing, and exact virtual locations for

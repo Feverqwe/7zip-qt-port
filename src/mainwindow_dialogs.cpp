@@ -41,6 +41,7 @@ void MainWindow::startProgressDialog(const QString &label, const QString &detail
     closeProgressDialog();
     auto *dialog = new CProgressDialog(this, ToUString(label));
     dialog->MainWindow = this;
+    dialog->MainTitle = "7-Zip";
     dialog->setWindowModality(Qt::ApplicationModal);
     dialog->Sync.Set_Status(ToUString(label));
     dialog->Sync.Set_FilePath(detail.toStdWString().c_str());

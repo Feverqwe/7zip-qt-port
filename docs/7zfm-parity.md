@@ -10,7 +10,7 @@ FS/ADS/archive flags и captured indices проходят через consumers; 
 сохраняет исходные alternate-stream/zone defaults. Summary добавляет native
 separator к папкам. Qt MessageBox автоматически выбирает размер и wrapping
 двухстрочной диагностики, как platform-owned message box исходника; это не
-фиксированная Copy dialog geometry. Selection/refresh/title/notify completion
+фиксированная Copy dialog geometry. Полная загрузка/refresh completion
 и native ADS/device/zone evidence ещё требуют сверки.
 Принятый архивный Move остаётся отдельной требуемой композицией Copy/Delete/
 rollback: оригинальный Agent Move возвращает E_NOTIMPL. P3-05.15 открыт;
@@ -22,6 +22,14 @@ readonly ограничения сохраняются. Qt переносит ti
 стека к владельцу операции; synchronous archive publication начинается после
 окончания engine/rollback и освобождения guard. Это адаптация асинхронного
 transport, а не новый selection algorithm. Полная completion-сверка остаётся.
+Исходные source/destination CSelectedState сохраняются после modal, а исходный
+post-operation title/selection/notify/focus body остаётся в CApp и выполняется
+один раз после terminal execution и публикации списков. Ordinary two-panel FS
+Copy сохраняет source rows/current item; Move/Shift/shared single panel публикуют
+источник. Отложенный Qt progress destructor больше не заменяет итоговый title.
+EN/RU оба source-panel roles, peer selection, bytes и normal/compact state
+проверяются public consumers; offscreen activation не доказывает native focus.
+Полная загрузка RefreshListCtrl и native/platform приёмка ещё обязательны.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

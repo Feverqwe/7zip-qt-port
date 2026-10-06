@@ -14,6 +14,21 @@ Move supplies the same captured indices to the existing Delete owner after
 publication, preserving its confirmation/guards and backend rollback. Remaining
 completion reconciliation is tracked in the port audit.
 
+OnCopy saves original source/destination CSelectedState after the modal and
+retains its post-operation title/selection/notify/focus body in CApp. The Qt
+presentation marks terminal execution and waits for the existing operation/scan
+owner to become idle before invoking this continuation once. It restores the
+captured source projection first; ReleaseApp discards the continuation. Ordinary
+two-panel filesystem Copy preserves source rows/current item, while Move,
+copyToSame and a shared single panel keep their required source publication.
+The existing providers still own row loading; full RefreshListCtrl dependency
+semantics remain subject to the source-body review in the audit.
+
+Source progress sets MainTitle to7-Zip. The Qt dialog can remain alive after
+completion for queued close/error presentation, so the transport disconnects its
+main-window title target before deferred destruction. It cannot overwrite the
+application title restored by OnCopy or another completed operation.
+
 Copy/Move availability follows original CFileMenu without requiring marked
 rows; CApp's OperSmart determines the request, including the empty-folder no-op.
 Busy/provider/read-only transport gates remain centralized. OnCopy releases its
@@ -22,7 +37,8 @@ before QtAppPresentation retains timer/notify guards for execution. Async owners
 hold them through completion; synchronous native archive consumers release them
 after engine work/rollback and before panel projection and refresh, which may
 acquire a scan owner. This avoids restoring a stale disabled timer snapshot or
-blocking destination publication. Selection/title completion remains under review.
+blocking destination publication. Full row-load and native completion parity
+remain under review.
 
 Root-command routing follows original CApp::OpenRootFolder and
 CPanel::OpenDrivesFolder, which own archive release, CFSDrives creation and source

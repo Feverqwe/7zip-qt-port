@@ -8,6 +8,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtlangcontrols.h"
 #include "qtlocationfolder.h"
 #include "qttrashservice.h"
@@ -35,7 +36,7 @@ NOverwriteDialog::CFileInfo overwriteFileInfo(const QString &path) {
 } // namespace
 
 void MainWindow::transferFiles(const QStringList &sources, const QString &destination, bool move,
-                               bool directPath) {
+                               bool directPath, bool refreshSource) {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
@@ -110,14 +111,18 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                                     QDir::cleanPath(panelUi_[destinationPanel].directory) ==
                                         QDir::cleanPath(destinationDirectory);
     connect(operation, &QThread::finished, this,
-            [this, operation, sources, sourcePanel, destinationPanel, refreshDestination] {
+            [this, operation, sources, sourcePanel, destinationPanel, refreshDestination,
+             refreshSource] {
                 if (app_.QtOperations().closed())
                     return;
                 operation->deleteLater();
                 if (fileTransfer_ == operation)
                     fileTransfer_ = nullptr;
-                showDirectory(directory_, false);
-                selectPaths(sources);
+                if (refreshSource) {
+                    showDirectory(directory_, false);
+                    selectPaths(sources);
+                } else
+                    setState(State::Filesystem);
                 if (refreshDestination && app_.NumPanels == 2 &&
                     app_.GetFocusedPanelIndex() == sourcePanel) {
                     activatePanelUi(destinationPanel);
@@ -126,6 +131,7 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 }
                 if (app_.GetFocusedPanelIndex() == sourcePanel)
                     app_.Panels[sourcePanel].SetFocusToList();
+                appPresentation_->CopyFinished();
             });
     setState(State::Operating);
     fileTransfer_->start();
@@ -241,7 +247,8 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
     sources << QtFilesystemPath(us2fs(filePaths[i]));
     if (sources.isEmpty())
         return;
-    transferFiles(sources, destination, move, directPath);
+    transferFiles(sources, destination, move, directPath,
+                  move || copyToSame || app_.NumPanels <= 1);
 }
 
 bool MainWindow::transferToArchivePanel(const QString &destination, bool move,

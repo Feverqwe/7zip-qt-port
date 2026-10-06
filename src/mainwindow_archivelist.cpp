@@ -7,6 +7,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtfilemanagercommands.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
@@ -192,6 +193,8 @@ void MainWindow::refreshActions() {
                                (state_ == State::Filesystem || state_ == State::Viewing);
     table_->setDragEnabled(dragAvailable);
     iconList_->setDragEnabled(dragAvailable);
+    if (appPresentation_)
+        appPresentation_->CompleteCopyIfReady();
 }
 
 void MainWindow::refreshPanelStatus() {
