@@ -3,8 +3,10 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QProcess>
 #include <QRegularExpression>
 #include <QStandardPaths>
+#include <atomic>
 
 namespace {
 QString FindModule(const QString &program) {
@@ -90,40 +92,81 @@ QString DeploymentModule(const QStringList &libraries, const QString &fallback) 
 }
 } // namespace
 
+struct ArchiveCodecProbe::Work {
+    std::atomic<bool> cancelled{false};
+    std::atomic<bool> timedOut{false};
+    ArchiveCodecProbeResult result;
+};
+
+ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
+                                                    const QString &requestedModule,
+                                                    const std::shared_ptr<Work> &work) {
+    ArchiveCodecProbeResult result;
+    if (work->cancelled || work->timedOut)
+        return result;
+    const QString module = requestedModule.isEmpty() ? FindModule(engine) : requestedModule;
+    QProcess process;
+    process.setProcessChannelMode(QProcess::MergedChannels);
+    process.setProgram(engine);
+    process.setArguments({QStringLiteral("i"), QStringLiteral("-sccUTF-8")});
+    // Windows creates its pipes/process synchronously inside start(). Keep that
+    // platform phase and the process's QObject lifetime wholly in this worker.
+    process.start();
+    QByteArray output;
+    const auto readOutput = [&] {
+        const QByteArray bytes = process.readAll();
+        output.append(bytes.left(qMax(0, 8192 - int(output.size()))));
+    };
+    while (process.state() != QProcess::NotRunning) {
+        if (work->cancelled || work->timedOut) {
+            process.kill();
+            process.waitForFinished(3000);
+            return result;
+        }
+        process.waitForFinished(20);
+        readOutput();
+    }
+    readOutput();
+    if (work->cancelled || work->timedOut)
+        return result;
+    if (process.error() == QProcess::FailedToStart ||
+        process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
+        result.error = QtLocalText("Could not determine the version of official 7zz.",
+                                   "Не удалось определить версию официального 7zz.");
+    } else if (const UInt32 version = EngineVersion(output)) {
+        const QStringList libraries = EngineLibraries(output);
+        const QString deployment =
+            requestedModule.isEmpty() ? DeploymentModule(libraries, module) : module;
+        // CCodecs::LoadDll/LoadDllsFromFolder/SetLibCodecs and runtime copying
+        // stay inside the existing catalog owner. Only their scheduling changes.
+        try {
+            result.catalog =
+                std::make_shared<ArchiveCodecCatalog>(deployment, version, libraries, engine);
+            result.result = result.catalog->result();
+            result.error = result.catalog->error();
+        } catch (...) {
+            result.error = QtLocalText("Could not load codec metadata.",
+                                       "Не удалось загрузить сведения о форматах.");
+        }
+    } else
+        result.error = QtLocalText("The 7zz version banner is missing or invalid.",
+                                   "Строка версии 7zz отсутствует или некорректна.");
+    return result;
+}
+
 ArchiveCodecProbe::ArchiveCodecProbe(QObject *parent) : QObject(parent) {
-    process_.setProcessChannelMode(QProcess::MergedChannels);
     deadline_.setSingleShot(true);
-    connect(&process_, &QProcess::started, this, [this] {
-        if (cancelled_ || timedOut_)
-            process_.kill();
-    });
-    connect(&process_, &QProcess::readyRead, this, [this] {
-        const QByteArray bytes = process_.readAll();
-        output_.append(bytes.left(qMax(0, 8192 - int(output_.size()))));
-    });
-    connect(&process_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-            &ArchiveCodecProbe::Finish);
-    connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart)
-            Finish(-1, QProcess::CrashExit);
-    });
-    connect(&deadline_, &QTimer::timeout, this, [this] {
-        timedOut_ = true;
-        process_.kill();
-    });
+    connect(&deadline_, &QTimer::timeout, this, [this] { work_->timedOut = true; });
 }
 
 ArchiveCodecProbe::~ArchiveCodecProbe() {
-    disconnect(&process_, nullptr, this, nullptr);
     deadline_.stop();
-    if (process_.state() != QProcess::NotRunning) {
-        process_.kill();
-        process_.waitForFinished(3000);
-    }
+    Cancel();
     if (loader_) {
         disconnect(loader_.get(), nullptr, this, nullptr);
-        // Native DLL entrypoints cannot be interrupted safely. Their immutable
-        // inputs/result and module leases must outlive the joined load.
+        // Neither CreateProcess nor native DLL entrypoints can be interrupted
+        // safely. Cancellation kills/reaps a child after start returns; join
+        // retains immutable inputs/results and module leases through that work.
         loader_->wait();
     }
 }
@@ -133,78 +176,34 @@ bool ArchiveCodecProbe::Start(const QString &engine, const QString &module,
                               int timeoutMs) {
     if (active_)
         return false;
-    output_.clear();
-    cancelled_ = false;
-    timedOut_ = false;
     active_ = true;
     completion_ = std::move(completion);
-    explicitModule_ = !module.isEmpty();
-    module_ = module.isEmpty() ? FindModule(engine) : module;
-    process_.setProgram(engine);
-    process_.setArguments({QStringLiteral("i"), QStringLiteral("-sccUTF-8")});
+    work_ = std::make_shared<Work>();
+    const auto work = work_;
+    loader_.reset(
+        QThread::create([work, engine, module] { work->result = Discover(engine, module, work); }));
+    connect(loader_.get(), &QThread::finished, this, [this, work] {
+        loader_->wait();
+        loader_.reset();
+        Complete(std::move(work->result));
+    });
     deadline_.start(qMax(1, timeoutMs));
-    process_.start();
+    loader_->start();
     return true;
 }
 
 void ArchiveCodecProbe::Cancel() {
-    if (!active_)
-        return;
-    cancelled_ = true;
-    process_.kill();
-}
-
-void ArchiveCodecProbe::Finish(int exitCode, QProcess::ExitStatus status) {
-    if (!active_ || loader_)
-        return;
-    const QByteArray remaining = process_.readAll();
-    output_.append(remaining.left(qMax(0, 8192 - int(output_.size()))));
-    ArchiveCodecProbeResult result;
-    if (cancelled_ || timedOut_) {
-        Complete(std::move(result));
-        return;
-    }
-    if (status != QProcess::NormalExit || exitCode != 0) {
-        result.error = QtLocalText("Could not determine the version of official 7zz.",
-                                   "Не удалось определить версию официального 7zz.");
-    } else if (const UInt32 version = EngineVersion(output_)) {
-        const QStringList libraries = EngineLibraries(output_);
-        const QString module = explicitModule_ ? module_ : DeploymentModule(libraries, module_);
-        const QString engine = process_.program();
-        auto loaded = std::make_shared<ArchiveCodecProbeResult>();
-        // CCodecs::LoadDll/LoadDllsFromFolder/SetLibCodecs and runtime copying
-        // stay inside the existing catalog owner. Only their scheduling changes.
-        loader_.reset(QThread::create([loaded, module, version, libraries, engine] {
-            try {
-                loaded->catalog =
-                    std::make_shared<ArchiveCodecCatalog>(module, version, libraries, engine);
-                loaded->result = loaded->catalog->result();
-                loaded->error = loaded->catalog->error();
-            } catch (...) {
-                loaded->error = QtLocalText("Could not load codec metadata.",
-                                            "Не удалось загрузить сведения о форматах.");
-            }
-        }));
-        connect(loader_.get(), &QThread::finished, this, [this, loaded] {
-            loader_->wait();
-            loader_.reset();
-            Complete(std::move(*loaded));
-        });
-        loader_->start();
-        return;
-    } else
-        result.error = QtLocalText("The 7zz version banner is missing or invalid.",
-                                   "Строка версии 7zz отсутствует или некорректна.");
-    Complete(std::move(result));
+    if (active_)
+        work_->cancelled = true;
 }
 
 void ArchiveCodecProbe::Complete(ArchiveCodecProbeResult result) {
     deadline_.stop();
-    if (cancelled_ || timedOut_) {
+    if (work_->cancelled || work_->timedOut) {
         result.catalog.reset();
         result.result = E_ABORT;
         result.error =
-            timedOut_
+            work_->timedOut
                 ? QtLocalText("Codec discovery timed out.", "Истекло время поиска модуля форматов.")
                 : QtLocalText("Codec discovery cancelled.", "Поиск модуля форматов отменён.");
     }

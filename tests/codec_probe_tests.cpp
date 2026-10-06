@@ -5,6 +5,9 @@
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
+#ifdef Q_OS_WIN
+#include "fixtures/delayed_process_start.h"
+#endif
 
 class CodecProbeTests : public QObject {
     Q_OBJECT
@@ -17,6 +20,67 @@ class CodecProbeTests : public QObject {
     }
 
   private slots:
+#ifdef Q_OS_WIN
+    void delayedNativeProcessStartKeepsEventLoopResponsive_data() {
+        QTest::addColumn<QString>("mode");
+        for (const char *mode : {"failure", "cancel", "deadline", "destroy"})
+            QTest::newRow(mode) << QString::fromLatin1(mode);
+    }
+    void delayedNativeProcessStartKeepsEventLoopResponsive() {
+        QFETCH(QString, mode);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString engine = Fixture(temporary, mode == "failure" ? "matching" : "hang");
+        QVERIFY(!engine.isEmpty());
+        DelayedProcessStart delay(600);
+        QVERIFY(delay.valid());
+        auto probe = std::make_unique<ArchiveCodecProbe>();
+        int calls = 0;
+        ArchiveCodecProbeResult result;
+        QElapsedTimer elapsed;
+        elapsed.start();
+        qint64 previous = 0, maximumGap = 0;
+        QTimer heartbeat;
+        heartbeat.setInterval(10);
+        connect(&heartbeat, &QTimer::timeout, this, [&] {
+            const auto now = elapsed.elapsed();
+            maximumGap = qMax(maximumGap, now - previous);
+            previous = now;
+        });
+        heartbeat.start();
+        QVERIFY(probe->Start(
+            engine, temporary.filePath("missing codec"),
+            [&](auto value) {
+                QCOMPARE(QThread::currentThread(), thread());
+                result = std::move(value);
+                ++calls;
+            },
+            mode == "deadline" ? 200 : 5000));
+        QVERIFY2(elapsed.elapsed() < 250, "Native process creation blocked the caller");
+        QTRY_VERIFY(delay.caller() != 0);
+        QVERIFY(delay.caller() != GetCurrentThreadId());
+        QVERIFY(probe->active());
+        if (mode == "destroy") {
+            heartbeat.stop();
+            probe.reset();
+            QCOMPARE(calls, 0);
+        } else {
+            if (mode == "cancel")
+                probe->Cancel(); // Terminate the hanging child after delayed native creation.
+            QTRY_COMPARE(calls, 1);
+            heartbeat.stop();
+            QCOMPARE(result.result, mode == "failure" ? E_FAIL : E_ABORT);
+            if (mode == "failure") {
+                QVERIFY(result.catalog);
+                QVERIFY(!result.error.isEmpty());
+            } else
+                QVERIFY(!result.catalog);
+            QVERIFY(!probe->active());
+            QVERIFY2(maximumGap < 250, qPrintable(QString::number(maximumGap)));
+        }
+        QVERIFY(!delay.childRunning());
+    }
+#endif
     void nativeModuleLoadingKeepsEventLoopResponsive_data() {
         QTest::addColumn<QString>("mode");
         QTest::newRow("failure") << "failure";

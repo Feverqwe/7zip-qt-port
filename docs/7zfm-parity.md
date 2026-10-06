@@ -728,10 +728,13 @@ Linux execution и rendered Windows reference этого компонента е
 standalone7zz внешние модули не загружает. Codecs/Formats enumeration, ABI checks
 и warnings сохраняют исходные LoadCodecs bodies. Несовпадение native/engine
 deployment вызывает отказ. Working plugins сохраняются при нерабочем модуле;
-Qt codec discovery загружает каталог и его runtime snapshot в собственном
-потоке, сохраняя отзывчивость event loop; публикация остаётся в GUI-потоке.
+Qt codec discovery запускает version process и загружает каталог/runtime snapshot
+в одном owned worker, включая блокирующее Windows CreateProcess; публикация
+остаётся в GUI-потоке. GUI deadline5000ms не продлён; process wait проверяет
+cancel/deadline каждые20ms и завершает/reaps child после возврата native create.
 Cancel/deadline отбрасывают результат после join. Уже исполняющийся DLL
-entrypoint безопасно прервать нельзя: закрытие владельца ждёт его завершения.
+entrypoint или native create безопасно прервать нельзя: закрытие владельца ждёт
+завершения worker и освобождает его результаты после join.
 source About повторно показывает codec errors, startup status показывает их
 без открытия модального окна. Immutable native readers удерживают собственные
 DLL images: исходный SetCodecs и per-instance fallback используют этот каталог,

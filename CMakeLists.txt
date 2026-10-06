@@ -2367,6 +2367,10 @@ if(BUILD_TESTING)
         target_sources(slow_codec_fixture PRIVATE tests/incompatible_codec_fixture.def)
     endif()
     qt_add_executable(codec_probe_tests tests/codec_probe_tests.cpp)
+    if(WIN32)
+        target_sources(codec_probe_tests PRIVATE tests/fixtures/delayed_process_start.cpp
+            tests/fixtures/delayed_process_start.h)
+    endif()
     target_include_directories(codec_probe_tests PRIVATE src)
     target_link_libraries(codec_probe_tests PRIVATE sevenzip_filesystem Qt6::Test)
     target_compile_definitions(codec_probe_tests PRIVATE

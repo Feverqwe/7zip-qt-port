@@ -49,7 +49,12 @@ from the Windows command line. `volume_mounts` binds the actual native drive
 containing its disposable directory and compares drive label/size/path with
 QStorageInfo; the injected Unix mount namespace remains a separate platform case.
 `codec_probe` checks overlapping Start on an actually running held probe;
-startup failure can complete synchronously on Windows and still emits once.
+startup failure is delivered once on the owner thread after the worker joins.
+On Windows, a scoped fixture delays only this test process's Qt CreateProcessW
+import by600ms and invokes the real API. Public failure/cancel/deadline/destruction
+rows require Start and GUI heartbeat to remain below250ms, worker-side creation,
+joined completion and no live child. The fixture restores its import after join;
+no production testing hook or machine policy is involved.
 Its test-only slow module runs through the original LoadCodecs compatibility
 query. Public probe tests check that heartbeat remains responsive during loading,
 completion returns to the owning thread, and cancellation/deadline discard the

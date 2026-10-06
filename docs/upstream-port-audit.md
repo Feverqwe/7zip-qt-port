@@ -290,6 +290,87 @@ artifacts have matching guest/local SHA256. These warm measurements do not prove
 which cold phase caused5750/6850ms. A fresh first-visible diagnostic is required;
 parent P3-03.8 remains active, and no speculative cache or deadline change is made.
 
+## P3-03.8.2 — joined process/version discovery owner (accepted scheduling scope, 2026-10-06)
+
+First-visible diagnostic `20261006T004424Z-c95da973`, sourceSHA256
+`9fff66a512090f58c7b282fe499a0a7271f449341a20343cb98325ddc9b16fdb`,
+retains18 guest/local SHA256 artifacts. All three external-codec direct runs
+pass13Qt; initial ready964ms includes version-process901ms, image5ms,
+main native load23ms and worker/GUI11ms. First codec_probe row fails heartbeat
+548ms with process-started473ms after Start; later two probe suites pass.
+Privacy9 logs/JSON/10 markers finds no fixture payload. This pinpoints a remaining
+caller-thread phase, not the cause of the historical external6850ms completion.
+
+Reviewed original `CPP/Windows/ProcessUtils.cpp` CProcess::Create/MyCreateProcess
+and `CPP/7zip/UI/FileManager/PanelItemOpen.cpp` native launch, MyThreadFunction,
+Thread_Create and joined exit callers at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip.git. Those process bodies launch external programs;
+they do not capture/parse the integration's version output. The original
+LoadCodecs/Agent native metadata owner remains authoritative and unchanged.
+[Qt's QProcess contract](https://doc.qt.io/qt-6/qprocess.html#CreateProcessArgumentModifier-typedef)
+and [Qt's Windows implementation](https://github.com/qt/qtbase/blob/dev/src/corelib/io/qprocess_win.cpp)
+confirm the platform CreateProcess call in start; the latter is a supporting
+implementation read, not a borrowed/pinned module or claimed6.12 source baseline.
+
+Local ArchiveCodecProbe now schedules the whole existing transport in its owned
+thread: module lookup, local QProcess creation/read/reap, unchanged bounded8192
+output/version/library parsing, and existing ArchiveCodecCatalog construction.
+Engine/arguments stay separate; no widget builds syntax. Atomic cancel/deadline
+requests bridge the GUI timer to20ms process-wait checkpoints. Native create/DLL
+entrypoints cannot be forcibly interrupted; closing joins them, then kills/reaps
+an owned child and retains leases until completion. GUI completion and backend's
+queued publication remain on their owners. Default5000ms and heartbeat250ms
+are unchanged; no module cache, engine/plugin sharing or security-policy change.
+
+The Windows-only regression uses SDK import-table declarations to replace only
+the current test process's Qt CreateProcessW import for its scope, delay600ms,
+then invoke the real API. It restores the import after the probe joins; no
+product-only test hook, global OS hook or user process is involved. No equivalent
+upstream fixture implementation exists. Public tests verify prompt return,
+worker caller, GUI heartbeat/completion, failure/cancel/deadline/destruction and
+no running child. Frozen unchanged production `20261006T005123Z-eaf10702`,
+sourceSHA256`7cc7fbd350aac7fc87824dabed1335c82115aa5a79fb0e91281c80907817adbb`,
+is RED13Qtpass/4fail/0skip9.33s: all four new rows block the caller. Five original
+native log/build artifacts have matching guest/local SHA256.
+
+macOS affected4/4 PASS6.57s; unsandboxed formatting/all-targets/full247CTest
+PASS105.87s. Fresh shared Linux/native Highest Windows validation
+`20261006T005414Z-7658306b`, sourceSHA256
+`398821b37a2b26fb7c84a6939d026a81ad3dd172207b300a9c96126377397521`,
+has seven frozen input byte checks. Linux focused15 PASS24.71s and full formatting/
+all-targets/243CTest PASS187.78s;648 build/test/UI artifacts have matching guest/
+local SHA256. Windows original rendered menu PASS3.30s, but focused13/15 fails:
+external incompatible-module delivery exceeds5000ms (6700ms diagnostic), and
+the new process failure row exceeds5000ms (8800ms), followed by the unchanged
+20s CTest timeout. Thirty-five original build/test/UI artifacts have matching
+guest/local SHA256. Three subsequent direct repeats of the exact saved binaries
+pass external13Qt and probe17Qt, including all four new lifecycle rows, with
+zero skips; seventeen repeat artifacts have matching guest/local SHA256.
+Native loading heartbeat in the first repeat is18–20ms; all four delayed-start
+rows enforce prompt return and250ms heartbeat. These repeats do not establish
+cold stability. Warm focused15 PASS42.09s on the same snapshot; full formatting/
+all-targets build passes, full251/253 fails989.14s with actual exit8. Probe17Qt/
+0skip7583ms and external13Qt/0skip3055ms pass in the full gate. The two failures
+are external-editor update-failure (error window not delivered before5000ms,
+14Qtpass/1fail26.29s) and large-list disk-normal heartbeat285ms at2240 rows
+(250ms limit,13Qtpass/1fail89.05s). Parent P3-03.9/.3 retain them; no required
+case or limit is weakened. Privileged owned-temp11Qt, cleanup11Qt, filesystem
+links30Qt and network3Qt pass with zero required skips. Only the two explicitly
+POSIX-specific cleanup/lstat rows skip on Windows.
+
+673 full build/test/UI and9 separately preserved warm gate artifacts have
+matching guest/local SHA256; the initial35 failure artifacts are retained
+separately. Source hash, actual terminal exit8 and absence of live own processes
+are verified before final collection. The remote wrapper's exit0 is not the
+gate result. Privacy scan of1363 current evidence text/JSON artifacts finds no
+fixture-password exposure (ten allowed Qt row labels).
+
+The bounded process/version scheduling and joined lifecycle component is
+accepted on three OS and committed separately. Stable cold completion remains
+parent P3-03.8, and the combined Windows/P3-03 gate remains unaccepted. Device
+fixture drafts prepared afterward are outside this frozen/tested source scope.
+
 ## P3-05.5 — native archive property levels and codec owners (accepted property scope, 2026-10-06)
 
 Source https://github.com/ip7z/7zip.git, full revision
