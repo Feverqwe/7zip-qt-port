@@ -18,15 +18,6 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
     auto disableNotify = std::make_unique<CPanel::CDisableNotify>(panel);
     table_->setSortingEnabled(false);
     IFolderFolder *folder = panel.GetFolder();
-    UInt32 count = 0;
-    HRESULT result = panel.LoadListItems();
-    if (result == S_OK)
-        result = folder->GetNumberOfItems(&count);
-    if (result != S_OK) {
-        statusBar()->showMessage(
-            QtLocalText("Could not read root folder.", "Не удалось прочитать корневую папку."));
-        return result;
-    }
     filesystemScanner_->cancel();
     listProjection_->cancel();
     scanningArchive_ = false;
@@ -46,6 +37,27 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
                                   ? QString::fromWCharArray(GetFolderPath(folder))
                                   : QString(),
                               false);
+    const auto finish = [&](HRESULT result) {
+        if (result != S_OK)
+            table_->setRowCount(0);
+        table_->setSortingEnabled(true);
+        applySortMode();
+        // Restore the row-rebuild guard before End releases operation guards.
+        // Otherwise this guard would restore its saved disabled state afterward.
+        disableNotify.reset();
+        setState(State::Namespace);
+        statusBar()->showMessage(
+            result == S_OK ? QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount())
+                           : QtLocalText("Could not read root folder.",
+                                         "Не удалось прочитать корневую папку."));
+        return result;
+    };
+    UInt32 count = 0;
+    HRESULT result = panel.LoadListItems();
+    if (result == S_OK)
+        result = folder->GetNumberOfItems(&count);
+    if (result != S_OK)
+        return finish(result);
     recordVisitedPath(ToQString(panel.GetCurrentFolderPrefix()));
     configureColumns(true);
     for (UInt32 index = 0; index < count; ++index) {
@@ -55,10 +67,8 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
         const QString nativeName = QString::fromWCharArray(name.bstrVal);
         QIcon icon;
         result = panel.GetItemIcon(index, icon);
-        if (result != S_OK) {
-            table_->setRowCount(0);
-            return result;
-        }
+        if (result != S_OK)
+            return finish(result);
         const bool isDirectory = panel.IsItem_Folder(index);
         const int row = table_->rowCount();
         table_->insertRow(row);
@@ -85,14 +95,7 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
             table_->setItem(row, column, item);
         }
     }
-    table_->setSortingEnabled(true);
-    applySortMode();
-    // Restore the row-rebuild guard before End releases operation guards.
-    // Otherwise this guard would restore its saved disabled state afterward.
-    disableNotify.reset();
-    setState(State::Namespace);
-    statusBar()->showMessage(QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
-    return S_OK;
+    return finish(S_OK);
 }
 
 void MainWindow::goRoot(bool remember, RootLocation location) {

@@ -103,6 +103,15 @@ Qt больше не заменяет выбор одним путём. `_dontSh
 до начала загрузки, включая Qt-кэш, сохраняя raw roles/EditRole. Ранний отказ
 имени возвращает старый текст и выбор без reload. EN/RU и обе панели проверены
 через inline editor; native Windows/Linux/ADS проверка остаётся открытой.
+После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
+операции и оставляет обе панели доступными для Refresh. Адрес связанного
+provider публикуется до загрузки, кроме таймерного обновления, как в исходном
+RefreshListCtrl. Сортировка и уведомления восстанавливаются и после Cancel;
+частичные строки очищаются. Это адаптация завершения глобального Qt busy-state:
+исходный ранний RINOK до SetRedraw(true) не считается исправленным в upstream.
+Исходное игнорирование результата reload в Parent сохраняется, OnReload остаётся
+владельцем сообщения об ошибке. Детерминированные EN/RU сценарии обеих панелей
+и normal/compact geometry проверены на macOS; rendered Windows не проверен.
 Пока callbacks запрещены, имя остаётся cached или пустым. Реальный ZIP проверяет
 точное новое имя/bytes, Escape и invalid-name refusal. Windows marker appearance
 и native conditional interface требуют текущей Windows/rendered проверки.

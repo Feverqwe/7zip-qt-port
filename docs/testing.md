@@ -5,6 +5,14 @@ It verifies flat-before-load/columns order, worker-loaded publication without a
 second load, cached directory flags and replacement, and VT_EMPTY file semantics.
 Namespace rows must disappear on wrong directory type, property/load failure or
 load Cancel, with restored notifications and recovery after a valid reload.
+`navigation_reload` exercises actual Parent from a named source namespace child
+into load failure, E_ABORT, invalid directory type, count failure and icon
+attribute failure. Both panes and EN/RU cover the new bound address, empty rows,
+sorting/notifications/redraw, enabled Refresh, unchanged peer provider/rows and
+Unicode fixture bytes, then successful command recovery. Forty normal/compact
+widget reports check both views/addresses, toolbar/status and visible labels.
+The provider is a deterministic public IFolderFolder fixture; this does not
+exercise a live network or establish native Windows/Linux acceptance.
 Eight normal980×620/compact640×400 error-state reports inspect the existing view.
 A retained failing run bypasses the source validation in the namespace renderer;
 it aborts on the invalid property through the old unvalidated state.

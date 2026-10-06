@@ -29,6 +29,8 @@ class LoadFolder final : public IFolderFolder,
     bool reverseNames = false;
     bool changed = false;
     UString folderType = L"RootFolder";
+    UString folderPath;
+    CMyComPtr<IFolderFolder> parentFolder;
     HRESULT iconResult = E_NOTIMPL;
     Int32 iconIndex = -1;
     HRESULT attributeResult = S_OK;

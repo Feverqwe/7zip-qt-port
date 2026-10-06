@@ -2,6 +2,15 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Parent navigation to a namespace provider that fails during load, directory
+validation, count or icon projection must leave an empty, usable view. Publish
+the bound source address before loading unless CalledFromTimer suppresses it,
+release the operation/notification guards, restore sorting/redraw and leave peer
+provider/rows intact. A later explicit Refresh recovers the same provider.
+Inspect both panes and status/address groups under EN/RU normal980×620 and
+compact640×400, including load cancellation. Parent retains its source ignored
+reload-result policy; explicit OnReload remains the HRESULT message owner.
+
 Rename completion uses original OnEndLabelEdit's saved selected names and raw
 prefix/name, focusing the new name on success and the old name on error/Cancel.
 Do not replace the saved selection with a single Qt path. After the worker,

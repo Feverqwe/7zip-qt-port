@@ -63,6 +63,8 @@ Z7_COM7F_IMF(LoadFolder::GetFolderProperty(PROPID id, PROPVARIANT *value)) {
     NWindows::NCOM::CPropVariant prop;
     if (id == kpidType)
         prop = folderType;
+    else if (id == kpidPath && !folderPath.IsEmpty())
+        prop = folderPath;
     return prop.Detach(value);
 }
 Z7_COM7F_IMF(LoadFolder::BindToFolder(UInt32, IFolderFolder **folder)) {
@@ -74,7 +76,9 @@ Z7_COM7F_IMF(LoadFolder::BindToFolder(const wchar_t *, IFolderFolder **folder)) 
     return E_NOTIMPL;
 }
 Z7_COM7F_IMF(LoadFolder::BindToParentFolder(IFolderFolder **folder)) {
-    *folder = nullptr;
+    *folder = parentFolder;
+    if (*folder)
+        (*folder)->AddRef();
     return S_OK;
 }
 Z7_COM7F_IMF(LoadFolder::GetSystemIconIndex(UInt32, Int32 *index)) {

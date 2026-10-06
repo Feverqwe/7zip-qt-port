@@ -1452,6 +1452,49 @@ unsandboxed full gate passes formatting/all-target build and 268/268 CTest in
 input hashes remain unchanged; the full LastTest log is frozen alongside the
 focused evidence. No current native Windows/Linux execution is claimed.
 
+### Namespace Parent reload terminal state, 2026-10-06
+
+Reviewed original `CPP/7zip/UI/FileManager/PanelItems.cpp::RefreshListCtrl`,
+`RefreshListCtrl_SaveFocused`, `OnReload`, and `PanelFolderChange.cpp::OpenParentFolder`
+against upstream 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 from
+https://github.com/ip7z/7zip.git, including their guards, address/load order,
+selection and result consumers. The existing adapted CPanel remains authoritative;
+no source body, dependency, algorithm or source language is added or replaced.
+
+`src/mainwindow_root.cpp::renderRootFolder` now cancels stale Qt projection and
+publishes the bound address before loading unless timer-suppressed. A shared
+terminal path clears partial rows on load/count/icon failure, restores sorting,
+then releases its inner notification guard before leaving Qt Operating. Both
+panes consequently recover their enabled/redraw/notification state. The original
+Parent binding/pending-selection and ignored reload-result policy remain; failed
+selection restoration is skipped by renderBoundFolder. OnReload keeps its error
+message ownership. Original Refresh has a native RINOK return before its final
+SetRedraw(true); this change handles the stronger global Qt busy-state adaptation,
+not a claim that native failure redraw was changed or verified. The small shared
+terminal lambda belongs to this renderer; its existing namespace row construction
+stays together rather than introducing another independent folder module.
+
+The new focused `navigation_reload` suite uses public IFolderFolder parent/path
+contracts added to the existing deterministic LoadFolder fixture with unchanged
+defaults. Twenty actual Parent EN/RU/both-pane scenarios inject LoadItems failure,
+E_ABORT, invalid directory type, count failure and attribute/icon failure. They
+verify empty rows, new address, retained failing HRESULT, usable lists/Refresh,
+sorting/redraw/notification restoration, peer identity/rows and Unicode bytes,
+then explicit command recovery. Windows native Qt execution is registered, but
+not claimed. Actual pre-fix run failed all20 cases: notify/view/Refresh remained
+disabled, and four failure phases retained the child address. Six input snapshots,
+hashes and terminal1.08s log are frozen in build/review/navigation-reload-red.
+Final affected eight-target build and focused8/8PASS26.58s, all Qt cases zero
+failures/skips, include new22 cases and40 normal980×620/compact640×400 reports.
+Both views/addresses, toolbar/status and nonempty visible labels fit and remain
+enabled. Five final input hashes, focused/full logs and reports are frozen in
+build/review/navigation-reload-final. Baseline verification passes408 exact/
+196 adapted/3 local paths. Mandatory unsandboxed full gate passes formatting,
+all-target build and269/269 CTest in141.67s on macOS arm64 with official
+Qt6.12.0; all five input hashes remain unchanged. Current native Windows/Linux
+execution and rendered Windows parity are unverified.
+Whole-module/native ADS/archive navigation/full-plan acceptance remains open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 

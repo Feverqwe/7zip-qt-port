@@ -107,6 +107,12 @@ synchronous load HRESULT. The reload callback restores saved selection only on
 success and returns failure to the retained CPanel::OnReload error owner.
 Namespace and filesystem Refresh use that original owner; archive manual refresh
 keeps its existing reopen transport pending the remaining reconciliation.
+Namespace publication cancels the old projection and publishes the bound address
+before loading, unless the timer flag suppresses that update. Load/count/icon
+failures clear partial rows and share the successful terminal path for restoring
+sorting and notification guards before leaving the Qt operation state. Thus a
+Parent reload failure leaves both panes usable for recovery without rebinding
+the source provider or changing the original ignored reload-result policy.
 Archive failure still finishes its Qt state after synchronous loading, with source
 guards restored before ending the operation. Remaining terminal branches stay
 part of the complete-function review. CPanel retains the load-stage HRESULT across
