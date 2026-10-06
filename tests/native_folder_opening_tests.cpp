@@ -7,6 +7,7 @@
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include "qtarchivereopen.h"
+#include <QCryptographicHash>
 #include <QFile>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -202,6 +203,71 @@ class NativeFolderOpeningTests final : public QObject {
         QCOMPARE(opening.Folder->GetNumberOfItems(&listed), S_OK);
         QCOMPARE(listed, count);
         extractToMemory(archive, QByteArray("tree bytes"));
+    }
+
+    void nativeWimComparatorUsesTreeNamesSizesAndRawHashes() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir().mkpath(fixture.filePath(QStringLiteral("tree/папка δ"))));
+        const QStringList names = {QStringLiteral("a 文件.txt"), QStringLiteral("b space δ.txt")};
+        const QList<QByteArray> bytes = {QByteArray("a"), QByteArray("bc")};
+        for (int i = 0; i < names.size(); ++i) {
+            QFile input(fixture.filePath(QStringLiteral("tree/папка δ/") + names[i]));
+            QVERIFY(input.open(QIODevice::WriteOnly));
+            QCOMPARE(input.write(bytes[i]), qint64(bytes[i].size()));
+        }
+        const QString path = fixture.filePath("sort tree.wim");
+        QProcess creator;
+        creator.setWorkingDirectory(fixture.path());
+        creator.start(engine_, {"a", "-twim", "--", path, "tree"});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        CObservedBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(path.toStdWString().c_str()),
+                                              UString(L"wim"), nullptr),
+                 S_OK);
+        CMyComPtr<IFolderSetFlatMode> flat;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
+        QCOMPARE(flat->SetFlatMode(1), S_OK);
+        CPanel panel(opening.Folder);
+        panel.SetFlatModeForArc(true);
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(opening.Folder->GetNumberOfItems(&count), S_OK);
+        QList<UInt32> indices;
+        for (const QString &name : names) {
+            bool found = false;
+            for (UInt32 i = 0; i < count; ++i)
+                if (ToQString(panel.GetItemName(i)) == name) {
+                    indices.append(i);
+                    found = true;
+                    break;
+                }
+            QVERIFY(found);
+        }
+        CMyComPtr<IFolderCompare> compare;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IFolderCompare, &compare), S_OK);
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(opening.Folder.QueryInterface(IID_IArchiveGetRawProps, &raw), S_OK);
+        QList<QByteArray> hashes;
+        for (int i = 0; i < indices.size(); ++i) {
+            const void *data = nullptr;
+            UInt32 size = 0, type = 0;
+            QCOMPARE(raw->GetRawProp(indices[i], kpidSha1, &data, &size, &type), S_OK);
+            QCOMPARE(type, UInt32(NPropDataType::kRaw));
+            hashes.append(QByteArray(static_cast<const char *>(data), size));
+            QCOMPARE(hashes.back(), QCryptographicHash::hash(bytes[i], QCryptographicHash::Sha1));
+        }
+        const int expected = hashes[0] < hashes[1] ? -1 : 1;
+        QCOMPARE(compare->CompareItems(indices[0], indices[1], kpidSha1, 1), expected);
+        QCOMPARE(panel.CompareItemIndices(indices[0], indices[1], kpidSha1, true), expected);
+        QVERIFY(compare->CompareItems(indices[0], indices[1], kpidSize, 0) < 0);
+        QVERIFY(compare->CompareItems(indices[0], indices[1], kpidName, 0) < 0);
+        QCOMPARE(compare->CompareItems(indices[0], indices[1], kpidExtension, 0), 0);
+        QCOMPARE(compare->CompareItems(indices[0], indices[1], kpidPrefix, 0), 0);
     }
 
 #ifdef Q_OS_WIN

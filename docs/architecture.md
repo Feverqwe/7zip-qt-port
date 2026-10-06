@@ -70,6 +70,15 @@ SetMemMode_Enable/Restore before restoring focus. This permits Qt's focus
 callbacks to request uncached source text and update command availability.
 Failed loads return before that successful-publication phase; an outer guard
 continues to protect the failed provider.
+Agent exposes the original IFolderCompare and both proxy comparators, including
+raw byte ordering, calculated folder statistics and natural flat prefixes.
+Panel sorting passes the raw flag only for the selected property; name/prefix
+tie breaks keep the original non-raw flag. The file metadata adapter queries
+its existing raw interface into CArc at initialization, without synthesizing a
+tree. Native ConfigureArc retains the codec's raw/tree capabilities. Original
+Agent temporary prefix strings remain confined to GUI sorting. Its wide-name
+calls share PanelSort's existing UTF-16 comparison through a Qt conversion
+overload; no independent archive comparator is added.
 Original remaining property/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
 Namespace/archive renderers and the bound-folder renderer now return their

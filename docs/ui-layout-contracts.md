@@ -976,11 +976,14 @@ view stack and status bar keep the existing order and must remain fully visible.
 ### Source sorting in the file list (P0-06.1)
 
 Reference: pinned `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
-`CPP/7zip/UI/FileManager/PanelSort.cpp::CompareItems/CompareItems2` and
+`CPP/7zip/UI/FileManager/PanelSort.cpp::CompareItems/CompareItems2`,
+`CPP/7zip/UI/Agent/Agent.cpp::CompareItems/CompareItems2/ComparePrefixes` and
 `PanelItems.cpp` list state. Directories group before files in either direction;
 the chosen typed property sorts first, then base name, flat prefix and source
-index. Source `kpidPrefix` BSTR comparison is lexical, so equal `common.txt`
-names under `dir10` and `dir2` place `dir10` first. Header and sort action
+index. The Agent interface compares flat prefixes naturally: equal `common.txt`
+names under `dir2` and `dir10` place `dir2` first. The generic property fallback
+for providers without IFolderCompare retains lexical BSTR order. Raw archive
+properties pass the original raw flag to the provider comparator. Header and sort action
 remain in sync. The list, address, toolbar and status keep their existing order
 and stay unclipped at 980×620 and 640×400. `panel_sort` writes
 `source-sort-flat-980.json` and `source-sort-flat-640.json`; these are current Qt

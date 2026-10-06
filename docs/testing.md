@@ -134,6 +134,13 @@ providers and both selection styles. Failure and Cancel retain the outer
 notification guard and do not publish focus. It uses the actual FileTable
 callback and source indices rather than a replacement display model.
 
+`panel_archive_sort` verifies SHA1/checksum byte and length ordering through the
+actual FileTable with both directions/flat modes and retained selected source
+index. Its twenty provider cases exercise the original Agent property branches
+and virtual directory statistics. `native_folder_opening` additionally checks
+tree-proxy comparison on a real WIM: raw hashes match known Unicode/space input
+files, and source Panel/provider ordering agrees with those bytes.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,
@@ -1894,7 +1901,7 @@ event turn; they do not establish a wall-clock latency guarantee.
 
 `panel_sort` now exercises the source property comparator through normal/flat
 archive and filesystem rows, header and sort actions, typed sizes, natural
-basenames, lexical BSTR prefixes, reverse direction and refresh preservation.
+basenames, the Agent's natural flat prefixes, reverse direction and refresh preservation.
 It writes `source-sort-flat-980.json` and `source-sort-flat-640.json` and checks
 the list remains fully visible. `flat_view`, `panel_selected_state` and
 `root_navigation` are direct consumers of the same bound-folder row indices.

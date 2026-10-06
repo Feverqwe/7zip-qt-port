@@ -73,6 +73,11 @@ QStringView GetExtensionPtr(QStringView name) {
     return name.mid(dotPos < 0 ? name.size() : dotPos);
 }
 
+int CompareFileNames_ForFolderList(const wchar_t *s1, const wchar_t *s2) {
+    return CompareFileNames_ForFolderList(QStringView(QString::fromWCharArray(s1)),
+                                          QStringView(QString::fromWCharArray(s2)));
+}
+
 static int CompareFileNames_Le16(const Byte *s1, unsigned size1, const Byte *s2, unsigned size2) {
     size1 &= ~1u;
     size2 &= ~1u;
@@ -145,7 +150,7 @@ int CPanel::CompareItemIndices(UInt32 first, UInt32 second, PROPID sortID, bool 
         else if (rawResult)
             res = *rawResult;
         else if (_folderCompare)
-            res = _folderCompare->CompareItems(first, second, propID, 0);
+            res = _folderCompare->CompareItems(first, second, propID, iter ? 0 : Int32(isRawProp));
         else if (propID == kpidName)
             res = CompareFileNames_ForFolderList(QStringView(ToQString(GetItemName(first))),
                                                  QStringView(ToQString(GetItemName(second))));

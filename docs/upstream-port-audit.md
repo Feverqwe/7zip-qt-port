@@ -1004,6 +1004,70 @@ across this final gate. Full/focused/LastTest/manifests are frozen in the final
 directory above. Baseline verification passed408 exact/196 adapted/3 local.
 Current Windows/Linux/rendered and remaining .15/P3-06 acceptance stay open.
 
+### Source archive property sorting and Agent comparator (2026-10-06)
+
+Source0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: review PanelSort CompareItems/CompareItems2/
+SetSortRawStatus, Agent CompareItems/CompareItems2/CompareItems3/ComparePrefixes,
+GetUInt64Prop/CompareRawProps/GetExtension, both AgentProxy types, IFolderCompare,
+CArc raw ownership and native/file Qt archive consumers. Previously Agent omitted
+IFolderCompare and its complete comparator bodies; Panel also discarded the raw
+flag when calling a provider. Raw archive columns consequently fell back to name
+order rather than the source byte comparison.
+
+Copy the original Agent interface/QI, three comparison bodies, ComparePrefixes,
+three static helpers and temporary prefix strings in authoritative Agent paths.
+Both proxy branches retain property dispatch, virtual-directory statistics,
+CRC, flat handling, raw byte/length comparison and original catch/return0 policy.
+NCOM qualification and affected formatting are the only body adaptations.
+Helper declarations stay private in the focused port header; the original COM
+interface is public and no original external caller relies on those helpers.
+Panel passes the original raw flag on the first iteration only. An overload
+converts Agent's wide pointers to the existing Qt UTF-16 natural-name comparator;
+no second comparison algorithm. The file archive initializer queries its existing
+IArchiveGetRawProps into CArc.GetRawProps. It does not synthesize tree capability;
+native ConfigureArc still establishes native raw/tree services. Dependencies
+PropVariantConv/PanelSort/IFolderCompare/AgentProxy/OpenArchive already belong to
+the port; C++ source language, notices, names, module boundaries and engine
+ownership remain. Do not split copied Agent bodies for the custom-glue size rule.
+Other Agent/PanelSort bodies and full RefreshListCtrl closure remain mandatory.
+
+New panel_archive_sort exercises the actual FileTable raw-column sorting:
+eight SHA1/Checksum × flat/non-flat × ascending/descending cases, byte/length
+ordering and retained selected source index. Twenty additional provider cases
+cover name/extension/prefix/directory/size/packed/CRC/subcounts/time in normal
+and flat modes, including virtual folders and reverse comparisons. Existing
+native_folder_opening adds a real WIM tree-proxy comparator with Unicode/spaces,
+both SHA1s checked against known input hashes, raw Panel/provider order, numeric
+size and name/extension/prefix dispatch. No archive format is recreated.
+
+Actual old-product RED8/2 Qt passes, focused1FAIL0.51s, is frozen with four old
+source files and six input hashes in build/review/source-archive-sort-red.
+The additional20 and native WIM cases were added afterward; RED scope is eight.
+Initial corrected-source focused5 exposed a fixture that had not synchronized
+native selection and the old flat-prefix expectation. The fixture now calls
+public SaveSelectedState before sorting, as production selection synchronization
+does. Original Agent ComparePrefixes uses natural order, so panel_sort now expects
+dir2 before dir10, preserving header/reverse/refresh/extraction assertions.
+Historical P0-06.1 claimed generic BSTR prefix fallback as the complete source
+behavior; that claim and current contract/parity are corrected by this provider
+review. The earlier historical logs remain evidence of their narrower state.
+Focused12 passed14.92s with no Qt failure/skip;28 archive cases are30 Qt passes,
+and native_folder_opening is8 Qt passes including actual WIM hashes. Two current
+source-sort-flat geometry reports (980×620/640×400) show toolbar/address/list/
+status fully visible. First full gate stopped in formatting before build/tests:
+the narrow format range missed one overload continuation line. Frozen log/eight
+hashes in source-archive-sort-format-failure. Correct its indentation and inspect
+the diff; affected target build/28-case test pass afterward (focused1PASS0.49s).
+Final mandatory unsandboxed format/all-target build/full264/264 passed131.17s
+on macOS27.0.1 arm64/Qt6.12.0. Eight task input hashes remain unchanged across
+that final gate; seven copied Agent bodies match upstream after whitespace/NCOM
+qualification normalization. Baseline verification passed408 exact/196 adapted/
+3 local. Full/focused/LastTest/geometry/input manifests and body comparison are
+frozen in the final directory below.
+Final evidence is in build/review/source-archive-sort-final. Current native
+Windows/Linux/rendered/cold-stable and remaining .15/P3-06 acceptance stay open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at
@@ -8696,9 +8760,10 @@ P0-06.2/.3. Windows `ListView_SortItems` and focus-scroll call are represented
 by Qt sorting and the current shared selection model. There is no second
 functional sort implementation for bound folders.
 
-The old flat-prefix test expected natural digit order for `dir2`/`dir10`.
-Upstream compares `kpidPrefix` as a BSTR, so the test now expects lexical
-`dir10` before `dir2` after equal names. Focused source-sort/flat/selection/root
+At this historical stage the generic BSTR fallback was used for `dir2`/`dir10`,
+placing `dir10` first. The later P3-05.15 source Agent comparator review above
+restores its natural prefix order and supersedes that incomplete source claim.
+Focused source-sort/flat/selection/root
 consumers and current-build 980×620/640×400 JSON validate the resulting Qt
 behavior; Windows rendering/runtime and Linux runtime remain unverified.
 Focused `panel_sort`, `flat_view`, `panel_selected_state` and `root_navigation`

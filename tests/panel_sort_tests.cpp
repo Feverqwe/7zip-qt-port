@@ -54,9 +54,8 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
                     result << table(window)->item(row, 0)->text();
             return result;
         };
-        // Upstream compares kpidPrefix as a BSTR after equal names, not with
-        // the natural-number filename comparator used for kpidName.
-        const QStringList expected = {"dir10/common.txt", "dir2/common.txt", "z/file2.txt",
+        // The source Agent comparator uses natural ordering for flat prefixes.
+        const QStringList expected = {"dir2/common.txt", "dir10/common.txt", "z/file2.txt",
                                       "a/file10.txt", QStringLiteral("папка с пробелом/Альфа.txt")};
         QCOMPARE(fileNames(), expected);
         action(window, "sort3Action")->trigger();

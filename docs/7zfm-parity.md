@@ -1308,8 +1308,10 @@ local behavior. Windows/Linux runtime and Windows appearance are unverified.
 P0-06.1 sorts bound filesystem, archive and root items by source properties and
 source indices. The native rule groups directories first, compares the selected
 typed property, then name, flat prefix and source index. An equal basename in
-`dir10` and `dir2` uses source BSTR prefix order (`dir10` first), rather than
-natural path sorting. The Qt header/action selection and four view modes keep
+`dir10` and `dir2` uses the source Agent's natural prefix order (`dir2` first).
+Providers without IFolderCompare retain the generic BSTR fallback. Agent now
+exposes its original comparator; raw columns carry the source raw flag through
+Qt sorting. The Qt header/action selection and four view modes keep
 their current behavior; raw property columns and full column controls are
 P0-06.2, time precision and UTC are P0-06.3. Normal/compact geometry is
 checked locally, with no rendered Windows comparison.
@@ -1318,9 +1320,10 @@ P0-06.2 now projects the bound folder's original property catalog into the Qt
 list. The header menu offers every reported property, with Name always shown;
 width, order, visibility and sort restore separately for filesystem and archive
 folder types. Raw values and sorting follow the source interface when a folder
-provides it. The external `7zz` listing currently has no binary raw provider,
-so this does not claim visible NTFS/security/reparse values for real archives;
-full archive raw-value transport remains P1-10. Filesystem/archive metadata text
+provides it. The file transport exposes only actual raw checksum fields supplied
+by the technical listing; it does not synthesize NTFS/security/reparse values.
+Native codec metadata retains its raw provider and tree capability. Current
+native platform acceptance remains in P3. Filesystem/archive metadata text
 is requested through the source panel when Qt displays a cell, following upstream
 callback text. Hidden columns do not trigger bulk reads when shown. Timestamp and
 calculated-statistics changes invalidate cached text even in hidden columns;

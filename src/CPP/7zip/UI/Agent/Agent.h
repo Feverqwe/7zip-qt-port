@@ -44,6 +44,7 @@ Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 
 class CAgentFolder final : public IFolderFolder,
+                           public IFolderCompare,
                            public IFolderGetItemName,
                            public IFolderProperties,
                            public IGetFolderArcProps,
@@ -61,6 +62,7 @@ class CAgentFolder final : public IFolderFolder,
     Z7_COM_QI_BEGIN2(IFolderFolder)
     Z7_COM_QI_ENTRY(IFolderProperties)
     Z7_COM_QI_ENTRY(IFolderGetItemName)
+    Z7_COM_QI_ENTRY(IFolderCompare)
     Z7_COM_QI_ENTRY(IGetFolderArcProps)
     Z7_COM_QI_ENTRY(IArchiveGetRawProps)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
@@ -83,6 +85,7 @@ class CAgentFolder final : public IFolderFolder,
     const CExtractNtOptions *QtExtractNtOptions = nullptr;
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderGetItemName)
+    Z7_IFACE_COM7_IMP(IFolderCompare)
     Z7_IFACE_COM7_IMP(IFolderProperties)
     Z7_IFACE_COM7_IMP(IGetFolderArcProps)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
@@ -123,6 +126,10 @@ class CAgentFolder final : public IFolderFolder,
     friend class CAgent;
     void LoadFolder(unsigned dirIndex);
     void GetPrefix(UInt32 index, UString &prefix) const;
+    int CompareItems3(UInt32 index1, UInt32 index2, PROPID propID);
+    int CompareItems2(UInt32 index1, UInt32 index2, PROPID propID, Int32 propIsRaw);
+    int ComparePrefixes(UInt32 index1, UInt32 index2);
+    UString _temp1, _temp2;
     bool IsBound() const;
     bool CanCopyFromFile() const;
     bool CanCopyTo() const;
