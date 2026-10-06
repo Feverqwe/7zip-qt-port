@@ -8,6 +8,23 @@ default reduction to its existing filesystem parent before the established
 focused-versus-selected Shift Copy/Move operations. Full OnCopy routing and
 current native/platform acceptance remain in P3-05.15 and the port audit.
 
+`app_copy_routing` observes the existing public CApp presentation seam with real
+filesystem providers: a peer filesystem destination uses source CopyTo flags,
+multiple-item targets normalize/create before execution, Cancel makes no output,
+and single/multiple creation failures include the path and formatted HRESULT.
+Zero-error formatting follows the original E_FAIL fallback. Eight EN/RU error
+reports inspect the OS-managed message box's wrapped text; requested normal/
+compact probes do not override its platform autosizing.
+
+`ui_copy_routing` changes selection while the Copy dialog is open, then checks
+the captured first item through all eight filesystem/archive Copy/Move routes.
+Real ZIP fixtures verify binary Unicode payloads, untouched second/seed bytes,
+destination rows and source retention/deletion. Fixture inspection uses official
+7zz; a new ArchiveBackend requires a listing before extract and cannot serve as
+an unlisted verifier. Both new suites and ui_copy_same use the native Windows
+plugin/desktop lock there. Native ADS/device/zone and full completion acceptance
+remain separate requirements; actual checks belong to the port audit.
+
 `persisted_location` verifies source-prefix bookmarks in both-panel drive view,
 empty-slot root binding and root Save clearing, and exact virtual locations for
 real ZIP/nested ZIP. It checks already-open chain reuse and original containing-

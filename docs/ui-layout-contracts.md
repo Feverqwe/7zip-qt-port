@@ -17,6 +17,11 @@ Verify both panels, F5/F6 and Shift routes, success/failure/Cancel, Unicode/spac
 no unintended output/input changes and operation guards. Inspect EN/RU normal/
 compact Copy dialog and resulting panel JSON using their existing contracts.
 Native Windows ADS/device and rendered/cold-stable acceptance remain mandatory.
+Path failures use original Panel.cpp prefix+LF+HRESULT formatting. Its platform
+message box owns wrapping and autosizing, without a fixed upstream dialog
+resource geometry; inspect text exposure/fit and standard button grouping under
+both size probes. Keep Copy dialog's existing normal/compact dimensions separate.
+Directory summary suffixes use original Add_PathSepar.
 
 ### Persisted source locations (P3-05.14, required scope)
 

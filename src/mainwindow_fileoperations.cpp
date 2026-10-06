@@ -1,5 +1,6 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/FileManager/resourceGui.h"
+#include "7zip/UI/GUI/ExtractRes.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
@@ -8,6 +9,7 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
+#include "qtlocationfolder.h"
 #include "qttrashservice.h"
 #include <QFile>
 #include <QScopedValueRollback>
@@ -139,8 +141,10 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
     if (sourceIndex != app_.GetFocusedPanelIndex() || indices.IsEmpty() ||
         (state_ != State::Viewing && state_ != State::Filesystem && !streams && !devices))
         return;
+    QtAppOperationState::CallScope call(app_.QtOperations());
+    if (useDestPanel && !useTemp && transferToArchivePanel(destination, move, indices))
+        return;
     if (streams || devices) {
-        QtAppOperationState::CallScope call(app_.QtOperations());
         CCopyToOptions options;
         options.folder = ToUString(destination);
         options.moveMode = move;
@@ -163,11 +167,9 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
     const bool directPath = indices.Size() == 1 && !destination.endsWith('/') &&
                             !QFileInfo(destination).isDir() && !useDestPanel;
     if (state_ == State::Viewing) {
-        if (useDestPanel && useTemp && transferBetweenArchivePanels(destination, move))
+        if (useDestPanel && useTemp && transferBetweenArchivePanels(destination, move, indices))
             return;
-        const QStringList paths = copyToSame ? archivePathsForIndices(indices)
-                                  : move     ? selectedArchivePaths()
-                                             : selectedArchiveItemsPaths();
+        const QStringList paths = archivePathsForIndices(indices);
         if (paths.isEmpty())
             return;
         ExtractionOptions options;
@@ -195,14 +197,19 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
             return;
         }
         if (!move) {
-            extractTo(destination, true, archivePassword_, options);
+            if (!extractWithSource(destination, true, archivePassword_, options, paths, &indices)) {
+                previousState_ = state_;
+                setState(State::Operating);
+                begin(QtLangText(IDS_PROGRESS_EXTRACTING), destination);
+                backend_->extract(archive_, destination, paths, archivePassword_, options);
+            }
             if (state_ != State::Operating)
                 transferDestinationPanel_.reset();
             return;
         }
         archiveMovePaths_ = paths;
         archiveMoveStage_ = ArchiveMoveStage::Extracting;
-        if (extractWithSource(destination, true, archivePassword_, options, paths)) {
+        if (extractWithSource(destination, true, archivePassword_, options, paths, &indices)) {
             if (state_ != State::Operating) {
                 archiveMoveStage_ = ArchiveMoveStage::None;
                 archiveMovePaths_.clear();
@@ -225,18 +232,21 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         backend_->extract(archive_, destination, paths, archivePassword_);
         return;
     }
-    const QStringList sources =
-        copyToSame ? QStringList{ToQString(app_.Panels[sourceIndex].GetItemFullPath(indices[0]))}
-                   : selectedFilesystemPaths();
+    QStringList sources;
+    CPanel &source = app_.Panels[sourceIndex];
+    source.LoadFullPath();
+    UStringVector filePaths;
+    source.GetFilePaths(indices, filePaths);
+    FOR_VECTOR(i, filePaths)
+    sources << QtFilesystemPath(us2fs(filePaths[i]));
     if (sources.isEmpty())
-        return;
-    if (useDestPanel && transferToArchivePanel(destination, move))
         return;
     transferFiles(sources, destination, move, directPath);
 }
 
-bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
-    if (app_.NumPanels != 2 || state_ != State::Filesystem)
+bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
+                                        const CRecordVector<UInt32> &indices) {
+    if (app_.NumPanels != 2 || !app_.GetFocusedPanel().Is_IO_FS_Folder())
         return false;
     const unsigned sourceIndex = app_.GetFocusedPanelIndex();
     const unsigned destinationIndex = 1 - sourceIndex;
@@ -252,9 +262,8 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move) {
                                          "Запись в эту папку архива недоступна."));
         return true;
     }
-    CRecordVector<UInt32> indices = sourceOperatedIndices();
     UStringVector names;
-    FOR_VECTOR(i, indices) names.Add(source.GetItemRelPath(indices[i]));
+    FOR_VECTOR(i, indices) names.Add(source.GetItemRelPath2(indices[i]));
     if (names.IsEmpty())
         return true;
     UStringVector messages;

@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 
+#include <QDir>
 #include <QTest>
 #include <limits>
 
@@ -44,7 +45,8 @@ class PanelCopyInfoTests : public QObject {
                                 "Files: 2    ( 5 bytes )\n"
                                 "Size: 1 239 bytes\n\n"
                                 "archive.7z / вложенная/\n"
-                                "  подпапка/папка/\n  имя с пробелом.txt\n  empty"));
+                                "  подпапка/папка") +
+                     QDir::separator() + QStringLiteral("\n  имя с пробелом.txt\n  empty"));
         CRecordVector<UInt32> files;
         files.Add(2);
         files.Add(1);

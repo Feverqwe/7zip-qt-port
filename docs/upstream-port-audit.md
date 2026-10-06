@@ -21,13 +21,18 @@ IQtAppPresentation/QtAppPresentation's independent DefaultCopyDestination hook
 is removed. MainWindow's separately used Extract-dialog default remains outside
 this Copy change. Source names, paths, notices and the pinned baseline remain.
 
-Current OnCopy is still a partial port: Windows root/ADS refusals,
-possibleToUseDestPanel/destIsFsPath and Is_IO_FS_Folder
-routing, full-path naming, option flags and post-operation selection/refresh
-continuation require reconciliation. The Qt default fallback and repeated
-state-based execution classification do not establish absence of usable source
-logic. CopyArchiveToArchive's alternate-stream/zone overrides need explicit
-native evidence/disposition. The accepted archive Move transaction composition
+OnCopy now retains Windows single-leading-backslash and outside-peer ADS refusals,
+possibleToUseDestPanel/destIsFsPath and Is_IO_FS_Folder classification, original
+single-parent versus normalized multi-directory creation, history ordering and
+single-panel temporary-route refusal. Existing FileName::IsAbsolutePath replaces
+the independent Qt predicate. The ADS prefix branch is Windows-only because the
+portable FileName implementation defines IsAltPathPrefix only on Windows;
+POSIX colon names are ordinary filesystem names. Existing Qt execution receives
+portable slashes only after source classification. Original post-operation
+selection/refresh/title/notify continuation remains to reconcile.
+CopyArchiveToArchive restores includeAltStreams=true and the constructor's
+NeedRegistryZone=true default. Actual native ADS/zone evidence remains required.
+The accepted archive Move transaction composition
 remains justified by original Agent CopyTo(moveMode)==E_NOTIMPL and the required
 plan extension; source predicates must be restored without discarding it.
 
@@ -36,7 +41,7 @@ valid evidence. It does not prove complete original OnCopy flow. The new
 [text contract](ui-layout-contracts.md#source-copymove-destination-p3-0515-required-scope)
 defines integrated consumer/UX acceptance before implementation. Diff check and
 current baseline verification validate this review; implementation, actual new
-regressions and current three-platform/cold-stable/rendered/final acceptance
+remaining regressions and current three-platform/cold-stable/rendered/final acceptance
 remain required. No new runtime check is claimed for unchanged code.
 Review checks pass git diff --check and reproducible baseline verification
 (408 exact/196 adapted/3 local paths at the pinned revision). A supplementary
@@ -63,6 +68,67 @@ sixteen reviewed reports are frozen separately under build/review/source-copy-
 destination-{red,final}. Remaining source classification/options/naming/completion,
 native Windows/Linux, ADS/device, cold-stable/current-package/clean-OS/rendered
 and P3-06 acceptance remain mandatory. This component does not close P3-05.15.
+
+The classification follow-up also restores Panel.cpp's original
+ErrorHResult_To_Message and MessageBox_Error_2Lines_Message_HRESULT bodies and
+the default-caption MessageBox_Error_HRESULT flow. The latter moves from the
+former independent PanelItemOpen formatting back to its original module;
+the existing Qt MessageBox_Error owns the same default7-Zip caption, replacing
+the native caption/window wrapper. Zero maps to E_FAIL; HResultToMessage keeps
+the source memory/system formatting. ProgressDialog2 is an existing dependency.
+Single-parent and multi-directory failures carry the original prefix+LF+HRESULT.
+GetItemsInfoString now uses original Add_PathSepar for directory-name suffixes;
+actual summary consumers expect the native separator. No new borrowed dependency,
+language change, upstream edit or removed notice is introduced.
+
+Qt Copy execution carries the indices captured by OnCopy through filesystem
+GetFilePaths, archive extraction, direct CopyFrom and staged interarchive Copy.
+Filesystem strings retain the existing QtFilesystemPath boundary, including
+macOS NFD→NFC needed by selection restoration. Source GetItemRelPath2 names
+replace direct-copy GetItemRelPath. Direct source I/O→archive routing precedes
+the streams/device CopyTo adapter, retaining the source no-temp distinction;
+native ADS/device consumers remain unverified. The accepted interarchive Move
+passes the captured indices to existing DeleteItems via an optional input;
+ordinary Delete keeps its original operated-selection branch, confirmation,
+worker, guards and refresh state. This narrow addition is required by the already
+documented absence of usable Agent CopyTo(moveMode), preserving checked
+publication/backup/rollback. No deletion algorithm or widget format logic is added.
+
+Actual public app_copy_routing RED3Qtpass/3fail demonstrates the wrong filesystem
+peer flag, absent pre-execution multi-directory and missing diagnostic path.
+New ui_copy_routing RED2Qtpass/8fail1.30s shows all filesystem/archive Copy/Move
+routes re-reading selection after the modal: the requested first file is absent.
+Current consumers change the row during that modal, then verify the first binary
+Unicode payload, retained second/seed bytes, destination rows, source Copy bytes
+or Move deletion, through real ZIPs and official7zz fixture inspection.
+Earlier fixture failures from asynchronous listing, NFC comparison and a fresh
+ArchiveBackend extraction without listing are retained separately and are not
+product RED evidence. The driver clicks Yes for the existing Delete confirmation;
+QMessageBox::done(Yes) did not select its standard button and aborted/rolled back.
+The first integration lost filesystem selection because it bypassed the existing
+native-to-Qt decoder; reusing that boundary corrects the actual operation consumer.
+
+Eight EN/RU single/multiple failure reports check prefix diagnostics and visible,
+fitting wrapped text. Qt's OS-managed QMessageBox autosizes to400×151 on this Mac
+for both requested normal/compact probes; there is no fixed upstream message-box
+resource geometry. Copy dialog's separate440×250/360×200 contract is unchanged.
+Both new suites and the existing ui_copy_same suite now use the native Windows
+plugin/desktop lock when run there. This registration is not native verification.
+Existing large Qt execution glue stays focused on request transport; completion
+ownership remains the required next reconciliation, rather than unrelated cleanup.
+
+Current validation on the same Mac: focused seven suites7/7PASS8.03s,
+AppCopyRouting14/UiCopyRouting10/UiCopySame22/UiOperations34/UiState10/
+PanelCopyInfo15/ArchiveTransferBackup6 Qt pass, zero fail/skip. Mandatory
+unsandboxed check.sh passes formatting, all targets and254/254 CTest106.45s;
+all thirteen frozen code/test/build inputs retain their SHA. Full/focused logs,
+input manifest and eight inspected current-build error reports are frozen under
+build/review/source-copy-classification-final; product RED logs are separate
+source-copy-classification-red and source-copy-captured-red artifacts. Current
+baseline remains408 exact/196 adapted/3 local paths at the pinned revision.
+Windows/Linux/device/ADS/zone, source selection/refresh/title/notify completion,
+cold-stable/current-package/clean-OS/rendered and whole P3-05/P3-06 acceptance
+remain required; no passing portable check closes those requirements.
 
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 

@@ -2,12 +2,16 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
-Текущий App::OnCopy сохраняет начальные проверки, выбор и Copy dialog, но часть
-destination/default/refusal/classification flow заменена Qt state branches.
-Исходный reducer и destPanel.GetFsPath теперь восстановлены в App.cpp:
-пустая цель peer остаётся пустой, однопанельный путь сокращается до существующей
-папки исходным алгоритмом. FS/ADS/archive flags, option policy, naming и завершение
-selection/refresh/focus требуют исходного body и интегрированных consumers.
+App::OnCopy сохраняет начальные проверки, выбор, Copy dialog и исходные
+destination/default/refusal/classification branches. Пустая цель peer остаётся
+пустой, однопанельный путь сокращается исходным reducer. Multi-directory и parent
+создаются до execution; ошибку сопровождает исходный путь и HRESULT.
+FS/ADS/archive flags и captured indices проходят через consumers; staged Copy
+сохраняет исходные alternate-stream/zone defaults. Summary добавляет native
+separator к папкам. Qt MessageBox автоматически выбирает размер и wrapping
+двухстрочной диагностики, как platform-owned message box исходника; это не
+фиксированная Copy dialog geometry. Selection/refresh/title/notify completion
+и native ADS/device/zone evidence ещё требуют сверки.
 Принятый архивный Move остаётся отдельной требуемой композицией Copy/Delete/
 rollback: оригинальный Agent Move возвращает E_NOTIMPL. P3-05.15 открыт;
 проверенные ранее сценарии не доказывают полного покрытия OnCopy. Полная сверка

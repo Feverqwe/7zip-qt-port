@@ -8,7 +8,8 @@
 #include "qttrashservice.h"
 #include <QScopedValueRollback>
 
-bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool move) {
+bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool move,
+                                              const CRecordVector<UInt32> &indices) {
     if (app_.NumPanels != 2 || state_ != State::Viewing)
         return false;
     const unsigned sourceIndex = app_.GetFocusedPanelIndex();
@@ -26,7 +27,6 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
                                          "Перенос между этими архивами недоступен."));
         return true;
     }
-    const CRecordVector<UInt32> indices = sourceOperatedIndices();
     if (indices.IsEmpty())
         return true;
     UStringVector messages;
@@ -47,7 +47,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     }
     CSelectedState selected;
     if (result == S_OK && messages.IsEmpty() && move) {
-        result = source.DeleteItems(false, *trashService_, selected);
+        result = source.DeleteItems(false, *trashService_, selected, &indices);
         if (result == S_OK) {
             renderBoundFolder();
             source.RefreshListCtrl(selected);

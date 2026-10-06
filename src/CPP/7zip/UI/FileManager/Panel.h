@@ -582,7 +582,8 @@ class CPanel : public QObject {
     HRESULT CreateFolder(const UString &enteredName, UString &createdName);
     HRESULT CreateFile(const UString &enteredName, UString &createdName);
     HRESULT OnEndLabelEdit(UInt32 realIndex, const UString &enteredName);
-    HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection);
+    HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection,
+                        const CRecordVector<UInt32> *explicitIndices = nullptr);
     bool CanComment() const;
     void ChangeComment();
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
@@ -677,6 +678,7 @@ class CPanel : public QObject {
     void MessageBox_Error(const UString &message) const;
     void MessageBox_Error_LangID(UINT resourceID) const;
     void MessageBox_Error_HRESULT(HRESULT result) const;
+    void MessageBox_Error_2Lines_Message_HRESULT(LPCWSTR message, HRESULT errorCode) const;
     void MessageBox_LastError() const;
     void MessageBox_Error_UnsupportOperation() const;
 

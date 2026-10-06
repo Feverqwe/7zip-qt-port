@@ -41,7 +41,10 @@
 восстановить исходный выбор/классификацию destination и Copy/Move continuation,
 пустая цель peer и однопанельный reducer уже восстановлены с F5/F6/Cancel/EN-RU
 normal/compact consumers. Original refusals/options и selection/focus после
-асинхронного результата ещё требуют reconciliation. Принятый архивный Move/rollback сохраняется. Existing
+асинхронного результата ещё требуют reconciliation. Classification/refusals,
+path+HRESULT diagnostics и captured execution теперь восстановлены; staged
+options возвращены к исходным defaults, native metadata evidence ещё требуется.
+Принятый архивный Move/rollback сохраняется. Existing
 Copy/Shift checks не закрывают остальные branches; новый text contract обязателен.
 
 Сверка полного PanelFolderChange также выявила обязательный

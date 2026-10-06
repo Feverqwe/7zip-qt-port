@@ -1148,6 +1148,13 @@ if(BUILD_TESTING)
     add_test(NAME ui_copy_same COMMAND ui_copy_same_tests -silent)
     set_tests_properties(ui_copy_same PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-copy-same-settings.ini")
+    qt_add_executable(ui_copy_routing_tests tests/ui_copy_routing_tests.cpp
+        ${copy_same_window_sources})
+    target_include_directories(ui_copy_routing_tests PRIVATE src tests)
+    target_link_libraries(ui_copy_routing_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME ui_copy_routing COMMAND ui_copy_routing_tests -silent)
+    set_tests_properties(ui_copy_routing PROPERTIES TIMEOUT 120 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-copy-routing-settings.ini")
     qt_add_executable(ui_update_modes_tests tests/ui_update_modes_tests.cpp ${copy_same_window_sources})
     target_include_directories(ui_update_modes_tests PRIVATE src tests)
     target_link_libraries(ui_update_modes_tests PRIVATE Qt6::Widgets Qt6::Test)
@@ -1584,6 +1591,13 @@ if(BUILD_TESTING)
     set_tests_properties(app_lifecycle_window PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/app-lifecycle-window-settings.ini")
     qt_add_executable(app_lifecycle_tests tests/app_lifecycle_tests.cpp)
+    qt_add_executable(app_copy_routing_tests tests/app_copy_routing_tests.cpp
+        tests/layout_inspection.cpp)
+    target_include_directories(app_copy_routing_tests PRIVATE src tests)
+    target_link_libraries(app_copy_routing_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME app_copy_routing COMMAND app_copy_routing_tests -silent)
+    set_tests_properties(app_copy_routing PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_toolbar_state_tests tests/native_toolbar_state_tests.cpp)
     target_link_libraries(native_toolbar_state_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME native_toolbar_state COMMAND native_toolbar_state_tests -silent)
@@ -1770,7 +1784,7 @@ if(BUILD_TESTING)
     )
 endif()
 
-foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests archive_item_open_tests nested_archive_tests volume_operations_tests)
+foreach(target IN ITEMS sevenzip_desktop archive_proxy_tests archive_backend_tests archive_mutation_tests ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests checksum_tests extraction_options_tests compression_tests archive_item_open_tests nested_archive_tests volume_operations_tests)
     if(TARGET ${target})
         target_link_libraries(${target} PRIVATE sevenzip_common)
     endif()
@@ -1868,7 +1882,7 @@ if(TARGET ui_navigation_tests)
     set_property(TEST ui_navigation APPEND PROPERTY ENVIRONMENT
         "SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 endif()
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests archive_item_open_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests
     panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests bookmark_tests panel_focus_tests panel_selected_state_tests panel_runtime_tests properties_runtime_tests archive_selection_runtime_tests filesystem_selection_runtime_tests binding_lifecycle_tests app_lifecycle_window_tests)
@@ -1878,7 +1892,7 @@ foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_opera
     endif()
 endforeach()
 
-foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
+foreach(target IN ITEMS sevenzip_desktop ui_layout_tests ui_state_tests ui_operations_tests ui_copy_same_tests ui_copy_routing_tests ui_update_modes_tests ui_archive_volumes_tests external_editors_ui_tests verctrl_tests nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
     ui_navigation_tests ui_archive_states_tests flat_view_tests settings_tests properties_tests
     checksum_tests archive_item_open_tests nested_archive_tests native_navigation_window_tests panel_sort_tests combine_name_tests panel_key_tests main_shell_tests panel_shell_tests volume_workflow_tests)
     if(TARGET ${target})
@@ -2664,7 +2678,7 @@ if(BUILD_TESTING AND WIN32)
             source_compress_dialog shell_menu_window shell_update_window
             compression compression_advanced compression_path compression_preferences compression_resources language_ui
             codec_commands_ui codec_creation_ui ui_geometry
-            filesystem_selection_runtime ui_operations ui_update_modes archive_metadata_ui source_drop_add
+            filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress

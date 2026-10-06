@@ -169,48 +169,89 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
         srcPanel.MessageBox_Error_HRESULT(E_INVALIDARG);
         return;
     }
-    if (QDir::isAbsolutePath(ToQString(destPath)))
+    if (NWindows::NFile::NName::IsAbsolutePath(destPath))
         destPath.Empty();
     else
         destPath = srcPanel.GetFsPath();
     destPath += correctName;
 
-    // The source direct-path branch creates the parent before CopyTo.
-    if (indices.Size() == 1 && !destPath.IsEmpty() && !IsPathSepar(destPath.Back())) {
-        const int separator = destPath.ReverseFind_PathSepar();
-        if (separator < 0) {
+#if defined(_WIN32) && !defined(UNDER_CE)
+    if (destPath.Len() != 0 && destPath[0] == '\\')
+        if (destPath.Len() == 1 || destPath[1] != '\\') {
             srcPanel.MessageBox_Error_UnsupportOperation();
             return;
         }
-        const UString parent = destPath.Left(unsigned(separator + 1));
-        if (!NWindows::NFile::NDir::CreateComplexDir(us2fs(parent))) {
-            srcPanel.MessageBox_Error_HRESULT(GetLastError_noZero_HRESULT());
-            return;
-        }
-    }
+#endif
 
-    QString output = QDir::cleanPath(ToQString(destPath));
-    if (!destPath.IsEmpty() && IsPathSepar(destPath.Back()) && !output.endsWith('/'))
-        output += '/';
+    bool possibleToUseDestPanel = false;
     if (CompareFileNames(destPath, destPanel.GetFsPath()) == 0) {
         if (NumPanels == 1 || CompareFileNames(destPath, srcPanel.GetFsPath()) == 0) {
             srcPanel.MessageBox_Error(L"Cannot copy files onto itself");
             return;
         }
         if (destPanel.DoesItSupportOperations())
-            useDestPanel = true;
+            possibleToUseDestPanel = true;
     }
-    if (useDestPanel && (destPanel.IsFSDrivesFolder() || destPanel.IsRootFolder())) {
-        srcPanel.MessageBox_Error_UnsupportOperation();
-        return;
+
+    bool destIsFsPath = false;
+    if (possibleToUseDestPanel) {
+        if (destPanel.IsFSFolder() || destPanel.IsAltStreamsFolder())
+            destIsFsPath = true;
+        else if (destPanel.IsFSDrivesFolder() || destPanel.IsRootFolder()) {
+            srcPanel.MessageBox_Error_UnsupportOperation();
+            return;
+        }
+    } else {
+#ifdef _WIN32
+        // Alternate-stream destinations are allowed only through a peer ADS folder.
+        if (NWindows::NFile::NName::IsAltPathPrefix(us2fs(destPath))) {
+            srcPanel.MessageBox_Error_UnsupportOperation();
+            return;
+        } else
+#endif
+        {
+            if (indices.Size() == 1 && !destPath.IsEmpty() && !IsPathSepar(destPath.Back())) {
+                const int pos = destPath.ReverseFind_PathSepar();
+                if (pos < 0) {
+                    srcPanel.MessageBox_Error_UnsupportOperation();
+                    return;
+                }
+                UString prefix = destPath.Left(pos + 1);
+                if (!NWindows::NFile::NDir::CreateComplexDir(us2fs(prefix))) {
+                    const HRESULT lastError = GetLastError_noZero_HRESULT();
+                    srcPanel.MessageBox_Error_2Lines_Message_HRESULT(prefix, lastError);
+                    return;
+                }
+            } else {
+                NWindows::NFile::NName::NormalizeDirPathPrefix(destPath);
+                if (!NWindows::NFile::NDir::CreateComplexDir(us2fs(destPath))) {
+                    const HRESULT lastError = GetLastError_noZero_HRESULT();
+                    srcPanel.MessageBox_Error_2Lines_Message_HRESULT(destPath, lastError);
+                    return;
+                }
+            }
+            destIsFsPath = true;
+        }
     }
+    if (!destIsFsPath)
+        useDestPanel = true;
+
+    // Qt filesystem execution consumes portable slashes; classification above
+    // retains the source path and provider rules before this string boundary.
+    QString output = QDir::cleanPath(ToQString(destPath));
+    if (!destPath.IsEmpty() && IsPathSepar(destPath.Back()) && !output.endsWith('/'))
+        output += '/';
     AddUniqueStringToHeadOfList(copyFolders, output);
     while (copyFolders.size() > 20)
         copyFolders.removeLast();
     SaveCopyHistory(copyFolders, _settingsPath);
 
-    const bool useSrcPanel = !useDestPanel || !srcPanel.IsFSFolder();
+    const bool useSrcPanel = !useDestPanel || !srcPanel.Is_IO_FS_Folder();
     const bool useTemp = useSrcPanel && useDestPanel;
+    if (useTemp && NumPanels == 1) {
+        srcPanel.MessageBox_Error_UnsupportOperation();
+        return;
+    }
     _presentation->ExecuteCopy(move, copyToSame, srcPanelIndex, output, indices, useDestPanel,
                                useTemp);
 }
@@ -236,10 +277,9 @@ HRESULT CApp::CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<U
     // CAgentFolder::CopyTo returns E_NOTIMPL for move. The caller deletes the
     // source only after the destination transaction commits.
     options.moveMode = false;
-    options.includeAltStreams = false;
+    options.includeAltStreams = true;
     options.replaceAltStreamChars = false;
     options.showErrorMessages = true;
-    options.NeedRegistryZone = false;
     bool usePassword = false;
     UString password;
     if (!srcPanel.GetParentFolders().IsEmpty()) {
@@ -616,7 +656,7 @@ QString CPanel::GetItemsInfoString(const CRecordVector<UInt32> &indices) const {
         const UInt32 index = indices[i];
         info += GetItemRelPath(index);
         if (IsItem_Folder(index))
-            info.Add_Char('/');
+            info.Add_PathSepar();
     }
     if (i != indices.Size()) {
         info.Add_LF();

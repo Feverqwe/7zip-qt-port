@@ -6,8 +6,13 @@ Copy/Move destination defaults belong to CApp::OnCopy: it reads the destination
 panel's source GetFsPath and applies the retained filesystem-path reducer only
 for one panel. QtAppPresentation supplies execution/presentation transport, with
 no independent default-folder policy. Extract's separate dialog helper remains
-in MainWindow. Remaining Copy classification/completion reconciliation is tracked
-in the port audit.
+in MainWindow. Source destination classification and directory/path diagnostics
+also remain in App/Panel. Execution carries captured indices through filesystem
+GetFilePaths, archive extraction and CopyFrom; source GetItemRelPath2 names and
+existing QtFilesystemPath decoding own their boundaries. The accepted interarchive
+Move supplies the same captured indices to the existing Delete owner after
+publication, preserving its confirmation/guards and backend rollback. Remaining
+completion reconciliation is tracked in the port audit.
 
 Root-command routing follows original CApp::OpenRootFolder and
 CPanel::OpenDrivesFolder, which own archive release, CFSDrives creation and source

@@ -84,8 +84,8 @@ does not establish closure of the other108 modules or current runtime parity.
 | CreateToolbar, CButtonInfo::GetText, g_StandardButtons/g_ArchiveButtons, SetButtonText overloads, AddButton, ReloadToolbars | Native toolbar/image-list/bitmap/ANSI versus Unicode control transport omitted. Current Qt presentation constructs the same seven source command/label groups and supplies platform icons/action text, tooltip storage and large/text/visibility settings. Win32 destroy/recreate is replaced by updating owned QActions/widgets; exact bitmap/rendered parity remains P3-06. The original arrays/lookup are data/presentation references, not archive-operation algorithms. |
 | SaveToolbarChanges and App.h ReadToolbar/SaveToolbar/SwitchStandardToolbar/SwitchArchiveToolbar/SwitchButtonsLables/SwitchLargeButtons | Original mask bits/defaults, toggle and Save→Reload→Move order retained in App.cpp with explicit settings path and Qt small-screen input. MoveSubWindows delegates Qt splitter/layout transport; original native geometry owner belongs to FM.cpp. CE command bars are outside supported Qt6 desktop targets. |
 | Reduce_Path_To_RealFileSystemPath | Original active directory-existence/root-prefix body restored in App.cpp, using existing FileFind/FileName dependencies with qualified namespaces/formatting. OnCopy uses destPanel.GetFsPath and invokes it only for one panel. The independent IQtAppPresentation default hook is removed; separate Extract presentation still uses MainWindow::copyDefaultDestination. Remaining P3-05.15 classification/completion is open. |
-| AddSizeValue, AddValuePair1, AddValuePair2, AddPropValueToSum, CPanel::GetItemsInfoString | Source totals/sentinel propagation, language text, folder/file grouping, path/selected-name summary limit and ellipsis retained. QString return/size formatting are Qt string boundaries. Directory-name suffix currently adds `/` explicitly instead of original Add_PathSepar; native separator disposition must be reconciled with the Copy consumer. |
-| CApp::OnCopy | Initial capabilities, timer guards, focused versus OperSmart indices, dialog/history and some name/self-copy checks are retained. Destination classification and completion are a partial port, detailed below; the whole body cannot be claimed complete from those common branches. |
+| AddSizeValue, AddValuePair1, AddValuePair2, AddPropValueToSum, CPanel::GetItemsInfoString | Source totals/sentinel propagation, language text, folder/file grouping, path/selected-name summary limit and ellipsis retained. QString return/size formatting are Qt string boundaries. Directory suffix now retains Add_PathSepar, with summary consumers expecting the native separator. |
+| CApp::OnCopy | Capabilities, timer guards, focused/OperSmart indices, dialog/history, default/reducer and destination classification/refusal/creation predicates retained. Captured indices/naming and staged option defaults now reach Qt execution; original post-operation selection/refresh/title/notify continuation remains partial. Native ADS/device/zone acceptance and the whole body cannot be claimed complete from portable consumers. |
 | CApp::OnSetSameFolder, OnSetSubFolder | Original two-panel/provider/parent/close/bind branches retained, with Qt preparation and row publication outside the source flow. Accepted bounded P3-05.4 consumers own actual verification. |
 | CApp::OnNotify and tooltip buffers | Win32 TTN_GETDISPINFO/ANSI/wide tooltip transport replaced by QAction-owned localized tooltip strings. The commented GetFocusedPanelIndex experiment is omitted; active original App.h inline LastFocusedPanel getter remains. Commented CheckFolderPath/IsFsPath are not missing active implementations. |
 | CApp::RefreshTitle, RefreshTitlePanel | Original prefix/default title/PrevTitle/only-focused-panel suppression retained; QWidget title service and closed-owner guard replace MySetWindowText. |
@@ -106,21 +106,25 @@ than treating ExecuteCopy as an opaque transport.
 The mandatory remaining component is P3-05.15. Original OnCopy starts with
 destPanel.GetFsPath and applies Reduce_Path_To_RealFileSystemPath only for one
 panel; both branches are now restored, removing the previous Qt directory_/
-returnDirectory_ fallback when the peer prefix is empty. Original Windows single-leading
-backslash refusal and outside-peer IsAltPathPrefix refusal are missing from the
-current App body. Original possibleToUseDestPanel/destIsFsPath distinguish FS/
-ADS destinations from an archive and refuse root/drives; the Qt body sets
-useDestPanel for any matching operational provider. Its useSrcPanel check uses
-IsFSFolder instead of original Is_IO_FS_Folder, losing the source distinction
-for ADS/devices. Original normalized multi-item directory creation, path+HRESULT
-diagnostics and destination classification precede history and execution; current
-parent creation/direct-path routing is split among App and independent Qt state
-branches. Generic filesystem safety checks do not prove these source predicates.
+returnDirectory_ fallback when the peer prefix is empty. Original Windows
+single-leading-backslash/outside-peer ADS refusals, possibleToUseDestPanel/
+destIsFsPath FS/ADS/archive/root/drives distinction and Is_IO_FS_Folder routing
+are now retained. The ADS prefix predicate is Windows-only: its upstream portable
+implementation is not defined on POSIX, where colon names remain normal names.
+Original normalized multi-directory/parent creation and path+HRESULT diagnostics
+precede history/execution. Panel.cpp's original formatting helpers and existing
+ProgressDialog2 formatter provide those diagnostics through the Qt message box.
+Captured indices/GetItemRelPath2 reach filesystem/extraction/CopyFrom consumers;
+interarchive Move's accepted Copy/Delete/rollback extension supplies the same
+indices to Delete instead of reading changed selection. Staged includeAltStreams
+and default zone flags now match source options; native metadata and full original
+completion remain open. Generic filesystem safety checks alone do not prove
+these source predicates or native workflows.
 
 Original operation options include alternate streams and retain default zone
-policy. The custom CopyArchiveToArchive staging helper explicitly disables
-includeAltStreams and NeedRegistryZone; that difference needs an original-option/
-native-consumer disposition, not a claim of an unchanged staged branch. Original
+policy. CopyArchiveToArchive staging now retains includeAltStreams=true and
+the constructor's NeedRegistryZone=true; actual native consumers are still
+required before metadata acceptance. Original
 useFullItemPaths selects GetItemRelPath2 versus GetItemName_for_Copy; source/
 destination selections, notify guards, CopyTo/CopyFrom HRESULT/cancel handling,
 title/row refresh, KillSelection and focus restoration have Qt continuations
@@ -136,7 +140,8 @@ the accepted transaction owners, and cover default/refusal/FS/archive/ADS/device
 direct/relative targets, focused versus operated items and both panels with
 success/failure/Cancel and unchanged control bytes. Existing Copy/Move and
 Shift/direct-path evidence stays valid for its bounded scenarios; it does not
-close this whole-body reconciliation. No code is changed by this review.
+close this whole-body reconciliation. The initial review changed no code;
+subsequent implementation/validation evidence is recorded in the port audit.
 
 ### PanelFolderChange complete body/caller review, 2026-10-06
 

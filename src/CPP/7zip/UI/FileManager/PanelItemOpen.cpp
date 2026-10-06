@@ -310,9 +310,6 @@ static THREAD_FUNC_DECL MyThreadFunction(void *param) {
     return 0;
 }
 
-void CPanel::MessageBox_Error_HRESULT(HRESULT result) const {
-    MessageBox_Error(NError::MyFormatMessage(result));
-}
 void CPanel::MessageBox_LastError() const {
     MessageBox_Error_HRESULT(GetLastError_noZero_HRESULT());
 }

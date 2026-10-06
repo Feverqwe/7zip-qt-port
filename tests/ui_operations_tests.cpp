@@ -1280,7 +1280,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         };
         submit();
         QVERIFY(moveInfo.startsWith("Folders: 1    ( 4 bytes )\n\n"));
-        QVERIFY(moveInfo.endsWith(QStringLiteral("  папка/")));
+        QVERIFY(moveInfo.endsWith(QStringLiteral("  папка") + QDir::separator()));
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastSelected.size(), 1);
         QCOMPARE(QDir::fromNativeSeparators(backend.lastSelected.front()),

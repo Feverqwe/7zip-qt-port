@@ -8,6 +8,7 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
+#include "ProgressDialog2.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/WinDefs.h"
@@ -70,6 +71,23 @@ void CPanel::ExitExternalWorkers(bool hardExit) {
 
 void CPanel::MessageBox_Error_LangID(UINT resourceID) const {
     MessageBox_Error(LangString(resourceID));
+}
+
+static UString ErrorHResult_To_Message(HRESULT errorCode) {
+    if (errorCode == 0)
+        errorCode = E_FAIL;
+    return HResultToMessage(errorCode);
+}
+
+void CPanel::MessageBox_Error_HRESULT(HRESULT errorCode) const {
+    MessageBox_Error(ErrorHResult_To_Message(errorCode));
+}
+
+void CPanel::MessageBox_Error_2Lines_Message_HRESULT(LPCWSTR message, HRESULT errorCode) const {
+    UString m = message;
+    m.Add_LF();
+    m += ErrorHResult_To_Message(errorCode);
+    MessageBox_Error(m);
 }
 
 void CPanel::ReleasePanel() {

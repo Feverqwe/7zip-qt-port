@@ -247,10 +247,14 @@ HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
     return op.DoOperation(*this, LangString(IDS_RENAMING), LangString(IDS_ERROR_RENAMING));
 }
 
-HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelectedState &state) {
+HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelectedState &state,
+                            const CRecordVector<UInt32> *explicitIndices) {
     CDisableTimerProcessing disableTimerProcessing(*this);
     CRecordVector<UInt32> indices;
-    Get_ItemIndices_Operated(indices);
+    if (explicitIndices)
+        indices = *explicitIndices;
+    else
+        Get_ItemIndices_Operated(indices);
     if (indices.IsEmpty())
         return S_FALSE;
     SaveSelectedState(state);
