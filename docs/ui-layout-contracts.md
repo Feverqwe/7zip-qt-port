@@ -31,6 +31,13 @@ Inspect count-status, raw-Name/no-Name/empty/unwritten/recovery transitions with
 header Cancel and both panes EN/RU at980×620/640×400.
 Label-only highlight belongs to source visible logical subitem zero, including
 raw Name or the first non-Name descriptor when reserved Qt Name is hidden.
+Large/small icon and list modes show that same source subitem's exact callback
+text and existing row icon, including raw Name hide/re-add, no Name, empty schema
+and recovery. Appending Name does not change the existing first logical subitem.
+Inspect only the affected icon/list view for appearance captures, with both panes
+EN/RU at980×620/640×400; preserve selection and the focused peer across mutations.
+With no source-visible descriptors, Qt retains physical-zero metadata captions
+and row icons. Native rendering of this empty-catalog fallback is unverified.
 
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.

@@ -55,6 +55,23 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
             }
         QCOMPARE(visibleCount, view.sourcePanel->GetVisibleColumns().Size());
         checkPrimarySelection(view);
+        auto *icons = view.parentWidget()->findChild<QListView *>("iconList");
+        QVERIFY(icons);
+        if (visibleCount) {
+            QCOMPARE(icons->modelColumn(), view.columnForVisibleProperty(0));
+            for (int row = 0; row < view.rowCount(); ++row) {
+                QCOMPARE(icons->model()->index(row, icons->modelColumn()).data().toString(),
+                         view.sourcePanel->GetItemText(
+                             view.item(row, 0)->data(Qt::UserRole + 6).toUInt(),
+                             view.sourcePanel->GetVisibleColumns()[0]));
+                QVERIFY(!view.item(row, 0)->icon().isNull());
+                QCOMPARE(
+                    qvariant_cast<QIcon>(
+                        icons->model()->index(row, icons->modelColumn()).data(Qt::DecorationRole))
+                        .cacheKey(),
+                    view.item(row, 0)->icon().cacheKey());
+            }
+        }
         if (!columns.IsEmpty())
             QTimer::singleShot(0, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
@@ -72,15 +89,19 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();
-            QVERIFY(UiInspection::fullyVisible(view, window));
+            QWidget &visibleView = icons->isVisible() ? static_cast<QWidget &>(*icons) : view;
+            QVERIFY(UiInspection::fullyVisible(visibleView, window));
             QVERIFY(UiInspection::fullyVisible(peer, window));
-            if (columns.IsEmpty())
-                QCOMPARE(view.horizontalHeader()->height(), 0);
-            else
-                QVERIFY(UiInspection::fullyVisible(*view.horizontalHeader(), window));
-            QVERIFY(UiInspection::writeReport(window, QString("column-changes-%1-%2-%3")
-                                                          .arg(QTest::currentDataTag(), phase)
-                                                          .arg(size.width())));
+            if (view.isVisible()) {
+                if (columns.IsEmpty())
+                    QCOMPARE(view.horizontalHeader()->height(), 0);
+                else
+                    QVERIFY(UiInspection::fullyVisible(*view.horizontalHeader(), window));
+            }
+            QWidget &reportRoot = icons->isVisible() ? visibleView : window;
+            QVERIFY(UiInspection::writeReport(reportRoot, QString("column-changes-%1-%2-%3")
+                                                              .arg(QTest::currentDataTag(), phase)
+                                                              .arg(size.width())));
         }
     }
     static void dataRows(bool counts) {
@@ -88,6 +109,8 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         QTest::addColumn<bool>("russian");
         if (counts)
             QTest::addColumn<bool>("failure");
+        else
+            QTest::addColumn<int>("mode");
         for (unsigned pane : {0u, 1u})
             for (bool russian : {false, true}) {
                 if (counts) {
@@ -96,11 +119,13 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
                             QString("count-%1-%2-%3").arg(pane).arg(russian).arg(failure)))
                             << pane << russian << failure;
                 } else
-                    QTest::newRow(qPrintable(QString("schema-%1-%2").arg(pane).arg(russian)))
-                        << pane << russian;
+                    for (int mode = 0; mode < 4; ++mode)
+                        QTest::newRow(
+                            qPrintable(QString("schema-%1-%2-%3").arg(pane).arg(russian).arg(mode)))
+                            << pane << russian << mode;
             }
     }
-    void runScenario(unsigned pane, bool russian, bool counts, bool failure) {
+    void runScenario(unsigned pane, bool russian, bool counts, bool failure, int mode = 3) {
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QFile::remove(settings);
         SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
@@ -120,6 +145,7 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
         ui->findChild<QLineEdit *>("archivePath")->setFocus();
         action(window, "openRootAction")->trigger();
+        action(window, qPrintable(QString("viewMode%1Action").arg(mode)))->trigger();
         auto *spec = new SchemaFolder;
         CMyComPtr<IFolderFolder> provider = spec;
         auto &panel = *view->sourcePanel;
@@ -161,6 +187,21 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
             QVERIFY(view->isColumnHidden(0));
             QVERIFY(panel.GetVisibleColumns()[0].IsRawProp);
             QCOMPARE(panel.GetVisibleColumns()[0].ID, PROPID(kpidName));
+            for (const QString phase : {"raw-name-hidden", "raw-name-appended"}) {
+                QTimer::singleShot(0, [&] {
+                    auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
+                    QVERIFY(menu);
+                    menu->actions()[1]->trigger();
+                    menu->close();
+                });
+                QVERIFY(QMetaObject::invokeMethod(
+                    view->horizontalHeader(), "customContextMenuRequested", Qt::DirectConnection,
+                    Q_ARG(QPoint, QPoint(10, 5))));
+                QCOMPARE(panel.GetVisibleColumns()[0].ID, PROPID(kpidCRC));
+                QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+                inspectSchema(window, *view, *peer, phase);
+                QCOMPARE(window.focusWidget(), focused);
+            }
             spec->rawInfoResult = E_ABORT;
             reload("no-name", 1);
             QVERIFY(view->isColumnHidden(0));
@@ -198,7 +239,8 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
     void sameProviderSchemaChanges() {
         QFETCH(unsigned, pane);
         QFETCH(bool, russian);
-        runScenario(pane, russian, false, false);
+        QFETCH(int, mode);
+        runScenario(pane, russian, false, false, mode);
     }
 };
 QTEST_MAIN(PanelColumnChangesTests)

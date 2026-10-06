@@ -136,6 +136,7 @@ class MainWindow : public QMainWindow {
     void refreshTransferDestination(unsigned index);
     void createFileTable(QWidget *central);
     void configureColumns(bool initialized = false);
+    void updateIconColumn();
     void saveColumns();
     void showColumnsMenu(const QPoint &pos);
     void redrawTimestampColumns();

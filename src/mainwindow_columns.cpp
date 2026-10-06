@@ -72,6 +72,7 @@ void MainWindow::configureColumns(bool initialized) {
             visibleIndices[column] = int(i);
     }
     fileTable->visibleColumnIndices = visibleIndices;
+    updateIconColumn();
     CIntArr columnOrder;
     const bool ordered = panel.GetColumnOrder(columnOrder);
     FOR_VECTOR(i, visible) {
@@ -86,6 +87,12 @@ void MainWindow::configureColumns(bool initialized) {
         sortColumn_ = panel._sortID == kpidNoProperty ? 6 : 0;
     sortOrder_ = panel._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
     configuringColumns_ = false;
+}
+
+void MainWindow::updateIconColumn() {
+    if (iconList_)
+        iconList_->setModelColumn(
+            qMax(0, static_cast<FileTable *>(table_)->columnForVisibleProperty(0)));
 }
 
 void MainWindow::saveColumns() {
@@ -143,6 +150,7 @@ void MainWindow::showColumnsMenu(const QPoint &pos) {
                 else if (removed >= 0)
                     view->removeSourceColumn(unsigned(removed));
             }
+            updateIconColumn();
             sortColumn_ = static_cast<FileTable *>(table_)->columnForProperty(source._sortID);
             sortOrder_ = source._ascending ? Qt::AscendingOrder : Qt::DescendingOrder;
             {

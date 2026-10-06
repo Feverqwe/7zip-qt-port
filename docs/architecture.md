@@ -27,6 +27,9 @@ unverified.
 Label-only selection paint resolves source visible logical subitem zero through
 the section map; it remains visible when reserved Name is hidden. Standalone
 tables without that map retain physical column zero as their fallback.
+Icon/list views use the same source logical-zero mapping after schema publication
+and menu mutation. Their shared model forwards the existing physical-zero row
+icon to that mapped primary cell; no extra provider or icon query is introduced.
 SaveListViewInfo receives the owning header projection in source visible logical
 order, updates that visible snapshot and serializes the original visible/hidden
 settings flow. It does not rewrite the property catalog. Menu re-addition uses

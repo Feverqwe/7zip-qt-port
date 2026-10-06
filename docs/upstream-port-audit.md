@@ -1735,6 +1735,62 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source icon/list primary-column consumers, 2026-10-06
+
+Reviewed full original PanelListNotify::SetItemText152–522 and LVN_GETDISPINFOW caller,
+PanelItems::AddColumn315–335 and RefreshListCtrl's LVIF_IMAGE/iSubItem0 insertion
+phase, plus existing Qt configure/menu/view-mode/namespace/row-icon publication
+consumers, Panel::SetListViewMode and resource.rc97–100/resource.h's four view
+commands. Full source pin remains0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git. Native callback text resolves the visible source
+subitem; icon/list modes use main subitem0 with the already loaded row image.
+No source algorithm, module/language/dependency/notice, provider or engine changes.
+
+Qt previously fixed QListView::modelColumn to physical0. updateIconColumn now
+projects the existing source-visible logical-zero map after schema publication
+and column-menu mutations. Raw Name/no-Name can therefore use their own text;
+menu re-add follows native append order rather than making Name first again.
+Empty schemas retain physical0 fallback with existing metadata captions/icons;
+native empty-catalog rendering is unverified, not an asserted caption policy.
+Existing row icons remain stored at physical0; ArchiveTableItem
+forwards that DecorationRole to the mapped main cell. This avoids copying stale
+icons or adding provider queries, formatter or icon-selection implementations.
+MainWindow's new private helper is only this existing projection boundary;
+the narrow change does not justify unrelated large-class extraction.
+
+Existing panel_column_changes now covers all four view modes in16 both-pane
+EN/RU schema lifecycles, plus the existing eight written-count cases. Exact source
+main-cell text and existing QIcon identity are checked; raw Name menu hide/re-add
+also verifies CRC remains logical0 after append. Existing selection/focus/provider/
+peer/control-byte and failure/empty/recovery checks remain intact. Actual old
+model-column RED4/10QtPASS0.483s and subsequent old DecorationRole RED4/10QtPASS
+0.452s are retained separately in build/review/column-icons-red and
+build/review/column-icons-decoration-red; each fails raw-Name/no-Name in four cases.
+
+Affected11-target build and fresh sequential focused11/11PASS16.87s pass on
+macOS27.0.1 arm64, official Qt6.12.0; expanded suite26QtPASS, zero failures/skips.
+256 current980×620/640×400 reports comprise168 affected icon/list roots and88
+whole-window detail/count roots; expected empty detail headers remain0px in16
+reports, with no unexpected clipping of inspected controls. Optional affected-view
+capture uses SEVENZIP_CAPTURE_SCREENSHOTS=1 and one actual large-icon lifecycle:
+3QtPASS0.160s,14 view-only PNGs. Compact raw-Name/no-Name captures show selected
+deadbeef/12345678 labels and existing icons without clipping. These macOS images
+do not establish rendered Windows pixel parity. Four code/test hashes, snapshots,
+logs/reports/captures/geometry reside in build/review/column-icons-final. Mandatory
+unsandboxed gate terminated0: formatting/all-target build and275/275PASS143.76s;
+all four code/test hashes remain unchanged, expanded suite26QtPASS0.963s/zero skips.
+Baseline verification passes408 exact/196 adapted/3 local paths. The lifecycle
+fixture spans102 lines because it keeps count/schema/mode mutations, peer/focus
+checks and recovery together; its shared inspection helper owns presentation
+checks. Further extraction would split this single scenario without reducing
+production glue. No broad cleanup is included.
+
+This closes the bounded icon/list primary-column publication/menu/recovery
+consumer. Broader filesystem/default/type/equality/error/native column consumers,
+source notification/snapshot boundaries, real deleted/ADS-device-zone/current3OS,
+remaining full-body/109-module/cold-stable/package and P3-05.15/P3-06 acceptance
+remain required. No push, publication or upstream changes are made.
+
 ### Source changing-column schema and enumeration consumers, 2026-10-06
 
 Reviewed full original/adapted `CPP/7zip/UI/FileManager/PanelItems.cpp::InitColumns`,

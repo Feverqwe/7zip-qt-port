@@ -264,6 +264,12 @@ void FileIconList::startDrag(Qt::DropActions actions) {
 }
 
 QVariant ArchiveTableItem::data(int role) const {
+    if (role == Qt::DecorationRole && column() != 0) {
+        const auto *table = dynamic_cast<const FileTable *>(tableWidget());
+        if (table && column() == table->columnForVisibleProperty(0))
+            if (const auto *primary = table->item(row(), 0))
+                return primary->data(role);
+    }
     if (role == Qt::ForegroundRole) {
         const auto *table = dynamic_cast<const FileTable *>(tableWidget());
         if (!table || !table->sourcePanel || !table->sourcePanel->ShouldProcessNotifications() ||

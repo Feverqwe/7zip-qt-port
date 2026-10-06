@@ -140,6 +140,9 @@ IsDir; existing initialized-zero адаптация обрабатывает н�
 native/rendered приёмка остаётся обязательной.
 Label-only highlight теперь следует первому source logical subitem при raw Name
 и no-Name; фактическая delegate paint-регрессия ловит прежнее невидимое выделение.
+Icon/list projection теперь следует тому же source subitem для текста и значка,
+включая menu hide/re-add raw Name и append-порядок. Lifecycle охватывает четыре
+режима, EN/RU обе панели, peer focus/selection и normal/compact geometry.
 Сверка тел
 не подтверждает текущую отрисовку или завершение всего модуля.
 Остальная full/post-Copy error и

@@ -2,12 +2,16 @@
 
 `panel_column_changes` extends the existing SchemaFolder fixture without changing
 its defaults. Eight both-pane EN/RU cases retain written generic/raw counts under
-S_FALSE/E_FAIL and recover; four same-provider cases walk generic info failure/
+S_FALSE/E_FAIL and recover; sixteen same-provider cases cover all four view modes
+and walk generic info failure/
 IsDir omission/raw Name, raw-info E_ABORT/no Name, empty schema, unwritten count
 and recovery. They check native catalog/logical Name-first/default visibility,
 exact visible descriptors/text/alignment, no phantom Name, menu order/protection/
-Cancel, rows/selection/focus/peer/control bytes and no backend calls. Seventy-two
-normal/compact reports cover those transitions. Empty schemas have Qt's expected
+Cancel, rows/selection/focus/peer/control bytes and no backend calls. Raw Name menu
+hide/re-add also checks that appended Name does not replace source logical zero.
+Icon/list views resolve that logical zero for exact text and the existing row icon.
+256 normal/compact reports cover these transitions:168 affected icon/list roots
+and88 whole-window detail/count reports. Empty schemas have Qt's expected
 zero-height header; other visible headers and both panels remain fully exposed.
 Unwritten output uses the existing initialized-zero adaptation, not a claim
 about native uninitialized-variable behavior. Native/rendered acceptance remains.

@@ -162,6 +162,12 @@ source секцией. Пустая схема не создаёт столбц�
 и72 normal/compact reports проверены на Mac; native/rendered проверки открыты.
 Выделение без FullRow рисуется в первом source logical subitem, в том числе
 raw Name и no-Name; скрытый физический Name больше не поглощает highlight.
+Large/small icon и list modes также используют первый source subitem для текста
+и существующий значок строки. После hide/re-add raw Name новая append-копия не
+заменяет logical zero. EN/RU обе панели и четыре режима проверяются одним
+lifecycle; текущая native/rendered Windows приёмка остаётся открытой.
+При пустом каталоге Qt сохраняет metadata captions/icon физической колонки0;
+native appearance этой fallback-схемы не подтверждён.
 После Parent ошибка namespace load/count/icon теперь завершает Qt-состояние
 операции и оставляет обе панели доступными для Refresh. Адрес связанного
 provider публикуется до загрузки, кроме таймерного обновления, как в исходном
