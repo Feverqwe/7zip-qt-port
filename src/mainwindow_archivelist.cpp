@@ -54,11 +54,22 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
         listProjection_->start(
             folderOwner, archiveFolder->GetNumberOfItems(),
             [this, owner = projectedPanel_, archiveFolder, prefix, flat](quint32 index) {
-                withPanelProjection(
-                    owner, [&] { appendArchiveEntry(*archiveFolder, index, prefix, flat); });
+                HRESULT result = S_OK;
+                withPanelProjection(owner, [&] {
+                    result = appendArchiveEntry(*archiveFolder, index, prefix, flat);
+                });
+                return result;
             },
-            [this, owner = projectedPanel_] {
-                withPanelProjection(owner, [this] {
+            [this, owner = projectedPanel_](HRESULT result) {
+                withPanelProjection(owner, [this, result] {
+                    if (result != S_OK) {
+                        table_->setRowCount(0);
+                        scanSelectedState_.reset();
+                        scanSelectedPaths_.reset();
+                        app_.GetFocusedPanel().MessageBox_Error_HRESULT(result);
+                        if (app_.QtOperations().closed())
+                            return;
+                    }
                     scanningArchive_ = false;
                     applySortMode(true);
                     completeListSelection();
@@ -69,8 +80,13 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
             });
         return S_OK;
     }
-    for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index)
-        appendArchiveEntry(*archiveFolder, index, prefix, flat);
+    for (unsigned index = 0; index < archiveFolder->GetNumberOfItems(); ++index) {
+        const HRESULT result = appendArchiveEntry(*archiveFolder, index, prefix, flat);
+        if (result != S_OK) {
+            table_->setRowCount(0);
+            return result;
+        }
+    }
     applySortMode(true);
     statusBar()->showMessage(
         QtLocalText("%1 items", "%1 объектов").arg(archiveFolder->GetNumberOfItems()));
@@ -78,8 +94,10 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
     return S_OK;
 }
 
-void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
-                                    bool flat) {
+HRESULT MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
+                                       bool flat) {
+    QIcon icon;
+    RINOK(app_.GetFocusedPanel().GetItemIcon(index, icon))
     const bool isDir = app_.GetFocusedPanel().IsItem_Folder(index);
     const int realIndex = folder.GetRealIndex(index);
     ArchiveEntry entry;
@@ -123,12 +141,7 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
         item->setData(Qt::UserRole + 6, sourceOrder);
         item->setToolTip(entry.path);
         if (col == 0)
-            item->setIcon(
-                fileListSettings_.ShowRealFileIcons
-                    ? g_Ext_to_Icon_Map.GetIcon(
-                          entry.directory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_ARCHIVE, name)
-                    : QApplication::style()->standardIcon(entry.directory ? QStyle::SP_DirIcon
-                                                                          : QStyle::SP_FileIcon));
+            item->setIcon(icon);
         if (!entry.directory && (col == 2 || col == 3))
             item->setData(Qt::UserRole + 2, col == 2 ? sizeValue : packedValue);
         if (col == 6)
@@ -137,6 +150,7 @@ void MainWindow::appendArchiveEntry(CAgentFolder &folder, unsigned index, const 
             item->setTextAlignment(sourceColumnAlignment(col));
         table_->setItem(row, col, item);
     }
+    return S_OK;
 }
 
 void MainWindow::setState(State state) {

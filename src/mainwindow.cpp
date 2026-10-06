@@ -166,8 +166,14 @@ void MainWindow::connectFilesystemScanner() {
                             return;
                         QtAppOperationState::CallScope call(app_.QtOperations());
                         quint32 sourceIndex = firstSourceIndex;
-                        for (const QFileInfo &file : files)
-                            appendFilesystemEntry(file, sourceIndex++);
+                        for (const QFileInfo &file : files) {
+                            const HRESULT result = appendFilesystemEntry(file, sourceIndex++);
+                            if (result != S_OK) {
+                                panelUi_[index].filesystemScanner->cancel();
+                                failFilesystemListing(result);
+                                return;
+                            }
+                        }
                         statusBar()->showMessage(
                             QtLocalText("Shown: %1 items…", "Показано: %1 объектов…")
                                 .arg(table_->rowCount()));

@@ -90,6 +90,9 @@ void CPanel::ReleaseFolder() {
     _thereAreDeletedItems = false;
     // Clear the source load-stage caches when a folder is released.
     _isDirVector.Clear();
+    _itemIconIndices.Clear();
+    _itemSystemIcons.Clear();
+    _folderGetSystemIconIndex.Release();
     _listLoadResult = S_OK;
     _selectedStatusVector.Clear();
 }

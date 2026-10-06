@@ -16,8 +16,8 @@ void QtFolderProjection::cancel() {
 }
 
 void QtFolderProjection::start(IFolderFolder *folder, quint32 count,
-                               std::function<void(quint32)> append,
-                               std::function<void()> completed) {
+                               std::function<HRESULT(quint32)> append,
+                               std::function<void(HRESULT)> completed) {
     cancel();
     folder_ = folder;
     count_ = count;
@@ -38,14 +38,21 @@ void QtFolderProjection::batch() {
     elapsed.start();
     // Include property projection and native icon/row creation in the budget.
     for (unsigned rows = 0; rows < 32 && elapsed.elapsed() < 8 && next_ < count_; ++rows) {
-        append(next_++);
+        const HRESULT result = append(next_++);
         if (!guard || generation != generation_)
             return;
+        if (result != S_OK) {
+            auto completed = std::move(completed_);
+            cancel();
+            if (completed)
+                completed(result);
+            return;
+        }
     }
     if (next_ < count_)
         return;
     auto completed = std::move(completed_);
     cancel();
     if (completed)
-        completed();
+        completed(S_OK);
 }

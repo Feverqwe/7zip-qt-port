@@ -10,8 +10,8 @@
 class QtFolderProjection final : public QObject {
   public:
     explicit QtFolderProjection(QObject *parent = nullptr);
-    void start(IFolderFolder *folder, quint32 count, std::function<void(quint32)> append,
-               std::function<void()> completed);
+    void start(IFolderFolder *folder, quint32 count, std::function<HRESULT(quint32)> append,
+               std::function<void(HRESULT)> completed);
     void cancel();
     bool active() const { return bool(folder_); }
 
@@ -22,6 +22,6 @@ class QtFolderProjection final : public QObject {
     quint64 generation_ = 0;
     quint32 next_ = 0;
     quint32 count_ = 0;
-    std::function<void(quint32)> append_;
-    std::function<void()> completed_;
+    std::function<HRESULT(quint32)> append_;
+    std::function<void(HRESULT)> completed_;
 };

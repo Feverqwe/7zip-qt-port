@@ -58,7 +58,11 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
                      QStringLiteral("0 / 1 object(s) selected"));
         QCOMPARE(leftTable->rowCount(), 1);
         QVERIFY(!leftTable->item(0, 0)->icon().isNull());
-        QVERIFY(g_Ext_to_Icon_Map._extMap_Normal.Size() > 0);
+        QIcon sourceIcon;
+        QCOMPARE(static_cast<FileTable *>(leftTable)->sourcePanel->GetItemIcon(
+                     leftTable->item(0, 0)->data(Qt::UserRole + 6).toUInt(), sourceIcon),
+                 S_OK);
+        QCOMPARE(leftTable->item(0, 0)->icon().cacheKey(), sourceIcon.cacheKey());
         leftTable->selectRow(0);
         leftTable->setCurrentCell(0, 0);
         QTRY_COMPARE(status(leftPanel, "selectedItemsStatus")->text(),
@@ -146,6 +150,8 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
     void sourceIconCacheUsesExtensionsAndSplitFamily() {
         CExtToIconMap cache;
         const int text = cache.GetIconIndex(FILE_ATTRIBUTE_ARCHIVE, L"file.txt");
+        QVERIFY(text > 0);
+        QVERIFY(!cache.GetIcon(0).isNull());
         QCOMPARE(cache.GetIconIndex(FILE_ATTRIBUTE_ARCHIVE, L"another.TXT"), text);
         const int split = cache.GetIconIndex(FILE_ATTRIBUTE_ARCHIVE, L"file.001");
         QCOMPARE(cache.GetIconIndex(FILE_ATTRIBUTE_ARCHIVE, L"file.002"), split);
@@ -175,7 +181,12 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
             if (files->item(row, 0)->text() == QStringLiteral("имя.txt"))
                 fileRow = row;
         QVERIFY(fileRow >= 0);
-        QVERIFY(g_Ext_to_Icon_Map._extMap_Normal.Size() > 0);
+        QIcon sourceIcon;
+        QCOMPARE(static_cast<FileTable *>(files)->sourcePanel->GetItemIcon(
+                     files->item(fileRow, 0)->data(Qt::UserRole + 6).toUInt(), sourceIcon),
+                 S_OK);
+        QVERIFY(!sourceIcon.isNull());
+        QCOMPARE(files->item(fileRow, 0)->icon().cacheKey(), sourceIcon.cacheKey());
         files->selectRow(fileRow);
         files->setCurrentCell(fileRow, 0);
         QTimer::singleShot(0, [&] {

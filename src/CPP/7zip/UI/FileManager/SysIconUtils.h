@@ -37,12 +37,19 @@ struct CExtToIconMap {
     int GetPlatformIconIndex(const QString &key, const QIcon &icon);
     QIcon GetIcon(DWORD attrib, const QString &fileName);
     QIcon GetIcon(int index) const;
+#ifdef _WIN32
+    QIcon GetSystemIcon(int index);
+#endif
 
   private:
     int QueryIconIndex(DWORD attrib, const QString &fileName);
+    void EnsureDefaultIcon();
     QVector<QIcon> _icons;
     QMap<QPair<QString, DWORD>, int> _pathIcons;
     QMap<QString, int> _platformIcons;
+#ifdef _WIN32
+    QMap<int, QIcon> _systemIcons;
+#endif
 };
 
 extern CExtToIconMap g_Ext_to_Icon_Map;

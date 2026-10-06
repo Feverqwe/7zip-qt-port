@@ -43,13 +43,18 @@ Z7_COM7F_IMF(LoadFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value
             prop = directory;
         else if (directoryType != VT_EMPTY)
             prop = UInt32(1);
+    } else if (id == kpidAttrib) {
+        ++attributeCalls;
+        if (attributeResult != S_OK)
+            return attributeResult;
+        prop = attributes;
     }
     return prop.Detach(value);
 }
 Z7_COM7F_IMF(LoadFolder::GetFolderProperty(PROPID id, PROPVARIANT *value)) {
     NWindows::NCOM::CPropVariant prop;
     if (id == kpidType)
-        prop = L"RootFolder";
+        prop = folderType;
     return prop.Detach(value);
 }
 Z7_COM7F_IMF(LoadFolder::BindToFolder(UInt32, IFolderFolder **folder)) {
@@ -63,4 +68,9 @@ Z7_COM7F_IMF(LoadFolder::BindToFolder(const wchar_t *, IFolderFolder **folder)) 
 Z7_COM7F_IMF(LoadFolder::BindToParentFolder(IFolderFolder **folder)) {
     *folder = nullptr;
     return S_OK;
+}
+Z7_COM7F_IMF(LoadFolder::GetSystemIconIndex(UInt32, Int32 *index)) {
+    ++iconCalls;
+    *index = iconIndex;
+    return iconResult;
 }

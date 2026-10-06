@@ -88,6 +88,15 @@ remain available for that selected row through the original source handlers.
 Check hidden-row controls, both panels/EN-RU/standard-alternative selection,
 small/worker/flat reload and existing parent icon/tooltip, with peer and control
 bytes preserved. Inspect both groups at980×620/640×400.
+Row icons follow original RefreshListCtrl system-interface/fallback policy,
+including slow filesystem/stream folders, positive-index validity, attribute
+masking and directory-bit correction. Keep icon lookup inside bounded GUI row
+publication. Check real filesystem/ZIP small and301-item rows with real icons
+on/off, source indices and unchanged private bytes. Attribute failures/Cancel
+must reach reload owners and recover on a valid reload; asynchronous publication
+stops once with its HRESULT and ignores cancelled/replaced generations. Inspect
+normal/compact address/list groups; native shell appearance still requires a
+rendered Windows reference.
 
 ### Persisted source locations (P3-05.14, required scope)
 

@@ -7,6 +7,7 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "Panel.h"
 #include "PropertyName.h"
+#include "SysIconUtils.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
@@ -396,6 +397,8 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
             folderSetFlatMode->SetFlatMode(BoolToInt(GetFlatMode()));
     }
     _isDirVector.Clear();
+    _itemIconIndices.Clear();
+    _itemSystemIcons.Clear();
     IFolderFolder *folder = _folder;
     if (!itemsLoaded) {
         RINOK(_folder->LoadItems())
@@ -447,6 +450,95 @@ HRESULT CPanel::LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult) {
             }
         }
     }
+    _folderGetSystemIconIndex.Release();
+    if (!Is_Slow_Icon_Folder() || _showRealFileIcons)
+        _folder.QueryInterface(IID_IFolderGetSystemIconIndex, &_folderGetSystemIconIndex);
+    _iconIsFSDrivesFolder = IsFSDrivesFolder();
+    _iconIsArcFolder = IsArcFolder();
+    _itemIconIndices.ClearAndSetSize(numItems);
+    _itemSystemIcons.ClearAndSetSize(numItems);
+    for (UInt32 i = 0; i < numItems; ++i) {
+        _itemIconIndices[i] = -1;
+        _itemSystemIcons[i] = false;
+    }
+    return S_OK;
+}
+
+// Extracted source RefreshListCtrl icon phase. The GUI transport calls this
+// inside its existing bounded row-publication loop.
+HRESULT CPanel::LoadItemIcon(UInt32 i) {
+    const wchar_t *name = nullptr;
+    unsigned nameLen = 0;
+    UString itemName;
+    if (_folderGetItemName)
+        _folderGetItemName->GetItemName(i, &name, &nameLen);
+    if (!name) {
+        itemName = GetItemName(i);
+        name = itemName;
+    }
+    bool defined = false;
+    Int32 iconIndex = -1;
+    if (_folderGetSystemIconIndex) {
+        const HRESULT res = _folderGetSystemIconIndex->GetSystemIconIndex(i, &iconIndex);
+        if (res == S_OK)
+            defined = iconIndex > 0;
+    }
+    bool systemIcon = defined;
+    if (!defined) {
+        UInt32 attrib = 0;
+        {
+            NWindows::NCOM::CPropVariant prop;
+            RINOK(_folder->GetProperty(i, kpidAttrib, &prop))
+            if (prop.vt == VT_UI4) {
+                attrib = prop.ulVal;
+                if (_iconIsArcFolder)
+                    if (attrib & 0xF0000000)
+                        attrib &= 0x3FFF;
+            }
+        }
+        if (IsItem_Folder(i))
+            attrib |= FILE_ATTRIBUTE_DIRECTORY;
+        else
+            attrib &= ~(UInt32)FILE_ATTRIBUTE_DIRECTORY;
+        iconIndex = -1;
+        systemIcon = false;
+        if (_iconIsFSDrivesFolder) {
+            FString fs(us2fs(name));
+            fs.Add_PathSepar();
+#ifdef _WIN32
+            if (Shell_GetFileInfo_SysIconIndex_for_Path_return_HRESULT(fs, attrib, &iconIndex) ==
+                S_OK)
+                systemIcon = iconIndex >= 0;
+#else
+            iconIndex = g_Ext_to_Icon_Map.GetPathIconIndex(fs2us(fs), attrib);
+#endif
+        }
+        if (iconIndex < 0)
+            iconIndex = g_Ext_to_Icon_Map.GetIconIndex(attrib, name);
+    }
+    if (iconIndex < 0)
+        iconIndex = 0;
+    _itemIconIndices[i] = iconIndex;
+    _itemSystemIcons[i] = systemIcon;
+    return S_OK;
+}
+
+HRESULT CPanel::GetItemIcon(unsigned index, QIcon &icon) {
+    icon = {};
+    RINOK(_listLoadResult)
+    if (index >= _itemIconIndices.Size())
+        return E_INVALIDARG;
+    if (_itemIconIndices[index] < 0) {
+        const HRESULT result = LoadItemIcon(index);
+        if (result != S_OK)
+            return _listLoadResult = result;
+    }
+#ifdef _WIN32
+    if (_itemSystemIcons[index])
+        icon = g_Ext_to_Icon_Map.GetSystemIcon(_itemIconIndices[index]);
+    else
+#endif
+        icon = g_Ext_to_Icon_Map.GetIcon(_itemIconIndices[index]);
     return S_OK;
 }
 

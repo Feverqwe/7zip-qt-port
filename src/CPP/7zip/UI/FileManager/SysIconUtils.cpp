@@ -1,15 +1,18 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/SysIconUtils.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// SHGetFileInfo/Win32 image list are replaced by QFileIconProvider. The
-// source attribute/extension/split-number caches and limits are retained.
+// QFileIconProvider presents portable icons; the native Windows shell image
+// list is bridged to QIcon. Source cache policy and limits are retained.
 #include "SysIconUtils.h"
 #include <QFileIconProvider>
 #include <QFileInfo>
+#include <QImage>
+#include <QPixmap>
 #include <string>
 
 #ifdef _WIN32
 #include "Common/StringConvert.h"
 #include "Windows/FileIO.h"
+#include <commctrl.h>
 #include <shellapi.h>
 
 // Original Unicode branch and HRESULT wrapper; obsolete ANSI dispatch omitted.
@@ -48,9 +51,21 @@ void CExtToIconMap::Clear() {
     _icons.clear();
     _pathIcons.clear();
     _platformIcons.clear();
+#ifdef _WIN32
+    _systemIcons.clear();
+#endif
+}
+
+void CExtToIconMap::EnsureDefaultIcon() {
+    // The original shell image list reserves index zero for its default image.
+    if (_icons.isEmpty()) {
+        QFileIconProvider provider;
+        _icons.append(provider.icon(QFileIconProvider::File));
+    }
 }
 
 int CExtToIconMap::GetPathIconIndex(const UString &path, DWORD attrib) {
+    EnsureDefaultIcon();
     const auto key = qMakePair(QString::fromWCharArray(path), attrib);
     const auto found = _pathIcons.constFind(key);
     if (found != _pathIcons.cend())
@@ -69,6 +84,7 @@ int CExtToIconMap::GetPathIconIndex(const UString &path, DWORD attrib) {
 }
 
 int CExtToIconMap::GetPlatformIconIndex(const QString &key, const QIcon &icon) {
+    EnsureDefaultIcon();
     const auto found = _platformIcons.constFind(key);
     if (found != _platformIcons.cend())
         return found.value();
@@ -79,6 +95,7 @@ int CExtToIconMap::GetPlatformIconIndex(const QString &key, const QIcon &icon) {
 }
 
 int CExtToIconMap::QueryIconIndex(DWORD attrib, const QString &fileName) {
+    EnsureDefaultIcon();
     QFileIconProvider provider;
     QIcon icon;
     if (attrib & FILE_ATTRIBUTE_DIRECTORY)
@@ -200,3 +217,27 @@ QIcon CExtToIconMap::GetIcon(DWORD attrib, const QString &fileName) {
 QIcon CExtToIconMap::GetIcon(int index) const {
     return index >= 0 && index < _icons.size() ? _icons[index] : QIcon();
 }
+
+#ifdef _WIN32
+// Source Shell_Get_SysImageList_smallIcons retrieval, with Qt image transport.
+QIcon CExtToIconMap::GetSystemIcon(int index) {
+    if (index < 0)
+        return {};
+    const auto cached = _systemIcons.constFind(index);
+    if (cached != _systemIcons.cend())
+        return cached.value();
+    SHFILEINFOW shFileInfo{};
+    const DWORD_PTR res =
+        ::SHGetFileInfoW(L"", FILE_ATTRIBUTE_DIRECTORY, &shFileInfo, sizeof(shFileInfo),
+                         SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
+    if (!res)
+        return {};
+    HICON native = ImageList_GetIcon(reinterpret_cast<HIMAGELIST>(res), index, ILD_NORMAL);
+    if (!native)
+        return {};
+    const QIcon icon(QPixmap::fromImage(QImage::fromHICON(native)));
+    ::DestroyIcon(native);
+    _systemIcons.insert(index, icon);
+    return icon;
+}
+#endif

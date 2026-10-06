@@ -52,10 +52,12 @@ class CFSFolder final : public IFolderFolder,
                         public IFolderSetFlatMode,
                         public IFolderWasChanged,
                         public IFolderOperations,
+                        public IFolderGetSystemIconIndex,
                         public IQtFolderPropertyCapabilities,
                         public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_7(IFolderFolder, IArchiveGetRawProps, IFolderCalcItemFullSize, IFolderClone,
-                         IFolderSetFlatMode, IFolderWasChanged, IFolderOperations)
+    Z7_COM_UNKNOWN_IMP_8(IFolderFolder, IArchiveGetRawProps, IFolderCalcItemFullSize, IFolderClone,
+                         IFolderSetFlatMode, IFolderWasChanged, IFolderOperations,
+                         IFolderGetSystemIconIndex)
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
@@ -67,6 +69,7 @@ class CFSFolder final : public IFolderFolder,
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderWasChanged)
     Z7_IFACE_COM7_IMP(IFolderOperations)
+    Z7_IFACE_COM7_IMP(IFolderGetSystemIconIndex)
     HRESULT Init(const FString &path);
     HRESULT InitToRoot() { return Init((FString)FSTRING_PATH_SEPARATOR); }
     CObjectVector<CDirItem> Files;

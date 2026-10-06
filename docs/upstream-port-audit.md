@@ -782,6 +782,77 @@ cleanup questions remain. Current native Windows/Linux/rendered,
 remaining full row/icon/redraw/status stages, other source branches and parent/
 final acceptance remain mandatory; this does not close P3-05.15.
 
+### Source row icon policy and publication errors (2026-10-06)
+
+Upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: reviewed PanelItems.cpp::RefreshListCtrl icon
+body/callers, Panel.h::Is_Slow_Icon_Folder, FSFolder.h/.cpp interface and
+GetSystemIconIndex, SysIconUtils.h/.cpp cache/shell/small-image-list helpers,
+Root/FSDrives/Net/AltStreams provider indices and portable CFileInfo attributes.
+Original symbol paths, notices, C++ language and module boundaries are retained.
+Extract the original row body to PanelItems::LoadItemIcon/GetItemIcon; keep
+slow-folder query, positive system index, typed attribute fallback, archive mask,
+directory-bit correction, drive-path lookup, extension fallback and default0.
+Initialize only index caches during load; execute the body in existing bounded
+GUI row loops, avoiding an upfront all-item icon walk. Cache the original HRESULT
+for subsequent source selection/reload consumers.
+
+CFSFolder restores original IFolderGetSystemIconIndex/QI/declaration and Windows
+method body. Its POSIX lookup is a narrow existing Qt-cache adapter using source
+GetWinAttrib; the first compile exposed POSIX's lack of the Windows Attrib field
+and was corrected to that portable accessor. sevenzip_filesystem now links the
+icon service on all platforms; workers still never request icons during LoadItems.
+SysIconUtils reserves Qt index0 for the default file icon. Native shell indices
+remain native; the original small-image-list lookup supplies ImageList_GetIcon,
+public Qt QImage::fromHICON/QPixmap supplies display, DestroyIcon releases the
+temporary handle. Windows adds comctl32 alongside shell32. Qt API availability
+was verified against the actual Qt6.12 framework header, not its include wrapper.
+This platform bridge replaces Win32 list presentation only; no new independent
+icon-selection algorithm or archive implementation is added.
+
+FS/archive appenders now return HRESULT. Synchronous callers retain it;
+filesystem worker publication cancels and enters the existing failure owner;
+QtFolderProjection stops once with that result, preserving retained-folder,
+cancellation/replacement generation guards and the existing32-row/8ms budget.
+Archive error message precedes operation-guard release and checks closed state.
+Namespace rendering validates source icons; portable namespace presentation
+remains its existing OS adaptation, while Windows drive/network/stream rows use
+source shell icons. Root currently returns-1, not Qt cache indices. Clearing
+failed Qt rows is the existing atomic-publication adaptation, whereas original
+Win32 may retain partial rows after a RINOK. Remaining name/property/redraw/status
+and full function/parent/platform acceptance are still mandatory.
+
+New focused panel_item_icons covers eight slow/non-slow/on-off query rows,
+positive system index bypass, two archive mask/direction cases, three fallback
+failure/Cancel/recovery cases, eight real FS/ZIP small301/on-off consumers,
+two namespace error/Cancel/recovery consumers and five scheduling terminal cases.
+Sixteen980×620/640×400 JSON reports inspect current address/list groups.
+Scoped regression RED restores the actual former filesystem icon branch,
+bypasses the new namespace icon call and ignores callback HRESULT. It produces
+eight actual failures (four filesystem icons, two namespace results, two
+scheduler stops),23 passes/zero skips, focused1 failure1.69s. This is a scoped
+mutation proof with new interfaces retained, not a build of unchanged old HEAD.
+Exact snapshots, mutations, input hashes and logs are frozen in
+build/review/source-item-icons-red; all three mutations restored byte-for-byte.
+Initial ten focused consumers pass40.80s with18 input hashes stable. First full
+Mac gate passes formatting/build and259/260 CTest126.19s; panel_shell alone
+expects extension-cache population even when source real-path icons are defined.
+That stale implementation assertion is replaced by public displayed/source icon
+equality for filesystem and archive consumers. Its dedicated cache test also
+checks positive extension indices and nonempty reserved default0. Failure log,
+full LastTest and18-input manifest are retained in source-item-icons-full-failure.
+Final localized panel_shell/panel_item_icons pass2/2 in2.89s, Qt5/31 cases,
+zero failures/skips. Repeated mandatory unsandboxed macOS27.0.1 arm64/Qt6.12.0
+check.sh passes formatting/all-target build and260/260 CTest130.54s. Nineteen
+final code/test hashes remain unchanged; full/focused logs, manifests and16
+current geometry reports are frozen in build/review/source-item-icons-final.
+Eight stale reports from the earlier data names were excluded by exact current
+scenario names; only the current16 are acceptance evidence. Baseline verification
+passes408 exact/196 adapted/3 local paths. The new274-line fixture is focused on
+one source row-icon/publication boundary and reuses existing window/layout helpers.
+Native Windows/Linux shell/rendered execution and whole P3-05.15/P3-06 acceptance
+remain open; no runner cleanup/resize/push/upstream modification occurred.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

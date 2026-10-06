@@ -108,11 +108,16 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
             configureColumns(true);
             appendParentEntry();
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
-            for (UInt32 i = 0; i < spec->Files.Size(); ++i)
-                appendFilesystemEntry(
+            for (UInt32 i = 0; i < spec->Files.Size(); ++i) {
+                result = appendFilesystemEntry(
                     QFileInfo(QDir(directory_)
                                   .filePath(QtFilesystemPath(spec->GetRelPath(spec->Files[i])))),
                     i);
+                if (result != S_OK) {
+                    table_->setRowCount(0);
+                    break;
+                }
+            }
         }
         applySortMode(true);
         setState(State::Filesystem);
@@ -123,7 +128,9 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
     return result;
 }
 
-void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {
+HRESULT MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex) {
+    QIcon icon;
+    RINOK(app_.GetFocusedPanel().GetItemIcon(sourceIndex, icon))
 #ifdef Q_OS_WIN
     // Normal Windows folders already use source FindChangeNotification. Keep
     // the portable fallback for flat descendants, outside its nonrecursive watch.
@@ -165,12 +172,7 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
         item->setData(Qt::UserRole + 6, sourceIndex);
         if (col == 0) {
             item->setToolTip(file.absoluteFilePath());
-            if (fileListSettings_.ShowRealFileIcons) {
-                item->setIcon(g_Ext_to_Icon_Map.GetIcon(
-                    directory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_ARCHIVE, nativeName));
-            } else
-                item->setIcon(QApplication::style()->standardIcon(directory ? QStyle::SP_DirIcon
-                                                                            : QStyle::SP_FileIcon));
+            item->setIcon(icon);
         }
         if (col == 2 && !directory)
             item->setData(Qt::UserRole + 2, sizeValue);
@@ -180,6 +182,7 @@ void MainWindow::appendFilesystemEntry(const QFileInfo &file, quint32 sourceInde
             item->setTextAlignment(sourceColumnAlignment(col));
         table_->setItem(row, col, item);
     }
+    return S_OK;
 }
 
 QStringList MainWindow::selectedPaths() const {

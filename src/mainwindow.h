@@ -189,7 +189,7 @@ class MainWindow : public QMainWindow {
     HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false,
                           bool updateAddress = true);
     HRESULT renderRootFolder(bool updateAddress = true);
-    void appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
+    HRESULT appendFilesystemEntry(const QFileInfo &file, quint32 sourceIndex);
     void appendParentEntry();
     void updateParentEntry();
     QStringList selectedPaths() const;
@@ -222,7 +222,8 @@ class MainWindow : public QMainWindow {
     bool isNestedArchive() const;
     void showArchiveFolder(const QString &folder);
     HRESULT renderArchiveFolder(bool updateAddress = true);
-    void appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix, bool flat);
+    HRESULT appendArchiveEntry(CAgentFolder &folder, unsigned index, const QString &prefix,
+                               bool flat);
     void setState(State state);
     void refreshActions();
     void refreshPanelStatus();

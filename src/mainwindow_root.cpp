@@ -53,6 +53,12 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
         if (folder->GetProperty(index, kpidName, &name) != S_OK || name.vt != VT_BSTR)
             continue;
         const QString nativeName = QString::fromWCharArray(name.bstrVal);
+        QIcon icon;
+        result = panel.GetItemIcon(index, icon);
+        if (result != S_OK) {
+            table_->setRowCount(0);
+            return result;
+        }
         const bool isDirectory = panel.IsItem_Folder(index);
         const int row = table_->rowCount();
         table_->insertRow(row);
@@ -70,6 +76,10 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
                                                                   : network
                                                                       ? QStyle::SP_DirIcon
                                                                       : QStyle::SP_ComputerIcon));
+#ifdef Q_OS_WIN
+                if (!panel.IsRootFolder())
+                    item->setIcon(icon);
+#endif
             } else if (drives || network || streams || column >= 7)
                 item->setText(sourceColumnText(index, column));
             table_->setItem(row, column, item);

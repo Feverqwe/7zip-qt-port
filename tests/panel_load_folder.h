@@ -6,10 +6,12 @@
 class LoadFolder final : public IFolderFolder,
                          public IFolderSetFlatMode,
                          public IFolderWasChanged,
+                         public IFolderGetSystemIconIndex,
                          public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
     Z7_COM_QI_ENTRY(IFolderWasChanged)
+    Z7_COM_QI_ENTRY(IFolderGetSystemIconIndex)
     Z7_COM_QI_END
     Z7_COM_ADDREF_RELEASE
   public:
@@ -22,7 +24,15 @@ class LoadFolder final : public IFolderFolder,
     bool directory = true;
     bool reverseNames = false;
     bool changed = false;
+    UString folderType = L"RootFolder";
+    HRESULT iconResult = E_NOTIMPL;
+    Int32 iconIndex = -1;
+    HRESULT attributeResult = S_OK;
+    UInt32 attributes = 0;
+    unsigned iconCalls = 0;
+    unsigned attributeCalls = 0;
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderWasChanged)
+    Z7_IFACE_COM7_IMP(IFolderGetSystemIconIndex)
 };

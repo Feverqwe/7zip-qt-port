@@ -95,6 +95,17 @@ default reduction to its existing filesystem parent before the established
 focused-versus-selected Shift Copy/Move operations. Full OnCopy routing and
 current native/platform acceptance remain in P3-05.15 and the port audit.
 
+`panel_item_icons` verifies original system-interface query policy, lazy lookup,
+positive versus zero/negative/failed indices, archive attribute masking,
+directory-bit correction, retained failure/Cancel and reload recovery. Real
+filesystem/ZIP fixtures cover small and301-item row publication with real icons
+on/off, comparing displayed icons to the public source icon result and preserving
+control bytes. Namespace consumers verify failed rows are cleared. Projection
+callbacks cover success, early/later failure, cancellation and replacement,
+with one terminal result and no stale completion. Normal/compact widget JSON
+checks the affected list/address groups; native Windows shell conversion and
+rendered appearance require current Windows execution.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

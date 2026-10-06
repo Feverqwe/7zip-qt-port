@@ -33,6 +33,7 @@
 #include <optional>
 
 class CFolderHistory;
+class QIcon;
 struct CExternalCodecs;
 
 // Original Panel.h worker buffer, shared by the source CRC worker.
@@ -550,6 +551,7 @@ class CPanel : public QObject {
     bool IsFSDrivesFolder() const;
     bool IsNetFolder() const;
     bool IsAltStreamsFolder() const;
+    bool Is_Slow_Icon_Folder() const { return IsFSFolder() || IsAltStreamsFolder(); }
     bool IsArcFolder() const;
     bool IsHashFolder() const;
     bool Is_IO_FS_Folder() const {
@@ -605,6 +607,7 @@ class CPanel : public QObject {
     HRESULT InitColumns();
     // Source load stage; workers carry their original result before properties.
     HRESULT LoadListItems(bool itemsLoaded = false, HRESULT loadedResult = S_OK);
+    HRESULT GetItemIcon(unsigned index, QIcon &icon);
     void SaveListViewInfo(const CPropColumns &visibleColumns);
     const CPropColumns &GetColumns() const { return _columns; }
     const CPropColumns &GetVisibleColumns() const { return _visibleColumns; }
@@ -690,9 +693,15 @@ class CPanel : public QObject {
   private:
     CMyComPtr<IFolderGetItemName> _folderGetItemName;
     CRecordVector<bool> _isDirVector;
+    CRecordVector<Int32> _itemIconIndices;
+    CRecordVector<bool> _itemSystemIcons;
+    CMyComPtr<IFolderGetSystemIconIndex> _folderGetSystemIconIndex;
+    bool _iconIsFSDrivesFolder = false;
+    bool _iconIsArcFolder = false;
     // Retain the source early-return result across Qt row publication.
     HRESULT _listLoadResult = S_OK;
     HRESULT LoadListItemsImpl(bool itemsLoaded, HRESULT loadedResult);
+    HRESULT LoadItemIcon(UInt32 index);
     UString _currentFolderPrefix;
     bool GetItem_BoolProp(UInt32 index, PROPID propID) const;
     UString GetItemPrefix(unsigned index) const;

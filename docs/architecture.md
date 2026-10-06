@@ -42,7 +42,22 @@ Programmatic panel activation temporarily suppresses both source notify callback
 and Qt focus projection while controls are enabled. This prevents a synchronous
 focus return to the old pane from changing CApp's target halfway through loading.
 Guards restore before the final command/title refresh.
-Original row-name/icon/parent/sort/redraw/HRESULT presentation branches still
+The source icon phase is extracted into CPanel::LoadItemIcon/GetItemIcon.
+LoadListItems retains its slow-folder interface-query policy and initializes
+indices without walking icon properties. Qt asks for each icon inside existing
+bounded row publication. Positive system indices, attribute fallback, archive
+attribute masking and directory-bit correction remain source policy. Windows
+shell indices are converted through the small image list and QImage::fromHICON;
+portable providers use the existing Qt cache, whose index0 is a default file icon.
+CFSFolder exposes the original system-icon interface; POSIX adapts only the
+platform lookup, using its existing GetWinAttrib conversion. This UI folder
+library now links the icon service on every platform; workers still load items
+without requesting icons. Filesystem/archive publishers return the icon HRESULT,
+cancel further failed publication and clear rows through their existing owners.
+QtFolderProjection completes once with the result and rejects replaced/cancelled
+generations. Root retains its existing portable namespace presentation; native
+Windows drive/network/stream rows use the bridged source icon.
+Original remaining row-name/property/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
 Namespace/archive renderers and the bound-folder renderer now return their
 synchronous load HRESULT. The reload callback restores saved selection only on

@@ -75,6 +75,17 @@ Timer reload теперь передаёт исходный CalledFromTimer в Q
 набранный адрес, cursor/selection и focus сохраняются при обновлении списка.
 Обычный Refresh публикует текущий путь. Малый/worker/flat filesystem и bound
 root/ZIP callers покрыты отдельно; native three-platform acceptance обязательна.
+Иконки строк теперь выбирает исходная policy RefreshListCtrl: slow-folder guard,
+positive system index и fallback через исходные атрибуты с archive mask и
+directory-bit correction. Вычисление выполняется внутри порций Qt publication.
+Windows shell image list преобразуется в QIcon; POSIX CFSFolder использует
+узкий Qt lookup с существующим GetWinAttrib. Root сохраняет прежние portable
+namespace icons; Windows drive/network/stream rows используют source icon.
+Ошибки атрибутов доходят до reload owner, публикация прекращается и очищает
+строки; успешный reload восстанавливает список. Это Qt atomic-row adaptation:
+исходный Win32 цикл мог оставить часть строк при раннем возврате HRESULT.
+Real FS/ZIP small/301 и ShowRealFileIcons on/off проверены на Mac; native shell
+runtime и rendered Windows reference ещё обязательны.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

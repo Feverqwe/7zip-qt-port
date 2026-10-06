@@ -11,6 +11,7 @@
 #include "Common/StringConvert.h"
 #include "Common/UTFConvert.h"
 #include "FSDrives.h"
+#include "SysIconUtils.h"
 #include "Windows/FileIO.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
@@ -407,6 +408,22 @@ Z7_COM7F_IMF(CFSFolder::CalcItemFullSize(UInt32 index, IProgress *progress)) {
     fi.NumFiles = stat.NumFiles;
     fi.FolderStat_Defined = true;
     return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::GetSystemIconIndex(UInt32 index, Int32 *iconIndex)) {
+    *iconIndex = -1;
+    if (index >= Files.Size())
+        return E_INVALIDARG;
+    const CDirItem &fi = Files[index];
+#ifdef _WIN32
+    return Shell_GetFileInfo_SysIconIndex_for_Path_return_HRESULT(_path + GetRelPath(fi), fi.Attrib,
+                                                                  iconIndex);
+#else
+    // Qt transports the platform image-list index for the original path query.
+    *iconIndex =
+        g_Ext_to_Icon_Map.GetPathIconIndex(fs2us(_path + GetRelPath(fi)), fi.GetWinAttrib());
+    return *iconIndex >= 0 ? S_OK : E_FAIL;
+#endif
 }
 
 Z7_COM7F_IMF(CFSFolder::SetFlatMode(Int32 flatMode)) {

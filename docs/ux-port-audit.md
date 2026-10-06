@@ -88,6 +88,11 @@ name-based focus. Open/Enter/Open Outside сохраняют доступнос�
 `..` через source handlers; native marks/operated indices исключают sentinel.
 Hidden-row/standard-alternative/small-worker-flat checks охватывают обе панели
 и EN/RU, с192 normal/compact reports и private control bytes.
+Source row-icon policy также подключена к FS/archive/namespace consumers:
+slow-folder query, positive-index validity, исходные атрибуты/mask/directory bit.
+Lookup остаётся в bounded GUI publication; failure/Cancel сохраняет HRESULT и
+очищает failed rows. Real FS/ZIP small/301 on/off и normal/compact geometry имеют
+focused coverage; native Windows shell appearance и global acceptance открыты.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing
