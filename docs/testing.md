@@ -106,6 +106,20 @@ with one terminal result and no stale completion. Normal/compact widget JSON
 checks the affected list/address groups; native Windows shell conversion and
 rendered appearance require current Windows execution.
 
+`panel_name_text` covers ordinary/RLO/four-five-many spaces/empty/trailing fast
+names, fast prefix/name bypass of failed properties, generic CR/LF and cell
+errors, raw operation/editor roles and notification suppression. It writes
+fourteen normal/compact name-view reports. A real ZIP Rename consumer verifies
+an exact RLO/space/Unicode name, source fast-name pointer/length/size, unchanged
+control bytes, Escape and invalid slash refusal. Its scoped regressions separately
+disable name presentation, restore DisplayRole Rename input and restore the raw
+name fallback during suppressed notifications. Native Windows trailing-marker
+appearance and the conditional Windows filesystem interface remain unverified
+until current native checks.
+Large-list navigation/close drivers identify partial publication through the
+existing raw-name model role, preserving cancellation assertions while source
+name display callbacks are suppressed.
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

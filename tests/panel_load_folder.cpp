@@ -32,10 +32,16 @@ Z7_COM7F_IMF(LoadFolder::GetPropertyInfo(UInt32, BSTR *name, PROPID *id, VARTYPE
 }
 Z7_COM7F_IMF(LoadFolder::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value)) {
     NWindows::NCOM::CPropVariant prop;
-    if (id == kpidName)
-        prop =
-            reverseNames ? (index ? L"a 文件" : L"z δ") : (index ? L"second 文件.txt" : L"first δ");
-    else if (id == kpidIsDir) {
+    if (id == kpidName) {
+        if (nameResult != S_OK)
+            return nameResult;
+        prop = reverseNames ? (index ? UString(L"a 文件") : UString(L"z δ"))
+                            : (index ? secondName : firstName);
+    } else if (id == kpidPrefix) {
+        if (prefixResult != S_OK)
+            return prefixResult;
+        prop = prefix;
+    } else if (id == kpidIsDir) {
         calls << "directory";
         if (directoryResult != S_OK)
             return directoryResult;
@@ -74,3 +80,15 @@ Z7_COM7F_IMF(LoadFolder::GetSystemIconIndex(UInt32, Int32 *index)) {
     *index = iconIndex;
     return iconResult;
 }
+Z7_COM7F_IMF(LoadFolder::GetItemName(UInt32 index, const wchar_t **name, unsigned *len)) {
+    const UString &value = index ? secondName : firstName;
+    *name = value;
+    *len = value.Len();
+    return S_OK;
+}
+Z7_COM7F_IMF(LoadFolder::GetItemPrefix(UInt32, const wchar_t **name, unsigned *len)) {
+    *name = prefix;
+    *len = prefix.Len();
+    return S_OK;
+}
+Z7_COM7F_IMF2(UInt64, LoadFolder::GetItemSize(UInt32)) { return 0; }

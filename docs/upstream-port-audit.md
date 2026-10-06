@@ -853,6 +853,76 @@ one source row-icon/publication boundary and reuses existing window/layout helpe
 Native Windows/Linux shell/rendered execution and whole P3-05.15/P3-06 acceptance
 remain open; no runner cleanup/resize/push/upstream modification occurred.
 
+### Source name callbacks, fast interfaces and Rename input (2026-10-06)
+
+Upstream0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+https://github.com/ip7z/7zip.git: reviewed PanelItems::RefreshListCtrl name/flat
+prefix and SetNewFolder interface consumers, PanelListNotify::SetItemText/
+OnNotifyList full affected branches, PanelOperations::OnEndLabelEdit body and
+callers, Agent::GetItemName/GetItemPrefix/GetItemSize with proxy types/macros,
+FSFolder equivalents and USE_UNICODE_FSTRING dependencies. Copy the missing
+Agent name/prefix/size interface/QI/methods and SET_realIndex_AND_dir_2;
+qualify NWindows::NCOM instead of introducing the original global using directive.
+Both proxy branches and the optional PathPrefix branch remain source bodies;
+the optional macro remains disabled as upstream. FS restores the original
+conditional Unicode-FString interface and three bodies, retaining its Windows
+condition rather than inventing a POSIX borrowed-name cache. POSIX's original
+generic property path remains. Existing names/paths/language/notices/dependencies
+and one implementation per module are preserved.
+
+PanelListNotify::GetItemText now uses the original fast-name formatter:
+RLO underscore, long-space abbreviation, empty-name underscore and Windows
+trailing-space marker, with fast prefix then generic property fallback. The
+Qt boundary allocates enough wchar_t space for the whole source name/terminator;
+source control flow is retained, replacing caller-provided Win32 cchTextMax.
+Generic name/prefix errors use original "Error: " cell text and BSTR CR/LF
+conversion; they must not become load HRESULT failures. ArchiveTableItem now
+requests source names for DisplayRole through its existing owning-panel/folder/
+count/cache guards. Qt's existing NFC/flat-prefix presentation remains; raw
+operation names/indices and EditRole stay independent. Source suppression uses
+cached names or an empty first request, preventing the raw name fallback during
+publication. MainWindow's Rename terminal consumer reads EditRole, matching
+original OnEndLabelEdit's editor text rather than formatted display.
+The first affected build exposed the copied NCOM namespace assumption; after
+qualification it passes. A new test's initial uninitialized CPropColumn.IsRawProp
+caused one incorrect empty-cell assertion; value-initialization fixes the fixture.
+Its direct raw QueryInterface call did not compile against void**; the final
+test uses the existing CMyComPtr typed helper, without exposing internals.
+
+New panel_name_text covers seven name forms, fast property bypass, generic cell
+error/CR-LF behavior, seven widget name/edit/raw-index/suppression consumers and
+one real ZIP Rename workflow: exact RLO/space/Unicode name, pointer/length/size,
+control bytes, Escape and invalid slash refusal. Fourteen current normal/compact
+JSON reports inspect the name list. Scoped name RED retains new interfaces but
+restores raw fast text and excludes column0 from callback:9 passes/9 failures,
+focused1 failure1.18s, frozen source-name-text-red. Separate actual old Rename
+DisplayRole input loses the editor value:17 passes/1 failure, focused1
+failure19.51s, source-name-edit-role-red. Suppression RED restores the old raw
+fallback:12 passes/6 failures, focused1 failure1.27s, source-name-notify-red.
+Each snapshot/fixture manifest/log is retained; all source mutations restored
+byte-for-byte. This is scoped regression evidence, not unchanged old HEAD.
+Initial twelve focused suites pass29.61s, zero Qt failures/skips, with11 inputs
+stable. First mandatory Mac full gate passes formatting/all-target build and
+260/261 CTest321.57s. large_list_window alone fails its four navigation/close
+drivers: they identify a partially published row through raw DisplayRole while
+name callbacks are suppressed. The driver now reads its existing raw-name model
+role; navigation/cancellation/generation/close assertions remain intact. Its
+194.50s failed run and full logs/11-input manifest are frozen in
+source-name-text-full-failure. A read-only stack sample found the confirmed
+process86147 already terminal; the same gate handle was polled to completion,
+without starting a replacement while it was live.
+Final localized large_list_window/panel_name_text pass2/2 in6.94s, Qt14/18 cases,
+zero failures/skips. Repeated mandatory unsandboxed macOS27.0.1 arm64/Qt6.12.0
+check.sh passes formatting/all-target build and261/261 CTest141.78s. Twelve
+final code/test hashes remain unchanged. Logs, manifests and14 current reviewed
+normal/compact reports are frozen in build/review/source-name-text-final.
+Baseline verification passes408 exact/196 adapted/3 local paths. The new173-line
+fixture covers this public name/editor boundary and reuses existing helpers;
+borrowed bodies retain upstream organization, with focused formatting ranges.
+Native Windows interface/marker runtime, rendered/cold-stable/current3OS and
+remaining full RefreshListCtrl/name-prefix selection/redraw/status/post-Copy
+scope stay mandatory; P3-05.15 and final acceptance remain open.
+
 ## P3-05.14 — persisted source-location consumers (required scope, 2026-10-06)
 
 Complete original/adapted PanelFolderChange body/caller/dependency review at

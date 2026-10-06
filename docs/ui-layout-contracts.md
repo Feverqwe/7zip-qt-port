@@ -97,6 +97,15 @@ must reach reload owners and recover on a valid reload; asynchronous publication
 stops once with its HRESULT and ignores cancelled/replaced generations. Inspect
 normal/compact address/list groups; native shell appearance still requires a
 rendered Windows reference.
+Name display uses original OnNotify/SetItemText fast-name formatting: replace
+RLO with underscore, compress runs of five or more spaces, show underscore for
+an empty fast name and retain the Windows trailing-space marker. Preserve
+unchanged native operation names and editor values. Failed generic name/prefix
+properties display the original "Error: " cell text. During source notification
+suppression, keep cached names or blank first requests. Check callback text and
+indices at980×620/640×400, plus real ZIP Rename exact names/bytes, Escape and
+invalid-name refusal. Qt keeps existing NFC and flat-prefix display adaptations;
+native Windows marker rendering still needs a rendered reference.
 
 ### Persisted source locations (P3-05.14, required scope)
 

@@ -148,6 +148,111 @@ Z7_COM7F_IMF(CAgentFolder::GetNumberOfItems(UInt32 *numItems)) {
         realIndex = index;                                                                         \
     }
 
+#define SET_realIndex_AND_dir_2                                                                    \
+    unsigned realIndex;                                                                            \
+    const CProxyDir2 *dir;                                                                         \
+    if (_flatMode) {                                                                               \
+        const CProxyItem &item = _items[index];                                                    \
+        dir = &_proxy2->Dirs[item.DirIndex];                                                       \
+        realIndex = item.Index;                                                                    \
+    } else {                                                                                       \
+        dir = &_proxy2->Dirs[_proxyDirIndex];                                                      \
+        realIndex = index;                                                                         \
+    }
+
+Z7_COM7F_IMF2(UInt64, CAgentFolder::GetItemSize(const UInt32 index)) {
+    unsigned arcIndex;
+    if (_proxy2) {
+        SET_realIndex_AND_dir_2 arcIndex = dir->Items[realIndex];
+        const CProxyFile2 &item = _proxy2->Files[arcIndex];
+        if (item.IsDir()) {
+            const CProxyDir2 &itemFolder = _proxy2->Dirs[item.DirIndex];
+            if (!_flatMode)
+                return itemFolder.Size;
+        }
+    } else {
+        SET_realIndex_AND_dir if (realIndex < dir->SubDirs.Size()) {
+            const CProxyDir &item = _proxy->Dirs[dir->SubDirs[realIndex]];
+            if (!_flatMode)
+                return item.Size;
+            if (!item.IsLeaf())
+                return 0;
+            arcIndex = (unsigned)item.ArcIndex;
+        }
+        else {
+            arcIndex = dir->SubFiles[realIndex - dir->SubDirs.Size()];
+        }
+    }
+    NWindows::NCOM::CPropVariant prop;
+    _agentSpec->GetArchive()->GetProperty(arcIndex, kpidSize, &prop);
+    if (prop.vt == VT_UI8)
+        return prop.uhVal.QuadPart;
+    else
+        return 0;
+}
+
+Z7_COM7F_IMF(CAgentFolder::GetItemName(UInt32 index, const wchar_t **name, unsigned *len)) {
+    if (_proxy2) {
+        SET_realIndex_AND_dir_2 unsigned arcIndex = dir->Items[realIndex];
+        const CProxyFile2 &item = _proxy2->Files[arcIndex];
+        *name = item.Name;
+        *len = item.NameLen;
+        return S_OK;
+    } else {
+        SET_realIndex_AND_dir if (realIndex < dir->SubDirs.Size()) {
+            const CProxyDir &item = _proxy->Dirs[dir->SubDirs[realIndex]];
+            *name = item.Name;
+            *len = item.NameLen;
+            return S_OK;
+        }
+        else {
+            const CProxyFile &item = _proxy->Files[dir->SubFiles[realIndex - dir->SubDirs.Size()]];
+            *name = item.Name;
+            *len = item.NameLen;
+            return S_OK;
+        }
+    }
+}
+
+/* called for (_flatMode == true) from:
+    CPanel::RefreshListCtrl() : to check selected items and focused item.
+    CPanel::SetItemText() : to show prefix column
+*/
+Z7_COM7F_IMF(CAgentFolder::GetItemPrefix(UInt32 index, const wchar_t **name, unsigned *len)) {
+    *name = NULL;
+    *len = 0;
+#ifdef Z7_AGENT_PROXY2_USE_DIR_PATH_PREFIX
+    if (!_flatMode)
+        return S_OK;
+
+    if (_proxy2) {
+        const CProxyItem &item = _items[index];
+        const CProxyDir2 &dir = _proxy2->Dirs[item.DirIndex];
+        const CProxyDir2 &baseDir = _proxy2->Dirs[_proxyDirIndex];
+        const UString &s = dir.PathPrefix;
+        if (dir.IsLongPath) {
+            // in case of IsLongPath we can return reduced prefix or return nothing.
+            // so caller will call it with full prefix.
+#if 1 // 1 - for fast processing of long strings, 0 - for full processing
+            *name = (const wchar_t *)s;
+            *len = s.Len();
+#endif
+        } else {
+            if (baseDir.IsLongPath)
+                return E_FAIL; // throw 1;
+            const unsigned baseLen = baseDir.PathPrefix.Len();
+            if (s.Len() < baseLen)
+                return E_FAIL; // throw 1;
+            *name = (const wchar_t *)s + baseLen;
+            *len = s.Len() - baseLen;
+        }
+    }
+#else
+    UNUSED_VAR(index)
+#endif
+    return S_OK;
+}
+
 UString CAgentFolder::GetName(UInt32 index) const {
     if (_proxy2) {
         const CProxyItem item = GetItem(index);

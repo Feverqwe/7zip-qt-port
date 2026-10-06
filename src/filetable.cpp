@@ -92,11 +92,14 @@ QVariant ArchiveTableItem::data(int role) const {
     // authoritative when Qt paints either side of a two-panel window.
     const auto *table = dynamic_cast<const FileTable *>(tableWidget());
     const int col = column();
-    if (table && table->sourcePanel && col != 0 && col != 1 && col != 5 && col != 6) {
+    if (table && table->sourcePanel && col != 1 && col != 5 && col != 6 &&
+        (col != 0 || role == Qt::DisplayRole)) {
         // Native OnNotify suppresses callbacks while archive reopening can
         // invalidate the old proxy inside a nested event loop.
         if (!table->sourcePanel->ShouldProcessNotifications())
-            return sourceTextDefined_ ? sourceText_ : QTableWidgetItem::data(role);
+            return sourceTextDefined_
+                       ? sourceText_
+                       : (col == 0 ? QVariant(QString()) : QTableWidgetItem::data(role));
         const QVariant index = QTableWidgetItem::data(Qt::UserRole + 6);
         const CPropColumns &columns = table->sourcePanel->GetColumns();
         const int property = columns.FindItem_for_PropID(table->propertyId(col));
@@ -109,6 +112,10 @@ QVariant ArchiveTableItem::data(int role) const {
                      index.toUInt() >= count))
                     return QVariant();
                 sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), columns[property]);
+                if (col == 0)
+                    sourceText_ = (QTableWidgetItem::data(Qt::UserRole + 5).toString() +
+                                   sourceText_.toString())
+                                      .normalized(QString::NormalizationForm_C);
                 sourceTextDefined_ = true;
             }
             return sourceText_;

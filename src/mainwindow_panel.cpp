@@ -147,7 +147,7 @@ void MainWindow::createFileTable(QWidget *central) {
             (state_ != State::Filesystem && state_ != State::Viewing &&
              !app_.GetFocusedPanel().IsAltStreamsFolder()))
             return;
-        const QString name = item->text();
+        const QString name = item->data(Qt::EditRole).toString();
         const QString path = renameOriginalPath_;
         const quint32 sourceIndex = renameSourceIndex_;
         renameEditingItem_ = nullptr;

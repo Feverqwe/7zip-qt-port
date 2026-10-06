@@ -57,7 +57,7 @@ cancel further failed publication and clear rows through their existing owners.
 QtFolderProjection completes once with the result and rejects replaced/cancelled
 generations. Root retains its existing portable namespace presentation; native
 Windows drive/network/stream rows use the bridged source icon.
-Original remaining row-name/property/sort/redraw/HRESULT presentation branches still
+Original remaining row-prefix/selection/property/sort/redraw/HRESULT presentation branches still
 require the remaining complete-function review recorded in the port audit.
 Namespace/archive renderers and the bound-folder renderer now return their
 synchronous load HRESULT. The reload callback restores saved selection only on
@@ -1181,7 +1181,19 @@ redraws those cells on level/UTC changes and persists the choice through
 QSettings; sort comparison continues to read typed folder properties.
 Filesystem/archive metadata text follows the original callback display policy:
 `ArchiveTableItem` asks its table's owning `CPanel::GetItemText` on display/edit
-demand and caches only formatted text. `FileTable::textFolder` retains the shown
+demand and caches only formatted text. Name uses this callback for DisplayRole
+while EditRole retains the editor's raw value; Rename completion reads that role.
+The source fast-name branch replaces RLO, compresses long space runs and marks a
+Windows trailing space. Agent restores its original name/prefix/size interface;
+FS restores the same conditional Unicode-FString interface on Windows. POSIX FS
+keeps the original generic property path. Generic failed name/prefix properties
+use the source cell's "Error: " result, with its original CR/LF display conversion.
+Qt retains the existing NFC display boundary and flat-prefix composition; raw
+operation names/indices remain in their original roles. A name callback with
+notifications suppressed returns cached text or an empty string before its first
+request. The fast-name buffer has room for the entire source name and terminator,
+replacing only the Win32 callback's caller-supplied capacity.
+`FileTable::textFolder` retains the shown
 folder identity; source notification guards prevent callbacks during proxy
 replacement. Column changes do not enumerate properties. Time/statistics changes
 invalidate cached cells, including hidden statistics; numerical interaction roles

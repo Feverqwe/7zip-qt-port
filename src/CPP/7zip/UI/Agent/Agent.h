@@ -44,6 +44,7 @@ Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 
 class CAgentFolder final : public IFolderFolder,
+                           public IFolderGetItemName,
                            public IFolderProperties,
                            public IGetFolderArcProps,
                            public IArchiveGetRawProps,
@@ -59,6 +60,7 @@ class CAgentFolder final : public IFolderFolder,
                            public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
     Z7_COM_QI_ENTRY(IFolderProperties)
+    Z7_COM_QI_ENTRY(IFolderGetItemName)
     Z7_COM_QI_ENTRY(IGetFolderArcProps)
     Z7_COM_QI_ENTRY(IArchiveGetRawProps)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
@@ -80,6 +82,7 @@ class CAgentFolder final : public IFolderFolder,
     // only metadata choices and the integration path policy.
     const CExtractNtOptions *QtExtractNtOptions = nullptr;
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_IFACE_COM7_IMP(IFolderGetItemName)
     Z7_IFACE_COM7_IMP(IFolderProperties)
     Z7_IFACE_COM7_IMP(IGetFolderArcProps)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)

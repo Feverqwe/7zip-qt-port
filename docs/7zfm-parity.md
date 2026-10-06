@@ -86,6 +86,17 @@ namespace icons; Windows drive/network/stream rows используют source i
 исходный Win32 цикл мог оставить часть строк при раннем возврате HRESULT.
 Real FS/ZIP small/301 и ShowRealFileIcons on/off проверены на Mac; native shell
 runtime и rendered Windows reference ещё обязательны.
+Name callback теперь сохраняет исходный fast-name formatter: RLO заменяется
+на `_`, серии от пяти пробелов сокращаются, пустое fast name показывается как
+`_`, Windows добавляет исходный trailing-space marker. Agent возвращает исходные
+name/prefix/size interfaces; FS сохраняет original Unicode-FString conditional,
+поэтому POSIX FS использует generic BSTR path. Generic name/prefix failures
+показывают исходное `Error: ` в ячейке. Qt сохраняет существующие NFC/flat-prefix
+display adaptations; операции и редактор используют исходные имена. Завершение
+Rename читает EditRole, как original OnEndLabelEdit читает текст редактора.
+Пока callbacks запрещены, имя остаётся cached или пустым. Реальный ZIP проверяет
+точное новое имя/bytes, Escape и invalid-name refusal. Windows marker appearance
+и native conditional interface требуют текущей Windows/rendered проверки.
 
 ## P3-05.14 — закладки и история source locations (обязательный пропуск, 2026-10-06)
 

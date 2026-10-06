@@ -320,7 +320,7 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
             if (list->isEnabled() || !list->rowCount())
                 return;
             const auto *last = list->item(list->rowCount() - 1, 0);
-            if (!last || !last->text().startsWith("old-"))
+            if (!last || !last->data(Qt::UserRole + 3).toString().startsWith("old-"))
                 return;
             QVERIFY(list->rowCount() < 512);
             timer.stop();

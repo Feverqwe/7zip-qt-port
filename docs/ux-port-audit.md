@@ -93,6 +93,11 @@ slow-folder query, positive-index validity, исходные атрибуты/ma
 Lookup остаётся в bounded GUI publication; failure/Cancel сохраняет HRESULT и
 очищает failed rows. Real FS/ZIP small/301 on/off и normal/compact geometry имеют
 focused coverage; native Windows shell appearance и global acceptance открыты.
+Source name callback также подключён: исходные RLO/space/empty/Windows-marker
+branches, generic cell errors и suppression. Raw operation/editor names остаются
+отдельными от display text; Rename completion читает editor value. Public callback
+и real ZIP Rename/Cancel/refusal/bytes покрыты с14 normal/compact name reports;
+native marker rendering и full acceptance остаются открытыми.
 Остальная full/post-Copy error и
 native/platform приёмка остаётся открытой.
 Принятый архивный Move/rollback сохраняется. Existing

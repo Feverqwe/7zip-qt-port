@@ -7,6 +7,10 @@
 #include "Panel.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include <vector>
+
+#define SPACE_REPLACE_CHAR (wchar_t)(0x2423)
+#define SPACE_TERMINATOR_CHAR (wchar_t)(0x9C)
 
 #define INT_TO_STR_SPEC(v)                                                                         \
     while (v >= 10) {                                                                              \
@@ -158,10 +162,68 @@ QString CPanel::GetItemText(UInt32 itemIndex, const CPropColumn &property) const
         }
         return value;
     }
-    if (propID == kpidName)
-        return ToQString(GetItemName(itemIndex));
-    if (propID == kpidPrefix)
-        return ToQString(GetItemPrefix(itemIndex));
+    if (propID == kpidName && _folderGetItemName) {
+        const wchar_t *name = nullptr;
+        unsigned nameLen = 0;
+        _folderGetItemName->GetItemName(itemIndex, &name, &nameLen);
+        if (name) {
+            std::vector<wchar_t> buffer(size_t(nameLen) + 2);
+            wchar_t *text = buffer.data();
+            unsigned dest = 0;
+            const unsigned limit = nameLen + 1;
+
+            for (unsigned i = 0; dest < limit;) {
+                const wchar_t c = name[i++];
+                if (c == 0)
+                    break;
+                text[dest++] = c;
+
+                if (c != ' ') {
+                    if (c != 0x202E) // RLO
+                        continue;
+                    text[(size_t)dest - 1] = '_';
+                    continue;
+                }
+
+                if (name[i] != ' ')
+                    continue;
+
+                unsigned t = 1;
+                for (; name[i + t] == ' '; t++)
+                    ;
+
+                if (t >= 4 && dest + 4 < limit) {
+                    text[dest++] = '.';
+                    text[dest++] = '.';
+                    text[dest++] = '.';
+                    text[dest++] = ' ';
+                    i += t;
+                }
+            }
+
+            if (dest == 0)
+                text[dest++] = '_';
+
+#ifdef _WIN32
+            else if (text[(size_t)dest - 1] == ' ') {
+                if (dest < limit)
+                    text[dest++] = SPACE_TERMINATOR_CHAR;
+                else
+                    text[dest - 1] = SPACE_REPLACE_CHAR;
+            }
+#endif
+
+            text[dest] = 0;
+            return QString::fromWCharArray(text);
+        }
+    }
+    if (propID == kpidPrefix && _folderGetItemName) {
+        const wchar_t *name = nullptr;
+        unsigned nameLen = 0;
+        _folderGetItemName->GetItemPrefix(itemIndex, &name, &nameLen);
+        if (name)
+            return QString::fromWCharArray(name);
+    }
     NWindows::NCOM::CPropVariant prop;
     const HRESULT result = _folder->GetProperty(itemIndex, propID, &prop);
     if (result != S_OK)

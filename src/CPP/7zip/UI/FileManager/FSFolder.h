@@ -53,11 +53,24 @@ class CFSFolder final : public IFolderFolder,
                         public IFolderWasChanged,
                         public IFolderOperations,
                         public IFolderGetSystemIconIndex,
+#ifdef USE_UNICODE_FSTRING
+                        public IFolderGetItemName,
+#endif
                         public IQtFolderPropertyCapabilities,
                         public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_8(IFolderFolder, IArchiveGetRawProps, IFolderCalcItemFullSize, IFolderClone,
-                         IFolderSetFlatMode, IFolderWasChanged, IFolderOperations,
-                         IFolderGetSystemIconIndex)
+    Z7_COM_QI_BEGIN2(IFolderFolder)
+    Z7_COM_QI_ENTRY(IArchiveGetRawProps)
+    Z7_COM_QI_ENTRY(IFolderCalcItemFullSize)
+    Z7_COM_QI_ENTRY(IFolderClone)
+    Z7_COM_QI_ENTRY(IFolderSetFlatMode)
+    Z7_COM_QI_ENTRY(IFolderWasChanged)
+    Z7_COM_QI_ENTRY(IFolderOperations)
+    Z7_COM_QI_ENTRY(IFolderGetSystemIconIndex)
+#ifdef USE_UNICODE_FSTRING
+    Z7_COM_QI_ENTRY(IFolderGetItemName)
+#endif
+    Z7_COM_QI_END
+    Z7_COM_ADDREF_RELEASE
   public:
     CFSFolder() = default;
     explicit CFSFolder(QString path);
@@ -70,6 +83,9 @@ class CFSFolder final : public IFolderFolder,
     Z7_IFACE_COM7_IMP(IFolderWasChanged)
     Z7_IFACE_COM7_IMP(IFolderOperations)
     Z7_IFACE_COM7_IMP(IFolderGetSystemIconIndex)
+#ifdef USE_UNICODE_FSTRING
+    Z7_IFACE_COM7_IMP(IFolderGetItemName)
+#endif
     HRESULT Init(const FString &path);
     HRESULT InitToRoot() { return Init((FString)FSTRING_PATH_SEPARATOR); }
     CObjectVector<CDirItem> Files;

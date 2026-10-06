@@ -410,6 +410,52 @@ Z7_COM7F_IMF(CFSFolder::CalcItemFullSize(UInt32 index, IProgress *progress)) {
     return S_OK;
 }
 
+#ifdef USE_UNICODE_FSTRING
+Z7_COM7F_IMF(CFSFolder::GetItemPrefix(UInt32 index, const wchar_t **name, unsigned *len)) {
+    *name = NULL;
+    *len = 0;
+    /*
+    if (index >= Files.Size())
+      index = Streams[index - Files.Size()].Parent;
+    */
+    CDirItem &fi = Files[index];
+    if (fi.Parent >= 0) {
+        const FString &fo = Folders[fi.Parent];
+        USE_UNICODE_FSTRING
+        *name = fo;
+        *len = fo.Len();
+    }
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CFSFolder::GetItemName(UInt32 index, const wchar_t **name, unsigned *len)) {
+    *name = NULL;
+    *len = 0;
+    if (index < Files.Size()) {
+        CDirItem &fi = Files[index];
+        *name = fi.Name;
+        *len = fi.Name.Len();
+        return S_OK;
+    } else {
+        // const CAltStream &ss = Streams[index - Files.Size()];
+        // *name = ss.Name;
+        // *len = ss.Name.Len();
+        //
+        // change it;
+    }
+    return S_OK;
+}
+
+Z7_COM7F_IMF2(UInt64, CFSFolder::GetItemSize(UInt32 index)) {
+    /*
+    if (index >= Files.Size())
+      return Streams[index - Files.Size()].Size;
+    */
+    CDirItem &fi = Files[index];
+    return fi.IsDir() ? 0 : fi.Size;
+}
+#endif
+
 Z7_COM7F_IMF(CFSFolder::GetSystemIconIndex(UInt32 index, Int32 *iconIndex)) {
     *iconIndex = -1;
     if (index >= Files.Size())
