@@ -15177,3 +15177,64 @@ ElimDup availability are checked; original Win32 pixel/rendered parity is not
 established. The Windows-only UIA test correction followed the passing Mac gate;
 no Mac-compiled production/test body changed. Whole P3 source/platform/package
 and final acceptance remain open.
+
+## P3-03/P3-04 — current platform and cold-codec checkpoint (2026-10-07)
+
+Product revision `dfd07038a16b8470a3747ec563d57eb63b8f2404` plus preserved
+unrelated working-tree changes. All 1,448 frozen source/test/tooling inputs
+matched both guests and the local tree after collection; the only additional
+archive member is the read-only upstream bundle. This changes no borrowed body
+or dependencies: baseline remains `https://github.com/ip7z/7zip.git` at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+
+The preceding macOS27.0.1arm64/officialQt6.12.0 unsandboxed `check.sh` remains
+289/289 PASS231.40s, 4,450 Qt passes, zero failures and 15 Windows-only skips.
+Fresh all-target gates use official Qt6.12.0 and recorded MSVC2022/GCC toolchains:
+
+| Guest / snapshot | Source archive SHA256 | CTest | Qt pass/fail/skip |
+| --- | --- | --- | --- |
+| Windows11x64, interactive Highest, `20261007T140529Z-5b64ed6f` | `a9914466d637083d599d7237814a054c5ef127b17cb3a34506f1e9e874774fe5` | 298/298 PASS2057.31s | 4578/0/18 |
+| Ubuntu24.04.5x64, `20261007T145454Z-54f8dfcb` | `860caebf812773106ef3afc7a775bb8576e19671e6b575ec66225392f816bea0` | 286/286 PASS557.70s | 4434/0/15 |
+
+The temporary gate reuses the exact repository formatting function, builds all
+targets and invokes the project CTest wrapper. Eleven slow suites are excluded.
+The user prohibits new/attached disks: Windows omits `fs_drives_device` and
+retains only existing non-VHD logical-drive/ADS cases in `fs_drives_device_ui`
+and `namespace_hash`. Generated commands are restored byte-for-byte. This
+accepts the permitted gate, not new virtual-disk or exhaustive-suite evidence.
+Linux skips cover Windows security/metadata/reparse/registry. Windows has two
+POSIX skips and 16 filesystem Properties cases assigned to the dedicated
+`native_properties_window`, which passes 19 Qt rows without skips in this gate;
+archive Properties passes separately. Previously failing Windows consumers
+now pass: `external_codecs`13, `archive_external_edit`60 and `large_list_window`14
+Qt rows, without skips. Four 4,096-row disk/archive normal/compact scenarios have
+Windows maximum GUI gaps181/122/125/130ms and Linux106/97/49/134ms, with unchanged
+250ms heartbeat/15s readiness limits. Full logs, metadata, manifests and
+4,575 Windows/4,559 Linux widget JSON files are in `build/review/final-platform/`.
+
+After verifying no active runner task/build/application, a normal Windows
+guest-only reboot changed LastBoot from `2026-10-03T10:57:41.3566780Z` to
+`2026-10-07T15:19:50.8052710Z`. First-after-boot `external_codecs` passes all13
+Qt rows: init1.504s, official-handler0.960s, global-only-handler0.844s,
+whole suite5.160s. The production discovery deadline remains5,000ms; suite
+duration includes all scenarios. Three `external_codecs`+`codec_probe` repeats
+pass90 rows without failures/skips. Four executable SHA256 values and generated
+commands remain unchanged. Seven GUI-less CTest executions use the project
+wrapper over SSH; XML/boot/hash evidence is in `windows/current-stability/`.
+OS reboot is established; physical host cache state and the historical failure's
+root cause are not established. Windows reset AutoAdminLogon1→0 at boot and has
+no interactive user. The prepared desktop task never ran and was removed;
+native GUI repetitions await desktop login. The earlier interactive full gate
+remains valid for its recorded session.
+
+Fresh macOS official-Qt Release/BUILD_TESTING=OFF package:12,478,400bytes, SHA256
+`b0f3cdee28fb15e2fe3926370fa8cdaecc2f87057dd0b6ef7654403b4f1beeda`.
+Relocated native Cocoa tests pass15 scenarios: ZIP/7z create/list/test/extract,
+Unicode/spaced binary/empty bytes, corrupt archive and absent-module failure,
+exact MIT notice and deep/strict ad-hoc signature. Child settings/HOME/PATH are
+isolated without Qt/codec/DYLD overrides. Existing SDK-header fallback was
+required for the fresh build. Evidence is in `build/review/final-packages/`.
+A separate owned-FM-title observation lacks macOS screen/accessibility
+permission and remains unverified; it does not replace the payload result.
+Final Windows/Linux packages, remaining source bodies/keyboard commands,
+rendered UX and whole P3-03/P3-04/P3-05/P3-06 acceptance remain open.
