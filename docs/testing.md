@@ -1,5 +1,31 @@
 # Regression strategy
 
+`native_rename_2` and `native_rename_301` exercise384 real F2/native Rename
+publication workflows using the private official writer opt-in. Actual native
+Write failure/source Cancel and subsequent native property HRESULTs distinguish
+operation errors from ignored posted reload failures. Both panes, EN/RU, table/
+icon and both selection modes cover saved focus/marks, same-provider Ctrl+R,
+successful real F2 retry, archive payload/peer bytes and later filesystem OnTimer.
+Only the source progress dialog reports worker failures; early validation remains
+covered by `panel_rename_state`. Visible-row mouse selection and source operated
+indices establish retry input. Normal/compact JSON covers publication/recovery/
+retry. Runtime preparation, unsandboxed execution and per-suite startup/TMP/native
+Windows plugin policy match the native external suite below. The actual duplicate
+diagnostic RED is retained separately from initial test-driver failures.
+The same suite observes a real periodic Qt timer tick through the public source
+status-presentation boundary: guarded callbacks must remain zero. Native matrix
+SIGSEGV stacks and deterministic guarded-status RED are retained separately;
+the Qt timer must not activate/query native proxies under source guards.
+
+Final native Rename validation,2026-10-07 macOS27.0.1 arm64 / Qt6.12.0:
+both native partitions195QtPASS each/0fail/0skip; required unsandboxed full
+296/296CTestPASS1395.53s,6512QtPASS/0fail/15 Windows-only skips across280 totals.
+All13 frozen inputs and2048 fresh normal/compact report hashes match after gate
+completion;8192 enabled/fully exposed address/list controls were inspected.
+The [dated audit](upstream-port-audit.md#p3-0515--native-rename-publication-and-error-ownership-2026-10-07)
+retains actual duplicate-error/status-race RED, driver/budget diagnostics and
+remaining platform acceptance separately.
+
 `native_external_2` and `native_external_301` exercise384 real F4 editor/native
 CopyFromFile publication workflows. The private official-runtime facade enables
 its writer only for the explicitly opted-in GUI PID. Writer receipts record

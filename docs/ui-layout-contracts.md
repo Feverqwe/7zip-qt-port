@@ -236,6 +236,14 @@ load cancellation, standard/alternative marks, preserved peer bytes and recovery
 Existing name-view/editor normal/compact geometry remains the presentation
 contract; source text suppression does not change grouping or widget geometry.
 
+Native archive Rename additionally uses real F2 and the visible table/icon
+inline editor, with official native writer success/Write failure/source Cancel
+followed by S_OK/S_FALSE/E_FAIL/E_ABORT publication at2/301 rows. The posted
+source reload ignores its HRESULT; explicit Ctrl+R owns recovery diagnostics.
+Verify new/old focused name and source marks, same provider, unchanged peer,
+payload bytes and successful retry after failure/Cancel. Inspect published,
+recovered and retried states at980×620/640×400 in both panes and EN/RU.
+
 Reference: pinned App.cpp::OnCopy/Reduce_Path_To_RealFileSystemPath,
 PanelKey Shift consumers, CopyDialog.cpp/.rc and Panel/Agent/FSFolder CopyTo/
 CopyFrom interfaces. Keep the original title/prompt/summary/history and focused

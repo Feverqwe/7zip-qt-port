@@ -1,5 +1,108 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — native rename publication and error ownership (2026-10-07)
+
+Source https://github.com/ip7z/7zip.git at full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: reviewed complete
+`CPP/7zip/UI/FileManager/PanelOperations.cpp::OnEndLabelEdit`, its
+CThreadFolderOperations::ProcessVirt/DoOperation worker,
+`Panel.cpp::OnMessage(kReLoadMessage)`,
+`CPP/7zip/UI/Agent/ArchiveFolderOut.cpp::Rename/CommonUpdateOperation`, and
+`AgentOut.cpp::RenameItem/CommonUpdate`, with progress error publication and
+Qt editor/command/selection/reload callers. RenameFile's EditLabel caller,
+resource.rc's F2/title strings and ProgressDialog2.rc/ProgressDialog2a.rc button,
+Cancel/Close and status structure were also inspected; no layout resources
+changed and native Qt message-box presentation remains the existing OS adapter.
+Existing authoritative C++ source
+owns rename pair planning, native UpdateItems, temporary output, reopen/proxy
+restoration and new/old focus selection. No source baseline/module/algorithm,
+C/C++ language or upstream checkout changes.
+
+The original worker presents operation errors through CProgressDialog, then
+OnEndLabelEdit posts the saved-state reload even after error/Cancel. The posted
+message ignores RefreshListCtrl's result. Qt completion previously displayed
+an independent generic rename warning after that worker error. Two actual
+native E_FAIL rows (2/301 items, EN/RU, table/icon, both panes) fail with the
+extra “Could not rename the item.”/Russian warning before the fix; preserved in
+build/review/native-rename-red/failure.log (terminal2,2QtPASS/2FAIL/0SKIP).
+The narrow mainwindow_rename.cpp adaptation now shows that warning only for an
+early validation rejection with no pending refresh state. A completed worker
+retains its source progress diagnostic and always reaches the ignored-result
+publication, without a second warning. Filesystem validation remains covered
+by its existing real-editor suite. No product fault injection added.
+
+The full native matrix also exposed an actual guarded-status proxy race, not a
+driver failure: both suites terminated with SIGSEGV. Retained macOS crash stacks
+show CAgentFolder::GetItemSize → CPanel::Refresh_StatusBar → refreshActions →
+activatePanelUi → pollAutoRefresh on the GUI thread while the native worker can
+replace its proxy. Upstream Panel.cpp dispatches WM_TIMER directly to guarded
+CPanel::OnTimer; CDisableNotify also disables status and the native posted status
+message tests `_processStatusBar`. The Qt periodic loop instead activated both
+projections before checking source guards. A separate deterministic public
+status-presentation regression observes a real periodic timer tick and reports
+two guarded callbacks before correction (guard.log,terminal1,2PASS/1FAIL/0SKIP).
+Qt now checks visible source notification guards before visiting projections,
+and refreshActions skips status reads under the focused source guard. It reuses
+the existing coupled notification/status guard; no new mutable flags or source
+algorithm changes. The native matrix and later filesystem OnTimer cover release.
+Actual crash evidence remains in build/review/native-rename-red/
+{matrix-proxy-crash.log,native_rename_publication_tests-*.ips}; initial matrix
+logs additionally contain the separately corrected alternative-mark expectation.
+
+New native F2 consumers use the existing private official-runtime facade and
+PID-gated native writer/property receipts. Seekable Write failure proves the
+official writer's E_FAIL; actual Cancel/Yes stops its progress callback during
+the controlled completion interval before output publication. Property faults
+are armed only after writer return. The matrix covers2/301 items, writer
+S_OK/E_FAIL/actual Cancel, publication S_OK/S_FALSE/E_FAIL/E_ABORT, both panes,
+EN/RU, table/icon and standard/alternative selection. Native saved-state focus
+and marks, same provider, unchanged peer and actual archived payload are checked.
+In alternative mode successful Rename focuses/selects the new name visually,
+while the saved mark for the old name disappears; it does not become a new-name
+mark. Standard mode marks the focused renamed row. Failure/Cancel retain the
+old-name mark. The test follows this original restoration rule.
+Failure/Cancel preserve archive bytes, Ctrl+R recovers, and another real F2
+successfully retries the write. Final filesystem OnTimer verifies guard release.
+Published/recovered/retried states emit normal/compact widget JSON. Retry uses
+an actual visible-row mouse selection and verifies the native operated index;
+earlier driver focus/selection failures are not counted as product regressions.
+The suite uses existing per-test startup/TMP isolation and Windows native plugin/
+desktop lock policy. No rendered Windows or other-platform execution is implied.
+
+Focused source consumers panel_processing/panel_refresh_completion/
+panel_rename_state pass21/76/22Qt respectively. Native2 completes195QtPASS/
+0fail/0skip in232.18s. The initial240s whole-suite budget stops the larger
+matrix while it is still producing reports; with360s it completes all192 native
+data rows, but that run retains one separate guard-test focus-proxy expectation
+failure (194QtPASS/1FAIL,288.89s). After accepting the actual owning-panel
+QComboBox focus proxy, the dedicated guard regression passes3Qt/0fail/0skip
+in1411ms. No source operation/cancellation/performance limit was relaxed; only
+the newly added matrix's CTest wall-time budget changed. Initial driver failures
+and budget exhaustion are retained rather than presented as product RED.
+
+Final validation,2026-10-07 macOS27.0.1 arm64 / Qt6.12.0: required unsandboxed
+full95773 terminal0, formatting/all-target build/296CTestPASS1395.53s. Both final
+native Rename partitions pass195Qt each (390Qt total/0fail/0skip),273.22s for301
+and235.94s for2 rows. All280 Qt totals sum to6512PASS/0FAIL/15Windows-onlySKIP:
+source_link_extract2, association_services1, source_extract_advanced2,
+source_metadata_storage10. All13 frozen task files remained unchanged through
+terminal completion; all5 code/test/build inputs match that gate. Postgate edits
+only record proof in audit/testing/checklist. Baseline408exact/196adapted/3local
+unchanged. Independent inspection confirms2048 fresh JSON reports (1024 each at
+980x620/640x400),8192 enabled/fully exposed address/list controls, one visible
+list per pane, source0 left/source1 right and address above list. Original and
+copied report hashes match after terminal completion. Local proof is retained in
+build/review/native-rename-final/{full-gate.log,full-ctest.log,full-qt-stats.json,
+frozen-inputs.json,verified-inputs.json,full-geometry.json,reports,baseline.log,
+guard-final.log,crash-stack-review.json}. The retained crash additionally shows
+worker8 waiting in RunArchiveBackendRequest inside CAgent::ReOpen while GUI
+thread0 reads GetItemSize; the guard correction addresses that source invariant.
+Native Windows/Linux and rendered Windows execution remain unverified here.
+
+Native drop/changed-parent consumers, complete body reconciliation,
+Windows/Linux/rendered/cold stable-package acceptance and P3-06 remain mandatory;
+this correction does not close P3-05.15.
+
 ## P3-05.15 — native external-editor update publication (2026-10-07)
 
 Reviewed upstream https://github.com/ip7z/7zip.git at full baseline

@@ -155,6 +155,12 @@ void MainWindow::pollAutoRefresh() {
     if (scanningDisk_ || app_.QtOperations().active() || app_.QtOperations().closed() ||
         app_.QtOperations().callActive() || sourceArchiveProgress_)
         return;
+    // Unlike native WM_TIMER, the Qt timer visits both panel projections.
+    // Their activation queries status, so honor source notification/status
+    // guards before entering either projection while a worker can reopen it.
+    for (unsigned index = 0; index < kNumPanelsMax; ++index)
+        if (app_.IsPanelVisible(index) && !app_.Panels[index].ShouldProcessNotifications())
+            return;
     const unsigned original = projectedPanel_;
     for (unsigned index = 0; index < kNumPanelsMax; ++index) {
         if (!app_.IsPanelVisible(index) || !panelUi_[index].container)

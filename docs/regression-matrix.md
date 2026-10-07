@@ -33,6 +33,7 @@ production access is added for this matrix.
 | P1-02 copy/merge/cross-volume Move | FSFolderCopy/CCopyStateIO; exclusive transaction | `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `worker_window_progress` |
 | P1-03 create/rename/delete/trash/comments | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations`, `filesystem_comment` |
 | P1-04 archive mutation/publish | ArchiveFolder/AgentOut; ArchiveBackend native/CLI transport | `source_update_backend`, `archive_mutation`, `codec_update`, `ui_archive_states` |
+| P1-04 native F2 Rename writer/publication/retry and guarded periodic status | PanelOperations::OnEndLabelEdit; Agent RenameItem/CommonUpdate; Qt rename/timer/status projection | `native_rename_2`, `native_rename_301`, `panel_rename_state`, `panel_processing`, `panel_refresh_completion` |
 | P1-05 Add/update/path modes | CompressDialog/UpdateGUI/UpdatePair; Qt controls/backend | `source_compress_dialog`, `shell_update_window`, `ui_update_modes`, `source_update_backend` |
 | P1-06 archive volumes | CArchiveLink/CMultiOutStream; leased volume publication | `archive_volume_creation`, `volume_workflow`, `ui_archive_volumes` |
 | P1-07 options/memory/deletion lifecycle | COptionsDialog/CompressDialog/Update; Qt control/worker bridge | `compression_advanced`, `compression_memory`, `compression_limit`, `archive_creation_lifecycle` |

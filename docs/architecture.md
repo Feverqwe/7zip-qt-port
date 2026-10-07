@@ -1077,7 +1077,16 @@ callback DisplayRole text, including cached Qt cells, between the operation and
 the load/restoration phase; raw roles and editor values remain independent.
 Early validation rejection resets the Qt editor without loading and retains
 selection, adapting the native FALSE edit result. The source error/Cancel policy
-is preserved; remaining native ADS/platform acceptance stays separate.
+is preserved: CProgressDialog owns completed-worker errors, while the Qt boundary
+shows a generic rejection only when no pending refresh state exists. The posted
+reload ignores its HRESULT as upstream does; explicit Refresh owns recovery
+diagnostics. Native F2 writer/publication/retry evidence is in the port audit;
+remaining native ADS/platform acceptance stays separate.
+The periodic Qt timer visits both pane projections, unlike native WM_TIMER's
+direct CPanel::OnTimer call. It checks visible source notification/status guards
+before projection activation, and refreshActions avoids status reads under that
+guard. This prevents GUI status from reading an archive proxy during native
+worker reopen; the original source guards remain the authoritative state.
 Filesystem Delete now follows the mirrored PanelOperations.cpp source
 confirmation and worker. `IQtTrashService` is the platform boundary for
 ordinary Delete; Shift+Delete uses source `IFolderOperations::Delete` and the

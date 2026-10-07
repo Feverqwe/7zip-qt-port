@@ -1707,6 +1707,18 @@ if(BUILD_TESTING)
     add_test(NAME archive_reload_command COMMAND archive_reload_command_tests -silent)
     set_tests_properties(archive_reload_command PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-reload-command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_renderer_failure_tests tests/native_renderer_failure_tests.cpp tests/native_property_failure_runtime.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    qt_add_executable(native_rename_publication_tests tests/native_rename_publication_tests.cpp tests/native_property_failure_runtime.cpp tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(native_rename_publication_tests PRIVATE src tests)
+    target_link_libraries(native_rename_publication_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(native_rename_publication_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    target_compile_definitions(native_rename_publication_tests PRIVATE
+        "SEVENZIP_EXTERNAL_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_EXTERNAL_FORMAT_FIXTURE=\"$<TARGET_FILE:external_format_fixture>\"")
+    add_dependencies(native_rename_publication_tests external_format_fixture)
+    foreach(rename_rows 2 301)
+        add_test(NAME native_rename_${rename_rows} COMMAND native_rename_publication_tests -silent)
+        set_tests_properties(native_rename_${rename_rows} PROPERTIES TIMEOUT 360 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_RENAME_ROWS=${rename_rows};SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-rename-${rename_rows}.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endforeach()
     qt_add_executable(native_external_publication_tests tests/native_external_publication_tests.cpp tests/native_property_failure_runtime.cpp tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(native_external_publication_tests PRIVATE src tests)
     target_link_libraries(native_external_publication_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
@@ -2899,6 +2911,8 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
     set(sevenzip_test_target ${sevenzip_test}_tests)
     if(sevenzip_test STREQUAL "bookmarks")
         set(sevenzip_test_target bookmark_tests)
+    elseif(sevenzip_test MATCHES "^native_rename_(2|301)$")
+        set(sevenzip_test_target native_rename_publication_tests)
     elseif(sevenzip_test MATCHES "^native_external_(2|301)$")
         set(sevenzip_test_target native_external_publication_tests)
     elseif(sevenzip_test MATCHES "^native_nested_(stream|memory|disk)$")
@@ -2946,7 +2960,7 @@ include(cmake/SharedPortObjects.cmake)
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
     foreach(sevenzip_native_ui_test IN ITEMS
-            native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
+            native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
             native_renderer_failure native_renderer_copy
             source_compress_dialog shell_menu_window shell_update_window
             compression compression_advanced compression_path compression_preferences compression_resources language_ui

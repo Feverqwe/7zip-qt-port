@@ -185,7 +185,8 @@ void MainWindow::refreshActions() {
         refreshBookmarks();
         if (commands_)
             commands_->RefreshActions();
-        if (commands_ && !scanningDisk_ && !scanningArchive_)
+        if (commands_ && !scanningDisk_ && !scanningArchive_ &&
+            app_.GetFocusedPanel().ShouldProcessNotifications())
             refreshPanelStatus();
         for (unsigned index = 0; index < kNumPanelsMax; ++index) {
             const auto &ui = panelUi_[index];

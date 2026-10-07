@@ -94,17 +94,19 @@ void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &orig
         return;
     }
     const HRESULT result = app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
-    if (result != S_OK && result != E_ABORT)
-        QMessageBox::warning(
-            this, "Sevenzip Desktop",
-            QtLocalText("Could not rename the item.", "Не удалось переименовать объект."));
     const auto selection = app_.GetFocusedPanel().TakeRefreshSelection();
     if (!selection) {
         // The source validation return rejects the edit without reloading.
+        if (result != S_OK && result != E_ABORT)
+            QMessageBox::warning(
+                this, "Sevenzip Desktop",
+                QtLocalText("Could not rename the item.", "Не удалось переименовать объект."));
         rejectLabelEdit(app_.GetFocusedPanel(), *table_, sourceIndex);
         refreshActions();
         return;
     }
+    // The source worker owns operation errors. Its posted reload ignores the
+    // publication result and must not add a second rename diagnostic.
     if (renderBoundFolder() == S_OK)
         restoreListSelection(*selection);
 }

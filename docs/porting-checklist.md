@@ -306,6 +306,20 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15,2026-10-07: native F2 Rename сохраняет единственного владельца worker
+ошибок — исходный progress dialog. Лишнее Qt-сообщение поймано actual RED2;
+ранняя validation и unconditional ignored-result publication сохранены.
+Actual native proxy/status SIGSEGV и deterministic timer/guard RED исправлены:
+Qt periodic traversal/status reads учитывают исходные notification/status guards.
+Нативная матрица2/301 покрывает запись/ошибку/реальную отмену, publication
+HRESULT, Ctrl+R и повторный F2 с marks/provider/peer/bytes/guards.
+Mac final unsandboxed full296/296PASS1395.53s,6512QtPASS/0fail/
+15Windows-onlySKIP. Обе native матрицы195QtPASS/0fail/0skip каждая;
+проверены2048 fresh normal/compact JSON и8192 enabled/fully exposed controls,
+13 frozen inputs/хеши отчётов совпали после gate. Parent/P3-06 остаются active;
+native Drop/changed-parent, полная сверка тел и platform/rendered приёмка открыты.
+[Scope/evidence](upstream-port-audit.md#p3-0515--native-rename-publication-and-error-ownership-2026-10-07).
+
 P3-05.15, 2026-10-07: source OnCreate владеет initial/late panel publication;
 reload service устанавливается вместе с контролами, constructor/toggle render
 удалены.256 creation scenarios FS/transport/native ZIP/7z,2/301 rows,

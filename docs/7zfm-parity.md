@@ -1,5 +1,20 @@
 # Сверка с Windows 7zFM
 
+### Native Rename error ownership (P3-05.15, 2026-10-07)
+
+Native F2 Rename now keeps the source progress dialog as the sole operation-error
+owner; Qt no longer adds a generic second warning after the worker. Early invalid
+input still rejects the editor with its validation message. Original new/old
+focus, saved marks and unconditional posted reload after success/error/Cancel
+are preserved. Reload publication errors remain ignored; explicit Ctrl+R recovers
+the same provider. Real native writer retry, archive/peer bytes and guard release
+are covered at2/301 rows in both panes/languages/views/selection modes. Normal/
+compact reports establish control geometry only; native Windows/Linux and rendered
+Windows reference acceptance remain open.
+Qt's periodic two-panel traversal now honors source notification/status guards
+before activation and status reads, preserving native WM_TIMER's guarded access
+during archive proxy reopen. This fixes an actual native Rename crash.
+
 ### Native external editor update (P3-05.15, 2026-10-07)
 
 The native editor-completion consumer preserves original OnOpenItemChanged's
