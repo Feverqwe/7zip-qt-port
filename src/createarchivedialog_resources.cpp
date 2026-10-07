@@ -85,7 +85,8 @@ bool CreateArchiveDialog::checkMemoryUsage() {
         solidBlock_->currentData().toUInt(), decompressMem);
     UString message;
     if (!CCompressDialog::OnOK(memUsage, system_, options.MemUsage, message)) {
-        QMessageBox::warning(this, windowTitle(), QString::fromWCharArray(message.Ptr()));
+        QMessageBox::critical(this, QStringLiteral("7-Zip"),
+                              QString::fromWCharArray(message.Ptr()));
         return false;
     }
     return true;

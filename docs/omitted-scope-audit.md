@@ -766,3 +766,23 @@ are covered by the [consumer audit](upstream-port-audit.md#p3-05--source-gui-pat
 its remaining methods and BenchmarkDialog are not accepted by this record.
 Hash runtime uses hash_results/native_hash_workflow; source review and current
 Qt geometry do not establish native desktop input or rendered Windows parity.
+
+### GUI Create validation transaction, 2026-10-07
+
+Pinned source https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: CompressDialog.cpp::OnOK and
+OnButtonSetArchive, Explorer/MyMessages.cpp/.h, language/resource dependencies
+and current Qt Create/encryption/memory/volume/backend callers reviewed.
+Password checks include disabled controls; memory uses the original fallback
+limit; SaveOptionsInMem precedes path/volume checks. Resource errors retain the
+original LangString/numeric-ID fallback and g_DisableUserQuestions in MyMessages,
+with QWidget/QMessageBox as the presentation adapter. Direct memory errors and
+small-volume questions remain unconditional. No archive algorithm, duplicate
+question flag, validation owner or persisted setting is introduced.
+
+The [validation audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07)
+owns actual RED, recovery, geometry and same-source platform evidence. Whole
+CompressDialog acceptance remains open: source profile-to-combo default/clamp
+selection still needs reconciliation, including non-exact stored values and
+large dictionary markers. BenchmarkDialog/common dependency disposition, native
+desktop/rendered reference and package acceptance remain required separately.

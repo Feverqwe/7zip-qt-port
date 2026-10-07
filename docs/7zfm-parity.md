@@ -1967,6 +1967,21 @@ P2-05/P2-06. Normal/compact main и panel status JSON, прямой двухпа
 UI consumer и полный `check.sh` 143/143 прошли на macOS arm64/Qt 6.11.2.
 Windows/Linux runtime и rendered Windows reference не проверены.
 
+## P3-05 — Create validation policy (2026-10-07)
+
+Восстановлены исходные порядок проверок CompressDialog::OnOK и политика
+MyMessages: ошибки пароля, пути/Browse и размера тома подавляются исходным
+g_DisableUserQuestions, сохраняя отказ операции. Ошибка памяти и вопрос о малом
+томе показываются независимо от этого флага. Ошибки используют Critical/OK и
+заголовок 7-Zip; Qt/macOS скрывает заголовок стандартного message box.
+Сохраняется исходная проверка несовпадающих паролей после отключения controls
+при смене формата. Неизвестная RAM использует исходный fallback-лимит.
+SaveOptionsInMem выполняется до проверки пути/томов, но INI и target публикуются
+только после всех проверок. EN/RU normal/compact geometry, отказ/восстановление
+и проверки платформ описаны в
+[audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
+Это не подтверждает rendered Windows parity или native desktop input.
+
 ## P3-05 — source CopyFrom into archived ADS (2026-10-07)
 
 Agent now retains the original CopyFrom enumeration branch for an archive's

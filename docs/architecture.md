@@ -1898,6 +1898,17 @@ restrictions; UI availability reflects those capabilities.
 
 ## Diagnostics
 
+Create confirmation follows source CompressDialog::OnOK phases: password checks
+(including stored text in disabled controls), memory refusal, SaveOptionsInMem,
+final path resolution, volume checks, then accepted settings/output publication.
+SaveOptionsInMem changes the dialog's transient profile only; refusal never writes
+the INI. Source MyMessages owns suppression for password/path/volume errors,
+with a narrow QWidget/resource presentation adapter. Direct source memory errors
+and small-volume Yes/No/Cancel remain unconditional. The shared source memory
+check applies its fallback limit even when RAM detection is unavailable; backend
+request validation uses that same owner. See the
+[validation audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
+
 `tests/layout_inspection.h/.cpp` inspects public widget geometry and writes
 JSON without editable field values. It is not linked into the application.
 See [layout contracts](ui-layout-contracts.md) and [testing](testing.md) for

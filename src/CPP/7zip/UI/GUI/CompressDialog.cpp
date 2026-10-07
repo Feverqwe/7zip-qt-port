@@ -17,6 +17,7 @@
 #include "Windows/FileName.h"
 #include "Windows/System.h"
 #include "qtcompressoptionsdialog.h"
+#include "qtguimessages.h"
 #include <QComboBox>
 #include <QDir>
 #include <QFileInfo>
@@ -246,7 +247,7 @@ void CCompressDialog::SaveOptionsInMem(NCompression::CInfo &registry, const QStr
 // by the existing control binding; Qt displays the returned source message.
 bool CCompressDialog::OnOK(UInt64 memUsage, const NCompressDialog::CSystemInfo &system,
                            const NCompression::CMemUse &memUse, UString &message) {
-    if (memUsage != (UInt64)(Int64)-1 && (memUse.IsDefined || system.RamSizeDefined)) {
+    if (memUsage != (UInt64)(Int64)-1) {
         const UInt64 limit = NCompressDialog::Get_MemUse_Bytes(memUse, system);
         if (memUsage > limit) {
             UString usage;
@@ -299,7 +300,7 @@ static const char *const k_DontSave_Exts = "xpi odt ods docx xlsx ";
 bool CCompressDialog::OnButtonSetArchive(QWidget *parent, const BrowseFileHandler &browse) {
     QString qtPath;
     if (!GetFinalPath_Smart(qtPath)) {
-        QMessageBox::warning(parent, QStringLiteral("7-Zip"), "Incorrect archive path");
+        ShowErrorMessageQt(parent, L"Incorrect archive path");
         return false;
     }
     UString path(qtPath.toStdWString().c_str());

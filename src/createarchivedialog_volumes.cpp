@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/FormatUtils.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "createarchivedialog.h"
+#include "qtguimessages.h"
 #include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createVolumeOptions(QFormLayout *form) {
@@ -25,7 +26,7 @@ bool CreateArchiveDialog::checkVolumeSizes() {
     NCompressDialog::CInfo info;
     const auto result = CCompressDialog::OnOK(volume_->currentText(), info);
     if (result == CCompressDialog::kIncorrectVolumeSize) {
-        QMessageBox::warning(this, "7-Zip", QtLangText(IDS_INCORRECT_VOLUME_SIZE));
+        ShowErrorMessageHwndResQt(this, IDS_INCORRECT_VOLUME_SIZE);
         volume_->setFocus();
         return false;
     }

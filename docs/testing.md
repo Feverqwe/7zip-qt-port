@@ -3228,3 +3228,16 @@ P3-01: `upstream_baseline` проверяет exact-byte отказ и old→new
 каждом CTest прогоне, не требуя checkout upstream. Полная byte-проверка
 `python3 scripts/upstream_baseline.py verify --upstream <snapshot>` запускается
 отдельно на snapshot точного commit; см. `docs/upstream-update.md`.
+
+`compression_error_policy` covers the source Create validation transaction with
+isolated temporary settings/files and the official codec module. Its 48 data
+rows (50 Qt results including setup/cleanup) cover EN/RU and allowed/suppressed
+questions: ZIP ASCII/AES length, mismatched passwords including disabled controls,
+invalid Browse/output path, invalid volume and path-before-volume precedence.
+All 32 refusal/recovery rows then create/list/test a real Unicode/spaced ZIP and
+check input bytes. Four UI memory refusals remain unconditional, four direct
+source memory checks cover known/unknown RAM and explicit/automatic limits, and
+eight small-volume No/Cancel rows remain unconditional. Refusal does not publish
+a target or persist settings. Standard message geometry produces 56 JSON reports
+per OS at requested 480×220/320×160, checking full labels and reachable buttons.
+See [source provenance and validation](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).

@@ -93,6 +93,7 @@ cleanup. It adds transition coverage to the separate operation regressions.
 | Window destruction joins workers and rejects obsolete callbacks | `worker_window_progress`, `large_list_window`, `app_lifecycle_window`, `binding_lifecycle`, `archive_preparation` |
 | Nested error/wrong-password rollback and read-only refusal | `nested_edit_chain::rejectedInnerPasswordRestoresParent/readOnlyLevelPreventsChainWrites`; `nested_update` |
 | Reports omit editable values, including shown passwords | `compression_encryption::methodsAndShowPassword` verifies shown and masked report dumps omit both inputs; `tests/layout_inspection.cpp` report schema; current report/log scan in P3-02 evidence |
+| Create source validation order, suppressible errors, unconditional memory/small-volume refusal and real writer recovery | `compression_error_policy` (EN/RU, disabled password controls, unknown-RAM fallback, unchanged settings/input and normal/compact message geometry); `source_archive_browse`, `compression_encryption`, `compression_limit`, `gui_error_policy` |
 
 Windows privileged link/security fixtures and ordinary-token COM registration
 have different requirements; native desktop tests require session1. Linux/macOS

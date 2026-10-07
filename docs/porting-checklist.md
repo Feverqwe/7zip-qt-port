@@ -585,6 +585,16 @@ BenchmarkDialog/common/native/rendered/package acceptance remains required;
 43/47 and P3-03/04/05/06 remain open.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-gui-path-and-history-consumers-2026-10-07).
 
+P3-05, 2026-10-07: source Create validation transaction/error policy reconciled:
+disabled-password checks, unknown-RAM fallback limit, SaveOptionsInMem/path/volume
+ordering and source suppressible versus unconditional messages. New50-result
+regression covers refusal, real writer recovery, EN/RU and normal/compact geometry.
+Mac full298/298; final12 direct consumers pass on Linux/Windows without skips,
+908 frozen inputs match actual guest trees and168 new message JSON pass geometry.
+Whole CompressDialog profile/default/clamp selection, BenchmarkDialog/common,
+native/rendered/package acceptance remain;43/47 and P3-03/04/05/06 remain open.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

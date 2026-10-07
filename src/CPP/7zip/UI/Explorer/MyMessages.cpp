@@ -2,6 +2,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // MyMessages.cpp
 
+#include "../FileManager/LangUtils.h"
 #include "qtguimessages.h"
 #include <QMessageBox>
 
@@ -12,6 +13,13 @@ void ShowErrorMessageQt(QWidget *parent, const wchar_t *message) {
         QMessageBox::critical(parent, QStringLiteral("7-Zip"), QString::fromWCharArray(message));
 }
 
+void ShowErrorMessageHwndResQt(QWidget *parent, UInt32 resID) {
+    UString s = LangString(resID);
+    if (s.IsEmpty())
+        s.Add_UInt32(resID);
+    ShowErrorMessageQt(parent, s);
+}
+
 #ifdef _WIN32
 #include "Common/MyWindows.h"
 
@@ -19,8 +27,6 @@ void ShowErrorMessageQt(QWidget *parent, const wchar_t *message) {
 
 #include "Windows/ErrorMsg.h"
 #include "Windows/ResourceString.h"
-
-#include "../FileManager/LangUtils.h"
 
 using namespace NWindows;
 

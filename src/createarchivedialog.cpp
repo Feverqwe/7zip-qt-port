@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivecodeccatalog.h"
+#include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QScreen>
@@ -221,7 +222,7 @@ QString CreateArchiveDialog::archivePath() const {
 }
 
 void CreateArchiveDialog::validateAndAccept() {
-    if (password_ && password_->isEnabled()) {
+    if (password_) {
         const auto error = CCompressDialog::CheckPassword(
             password_->text(), passwordConfirmation_->text(), showPassword_->isChecked(),
             format_->currentText(), GetEncryptionMethodSpec());
@@ -229,25 +230,25 @@ void CreateArchiveDialog::validateAndAccept() {
             const UInt32 id = error == CCompressDialog::kPasswordUseAscii  ? IDS_PASSWORD_USE_ASCII
                               : error == CCompressDialog::kPasswordTooLong ? IDS_PASSWORD_TOO_LONG
                                                                            : IDS_PASSWORD_NOT_MATCH;
-            QMessageBox::warning(this, windowTitle(), QtLangText(id));
+            ShowErrorMessageHwndResQt(this, id);
             return;
         }
     }
     if (!checkMemoryUsage())
         return;
-    if (!checkVolumeSizes())
-        return;
+    SaveOptionsInMem();
     const QString resolved = archivePath();
     if (resolved.isEmpty()) {
         // Original OnOK validates GetFinalPath_Smart only. Source scanning and
         // UpdateArchive own input errors and CreateComplexDir for new parents.
-        QMessageBox::warning(this, QStringLiteral("7-Zip"), "Incorrect archive path");
+        ShowErrorMessageQt(this, L"Incorrect archive path");
         return;
     }
+    if (!checkVolumeSizes())
+        return;
     // Existing outputs are opened/validated by source UpdateArchive after OK,
     // just as for the original form. The dialog must not reject update intent.
     target_ = resolved;
-    SaveOptionsInMem();
     CCompressDialog path;
     path.m_ArchivePath = target_;
     path.Format = format_->currentText();

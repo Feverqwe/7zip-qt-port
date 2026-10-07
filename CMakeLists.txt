@@ -1300,6 +1300,17 @@ if(BUILD_TESTING)
     add_test(NAME compression COMMAND compression_tests -silent)
     get_target_property(compression_order_sources compression_tests SOURCES)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
+    qt_add_executable(compression_error_policy_tests tests/compression_error_policy_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
+    target_include_directories(compression_error_policy_tests PRIVATE src tests)
+    target_link_libraries(compression_error_policy_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(compression_error_policy_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME compression_error_policy COMMAND compression_error_policy_tests -silent)
+    set_tests_properties(compression_error_policy PROPERTIES TIMEOUT 60
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(dialog_path_rules_tests tests/dialog_path_rules_tests.cpp
         tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(dialog_path_rules_tests PRIVATE src tests)
@@ -3097,7 +3108,7 @@ if(BUILD_TESTING AND WIN32)
             native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
             native_renderer_failure native_renderer_copy
             source_compress_dialog source_extract_advanced shell_archive_services shell_menu_window shell_update_window
-            compression compression_advanced compression_path dialog_path_rules compression_preferences compression_resources language_ui
+            compression compression_advanced compression_path dialog_path_rules compression_error_policy compression_preferences compression_resources language_ui
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window

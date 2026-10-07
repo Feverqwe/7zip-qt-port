@@ -1777,3 +1777,13 @@ existing icon. Image decoding tests do not verify Windows title-bar rendering.
 When extending a view, update its specification and add the relevant geometric
 relationship or conditional state to its focused test. Add contracts for other
 views as they are changed rather than rewriting all UI tests at once.
+
+Create validation messages retain the original native call policy: password,
+Browse/path and invalid-volume errors use MyMessages' suppressible Critical/OK
+box with the 7-Zip caption; memory refusal uses unconditional Critical/OK, and
+the small-volume question uses unconditional Yes/No/Cancel. Qt/macOS omits the
+message-box caption. `compression_error_policy` checks EN/RU at requested
+480×220/320×160 with Qt auto-fit, full label text and reachable buttons. These
+standard platform boxes have no separate CompressDialog.rc control group.
+Their JSON is geometry evidence; rendered original Windows appearance and native
+desktop input remain separate acceptance requirements.

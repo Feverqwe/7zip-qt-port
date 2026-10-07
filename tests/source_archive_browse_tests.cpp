@@ -68,7 +68,8 @@ class SourceArchiveBrowseTests final : public QObject {
         }));
         QVERIFY(shown);
         QCOMPARE(initialFilter, 0);
-        QCOMPARE(initialPath, directory_.filePath(QStringLiteral("данные 空.7z")));
+        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(initialPath)),
+                 directory_.filePath(QStringLiteral("данные 空.7z")));
         QCOMPARE(count, 5u);
         QCOMPARE(zipDescription, QString("zip (zip z01 zipx jar epub ipa apk appx)"));
         for (const QString &mask : {"*.docx", "*.xlsx", "*.odt", "*.xpi"})

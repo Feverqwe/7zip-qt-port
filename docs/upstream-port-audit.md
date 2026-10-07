@@ -5810,7 +5810,9 @@ projection into Console switches remain integration code: original OnOK reads
 Win32 controls and does not validate arbitrary externally supplied DTO values.
 The former backend memory refusal now calls the source `CCompressDialog::OnOK`
 already accepted in P2-11.9; language lookup, required/RAM/limit message and the
-unknown-RAM/unspecified-limit guard have one implementation. Original OnOK's
+then-existing unknown-RAM/unspecified-limit guard had one implementation. The
+[source validation reconciliation](#p3-05--source-create-validation-error-policy-2026-10-07)
+later removes that divergent guard and restores the original fallback limit. Original OnOK's
 body/callers/types were reviewed again at the registry's pinned full revision.
 Creation moves to the existing creation/lifecycle unit; all1186 functional tokens
 of its body, including literals, match after formatting. Compression properties
@@ -6503,8 +6505,10 @@ are preserved; original unused DictionaryChain branches remain omitted.
 
 The original OnOK memory refusal is an overload returning its source message
 instead of calling a Win32 message box. Existing native calculations/CMemUse/system
-fields stay authoritative. The previous Qt adaptation for unknown RAM with no
-explicit memory limit is retained; Win32 GetItemText fallback remains replaced by
+fields stay authoritative. This iteration retained the Qt adaptation for unknown RAM
+with no explicit memory limit; it is superseded by the
+[source validation reconciliation](#p3-05--source-create-validation-error-policy-2026-10-07).
+Win32 GetItemText fallback remains replaced by
 the existing resource-language lookup. Qt presents the unchanged error text.
 No DTO field, archive writer, format algorithm or layout is added. Borrowed paths,
 notices and source baseline remain intact; these newly adapted source bodies are
@@ -13813,8 +13817,9 @@ GetDict2 адаптирует исходное переключение Spec/Aut
 показаны процессные/аппаратные CPU и оценки сжатия/распаковки по порядку
 CompressDialog.rc. Backend получает тот же набор через порт, проверяет
 явные потоки, применяет условие memUsage>limit из OnOK перед запуском
-и сохраняет -mmt только для явного выбора. При неизвестной RAM отказ
-не применяется (адаптация недоступного системного значения); Auto по
+и сохраняет -mmt только для явного выбора. Тогда при неизвестной RAM отказ
+не применялся; исходный fallback-лимит восстановлен при
+[сверке Create validation](#p3-05--source-create-validation-error-policy-2026-10-07). Auto по
 памяти отключён, как в исходном SetNumThreads2. Пользовательский RAM
 selector, Registry, ZSTD и UI XZ остаются долгом. Форматирование — clang-format.
 
@@ -15750,3 +15755,62 @@ wrapper is archived in ignored evidence and removed before commit;906 remaining
 inputs are unchanged. Eleven slow suites were excluded. Native desktop input,
 rendered Windows reference, installed/CLI/package checks, remaining source bodies
 and final parent acceptance remain open.
+
+## P3-05 — source Create validation error policy (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Original CompressDialog.cpp::OnOK,
+OnButtonSetArchive and Explorer/MyMessages.cpp/.h bodies, callers, resource
+IDs/LangUtils, CMemUse/system fallback and current Create/backend consumers
+were inspected before changes. Original notices, module paths and language
+remain. This is a bounded validation transaction; whole CompressDialog profile
+selection, BenchmarkDialog/common/native/package acceptance remains open.
+
+The Qt Create adapter now preserves password checks even when a format change
+disables controls, then memory refusal, SaveOptionsInMem, final path and volume
+validation. Only after these phases does it publish target/persist settings.
+SaveOptionsInMem still mutates transient dialog profiles before a path/volume
+refusal, as upstream does. Resource errors use the original LangString and
+numeric-ID fallback through ShowErrorMessageHwndResQt in the existing MyMessages
+owner; plain Browse/path errors use its existing Qt presentation. Both retain
+g_DisableUserQuestions, source Critical/OK/7-Zip and refusal regardless of
+suppression. Direct memory failure and the small-volume Yes/No/Cancel question
+remain unconditional. The shared source memory check again compares every
+defined usage with Get_MemUse_Bytes, including unknown-RAM fallback; the former
+extra known-RAM/explicit-limit condition had no source counterpart. Backend
+validation reuses this same source check. No archive algorithm or second policy
+owner is added. Qt adapts widget/resource parenting, focus and message geometry;
+macOS omits standard box captions.
+
+Actual old-product RED retained 33 failures/13 passes before source corrections;
+an additional disabled-password regression then fails all four EN/RU × suppression
+rows before restoring that source check (46 passes/4 failures). The new suite has
+48 data rows plus setup/cleanup: 32 refusal/recovery cases, four UI memory refusals,
+four known/unknown-RAM × explicit/automatic-limit source cases and eight small
+volume No/Cancel cases. Recovery creates/lists/tests a real Unicode/spaced ZIP
+through the official engine, preserving input bytes. Refusal leaves target,
+settings and output unchanged. A first fixture incorrectly called Test before
+List; corrected to the public backend workflow, with the failed fixture log
+retained. This was not an archive implementation failure.
+
+Validation: focused five consumers pass5/5 in8.45s. Unsandboxed macOS arm64
+check.sh passes formatting/all-target build and298/298 CTest in261.04s. The
+first Windows focused run has only seven source_archive_browse assertions failing
+because the earlier source path restoration returns native separators while the
+fixture expected slash-only text. Compare normalized equivalent paths; no product
+path workaround. The localized macOS browse rerun passes1/1 in0.39s. Final same
+source macOS rerun passes12/12 in12.12s; Linux/Windows snapshots build and pass
+all12 direct consumers, with
+215/209 Qt passes respectively, zero failures/skips; compression_error_policy
+has50 Qt passes on each guest. Each OS's56 new current-build message reports
+passes full label/button and text-fit checks at normal/compact requested sizes.
+Qt auto-fit may enlarge the requested box for translated/multiline content.
+
+All908 frozen code/test/build inputs match local files, source.tar and both
+actual guest trees at snapshot20261007T191535Z-105dfa2f, parent5105815, SHA-256
+`290d2554f64b0ebb795072bdd2caba3ee466e2dea9dc95a127847c3b52696786`.
+Baseline verification passes408 exact/196 adapted/3 local paths. Temporary
+task wrapper is archived/removed before commit;907 remaining inputs are unchanged.
+Eleven slow suites were excluded. Native desktop input, rendered original Windows
+reference, installed/CLI/package acceptance and remaining source modules remain
+required; this bounded scenario does not close P3 parents.
