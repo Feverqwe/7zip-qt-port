@@ -236,13 +236,15 @@ class CompressionEncryptionTests final : public QObject {
                 dialog.resize(size);
                 dialog.findChild<QCheckBox *>("archiveShowPassword")->setChecked(shown);
                 dialog.show();
+                QApplication::processEvents();
                 auto *group = dialog.findChild<QGroupBox *>("archiveEncryptionGroup");
                 dialog.findChild<QScrollArea *>()->ensureWidgetVisible(group);
                 QApplication::processEvents();
                 auto *method = dialog.findChild<QComboBox *>("archiveEncryption");
                 auto *headers = dialog.findChild<QCheckBox *>("archiveEncryptHeaders");
                 auto *password = dialog.findChild<QLineEdit *>("archivePassword");
-                QVERIFY(UiInspection::fullyVisible(*group, dialog));
+                QVERIFY2(UiInspection::fullyVisible(*group, dialog),
+                         qPrintable(UiInspection::dump(dialog)));
                 QVERIFY(UiInspection::separate(*password, *method, dialog));
                 QVERIFY(UiInspection::separate(*method, *headers, dialog));
                 QVERIFY(UiInspection::writeReport(

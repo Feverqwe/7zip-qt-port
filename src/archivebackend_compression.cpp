@@ -41,12 +41,12 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
                                                         : methods.isEmpty() ? QString()
                                                                             : methods.front())
                                                      : requestedMethod;
-    const auto methodID =
-        options.Level == 0 ? NCompressDialog::kCopy : NCompressDialog::GetMethodID(method, suffix);
+    const int methodID =
+        options.Level == 0 && suffix != "tar" ? -1 : NCompressDialog::GetMethodID(method, suffix);
     const auto dictionary = NCompressDialog::SetDictionary2(methodID, UInt32(options.Level));
-    const UInt64 dict = options.Dict64 != UInt64(-1) ? options.Dict64
-                        : dictionary.AutoDict        ? UInt64(dictionary.AutoDict)
-                                                     : UInt64(-1);
+    const UInt64 dict = options.Dict64 != UInt64(-1)        ? options.Dict64
+                        : dictionary.AutoDict == UInt32(-1) ? UInt64(-1)
+                                                            : UInt64(dictionary.AutoDict);
     const auto system = NCompressDialog::GetSystemInfo();
     UInt32 blockSizeLog = UInt32(-1);
     if (options.SolidIsSpecified) {

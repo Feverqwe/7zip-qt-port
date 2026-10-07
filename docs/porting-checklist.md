@@ -606,6 +606,19 @@ Copy/unknown-method/header-service reconciliation, Benchmark/common/native/
 rendered/package acceptance remains;43/47 and P3-03/04/05/06 remain open.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-compression-profile-selection-2026-10-07).
 
+P3-05,2026-10-07: source numeric method/control states reconciled for Store,
+Copy, unknown/external methods, TAR and ordinary compression. Source empty/Auto
+lists, dictionary sentinel/zero, memory visibility and Store thread policy reach
+Qt controls and backend validation. Actual RED15 failures; real 7z/ZIP Store
+Create/list/test/extract, refusal, Cancel and unchanged bytes/settings pass.
+Mac full300/300; final Linux/Windows15 direct consumers each262 Qt passes without
+failures/skips. All910 frozen inputs match local/archive/actual guests;84 new
+EN/RU normal/compact JSON pass geometry. Existing Windows encryption geometry
+fixture now processes pending layout before scrolling, retaining all assertions.
+Whole-module final reconciliation, Benchmark/common/native/rendered/package
+acceptance remains;43/47 and P3-03/04/05/06 remain open.
+[Scope/evidence](upstream-port-audit.md#p3-05--compression-method-and-control-states-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

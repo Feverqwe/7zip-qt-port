@@ -1990,6 +1990,20 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — compression method/control states (2026-10-07)
+
+The Qt Create dialog now retains original numeric method IDs for calculations.
+Store leaves dictionary/order/solid empty while retaining original thread choices;
+TAR GNU/POSIX leaves numeric/thread lists empty and hides compression/decompression
+memory rows. Unsupported external methods show unknown memory instead of Copy's
+zero dictionary. Copy itself has one zero dictionary item without Auto. Single
+and empty controls retain original enabled rules, and switching back to 7z restores
+the controls. QWidget memory-row containers adapt source joint visibility without
+introducing another resource group. Original source bodies, header helpers and
+resources are the structural reference; Qt normal/compact JSON does not establish
+rendered Windows pixel parity or native desktop input. See the
+[source audit](upstream-port-audit.md#p3-05--compression-method-and-control-states-2026-10-07).
+
 ## P3-05 — source CopyFrom into archived ADS (2026-10-07)
 
 Agent now retains the original CopyFrom enumeration branch for an archive's

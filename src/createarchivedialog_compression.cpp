@@ -43,28 +43,33 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     memoryLayout->setContentsMargins(0, 0, 0, 0);
     memUse_ = new QComboBox(memoryRow);
     memUse_->setObjectName("compressionMemoryLimit");
-    registryFormat_ = format_->currentText();
-    SetMemUseCombo();
     memoryLayout->addWidget(memoryUsage_);
     memoryLayout->addWidget(memUse_, 1);
     memoryRow->setFocusProxy(memUse_);
     // IDT_COMPRESS_MEMORY is above the usage/limit row in CompressDialog.rc.
     // Keep all three source values visible rather than hiding limit/RAM in a tooltip.
-    auto *memoryForm = new QFormLayout;
+    auto *memoryGroup = new QWidget(compression);
+    memoryGroup->setObjectName("compressionMemoryGroup");
+    auto *memoryForm = new QFormLayout(memoryGroup);
+    memoryForm->setContentsMargins(0, 0, 0, 0);
     memoryForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
     memoryForm->addRow("Память для сжатия:", memoryRow);
-    compressionForm->addRow(memoryForm);
+    compressionForm->addRow(memoryGroup);
     decompressionMemory_ = new QLabel(compression);
     decompressionMemory_->setObjectName("compressionDecompressionMemory");
     decompressionMemory_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     // IDT_COMPRESS_MEMORY_DE spans the column independently of g0xs/g1xs.
     // Its caption must not widen the labels of the preceding combo rows.
-    auto *decompressionRow = new QHBoxLayout;
+    auto *decompressionGroup = new QWidget(compression);
+    decompressionGroup->setObjectName("compressionDecompressionGroup");
+    auto *decompressionRow = new QHBoxLayout(decompressionGroup);
+    decompressionRow->setContentsMargins(0, 0, 0, 0);
     auto *decompressionLabel = new QLabel(compression);
     decompressionLabel->setObjectName("compressionDecompressionLabel");
     decompressionRow->addWidget(decompressionLabel);
     decompressionRow->addWidget(decompressionMemory_, 1);
-    compressionForm->addRow(decompressionRow);
+    compressionForm->addRow(decompressionGroup);
+    registryFormat_ = format_->currentText();
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         SaveOptionsInMem();
         registryFormat_ = format_->currentText();
@@ -130,43 +135,40 @@ void CreateArchiveDialog::SetLevel2() {
 }
 
 void CreateArchiveDialog::SetOrder2(UInt32 defaultOrder) {
-    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto options =
         NCompressDialog::SetOrder2(method, level_->currentData().toUInt(), defaultOrder);
     wordSize_->clear();
-    wordSize_->addItem(NCompressDialog::Modify_Auto(options.Values.isEmpty()
-                                                        ? QString()
-                                                        : QString::number(options.AutoOrder)),
-                       0);
+    if (!options.Values.isEmpty())
+        wordSize_->addItem(NCompressDialog::Modify_Auto(QString::number(options.AutoOrder)), 0);
     for (int order : options.Values)
         wordSize_->addItem(QString::number(order), order);
     wordSize_->setCurrentIndex(options.Selected);
 }
 
 void CreateArchiveDialog::SetDictionary2(UInt32 defaultDict) {
-    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto options =
         NCompressDialog::SetDictionary2(method, level_->currentData().toUInt(), defaultDict);
     dictionary_->clear();
-    dictionary_->addItem(
-        NCompressDialog::Modify_Auto(
-            options.AutoDict == 0 ? QString() : NCompressDialog::Combo_AddDict2(options.AutoDict)),
-        QVariant::fromValue(quint64(0)));
+    if (options.HasAuto)
+        dictionary_->addItem(
+            NCompressDialog::Modify_Auto(NCompressDialog::Combo_AddDict2(options.AutoDict)),
+            QVariant::fromValue(quint64(0)));
     for (quint64 size : options.Values)
         dictionary_->addItem(NCompressDialog::Combo_AddDict2(size), QVariant::fromValue(size));
     dictionary_->setCurrentIndex(options.Selected);
 }
 
 void CreateArchiveDialog::SetSolidBlockSize2(UInt32 defaultBlockSize) {
-    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto options =
         NCompressDialog::SetSolidBlockSize2(format_->currentText(), level_->currentData().toUInt(),
                                             method, GetDict2(), defaultBlockSize);
     solidBlock_->clear();
-    solidBlock_->addItem(
-        NCompressDialog::Modify_Auto(
-            options.Values.isEmpty() ? QString() : NCompressDialog::Add_Size(options.AutoSolid)),
-        UInt32(-1));
+    if (!options.Values.isEmpty())
+        solidBlock_->addItem(
+            NCompressDialog::Modify_Auto(NCompressDialog::Add_Size(options.AutoSolid)), UInt32(-1));
     for (UInt32 log : options.Values) {
         const QString label = log == 0    ? QtLangText(IDS_COMPRESS_NON_SOLID)
                               : log == 64 ? QtLangText(IDS_COMPRESS_SOLID)

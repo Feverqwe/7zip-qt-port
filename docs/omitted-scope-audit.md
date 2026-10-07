@@ -807,3 +807,20 @@ Commented ZSTD/dictionary-chain code remains inactive in this source baseline;
 Windows rectangle/label resizing remains the existing Qt form-layout adaptation.
 The profile audit owns RED/runtime/geometry evidence. This disposition covers
 the saved-value branches, without accepting unreviewed whole-module behavior.
+
+### GUI compression method/control states, 2026-10-07
+
+At the same pinned full revision, original SetDictionary2/SetOrder2/
+SetSolidBlockSize2/SetNumThreads2, GetDict2/GetDictSpec, GetMethodID/GetMethodSpec,
+FormatChanged/EnableMultiCombo, SetMemUseCombo and memory bodies, callers, types
+and desktop/CE resources were reviewed. Numeric -1/external IDs now reach source
+calculations directly. Copy keeps its single zero dictionary without Auto;
+unknown methods retain the all-ones unknown dictionary. Unsupported selectors
+remain empty and the MemUse format flag controls the complete memory rows.
+Store retains original no-method thread policy through backend validation.
+Source loops and algorithms remain authoritative; Qt adapts item insertion,
+enabled state and joint visibility. This supersedes the Copy/unknown/control
+omissions above. Whole-module final reconciliation, BenchmarkDialog/common
+dependencies and native/rendered/package acceptance remain required. The
+[method-state audit](upstream-port-audit.md#p3-05--compression-method-and-control-states-2026-10-07)
+owns regression, geometry and platform evidence.

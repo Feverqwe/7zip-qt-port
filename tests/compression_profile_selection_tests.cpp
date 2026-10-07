@@ -96,8 +96,13 @@ class CompressionProfileSelectionTests final : public QObject {
             QCOMPARE(options.Order, expectedOrder);
             QCOMPARE(options.NumThreads, UInt32(-1));
             QCOMPARE(dialog.findChild<QComboBox *>("compressionThreads")->currentIndex(), -1);
-            QCOMPARE(dialog.findChild<QComboBox *>("compressionSolidBlock")->currentData().toUInt(),
+            auto *solid = dialog.findChild<QComboBox *>("compressionSolidBlock");
+            QCOMPARE(solid->count() > 1 ? solid->currentData().toUInt() : UInt32(-1),
                      expectedBlock);
+            if (format == "zip") {
+                QCOMPARE(solid->count(), 0);
+                QCOMPARE(solid->currentIndex(), -1);
+            }
             if (restart == 0) {
                 dialog.show();
                 for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {

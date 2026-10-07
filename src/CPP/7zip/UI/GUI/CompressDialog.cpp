@@ -765,20 +765,21 @@ QStringList GetMethodNames(QStringView name, bool isSFX) {
     return methods;
 }
 
-EMethodID GetMethodID(QStringView name, QStringView format) {
+int GetMethodID(QStringView name, QStringView format) {
     const auto &fi = GetFormatInfo(format);
     for (unsigned i = 0; i < fi.NumMethods; i++)
         if (name == QLatin1StringView(kMethodsNames[fi.MethodIDs[i]]))
             return fi.MethodIDs[i];
-    return kCopy;
+    return -1;
 }
 // LZMA/LZMA2 numeric branch from CCompressDialog::SetDictionary2 (0766b73).
 // Registry and Win32 insertion are handled by the Qt adapter.
-CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level, UInt32 defaultDict) {
+CDictionaryOptions SetDictionary2(int methodID, UInt32 level, UInt32 defaultDict) {
     CDictionaryOptions options;
     switch (methodID) {
     case kLZMA:
     case kLZMA2: {
+        options.HasAuto = true;
         {
             options.AutoDict = level <= 4 ? (UInt32)1 << (level * 2 + 16)
                                : level <= sizeof(size_t) / 2 + 4
@@ -812,6 +813,7 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level, UInt32 defau
     }
 
     case kPPMd: {
+        options.HasAuto = true;
         options.AutoDict = (UInt32)1 << (level + 19);
 
         const UInt32 kPpmd_Default_4g = (UInt32)0 - ((UInt32)1 << 10);
@@ -839,6 +841,7 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level, UInt32 defau
     }
 
     case kPPMdZip: {
+        options.HasAuto = true;
         options.AutoDict = (UInt32)1 << (level + 19);
 
         for (unsigned i = 20; i <= 28; i++) {
@@ -852,6 +855,7 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level, UInt32 defau
     }
 
     case kBZip2: {
+        options.HasAuto = true;
         {
             if (level >= 5)
                 options.AutoDict = (900 << 10);
@@ -873,12 +877,17 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level, UInt32 defau
 
     case kDeflate:
     case kDeflate64: {
+        options.HasAuto = true;
         const UInt32 dict = (methodID == kDeflate ? (UInt32)(1 << 15) : (UInt32)(1 << 16));
         options.AutoDict = dict;
         // EnableItem(IDC_COMPRESS_DICTIONARY, false);
         break;
     }
 
+    case kCopy:
+        options.AutoDict = 0;
+        options.Values.append(0);
+        break;
     default:
         break;
     }
@@ -906,7 +915,7 @@ QString Combo_AddDict2(quint64 sizeShow) {
 
 // LZMA, Deflate and PPMd branches copied from CCompressDialog::SetOrder2 (0766b73).
 // The caller replaces registry selection and ComboBox insertion with Qt data.
-COrderOptions SetOrder2(EMethodID methodID, UInt32 level, UInt32 defaultOrder) {
+COrderOptions SetOrder2(int methodID, UInt32 level, UInt32 defaultOrder) {
     COrderOptions options;
     switch (methodID) {
     case kLZMA:
@@ -989,7 +998,7 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level, UInt32 defaultOrder) {
     }
     return options;
 }
-bool GetOrderMode(EMethodID methodID) {
+bool GetOrderMode(int methodID) {
     switch (methodID) {
     case kPPMd:
     case kPPMdZip:
@@ -1042,7 +1051,7 @@ QString Add_Size(UInt64 val) {
     return QString::fromLatin1(s.Ptr());
 }
 
-CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId, UInt64 dict,
+CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, int methodId, UInt64 dict,
                                  UInt32 defaultBlockSize) {
     CSolidOptions options;
     const CFormatInfo &fi = GetFormatInfo(format);
@@ -1114,7 +1123,7 @@ void OnOK(UInt32 solidLogSize, CInfo &Info) {
         Info.SolidBlockSize =
             (solidLogSize >= 64) ? (UInt64)(Int64)-1 : ((UInt64)1 << solidLogSize);
 }
-UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, EMethodID methodId, UInt32 level,
+UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, int methodId, UInt32 level,
                                              UInt32 numThreads, UInt64 dict64, UInt32 blockSizeLog,
                                              UInt64 &decompressMemory) {
     decompressMemory = (UInt64)(Int64)-1;
@@ -1310,13 +1319,14 @@ CSystemInfo GetSystemInfo() {
     return info;
 }
 
-CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 level, UInt64 dict64,
+CThreadOptions SetNumThreads2(QStringView format, int methodID, UInt32 level, UInt64 dict64,
                               UInt32 blockSizeLog, const CSystemInfo &system,
                               const NCompression::CMemUse &memUse) {
     CThreadOptions options;
     const CFormatInfo &fi = GetFormatInfo(format);
     if (!fi.MultiThread_())
         return options;
+    options.HasAuto = true;
     const UInt32 numCPUs = system.NumCPUs;
     const UInt32 numHardwareThreads = system.NumHardwareThreads;
     const bool isZip = format.compare(QLatin1StringView("zip"), Qt::CaseInsensitive) == 0;

@@ -312,8 +312,7 @@ CompressionOptions CreateArchiveDialog::compressionOptions() const {
             options.EncryptionMethod = GetEncryptionMethodSpec();
         options.Level = level_->currentData().toInt();
         options.Method = archiveNameState_.GetMethodSpec();
-        options.OrderMode = NCompressDialog::GetOrderMode(
-            NCompressDialog::GetMethodID(methodName(), options.format));
+        options.OrderMode = NCompressDialog::GetOrderMode(archiveNameState_.GetMethodID());
         const UInt32 threads = threads_->currentData().toUInt();
         options.NumThreads = threads ? threads : UInt32(-1);
         options.MemUsage = Get_MemUse_Spec();

@@ -1786,6 +1786,19 @@ When extending a view, update its specification and add the relevant geometric
 relationship or conditional state to its focused test. Add contracts for other
 views as they are changed rather than rewriting all UI tests at once.
 
+Create compression method states follow pinned CompressDialog.cpp/.h/.rc:
+Store has empty dictionary/order/solid selectors, with threads still available
+according to the original no-method policy. TAR GNU/POSIX has empty numeric and
+thread selectors and hides both memory rows. GZip has its single Auto dictionary
+and no threads/solid choices. An unrecognized external method retains empty
+dictionary/order and unknown memory values; it does not borrow Copy's zero.
+Empty selectors remain visible and disabled. Returning to ordinary 7z restores
+the choices and memory rows. The two memory QWidget wrappers are presentation
+containers, not additional resource groups. `compression_method_state` probes
+EN/RU at760×720/640×480, reaches each field by scrolling and writes28 JSON reports.
+These establish conditional visibility, row order, text fit and footer geometry;
+original rendered Windows appearance remains unverified.
+
 Create validation messages retain the original native call policy: password,
 Browse/path and invalid-volume errors use MyMessages' suppressible Critical/OK
 box with the 7-Zip caption; memory refusal uses unconditional Critical/OK, and

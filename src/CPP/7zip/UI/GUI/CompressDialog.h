@@ -73,12 +73,12 @@ struct CFormatInfo {
 };
 
 struct CDictionaryOptions {
-    UInt32 AutoDict = 0;
+    UInt32 AutoDict = UInt32(-1);
+    bool HasAuto = false;
     int Selected = 0;
     QList<quint64> Values;
 };
-CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level,
-                                  UInt32 defaultDict = UInt32(-1));
+CDictionaryOptions SetDictionary2(int methodID, UInt32 level, UInt32 defaultDict = UInt32(-1));
 QString Combo_AddDict2(quint64 sizeShow);
 
 struct COrderOptions {
@@ -86,9 +86,9 @@ struct COrderOptions {
     int Selected = 0;
     QList<int> Values;
 };
-EMethodID GetMethodID(QStringView name, QStringView format);
-bool GetOrderMode(EMethodID methodID);
-COrderOptions SetOrder2(EMethodID methodID, UInt32 level, UInt32 defaultOrder = UInt32(-1));
+int GetMethodID(QStringView name, QStringView format);
+bool GetOrderMode(int methodID);
+COrderOptions SetOrder2(int methodID, UInt32 level, UInt32 defaultOrder = UInt32(-1));
 struct CInfo {
     UString ArcPath;
     QString Password;
@@ -129,7 +129,7 @@ struct CSolidOptions {
     int Selected = 0;
     QList<UInt32> Values;
 };
-CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId, UInt64 dict,
+CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, int methodId, UInt64 dict,
                                  UInt32 defaultBlockSize = UInt32(-1));
 QString Add_Size(UInt64 val);
 void OnOK(UInt32 solidLogSize, CInfo &Info);
@@ -144,13 +144,14 @@ struct CSystemInfo {
 };
 struct CThreadOptions {
     UInt32 AutoNumThreads = 1;
+    bool HasAuto = false;
     QList<UInt32> Values;
 };
 CSystemInfo GetSystemInfo();
-CThreadOptions SetNumThreads2(QStringView format, EMethodID methodID, UInt32 level, UInt64 dict64,
+CThreadOptions SetNumThreads2(QStringView format, int methodID, UInt32 level, UInt64 dict64,
                               UInt32 blockSizeLog, const CSystemInfo &system,
                               const NCompression::CMemUse &memUse = {});
-UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, EMethodID methodId, UInt32 level,
+UInt64 GetMemoryUsage_Threads_Dict_DecompMem(QStringView format, int methodId, UInt32 level,
                                              UInt32 numThreads, UInt64 dict64, UInt32 blockSizeLog,
                                              UInt64 &decompressMemory);
 QString AddMemUsage(UInt64 v);

@@ -8,22 +8,22 @@ UInt64 CreateArchiveDialog::GetDict2() const {
     const UInt64 dict = dictionary_->currentData().toULongLong();
     if (dict != 0)
         return dict;
-    const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
-    return options.AutoDict ? UInt64(options.AutoDict) : UInt64(-1);
+    return options.AutoDict == UInt32(-1) ? UInt64(-1) : UInt64(options.AutoDict);
 }
 
 void CreateArchiveDialog::SetNumThreads2() {
     const UInt32 previous = threads_->currentData().toUInt();
-    const auto method = level_->currentData().toUInt() == 0
-                            ? NCompressDialog::kCopy
-                            : NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
     threads_->blockSignals(true);
     threads_->clear();
-    threads_->addItem(NCompressDialog::Modify_Auto(QString::number(options.AutoNumThreads)), 0u);
+    if (options.HasAuto)
+        threads_->addItem(NCompressDialog::Modify_Auto(QString::number(options.AutoNumThreads)),
+                          0u);
     for (UInt32 count : options.Values)
         threads_->addItem(QString::number(count), count);
     const int index = threads_->findData(previous);
@@ -38,9 +38,7 @@ void CreateArchiveDialog::SetNumThreads2() {
 }
 
 void CreateArchiveDialog::SetMemoryUsage() {
-    const auto method = level_->currentData().toUInt() == 0
-                            ? NCompressDialog::kCopy
-                            : NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
@@ -72,9 +70,7 @@ NCompression::CMemUse CreateArchiveDialog::Get_MemUse_Spec() const {
 
 bool CreateArchiveDialog::checkMemoryUsage() {
     const auto options = compressionOptions();
-    const auto method = options.Level == 0
-                            ? NCompressDialog::kCopy
-                            : NCompressDialog::GetMethodID(methodName(), format_->currentText());
+    const int method = archiveNameState_.GetMethodID();
     const auto threads = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, UInt32(options.Level), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, options.MemUsage);

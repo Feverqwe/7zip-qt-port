@@ -15873,3 +15873,61 @@ predates the signature's whitespace-only correction; final evidence supersedes i
 Baseline verification passes408 exact/196 adapted/3 local paths. Temporary runner
 wrapper is archived/removed before commit;908 remaining frozen inputs are unchanged.
 Eleven slow suites were excluded; default/focused checks do not accept them.
+
+## P3-05 — compression method and control states (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Original CompressDialog.cpp/.h
+SetDictionary2/SetOrder2/SetSolidBlockSize2/SetNumThreads2, GetDict2/GetDictSpec,
+GetMethodID/GetMethodSpec, FormatChanged/EnableMultiCombo, SetMemUseCombo and
+memory bodies, callers, types and complete desktop/CE resources were inspected.
+The Qt adapter now forwards the source numeric method ID, including -1/external
+IDs, instead of remapping names to Copy. Calculator signatures use original int
+semantics. Dictionary snapshots distinguish unknown all-ones from valid Copy
+zero, and record whether Auto exists. Copy retains its single zero entry without
+Auto; unknown methods stay empty. Unsupported order/solid/thread lists stay
+empty and Qt enables controls by count. Source format MemUse hides the complete
+memory rows; two QWidget containers adapt joint visibility without adding a
+resource group. SaveOptionsInMem retains the all-ones solid spec for empty lists.
+Backend Store validation shares the original no-method/thread policy. Original
+loops, algorithms, paths, symbols, C++ language and notices remain; archive
+execution/property writing stays behind ArchiveBackend and the official engine.
+
+Actual old-product regression retains15 failures/5 passes. New suite has20 Qt
+results: two source classification cases,14 EN/RU control states and two real
+7z/ZIP Store workflows. It checks empty/Auto and enabled states, unknown/Store
+memory, TAR hidden rows, recovery to ordinary compression and Cancel with
+byte-identical settings. The unavailable external name is a UI fixture only.
+Real workflows accept explicit threads, create/list/test/extract Unicode/spaced
+input with exact bytes, refuse invalid threads and cancel without publishing
+output. An initial existing profile fixture expected an Auto QVariant for ZIP's
+solid selector: four failures exposed its reliance on the old invented item.
+It now asserts the source empty list/no selection and logical all-ones spec.
+Both failed logs remain. Final six focused consumers pass6/6 in2.38s.
+
+Unsandboxed macOS arm64 check.sh passes formatting/all-target build and300/300
+CTest in247.95s. Baseline verification passes408 exact/196 adapted/3 local paths.
+The new28 normal760×720/compact640×480 reports check ordered controls,
+conditional memory visibility, fitting static labels and visible footer; public
+tests separately scroll each numeric field into view. Native desktop input,
+rendered original Windows reference, installed/CLI/package acceptance and
+whole-module final reconciliation remain required. This bounded scenario does
+not close P3 parents. Eleven slow suites remain excluded.
+
+The first Windows run passes14/15, with only compression_encryption's existing
+geometry fixture failing: it scrolls before the deferred post-show layout is
+processed. Processing events before scrolling retains every full-visibility and
+separation assertion and adds a failure dump. Localized macOS rebuild/rerun passes
+1/1 in0.92s after the full gate; no production change follows that passing gate.
+Final Linux/Windows x64 snapshots build and pass15/15 direct consumers in15.15s/
+111.99s, each with262 Qt passes/0 failures/0 skips. All three OS's28 new JSON
+reports pass state/order/static-text/footer inspection. All910 frozen code/test/
+build inputs match local files, source.tar and both actual guest trees at snapshot
+20261007T201119Z-577e91b7, parent0baf158, SHA-256
+`00511666b3ad11941934cb37791b6f9d91fb4eb9634f1080a5c2c2200e143983`.
+The first snapshot20261007T200348Z-a11a6a0f and failed Windows log are retained;
+it is superseded for the localized fixture. The task wrapper is archived/removed
+before commit;909 remaining frozen inputs are unchanged. Full macOS LastTest has
+4643 Qt passes/0 failures/18 platform-specific skips. Evidence is retained under
+build/review/method-state; native desktop, rendered reference and packages remain
+separate required acceptance.

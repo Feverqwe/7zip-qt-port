@@ -1905,6 +1905,14 @@ without a second nearest-value calculation. MethodChanged passes stored values
 only when source IsMethodEqualTo matches, retaining source Auto sentinels and
 thresholds. Thread profiles retain source exact-match/no-selection behavior.
 
+The dialog forwards CCompressDialog's numeric method ID to these calculations,
+including -1 and external IDs. Source snapshots distinguish an unknown dictionary
+from Copy's valid zero and retain whether an Auto item exists. Empty source lists
+stay empty; Qt enables multi-choice controls by their item count. Memory rows use
+the format's source MemUse flag, with QWidget containers solely for joint
+visibility. Backend Store validation uses the same original no-method/thread
+policy; archive properties and execution remain behind ArchiveBackend.
+
 Create confirmation follows source CompressDialog::OnOK phases: password checks
 (including stored text in disabled controls), memory refusal, SaveOptionsInMem,
 final path resolution, volume checks, then accepted settings/output publication.

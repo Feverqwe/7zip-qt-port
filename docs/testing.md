@@ -3252,3 +3252,15 @@ Create/list/test/extract with exact Unicode/spaced input/output bytes. Including
 setup/cleanup, the suite has22 Qt results. Normal760×720/compact640×480 probes
 produce36 JSON reports, with dictionary/order/solid fully reachable by scrolling.
 Large dictionary cases only inspect/reject; they do not allocate those dictionaries.
+
+`compression_method_state` checks source Copy's zero dictionary, unknown-name
+classification and14 EN/RU dialog states: 7z/ZIP Store, TAR GNU/POSIX, GZip,
+LZMA2 and an unavailable external-name UI fixture. It verifies empty/Auto lists,
+enabled states, unknown/Store memory, TAR visibility and recovery to ordinary
+7z, with byte-identical settings after Cancel. Normal/compact probes produce28
+JSON reports. The external name is a control-state fixture, not a live encoder.
+Two real Store workflows accept explicit threads, create/list/test/extract 7z/ZIP
+with Unicode/spaced inputs, reject invalid threads and cancel creation without
+publishing output; original bytes remain exact. With setup/cleanup,20 Qt results.
+`compression_profile_selection` also asserts ZIP's empty solid selector and
+interprets its logical all-ones spec without relying on an empty QVariant's zero.

@@ -42,14 +42,23 @@ void CreateArchiveDialog::SaveOptionsInMem() {
     info.EncryptionMethod =
         encryption_ ? GetEncryptionMethodSpec() : Get_FormatOptions().EncryptionMethod;
     CCompressDialog::SaveOptionsInMem(m_RegistryInfo, registryFormat_, info,
-                                      solidBlock_->currentData().toUInt(),
+                                      solidBlock_->count() > 1 ? solidBlock_->currentData().toUInt()
+                                                               : UInt32(-1),
                                       memUse_->currentData().toString(), parameters_ != nullptr);
 }
 
 void CreateArchiveDialog::SetMemUseCombo() {
-    const QString spec = Get_FormatOptions().MemUse;
     memUse_->blockSignals(true);
     memUse_->clear();
+    const bool enable = NCompressDialog::GetFormatInfo(registryFormat_).MemUse_();
+    findChild<QWidget *>("compressionMemoryGroup")->setVisible(enable);
+    findChild<QWidget *>("compressionDecompressionGroup")->setVisible(enable);
+    memUse_->setEnabled(enable);
+    if (!enable) {
+        memUse_->blockSignals(false);
+        return;
+    }
+    const QString spec = Get_FormatOptions().MemUse;
     int selected;
     for (const auto &item : NCompressDialog::SetMemUseCombo(spec, &selected))
         memUse_->addItem(item.User, item.Spec);
@@ -73,12 +82,6 @@ void CreateArchiveDialog::FormatChanged() {
                                  [this] { MethodChanged(); });
 }
 
-QString CreateArchiveDialog::methodName() const {
-    UString estimatedName;
-    archiveNameState_.GetMethodSpec(estimatedName);
-    return QString::fromWCharArray(estimatedName.Ptr());
-}
-
 void CreateArchiveDialog::MethodChanged() {
     const QSignalBlocker dictBlock(dictionary_), orderBlock(wordSize_), solidBlock(solidBlock_),
         threadsBlock(threads_);
@@ -98,12 +101,11 @@ void CreateArchiveDialog::MethodChanged() {
         const int threads = threads_->findData(fo.NumThreads);
         threads_->setCurrentIndex(threads);
     }
-    const bool compressed = level_->currentData().toUInt() != 0;
     // Source SetMethod2 retains TAR's GNU/POSIX choice at its only level (0).
     method_->setEnabled(method_->count() > 1);
-    dictionary_->setEnabled(compressed && dictionary_->count() > 1);
-    wordSize_->setEnabled(compressed && wordSize_->count() > 1);
-    solidBlock_->setEnabled(compressed && NCompressDialog::GetFormatInfo(registryFormat_).Solid_());
+    dictionary_->setEnabled(dictionary_->count() > 1);
+    wordSize_->setEnabled(wordSize_->count() > 1);
+    solidBlock_->setEnabled(solidBlock_->count() > 1);
     SetMemoryUsage();
     updateSfxControls();
 }
