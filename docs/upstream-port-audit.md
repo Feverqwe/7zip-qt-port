@@ -15981,6 +15981,49 @@ memory text and footer; no rendered Windows/native desktop acceptance is claimed
 Eleven slow suites remain excluded. Fresh authenticated capacity/host-D checks
 passed; no cleanup, disk changes or upstream mutation occurred.
 
+## P3-05 — Options timestamp control lifecycle (2026-10-08)
+
+Source repository https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: GUI/CompressDialog.cpp/.h
+COptionsDialog, CompressOptionsDialog.rc/CompressDialogRes.h and
+Windows/Control/ComboBox.h/.cpp. Complete bodies, fields, resource structure,
+ArcInfo time flags/defaults and Create advanced/profile consumers were inspected.
+[Full owner disposition](omitted-scope-audit.md#coptionsdialog-complete-controllifecycle-disposition-2026-10-08)
+records copied algorithms, Qt services, dependencies and inactive branches.
+Original source paths, C++ language and notices remain; functional bodies stay
+in source CompressDialog.cpp and the Qt declaration is separated from Core DTOs.
+
+The native AddString does not select the first entry, and GetItemData returns
+CB_ERR when selection/index is absent. Qt's default QComboBox behavior selected
+the first precision and converted invalid data to0. The narrow control adapter
+now retains empty selection during insertion and returns the original all-ones
+error sentinel. Source SetPrec/GetPrecSpec/SetTimeMAC and timestamp algorithms
+remain unchanged. This preserves Auto when metadata omits its default precision.
+
+Actual original-production RED has7 failures/14 passes. The21-result focused
+suite covers eight EN/RU metadata/profile states, custom precision/default
+insertion, invalid/empty indices, selected-item preservation, OK/Cancel, key
+deletion, defined access time, Save/Load and real keyboard choice/reopening.
+Unusual typed handler masks are control fixtures, not claims of codec support.
+Local build and five direct suites pass5/5 in3.98s. Real timestamp/archive
+consumers remain in compression_advanced/archive_metadata_ui/source_metadata_storage.
+Evidence is retained under build/review/compression-timestamp. Unsandboxed
+macOS arm64/Qt6.12.0 formatting/all-target/default gate passes303/303 in250.36s,
+4698Qt pass/0fail/18 platform skips. Fresh Linux/Windows x64/Qt6.12.0 each build
+and pass8/8 direct consumers in4.04s/31.53s;105/115Qt pass,0 failures and10/0
+skips (Linux's Windows-only metadata cases). The new suite passes21Qt/0skip
+on each OS. All64 new JSON per OS pass source row order, precision reachability,
+label fitting and footer inspection at520×400/440×340.
+
+All1406 frozen code/build/runtime/resource inputs match local files, source.tar
+and both actual guest trees, snapshot `20261007T211242Z-3859bbb7`, SHA256
+`3bd79193455f29e35cc0f253f84b3ebd32a583a82b9a67332739e3603477f56f`.
+The disposable wrapper is archived/removed before commit. Authenticated
+host-D/guest capacity checks pass; no cleanup or disk changes. Eleven slow
+suites are excluded. Whole CCompressDialog, Common, native/rendered/package
+and final P3 acceptance remain required; these offscreen Qt runs do not prove
+original rendered Windows or physical desktop input.
+
 ## P3-05 — Source settings persistence (2026-10-07)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

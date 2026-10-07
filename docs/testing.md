@@ -3294,3 +3294,14 @@ cancellation without output. Cached-Auto difference/refusal cases require known
 RAM and at least four available CPUs and explicitly skip otherwise; the selected
 three-platform validation machines satisfy that capability. Normal/compact JSON
 and geometry assertions verify reachable thread/memory fields and fitting text.
+
+`compression_timestamp` checks COptionsDialog's source selection and precision
+lifecycle: empty/one/multiple capability masks, absent defaults, inserted default,
+explicit DOS, custom and unsupported precision, in EN/RU. It asserts the native
+ComboBox CB_ERR/no-automatic-selection service, OK versus Cancel, defined access
+time, sentinel key deletion, Save/Load and actual keyboard selection/reopening.
+Including setup/cleanup it has21 Qt results. Typed handler metadata provides
+deterministic unusual masks without adding an encoder. The64 normal/compact
+520×400/440×340 reports check precision reachability. `compression_advanced`,
+`archive_metadata_ui` and `source_metadata_storage` remain direct real-engine
+timestamp/metadata consumers; synthetic masks do not establish format support.

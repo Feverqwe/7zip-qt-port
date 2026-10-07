@@ -16,13 +16,24 @@
 
 void CQtCompressCombo::Attach(QWidget *widget) { view_ = static_cast<QComboBox *>(widget); }
 int CQtCompressCombo::GetCount() const { return view_->count(); }
-quint32 CQtCompressCombo::GetItemData_of_CurSel() const { return view_->currentData().toUInt(); }
-quint32 CQtCompressCombo::GetItemData(int index) const { return view_->itemData(index).toUInt(); }
+quint32 CQtCompressCombo::GetItemData_of_CurSel() const {
+    return GetItemData(view_->currentIndex());
+}
+quint32 CQtCompressCombo::GetItemData(int index) const {
+    // Native CB_GETITEMDATA returns CB_ERR for an absent/out-of-range item.
+    if (index < 0 || index >= view_->count())
+        return quint32(-1);
+    return view_->itemData(index).toUInt();
+}
 void CQtCompressCombo::SetItemText(int index, const UString &text) {
     view_->setItemText(index, QString::fromWCharArray(text));
 }
 int CQtCompressCombo::AddString_SetItemData(const UString &text, qintptr value) {
+    const bool hadSelection = view_->currentIndex() >= 0;
     view_->addItem(QString::fromWCharArray(text.Ptr()), quint32(value));
+    // Native AddString does not select the first item. SetPrec owns selection.
+    if (!hadSelection)
+        view_->setCurrentIndex(-1);
     return view_->count() - 1;
 }
 void CQtCompressCombo::ResetContent() { view_->clear(); }

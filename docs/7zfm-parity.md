@@ -1990,6 +1990,18 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — Options timestamp selection (2026-10-08)
+
+Options preserves the original ComboBox contract: adding precisions does not
+select one, and no selection yields CB_ERR/all-ones Auto. If a handler advertises
+Unix/DOS but omits its Windows default, opening and accepting Options retains
+Auto until the user explicitly chooses a value. Source capability/precision
+algorithms, profile publication and resource grouping remain unchanged. The
+Qt adapter now preserves that source behavior instead of selecting Unix itself.
+EN/RU normal/compact probes cover empty/default/custom/explicit states, OK/Cancel,
+persistence and keyboard selection. This is control/runtime acceptance; rendered
+original Windows and native desktop acceptance remain required.
+
 ## P3-05 — Compress event and memory phases (2026-10-08)
 
 Solid changes now preserve the original thread selection and Auto text, including

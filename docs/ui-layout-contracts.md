@@ -982,7 +982,7 @@ of archive rows, preserve-access checkbox, then OK/Cancel/Help. Explicit/default
 checkboxes have accessible names. Native capability policy hides unsupported NTFS
 controls; ZIP UNIX/DOS precision hides creation/access rows. Archive mtime is
 enabled. Preserve access is enabled on Windows and disabled with a reason on
-POSIX; Help remains disabled pending P1-15.
+POSIX; Help and F1 open the source Options topic through the application service.
 
 `compression-options-{zip|7z}-{520|440}.json` covers actual 520×400 and 440×340
 sizes, exposed controls and footer. Current Qt reports show small explicit-value
@@ -990,6 +990,14 @@ checkboxes beside their labels, no clipping and separate confirmation buttons.
 Source visibility is applied before Qt computes minimum size so hidden NTFS
 controls cannot enlarge the compact dialog. No rendered Windows reference was
 available; these checks establish structure and usability on macOS only.
+
+Timestamp entries follow source SetPrec, including no selected item when the
+handler's default precision is absent from its supported mask. Inserting entries
+must not select the first item. With no selection the logical value is CB_ERR
+(all-ones Auto), not zero. `compression_timestamp` covers eight capability/profile
+states in EN/RU, explicit keyboard selection, OK/Cancel and restart. Its64
+`timestamp-*.json` reports use520×400/440×340 and check precision reachability;
+existing advanced-option probes cover the complete group order and footer.
 
 ### Compression lifecycle and memory rejection (P1-07.2)
 

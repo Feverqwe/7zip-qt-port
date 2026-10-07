@@ -890,6 +890,29 @@ defaults/support, timestamp precision flags/default/custom entry, ZIP/TAR time
 capabilities, Set-checkbox events, Store_TimeBoxes, OnInit/OnOK/Help remain original
 code. Qt language refresh uses AddPrec's existing text builder without changing
 data/selection; the declaration is separated to avoid Widgets in Core-only DTO
-consumers. Qt control adapters still require final sentinel/selection disposition
-before whole CompressDialog acceptance. Remaining Common/native/rendered/package
-scope is not closed by this event receipt.
+consumers. Qt control adapters' sentinel/selection disposition follows below.
+Remaining Compress/Common/native/rendered/package scope is not closed here.
+
+### COptionsDialog complete control/lifecycle disposition, 2026-10-08
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete COptionsDialog bodies in
+GUI/CompressDialog.cpp, declaration in CompressDialog.h, CompressOptionsDialog.rc,
+CompressDialogRes.h and Windows/Control/ComboBox.h/.cpp. The typed ArcInfo time
+flags/defaults in IArchive.h/LoadCodecs.h and Create advanced/profile consumers
+were inspected. This completes the COptionsDialog owner, not all CCompressDialog.
+
+| Source scope | Disposition |
+| --- | --- |
+| Bool1/BoolBox, Store_TimeBoxes, GetComboValue | Original supported/default/defined flags and hidden-value saving remain. Only Qt checkbox/control types replace native handles. |
+| AddTimeOption/AddPrec, SetPrec/GetPrecSpec, SetTimeMAC | Original flags/default insertion, custom precision, Auto sentinel, empty selection, ZIP/TAR capabilities and per-format defaults remain. AddPrec's optional text-only path supports language refresh without changing data or selection. |
+| Set-checkbox and selection events | Original refresh order and dependent time controls remain; QCheckBox clicked and QComboBox activated dispatch the original handlers. |
+| OnInit/OnOK/Help and header state | Original initialization, profile publication and Help topic remain. Functional bodies stay in source CompressDialog.cpp; the source declaration is separated into qtcompressoptionsdialog.h to keep Core-only DTO consumers free of Widgets. Qt's base owns show/accept/reject and window placement. |
+| Native ComboBox service | Qt now preserves CB_ADDSTRING's lack of automatic selection and CB_GETITEMDATA's CB_ERR for absent/out-of-range items. Reset, explicit selection, item data and text update remain narrow control services. |
+| Resource/platform adaptation | NTFS, format info, Time rows, preserve-atime and footer retain resource order. Qt supplies accessibility names, wrapping, scaling and screen placement. POSIX preserve-atime is disabled because the official engine implementation is Windows-only. Create uses a local source profile transaction and publishes only on Options OK; outer Add Cancel does not save it. |
+| Inactive source | Commented default-time button, debug TAR flags, alternate default precision text and preserve-atime summary remain inactive. No alternate timestamp or compression algorithm is introduced. |
+
+Dependencies remain portable source strings/vectors, CBoolPair/MethodProps,
+ZipRegistry profiles, ArcInfo metadata, language/property names and Help service.
+Regression and platform evidence belong to the
+[timestamp audit](upstream-port-audit.md#p3-05--options-timestamp-control-lifecycle-2026-10-08).
