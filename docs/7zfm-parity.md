@@ -1,5 +1,18 @@
 # Сверка с Windows 7zFM
 
+### Native external editor update (P3-05.15, 2026-10-07)
+
+The native editor-completion consumer preserves original OnOpenItemChanged's
+unconditional ignored-result Refresh after writer success/failure/Cancel.
+An ignored native property publication error does not turn a successful update
+into an external-update failure: the actual payload changes and its editor copy
+is deleted. Writer failure/Cancel preserve archive bytes and the edited copy,
+then actual F4 retry succeeds. Source marks, owning provider, peer focus and later
+OnTimer are checked in both panes/languages/views/selection modes with2/301 rows.
+Current evidence uses macOS; native Windows/Linux and rendered reference remain
+mandatory. This iteration adds consumer verification without changing production
+algorithms, layout or control flow.
+
 ### Native nested opening (P3-05.15, 2026-10-07)
 
 Original Agent::GetStream index mapping and OpenItemInArchive's preferred stream,

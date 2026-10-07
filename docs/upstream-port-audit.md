@@ -1,5 +1,76 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — native external-editor update publication (2026-10-07)
+
+Reviewed upstream https://github.com/ip7z/7zip.git at full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/FileManager/PanelItemOpen.cpp::OnOpenItemChanged` (message body,
+worker overload, CThreadCopyFrom and process-completion caller),
+`CPP/7zip/UI/Agent/ArchiveFolderOut.cpp::CopyFromFile/CommonUpdateOperation` and
+`AgentOut.cpp::UpdateOneFile/CommonUpdate`. Their existing authoritative C++
+implementations retain native update planning, temporary output/publication,
+reopen/proxy restoration and the unconditional ignored-result Refresh after the
+external update. MainWindow::runExternalArchiveUpdate publishes after operation
+guards unwind and restores the previously focused peer control. This iteration
+adds direct native consumer evidence; no production body, C/C++ language,
+baseline module, format algorithm or upstream checkout changes.
+
+The test-only external-format facade adds PID-gated IOutArchive/ISetProperties
+forwarding and update capability only when its private writer-enabled resource
+explicitly names the test process. Existing fixtures without that opt-in remain
+readonly and still withhold ISetCompressCodecsInfo, exercising DLL-global codecs.
+Native UpdateItems/SetProperties/GetFileTimeType delegate to the official module.
+A seekable output callback delegates Seek/SetSize but fails Write with E_FAIL;
+the official writer's returned HRESULT is recorded, rather than fabricating a
+native write failure after successful output. Its controlled completion interval
+lets the GUI arm a later native property fault only after the writer has returned.
+The actual source Cancel button and Yes prompt stop the source progress callback
+before temporary output publication. This verifies cancellation at the completion
+boundary, not interruption of compression at an arbitrary internal instruction.
+No product fault seam, archive parser, compressor or mutable global switch added.
+
+The private real editor process is launched by the original F4/EditItem flow,
+modifies its owned extracted Unicode/space-named file and exits. The source Yes
+prompt invokes native CopyFromFile. PID/count/HRESULT receipts distinguish writer
+execution and subsequent native kpidAttrib publication failures from CLI listing.
+The matrix covers2/301 rows, writer success/native Write failure/actual Cancel,
+publication S_OK/S_FALSE/E_FAIL/E_ABORT, both panes, EN/RU, table/icon and
+standard/alternative selection. Original SelectSpec establishes source marks in
+the active view; selecting a hidden Qt table or an alternative-mode cursor is
+not evidence of those marks. Active-window/focus checks precede actual Ctrl+R.
+
+Failure/Cancel preserve original archive bytes and the modified editor copy;
+success changes the actual archived payload and removes that copy even when the
+ignored list publication fails. Recovery retains the same folder provider and
+re-enables guards/redraw. Failed/cancelled writes are retried through a second
+real F4 editor/update, with peer focus/bytes, retained original edit and later
+filesystem OnTimer checked. Normal/compact widget JSON covers initial publication,
+recovery and successful writer retry. Initial diagnostic driver failures were
+corrected; they are not reported as product RED evidence.
+
+Validation on2026-10-07, macOS27.0.1 arm64 / Qt6.12.0: final native external
+matrix2/2PASS243.24s (384 workflows,388QtPASS/0fail/0skip); direct native
+renderer/nested/codec consumers6/6PASS269.46s (816QtPASS/0fail/0skip).
+Required unsandboxed full gate58549 terminal0: formatting, all-target build and
+294/294CTestPASS883.61s. All278 Qt totals sum to6122PASS/0FAIL/15Windows-only
+SKIP: source_link_extract2, association_services1, source_extract_advanced2,
+source_metadata_storage10. All12 frozen task inputs remained unchanged through
+terminal completion; all5 code/test/build inputs match that gate. Postgate edits
+only record proof in documentation. Baseline408exact/196adapted/3local unchanged.
+Independent inspection verifies2048 fresh JSON reports (1024 each at980x620 and
+640x400),8192 enabled/fully exposed address/list controls, source0 left/source1
+right, one visible list per pane and address above list. Original and copied
+report hashes match after terminal completion. Local evidence is retained in
+build/review/native-external-final/{matrix-final.log,consumers.log,full-gate.log,
+full-ctest.log,full-qt-stats.json,frozen-inputs.json,verified-inputs.json,
+full-geometry.json,reports}. Actual Windows/Linux execution remains unverified;
+the dated [runner capacity preflight](hyperv-runners.md) explains why no fresh
+guest build was started. No rendered Windows reference was available.
+
+Remaining native rename/drop/changed-parent render failures, complete source
+body reconciliation, native Windows/Linux/rendered/cold stable-package acceptance
+and P3-06 stay mandatory. This consumer verification does not close P3-05.15.
+
 ## P3-05.15 — native nested streams and publication handoff (2026-10-07)
 
 Source repository https://github.com/ip7z/7zip.git, full baseline

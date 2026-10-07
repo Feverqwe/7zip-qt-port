@@ -11,6 +11,9 @@ class NativePropertyFailureRuntime {
     bool createArchive(const QString &path, int count) const;
     bool arm(UInt32 index, HRESULT result, UInt32 itemCount = 0);
     bool forceDisk(bool enabled);
+    bool enableWriter();
+    bool armWriter(HRESULT result, bool hold = true);
+    QByteArray writerReceipts() const;
     QByteArray diskReceipts() const;
     QByteArray extractionReceipts() const;
     QByteArray openReceipts() const;
@@ -22,4 +25,5 @@ class NativePropertyFailureRuntime {
     QString runtime_;
     QString control_;
     QString diskControl_;
+    QString writerControl_;
 };

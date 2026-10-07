@@ -94,16 +94,111 @@ UInt64 CurrentProcess() {
 #endif
 }
 
-class CGlobalOnlyArchive final : public IInArchive, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_1(IInArchive)
+bool WriterEnabled() {
+    const auto path = ControlPath("writer-enabled-path.txt");
+    if (path.empty())
+        return false;
+    UInt64 process = 0;
+    std::ifstream control(path);
+    return bool(control >> process) && process == CurrentProcess();
+}
+
+class CFailedOutput final : public IOutStream, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(ISequentialOutStream, IOutStream)
+    CMyComPtr<IOutStream> output_;
+
+  public:
+    explicit CFailedOutput(ISequentialOutStream *output) {
+        output->QueryInterface(IID_IOutStream, (void **)&output_);
+    }
+    Z7_COM7F_IMF(Write(const void *, UInt32, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        return E_FAIL;
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        return output_ ? output_->Seek(offset, origin, position) : E_NOINTERFACE;
+    }
+    Z7_COM7F_IMF(SetSize(UInt64 size)) override {
+        return output_ ? output_->SetSize(size) : E_NOINTERFACE;
+    }
+};
+
+class CGlobalOnlyArchive final : public IInArchive,
+                                 public IOutArchive,
+                                 public ISetProperties,
+                                 public CMyUnknownImp {
+    Z7_COM_QI_BEGIN2(IInArchive)
+    else if (writer_ && iid == IID_IOutArchive) {
+        *outObject = static_cast<IOutArchive *>(this);
+    }
+    else if (properties_ && iid == IID_ISetProperties) {
+        *outObject = static_cast<ISetProperties *>(this);
+    }
+    Z7_COM_QI_END
+    Z7_COM_ADDREF_RELEASE
     CMyComPtr<IInArchive> archive_;
+    CMyComPtr<IOutArchive> writer_;
+    CMyComPtr<ISetProperties> properties_;
     std::filesystem::path propertyControl_;
     std::filesystem::path diskControl_;
+    std::filesystem::path writerControl_;
 
   public:
     explicit CGlobalOnlyArchive(IInArchive *archive)
         : archive_(archive), propertyControl_(ControlPath("property-control-path.txt")),
-          diskControl_(ControlPath("disk-control-path.txt")) {}
+          diskControl_(ControlPath("disk-control-path.txt")),
+          writerControl_(ControlPath("writer-control-path.txt")) {
+        if (WriterEnabled()) {
+            archive_.QueryInterface(IID_IOutArchive, &writer_);
+            archive_.QueryInterface(IID_ISetProperties, &properties_);
+        }
+    }
+    Z7_COM7F_IMF(SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
+                               UInt32 count))
+    override {
+        return properties_ ? properties_->SetProperties(names, values, count) : E_NOINTERFACE;
+    }
+    Z7_COM7F_IMF(GetFileTimeType(UInt32 *type)) override {
+        return writer_ ? writer_->GetFileTimeType(type) : E_NOINTERFACE;
+    }
+    Z7_COM7F_IMF(UpdateItems(ISequentialOutStream *output, UInt32 count,
+                             IArchiveUpdateCallback *callback))
+    override {
+        if (!writer_)
+            return E_NOINTERFACE;
+        UInt64 process = 0;
+        UInt32 requested = 0;
+        std::ifstream control(writerControl_);
+        const bool failOutput = (control >> process >> requested) && process == CurrentProcess() &&
+                                requested == UInt32(E_FAIL);
+        CMyComPtr<ISequentialOutStream> failed;
+        if (failOutput)
+            failed = new CFailedOutput(output);
+        const HRESULT written =
+            writer_->UpdateItems(failOutput ? failed.Interface() : output, count, callback);
+        if (!writerControl_.empty()) {
+            auto receipt = writerControl_;
+            receipt += ".hit";
+            std::ofstream(receipt, std::ios::app)
+                << CurrentProcess() << ' ' << count << ' ' << UInt32(written) << '\n';
+        }
+        if ((written != S_OK && !(failOutput && written == E_FAIL)) || writerControl_.empty())
+            return written;
+        for (;;) {
+            UInt64 process = 0;
+            UInt32 result = 0, hold = 0;
+            std::ifstream control(writerControl_);
+            if (!(control >> process >> result >> hold) || process != CurrentProcess())
+                return written;
+            if (!hold && result != UInt32(E_ABORT))
+                return HRESULT(result);
+            const HRESULT progress = callback->SetCompleted(nullptr);
+            if (progress != S_OK)
+                return progress;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
     Z7_COM7F_IMF(Open(IInStream *stream, const UInt64 *limit, IArchiveOpenCallback *callback))
     override {
         const HRESULT opened = archive_->Open(stream, limit, callback);
@@ -221,7 +316,7 @@ STDAPI GetHandlerProperty2(UInt32 index, PROPID property, PROPVARIANT *value) {
     }
     if (property == NArchive::NHandlerPropID::kUpdate) {
         value->vt = VT_BOOL;
-        value->boolVal = VARIANT_FALSE;
+        value->boolVal = WriterEnabled() ? VARIANT_TRUE : VARIANT_FALSE;
         return S_OK;
     }
     return CoreProperty(property, value);
@@ -235,16 +330,15 @@ STDAPI CreateObject(const GUID *classID, const GUID *iid, void **object) {
     std::ifstream asset(FixtureFolder() / "resources/fixture/marker.txt", std::ios::binary);
     if (!asset || std::string(std::istreambuf_iterator<char>(asset), {}) != "fixture resource")
         return E_FAIL;
-    if (*iid != IID_IInArchive)
+    if (*iid != IID_IInArchive && (*iid != IID_IOutArchive || !WriterEnabled()))
         return E_NOINTERFACE;
     const auto create = reinterpret_cast<Func_CreateObject>(CoreFunction("CreateObject"));
     if (!create)
         return E_FAIL;
     CMyComPtr<IInArchive> archive;
-    const HRESULT result = create(classID, iid, reinterpret_cast<void **>(&archive));
+    const HRESULT result = create(classID, &IID_IInArchive, reinterpret_cast<void **>(&archive));
     if (result != S_OK)
         return result;
     CMyComPtr<IInArchive> facade = new CGlobalOnlyArchive(archive);
-    *object = facade.Detach();
-    return S_OK;
+    return facade->QueryInterface(*iid, object);
 }

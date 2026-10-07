@@ -22,6 +22,7 @@ production access is added for this matrix.
 | P0-06 columns/sort/time/refresh | PanelSort/PanelItems; Qt header/viewport adapter | `panel_columns`, `panel_sort`, `panel_auto_refresh`, `view_settings_columns` |
 | P0-04/06 native publication failure and open guard handoff | CPanel::OnReload/OpenItem/OpenAsArc_Index; QtFolderProjection and Copy completion | `native_renderer_failure`, `native_renderer_copy`, `panel_item_icons` |
 | P0-04/P1-09 native nested stream/memory/disk open, publication failure, confirmed Cancel and retry | Original Agent::GetStream/OpenItemInArchive; Qt native item-order/module lease and deferred guard handoff | `native_nested_stream`, `native_nested_memory`, `native_nested_disk`, `nested_archive`, `nested_edit_chain` |
+| P1-08 native external editor update with publication failure and actual writer retry | PanelItemOpen::OnOpenItemChanged; Agent CopyFromFile/UpdateOneFile/CommonUpdate and Qt terminal publication/focus | `native_external_2`, `native_external_301`, `archive_external_edit` |
 | P0-07 focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_selection`, `list_settings_runtime`, `list_activation` |
 | P0-08 two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
 | P0-09 menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |

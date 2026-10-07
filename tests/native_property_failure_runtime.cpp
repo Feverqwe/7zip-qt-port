@@ -21,6 +21,7 @@ bool NativePropertyFailureRuntime::prepare(const QString &prepared, const QStrin
     runtime_ = owned_.filePath(QStringLiteral("runtime 空 with spaces"));
     control_ = owned_.filePath(QStringLiteral("native property δ.txt"));
     diskControl_ = owned_.filePath(QStringLiteral("native disk δ.txt"));
+    writerControl_ = owned_.filePath(QStringLiteral("native writer δ.txt"));
     const QDir source(prepared);
     if (!QDir().mkpath(QDir(runtime_).filePath("Formats/resources/fixture")) ||
         !QFile::copy(source.filePath(kEngine), engine()) ||
@@ -35,7 +36,13 @@ bool NativePropertyFailureRuntime::prepare(const QString &prepared, const QStrin
                control_.toUtf8()) &&
            SourceExtractFixture::writeFile(
                QDir(runtime_).filePath("Formats/resources/fixture/disk-control-path.txt"),
-               diskControl_.toUtf8());
+               diskControl_.toUtf8()) &&
+           SourceExtractFixture::writeFile(
+               QDir(runtime_).filePath("Formats/resources/fixture/writer-control-path.txt"),
+               writerControl_.toUtf8()) &&
+           SourceExtractFixture::writeFile(
+               QDir(runtime_).filePath("Formats/resources/fixture/writer-enabled-path.txt"),
+               (writerControl_ + ".enabled").toUtf8());
 }
 
 QString NativePropertyFailureRuntime::engine() const { return QDir(runtime_).filePath(kEngine); }
@@ -70,7 +77,8 @@ bool NativePropertyFailureRuntime::arm(UInt32 index, HRESULT result, UInt32 item
 
 bool NativePropertyFailureRuntime::clear() {
     for (const QString &path :
-         {control_, diskControl_, diskControl_ + ".hit", control_ + ".extract", control_ + ".open"})
+         {control_, diskControl_, diskControl_ + ".hit", control_ + ".extract", control_ + ".open",
+          writerControl_, writerControl_ + ".hit"})
         if (QFile::exists(path) && !QFile::remove(path))
             return false;
     return true;
@@ -96,4 +104,21 @@ QByteArray NativePropertyFailureRuntime::receipts() const {
 
 QByteArray NativePropertyFailureRuntime::openReceipts() const {
     return SourceExtractFixture::readFile(control_ + ".open");
+}
+
+bool NativePropertyFailureRuntime::enableWriter() {
+    return SourceExtractFixture::writeFile(writerControl_ + ".enabled",
+                                           QByteArray::number(QCoreApplication::applicationPid()));
+}
+
+bool NativePropertyFailureRuntime::armWriter(HRESULT result, bool hold) {
+    if (hold)
+        QFile::remove(writerControl_ + ".hit");
+    return SourceExtractFixture::writeFile(
+        writerControl_, QByteArray::number(QCoreApplication::applicationPid()) + ' ' +
+                            QByteArray::number(UInt32(result)) + ' ' + (hold ? '1' : '0'));
+}
+
+QByteArray NativePropertyFailureRuntime::writerReceipts() const {
+    return SourceExtractFixture::readFile(writerControl_ + ".hit");
 }

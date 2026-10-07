@@ -407,6 +407,18 @@ PASS629.29s,1572 fresh geometry reports; Windows-only15 Qt skips сохране�
 Статус active: оставшиеся full-body/operation-render/native3OS/rendered/
 cold-stable-package/final acceptance обязательны.
 
+P3-05.15, 2026-10-07: native external-editor update verification добавила384
+реальных F4/CopyFromFile workflows: official writer success/Write E_FAIL/source
+Cancel, native property publication failures, source marks/peer focus, Ctrl+R,
+same-provider recovery и actual F4 writer retry. Матрица2/2PASS243.24s,
+388QtPASS/0fail/0skip; unsandboxed full294/294PASS883.61s,
+6122QtPASS/0fail/15Windows-onlySKIP. Проверены2048 fresh normal/compact JSON
+и8192 enabled/fully exposed controls; входные файлы и хеши отчётов совпали
+после завершения gate. P3-05.15 и итоговая приёмка остаются открыты.
+[Scope/evidence](upstream-port-audit.md#p3-0515--native-external-editor-update-publication-2026-10-07).
+Production bodies unchanged; native rename/drop/changed-parent render consumers,
+full-body/native3OS/rendered/cold-stable-package/P3-06 остаются обязательными.
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

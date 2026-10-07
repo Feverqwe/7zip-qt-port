@@ -1,5 +1,37 @@
 # Regression strategy
 
+`native_external_2` and `native_external_301` exercise384 real F4 editor/native
+CopyFromFile publication workflows. The private official-runtime facade enables
+its writer only for the explicitly opted-in GUI PID. Writer receipts record
+official UpdateItems success or E_FAIL from its failing seekable Write callback;
+actual source Cancel stops the completion callback before publication. Native
+property failures are armed only after writer return, isolating the ignored
+Refresh HRESULT from the writer result. Ordinary external-codec/renderer/nested
+fixtures remain readonly without the opt-in resource.
+Both panes, EN/RU, table/icon and both selection modes cover native success,
+failure, Cancel, empty/enabled failed publication, Ctrl+R, same-provider recovery,
+source marks and peer focus/bytes. Failure/Cancel retain the edited copy and
+unchanged archive, then a second real editor/update proves successful writer
+retry. Successful update removes its editor copy even if list publication fails.
+Filesystem OnTimer checks the final guard state. Normal/compact JSON covers
+publication/recovery/retry; native3OS and rendered Windows remain separate.
+The prepared `build/codec-runtime` requirement and unsandboxed execution match
+the native suites below. Driver diagnostics are retained separately from actual
+product regressions in the local evidence directory.
+Partitioned native external/nested CTest names map to their shared executable
+for the existing per-suite startup/TMP isolation. These suites and native renderer
+consumers select the Windows platform plugin and desktop resource lock on Windows,
+matching the existing native UI policy; configuration alone is not execution proof.
+
+Native external validation,2026-10-07 macOS27.0.1 arm64 / Qt6.12.0:
+matrix2/2PASS243.24s (388QtPASS/0fail/0skip), native direct consumers6/6PASS
+269.46s (816QtPASS/0fail/0skip), required unsandboxed full294/294PASS883.61s.
+Full278 Qt totals:6122pass/0fail/15 Windows-only skips. All12 frozen inputs and
+2048 fresh normal/compact JSON report hashes matched after gate completion;
+8192 enabled/fully exposed address/list controls were inspected.
+See the [dated audit](upstream-port-audit.md#p3-0515--native-external-editor-update-publication-2026-10-07)
+for evidence, skip enumeration and remaining platform acceptance.
+
 `native_nested_stream`, `native_nested_memory` and `native_nested_disk` use
 private official native runtimes and actual source OpenItem on nested archives.
 The384 publication workflows cover2/301 child rows, four HRESULTs, both panes,

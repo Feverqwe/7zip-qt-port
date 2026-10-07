@@ -1,5 +1,19 @@
 # Text specifications and geometry checks
 
+### Native external update publication (P3-05.15)
+
+After the original modified-file Yes prompt, native CopyFromFile retains the
+source unconditional RefreshListCtrl policy for writer success/failure/Cancel.
+The refresh HRESULT is ignored, including deferred S_FALSE/E_FAIL/E_ABORT;
+only actual writer failure produces the source update error. Failed publication
+is empty/enabled; Ctrl+R recovers the same folder. Successful publication restores
+the pre-update marks/focused name. Final focus returns to the previously focused
+peer control after rows, redraw and operation guards finish. Owned editor copies
+are deleted on success and retained on failed/cancelled update. Private archive
+bytes change only on success; retry and filesystem OnTimer remain usable.
+Inspect both panes, EN/RU, table/icon and both selection modes at980×620/640×400,
+with2/301 rows. Rendered Windows and current native3OS acceptance remain separate.
+
 ### Native nested opening (P3-05.15)
 
 OpenItemInArchive keeps original preferred provider stream, bounded memory

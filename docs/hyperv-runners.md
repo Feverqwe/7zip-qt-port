@@ -40,6 +40,20 @@ hyperv-probe.log,linux-guest-space.log,windows-guest-space.log,linux-volumes.log
 windows-volumes.log}. Earlier samples remain historical. This preflight
 does not provide current application, package or rendered Windows acceptance.
 
+Refreshed capacity preflight,2026-10-07 06:29MSK (03:29UTC): both authenticated
+x64 probes still pass with Qt6.12.0/clang-format23.1.2. Host D: has
+634,121,768,960 bytes free; Linux root has4,001,792 bytes free and Windows C:
+54,661,120 bytes. Read-only volume inspection again found no separate guest
+build volume. Existing Windows/Linux VHDX file sizes stayed100,231,282,688 /
+83,273,711,616 bytes (zero delta); virtual sizes are103,079,215,104 /
+85,899,345,920 bytes. Fresh source/runtime/build snapshots still do not fit.
+No source sync, cleanup, compaction, disk growth or VM reconfiguration was done.
+The runners skill says: “Do not automatically compact disks or delete files in
+response to warnings.” Evidence: build/review/native-external-final/
+{hyperv-probe.log,hyperv-storage.log,linux-guest-space.log,
+windows-guest-space.log,linux-volumes.log}. This preflight proves connectivity
+and capacity only; native application/package/rendered acceptance remains open.
+
 ```sh
 python3 scripts/hyperv-runner.py probe linux
 python3 scripts/hyperv-runner.py probe windows
