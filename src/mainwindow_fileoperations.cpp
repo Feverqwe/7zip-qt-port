@@ -288,7 +288,12 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
     if (app_.QtOperations().kind() == QtAppOperationState::Kind::Operation)
         app_.QtOperations().End();
     if (result == S_OK) {
-        activatePanelUi(destinationIndex);
+        {
+            // CopyFrom replaced the proxy while the old rows remain visible.
+            // Preserve OnCopy's source notification guard until loading begins.
+            CPanel::CDisableNotify disableNotify(target);
+            activatePanelUi(destinationIndex);
+        }
         // CopyFrom already reopens the native archive and rebuilds its proxy.
         // OnCopy reloads that provider with state saved before the update.
         target.RefreshListCtrl(destinationSelection);

@@ -63,7 +63,10 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
                 return folder && folder->CloseArchive() == S_OK;
             });
             app_.QtOperations().End();
-            activatePanelUi(destinationIndex);
+            {
+                CPanel::CDisableNotify disableNotify(target);
+                activatePanelUi(destinationIndex);
+            }
             refreshCurrent(&destinationSelection);
             appPresentation_->CopyDestinationRefreshed(destinationIndex);
             activatePanelUi(sourceIndex);
@@ -82,7 +85,12 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     if (app_.QtOperations().kind() == QtAppOperationState::Kind::Operation)
         app_.QtOperations().End();
     if (result == S_OK && messages.IsEmpty()) {
-        activatePanelUi(destinationIndex);
+        {
+            // The old selected rows cannot query CopyFrom's rebuilt proxy
+            // before the source RefreshListCtrl load/publication phase.
+            CPanel::CDisableNotify disableNotify(target);
+            activatePanelUi(destinationIndex);
+        }
         // CopyFrom already reopens the updated native archive and restores its
         // proxy. Original OnCopy reloads that bound provider with saved state.
         target.RefreshListCtrl(destinationSelection);

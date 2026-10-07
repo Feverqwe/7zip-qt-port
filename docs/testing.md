@@ -2411,6 +2411,15 @@ official extraction, folder reload and temporary cleanup. Windows additionally
 uses an actual filesystem ADS colon prefix; only these three filesystem-source
 rows are inapplicable on Unix. `native_update_path` covers malformed ADS paths.
 The Unix callback adapter keeps ordinary callers' empty kpidIsAltStream property.
+`agent_stream_copy_ui` covers the actual F5/F6 peer ADS destination with
+filesystem/ZIP sources, both panes and EN/RU. It retains a focused/marked old
+stream, checks Copy Cancel, Copy and Move, archive Delete Cancel/byte-exact rollback,
+provider publication, source focus/notifications/rows and independent extracted
+main/old/new stream bytes. The old adapter crashes when capability queries reach
+Agent's new proxy through stale Qt rows. Its 88 current widget reports cover the
+two-panel window and Copy/Move dialog at normal/compact sizes. Offscreen parent
+reactivation verifies remembered focus without supplying a replacement focus;
+this is distinct from native desktop/physical keyboard acceptance.
 `agent_folder` validates the source _proxy folder contract: name/index/ancestor/
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings

@@ -2707,6 +2707,20 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME alt_streams_archive_ui COMMAND alt_streams_archive_ui_tests -silent)
+    qt_add_executable(agent_stream_copy_ui_tests tests/agent_stream_copy_ui_tests.cpp
+        tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(agent_stream_copy_ui_tests PRIVATE src tests)
+    target_link_libraries(agent_stream_copy_ui_tests PRIVATE ${options_window_libraries})
+    target_compile_definitions(agent_stream_copy_ui_tests PRIVATE
+        "ALT_STREAMS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/streams/unicode-ads.wim\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(agent_stream_copy_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME agent_stream_copy_ui COMMAND agent_stream_copy_ui_tests -silent)
+    set_tests_properties(agent_stream_copy_ui PROPERTIES TIMEOUT 60
+        RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/agent-stream-copy-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(alt_streams_archive_ui PROPERTIES TIMEOUT 45 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/alt-streams-archive-ui.ini")
     set_tests_properties(alt_streams_command PROPERTIES TIMEOUT 60 ENVIRONMENT

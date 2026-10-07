@@ -553,6 +553,17 @@ existing ADS UI consumers pass; whole-module/native desktop/rendered/package
 and final acceptance remain open.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-agent-alternate-stream-updates-2026-10-07).
 
+P3-05, 2026-10-07: actual F5/F6 FS/ZIP→archived ADS consumer restored source
+OnCopy's notification guard during target activation after CopyFrom/rollback.
+Old proxy-index crash reproduced; eight EN/RU both-pane workflows cover Cancel,
+Move/Delete Cancel rollback, saved marks/focus/providers and independently
+extracted bytes. Mac full295/295PASS277.65s; same-source Linux/Windows focused5/5,
+all904 snapshot inputs match actual guest trees. Each OS's88 normal/compact
+JSON pass contracts. Seven Agent bodies/headers, FAR/desktop wrappers and
+dependencies now have explicit source disposition; native desktop/rendered/
+packages and parent P3 acceptance remain open.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-copymove-publication-after-agent-updates-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

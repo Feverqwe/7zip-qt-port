@@ -1390,6 +1390,13 @@ handles; `CPanel` owns remembered focus and `CApp` delegates focus restoration.
 The UI can show both panels and restores their location/focus state; other
 folder providers and full shell integration remain in migration below. Top-level focus filtering begins after panel construction
 and stops before window member teardown.
+After native CopyFrom replaces an archive proxy, the destination's old Qt rows
+remain until source RefreshListCtrl loads and publishes the new catalog. The
+filesystem-to-archive and interarchive publication adapters retain source
+CDisableNotify while activating that destination, including rollback reopening.
+Command availability must not query the new proxy through old row indices during
+this switch. RefreshListCtrl then owns its existing load/publication guards and
+saved selection; this does not suppress metadata errors or replace source sorting.
 `CSelectedState` and CPanel's selected-status vector own filesystem refresh
 selection and current-item snapshots. `QtPanelList` adapts the shared table/icon
 model and selection model; it supplies relative names and control operations.

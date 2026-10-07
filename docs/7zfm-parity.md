@@ -1964,6 +1964,16 @@ desktop input or rendered Windows parity; the
 [source audit](upstream-port-audit.md#p3-05--source-agent-alternate-stream-updates-2026-10-07)
 owns the bounded implementation and platform evidence.
 
+The actual peer ADS destination now has F5/F6 coverage from filesystem and ZIP
+sources, both panes and EN/RU, including Copy Cancel and archive Delete Cancel
+with byte-exact rollback. The Qt publication switch retains original OnCopy's
+CDisableNotify until source RefreshListCtrl can load the replaced Agent proxy;
+old focused rows cannot trigger premature metadata queries. Saved target
+marks/focus and source focus/notification restoration are checked. This extends
+the provider-level ADS evidence without claiming native desktop input or rendered
+Windows equivalence; see the
+[publication audit](upstream-port-audit.md#p3-05--source-copymove-publication-after-agent-updates-2026-10-07).
+
 ## P3-05 — toolbar Extract/Test source routing (2026-10-07)
 
 Extract внутри открытого архива использует исходный Copy To с destination

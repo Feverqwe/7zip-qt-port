@@ -15571,3 +15571,66 @@ consumer suites have81pass/0fail/0skip. No required Windows row was skipped.
 Baseline verifies408exact/196adapted/3local paths at the pinned revision.
 Slow11 suites and native desktop/rendered acceptance were excluded. No upstream
 write, publication, new disk or VM configuration change occurred.
+
+## P3-05 — source Copy/Move publication after Agent updates (2026-10-07)
+
+Baseline: [ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+full commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Reviewed complete `FileManager/App.cpp::CApp::OnCopy`, its selected-index,
+peer-provider, CopyTo/CopyFrom, temporary-stream, notification, saved-state and
+post-operation branches; `PanelCopy.cpp::CPanel::CopyFrom/CThreadUpdate`,
+`Agent/ArchiveFolderOut.cpp::CommonUpdateOperation`, source RefreshListCtrl,
+and Qt command/projection/reload consumers. The original OnCopy keeps
+CDisableNotify for both panels across its load/publication and selection phases.
+
+The real ADS F5/F6 consumer exposed a missing guard after successful native
+CopyFrom. Agent replaces its proxy and clears its loaded rows before Qt replaces
+the old list. Activating the target first called command availability, whose
+SaveSelectedState queried the new provider with the old focused row. The actual
+old product terminates with an uncaught source integer from GetItemPrefix.
+The diagnostic stack reaches SaveSelectedState→ReadTransportCapabilities→
+RefreshActions→activatePanelUi→transferToArchivePanel, rather than the writer.
+
+`mainwindow_fileoperations.cpp` and `mainwindow_archive_transfer.cpp` now reuse
+the original CPanel::CDisableNotify around destination activation after CopyFrom
+and after rollback closes its reader. Original RefreshListCtrl's following
+load/publication/selection phases retain their own guards. No exception swallowing,
+alternate sorting/selection logic, archive algorithm or new dependency is added.
+Existing source projection policies remain authoritative.
+
+New `agent_stream_copy_ui` checks eight small real-engine workflows: filesystem
+or ZIP source, either target pane, EN/RU. The target is the WIM fixture's archived
+ADS folder with an explicitly focused/marked old stream. F5 Cancel leaves both
+archives/input unchanged; F5 Copy preserves its input; F6 Move publishes data and
+then removes the source. Archive-source Delete Cancel restores exact destination
+and source bytes before retry. Checks include provider lifetime across normal
+publication, saved target marks/focus, source row/focus/notification restoration,
+and independent official extraction of main/old/new stream bytes. The offscreen
+parent can become inactive after modal progress; the test checks its remembered
+source list focus and reactivates without setting a new focus. This does not
+establish native desktop activation or physical keyboard parity.
+
+Reviewed CopyDialog.rc, CopyDialog.cpp and the existing text/RC contracts before
+adding reports. Each platform producer supplies 32 before/after main-window JSON
+at 980×620/640×400 and 56 Copy/Move/Cancel JSON at 440×250/340×220. The existing
+CopyDialog contract's controls, spatial relations and assertions apply; Russian
+prompt strings come from source language IDs 6002/6003. No layout/text changed;
+rendered Windows reference remains unverified. Final gates and source input
+proofs are recorded with this iteration's local evidence.
+
+Validation: actual old-product SIGABRT retained in
+`build/review/agent-stream-copy/red-final.log`; current focused UI suite passes
+6.04s. Unsandboxed macOS arm64 full check.sh passes 295/295, 277.65s;
+Qt totals 4529 passed/0 failed/18 platform skips. Same-source Linux x64 and
+Windows x64 each build and pass agent_stream_copy_ui, agent_stream_update,
+copy_archive_refresh, interarchive_recovery and ui_copy_routing: 5/5 in 85.70s
+and 254.52s. The new UI suite has 10 passing Qt cases, no skips, on both guests;
+only Linux's three Windows-filesystem ADS rows in agent_stream_update skip.
+All 904 frozen code/test/build inputs match local files, source.tar and both
+actual guest trees. Snapshot 20261007T173545Z-268ba1bf, SHA-256
+`4effbe74410598decead09b31ad22f08698e78ce787669dbae426cf4a0fc3b01`,
+parent 1fcee71. Each OS's 32 main reports/128 address-list controls and 56 modal
+reports pass source geometry/contracts; five existing Qt adaptations remain
+recorded by the original contract. Temporary runner wrapper is retained only
+in ignored evidence and removed before commit. Eleven slow suites were excluded;
+native desktop/rendered reference/packages and whole P3 acceptance stay open.

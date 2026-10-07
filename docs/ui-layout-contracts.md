@@ -1578,6 +1578,12 @@ Adaptations: Qt layouts replace Win32 resize arithmetic; QPlainTextEdit with
 no wrapping replaces the static text. `CPanel::GetItemsInfoString` supplies
 the upstream summary and eleven-line limit from the active source folder. `copy_dialog`
 writes four JSON reports and checks these relationships with a large selection.
+`agent_stream_copy_ui` also produces 56 Copy/Move/Cancel reports for FS/ZIP→WIM
+archived ADS, both panes/languages, at 440×250 and 340×220; its 32 main-window
+reports inspect both address/list pairs at 980×620 and 640×400. Current evidence
+applies the same CopyDialog RC controls/relations/assertions, with source Russian
+prompt IDs 6002/6003. It verifies transitions and retained marks/focus/rollback
+through public tests; JSON alone does not prove those behaviors or native pixels.
 These checks establish structure and usability on macOS, not pixel parity.
 `panel_runtime` additionally writes `copy-source-flat*-mode*-*.json` for normal/
 flat source summary values in all four views. Flat archive directory size is
