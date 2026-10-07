@@ -2306,10 +2306,13 @@ Ctrl+C и Ctrl+Insert копируют имена реально отмечен�
 CRLF, включая альтернативный выбор; пустой выбор даёт пустой текст без
 подстановки фокусной ячейки. Ctrl+X/V и Shift+Insert сохраняют исходные no-op.
 Ctrl+A/C/N/R/W/Z и Ctrl+1–4 учитывают Ctrl даже с дополнительными Alt/Shift;
-Ctrl+W откладывает Close, как исходный PostMessage. Ctrl+PgDn в исходном list
-handler поглощается без открытия: строка меню объявляет shortcut, но активного
-accelerator для него в resource.rc нет. Явная команда Open Inside остаётся
-доступной через меню. Ctrl+F3–F7 сохраняют исходный sort switch. Поля адреса и
+Ctrl+W откладывает Close, как исходный PostMessage. Ctrl+PgDn открывает
+сфокусированный объект внутри панели, Ctrl+PgUp переходит к родителю.
+Эти ветви CMyListView::OnMessage выполняются до PanelKey::OnKeyDown;
+комментарий EnterToFocused в последнем не отменяет обработку list window.
+Qt вызывает исходные ветви через существующие Open Inside/Parent services
+с публикацией панели и сохранением lifetime. Ctrl+F3–F7 сохраняют исходный
+sort switch. Поля адреса и
 редактор имени сохраняют собственные текстовые shortcuts. Проверки и точные
 платформенные границы — в audit § source keyboard dispatcher.
 

@@ -11,6 +11,16 @@ Suite descriptions and dated local results do not establish acceptance of the
 current checkout or other platforms; check the [audit](upstream-port-audit.md)
 and [checklist](porting-checklist.md) for their scope.
 
+`panel_list_key` covers the list-window dispatch before PanelKey notifications:
+Ctrl+PgDn opens the focused folder or real official ZIP, Ctrl+PgUp returns to
+its parent. Four bounded EN/RU, both-pane table/icon cases retain peer provider,
+rows/path and Unicode/space input bytes. Modified keys and notification guards
+preserve the current provider. Unrecognized input retains the original silent
+S_FALSE return; nested extraction Cancel and E_FAIL retain the owner/rows/guards,
+with the latter displaying the source error report. The test closes only a
+completed progress report and inspects its public message tree. This is Qt input
+protocol evidence; native physical keyboard/rendered acceptance remains separate.
+
 `native_drop_publication` exercises eight actual bound-archive Drop cases using
 the existing private native writer fixture: successful updates and four later
 attribute publication results, Write failure, actual progress Cancel and both

@@ -550,6 +550,7 @@ class CPanel : public QObject {
     // Qt's list activation adapter supplies the native notification modifiers.
     void OnNotifyActivateItems(Qt::KeyboardModifiers modifiers);
     bool OnKeyDown(const QtPanelKeyDown &keyDownInfo, CApp &app);
+    bool OnListViewKeyDown(const QtPanelKeyDown &key, CApp &app);
     void EditCut();
     void EditCopy();
     void EditPaste();

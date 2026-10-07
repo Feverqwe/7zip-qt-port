@@ -1547,7 +1547,12 @@ publication share this source phase.
 `PanelSort.cpp` owns source typed-property, name/prefix and item-index sorting;
 `filetable.cpp` passes bound source indices and property IDs to the panel and
 adapts descending folder grouping and drag data to Qt. The window event filter
-routes list keys into source OnKeyDown and address keys into combo-edit services.
+routes list keys through Panel.cpp's CMyListView WM_KEYDOWN branches before
+source OnKeyDown, and address keys into combo-edit services. OnListViewKeyDown
+adapts those Ctrl+PgDn/PgUp branches to the existing CApp command services;
+Open Inside retains RunNativeOpen's source capture and Qt publication, while
+Parent retains the existing goParent continuation. No second archive-opening
+algorithm is introduced.
 Source PanelMenu::EditCopy enumerates selected source indices and copies raw
 names separated by CRLF, without focused-cell or operated-item fallback.
 EditCut/EditPaste retain upstream's active no-op. Presentation commands share

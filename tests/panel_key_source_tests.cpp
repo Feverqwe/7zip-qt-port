@@ -233,7 +233,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
                 QStringLiteral("source-keys-pane%1-case%2-%3").arg(pane).arg(variant).arg(width)));
         }
     }
-    void bookmarkPriorityAndControlPageDown() {
+    void bookmarkPriorityAndModifiedControlPageDown() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString saved = fixture.filePath(QStringLiteral("закладка 空"));
@@ -270,7 +270,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         list->setFocus();
         list->setCurrentCell(0, 0);
         const int opens = backend.listCalls;
-        QTest::keyClick(list, Qt::Key_PageDown, Qt::ControlModifier);
+        QTest::keyClick(list, Qt::Key_PageDown, Qt::ControlModifier | Qt::ShiftModifier);
         QCOMPARE(backend.listCalls, opens);
         QCOMPARE(backend.extractCalls, 0);
         QTest::keyClick(list, Qt::Key_1, Qt::ControlModifier | Qt::ShiftModifier);

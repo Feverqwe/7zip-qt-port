@@ -307,7 +307,15 @@ P3-05,2026-10-08: завершена сверка владельцев и ада
 Полные сравнения, изменённые тела, header contracts, consumers и build/platform
 ветви разобраны в [Common disposition](omitted-scope-audit.md#common-owner-and-adaptation-reconciliation-2026-10-08).
 Код не менялся; baseline verify и diff check проходят. Это не закрывает
-оставшиеся Agent/FileManager bodies, native/rendered/package и P3-03/04/05/06.
+оставшиеся FileManager bodies, native/rendered/package и P3-03/04/05/06;
+desktop disposition Agent уже записана отдельно.
+
+P3-05,2026-10-08: сверка полного Panel.cpp выявила исходные CMyListView
+Ctrl+PgDn/PgUp перед PanelKey notification. Ветви Open Inside/Parent восстановлены;
+новый Qt workflow7 результатов проходит без skips на трёх ОС. Mac full305/305,
+Linux/Windows6/6 direct consumers; Windows16 прежних Properties-sheet skips
+зафиксированы отдельно. См. [list-window audit](upstream-port-audit.md#p3-05--list-window-keyboard-opening-and-parent-2026-10-08).
+Это не полная приёмка Panel/FileManager/P3.
 
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |

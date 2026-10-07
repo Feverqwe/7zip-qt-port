@@ -3079,6 +3079,15 @@ if(BUILD_TESTING)
     add_test(NAME panel_key_source COMMAND panel_key_source_tests -silent)
     set_tests_properties(panel_key_source PROPERTIES TIMEOUT 90 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-key-source.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(panel_list_key_tests tests/panel_list_key_tests.cpp
+        ${panel_folder_sync_sources})
+    target_include_directories(panel_list_key_tests PRIVATE src tests)
+    target_link_libraries(panel_list_key_tests PRIVATE ${panel_folder_sync_libraries})
+    target_compile_definitions(panel_list_key_tests PRIVATE
+        SEVENZIP_CODEC_MODULE="${SEVENZIP_CODEC_MODULE}")
+    add_test(NAME panel_list_key COMMAND panel_list_key_tests -silent)
+    set_tests_properties(panel_list_key PROPERTIES TIMEOUT 90 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-list-key.ini")
 endif()
 
 # Apply startup isolation after registering every consumer, including Language.

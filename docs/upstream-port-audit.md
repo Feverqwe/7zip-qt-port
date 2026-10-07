@@ -15468,8 +15468,11 @@ actual active desktop. These are distinct observation scopes.
 modifiers, both panes, ordinary/alternative marks, four views, Unicode/spaces,
 source-index clipboard order and empty selection, Cut/Paste no-ops, address
 copy, peer/input preservation, Alt/right-primary bookmark priority/release,
-Ctrl+PgDn no-op, modified view/sort, Delete cancellation, source notification
+modified Ctrl+Shift+PgDn no-op, modified view/sort, Delete cancellation, source notification
 suppression, loading/close guards and recovery. Twelve paired consumer scenarios
+are retained. The2026-10-08 list-window review corrects the original Ctrl+PgDn
+no-op assertion to Ctrl+Shift+PgDn and adds the active unmodified opening route;
+the historical checks below predate that correction. Those scenarios
 produce 24 EN/RU normal/compact view/address reports. Initial integration failures
 (special-key QChar assertion and unregistered F9 command) were corrected without
 weakening assertions. Fixture fixes retain provider order and original sparse
@@ -15981,6 +15984,50 @@ memory text and footer; no rendered Windows/native desktop acceptance is claimed
 Eleven slow suites remain excluded. Fresh authenticated capacity/host-D checks
 passed; no cleanup, disk changes or upstream mutation occurred.
 
+## P3-05 — List-window keyboard opening and Parent (2026-10-08)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original Panel.cpp,
+adapted Panel.cpp, CMyListView's header declaration and the PanelKey/PanelItems/
+PanelItemOpen/PanelFolderChange callers were reviewed. CMyListView::OnMessage
+handles Ctrl+PgDn/PgUp before LVN_KEYDOWN. The earlier keyboard receipt's no-op
+conclusion considered only PanelKey's commented EnterToFocused and was incomplete.
+That notification body is unchanged; current parity now records the full route.
+
+Panel.cpp::OnListViewKeyDown adapts the original WM_KEYDOWN modifier/switch
+branches. Existing CApp Open Inside/Parent services replace direct calls so
+RunNativeOpen/goParent retain source capture, Qt publication and lifetime.
+The Qt input boundary invokes this before OnKeyDown under existing operation/
+notification guards and claims Ctrl+PgUp. C++ language, source module and
+opening/parent algorithms remain; no widget constructs archive arguments.
+
+Actual unchanged-product RED has4 failures/2 passes: Ctrl+PgDn never enters
+the focused folder. New panel_list_key has7 Qt results, including four bounded
+EN/RU both-pane table/icon workflows with real folders and official ZIP,
+Ctrl+PgUp, modified keys, notification suppression, unrecognized-file S_FALSE,
+peer/provider/rows and immutable input bytes. A nested extraction Cancel/E_FAIL
+consumer retains the same owner, prefix, rows and guards. Initial driver failures
+are retained separately: reactivating the offscreen parent fixes focus after
+modal progress; S_FALSE is correctly expected to return silently; the E_FAIL
+driver closes the completed source progress report and inspects its messages.
+Focused new-suite7Qt pass/0fail/0skip in0.95s. Related four existing suites pass
+in the earlier five-suite run; its sole new-suite fixture failure remains logged.
+Evidence: build/review/panel-final. Required unsandboxed macOS arm64/Qt6.12.0
+formatting/all-target/default gate305/305 PASS251.38s,4743Qt pass/0fail/18 platform
+skips. Fresh Linux/Windows x64 Qt6.12.0 build and pass6/6 direct consumers in
+62.87s/185.38s: Linux410Qt pass/0fail/0skip, Windows394Qt pass/0fail/16 skips.
+The Windows skips are existing native filesystem Properties-sheet scenarios
+in panel_activation; the new list-window suite has7Qt pass/0fail/0skip on each OS.
+Snapshot `20261007T221539Z-7888dd5f`, source.tar SHA256
+`9b0a3df2511cae3688dc3db92cc036a409b21f74b0e5533a77dd60fab05b38aa`:
+all1408 code/build/runtime/resource inputs match local/archive/actual guests.
+The temporary wrapper is archived and removed before commit;1407 retained inputs
+remain unchanged. Fresh authenticated toolchain/capacity/host-D probes passed;
+no disk changes, cleanup or upstream mutation occurred.
+No layout/text/visibility/resize structure change. Native physical input and
+rendered Windows acceptance, remaining FileManager disposition and final P3
+platform/packages remain mandatory. Eleven slow suites are excluded.
+
 ## P3-05 — Common owner and adaptation reconciliation (2026-10-08)
 
 Source https://github.com/ip7z/7zip.git at full revision
@@ -16009,8 +16056,9 @@ Documentation-only validation uses git diff --check. The latest unchanged code
 gate is the control-lifecycle receipt below: macOS304/304 and Linux/Windows9/9;
 those runs are neither new checks from this review nor exhaustive Common branch
 acceptance. Eleven slow suites remain excluded. No layout or runtime behavior
-changed, so no new appearance capture or full gate was needed. Agent/FileManager
-full-body disposition, final native/rendered/platform stability and current
+changed, so no new appearance capture or full gate was needed. Agent's desktop
+disposition is recorded separately. Remaining FileManager full-body disposition,
+final native/rendered/platform stability and current
 packages remain mandatory; P3-03/04/05/06 are still open.
 
 ## P3-05 — Compress control-specific event lifecycle (2026-10-08)

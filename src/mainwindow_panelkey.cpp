@@ -38,7 +38,7 @@ bool MainWindow::overridePanelKey(const QKeyEvent &key) const {
         return true;
     if (ctrl &&
         ((k >= Qt::Key_A && k <= Qt::Key_Z && QStringLiteral("ACNVWXRZ").contains(QChar(k))) ||
-         (k >= Qt::Key_0 && k <= Qt::Key_9) || k == Qt::Key_PageDown))
+         (k >= Qt::Key_0 && k <= Qt::Key_9) || k == Qt::Key_PageDown || k == Qt::Key_PageUp))
         return true;
     if (k >= Qt::Key_0 && k <= Qt::Key_9 && alt)
         return true;
@@ -99,6 +99,12 @@ bool MainWindow::handlePanelListKey(QKeyEvent *key) {
     if (!panel.ShouldProcessNotifications())
         return true;
     const auto mods = key->modifiers();
+    if (!mods.testFlag(Qt::MetaModifier) &&
+        panel.OnListViewKeyDown({key->key(), mods.testFlag(Qt::AltModifier),
+                                 mods.testFlag(Qt::ControlModifier), false,
+                                 mods.testFlag(Qt::ShiftModifier)},
+                                app_))
+        return true;
     const bool arrow = key->key() == Qt::Key_Up || key->key() == Qt::Key_Down ||
                        key->key() == Qt::Key_Left || key->key() == Qt::Key_Right;
     if (panel._mySelectMode && mods.testFlag(Qt::ShiftModifier) && arrow &&

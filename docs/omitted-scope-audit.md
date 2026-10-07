@@ -106,15 +106,19 @@ The full original `CVKeyPropIDPair`, table, `FindVKeyPropIDPair` and
 `CPanel::OnKeyDown` are restored in their original translation unit. All active
 cases and their ordering were compared, including right-Ctrl/Alt bookmarks,
 F9, modified sort keys, Shift state, F2–F7, unconditional Delete, Insert,
-Alt/Shift arrows, Ctrl+PgDn no-op, keypad selection, Backspace, Ctrl letters,
+Alt/Shift arrows, the notification-level Ctrl+PgDn branch, keypad selection,
+Backspace, Ctrl letters,
 view modes and Alt+F12. Presentation methods reach existing CApp commands;
 F9/sort and panel callbacks keep their original owners. No archive syntax is
 added. Source `PanelMenu::EditCut/EditCopy/EditPaste` is restored: selected
 indices/raw names/CRLF and Unicode clipboard; commented shell/file-transfer
 branches remain inactive. `Panel.h`, complete `PanelListNotify::LVN_KEYDOWN`
 caller, `Panel.cpp::OnNotify` guard and `resource.rc` were reviewed. The resource
-only registers F1 and Alt+F12 as active accelerators; Ctrl+PgDn's caption does
-not make its commented source open call active.
+only registers F1 and Alt+F12 as active accelerators. Subsequent complete
+Panel.cpp review corrects the earlier no-op conclusion: CMyListView::OnMessage
+opens internally on Ctrl+PgDn before this notification handler, and handles
+Ctrl+PgUp as Parent. Those branches now have a separate Qt list-key service;
+PanelKey's commented EnterToFocused remains inactive.
 
 `QtPanelKeyDown` replaces NMLVKEYDOWN/GetKeyState at the source input boundary.
 `mainwindow_panelkey.cpp` routes address edits separately, claims conflicting
@@ -1008,7 +1012,7 @@ remain platform-dependent source behavior, not blanket N/A declarations.
 
 This closes Common's file-owner and adaptation disposition at this checkout.
 It does not assert execution of every retained conditional branch, native desktop
-input, rendered Windows parity or final package acceptance. Remaining Agent/
-FileManager bodies and P3-03/04/05/06 acceptance remain open. Current validation
-and reproducible review evidence are in the
+input, rendered Windows parity or final package acceptance. Agent's desktop
+disposition is recorded above. Remaining FileManager bodies and P3-03/04/05/06
+acceptance remain open. Current validation and reproducible review evidence are in the
 [Common reconciliation audit](upstream-port-audit.md#p3-05--common-owner-and-adaptation-reconciliation-2026-10-08).

@@ -7,12 +7,14 @@
 #include "7zip/PropID.h"
 #include "7zip/UI/Common/ArchiveName.h"
 #include "7zip/UI/FileManager/resource.h"
+#include "App.h"
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
 #include "ProgressDialog2.h"
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/WinDefs.h"
+#include "qtpanelkey.h"
 #include <QComboBox>
 #include <QEvent>
 #include <QWidget>
@@ -347,4 +349,27 @@ bool CPanel::eventFilter(QObject *watched, QEvent *event) {
             _panelCallback->PanelWasFocused();
     }
     return QObject::eventFilter(watched, event);
+}
+
+bool CPanel::OnListViewKeyDown(const QtPanelKeyDown &key, CApp &app) {
+    // CMyListView::OnMessage handles WM_KEYDOWN before LVN_KEYDOWN reaches
+    // OnKeyDown. Commands supply the existing Qt open/parent publication seam.
+    const bool alt = key.Alt;
+    const bool ctrl = key.Control;
+    const bool shift = key.Shift;
+    switch (key.VKey) {
+    case Qt::Key_PageDown:
+        if (ctrl && !alt && !shift) {
+            app.ExecuteCommand(IDM_OPEN_INSIDE);
+            return true;
+        }
+        break;
+    case Qt::Key_PageUp:
+        if (ctrl && !alt && !shift) {
+            app.ExecuteCommand(IDM_OPEN_PARENT_FOLDER);
+            return true;
+        }
+        break;
+    }
+    return false;
 }
