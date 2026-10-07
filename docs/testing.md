@@ -989,6 +989,16 @@ Menu/Options/language consumers and their current geometry reports.
 `context_menu_settings` also reads fresh disk INI fixtures containing Qt boolean
 text and native DWORD values, bypassing QSettings' same-process value cache.
 This catches loss of explicit policy values after reopening the settings file.
+
+`zip_registry` verifies the complete source persistence policies with disposable
+Unicode/space INI paths: Extract preserves undefined choices, Compression deletes
+undefined values, all-ones extraction limits delete their key, empty profile
+strings disappear, global Level defaults survive malformed data, and values wider
+than a registry DWORD retain source defaults. It covers Qt bool text and native
+DWORD representations across Extract, Compression and WorkDir. The Create and
+Extract dialog suites verify malformed password/split preferences, explicit user
+changes and restart; compression_preferences also exercises a restored profile
+through real archive creation, test and byte-for-byte extraction.
 The bool transport is shared by the source compression/extraction preferences;
 their direct consumers are included in shared-code validation.
 

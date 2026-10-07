@@ -1990,6 +1990,21 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — Source settings persistence (2026-10-07)
+
+Create/Extract, WorkDir and context-menu settings now retain upstream default,
+defined and all-ones sentinel policies at the INI boundary. Undefined extraction
+choices preserve previous settings; undefined compression options delete them.
+Malformed password/split/removable preferences keep source defaults; values wider
+than DWORD are refused instead of truncated. Global compression Level and empty
+profile-string deletion are restored. Source whole-operation locking is preserved.
+HKCU keys/history subkeys remain explicit INI groups/string lists; entirely empty
+INI profile groups are implicit defaults recreated on use. No layout/resources
+change. Dialog regressions cover explicit changes and restart; this does not
+establish native desktop input or rendered Windows parity. Source/provenance and
+current validation belong to the
+[settings audit](upstream-port-audit.md#p3-05--source-settings-persistence-2026-10-07).
+
 ## P3-05 — Benchmark source/platform lifecycle (2026-10-07)
 
 Benchmark's POSIX hardware-thread text and choices now use original System.h

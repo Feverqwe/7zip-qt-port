@@ -68,6 +68,7 @@ struct CFormatOptions {
     CFormatOptions() { ResetForLevelChange(); }
 };
 struct CInfo {
+    UInt32 Level = 5;
     QString ArcType = QStringLiteral("7z");
     bool ShowPassword = false;
     bool EncryptHeaders = false;

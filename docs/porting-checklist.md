@@ -263,6 +263,15 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## P3 — приёмка, обновления и поставка
 
+P3-05, 2026-10-07: сверка владельца ZipRegistry восстановила исходные политики
+сохранения Extract/Compression, DWORD bounds, defaults и сериализацию операций;
+Create/Extract/restart и остальные consumers проверены вместе с владельцем:
+macOS full301/301PASS, Linux/Windows focused8/8PASS на одинаковом snapshot.
+Точная приёмка и платформенные результаты —
+[settings audit](upstream-port-audit.md#p3-05--source-settings-persistence-2026-10-07).
+Это результат внутри открытого P3-05; оставшиеся Common/CompressDialog,
+native/rendered и package-проверки сохраняются, parent-счётчик не меняется.
+
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |

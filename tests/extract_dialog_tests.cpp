@@ -41,6 +41,29 @@ class ExtractDialogTests final : public QObject {
         else
             qputenv("SEVENZIP_SETTINGS_PATH", oldSettings_);
     }
+    void malformedPasswordAndSplitPreferences() {
+        {
+            QSettings key(settings_, QSettings::IniFormat);
+            key.setValue("Extraction/SplitDest", "invalid");
+            key.setValue("Extraction/ShowPassword", "invalid");
+        }
+        {
+            CExtractDialog dialog(dir_.filePath("destination 空"), {});
+            QVERIFY(dialog.findChild<QCheckBox *>("extractNameEnable")->isChecked());
+            QVERIFY(!dialog.findChild<QCheckBox *>("extractShowPassword")->isChecked());
+            QCOMPARE(dialog.findChild<QLineEdit *>("extractPassword")->echoMode(),
+                     QLineEdit::Password);
+            dialog.findChild<QCheckBox *>("extractShowPassword")->setChecked(true);
+            dialog.findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
+            dialog.accept();
+            QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        }
+        CExtractDialog restarted(dir_.filePath("destination 空"), {});
+        QVERIFY(!restarted.findChild<QCheckBox *>("extractNameEnable")->isChecked());
+        QVERIFY(restarted.findChild<QCheckBox *>("extractShowPassword")->isChecked());
+        QCOMPARE(restarted.findChild<QLineEdit *>("extractPassword")->echoMode(),
+                 QLineEdit::Normal);
+    }
     void originalModesAndPersistence() {
         {
             CExtractDialog dialog(dir_.path(), {});

@@ -850,3 +850,24 @@ disposition; complete common-module reconciliation, CompressDialog final event/
 header disposition and native/rendered/package acceptance remain separate required
 scope. Actual regression/runtime/geometry evidence belongs to the
 [Benchmark audit](upstream-port-audit.md#p3-05--benchmark-source-and-platform-lifecycle-2026-10-07).
+
+### Common ZipRegistry persistence body/header disposition, 2026-10-07
+
+Source: https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/Common/ZipRegistry.cpp/.h`. Complete active bodies, declarations,
+Registry services and Create/Extract/WorkDir/ContextMenu consumers were compared.
+
+| Source scope | Disposition |
+| --- | --- |
+| Registry key and synchronization services | Explicit application INI path and QSettings replace HKCU/7-Zip/CKey. Source g_CS now serializes complete Load/Save operations, including profile-group replacement, using QMutex. DWORD conversion validates its full range before narrowing; Qt bool text is also accepted because it is the adapter's own serialized representation. |
+| NExtract CInfo and password/memory-limit functions | Source mode bounds, forced flags, default-true SplitDest, default-false metadata/password BoolPairs, history and defined-only writes remain. Undefined Extract pairs preserve previous keys. The all-ones memory limit deletes its key. Legacy Qt history remains a one-way read fallback. |
+| NCompression CInfo/CFormatOptions | Source Level=5 default/global field, per-format fields, reset rules, history, source traversal and metadata defaults remain. Undefined compression pairs and all-ones per-format DWORDs delete keys; empty profile strings delete keys. Only the owned options group is replaced. INI cannot represent an empty subkey; an entirely default profile has no stored group and FindRegistryFormat_Always supplies its source defaults on use. |
+| CMemUse/ParseMemUse | Original parser, overflow checks, suffix/percent rules, clear/default and byte calculation remain; QString-to-wide conversion replaces the native string boundary. |
+| NWorkDir/CContextMenuInfo | Original mode/path fallback, removable-only default, context BoolPair defaults, flags and Zone sentinel policies remain. Invalid stored booleans keep their respective source defaults. |
+| Inactive branches and storage differences | Commented dictionary-chain, MemLimit_Save/Load and email-mask alternatives remain inactive at this baseline. Registry prefix/open/create, recursive history keys and write-if-changed optimization are storage services; INI groups/string lists replace them. Portable upstream MethodProps/CBoolPair, strings, vectors, ExtractMode and numeric conversion remain dependencies; no archive algorithm is introduced. |
+
+This receipt covers ZipRegistry's persistence owner. Other Common modules and
+CompressDialog event/header reconciliation retain their separate required scope.
+Regression/platform evidence belongs to the
+[settings audit](upstream-port-audit.md#p3-05--source-settings-persistence-2026-10-07).

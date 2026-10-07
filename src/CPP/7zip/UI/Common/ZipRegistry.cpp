@@ -3,7 +3,23 @@
 #include "ZipRegistry.h"
 #include "Common/StringConvert.h"
 #include "Common/StringToInt.h"
+#include <QMutex>
+#include <QMutexLocker>
 #include <QSettings>
+
+// Source g_CS serializes whole settings operations, including group replacement.
+static QMutex g_CS;
+
+// A registry DWORD cannot contain an out-of-range value. QVariant::toUInt can
+// narrow a wider stored integer, so validate before substituting this service.
+static bool Key_Get_UInt32_IfOk(QSettings &key, const QString &name, UInt32 &value) {
+    bool ok;
+    const qulonglong number = key.value(name).toULongLong(&ok);
+    if (!ok || number > UInt32(-1))
+        return false;
+    value = UInt32(number);
+    return true;
+}
 
 // QSettings serializes bools as text in INI files; native registry values are
 // DWORDs. Accept both representations without changing undefined-value defaults.
@@ -14,8 +30,8 @@ static bool Key_Get_bool_IfOk(QSettings &key, const QString &name, bool &value) 
         value = text == QStringLiteral("true");
         return true;
     }
-    bool ok;
-    const UInt32 number = stored.toUInt(&ok);
+    UInt32 number = 0;
+    const bool ok = Key_Get_UInt32_IfOk(key, name, number);
     if (ok)
         value = number != 0;
     return ok;
@@ -24,6 +40,7 @@ static bool Key_Get_bool_IfOk(QSettings &key, const QString &name, bool &value) 
 // Native CContextMenuInfo defaults and defined-value branches. The explicit
 // application settings file replaces the process-wide Windows registry key.
 void CContextMenuInfo::Save(const QString &path) const {
+    QMutexLocker lock(&g_CS);
     if (path.isEmpty())
         return;
     QSettings key(path, QSettings::IniFormat);
@@ -44,6 +61,7 @@ void CContextMenuInfo::Save(const QString &path) const {
 }
 
 void CContextMenuInfo::Load(const QString &path) {
+    QMutexLocker lock(&g_CS);
     Cascaded.Val = true;
     Cascaded.Def = false;
     MenuIcons.Val = false;
@@ -63,18 +81,15 @@ void CContextMenuInfo::Load(const QString &path) {
     getPair("CascadedMenu", Cascaded);
     getPair("ElimDupExtract", ElimDup);
     getPair("MenuIcons", MenuIcons);
-    bool ok;
-    const UInt32 zone = key.value("WriteZoneIdExtract").toUInt(&ok);
-    if (ok)
-        WriteZone = zone;
-    const UInt32 flags = key.value("ContextMenu").toUInt(&ok);
-    if (ok) {
-        Flags = flags;
-        Flags_Def = true;
-    }
+    Key_Get_UInt32_IfOk(key, "WriteZoneIdExtract", WriteZone);
+    Flags_Def = Key_Get_UInt32_IfOk(key, "ContextMenu", Flags);
 }
 
 // Registry BoolPair services adapted to the same explicit QSettings key.
+static void Key_Set_BoolPair(QSettings &key, const char *name, const CBoolPair &pair) {
+    if (pair.Def)
+        key.setValue(QLatin1String(name), pair.Val);
+}
 static void Key_Set_BoolPair_Delete_IfNotDef(QSettings &key, const char *name,
                                              const CBoolPair &pair) {
     if (pair.Def)
@@ -87,9 +102,22 @@ static void Key_Get_BoolPair(QSettings &key, const char *name, CBoolPair &pair) 
     pair.Val = false;
     pair.Def = Key_Get_bool_IfOk(key, QLatin1String(name), pair.Val);
 }
+static void Key_Get_BoolPair_true(QSettings &key, const char *name, CBoolPair &pair) {
+    pair.Val = true;
+    pair.Def = Key_Get_bool_IfOk(key, QLatin1String(name), pair.Val);
+}
+
+// Source DWORD sentinel policy is shared by Extract and Compression.
+static void Key_Set_UInt32(QSettings &key, const char *name, UInt32 value) {
+    if (value == (UInt32)(Int32)-1)
+        key.remove(QLatin1String(name));
+    else
+        key.setValue(QLatin1String(name), value);
+}
 
 namespace NWorkDir {
 void CInfo::Save(const QString &path) const {
+    QMutexLocker lock(&g_CS);
     if (path.isEmpty())
         return;
     QSettings key(path, QSettings::IniFormat);
@@ -99,14 +127,14 @@ void CInfo::Save(const QString &path) const {
     key.setValue(QStringLiteral("TempRemovableOnly"), ForRemovableOnly);
 }
 void CInfo::Load(const QString &path) {
+    QMutexLocker lock(&g_CS);
     SetDefault();
     if (path.isEmpty())
         return;
     QSettings key(path, QSettings::IniFormat);
     key.beginGroup(QStringLiteral("Options"));
-    bool ok = false;
-    const UInt32 dirType = key.value(QStringLiteral("WorkDirType")).toUInt(&ok);
-    if (!ok)
+    UInt32 dirType;
+    if (!Key_Get_UInt32_IfOk(key, QStringLiteral("WorkDirType"), dirType))
         return;
     switch (dirType) {
     case NMode::kSystem:
@@ -122,8 +150,7 @@ void CInfo::Load(const QString &path) {
         if (Mode == NMode::kSpecified)
             Mode = NMode::kSystem;
     }
-    if (key.contains(QStringLiteral("TempRemovableOnly")))
-        ForRemovableOnly = key.value(QStringLiteral("TempRemovableOnly")).toBool();
+    Key_Get_bool_IfOk(key, QStringLiteral("TempRemovableOnly"), ForRemovableOnly);
 }
 } // namespace NWorkDir
 
@@ -210,26 +237,24 @@ void CMemUse::Parse(const QString &s) { IsDefined = ParseMemUse(s.toStdWString()
 static const char *const kOptionsKeyName = "Compression/Options";
 static const char *const kMemUse = sizeof(size_t) == 4 ? "MemUse32" : "MemUse64";
 
-// Registry DWORD adapters preserve upstream's absent-value sentinel.
-static void Key_Set_UInt32(QSettings &key, const char *name, UInt32 value) {
-    if (value == (UInt32)(Int32)-1)
+static void SetRegString(QSettings &key, const char *name, const QString &value) {
+    if (value.isEmpty())
         key.remove(QLatin1String(name));
     else
         key.setValue(QLatin1String(name), value);
 }
 static void Key_Get_UInt32(QSettings &key, const char *name, UInt32 &value) {
     value = (UInt32)(Int32)-1;
-    bool ok;
-    const UInt32 v = key.value(QLatin1String(name)).toUInt(&ok);
-    if (ok)
-        value = v;
+    Key_Get_UInt32_IfOk(key, QLatin1String(name), value);
 }
 
 void CInfo::Save(const QString &path) const {
+    QMutexLocker lock(&g_CS);
     QSettings optionsKey(path, QSettings::IniFormat);
     optionsKey.setValue("Compression/Archiver", ArcType);
     optionsKey.setValue("Compression/ShowPassword", ShowPassword);
     optionsKey.setValue("Compression/EncryptHeaders", EncryptHeaders);
+    optionsKey.setValue("Compression/Level", Level);
     optionsKey.beginGroup("Compression");
     Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "Security", NtSecurity);
     Key_Set_BoolPair_Delete_IfNotDef(optionsKey, "AltStreams", AltStreams);
@@ -247,10 +272,10 @@ void CInfo::Save(const QString &path) const {
     FOR_VECTOR(i, Formats) {
         const CFormatOptions &fo = Formats[i];
         optionsKey.beginGroup(fo.FormatID);
-        optionsKey.setValue("Method", fo.Method);
-        optionsKey.setValue("Options", QString::fromWCharArray(fo.Options.Ptr()));
-        optionsKey.setValue("EncryptionMethod", fo.EncryptionMethod);
-        optionsKey.setValue(QLatin1String(kMemUse), fo.MemUse);
+        SetRegString(optionsKey, "Method", fo.Method);
+        SetRegString(optionsKey, "Options", QString::fromWCharArray(fo.Options.Ptr()));
+        SetRegString(optionsKey, "EncryptionMethod", fo.EncryptionMethod);
+        SetRegString(optionsKey, kMemUse, fo.MemUse);
         Key_Set_UInt32(optionsKey, "Level", fo.Level);
         Key_Set_UInt32(optionsKey, "Dictionary", fo.Dictionary);
         Key_Set_UInt32(optionsKey, "Order", fo.Order);
@@ -266,14 +291,17 @@ void CInfo::Save(const QString &path) const {
 }
 
 void CInfo::Load(const QString &path) {
+    QMutexLocker lock(&g_CS);
     ArcPaths.Clear();
     Formats.Clear();
+    Level = 5;
     ArcType = QStringLiteral("7z");
     ShowPassword = false;
     EncryptHeaders = false;
     QSettings optionsKey(path, QSettings::IniFormat);
-    ShowPassword = optionsKey.value("Compression/ShowPassword", false).toBool();
-    EncryptHeaders = optionsKey.value("Compression/EncryptHeaders", false).toBool();
+    Key_Get_bool_IfOk(optionsKey, "Compression/ShowPassword", ShowPassword);
+    Key_Get_bool_IfOk(optionsKey, "Compression/EncryptHeaders", EncryptHeaders);
+    Key_Get_UInt32_IfOk(optionsKey, "Compression/Level", Level);
     optionsKey.beginGroup("Compression");
     Key_Get_BoolPair(optionsKey, "Security", NtSecurity);
     Key_Get_BoolPair(optionsKey, "AltStreams", AltStreams);
@@ -313,34 +341,36 @@ void CInfo::Load(const QString &path) {
 
 namespace NExtract {
 UInt32 Read_LimitGB(const QString &path) {
+    QMutexLocker lock(&g_CS);
     UInt32 v = (UInt32)(Int32)-1;
     if (path.isEmpty())
         return v;
     QSettings key(path, QSettings::IniFormat);
-    bool valid = false;
-    const UInt32 stored = key.value("Extraction/MemLimit").toUInt(&valid);
-    if (valid)
-        v = stored;
+    Key_Get_UInt32_IfOk(key, "Extraction/MemLimit", v);
     return v;
 }
 
 void Save_LimitGB(const QString &path, UInt32 limit_GB) {
+    QMutexLocker lock(&g_CS);
     if (path.isEmpty())
         return;
     QSettings key(path, QSettings::IniFormat);
-    key.setValue("Extraction/MemLimit", limit_GB);
+    key.beginGroup("Extraction");
+    Key_Set_UInt32(key, "MemLimit", limit_GB);
 }
 
 bool Read_ShowPassword(const QString &path) {
+    QMutexLocker lock(&g_CS);
     bool showPassword = false;
     if (path.isEmpty())
         return showPassword;
     QSettings key(path, QSettings::IniFormat);
-    showPassword = key.value("Extraction/ShowPassword", showPassword).toBool();
+    Key_Get_bool_IfOk(key, "Extraction/ShowPassword", showPassword);
     return showPassword;
 }
 
 void Save_ShowPassword(const QString &path, bool showPassword) {
+    QMutexLocker lock(&g_CS);
     if (path.isEmpty())
         return;
     QSettings key(path, QSettings::IniFormat);
@@ -348,18 +378,17 @@ void Save_ShowPassword(const QString &path, bool showPassword) {
 }
 
 void CInfo::Save(const QString &path) const {
+    QMutexLocker lock(&g_CS);
     QSettings key(path, QSettings::IniFormat);
     key.beginGroup("Extraction");
     if (PathMode_Force)
         key.setValue("ExtractMode", UInt32(PathMode));
     if (OverwriteMode_Force)
         key.setValue("OverwriteMode", UInt32(OverwriteMode));
-    if (SplitDest.Def)
-        key.setValue("SplitDest", SplitDest.Val);
-    if (ShowPassword.Def)
-        key.setValue("ShowPassword", ShowPassword.Val);
-    Key_Set_BoolPair_Delete_IfNotDef(key, "ElimDup", ElimDup);
-    Key_Set_BoolPair_Delete_IfNotDef(key, "Security", NtSecurity);
+    Key_Set_BoolPair(key, "SplitDest", SplitDest);
+    Key_Set_BoolPair(key, "ShowPassword", ShowPassword);
+    Key_Set_BoolPair(key, "ElimDup", ElimDup);
+    Key_Set_BoolPair(key, "Security", NtSecurity);
     QStringList paths;
     FOR_VECTOR(i, Paths)
     paths.append(Paths[i]);
@@ -367,6 +396,7 @@ void CInfo::Save(const QString &path) const {
 }
 
 void CInfo::Load(const QString &path) {
+    QMutexLocker lock(&g_CS);
     PathMode = NPathMode::kCurPaths;
     PathMode_Force = false;
     OverwriteMode = NOverwriteMode::kAsk;
@@ -384,23 +414,16 @@ void CInfo::Load(const QString &path) {
     Key_Get_BoolPair(key, "Security", NtSecurity);
     for (const QString &s : paths)
         Paths.Add(s);
-    bool ok;
-    UInt32 v = key.value("ExtractMode").toUInt(&ok);
-    if (ok && v <= NPathMode::kAbsPaths) {
+    UInt32 v;
+    if (Key_Get_UInt32_IfOk(key, "ExtractMode", v) && v <= NPathMode::kAbsPaths) {
         PathMode = (NPathMode::EEnum)v;
         PathMode_Force = true;
     }
-    v = key.value("OverwriteMode").toUInt(&ok);
-    if (ok && v <= NOverwriteMode::kRenameExisting) {
+    if (Key_Get_UInt32_IfOk(key, "OverwriteMode", v) && v <= NOverwriteMode::kRenameExisting) {
         OverwriteMode = (NOverwriteMode::EEnum)v;
         OverwriteMode_Force = true;
     }
-    SplitDest.Def = key.contains("SplitDest");
-    if (SplitDest.Def)
-        SplitDest.Val = key.value("SplitDest").toBool();
-    if (key.contains("ShowPassword")) {
-        ShowPassword.Def = true;
-        ShowPassword.Val = key.value("ShowPassword").toBool();
-    }
+    Key_Get_BoolPair_true(key, "SplitDest", SplitDest);
+    Key_Get_BoolPair(key, "ShowPassword", ShowPassword);
 }
 } // namespace NExtract

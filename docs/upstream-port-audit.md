@@ -15932,6 +15932,54 @@ before commit;909 remaining frozen inputs are unchanged. Full macOS LastTest has
 build/review/method-state; native desktop, rendered reference and packages remain
 separate required acceptance.
 
+## P3-05 — Source settings persistence (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/Common/ZipRegistry.cpp/.h`, Registry.h/.cpp value services,
+`GUI/CompressDialog.cpp::OnInit/OnOK/SaveOptionsInMem`,
+`GUI/ExtractDialog.cpp::OnInit/OnOK/GetButton_Bools`, Common/WorkDir.cpp and
+FileManager/MenuPage.cpp and FoldersPage.cpp consumers. Active source bodies, header fields,
+default/defined/sentinel conditions and callers were reviewed before correction.
+The adapted authoritative C++ module remains under `src/CPP/7zip/UI/Common`;
+upstream checkout stays read-only and existing notices/licenses remain.
+
+Copied source Key_Set_BoolPair, Key_Get_BoolPair_true, SetRegString and global
+Level policy restore the contracts lost at the QSettings boundary. Extract's
+undefined BoolPairs preserve prior values; Compression's undefined pairs delete
+their values. All-ones extraction memory limits delete the key. Malformed bools
+leave source defaults and defined flags intact. The typed DWORD adapter validates
+wide QVariant values before narrowing: Qt's toUInt can otherwise report success
+after truncation. All numeric consumers in this module use that one adapter.
+Original g_CS whole-operation serialization is restored with QMutex; parsing is
+stateless and remains outside the lock. Registry handles/keys become explicit INI
+paths/groups, histories become QStringList, and strings convert at Qt boundaries.
+Original portable CBoolPair/MethodProps, MyString/MyVector, ExtractMode and
+StringToInt remain dependencies. No archive/compression implementation is added.
+
+Whole-module branch/storage disposition is recorded in
+[omitted scope](omitted-scope-audit.md#common-zipregistry-persistence-bodyheader-disposition-2026-10-07).
+This completes that persistence owner's reconciliation, without closing the
+remaining Common modules, CompressDialog events, native desktop/rendered parity
+or package/final acceptance. Regression evidence is in
+`build/review/registry-state`: original production code gives eight failures and
+six passes in the new isolated suite; the subsequent range fixture also exposed
+Qt's wide-integer truncation. Added dialog consumer cases verify source password/
+split defaults, explicit changes and restart. Unrelated INI groups are preserved.
+
+Validation, 2026-10-07: affected local build and focused5/5 pass; unsandboxed
+format/all-target/default gate301/301 PASS249.81s on macOS arm64/Qt6.12.0,
+4663Qt pass/0fail/18 platform skips. Fresh Linux and Windows x64/Qt6.12.0 each
+pass8/8 suites2.43s/22.19s,95/97Qt pass/0fail/2/0skips (Linux NTFS DACL/ADS).
+Snapshot `20261007T204419Z-94196cdd`, source.tar SHA256
+`fa56d06970559c38c200843fe7c7b9aaccdb05f3436e612e765a92b5d2e7b96c`:
+1404 code/build/runtime/resource inputs match local/source archive/actual guests.
+The disposable checked wrapper is archived and removed before commit. Existing
+consumers provide30 normal/compact widget reports per OS, with visible button
+boxes fitting; layout was unchanged. This is not a rendered Windows/native
+desktop acceptance claim. Eleven slow suites were excluded, not accepted by this
+gate. Live host/guest capacity checks passed; no cleanup or disk changes occurred.
+
 ## P3-05 — Benchmark source and platform lifecycle (2026-10-07)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

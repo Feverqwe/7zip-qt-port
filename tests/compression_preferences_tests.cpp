@@ -363,6 +363,31 @@ class CompressionPreferencesTests final : public QObject {
         QCOMPARE(limit(restarted)->currentIndex(), 0);
         QVERIFY(!restarted.compressionOptions().MemUsage.IsDefined);
     }
+    void malformedPasswordPreferencesUseSourceDefaults() {
+        {
+            QSettings key(settingsPath_, QSettings::IniFormat);
+            key.setValue("Compression/ShowPassword", "invalid");
+            key.setValue("Compression/EncryptHeaders", "invalid");
+        }
+        {
+            CreateArchiveDialog dialog(dir_.path(), {source_});
+            QVERIFY(!dialog.findChild<QCheckBox *>("archiveShowPassword")->isChecked());
+            QVERIFY(!dialog.findChild<QCheckBox *>("archiveEncryptHeaders")->isChecked());
+            QCOMPARE(dialog.findChild<QLineEdit *>("archivePassword")->echoMode(),
+                     QLineEdit::Password);
+            dialog.findChild<QCheckBox *>("archiveShowPassword")->setChecked(true);
+            dialog.findChild<QCheckBox *>("archiveEncryptHeaders")->setChecked(true);
+            submit(dialog);
+            QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        }
+        CreateArchiveDialog restarted(dir_.path(), {source_});
+        QVERIFY(restarted.findChild<QCheckBox *>("archiveShowPassword")->isChecked());
+        QVERIFY(restarted.findChild<QCheckBox *>("archiveEncryptHeaders")->isChecked());
+        QCOMPARE(restarted.findChild<QLineEdit *>("archivePassword")->echoMode(),
+                 QLineEdit::Normal);
+        QSettings key(settingsPath_, QSettings::IniFormat);
+        QCOMPARE(key.value("Compression/Level").toUInt(), 5u);
+    }
 };
 QTEST_MAIN(CompressionPreferencesTests)
 #include "compression_preferences_tests.moc"

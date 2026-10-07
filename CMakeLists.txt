@@ -972,6 +972,10 @@ if(BUILD_TESTING)
     target_include_directories(context_menu_settings_tests PRIVATE src)
     target_link_libraries(context_menu_settings_tests PRIVATE sevenzip_common Qt6::Test)
     add_test(NAME context_menu_settings COMMAND context_menu_settings_tests -silent)
+    qt_add_executable(zip_registry_tests tests/zip_registry_tests.cpp)
+    target_include_directories(zip_registry_tests PRIVATE src)
+    target_link_libraries(zip_registry_tests PRIVATE sevenzip_common Qt6::Test)
+    add_test(NAME zip_registry COMMAND zip_registry_tests -silent)
     qt_add_executable(external_launch_tests tests/external_launch_tests.cpp tests/layout_inspection.cpp
         src/archivebackend.cpp src/archivebackend_listing.cpp src/archivebackend_validation.cpp
         src/archivebackend_mutations.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp)
