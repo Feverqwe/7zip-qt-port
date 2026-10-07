@@ -1950,6 +1950,20 @@ P2-05/P2-06. Normal/compact main и panel status JSON, прямой двухпа
 UI consumer и полный `check.sh` 143/143 прошли на macOS arm64/Qt 6.11.2.
 Windows/Linux runtime и rendered Windows reference не проверены.
 
+## P3-05 — source CopyFrom into archived ADS (2026-10-07)
+
+Agent now retains the original CopyFrom enumeration branch for an archive's
+alternate-stream folder: regular files become ADS, and directories return
+E_NOTIMPL before writing. Windows filesystem ADS prefixes retain the colon
+without adding a path separator. On Unix, a narrow update-callback metadata
+adapter supplies the Windows-only source item flag to the official WIM writer;
+this does not add Unix filesystem ADS enumeration. Existing source transaction,
+failure/Cancel handling and folder restoration remain authoritative. No dialog
+layout or text changed. Public provider/worker checks do not establish native
+desktop input or rendered Windows parity; the
+[source audit](upstream-port-audit.md#p3-05--source-agent-alternate-stream-updates-2026-10-07)
+owns the bounded implementation and platform evidence.
+
 ## P3-05 — toolbar Extract/Test source routing (2026-10-07)
 
 Extract внутри открытого архива использует исходный Copy To с destination

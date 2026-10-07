@@ -633,3 +633,19 @@ must be reconciled against its owning functional audit. The source entrypoint ga
 found by this review is accepted in the bounded P3-05.1 caller component.
 Engine/Qt packaging, notices and own-code licensing belong to P3-04; final
 rendered/native UX acceptance belongs to P3-06.
+
+### Agent update enumeration review, 2026-10-07
+
+Complete original/current AgentOut and its declarations/callers exposed an active
+omission: `DoOperation` replaced the original alternate-stream item loop with
+E_NOTIMPL, and removed the Windows filesystem-colon-prefix guard. Existing
+DirItem/FileFind/EnumDirItems and UpdateCallback already support that Windows
+branch. It is now restored, with a narrow Unix callback metadata adapter because
+the source FileInfoBase flag is Windows-only. Public source CopyFrom transactions
+use the official WIM writer and preserve source directory refusal, failure and
+cancellation behavior; see the
+[bounded source audit](upstream-port-audit.md#p3-05--source-agent-alternate-stream-updates-2026-10-07).
+The seven Agent bodies and associated headers were compared, but whole-group
+acceptance still requires final wrapper/empty-agent/FAR versus desktop entrypoint
+disposition and dependency/consumer reconciliation. An absent platform member
+is not sufficient evidence to omit supported archived ADS behavior.

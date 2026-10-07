@@ -170,6 +170,12 @@ class CArchiveUpdateCallback Z7_final : public IArchiveUpdateCallback2,
 
     Byte *ProcessedItemsStatuses;
 
+#ifndef _WIN32
+    // Archived ADS are supported by handlers on Unix. FileInfoBase's ADS
+    // flag exists only on Windows; Agent supplies this folder-level metadata.
+    bool NewDataIsAltStream = false;
+#endif
+
     CArchiveUpdateCallback();
 
     bool IsDir(const CUpdatePair2 &up) const {

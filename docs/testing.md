@@ -2404,6 +2404,13 @@ and recover without rebinding; the separate cached folder summary stays visible.
 both panes/languages and normal/flat view, source sort/Refresh/marks, Properties
 Escape and geometry, peer state and exact archive/input bytes. Qt logical-zero
 text checks apply the established NFC/prefix boundary without normalizing CRC.
+`agent_stream_update` checks source CopyFrom into an archived WIM ADS folder,
+Unicode/space names, positive-progress E_FAIL/E_ABORT, source directory refusal,
+unchanged archive/input on failure, old main/ADS and new payload via independent
+official extraction, folder reload and temporary cleanup. Windows additionally
+uses an actual filesystem ADS colon prefix; only these three filesystem-source
+rows are inapplicable on Unix. `native_update_path` covers malformed ADS paths.
+The Unix callback adapter keeps ordinary callers' empty kpidIsAltStream property.
 `agent_folder` validates the source _proxy folder contract: name/index/ancestor/
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings

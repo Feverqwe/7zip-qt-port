@@ -544,6 +544,15 @@ Mac full293/293PASS274.47s, focused6/6; same-source Linux10/10 и Windows core5/
 rendered/packages/P3-06 остаются открытыми.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-archive-directory-property-projection-2026-10-07).
 
+P3-05,2026-10-07: source Agent CopyFrom into archived ADS restores the original
+item loop/directory refusal and Windows filesystem-colon-prefix guard; a narrow
+Unix callback metadata adapter enables the official WIM writer. Actual RED3;
+Mac full294/294PASS253.75s, Linux7/7 focused, Windows5/5 unchanged retry after
+one retained codec-catalog test timeout. Source/worker bytes/error/Cancel and
+existing ADS UI consumers pass; whole-module/native desktop/rendered/package
+and final acceptance remain open.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-agent-alternate-stream-updates-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

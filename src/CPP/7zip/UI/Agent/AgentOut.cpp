@@ -281,7 +281,10 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
 
     {
         FString folderPrefix = _folderPrefix;
-        NFile::NName::NormalizeDirPathPrefix(folderPrefix);
+#ifdef _WIN32
+        if (!NFile::NName::IsAltStreamPrefixWithColon(fs2us(folderPrefix)))
+#endif
+            NFile::NName::NormalizeDirPathPrefix(folderPrefix);
 
         if (GuiPathMode || dirItems.SymLinks || dirItems.ScanAltStreams) {
             NWildcard::CCensor censor;
@@ -294,8 +297,14 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
             RINOK(dirItems.EnumerateItems2(folderPrefix, _updatePathPrefix, _names, requestedPaths))
 
         if (_updatePathPrefix_is_AltFolder) {
-            // The current portable CDirItem has no alt-stream flag.
-            return E_NOTIMPL;
+            FOR_VECTOR(i, dirItems.Items) {
+                CDirItem &item = dirItems.Items[i];
+                if (item.IsDir())
+                    return E_NOTIMPL;
+#ifdef _WIN32
+                item.IsAltStream = true;
+#endif
+            }
         }
     }
 
@@ -365,6 +374,9 @@ Z7_COM7F_IMF(CAgent::DoOperation(FStringVector *requestedPaths, FStringVector *p
     CMyComPtr2_Create<IArchiveUpdateCallback, CArchiveUpdateCallback> updateCallback;
 
     updateCallback->DirItems = &dirItems;
+#ifndef _WIN32
+    updateCallback->NewDataIsAltStream = _updatePathPrefix_is_AltFolder;
+#endif
     updateCallback->ArcItems = &arcItems;
     updateCallback->UpdatePairs = &updatePairs2;
     // UpdateGUI's lifecycle projection must also reach the original source

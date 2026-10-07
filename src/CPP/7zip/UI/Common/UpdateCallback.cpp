@@ -502,6 +502,10 @@ Z7_COM7F_IMF(CArchiveUpdateCallback::GetProperty(UInt32 index, PROPID propID, PR
             break;
             // case kpidShortName:  prop = di.ShortName; break;
 #else
+        case kpidIsAltStream:
+            if (NewDataIsAltStream)
+                prop = true;
+            break;
 
 #if defined(__APPLE__)
 #pragma GCC diagnostic push

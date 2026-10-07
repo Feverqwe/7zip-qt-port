@@ -15493,3 +15493,81 @@ and130 reports were collected. No production timeout or behavioral assertion
 was relaxed. Evidence lives in build/review/source-key/.
 Slow suites and rendered upstream Windows parity were not verified. Whole
 source/UX/platform/package acceptance and P3-06 remain open.
+
+## P3-05 — source Agent alternate-stream updates (2026-10-07)
+
+Baseline: [ip7z/7zip](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+full commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Reviewed original/adapted AgentOut.cpp and Agent.h declarations, ArchiveFolderOut.cpp,
+AgentProxy.cpp/.h, ArchiveFolder.cpp, ArchiveFolderOpen.cpp,
+UpdateCallbackAgent.cpp/.h and IFolderArchive.h alongside Agent.cpp/.h.
+The normalized read-only comparison is retained under
+`build/review/agent-final-body/`; it is review evidence, not a new baseline.
+
+The active `CAgent::DoOperation` enumeration branch had two omissions:
+unconditional directory-prefix normalization broke Windows filesystem ADS
+prefixes, and an unconditional E_NOTIMPL replaced the original archived-ADS
+item loop. Restored the original Windows `IsAltStreamPrefixWithColon` guard,
+directory refusal and `CDirItem::IsAltStream` assignment. Existing
+`SetFolder` derives the logical colon prefix from CProxyArc2; source
+`EnumerateItems2`, update-pair/produce logic, CUpdateCallbackAgent and
+`CommonUpdateOperation` still own enumeration, planning, errors, temporary
+publication and folder restoration. No archive writer was reimplemented.
+
+The Windows `CFileInfoBase::IsAltStream` member does not exist on Unix.
+`Common/UpdateCallback.h/.cpp::CArchiveUpdateCallback` therefore has a narrow
+Unix `NewDataIsAltStream` metadata adapter, set by Agent from the source folder
+flag. It supplies kpidIsAltStream only for these newly enumerated ADS files;
+the default remains VT_EMPTY and existing archived entries retain native
+properties. The original directory refusal runs before this projection.
+This permits the official WIM writer to update archived ADS from ordinary Unix
+files without inventing filesystem ADS enumeration. Windows retains its
+original per-item flag and filesystem stream service.
+
+Dependencies are the existing exact DirItem.h/CFileInfoBase, adapted
+EnumDirItems, UpdateCallback, Agent proxy/tree metadata, UpdatePair/UpdateProduce,
+file/progress/workdir services, typed ArchiveBackend native writer and official
+codec module. No borrowed file, upstream revision or license was added;
+Igor Pavlov notices and LGPL notice remain. Source default kpidIsAltStream
+behavior for other Unix callers is unchanged.
+
+`agent_stream_update` exercises public IFolderOperations::CopyFrom through the
+source progress worker and real WIM reader/writer: ordinary Unicode/space input
+into an archived ADS folder; callback E_FAIL and E_ABORT; directory refusal;
+Windows additionally copies an actual filesystem ADS using its colon prefix.
+It checks input/main-stream preservation, previous archive bytes on failure,
+independent official extraction of old main/ADS and new payload, retained
+folder reload and temporary cleanup. Existing `native_update_path` covers
+malformed ADS paths at the writer boundary. Actual old-product RED has three
+failures on macOS, followed by passing restored behavior.
+
+This closes the identified update branch, not the whole Agent group. The header
+review distinguishes original bodies moved out of line, retained interfaces,
+typed codec/open/progress services and source wrapper entrypoints. In particular
+the still-omitted IOutFolderArchive/DoOperation2 and empty-agent writer creation
+must be reconciled with their FAR PluginWrite/PluginDelete callers and the
+separate desktop CompressCall→UpdateGUI→UpdateArchive create route before a
+whole-module claim. CAgent::CanUpdate itself explicitly documents the FAR
+empty-agent use. Commented factory helpers are inactive source, not missing
+desktop behavior. Native desktop/rendered/package acceptance and P3-06 remain
+open.
+
+Validation: actual old-product RED3; required unsandboxed macOS gate294/294
+PASS253.75s (277Qt summaries,4519pass/0fail/18platform skips). Linux same
+snapshot passed5/5core1.12s and2/2source update/ADS UI consumers8.68s.
+Windows passed the new ADS and other core tests, but the first metadata UI
+catalog wait took6.7s against its existing5s test timeout; the original failure
+is retained. An unchanged same-snapshot retry passed5/5 in5.32s. No production
+or test timeout was relaxed. Snapshot20261007T171459Z-f9a1aa95,
+SHA2082a0051641cb720977fbb753b752f7e8578f688deb4dac1d62a94aaf7a6180,
+parentfb9c222; logs and input proofs live in `build/review/agent-stream-update/`.
+All903 frozen source/test/build/wrapper inputs matched local files, source.tar
+and both actual guests after execution. The own temporary runner wrapper is
+archived there and removed before committing; the other902 inputs remain
+unchanged. Windows final5 Qt summaries have48pass/0fail/0skip, including all
+seven ADS data rows plus init/cleanup. Linux final core has35pass/0fail/13
+platform skips (filesystem ADS and Windows metadata controls); its two direct
+consumer suites have81pass/0fail/0skip. No required Windows row was skipped.
+Baseline verifies408exact/196adapted/3local paths at the pinned revision.
+Slow11 suites and native desktop/rendered acceptance were excluded. No upstream
+write, publication, new disk or VM configuration change occurred.
