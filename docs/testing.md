@@ -2389,6 +2389,12 @@ checking central-widget visibility.
 creation: shutdown must not call completion handlers, leave a temporary archive,
 or alter the source file. This reproduces the implicit-destructor lifetime bug
 before the explicit QProcess shutdown fix.
+`agent_lifecycle` uses official ZIP/WIM fixtures to check Close, failed ReOpen,
+byte-exact repair and fresh root/child binding in normal/flat modes. Separate
+callback cases cancel during source proxy binding after listing, retry through
+the same manager and verify source/archive bytes. `archive_property_catalog`
+checks written/unwritten E_FAIL/S_FALSE property counts, descriptor-error cleanup
+and retry, retaining the distinct source GetNumberOfProperties HRESULT contract.
 `agent_folder` validates the source _proxy folder contract: name/index/ancestor/
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings

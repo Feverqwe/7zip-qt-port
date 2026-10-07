@@ -76,7 +76,7 @@ void CAgentFolder::LoadFolder(unsigned dirIndex) {
 }
 
 Z7_COM7F_IMF(CAgentFolder::LoadItems()) {
-    if (!IsBound())
+    if (!_agentSpec || !_agentSpec->_archiveLink.IsOpen || !IsBound())
         return E_FAIL;
     _items.Clear();
     if (_flatMode) {
@@ -1200,10 +1200,11 @@ Z7_COM7F_IMF(CAgentFolder::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *pro
     COM_TRY_BEGIN
     if (!IsBound())
         return E_FAIL;
-    UInt32 numProps;
-    RINOK(_agentSpec->GetArchive()->GetNumberOfProperties(&numProps))
+    UInt32 numProps = 0;
+    _agentSpec->GetArchive()->GetNumberOfProperties(&numProps);
     // Source in-process callers supply valid indices. The public 7zz adapter
-    // validates them and propagates a failed transport query before using count.
+    // validates indices and initializes an unwritten count, retaining the
+    // source policy of consuming a written count regardless of HRESULT.
     if (!_agentSpec->ThereIsPathProp) {
         if (index == 0) {
             *propID = kpidName;
@@ -1599,25 +1600,23 @@ HRESULT CAgentFolder::ReOpen(IArchiveOpenCallback *callback, IFolderFolder **fol
 HRESULT CAgent::ReadItems() {
     if (_proxy || _proxy2)
         return S_OK;
-    {
-        ThereIsPathProp = false;
-        UInt32 numProps;
-        RINOK(GetArchive()->GetNumberOfProperties(&numProps))
-        for (UInt32 i = 0; i < numProps; i++) {
-            CMyComBSTR name;
-            PROPID propID;
-            VARTYPE varType;
-            RINOK(GetArchive()->GetPropertyInfo(i, &name, &propID, &varType))
-            if (propID == kpidPath)
-                ThereIsPathProp = true;
-        }
-    }
     const CArc &arc = GetArc();
     const bool useProxy2 = (arc.GetRawProps && arc.IsTree);
     if (useProxy2)
         _proxy2 = new CProxyArc2();
     else
         _proxy = new CProxyArc();
+    bool loaded = false;
+    // Joined workers may retry binding after a descriptor/load error or Cancel.
+    // Do not let a partially loaded proxy satisfy the source early return.
+    const auto discardPartialProxy = qScopeGuard([&] {
+        if (!loaded) {
+            delete _proxy;
+            _proxy = NULL;
+            delete _proxy2;
+            _proxy2 = NULL;
+        }
+    });
     size_t ramSize;
     if (NWindows::NSystem::GetRamSize(ramSize)) {
         ramSize = ramSize / 4 * 3;
@@ -1626,25 +1625,23 @@ HRESULT CAgent::ReadItems() {
         else
             _proxy->MemUsage_Limit = ramSize;
     }
-    try {
-        const HRESULT result = _proxy2
-                                   ? _proxy2->Load(GetArc(), _progress_for_Open)
-                                   : _proxy->Load(GetArc(), _progress_ArchiveOpenCallback_for_Open);
-        if (result != S_OK) {
-            delete _proxy;
-            _proxy = NULL;
-            delete _proxy2;
-            _proxy2 = NULL;
-            return result;
+    {
+        ThereIsPathProp = false;
+        UInt32 numProps = 0;
+        arc.Archive->GetNumberOfProperties(&numProps);
+        for (UInt32 i = 0; i < numProps; i++) {
+            CMyComBSTR name;
+            PROPID propID;
+            VARTYPE varType;
+            RINOK(arc.Archive->GetPropertyInfo(i, &name, &propID, &varType))
+            if (propID == kpidPath)
+                ThereIsPathProp = true;
         }
-    } catch (...) {
-        delete _proxy;
-        _proxy = NULL;
-        delete _proxy2;
-        _proxy2 = NULL;
-        throw;
     }
-    return S_OK;
+    const HRESULT result = _proxy2 ? _proxy2->Load(GetArc(), _progress_for_Open)
+                                   : _proxy->Load(GetArc(), _progress_ArchiveOpenCallback_for_Open);
+    loaded = (result == S_OK);
+    return result;
 }
 
 Z7_COM7F_IMF(CAgent::BindToRootFolder(IFolderFolder **resultFolder)) {

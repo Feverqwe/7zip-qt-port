@@ -7,6 +7,16 @@
 [UX audit](ux-port-audit.md). Нужный сценарий искать по команде, символу или ID,
 затем читать соответствующий раздел и ссылки.
 
+### Source Agent provider lifecycle (P3-05, 2026-10-07)
+
+Closed archive folders refuse loading before reading their proxies, including
+after a failed ReOpen. Successful repair binds a fresh root and child provider;
+callers must discard the old folders. Cancellation during initial proxy binding
+publishes no folder and permits a retry through the same manager. Descriptor
+and load failures release partial proxies for that retry. These source lifecycle
+rules introduce no dialog or layout change. Exact adaptations and platform
+coverage are in the [lifecycle audit](upstream-port-audit.md#p3-05--source-agent-provider-lifecycle-and-metadata-binding-2026-10-07).
+
 ### Source Agent opening/factory (P3-05, 2026-10-07)
 
 Archive-folder opening now reaches the original Agent/factory workflow.

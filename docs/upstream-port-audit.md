@@ -1,5 +1,62 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source Agent provider lifecycle and metadata binding (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed full original/current
+`CPP/7zip/UI/Agent/Agent.cpp::{LoadItems,ReadItems,GetNumberOfProperties,
+GetPropertyInfo,BindToRootFolder,ReOpen,Close}`, source proxy Load methods,
+`Common/OpenArchive.h::CArc::Close`, `OpenArchive.cpp::CArchiveLink::{Close,ReOpen}`,
+factory binding and `qtarchivereopen.cpp` callers/dependencies. C++ language,
+source-relative modules and original notices remain unchanged; no new vendored
+dependency is needed.
+
+LoadItems again checks the original archive-link IsOpen before consulting any
+proxy. The existing null/unbound integration guards remain after that check.
+Close retains folder references; failed ReOpen has already deleted their proxies,
+so the original short-circuit prevents loading a closed provider or touching
+invalidated proxy storage. Successful ReOpen still requires callers to bind the
+new provider; this does not invent persistence for old folder pointers.
+
+ReadItems restores original proxy selection/allocation and RAM-limit ordering
+before property enumeration, then original path-descriptor discovery and proxy
+Load with the factory's progress interfaces. Original ReadItems/GetPropertyInfo
+consume written property counts regardless of HRESULT; the additional Qt HRESULT
+gates are removed. Counts are initialized to zero for a provider that writes
+nothing, avoiding the original uninitialized-value behavior. GetNumberOfProperties
+keeps its distinct original RINOK contract. Existing index bounds remain at the
+public metadata boundary. The partial-proxy cleanup adaptation is retained with
+a scope guard spanning descriptor enumeration and Load: errors, Cancel and
+exceptions cannot make a later binding accept a half-loaded proxy. This worker
+retry safety does not replace source loading/property algorithms.
+
+New agent_lifecycle consumers use official ZIP and WIM with Unicode/spaces,
+normal/flat root and child folders, manager release, explicit Close, missing-file
+ReOpen failure, exact-byte repair, source-owner retry and fresh root/child binding.
+Separate ZIP/WIM callback rows arm cancellation after listing to reach source
+proxy binding, then retry through the same manager and verify unchanged bytes.
+archive_property_catalog covers written/unwritten E_FAIL/S_FALSE counts,
+source Name/appended descriptors, descriptor-error cleanup/retry and fresh-owner
+recovery. Actual pre-fix RED: all4 native closed-folder rows and5 metadata rows
+fail; logs retained in `build/review/agent-lifecycle-red.log`. The old unwritten
+count-failure refusal expectation is replaced by the source's initialized-zero
+policy; descriptor errors remain refused and retryable.
+
+Validation: macOS arm64 required unsandboxed formatting/all-target/default gate
+292/292 PASS289.45s. Fresh review also rebuilt direct consumers and passed
+9/9 core1.88s and8/8 workflow/column36.24s. The saved full-gate input manifest
+contains899 source/test/build files; every current byte and every corresponding
+runner source.tar member matches it. Thus the prior full gate applies to this
+unchanged product snapshot; later documentation-only changes require diff checks.
+Both-guest snapshot `20261007T164000Z-a9e8a69c`, source SHA256
+`e8efbc90f328d42977b9e361339ec513b3cd89475d3842c6185b972ab45d3e17`:
+Linux9/9 core2.55s plus8/8 workflows33.87s; Windows9/9 core15.76s.
+Runner command builds its targets in the same snapshot. Logs, frozen inputs and
+actual RED are under `build/review/agent-lifecycle-*` and the normal runner log
+directory. Windows execution is GUI-less/core-only; no native desktop claim.
+Eleven slow suites and VHD fixtures were excluded. No layout/text changes.
+Whole Agent/full109-module/native GUI/rendered/packages/final acceptance stays open.
+
 ## P3-05 — source Agent opening and archive folder factory (2026-10-07)
 
 Source: https://github.com/ip7z/7zip.git, full revision

@@ -525,6 +525,15 @@ Linux focused12/12PASS29.77s; Windows core8/8PASS12.17s, без desktop/GUI clai
 Slow/VHD suites исключены; весь P3 и итоговая приёмка остаются открыты.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-agent-opening-and-archive-folder-factory-2026-10-07).
 
+P3-05,2026-10-07: source Agent Close/failed-ReOpen/repair/rebind и binding
+Cancel/retry проверены на ZIP/WIM; восстановлены LoadItems link-open guard и
+ReadItems allocation/RAM/metadata/load order, исходная written-count policy.
+Actual RED9 сохранён. Mac full292/292PASS289.45s, fresh focused17/17;
+тот же source snapshot Linux17/17 и Windows core9/9. Все899 frozen inputs
+совпадают с текущими файлами и runner tar. Whole-module/native GUI/rendered/
+package/final scope остаётся открытым.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-agent-provider-lifecycle-and-metadata-binding-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

@@ -74,9 +74,15 @@ with native/process services confined to ArchiveBackend. Original commented
 FindFormat, FolderReOpen and property enumeration remain inactive. The exact
 source, adaptations and current validation are recorded in the
 [opening audit](upstream-port-audit.md#p3-05--source-agent-opening-and-archive-folder-factory-2026-10-07).
-Existing ReadItems metadata validation/proxy cleanup and remaining Agent update/
-folder bodies still require full-module disposition; this bounded component
-does not close the 109-module review or native/final acceptance.
+The subsequent lifecycle component restores LoadItems' original link-open
+short-circuit and ReadItems' allocation/RAM/descriptor/load ordering. Written
+counts are consumed as upstream in ReadItems/GetPropertyInfo; unwritten counts
+initialize to zero. Partial-proxy cleanup remains a documented joined-worker
+retry adaptation across descriptor/load errors, Cancel and exceptions.
+Real ZIP/WIM Close/failed-ReOpen/repair/rebind and factory cancellation consumers
+are covered in the [lifecycle audit](upstream-port-audit.md#p3-05--source-agent-provider-lifecycle-and-metadata-binding-2026-10-07).
+Remaining Agent update/folder bodies still require full-module disposition;
+these bounded components do not close the 109-module review or native/final acceptance.
 
 Source PanelListNotify::OnNotifyActivateItems is now retained with explicit Qt
 event modifiers. The owning table/icon Return/double-click adapters replace the

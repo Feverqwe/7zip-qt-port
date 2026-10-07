@@ -14,6 +14,8 @@ class FailingCatalog final : public IFolderFolder, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IFolderFolder)
   public:
     bool FailCount = false;
+    bool WriteFailedCount = false;
+    HRESULT CountFailure = E_FAIL;
     bool FailDescriptor = false;
     Z7_IFACE_COM7_IMP(IFolderFolder)
 };
@@ -24,8 +26,11 @@ Z7_COM7F_IMF(FailingCatalog::GetNumberOfItems(UInt32 *count)) {
     return S_OK;
 }
 Z7_COM7F_IMF(FailingCatalog::GetNumberOfProperties(UInt32 *count)) {
-    if (FailCount)
-        return E_FAIL;
+    if (FailCount) {
+        if (WriteFailedCount)
+            *count = 1;
+        return CountFailure;
+    }
     *count = 1;
     return S_OK;
 }
@@ -173,18 +178,10 @@ class ArchivePropertyCatalogTests : public QObject {
         QCOMPARE(count, 4u);
     }
 
-    void metadataFailuresDoNotPublishPartialOwnerAndCanRetry_data() {
-        QTest::addColumn<bool>("countFailure");
-        QTest::newRow("count") << true;
-        QTest::newRow("descriptor") << false;
-    }
-
-    void metadataFailuresDoNotPublishPartialOwnerAndCanRetry() {
-        QFETCH(bool, countFailure);
+    void descriptorFailureDoesNotPublishPartialOwnerAndCanRetry() {
         auto *metadataSpec = new FailingCatalog;
         CMyComPtr<IFolderFolder> metadata = metadataSpec;
-        metadataSpec->FailCount = countFailure;
-        metadataSpec->FailDescriptor = !countFailure;
+        metadataSpec->FailDescriptor = true;
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> agent = agentSpec;
         QCOMPARE(agentSpec->Init({}, metadata, UString(L"7z")), S_OK);
@@ -203,10 +200,63 @@ class ArchivePropertyCatalogTests : public QObject {
         VARTYPE type;
         metadataSpec->FailCount = true;
         QCOMPARE(folder->GetNumberOfProperties(&count), E_FAIL);
-        QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), E_FAIL);
+        // Source GetPropertyInfo consumes the count without a HRESULT gate;
+        // an unwritten count is safely initialized to zero at this boundary.
+        QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), S_OK);
+        QCOMPARE(id, PROPID(kpidNumSubDirs));
         metadataSpec->FailCount = false;
         metadataSpec->FailDescriptor = true;
         QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), E_FAIL);
+    }
+
+    void bindingAndDescriptorUseWrittenCount_data() {
+        QTest::addColumn<int>("countResult");
+        QTest::addColumn<bool>("writeCount");
+        QTest::newRow("failed-written") << int(E_FAIL) << true;
+        QTest::newRow("false-written") << int(S_FALSE) << true;
+        QTest::newRow("failed-unwritten") << int(E_FAIL) << false;
+        QTest::newRow("false-unwritten") << int(S_FALSE) << false;
+    }
+    void bindingAndDescriptorUseWrittenCount() {
+        QFETCH(int, countResult);
+        QFETCH(bool, writeCount);
+        auto *metadataSpec = new FailingCatalog;
+        CMyComPtr<IFolderFolder> metadata = metadataSpec;
+        metadataSpec->FailCount = true;
+        metadataSpec->WriteFailedCount = writeCount;
+        metadataSpec->CountFailure = HRESULT(countResult);
+        auto *agentSpec = new CAgent;
+        CMyComPtr<IInFolderArchive> agent = agentSpec;
+        QCOMPARE(agentSpec->Init({}, metadata, UString(L"7z")), S_OK);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(agent->BindToRootFolder(&folder), S_OK);
+        QVERIFY(folder);
+        QCOMPARE(agentSpec->ThereIsPathProp, writeCount);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 99;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE type;
+        QCOMPARE(folder->GetPropertyInfo(0, &name, &id, &type), S_OK);
+        QCOMPARE(id, PROPID(kpidName));
+        QCOMPARE(type, VARTYPE(VT_BSTR));
+        QCOMPARE(folder->GetPropertyInfo(1, &name, &id, &type), S_OK);
+        QCOMPARE(id, PROPID(kpidNumSubDirs));
+        // GetNumberOfProperties intentionally retains its original RINOK.
+        QCOMPARE(folder->GetNumberOfProperties(&count), HRESULT(countResult));
+        metadataSpec->FailCount = false;
+        // A fresh owner re-enumerates restored metadata after a transient
+        // failure; an already loaded proxy keeps the original caching policy.
+        auto *repairedSpec = new CAgent;
+        CMyComPtr<IInFolderArchive> repaired = repairedSpec;
+        QCOMPARE(repairedSpec->Init({}, metadata, UString(L"7z")), S_OK);
+        CMyComPtr<IFolderFolder> repairedFolder;
+        QCOMPARE(repaired->BindToRootFolder(&repairedFolder), S_OK);
+        QVERIFY(repairedSpec->ThereIsPathProp);
+        QCOMPARE(repairedFolder->GetNumberOfProperties(&count), S_OK);
+        QCOMPARE(count, UInt32(3));
     }
 
     void transportCatalogOwnsNativeTypesAndFullUnicodePaths() {

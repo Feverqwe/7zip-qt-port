@@ -989,6 +989,12 @@ if(BUILD_TESTING)
     target_link_libraries(agent_opening_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME agent_opening COMMAND agent_opening_tests -silent)
     set_tests_properties(agent_opening PROPERTIES TIMEOUT 90)
+    qt_add_executable(agent_lifecycle_tests tests/agent_lifecycle_tests.cpp
+        src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
+        src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
+    target_link_libraries(agent_lifecycle_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME agent_lifecycle COMMAND agent_lifecycle_tests -silent)
+    set_tests_properties(agent_lifecycle PROPERTIES TIMEOUT 90)
     qt_add_executable(agent_capability_tests tests/agent_capability_tests.cpp
         src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
         src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)

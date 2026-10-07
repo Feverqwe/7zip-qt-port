@@ -24,6 +24,17 @@ resource/catalog lifetime. Factory binding scopes its progress pointers; the
 returned source owner exposes IInFolderArchive and retains diagnostic metadata
 even for a recognized non-open archive. Stream spooling remains resource-owned.
 
+Agent LoadItems refuses a closed archive link before inspecting its proxy.
+ReOpen invalidates the old proxies; after success callers bind a fresh root,
+and after failure the original closed-link check still prevents LoadItems from
+touching invalidated storage. ReadItems allocates the source path/tree proxy,
+applies the source RAM limit, enumerates descriptors and loads items in that
+order. Written property counts govern ReadItems/GetPropertyInfo even when the
+provider returns S_FALSE or failure; unwritten counts initialize to zero.
+GetNumberOfProperties retains its original HRESULT contract. A scoped cleanup
+releases partial proxies on descriptor/load error, Cancel or exception so a
+joined worker can retry binding safely.
+
 Native archive item streams pass through the original CAgentFolder::GetStream
 index mapping. CFolderArchiveProperties advertises the service only for a native
 provider with proven item-order mapping. The narrow qtarchiveitemstream adapter
