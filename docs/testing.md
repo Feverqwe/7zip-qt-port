@@ -1,5 +1,12 @@
 # Regression strategy
 
+`AddressPopupSupport` drives the actual exposed popup window with mouse
+press/release, verifies the hit row, exactly one activation and popup closure.
+Address, archive-state and native UNC consumers share it; navigation, list focus,
+stale-path refusal and archive-byte assertions remain in their owning suites.
+Filesystem icon expectations use the actual QFileInfo; virtual archive folders
+retain the generic-folder expectation. See the [native check](upstream-port-audit.md#p3-03--native-address-popup-consumer-verification-2026-10-07).
+
 `native_parent_publication` checks the actual changed disk-extracted child Parent
 workflow using the existing private official-runtime facade. Five representative
 cases cover No/Cancel and Yes with writer success/seekable Write failure/actual

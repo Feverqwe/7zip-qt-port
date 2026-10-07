@@ -1,5 +1,6 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "address_popup_support.h"
 #include "external_editor_fixture.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -8,14 +9,6 @@
 
 class AddressComboTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
-    static void selectPopupRow(QComboBox &combo, int index) {
-        auto *view = combo.view();
-        view->scrollTo(view->model()->index(index, 0));
-        QApplication::processEvents();
-        QTest::mouseClick(view->viewport(), Qt::LeftButton, Qt::NoModifier,
-                          view->visualRect(view->model()->index(index, 0)).center());
-    }
-
   private slots:
     void init() {
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -49,6 +42,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         MainWindow window(&backend);
         window.resize(size);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         QVERIFY(address);
         address->setText(child);
@@ -61,12 +55,12 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(currentIcon->isVisible());
         QVERIFY(!currentIcon->icon().isNull());
         QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
-                 QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
+                 QFileIconProvider().icon(QFileInfo(child)).pixmap(16, 16).toImage());
         const auto iconButtons = address->findChildren<QToolButton *>();
         QVERIFY(!iconButtons.isEmpty());
         for (const auto *button : iconButtons)
             QVERIFY(UiInspection::fullyVisible(*button, window));
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         QVERIFY2(combo->findText(QStringLiteral("родитель space")) >= 0,
                  "The source dropdown must include the current path's parent component.");
@@ -78,15 +72,17 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(UiInspection::writeReport(
             window, QString("address-combo-%1-%2").arg(language).arg(size.width())));
         const int row = combo->findText(QStringLiteral("родитель space"));
-        selectPopupRow(*combo, row);
+        AddressPopupSupport::selectRow(*combo, row);
+        QVERIFY(!QTest::currentTestFailed());
         QTRY_COMPARE(QDir::cleanPath(address->text()), QFileInfo(parent).canonicalFilePath());
         QTRY_COMPARE(table(window)->rowCount(), 1);
         QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("внутри 密碼"));
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         const int computer = combo->findText(QString::fromWCharArray(LangString(IDS_COMPUTER)));
         QVERIFY(computer >= 0);
-        selectPopupRow(*combo, computer);
+        AddressPopupSupport::selectRow(*combo, computer);
+        QVERIFY(!QTest::currentTestFailed());
 #ifdef Q_OS_WIN
         QVERIFY(!action(window, "createFolderAction")->isEnabled());
 #else
@@ -121,6 +117,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         window.openArchive(nested ? outer : archive);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *combo = window.findChild<QComboBox *>("pathCombo");
@@ -145,12 +142,13 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("keep.txt"));
         QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
                  QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         QVERIFY(combo->findText(QStringLiteral("архив δ.zip")) >= 0);
         const int parent = combo->findText(QStringLiteral("внешняя space"));
         QVERIFY(parent >= 0);
-        selectPopupRow(*combo, parent);
+        AddressPopupSupport::selectRow(*combo, parent);
+        QVERIFY(!QTest::currentTestFailed());
         QTRY_COMPARE(address->text(), archiveAddress + QStringLiteral(" / внешняя space"));
         QCOMPARE(table(window)->item(0, 0)->text(), QStringLiteral("内側 密碼"));
         QCOMPARE(ExternalEditorFixture::read(archive), original);
@@ -174,7 +172,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         } else {
             QTRY_COMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
             QCOMPARE(currentIcon->icon().pixmap(16, 16).toImage(),
-                     QFileIconProvider().icon(QFileIconProvider::Folder).pixmap(16, 16).toImage());
+                     QFileIconProvider().icon(QFileInfo(fixture.path())).pixmap(16, 16).toImage());
         }
     }
     void staleHierarchySelectionUsesDeepestExistingFolder_data() {
@@ -217,7 +215,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QTRY_VERIFY(table(window)->hasFocus());
         address->setFocus();
         QTRY_VERIFY(address->hasFocus());
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         const int index = combo->findText(QFileInfo(parent).fileName());
         QVERIFY(index >= 0);
@@ -229,7 +227,8 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
             combo->view()->setCurrentIndex(combo->view()->model()->index(index, 0));
             QTest::keyClick(combo->view(), Qt::Key_Return);
         } else
-            selectPopupRow(*combo, index);
+            AddressPopupSupport::selectRow(*combo, index);
+        QVERIFY(!QTest::currentTestFailed());
         // Offscreen popup closure drops window activation. Re-activate only the
         // test window; do not supply the list focus that the source handler owns.
         window.activateWindow();
@@ -250,7 +249,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(action(window, "createFolderAction")->isEnabled());
         QCOMPARE(ExternalEditorFixture::read(control), bytes);
         QCOMPARE(backend.listCalls, 0);
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         QCOMPARE(combo->findText(QFileInfo(parent).fileName()), -1);
         combo->hidePopup();
@@ -294,7 +293,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
             auto *address = panels[i]->findChild<QLineEdit *>("archivePath");
             address->setFocus();
             QTRY_VERIFY(address->hasFocus());
-            combo->showPopup();
+            AddressPopupSupport::show(*combo);
             QApplication::processEvents();
             QStringList rows;
             for (int row = 0; row < combo->count(); ++row)

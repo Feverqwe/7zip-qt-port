@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "address_popup_support.h"
 #include "fixtures/native_network_share.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -81,7 +82,7 @@ class NativeNetworkNavigationTests final : public QObject, protected MainWindowT
                  NativeNetworkShare::payload());
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         QVERIFY(combo);
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         QString serverLabel = fixture.server();
         if (serverLabel.endsWith('\\'))
@@ -89,12 +90,8 @@ class NativeNetworkNavigationTests final : public QObject, protected MainWindowT
         QCOMPARE(
             QDir::toNativeSeparators(combo->itemText(0)).compare(serverLabel, Qt::CaseInsensitive),
             0);
-        auto *popup = combo->view();
-        const QModelIndex serverIndex = popup->model()->index(0, 0);
-        popup->scrollTo(serverIndex);
-        QApplication::processEvents();
-        QTest::mouseClick(popup->viewport(), Qt::LeftButton, Qt::NoModifier,
-                          popup->visualRect(serverIndex).center());
+        AddressPopupSupport::selectRow(*combo, 0);
+        QVERIFY(!QTest::currentTestFailed());
         QTRY_VERIFY_WITH_TIMEOUT(filesystemRow(window, fixture.name()) >= 0, 5000);
         openRow(window, filesystemRow(window, fixture.name()));
         QTRY_VERIFY_WITH_TIMEOUT(filesystemRow(window, NativeNetworkShare::fileName()) >= 0, 5000);

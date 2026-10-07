@@ -1,5 +1,42 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03 — native address popup consumer verification (2026-10-07)
+
+Source https://github.com/ip7z/7zip.git at full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: existing
+PanelFolderChange::OnComboBoxCommand/LoadFullPath and QtPanelAddressCombo
+callers retain the source hierarchy, binding, focus and path-specific icon policy.
+No source body, product adapter, dependency or upstream checkout changed.
+The Windows default failures in address_combo/ui_archive_states/native network
+were reproduced with the original viewport-only synthetic click. The bounded
+test driver now waits for the actual popup window, scrolls/hit-tests its target,
+sends QWindow mouse press/release and checks exactly one activated row plus
+closure before asserting navigation. It does not supply application list focus.
+Hover-selection and animation-disable hypotheses were rejected; neither policy
+is imposed on the product. Real filesystem icons are compared with the actual
+QFileInfo icon, while virtual archive-folder expectations remain generic.
+
+Fresh same-snapshot build/CTest on2026-10-07: macOS27.0.1 arm64/Qt6.12.0
+3/3PASS7.83s (33Qt/0FAIL/0SKIP); local explicit type-include-order followup
+3/3PASS7.28s. Ubuntu24.04.5 x64/Qt6.12.0 snapshot20261007T075011Z-ab0dc964,
+SHA256`1f6720badd17e29fd303d4b7f5e433d93094791277b7f5f9f44f287b48474841`,
+3/3PASS7.78s/33Qt. Windows11 x64/Qt6.12.0 interactive/elevated snapshot
+20261007T075011Z-03242b8e,
+SHA256`48cc03a5c51bb791cc03a6343b99ea21e6695e25139e0988579375793cee2356`,
+4/4PASS44.73s/39Qt, including actual current-SID-only UNC fixture. Both guests
+also pass native_parent_publication; all required focused cases have zero skips.
+Six address inputs and nine Parent inputs match the frozen snapshot manifests;
+the final local runtime.cpp merely moves its explicit MyTypes include before
+the helper header, avoiding dependence on another task's header change.
+The prior required unsandboxed full gate passed287/287; these localized driver/
+icon/include followups reran affected consumers. Eleven slow suites stayed excluded.
+Evidence: build/review/windows-address-final (logs, manifests,28 widget JSON per
+OS, geometry reviews). All four EN/RU normal/compact address reports preserve
+exposed enabled combo/address/list controls;24 Parent reports check96 controls.
+This closes those three Windows fixture failures. Remaining Windows default
+failures, cold stability, packages, full resource/body/UX and rendered reference
+acceptance stay open under their existing P3 owners.
+
 ## P3-05.15 — changed native nested archive Parent (2026-10-07)
 
 Source https://github.com/ip7z/7zip.git, full baseline

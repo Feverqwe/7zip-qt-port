@@ -306,6 +306,15 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-03,2026-10-07: native address hierarchy/UNC consumers pass after correcting
+the popup mouse driver and filesystem icon fixture; product source unchanged.
+Fresh Mac/Linux3/3 and Windows interactive/elevated4/4 pass, zero focused skips,
+including native Parent. Current-build EN/RU normal/compact JSON and frozen
+input hashes inspected. This closes address_combo/ui_archive_states/native
+network failures from the earlier Windows default run; remaining default
+failures and final platform acceptance stay active.
+[Evidence](upstream-port-audit.md#p3-03--native-address-popup-consumer-verification-2026-10-07).
+
 P3-05.15,2026-10-07: changed native Parent reviewed against complete original
 OpenParentArchiveFolder/CloseOneLevel/OpenParentFolder. Actual Windows spool
 cleanup RED5 exposed FileTable's extra provider COM owner; Qt now retains only

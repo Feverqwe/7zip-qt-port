@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "address_popup_support.h"
 #include "layout_inspection.h"
 #include "qtprogresscontrols.h"
 #include "window_state_support.h"
@@ -451,6 +452,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         QVERIFY(address && combo);
@@ -463,17 +465,13 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
                     .contains(QFileInfo(folder).canonicalFilePath()));
         const QString archive = temp.filePath("archive.7z");
         openListedArchive(window, backend, archive, {});
-        combo->showPopup();
+        AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         QVERIFY(combo->findText(QStringLiteral("archive.7z")) >= 0);
         const int parent = combo->findText(QFileInfo(temp.path()).fileName());
         QVERIFY(parent >= 0);
-        auto *popup = combo->view();
-        const QModelIndex index = popup->model()->index(parent, 0);
-        popup->scrollTo(index);
-        QApplication::processEvents();
-        QTest::mouseClick(popup->viewport(), Qt::LeftButton, Qt::NoModifier,
-                          popup->visualRect(index).center());
+        AddressPopupSupport::selectRow(*combo, parent);
+        QVERIFY(!QTest::currentTestFailed());
         QTRY_COMPARE(QDir::cleanPath(address->text()), QFileInfo(temp.path()).canonicalFilePath());
     }
 };
