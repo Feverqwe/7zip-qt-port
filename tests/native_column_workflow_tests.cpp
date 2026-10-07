@@ -1,11 +1,14 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "archivecodeccatalog.h"
 #include "layout_inspection.h"
+#include "property_projection_support.h"
 #include "schema_folder.h"
 #include "window_state_support.h"
 #include <QPersistentModelIndex>
 #include <QStandardPaths>
+#include <QTreeWidget>
 
 class NativeColumnWorkflowTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -45,9 +48,14 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
             for (int row = 0; row < list.rowCount(); ++row) {
                 QCOMPARE(list.item(row, column)->textAlignment(),
                          GetColumnAlign(columns[i].ID, columns[i].Type));
-                QCOMPARE(list.item(row, column)->text(),
-                         list.sourcePanel->GetItemText(
-                             list.item(row, 0)->data(Qt::UserRole + 6).toUInt(), columns[i]));
+                QString expected = list.sourcePanel->GetItemText(
+                    list.item(row, 0)->data(Qt::UserRole + 6).toUInt(), columns[i]);
+                // The retained Qt logical-zero display boundary composes a
+                // flat prefix and NFC, while source item names stay raw.
+                if (column == 0)
+                    expected = (list.item(row, 0)->data(Qt::UserRole + 5).toString() + expected)
+                                   .normalized(QString::NormalizationForm_C);
+                QCOMPARE(list.item(row, column)->text(), expected);
             }
         }
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
@@ -72,6 +80,37 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         }
         QCOMPARE(list.sourcePanel->_sortID, PROPID(kpidName));
         QCOMPARE(list.sourcePanel->GetVisibleColumns()[0].ID, PROPID(kpidName));
+    }
+    static void checkCrcProperties(CPanel &panel, UInt32 index, const QString &expected,
+                                   const QString &tag) {
+        CRecordVector<UInt32> indices;
+        indices.Add(index);
+        PropertyProjection properties(panel, indices);
+        auto *values = properties.findChild<QTreeWidget *>("propertiesList");
+        QVERIFY(values);
+        bool crcFound = false;
+        for (int i = 0; i < values->topLevelItemCount(); ++i)
+            if (values->topLevelItem(i)->text(0) ==
+                    ToQString(GetNameOfProperty(kpidCRC, nullptr)) &&
+                values->topLevelItem(i)->text(1) == expected)
+                crcFound = true;
+        QVERIFY(crcFound);
+        properties.show();
+        for (const QSize size : {QSize(540, 360), QSize(360, 240)}) {
+            properties.resize(size);
+            QApplication::processEvents();
+            auto *buttons = properties.findChild<QDialogButtonBox *>("listViewButtons");
+            QVERIFY(buttons);
+            QVERIFY(UiInspection::fullyVisible(*values, properties));
+            QVERIFY(UiInspection::fullyVisible(*buttons, properties));
+            QVERIFY(UiInspection::separate(*values, *buttons, properties));
+            QVERIFY(UiInspection::writeReport(properties, QString("directory-crc-%1-%2-%3")
+                                                              .arg(QTest::currentDataTag(), tag)
+                                                              .arg(size.width())));
+        }
+        QTest::keyClick(&properties, Qt::Key_Escape);
+        QVERIFY(!properties.isVisible());
+        QCOMPARE(properties.result(), int(QDialog::Rejected));
     }
   private slots:
     void initTestCase() {
@@ -240,6 +279,116 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         QCOMPARE(read(archive), archiveBytes);
         for (const QString &name : names)
             QCOMPARE(read(QDir(files).filePath(name)), QByteArray("untouched"));
+    }
+    void directoryCrcProjection_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("russian");
+        QTest::addColumn<QString>("format");
+        for (unsigned pane : {0u, 1u})
+            for (bool russian : {false, true})
+                for (const QString format : {"zip", "7z"})
+                    QTest::newRow(
+                        qPrintable(QString("crc-%1-%2-%3").arg(pane).arg(russian).arg(format)))
+                        << pane << russian << format;
+    }
+    void directoryCrcProjection() {
+        QFETCH(unsigned, pane);
+        QFETCH(bool, russian);
+        QFETCH(QString, format);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
+        ReloadLang(settings);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString high = QStringLiteral("a high 空"), low = QStringLiteral("z low й");
+        QVERIFY(QDir(fixture.path()).mkpath(high));
+        QVERIFY(QDir(fixture.path()).mkpath(low));
+        const QMap<QString, QByteArray> inputs{{high + "/one.txt", "hello"},
+                                               {high + "/two.txt", "world"},
+                                               {low + "/one.txt", "hello"}};
+        for (auto i = inputs.cbegin(); i != inputs.cend(); ++i) {
+            QFile file(fixture.filePath(i.key()));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(i.value()), qint64(i.value().size()));
+        }
+        const QString archive = fixture.filePath(QStringLiteral("CRC архив 空.") + format);
+        QProcess creator;
+        creator.setWorkingDirectory(fixture.path());
+        creator.start(engine_, QStringList{"a", "-t" + format, "--", archive} + inputs.keys());
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        const QByteArray archiveBytes = read(archive);
+        QVERIFY(!archiveBytes.isEmpty());
+        ArchiveBackend backend(nullptr, engine_);
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog(module_));
+        QTRY_COMPARE(ready.size(), 1);
+        QVERIFY(ready[0][0].toBool());
+        MainWindow window(&backend);
+        window.resize(980, 620);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        focusPath(window, pane);
+        window.openArchive(archive);
+        auto &list = view(window, pane), &peer = view(window, 1 - pane);
+        QTRY_VERIFY(list.sourcePanel->IsArcFolder());
+        QTRY_COMPARE(list.rowCount(), 2);
+        auto &panel = *list.sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        peer.sourcePanel->Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> provider = panel.GetFolder();
+        CMyComPtr<IFolderFolder> peerProvider = peer.sourcePanel->GetFolder();
+        const int peerRows = peer.rowCount();
+        for (bool flat : {false, true}) {
+            focusPath(window, pane);
+            if (action(window, "flatViewAction")->isChecked() != flat)
+                action(window, "flatViewAction")->trigger();
+            QTRY_COMPARE(list.rowCount(), flat ? 5 : 2);
+            const int crcIndex = panel.GetColumns().FindItem_for_PropID(kpidCRC);
+            QVERIFY(crcIndex >= 0);
+            const int column = list.columnForCatalogProperty(crcIndex);
+            QVERIFY(column >= 0);
+            panel.SelectAll(true);
+            const int selected = list.selectionModel()->selectedRows().size();
+            for (const auto &expected :
+                 QList<QPair<QString, QString>>{{high, "7087B7C9"}, {low, "3610A686"}}) {
+                int row = -1;
+                for (int i = 0; i < list.rowCount(); ++i)
+                    if (list.item(i, 0)
+                            ->data(Qt::UserRole)
+                            .toString()
+                            .normalized(QString::NormalizationForm_C) ==
+                        expected.first.normalized(QString::NormalizationForm_C))
+                        row = i;
+                QVERIFY(row >= 0);
+                const UInt32 index = list.item(row, 0)->data(Qt::UserRole + 6).toUInt();
+                QCOMPARE(list.item(row, column)->text(), expected.second);
+                QCOMPARE(panel.GetItemText(index, panel.GetColumns()[crcIndex]), expected.second);
+                checkCrcProperties(panel, index, expected.second,
+                                   QString("%1-%2").arg(flat).arg(expected.first));
+                QVERIFY(!QTest::currentTestFailed());
+            }
+            panel.SortItemsWithPropID(kpidCRC);
+            if (!panel._ascending)
+                panel.SortItemsWithPropID(kpidCRC);
+            panel.OnReload();
+            QTRY_COMPARE(list.rowCount(), flat ? 5 : 2);
+            QCOMPARE(list.item(0, 0)
+                         ->data(Qt::UserRole)
+                         .toString()
+                         .normalized(QString::NormalizationForm_C),
+                     low);
+            QCOMPARE(list.selectionModel()->selectedRows().size(), selected);
+            inspect(window, list, peer, flat ? "crc-flat" : "crc-normal");
+            QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
+            QCOMPARE(peer.sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
+            QCOMPARE(peer.rowCount(), peerRows);
+        }
+        QCOMPARE(read(archive), archiveBytes);
+        for (auto i = inputs.cbegin(); i != inputs.cend(); ++i)
+            QCOMPARE(read(fixture.filePath(i.key())), i.value());
     }
 };
 QTEST_MAIN(NativeColumnWorkflowTests)

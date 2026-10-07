@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source archive directory property projection (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete original/current
+Agent.cpp::CAgentFolder::{GetProperty,GetFolderProperty,CompareItems,CompareItems2},
+AgentProxy.cpp::CProxyArc::CalculateSizes and CProxyDir::{ArcIndex,IsLeaf,Crc},
+path/tree indexing and original PanelMenu.cpp::Properties collector/callers,
+PanelListNotify.cpp property formatter and PanelSort.cpp command consumer.
+ListViewDialog.cpp::OnInit/OnSize and ListViewDialog.rc retain the properties
+list and OK/Cancel grouping; current Qt controls use the existing reviewed
+normal/compact sizing and scroll transport. No new dialog or archive workflow.
+
+The path-proxy directory kpidCRC branch was omitted even though source proxies
+already calculated the directory aggregate. Copied that original branch into
+its authoritative C++ module without a new checksum algorithm: explicit records
+query the original metadata index and propagate non-S_OK; defined cached
+directory CRC fills an empty output; the original final local-variant Detach
+remains. Thus a provider-written directory CRC is not substituted for the
+source local-variant policy. Source CalculateSizes sums child CRC as UInt32,
+including overflow; unknown nonzero files make the aggregate undefined, while
+known empty files may retain zero. Existing tree-proxy behavior is unchanged.
+No additional dependency, language or upstream source change.
+
+New focused agent_property_projection covers virtual/explicit/defined/unknown/
+zero directory properties, root/retained child and normal/flat modes, aggregate
+overflow, original comparator, source GetItemText and selected Properties.
+Metadata E_FAIL/S_FALSE/E_ABORT cases preserve the failure and source Error text,
+omit the failed selected-item property while retaining the distinct cached
+folder-summary section, and recover on the same provider after error removal.
+Native column workflow adds official ZIP/7z with Unicode/spaces, both panes,
+EN/RU, normal/flat, real column text, source sorting/selection/Refresh, source
+Properties collector, Escape, peer/provider and exact input/archive bytes.
+The Qt collector is exercised directly; this is not native Windows property
+sheet execution. Dialog helpers separate construction/geometry from workflow.
+
+Actual pre-fix final regressions:7 focused and8 native workflow cases fail with
+the original product restored; `build/review/agent-property-red-final.log`.
+The restored code passes both suites2/2 in3.17s and six direct consumers6/6 in4.99s.
+Fixture review corrected two independently wrong expectations: Properties has
+separate item/folder sections, and existing Qt logical-zero display composes
+flat-prefix/NFC while raw source metadata remains unchanged. Source/error/byte
+assertions remain explicit; no production timeout or acceptance limit changed.
+Required unsandboxed macOS arm64 formatting/all-target/default gate293/293
+PASS274.47s;276 Qt summaries4513PASS/0FAIL/15Windows-onlySKIP.
+Fresh same-source both-guests snapshot `20261007T165920Z-f39b6ba1`, SHA256
+`16189d912c66649445283408044886d7f60bb0ace992bc2869dea2aa3a84703f`:
+Linux5/5 core0.77s plus5/5 UI/columns12.23s; Windows5/5 core9.63s,
+47Qt/0FAIL/0SKIP. Linux's final five UI/column suites total79Qt/0FAIL/0SKIP.
+All902 frozen source/test/build/task-wrapper inputs match current files, runner
+source.tar and each guest's actual source after tests. Baseline408 exact/
+196 adapted/3 local. Saved logs/input proofs are under
+`build/review/agent-property-*` and the normal runner directory.
+
+Each of macOS/Linux produced64 Properties and32 main-window CRC reports,
+verified at540×360/360×240 and980×620/640×400. JSON confirms both enabled,
+fully exposed pane lists/addresses and the Properties table, separate footer
+and OK/Cancel buttons. Compact metadata remains scrollable. The existing
+ListViewDialog resource/geometry contract was used; no screenshot or pixel
+parity claim. Windows ran direct offscreen collectors, not native desktop UI.
+Host storage-after is recorded; no disk changes. Eleven slow suites and VHD
+fixtures were excluded. Whole Agent/109-module, native desktop, rendered
+Windows, final packages and P3-06 remain open.
+
 ## P3-05 — source Agent provider lifecycle and metadata binding (2026-10-07)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

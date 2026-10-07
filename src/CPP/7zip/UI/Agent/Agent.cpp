@@ -377,6 +377,14 @@ Z7_COM7F_IMF(CAgentFolder::GetProperty(UInt32 index, PROPID propID, PROPVARIANT 
                 case kpidName:
                     prop = item.Name;
                     break;
+                case kpidCRC:
+                    if (item.IsLeaf()) {
+                        RINOK(_agentSpec->GetArchive()->GetProperty((unsigned)item.ArcIndex, propID,
+                                                                    value))
+                    }
+                    if (item.CrcIsDefined && value->vt == VT_EMPTY)
+                        prop = item.Crc;
+                    break;
                 default:
                     if (item.IsLeaf()) {
                         if (!_agentSpec->GetArchive())

@@ -6,6 +6,20 @@ describes report generation; [UI reference tooling](ui-reference.md) owns the
 resource-to-widget comparison procedure. These contracts specify controls and
 geometry, while [the checklist](porting-checklist.md) owns current acceptance.
 
+### Archive directory CRC projection (P3-05)
+
+Source Agent::GetProperty and AgentProxy::CalculateSizes supply directory CRC
+to the existing list column and Properties collector. Native ZIP/7z checks cover
+both panes, EN/RU and normal/flat, preserving source sorting/marks/Refresh,
+peer provider and input/archive bytes. Main-window reports use980×620/640×400;
+Properties uses the existing ListViewDialog.rc list and OK/Cancel grouping at
+540×360/360×240. Verify the complete table/viewport and separate exposed footer,
+then Escape rejection without changing the provider or selection. At compact
+width, long metadata values remain reachable through the existing scrollbars.
+Qt collector geometry is separate from native Windows Properties execution and
+rendered upstream parity. `native_column_workflow` writes directory-crc and
+native-columns-crc reports; the source audit owns dated platform evidence.
+
 ### Changed nested archive Parent (P3-05.15)
 
 Parent uses the source modified-archive Yes/No/Cancel question. No and Cancel

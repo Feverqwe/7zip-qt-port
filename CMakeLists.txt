@@ -2226,6 +2226,13 @@ if(BUILD_TESTING)
     set_tests_properties(source_properties PROPERTIES TIMEOUT 90
         RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/source_properties.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(agent_property_projection_tests tests/agent_property_projection_tests.cpp
+        ${source_properties_sources})
+    target_include_directories(agent_property_projection_tests PRIVATE src tests)
+    target_link_libraries(agent_property_projection_tests PRIVATE ${source_properties_libraries})
+    add_test(NAME agent_property_projection COMMAND agent_property_projection_tests -silent)
+    set_tests_properties(agent_property_projection PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/agent-property-projection.ini")
 endif()
 
 if(BUILD_TESTING)

@@ -84,6 +84,15 @@ are covered in the [lifecycle audit](upstream-port-audit.md#p3-05--source-agent-
 Remaining Agent update/folder bodies still require full-module disposition;
 these bounded components do not close the 109-module review or native/final acceptance.
 
+The complete GetProperty/GetFolderProperty and path/tree comparator review also
+found the missing path-proxy directory CRC branch. It is restored from the same
+baseline, reusing source proxy aggregates and exact explicit-record/error/local
+variant policy. Direct property/formatter/Properties and native ZIP/7z list,
+sort/Refresh/selection consumers are recorded in the
+[directory-property audit](upstream-port-audit.md#p3-05--source-archive-directory-property-projection-2026-10-07).
+This disposition covers these property bodies, not remaining Agent update,
+extraction/index/raw-property modules or full-module acceptance.
+
 Source PanelListNotify::OnNotifyActivateItems is now retained with explicit Qt
 event modifiers. The owning table/icon Return/double-click adapters replace the
 native ComCtl32 notification-version switch and share the existing OpenNative

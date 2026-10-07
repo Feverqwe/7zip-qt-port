@@ -2395,6 +2395,15 @@ callback cases cancel during source proxy binding after listing, retry through
 the same manager and verify source/archive bytes. `archive_property_catalog`
 checks written/unwritten E_FAIL/S_FALSE property counts, descriptor-error cleanup
 and retry, retaining the distinct source GetNumberOfProperties HRESULT contract.
+`agent_property_projection` covers path-proxy directory CRC through the source
+property, formatter, comparator and Properties collectors: virtual/explicit,
+unknown/zero/written values, UInt32 aggregate overflow, root/child and normal/flat.
+E_FAIL/S_FALSE/E_ABORT metadata failures retain Error text, omit the item property
+and recover without rebinding; the separate cached folder summary stays visible.
+`native_column_workflow` additionally exercises real ZIP/7z directory CRC in
+both panes/languages and normal/flat view, source sort/Refresh/marks, Properties
+Escape and geometry, peer state and exact archive/input bytes. Qt logical-zero
+text checks apply the established NFC/prefix boundary without normalizing CRC.
 `agent_folder` validates the source _proxy folder contract: name/index/ancestor/
 root binding, base-relative flat prefixes, duplicate names, Unicode, typed
 metadata delegation, folder totals/type, rejected file/missing/invalid bindings

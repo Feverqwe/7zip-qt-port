@@ -534,6 +534,16 @@ Actual RED9 сохранён. Mac full292/292PASS289.45s, fresh focused17/17;
 package/final scope остаётся открытым.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-agent-provider-lifecycle-and-metadata-binding-2026-10-07).
 
+P3-05,2026-10-07: source directory CRC property projection восстановлена
+для path proxy с исходными aggregate/explicit-record/error/local-variant
+правилами. Real ZIP/7z list/Properties/Sort/Refresh/marks, EN/RU, обе панели,
+normal/flat и unchanged bytes проверены; actual RED15 сохранён.
+Mac full293/293PASS274.47s, focused6/6; same-source Linux10/10 и Windows core5/5
+без required skips. Все902 snapshot inputs совпали в tar и обоих гостях;
+по96 текущих geometry JSON проверено на Mac/Linux. Whole module/native GUI/
+rendered/packages/P3-06 остаются открытыми.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-archive-directory-property-projection-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

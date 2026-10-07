@@ -9,6 +9,15 @@
 
 ### Source Agent provider lifecycle (P3-05, 2026-10-07)
 
+Directory CRC now reaches the list and selected Properties through the original
+path-proxy property branch. It uses the source additive UInt32 aggregate, so it
+is not a checksum of concatenated directory bytes. Unknown file CRC can leave
+the directory value undefined. Explicit-record failures retain source Error
+text in the list and omit only the failed item property; the separate folder
+summary can still show its cached aggregate. Original written-value/local
+variant policy is preserved. This changes property data without adding controls.
+See the [property projection audit](upstream-port-audit.md#p3-05--source-archive-directory-property-projection-2026-10-07).
+
 Closed archive folders refuse loading before reading their proxies, including
 after a failed ReOpen. Successful repair binds a fresh root and child provider;
 callers must discard the old folders. Cancellation during initial proxy binding
