@@ -60,6 +60,101 @@ This bounded native Drop component is verified on three OS; rendered Windows,
 complete source-body/UX closure, cold stability/packages, whole P3-05 and final
 acceptance remain separate. Excluded slow matrices are not validated by these runs.
 
+## P3-03 — remaining native Windows consumers (2026-10-07, active)
+
+Source https://github.com/ip7z/7zip.git at full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: original/current
+Agent::Close, CArchiveLink::Close, CArc::Close, Agent::ReOpen,
+ArchiveFolderOut::CommonUpdateOperation and existing Qt rollback/reopen callers
+were inspected. Original Close releases CArc::InStream and closes its archive;
+CommonUpdateOperation already closes before replacing its output. The accepted
+Copy/Delete/backup extension had restored backup bytes while the updated native
+destination was still read-shared. Two new actual native Windows refusal/reopen
+failure and Cancel cases expose extra rollback errors (2 instead of1,1 instead
+of0). This is distinct from the earlier fixture's path-comparison failure.
+
+CAgentFolder::CloseArchive now narrowly delegates to the existing CAgent::Close.
+Backend-owned QtArchiveTransferBackup invokes a supplied close service before
+its existing CopyStream/QSaveFile publication. MainWindow owns the Agent binding
+and supplies that service; its existing saved-selection/physical ReOpen remains.
+No source algorithm, copy/delete policy, dependency revision or source language
+changes. Backend targets retain their existing dependencies; no second implementation
+or new engine protocol is added. Raw backup consumers without a close service retain
+their existing behavior. The native replacement-directory fault fixture first
+quiesces its own private reader to permit that deliberate Windows path replacement;
+the two new normal native rollback cases do not perform that preparation.
+
+The related Windows consumers form one integrated platform scenario. Copy info
+and reopen fault injection normalize native separators. The header driver checks
+an exposed section hit before sending QWindow input, without supplying list focus.
+Startup retains all128 cases and byte assertions with immutable2/301-row inputs.
+Copy retains all192 real workflows using private copies of official-engine ZIP/7z
+seeds and independent payload extraction. Its existing independent-backend factory
+shares only an immutable codec catalog. Recovery retains its80 existing cases plus
+actual native reopen failure/Cancel, private archive transactions, exact rollback
+bytes, filesystem fallback and real retry. Ordinary startup opens its source ZIP;
+the destination still opens from the fallback filesystem folder. This avoids an
+extra source-folder publication/open without bypassing the operation under test.
+Both panes/languages/views/selection modes and normal/compact reports remain.
+
+Public model row signals and QAction::changed drive scoped event-loop waits with
+the same five-second local budgets and explicit state assertions. Modal-open
+preparation reactivates the window before choosing an owner. Source icon mode is
+selected for both panes. CMake now gives these three suites the native Windows
+plugin and shared desktop resource lock; their earlier offscreen results proved
+native engine behavior, not Windows UI/fonts. No scenario, assertion or label is
+removed. Eleven explicitly slow suites remain excluded.
+
+Widget inspection caches each node's bounds/exposure/sizeHint and writes compact
+UTF-8 JSON while preserving all fields/privacy and readable diagnostic dumps.
+The saved-JSON regression compares its public output with dump. A same-widget
+baseline comparison checks200 equivalent dumps; separate filesystem runs can have
+different status-bar timestamps and are not claimed byte-identical. This is not
+a claim that the native matrix runtime budget has been solved.
+
+The first full gate caught an unwanted Agent link dependency in the standalone
+archive_progress consumer. The caller-supplied close service removes it; the
+backup regression proves that a rejected close preserves destination and backup
+for retry. Required unsandboxed macOS27.0.1 arm64/Qt6.12.0 validation after the
+product/common-inspection changes passes formatting, all builds and288 default
+CTest in240.69s (4432QtPASS/0FAIL/15 Windows-only skips). Subsequent localized
+fixture checks pass3/3 in49.03s,408Qt/0FAIL/0SKIP. Fresh Ubuntu24.04.5 x64/Qt6.12.0
+snapshot20261007T110230Z-7e425a03, SHA256
+`b51814bdfb0d6c6667b958e1db9c4f44481cac743db44b3a5f59db004cf1ef42`,
+builds/tests all seven consumers and passes480Qt/0FAIL/0SKIP. All17 frozen inputs
+match;1032 panel reports check4128 exposed enabled address/list controls at
+980x620/640x400, plus two separate progress reports. Evidence is in
+build/review/windows-remainder-source-startup.
+
+Windows11 x64/Qt6.12.0 snapshot20261007T104239Z-60f43ecb passes four of seven
+suites. Startup118, Recovery69 and Copy107 data cases pass before their inherited
+60/120-second aggregate timeouts; these remain failed runs. All17 inputs match;
+794 panel reports/3176 controls were reviewed. A limited profile confirms native
+UI/row publication costs across phases, rather than a single CLI bottleneck.
+Full native matrix measurement20261007T110826Z-12357454 builds/tests seven
+consumers and passes7/7 in404.88s,480Qt/0FAIL/0SKIP. All17 frozen inputs match;
+1032 panel reports/4128 controls plus two progress reports cover every case.
+Startup/Recovery/Copy take68.53/129.61/164.65s. A disposable600-second aggregate
+budget let that diagnostic measure the complete native matrices; it is not the
+final production-config acceptance. CMake now sets Windows-only aggregate
+180/300/360-second budgets: twice those measured totals rounded up to a minute.
+All local public-state waits, other-platform budgets and separate responsiveness/
+performance deadlines remain unchanged. The diagnostic override was removed.
+Fresh production-config Windows11 x64/Qt6.12.0 interactive/elevated snapshot
+20261007T112133Z-f5efb667, SHA256
+`75684b21cc36e93dc36b44f04141db7193296f06fd41a2d6490634256250aabd`,
+builds/tests all seven consumers and passes7/7 in412.33s,480Qt/0FAIL/0SKIP.
+Startup/Recovery/Copy complete in64.76/135.91/162.24s. All17 frozen inputs match;
+1032 panel reports inspect4128 exposed enabled controls at both sizes, with two
+separate progress reports. The generated CTest properties confirm native Windows,
+desktop locking and actual180/300/360-second production budgets. Evidence is in
+build/review/windows-remainder-production; no temporary timeout override remains.
+This verifies the bounded close/rollback/platform-consumer component on three OS.
+Source REDs, diagnostic trials and frozen manifests are retained in the local
+P3-03 handoff and build/review/windows-remainder-*; they are not hidden as passes.
+Cold stability, full default platform gates, rendered reference, packages and
+whole P3-03/P3-06 acceptance remain open.
+
 ## P3-03 — native address popup consumer verification (2026-10-07)
 
 Source https://github.com/ip7z/7zip.git at full baseline

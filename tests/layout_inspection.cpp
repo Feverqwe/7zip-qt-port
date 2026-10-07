@@ -18,12 +18,12 @@ QRect bounds(const QWidget &widget, const QWidget &root) {
     return QRect(widget.mapTo(&root, QPoint()), widget.size());
 }
 
-static QRect exposedBounds(const QWidget &widget, const QWidget &root) {
+static QRect exposedBounds(const QWidget &widget, const QWidget &root, const QRect &rect) {
     if (!widget.isVisible() || (&widget != &root && !root.isAncestorOf(&widget)))
         return {};
     if (&widget == &root)
         return root.rect();
-    QRect exposed = bounds(widget, root);
+    QRect exposed = rect;
     for (const QWidget *parent = widget.parentWidget(); parent; parent = parent->parentWidget()) {
         exposed = exposed.intersected(bounds(*parent, root));
         if (parent == &root)
@@ -32,9 +32,13 @@ static QRect exposedBounds(const QWidget &widget, const QWidget &root) {
     return exposed.intersected(root.rect());
 }
 
+static bool fullyVisible(const QRect &rect, const QRect &exposed) {
+    return rect.width() > 0 && rect.height() > 0 && exposed == rect;
+}
+
 bool fullyVisible(const QWidget &widget, const QWidget &root) {
-    return widget.width() > 0 && widget.height() > 0 &&
-           exposedBounds(widget, root) == bounds(widget, root);
+    const QRect rect = bounds(widget, root);
+    return fullyVisible(rect, exposedBounds(widget, root, rect));
 }
 
 bool separate(const QWidget &first, const QWidget &second, const QWidget &root) {
@@ -56,15 +60,17 @@ static QJsonArray rectData(const QRect &rect) {
 }
 
 static QJsonObject describe(const QWidget &widget, const QWidget &root) {
-    QJsonObject result{
-        {"class", widget.metaObject()->className()},
-        {"name", widget.objectName()},
-        {"visible", widget.isVisible()},
-        {"enabled", widget.isEnabled()},
-        {"bounds", rectData(bounds(widget, root))},
-        {"exposedBounds", rectData(exposedBounds(widget, root))},
-        {"fullyVisible", fullyVisible(widget, root)},
-        {"sizeHint", QJsonArray{widget.sizeHint().width(), widget.sizeHint().height()}}};
+    const QRect rect = bounds(widget, root);
+    const QRect exposed = exposedBounds(widget, root, rect);
+    const QSize hint = widget.sizeHint();
+    QJsonObject result{{"class", widget.metaObject()->className()},
+                       {"name", widget.objectName()},
+                       {"visible", widget.isVisible()},
+                       {"enabled", widget.isEnabled()},
+                       {"bounds", rectData(rect)},
+                       {"exposedBounds", rectData(exposed)},
+                       {"fullyVisible", fullyVisible(rect, exposed)},
+                       {"sizeHint", QJsonArray{hint.width(), hint.height()}}};
     if (const auto *label = qobject_cast<const QLabel *>(&widget)) {
         result["text"] = label->text();
         result["labelFits"] = labelFits(widget);
@@ -114,7 +120,7 @@ bool writeReport(QWidget &root, const QString &tag) {
     QFile file(directory + "/" + tag + ".json");
     if (!file.open(QIODevice::WriteOnly))
         return false;
-    const QByteArray data = dump(root).toUtf8();
+    const QByteArray data = QJsonDocument(describe(root, root)).toJson(QJsonDocument::Compact);
     if (file.write(data) != data.size() || !file.flush())
         return false;
     return qEnvironmentVariable("SEVENZIP_CAPTURE_SCREENSHOTS") != "1" ||

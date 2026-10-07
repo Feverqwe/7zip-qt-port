@@ -11,6 +11,31 @@ its nested question; current-index preparation uses NoUpdate. The source guard
 and focus REDs are retained separately from driver failures in the
 [dated audit](upstream-port-audit.md#p3-0515--native-bound-archive-drop-publication-2026-10-07).
 
+`interarchive_recovery` includes bounded actual native rollback reopen failure
+and Cancel cases, alongside the existing restore/reopen/retry matrix. The native
+replacement-directory fault fixture closes its own private reader before
+deliberately replacing that file; normal native rollback cases rely on the
+production close service. `archive_transfer_backup` verifies that a refused
+close leaves changed destination bytes and the backup available for retry.
+Startup and filesystem-to-archive Copy matrices reuse immutable input seeds;
+each Copy still updates its own archive. Recovery opens its source through the
+ordinary startup path while the target retains its filesystem fallback transition.
+All cases, byte assertions and five-second public-state waits remain. The three
+matrices use native Windows controls/fonts and the shared desktop resource lock.
+Their Windows aggregate budgets are180/300/360s for Startup/Recovery/Copy:
+twice the measured full-matrix68.53/129.61/164.65s, rounded up to a minute.
+Other-platform budgets, five-second state waits and separate responsiveness/
+performance checks remain unchanged. Header sort input verifies the exposed section hit
+before driving the window. See the [source and platform evidence](upstream-port-audit.md#p3-03--remaining-native-windows-consumers-2026-10-07-active).
+
+Widget reports retain every field and privacy rule in compact JSON files;
+`UiInspection::dump` keeps readable indentation for diagnostics. Inspection
+reuses each widget's bounds, exposure and size hint within one traversal.
+`ui_geometry` compares saved JSON with the public dump and verifies that editable
+values remain absent. Reports from separate filesystem fixtures can differ in
+timestamps shown by the source status bar; compare geometry and states rather
+than treating their byte hashes as cross-run equality.
+
 `AddressPopupSupport` drives the actual exposed popup window with mouse
 press/release, verifies the hit row, exactly one activation and popup closure.
 Address, archive-state and native UNC consumers share it; navigation, list focus,

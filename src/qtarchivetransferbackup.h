@@ -1,6 +1,7 @@
 #pragma once
 #include "qtownedtempdir.h"
 #include <QString>
+#include <functional>
 
 class ArchiveBackend;
 
@@ -13,5 +14,5 @@ class QtArchiveTransferBackup final {
     bool save();
 
   public:
-    bool restore() const;
+    bool restore(const std::function<bool()> &closeArchive = {}) const;
 };

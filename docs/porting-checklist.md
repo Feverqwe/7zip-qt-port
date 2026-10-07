@@ -317,6 +317,17 @@ Writer error/Cancel/No/refusal policy
 and ignored reload HRESULT stay source-owned; parent .15/P3-05 remain open.
 [Evidence](upstream-port-audit.md#p3-0515--native-bound-archive-drop-publication-2026-10-07).
 
+P3-03,2026-10-07: bounded remaining Windows-consumer scenario is verified.
+Native rollback RED requires source CAgent::Close before backup publication;
+the backend invokes the close service supplied by its Agent-owning caller.
+All128 Startup/192 Copy/82 Recovery cases retain their assertions and pass
+current three-OS consumers. Native Windows controls/fonts and shared desktop
+locking replace offscreen; measured aggregate budgets retain local state and
+responsiveness deadlines. Current logs/manifests/normal-compact geometry are in
+the audit. Stable/cold/full-platform/rendered/package and whole P3-03 acceptance
+stay open.
+[Evidence](upstream-port-audit.md#p3-03--remaining-native-windows-consumers-2026-10-07-active).
+
 P3-03,2026-10-07: native address hierarchy/UNC consumers pass after correcting
 the popup mouse driver and filesystem icon fixture; product source unchanged.
 Fresh Mac/Linux3/3 and Windows interactive/elevated4/4 pass, zero focused skips,

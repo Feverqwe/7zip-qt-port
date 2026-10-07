@@ -116,6 +116,7 @@ class CAgentFolder final : public IFolderFolder,
     IUnknown *GetEngineResource() const;
     // File-only refresh bridge; native ReOpen and folder binding retain ownership.
     HRESULT ReOpen(IArchiveOpenCallback *callback, IFolderFolder **folder);
+    HRESULT CloseArchive();
     bool CanComment() const override;
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog) override;
     std::unique_ptr<IQtProgressTransport>

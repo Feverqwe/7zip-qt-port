@@ -3,7 +3,9 @@
 #include "layout_inspection.h"
 
 #include <QDialogButtonBox>
+#include <QDir>
 #include <QFile>
+#include <QJsonDocument>
 #include <QLabel>
 #include <QPushButton>
 #include <QScreen>
@@ -76,6 +78,14 @@ class UiGeometryTests final : public QObject {
         QVERIFY(report.contains("password"));
         QVERIFY(!report.contains("secret-value"));
         QVERIFY(!report.contains("private-path"));
+        QVERIFY(UiInspection::writeReport(root, "geometry-private-values"));
+        QFile saved(
+            qEnvironmentVariable("SEVENZIP_UI_REPORT_DIR", QDir::currentPath() + "/ui-reports") +
+            "/geometry-private-values.json");
+        QVERIFY(saved.open(QIODevice::ReadOnly));
+        const QJsonDocument document = QJsonDocument::fromJson(saved.readAll());
+        QVERIFY(document.isObject());
+        QCOMPARE(document, QJsonDocument::fromJson(report.toUtf8()));
     }
 
     void dialogs_data() {

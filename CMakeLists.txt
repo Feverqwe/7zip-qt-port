@@ -2989,7 +2989,7 @@ if(BUILD_TESTING AND WIN32)
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key panel_list_load panel_item_icons panel_name_text panel_copy_reload filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
-            archive_reload_command drag_reload_completion panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
+            archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}
@@ -3003,4 +3003,10 @@ if(BUILD_TESTING AND WIN32)
         set_property(TEST ${sevenzip_native_ui_test} APPEND PROPERTY
             RESOURCE_LOCK sevenzip_native_ui)
     endforeach()
+    # Full native UI matrices create 128/82/192 independent windows/workflows.
+    # Measured Windows totals are 69/130/165s; allow twice that time rounded
+    # up to a minute. Individual state waits and performance guards stay intact.
+    set_tests_properties(panel_creation_path PROPERTIES TIMEOUT 180)
+    set_tests_properties(interarchive_recovery PROPERTIES TIMEOUT 300)
+    set_tests_properties(copy_archive_refresh PROPERTIES TIMEOUT 360)
 endif()

@@ -692,7 +692,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
         });
         action(window, "copyAction")->trigger();
-        QVERIFY(copyInfo.contains(QStringLiteral("nested/")));
+        QVERIFY(QDir::fromNativeSeparators(copyInfo).contains(QStringLiteral("nested/")));
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastExtractionOptions.pathMode, ExtractionOptions::PathMode::CurrentPaths);
         QCOMPARE(backend.lastSelected.size(), 1);

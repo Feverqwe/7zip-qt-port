@@ -55,6 +55,37 @@ class ArchiveTransferBackupTests : public QObject {
         QVERIFY(!backend.saveArchiveTransferDestination(fixture.filePath("absent.zip")));
         QVERIFY(!QFileInfo::exists(fixture.filePath("absent.zip")));
     }
+    void refusedArchiveClosePreservesDestinationAndBackup() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString destination = fixture.filePath(QStringLiteral("archive 空.zip"));
+        QFile file(destination);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("original"), qint64(8));
+        file.close();
+        ArchiveBackend backend;
+        auto backup = backend.saveArchiveTransferDestination(destination);
+        QVERIFY(backup);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        QCOMPARE(file.write("changed"), qint64(7));
+        file.close();
+        int closes = 0;
+        QVERIFY(!backup->restore([&] {
+            ++closes;
+            return false;
+        }));
+        QCOMPARE(closes, 1);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("changed"));
+        file.close();
+        QVERIFY(backup->restore([&] {
+            ++closes;
+            return true;
+        }));
+        QCOMPARE(closes, 2);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("original"));
+    }
     void failedRestorePreservesReplacementDirectory() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

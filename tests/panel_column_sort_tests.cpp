@@ -11,11 +11,20 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
         return -1;
     }
     static void clickColumn(FileTable &view, int column) {
+        view.doItemsLayout();
         view.scrollTo(view.model()->index(0, column));
         auto *header = view.horizontalHeader();
-        QTest::mouseClick(
-            header->viewport(), Qt::LeftButton, Qt::NoModifier,
-            QPoint(header->sectionViewportPosition(column) + 12, header->height() / 2));
+        const auto exposed = [&] {
+            return QRect(header->sectionViewportPosition(column), 0, header->sectionSize(column),
+                         header->viewport()->height())
+                .intersected(header->viewport()->rect());
+        };
+        QTRY_VERIFY(!exposed().isEmpty());
+        const QPoint point = exposed().center();
+        QCOMPARE(header->logicalIndexAt(point), column);
+        auto *window = header->window();
+        QTest::mouseClick(window->windowHandle(), Qt::LeftButton, Qt::NoModifier,
+                          header->viewport()->mapTo(window, point));
     }
     static void checkSort(FileTable &view, PROPID property, bool ascending) {
         QCOMPARE(view.sourcePanel->_sortID, property);
@@ -128,6 +137,7 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
         bool ascending = !sizeProperty;
         for (int column : {first, second, first, first}) {
             clickColumn(*view, column);
+            QVERIFY(!QTest::currentTestFailed());
             checkSort(*view, property, ascending);
             QCOMPARE(view->horizontalHeader()->sortIndicatorSection(), column);
             QCOMPARE(window.focusWidget(), static_cast<QWidget *>(view));

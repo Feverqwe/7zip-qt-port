@@ -4,7 +4,9 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
+#include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
+#include "qtfilemanagerstartup.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 
@@ -14,7 +16,8 @@ class ReopenFailureBackend final : public ArchiveBackend {
     bool Armed = false, Fail = false, ReopenStarted = false;
     void openFolder(const QString &archive, const QString &format,
                     const QString &password) override {
-        if (Armed && archive == Target) {
+        if (Armed && QDir::cleanPath(QDir::fromNativeSeparators(archive)) ==
+                         QDir::cleanPath(QDir::fromNativeSeparators(Target))) {
             ReopenStarted = true;
             if (Fail) {
                 emit finished(false, QStringLiteral("Controlled rollback reopen failure."));
@@ -29,6 +32,7 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
     Q_OBJECT
     QString engine_;
     quint32 version_ = 0;
+    QTemporaryDir seeds_;
 
     void createArchive(const QString &path, const QString &root, const QStringList &names) {
         QProcess process;
@@ -51,6 +55,23 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
     void initTestCase() {
         engine_ = QStandardPaths::findExecutable("7zz");
         QVERIFY(!engine_.isEmpty());
+        QVERIFY(seeds_.isValid());
+        const QString added = QStringLiteral("a copied 文件.txt");
+        const QString control = QStringLiteral("zz source control δ.bin");
+        const QString marked = QStringLiteral("m marked δ.txt");
+        const QString focused = QStringLiteral("z focused 文件.bin");
+        for (const QString &name : {added, control, marked, focused})
+            QVERIFY(SourceExtractFixture::writeFile(seeds_.filePath(name), name.toUtf8()));
+        createArchive(seeds_.filePath("source.zip"), seeds_.path(), {added, control});
+        createArchive(seeds_.filePath("target.zip"), seeds_.path(), {marked, focused});
+        for (int count : {1, 301}) {
+            const QString home =
+                seeds_.filePath(QStringLiteral("fallback directory %1 文件").arg(count));
+            QVERIFY(QDir().mkdir(home));
+            for (int i = 0; i < count; ++i)
+                QVERIFY(SourceExtractFixture::writeFile(QDir(home).filePath(QString::number(i)),
+                                                        QByteArray("fallback")));
+        }
 #ifdef SEVENZIP_CODEC_MODULE
         ArchiveCodecCatalog catalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
         QCOMPARE(catalog.result(), S_OK);
@@ -79,6 +100,12 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
                                                          .arg(alternative)
                                                          .arg(route)))
                                 << pane << russian << icons << alternative << route;
+#ifdef SEVENZIP_CODEC_MODULE
+        QTest::newRow("native-reopen-failure")
+            << 0u << false << false << false << QString("native-reopen-failure");
+        QTest::newRow("native-reopen-cancel")
+            << 1u << true << true << true << QString("native-reopen-cancel");
+#endif
     }
     void rollbackFailureAndRetry() {
         QFETCH(unsigned, pane);
@@ -102,51 +129,83 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         const QString control = QStringLiteral("zz source control δ.bin");
         const QString marked = QStringLiteral("m marked δ.txt");
         const QString focused = QStringLiteral("z focused 文件.bin");
-        for (const QString &name : {added, control, marked, focused})
-            QVERIFY(SourceExtractFixture::writeFile(fixture.filePath(name), name.toUtf8()));
-        const QString home = fixture.filePath("fallback directory");
-        QVERIFY(QDir().mkdir(home));
-        for (int i = 0; i < fallbackCount; ++i)
-            QVERIFY(SourceExtractFixture::writeFile(QDir(home).filePath(QString::number(i)),
-                                                    QByteArray("fallback")));
+        const QString home =
+            seeds_.filePath(QStringLiteral("fallback directory %1 文件").arg(fallbackCount));
         const QString sourceArchive = fixture.filePath("source archive.zip");
         const QString targetArchive = fixture.filePath("target archive.zip");
-        createArchive(sourceArchive, fixture.path(), {added, control});
-        createArchive(targetArchive, fixture.path(), {marked, focused});
+        QVERIFY(QFile::copy(seeds_.filePath("source.zip"), sourceArchive));
+        QVERIFY(QFile::copy(seeds_.filePath("target.zip"), targetArchive));
         const QByteArray sourceBefore = SourceExtractFixture::readFile(sourceArchive);
         const QByteArray targetBefore = SourceExtractFixture::readFile(targetArchive);
         ReopenFailureBackend backend;
         backend.Target = targetArchive;
-        backend.Fail = route == "reopen-failure";
+        backend.Fail = route.endsWith("reopen-failure");
 #ifdef SEVENZIP_CODEC_MODULE
-        if (route == "native-restore")
+        if (route.startsWith("native-"))
             QCOMPARE(backend.loadCodecCatalog(QString::fromUtf8(SEVENZIP_CODEC_MODULE), version_),
                      S_OK);
 #endif
         bool cancelled = false;
         connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
-            if (route == "reopen-cancel" && backend.ReopenStarted && !cancelled) {
+            if (route.endsWith("reopen-cancel") && backend.ReopenStarted && !cancelled) {
                 cancelled = true;
                 backend.cancel();
             }
         });
-        MainWindow window(&backend);
+        CWindowInfo windowInfo{};
+        windowInfo.rect.right = 980;
+        windowInfo.rect.bottom = 620;
+        windowInfo.numPanels = 2;
+        windowInfo.currentPanel = pane;
+        windowInfo.splitterPos = 490;
+        windowInfo.Save(settingsPath);
+        for (unsigned index : {0u, 1u})
+            SavePanelPath(index, ToUString(home), settingsPath);
+        QtFileManagerStartup startup;
+        startup.FullPath = ToUString(sourceArchive);
+        startup.NeedOpenArc = true;
+        MainWindow window(&backend, {}, nullptr, &startup);
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
-        action(window, "twoPanelsAction")->trigger();
         auto *sourceUi = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *targetUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
         for (QWidget *ui : {targetUi, sourceUi}) {
-            auto *address = ui->findChild<QLineEdit *>("archivePath");
-            address->setFocus();
-            address->setText(home);
-            QTest::keyClick(address, Qt::Key_Return);
             auto *table = ui->findChild<QTableWidget *>("archiveTable");
-            QTRY_COMPARE(table->rowCount(), fallbackCount);
-            QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-            window.openArchive(ui == targetUi ? targetArchive : sourceArchive);
-            QTRY_COMPARE(table->rowCount(), 2);
-            QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+            const int initialCount = ui == targetUi ? fallbackCount : 2;
+            QVERIFY(SignalWaitSupport::waitForCount(*table->model(), initialCount));
+            QCOMPARE(table->rowCount(), initialCount);
+            QTRY_VERIFY(table->isEnabled() && table->updatesEnabled());
+        }
+        // Finish both initial publications before choosing an operation owner;
+        // the source initial-focus request can otherwise replace this focus.
+        QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
+        QVERIFY(action(window, "refreshAction")->isEnabled());
+        // The source is opened by the ordinary startup path. Only the target
+        // needs a filesystem-to-archive transition to retain its fallback folder.
+        for (QWidget *ui : {targetUi}) {
+            auto *address = ui->findChild<QLineEdit *>("archivePath");
+            QCOMPARE(QFileInfo(address->text()).canonicalFilePath(),
+                     QFileInfo(home).canonicalFilePath());
+            QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
+            QVERIFY(action(window, "refreshAction")->isEnabled());
+            window.activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(&window));
+            address->setFocus();
+            QVERIFY(ui->isAncestorOf(window.focusWidget()));
+            auto *table = ui->findChild<QTableWidget *>("archiveTable");
+            window.openArchive(targetArchive);
+            QVERIFY2(SignalWaitSupport::waitForCount(*table->model(), 2),
+                     qPrintable(QString("owner=%1 rows=%2 source=%3 target=%4 status=%5")
+                                    .arg(ui->objectName())
+                                    .arg(table->rowCount())
+                                    .arg(sourceUi->findChild<QLineEdit *>("archivePath")->text(),
+                                         targetUi->findChild<QLineEdit *>("archivePath")->text(),
+                                         window.statusBar()->currentMessage())));
+            QCOMPARE(table->rowCount(), 2);
+            QTRY_VERIFY(table->isEnabled() && table->updatesEnabled() &&
+                        static_cast<FileTable *>(table)->sourcePanel->ShouldProcessNotifications());
+            QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
+            QVERIFY(action(window, "refreshAction")->isEnabled());
             if (icons)
                 action(window, "viewMode0Action")->trigger();
         }
@@ -167,6 +226,9 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         };
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
+        sourceUi->findChild<QLineEdit *>("archivePath")->setFocus();
+        if (icons)
+            action(window, "viewMode0Action")->trigger();
         sourcePanel.SelectAll(false);
         sourcePanel.SelectSpec(ToUString(added), true);
         view(sourceUi)->setFocus();
@@ -184,10 +246,16 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
                 if (box->button(QMessageBox::Yes)) {
                     refused = true;
                     committed = SourceExtractFixture::readFile(targetArchive) != targetBefore;
-                    if (restoreFailure)
-                        replaced = QFile::remove(targetArchive) && QDir().mkdir(targetArchive) &&
+                    if (restoreFailure) {
+                        // Quiesce this private native fixture before replacing
+                        // its read-shared Windows file with a sentinel directory.
+                        auto *folder = dynamic_cast<CAgentFolder *>(destination.GetFolder());
+                        const bool released =
+                            route != "native-restore" || (folder && folder->CloseArchive() == S_OK);
+                        replaced = released && QFile::remove(targetArchive) &&
+                                   QDir().mkdir(targetArchive) &&
                                    SourceExtractFixture::writeFile(sentinel, QByteArray("keep"));
-                    else
+                    } else
                         backend.Armed = true;
                     box->button(QMessageBox::No)->click();
                 } else {
@@ -206,9 +274,11 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
         QVERIFY(refused);
         QVERIFY(committed);
         QCOMPARE(replaced, restoreFailure);
-        QCOMPARE(cancelled, route == "reopen-cancel");
-        QTRY_COMPARE(target->rowCount(), fallbackCount);
-        QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        QCOMPARE(cancelled, route.endsWith("reopen-cancel"));
+        QVERIFY(SignalWaitSupport::waitForCount(*target->model(), fallbackCount));
+        QCOMPARE(target->rowCount(), fallbackCount);
+        QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
+        QVERIFY(action(window, "refreshAction")->isEnabled());
         QCOMPARE(errors.size(), restoreFailure ? 2 : (cancelled ? 0 : 1));
         if (restoreFailure) {
             QVERIFY(errors.last().contains(russian ? QStringLiteral("откатить") : "roll back"));
@@ -238,8 +308,10 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
                 targetUi->findChild<QLineEdit *>("archivePath")->setFocus();
                 QVERIFY(targetUi->isAncestorOf(window.focusWidget()));
                 window.openArchive(targetArchive);
-                QTRY_COMPARE(target->rowCount(), 2);
-                QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+                QVERIFY(SignalWaitSupport::waitForCount(*target->model(), 2));
+                QCOMPARE(target->rowCount(), 2);
+                QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
+                QVERIFY(action(window, "refreshAction")->isEnabled());
                 window.activateWindow();
                 QVERIFY(QTest::qWaitForWindowActive(&window));
                 targetProvider = destination.GetFolder();
@@ -252,8 +324,10 @@ class InterarchiveRecoveryTests final : public QObject, protected MainWindowTest
                 errors.clear();
                 QTest::keyClick(view(sourceUi), Qt::Key_F5);
                 QVERIFY(submitted);
-                QTRY_COMPARE(target->rowCount(), 3);
-                QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+                QVERIFY(SignalWaitSupport::waitForCount(*target->model(), 3));
+                QCOMPARE(target->rowCount(), 3);
+                QVERIFY(SignalWaitSupport::waitForEnabled(*action(window, "refreshAction")));
+                QVERIFY(action(window, "refreshAction")->isEnabled());
                 QVERIFY(errors.isEmpty());
                 QCOMPARE(destination.GetFolder(), targetProvider.Interface());
                 CSelectedState selection;

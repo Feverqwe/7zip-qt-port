@@ -1465,6 +1465,8 @@ IUnknown *CAgentFolder::GetEngineResource() const {
     return _agentSpec ? _agentSpec->GetEngineResource() : nullptr;
 }
 
+HRESULT CAgentFolder::CloseArchive() { return _agentSpec ? _agentSpec->Close() : E_FAIL; }
+
 HRESULT CAgentFolder::ReOpen(IArchiveOpenCallback *callback, IFolderFolder **folder) {
     COM_TRY_BEGIN
     if (!folder)

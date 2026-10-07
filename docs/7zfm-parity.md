@@ -15,6 +15,17 @@ filesystem OnTimer. The bounded native component and current normal/compact
 geometry pass on macOS, Linux and Windows; evidence is in the dated audit.
 Rendered Windows and whole-plan acceptance remain separate.
 
+### Native interarchive rollback file lifetime (P3-03, 2026-10-07)
+
+The existing Copy/Delete/backup extension closes the destination's source
+archive streams before restoring backup bytes, then uses the existing physical
+reopen and saved selection. This permits Windows replacement under native
+reader sharing. Source deletion refusal/error/Cancel still retains source bytes;
+failed reopen still returns to the destination's filesystem folder. The narrow
+Close bridge reuses CAgent::Close; source copy and deletion algorithms are unchanged.
+The native Windows two-case RED and subsequent bounded three-OS verification
+are tracked in the dated port audit; this is not whole-platform acceptance.
+
 ### Changed nested archive Parent (P3-05.15, 2026-10-07)
 
 For disk-extracted native children, Parent retains the original Yes/No/Cancel

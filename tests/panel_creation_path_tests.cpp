@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "fixtures/signal_wait_support.h"
 #include "layout_inspection.h"
 #include "qtfilemanagerstartup.h"
 #include "source_extract_fixture.h"
@@ -6,7 +7,27 @@
 
 class PanelCreationPathTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    QTemporaryDir seeds_;
+
   private slots:
+    void initTestCase() {
+        QVERIFY(seeds_.isValid());
+        // These folders are read-only inputs to every startup scenario. Reuse
+        // them while settings, windows and archive requests remain per-case.
+        for (int count : {2, 301})
+            for (const QString &name :
+                 {QStringLiteral("requested directory 空"), QStringLiteral("peer directory δ")}) {
+                const QString root = seeds_.filePath(QString::number(count) + '/' + name);
+                for (int i = 0; i < count; ++i)
+                    QVERIFY(SourceExtractFixture::writeFile(
+                        QDir(root).filePath(
+                            QString("item-%1 文件.txt").arg(i, 3, 10, QLatin1Char('0'))),
+                        root.toUtf8()));
+            }
+        QVERIFY(SourceExtractFixture::writeFile(seeds_.filePath("saved main directory/decoy.txt"),
+                                                "saved"));
+    }
+
     void ordinaryStartupKeepsRequestedMainPath_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("large");
@@ -62,20 +83,10 @@ class PanelCreationPathTests final : public QObject, protected MainWindowTestSup
         modes.Save(settingsPath);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString requested = fixture.filePath("requested directory 空");
-        const QString peer = fixture.filePath("peer directory δ");
-        const QString saved = fixture.filePath("saved main directory");
-        QVERIFY(QDir().mkdir(requested));
-        QVERIFY(QDir().mkdir(peer));
-        QVERIFY(QDir().mkdir(saved));
-        QVERIFY(SourceExtractFixture::writeFile(QDir(saved).filePath("decoy.txt"), "saved"));
-        for (const QString &root : {requested, peer}) {
-            const int fileCount = immediatePeer && root == requested ? 2 : count;
-            for (int i = 0; i < fileCount; ++i) {
-                const QString name = QString("item-%1 文件.txt").arg(i, 3, 10, QLatin1Char('0'));
-                QVERIFY(SourceExtractFixture::writeFile(QDir(root).filePath(name), root.toUtf8()));
-            }
-        }
+        const QString requested =
+            seeds_.filePath(QString::number(immediatePeer ? 2 : count) + "/requested directory 空");
+        const QString peer = seeds_.filePath(QString::number(count) + "/peer directory δ");
+        const QString saved = seeds_.filePath("saved main directory");
         SavePanelPath(pane, ToUString(saved), settingsPath);
         SavePanelPath(1 - pane, ToUString(peer), settingsPath);
         QtFileManagerStartup startup;
@@ -128,7 +139,9 @@ class PanelCreationPathTests final : public QObject, protected MainWindowTestSup
                          .canonicalFilePath(),
                      QFileInfo(expected).canonicalFilePath());
             auto *list = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
-            QTRY_COMPARE(list->rowCount(), immediatePeer && index == pane ? 2 : count);
+            const int expectedRows = immediatePeer && index == pane ? 2 : count;
+            QVERIFY(SignalWaitSupport::waitForCount(*list->model(), expectedRows));
+            QCOMPARE(list->rowCount(), expectedRows);
             QTRY_VERIFY(list->isEnabled() && list->updatesEnabled());
             QVERIFY(list->sourcePanel->PanelCreated);
             QCOMPARE(list->sourcePanel->IsFSFolder(), !archivePanel);

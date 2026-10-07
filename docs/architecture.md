@@ -118,7 +118,12 @@ Interarchive Copy/Move uses the same pre-update destination snapshot and source
 RefreshListCtrl after successful publication. Its accepted Copy/Delete/rollback
 composition remains: a source Delete refusal, error or cancellation restores the
 destination backup, then physically reopens the restored file using that saved
-selection. That rollback reopen replaces the provider deliberately. Neither
+selection. Before replacing bytes, the backend invokes a close service supplied
+by the Agent-owning caller. It delegates to source CAgent::Close through a
+narrow CAgentFolder bridge, releasing both the physical input stream
+and native reader. Folder path/proxy state survives until the existing ReOpen.
+Otherwise Windows reader sharing can refuse the rollback publication.
+That rollback reopen replaces the provider deliberately. Neither
 successful CopyFrom nor its row publication needs a second engine reopen.
 Failed physical reopen binds the destination's return filesystem folder, rather
 than publishing stale archive metadata. The existing refresh owner reports

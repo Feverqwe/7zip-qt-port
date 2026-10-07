@@ -34,7 +34,11 @@ bool QtArchiveTransferBackup::save() {
            QFile::copy(destination_, directory_.filePath(QStringLiteral("archive-backup")));
 }
 
-bool QtArchiveTransferBackup::restore() const {
+bool QtArchiveTransferBackup::restore(const std::function<bool()> &closeArchive) const {
+    // The original Close releases CArc's physical input as well as the native
+    // handler. Keep its proxy/path state for the caller's existing ReOpen.
+    if (closeArchive && !closeArchive())
+        return false;
     auto *inputFile = new CInFileStream;
     CMyComPtr<ISequentialInStream> input = inputFile;
     const QString backup = directory_.filePath(QStringLiteral("archive-backup"));

@@ -1,5 +1,6 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/FileManager/resourceGui.h"
+#include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "mainwindow.h"
@@ -57,7 +58,10 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             source.RestoreLoadedSelection(selected);
         }
         if (result != S_OK) {
-            const bool restored = rollback->restore();
+            const bool restored = rollback->restore([&target] {
+                auto *folder = dynamic_cast<CAgentFolder *>(target.GetFolder());
+                return folder && folder->CloseArchive() == S_OK;
+            });
             app_.QtOperations().End();
             activatePanelUi(destinationIndex);
             refreshCurrent(&destinationSelection);
