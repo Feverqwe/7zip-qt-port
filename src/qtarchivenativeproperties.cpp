@@ -69,6 +69,13 @@ bool QtArchiveFileResource::HasNativeExtractService() const {
     return NativeItemProperties() != nullptr;
 }
 
+bool QtArchiveFileResource::HasNativeItemStreamService() const {
+    CMyComPtr<IInArchiveGetStream> streams;
+    auto *native = NativeItemProperties();
+    return native && native->QueryInterface(IID_IInArchiveGetStream, (void **)&streams) == S_OK &&
+           streams;
+}
+
 bool QtArchiveFileResource::HasNativeRarReader() const {
     return _nativeOpen && _nativeOpen->hasNativeRarExtractor();
 }

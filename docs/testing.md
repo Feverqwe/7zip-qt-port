@@ -1,5 +1,32 @@
 # Regression strategy
 
+`native_nested_stream`, `native_nested_memory` and `native_nested_disk` use
+private official native runtimes and actual source OpenItem on nested archives.
+The384 publication workflows cover2/301 child rows, four HRESULTs, both panes,
+languages, views and selection modes. Native TAR supplies preferred streams;
+the readonly official-7z facade exercises original memory and forced-disk paths.
+PID/count receipts prove native property/extraction/disk routes. Failed refresh
+keeps the source ignored-result policy; Ctrl+R recovers the same child, Parent
+restores the outer provider and removes owned spools, and later filesystem
+OnTimer still works. Archive and peer bytes remain unchanged.
+Each route also exercises actual native opening cancellation with Yes/No/Cancel
+in both panes, owned-directory cleanup and retry. A private control holds the
+native handler after successful Open while invoking its real progress callback;
+the production dialog/cancellation path decides the result. TAR index checks
+cover normal/flat/child folders, bytes and seek after ordinary owner release,
+plus catalog expiry after the last stream. Explicit archive Close is excluded.
+The same runtime preparation/unsandboxed requirements as the renderer suites
+below apply. Normal/compact JSON covers failed/recovered/Cancel-recovered panels;
+rendered Windows and native Linux/Windows execution remain unverified here.
+
+Current2026-10-07 macOS27.0.1 arm64 / Qt6.12.0 validation: three-route3/3PASS
+136.18s (411 Qt passes/0fail/0skip), direct consumers12/12PASS150.23s
+(557 Qt passes/0fail/0skip), required unsandboxed full gate292/292PASS629.29s.
+Full Qt totals:5734pass/0fail/15 Windows-only skips, enumerated in the port audit.
+Independent full-gate inspection confirms1572 fresh normal/compact reports and
+6288 enabled/fully exposed address/list controls. Inputs and report hashes were
+unchanged through terminal completion; evidence lives in the audit.
+
 `native_renderer_failure` loads the official module through the delegating
 external-format facade and injects native kpidAttrib results only in the GUI
 process. A PID-tagged receipt and NativeItemProperties prove the native route;

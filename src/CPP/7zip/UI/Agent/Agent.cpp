@@ -925,6 +925,28 @@ Z7_COM7F_IMF(CAgentFolder::BindToParentFolder(IFolderFolder **resultFolder)) {
     COM_TRY_END
 }
 
+Z7_COM7F_IMF(CAgentFolder::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    Z7_DECL_CMyComPtr_QI_FROM(IInArchiveGetStream, getStream, _agentSpec->GetArchive());
+    if (!getStream)
+        return S_OK;
+
+    UInt32 arcIndex;
+    if (_proxy2) {
+        SET_realIndex_AND_dir_2;
+        arcIndex = dir->Items[realIndex];
+    } else {
+        SET_realIndex_AND_dir;
+        if (realIndex < dir->SubDirs.Size()) {
+            const CProxyDir &item = _proxy->Dirs[dir->SubDirs[realIndex]];
+            if (!item.IsLeaf())
+                return S_OK;
+            arcIndex = (unsigned)item.ArcIndex;
+        } else
+            arcIndex = dir->SubFiles[realIndex - dir->SubDirs.Size()];
+    }
+    return getStream->GetStream(arcIndex, stream);
+}
+
 Z7_COM7F_IMF(CAgentFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     if (!IsBound())

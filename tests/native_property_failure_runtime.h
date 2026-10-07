@@ -9,7 +9,11 @@ class NativePropertyFailureRuntime {
     QString engine() const;
     QString module() const;
     bool createArchive(const QString &path, int count) const;
-    bool arm(UInt32 index, HRESULT result);
+    bool arm(UInt32 index, HRESULT result, UInt32 itemCount = 0);
+    bool forceDisk(bool enabled);
+    QByteArray diskReceipts() const;
+    QByteArray extractionReceipts() const;
+    QByteArray openReceipts() const;
     bool clear();
     QByteArray receipts() const;
 
@@ -17,4 +21,5 @@ class NativePropertyFailureRuntime {
     QTemporaryDir owned_;
     QString runtime_;
     QString control_;
+    QString diskControl_;
 };

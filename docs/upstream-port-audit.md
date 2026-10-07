@@ -1,5 +1,82 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — native nested streams and publication handoff (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete upstream
+`CPP/7zip/UI/Agent/Agent.cpp::CAgentFolder::GetStream`, its declaration/QI,
+proxy/flat-index macros and archive interfaces; complete
+`CPP/7zip/UI/FileManager/PanelItemOpen.cpp::OpenItemInArchive`, its OpenItem/EditItem
+callers, OpenAsArc_Msg, parent links, temporary ownership and refresh guards.
+The original Agent GetStream body and interface are restored in their original
+authoritative C++ module. Only formatting and empty macro statement separators
+differ; both proxy branches, directory-leaf policy and native HRESULT survive.
+No C module, format implementation, source revision or upstream checkout changed.
+
+Qt archive properties now advertise IInArchiveGetStream only when the native
+handler supplies it and NativeItemProperties has proven matching item order.
+The new narrow `qtarchiveitemstream` bridge delegates Read/Seek and preserves
+both a returned stream and its HRESULT. Its resource reference outlives native
+stream interfaces, retaining the copied module/catalog and owned input. Existing
+upstream StreamObjects/LimitedStreams retain buffers or input streams, but do
+not own this Qt module/resource lease. Seek is advertised only when supported.
+Explicit native archive Close/ReOpen retains the upstream invalidation contract;
+the test proves ordinary owner release, not arbitrary post-Close readability.
+
+OpenItem releases its outer timer guard to the nested owner. OpenItemInArchive
+retains that guard during binding/extraction and releases it before each of its
+three original successful RefreshListCtrl calls: preferred provider stream,
+bounded CVirtFileSystem memory extraction and disk extraction. Binding guards
+remain with OpenAsArc_Index. The original ignored-refresh-result policy and
+error/external-editor tails remain; asynchronous Qt publication must capture
+the restored flags rather than later restoring a disabled timer.
+
+The private test facade still delegates all archive work to the official module.
+PID/item-count controls distinguish the one-item outer archive, GUI native child
+and independent CLI listing. A native Size override forces the original disk
+limit branch; a reserved control holds a successfully opened native child while
+calling its real progress callback, allowing the actual Cancel button and
+Yes/No/Cancel question to decide completion. Receipts prove each native route;
+ordinary fixtures without these resources remain unchanged. No product seam,
+archive parser, compressor or global fault switch was added.
+
+The old-product diagnostic failed three cases: missing source stream QI and
+timer restoration after memory/disk opening. Evidence is retained in
+`build/review/native-nested-red`. Tests cover actual nested OpenItem, 2/301 rows,
+S_OK/S_FALSE/E_FAIL/E_ABORT child publication, both panes, EN/RU, table/icon and
+standard/alternative selection. Recovery keeps the child provider; Parent keeps
+the outer provider and removes owned spools. Archive/peer bytes and later actual
+filesystem OnTimer are checked. Additional native TAR checks prove normal/flat/
+child index mapping and module lease release after the final stream. Explicit
+TAR directory records may return empty streams as upstream does. The proxy2
+branch is copied but has no new native stream-capable tree fixture here.
+
+Validation on2026-10-07, macOS27.0.1 arm64 / Qt6.12.0: final three-route
+matrix3/3 CTest PASS136.18s,411 Qt passes/0fail/0skip, including384 publication
+workflows,18 actual cancellation consumers and TAR index/lifetime checks.
+Direct consumers12/12 CTest PASS150.23s,557 Qt passes/0fail/0skip: native renderer
+failure/Copy, external codecs, native folder/open commands, nested archive/edit
+chain, native navigation, panel key/navigation/lifecycle and progress Cancel.
+Required UNSANDBOXED `scripts/check.sh` terminal0: formatting/all-target build,
+292/292 CTest PASS629.29s. All276 Qt totals yield5734 passes/0fail/15skip;
+the existing Windows-only skip suites remain source_link_extract2,
+association_services1, source_extract_advanced2 and source_metadata_storage10.
+All21 frozen task inputs, including13 code/test/build files, remained unchanged
+through the gate. Later changes only record documentation evidence.
+Read-only baseline verification:408exact/196adapted/3local, unchanged source pin.
+
+Independent inspection verified1572 fresh full-gate widget JSON reports,
+786 at980×620 and786 at640×400,6288 enabled/fully exposed address/list controls,
+one visible list per pane, addresses above lists and source0-left/1-right order.
+Reports and hashes stayed unchanged at terminal completion. Frozen/verified
+inputs, actual RED, logs and copied reports are retained in
+`build/review/native-nested-final` and `...-red`. The focused lifecycle suite
+shares its private runtime and outer-archive matrix across its three related
+checks; the new production lease adapter remains52 lines with one responsibility.
+Native writer/render failure consumers, complete remaining PanelItemOpen/
+RefreshListCtrl source reconciliation and native Windows/Linux/rendered/cold
+stable-package/final acceptance remain mandatory. P3-05.15 stays active.
+
 ## P3-05.15 — native list publication result and open guards (2026-10-07)
 
 Baseline: https://github.com/ip7z/7zip.git at

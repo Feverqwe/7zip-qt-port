@@ -6,11 +6,13 @@
 #include "7zip/ICoder.h"
 #include "7zip/PropID.h"
 #include "Common/MyCom.h"
+#include <chrono>
 #include <cwchar>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <thread>
 #ifndef _WIN32
 #include <dlfcn.h>
 #include <unistd.h>
@@ -78,22 +80,58 @@ HRESULT CoreProperty(PROPID property, PROPVARIANT *value) {
     return E_FAIL;
 }
 
+std::filesystem::path ControlPath(const char *name) {
+    std::ifstream path(FixtureFolder() / "resources/fixture" / name, std::ios::binary);
+    const std::string utf8(std::istreambuf_iterator<char>(path), {});
+    return utf8.empty() ? std::filesystem::path() : std::filesystem::u8path(utf8);
+}
+
+UInt64 CurrentProcess() {
+#ifdef _WIN32
+    return GetCurrentProcessId();
+#else
+    return getpid();
+#endif
+}
+
 class CGlobalOnlyArchive final : public IInArchive, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IInArchive)
     CMyComPtr<IInArchive> archive_;
     std::filesystem::path propertyControl_;
+    std::filesystem::path diskControl_;
 
   public:
-    explicit CGlobalOnlyArchive(IInArchive *archive) : archive_(archive) {
-        // Optional private test resource; existing codec consumers have none.
-        std::ifstream path(FixtureFolder() / "resources/fixture/property-control-path.txt",
-                           std::ios::binary);
-        const std::string utf8(std::istreambuf_iterator<char>(path), {});
-        if (!utf8.empty())
-            propertyControl_ = std::filesystem::u8path(utf8);
-    }
+    explicit CGlobalOnlyArchive(IInArchive *archive)
+        : archive_(archive), propertyControl_(ControlPath("property-control-path.txt")),
+          diskControl_(ControlPath("disk-control-path.txt")) {}
     Z7_COM7F_IMF(Open(IInStream *stream, const UInt64 *limit, IArchiveOpenCallback *callback))
-    override { return archive_->Open(stream, limit, callback); }
+    override {
+        const HRESULT opened = archive_->Open(stream, limit, callback);
+        if (opened != S_OK || propertyControl_.empty() || !callback)
+            return opened;
+        UInt32 actualCount = 0;
+        if (archive_->GetNumberOfItems(&actualCount) != S_OK)
+            return opened;
+        bool observed = false;
+        for (;;) {
+            std::ifstream control(propertyControl_);
+            UInt64 process = 0;
+            UInt32 index = 0, result = 0, count = 0;
+            if (!(control >> process >> index >> result >> count) || process != CurrentProcess() ||
+                index != UInt32(-1) || result != UInt32(E_ABORT) || count != actualCount)
+                return opened;
+            if (!observed) {
+                auto receipt = propertyControl_;
+                receipt += ".open";
+                std::ofstream(receipt, std::ios::app) << process << ' ' << count << '\n';
+                observed = true;
+            }
+            const HRESULT progress = callback->SetCompleted(nullptr, nullptr);
+            if (progress != S_OK)
+                return progress;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
     Z7_COM7F_IMF(Close()) override { return archive_->Close(); }
     Z7_COM7F_IMF(GetNumberOfItems(UInt32 *count)) override {
         return archive_->GetNumberOfItems(count);
@@ -103,25 +141,49 @@ class CGlobalOnlyArchive final : public IInArchive, public CMyUnknownImp {
             std::ifstream control(propertyControl_);
             UInt64 faultProcess = 0;
             UInt32 faultIndex = 0, result = 0;
-#ifdef _WIN32
-            const UInt64 process = GetCurrentProcessId();
-#else
-            const UInt64 process = getpid();
-#endif
-            if (control >> faultProcess >> faultIndex >> result && faultProcess == process &&
-                index == faultIndex) {
+            if (control >> faultProcess >> faultIndex >> result &&
+                faultProcess == CurrentProcess() && index == faultIndex) {
+                UInt32 expectedCount = 0, actualCount = 0;
+                control >> expectedCount; // Older controls omit the optional count filter.
+                if (expectedCount && (archive_->GetNumberOfItems(&actualCount) != S_OK ||
+                                      actualCount != expectedCount))
+                    return archive_->GetProperty(index, property, value);
                 auto receipt = propertyControl_;
                 receipt += ".hit";
                 std::ofstream(receipt, std::ios::app) << index << ' ' << result << '\n';
+                if (result == S_OK)
+                    return archive_->GetProperty(index, property, value);
                 *value = PROPVARIANT{};
                 return static_cast<HRESULT>(static_cast<Int32>(result));
+            }
+        }
+        if (property == kpidSize && index == 0 && !diskControl_.empty()) {
+            std::ifstream control(diskControl_);
+            UInt64 process = 0;
+            UInt32 count = 0;
+            if (control >> process && process == CurrentProcess() &&
+                archive_->GetNumberOfItems(&count) == S_OK && count == 1) {
+                auto receipt = diskControl_;
+                receipt += ".hit";
+                std::ofstream(receipt, std::ios::app) << index << ' ' << count << '\n';
+                *value = PROPVARIANT{};
+                value->vt = VT_UI8;
+                value->uhVal.QuadPart = UInt64(1) << 63;
+                return S_OK;
             }
         }
         return archive_->GetProperty(index, property, value);
     }
     Z7_COM7F_IMF(Extract(const UInt32 *indices, UInt32 count, Int32 test,
                          IArchiveExtractCallback *callback))
-    override { return archive_->Extract(indices, count, test, callback); }
+    override {
+        if (!propertyControl_.empty()) {
+            auto receipt = propertyControl_;
+            receipt += ".extract";
+            std::ofstream(receipt, std::ios::app) << CurrentProcess() << ' ' << count << '\n';
+        }
+        return archive_->Extract(indices, count, test, callback);
+    }
     Z7_COM7F_IMF(GetArchiveProperty(PROPID property, PROPVARIANT *value)) override {
         return archive_->GetArchiveProperty(property, value);
     }

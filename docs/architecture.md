@@ -2,6 +2,18 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Native archive item streams pass through the original CAgentFolder::GetStream
+index mapping. CFolderArchiveProperties advertises the service only for a native
+provider with proven item-order mapping. The narrow qtarchiveitemstream adapter
+retains QtArchiveFileResource while delegating reads and optional seeks; native
+stream interfaces release before their module/catalog/input owner. It preserves
+the native output stream independently of the returned HRESULT. Explicit Close
+or ReOpen keeps the upstream invalidation contract.
+OpenItemInArchive owns timer suppression during native binding/extraction and
+hands off restored flags to asynchronous row publication at each of its three
+original successful refresh branches. OpenItem releases its outer timer guard
+before dispatch; EditItem enters the same guarded nested owner.
+
 Column-menu mutations belong to PanelItems::ShowColumnsContextMenu, with the
 source AddColumn/DeleteColumn vector bodies. Qt supplies the selected catalog
 index and popup transport, then projects visibility and appends newly shown

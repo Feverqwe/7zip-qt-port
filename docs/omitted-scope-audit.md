@@ -108,7 +108,13 @@ does not change the retained App creation/binding algorithm.
 The native error matrix also invokes actual filesystem OpenItem before
 OpenAsArc_Index, handing off both outer and inner guards. Post-recovery
 filesystem navigation and OnTimer verify the retained timer state. This does
-not cover the separate nested OpenItemInArchive branch.
+not cover the separate nested OpenItemInArchive branch. The later
+[native nested component](upstream-port-audit.md#p3-0515--native-nested-streams-and-publication-handoff-2026-10-07)
+reviews its complete body and both callers, restores original Agent::GetStream,
+and verifies all three successful publication handoffs plus actual native Cancel.
+Other external-edit/changed-parent/zone and native writer/render failure branches
+still require complete reconciliation and platform acceptance; this component
+does not close the full module.
 
 The initial map made no functional edits, source copies or manifest changes.
 Its Comment row now records the subsequent integrated caller correction. Existing

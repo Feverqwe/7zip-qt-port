@@ -1,5 +1,22 @@
 # Text specifications and geometry checks
 
+### Native nested opening (P3-05.15)
+
+OpenItemInArchive keeps original preferred provider stream, bounded memory
+extraction and disk extraction paths. Native provider streams use original Agent
+index mapping and keep the module/resource alive while read or seek is possible.
+All successful opens ignore the subsequent Refresh result as upstream does;
+S_FALSE/E_FAIL/E_ABORT during child row publication must not add a dialog.
+Failed publication is empty/enabled; Ctrl+R restores the same child provider.
+Parent restores the original outer provider/focused child name and removes its
+owned spool. Source timer/notify/redraw remain usable, including filesystem
+navigation and OnTimer afterwards. Check2/301 child rows, both panes, EN/RU,
+table/icon and standard/alternative selection at980×620/640×400. Inspect failed
+and recovered address/list groups; original archives and peer bytes stay intact.
+Native open cancellation must retain the outer provider/rows and release owned
+temporary files without a stale refresh or extra error. Rendered Windows and
+native Windows/Linux execution remain separate acceptance requirements.
+
 ### Source panel creation (P3-05.15)
 
 Native property failures during initial creation and OpenAsArc_Index retain the

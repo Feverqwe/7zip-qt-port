@@ -1,5 +1,17 @@
 # Сверка с Windows 7zFM
 
+### Native nested opening (P3-05.15, 2026-10-07)
+
+Original Agent::GetStream index mapping and OpenItemInArchive's preferred stream,
+bounded memory and disk paths are retained. Qt adds only the native module/input
+lease and timer-guard handoff needed by deferred row publication. All three
+success branches ignore RefreshListCtrl results as upstream does. Actual native
+Cancel Yes retains the outer folder and removes owned temporaries; No/Cancel
+continue opening, followed by normal Parent cleanup. TAR explicit directory
+records may provide empty streams; implicit non-leaf directories keep the
+original no-stream policy. The resource proves structure and control flow;
+macOS tests do not establish rendered Windows or three-platform acceptance.
+
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
 Нативная ошибка свойств большого списка сохраняет политику source caller:

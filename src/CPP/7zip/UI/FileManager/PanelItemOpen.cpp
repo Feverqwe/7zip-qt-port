@@ -537,6 +537,8 @@ void CPanel::OpenItem(unsigned index, bool tryInternal, bool tryExternal, const 
         if (IsVirus_Message(name))
             return;
     if (!_parentFolders.IsEmpty()) {
+        // The nested opener retains this guard until its own refresh handoff.
+        disableTimerProcessing.reset();
         OpenItemInArchive(index, tryInternal, tryExternal, false, false, type);
         return;
     }
@@ -799,6 +801,7 @@ bool CPanel::IsVirus_Message(const UString &name) {
 
 void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExternal, bool editMode,
                                bool useEditor, const wchar_t *type) {
+    std::optional<CDisableTimerProcessing> disableTimerProcessing(std::in_place, *this);
     // we don't want to change hash data here
     if (IsHashFolder())
         return;
@@ -854,6 +857,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
                         );
                     if (res == S_OK) {
                         tempDirectory.DisableDeleting();
+                        disableTimerProcessing.reset();
                         RefreshListCtrl();
                         return;
                     }
@@ -1005,6 +1009,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
                 }
 
                 tempDirectory.DisableDeleting();
+                disableTimerProcessing.reset();
                 RefreshListCtrl();
                 return;
             }
@@ -1037,6 +1042,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
         );
         if (res == S_OK) {
             tempDirectory.DisableDeleting();
+            disableTimerProcessing.reset();
             RefreshListCtrl();
             return;
         }

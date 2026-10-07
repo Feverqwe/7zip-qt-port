@@ -397,6 +397,16 @@ guards внутреннему open/Refresh; последующий OnTimer ос�
 Статус active: nested OpenItemInArchive, remaining native operation renderers,
 full-body/current3OS/rendered/cold-stable-package/final acceptance остаются открытыми.
 
+P3-05.15, 2026-10-07: следующий native nested компонент восстановил original
+Agent::GetStream и stream/memory/disk guard handoff в OpenItemInArchive.
+384 publication/recovery workflows,18 actual Cancel Yes/No/Cancel consumers
+и native TAR normal/flat/child mapping/stream lease проверены в трёх
+`native_nested_*` suites. Current Mac: focused3+12 CTest PASS, required full292/292
+PASS629.29s,1572 fresh geometry reports; Windows-only15 Qt skips сохранены.
+[Scope/evidence](upstream-port-audit.md#p3-0515--native-nested-streams-and-publication-handoff-2026-10-07).
+Статус active: оставшиеся full-body/operation-render/native3OS/rendered/
+cold-stable-package/final acceptance обязательны.
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

@@ -3,6 +3,7 @@
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "qtarchivefileresource.h"
+#include "qtarchiveitemstream.h"
 
 bool ArchiveUpdateEnabled(IInArchive *archive) {
     if (!archive)
@@ -14,11 +15,16 @@ bool ArchiveUpdateEnabled(IInArchive *archive) {
 
 namespace {
 class CFolderArchiveProperties final : public IInArchive,
+                                       public IInArchiveGetStream,
                                        public IOutArchive,
                                        public ISetProperties,
                                        public IArchiveGetRawProps,
                                        public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IInArchive)
+    else if (_resourceSpec && _resourceSpec->HasNativeItemStreamService() &&
+             iid == IID_IInArchiveGetStream) {
+        *outObject = static_cast<IInArchiveGetStream *>(this);
+    }
     else if (_rawProps && iid == IID_IArchiveGetRawProps) {
         *outObject = static_cast<IArchiveGetRawProps *>(this);
     }
@@ -57,10 +63,15 @@ class CFolderArchiveProperties final : public IInArchive,
         BindRawProperties();
     }
     Z7_IFACE_COM7_IMP(IInArchive)
+    Z7_IFACE_COM7_IMP(IInArchiveGetStream)
     Z7_IFACE_COM7_IMP(IOutArchive)
     Z7_IFACE_COM7_IMP(ISetProperties)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
 };
+
+Z7_COM7F_IMF(CFolderArchiveProperties::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    return CreateArchiveItemStream(_resource, index, stream);
+}
 
 Z7_COM7F_IMF(CFolderArchiveProperties::SetProperties(const wchar_t *const *names,
                                                      const PROPVARIANT *values, UInt32 count)) {

@@ -440,6 +440,7 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/CPP/7zip/UI/Agent/ArchiveFolder.cpp
     src/CPP/7zip/UI/Agent/UpdateCallbackAgent.cpp src/CPP/7zip/UI/Agent/UpdateCallbackAgent.h
     src/qtarchiveproperties.cpp src/qtarchiveproperties.h
+    src/qtarchiveitemstream.cpp src/qtarchiveitemstream.h
     src/qtarchivefoldermanager.cpp src/qtarchivefoldermanager.h
     src/qtarchivenativeopenprogress.cpp src/qtarchivenativeopenprogress.h
     src/qtarchivestreamopen.h
@@ -1706,6 +1707,18 @@ if(BUILD_TESTING)
     add_test(NAME archive_reload_command COMMAND archive_reload_command_tests -silent)
     set_tests_properties(archive_reload_command PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-reload-command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_renderer_failure_tests tests/native_renderer_failure_tests.cpp tests/native_property_failure_runtime.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    qt_add_executable(native_nested_publication_tests tests/native_nested_publication_tests.cpp tests/native_property_failure_runtime.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(native_nested_publication_tests PRIVATE src tests)
+    target_link_libraries(native_nested_publication_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(native_nested_publication_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    target_compile_definitions(native_nested_publication_tests PRIVATE
+        "SEVENZIP_EXTERNAL_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_EXTERNAL_FORMAT_FIXTURE=\"$<TARGET_FILE:external_format_fixture>\"")
+    add_dependencies(native_nested_publication_tests external_format_fixture)
+    foreach(nested_route stream memory disk)
+        add_test(NAME native_nested_${nested_route} COMMAND native_nested_publication_tests -silent)
+        set_tests_properties(native_nested_${nested_route} PROPERTIES TIMEOUT 180 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_NESTED_ROUTE=${nested_route};SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-nested-${nested_route}.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endforeach()
     target_include_directories(native_renderer_failure_tests PRIVATE src tests)
     target_link_libraries(native_renderer_failure_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
     target_sources(native_renderer_failure_tests PRIVATE src/mainwindow_selectionpaths.cpp)

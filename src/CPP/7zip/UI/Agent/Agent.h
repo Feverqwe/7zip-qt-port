@@ -52,6 +52,7 @@ class CAgentFolder final : public IFolderFolder,
                            public IFolderSetFlatMode,
                            public IFolderAltStreams,
                            public IArchiveFolderInternal,
+                           public IInArchiveGetStream,
                            public IFolderOperations,
                            public IArchiveFolder,
                            public IFolderSetZoneIdMode,
@@ -68,6 +69,7 @@ class CAgentFolder final : public IFolderFolder,
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
     Z7_COM_QI_ENTRY(IFolderAltStreams)
     Z7_COM_QI_ENTRY(IArchiveFolderInternal)
+    Z7_COM_QI_ENTRY(IInArchiveGetStream)
     else if (iid == IID_IFolderOperations && (CanCopyFromFile() || CanCopyTo())) {
         *outObject = static_cast<IFolderOperations *>(this);
     }
@@ -92,6 +94,7 @@ class CAgentFolder final : public IFolderFolder,
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)
     Z7_IFACE_COM7_IMP(IFolderAltStreams)
     Z7_IFACE_COM7_IMP(IArchiveFolderInternal)
+    Z7_IFACE_COM7_IMP(IInArchiveGetStream)
     Z7_IFACE_COM7_IMP(IFolderOperations)
     Z7_IFACE_COM7_IMP(IArchiveFolder)
     Z7_IFACE_COM7_IMP(IFolderSetZoneIdMode)
