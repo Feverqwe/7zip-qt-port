@@ -1990,6 +1990,17 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — Benchmark source/platform lifecycle (2026-10-07)
+
+Benchmark's POSIX hardware-thread text and choices now use original System.h
+normalization after failed/empty affinity queries. Windows retains its native
+helper. Closing/restarting/stopping retains the source joined-worker lifecycle;
+detached completion is the source successful no-op. Desktop/total resource
+structure, Qt compact scrolling and live language/Help remain as specified in
+the [Benchmark contract](ui-layout-contracts.md#benchmark-p2-04). The
+[whole-body audit](upstream-port-audit.md#p3-05--benchmark-source-and-platform-lifecycle-2026-10-07)
+does not establish rendered original Windows pixels or native desktop input.
+
 ## P3-05 — compression method/control states (2026-10-07)
 
 The Qt Create dialog now retains original numeric method IDs for calculations.

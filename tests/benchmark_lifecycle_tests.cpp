@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/GUI/BenchmarkDialog.h"
 #include "benchmark_services_fixture.h"
 #include "layout_inspection.h"
+#include "qtbenchmarkcontrols.h"
 #include "qtlangcontrols.h"
 #include <QApplication>
 #include <QDialog>
@@ -38,6 +39,71 @@ class BenchmarkLifecycleTests final : public QObject {
     }
 
   private slots:
+    void detachedWorkerCompletionIsSuccessfulNoOp() {
+        class Window final : public CQtBenchmarkWindow {
+          public:
+            using CQtBenchmarkWindow::Attach;
+            unsigned Deliveries = 0;
+            bool OnMessage(unsigned, quintptr, qintptr) override {
+                ++Deliveries;
+                return true;
+            }
+        } window;
+        QVERIFY(window.PostMsg(0x8001, 0));
+        QCOMPARE(window.Deliveries, 0u);
+        QApplication::processEvents();
+        QCOMPARE(window.Deliveries, 1u);
+        window.Attach(nullptr);
+        QVERIFY(window.PostMsg(0x8001, 0));
+        QApplication::processEvents();
+        QCOMPARE(window.Deliveries, 1u);
+    }
+    void affinityFallback_data() {
+        QTest::addColumn<bool>("querySucceeds");
+        QTest::newRow("failed-query") << false;
+        QTest::newRow("empty-affinity") << true;
+    }
+    void affinityFallback() {
+#ifdef Q_OS_WIN
+        QSKIP("Windows uses the original native normalized affinity helper");
+#else
+        QFETCH(bool, querySucceeds);
+        class AffinityService final : public FixtureBenchmarkServices {
+          public:
+            bool Succeeds = false;
+            mutable unsigned Queries = 0;
+            bool GetProcessAffinity(NWindows::NSystem::CProcessAffinity &affinity) const override {
+                ++Queries;
+                if (!Succeeds)
+                    return false;
+                affinity.CpuZero();
+                affinity.numSysThreads = 0;
+                return Succeeds;
+            }
+        } service;
+        service.Succeeds = querySucceeds;
+        service.Hold = true;
+        QString hardware;
+        bool closed = false;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, this, [&] {
+            auto *view = dialog();
+            if (!view || !service.Active || closed)
+                return;
+            closed = true;
+            hardware = view->findChild<QLabel *>("IDT_BENCH_HARDWARE_THREADS")->text();
+            view->reject();
+        });
+        responder.start(1);
+        QCOMPARE(Benchmark(nullptr, properties(), 1, nullptr, &service), S_OK);
+        QVERIFY(closed);
+        const UInt32 cpus = qMax(1u, NWindows::NSystem::GetNumberOfProcessors());
+        QVERIFY2(hardware.startsWith("/ " + QString::number(cpus)), qPrintable(hardware));
+        QCOMPARE(service.Queries, 1u);
+        QCOMPARE(service.Canceled.load(), 1u);
+        QCOMPARE(service.Active.load(), 0u);
+#endif
+    }
     void cleanup() {
         SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));

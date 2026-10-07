@@ -1898,6 +1898,13 @@ restrictions; UI availability reflects those capabilities.
 
 ## Diagnostics
 
+BenchmarkDialog retains the source worker, callbacks, synchronization and metric
+calculations. QtBenchmarkServices bridges the original Bench/RAM/affinity APIs;
+the POSIX OnInit branch copies original System.h count normalization. The Qt
+message adapter queues to the owning QObject and treats detached completion as
+the original successful no-op. Source normal/exceptional paths join workers
+before that QObject is destroyed. No widget or service owns a benchmark algorithm.
+
 Compression profile selection stays in the source CompressDialog module's
 SetDictionary2/SetOrder2/SetSolidBlockSize2 loops. Their existing value snapshots
 also return the selected index; QString/Qt combo insertion applies this index

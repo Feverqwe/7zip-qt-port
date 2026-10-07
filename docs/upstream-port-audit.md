@@ -15931,3 +15931,56 @@ before commit;909 remaining frozen inputs are unchanged. Full macOS LastTest has
 4643 Qt passes/0 failures/18 platform-specific skips. Evidence is retained under
 build/review/method-state; native desktop, rendered reference and packages remain
 separate required acceptance.
+
+## P3-05 — Benchmark source and platform lifecycle (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/adapted
+BenchmarkDialog.cpp/.h normalized comparison, desktop/CE/total RC and GuiCommon,
+Qt controls/services, GUI.cpp, CompressCall2 and QtFileManagerCommands callers
+were reviewed. The [body disposition](omitted-scope-audit.md#gui-benchmark-complete-bodyheaderresource-disposition-2026-10-07)
+records every active functional group and presentation/platform/inactive branch.
+Original algorithms, symbols, paths, result types, C++ language and notices remain.
+
+Original Windows System.h::Get_and_return_NumProcessThreads_and_SysThreads
+normalizes failed/zero affinity using GetNumberOfProcessors, clamps process>=1
+and system>=process. The former POSIX raw-query branch instead retained InitST
+or zero. It now copies that exact source body around a typed query service;
+Windows continues using its original helper. The default service calls the
+unchanged portable CProcessAffinity::Get. Original source PostMsg_Finish treats
+a detached/null window as successful without posting. Qt PostMsg now preserves
+that completion behavior, instead of turning an exceptional joined shutdown into
+E_FAIL. Source exceptional destructor still disables posting, requests Exit and
+joins before QObject/base destruction. Queued calls retain receiver lifetime
+rules. No benchmark calculation, codec ABI, worker result or archive format changes.
+
+New public lifecycle regressions inject failed/empty POSIX affinity through the
+query boundary, inspect the original normalized CPU text and join cancellation.
+With only the query extraction and former raw algorithm, actual RED gives
+two visible failures, `/ 1` and `/ 0`;9 prior results pass. The separate detached
+adapter RED gives one failure/11 passes. Windows explicitly skips the two POSIX
+fault cases and tests its unchanged native helper through real consumers. Queued
+attached delivery, detached success/no delivery, existing normal/total fixed
+metrics, language/Help/geometry, Restart/Stop/Cancel, memory refusal and engine
+failure remain covered. Native tests run the official engine and actual result
+callbacks. Final focused3/3 pass in14.12s on macOS arm64.
+
+Unsandboxed macOS arm64 check.sh passes formatting/all-target build and300/300
+CTest in248.43s; retained LastTest has4646 Qt passes/0 failures/18 platform skips.
+Linux/Windows x64 build and pass3/3 direct consumers in1.70s/6.87s. Linux has22
+Qt passes/0 failures/0 skips; Windows has20 passes/0 failures/two explicit POSIX
+fault skips. Each OS's8 current normal/total EN/RU JSON at960×650/640×400 passes
+static label fitting, source metric-column order, footer and total-console
+visibility; existing public tests separately scroll every normal-mode control
+into view. This establishes Qt geometry, not rendered original Windows pixels
+or physical desktop input.
+
+All910 frozen code/test/build inputs match local files, source.tar and both
+actual guest trees at snapshot20261007T202937Z-5d8abbb1, parent07ab222, SHA-256
+`1d5b075869e8913a5d1e4f038efbc02899cffe308e28f1a14e3fc92baa47733a`.
+Baseline verification passes408 exact/196 adapted/3 local paths. Temporary
+wrapper is archived/removed before commit;909 remaining frozen inputs are
+unchanged. Evidence: build/review/gui-final. Eleven slow suites excluded.
+Benchmark body disposition is complete; whole CompressDialog final event/header
+reconciliation, common modules, native/rendered/installed/CLI/package and final
+P3 acceptance remain required. No parent package closes from this scenario.

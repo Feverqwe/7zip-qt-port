@@ -621,6 +621,11 @@ Windows and Linux2026-10-03. Rendered Windows pixel parity remains unverified.
 ### Benchmark (P2-04)
 
 Reference: pinned `CPP/7zip/UI/GUI/BenchmarkDialog.rc` and its source state bodies.
+POSIX failed/empty affinity uses original System.h normalized processor fallback
+in the hardware-threads leading CPU count and choice limits; that count must not
+be zero or retain InitST's one when a larger processor count is available.
+Windows retains its native source helper. These system failures do not change
+grouping or controls.
 Dictionary/memory precede CPU threads, then Size→Speed→CPU Usage→Rating / Usage→
 Rating columns; Compressing and Decompressing retain Current/Resulting rows.
 Elapsed/Passes and Total Rating precede CPU/version/system information. Restart

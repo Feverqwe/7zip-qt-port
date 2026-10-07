@@ -619,6 +619,16 @@ Whole-module final reconciliation, Benchmark/common/native/rendered/package
 acceptance remains;43/47 and P3-03/04/05/06 remain open.
 [Scope/evidence](upstream-port-audit.md#p3-05--compression-method-and-control-states-2026-10-07).
 
+P3-05,2026-10-07: complete BenchmarkDialog body/header/resource/caller disposition
+records original metrics/worker/lifetime owners and Qt platform presentation.
+POSIX affinity now copies source normalization; detached completion retains
+source successful no-op. Actual visible fault RED2 and detached RED1 retained.
+Mac full300/300; Linux/Windows3/3 consumers,22/20 Qt passes and0/2 explicit POSIX
+fault skips;24 current normal/total EN/RU JSON pass geometry. All910 frozen inputs
+match local/archive/actual guests. Compress final event/header, common modules,
+native/rendered/package and P3-03/04/05/06 remain open;43/47 unchanged.
+[Scope/evidence](upstream-port-audit.md#p3-05--benchmark-source-and-platform-lifecycle-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

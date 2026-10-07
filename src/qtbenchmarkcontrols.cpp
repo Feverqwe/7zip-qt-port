@@ -261,8 +261,9 @@ quintptr CQtBenchmarkWindow::SetTimer(quintptr id, unsigned milliseconds) {
 }
 void CQtBenchmarkWindow::KillTimer(quintptr) { timer_.stop(); }
 bool CQtBenchmarkWindow::PostMsg(unsigned message, quintptr wparam) {
+    // Original PostMsg_Finish succeeds without posting after Attach(NULL).
     if (!postsEnabled_)
-        return false;
+        return true;
     return QMetaObject::invokeMethod(
         this, [this, message, wparam] { OnMessage(message, wparam, 0); }, Qt::QueuedConnection);
 }

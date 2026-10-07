@@ -381,9 +381,20 @@ bool CBenchmarkDialog::OnInit() {
 #ifdef _WIN32
         threadsInfo.Get_and_return_NumProcessThreads_and_SysThreads(numCPUs, numCPUs_Sys);
 #else
-        threadsInfo.Get();
-        numCPUs = threadsInfo.GetNumProcessThreads();
-        numCPUs_Sys = threadsInfo.GetNumSystemThreads();
+        // Copy System.h's original normalization around the POSIX query adapter.
+        UInt32 num1 = 0, num2 = 0;
+        if (Services->GetProcessAffinity(threadsInfo)) {
+            num1 = threadsInfo.GetNumProcessThreads();
+            num2 = threadsInfo.GetNumSystemThreads();
+        }
+        if (num1 == 0)
+            num1 = NSystem::GetNumberOfProcessors();
+        if (num1 == 0)
+            num1 = 1;
+        if (num2 < num1)
+            num2 = num1;
+        numCPUs = num1;
+        numCPUs_Sys = num2;
 #endif
 #endif
 

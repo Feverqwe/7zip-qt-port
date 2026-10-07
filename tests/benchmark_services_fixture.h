@@ -4,7 +4,7 @@
 #include <chrono>
 #include <thread>
 
-class FixtureBenchmarkServices final : public IQtBenchmarkServices {
+class FixtureBenchmarkServices : public IQtBenchmarkServices {
   public:
     size_t Ram = size_t(32) << 20;
     HRESULT Result = S_OK;

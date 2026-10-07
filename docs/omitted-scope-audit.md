@@ -824,3 +824,29 @@ omissions above. Whole-module final reconciliation, BenchmarkDialog/common
 dependencies and native/rendered/package acceptance remain required. The
 [method-state audit](upstream-port-audit.md#p3-05--compression-method-and-control-states-2026-10-07)
 owns regression, geometry and platform evidence.
+
+### GUI Benchmark complete body/header/resource disposition, 2026-10-07
+
+Pinned https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete BenchmarkDialog.cpp/.h
+comparison separates formatting from functional changes; all original active
+bodies, desktop/CE/total RC, GuiCommon definitions, Qt controls/services and
+GUI.cpp/CompressCall2/QtFileManagerCommands callers were reviewed.
+
+| Source scope | Disposition |
+| --- | --- |
+| CBenchPassResult/CTotalBenchRes2/CSyncData/CBenchProgressSync | Original result accumulation, flags, limits, critical-section state, text and rating vector remain. Existing CheckBreak lock makes the shared Exit read synchronize with SendExit; it does not change E_ABORT policy. |
+| OnInit and dictionary/thread/pass/default/memory selection | Original tables, rounding, limits and RAM refusal retained. Windows uses original System.h normalization. POSIX copies that exact normalization around a typed CProcessAffinity query, including failed/zero results and system>=process counts. The service only queries the original portable API. |
+| Metrics/UpdateGui/time/frequency/log/result helpers | Original units, thresholds, aggregate/current/resulting values, formatting and rating-vector removal order remain. Unicode Qt strings and QElapsedTimer replace TCHAR/lstrcat/global tick presentation. |
+| Restart/Stop/Cancel/OnMessage/OnTimer/OnCommand | Original restart deferral, SendExit, completion ordering, HRESULT/error reporting, worker Wait_Close and close-after-join remain. QTimer and queued QObject invocation replace Windows messages. Detached completion remains a successful no-op, preserving original PostMsg_Finish's null-window branch. |
+| CBenchCallback/CBenchCallback2/CBenchFreqCallback/CThreadBenchmark | Original progress/frequency/encode/decode callbacks, properties, pass loop, exceptions, result fields, dispatch order and finish messages remain. Typed services call the original Bench; the official engine owns calculation. |
+| Benchmark entry and destructor | Original property parsing, total-mode selection, defaults, provider assignment, Create and S_OK return remain. QWidget/modal exec replace HWND; optional services have scope covering the joined worker. Exceptional destruction disables posting, requests Exit and joins before QObject/base destruction; queued calls cannot outlive their receiver. |
+| Presentation/header/resources | Original names, module path, source language and notices retained. Qt widgets/layout/scrolling, fixed system font, resource text binding, Help and standard buttons replace native controls/rectangles/font. Original CE presentation is not a separately claimed Qt product. PRINT_ITER_TIME and commented debug/legacy parse branches remain inactive. |
+
+Dependencies remain original Bench/MethodProps/CreateCoder/Property, strings and
+numeric conversion, MyException, System/SystemInfo/CpuArch, Thread/Synchronization,
+language/help/resources and native codec providers. This closes Benchmark's body
+disposition; complete common-module reconciliation, CompressDialog final event/
+header disposition and native/rendered/package acceptance remain separate required
+scope. Actual regression/runtime/geometry evidence belongs to the
+[Benchmark audit](upstream-port-audit.md#p3-05--benchmark-source-and-platform-lifecycle-2026-10-07).

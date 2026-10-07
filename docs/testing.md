@@ -3264,3 +3264,12 @@ with Unicode/spaced inputs, reject invalid threads and cancel creation without
 publishing output; original bytes remain exact. With setup/cleanup,20 Qt results.
 `compression_profile_selection` also asserts ZIP's empty solid selector and
 interprets its logical all-ones spec without relying on an empty QVariant's zero.
+
+`benchmark_lifecycle` additionally injects failed and empty POSIX affinity queries
+through the typed system-query service, checking the original normalized CPU text
+and joined cancellation. Windows retains its original native normalization and
+explicitly skips these two POSIX fault cases. A presentation-adapter test verifies
+queued delivery while attached and successful completion without delivery after
+detach, matching source PostMsg_Finish. Existing normal/total metrics, Help/live
+language, Restart/Stop/Cancel, memory refusal and engine failure remain covered;
+`native_benchmark` exercises the real official engine and source result callbacks.

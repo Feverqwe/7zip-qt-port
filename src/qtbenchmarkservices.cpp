@@ -1,6 +1,10 @@
 #include "qtbenchmarkservices.h"
 #include "Windows/System.h"
 
+bool IQtBenchmarkServices::GetProcessAffinity(NWindows::NSystem::CProcessAffinity &affinity) const {
+    return affinity.Get() != FALSE;
+}
+
 bool QtBenchmarkServices::GetRamSize(size_t &size) const {
     return NWindows::NSystem::GetRamSize(size);
 }
