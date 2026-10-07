@@ -1,5 +1,16 @@
 # Regression strategy
 
+Start with the scenario-to-suite [regression matrix](regression-matrix.md),
+then find the affected suite name in this catalog. General coverage guidance
+is under [What to test](#what-to-test); geometry/report guidance is under
+[Проверка компоновки Qt](#проверка-компоновки-qt).
+Build, focused CTest and full-gate commands live in
+[development](development.md#local-commands), with a separate
+[long-suite opt-in](development.md#long-suites).
+Suite descriptions and dated local results do not establish acceptance of the
+current checkout or other platforms; check the [audit](upstream-port-audit.md)
+and [checklist](porting-checklist.md) for their scope.
+
 `native_drop_publication` exercises eight actual bound-archive Drop cases using
 the existing private native writer fixture: successful updates and four later
 attribute publication results, Write failure, actual progress Cancel and both

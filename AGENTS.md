@@ -114,19 +114,9 @@ Classify newly added or expanded large matrices as `slow` before including them
 in a gate. Revisit that classification using measured runtime when an explicit
 long-test run is requested.
 
-```sh
-# Only long suites:
-SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -L slow --output-on-failure
-# One explicitly requested long suite:
-SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -R '^native_rename_2$' --output-on-failure
-# Exhaustive gate including long suites:
-SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/check.sh
-# Exhaustive gate on both existing runners:
-SEVENZIP_INCLUDE_SLOW_TESTS=1 python3 scripts/hyperv-runner.py check all --interactive --elevated
-```
-
-For remote checks, the requested long suite must build its targets in that same
-snapshot before CTest, following the runner rules below. Report excluded slow
+Opt-in commands are in [development](docs/development.md#long-suites);
+remote checks follow [runner validation](docs/hyperv-runners.md). Build requested
+long-suite targets in that same snapshot before CTest. Report excluded slow
 suites separately; a default gate does not establish their acceptance.
 
 Windows 7zFM is the reference for structure, commands, shortcuts and behavior.

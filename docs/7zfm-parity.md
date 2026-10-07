@@ -1,5 +1,12 @@
 # Сверка с Windows 7zFM
 
+Этот документ описывает сценарии и отличия от Windows 7zFM. Разделы по ID
+и датам сохраняют границы проверенного поведения; их порядок не определяет
+текущий статус. Для выбора работы использовать [чеклист](porting-checklist.md),
+для provenance — [source audit](upstream-port-audit.md), для открытых UX-коррекций —
+[UX audit](ux-port-audit.md). Нужный сценарий искать по команде, символу или ID,
+затем читать соответствующий раздел и ссылки.
+
 ### Source Agent opening/factory (P3-05, 2026-10-07)
 
 Archive-folder opening now reaches the original Agent/factory workflow.

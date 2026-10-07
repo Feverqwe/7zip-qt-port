@@ -31,6 +31,34 @@ Skills в `.agents/skills/` содержат профильные приёмы �
 Их assets задают начальные страницы локального vault; `.codex/` — экземпляр
 локальной памяти, а не ещё одна версия документации.
 
+## Как выбрать минимальный контекст
+
+Начинать с `AGENTS.md` и индекса памяти, затем читать основной документ
+по задаче. Большие audit, parity и testing содержат датированные дополнения;
+их начало не заменяет текущие статусы в чеклисте.
+
+| Задача | Что читать дальше |
+| --- | --- |
+| Продолжить портирование | Правила выбора и строку ID в [чеклисте](porting-checklist.md), соответствующий пакет и правила итерации в [плане](porting-plan.md) |
+| Найти владельца или границу адаптера | [Разделы архитектуры](architecture.md#reading-guide), затем bodies/callers в коде |
+| Исправить поведение и выбрать проверки | [Regression matrix](regression-matrix.md), описание нужной suite в [testing](testing.md), [команды сборки и тестов](development.md#local-commands) |
+| Изменить форму или layout | Контракт затронутого вида в [UI specifications](ui-layout-contracts.md), [resource tooling](ui-reference.md) и открытые коррекции в [UX audit](ux-port-audit.md) |
+| Сверить происхождение кода | [Manifest](upstream-baseline.json) и раздел audit по пути, символу или ID; для обновления — [процедуру](upstream-update.md) |
+| Проверить Windows/Linux | [Hyper-V runners](hyperv-runners.md); для долгих suites — [явный opt-in](development.md#long-suites) |
+| Обновить инструкции или память | [Memory protocol](agent-memory.md), нужный skill и его assets; продуктовые факты — в основном документе из таблицы выше |
+
+Для поиска раздела без загрузки всего документа:
+
+```sh
+rg -n '^#{1,3} ' docs/architecture.md
+rg -n -F 'CAgent::Open' docs/upstream-port-audit.md
+rg -n -F 'archive_transfer' docs/testing.md docs/regression-matrix.md
+```
+
+Читать найденный раздел и связанные зависимости, а не все совпадения подряд.
+При расхождении проверить текущий код, upstream и ревизию evidence; порядок
+разделов и исторические слова «active/accepted» не определяют текущую приёмку.
+
 ## Как поддерживать документы
 
 - Менять основной документ, когда изменился соответствующий факт. В чеклисте

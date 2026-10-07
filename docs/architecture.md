@@ -1,5 +1,17 @@
 # Architecture
 
+## Reading guide
+
+Start with the affected boundary: [repository](#repository-boundary),
+[window/panel state](#window-and-panel-state),
+[dialogs/preferences](#dialogs-and-preferences),
+[filesystem/volume workers](#filesystem-and-volume-workers),
+[archive backend/safety](#archive-backend-and-safety) or
+[diagnostics](#diagnostics). Component notes below add source ownership and
+lifetime details; locate the relevant class/path with `rg -n` before reading.
+Current acceptance belongs to the [checklist](porting-checklist.md), and dated
+source/platform evidence to the [audit](upstream-port-audit.md).
+
 This document describes component ownership, data flow and integration boundaries.
 
 Archive opening enters the original CArchiveFolderManager::OpenFolderFile and

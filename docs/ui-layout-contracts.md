@@ -1,5 +1,11 @@
 # Text specifications and geometry checks
 
+Find the affected dialog, command or plan ID with `rg -n` and read its contract
+before changing layout/text/visibility. [Commands and reports](#commands-and-reports)
+describes report generation; [UI reference tooling](ui-reference.md) owns the
+resource-to-widget comparison procedure. These contracts specify controls and
+geometry, while [the checklist](porting-checklist.md) owns current acceptance.
+
 ### Changed nested archive Parent (P3-05.15)
 
 Parent uses the source modified-archive Yes/No/Cancel question. No and Cancel

@@ -121,13 +121,9 @@ sh .agents/skills/sz-setup/scripts/setup.sh
 
 `check.sh` checks formatting, builds with the development CMake preset, and runs CTest with long suites excluded. Both `check.sh` and `ctest.sh` run up to four tests in parallel by default. CTest resource locks serialize tests that write to the shared UI report or screenshot directories. Set `SEVENZIP_CTEST_JOBS=1` for a sequential run or another positive number to change concurrency; `CTEST_PARALLEL_LEVEL` and an explicit `--parallel` argument to `ctest.sh` also take precedence. CTest reports failed suites through `--output-on-failure` and continues running the remaining suites. For a release build, run `./scripts/build.sh release` and `./scripts/ctest.sh --preset release --output-on-failure`.
 
-The stable long-suite list is in [SlowTests.cmake](../cmake/SlowTests.cmake),
-based on suites observed above 30 seconds on macOS; other platforms may differ.
-The wrapper excludes their `slow` label even with a focused `-R` selection.
-Explicitly opt in with `SEVENZIP_INCLUDE_SLOW_TESTS=1`; for example,
-`SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -L slow --output-on-failure`
-runs only long suites, and the same environment prefix on `./scripts/check.sh`
-runs the exhaustive gate. Agents follow the explicit-request rule in AGENTS.md.
+Long suites are excluded by default, including focused `-R` selections;
+see [opt-in commands](#long-suites). Agents follow the explicit-request rule
+in [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
 Qt Test suites run with `-silent`, so a failed suite reports its failed cases without listing the cases that passed. `ctest.sh` filters CTest's `Start` and successful `Passed` lines as they arrive; failed suite status, diagnostics, and the final summary remain visible. Each retained line is flushed immediately, and a failed CTest still returns a nonzero exit status.
 
@@ -147,6 +143,28 @@ repeat runs and docs-only changes are in [AGENTS.md](../AGENTS.md#validation-and
 Run the built app on macOS from `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
 
 Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process; it does not alter system files.
+
+## Long suites
+
+The stable list is in [SlowTests.cmake](../cmake/SlowTests.cmake), based on
+suites observed above 30 seconds on macOS; other platforms may differ.
+Agents run these only on an explicit request for long tests or the exhaustive
+suite, following [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
+
+```sh
+# Only long suites:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -L slow --output-on-failure
+# One explicitly requested long suite (build its targets first):
+SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -R '^native_rename_2$' --output-on-failure
+# Exhaustive local gate:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/check.sh
+# Exhaustive gate on both existing runners:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 python3 scripts/hyperv-runner.py check all --interactive --elevated
+```
+
+Remote focused checks must build their targets in the same snapshot before
+CTest; follow [Hyper-V runners](hyperv-runners.md). A default gate does not
+establish acceptance of excluded slow suites.
 
 ## Automation
 
