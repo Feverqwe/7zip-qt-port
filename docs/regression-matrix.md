@@ -20,6 +20,7 @@ production access is added for this matrix.
 | P0-04 address/parent/nested rollback | PanelFolder/PanelOpen; native folder binding | `native_navigation_window`, `panel_navigation`, `ui_navigation`, `nested_archive` |
 | P0-05 filesystem/flat enumeration | FSFolder/PanelItems; scanner/model projection | `fs_folder`, `filesystem_scanner`, `flat_view` |
 | P0-06 columns/sort/time/refresh | PanelSort/PanelItems; Qt header/viewport adapter | `panel_columns`, `panel_sort`, `panel_auto_refresh`, `view_settings_columns` |
+| P0-04/06 native publication failure and open guard handoff | CPanel::OnReload/OpenItem/OpenAsArc_Index; QtFolderProjection and Copy completion | `native_renderer_failure`, `native_renderer_copy`, `panel_item_icons` |
 | P0-07 focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_selection`, `list_settings_runtime`, `list_activation` |
 | P0-08 two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
 | P0-09 menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |

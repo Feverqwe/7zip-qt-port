@@ -60,23 +60,31 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
                 });
                 return result;
             },
-            [this, owner = projectedPanel_](HRESULT result) {
-                withPanelProjection(owner, [this, result] {
+            [this, owner = projectedPanel_,
+             completed = panel.GetReloadCompletion()](HRESULT result) {
+                withPanelProjection(owner, [this, result, &completed] {
+                    // Restore controls and source guards before reporting the
+                    // original caller's result, and before Copy can continue.
+                    QScopedValueRollback<unsigned> projection(panelProjectionDepth_,
+                                                              panelProjectionDepth_ + 1);
                     if (result != S_OK) {
                         table_->setRowCount(0);
                         scanSelectedState_.reset();
                         scanSelectedPaths_.reset();
-                        app_.GetFocusedPanel().MessageBox_Error_HRESULT(result);
-                        if (app_.QtOperations().closed())
-                            return;
                     }
                     scanningArchive_ = false;
                     applySortMode(true);
                     completeListSelection();
                     setState(State::Viewing);
+                    if (completed)
+                        completed(result);
+                    if (app_.QtOperations().closed())
+                        return;
                     statusBar()->showMessage(
                         QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
                 });
+                if (!app_.QtOperations().closed())
+                    refreshActions();
             });
         return S_OK;
     }

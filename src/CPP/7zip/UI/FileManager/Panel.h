@@ -343,6 +343,8 @@ class CPanel : public QObject {
     void MarkPortableFolderChanged() { _portableFolderChanged = true; }
     void OnTimer();
     void OnReload(bool onTimer = false);
+    // Qt retains the source caller's error policy across bounded row batches.
+    std::function<void(HRESULT)> GetReloadCompletion() const { return _reloadCompletion; }
     HRESULT RefreshListCtrl_SaveFocused(bool onTimer = false);
     UInt32 _listViewMode = 3;
     int _timestampLevel = kTimestampPrintLevel_MIN;
@@ -681,6 +683,7 @@ class CPanel : public QObject {
     QPointer<QWidget> _parentWindow;
     std::function<bool(CPanel &)> _createPresentation;
     std::function<HRESULT(const CSelectedState &)> _reloadPresentation;
+    std::function<void(HRESULT)> _reloadCompletion;
     std::function<void()> _invalidatePresentation;
     std::function<void(const CPanelStatus &)> _statusPresentation;
     bool _portableFolderChanged = false;

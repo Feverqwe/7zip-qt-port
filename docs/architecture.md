@@ -997,6 +997,14 @@ render. An uncreated panel may start publication while its peer is scanning;
 existing panels still defer reload during active operations. OnCreate keeps the
 original ignored Refresh HRESULT policy. A large filesystem scan publishes its
 worker's separately loaded provider; archive row projection keeps its provider.
+Native archive publication captures CPanel's scoped OnReload result continuation;
+initial creation and OpenAsArc_Index have no error continuation. The row owner
+discards cancelled/replaced continuations, and completes sorting, guards and
+controls before delivering a deferred HRESULT. Projection depth prevents Copy
+completion from preceding error reporting. OpenAsArc_Index releases its native
+binding guards before Refresh takes the guards retained by asynchronous rows.
+The filesystem OpenItem caller releases its outer guards at the same handoff,
+and reacquires timer processing suppression for unsuccessful-open fallback.
 CApp::Create captures its original main-panel index separately from the live
 focus/projection used by Qt construction and asynchronous callbacks. This keeps an ordinary startup's
 requested main path distinct from its saved path, including a right main panel.

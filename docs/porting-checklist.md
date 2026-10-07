@@ -387,6 +387,16 @@ consumers и normal/compact geometry покрывают этот компоне�
 [Датированное evidence](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
 Статус остаётся active: полный модуль и current native3OS/final acceptance открыты.
 
+P3-05.15, 2026-10-07: native archive publication сохраняет исходную политику
+OnReload против ignored OnCreate/OpenItem Refresh; guards/redraw восстанавливаются
+до сообщения и продолжения Copy. Внешний filesystem OpenItem передаёт свои
+guards внутреннему open/Refresh; последующий OnTimer остаётся рабочим.
+288 native failure/retry,96 real Copy/Move и4 cancellation/replacement workflows,
+1540 fresh geometry reports и current Mac focused13/full289 PASS покрывают этот
+компонент. [Evidence](upstream-port-audit.md#p3-0515--native-list-publication-result-and-open-guards-2026-10-07).
+Статус active: nested OpenItemInArchive, remaining native operation renderers,
+full-body/current3OS/rendered/cold-stable-package/final acceptance остаются открытыми.
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

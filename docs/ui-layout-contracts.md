@@ -2,6 +2,23 @@
 
 ### Source panel creation (P3-05.15)
 
+Native property failures during initial creation and OpenAsArc_Index retain the
+source callers' ignored RefreshListCtrl result, without an extra error dialog.
+The actual filesystem OpenItem caller must hand off its outer guards too;
+after native recovery, filesystem navigation and OnTimer must still publish a
+new private file. Direct OpenAsArc_Index alone does not prove this caller.
+OnReload reports every non-S_OK result, including S_FALSE and E_ABORT, after
+redraw and notification guards are restored. This policy also applies beyond
+the asynchronous row boundary. A failed list is empty and enabled; a subsequent
+Ctrl+R restores rows on the same native provider. Inspect failed and recovered
+states in both panes, EN/RU, table/icon and standard/alternative selection at
+980×620/640×400, with archive and peer bytes unchanged.
+For real filesystem Copy/Move to a separate output folder, the archive peer's
+unconditional reload uses that same policy. Its error precedes source selection
+cleanup; terminal focus returns to the source view, output bytes are correct,
+and the archive provider/bytes survive failure and retry. Check the same pane,
+language, view and selection modes with a301-row native peer.
+
 OnCreate starts list publication after its controls are constructed and before
 the next panel opens. Initial and late second-panel creation must finish with
 both lists/addresses visible and enabled, correct source modes, restored guards

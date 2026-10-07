@@ -2,6 +2,18 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+Нативная ошибка свойств большого списка сохраняет политику source caller:
+OnReload сообщает любой non-S_OK, включая S_FALSE/E_ABORT; OnCreate и
+OpenAsArc_Index игнорируют Refresh HRESULT. Qt доставляет результат после
+восстановления redraw/notification guards, до продолжения Copy. OpenAsArc_Index
+передаёт владение guards из bind-фазы в Refresh перед асинхронной публикацией.
+Filesystem OpenItem передаёт и внешние guards; ошибочный open сохраняет
+timer suppression до завершения исходного error/external-fallback tail.
+После ошибки список пуст и доступен; Ctrl+R восстанавливает тот же provider.
+Native GUI property и CLI listing различаются по PID в частной тестовой fixture.
+Это проверка control flow на macOS; rendered Windows и current native3OS
+приёмка остаются открытыми.
+
 Начальная публикация панели теперь принадлежит source `Panel.cpp::OnCreate`,
 как при initial `App::Create`, так и при позднем `SwitchOnOffOnePanel`.
 Reload-сервис подключается вместе с Qt-контролами до исходного Refresh;

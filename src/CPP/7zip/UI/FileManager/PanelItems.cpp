@@ -13,6 +13,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/WinDefs.h"
+#include <QScopedValueRollback>
 
 static const UInt32 kParentIndex = (UInt32)-1;
 
@@ -716,9 +717,13 @@ HRESULT CPanel::RefreshListCtrl_SaveFocused(bool onTimer) {
 }
 
 void CPanel::OnReload(bool onTimer) {
+    const auto completed = [this](HRESULT result) {
+        if (result != S_OK)
+            MessageBox_Error_HRESULT(result);
+    };
+    QScopedValueRollback<std::function<void(HRESULT)>> completion(_reloadCompletion, completed);
     const HRESULT result = RefreshListCtrl_SaveFocused(onTimer);
-    if (result != S_OK)
-        MessageBox_Error_HRESULT(result);
+    completed(result);
 }
 
 void CPanel::OnTimer() {

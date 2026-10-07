@@ -1,5 +1,37 @@
 # Regression strategy
 
+`native_renderer_failure` loads the official module through the delegating
+external-format facade and injects native kpidAttrib results only in the GUI
+process. A PID-tagged receipt and NativeItemProperties prove the native route;
+the actual CLI listing must still succeed. Its288 workflows cover OnCreate,
+source filesystem OpenItem→OpenAsArc_Index and real Ctrl+R OnReload, S_FALSE/E_FAIL/E_ABORT,
+2/301 rows (failure at0/257), both panes, EN/RU, table/icon and standard/alternative
+selection. Initial creation/open ignore the publication result as upstream does;
+reload reports it once with guards and redraw restored. Retry keeps the native
+provider, restores rows and preserves archive/peer bytes. Both failed and
+recovered states emit normal/compact widget JSON. Existing `external_codecs`
+checks the optional fixture extension does not alter ordinary codec consumers;
+`panel_item_icons` checks cancellation/replacement generation ownership.
+Four real native reload cases additionally cancel by window close or replace
+the pending projection with filesystem navigation in either pane. The armed
+late property is never read, no stale error appears, and private bytes survive.
+After each OpenItem recovery, actual filesystem navigation plus OnTimer must
+publish a newly created private file, proving the outer timer handoff too.
+Run native module checks unsandboxed. This is not rendered Windows or native
+archive-write failure acceptance.
+Prepare `build/codec-runtime` with `scripts/build-codec-runtime.sh` first;
+without the prepared engine these suites report QSKIP at initialization, as
+`external_codecs` does. The current cited macOS gate used the official runtime;
+these native suites and their focused consumers had no skips. The full gate's
+15 Windows-only skips are enumerated in the port audit.
+
+`native_renderer_copy` adds96 real filesystem Copy/Move workflows to a separate
+output folder with a301-row native archive peer. Both source roles, EN/RU,
+table/icon, selection modes and S_FALSE/E_FAIL/E_ABORT cover unconditional
+destination OnReload, message-before-source-cleanup ordering, restored controls,
+terminal source focus, correct output/input bytes, retained archive provider
+and recovery. Failed/recovered normal/compact JSON includes both panes.
+
 `panel_creation_publication` covers256 initial/late second-panel creation
 scenarios with the official codec module, or128 without it: filesystem and
 controlled transport, native ZIP/7z,2/301 rows, both source roles where original

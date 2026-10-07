@@ -447,13 +447,18 @@ HRESULT CPanel::OpenParentArchiveFolder() {
 }
 
 HRESULT CPanel::OpenAsArc_Index(unsigned index, const wchar_t *type) {
-    CDisableTimerProcessing disableTimerProcessing1(*this);
-    CDisableNotify disableNotify(*this);
-    HRESULT res = OpenAsArc_Name(GetItemRelPath2(index), type ? type : L"");
+    HRESULT res;
+    {
+        CDisableTimerProcessing disableTimerProcessing1(*this);
+        CDisableNotify disableNotify(*this);
+        res = OpenAsArc_Name(GetItemRelPath2(index), type ? type : L"");
+    }
     if (res != S_OK) {
         RefreshTitle(true); // Restore the changed 7zFM title after an open error.
         return res;
     }
+    // Refresh owns its own guards, retained by Qt when publication is deferred.
+    // Do not let those guards capture the disabled flags of the open call.
     RefreshListCtrl();
     return S_OK;
 }
@@ -526,7 +531,7 @@ void CPanel::OpenFolderExternal(unsigned index) {
 }
 
 void CPanel::OpenItem(unsigned index, bool tryInternal, bool tryExternal, const wchar_t *type) {
-    CDisableTimerProcessing disableTimerProcessing(*this);
+    std::optional<CDisableTimerProcessing> disableTimerProcessing(std::in_place, *this);
     const UString name = GetItemRelPath2(index);
     if (tryExternal)
         if (IsVirus_Message(name))
@@ -535,13 +540,18 @@ void CPanel::OpenItem(unsigned index, bool tryInternal, bool tryExternal, const 
         OpenItemInArchive(index, tryInternal, tryExternal, false, false, type);
         return;
     }
-    CDisableNotify disableNotify(*this);
+    std::optional<CDisableNotify> disableNotify(std::in_place, *this);
     UString prefix = GetFsPath();
     UString fullPath = prefix + name;
     if (tryInternal)
         if (!tryExternal || !DoItemAlwaysStart(name)) {
+            // OpenAsArc_Index guards binding itself; Refresh must retain the
+            // caller's enabled state when its Qt rows finish asynchronously.
+            disableNotify.reset();
+            disableTimerProcessing.reset();
             HRESULT res = OpenAsArc_Index(index, type);
-            disableNotify.Restore(); // allow text notification update
+            if (res != S_OK)
+                disableTimerProcessing.emplace(*this);
             _selectionList.Invalidate();
             if (res == S_OK || res == E_ABORT)
                 return;

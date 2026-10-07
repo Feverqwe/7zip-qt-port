@@ -4,6 +4,7 @@
 
 #include "7zip/Archive/IArchive.h"
 #include "7zip/ICoder.h"
+#include "7zip/PropID.h"
 #include "Common/MyCom.h"
 #include <cwchar>
 #include <filesystem>
@@ -12,6 +13,7 @@
 #include <string>
 #ifndef _WIN32
 #include <dlfcn.h>
+#include <unistd.h>
 #endif
 
 namespace {
@@ -79,9 +81,17 @@ HRESULT CoreProperty(PROPID property, PROPVARIANT *value) {
 class CGlobalOnlyArchive final : public IInArchive, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IInArchive)
     CMyComPtr<IInArchive> archive_;
+    std::filesystem::path propertyControl_;
 
   public:
-    explicit CGlobalOnlyArchive(IInArchive *archive) : archive_(archive) {}
+    explicit CGlobalOnlyArchive(IInArchive *archive) : archive_(archive) {
+        // Optional private test resource; existing codec consumers have none.
+        std::ifstream path(FixtureFolder() / "resources/fixture/property-control-path.txt",
+                           std::ios::binary);
+        const std::string utf8(std::istreambuf_iterator<char>(path), {});
+        if (!utf8.empty())
+            propertyControl_ = std::filesystem::u8path(utf8);
+    }
     Z7_COM7F_IMF(Open(IInStream *stream, const UInt64 *limit, IArchiveOpenCallback *callback))
     override { return archive_->Open(stream, limit, callback); }
     Z7_COM7F_IMF(Close()) override { return archive_->Close(); }
@@ -89,6 +99,24 @@ class CGlobalOnlyArchive final : public IInArchive, public CMyUnknownImp {
         return archive_->GetNumberOfItems(count);
     }
     Z7_COM7F_IMF(GetProperty(UInt32 index, PROPID property, PROPVARIANT *value)) override {
+        if (property == kpidAttrib && !propertyControl_.empty()) {
+            std::ifstream control(propertyControl_);
+            UInt64 faultProcess = 0;
+            UInt32 faultIndex = 0, result = 0;
+#ifdef _WIN32
+            const UInt64 process = GetCurrentProcessId();
+#else
+            const UInt64 process = getpid();
+#endif
+            if (control >> faultProcess >> faultIndex >> result && faultProcess == process &&
+                index == faultIndex) {
+                auto receipt = propertyControl_;
+                receipt += ".hit";
+                std::ofstream(receipt, std::ios::app) << index << ' ' << result << '\n';
+                *value = PROPVARIANT{};
+                return static_cast<HRESULT>(static_cast<Int32>(result));
+            }
+        }
         return archive_->GetProperty(index, property, value);
     }
     Z7_COM7F_IMF(Extract(const UInt32 *indices, UInt32 count, Int32 test,

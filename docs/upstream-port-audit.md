@@ -1,5 +1,83 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — native list publication result and open guards (2026-10-07)
+
+Baseline: https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed original
+`CPP/7zip/UI/FileManager/PanelItems.cpp::RefreshListCtrl/OnReload`,
+`Panel.cpp::OnCreate`, `PanelItemOpen.cpp::OpenAsArc_Index` and its Open callers,
+plus existing CPanel guards, Agent native-property forwarding, Qt row projection
+and CApp Copy completion consumers. No new upstream module or dependency copied;
+existing authoritative C++ sources, notices, names and baseline are retained.
+
+Original OnReload reports every result other than S_OK, whereas OnCreate and
+OpenAsArc_Index ignore RefreshListCtrl's result. Qt's large-list callback had
+unconditionally shown an error before releasing operation/redraw guards, changing
+the ignored-result callers and leaving the error UI blocked. CPanel now exposes
+a scoped copy of its original OnReload result continuation to Qt publication.
+The same source error branch handles synchronous and deferred results. Cancelled
+or replaced projections discard the continuation with their existing generation
+owner; no callback survives panel/window release. Qt finishes sorting/selection,
+releases guards and restores controls before reporting the result, while holding
+projection depth until reporting finishes so Copy continuation cannot run first.
+
+OpenAsArc_Index retains its bind/error/title/ignored-refresh flow. Its native
+open guards now unwind before RefreshListCtrl takes its own retained guards;
+otherwise the deferred scan captures disabled notification/timer flags and later
+restores those disabled values. This scope adjustment is required by Qt's
+asynchronous publication in place of the original synchronous Win32 list.
+The filesystem OpenItem caller also releases its outer guards before this
+handoff. OpenAsArc_Index guards the native binding itself; failed opens reacquire
+the timer guard for the original error/external-fallback tail. Optional local
+guards prevent their destructors from later overwriting a live asynchronous
+owner's flags. Nested OpenItemInArchive remains outside this verified component.
+
+The test-only external-format facade still delegates archive interpretation to
+the official native module. An optional private UTF-8 resource points to a fault
+control file; matching application PID/index injects kpidAttrib HRESULT and writes
+a receipt. The separate CLI PID continues normal listing, proving a native GUI
+property failure rather than a console-list failure. No product seam, archive
+format implementation or mutable global fault switch is added. Existing codec
+consumers omit the optional resource and retain their former behavior.
+
+The real Copy/Move consumer writes to a separate filesystem output while its
+native archive peer reloads unconditionally. Error delivery must precede source
+selection cleanup, and final focus must return to the source list; the native
+archive provider/bytes remain unchanged through failure and retry. These are
+reload-consumer checks, not native writer-failure or nested-open acceptance.
+
+Actual old-product diagnostic at project c1c16661ff2df682d2a53e170719d49204cdc6da:
+large initial creation reported an error with disabled controls; direct source
+open left notifications disabled (2 failures,3 Qt passes). The first inner-guard
+fix passed direct-open consumers but actual OpenItem still failed; that separate
+RED is retained. The final matrix invokes that outer caller and checks a later
+filesystem OnTimer, rather than substituting the direct inner API.
+
+Final macOS27.0.1 arm64 / Qt6.12.0 validation,2026-10-07:
+focused13/13PASS200.55s; native failure294 Qt cases and native Copy/Move98,
+including288 failure/retry workflows,96 actual Copy/Move consumers and4 native
+close/replacement cases. All focused suites have0 failures/skips. Required
+unsandboxed `scripts/check.sh` terminal0: formatting/all-target build and
+289/289 CTest PASS495.48s. The full log has5323 Qt passes,0 failures and15
+Windows-only skips: source_link_extract2, association_services1,
+source_extract_advanced2 and source_metadata_storage10. These native Windows
+branches remain unverified on macOS. All16 frozen
+task inputs remained byte-identical through the gate; later edits only record
+documentation evidence/traceability. Read-only baseline verification remains
+408 exact/196 adapted/3 local at the same pin.
+
+Independent current-build inspection verified1540 fresh JSON reports from the
+full gate:770 at980×620 and770 at640×400,6160 enabled/fully exposed address/list
+controls, one visible list per pane, address above list and source0-left/1-right
+order. Reports, hashes, actual RED, final logs and frozen/verified inputs are
+retained under `build/review/native-renderer-final` and `...-red`.
+The completion remains with the existing Qt renderer to keep this guard/result
+fix focused; its callback owns only bounded publication completion, rather than
+adding an independent operation workflow. Full RefreshListCtrl/PanelItemOpen,
+nested native opening, other native mutation render-failure consumers and current
+Windows/Linux/rendered/cold-stable-package acceptance remain open. P3-05.15 and
+the overall goal are active.
+
 ## P3-05.15 — source Copy/Move destination and continuation reconciliation (required scope, 2026-10-06)
 
 Complete App.cpp/App.h body/data/caller review at project
