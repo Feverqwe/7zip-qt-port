@@ -2666,6 +2666,18 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/alt-streams-archive-ui.ini")
     set_tests_properties(alt_streams_command PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/alt-streams-command.ini")
+    if(WIN32 AND SEVENZIP_CODEC_MODULE)
+        qt_add_executable(native_zone_copy_tests tests/native_zone_copy_tests.cpp
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(native_zone_copy_tests PRIVATE src tests)
+        target_link_libraries(native_zone_copy_tests PRIVATE ${options_window_libraries})
+        target_compile_definitions(native_zone_copy_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+        add_test(NAME native_zone_copy COMMAND native_zone_copy_tests -silent)
+        set_tests_properties(native_zone_copy PROPERTIES TIMEOUT 60
+            RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
+            "QT_QPA_PLATFORM=windows;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-zone-copy.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     set_tests_properties(link_command PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/link_command.ini")
     target_include_directories(benchmark_command_tests PRIVATE src tests)
@@ -2991,7 +3003,8 @@ if(BUILD_TESTING AND WIN32)
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
-            archive_item_open archive_external_edit external_editors_ui language_archive_command)
+            archive_item_open archive_external_edit external_editors_ui language_archive_command
+            alt_streams_command alt_streams_archive_ui)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}
             PROPERTY ENVIRONMENT)
         list(TRANSFORM sevenzip_native_ui_environment REPLACE

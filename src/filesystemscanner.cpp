@@ -36,9 +36,13 @@ void FilesystemScanner::cancelAndWait() {
     }
 }
 
-void FilesystemScanner::start(const QString &directory, bool flat) {
+bool FilesystemScanner::start(const QString &directory, bool flat, IFolderFolder *boundFolder) {
+    if (boundFolder)
+        for (auto *loader : loaders_)
+            if (loader->loadsFolder(boundFolder) && loader->isRunning())
+                return false;
     cancel();
-    loader_ = new FilesystemFolderLoader(directory, this, flat);
+    loader_ = new FilesystemFolderLoader(directory, this, flat, boundFolder);
     loaders_.append(loader_);
     const quint64 generation = generation_;
     auto *loader = loader_;
@@ -51,6 +55,7 @@ void FilesystemScanner::start(const QString &directory, bool flat) {
             loaderFinished(guard, generation);
     });
     loader->start();
+    return true;
 }
 
 void FilesystemScanner::loaderFinished(FilesystemFolderLoader *loader, quint64 generation) {

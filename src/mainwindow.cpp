@@ -131,7 +131,8 @@ void MainWindow::connectFilesystemScanner() {
                             return;
                         QtAppOperationState::CallScope call(app_.QtOperations());
                         auto &panel = app_.GetFocusedPanel();
-                        panel.SetNewFolder(folder);
+                        if (panel.GetFolder() != folder)
+                            panel.SetNewFolder(folder);
                         panel.LoadFullPath();
                         const HRESULT loaded = panel.LoadListItems(true);
                         if (loaded != S_OK) {

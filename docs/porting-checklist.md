@@ -306,6 +306,17 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15,2026-10-07: integrated native ADS refusal, WIM F5 zone/streams and
+bound filesystem Copy/Move publication are verified. Actual Root HRESULT,
+ZoneId bytes, small/301-row provider and async focus REDs are retained. Worker
+keeps original CFSFolder/GUI notification and COM ownership; per-pane reload
+retains original OnCopy selection/focus continuation. Mac unsandboxed full
+288/288PASS230.66s; fresh Windows11/11PASS164.12s and Linux10/10PASS43.52s,
+269/270Qt with no focused skips;19 inputs match. Current geometry checks208
+JSON/832enabled-exposed controls. Eleven slow suites and Windows VHD fixtures
+remain excluded; whole .15/P3-05/native-full/rendered/package acceptance is open.
+[Evidence](upstream-port-audit.md#p3-0515--native-ads-root-source-zone-copy-and-bound-filesystem-reload-2026-10-07).
+
 P3-05.15,2026-10-07: bounded native bound-archive Drop scenario is verified.
 Actual terminal notify/focus REDs require transporting the source success-only
 Refresh phase after synchronous guards, then completing list focus after rows.

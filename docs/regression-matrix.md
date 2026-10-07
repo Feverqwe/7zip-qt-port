@@ -31,6 +31,7 @@ production access is added for this matrix.
 | P0-12 selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |
 | P1-01 disk/archive transfer routes | CApp::OnCopy/PanelCopy/Agent; backend snapshot/rollback | `ui_operations`, `ui_copy_same`, `archive_transfer_backup`, `source_update_backend` |
 | P1-01 bound archive destination publication and rollback/reopen recovery | CApp::OnCopy/RefreshListCtrl; CAgent::Close and caller-supplied backup close service; physical ReOpen/fallback | `copy_archive_refresh`, `interarchive_recovery`, `archive_transfer_backup`, `ui_operations` |
+| P1-01 bound filesystem Copy/Move publication, both panes and deferred lists | CApp::OnCopy/OnReload; retained CFSFolder worker and per-pane scan guards | `ui_copy_routing`, `filesystem_scanner`, `filesystem_reload` |
 | P1-02 copy/merge/cross-volume Move | FSFolderCopy/CCopyStateIO; exclusive transaction | `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `worker_window_progress` |
 | P1-03 create/rename/delete/trash/comments | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations`, `filesystem_comment` |
 | P1-04 archive mutation/publish | ArchiveFolder/AgentOut; ArchiveBackend native/CLI transport | `source_update_backend`, `archive_mutation`, `codec_update`, `ui_archive_states` |
@@ -55,7 +56,7 @@ production access is added for this matrix.
 | P2-03 CRC/Hash/Test | HashCalc/HashGUI/ExtractGUI; native providers and results view | `native_hash_workflow`, `native_hash_ui`, `hash_results`, `shell_archive_services` |
 | P2-04 Benchmark | Bench/BenchmarkDialog; Qt controls and worker lifetime | `native_benchmark`, `benchmark_command`, `benchmark_lifecycle` |
 | P2-05 links/junctions/metadata | FileIO/FileDir/Reparse/LinkDialog; native platform bridge | `filesystem_link`, `link_command`, `source_link_storage`, `source_metadata_storage` |
-| P2-06 ADS/proxy2 | AltStreamsFolder/AgentProxy/CCopyStateIO; platform stream transport | `alt_streams_command`, `alt_streams_archive_ui`, `source_properties`, `native_update_path` |
+| P2-06 ADS/proxy2 and source zone policy | RootFolder/AltStreamsFolder/AgentProxy/CCopyStateIO/PanelCopy; official engine metadata transport | `alt_streams_folder`, `alt_streams_command`, `alt_streams_archive_ui`, Windows `native_zone_copy`, `source_properties`, `native_update_path` |
 | P2-07 absolute/ElimDup/security extraction | ArchiveExtractCallback/FileDir; backend bounded-path/link guard | `source_extract_advanced`, `source_link_extract`, `extraction_options`, `archive_metadata_ui` |
 | P2-08 associations/open events | RegistryAssociations/SystemPage; per-user native APIs | `association_services`, `association_file_open`, `system_page`, `file_manager_startup` |
 | P2-09 native shell/menu/GUI integration | ContextMenu/MyLoadMenu/CompressCall; COM/HMENU/process services | `shell_context`, `shell_menu_window`, `shell_update_gui`, `shell_registry`; Windows `native_menu_integration`, `native_shell_data`, `native_system_menu`, `native_gui_workflow` |

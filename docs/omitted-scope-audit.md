@@ -499,12 +499,14 @@ desktop targets. Root icon indices are currently `-1`; Qt renders generic
 namespace icons rather than using source CSIDL helpers. This presentation
 boundary is incomplete for the address consumer, not proof of icon parity.
 
-The ADS failure branch differs: original RootFolder::BindToFolder converts any
-failed CAltStreamsFolder::Init to E_INVALIDARG; adaptation uses RINOK and exposes
-the native HRESULT. Existing positive root-stream tests and direct provider
-refusal do not prove this root-level error contract. A Windows regression must
-cover missing/deleted Unicode/space base paths, cleared result pointer and
-unchanged control-file bytes before restoring the original branch.
+The ADS failure branch originally differed: RootFolder::BindToFolder converts
+failed CAltStreamsFolder::Init to E_INVALIDARG, while the adaptation exposed the
+native HRESULT. The2026-10-07 integrated namespace/Copy component restores the
+original conversion. Its public Windows regression first returned0x80070002;
+it now checks a missing Unicode/space base path, null result and no file creation,
+then creates the base/named stream and retries with exact base/stream bytes.
+The [dated audit](upstream-port-audit.md#p3-0515--native-ads-root-source-zone-copy-and-bound-filesystem-reload-2026-10-07)
+owns current platform evidence and the still-open whole source acceptance.
 
 The larger active omission is owned by P3-05.12. Original
 PanelFolderChange.cpp::OnComboBoxCommand(CBN_DROPDOWN) constructs the current

@@ -120,14 +120,14 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 if (fileTransfer_ == operation)
                     fileTransfer_ = nullptr;
                 if (refreshSource) {
-                    showDirectory(directory_, false);
+                    showDirectory(directory_, false, true);
                     selectPaths(sources);
                 } else
                     setState(State::Filesystem);
                 if (refreshDestination && app_.NumPanels == 2 &&
                     app_.GetFocusedPanelIndex() == sourcePanel) {
                     activatePanelUi(destinationPanel);
-                    refreshCurrent();
+                    app_.Panels[destinationPanel].OnReload();
                     appPresentation_->CopyDestinationRefreshed(destinationPanel);
                     activatePanelUi(sourcePanel);
                 }
@@ -164,7 +164,7 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         renderBoundFolder();
         if (useDestPanel && app_.NumPanels == 2) {
             activatePanelUi(1 - sourceIndex);
-            refreshCurrent();
+            app_.Panels[1 - sourceIndex].OnReload();
             activatePanelUi(sourceIndex);
         }
         if (result != S_OK && result != E_ABORT)
@@ -295,7 +295,7 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
         appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         if (move)
-            refreshCurrent();
+            source.OnReload();
         statusBar()->showMessage(
             move ? QtLocalText("Items moved into the archive.", "Объекты перемещены в архив.")
                  : QtLocalText("Items copied into the archive.", "Объекты скопированы в архив."));

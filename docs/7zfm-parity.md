@@ -1,5 +1,18 @@
 # Сверка с Windows 7zFM
 
+### Native zone Copy and bound filesystem publication (P3-05.15, 2026-10-07)
+
+F5/F6 retain the source registry-zone default: None preserves the stored
+Zone.Identifier, All applies the parent-container zone, and Office applies it
+to Office names. Named alternate streams remain source engine output. The
+separate Extract dialog owns its explicit metadata options. Copy/Move refreshes
+the existing filesystem provider, including normal/flat worker loading; its
+native notification owner remains on the GUI thread. Both panes may finish
+their own scans before the original saved selection and source focus continuation.
+Root ADS initialization failure again returns the original E_INVALIDARG.
+The dated port audit owns bounded platform/geometry evidence. Rendered Windows
+and whole-plan acceptance remain separate.
+
 ### Native bound archive Drop (P3-05.15, 2026-10-07)
 
 CopyFromNoAsk retains success-only Refresh and source list focus. Actual writer

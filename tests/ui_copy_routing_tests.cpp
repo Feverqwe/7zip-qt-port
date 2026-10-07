@@ -283,6 +283,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTest::addColumn<bool>("move");
         QTest::addColumn<QString>("language");
         QTest::addColumn<unsigned>("sourceIndex");
+        QTest::addColumn<bool>("largeLists");
         for (bool sourceArchive : {false, true})
             for (bool targetArchive : {false, true})
                 for (bool move : {false, true})
@@ -295,7 +296,13 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
                                                          .arg(language)
                                                          .arg(sourceIndex)))
                                 << sourceArchive << targetArchive << move
-                                << QString::fromLatin1(language) << sourceIndex;
+                                << QString::fromLatin1(language) << sourceIndex << false;
+        for (unsigned sourceIndex : {0u, 1u}) {
+            QTest::newRow(qPrintable(QString("large-fs-to-fs-move-%1").arg(sourceIndex)))
+                << false << false << true << QString("ru") << sourceIndex << true;
+            QTest::newRow(qPrintable(QString("large-fs-to-archive-move-%1").arg(sourceIndex)))
+                << false << true << true << QString("ru") << sourceIndex << true;
+        }
     }
     void capturedItemsSurviveModalSelectionChange() {
         QFETCH(bool, sourceArchive);
@@ -303,6 +310,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QFETCH(bool, move);
         QFETCH(QString, language);
         QFETCH(unsigned, sourceIndex);
+        QFETCH(bool, largeLists);
         SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QTemporaryDir fixture;
@@ -317,14 +325,24 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         const QByteArray secondBytes("second control", 14);
         write(QDir(input).filePath(first), firstBytes);
         write(QDir(input).filePath(second), secondBytes);
+        QStringList targetFiles;
+        if (largeLists)
+            for (int i = 0; i < 300; ++i) {
+                const QString name = QString("filler-%1.txt").arg(i, 3, 10, QChar('0'));
+                write(QDir(input).filePath(name), "source filler");
+                const QString path = QDir(output).filePath(name);
+                write(path, "target filler");
+                targetFiles << path;
+            }
         const QString source = sourceArchive ? fixture.filePath("source archive.zip") : input;
         const QString target = targetArchive ? fixture.filePath("target archive.zip") : output;
         if (sourceArchive)
             createArchive(source, {QDir(input).filePath(first), QDir(input).filePath(second)});
         const QString seed = fixture.filePath("seed.txt");
         write(seed, "seed control");
+        targetFiles << seed;
         if (targetArchive)
-            createArchive(target, {seed});
+            createArchive(target, targetFiles);
         else
             write(QDir(output).filePath("seed.txt"), "seed control");
         const QByteArray sourceBefore = sourceArchive ? read(source) : QByteArray();
@@ -338,12 +356,16 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTRY_COMPARE(static_cast<FileTable *>(sourceView)->sourcePanel->GetParentFolders().Size(),
                      sourceArchive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-        QTRY_COMPARE(sourceView->rowCount(), 2);
+        QTRY_COMPARE(sourceView->rowCount(), largeLists ? 302 : 2);
         QTableWidget *targetView = openPanel(window, 1 - sourceIndex, target);
         QTRY_COMPARE(static_cast<FileTable *>(targetView)->sourcePanel->GetParentFolders().Size(),
                      targetArchive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
-        QTRY_COMPARE(targetView->rowCount(), 1);
+        QTRY_COMPARE(targetView->rowCount(), largeLists ? 301 : 1);
+        CMyComPtr<IFolderFolder> sourceProvider =
+            static_cast<FileTable *>(sourceView)->sourcePanel->GetFolder();
+        CMyComPtr<IFolderFolder> targetProvider =
+            static_cast<FileTable *>(targetView)->sourcePanel->GetFolder();
         targetView->selectRow(row(*targetView, "seed.txt"));
         window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
@@ -359,6 +381,12 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         submit(window, *sourceView, secondRow, move, dialogSeen, errors);
         QVERIFY(dialogSeen);
         QVERIFY2(errors.isEmpty(), qPrintable(errors));
+        if (!sourceArchive)
+            QCOMPARE(static_cast<FileTable *>(sourceView)->sourcePanel->GetFolder(),
+                     sourceProvider.Interface());
+        if (!targetArchive)
+            QCOMPARE(static_cast<FileTable *>(targetView)->sourcePanel->GetFolder(),
+                     targetProvider.Interface());
         if (targetArchive) {
             const QString engine = QStandardPaths::findExecutable("7zz");
             QVERIFY(!engine.isEmpty());
@@ -371,6 +399,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(read(QDir(output).filePath(first)), firstBytes);
         QVERIFY(!QFileInfo::exists(QDir(output).filePath(second)));
         QTRY_VERIFY(row(*targetView, first) >= 0);
+        QTRY_COMPARE(targetView->rowCount(), (largeLists ? 301 : 1) + 1);
         QVERIFY(row(*targetView, second) < 0);
         QCOMPARE(read(QDir(input).filePath(second)), secondBytes);
         if (sourceArchive) {
@@ -379,8 +408,11 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
             QTRY_COMPARE(sourceView->rowCount(), move ? 1 : 2);
             QVERIFY(row(*sourceView, second) >= 0);
             QCOMPARE(row(*sourceView, first) >= 0, !move);
-        } else
+        } else {
             QCOMPARE(QFileInfo::exists(QDir(input).filePath(first)), !move);
+            QTRY_COMPARE(sourceView->rowCount(), (largeLists ? 302 : 2) - int(move));
+            QCOMPARE(row(*sourceView, first) >= 0, !move);
+        }
         QTRY_VERIFY_WITH_TIMEOUT(sourceView->selectionModel()->selectedRows().isEmpty(), 1000);
         // The offscreen plugin loses its active window on modal close. Restore
         // activation only; the source continuation must have remembered focus.

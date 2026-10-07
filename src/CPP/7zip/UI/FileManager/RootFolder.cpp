@@ -199,7 +199,8 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(const wchar_t *name, IFolderFolder **resu
     } else if (name2.Back() == ':' && (name2.Len() != 2 || !NFile::NName::IsDrivePath2(name2))) {
         NAltStreamsFolder::CAltStreamsFolder *folderSpec = new NAltStreamsFolder::CAltStreamsFolder;
         subFolder = folderSpec;
-        RINOK(folderSpec->Init(us2fs(name2)))
+        if (folderSpec->Init(us2fs(name2)) != S_OK)
+            return E_INVALIDARG;
     } else
 #endif
     {

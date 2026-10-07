@@ -900,7 +900,10 @@ path/index cells remain transport-only. FilesystemFolderLoader runs source
 enumeration off the GUI thread and FilesystemScanner batches Qt row publication.
 Ordinary folders preserve immediate loading up to 256 source items. The original
 CFSFolder callback aborts the bounded probe above that count; the same LoadItems
-body then runs in the existing worker with flat mode disabled. QtFolderProjection
+body then runs in the existing worker with flat mode disabled, retaining the
+bound provider. Refresh does not replace the filesystem provider or its native
+notification owner. Each pane can publish its own scan after Copy/Move; another
+pane's scan does not suppress that reload. QtFolderProjection
 retains the native archive folder while presenting at most 32 rows or 8ms per
 GUI turn, including property/icon creation. Navigation and close invalidate
 pending turns before releasing owners. Scan operation state disables commands
@@ -1416,7 +1419,11 @@ at most 32 rows on GUI timers. Count progress and atomic cancel remain available
 during native
 loading; cancelled workers are joined before destruction. A generation counter
 discards stale results/batches after navigation or mode changes. Final sorting
-runs on the GUI thread. Table and icon/list views share a model/selection model.
+runs on the GUI thread. The loader accepts an existing quiescent CFSFolder;
+Init and COM ownership changes remain on the GUI thread, including release on
+failure/cancel after joining. Reusing a folder still owned by a running worker
+is refused without blocking navigation. Worker callbacks are cleared on every
+exit. Table and icon/list views share a model/selection model.
 QFile::decodeName supplies native POSIX-to-Qt path conversion (macOS NFC); the
 source folder retains native bytes. CPanel compares source names when restoring
 selection; Qt display names retain Qt normalization. Normal loading uses the same

@@ -25,12 +25,9 @@ class AltStreamsArchiveUiTests final : public QObject, protected MainWindowTestS
         engine_ = QStandardPaths::findExecutable("7zz");
         QVERIFY(!engine_.isEmpty());
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-        ArchiveBackend backend(nullptr, engine_);
-        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend.discoverCodecCatalog(module_));
-        QTRY_COMPARE(ready.size(), 1);
-        QVERIFY(ready[0][0].toBool());
-        version_ = backend.codecCatalog()->version();
+        ArchiveCodecCatalog catalog(module_, 0);
+        QCOMPARE(catalog.result(), S_OK);
+        version_ = catalog.version();
 #endif
     }
     void sourceArchiveStreamsCommand_data() {

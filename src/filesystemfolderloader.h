@@ -9,7 +9,9 @@
 class FilesystemFolderLoader final : public QThread {
     Q_OBJECT
   public:
-    explicit FilesystemFolderLoader(QString directory, QObject *parent = nullptr, bool flat = true);
+    explicit FilesystemFolderLoader(QString directory, QObject *parent = nullptr, bool flat = true,
+                                    IFolderFolder *boundFolder = nullptr);
+    bool loadsFolder(IFolderFolder *folder) const { return loadingFolder_ == folder; }
     void cancel();
     quint64 completedCount() const { return completed_.load(); }
     // Call after wait(): non-atomic COM ownership never crosses a running load.
@@ -26,4 +28,5 @@ class FilesystemFolderLoader final : public QThread {
     std::atomic<quint64> completed_{0};
     HRESULT result_ = E_FAIL;
     CMyComPtr<IFolderFolder> folder_;
+    IFolderFolder *loadingFolder_ = nullptr;
 };

@@ -3,6 +3,7 @@
 #include "Windows/PropVariant.h"
 #include "filesystemfolderloader.h"
 #include "filesystemscanner.h"
+#include "qtlocationfolder.h"
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
@@ -24,7 +25,13 @@ class FilesystemScannerTests : public QObject {
         }
     }
   private slots:
+    void publishedFolderKeepsNativeNotificationsAfterWorkerExit_data() {
+        QTest::addColumn<bool>("bound");
+        QTest::newRow("new-folder") << false;
+        QTest::newRow("bound-folder") << true;
+    }
     void publishedFolderKeepsNativeNotificationsAfterWorkerExit() {
+        QFETCH(bool, bound);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         QFile file(fixture.filePath(QStringLiteral("исходный файл 空.txt")));
@@ -32,13 +39,18 @@ class FilesystemScannerTests : public QObject {
         QCOMPARE(file.write("before"), qint64(6));
         file.close();
         FilesystemScanner scanner;
+        CMyComPtr<IFolderFolder> original;
+        if (bound)
+            QCOMPARE(CreateFilesystemFolder(fixture.path(), &original), S_OK);
         CMyComPtr<IFolderFolder> retained;
         connect(&scanner, &FilesystemScanner::folderReady, &scanner,
                 [&](IFolderFolder *folder) { retained = folder; });
         QSignalSpy completed(&scanner, &FilesystemScanner::completed);
-        scanner.start(fixture.path(), false);
+        QVERIFY(scanner.start(fixture.path(), false, original));
         QTRY_COMPARE(completed.size(), 1);
         QVERIFY(retained);
+        if (bound)
+            QCOMPARE(retained.Interface(), original.Interface());
         CMyComPtr<IFolderWasChanged> changes;
         QCOMPARE(retained.QueryInterface(IID_IFolderWasChanged, &changes), S_OK);
         QVERIFY(changes);
@@ -234,17 +246,29 @@ class FilesystemScannerTests : public QObject {
         scanner.reset();
         QVERIFY(completed.isEmpty() && failed.isEmpty());
     }
+    void closeTimeJoinDiscardsAlreadyQueuedCompletionAndAllowsLaterRestart_data() {
+        QTest::addColumn<bool>("bound");
+        QTest::newRow("new-folder") << false;
+        QTest::newRow("bound-folder") << true;
+    }
     void closeTimeJoinDiscardsAlreadyQueuedCompletionAndAllowsLaterRestart() {
+        QFETCH(bool, bound);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         createFiles(temp.path(), 30);
         FilesystemScanner scanner;
+        CMyComPtr<IFolderFolder> original;
+        if (bound)
+            QCOMPARE(CreateFilesystemFolder(temp.path(), &original), S_OK);
         QSignalSpy completed(&scanner, &FilesystemScanner::completed);
         QSignalSpy failed(&scanner, &FilesystemScanner::failed);
         int owners = 0;
-        connect(&scanner, &FilesystemScanner::folderReady, this,
-                [&](IFolderFolder *) { ++owners; });
-        scanner.start(temp.path());
+        connect(&scanner, &FilesystemScanner::folderReady, this, [&](IFolderFolder *folder) {
+            ++owners;
+            if (bound)
+                QCOMPARE(folder, original.Interface());
+        });
+        QVERIFY(scanner.start(temp.path(), true, original));
         auto *loader = scanner.findChild<FilesystemFolderLoader *>();
         QVERIFY(loader);
         const QPointer<FilesystemFolderLoader> guard(loader);
@@ -257,7 +281,7 @@ class FilesystemScannerTests : public QObject {
         QCoreApplication::processEvents();
         QCOMPARE(owners, 0);
         QVERIFY(completed.isEmpty() && failed.isEmpty());
-        scanner.start(temp.path());
+        QVERIFY(scanner.start(temp.path(), true, original));
         QTRY_COMPARE(completed.size(), 1);
         QCOMPARE(owners, 1);
         QVERIFY(failed.isEmpty());

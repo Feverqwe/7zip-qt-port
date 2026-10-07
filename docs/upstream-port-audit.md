@@ -1,5 +1,85 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — native ADS root, source zone Copy and bound filesystem reload (2026-10-07)
+
+Source https://github.com/ip7z/7zip.git at full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: original/current
+RootFolder.cpp::BindToFolder, AltStreamsFolder::Init and PanelFolderChange
+binding/address callers were inspected. The root ADS branch now retains the
+original failed-Init conversion to E_INVALIDARG. Its COM result stays null and
+the temporary provider is released. No path-validation algorithm or dependency
+was added; C++ language, authoritative upstream-relative module and notices
+remain unchanged. Native Windows regression first returned0x80070002 instead
+of E_INVALIDARG, then passes refusal followed by Unicode ADS/base-byte retry.
+PanelFolderChange deliberately retains original per-component ancestor fallback
+rather than propagating every RootFolder refusal as a new navigation error.
+
+Source CCopyToOptions defaults, PanelCopy::CopyTo and
+Get_ZoneId_Stream_from_ParentFolders, Agent::Extract and ArchiveExtractCallback's
+zone/alternate-stream extraction branches retain their existing implementation.
+The new Windows-only native_zone_copy consumer exercises actual two-panel F5
+with official WIM, stored named streams/Zone.Identifier and a different container
+zone, None/All/Office settings, both panes, exact bytes, peer selection/providers,
+focus/guards and normal/compact reports. This adds tests, not a second metadata
+implementation. Existing archive ADS fixture obtains official catalog metadata
+directly, avoiding a redundant helper-process discovery before its operations;
+dedicated codec discovery tests retain their separate ownership. ADS command and
+archive UI consumers now use Windows native platform/fonts and desktop lock.
+
+Original App.cpp::OnCopy refreshes source after Move and destination after Copy,
+retaining the bound providers. Original FSFolder.cpp::Init/LoadSubItems/LoadItems/
+SetFlatMode and adapted bodies/dependencies were reviewed; enumeration remains
+the same authoritative C++ source body, with its existing callback adapter.
+F5/F6 now retain CCopyToOptions' default NeedRegistryZone; only the separate
+explicit Extract dialog overrides its own metadata policy. Actual Windows WIM
+RED returned stored ZoneId=1 for All/Office where container ZoneId=3 was required.
+Filesystem completion invokes bound OnReload instead of independent navigation.
+The filesystem loader retains that CFSFolder across normal/flat worker loading;
+Init remains on the GUI owner thread for native notifications, and non-atomic
+COM references are released there after joining, including failed/canceled loads.
+Reusing a still-running worker's provider is refused; generation cancellation
+and bounded row batches remain. Reload admits another pane's scan while retaining
+same-pane scan/Open/Operation guards. No filesystem or metadata algorithm is
+reimplemented. Qt source paths are filesystemfolderloader.*, filesystemscanner.*,
+mainwindow.cpp, mainwindow_filelist.cpp, mainwindow_refresh.cpp,
+mainwindow_fileoperations.cpp, mainwindow_twopanel.cpp and
+mainwindow_archivecommands.cpp; no new portable dependency is required.
+
+Portable Copy/Move regressions retain provider identity, payloads, source/destination
+rows, selection/focus and normal/compact panels for small and301-row scans in
+both panes. The four large Move rows first failed provider identity; after retaining
+the worker provider, FS-to-archive rows exposed suppressed source publication/focus.
+The integrated fix passes those rows and existing routing/scanner/reload suites.
+Native zone also covers301-row destination publication in both panes. Scanner
+regressions exercise existing-provider native notifications and close-time join/
+queued-completion rejection followed by same-provider retry. Existing failure,
+Cancel, progress/batch bounds and generation consumers remain unchanged.
+
+Current macOS27.0.1 arm64/Qt6.12.0 focused routing/scanner/reload passes3/3
+in12.17s. Required final unsandboxed check.sh passes formatting, all-target build
+and288/288 default CTest in230.66s:4438QtPASS/0FAIL/15Windows-onlySKIP.
+Fresh Windows11 x64/Qt6.12.0 native/elevated run
+`20261007T122922Z-79708e0d` (snapshot SHA256
+`202f577209d6bd0aacd57566c50188269dbe21d764ad506468686f7483d5dbbe`)
+passes11/11 consumers in164.12s,269Qt/0FAIL/0SKIP. Fresh Ubuntu24.04.5
+x64/Qt6.12.0 run `20261007T123656Z-397170a3` (snapshot SHA256
+`ec7fb8a1f4f6f2494cd99700fa4ba041e6962969b2fd63fa958a5fa5d7be6e6c`)
+passes10/10 in43.52s,270Qt/0FAIL/0SKIP. All19 frozen inputs match both guests
+and the local checkout. Current completed-panel geometry passes64 Mac/64 Linux/
+80 Windows JSON,832 enabled/fully exposed address/list controls. Four large Move
+rows reuse small-row report tags;64 distinct Copy outputs cover36 workflow rows.
+Windows native normal width is1028 rather than the requested1100, compact640;
+zone reports use980/640. Reports and RED/final logs/manifests are retained in
+build/review/native-namespace-zone; temporary project validation wrappers are
+archived there rather than shipped as permanent scripts.
+
+The eleven slow suites remain excluded. Windows VHD device fixtures are excluded
+under the user's no-new-disks instruction; namespace_hash/fs_drives_device_ui run
+only their existing non-VHD logical-drive/ADS cases with unchanged assertions.
+No new disk or attachment is created. Older VHD results do not establish current
+acceptance. This is a bounded three-OS component, not a full Windows/Linux gate,
+rendered comparison or whole source/UX/platform/package acceptance.
+
 ## P3-05.15 — native bound archive Drop publication (2026-10-07)
 
 Source https://github.com/ip7z/7zip.git at full baseline

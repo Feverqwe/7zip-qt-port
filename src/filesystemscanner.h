@@ -15,7 +15,9 @@ class FilesystemScanner : public QObject {
     explicit FilesystemScanner(QObject *parent = nullptr);
     ~FilesystemScanner() override;
 
-    void start(const QString &directory, bool flat = true);
+    // A bound folder must be quiescent while loading. Reject reuse until any
+    // canceled worker that owns that folder has exited; navigation stays async.
+    bool start(const QString &directory, bool flat = true, IFolderFolder *boundFolder = nullptr);
     void cancel();
     void cancelAndWait();
     bool isRunning() const;

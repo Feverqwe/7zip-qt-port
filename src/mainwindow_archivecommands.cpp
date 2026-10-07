@@ -233,7 +233,10 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                                  : options.pathMode == ExtractionOptions::PathMode::AbsolutePaths
                                      ? NExtract::NPathMode::kAbsPaths
                                      : NExtract::NPathMode::kFullPaths;
-        sourceOptions.NeedRegistryZone = false;
+        // F5/F6 supplies captured source indices and retains CCopyToOptions'
+        // registry-zone default. The explicit Extract dialog has its own options.
+        if (!explicitIndices)
+            sourceOptions.NeedRegistryZone = false;
         sourceOptions.showErrorMessages = true;
         {
             switch (options.overwriteMode) {

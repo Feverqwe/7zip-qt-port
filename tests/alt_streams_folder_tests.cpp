@@ -54,6 +54,34 @@ class AltStreamsFolderTests : public QObject {
     }
 
   private slots:
+    void rootRefusesMissingStreamBaseAndCanRetry() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString base = temp.filePath(QStringLiteral("отсутствующий файл δ.bin"));
+        const UString path = fs2us(native(base + ':'));
+        CRootFolder root;
+        root.Init();
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(static_cast<IFolderFolder &>(root).BindToFolder(path, &folder), E_INVALIDARG);
+        QVERIFY(!folder);
+        QVERIFY(!QFileInfo::exists(base));
+
+        QVERIFY(write(base, "main bytes"));
+        QVERIFY(write(base + QStringLiteral(":поток δ"), "stream bytes"));
+        QCOMPARE(static_cast<IFolderFolder &>(root).BindToFolder(path, &folder), S_OK);
+        QVERIFY(folder);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        NWindows::NCOM::CPropVariant name;
+        QCOMPARE(folder->GetProperty(0, kpidName, &name), S_OK);
+        QCOMPARE(name.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(name.bstrVal), QStringLiteral("поток δ"));
+        QCOMPARE(read(base), QByteArray("main bytes"));
+        QCOMPARE(read(base + QStringLiteral(":поток δ")), QByteArray("stream bytes"));
+    }
+
     void rootBindingListsStreamsAndPreservesBaseOnRenameDelete() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

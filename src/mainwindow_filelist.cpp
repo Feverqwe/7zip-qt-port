@@ -80,7 +80,10 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
         scanningDisk_ = true;
         setState(State::Filesystem);
         statusBar()->showMessage(QtLangText(IDS_SCANNING));
-        filesystemScanner_->start(directory_);
+        if (!filesystemScanner_->start(directory_, true, folder)) {
+            failFilesystemListing(E_ABORT);
+            return E_ABORT;
+        }
     } else {
         if (result == S_OK) {
             auto *spec = static_cast<NFsFolder::CFSFolder *>((IFolderFolder *)folder);
@@ -101,7 +104,10 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
                 scanningDisk_ = true;
                 setState(State::Filesystem);
                 statusBar()->showMessage(QtLangText(IDS_SCANNING));
-                filesystemScanner_->start(directory_, false);
+                if (!filesystemScanner_->start(directory_, false, folder)) {
+                    failFilesystemListing(E_ABORT);
+                    return E_ABORT;
+                }
                 return S_OK;
             }
         }

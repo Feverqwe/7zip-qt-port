@@ -10,10 +10,12 @@
 HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState &selection) {
     if (!panelUi_[index].container ||
         (app_.QtOperations().active() &&
-         (app_.Panels[index].PanelCreated || app_.QtOperations().blocking())))
+         (app_.QtOperations().blocking() ||
+          (app_.Panels[index].PanelCreated && (scanningPanelMask() & (1u << index))))))
         return S_OK;
     // Source OnCreate owns the initial refresh before PanelCreated is set.
-    // Another panel's asynchronous scan must not suppress that publication.
+    // OnCopy also refreshes both panels. A different panel's scan must not
+    // suppress this publication; the operation owner retains each scan's guard.
     app_.Panels[index].TakeRefreshSelection();
     const unsigned original = projectedPanel_;
     const QString originalStatus = statusBar()->currentMessage();
