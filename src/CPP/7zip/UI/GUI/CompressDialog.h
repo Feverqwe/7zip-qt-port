@@ -229,6 +229,13 @@ class CCompressDialog {
     // source callers keep their explicit MethodID/HashMethodSpec adapter.
     QComboBox *m_Method = nullptr;
     int _auto_MethodId = -1;
+    UInt32 _auto_NumThreads = 1;
+    // Qt supplies the source combo spec; Auto uses the cached selection phase.
+    UInt32 GetNumThreads2(UInt32 num) const {
+        if (num == (UInt32)(Int32)-1)
+            num = _auto_NumThreads;
+        return num;
+    }
     int GetMethodID_RAW() const;
     int GetMethodID() const;
     enum EVolumeResult { kVolumeOK, kIncorrectVolumeSize, kConfirmSmallVolume };

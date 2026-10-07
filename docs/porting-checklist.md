@@ -272,6 +272,14 @@ macOS full301/301PASS, Linux/Windows focused8/8PASS на одинаковом sn
 Это результат внутри открытого P3-05; оставшиеся Common/CompressDialog,
 native/rendered и package-проверки сохраняются, parent-счётчик не меняется.
 
+P3-05, 2026-10-08: исходные события Solid/threads и кеш Auto теперь общие для
+оценки памяти и отказа OK; dictionary/limit регенерируют потоки в исходной фазе.
+Проверены EN/RU профиль/Cancel/restart и реальные XZ create/list/test/extract,
+failure/cancel: Mac full302/302PASS, Linux/Windows8/8PASS на одинаковом snapshot.
+Source и evidence —
+[event audit](upstream-port-audit.md#p3-05--compress-event-and-memory-phases-2026-10-08).
+Полная сверка Compress/Common и итоговая приёмка остаются открыты.
+
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |

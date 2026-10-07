@@ -19,6 +19,7 @@ void CreateArchiveDialog::SetNumThreads2() {
     const auto options = NCompressDialog::SetNumThreads2(
         format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
         solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
+    archiveNameState_._auto_NumThreads = options.AutoNumThreads;
     threads_->blockSignals(true);
     threads_->clear();
     if (options.HasAuto)
@@ -39,11 +40,8 @@ void CreateArchiveDialog::SetNumThreads2() {
 
 void CreateArchiveDialog::SetMemoryUsage() {
     const int method = archiveNameState_.GetMethodID();
-    const auto options = NCompressDialog::SetNumThreads2(
-        format_->currentText(), method, level_->currentData().toUInt(), GetDict2(),
-        solidBlock_->currentData().toUInt(), system_, Get_MemUse_Spec());
-    const UInt32 numThreads = threads_->currentData().toUInt() ? threads_->currentData().toUInt()
-                                                               : options.AutoNumThreads;
+    const UInt32 spec = threads_->currentData().toUInt();
+    const UInt32 numThreads = archiveNameState_.GetNumThreads2(spec ? spec : UInt32(-1));
     UInt64 decompressMemory;
     const UInt64 usage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
         format_->currentText(), method, level_->currentData().toUInt(), numThreads, GetDict2(),
@@ -71,13 +69,10 @@ NCompression::CMemUse CreateArchiveDialog::Get_MemUse_Spec() const {
 bool CreateArchiveDialog::checkMemoryUsage() {
     const auto options = compressionOptions();
     const int method = archiveNameState_.GetMethodID();
-    const auto threads = NCompressDialog::SetNumThreads2(
-        format_->currentText(), method, UInt32(options.Level), GetDict2(),
-        solidBlock_->currentData().toUInt(), system_, options.MemUsage);
     UInt64 decompressMem;
     const UInt64 memUsage = NCompressDialog::GetMemoryUsage_Threads_Dict_DecompMem(
         format_->currentText(), method, UInt32(options.Level),
-        options.NumThreads != UInt32(-1) ? options.NumThreads : threads.AutoNumThreads, GetDict2(),
+        archiveNameState_.GetNumThreads2(options.NumThreads), GetDict2(),
         solidBlock_->currentData().toUInt(), decompressMem);
     UString message;
     if (!CCompressDialog::OnOK(memUsage, system_, options.MemUsage, message)) {

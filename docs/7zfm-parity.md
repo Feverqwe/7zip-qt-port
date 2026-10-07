@@ -1990,6 +1990,18 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — Compress event and memory phases (2026-10-08)
+
+Solid changes now preserve the original thread selection and Auto text, including
+an unavailable saved selection. Memory display and OK refusal share original
+GetNumThreads2's cached Auto count; dictionary/memory-limit events deliberately
+regenerate it. This can preserve an upstream refusal after a Solid change that
+would fit with a newly calculated thread count. Operation NumThreads remains the
+all-ones Auto spec and the official engine owns its execution calculation. EN/RU
+normal/compact control checks cover these states; native desktop input/rendered
+Windows parity remains separate. Evidence and provenance belong to the
+[event audit](upstream-port-audit.md#p3-05--compress-event-and-memory-phases-2026-10-08).
+
 ## P3-05 — Source settings persistence (2026-10-07)
 
 Create/Extract, WorkDir and context-menu settings now retain upstream default,

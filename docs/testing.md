@@ -3283,3 +3283,14 @@ queued delivery while attached and successful completion without delivery after
 detach, matching source PostMsg_Finish. Existing normal/total metrics, Help/live
 language, Restart/Stop/Cancel, memory refusal and engine failure remain covered;
 `native_benchmark` exercises the real official engine and source result callbacks.
+
+`compression_event` checks source Solid/thread/memory-limit/dictionary phases:
+Auto and explicit/unavailable thread selections, cached memory text, memory
+refusal without saving, Cancel/no-write and restart. EN/RU fixtures use the actual
+official codec catalog for XZ; fallback-only dialogs are insufficient for this
+test. Restored profile options create/list/test/extract real XZ files and preserve
+Unicode/space input bytes, including invalid-thread failure and immediate
+cancellation without output. Cached-Auto difference/refusal cases require known
+RAM and at least four available CPUs and explicitly skip otherwise; the selected
+three-platform validation machines satisfy that capability. Normal/compact JSON
+and geometry assertions verify reachable thread/memory fields and fitting text.

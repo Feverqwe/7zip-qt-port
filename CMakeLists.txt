@@ -1484,6 +1484,17 @@ if(BUILD_TESTING)
     add_test(NAME compression_method_state COMMAND compression_method_state_tests -silent)
     set_tests_properties(compression_method_state PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(compression_event_tests tests/compression_event_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
+    target_include_directories(compression_event_tests PRIVATE src tests)
+    target_link_libraries(compression_event_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(compression_event_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME compression_event COMMAND compression_event_tests -silent)
+    set_tests_properties(compression_event PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(compression_memory_tests tests/compression_memory_tests.cpp
         tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_memory_tests PRIVATE src)

@@ -95,7 +95,8 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         MethodChanged();
     });
     connect(threads_, &QComboBox::currentIndexChanged, this, [this] { SetMemoryUsage(); });
-    connect(solidBlock_, &QComboBox::currentIndexChanged, this, [this] { SetNumThreads2(); });
+    connect(solidBlock_, &QComboBox::currentIndexChanged, this,
+            &CreateArchiveDialog::SetMemoryUsage);
     connect(memUse_, &QComboBox::currentIndexChanged, this, [this] {
         SaveOptionsInMem();
         SetNumThreads2();

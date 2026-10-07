@@ -1711,6 +1711,14 @@ remain explicit. An unavailable explicit thread count leaves no selected entry,
 as source SetNumThreads2 does. `compression_profile_selection` checks EN/RU
 760×720/640×480 reachability and writes `profile-selection-*.json`; values and
 Cancel/restart are asserted through public controls/options, outside JSON.
+Solid and thread events update memory using source GetNumThreads2 and the cached
+Auto count from the last SetNumThreads2 phase. Changing Solid preserves the
+thread selector, including an unavailable saved selection; dictionary/memory-limit
+events deliberately regenerate Auto. OK uses that same cached estimate for memory
+refusal. `compression_event` covers EN/RU XZ state transitions, refusal/no-save,
+restart and official-engine workflows, with reachable thread/memory controls at
+760×720/640×480 in `compression-event-*.json`. Auto remains an all-ones operation
+spec; the official engine owns the actual compression thread calculation.
 `compression_encryption` checks the complete encryption group, control separation
 and shown/hidden confirmation at both sizes, with a 400-character history path;
 reports are `encryption-{760,640}-{0,1}.json`.

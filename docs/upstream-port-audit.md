@@ -15932,6 +15932,55 @@ before commit;909 remaining frozen inputs are unchanged. Full macOS LastTest has
 build/review/method-state; native desktop, rendered reference and packages remain
 separate required acceptance.
 
+## P3-05 — Compress event and memory phases (2026-10-08)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/GUI/CompressDialog.cpp::OnCommand/SetNumThreads2/SetMemoryUsage/OnOK`,
+`GetMemoryUsage_DecompMem/GetMemoryUsage_Dict_DecompMem`, and
+`CompressDialog.h::_auto_NumThreads/GetNumThreads2/GetNumThreadsSpec`.
+Complete affected bodies, callers, source profile fields/calculators and
+CompressDialog.rc/res declarations were compared before correction. Original
+IDC_COMPRESS_SOLID only calls SetMemoryUsage, retaining selection and cached Auto;
+the Qt adapter regenerated threads and later recalculated Auto again for display
+and OK, changing both source estimates and refusal policy.
+
+The original cached field and GetNumThreads2 condition are restored in the
+authoritative C++ source header. Qt passes the source combo spec to that getter,
+assigns the cache only in SetNumThreads2, and routes Solid directly to
+SetMemoryUsage. Both displayed memory and OK now use the same source estimate.
+Existing dictionary/memory-limit/profile regeneration and original memory/thread
+algorithms remain unchanged. Source paths/language/notices stay intact; required
+Qt event/control adapters are `src/createarchivedialog_compression.cpp` and
+`createarchivedialog_resources.cpp`. No backend calculation is replaced: Auto
+remains all-ones NumThreads and original official-engine update code owns actual
+execution. MethodProps/ZipRegistry/source profile state, resource language and
+numeric/system helpers remain dependencies; commented ZSTD/PRINT_PARAMS branches
+remain inactive. This closes the event/cache scenario, without accepting the
+unreconciled whole module or Common/native/rendered/package scope.
+
+Evidence: `build/review/compression-event`. A correctly configured official-XZ
+fixture on original production code reproduces10 failures/4 passes: unavailable
+thread selection resets, Auto text changes, memory differs22→41MB and OK accepts
+the source50MB refusal. An earlier fallback-only fixture was invalid because it
+exercised7z instead of XZ; it is archived separately and is not RED evidence.
+The corrected14-case suite covers EN/RU selector preservation, dictionary/limit
+regeneration, memory text/refusal/no-save, Cancel/restart and real official-engine
+create/list/test/extract bytes plus invalid-thread failure/E_ABORT/no output.
+Local affected build and focused5/5 PASS3.71s. Current platform/gate results follow.
+
+Validation, 2026-10-08 MSK: unsandboxed formatting/all-target/default Mac arm64
+Qt6.12.0 gate302/302 PASS250.15s;4677Qt pass/0fail/18 platform skips. Fresh
+Linux/Windows x64 Qt6.12.0 each pass8/8 suites8.86s/47.17s,150Qt pass/0fail/0skip
+on each OS. Snapshot `20261007T205941Z-a450d901`, source.tar SHA256
+`184e7203f76c9740799771f87c00a48d988b4b1ae7efb8a1f53f7ac44b98859a`:
+1405 code/build/runtime/resource inputs match local/archive/actual guests. The
+temporary wrapper is archived and removed before commit. All four new EN/RU
+760×720/640×480 reports per OS retain visible thread/memory controls, fitting
+memory text and footer; no rendered Windows/native desktop acceptance is claimed.
+Eleven slow suites remain excluded. Fresh authenticated capacity/host-D checks
+passed; no cleanup, disk changes or upstream mutation occurred.
+
 ## P3-05 — Source settings persistence (2026-10-07)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

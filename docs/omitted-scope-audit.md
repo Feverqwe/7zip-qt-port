@@ -871,3 +871,25 @@ This receipt covers ZipRegistry's persistence owner. Other Common modules and
 CompressDialog event/header reconciliation retain their separate required scope.
 Regression/platform evidence belongs to the
 [settings audit](upstream-port-audit.md#p3-05--source-settings-persistence-2026-10-07).
+
+### Compress event/cache phase disposition, 2026-10-08
+
+At the same full pinned revision, original OnCommand, SetNumThreads2,
+SetMemoryUsage/GetMemoryUsage_DecompMem/GetMemoryUsage_Dict_DecompMem, OnOK and
+header GetNumThreads2 were compared with their Qt consumers. Solid and explicit
+thread events only refresh memory; dictionary and memory-limit events save the
+current profile and regenerate threads. The original cached _auto_NumThreads and
+getter condition now supply both displayed memory and OK refusal. Qt adapts the
+combo read to a source spec, assigning the cache in the source selection phase.
+No engine algorithm or NumThreads Auto sentinel changes. Regression, actual-XZ
+workflow and platform evidence belong to the
+[event audit](upstream-port-audit.md#p3-05--compress-event-and-memory-phases-2026-10-08).
+
+All active COptionsDialog bodies and its header were also compared: BoolBox
+defaults/support, timestamp precision flags/default/custom entry, ZIP/TAR time
+capabilities, Set-checkbox events, Store_TimeBoxes, OnInit/OnOK/Help remain original
+code. Qt language refresh uses AddPrec's existing text builder without changing
+data/selection; the declaration is separated to avoid Widgets in Core-only DTO
+consumers. Qt control adapters still require final sentinel/selection disposition
+before whole CompressDialog acceptance. Remaining Common/native/rendered/package
+scope is not closed by this event receipt.
