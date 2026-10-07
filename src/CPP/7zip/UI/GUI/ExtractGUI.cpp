@@ -196,7 +196,9 @@ HRESULT ExtractGUI(
                 return E_FAIL;
             }
             NName::NormalizeDirPathPrefix(outputDirFull);
-            CExtractDialog dialog(ToQString(fs2us(outputDirFull)), {}, false, hwndParent);
+            CExtractDialog dialog(ToQString(fs2us(outputDirFull)), {}, hwndParent);
+            if (archivePathsFull.Size() == 1)
+                dialog.ArcPath = archivePathsFull[0];
 
             dialog.OverwriteMode_Force = options.OverwriteMode_Force;
             dialog.PathMode_Force = options.PathMode_Force;

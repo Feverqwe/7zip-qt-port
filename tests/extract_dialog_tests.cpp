@@ -43,7 +43,7 @@ class ExtractDialogTests final : public QObject {
     }
     void originalModesAndPersistence() {
         {
-            CExtractDialog dialog(dir_.path(), {}, false);
+            CExtractDialog dialog(dir_.path(), {});
             QCOMPARE(overwrite(dialog)->itemText(1), QStringLiteral("Overwrite without prompt"));
             QCOMPARE(overwrite(dialog)->itemText(2), QStringLiteral("Skip existing files"));
             pathMode(dialog)->setCurrentIndex(1);
@@ -58,7 +58,7 @@ class ExtractDialogTests final : public QObject {
             QCOMPARE(dialog.Password, QStringLiteral("секрет с пробелом"));
             QVERIFY(dialog.destination().endsWith('/'));
         }
-        CExtractDialog restarted(dir_.path(), {}, true);
+        CExtractDialog restarted(dir_.path(), {});
         QCOMPARE(pathMode(restarted)->currentIndex(), 1);
         QCOMPARE(overwrite(restarted)->currentIndex(), 4);
         QCOMPARE(restarted.findChild<QLineEdit *>("extractPassword")->echoMode(),
@@ -70,7 +70,7 @@ class ExtractDialogTests final : public QObject {
         pathMode(restarted)->setCurrentIndex(0);
         overwrite(restarted)->setCurrentIndex(0);
         restarted.reject();
-        CExtractDialog afterCancel(dir_.path(), {}, false);
+        CExtractDialog afterCancel(dir_.path(), {});
         QCOMPARE(pathMode(afterCancel)->currentIndex(), 1);
         QCOMPARE(overwrite(afterCancel)->currentIndex(), 4);
     }
@@ -81,14 +81,14 @@ class ExtractDialogTests final : public QObject {
         saved.OverwriteMode = NExtract::NOverwriteMode::kSkip;
         saved.OverwriteMode_Force = true;
         saved.Save(settings_);
-        CExtractDialog dialog(dir_.path(), {}, false);
+        CExtractDialog dialog(dir_.path(), {});
         dialog.SetInitialOptions(NExtract::NPathMode::kFullPaths, NExtract::NOverwriteMode::kAsk,
                                  QStringLiteral("пароль с пробелом"));
         QCOMPARE(pathMode(dialog)->currentIndex(), 1);
         QCOMPARE(overwrite(dialog)->currentIndex(), 2);
         QCOMPARE(dialog.findChild<QLineEdit *>("extractPassword")->text(),
                  QStringLiteral("пароль с пробелом"));
-        CExtractDialog forced(dir_.path(), {}, false);
+        CExtractDialog forced(dir_.path(), {});
         forced.PathMode_Force = true;
         forced.OverwriteMode_Force = true;
         forced.SetInitialOptions(NExtract::NPathMode::kFullPaths, NExtract::NOverwriteMode::kAsk,
@@ -102,7 +102,7 @@ class ExtractDialogTests final : public QObject {
         for (int i = 0; i < 20; i++)
             history.append(QString("/history/%1/").arg(i));
         {
-            CExtractDialog dialog("/initial", history, false);
+            CExtractDialog dialog("/initial", history);
             QCOMPARE(path(dialog)->count(), 16);
             QCOMPARE(path(dialog)->currentText(), QString("/initial"));
             path(dialog)->setCurrentIndex(5);
@@ -114,7 +114,7 @@ class ExtractDialogTests final : public QObject {
         QCOMPARE(saved.Paths[0], history[5]);
         QCOMPARE(saved.Paths[1], history[0]);
         {
-            CExtractDialog dialog("/initial", {}, false);
+            CExtractDialog dialog("/initial", {});
             path(dialog)->setCurrentIndex(2);
             path(dialog)->setEditText(QStringLiteral("  /новая папка/δ space  "));
             dialog.accept();
@@ -125,7 +125,7 @@ class ExtractDialogTests final : public QObject {
         QCOMPARE(saved.Paths[0], QStringLiteral("/новая папка/δ space/"));
         QVERIFY(saved.Paths[15] != history[15]);
         {
-            CExtractDialog dialog("/initial", {" /DATA/ ", "/data/", " /different/ "}, false);
+            CExtractDialog dialog("/initial", {" /DATA/ ", "/data/", " /different/ "});
             path(dialog)->setCurrentIndex(0);
             dialog.accept();
         }
@@ -142,7 +142,7 @@ class ExtractDialogTests final : public QObject {
             settings.setValue("Extraction/OverwriteMode", "invalid");
             settings.setValue("Toolbar/labels", false);
         }
-        CExtractDialog dialog("/initial", {}, false);
+        CExtractDialog dialog("/initial", {});
         QCOMPARE(path(dialog)->itemText(0), QString("/legacy/"));
         QCOMPARE(pathMode(dialog)->currentIndex(), 0);
         QCOMPARE(overwrite(dialog)->currentIndex(), 0);
@@ -152,12 +152,12 @@ class ExtractDialogTests final : public QObject {
         QCOMPARE(settings.value("Toolbar/labels").toBool(), false);
         settings.setValue("Extraction/ExtractMode", UInt32(NExtract::NPathMode::kAbsPaths));
         settings.sync();
-        CExtractDialog absolute("/initial", {}, false);
+        CExtractDialog absolute("/initial", {});
         QCOMPARE(pathMode(absolute)->count(), 3);
         QCOMPARE(absolute.options().pathMode, ExtractionOptions::PathMode::AbsolutePaths);
     }
     void renderedLayout() {
-        CExtractDialog dialog(QStringLiteral("/данные с пробелом/"), {"/previous/"}, false);
+        CExtractDialog dialog(QStringLiteral("/данные с пробелом/"), {"/previous/"});
         dialog.show();
         for (QSize size : {QSize(640, 360), QSize(470, 330)}) {
             dialog.resize(size);
@@ -190,7 +190,7 @@ class ExtractDialogTests final : public QObject {
         QVERIFY(existing.open(QIODevice::WriteOnly));
         QCOMPARE(existing.write("existing"), qint64(8));
         existing.close();
-        CExtractDialog dialog(output, {}, false);
+        CExtractDialog dialog(output, {});
         pathMode(dialog)->setCurrentIndex(1);
         overwrite(dialog)->setCurrentIndex(2);
         dialog.accept();

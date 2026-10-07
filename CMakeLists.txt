@@ -2286,7 +2286,8 @@ if(BUILD_TESTING)
         add_dependencies(native_gui_workflow_tests sevenzip_desktop)
         add_test(NAME native_gui_workflow COMMAND native_gui_workflow_tests -silent)
         set_tests_properties(native_gui_workflow PROPERTIES TIMEOUT 180 ENVIRONMENT
-            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_gui_workflow.ini")
+            "SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native_gui_workflow.ini"
+            RESOURCE_LOCK sevenzip_native_ui)
         qt_add_executable(native_shell_com_tests tests/native_shell_com_tests.cpp)
         add_executable(native_shell_host tests/fixtures/native_shell_host.cpp)
         set_target_properties(native_shell_host PROPERTIES AUTOMOC OFF AUTOUIC OFF)
@@ -2379,6 +2380,18 @@ if(BUILD_TESTING)
     get_target_property(options_window_sources settings_tests SOURCES)
     list(REMOVE_ITEM options_window_sources tests/settings_tests.cpp)
     get_target_property(options_window_libraries settings_tests LINK_LIBRARIES)
+    if(SEVENZIP_CODEC_MODULE)
+        qt_add_executable(toolbar_archive_workflow_tests tests/toolbar_archive_workflow_tests.cpp
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(toolbar_archive_workflow_tests PRIVATE src tests)
+        target_link_libraries(toolbar_archive_workflow_tests PRIVATE ${options_window_libraries})
+        target_compile_definitions(toolbar_archive_workflow_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+        add_test(NAME toolbar_archive_workflow COMMAND toolbar_archive_workflow_tests -silent)
+        set_tests_properties(toolbar_archive_workflow PROPERTIES TIMEOUT 120
+            RESOURCE_LOCK "sevenzip_native_ui;sevenzip_ui_artifacts" ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-archive-workflow.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     qt_add_executable(address_combo_tests tests/address_combo_tests.cpp
         tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${options_window_sources})
     target_include_directories(address_combo_tests PRIVATE src tests)
@@ -2991,10 +3004,14 @@ include(cmake/SharedPortObjects.cmake)
 # metrics do not describe the application's controls. Compare these dialog and
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
+    if(TEST toolbar_archive_workflow)
+        set_property(TEST toolbar_archive_workflow PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=windows;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/toolbar-archive-workflow.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     foreach(sevenzip_native_ui_test IN ITEMS
             native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
             native_renderer_failure native_renderer_copy
-            source_compress_dialog shell_menu_window shell_update_window
+            source_compress_dialog source_extract_advanced shell_archive_services shell_menu_window shell_update_window
             compression compression_advanced compression_path compression_preferences compression_resources language_ui
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add

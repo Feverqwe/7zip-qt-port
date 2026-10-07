@@ -63,7 +63,7 @@ class SplitDestinationTests final : public QObject {
     void originalSplitControlsAndPersistence() {
         const QString initial = QStringLiteral("/папка с пробелом/вложенная/");
         {
-            CExtractDialog dialog(initial, {}, false);
+            CExtractDialog dialog(initial, {});
             QVERIFY(enabled(dialog)->isChecked());
             QCOMPARE(path(dialog)->currentText(), QStringLiteral("/папка с пробелом/"));
             QCOMPARE(name(dialog)->text(), QStringLiteral("вложенная/"));
@@ -77,7 +77,7 @@ class SplitDestinationTests final : public QObject {
         saved.Load(settings_);
         QCOMPARE(saved.Paths[0], QStringLiteral("/папка с пробелом/δ результат/"));
         {
-            CExtractDialog dialog(initial, {}, false);
+            CExtractDialog dialog(initial, {});
             enabled(dialog)->setChecked(false);
             QVERIFY(name(dialog)->isHidden());
             path(dialog)->setEditText(QStringLiteral("/другое место"));
@@ -85,20 +85,20 @@ class SplitDestinationTests final : public QObject {
             QCOMPARE(dialog.destination(), QStringLiteral("/другое место/"));
         }
         {
-            CExtractDialog restarted(initial, {}, false);
+            CExtractDialog restarted(initial, {});
             QVERIFY(!enabled(restarted)->isChecked());
             QCOMPARE(path(restarted)->currentText(), initial);
             enabled(restarted)->setChecked(true);
             QVERIFY(!name(restarted)->isHidden());
             restarted.reject();
         }
-        CExtractDialog afterCancel(initial, {}, false);
+        CExtractDialog afterCancel(initial, {});
         QVERIFY(!enabled(afterCancel)->isChecked());
     }
     void rootAndLeafDoNotDuplicate() {
         for (QString initial : {QString("/"), QString("name"), QString("name/")}) {
             QFile::remove(settings_);
-            CExtractDialog dialog(initial, {}, false);
+            CExtractDialog dialog(initial, {});
             QCOMPARE(path(dialog)->currentText(), initial);
             QVERIFY(name(dialog)->text().isEmpty());
             dialog.accept();
@@ -106,7 +106,7 @@ class SplitDestinationTests final : public QObject {
         }
     }
     void renderedConditionalControls() {
-        CExtractDialog dialog(QStringLiteral("/данные/папка с пробелом/"), {}, false);
+        CExtractDialog dialog(QStringLiteral("/данные/папка с пробелом/"), {});
         dialog.show();
         const QString screenshots = QDir::currentPath() + "/ui-screenshots";
         QVERIFY(QDir().mkpath(screenshots));
@@ -140,7 +140,7 @@ class SplitDestinationTests final : public QObject {
         QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));
         done.clear();
         const QString base = fixture.filePath(QStringLiteral("вывод"));
-        CExtractDialog dialog(base + "/initial", {}, false);
+        CExtractDialog dialog(base + "/initial", {});
         // This fixture exercises the basic process transport's destination
         // path; advanced ElimDup is covered by source_extract_advanced.
         dialog.findChild<QCheckBox *>("extractElimDup")->setChecked(false);
@@ -154,7 +154,7 @@ class SplitDestinationTests final : public QObject {
         QVERIFY(restored.open(QIODevice::ReadOnly));
         QCOMPARE(restored.readAll(), QByteArray("source bytes"));
         done.clear();
-        CExtractDialog invalid(base + "/initial", {}, false);
+        CExtractDialog invalid(base + "/initial", {});
         invalid.findChild<QCheckBox *>("extractElimDup")->setChecked(false);
         name(invalid)->setText("occupied");
         QFile occupied(base + "/occupied");
@@ -168,7 +168,7 @@ class SplitDestinationTests final : public QObject {
         QVERIFY(occupied.open(QIODevice::ReadOnly));
         QCOMPARE(occupied.readAll(), QByteArray("preserve"));
         const QString cancelledPath = base + "/cancelled";
-        CExtractDialog cancelled(cancelledPath, {}, false);
+        CExtractDialog cancelled(cancelledPath, {});
         cancelled.reject();
         QCOMPARE(cancelled.result(), int(QDialog::Rejected));
         QVERIFY(!QFileInfo::exists(cancelledPath));

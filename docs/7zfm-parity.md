@@ -1910,6 +1910,24 @@ P2-05/P2-06. Normal/compact main и panel status JSON, прямой двухпа
 UI consumer и полный `check.sh` 143/143 прошли на macOS arm64/Qt 6.11.2.
 Windows/Linux runtime и rendered Windows reference не проверены.
 
+## P3-05 — toolbar Extract/Test source routing (2026-10-07)
+
+Extract внутри открытого архива использует исходный Copy To с destination
+противоположной панели. В файловой панели Extract показывает исходный Extract
+для выбранного архива или группы архивов; Test проверяет выбранные архивы через
+тот же source batch owner. Qt дополнительно отключает файловый batch route при
+отсутствии native engine services, а также во время операции/закрытия окна.
+Пустой открытый архив сохраняет доступный Extract и исходный пустой OnCopy.
+
+Заголовок Extract содержит полный путь единственного архива и сохраняет его
+при смене языка. Для группы архивов остаётся только исходный caption.
+Удалены отсутствовавшие в upstream destination hint и selected-scope отключение
+Eliminate duplication. Qt showEvent заменяет поздний Win32 OnInit после задания
+параметров caller; доступность Windows security и системный порядок кнопок
+остаются платформенными адаптациями. После модальных окон Qt восстанавливает
+активность исходного окна, pane и focus. Source scope и проверенные платформы
+фиксируются в [module audit](upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07).
+
 ## P1-06.2 — открытие, тест и извлечение томов
 
 Первый `.001` доступен в стандартном archive filter и открывается исходным

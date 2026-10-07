@@ -88,7 +88,7 @@ class MainWindowLayoutTests : public QObject {
     }
 
     void extractDialogMatches7zfmControls() {
-        ExtractDialog dialog("/initial", {"/previous", "/older"}, true);
+        ExtractDialog dialog("/initial", {"/previous", "/older"});
         QCOMPARE(dialog.objectName(), QString("extractDialog"));
         QCOMPARE(dialog.windowTitle(), QString("Extract"));
         auto *destination = dialog.findChild<QComboBox *>("extractDestination");

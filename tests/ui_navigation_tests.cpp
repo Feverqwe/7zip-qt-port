@@ -333,7 +333,10 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         openListedArchive(window, backend, "three.zip", {});
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "upAction")->isEnabled());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        action(window, "extractArchiveAction")->trigger();
+        QVERIFY(!QApplication::activeModalWidget());
+        QCOMPARE(backend.extractCalls, 0);
         QVERIFY(backend.prepareArchiveFixture("failed.7z"));
         QTimer warningResponder;
         connect(&warningResponder, &QTimer::timeout, &window, [] { dismissWarnings(); });
@@ -398,7 +401,11 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        const int beforeEmptyArchiveExtract = backend.extractCalls;
+        action(window, "extractArchiveAction")->trigger();
+        QVERIFY(!QApplication::activeModalWidget());
+        QCOMPARE(backend.extractCalls, beforeEmptyArchiveExtract);
         QVERIFY(action(window, "copyAction")->isEnabled());
         const int beforeEmptyArchiveCopy = backend.extractCalls;
         action(window, "copyAction")->trigger();

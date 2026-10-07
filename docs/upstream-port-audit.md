@@ -15099,3 +15099,81 @@ Cocoa/style/ICO plugins, pinned engine/module/SFX and notices. A relocated
 clean-path launch, engine format discovery, deep/strict signature verification,
 source-payload guard and post-signing SFX checksum all pass. Linux/Windows builds
 and GitHub execution remain unverified for this change; no release/push ran.
+
+## P3-05 — toolbar Extract/Test source consumers (2026-10-07)
+
+Baseline: `https://github.com/ip7z/7zip.git`, full commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Before editing, the complete `Panel.cpp::ExtractArchives/TestArchives`,
+`GetSubFolderNameForExtract2`, `GetFilePaths`, operated-index/directory checks,
+`App.h` delegates and `FM.cpp` toolbar dispatch were compared with their callers.
+`ContextMenu.cpp::GetSubFolderNameForExtract` and its extension/name dependencies
+remain the shared authoritative implementation. The original toolbar initializes
+Extract/Test enabled; the Qt command owner additionally requires available batch
+engine services on filesystem panels and retains busy/closed guards.
+
+Copied/adapted scope: restore `CPanel::ExtractArchives`, its full subfolder helper,
+the missing filesystem branch of `CPanel::TestArchives`, and `CApp` delegates.
+Archive Extract reaches original `OnCopy(false,false)` and CopyDialog; filesystem
+Extract retains source selection refusal, one-archive output name or multi-archive
+wildcard, and saved zone policy. Archive Test retains its existing `CopyTo` branch.
+Injecting `IQtCompressCallServices` and private INI settings replaces original
+Win32 GUI/registry services. No archive algorithm or process syntax is added to
+widgets. The existing pre-row `FindDir_InOperatedList` provider fallback remains
+a narrow adapter for nonvisual shell consumers; it is not claimed as a byte copy
+of the original cache-only implementation.
+
+The entire desktop `ExtractDialog.rc`, `ExtractDialog.h/.cpp` handlers and
+`ExtractGUI.cpp` caller were reviewed, including history/split destination,
+mode/boolean precedence, password and cancellation. Restore original
+`UString ArcPath` and its single-archive assignment in `ExtractGUI`. Qt `showEvent` is the
+post-configuration initialization boundary; the existing language binding keeps
+the caption suffix during LanguageChange. Remove the independent destination
+hint and selected-scope ElimDup disabling, including the obsolete constructor
+argument from all consumers. Source Help, metadata and platform security policy
+remain unchanged. The old private MainWindow Extract-dialog workflow is removed;
+the explicit public extraction adapter remains for its existing consumers.
+
+Qt glue retains the backend catalog/services during modal execution, restores
+state and pane on return, and reactivates the window before restoring focus.
+`toolbar_archive_workflow` exercises actual native archives through both panes:
+archive Copy-dialog cancellation, filesystem one/multiple Extract cancellation
+and success, actual Test statistics, corrupt-archive refusal, preserved bytes,
+providers, selection, guards and focus. `shell_archive_services` covers the
+standalone source dialog caption/cancellation; `language_dialog` covers caption
+and pending values across EN/RU changes. The native Windows GUI fixture additionally
+launches the shipped Qt `7zG.exe` entry and checks its source-dispatched Extract
+caption, exposed/enabled controls through UI Automation, and Cancel.
+This is a standalone consumer check, not the original Win32 rendered reference.
+Platform acceptance and complete P3 acceptance remain separate from this scope.
+
+Validation at this checkpoint: macOS27.0.1arm64/Qt6.12.0 required unsandboxed
+format/all-target/default-test gate PASS289/289231.40s,4450QtPASS/0FAIL and
+15Windows-onlySKIP. A prior gate found two remaining empty-archive toolbar
+expectations in ui_navigation; the updated regressions verify enabled source
+OnCopy with no dialog/backend operation. The focused affected12suites passed,
+followed by navigation/toolbar2/2 and the accepted full gate.
+
+Windows11x64/Qt6.12.0 fresh interactive/elevated snapshot
+`20261007T133814Z-77b8f99c`, SHA256
+`b42a46bebd5e02ff9ef72c206303eaf34caf6834a7c1c86eb7c06b3ef6604621`:
+all17 selected suites PASS82.99s,238QtPASS/0FAIL/0SKIP. All affected targets,
+including the standalone GUI application, were built in that snapshot.
+Twenty fresh normal/compact EN/RU reports and232 exposed controls pass on each
+of macOS and Windows; the27 frozen source/test/CMake/wrapper inputs match the
+Windows snapshot. The first Windows attempt lacked the desktop/elevation flags;
+the next exposed an incorrect Win32-ID assumption in the new Qt standalone
+test. Both remain diagnostics and are superseded by the accepted UIA consumer.
+No deadline/assertion was weakened. Eleven slow suites and virtual-disk fixtures
+were excluded; the selected checks create/attach no virtual disks.
+
+LinuxUbuntu24.04x64/Qt6.12.0 fresh snapshot `20261007T134601Z-be83f48a`, SHA256
+`173b3f4633d7ddaf963dbd6f06f1eef83b5fdf2f320c936c9c808a1aee625f7b`:
+all17 selected suites PASS13.83s,230QtPASS/0FAIL/2Windows-onlySKIP, including
+the Unix standalone GUI entry. Targets were built in the same snapshot and all27
+frozen inputs match. Its20 reports/232 controls also pass:60 reports/696 controls
+across the three platforms. Source grouping, footer exposure, language and
+ElimDup availability are checked; original Win32 pixel/rendered parity is not
+established. The Windows-only UIA test correction followed the passing Mac gate;
+no Mac-compiled production/test body changed. Whole P3 source/platform/package
+and final acceptance remain open.

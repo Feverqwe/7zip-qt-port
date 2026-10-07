@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "address_popup_support.h"
+#include "copydialog.h"
 #include "layout_inspection.h"
 #include "qtprogresscontrols.h"
 #include "window_state_support.h"
@@ -22,7 +23,7 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
 
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
-    void extractionDestinationAndCancellation() {
+    void sourceToolbarCancelAndExtractionAdapterCancellation() {
         ControlledBackend backend;
         MainWindow window(&backend);
         openListedArchive(window, backend, "archive.zip",
@@ -30,33 +31,25 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(table(window)->selectionModel()->selectedRows().isEmpty());
         QVERIFY(action(window, "copyAction")->isEnabled());
         QCOMPARE(backend.extractCalls, 0);
-        QTimer::singleShot(0, &window, [] {
-            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+        table(window)->setCurrentCell(0, 0);
+        bool dialogSeen = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = dynamic_cast<CopyDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
-            auto *destination = dialog->findChild<QComboBox *>("extractDestination");
+            dialogSeen = true;
+            auto *destination = dialog->findChild<QComboBox *>("copyDestination");
             QVERIFY(destination);
-            dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
             destination->setCurrentText("/temporary/selected output");
             dialog->reject();
         });
         action(window, "extractArchiveAction")->trigger();
+        QVERIFY(dialogSeen);
         QCOMPARE(backend.extractCalls, 0);
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
-        QTimer::singleShot(0, &window, [] {
-            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-            QVERIFY(dialog);
-            auto *destination = dialog->findChild<QComboBox *>("extractDestination");
-            QVERIFY(destination);
-            dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
-            destination->setCurrentText("/temporary/selected output");
-            auto *password = dialog->findChild<QLineEdit *>("extractPassword");
-            QVERIFY(password);
-            password->setText("temporary secret");
-            dialog->findChild<QComboBox *>("extractPathMode")->setCurrentIndex(1);
-            dialog->findChild<QComboBox *>("extractOverwriteMode")->setCurrentIndex(2);
-            dialog->accept();
-        });
-        action(window, "extractArchiveAction")->trigger();
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::NoPaths;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
+        window.extractTo("/temporary/selected output", false, "temporary secret", options);
         QCOMPARE(backend.extractCalls, 1);
         QCOMPARE(backend.lastExtractPassword, QString("temporary secret"));
         QCOMPARE(backend.lastExtractionOptions.pathMode, ExtractionOptions::PathMode::NoPaths);
@@ -239,7 +232,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         openListedArchive(window, backend, "empty.zip", {});
         QCOMPARE(backend.listCalls, 2);
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        action(window, "extractArchiveAction")->trigger();
+        QVERIFY(!QApplication::activeModalWidget());
+        QCOMPARE(backend.extractCalls, 0);
     }
 
     void passwordReuseAndResetOnReopen() {
@@ -284,7 +280,10 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
         openListedArchive(window, backend, "empty.zip", {});
         QVERIFY(action(window, "testArchiveAction")->isEnabled());
-        QVERIFY(!action(window, "extractArchiveAction")->isEnabled());
+        QVERIFY(action(window, "extractArchiveAction")->isEnabled());
+        action(window, "extractArchiveAction")->trigger();
+        QVERIFY(!QApplication::activeModalWidget());
+        QCOMPARE(backend.extractCalls, 0);
         window.testArchive();
         QVERIFY(backend.lastTestPassword.isEmpty());
     }

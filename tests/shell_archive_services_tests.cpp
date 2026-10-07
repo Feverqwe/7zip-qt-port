@@ -1,11 +1,15 @@
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
+#include "7zip/UI/GUI/ExtractDialogRes.h"
 #include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
+#include "CPP/7zip/UI/GUI/ExtractDialog.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "qtlangcontrols.h"
 #include "qtshellarchiveservices.h"
 #include "source_extract_fixture.h"
+#include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTemporaryDir>
@@ -111,6 +115,53 @@ class ShellArchiveServicesTests final : public QObject {
         QCOMPARE(::TestArchives(paths, true, service), E_FAIL);
         QCOMPARE(readFile(a), zipBytes);
         QCOMPARE(readFile(b), sevenZipBytes);
+        QVERIFY(!backend.busy());
+    }
+    void sourceDialogRetainsArchiveCaptionAndCancel_data() {
+        QTest::addColumn<bool>("multiple");
+        QTest::newRow("single") << false;
+        QTest::newRow("multiple") << true;
+    }
+    void sourceDialogRetainsArchiveCaptionAndCancel() {
+        QFETCH(bool, multiple);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = fixture.filePath(QStringLiteral("архив δ with spaces.zip"));
+        QVERIFY(writeFile(archive, "not opened before Cancel"));
+        ArchiveBackend backend;
+        ArchiveCodecCatalog probe(_module, 0);
+        QCOMPARE(probe.result(), S_OK);
+        QCOMPARE(backend.loadCodecCatalog(_module, probe.version()), S_OK);
+        QtShellArchiveServices service(backend, nullptr, {}, {}, [](HRESULT, const UString &) {});
+        UStringVector paths;
+        paths.Add(us(archive));
+        if (multiple) {
+            const QString second = fixture.filePath("second.7z");
+            QVERIFY(writeFile(second, "second unchanged"));
+            paths.Add(us(second));
+        }
+        QString caption;
+        bool hint = false;
+        bool seen = false;
+        QTimer driver;
+        connect(&driver, &QTimer::timeout, this, [&] {
+            if (auto *dialog = dynamic_cast<CExtractDialog *>(QApplication::activeModalWidget())) {
+                seen = true;
+                caption = dialog->windowTitle();
+                hint = dialog->findChild<QLabel *>("extractDestinationHint") != nullptr;
+                dialog->reject();
+            }
+        });
+        driver.start(1);
+        QCOMPARE(::ExtractArchives(paths, us(fixture.filePath("output")), true, false, UInt32(-1),
+                                   service),
+                 E_ABORT);
+        QVERIFY(seen);
+        QCOMPARE(caption, QtLangText(IDD_EXTRACT, "Extract") +
+                              (multiple ? QString() : " : " + QDir::toNativeSeparators(archive)));
+        QVERIFY(!hint);
+        QCOMPARE(readFile(archive), QByteArray("not opened before Cancel"));
+        QVERIFY(!QFileInfo::exists(fixture.filePath("output")));
         QVERIFY(!backend.busy());
     }
     void actualHashGuiUsesRetainedNativeProviders() {

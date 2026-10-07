@@ -495,6 +495,16 @@ same-provider recovery и actual F4 writer retry. Матрица2/2PASS243.24s,
 Production bodies unchanged; native rename/drop/changed-parent render consumers,
 full-body/native3OS/rendered/cold-stable-package/P3-06 остаются обязательными.
 
+P3-05,2026-10-07: toolbar Extract/Test подключены к исходным CApp/CPanel owners.
+Archive Extract использует OnCopy; файловая панель — source batch ExtractGUI/Test.
+Восстановлен ArcPath и исходная доступность ElimDup; удалён независимый hint.
+Реальные Cancel/success/failure/empty archive, оба pane, focus, EN/RU и standalone
+GUI consumers проверены. Mac required full289/289PASS231.40s; Windows native
+interactive/elevated17/17PASS82.99s; Linux17/17PASS13.83s. Проверены60 fresh JSON
+и696 controls, frozen inputs совпали с обеими VM. Slow suites/VHD fixtures
+исключены; original Win32 rendered reference и whole P3 остаются открыты.
+[Source/evidence](upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

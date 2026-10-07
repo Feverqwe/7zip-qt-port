@@ -142,7 +142,7 @@ class SourceExtractAdvancedTests final : public QObject {
         saved.ElimDup.SetTrueTrue();
         saved.NtSecurity.SetTrueTrue();
         saved.Save(settings);
-        CExtractDialog dialog(_settings.path(), {}, false);
+        CExtractDialog dialog(_settings.path(), {});
         CBoolPair forced;
         forced.Def = true;
         forced.Val = false;
@@ -153,7 +153,7 @@ class SourceExtractAdvancedTests final : public QObject {
         saved.Load(settings);
         QVERIFY(saved.ElimDup.Val);
         QVERIFY(saved.NtSecurity.Val);
-        CExtractDialog changed(_settings.path(), {}, false);
+        CExtractDialog changed(_settings.path(), {});
         changed.findChild<QCheckBox *>("extractElimDup")->setChecked(false);
         changed.findChild<QCheckBox *>("extractNtSecurity")->setChecked(false);
         changed.findChild<QComboBox *>("extractPathMode")->setCurrentIndex(2);
@@ -179,7 +179,7 @@ class SourceExtractAdvancedTests final : public QObject {
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QtNotifyLanguageChanged();
-        CExtractDialog dialog(_settings.path(), {}, false);
+        CExtractDialog dialog(_settings.path(), {});
         dialog.resize(size);
         dialog.show();
         QApplication::processEvents();

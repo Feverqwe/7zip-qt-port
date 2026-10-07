@@ -193,7 +193,10 @@ class LanguageDialogTests final : public QObject {
         }
     }
     void extractPreservesModesHistoryAndSecret() {
-        CExtractDialog dialog("/initial path", {"/history"}, true);
+        CExtractDialog dialog("/initial path", {"/history"});
+        const QString archive = QStringLiteral("/archives/исходный 空.zip");
+        dialog.ArcPath = archive.toStdWString().c_str();
+        dialog.show();
         dialog.SetInitialOptions(NExtract::NPathMode::kNoPaths,
                                  NExtract::NOverwriteMode::kRenameExisting,
                                  QStringLiteral("密碼 pending secret"));
@@ -204,7 +207,8 @@ class LanguageDialogTests final : public QObject {
         dialog.findChild<QCheckBox *>("extractNameEnable")->setChecked(true);
         destination->setEditText("/pending path");
         name->setText(QStringLiteral(" pending name 密碼 "));
-        QCOMPARE(dialog.windowTitle(), QString("Extract"));
+        QCOMPARE(dialog.windowTitle(), QString("Extract : ") + archive);
+        QVERIFY(dialog.findChild<QCheckBox *>("extractElimDup")->isEnabled());
         const int pathIndex = pathMode->currentIndex();
         const int overwriteIndex = overwriteMode->currentIndex();
         const QString englishMode = pathMode->currentText();
@@ -217,10 +221,11 @@ class LanguageDialogTests final : public QObject {
             QCOMPARE(pathMode->currentIndex(), pathIndex);
             QCOMPARE(overwriteMode->currentIndex(), overwriteIndex);
             if (QString(lang) == "ru") {
-                QCOMPARE(dialog.windowTitle(), QStringLiteral("Извлечь"));
+                QCOMPARE(dialog.windowTitle(), QStringLiteral("Извлечь : ") + archive);
                 QVERIFY(pathMode->currentText() != englishMode);
                 QCOMPARE(name->placeholderText(), QStringLiteral("Имя папки назначения"));
             } else {
+                QCOMPARE(dialog.windowTitle(), QString("Extract : ") + archive);
                 QCOMPARE(pathMode->currentText(), englishMode);
                 QCOMPARE(name->placeholderText(), QString("Destination folder name"));
             }

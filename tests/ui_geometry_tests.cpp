@@ -118,7 +118,7 @@ class UiGeometryTests final : public QObject {
         if (create)
             dialog = std::make_unique<CreateArchiveDialog>(directory_.path());
         else
-            dialog = std::make_unique<ExtractDialog>(directory_.path(), QStringList{}, false);
+            dialog = std::make_unique<ExtractDialog>(directory_.path(), QStringList{});
         dialog->resize(requestedSize);
         dialog->show();
         QApplication::processEvents();

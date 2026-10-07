@@ -15,6 +15,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QShortcut>
+#include <QShowEvent>
 #include <QStandardPaths>
 #include <QVBoxLayout>
 
@@ -66,7 +67,7 @@ static void NormalizeDirPathPrefix(QString &dirPath) {
 }
 
 CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &history,
-                               bool selected, QWidget *parent)
+                               QWidget *parent)
     : QDialog(parent), DirPath(initialPath) {
     ElimDup.Val = true;
     setObjectName("extractDialog");
@@ -120,11 +121,6 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     _elimDup = new QCheckBox(this);
     _elimDup->setObjectName("extractElimDup");
     QtBindResourceText(_elimDup, IDX_EXTRACT_ELIM_DUP, "Eliminate duplication of root folder");
-    if (selected) {
-        _elimDup->setEnabled(false);
-        QtBindLocalToolTip(_elimDup, "This option applies to extraction of the whole archive.",
-                           "Этот параметр применяется при извлечении всего архива.");
-    }
     modeColumn->addWidget(_elimDup);
     auto *overwriteLabel = new QLabel(this);
     overwriteLabel->setObjectName("extractOverwriteModeLabel");
@@ -163,12 +159,6 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     metadataColumn->addStretch();
     options->addLayout(metadataColumn, 1);
     layout->addLayout(options);
-    auto *hint = new QLabel(this);
-    hint->setObjectName("extractDestinationHint");
-    QtBindLocalText(hint, "The destination folder will be created if needed.",
-                    "Папка назначения будет создана при необходимости.");
-    hint->setWordWrap(true);
-    layout->addWidget(hint);
     layout->addStretch();
     auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
@@ -281,6 +271,14 @@ void CExtractDialog::OnInit(const QStringList &history) {
                   PathMode);
     AddComboItems(*_overwriteMode, kOverwriteMode_IDs, Z7_ARRAY_SIZE(kOverwriteMode_IDs),
                   kOverwriteButtonsVals, OverwriteMode);
+}
+
+void CExtractDialog::showEvent(QShowEvent *event) {
+    // Original OnInit appends ArcPath after its caller configures the dialog.
+    setProperty("languageSuffix",
+                ArcPath.IsEmpty() ? QString() : " : " + QString::fromWCharArray(ArcPath.Ptr()));
+    QtReloadLangTexts(*this);
+    QDialog::showEvent(event);
 }
 
 void CExtractDialog::changeEvent(QEvent *event) {

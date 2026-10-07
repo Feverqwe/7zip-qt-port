@@ -67,7 +67,7 @@ class LanguageStandardButtonsTests final : public QObject {
         }
         if (name == "compress")
             return std::make_unique<CreateArchiveDialog>("/pending 空 path", QStringList{"file"});
-        return std::make_unique<CExtractDialog>("/pending 空 path", QStringList{}, true);
+        return std::make_unique<CExtractDialog>("/pending 空 path", QStringList{});
     }
     static QString expected(QDialogButtonBox::StandardButton button, bool russian, bool memory) {
         if (button == QDialogButtonBox::Ok)

@@ -3,6 +3,7 @@
 #include "source_extract_fixture.h"
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QHash>
 #include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -70,7 +71,7 @@ class ChildJob {
     }
 };
 
-QStringList AccessibleNames(HWND window) {
+QStringList AccessibleNames(HWND window, QHash<QString, bool> *exposed = nullptr) {
     const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const auto uninitialize = qScopeGuard([&] {
         if (SUCCEEDED(initialized))
@@ -95,8 +96,16 @@ QStringList AccessibleNames(HWND window) {
         if (FAILED(elements->GetElement(i, &element)))
             continue;
         BSTR name = nullptr;
-        if (SUCCEEDED(element->get_CurrentName(&name)) && name)
-            names.append(QString::fromWCharArray(name, int(SysStringLen(name))));
+        if (SUCCEEDED(element->get_CurrentName(&name)) && name) {
+            const QString text = QString::fromWCharArray(name, int(SysStringLen(name)));
+            names.append(text);
+            if (exposed) {
+                BOOL enabled = FALSE, offscreen = TRUE;
+                const bool available = SUCCEEDED(element->get_CurrentIsEnabled(&enabled)) &&
+                                       SUCCEEDED(element->get_CurrentIsOffscreen(&offscreen));
+                exposed->insert(text, available && enabled && !offscreen);
+            }
+        }
         SysFreeString(name);
     }
     return names;
@@ -213,6 +222,49 @@ class NativeGUIWorkflowTests final : public QObject {
         QCOMPARE(helper.exitCode(), 255); // original kUserBreak
         QVERIFY(!QFileInfo::exists(archive));
         QCOMPARE(SourceExtractFixture::readFile(source), bytes);
+    }
+    void userCancelsSourceExtractDialog() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray bytes("source Extract cancellation keeps input");
+        const QString archive = SourceExtractFixture::makeArchive(fixture.path(), bytes);
+        QVERIFY(!archive.isEmpty());
+        const QByteArray before = SourceExtractFixture::readFile(archive);
+        const QString output = fixture.filePath(QStringLiteral("назначение 空"));
+        QProcess helper;
+        const auto stop = qScopeGuard([&] {
+            if (helper.state() != QProcess::NotRunning) {
+                helper.kill();
+                helper.waitForFinished(5000);
+            }
+        });
+        helper.start(QString::fromUtf8(NATIVE_GUI_EXECUTABLE),
+                     {"x", "-ad", "-o" + QDir::toNativeSeparators(output), "--",
+                      QDir::toNativeSeparators(archive)});
+        QVERIFY(helper.waitForStarted(5000));
+        AddDialog dialog{DWORD(helper.processId()), nullptr, "Extract"};
+        QTRY_VERIFY_WITH_TIMEOUT(
+            (EnumWindows(FindAddDialog, reinterpret_cast<LPARAM>(&dialog)), dialog.window), 20000);
+        wchar_t caption[1024]{};
+        QVERIFY(GetWindowTextW(dialog.window, caption, 1024) > 0);
+        QCOMPARE(QString::fromWCharArray(caption),
+                 "Extract : " + QDir::toNativeSeparators(archive));
+        QHash<QString, bool> exposed;
+        for (const QString &name : {QString("Path mode:"), QString("Overwrite mode:"),
+                                    QString("Eliminate duplication of root folder"),
+                                    QString("Password"), QString("Show Password")}) {
+            QTRY_VERIFY2_WITH_TIMEOUT(
+                (AccessibleNames(dialog.window, &exposed), exposed.value(name)),
+                qPrintable(name + ": " + exposed.keys().join(" | ")), 5000);
+        }
+        QVERIFY(PostMessageW(dialog.window, WM_CLOSE, 0, 0));
+        QVERIFY(helper.waitForFinished(10000));
+        QCOMPARE(helper.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(helper.exitCode(), 255);
+        QCOMPARE(SourceExtractFixture::readFile(archive), before);
+        QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(SourceExtractFixture::kName)),
+                 bytes);
+        QVERIFY(!QFileInfo::exists(output));
     }
     void yesToAllRetainsSourceMemoryRefusal() {
         QTemporaryDir fixture;

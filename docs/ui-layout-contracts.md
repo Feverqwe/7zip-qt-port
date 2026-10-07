@@ -1576,7 +1576,7 @@ Implemented view: `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`.
   Restore file security is below it; Unix disables it with a platform reason.
 - Toggling `extractNameEnable` hides/shows the folder-name field without
   obscuring modes or confirmation buttons.
-- The explanatory hint wraps above the footer. OK and Cancel stay visible,
+- OK, Cancel and Help stay visible,
   distinct, and inside the window at requested sizes 640×360 and 470×330;
   Qt may expand to its style-dependent minimum size. Static labels fit.
 
@@ -1585,9 +1585,23 @@ controls, checkbox width and source grouping/order. Four JSON reports reviewed
 2026-10-03: compact modes are286 pixels wide, Russian ElimDup requires285;
 inspected bounds equal exposedBounds. Rendered Windows parity is unverified.
 
+The source caller supplies the full single-archive path in the window caption;
+multiple archives use the plain Extract caption. Language changes preserve
+that path and pending input. Eliminate duplication remains enabled independently
+of the caller. The source resource has no destination hint.
+
+Current 2026-10-07 toolbar, language and advanced Extract/Copy reports were
+reviewed on macOS, native Windows Qt and Linux. The mode/password columns,
+checkbox text and footer remain exposed at normal/compact sizes. Requested
+Russian470×330 expands to the style-dependent minimum (macOS525, Windows483
+pixels wide). The standalone Windows GUI consumer also checks public UIA
+exposure/enabled states and source caption. This does not establish original
+Win32 pixel parity; [the audit](upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07)
+owns the platform evidence.
+
 Adaptations: the pinned desktop resource and Qt use combo boxes for modes.
-Help uses the source topic. Selected/current-folder workflows disable root
-duplication with a scope reason. The backend-specific hint is added.
+Help uses the source topic. The blank folder-name checkbox uses an accessible
+tooltip; Qt layouts and platform button ordering replace Win32 positioning.
 See `docs/7zfm-parity.md` for
 behavioral limitations. The tests check these relationships rather than hardcoded
 pixel coordinates or native button ordering.

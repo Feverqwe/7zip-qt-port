@@ -3,6 +3,7 @@
 #include "Panel.h"
 #include "../Agent/IFolderArchive.h"
 #include "../Common/CompressCall.h"
+#include "../Common/ZipRegistry.h"
 #include "7zip/PropID.h"
 #include "7zip/UI/Common/ArchiveName.h"
 #include "7zip/UI/FileManager/resource.h"
@@ -261,9 +262,46 @@ void CPanel::AttachPresentation(QWidget *list, QWidget *address) {
         _headerComboBox->installEventFilter(this);
 }
 
-// Source Panel.cpp::TestArchives archive-folder branch. Filesystem batch
-// entry point remains outside the currently exposed open-archive command.
-void CPanel::TestArchives() {
+// function from ContextMenu.cpp
+UString GetSubFolderNameForExtract(const UString &arcPath);
+
+static UString GetSubFolderNameForExtract2(const UString &arcPath) {
+    int slashPos = arcPath.ReverseFind_PathSepar();
+    UString s;
+    UString name = arcPath;
+    if (slashPos >= 0) {
+        s = arcPath.Left((unsigned)(slashPos + 1));
+        name = arcPath.Ptr((unsigned)(slashPos + 1));
+    }
+    s += GetSubFolderNameForExtract(name);
+    return s;
+}
+
+void CPanel::ExtractArchives(IQtCompressCallServices &services) {
+    if (!_parentFolders.IsEmpty()) {
+        _panelCallback->OnCopy(false, false);
+        return;
+    }
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_Operated(indices);
+    if (indices.IsEmpty() || FindDir_InOperatedList(indices) != -1) {
+        MessageBox_Error_LangID(IDS_SELECT_FILES);
+        return;
+    }
+    UStringVector paths;
+    GetFilePaths(indices, paths);
+    UString outFolder = GetFsPath();
+    if (indices.Size() == 1)
+        outFolder += GetSubFolderNameForExtract2(GetItemRelPath(indices[0]));
+    else
+        outFolder.Add_Char('*');
+    outFolder.Add_PathSepar();
+    CContextMenuInfo ci;
+    ci.Load(_settingsPath);
+    ::ExtractArchives(paths, outFolder, true, false, ci.WriteZone, services);
+}
+
+void CPanel::TestArchives(IQtCompressCallServices *services) {
     CRecordVector<UInt32> indices;
     Get_ItemIndices_OperSmart(indices);
     CMyComPtr<IArchiveFolder> archiveFolder;
@@ -282,7 +320,20 @@ void CPanel::TestArchives() {
         }
         return;
     }
-    MessageBox_Error_UnsupportOperation();
+    if (!IsFSFolder()) {
+        MessageBox_Error_UnsupportOperation();
+        return;
+    }
+    UStringVector paths;
+    GetFilePaths(indices, paths);
+    if (paths.IsEmpty()) {
+        MessageBox_Error_LangID(IDS_SELECT_FILES);
+        return;
+    }
+    if (services)
+        ::TestArchives(paths, false, *services);
+    else
+        MessageBox_Error_HRESULT(E_NOTIMPL);
 }
 
 bool CPanel::eventFilter(QObject *watched, QEvent *event) {

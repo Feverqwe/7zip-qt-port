@@ -30,6 +30,7 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+class IQtCompressCallServices;
 #include <optional>
 
 class CFolderHistory;
@@ -466,7 +467,8 @@ class CPanel : public QObject {
     }
     void RefreshTitleAlways() { RefreshTitle(true); }
     void Get_ZoneId_Stream_from_ParentFolders(CByteBuffer &buf);
-    void TestArchives();
+    void ExtractArchives(IQtCompressCallServices &services);
+    void TestArchives(IQtCompressCallServices *services = nullptr);
     HRESULT CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &indices,
                    UStringVector *messages) {
         bool usePassword = false;

@@ -106,7 +106,7 @@ void QtFileManagerCommands::CreateFile() {
         window_.createFile();
 }
 void QtFileManagerCommands::AddToArchive() { window_.createDialog(); }
-void QtFileManagerCommands::ExtractArchives() { window_.extract(false); }
+void QtFileManagerCommands::ExtractArchives() { window_.extractArchives(); }
 void QtFileManagerCommands::TestArchives() { window_.testArchive(); }
 bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
     switch (id) {

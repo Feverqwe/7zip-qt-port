@@ -3,6 +3,7 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "archivecodeccatalog.h"
 #include "mainwindow.h"
 #include "qtdialogscreenservices.h"
 #include "qtfilemenuprojection.h"
@@ -189,6 +190,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.root = panel.GetFolder() && panel.IsRootFolder();
     {
         const auto catalog = w.backend_->codecCatalog();
+        c.batchArchives = catalog && catalog->result() == S_OK;
         CExternalCodecs providers;
         if (w.backend_->loadBenchmarkProviders(providers) == S_OK) {
             CMethodId method;
@@ -292,9 +294,9 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case kMenuCmdID_Toolbar_Add:
         return c.filesystem || c.mutationWritable;
     case kMenuCmdID_Toolbar_Extract:
-        return c.archive && c.entries;
+        return c.archive || c.batchArchives;
     case kMenuCmdID_Toolbar_Test:
-        return c.archive;
+        return c.archive || c.batchArchives;
     case IDM_OPEN:
         return c.operated || c.selectedParent;
     case IDM_OPEN_OUTSIDE:

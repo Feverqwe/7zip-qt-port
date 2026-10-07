@@ -25,15 +25,17 @@ class CExtractDialog : public QDialog {
     void UpdatePasswordControl();
     void OnButtonSetPath();
     void changeEvent(QEvent *event) override;
+    void showEvent(QShowEvent *event) override;
     static QString settingsPath();
     bool IsShowPasswordChecked() const { return _showPassword->isChecked(); }
     void CheckButton_TwoBools(QCheckBox *button, const CBoolPair &b1, const CBoolPair &b2);
     void GetButton_Bools(QCheckBox *button, CBoolPair &b1, CBoolPair &b2);
 
   public:
-    CExtractDialog(const QString &initialPath, const QStringList &history, bool selected,
+    CExtractDialog(const QString &initialPath, const QStringList &history,
                    QWidget *parent = nullptr);
     QString DirPath;
+    UString ArcPath;
     QString Password;
     CBoolPair ElimDup;
     CBoolPair NtSecurity;

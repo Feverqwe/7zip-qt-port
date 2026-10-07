@@ -1624,11 +1624,15 @@ destination history through QSettings.
 
 `CExtractDialog` owns extraction input and confirmation. `NExtract::CInfo`
 stores destination history and mode preferences in the Extraction INI group.
-`MainWindow` consumes the confirmed result; `ArchiveBackend` validates it,
-creates a missing destination and selects process arguments for non-Ask modes.
-For Ask, the source extraction owners choose overwrite outcomes while
-`ArchiveBackend` supplies only listing, validation, password checks and file
-bytes. Passwords are never persisted.
+Toolbar Extract/Test dispatch through `CApp` and `CPanel`. Inside an archive,
+Extract delegates to the source `OnCopy` workflow. A filesystem panel passes
+the operated archive paths to `CompressCall2` through `QtShellArchiveServices`;
+`ExtractGUI` supplies the single-archive caption and consumes the confirmed
+dialog values. The source extraction owners choose paths and overwrite outcomes;
+`ArchiveBackend` supplies native engine services, validation and cancellation.
+`MainWindow` retains operation state and restores the originating pane and focus.
+The explicit `extractTo` integration API retains its validated source/transport
+adapter. Passwords are never persisted.
 
 Compression and archive-path rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
 The partial `CCompressDialog` owns name/extension transitions, path resolution

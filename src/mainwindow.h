@@ -235,7 +235,8 @@ class MainWindow : public QMainWindow {
     void begin(const QString &label, const QString &detail);
     void startProgressDialog(const QString &label, const QString &detail);
     void openNestedArchive(const QString &entry);
-    void extract(bool onlySelected);
+    void extractArchives();
+    void runArchiveBatchCommand(bool test);
     void createDialog();
     QStringList selectedFilesystemPaths();
     void transferFiles(const QStringList &sources, const QString &destination, bool move,

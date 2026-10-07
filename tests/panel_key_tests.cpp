@@ -357,7 +357,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
         QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<ExtractDialog *>("extractDialog");
+            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
             QVERIFY(dialog);
             const QString destination = dialog->destination();
             dialog->reject();

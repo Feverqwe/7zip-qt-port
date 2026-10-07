@@ -80,7 +80,7 @@ class HelpUiTests : public QObject {
         QVERIFY(showHelp(add, "add.htm"));
         QCOMPARE(name->text(), QStringLiteral("новый архив с пробелом"));
         add.reject();
-        ExtractDialog extract(fixture.path(), {}, false);
+        ExtractDialog extract(fixture.path(), {});
         extract.show();
         extract.activateWindow();
         QTRY_VERIFY(extract.isActiveWindow());

@@ -47,19 +47,36 @@ void MainWindow::calculateHash(const QString &method) {
     }
 }
 
-void MainWindow::extract(bool onlySelected) {
-    if (state_ != State::Viewing || entries_.isEmpty())
+void MainWindow::extractArchives() { runArchiveBatchCommand(false); }
+
+void MainWindow::runArchiveBatchCommand(bool test) {
+    if (app_.QtOperations().closed() || app_.QtOperations().active())
         return;
-    if (onlySelected && sourceOperatedIndices().IsEmpty())
+    QtAppOperationState::CallScope call(app_.QtOperations());
+    QtShellArchiveServices services(*backend_, this, {}, {}, {}, {}, toolbarSettingsPath());
+    auto &panel = app_.GetFocusedPanel();
+    if (!test && !panel.GetParentFolders().IsEmpty()) {
+        app_.ExtractArchives(services); // Original archive branch delegates to OnCopy.
         return;
-    ExtractDialog dialog(copyDefaultDestination(), {}, onlySelected || !archiveFolder_.isEmpty(),
-                         this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const QString destination = dialog.destination();
-    if (destination.isEmpty())
-        return;
-    extractTo(destination, onlySelected, dialog.password(), dialog.options());
+    }
+    const auto previous = state_;
+    const unsigned source = app_.GetFocusedPanelIndex();
+    const QPointer<QWidget> focus = focusWidget();
+    const auto restore = qScopeGuard([&] {
+        if (!app_.QtOperations().closed()) {
+            activatePanelUi(source);
+            setState(previous);
+            activateWindow();
+            if (focus && focus->isEnabled())
+                focus->setFocus();
+        }
+    });
+    setState(State::Operating);
+    QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
+    if (test)
+        app_.TestArchives(&services);
+    else
+        app_.ExtractArchives(services);
 }
 
 void MainWindow::createDialog() {
@@ -282,8 +299,10 @@ void MainWindow::testArchive() {
     if (app_.QtOperations().closed())
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (state_ != State::Viewing)
+    if (state_ != State::Viewing) {
+        runArchiveBatchCommand(true);
         return;
+    }
     auto &panel = app_.GetFocusedPanel();
     auto *folder = dynamic_cast<CAgentFolder *>(panel.GetFolder());
     auto *resource =
@@ -301,7 +320,7 @@ void MainWindow::testArchive() {
         operationName_ = QtLangText(IDS_PROGRESS_TESTING);
         {
             QScopedValueRollback<bool> progressOwner(sourceArchiveProgress_, true);
-            panel.TestArchives();
+            app_.TestArchives();
         }
         setState(State::Viewing);
         return;

@@ -556,6 +556,16 @@ mistaken for absence of the active Panel.cpp character route. Native/runtime,
 remaining body/platform dispositions and final acceptance stay open; the port
 audit owns the current validation scope.
 
+The later toolbar review restores the active `CPanel::ExtractArchives` and
+filesystem `TestArchives` branches, `CApp` delegates, and their real Qt consumers.
+Archive Extract now reaches the original OnCopy; filesystem batch commands reach
+CompressCall2/ExtractGUI. ExtractDialog restores original ArcPath, removes its
+independent hint/selected-scope restriction and retains source initialization
+after caller configuration. The explicit extraction integration API is still a
+documented adapter, not an alternative toolbar owner. The corresponding
+[source audit](upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07)
+owns platform and regression evidence; this does not close the whole Panel module.
+
 P3-05 remains open. The selected ClassDefs/native SDK boundary is recorded above;
 every claimed full source body and resource,
 desktop-versus-CE branch, standalone console/GUI consumer and custom Qt algorithm
