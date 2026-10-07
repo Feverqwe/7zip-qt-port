@@ -517,6 +517,14 @@ Windows application+11 consumers собраны; native keyboard execution ож�
 UX/platform/packages/P3-06 и итоговая приёмка остаются открыты.
 [Source/evidence](upstream-port-audit.md#p3-05--source-keyboard-dispatcher-2026-10-07).
 
+P3-05,2026-10-07: production opening теперь проходит исходные CAgent::Open и
+CArchiveFolderManager::OpenFolderFile; восстановлены IInFolderArchive,
+S_FALSE diagnostics, binding progress/Cancel и retained codec/stream lifetime.
+Actual old-consumer RED сохранён. Mac full291/291PASS283.86s;
+Linux focused12/12PASS29.77s; Windows core8/8PASS12.17s, без desktop/GUI claim.
+Slow/VHD suites исключены; весь P3 и итоговая приёмка остаются открыты.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-agent-opening-and-archive-folder-factory-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

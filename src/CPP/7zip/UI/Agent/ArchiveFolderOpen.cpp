@@ -1,8 +1,8 @@
 // Agent/ArchiveFolderOpen.cpp
 // Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Partial port: original icon load/lookup/extension bodies. The immutable
-// retained catalog replaces global loading; archive opening remains elsewhere.
+// Source icon/association bodies and archive folder factory. The immutable
+// retained catalog and per-opening backend service replace global loading.
 #include "../../../Windows/ResourceString.h"
 #include "Agent.h"
 #include "Common/StringToInt.h"
@@ -60,10 +60,10 @@ void CArchiveFolderManager::LoadFormats() {
         return;
     // LoadGlobalCodecs is replaced by the already validated retained catalog.
     CodecIconsVector.Clear();
-    FOR_VECTOR(i, _codecs.Libs) {
+    FOR_VECTOR(i, _codecs->Libs) {
         CCodecIcons &ci = CodecIconsVector.AddNew();
 #ifdef _WIN32
-        ci.LoadIcons(_codecs.Libs[i].Lib.Get_HMODULE());
+        ci.LoadIcons(_codecs->Libs[i].Lib.Get_HMODULE());
 #endif
     }
 #ifdef _WIN32
@@ -98,7 +98,7 @@ HRESULT CArchiveFolderManager::GetIconPath(const wchar_t *ext, BSTR *iconPath, I
     FOR_VECTOR(i, CodecIconsVector) {
         int ii;
         if (CodecIconsVector[i].FindIconIndex(ext, ii)) {
-            const CCodecLib &lib = _codecs.Libs[i];
+            const CCodecLib &lib = _codecs->Libs[i];
             *iconIndex = ii;
             return StringToBstr(fs2us(lib.Path), iconPath);
         }
@@ -112,4 +112,43 @@ HRESULT CArchiveFolderManager::GetIconPath(const wchar_t *ext, BSTR *iconPath, I
         }
     }
     return S_OK;
+}
+
+HRESULT CArchiveFolderManager::OpenFolderFile(IInStream *inStream, const wchar_t *filePath,
+                                              const wchar_t *arcFormat,
+                                              IFolderFolder **resultFolder, IProgress *progress) {
+    CMyComPtr<IArchiveOpenCallback> openArchiveCallback;
+    if (progress) {
+        CMyComPtr<IProgress> progressWrapper = progress;
+        progressWrapper.QueryInterface(IID_IArchiveOpenCallback, &openArchiveCallback);
+    }
+    CAgent *agent = new CAgent(_openServices);
+    CMyComPtr<IInFolderArchive> archive = agent;
+
+    const HRESULT res = archive->Open(inStream, filePath, arcFormat, NULL, openArchiveCallback);
+
+    if (res != S_OK) {
+        if (res != S_FALSE)
+            return res;
+        /* 20.01: we create folder even for Non-Open cases, if there is NonOpen_ErrorInfo
+           information. So we can get error information from that IFolderFolder later. */
+        if (!agent->_archiveLink.NonOpen_ErrorInfo.IsThereErrorOrWarning())
+            return res;
+    }
+
+    agent->_progress_for_Open = progress;
+    agent->_progress_ArchiveOpenCallback_for_Open = openArchiveCallback;
+    {
+        HRESULT hres = E_OUTOFMEMORY;
+        // IInFolderArchive::BindToRootFolder() doesn't raise exceptions.
+        // so try/catch is optional
+        try {
+            hres = archive->BindToRootFolder(resultFolder);
+        } catch (...) {
+        }
+        agent->_progress_for_Open = NULL;
+        agent->_progress_ArchiveOpenCallback_for_Open = NULL;
+        RINOK(hres)
+    }
+    return res;
 }

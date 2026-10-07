@@ -254,8 +254,12 @@ class AgentFolderTests : public QObject {
         auto *agentSpec = new CAgent;
         CMyComPtr<IFolderArcProps> owner = agentSpec;
         CMyComPtr<IFolderFolder> rootFolder;
-        QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), E_FAIL);
-        QVERIFY(!rootFolder);
+        // Source BindToRootFolder also exposes an unopened diagnostic owner.
+        QCOMPARE(agentSpec->BindToRootFolder(&rootFolder), S_OK);
+        QVERIFY(rootFolder);
+        UInt32 unopenedItems = 99;
+        QCOMPARE(rootFolder->GetNumberOfItems(&unopenedItems), E_FAIL);
+        rootFolder.Release();
         QCOMPARE(agentSpec->Init({}, nullptr, UString("zip")), E_INVALIDARG);
         CObjectVector<CPanelItem> items;
         CMyComPtr<IFolderFolder> props = new QtPanelFolder("empty.zip", items);

@@ -2,6 +2,16 @@
 
 This document describes component ownership, data flow and integration boundaries.
 
+Archive opening enters the original CArchiveFolderManager::OpenFolderFile and
+CAgent::Open through QtArchiveFolderManager. A per-opening IQtAgentOpenServices
+lease supplies the retained codec catalog and ArchiveBackend service in place of
+global loading. CArchiveLink::Open delegates to that service; native Open3 runs
+once, while file-only listing supplies the existing metadata facade for Agent's
+proxy. The facade and physical native link have separate roles and share the
+resource/catalog lifetime. Factory binding scopes its progress pointers; the
+returned source owner exposes IInFolderArchive and retains diagnostic metadata
+even for a recognized non-open archive. Stream spooling remains resource-owned.
+
 Native archive item streams pass through the original CAgentFolder::GetStream
 index mapping. CFolderArchiveProperties advertises the service only for a native
 provider with proven item-order mapping. The narrow qtarchiveitemstream adapter

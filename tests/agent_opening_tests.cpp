@@ -1,0 +1,344 @@
+#include "7zip/Common/StreamObjects.h"
+#include "7zip/PropID.h"
+#include "CPP/7zip/UI/Agent/Agent.h"
+#include "Windows/PropVariant.h"
+#include "archive_backend_test_support.h"
+#include "archivecodeccatalog.h"
+#include "qtarchivefileresource.h"
+#include "qtarchivefoldermanager.h"
+#include <QScopeGuard>
+#include <QStandardPaths>
+#include <atomic>
+#include <functional>
+
+namespace {
+class CBindingProgress final : public IProgress, public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IProgress, IArchiveOpenCallback)
+
+  public:
+    bool CancelBinding = false;
+    std::atomic<unsigned> BindingTotals{0};
+    std::atomic<unsigned> BindingCompleted{0};
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetTotal(const UInt64 *files, const UInt64 *)) override {
+        if (files)
+            ++BindingTotals;
+        return CancelBinding ? E_ABORT : S_OK;
+    }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *)) override {
+        if (files)
+            ++BindingCompleted;
+        return CancelBinding ? E_ABORT : S_OK;
+    }
+};
+
+class COpeningBackend final : public ArchiveBackend {
+  public:
+    unsigned Listings = 0;
+    std::function<void()> BeforeListing;
+    explicit COpeningBackend(const QString &engine) : ArchiveBackend(nullptr, engine) {}
+    void openFolder(const QString &path, const QString &format, const QString &password) override {
+        ++Listings;
+        if (BeforeListing)
+            BeforeListing();
+        ArchiveBackend::openFolder(path, format, password);
+    }
+};
+
+class CExtractObserver final : public IFolderArchiveExtractCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IFolderArchiveExtractCallback)
+
+  public:
+    bool Cancel = false;
+    unsigned Operations = 0;
+    unsigned Errors = 0;
+    QString Error;
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return Cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return Cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(AskOverwrite(const wchar_t *, const FILETIME *, const UInt64 *, const wchar_t *,
+                              const FILETIME *, const UInt64 *, Int32 *answer))
+    override {
+        *answer = NOverwriteAnswer::kNo;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(PrepareOperation(const wchar_t *, Int32, Int32, const UInt64 *)) override {
+        ++Operations;
+        return Cancel ? E_ABORT : S_OK;
+    }
+    Z7_COM7F_IMF(MessageError(const wchar_t *message)) override {
+        ++Errors;
+        Error = QString::fromWCharArray(message);
+        return S_OK;
+    }
+    Z7_COM7F_IMF(SetOperationResult(Int32 result, Int32)) override {
+        if (result)
+            ++Errors;
+        if (result)
+            Error = QStringLiteral("operation result %1").arg(result);
+        return S_OK;
+    }
+};
+} // namespace
+
+class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupport {
+    Q_OBJECT
+    QString engine_;
+
+    void createArchive(const QString &path, const QString &input) {
+        QProcess process;
+        process.start(engine_, {"a", "-tzip", "--", path, input});
+        QVERIFY(process.waitForFinished(10000));
+        QCOMPARE(process.exitCode(), 0);
+    }
+    void loadNative(ArchiveBackend &backend) {
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog());
+        QTRY_COMPARE(ready.size(), 1);
+        QVERIFY2(ready[0][0].toBool(), "Matching official codec module is required");
+    }
+    HRESULT run(COpeningBackend &backend, const std::function<HRESULT()> &operation) {
+        std::atomic<bool> finished{false};
+        HRESULT result = E_FAIL;
+        auto *worker = QThread::create([&] {
+            result = operation();
+            finished.store(true);
+        });
+        const auto join = qScopeGuard([&] {
+            backend.cancelAndWait();
+            worker->wait();
+            delete worker;
+        });
+        worker->start();
+        QElapsedTimer timer;
+        timer.start();
+        while (!finished.load() && timer.elapsed() < 30000) {
+            QCoreApplication::processEvents();
+            QTest::qWait(1);
+        }
+        if (!finished.load()) {
+            QTest::qFail("Source opening worker did not finish", __FILE__, __LINE__);
+            return E_ABORT;
+        }
+        return result;
+    }
+    HRESULT open(COpeningBackend &backend, IFolderManager *manager, const QString &path,
+                 const wchar_t *format, IFolderFolder **folder, IProgress *progress = nullptr,
+                 IInStream *stream = nullptr) {
+        return run(backend, [&] {
+            const std::wstring name = path.toStdWString();
+            return manager->OpenFolderFile(stream, name.c_str(), format, folder, progress);
+        });
+    }
+
+  private slots:
+    void initTestCase() {
+        engine_ = QStandardPaths::findExecutable("7zz");
+        QVERIFY2(!engine_.isEmpty(), "Official fixture engine is required");
+    }
+    void proxyProgressAndCancellation_data() {
+        QTest::addColumn<bool>("cancel");
+        QTest::newRow("success") << false;
+        QTest::newRow("cancel-binding") << true;
+    }
+    void proxyProgressAndCancellation() {
+        QFETCH(bool, cancel);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString input = temporary.filePath(QStringLiteral("файл 空 with spaces.txt"));
+        const QString path = temporary.filePath(QStringLiteral("архив 空.zip"));
+        writeFile(input, QByteArray("protected\0payload", 17));
+        createArchive(path, input);
+        COpeningBackend backend(engine_);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        auto *progressSpec = new CBindingProgress;
+        CMyComPtr<IProgress> progress = progressSpec;
+        progressSpec->CancelBinding = cancel;
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(open(backend, manager, path, nullptr, &folder, progress), cancel ? E_ABORT : S_OK);
+        QCOMPARE(backend.Listings, 1u);
+        QCOMPARE(progressSpec->BindingTotals.load(), 1u);
+        QCOMPARE(bool(folder), !cancel);
+        if (!cancel) {
+            QVERIFY(progressSpec->BindingCompleted.load() >= 2);
+            QCOMPARE(folder->LoadItems(), S_OK);
+            UInt32 count = 0;
+            QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(1));
+        }
+        QFile original(input);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), QByteArray("protected\0payload", 17));
+    }
+    void invalidTypeStopsBeforeListing() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString input = temporary.filePath("file.txt");
+        const QString path = temporary.filePath("archive.zip");
+        writeFile(input, "known");
+        createArchive(path, input);
+        COpeningBackend backend(engine_);
+        loadNative(backend);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(open(backend, manager, path, L"unknown-source-format", &folder), S_FALSE);
+        QVERIFY(!folder);
+        QCOMPARE(backend.Listings, 0u);
+    }
+    void nonOpenWarningRetainsDiagnosticFolder() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString path = temporary.filePath(QStringLiteral("сломанный 空.zip"));
+        // Recognized ZIP local header with an incomplete fixed header.
+        writeFile(path, QByteArray::fromHex("504b030414000000"));
+        COpeningBackend backend(engine_);
+        loadNative(backend);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(open(backend, manager, path, L"zip", &folder), S_FALSE);
+        QVERIFY(folder);
+        QCOMPARE(backend.Listings, 0u);
+        CMyComPtr<IFolderArcProps> properties;
+        CMyComPtr<IGetFolderArcProps> getter;
+        QCOMPARE(folder.QueryInterface(IID_IGetFolderArcProps, &getter), S_OK);
+        QCOMPARE(getter->GetFolderArcProps(&properties), S_OK);
+        UInt32 levels = 99;
+        QCOMPARE(properties->GetArcNumLevels(&levels), S_OK);
+        QCOMPARE(levels, UInt32(0));
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(properties->GetArcProp(0, kpidErrorFlags, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_UI4));
+        QVERIFY(value.ulVal != 0);
+    }
+    void streamUsesOwnedFileAndSurvivesManager() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString input = temporary.filePath(QStringLiteral("файл 空.txt"));
+        const QString path = temporary.filePath("archive.zip");
+        writeFile(input, "known");
+        createArchive(path, input);
+        QFile archive(path);
+        QVERIFY(archive.open(QIODevice::ReadOnly));
+        const QByteArray bytes = archive.readAll();
+        auto *buffer = new CBufferInStream;
+        CMyComPtr<IInStream> stream = buffer;
+        buffer->Buf.CopyFrom(reinterpret_cast<const Byte *>(bytes.constData()), bytes.size());
+        buffer->Init();
+        COpeningBackend backend(engine_);
+        loadNative(backend);
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(open(backend, manager, temporary.filePath("virtual missing.zip"), L"zip", &folder,
+                      nullptr, stream),
+                 S_OK);
+        auto *source = dynamic_cast<CAgentFolder *>(folder.Interface());
+        QVERIFY(source);
+        auto *resource = dynamic_cast<QtArchiveFileResource *>(source->GetEngineResource());
+        QVERIFY(resource);
+        const QString owned = resource->EnginePath;
+        QVERIFY(QFile::exists(owned));
+        manager.Release();
+        stream.Release();
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        folder.Release();
+        QVERIFY(!QFile::exists(owned));
+    }
+    void agentInterfaceExtract_data() {
+        QTest::addColumn<bool>("testMode");
+        QTest::addColumn<bool>("cancel");
+        QTest::addColumn<bool>("replaceCatalog");
+        QTest::addColumn<bool>("missingDestination");
+        QTest::newRow("extract") << false << false << false << false;
+        QTest::newRow("test") << true << false << false << false;
+        QTest::newRow("cancel") << false << true << false << false;
+        QTest::newRow("retained-catalog") << false << false << true << false;
+        QTest::newRow("missing-destination") << false << false << false << true;
+    }
+    void agentInterfaceExtract() {
+        QFETCH(bool, testMode);
+        QFETCH(bool, cancel);
+        QFETCH(bool, replaceCatalog);
+        QFETCH(bool, missingDestination);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString name = QStringLiteral("файл 空 with spaces.bin");
+        const QString input = temporary.filePath(name);
+        const QString path = temporary.filePath("archive.zip");
+        const QByteArray payload("source\0binary", 13);
+        writeFile(input, payload);
+        createArchive(path, input);
+        COpeningBackend backend(engine_);
+        loadNative(backend);
+        const quint32 version = backend.codecCatalog()->version();
+        std::weak_ptr<const ArchiveCodecCatalog> originalCatalog = backend.codecCatalog();
+        HRESULT replacement = S_OK;
+        if (replaceCatalog)
+            backend.BeforeListing = [&] {
+                replacement =
+                    backend.loadCodecCatalog(temporary.filePath("absent-codec-module"), version);
+            };
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CMyComPtr<IFolderFolder> folder;
+        QCOMPARE(open(backend, manager, path, L"zip", &folder), S_OK);
+        if (replaceCatalog) {
+            QCOMPARE(replacement, E_FAIL);
+            QVERIFY(backend.codecCatalog()->result() != S_OK);
+            QVERIFY(!originalCatalog.expired());
+        }
+        CMyComPtr<IGetFolderArcProps> getter;
+        QCOMPARE(folder.QueryInterface(IID_IGetFolderArcProps, &getter), S_OK);
+        CMyComPtr<IFolderArcProps> properties;
+        QCOMPARE(getter->GetFolderArcProps(&properties), S_OK);
+        CMyComPtr<IInFolderArchive> archive;
+        QCOMPARE(properties.QueryInterface(IID_IInFolderArchive, &archive), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive->GetNumberOfProperties(&count), S_OK);
+        QVERIFY(count > 0);
+        for (UInt32 i = 0; i < count; ++i) {
+            CMyComBSTR propertyName;
+            PROPID id;
+            VARTYPE type;
+            QCOMPARE(archive->GetPropertyInfo(i, &propertyName, &id, &type), S_OK);
+            QVERIFY(id != kpidPath);
+        }
+        auto *observer = new CExtractObserver;
+        CMyComPtr<IFolderArchiveExtractCallback> callback = observer;
+        observer->Cancel = cancel;
+        const QString destination = temporary.filePath(QStringLiteral("выход 空"));
+        // IInFolderArchive::Extract uses the caller's existing output root;
+        // directory creation belongs to the command owner above this interface.
+        if (!missingDestination)
+            QVERIFY(QDir().mkpath(destination));
+        const std::wstring prefix = (destination + '/').toStdWString();
+        QCOMPARE(run(backend,
+                     [&] {
+                         return archive->Extract(NExtract::NPathMode::kFullPaths,
+                                                 NExtract::NOverwriteMode::kOverwrite,
+                                                 prefix.c_str(), testMode, callback);
+                     }),
+                 cancel ? E_ABORT : S_OK);
+        if (missingDestination) {
+            QCOMPARE(observer->Errors, 1u);
+            QVERIFY(!observer->Error.isEmpty());
+        } else
+            QVERIFY2(observer->Errors == 0, qPrintable(observer->Error));
+        if (missingDestination)
+            QCOMPARE(observer->Operations, 0u);
+        else if (!cancel)
+            QVERIFY(observer->Operations > 0);
+        QFile extracted(QDir(destination).filePath(name));
+        if (!testMode && !cancel && !missingDestination) {
+            QVERIFY(extracted.open(QIODevice::ReadOnly));
+            QCOMPARE(extracted.readAll(), payload);
+        } else
+            QVERIFY(!extracted.exists());
+        QFile original(input);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), payload);
+    }
+};
+QTEST_GUILESS_MAIN(AgentOpeningTests)
+#include "agent_opening_tests.moc"

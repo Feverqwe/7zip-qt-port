@@ -11,6 +11,7 @@ class ArchiveBackend;
 class ArchiveCodecCatalog;
 class CArchiveFolderManager;
 struct COpenOptions;
+struct CArchiveLink;
 class QtArchiveFolderManager final : public QObject,
                                      public IFolderManager,
                                      public IQtProgressServices,
@@ -18,6 +19,7 @@ class QtArchiveFolderManager final : public QObject,
                                      public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IFolderManager)
     struct CRequest;
+    struct COpenServices;
     ArchiveBackend &_backend;
     std::shared_ptr<CRequest> _request;
     std::shared_ptr<const ArchiveCodecCatalog> _associationCatalog;
@@ -28,6 +30,7 @@ class QtArchiveFolderManager final : public QObject,
     HRESULT OpenFolderFileImpl(IInStream *stream, const wchar_t *path, const wchar_t *format,
                                IFolderFolder **folder, IProgress *progress, bool ownedStreamFile,
                                const COpenOptions *options = nullptr);
+    HRESULT OpenLinkImpl(CArchiveLink &link, const COpenOptions &options, COpenServices &services);
 
   public:
     explicit QtArchiveFolderManager(ArchiveBackend &backend);

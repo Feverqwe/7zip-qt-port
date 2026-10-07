@@ -22,6 +22,7 @@ struct CProxyItem {
 
 class CAgent;
 class CAgentFolder;
+class IQtAgentOpenServices;
 struct CExtractNtOptions;
 enum AGENT_OP {
     AGENT_OP_Uni,
@@ -148,23 +149,24 @@ class CAgentFolder final : public IFolderFolder,
     CRecordVector<CProxyItem> _items;
     // Typed 7zz metadata boundary replaces the in-process archive property call.
     UString _archiveType;
-    // IUnknown replaces the in-process IInFolderArchive owner at the 7zz boundary.
-    CMyComPtr<IUnknown> _agent;
+    CMyComPtr<IInFolderArchive> _agent;
     CAgent *_agentSpec = nullptr;
 };
 
-// Partial source owner: proxy lifetime/root binding only. Engine operations remain
-// behind ArchiveBackend; IInFolderArchive is not advertised by this adapter.
-class CAgent final : public IFolderArcProps, public ISetProperties, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_2(IFolderArcProps, ISetProperties)
+// Source archive owner; opening/extraction transport stays behind ArchiveBackend.
+class CAgent final : public IInFolderArchive,
+                     public IFolderArcProps,
+                     public ISetProperties,
+                     public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IInFolderArchive, IFolderArcProps, ISetProperties)
   public:
+    Z7_IFACE_COM7_IMP(IInFolderArchive)
     Z7_IFACE_COM7_IMP(IFolderArcProps)
     Z7_IFACE_COM7_IMP(ISetProperties)
-    CAgent();
+    explicit CAgent(IQtAgentOpenServices *openServices = nullptr);
     ~CAgent();
     HRESULT Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
                  const UString &archiveType, IUnknown *engineResource = nullptr);
-    HRESULT BindToRootFolder(IFolderFolder **resultFolder);
     CProxyArc *_proxy;
     CProxyArc2 *_proxy2;
     CArchiveLink _archiveLink;
@@ -196,8 +198,6 @@ class CAgent final : public IFolderArcProps, public ISetProperties, public CMyUn
         return _attrib != (DWORD)-1 && (_attrib & FILE_ATTRIBUTE_READONLY);
     }
     bool IsThere_ReadOnlyArc() const;
-    HRESULT ReOpen(IArchiveOpenCallback *callback);
-    HRESULT Close();
     void KeepModeForNextOpen() { _archiveLink.KeepModeForNextOpen(); }
     HRESULT SetFolder(IFolderFolder *folder);
     HRESULT SetFiles(const wchar_t *folderPrefix, const wchar_t *const *names, UInt32 numNames);
@@ -224,16 +224,20 @@ class CAgent final : public IFolderArcProps, public ISetProperties, public CMyUn
     // stream ownership. All folders retain this source CAgent owner.
     void AttachEngineResource(IUnknown *resource) { _engineResource = resource; }
     IUnknown *GetEngineResource() const { return _engineResource; }
+    IArchiveOpenCallback *_progress_ArchiveOpenCallback_for_Open = nullptr;
+    IProgress *_progress_for_Open = nullptr;
 
   private:
     const CArchiveLink &GetArchivePropertyLink() const;
     const CCodecs *GetArchivePropertyCodecs() const;
     HRESULT ReadItems();
     CMyComPtr<IUnknown> _engineResource;
+    IQtAgentOpenServices *_openServices;
+    const CCodecs *_openCodecs = nullptr;
 };
 
-// ArchiveFolderOpen's icon/association owner. Opening stays with the retained
-// QtArchiveFolderManager/OpenArchive consumer; no second archive opener exists.
+// ArchiveFolderOpen's source factory and icon/association owner. The retained
+// QtArchiveFolderManager supplies engine services to the opening worker.
 struct CCodecIcons {
     struct CIconPair {
         UString Ext;
@@ -245,14 +249,19 @@ struct CCodecIcons {
 };
 
 class CArchiveFolderManager {
-    const CCodecs &_codecs;
+    const CCodecs *_codecs;
+    IQtAgentOpenServices *_openServices = nullptr;
     CObjectVector<CCodecIcons> CodecIconsVector;
     CCodecIcons InternalIcons;
     bool WasLoaded = false;
     void LoadFormats();
 
   public:
-    explicit CArchiveFolderManager(const CCodecs &codecs) : _codecs(codecs) {}
+    explicit CArchiveFolderManager(const CCodecs &codecs) : _codecs(&codecs) {}
+    explicit CArchiveFolderManager(IQtAgentOpenServices &services)
+        : _codecs(nullptr), _openServices(&services) {}
+    HRESULT OpenFolderFile(IInStream *inStream, const wchar_t *filePath, const wchar_t *arcFormat,
+                           IFolderFolder **resultFolder, IProgress *progress);
     HRESULT GetExtensions(BSTR *extensions);
     HRESULT GetIconPath(const wchar_t *ext, BSTR *iconPath, Int32 *iconIndex);
 };

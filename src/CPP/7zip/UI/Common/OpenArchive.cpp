@@ -2946,6 +2946,8 @@ void CArchiveLink::Set_ErrorsText()
 
 HRESULT CArchiveLink::Open(COpenOptions &op) {
     Release();
+    if (op.QtOpenService)
+        return op.QtOpenService->Open(*this, op, nullptr);
     if (op.types->Size() >= 32)
         return E_NOTIMPL;
 

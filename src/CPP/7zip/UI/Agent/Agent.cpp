@@ -16,8 +16,10 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/System.h"
+#include "qtarchiveagentopen.h"
 #include "qtarchivefileresource.h"
 #include "qtarchiveproperties.h"
+#include <QScopeGuard>
 
 static const bool k_keepEmptyDirPrefixes = false; // upstream 22.00 and later
 
@@ -113,7 +115,7 @@ void CAgentFolder::Init(const CProxyArc *proxy, const CProxyArc2 *proxy2, unsign
     _isAltStreamFolder = false;
     if (_proxy2)
         _isAltStreamFolder = _proxy2->IsAltDir(proxyDirIndex);
-    _agent = static_cast<IFolderArcProps *>(agent);
+    _agent = agent;
     _agentSpec = agent;
     _archiveType = agent->ArchiveType;
 }
@@ -1051,13 +1053,18 @@ const CArchiveLink &CAgent::GetArchivePropertyLink() const {
 
 const CCodecs *CAgent::GetArchivePropertyCodecs() const {
     const auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource());
-    return resource ? resource->NativeArchiveCodecs() : nullptr;
+    const CCodecs *codecs = resource ? resource->NativeArchiveCodecs() : nullptr;
+    return codecs ? codecs : _openCodecs;
 }
 
 UString CAgent::GetTypeOfArc(const CArc &arc) const {
     const CCodecs *codecs = GetArchivePropertyCodecs();
-    if (!codecs)
+    if (!codecs) {
+        if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource()))
+            if (!resource->Info.format.isEmpty())
+                return UString(resource->Info.format.toStdWString().c_str());
         return ArchiveType;
+    }
     // Operation metadata is a file-only facade of the innermost native arc.
     // Its codec index is not a native slot; resolve that facade by identity.
     const CArc &native =
@@ -1339,9 +1346,12 @@ void CAgentFolder::GetRealIndices(const UInt32 *indices, const UInt32 numItems,
     HeapSort(realIndices.NonConstData(), realIndices.Size());
 }
 
-CAgent::CAgent()
+CAgent::CAgent(IQtAgentOpenServices *openServices)
     : _proxy(NULL), _proxy2(NULL), _updatePathPrefix_is_AltFolder(false), _isDeviceFile(false),
-      _agentFolder(NULL) {}
+      _agentFolder(NULL), _openServices(openServices) {
+    if (_openServices)
+        _engineResource = _openServices->Resource();
+}
 
 CAgent::~CAgent() {
     if (_proxy)
@@ -1376,6 +1386,90 @@ bool CAgent::IsThere_ReadOnlyArc() const {
     return false;
 }
 
+Z7_COM7F_IMF(CAgent::Open(IInStream *inStream, const wchar_t *filePath, const wchar_t *arcFormat,
+                          BSTR *archiveType, IArchiveOpenCallback *openArchiveCallback)) {
+    COM_TRY_BEGIN
+    const auto detachOpenServices = qScopeGuard([&] { _openServices = nullptr; });
+    _archiveFilePath = filePath;
+    _hashBaseFolderPrefix.Empty();
+    _attrib = 0;
+    _isDeviceFile = false;
+    _isHashHandler = false;
+    NWindows::NFile::NFind::CFileInfo fi;
+    if (!inStream) {
+        if (!fi.Find(us2fs(_archiveFilePath)))
+            return GetLastError_noZero_HRESULT();
+        if (fi.IsDir())
+            return E_FAIL;
+        _attrib = fi.GetWinAttrib();
+#ifdef _WIN32
+        _isDeviceFile = fi.IsDevice;
+#endif
+        FString dirPrefix, fileName;
+        if (NWindows::NFile::NDir::GetFullPathAndSplit(us2fs(_archiveFilePath), dirPrefix,
+                                                       fileName)) {
+            NWindows::NFile::NName::NormalizeDirPathPrefix(dirPrefix);
+            _hashBaseFolderPrefix = dirPrefix;
+        }
+    }
+    CArcInfoEx archiverInfo0, archiverInfo1;
+
+    const CCodecs *codecs = NULL;
+    if (!_openServices)
+        return E_FAIL;
+    RINOK(_openServices->LoadCodecs(codecs))
+    _openCodecs = codecs;
+
+    CObjectVector<COpenType> types;
+    if (codecs && !ParseOpenTypes(*const_cast<CCodecs *>(codecs), arcFormat, types))
+        return S_FALSE;
+
+    /*
+    CObjectVector<COptionalOpenProperties> optProps;
+    if (Read_ShowDeleted())
+    {
+      COptionalOpenProperties &optPair = optProps.AddNew();
+      optPair.FormatName = "ntfs";
+      // optPair.Props.AddNew().Name = "LS";
+      optPair.Props.AddNew().Name = "LD";
+    }
+    */
+
+    COpenOptions options;
+    options.props = NULL;
+    options.codecs = const_cast<CCodecs *>(codecs);
+    options.QtOpenService = _openServices;
+    options.types = &types;
+    CIntVector exl;
+    options.excludedFormats = &exl;
+    options.stdInMode = false;
+    options.stream = inStream;
+    options.filePath = _archiveFilePath;
+    options.callback = openArchiveCallback;
+
+    HRESULT res = _archiveLink.Open(options);
+
+    if (!_archiveLink.Arcs.IsEmpty()) {
+        CArc &arc = _archiveLink.Arcs.Back();
+        if (!inStream) {
+            arc.MTime.Set_From_FiTime(fi.MTime);
+            arc.MTime.Def = !_isDeviceFile;
+        }
+
+        ArchiveType = GetTypeOfArc(arc);
+        if (archiveType) {
+            RINOK(StringToBstr(ArchiveType, archiveType))
+        }
+
+        if (arc.IsHashHandler(options))
+            _isHashHandler = true;
+    }
+
+    return res;
+
+    COM_TRY_END
+}
+
 HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveProps,
                      const UString &archiveType, IUnknown *engineResource) {
     COM_TRY_BEGIN
@@ -1386,26 +1480,11 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
     if (!_archiveLink.Arcs.IsEmpty())
         return E_FAIL;
     UNUSED_VAR(entries)
-    CArc &arc = _archiveLink.Arcs.AddNew();
-    const HRESULT result =
-        CreateArchivePropertyTransport(archiveProps, &arc.Archive, engineResource);
-    if (result != S_OK) {
-        _archiveLink.Release();
-        return result;
-    }
-    arc.DefaultName = L"[Content]";
-    arc.ArcStreamOffset = 0;
-    arc.Offset = 0;
-    arc.FileSize = 0;
-    arc.AvailPhySize = 0;
-    arc.PhySize = 0;
-    arc.PhySize_Defined = false;
-    arc.Archive.QueryInterface(IID_IArchiveGetRawProps, &arc.GetRawProps);
+    RINOK(CreateArchiveLinkTransport(_archiveLink, archiveProps, engineResource))
+    CArc &arc = _archiveLink.Arcs.Back();
     if (auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource)) {
-        RINOK(resource->ConfigureArc(arc))
         _isHashHandler = resource->HasNativeHashReader();
     }
-    _archiveLink.IsOpen = true;
     ArchiveType = archiveType;
     _archiveFilePath = arc.Path;
     _hashBaseFolderPrefix.Empty();
@@ -1421,7 +1500,7 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
     COM_TRY_END
 }
 
-HRESULT CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback) {
+Z7_COM7F_IMF(CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback)) {
     COM_TRY_BEGIN
     if (_proxy2) {
         delete _proxy2;
@@ -1455,7 +1534,7 @@ HRESULT CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback) {
     COM_TRY_END
 }
 
-HRESULT CAgent::Close() {
+Z7_COM7F_IMF(CAgent::Close()) {
     COM_TRY_BEGIN
     return _archiveLink.Close();
     COM_TRY_END
@@ -1548,8 +1627,9 @@ HRESULT CAgent::ReadItems() {
             _proxy->MemUsage_Limit = ramSize;
     }
     try {
-        const HRESULT result =
-            _proxy2 ? _proxy2->Load(GetArc(), nullptr) : _proxy->Load(GetArc(), nullptr);
+        const HRESULT result = _proxy2
+                                   ? _proxy2->Load(GetArc(), _progress_for_Open)
+                                   : _proxy->Load(GetArc(), _progress_ArchiveOpenCallback_for_Open);
         if (result != S_OK) {
             delete _proxy;
             _proxy = NULL;
@@ -1567,16 +1647,69 @@ HRESULT CAgent::ReadItems() {
     return S_OK;
 }
 
-HRESULT CAgent::BindToRootFolder(IFolderFolder **resultFolder) {
+Z7_COM7F_IMF(CAgent::BindToRootFolder(IFolderFolder **resultFolder)) {
     COM_TRY_BEGIN
     *resultFolder = NULL;
-    if (_archiveLink.Arcs.IsEmpty())
-        return E_FAIL;
-    RINOK(ReadItems())
+    if (!_archiveLink.Arcs.IsEmpty()) {
+        RINOK(ReadItems())
+    }
     CAgentFolder *folderSpec = new CAgentFolder;
     CMyComPtr<IFolderFolder> rootFolder = folderSpec;
     folderSpec->Init(_proxy, _proxy2, k_Proxy_RootDirIndex, this);
     *resultFolder = rootFolder.Detach();
+    return S_OK;
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgent::Extract(NExtract::NPathMode::EEnum pathMode,
+                             NExtract::NOverwriteMode::EEnum overwriteMode, const wchar_t *path,
+                             Int32 testMode, IFolderArchiveExtractCallback *extractCallback2)) {
+    COM_TRY_BEGIN
+
+    if (!testMode && _isHashHandler)
+        return E_NOTIMPL;
+
+    CArchiveExtractCallback *extractCallbackSpec = new CArchiveExtractCallback;
+    CMyComPtr<IArchiveExtractCallback> extractCallback = extractCallbackSpec;
+    extractCallbackSpec->InitForMulti(false, // multiArchives
+                                      pathMode, overwriteMode, NExtract::NZoneIdMode::kNone,
+                                      k_keepEmptyDirPrefixes);
+
+    CExtractNtOptions extractNtOptions;
+    extractNtOptions.AltStreams.Val = true;            // change it!!!
+    extractNtOptions.AltStreams.Def = true;            // change it!!!
+    extractNtOptions.ReplaceColonForAltStream = false; // change it!!!
+
+    extractCallbackSpec->Init(extractNtOptions, NULL, &GetArc(), extractCallback2,
+                              false, // stdOutMode
+                              IntToBool(testMode), us2fs(path), UStringVector(), false,
+                              (UInt64)(Int64)-1);
+
+    extractCallbackSpec->DirPathPrefix_for_HashFiles = _hashBaseFolderPrefix;
+
+#ifdef SUPPORT_LINKS
+
+    if (!testMode) {
+        RINOK(extractCallbackSpec->PrepareHardLinks(NULL)) // NULL means all items
+    }
+
+#endif
+
+    return GetArchive()->Extract(NULL, (UInt32)(Int32)-1, testMode, extractCallback);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgent::GetNumberOfProperties(UInt32 *numProps)) {
+    COM_TRY_BEGIN
+    return GetArchive()->GetNumberOfProperties(numProps);
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CAgent::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *propID, VARTYPE *varType)) {
+    COM_TRY_BEGIN
+    RINOK(GetArchive()->GetPropertyInfo(index, name, propID, varType))
+    if (*propID == kpidPath)
+        *propID = kpidName;
     return S_OK;
     COM_TRY_END
 }

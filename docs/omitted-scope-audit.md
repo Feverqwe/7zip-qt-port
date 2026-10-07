@@ -63,6 +63,21 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+### Agent opening/factory body and caller review, 2026-10-07
+
+The original Agent::Open and ArchiveFolderOpen::OpenFolderFile active bodies are
+now on the production QtArchiveFolderManager route. FileFolderPluginOpen's
+worker still owns modal progress and join; the source factory supplies callback
+QI, source Agent lifetime, diagnostic S_FALSE publication and root-binding
+progress scope. IInFolderArchive Extract/property interface bodies are restored,
+with native/process services confined to ArchiveBackend. Original commented
+FindFormat, FolderReOpen and property enumeration remain inactive. The exact
+source, adaptations and current validation are recorded in the
+[opening audit](upstream-port-audit.md#p3-05--source-agent-opening-and-archive-folder-factory-2026-10-07).
+Existing ReadItems metadata validation/proxy cleanup and remaining Agent update/
+folder bodies still require full-module disposition; this bounded component
+does not close the 109-module review or native/final acceptance.
+
 Source PanelListNotify::OnNotifyActivateItems is now retained with explicit Qt
 event modifiers. The owning table/icon Return/double-click adapters replace the
 native ComCtl32 notification-version switch and share the existing OpenNative

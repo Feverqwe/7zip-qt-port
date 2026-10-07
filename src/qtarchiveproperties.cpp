@@ -186,3 +186,32 @@ HRESULT CreateArchivePropertyTransport(IFolderFolder *properties, IInArchive **a
     *archive = adapter.Detach();
     return S_OK;
 }
+
+HRESULT CreateArchiveLinkTransport(CArchiveLink &link, IFolderFolder *properties,
+                                   IUnknown *engineResource, const CCodecs *codecs) {
+    if (!properties)
+        return E_INVALIDARG;
+    if (!link.Arcs.IsEmpty())
+        return E_FAIL;
+    CArc &arc = link.Arcs.AddNew();
+    const HRESULT result = CreateArchivePropertyTransport(properties, &arc.Archive, engineResource);
+    if (result != S_OK) {
+        link.Release();
+        return result;
+    }
+    arc.DefaultName = L"[Content]";
+    arc.FormatIndex = -1;
+    arc.ArcStreamOffset = 0;
+    arc.Offset = 0;
+    arc.FileSize = 0;
+    arc.AvailPhySize = 0;
+    arc.PhySize = 0;
+    arc.PhySize_Defined = false;
+    arc.Archive.QueryInterface(IID_IArchiveGetRawProps, &arc.GetRawProps);
+    if (auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource)) {
+        RINOK(resource->ConfigureArc(arc, codecs))
+        resource->CopyNativeVolumeMetadata(link);
+    }
+    link.IsOpen = true;
+    return S_OK;
+}

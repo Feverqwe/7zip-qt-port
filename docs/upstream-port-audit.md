@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source Agent opening and archive folder factory (2026-10-07)
+
+Source: https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original bodies and callers
+were inspected in `CPP/7zip/UI/Agent/Agent.cpp`, `Agent.h`,
+`ArchiveFolderOpen.cpp`, `FileManager/FileFolderPluginOpen.cpp`,
+`Common/OpenArchive.cpp` and their IFolderArchive/OpenCallback dependencies.
+The authoritative C++ paths remain under `src/CPP/7zip/UI/` with existing notices.
+
+Copied/adapted scope: `CAgent::Open` retains file attributes/directory refusal,
+hash base prefix, ParseOpenTypes refusal, COpenOptions/link opening, mtime,
+archive type and hash-handler result. `CArchiveFolderManager::OpenFolderFile`
+retains callback QueryInterface, IInFolderArchive ownership, S_FALSE diagnostic
+folder publication, binding progress fields, cleanup and result propagation.
+`CAgent` again exposes IInFolderArchive; its Extract, GetNumberOfProperties and
+GetPropertyInfo bodies retain the original extraction callback/options and
+Path-to-Name property mapping. BindToRootFolder permits an unopened diagnostic
+owner. Proxy loading receives the factory's original progress interfaces.
+Inactive original FindFormat/FolderReOpen/commented property enumeration remains
+inactive. This component does not claim the entire Agent module reconciled.
+
+Adaptation: `IQtAgentOpenServices` replaces global codec loading and supplies a
+per-opening backend lease. QtArchiveFolderManager invokes the source factory;
+CArchiveLink::Open delegates at the existing QtOpenService boundary. The native
+Open3 reader is opened once behind ArchiveBackend and retained with its exact
+catalog. File-only listing supplies the existing metadata facade, assembled by
+CreateArchiveLinkTransport; native reader/index ownership remains distinct from
+that facade. Stream spooling, password/process servicing and joined worker
+lifetime retain their existing owners. A catalog replacement during listing
+cannot invalidate the opening reader or its format indices. S_FALSE retains
+native NonOpen_ErrorInfo before optional root binding, including no-reader cases.
+No codec/archive algorithm or new vendored dependency is introduced.
+
+New `agent_opening` regressions use disposable Unicode/spaced ZIPs and cover
+proxy progress/Cancel, invalid type before listing, malformed recognized ZIP
+diagnostics, streamed input cleanup after manager release, IInFolderArchive
+Extract/Test, cancellation, missing-output-root errors, exact binary bytes and
+catalog replacement. The low-level source Extract expects its output root to
+exist; the command owner creates it. The failure fixture checks the original
+callback error rather than inventing directory creation in Agent.
+An isolated control binary using the previous Qt manager returns E_INVALIDARG
+for the unknown type where the regression requires source S_FALSE; actual RED
+is retained under `build/review/agent-open-red`. The working source was unchanged
+by this control.
+
+Current macOS27.0.1 arm64/Qt6.12.0 unsandboxed `./scripts/check.sh` passes
+formatting, all-target build and291/291 default CTest in283.86s;
+274Qt summaries contain4485PASS/0FAIL/15Windows-onlySKIP. Subsequent focused
+opening/folder consumers pass3/3 in1.59s. Fresh same-snapshot
+`20261007T162636Z-cd745605`, SHA256
+`977c8506f9fadce3af582454178e4d0b475d822412b19e6631ec531dd27f5f1c`,
+builds the targets before CTest on both guests: Ubuntu24.04.5 x64/Qt6.12.0
+passes12/12 in29.77s,166QtPASS/0FAIL/0SKIP; Windows11 x64/MSVC/Qt6.12.0
+passes8/8 core consumers in12.17s,78QtPASS/0FAIL/0SKIP. Windows execution is
+SSH/core-only: no interactive user is logged on, so native GUI consumers are
+not claimed. All898 source/test/build inputs match the frozen snapshot after
+collection. Baseline verify passes408exact/196adapted/3local paths, one revision.
+The eleven slow suites and Windows VHD fixtures remain excluded. No visual
+layout/text/state change requires new geometry reports in this component.
+Logs/control/input manifest are in `build/review/agent-open-*`; the ephemeral
+runner wrapper is archived there after validation. Whole P3, remaining source
+bodies, native GUI/rendered reference, packages and final acceptance stay open.
+
 ## P3-05.15 — native ADS root, source zone Copy and bound filesystem reload (2026-10-07)
 
 Source https://github.com/ip7z/7zip.git at full baseline

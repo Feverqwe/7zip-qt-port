@@ -115,6 +115,10 @@ class ArchiveBackend : public QObject {
     HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
                               std::shared_ptr<ArchiveNativeOpen> &reader,
                               const COpenOptions *options = nullptr) const;
+    HRESULT openNativeArchive(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                              const QString &path, const QString &type, IOpenCallbackUI *callback,
+                              std::shared_ptr<ArchiveNativeOpen> &reader,
+                              const COpenOptions *options) const;
     HRESULT updateNativeComment(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback) const;

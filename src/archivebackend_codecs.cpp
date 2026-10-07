@@ -93,15 +93,22 @@ HRESULT ArchiveBackend::openNativeArchive(const QString &path, const QString &ty
                                           IOpenCallbackUI *callback,
                                           std::shared_ptr<ArchiveNativeOpen> &reader,
                                           const COpenOptions *options) const {
+    return openNativeArchive(codecCatalog(), path, type, callback, reader, options);
+}
+
+HRESULT ArchiveBackend::openNativeArchive(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                                          const QString &path, const QString &type,
+                                          IOpenCallbackUI *callback,
+                                          std::shared_ptr<ArchiveNativeOpen> &reader,
+                                          const COpenOptions *options) const {
     reader.reset();
-    const auto catalog = codecCatalog();
     // Standalone callers and missing-module discovery retain the existing
     // process-only read fallback. A valid module uses the source opener.
     if (!catalog || catalog->result() != S_OK)
         return S_OK;
     auto opened = std::make_shared<ArchiveNativeOpen>(catalog);
     const HRESULT result = opened->Open(path, type, callback, options);
-    if (result == S_OK)
+    if (result == S_OK || result == S_FALSE)
         reader = std::move(opened);
     return result;
 }

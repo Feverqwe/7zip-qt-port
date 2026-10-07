@@ -1,5 +1,19 @@
 # Сверка с Windows 7zFM
 
+### Source Agent opening/factory (P3-05, 2026-10-07)
+
+Archive-folder opening now reaches the original Agent/factory workflow.
+An unknown forced format returns source S_FALSE before listing; a recognized
+malformed archive can return a diagnostic folder with the same result, so the
+existing error UI can read NonOpen_ErrorInfo. Root binding receives the caller's
+progress/Cancel interfaces. The returned owner retains streams and the exact
+codec catalog after the manager is released or the backend catalog is replaced.
+File-only transport still spools nested input and services process work through
+ArchiveBackend. No dialog text, layout or visibility changes are introduced.
+Current platform acceptance is recorded in the
+[source audit](upstream-port-audit.md#p3-05--source-agent-opening-and-archive-folder-factory-2026-10-07);
+native GUI/rendered and whole-plan acceptance remain open.
+
 ### Native zone Copy and bound filesystem publication (P3-05.15, 2026-10-07)
 
 F5/F6 retain the source registry-zone default: None preserves the stored

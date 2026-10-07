@@ -6,8 +6,10 @@
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
 #include "archiveprogresstransport.h"
+#include "qtarchiveagentopen.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
+#include "qtarchiveproperties.h"
 #include "qtlocationfolder.h"
 #include <QFile>
 #include <QMetaObject>
@@ -26,6 +28,31 @@ struct QtArchiveFolderManager::CRequest {
     CMyComPtr<IFolderFolder> Folder;
     CMyComPtr<IUnknown> Resource;
     std::atomic<bool> PasswordRequested{false};
+};
+
+struct QtArchiveFolderManager::COpenServices final : IQtAgentOpenServices {
+    QtArchiveFolderManager &Manager;
+    IProgress *Progress;
+    bool OwnedStreamFile;
+    const COpenOptions *Requested;
+    UString Format;
+    CMyComPtr<IUnknown> Lease;
+    std::shared_ptr<const ArchiveCodecCatalog> Catalog;
+    COpenServices(QtArchiveFolderManager &manager, const wchar_t *path, const wchar_t *format,
+                  IProgress *progress, bool ownedStreamFile, const COpenOptions *requested)
+        : Manager(manager), Progress(progress), OwnedStreamFile(ownedStreamFile),
+          Requested(requested), Format(format ? format : L""),
+          Lease(new QtArchiveFileResource(QString::fromWCharArray(path))),
+          Catalog(manager._backend.codecCatalog()) {}
+    HRESULT LoadCodecs(const CCodecs *&codecs) override {
+        codecs = Catalog && Catalog->result() == S_OK ? &Catalog->nativeCodecs() : nullptr;
+        static_cast<QtArchiveFileResource *>(Lease.Interface())->AttachCodecCatalog(Catalog);
+        return S_OK;
+    }
+    IUnknown *Resource() const override { return Lease; }
+    HRESULT Open(CArchiveLink &link, const COpenOptions &options, IOpenCallbackUI *) override {
+        return Manager.OpenLinkImpl(link, options, *this);
+    }
 };
 
 QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backend(backend) {
@@ -55,7 +82,6 @@ QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backe
                     dynamic_cast<QtArchiveFileResource *>(request->Resource.Interface());
                 if (resource) {
                     resource->Info = request->Info;
-                    resource->AttachCodecCatalog(_backend.codecCatalog());
                     resource->SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
                     const QString transportFormat = resource->TransportFormat();
                     resource->AttachReopenService(_backend, transportFormat);
@@ -65,9 +91,7 @@ QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backe
                     if (_backend.supportsArchiveUpdate(request->Info.format))
                         resource->AttachUpdateService(_backend, request->Info.format);
                 }
-                result = CreateArchiveFolder(request->Entries,
-                                             request->Info.format.toStdWString().c_str(),
-                                             &request->Folder, request->Resource);
+                result = CreateArchiveMetadata(request->Entries, &request->Folder);
             }
         } catch (...) {
             result = E_FAIL;
@@ -138,8 +162,21 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
         return E_FAIL;
     if (!filePath || !*filePath)
         return E_INVALIDARG;
+    COpenServices services(*this, filePath, arcFormat, progress, ownedStreamFile, options);
+    CArchiveFolderManager manager(services);
+    return manager.OpenFolderFile(inStream, filePath, services.Format, resultFolder, progress);
+    COM_TRY_END
+}
+
+HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOptions &sourceOptions,
+                                             COpenServices &services) {
+    COM_TRY_BEGIN
+    IInStream *inStream = sourceOptions.stream;
+    const wchar_t *filePath = sourceOptions.filePath;
+    IProgress *progress = services.Progress;
+    const bool ownedStreamFile = services.OwnedStreamFile;
     const auto request = std::make_shared<CRequest>();
-    auto *resource = new QtArchiveFileResource(QString::fromWCharArray(filePath));
+    auto *resource = static_cast<QtArchiveFileResource *>(services.Resource());
     request->Resource = resource;
     QString ownedPath;
     bool keepOwnedPath = false;
@@ -149,7 +186,7 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
             QFile::remove(ownedPath);
         }
     });
-    const QString format = QString::fromWCharArray(arcFormat);
+    const QString format = QString::fromWCharArray(services.Format);
     auto *callback = dynamic_cast<COpenCallbackImp *>(progress);
     auto *ui = callback ? dynamic_cast<COpenArchiveCallback *>(callback->Callback) : nullptr;
     if (ui)
@@ -164,7 +201,20 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
     const QString path = resource->EnginePath;
     CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
     std::shared_ptr<ArchiveNativeOpen> nativeOpen;
-    RINOK(_backend.openNativeArchive(path, format, &nativeProgress, nativeOpen, options))
+    COpenOptions nativeOptions = services.Requested ? *services.Requested : sourceOptions;
+    // The file-only service has already spooled a caller's stream to its lease.
+    nativeOptions.stream = nullptr;
+    nativeOptions.QtOpenService = nullptr;
+    const HRESULT nativeResult = _backend.openNativeArchive(
+        services.Catalog, path, format, &nativeProgress, nativeOpen, &nativeOptions);
+    if (nativeOpen) {
+        link.NonOpen_ArcPath = nativeOpen->archiveLink().NonOpen_ArcPath;
+        link.NonOpen_ErrorInfo = nativeOpen->archiveLink().NonOpen_ErrorInfo;
+    }
+    if (nativeResult != S_OK) {
+        if (nativeResult != S_FALSE || !nativeOpen || nativeOpen->archiveLink().Arcs.IsEmpty())
+            return nativeResult;
+    }
     resource->AttachNativeOpen(std::move(nativeOpen));
     const auto *nativeLink = resource->NativeArchiveLink();
     const bool partialNativeOpen = nativeLink && !nativeLink->NonOpen_ArcPath.IsEmpty();
@@ -188,8 +238,10 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
                 if (stopResult != S_OK)
                     return stopResult;
                 if (request->Result == S_OK) {
-                    *resultFolder = request->Folder.Detach();
+                    RINOK(CreateArchiveLinkTransport(link, request->Folder, resource,
+                                                     sourceOptions.codecs))
                     keepOwnedPath = true;
+                    return nativeResult;
                 }
                 return request->Result;
             }
