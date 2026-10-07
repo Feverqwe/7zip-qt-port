@@ -5,6 +5,7 @@ import base64
 import importlib.util
 import json
 import io
+import os
 import contextlib
 import re
 from pathlib import Path
@@ -21,6 +22,7 @@ spec = importlib.util.spec_from_file_location(
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 import hyperv_transport
+import hyperv_workspace
 
 
 def git(directory, *args):
@@ -28,6 +30,89 @@ def git(directory, *args):
 
 
 class RunnerTests(unittest.TestCase):
+    @staticmethod
+    def data_workspaces():
+        return {"linux": {"root": "/mnt/sevenzip-desktop/runs",
+                          "filesystem_uuid": "9fd6574a-fe35-4af5-82fc-f1b16d78afb8"},
+                "windows": {"root": "C:/runner/sevenzip-desktop/runs"}}
+
+    def test_workspace_configuration_validates_boundaries(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            self.assertEqual(hyperv_workspace.load_workspaces(state),
+                             {p: {"root": root} for p, root in hyperv_workspace.DEFAULT_ROOTS.items()})
+            path = state / "workspaces.json"
+            valid = self.data_workspaces()
+            path.write_text(json.dumps(valid))
+            self.assertEqual(hyperv_workspace.load_workspaces(state), valid)
+            invalid = [[], {}, {"linux": valid["linux"]},
+                       {**valid, "windows": {"root": "D:/other-project"}},
+                       {**valid, "linux": {"root": "/mnt/sevenzip-desktop/runs/../other"}},
+                       {**valid, "linux": {"root": valid["linux"]["root"]}},
+                       {**valid, "linux": {**valid["linux"], "filesystem_uuid": "$(id)"}},
+                       {**valid, "windows": {**valid["windows"], "filesystem_uuid": "unused"}}]
+            for value in invalid:
+                with self.subTest(value=value):
+                    path.write_text(json.dumps(value))
+                    with self.assertRaises(ValueError):
+                        hyperv_workspace.load_workspaces(state)
+
+    def test_missing_data_mount_prevents_source_sync(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            (state / "workspaces.json").write_text(json.dumps(self.data_workspaces()))
+            local = state / "20261007T000000Z-1234abcd"
+            local.mkdir()
+            record = {"name": "runner-linux", "ip": "fixture", "ssh_argv": ["ssh", "fixture"]}
+            with patch.object(runner, "STATE", state), \
+                    patch.object(runner, "discover", return_value=record), \
+                    patch.object(runner, "remote", side_effect=subprocess.CalledProcessError(1, "mount guard")), \
+                    patch.object(runner, "execute_check") as execute, patch.object(runner, "invoke"):
+                result = runner.run_platform("linux", local, Path("fixture"), "hash", "dev", None, True)
+            self.assertEqual(result["status"], "failed")
+            self.assertEqual(result["exit_code"], 1)
+            self.assertEqual(result["directory"], self.data_workspaces()["linux"]["root"] + "/" + local.name)
+            execute.assert_not_called()
+
+    def test_all_routes_workspaces_and_checks_only_the_data_mount(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            configured = self.data_workspaces()
+            (state / "workspaces.json").write_text(json.dumps(configured))
+            def discover(platform):
+                return {"name": "runner-" + platform, "ip": "fixture", "ssh_argv": ["ssh", "fixture"]}
+            with patch.object(runner, "STATE", state), \
+                    patch.object(runner, "snapshot", return_value="same-sha"), \
+                    patch.object(runner, "discover", side_effect=discover), \
+                    patch.object(runner, "remote") as remote, \
+                    patch.object(runner, "execute_check") as execute, patch.object(runner, "invoke"):
+                self.assertEqual(runner.run_platforms(["linux", "windows"], "dev", state), 0)
+            self.assertEqual(execute.call_count, 2)
+            for call in execute.call_args_list:
+                self.assertTrue(call.args[5].startswith(configured[call.args[1]]["root"] + "/"))
+            remote.assert_called_once()
+            self.assertEqual(remote.call_args.args[0]["name"], "runner-linux")
+            self.assertIn(configured["linux"]["filesystem_uuid"], remote.call_args.args[1])
+
+    def test_rsync_basis_stays_on_selected_workspace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary)
+            run_id = "20261007T000000Z-1234abcd"
+            directory = state / run_id / "linux"
+            directory.mkdir(parents=True)
+            record = {"directory": hyperv_workspace.DEFAULT_ROOTS["linux"] + "/" + run_id,
+                      "status": "passed", "transport": "rsync"}
+            path = directory / "run.json"
+            path.write_text(json.dumps(record))
+            root = self.data_workspaces()["linux"]["root"]
+            self.assertIsNone(hyperv_transport.previous_snapshot(state, "linux", root))
+            record["directory"] = root + "/" + run_id
+            path.write_text(json.dumps(record))
+            self.assertEqual(hyperv_transport.previous_snapshot(state, "linux", root), record["directory"])
+            self.assertIsNone(hyperv_transport.previous_snapshot(state, "linux"))
+            with self.assertRaises(ValueError):
+                hyperv_transport.previous_snapshot(state, "linux", "/unowned")
+
     def test_action_help_and_options_are_scoped(self):
         self.assertEqual(runner.parse_arguments(["probe", "all"]).platforms,
                          ["linux", "windows"])
@@ -267,6 +352,38 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual((root / "check.log").read_text(), "\n".join(args) + "\n")
             self.assertFalse((root / "injected").exists())
 
+    def test_compact_test_mode_is_enabled_for_guest_build_wrappers(self):
+        for platform in ("linux", "windows"):
+            with self.subTest(platform=platform), patch.object(runner, "invoke"), \
+                    patch.object(runner, "remote") as remote:
+                runner.execute_check({"ip": "fixture", "ssh_argv": ["ssh", "fixture"]},
+                                     platform, "dev", Path("fixture"), "hash", "/fixture",
+                                     prepare_runtime=False)
+                script = remote.call_args.args[1]
+                if platform == "windows":
+                    encoded = re.search(r"check.cmd', \[Convert\]::FromBase64String\('([^']+)'", script)
+                    batch = base64.b64decode(encoded.group(1)).decode()
+                    self.assertIn('set "SEVENZIP_COMPACT_TEST_BINARIES=ON"', batch)
+                else:
+                    self.assertIn("export SEVENZIP_COMPACT_TEST_BINARIES=ON", script)
+
+    def test_long_test_opt_in_is_forwarded_to_both_guest_wrappers(self):
+        for platform in ("linux", "windows"):
+            for value in ("0", "1"):
+                with self.subTest(platform=platform, include_slow=value), \
+                        patch.dict(os.environ, {"SEVENZIP_INCLUDE_SLOW_TESTS": value}), \
+                        patch.object(runner, "invoke"), patch.object(runner, "remote") as remote:
+                    runner.execute_check({"ip": "fixture", "ssh_argv": ["ssh", "fixture"]},
+                                         platform, "dev", Path("fixture"), "hash", "/fixture",
+                                         prepare_runtime=False)
+                    script = remote.call_args.args[1]
+                    if platform == "windows":
+                        encoded = re.search(r"check.cmd', \[Convert\]::FromBase64String\('([^']+)'", script)
+                        batch = base64.b64decode(encoded.group(1)).decode()
+                        self.assertIn(f'set "SEVENZIP_INCLUDE_SLOW_TESTS={value}"', batch)
+                    else:
+                        self.assertIn(f"export SEVENZIP_INCLUDE_SLOW_TESTS={value}", script)
+
     def test_windows_payload_preserves_shell_metacharacters(self):
         with patch.object(runner, "invoke"), patch.object(runner, "remote") as remote:
             runner.execute_check({"ip": "fixture", "ssh_argv": ["ssh", "fixture"]},
@@ -280,6 +397,82 @@ class RunnerTests(unittest.TestCase):
                                     text=True, capture_output=True, check=True)
             self.assertEqual(result.stdout, "Юникод\n%PATH%\n$(touch injected)\na b\n")
             self.assertFalse((Path(temporary) / "injected").exists())
+
+    def test_linux_temporary_files_stay_in_snapshot_and_out_of_git(self):
+        with tempfile.TemporaryDirectory(prefix="runner space ") as temporary:
+            root = Path(temporary)
+            archive_path = root / "source.tar.gz"
+            with tarfile.open(archive_path, "w:gz") as archive:
+                contents = b'printf "%s\\n" "$TEMP" "$TMP" "$TMPDIR"\nmktemp\n'
+                entry = tarfile.TarInfo("scripts/fixture.sh")
+                entry.size = len(contents)
+                archive.addfile(entry, io.BytesIO(contents))
+            digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+
+            def local_remote(record, script):
+                return subprocess.run(["bash", "-se"], input=script, check=True,
+                                      text=True, capture_output=True)
+
+            with patch.object(runner, "invoke"), patch.object(runner, "remote", local_remote):
+                runner.execute_check({"ip": "fixture", "ssh_argv": ["ssh", "fixture"]},
+                                     "linux", "dev", archive_path, digest, str(root),
+                                     ["bash", "scripts/fixture.sh"], False)
+            lines = (root / "check.log").read_text().splitlines()
+            self.assertEqual(lines[:3], [str(root / "runner-tmp")] * 3)
+            self.assertEqual(Path(lines[3]).parent, root / "runner-tmp")
+            self.assertTrue(Path(lines[3]).is_file())
+            self.assertEqual(git(root, "status", "--porcelain"), "")
+            self.assertNotIn("runner-tmp", git(root, "ls-files"))
+
+    def test_windows_temp_scope_precedes_extraction_toolchain_and_interactive_launch(self):
+        root = "C:/runner/sevenzip-desktop/runs/20261007T060000Z-1234abcd"
+        for interactive in (False, True):
+            with self.subTest(interactive=interactive), patch.object(runner, "invoke"), \
+                    patch.object(runner, "remote") as remote:
+                runner.execute_check({"ip": "fixture", "ssh_argv": ["ssh", "fixture"]},
+                                     "windows", "dev", Path("source.tar"), "hash", root,
+                                     prepare_runtime=False, interactive=interactive)
+            script = remote.call_args.args[1]
+            temp_scope = "$env:TEMP=$env:TMP=$env:TMPDIR='" + root + "/runner-tmp'"
+            self.assertLess(script.index(temp_scope), script.index("tar.exe -xf"))
+            encoded = re.search(r"check.cmd', \[Convert\]::FromBase64String\('([^']+)'", script)
+            batch = base64.b64decode(encoded.group(1)).decode()
+            for variable in ("TEMP", "TMP", "TMPDIR"):
+                assignment = f'set "{variable}={root}/runner-tmp"'
+                self.assertLess(batch.index(assignment), batch.index("vcvars64.bat"))
+            self.assertLess(batch.index("echo /runner-tmp/"), batch.index("git add -A"))
+            if interactive:
+                child_encoded = re.search(r"-EncodedCommand ([A-Za-z0-9+/=]+)", script)
+                child = base64.b64decode(child_encoded.group(1)).decode("utf-16le")
+                self.assertLess(child.index('$env:TEMP=$env:TMP=$env:TMPDIR='),
+                                child.index("& cmd.exe"))
+
+    def test_linux_headless_default_preserves_explicit_platform(self):
+        for requested in (None, "xcb"):
+            with self.subTest(requested=requested), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                archive_path = root / "source.tar.gz"
+                with tarfile.open(archive_path, "w:gz") as archive:
+                    contents = b'printf "%s\\n" "$QT_QPA_PLATFORM"\n'
+                    entry = tarfile.TarInfo("scripts/fixture.sh")
+                    entry.size = len(contents)
+                    archive.addfile(entry, io.BytesIO(contents))
+                digest = hashlib.sha256(archive_path.read_bytes()).hexdigest()
+                environment = dict(os.environ)
+                environment.pop("QT_QPA_PLATFORM", None)
+                if requested is not None:
+                    environment["QT_QPA_PLATFORM"] = requested
+
+                def local_remote(record, script):
+                    return subprocess.run(["bash", "-se"], input=script, check=True,
+                                          text=True, capture_output=True, env=environment)
+
+                with patch.object(runner, "invoke"), patch.object(runner, "remote", local_remote):
+                    runner.execute_check({"ip": "fixture", "ssh_argv": ["ssh", "fixture"]},
+                                         "linux", "dev", archive_path, digest, str(root),
+                                         ["bash", "scripts/fixture.sh"], False)
+                self.assertEqual((root / "check.log").read_text(),
+                                 (requested or "offscreen") + "\n")
 
     def test_linux_preparation_failure_keeps_exit_code_and_prints_log_once(self):
         with tempfile.TemporaryDirectory() as temporary:

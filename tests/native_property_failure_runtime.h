@@ -1,4 +1,5 @@
 #pragma once
+#include "Common/MyTypes.h"
 #include "Common/MyWindows.h"
 #include <QTemporaryDir>
 

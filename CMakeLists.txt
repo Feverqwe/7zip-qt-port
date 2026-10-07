@@ -3006,6 +3006,16 @@ endif()
 # Startup isolation and test fixtures inspect the original consumer source lists.
 # Share production objects only after those registrations are complete.
 include(cmake/SharedPortObjects.cmake)
+include(cmake/CompactTestBinaries.cmake)
+include(cmake/SlowTests.cmake)
+if(BUILD_TESTING)
+    add_test(NAME ctest_selection COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/ctest_selection_tests.py")
+endif()
+if(BUILD_TESTING AND (MSVC OR CMAKE_SYSTEM_NAME STREQUAL "Linux"))
+    add_test(NAME compact_test_binaries COMMAND ${Python3_EXECUTABLE}
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/compact_test_binaries_tests.py")
+endif()
 
 # The Windows offscreen plugin uses FreeType rather than the native Windows
 # font database. Without a separately supplied font directory its fallback box

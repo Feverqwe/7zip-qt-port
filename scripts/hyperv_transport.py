@@ -4,12 +4,16 @@ import json
 import re
 import shlex
 
+from hyperv_workspace import DEFAULT_ROOTS, LINUX_DATA_ROOT
+
 WINDOWS_RSYNC = "C:/runner/sevenzip-desktop/tools/rsync/msys64/usr/bin/rsync.exe"
 
 
-def previous_snapshot(state, platform):
-    prefix = ("C:/runner/sevenzip-desktop/runs/" if platform == "windows" else
-              "/home/runner/sevenzip-desktop/runs/")
+def previous_snapshot(state, platform, workspace=None):
+    root = workspace or DEFAULT_ROOTS[platform]
+    if root != DEFAULT_ROOTS[platform] and not (platform == "linux" and root == LINUX_DATA_ROOT):
+        raise ValueError("Invalid project workspace for rsync basis")
+    prefix = root + "/"
     for path in sorted(state.glob(f"*/{platform}/run.json"), reverse=True):
         try:
             record = json.loads(path.read_text())

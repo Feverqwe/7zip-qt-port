@@ -17,6 +17,7 @@ $root='{root}'
 $code=1
 try {{
     Set-Location $root
+    $env:TEMP=$env:TMP=$env:TMPDIR="$root/runner-tmp"
     $session=(Get-Process -Id $PID).SessionId
     if ($session -eq 0) {{ throw 'Interactive runner entered session 0' }}
     $identity=[Security.Principal.WindowsIdentity]::GetCurrent()

@@ -4,6 +4,45 @@ Sevenzip Desktop reuses `runner-linux` and `runner-windows` on Windows 11
 Hyper-V host `192.168.1.14`, host SSH account `anton`. VM storage stays under
 `D:\runner`; Windows guest `C:` is inside its VHDX on that disk. These are the
 same shared x64 guests used by htopQt, with separate project snapshot directories.
+
+## Storage policy (user instruction, 2026-10-07)
+
+Do not create or attach new virtual disks, including VHD/VHDX files, to solve
+capacity problems. Do not grow disks, repartition or reformat volumes without
+a separate user request. Use the existing configured volumes; the historical
+data-disk creation recorded below is not authorization to repeat it.
+
+Before substantial builds, check current free space on the host and selected
+guest volume. If space is insufficient, delete obsolete Sevenzip Desktop run
+payloads, build outputs and temporary data, then measure again. This project
+cleanup is explicitly authorized by the user and takes precedence over the
+global runners skill's default restriction on automatic deletion for warnings.
+It does not authorize compaction or VM storage reconfiguration.
+
+Identify completed runs from their metadata and check running processes,
+interactive scheduled tasks and workspace references before deleting anything.
+Keep the three newest runs per project workspace, every active or referenced
+run (including an rsync basis in use), and artifacts needed for current review
+or failure diagnosis. In older inactive runs, retain small logs and metadata;
+remove reproducible source snapshots, runtime/build trees and run-local temp
+files. Apply this to both legacy and configured project workspaces. Preserve
+toolchains, installed Qt/formatter/rsync, other projects and unrelated data.
+Record removed paths and free space before/after. If safely removable data is
+insufficient, report the remaining capacity requirement; do not add a disk.
+
+## Runner configuration and evidence
+
+Fresh Linux and Windows runs enable compact test binaries through the build
+wrapper; [development](development.md#local-commands) describes the retained
+diagnostics and the opt-out for debugger rebuilds. This reduces per-run artifacts;
+completed snapshots still require the storage cleanup policy above.
+Default runner gates also exclude tests labeled `slow`. Long suites require an
+explicit request and opt-in as described in AGENTS.md; do not count excluded
+matrices as platform acceptance.
+The helper forwards `SEVENZIP_INCLUDE_SLOW_TESTS` (0 by default; only 0/1 are
+accepted) to both guest environments. Prefix a specifically requested exhaustive
+runner command with `SEVENZIP_INCLUDE_SLOW_TESTS=1` to opt in.
+
 The helper starts from htopQt's `scripts/hyperv-runner.py` at commit
 `f57b93a72d765f738a6b779b4b3c94e16c0ef64a`, adapted for Sevenzip resources,
 MSVC, pinned engine builders, formatter and SSH stdin transport.
@@ -53,6 +92,65 @@ response to warnings.” Evidence: build/review/native-external-final/
 {hyperv-probe.log,hyperv-storage.log,linux-guest-space.log,
 windows-guest-space.log,linux-volumes.log}. This preflight proves connectivity
 and capacity only; native application/package/rendered acceptance remains open.
+
+Fresh authenticated preflight at2026-10-07 07:48MSK (04:48UTC) supersedes
+the capacity limitation above: Linux root has44,568,260,608 bytes free and
+Windows C: has28,375,638,016 bytes free. Host D: has631,519,203,328 bytes free;
+the same VM IDs and single OS disk per guest remain. At this preflight no cleanup,
+compaction, new disk, resize or VM reconfiguration had been performed.
+Evidence: build/review/runner-workspace-final/{host-before.log,
+linux-before.log,windows-before.log}. The earlier low-space samples remain
+historical; they must not be used to infer current capacity.
+
+Every fresh snapshot creates its own `runner-tmp` directory before extraction.
+Its process environment sets `TEMP`, `TMP` and `TMPDIR` there, including Windows
+archive extraction, MSVC setup and the interactive scheduled-task child.
+Temporary files stay with that run and are excluded from its Git snapshot.
+This does not change global environment variables, move old files or delete
+completed runs; capacity still needs a live preflight before substantial builds.
+Linux SSH checks default `QT_QPA_PLATFORM` to `offscreen` when it is unset;
+an explicit platform selection and per-suite CTest overrides are retained.
+
+### Linux project data volume
+
+The first fresh all-target run subsequently occupied20,627,836,928 bytes,
+leaving23,580,934,144 bytes on Linux root. On2026-10-07 a separate dynamic128GiB
+VHDX was created at `D:\runner\linux\sevenzip-work-20261007\data.vhdx` and
+hot-attached to the existing Linux VM's SCSI0:2. SCSI0:1 retains its DVD;
+the first attachment attempt was rejected because that slot was occupied.
+The created VHDX was reinspected and reused rather than recreated.
+Its identifier is `bbf5c8b3-0f0a-443d-b6ed-212c5c05c249`.
+The guest's full GUID-derived by-id, serial, size, LUN and before/after device
+inventory identified the new unpartitioned, unmounted disk with no signatures.
+Only that new disk was initialized as ext4. Existing OS disks, partitions,
+files, VM identity and networking were preserved; no cleanup or compaction ran.
+
+The private mount is `/mnt/sevenzip-desktop`, filesystem UUID
+`9fd6574a-fe35-4af5-82fc-f1b16d78afb8`. Its initial available space was
+134,128,553,984 bytes. One UUID/nofail entry was appended to guest `/etc/fstab`,
+preserving the previous bytes with a private backup on the new volume.
+Ownership records are under that volume's `setup/` and the host data directory;
+local evidence is build/review/runner-workspace-final/{host-attach-data.log,
+linux-after-attach.log,linux-initialize-data.log}. No Windows data disk was added.
+
+The ignored local `build/runners/hyperv/workspaces.json` selects the data root:
+
+```json
+{
+  "linux": {
+    "root": "/mnt/sevenzip-desktop/runs",
+    "filesystem_uuid": "9fd6574a-fe35-4af5-82fc-f1b16d78afb8"
+  },
+  "windows": {"root": "C:/runner/sevenzip-desktop/runs"}
+}
+```
+
+Without this file, both legacy roots remain the defaults. The loader accepts
+only these project roots and canonical UUIDs. A selected data workspace checks
+the actual mounted filesystem UUID before creating a snapshot or transferring
+source; a missing or different mount fails without falling back to the OS disk.
+Rsync basis selection stays within the selected workspace. Each run records its
+directory and required UUID. The helper does not create, format or mount disks.
 
 ```sh
 python3 scripts/hyperv-runner.py probe linux

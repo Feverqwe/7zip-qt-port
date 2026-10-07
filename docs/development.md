@@ -90,6 +90,16 @@ MSVC2022/Qt6.12.0 kit; see [CI builds and artifacts](ci.md). Point
 
 ## Local commands
 
+Shared Linux/Windows runners enable `SEVENZIP_COMPACT_TEST_BINARIES=ON`.
+The build wrapper forwards this environment setting to the CMake option of the
+same name. Linux test executables omit linked DWARF debug sections; MSVC test
+executables omit linker PDB/ILK files and remove unreferenced code, while retaining
+distinct function addresses. Compiler debug information, Debug assertions and
+runtime checks are retained, as are production application symbols. Ordinary
+local builds default to OFF. For debugger work, rebuild the affected test with
+`SEVENZIP_COMPACT_TEST_BINARIES=OFF ./scripts/build.sh dev <target>` in the same
+snapshot/toolchain. The option does not delete artifacts from older builds.
+
 CI uses Release builds with testing disabled; local checks remain unchanged.
 To package an existing Release build, run `python3 scripts/package.py
 --qt-source <matching-qtbase.tar.xz> --qt-sha256 <checksum-file>`; add
@@ -109,13 +119,21 @@ sh .agents/skills/sz-setup/scripts/setup.sh
 ./scripts/check.sh
 ```
 
-`check.sh` checks formatting, builds with the development CMake preset, and runs CTest. Both `check.sh` and `ctest.sh` run up to four tests in parallel by default. CTest resource locks serialize tests that write to the shared UI report or screenshot directories. Set `SEVENZIP_CTEST_JOBS=1` for a sequential run or another positive number to change concurrency; `CTEST_PARALLEL_LEVEL` and an explicit `--parallel` argument to `ctest.sh` also take precedence. CTest reports failed suites through `--output-on-failure` and continues running the remaining suites. For a release build, run `./scripts/build.sh release` and `./scripts/ctest.sh --preset release --output-on-failure`.
+`check.sh` checks formatting, builds with the development CMake preset, and runs CTest with long suites excluded. Both `check.sh` and `ctest.sh` run up to four tests in parallel by default. CTest resource locks serialize tests that write to the shared UI report or screenshot directories. Set `SEVENZIP_CTEST_JOBS=1` for a sequential run or another positive number to change concurrency; `CTEST_PARALLEL_LEVEL` and an explicit `--parallel` argument to `ctest.sh` also take precedence. CTest reports failed suites through `--output-on-failure` and continues running the remaining suites. For a release build, run `./scripts/build.sh release` and `./scripts/ctest.sh --preset release --output-on-failure`.
+
+The stable long-suite list is in [SlowTests.cmake](../cmake/SlowTests.cmake),
+based on suites observed above 30 seconds on macOS; other platforms may differ.
+The wrapper excludes their `slow` label even with a focused `-R` selection.
+Explicitly opt in with `SEVENZIP_INCLUDE_SLOW_TESTS=1`; for example,
+`SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -L slow --output-on-failure`
+runs only long suites, and the same environment prefix on `./scripts/check.sh`
+runs the exhaustive gate. Agents follow the explicit-request rule in AGENTS.md.
 
 Qt Test suites run with `-silent`, so a failed suite reports its failed cases without listing the cases that passed. `ctest.sh` filters CTest's `Start` and successful `Passed` lines as they arrive; failed suite status, diagnostics, and the final summary remain visible. Each retained line is flushed immediately, and a failed CTest still returns a nonzero exit status.
 
 `check.sh` exits before any work when `CODEX_SANDBOX` identifies an active sandbox. The complete suite needs an unsandboxed run: DBus socket creation and native process-priority tests fail with `Operation not permitted` in the Codex sandbox. Focused tests can still be run there when their required system calls are permitted.
 
-`build.sh` uses CMake `--log-level=WARNING`, discards configuration stdout, and builds with Ninja `--quiet`: successful configuration and build progress lines are hidden, while warnings and errors remain visible as they occur. `ctest.sh` streams CTest output directly, including failure details when `--output-on-failure` is passed. When `CODEX_SESSION_ID` is set, only the formatting phase of `check.sh` buffers output; on failure it shows the last 30 log lines and the path to the full temporary log. Set `SEVENZIP_SCRIPT_OUTPUT=verbose` to see that formatting output as it runs. `ctest.sh` passes its arguments directly to CTest after setting the default parallel level; agents use it for both focused and full test runs.
+`build.sh` uses CMake `--log-level=WARNING`, discards configuration stdout, and builds with Ninja `--quiet`: successful configuration and build progress lines are hidden, while warnings and errors remain visible as they occur. `ctest.sh` streams CTest output directly, including failure details when `--output-on-failure` is passed. When `CODEX_SESSION_ID` is set, only the formatting phase of `check.sh` buffers output; on failure it shows the last 30 log lines and the path to the full temporary log. Set `SEVENZIP_SCRIPT_OUTPUT=verbose` to see that formatting output as it runs. `ctest.sh` forwards arguments to CTest after setting the default parallel level and combining caller label exclusions with the default slow-suite exclusion; agents use it for both focused and default gate runs.
 
 If `ccache` is installed, `build.sh` automatically uses it for C, C++ and Objective-C++ compilation, including builds started by `check.sh`. Install it with `brew install ccache` on macOS or your package manager on Linux. It speeds up recompilation after a clean build or branch switch; Ninja already skips unchanged files, and the full CTest suite still runs on every `check.sh` invocation.
 On macOS the script defaults `CCACHE_DIR` to `/private/tmp/sevenzip-desktop-ccache`, which is writable in the local sandbox and reuses the existing cache. Set `CCACHE_DIR` before running the script to use another directory.

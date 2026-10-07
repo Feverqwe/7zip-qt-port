@@ -28,6 +28,9 @@ if command -v ccache >/dev/null 2>&1; then
 fi
 
 configure() {
+  if [[ -n "${SEVENZIP_COMPACT_TEST_BINARIES:-}" ]]; then
+    set -- "-DSEVENZIP_COMPACT_TEST_BINARIES=$SEVENZIP_COMPACT_TEST_BINARIES" "$@"
+  fi
   if [[ -n "$compiler_cache" ]]; then
     cmake --preset "$preset" --log-level=WARNING \
       "-DCMAKE_C_COMPILER_LAUNCHER=$compiler_cache" \

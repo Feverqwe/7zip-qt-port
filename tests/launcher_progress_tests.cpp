@@ -3,6 +3,7 @@
 #include <QDBusArgument>
 #include <QDBusMessage>
 #include <QDBusPendingCallWatcher>
+#include <QScopeGuard>
 #include <QThread>
 #include <QtTest>
 
@@ -45,6 +46,32 @@ class LauncherProgressTests : public QObject {
     }
 
   private slots:
+#ifdef Q_OS_LINUX
+    void privateBusesRemainIsolatedWithLongTemporaryPath() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString path = fixture.filePath(QString(120, 't'));
+        QVERIFY(QDir().mkpath(path));
+        const QByteArray previous = qgetenv("TMPDIR");
+        const bool defined = qEnvironmentVariableIsSet("TMPDIR");
+        const auto restore = qScopeGuard([&] {
+            if (defined)
+                qputenv("TMPDIR", previous);
+            else
+                qunsetenv("TMPDIR");
+        });
+        qputenv("TMPDIR", path.toUtf8());
+        CPrivateBus first, second;
+        QVERIFY(first.Start());
+        QVERIFY(second.Start());
+        QVERIFY(first.Address != second.Address);
+        auto a = first.Connect();
+        auto b = second.Connect();
+        QVERIFY(a.isConnected() && b.isConnected());
+        QVERIFY(a.registerService("org.sevenzip.PrivateFixture"));
+        QVERIFY(b.registerService("org.sevenzip.PrivateFixture"));
+    }
+#endif
     void nativeUpdateQueryReplayAndDestructorClear() {
         CPrivateBus bus;
         QVERIFY(bus.Start());

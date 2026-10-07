@@ -13,7 +13,39 @@ if [[ -z "${CTEST_PARALLEL_LEVEL:-}" ]]; then
   export CTEST_PARALLEL_LEVEL="$ctest_jobs"
 fi
 
-ctest "$@" | awk '
+run_ctest() {
+  case "${SEVENZIP_INCLUDE_SLOW_TESTS:-0}" in
+    1) ctest "$@"; return ;;
+    0) ;;
+    *) printf 'SEVENZIP_INCLUDE_SLOW_TESTS must be 0 or 1.\n' >&2; return 2 ;;
+  esac
+
+  local excluded_labels='^slow$'
+  local argument
+  local forwarded=()
+  while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+      -LE|--label-exclude)
+        if [[ "$#" -lt 2 ]]; then
+          printf '%s requires a label regex.\n' "$1" >&2
+          return 2
+        fi
+        argument="$2"
+        shift 2
+        ;;
+      --label-exclude=*) argument="${1#*=}"; shift ;;
+      -LE?*) argument="${1:3}"; shift ;;
+      *) forwarded+=("$1"); shift; continue ;;
+    esac
+    if [[ -n "$argument" ]]; then
+      excluded_labels="$excluded_labels|($argument)"
+    fi
+  done
+  # Bash 3 with nounset needs the guarded expansion for an empty array.
+  ctest ${forwarded[@]+"${forwarded[@]}"} --label-exclude "$excluded_labels"
+}
+
+run_ctest "$@" | awk '
   /^[[:space:]]*Start[[:space:]]+[0-9]+:/ { next }
   /^[[:space:]]*[0-9]+\/[0-9]+[[:space:]]+Test[[:space:]]+#?[[:space:]]*[0-9]+:.*[[:space:]]Passed[[:space:]]+[0-9.]+[[:space:]]+sec[[:space:]]*$/ { next }
   { print; fflush() }

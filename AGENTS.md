@@ -95,7 +95,8 @@ Do not invoke CTest directly. Expand checks for shared changes or failures.
 
 Run `./scripts/check.sh` once before completing code/test/build-tooling changes,
 **unsandboxed**: sandbox DBus sockets and process-priority calls fail.
-It checks repository C++ formatting, builds all targets and runs all CTest cases.
+It checks repository C++ formatting, builds all targets and runs the default
+CTest set, excluding tests labeled `slow`.
 Do not repeat a passing full gate on unchanged code. After localized edits rerun
 affected checks; repeat the full gate for broad changes or unresolved concerns.
 Docs/instruction-only changes need `git diff --check`.
@@ -103,6 +104,30 @@ Fix failures caused by the task and report unverified platforms.
 Script output/toolchain details live in [development](docs/development.md);
 coverage lives in [testing](docs/testing.md). Wait for the buffered formatting
 phase to exit before diagnosing it.
+
+Long tests are excluded from normal gates and runner checks. The explicit list
+is in [cmake/SlowTests.cmake](cmake/SlowTests.cmake); do not run these suites
+automatically, including during platform checks. Run them only when the user
+explicitly requests long tests or the exhaustive suite.
+
+Classify newly added or expanded large matrices as `slow` before including them
+in a gate. Revisit that classification using measured runtime when an explicit
+long-test run is requested.
+
+```sh
+# Only long suites:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -L slow --output-on-failure
+# One explicitly requested long suite:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -R '^native_rename_2$' --output-on-failure
+# Exhaustive gate including long suites:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/check.sh
+# Exhaustive gate on both existing runners:
+SEVENZIP_INCLUDE_SLOW_TESTS=1 python3 scripts/hyperv-runner.py check all --interactive --elevated
+```
+
+For remote checks, the requested long suite must build its targets in that same
+snapshot before CTest, following the runner rules below. Report excluded slow
+suites separately; a default gate does not establish their acceptance.
 
 Windows 7zFM is the reference for structure, commands, shortcuts and behavior.
 Before UI work, inspect exact upstream resources, handlers and callers; record
@@ -130,6 +155,9 @@ Use matching workflows in `.agents/skills/`: `sz-context`, `sz-setup`,
 For requested port-plan work, use the [checklist](docs/porting-checklist.md)
 for statuses/step selection and the [plan](docs/porting-plan.md) for scope,
 dependencies and iteration/commit rules. Neither is an automatic backlog.
+Group related remaining work into complete integrated scenarios before editing;
+do not create separate iterations or commits for each helper, failure branch or
+regression. Follow the plan's iteration rules for implementation and validation.
 
 For Linux/Windows checks read [Hyper-V runners](docs/hyperv-runners.md) and the
 global `runners` skill. Use
@@ -137,5 +165,10 @@ global `runners` skill. Use
 or `check all` with shared x64 guests. Stage new task files before syncing;
 each invocation has a fresh build, so a CTest invocation must build its targets
 in the same snapshot. Runner docs own transport/readiness/storage details.
+Do not create or attach new virtual disks to the runners. When space is low,
+clean obsolete project runs, build outputs and temporary data under the retention
+and active-run safeguards in [Hyper-V runners](docs/hyperv-runners.md).
+This scoped cleanup is authorized; a capacity warning alone does not require
+another confirmation. Preserve active work, toolchains and unrelated data.
 Removed htopQt QEMU VMs and historical ARM64 results do not validate these guests.
 Do not publish, push or update upstream unless the user's task calls for it.

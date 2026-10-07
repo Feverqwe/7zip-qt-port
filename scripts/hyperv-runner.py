@@ -18,6 +18,7 @@ import uuid
 
 from hyperv_transport import previous_snapshot, transfer
 from hyperv_interactive import interactive_command
+from hyperv_workspace import load_workspaces, mount_guard
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "build/runners/hyperv"
@@ -110,22 +111,29 @@ def snapshot(destination, upstream):
 def execute_check(record, platform, preset, archive, digest, root, command=None,
                   prepare_runtime=True, output=None, mode="scp", previous=None, interactive=False,
                   elevated=False):
+    include_slow = os.environ.get("SEVENZIP_INCLUDE_SLOW_TESTS", "0")
+    if include_slow not in ("0", "1"):
+        raise ValueError("SEVENZIP_INCLUDE_SLOW_TESTS must be 0 or 1")
     transport = {} if output is None else {"stdout": output, "stderr": subprocess.STDOUT}
     payload = command_payload(preset, command)
     if platform == "linux":
-        remote(record, f"mkdir -p {shlex.quote(root)}\n", **transport)
+        remote(record, f"mkdir -p {shlex.quote(root + '/runner-tmp')}\n", **transport)
     else:
-        remote(record, f"New-Item -ItemType Directory '{root}' | Out-Null", **transport)
+        remote(record, f"New-Item -ItemType Directory '{root}/runner-tmp' | Out-Null", **transport)
     transfer(record, platform, archive, root, mode, previous, invoke, remote, transport)
     if platform == "linux":
         script = f"""cd {shlex.quote(root)}
+export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
+export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
 printf '%s  {archive.name}\\n' {digest} | sha256sum -c -
 tar xf {archive.name}
 git init -q
-printf '/source.tar.gz\\n/source.tar\\n/check.log\\n/upstream.bundle\\n/upstream/\\n' >> .git/info/exclude
+printf '/source.tar.gz\\n/source.tar\\n/check.log\\n/upstream.bundle\\n/upstream/\\n/runner-tmp/\\n' >> .git/info/exclude
 git add -A
 git -c user.name='Runner snapshot' -c user.email='runner@example.invalid' commit -qm 'Runner snapshot'
 export CMAKE_BUILD_PARALLEL_LEVEL=4 SEVENZIP_SCRIPT_OUTPUT=compact
+export SEVENZIP_COMPACT_TEST_BINARIES=ON
+export SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
 export CMAKE_PREFIX_PATH="{QT_KITS['linux']}"
 export PATH="{QT_KITS['linux']}/bin:/home/runner/sevenzip-desktop/tools/formatter/bin:$PATH"
 # The VM has no accelerated GPU. Serialize native display fixtures to avoid
@@ -149,13 +157,18 @@ export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"
         script = "set -euo pipefail\n" + script
     else:
         kit = "C:/runner/htopqt"
-        commands = ['@echo off', f'call "{kit}/VS/VC/Auxiliary/Build/vcvars64.bat"',
+        commands = ['@echo off', f'set "TEMP={root}/runner-tmp"',
+                    f'set "TMP={root}/runner-tmp"',
+                    f'set "TMPDIR={root}/runner-tmp"',
+                    f'call "{kit}/VS/VC/Auxiliary/Build/vcvars64.bat"',
                     'if errorlevel 1 exit /b %errorlevel%',
                     f'set "PATH={root}/build/codec-runtime;C:/runner/sevenzip-desktop/tools/formatter/Scripts;{kit}/Python;{kit}/Python/Scripts;{kit}/Git/bin;{QT_KITS["windows"]}/bin;%PATH%"',
                     f'set "CMAKE_PREFIX_PATH={QT_KITS["windows"]}"',
                     'set "CC=cl.exe"',
                     'set "CXX=cl.exe"',
                     'set "CMAKE_BUILD_PARALLEL_LEVEL=4"',
+                    'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',
+                    f'set "SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}"',
                     'set "SEVENZIP_SCRIPT_OUTPUT=compact"',
                     'set "SEVENZIP_CTEST_JOBS=1"',
                     f'set "SEVENZIP_CODEC_MODULE_DIR={root}/build/codec-runtime"',
@@ -170,6 +183,7 @@ export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"
                     'echo /source.tar>>.git/info/exclude',
                     'echo /upstream.bundle>>.git/info/exclude',
                     'echo /upstream/>>.git/info/exclude',
+                    'echo /runner-tmp/>>.git/info/exclude',
                     'git add -A', 'if errorlevel 1 exit /b %errorlevel%',
                     'git -c user.name="Runner snapshot" -c user.email="runner@example.invalid" commit -qm "Runner snapshot"',
                     'if errorlevel 1 exit /b %errorlevel%']
@@ -188,6 +202,7 @@ export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"
         launch = (interactive_command(root, elevated) if interactive else
                   "& cmd.exe /d /c 'check.cmd > check.log 2>&1'\n$code=$LASTEXITCODE\n")
         script = f"""Set-Location '{root}'
+$env:TEMP=$env:TMP=$env:TMPDIR='{root}/runner-tmp'
 if ((Get-FileHash {archive.name} -Algorithm SHA256).Hash.ToLower() -ne '{digest}') {{ throw 'Snapshot hash mismatch' }}
 tar.exe -xf {archive.name}
 if ($LASTEXITCODE -ne 0) {{ throw 'Extraction failed' }}
@@ -229,27 +244,31 @@ def script_command(arguments, platforms):
 
 
 def run_platform(platform, local, archive, digest, preset, command, prepare_runtime, mode="rsync",
-                 interactive=False, elevated=False):
+                 interactive=False, elevated=False, workspace=None):
     result = {"platform": platform, "sha256": digest, "status": "running", "transport": mode,
               "interactive": interactive and platform == "windows",
               "elevated": elevated and platform == "windows"}
     directory = local / platform
     directory.mkdir()
-    root = ("C:/runner/sevenzip-desktop/runs/" if platform == "windows" else
-            "/home/runner/sevenzip-desktop/runs/") + local.name
+    workspace = workspace or load_workspaces(STATE)[platform]
+    root = workspace["root"] + "/" + local.name
     result["directory"] = root
+    if "filesystem_uuid" in workspace:
+        result["filesystem_uuid"] = workspace["filesystem_uuid"]
     print(f"[{platform}] Preparing runner; log: {directory / 'transport.log'}", flush=True)
     with (directory / "transport.log").open("w") as output:
         try:
             record = discover(platform)
             result.update(record)
+            if "filesystem_uuid" in workspace:
+                remote(record, mount_guard(workspace), stdout=output, stderr=subprocess.STDOUT)
             print(f"[{platform}] Syncing snapshot and running script", flush=True)
             resolved = list(command) if command else None
             if resolved and resolved[0] == "python" and platform == "linux":
                 resolved[0] = "python3"
             execute_check(record, platform, preset, archive, digest, root,
                           resolved, prepare_runtime, output, mode,
-                          previous_snapshot(STATE, platform) if mode == "rsync" else None,
+                          previous_snapshot(STATE, platform, workspace["root"]) if mode == "rsync" else None,
                           interactive and platform == "windows", elevated and platform == "windows")
             result.update(status="passed", exit_code=0)
         except subprocess.CalledProcessError as error:
@@ -288,6 +307,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
                   interactive=False, elevated=False):
     if elevated and (not interactive or "windows" not in platforms):
         raise ValueError("Elevated fixtures require an interactive Windows guest")
+    workspaces = load_workspaces(STATE)
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     local = STATE / (stamp + "-" + uuid.uuid4().hex[:8])
     local.mkdir(parents=True)
@@ -305,7 +325,7 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
         with ThreadPoolExecutor(max_workers=len(platforms)) as executor:
             futures = [executor.submit(run_platform, platform, local, archive, digest,
                                        preset, command, prepare_runtime, mode,
-                                       interactive, elevated) for platform in platforms]
+                                       interactive, elevated, workspaces[platform]) for platform in platforms]
             summary["platforms"] = [future.result() for future in futures]
         summary["status"] = ("passed" if all(item["status"] == "passed"
                                               for item in summary["platforms"]) else "failed")

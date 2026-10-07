@@ -85,17 +85,18 @@ chmod +x "$fixture/bin/ctest"
 export PATH="$fixture/bin:$PATH"
 export FAKE_CTEST_ARGS="$fixture/ctest-args"
 export FAKE_CTEST_PARALLEL_LEVEL="$fixture/ctest-parallel-level"
+export SEVENZIP_INCLUDE_SLOW_TESTS=0
 
 ctest_success="$(CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS= CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev -R '^agent_output$')"
 [[ "$ctest_success" == 'fixture CTest output' ]]
-[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$' ]]
+[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$\n--label-exclude\n^slow$' ]]
 [[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 4 ]]
 
 CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev --parallel 3 >/dev/null
 [[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 2 ]]
-[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n--parallel\n3' ]]
+[[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n--parallel\n3\n--label-exclude\n^slow$' ]]
 
 CTEST_PARALLEL_LEVEL=5 SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev >/dev/null

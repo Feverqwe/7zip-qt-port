@@ -58,6 +58,19 @@ prove terminal guard release. Normal/compact reports cover publication/recovery/
 retry. This bounded suite runs in the default gate. Source review and
 current validation are in the [dated audit](upstream-port-audit.md#p3-0515--changed-native-nested-archive-parent-2026-10-07).
 
+Long suites are labeled `slow` by [SlowTests.cmake](../cmake/SlowTests.cmake)
+and excluded by the project wrapper unless `SEVENZIP_INCLUDE_SLOW_TESTS=1` is
+explicitly set. [Development](development.md#local-commands) documents separate
+long-suite and exhaustive runs. Default-gate success does not validate excluded
+matrices. `ctest_selection` uses a disposable CMake/CTest fixture to check default
+exclusion, explicit opt-in and preservation of other caller exclusions.
+
+`compact_test_binaries` builds and runs small Debug consumers with the compact
+link policy both OFF and ON on Linux/MSVC. It verifies assertions and distinct
+function addresses, retained application symbols, and absence of linked test
+DWARF or test PDB/ILK in compact mode. This checks actual compiler/linker outputs;
+it does not replace the application suites run with the same policy.
+
 `native_rename_2` and `native_rename_301` exercise384 real F2/native Rename
 publication workflows using the private official writer opt-in. Actual native
 Write failure/source Cancel and subsequent native property HRESULTs distinguish
@@ -1535,6 +1548,24 @@ project's CTest gate. Use `python3 scripts/hyperv-runner.py check linux` or
 `check windows` for the current shared Hyper-V guests. See
 [Hyper-V runners](hyperv-runners.md) for snapshot scope and recorded results.
 Readiness probes do not prove application acceptance or desktop parity.
+
+`python3 tests/hyperv_runner_tests.py` also checks the runner's temporary-file
+boundary: a real shell/mktemp consumer in a snapshot path containing spaces
+must use that snapshot's `runner-tmp`, and its files must stay out of Git.
+Windows checks verify temp scoping before extraction, MSVC setup and interactive
+launch. The guest CTest suites retain their own per-suite startup/temp isolation;
+the runner change concerns preparation/build processes, not product behavior.
+Its Linux shell regression also checks the headless platform default and
+preservation of an explicitly selected platform. Linux private DBus fixtures
+use unique abstract socket addresses so long snapshot temp paths cannot exceed
+the Unix socket pathname limit. The launcher regression starts two buses under
+a long temp path and registers the same service independently on each, proving
+both connection success and isolation from each other and the user's session.
+Workspace regressions validate the allowlisted roots/UUID, refuse source sync
+when the data mount check fails, route both guests independently and keep rsync
+bases on the selected workspace. A live wrong-UUID runner invocation also proved
+failure before creating any guest snapshot directory; its record is
+build/review/runner-workspace-final/mount-refusal-verified.json.
 
 P1-18 focused suites are `native_rar_memory` and `native_rar_ui`.
 The first invokes actual source Rar5Handler with stored RAR5/RAR7 2 MiB dictionary

@@ -5,9 +5,17 @@
 bool CPrivateBus::Start() {
     if (!_directory.isValid())
         return false;
-    _daemon.start(QString::fromUtf8(DBUS_DAEMON_PATH),
-                  {"--session", "--nofork", "--nopidfile", "--print-address=1",
-                   "--address=unix:tmpdir=" + _directory.path()});
+#ifdef Q_OS_LINUX
+    // Long snapshot TEMP paths can exceed sockaddr_un::sun_path. Linux's
+    // abstract namespace keeps this private bus independent of that path.
+    const QString address =
+        "unix:abstract=sevenzip-test-" + QUuid::createUuid().toString(QUuid::Id128);
+#else
+    const QString address = "unix:tmpdir=" + _directory.path();
+#endif
+    _daemon.start(
+        QString::fromUtf8(DBUS_DAEMON_PATH),
+        {"--session", "--nofork", "--nopidfile", "--print-address=1", "--address=" + address});
     if (!_daemon.waitForStarted(3000))
         return false;
     for (unsigned i = 0; !_daemon.canReadLine() && i < 3; ++i)

@@ -118,10 +118,10 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString small = fixture.filePath("small");
+        const QString smallPath = fixture.filePath("small");
         const QString large = fixture.filePath("large");
-        QVERIFY(QDir().mkpath(small) && QDir().mkpath(large));
-        QVERIFY(writeControl(QDir(small).filePath(QStringLiteral("seed 文件.txt"))));
+        QVERIFY(QDir().mkpath(smallPath) && QDir().mkpath(large));
+        QVERIFY(writeControl(QDir(smallPath).filePath(QStringLiteral("seed 文件.txt"))));
         for (int i = 0; i < 301; ++i)
             QVERIFY(
                 writeControl(QDir(large).filePath(QStringLiteral("control 文件 %1.txt").arg(i))));
@@ -134,7 +134,7 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         auto *address = ui->findChild<QLineEdit *>("archivePath");
         auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
         address->setFocus();
-        address->setText(small);
+        address->setText(smallPath);
         QTest::keyClick(address, Qt::Key_Return);
         QTRY_COMPARE(view->rowCount(), 1);
         if (flat) {
