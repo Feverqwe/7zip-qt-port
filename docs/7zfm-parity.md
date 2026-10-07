@@ -1969,6 +1969,14 @@ Windows/Linux runtime и rendered Windows reference не проверены.
 
 ## P3-05 — Create validation policy (2026-10-07)
 
+Saved compression profiles also retain original nearest-entry selection,
+large-dictionary clamp, BZip2's decimal comparison and solid boundary behavior.
+Unavailable explicit CPU thread counts leave no selection, matching source
+SetNumThreads2; automatic values still select Auto. Qt inserts the source value
+table and applies its returned selected index. Current EN/RU geometry and real
+writer consumers are recorded in the
+[profile audit](upstream-port-audit.md#p3-05--source-compression-profile-selection-2026-10-07).
+
 Восстановлены исходные порядок проверок CompressDialog::OnOK и политика
 MyMessages: ошибки пароля, пути/Browse и размера тома подавляются исходным
 g_DisableUserQuestions, сохраняя отказ операции. Ошибка памяти и вопрос о малом

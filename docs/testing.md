@@ -3241,3 +3241,14 @@ eight small-volume No/Cancel rows remain unconditional. Refusal does not publish
 a target or persist settings. Standard message geometry produces 56 JSON reports
 per OS at requested 480×220/320×160, checking full labels and reachable buttons.
 See [source provenance and validation](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
+
+`compression_profile_selection` covers saved source profile restoration across
+LZMA/LZMA2, PPMd/ZIP PPMd, BZip2 and Deflate, EN/RU: values between/below entries,
+large dictionary marker, Auto, full/non-solid, out-of-range solid and unavailable
+explicit threads. Eighteen rows reopen after Cancel with byte-identical temporary
+settings and check public options/controls. Two further cases verify original
+format-name comparison and accepted normalized settings followed by real official
+Create/list/test/extract with exact Unicode/spaced input/output bytes. Including
+setup/cleanup, the suite has22 Qt results. Normal760×720/compact640×480 probes
+produce36 JSON reports, with dictionary/order/solid fully reachable by scrolling.
+Large dictionary cases only inspect/reject; they do not allocate those dictionaries.

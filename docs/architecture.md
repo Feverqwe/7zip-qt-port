@@ -1898,6 +1898,13 @@ restrictions; UI availability reflects those capabilities.
 
 ## Diagnostics
 
+Compression profile selection stays in the source CompressDialog module's
+SetDictionary2/SetOrder2/SetSolidBlockSize2 loops. Their existing value snapshots
+also return the selected index; QString/Qt combo insertion applies this index
+without a second nearest-value calculation. MethodChanged passes stored values
+only when source IsMethodEqualTo matches, retaining source Auto sentinels and
+thresholds. Thread profiles retain source exact-match/no-selection behavior.
+
 Create confirmation follows source CompressDialog::OnOK phases: password checks
 (including stored text in disabled controls), memory refusal, SaveOptionsInMem,
 final path resolution, volume checks, then accepted settings/output publication.

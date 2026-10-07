@@ -65,9 +65,9 @@ class CreateArchiveDialog : public QDialog {
     void FormatChanged();
     void MethodChanged();
     QString methodName() const;
-    void SetOrder2();
-    void SetDictionary2();
-    void SetSolidBlockSize2();
+    void SetOrder2(UInt32 defaultOrder);
+    void SetDictionary2(UInt32 defaultDict);
+    void SetSolidBlockSize2(UInt32 defaultBlockSize);
     UInt64 GetDict2() const;
     void SetNumThreads2();
     void SetMemoryUsage();

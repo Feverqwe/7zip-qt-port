@@ -15814,3 +15814,62 @@ task wrapper is archived/removed before commit;907 remaining inputs are unchange
 Eleven slow suites were excluded. Native desktop input, rendered original Windows
 reference, installed/CLI/package acceptance and remaining source modules remain
 required; this bounded scenario does not close P3 parents.
+
+## P3-05 — source compression profile selection (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Original complete SetDictionary2,
+SetOrder2, SetSolidBlockSize2, SetNumThreads2, FindRegistryFormat, method/default
+selection helpers and current Qt callers/types were inspected before changes.
+The existing source value-generation loops now also return their original selected
+index. Dictionary keeps the >=3.75GiB threshold, method-specific limit and first
+entry fallback, including BZip2's i<=defaultDict/100000 comparison. Order keeps
+nearest-less-or-equal and below-minimum fallback. Solid retains its separate
+index<=1 condition, 7z non-solid/full-solid and Auto semantics. These conditions
+are copied within the respective source loops, not recreated in a widget helper.
+Qt MethodChanged passes saved defaults only when source IsMethodEqualTo matches;
+combo insertion applies the returned index. Exact unavailable explicit threads
+leave no selection, as original SetNumThreads2 does; Auto remains selected for
+the all-ones sentinel. Format profile lookup uses original UString NoCase instead
+of independent Qt case folding. QString/INI and original names/notices/language
+remain. No compression/format algorithm, codec ABI or process transport changes.
+
+New public compression_profile_selection first produces16 failures/4 passes
+on old production for EN/RU value cases; final expanded suite produces20 failures/
+2 setup/cleanup passes on old production, including unavailable threads, source
+format comparison and accepted-profile consumer. Production files were restored
+from HEAD for RED and exact backed-up edited bytes restored afterwards. Eighteen
+rows cover LZMA/LZMA2, PPMd/ZIP PPMd, BZip2 and Deflate; Cancel/restart retains
+byte-identical temporary settings. The accepted normalized profile is persisted,
+then creates/lists/tests/extracts a real Unicode/spaced archive through the official
+engine and compares exact original/output bytes. Large dictionaries are only
+inspected/rejected, without allocating their compression memory. Each OS writes
+36 normal760×720/compact640×480 JSON; public tests reach dictionary/order/solid
+by scrolling, JSON checks source grouping/static text/footer and solid visibility.
+
+Whole CompressDialog still requires its remaining header/control-service and
+omitted-branch reconciliation, including Copy effective-zero/display and unknown
+methods. BenchmarkDialog/common bodies, native desktop input, rendered original
+Windows reference and installed/CLI/package acceptance remain separate required
+scope. This scenario does not close parent P3-05.
+
+Validation: final focused six consumers pass6/6 in2.11s on macOS arm64. The
+first full gate stops during formatting because the edited solid signature shifted
+outside a narrow formatting range; no build/test result is claimed for that run.
+After formatting that signature, unsandboxed check.sh passes formatting/all-target
+build and299/299 in248.67s. Retained full LastTest has4623 Qt passes/0 failures/
+18 platform-specific skips. Final Linux/Windows x64 snapshots build and pass14/14
+direct consumers; each has242 Qt passes/0 failures/0 skips, including22 new suite
+results. Each OS's36 current JSON passes static label fitting, footer/solid full
+visibility and dictionary→order→solid row order; public tests separately ensure
+all three fields are reachable at both sizes. These reports establish Qt geometry,
+not original Windows pixels or physical desktop input.
+
+All909 frozen code/test/build inputs match local files, source.tar and both
+actual guest trees at snapshot20261007T193310Z-3e5ab674, parentc188c40, SHA-256
+`3477b51fa6d0c68d41d322af538c8c8f9aeb2ebae8af8bcc6a5b72306a4a996d`.
+The earlier snapshot20261007T192754Z-f3cd82af passes14/14 on both guests but
+predates the signature's whitespace-only correction; final evidence supersedes it.
+Baseline verification passes408 exact/196 adapted/3 local paths. Temporary runner
+wrapper is archived/removed before commit;908 remaining frozen inputs are unchanged.
+Eleven slow suites were excluded; default/focused checks do not accept them.

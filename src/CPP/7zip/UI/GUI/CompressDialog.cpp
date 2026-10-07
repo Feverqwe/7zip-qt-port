@@ -189,9 +189,10 @@ void CCompressDialog::SetEncryptionMethod(const NCompression::CInfo &registry) {
 }
 
 int CCompressDialog::FindRegistryFormat(const NCompression::CInfo &registry, const QString &name) {
+    const UString sourceName(name.toStdWString().c_str());
     FOR_VECTOR(i, registry.Formats) {
         const NCompression::CFormatOptions &fo = registry.Formats[i];
-        if (name.compare(fo.FormatID, Qt::CaseInsensitive) == 0)
+        if (sourceName.IsEqualTo_NoCase(UString(fo.FormatID.toStdWString().c_str())))
             return (int)i;
     }
     return -1;
@@ -773,7 +774,7 @@ EMethodID GetMethodID(QStringView name, QStringView format) {
 }
 // LZMA/LZMA2 numeric branch from CCompressDialog::SetDictionary2 (0766b73).
 // Registry and Win32 insertion are handled by the Qt adapter.
-CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
+CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level, UInt32 defaultDict) {
     CDictionaryOptions options;
     switch (methodID) {
     case kLZMA:
@@ -785,6 +786,8 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
                                    : (UInt32)1 << (sizeof(size_t) / 2 + 24);
         }
 
+        if (defaultDict != UInt32(-1) && defaultDict >= ((UInt32)15 << 28))
+            defaultDict = kLzmaMaxDictSize;
         const size_t kLzmaMaxDictSize_Up = (size_t)1 << (20 + sizeof(size_t) / 4 * 6);
 
         for (unsigned i = (16 - 1) * 2; i <= (32 - 1) * 2; i++) {
@@ -798,6 +801,9 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
                 dict = kLzmaMaxDictSize; // we reduce dictionary
 
             options.Values.append(quint64(dict));
+            if (defaultDict != UInt32(-1))
+                if (dict <= defaultDict || options.Selected <= 0)
+                    options.Selected = options.Values.size();
             if (dict_up >= kLzmaMaxDictSize_Up)
                 break;
         }
@@ -810,6 +816,8 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
 
         const UInt32 kPpmd_Default_4g = (UInt32)0 - ((UInt32)1 << 10);
         const size_t kPpmd_MaxDictSize_Up = (size_t)1 << (29 + sizeof(size_t) / 8);
+        if (defaultDict != UInt32(-1) && defaultDict >= ((UInt32)15 << 28))
+            defaultDict = kPpmd_Default_4g;
 
         for (unsigned i = (20 - 1) * 2; i <= (32 - 1) * 2; i++) {
             if (i == (20 - 1) * 2 + 1)
@@ -821,6 +829,9 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
                 dict = kPpmd_Default_4g;
 
             options.Values.append(quint64(dict));
+            if (defaultDict != UInt32(-1))
+                if (dict <= defaultDict || options.Selected <= 0)
+                    options.Selected = options.Values.size();
             if (dict_up >= kPpmd_MaxDictSize_Up)
                 break;
         }
@@ -833,6 +844,9 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
         for (unsigned i = 20; i <= 28; i++) {
             const UInt32 dict = (UInt32)1 << i;
             options.Values.append(quint64(dict));
+            if (defaultDict != UInt32(-1))
+                if (dict <= defaultDict || options.Selected <= 0)
+                    options.Selected = options.Values.size();
         }
         break;
     }
@@ -850,6 +864,9 @@ CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level) {
         for (unsigned i = 1; i <= 9; i++) {
             const UInt32 dict = ((UInt32)i * 100) << 10;
             options.Values.append(quint64(dict));
+            if (defaultDict != UInt32(-1))
+                if (i <= defaultDict / 100000 || options.Selected <= 0)
+                    options.Selected = options.Values.size();
         }
         break;
     }
@@ -889,7 +906,7 @@ QString Combo_AddDict2(quint64 sizeShow) {
 
 // LZMA, Deflate and PPMd branches copied from CCompressDialog::SetOrder2 (0766b73).
 // The caller replaces registry selection and ComboBox insertion with Qt data.
-COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
+COrderOptions SetOrder2(EMethodID methodID, UInt32 level, UInt32 defaultOrder) {
     COrderOptions options;
     switch (methodID) {
     case kLZMA:
@@ -900,6 +917,9 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
             if (order > 256)
                 order = 273;
             options.Values.append(int(order));
+            if (defaultOrder != UInt32(-1))
+                if (order <= defaultOrder || options.Selected <= 0)
+                    options.Selected = options.Values.size();
         }
         break;
     }
@@ -918,6 +938,9 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
             if (order > 256)
                 order = (methodID == kDeflate64 ? 257 : 258);
             options.Values.append(int(order));
+            if (defaultOrder != UInt32(-1))
+                if (order <= defaultOrder || options.Selected <= 0)
+                    options.Selected = options.Values.size();
         }
 
         break;
@@ -940,6 +963,9 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
             if (i >= 2)
                 order = (4 + ((i - 2) & 3)) << ((i - 2) / 4);
             options.Values.append(int(order));
+            if (defaultOrder != UInt32(-1))
+                if (order <= defaultOrder || options.Selected <= 0)
+                    options.Selected = options.Values.size();
             if (order >= 32)
                 break;
         }
@@ -950,6 +976,9 @@ COrderOptions SetOrder2(EMethodID methodID, UInt32 level) {
         options.AutoOrder = level + 3;
         for (unsigned i = 2; i <= 16; i++) {
             options.Values.append(int(i));
+            if (defaultOrder != UInt32(-1))
+                if (i <= defaultOrder || options.Selected <= 0)
+                    options.Selected = options.Values.size();
         }
         break;
     }
@@ -1013,8 +1042,8 @@ QString Add_Size(UInt64 val) {
     return QString::fromLatin1(s.Ptr());
 }
 
-CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId,
-                                 UInt64 dict) {
+CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId, UInt64 dict,
+                                 UInt32 defaultBlockSize) {
     CSolidOptions options;
     const CFormatInfo &fi = GetFormatInfo(format);
     if (!fi.Solid_())
@@ -1058,11 +1087,21 @@ CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID met
 
     options.AutoSolid = blockSize;
 
-    if (is7z)
+    if (is7z) {
         options.Values.append(kSolidLog_NoSolid);
-    for (unsigned i = 20; i <= 36; i++)
+        if (defaultBlockSize == kSolidLog_NoSolid)
+            options.Selected = options.Values.size();
+    }
+    for (unsigned i = 20; i <= 36; i++) {
         options.Values.append(i);
+        const int index = options.Values.size();
+        if (defaultBlockSize != UInt32(-1))
+            if (i <= defaultBlockSize || index <= 1)
+                options.Selected = index;
+    }
     options.Values.append(kSolidLog_FullSolid);
+    if (defaultBlockSize == kSolidLog_FullSolid)
+        options.Selected = options.Values.size();
     return options;
 }
 

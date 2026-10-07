@@ -74,18 +74,21 @@ struct CFormatInfo {
 
 struct CDictionaryOptions {
     UInt32 AutoDict = 0;
+    int Selected = 0;
     QList<quint64> Values;
 };
-CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level);
+CDictionaryOptions SetDictionary2(EMethodID methodID, UInt32 level,
+                                  UInt32 defaultDict = UInt32(-1));
 QString Combo_AddDict2(quint64 sizeShow);
 
 struct COrderOptions {
     UInt32 AutoOrder = 1;
+    int Selected = 0;
     QList<int> Values;
 };
 EMethodID GetMethodID(QStringView name, QStringView format);
 bool GetOrderMode(EMethodID methodID);
-COrderOptions SetOrder2(EMethodID methodID, UInt32 level);
+COrderOptions SetOrder2(EMethodID methodID, UInt32 level, UInt32 defaultOrder = UInt32(-1));
 struct CInfo {
     UString ArcPath;
     QString Password;
@@ -123,9 +126,11 @@ struct CInfo {
 };
 struct CSolidOptions {
     UInt64 AutoSolid = 1 << 20;
+    int Selected = 0;
     QList<UInt32> Values;
 };
-CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId, UInt64 dict);
+CSolidOptions SetSolidBlockSize2(QStringView format, UInt32 level, EMethodID methodId, UInt64 dict,
+                                 UInt32 defaultBlockSize = UInt32(-1));
 QString Add_Size(UInt64 val);
 void OnOK(UInt32 solidLogSize, CInfo &Info);
 

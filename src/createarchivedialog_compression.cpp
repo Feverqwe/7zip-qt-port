@@ -129,10 +129,10 @@ void CreateArchiveDialog::SetLevel2() {
         level_->setCurrentIndex(0);
 }
 
-void CreateArchiveDialog::SetOrder2() {
-    const int previous = wordSize_->currentData().toInt();
+void CreateArchiveDialog::SetOrder2(UInt32 defaultOrder) {
     const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
-    const auto options = NCompressDialog::SetOrder2(method, level_->currentData().toUInt());
+    const auto options =
+        NCompressDialog::SetOrder2(method, level_->currentData().toUInt(), defaultOrder);
     wordSize_->clear();
     wordSize_->addItem(NCompressDialog::Modify_Auto(options.Values.isEmpty()
                                                         ? QString()
@@ -140,14 +140,13 @@ void CreateArchiveDialog::SetOrder2() {
                        0);
     for (int order : options.Values)
         wordSize_->addItem(QString::number(order), order);
-    const int index = wordSize_->findData(previous);
-    wordSize_->setCurrentIndex(index >= 0 ? index : 0);
+    wordSize_->setCurrentIndex(options.Selected);
 }
 
-void CreateArchiveDialog::SetDictionary2() {
-    const quint64 previous = dictionary_->currentData().toULongLong();
+void CreateArchiveDialog::SetDictionary2(UInt32 defaultDict) {
     const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
-    const auto options = NCompressDialog::SetDictionary2(method, level_->currentData().toUInt());
+    const auto options =
+        NCompressDialog::SetDictionary2(method, level_->currentData().toUInt(), defaultDict);
     dictionary_->clear();
     dictionary_->addItem(
         NCompressDialog::Modify_Auto(
@@ -155,16 +154,14 @@ void CreateArchiveDialog::SetDictionary2() {
         QVariant::fromValue(quint64(0)));
     for (quint64 size : options.Values)
         dictionary_->addItem(NCompressDialog::Combo_AddDict2(size), QVariant::fromValue(size));
-    const int index = dictionary_->findData(QVariant::fromValue(previous));
-    dictionary_->setCurrentIndex(index >= 0 ? index : 0);
+    dictionary_->setCurrentIndex(options.Selected);
 }
 
-void CreateArchiveDialog::SetSolidBlockSize2() {
-    const UInt32 previous =
-        solidBlock_->currentIndex() < 0 ? UInt32(-1) : solidBlock_->currentData().toUInt();
+void CreateArchiveDialog::SetSolidBlockSize2(UInt32 defaultBlockSize) {
     const auto method = NCompressDialog::GetMethodID(methodName(), format_->currentText());
-    const auto options = NCompressDialog::SetSolidBlockSize2(
-        format_->currentText(), level_->currentData().toUInt(), method, GetDict2());
+    const auto options =
+        NCompressDialog::SetSolidBlockSize2(format_->currentText(), level_->currentData().toUInt(),
+                                            method, GetDict2(), defaultBlockSize);
     solidBlock_->clear();
     solidBlock_->addItem(
         NCompressDialog::Modify_Auto(
@@ -176,6 +173,5 @@ void CreateArchiveDialog::SetSolidBlockSize2() {
                                           : NCompressDialog::Add_Size(UInt64(1) << log);
         solidBlock_->addItem(label, log);
     }
-    const int index = solidBlock_->findData(previous);
-    solidBlock_->setCurrentIndex(index >= 0 ? index : 0);
+    solidBlock_->setCurrentIndex(options.Selected);
 }

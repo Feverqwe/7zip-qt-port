@@ -782,7 +782,28 @@ question flag, validation owner or persisted setting is introduced.
 
 The [validation audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07)
 owns actual RED, recovery, geometry and same-source platform evidence. Whole
-CompressDialog acceptance remains open: source profile-to-combo default/clamp
-selection still needs reconciliation, including non-exact stored values and
-large dictionary markers. BenchmarkDialog/common dependency disposition, native
+CompressDialog acceptance remains open. Its source profile-to-combo default/clamp
+selection is subsequently reconciled in the
+[profile audit](upstream-port-audit.md#p3-05--source-compression-profile-selection-2026-10-07),
+including non-exact stored values, large markers and unavailable explicit threads.
+Remaining whole-module headers/control-service/omitted-branch review still includes
+Copy dictionary display/effective-zero and unknown-method handling.
+BenchmarkDialog/common dependency disposition, native
 desktop/rendered reference and package acceptance remain required separately.
+
+### GUI compression profile selection, 2026-10-07
+
+At the same pinned full revision, original SetDictionary2/SetOrder2/
+SetSolidBlockSize2/SetNumThreads2, FindRegistryFormat, method-equality and default
+selection callers were reviewed. Source dictionary threshold/clamp and selection
+conditions are restored inside the existing value-generation loops. Order keeps
+its first-entry fallback; solid retains its distinct index condition, full and
+non-solid branches. QVariant item insertion is replaced by table append plus
+selected index in the existing Qt boundary snapshots. No independent nearest
+selector is introduced. Qt MethodChanged forwards saved values only for source
+IsMethodEqualTo, and explicit unavailable threads retain no selection. Format
+lookup again uses UString::IsEqualTo_NoCase at QString storage boundaries.
+Commented ZSTD/dictionary-chain code remains inactive in this source baseline;
+Windows rectangle/label resizing remains the existing Qt form-layout adaptation.
+The profile audit owns RED/runtime/geometry evidence. This disposition covers
+the saved-value branches, without accepting unreviewed whole-module behavior.

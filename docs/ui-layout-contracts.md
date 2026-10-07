@@ -1698,6 +1698,14 @@ upstream options are still absent; this is a partial resource adaptation.
 `ui_geometry` covers column ordering, absence of a source picker, reachability
 and the footer; existing compression tests
 cover method/format-dependent enabled states and persistence.
+Saved method-dependent choices follow source SetDictionary2/SetOrder2/
+SetSolidBlockSize2: nearest admissible entries, first-entry fallback for a value
+below the minimum, large dictionary threshold/clamp and source BZip2 decimal
+comparison. Solid below the first numeric entry stays Auto for 7z; full/non-solid
+remain explicit. An unavailable explicit thread count leaves no selected entry,
+as source SetNumThreads2 does. `compression_profile_selection` checks EN/RU
+760×720/640×480 reachability and writes `profile-selection-*.json`; values and
+Cancel/restart are asserted through public controls/options, outside JSON.
 `compression_encryption` checks the complete encryption group, control separation
 and shown/hidden confirmation at both sizes, with a 400-character history path;
 reports are `encryption-{760,640}-{0,1}.json`.

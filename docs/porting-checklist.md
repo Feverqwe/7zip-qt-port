@@ -595,6 +595,17 @@ Whole CompressDialog profile/default/clamp selection, BenchmarkDialog/common,
 native/rendered/package acceptance remain;43/47 and P3-03/04/05/06 remain open.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 
+P3-05,2026-10-07: source compression profile selection restored inside original
+dictionary/order/solid loops, including large markers, nearest/below-minimum
+values, BZip2 decimal comparison, solid boundaries and unavailable explicit
+threads. New regression proves old-product20 failures, Cancel/restart without INI
+mutation and real accepted Create/list/test/extract bytes. Mac full299/299;
+final14 direct consumers pass on Linux/Windows,909 frozen inputs match actual
+guest trees and108 new EN/RU normal/compact JSON pass geometry. Whole Compress
+Copy/unknown-method/header-service reconciliation, Benchmark/common/native/
+rendered/package acceptance remains;43/47 and P3-03/04/05/06 remain open.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-compression-profile-selection-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

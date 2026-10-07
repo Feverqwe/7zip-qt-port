@@ -90,26 +90,13 @@ void CreateArchiveDialog::MethodChanged() {
     dictionary_->setCurrentIndex(0);
     solidBlock_->setCurrentIndex(-1);
     threads_->setCurrentIndex(0);
-    SetDictionary2();
-    SetOrder2();
-    if (sameMethod) {
-        const UInt64 dict = fo.Dictionary == UInt32(-2)   ? UInt64(1) << 32
-                            : fo.Dictionary == UInt32(-1) ? 0
-                                                          : fo.Dictionary;
-        const int index = dictionary_->findData(QVariant::fromValue(quint64(dict)));
-        dictionary_->setCurrentIndex(index >= 0 ? index : 0);
-        const int order = wordSize_->findData(fo.Order);
-        wordSize_->setCurrentIndex(order >= 0 ? order : 0);
-    }
-    SetSolidBlockSize2();
-    if (sameMethod) {
-        const int solid = solidBlock_->findData(fo.BlockLogSize);
-        solidBlock_->setCurrentIndex(solid >= 0 ? solid : 0);
-    }
+    SetDictionary2(sameMethod ? fo.Dictionary : UInt32(-1));
+    SetOrder2(sameMethod ? fo.Order : UInt32(-1));
+    SetSolidBlockSize2(sameMethod ? fo.BlockLogSize : UInt32(-1));
     SetNumThreads2();
-    if (sameMethod) {
+    if (sameMethod && fo.NumThreads != UInt32(-1)) {
         const int threads = threads_->findData(fo.NumThreads);
-        threads_->setCurrentIndex(threads >= 0 ? threads : 0);
+        threads_->setCurrentIndex(threads);
     }
     const bool compressed = level_->currentData().toUInt() != 0;
     // Source SetMethod2 retains TAR's GNU/POSIX choice at its only level (0).
