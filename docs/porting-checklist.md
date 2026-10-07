@@ -302,6 +302,13 @@ source specs/Cancel и реальные SFX consumers —
 [control lifecycle audit](upstream-port-audit.md#p3-05--compress-control-specific-event-lifecycle-2026-10-08).
 Common, native/rendered/package и итоговая P3 приёмка остаются обязательными.
 
+P3-05,2026-10-08: завершена сверка владельцев и адаптаций Common: все25 `.cpp`
+и30 headers имеют одного владельца,21 файл побайтно совпадает с pinned source.
+Полные сравнения, изменённые тела, header contracts, consumers и build/platform
+ветви разобраны в [Common disposition](omitted-scope-audit.md#common-owner-and-adaptation-reconciliation-2026-10-08).
+Код не менялся; baseline verify и diff check проходят. Это не закрывает
+оставшиеся Agent/FileManager bodies, native/rendered/package и P3-03/04/05/06.
+
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |

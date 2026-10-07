@@ -15981,6 +15981,38 @@ memory text and footer; no rendered Windows/native desktop acceptance is claimed
 Eleven slow suites remain excluded. Fresh authenticated capacity/host-D checks
 passed; no cleanup, disk changes or upstream mutation occurred.
 
+## P3-05 — Common owner and adaptation reconciliation (2026-10-08)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete Common file pairs,
+adapted headers, changed active bodies and their consumers were reconciled with
+the source build/dependency map. The
+[family disposition](omitted-scope-audit.md#common-owner-and-adaptation-reconciliation-2026-10-08)
+records all25 implementations and30 headers, copied/adapted scope, platform
+services, retained conditionals and lifecycle boundaries. There are no missing
+or duplicate Common file owners. Six implementations and15 headers are exact;
+the other19 implementations and15 headers retain upstream-relative source owners.
+No product behavior, tests or build configuration changed in this review.
+
+Evidence at build/review/common-final includes current source/owner SHA256 pairs
+for all55 files and full normalized comparisons for all34 adapted files.
+The maintained upstream-baseline.json remains the reproducible provenance owner;
+the review inventory is a dated check, not a competing manifest. Raw changed
+bodies were read separately from normalized comparisons, including extraction
+path/link publication, Open/Open2, Extract, codec loading, Hash extraction/writing,
+Compress/UpdateArchive, native/in-process CompressCall and WorkDir. Previously
+validated ZipRegistry and Agent-ADS changes retain their component receipts.
+The sibling checkout was not modified; its unrelated untracked .DS_Store remains.
+
+Baseline verify passes408 exact/196 adapted/3 local paths at the pinned revision.
+Documentation-only validation uses git diff --check. The latest unchanged code
+gate is the control-lifecycle receipt below: macOS304/304 and Linux/Windows9/9;
+those runs are neither new checks from this review nor exhaustive Common branch
+acceptance. Eleven slow suites remain excluded. No layout or runtime behavior
+changed, so no new appearance capture or full gate was needed. Agent/FileManager
+full-body disposition, final native/rendered/platform stability and current
+packages remain mandatory; P3-03/04/05/06 are still open.
+
 ## P3-05 — Compress control-specific event lifecycle (2026-10-08)
 
 Source https://github.com/ip7z/7zip.git at full revision
