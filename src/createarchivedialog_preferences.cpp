@@ -30,7 +30,7 @@ void CreateArchiveDialog::SaveOptionsInMem() {
     NCompressDialog::CInfo info;
     if (parameters_)
         info.Options = parameters_->text().toStdWString().c_str();
-    info.Level = level_->currentData().toUInt();
+    info.Level = CCompressDialog::GetComboValue(*level_, 1);
     // Qt Auto uses 0; source GetComboValue(control, 1) returns all ones.
     const UInt64 dictionary = dictionary_->currentData().toULongLong();
     info.Dict64 = dictionary ? dictionary : UInt64(-1);

@@ -110,12 +110,10 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     format_ = new QComboBox(this);
     format_->setObjectName("archiveFormat");
     populateArchiveFormats();
-    const QString initialFormat =
-        fixedSources_ && archiveNameState_.Info.FormatIndex >= 0
-            ? QString::fromWCharArray(archiveNameState_.Get_ArcInfoEx().Name.Ptr())
-            : m_RegistryInfo.ArcType;
-    const int savedFormat = format_->findText(initialFormat, Qt::MatchFixedString);
-    format_->setCurrentIndex(savedFormat >= 0 ? savedFormat : 0);
+    if (!codecs_) {
+        const int savedFormat = format_->findText(m_RegistryInfo.ArcType, Qt::MatchFixedString);
+        format_->setCurrentIndex(savedFormat >= 0 ? savedFormat : 0);
+    }
     if (codecs_ && codecs_->result() != S_OK)
         format_->setToolTip(codecs_->error());
     configureArchiveName(format_->currentText());

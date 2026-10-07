@@ -18,6 +18,7 @@
 #include "Windows/System.h"
 #include "qtcompressoptionsdialog.h"
 #include "qtguimessages.h"
+#include <QCollator>
 #include <QComboBox>
 #include <QDir>
 #include <QFileInfo>
@@ -1575,6 +1576,59 @@ void CCompressDialog::SetMethods(const CObjectVector<CCodecInfoUser> &userCodecs
 }
 
 using namespace NCompressDialog;
+
+// CB_ADDSTRING/CBS_SORT is a Win32 presentation service, with no portable
+// upstream implementation. Preserve its selected item and returned insertion
+// index; the original OnInit below owns fallback/registry/explicit selection.
+static int AddSortedFormat(QComboBox &control, const UString &name, unsigned arcIndex) {
+    const QString text = QString::fromWCharArray(name.Ptr()).toLower();
+    QCollator collator;
+    collator.setCaseSensitivity(Qt::CaseInsensitive);
+    int index = 0;
+    while (index < control.count() && collator.compare(control.itemText(index), text) <= 0)
+        ++index;
+    const bool hadSelection = control.currentIndex() >= 0;
+    control.insertItem(index, text, arcIndex);
+    if (!hadSelection)
+        control.setCurrentIndex(-1);
+    return index;
+}
+
+// Format population/selection block from original OnInit. Other initialization
+// phases bind Qt controls in CreateArchiveDialog. ArcIndices is then projected
+// from combo item data for source Browse/history consumers that no longer own
+// an HWND; fallback still uses the first original native index before sorting.
+bool CCompressDialog::OnInit(QComboBox &formatControl, const NCompression::CInfo &registry) {
+    formatControl.clear();
+    const bool needSetMain = (Info.FormatIndex < 0);
+    FOR_VECTOR(i, ArcIndices) {
+        const unsigned arcIndex = ArcIndices[i];
+        const CArcInfoEx &ai = (*ArcFormats)[arcIndex];
+        const int index = AddSortedFormat(formatControl, ai.Name, arcIndex);
+        if (!needSetMain) {
+            if (Info.FormatIndex == (int)arcIndex)
+                formatControl.setCurrentIndex(index);
+            continue;
+        }
+        if (i == 0 || ai.Name.IsEqualTo_NoCase(UString(registry.ArcType.toStdWString().c_str()))) {
+            formatControl.setCurrentIndex(index);
+            Info.FormatIndex = (int)arcIndex;
+        }
+    }
+    ArcIndices.Clear();
+    for (int i = 0; i < formatControl.count(); ++i)
+        ArcIndices.Add(formatControl.itemData(i).toUInt());
+    return formatControl.currentIndex() >= 0;
+}
+
+UInt32 CCompressDialog::GetComboValue(const QComboBox &control, int defMax) {
+    if (control.count() <= defMax)
+        return (UInt32)(Int32)-1;
+    // Native GetItemData_of_CurSel returns CB_ERR when GetCurSel is absent.
+    if (control.currentIndex() < 0)
+        return (UInt32)(Int32)-1;
+    return control.currentData().toUInt();
+}
 
 // Original SetMethod2/GetMethodID/GetMethodSpec bodies. Qt supplies the control,
 // current level/registry and MethodChanged presentation callback; method IDs,

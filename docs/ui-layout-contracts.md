@@ -1727,6 +1727,13 @@ refusal. `compression_event` covers EN/RU XZ state transitions, refusal/no-save,
 restart and official-engine workflows, with reachable thread/memory controls at
 760×720/640×480 in `compression-event-*.json`. Auto remains an all-ones operation
 spec; the official engine owns the actual compression thread calculation.
+The format combo follows the resource's CBS_SORT presentation order while its
+selection follows source OnInit: explicit handler, then saved format, otherwise
+the first native candidate before sorting. Browse filter indices refer to that
+same displayed order. Hash method selection refreshes the source filename suffix
+(SHA1 or Auto SHA256). `compression_format` covers current/reordered handler
+indices and EN/RU 760×720/640×480 format reachability in24 `format-order-*.json`
+reports, plus public handler/filter/name/profile and real ZIP workflow assertions.
 `compression_encryption` checks the complete encryption group, control separation
 and shown/hidden confirmation at both sizes, with a 400-character history path;
 reports are `encryption-{760,640}-{0,1}.json`.

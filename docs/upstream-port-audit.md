@@ -15981,6 +15981,69 @@ memory text and footer; no rendered Windows/native desktop acceptance is claimed
 Eleven slow suites remain excluded. Fresh authenticated capacity/host-D checks
 passed; no cleanup, disk changes or upstream mutation occurred.
 
+## P3-05 — Format selection, Browse and Hash names (2026-10-08)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete affected original
+GUI/CompressDialog.cpp::OnInit/OnCommand/OnButtonSetArchive/ArcPath_WasChanged/
+SetArchiveName/SetArchiveName2/SetMethod2/GetMethodSpec, its header,
+CompressDialog.rc/Res, Windows/Control/ComboBox.h/.cpp and UpdateGUI's format
+selection callers were inspected before edits. All current Create adapters,
+typed metadata/profile and Browse consumers were compared. The sibling source
+checkout stays read-only; original C++ language, paths, symbols and notices remain.
+
+The original OnInit format population/selection block now lives in authoritative
+source CompressDialog.cpp. Its first native index fallback, saved-name match and
+explicit FormatIndex priority remain unchanged. A narrow Qt control service
+replaces Win32 CB_ADDSTRING/CBS_SORT: locale-aware sorted insertion retains the
+selected item and returns its insertion index. Win32 sorting has no portable
+upstream implementation. Combo item data retains native handler indices; after
+population ArcIndices projects displayed order for the existing source Browse
+and history consumers, replacing native GetItemData access. Existing lowercase
+Qt format IDs remain the integration spelling; native names still supply source
+comparisons and Browse descriptions. PrepareFormatSelection owns admissibility;
+the duplicate UpdateEnabled filter in the widget adapter is removed.
+
+Original-production RED gives6 failures/8 passes: reordered admissible native
+indices remain visibly unsorted. Ordinary current-catalog order already passes;
+no natural-catalog failure is claimed. An additional EN/RU Hash-method RED gives
+two failures/16 passes: changing SHA256 to SHA1 leaves the old filename suffix.
+The Qt method event now executes the original HashHandler/SetArchiveName2(false)
+post-control branch. Original source naming owns the extension; no new hash or
+archive algorithm is introduced.
+
+The final20-result suite covers native/reordered indices, EN/RU saved/explicit/
+fallback priority, selected-handler mapping, Cancel without preference writes,
+sorted Browse filters/cancellation/changed-handler suffix, Hash Auto/explicit
+suffixes and accepted ZIP restart followed by official create/list/test/extract
+with exact Unicode/space bytes, failure and cancellation without output.
+The source GetComboValue/GetLevelSpec boundary also retains all-ones Auto for
+empty/single-entry controls. Source DTO/profile saving now uses that body;
+standalone CLI options retain their normalized effective level. An actual source
+modal Hash workflow previously returned E_INVALIDARG because the independent Qt
+getter emitted unsupported `x=0` (18 passes/1 failure). It now writes the chosen
+SHA1 manifest, verified against the exact input digest and Unicode filename.
+TAR profile/restart checks assert no persisted level key. No HashCalc or encoder
+algorithm changes were needed. Five direct local suites pass5/5 in2.30s.
+Windows fixture setup uses wide CRT `_wputenv_s` and asserts lossless Unicode
+settings-path roundtrip. The first remote run's six format-selection failures
+were traced to narrow qputenv/Unicode path mismatch, not changed expectations;
+its failed snapshot and logs are retained separately from final validation.
+Final unsandboxed macOS arm64/Qt6.12.0 formatting/all-target/default gate passes
+304/304 in253.03s,4718Qt pass/0fail/18 platform skips. Fresh Linux/Windows
+x64/Qt6.12.0 each build and pass8/8 direct suites in4.81s/64.15s,109Qt pass,
+0 failures/skips each. The new suite passes20Qt/0skip on all three OS;24 JSON
+per OS confirm format reachability, seven native choices and the three footer
+buttons at760×720/640×480. Scrolled Options is content, not a footer button.
+All1407 frozen code/build/runtime/resource inputs match local files, source.tar
+and both actual guest trees, snapshot `20261007T213849Z-89a2b273`, SHA256
+`8a7f80d45a69d266cadf50b35e0815a4c36c986dd4edb4f9bd4cc489bc0842bc`.
+The disposable wrapper is archived/removed;1406 remaining inputs are unchanged.
+Fresh authenticated host-D/guest capacity checks pass; no cleanup or disk changes.
+Eleven slow suites remain excluded. Evidence: build/review/compression-format
+(final candidate in its final/ directory). Whole CompressDialog/Common disposition and
+native/rendered/package/final P3 acceptance remain separate required scope.
+
 ## P3-05 — Options timestamp control lifecycle (2026-10-08)
 
 Source repository https://github.com/ip7z/7zip.git at full revision

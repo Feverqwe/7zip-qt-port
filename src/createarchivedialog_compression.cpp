@@ -84,7 +84,16 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         Get_FormatOptions().Level = level;
         FormatChanged();
     });
-    connect(method_, &QComboBox::currentTextChanged, this, &CreateArchiveDialog::MethodChanged);
+    connect(method_, &QComboBox::currentTextChanged, this, [this] {
+        MethodChanged();
+        // Original OnCommand(IDC_COMPRESS_METHOD) refreshes the Hash filename
+        // after method/SFX/memory controls; source SetArchiveName2 owns naming.
+        if (archiveNameState_.Get_ArcInfoEx().Flags_HashHandler()) {
+            archiveNameState_.m_ArchivePath = name_->text();
+            archiveNameState_.SetArchiveName2(false);
+            name_->setText(archiveNameState_.m_ArchivePath);
+        }
+    });
     connect(dictionary_, &QComboBox::currentIndexChanged, this, [this] {
         // IDC_COMPRESS_DICTIONARY preserves explicit threads, but resets a
         // numeric solid size; Non-solid and Full-solid survive this change.

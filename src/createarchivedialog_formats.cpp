@@ -32,16 +32,8 @@ void CreateArchiveDialog::populateArchiveFormats() {
             NCompressDialog::PrepareFormatSelection(archiveNameState_, codecs_->nativeCodecs(),
                                                     censor);
         const auto &formats = codecs_->nativeCodecs().Formats;
-        CUIntVector indices = archiveNameState_.ArcIndices;
-        archiveNameState_.ArcIndices.Clear();
-        FOR_VECTOR(i, indices) {
-            const unsigned index = indices[i];
-            const auto &format = formats[index];
-            if (format.UpdateEnabled) {
-                format_->addItem(QString::fromWCharArray(format.Name.Ptr()).toLower());
-                archiveNameState_.ArcIndices.Add(index);
-            }
-        }
+        archiveNameState_.ArcFormats = &formats;
+        archiveNameState_.OnInit(*format_, m_RegistryInfo);
     } else
         format_->addItems({"7z", "zip"});
 }

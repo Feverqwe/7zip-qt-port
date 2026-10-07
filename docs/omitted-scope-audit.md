@@ -916,3 +916,29 @@ Dependencies remain portable source strings/vectors, CBoolPair/MethodProps,
 ZipRegistry profiles, ArcInfo metadata, language/property names and Help service.
 Regression and platform evidence belong to the
 [timestamp audit](upstream-port-audit.md#p3-05--options-timestamp-control-lifecycle-2026-10-08).
+
+### Compress format/Browse/name control disposition, 2026-10-08
+
+At pinned full `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, the OnInit format
+block retains original native-order fallback and registry/explicit priority in
+CompressDialog.cpp. Qt adapts CBS_SORT with QCollator and item data; projected
+display order supplies native GetItemData consumers in OnButtonSetArchive and
+ArcPath_WasChanged. PrepareFormatSelection remains the sole eligibility owner.
+Native callback/path/filter algorithms are retained, including excluded save
+extensions, combined/all-files filters and cancellation. Hash method selection
+now calls the original SetArchiveName2(false) after dependent controls, restoring
+OnCommand's omitted final branch. Qt callbacks supply text/notification transport;
+source naming and method/profile state remain authoritative. Original filename,
+KeepName, SFX and explicit/saved-format semantics remain source algorithms.
+Original GetComboValue/GetLevelSpec supplies the source DTO and saved profile;
+empty/single-entry controls retain all-ones Auto. Standalone CLI effective-level
+normalization remains at its separate transport boundary. This prevents emitting
+unsupported `x=0` to the unchanged source HashCalc handler. Real source modal SHA1
+manifest creation and TAR profile restart cover those consumers.
+The platform sorting service has no portable source body: original ComboBox
+sends CB_ADDSTRING to the CBS_SORT HWND. System locale supplies collation; this
+is not a byte-identical Windows locale or rendered acceptance claim.
+Dependencies remain source ArcInfo/LoadCodecs, strings/vectors/numeric helpers,
+ZipRegistry, language and Browse services. Full source/runtime evidence belongs
+to the [format audit](upstream-port-audit.md#p3-05--format-selection-browse-and-hash-names-2026-10-08).
+Remaining Compress/Common/native/rendered/package scope stays mandatory.

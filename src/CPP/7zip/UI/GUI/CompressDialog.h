@@ -192,6 +192,8 @@ class CCompressDialog {
   public:
     AStringVector ExternalMethods;
     void SetMethods(const CObjectVector<CCodecInfoUser> &userCodecs);
+    bool OnInit(QComboBox &formatControl, const NCompression::CInfo &registry);
+    static UInt32 GetComboValue(const QComboBox &control, int defMax = 0);
     const CObjectVector<CArcInfoEx> *ArcFormats = nullptr;
     CUIntVector ArcIndices;
     NCompressDialog::CInfo Info;

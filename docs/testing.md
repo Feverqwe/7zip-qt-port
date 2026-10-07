@@ -3305,3 +3305,16 @@ deterministic unusual masks without adding an encoder. The64 normal/compact
 520×400/440×340 reports check precision reachability. `compression_advanced`,
 `archive_metadata_ui` and `source_metadata_storage` remain direct real-engine
 timestamp/metadata consumers; synthetic masks do not establish format support.
+
+`compression_format` exercises source format priority independently of sorted
+presentation: current/reordered native indices, saved/explicit/missing format,
+EN/RU, all displayed-to-native mappings and Cancel with unchanged settings.
+The24 reports use760×720/640×480 and require format reachability. Additional
+public source cases cover sorted Browse filter order, cancellation and changed
+filter extension; Hash SHA1/Auto SHA256 filename refresh; accepted ZIP restart,
+official create/list/test/extract with exact Unicode/space bytes, invalid-thread
+failure and cancellation without output. Source empty/single-entry GetLevelSpec
+and TAR profile/restart preserve Auto without a level key. The real source modal
+Hash writer produces a SHA1 manifest checked against exact input bytes and name.
+Including setup/cleanup:20 Qt results. Windows settings fixtures set their Unicode
+override through the wide CRT and assert its exact roundtrip before exercising UI.

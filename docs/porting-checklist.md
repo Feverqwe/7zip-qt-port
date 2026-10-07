@@ -287,6 +287,14 @@ CB_ERR при timestamp precision; EN/RU OK/Cancel/Save/Load/keyboard прове
 [timestamp audit](upstream-port-audit.md#p3-05--options-timestamp-control-lifecycle-2026-10-08).
 Это не закрывает весь CCompressDialog/Common и P3-03/04/05/06.
 
+P3-05,2026-10-08: исходный OnInit теперь владеет приоритетом выбранного формата;
+CBS_SORT presentation и native item data связаны с Browse/history. В том же
+сценарии восстановлены исходная смена Hash filename после метода и Auto level
+spec для source DTO/profile. EN/RU, native/reordered indices, Cancel/restart/Browse,
+real ZIP consumers и source modal SHA1 manifest —
+[format audit](upstream-port-audit.md#p3-05--format-selection-browse-and-hash-names-2026-10-08).
+Whole Compress/Common и финальная P3 приёмка остаются обязательными.
+
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |

@@ -24,6 +24,9 @@ void CreateArchiveDialog::initializeSourceControls(const NCompressDialog::CInfo 
 NCompressDialog::CInfo CreateArchiveDialog::sourceInfo() const {
     const CompressionOptions options = compressionOptions();
     NCompressDialog::CInfo info = options;
+    // Source GetLevelSpec returns Auto for an empty or single-entry combo.
+    // The standalone CLI options retain their normalized effective level.
+    info.Level = CCompressDialog::GetComboValue(*level_, 1);
     info.KeepName = archiveNameState_.Info.KeepName;
     info.ArcPath = target().toStdWString().c_str();
     info.FormatIndex = codecs_ ? codecs_->formatIndex(options.format) : -1;

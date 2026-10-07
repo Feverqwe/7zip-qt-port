@@ -1990,6 +1990,22 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — Format and Hash filename controls (2026-10-08)
+
+The archive-format combo follows source CBS_SORT ordering even if registration
+order changes. Initial selection retains the first native candidate fallback,
+saved name and explicit-handler priority; sorting cannot silently select another
+handler. Browse filters use displayed order and native item data. Qt's system
+locale supplies collation and existing lowercase format IDs remain its spelling;
+native names supply filter descriptions. Hash method selection refreshes the
+source filename extension to SHA1 or Auto SHA256 after control updates. EN/RU
+normal/compact, Cancel/restart, Browse and real ZIP workflow evidence belongs to
+the [format audit](upstream-port-audit.md#p3-05--format-selection-browse-and-hash-names-2026-10-08).
+Empty/single-entry level controls retain source Auto in operation/profile specs;
+Hash emits no unsupported level property and its source modal writer produces
+the selected SHA1 manifest. TAR restart preserves the same Auto sentinel.
+Original rendered Windows/system-locale/native desktop acceptance remains open.
+
 ## P3-05 — Options timestamp selection (2026-10-08)
 
 Options preserves the original ComboBox contract: adding precisions does not
