@@ -70,6 +70,36 @@ state/history projection. Parent/multiple-item behavior stays in OpenSelectedIte
 the broader OnNotify/status/drag/rendered/platform review remains open.
 See [dated consumer evidence](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
 
+### PanelKey complete body/caller review, 2026-10-07
+
+The full original `CVKeyPropIDPair`, table, `FindVKeyPropIDPair` and
+`CPanel::OnKeyDown` are restored in their original translation unit. All active
+cases and their ordering were compared, including right-Ctrl/Alt bookmarks,
+F9, modified sort keys, Shift state, F2–F7, unconditional Delete, Insert,
+Alt/Shift arrows, Ctrl+PgDn no-op, keypad selection, Backspace, Ctrl letters,
+view modes and Alt+F12. Presentation methods reach existing CApp commands;
+F9/sort and panel callbacks keep their original owners. No archive syntax is
+added. Source `PanelMenu::EditCut/EditCopy/EditPaste` is restored: selected
+indices/raw names/CRLF and Unicode clipboard; commented shell/file-transfer
+branches remain inactive. `Panel.h`, complete `PanelListNotify::LVN_KEYDOWN`
+caller, `Panel.cpp::OnNotify` guard and `resource.rc` were reviewed. The resource
+only registers F1 and Alt+F12 as active accelerators; Ctrl+PgDn's caption does
+not make its commented source open call active.
+
+`QtPanelKeyDown` replaces NMLVKEYDOWN/GetKeyState at the source input boundary.
+`mainwindow_panelkey.cpp` routes address edits separately, claims conflicting
+list shortcuts, decodes native right-primary-modifier notifications and supplies
+the existing activation/WM_CHAR transports. Windows also queries original
+VK_RCONTROL through GetKeyState; Cocoa maps Command to Qt Control and XCB
+supplies its XKB keysym. Qt's native-key transport was inspected in the local
+official Qt6.12 sources and macOS SDK constants. Source Tab's false return needs
+consumption after its callback to prevent a second Qt focus traversal. Source
+posted Shift selection uses a queued callback bound to the original owning
+panel; source posted Close uses its QObject lifetime. Ordinary text editors
+retain their own shortcuts. Full body disposition is not physical-keyboard,
+rendered, three-platform or parent P3-05 acceptance; current evidence is in the
+[source keyboard audit](upstream-port-audit.md#p3-05--source-keyboard-dispatcher-2026-10-07).
+
 ### RefreshListCtrl phase and caller map, 2026-10-06
 
 Reviewed against the full revision linked above: the active original

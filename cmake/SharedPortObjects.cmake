@@ -83,6 +83,7 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow_language.cpp
     src/mainwindow_menus.cpp
     src/mainwindow_panel.cpp
+    src/mainwindow_panelkey.cpp
     src/mainwindow_preferences.cpp
     src/mainwindow_propertyinvalidation.cpp
     src/mainwindow_root.cpp

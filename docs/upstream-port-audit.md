@@ -15238,3 +15238,75 @@ A separate owned-FM-title observation lacks macOS screen/accessibility
 permission and remains unverified; it does not replace the payload result.
 Final Windows/Linux packages, remaining source bodies/keyboard commands,
 rendered UX and whole P3-03/P3-04/P3-05/P3-06 acceptance remain open.
+
+## P3-05 — source keyboard dispatcher (2026-10-07)
+
+Source repository `https://github.com/ip7z/7zip.git`, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Before editing, reviewed complete
+FileManager/PanelKey.cpp, PanelMenu::EditCut/EditCopy/EditPaste, their Panel.h
+declarations, PanelListNotify::LVN_KEYDOWN caller, Panel.cpp::OnNotify guard,
+resource.rc accelerators and menu captions, PanelSelect Shift/Insert dependencies
+and existing source CApp/Qt command owners. An isolated unchanged product copy
+reproduced three public failures: Ctrl+C copied only a focused cell despite two
+selected rows, Ctrl+Shift+A deselected everything and Ctrl+W left the window open.
+Focus and selection preconditions passed. RED evidence is retained at
+`build/review/final-source/key-red-proof.json` and related logs.
+
+Copied/adapted C++ scope: original CVKeyPropIDPair/table/FindVKeyPropIDPair and
+entire active OnKeyDown switch/order in `src/CPP/7zip/UI/FileManager/PanelKey.cpp`;
+original clipboard bodies in PanelMenu.cpp and declarations in Panel.h.
+Inactive help/slash cases, commented shell Cut/Paste and file-transfer body are
+not activated. The original selected-index loop/CRLF/raw GetItemName flow reaches
+Qt's Unicode clipboard. QtPanelKeyDown replaces the Win32 notification and
+modifier queries. CApp is an explicit per-window reference instead of a global;
+existing command/capability adapters replace modal presentation calls. F9,
+sorting and callbacks keep direct source owners. Posted Close is deferred with
+the panel QObject lifetime. Original algorithms/module names remain authoritative;
+no widget constructs engine syntax or copies archive/filesystem implementations.
+
+New `mainwindow_panelkey.cpp` owns only input transport: address-edit dispatch,
+shortcut conflicts, primary-modifier decoding, WM_CHAR/activation adapters and
+the posted Shift tail bound to its original panel. Independent keypad dispatch
+is removed from mainwindow_selection.cpp. Shared production objects register
+the adapter for every consumer. Windows retains GetKeyState(VK_RCONTROL);
+Cocoa's right Command is Qt's primary Control modifier, XCB uses Control_R's
+native keysym. The local official Qt6.12 QPA implementations and macOS SDK
+constant were inspected. Synthetic Cocoa/XCB native-key notifications exercise
+the decoder; the Windows test uses SendInput with released keys and requires an
+actual active desktop. These are distinct observation scopes.
+
+`panel_key_source` covers the original three RED cases, Ctrl+Insert/extra
+modifiers, both panes, ordinary/alternative marks, four views, Unicode/spaces,
+source-index clipboard order and empty selection, Cut/Paste no-ops, address
+copy, peer/input preservation, Alt/right-primary bookmark priority/release,
+Ctrl+PgDn no-op, modified view/sort, Delete cancellation, source notification
+suppression, loading/close guards and recovery. Twelve paired consumer scenarios
+produce 24 EN/RU normal/compact view/address reports. Initial integration failures
+(special-key QChar assertion and unregistered F9 command) were corrected without
+weakening assertions. Fixture fixes retain provider order and original sparse
+bookmark length. Current macOS focused10/10 PASS14.83s,244Qt/0fail/0skip;
+unsandboxed required full gate290/290 PASS233.42s,4473Qt/0fail/15Windows-only
+skips. Fresh Linux20261007T154706Z-1fde29ae focused10/10,244Qt/0fail/0skip,
+including23 source-key cases; all1451 frozen inputs matched and242 widget
+reports were collected. The24 source-key JSON on each of macOS/Linux verify
+normal980x620/compact640x400, both pane owners and48 enabled, fully exposed
+address/list controls per OS; ordering/grouping are retained by existing main
+panel contracts. No appearance change or rendered Windows claim is made.
+Windows20261007T155308Z-6cc97e30 successfully built
+the application and11 direct test consumers (snapshot SHA256
+97c2c5000f16e38ecf75ad81570068aeb5db3adbf203fbf15e8a506e554728c7);
+all1451 frozen inputs matched after the build.
+Native Windows keyboard execution remains pending desktop login.
+
+The first full Mac run exposed a stale external-editor test expectation:
+source OnKeyDown calls CApp directly rather than emitting QAction::triggered.
+A separate diagnostic verified the actual viewer file arguments while the
+signal assertion still failed. The test now retains actual F3/F4 process,
+arguments, settings and focus checks and removes only the signal expectation.
+The corrected focused consumer and final full gate pass. Fresh Linux
+20261007T155944Z-7b6c40f0 also built the affected File/Open/View/Edit targets
+and passed8/8 CTest28.56s,132Qt/0fail/0skip; all1451 frozen inputs matched
+and130 reports were collected. No production timeout or behavioral assertion
+was relaxed. Evidence lives in build/review/source-key/.
+Slow suites and rendered upstream Windows parity were not verified. Whole
+source/UX/platform/package acceptance and P3-06 remain open.

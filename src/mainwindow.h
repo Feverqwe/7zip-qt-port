@@ -185,7 +185,9 @@ class MainWindow : public QMainWindow {
     void updateFilesystemIcons();
     bool eventFilter(QObject *watched, QEvent *event) override;
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
-    bool handleSelectionKey(QKeyEvent *key);
+    bool handlePanelListKey(QKeyEvent *key);
+    bool overridePanelKey(const QKeyEvent &key) const;
+    void updatePanelModifier(const QKeyEvent &key);
     void handleSelectionClick(int row);
     HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false,
                           bool updateAddress = true);
@@ -366,6 +368,7 @@ class MainWindow : public QMainWindow {
     Qt::KeyboardModifiers selectionClickModifiers_ = Qt::NoModifier;
     bool selectionClickLeft_ = false;
     bool selectionShiftSequence_ = false;
+    bool rightControlPressed_ = false;
     QStackedWidget *viewStack_ = nullptr;
     QPointer<CProgressDialog> progress_;
     std::unique_ptr<IQtProgressTransport> progressTransport_;

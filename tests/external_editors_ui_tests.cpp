@@ -156,9 +156,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         view->setFocus();
         QTRY_VERIFY(view->hasFocus());
         QTRY_VERIFY(action(window, "viewFileAction")->isEnabled());
-        QSignalSpy viewed(action(window, "viewFileAction"), &QAction::triggered);
         QTest::keyClick(view, Qt::Key_F3);
-        QCOMPARE(viewed.count(), 1);
         QTRY_COMPARE(readArguments(viewerOutput), QStringList({second}));
         QTest::keyClick(view, Qt::Key_F4);
         QTRY_COMPARE(readArguments(editorOutput), QStringList({second}));

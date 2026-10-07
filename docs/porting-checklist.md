@@ -505,6 +505,18 @@ interactive/elevated17/17PASS82.99s; Linux17/17PASS13.83s. Проверены60 
 исключены; original Win32 rendered reference и whole P3 остаются открыты.
 [Source/evidence](upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07).
 
+P3-05,2026-10-07: восстановлен полный active CPanel::OnKeyDown и source
+PanelMenu EditCopy/Cut/Paste; Qt input adapter сохраняет порядок modifiers,
+bookmarks, сортировки, выбора, callbacks и posted Close. Исправлены реальные
+Ctrl+C/Ctrl+Shift+A/Ctrl+W regressions; проверены оба pane, четыре view,
+EN/RU, normal/compact и guard recovery. Mac full290/290PASS233.42s,
+4473Qt/0fail/15Windows-onlySKIP; Linux focused10/10,244Qt/0fail/0skip,
+и свежие File/View/Edit consumers8/8,132Qt/0fail/0skip.
+Windows application+11 consumers собраны; native keyboard execution ожидает
+входа в desktop гостя. Это проверенный ограниченный компонент; whole source,
+UX/platform/packages/P3-06 и итоговая приёмка остаются открыты.
+[Source/evidence](upstream-port-audit.md#p3-05--source-keyboard-dispatcher-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

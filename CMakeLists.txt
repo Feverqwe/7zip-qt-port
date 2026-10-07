@@ -2141,6 +2141,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_sources(${engine_consumer} PRIVATE src/qtapppresentation.cpp src/qtapppresentation.h
             src/mainwindow_propertyinvalidation.cpp
             src/mainwindow_columns.cpp src/mainwindow_refresh.cpp
+            src/mainwindow_panelkey.cpp src/qtpanelkey.h
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
@@ -2941,6 +2942,13 @@ if(BUILD_TESTING)
     add_test(NAME panel_folder_sync COMMAND panel_folder_sync_tests -silent)
     set_tests_properties(panel_folder_sync PROPERTIES TIMEOUT 90 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-folder-sync.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(panel_key_source_tests tests/panel_key_source_tests.cpp
+        ${panel_folder_sync_sources})
+    target_include_directories(panel_key_source_tests PRIVATE src tests)
+    target_link_libraries(panel_key_source_tests PRIVATE ${panel_folder_sync_libraries})
+    add_test(NAME panel_key_source COMMAND panel_key_source_tests -silent)
+    set_tests_properties(panel_key_source PROPERTIES TIMEOUT 90 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-key-source.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
 endif()
 
 # Apply startup isolation after registering every consumer, including Language.
@@ -3016,7 +3024,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key panel_list_load panel_item_icons panel_name_text panel_copy_reload filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key panel_key_source panel_list_load panel_item_icons panel_name_text panel_copy_reload filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

@@ -249,6 +249,10 @@ void MainWindow::updateFilesystemIcons() {
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    if (event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
+        updatePanelModifier(*static_cast<QKeyEvent *>(event));
+    if (event->type() == QEvent::WindowDeactivate)
+        rightControlPressed_ = false;
     if (appPresentation_ &&
         (event->type() == QEvent::KeyPress || event->type() == QEvent::MouseButtonPress ||
          event->type() == QEvent::MouseButtonDblClick))
@@ -276,8 +280,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     const bool listControl = watched == table_ || watched == iconList_ || listViewport;
     if (listControl && event->type() == QEvent::ShortcutOverride) {
         const auto *key = static_cast<QKeyEvent *>(event);
-        if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
-            !key->modifiers().testFlag(Qt::MetaModifier)) {
+        if (overridePanelKey(*key)) {
             event->accept();
             return true;
         }

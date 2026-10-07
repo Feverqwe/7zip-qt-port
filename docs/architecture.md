@@ -1485,8 +1485,11 @@ source methods; `QtPanelList` applies source indices back to the shared
 table/icon selection model while keeping the focused row and parent sentinel.
 In alternative selection, that source vector owns marks independently of the
 single focused Qt row. `PanelSelect.cpp` owns Ctrl/Shift mouse ranges,
-Shift-arrow and Insert; `PanelKey.cpp` and the window's clicked signals adapt
-Qt event timing. `QtPanelList` paints marks through the shared model, so table
+Shift-arrow and Insert; source `PanelKey.cpp::CPanel::OnKeyDown` owns list keys.
+`mainwindow_panelkey.cpp` decodes Qt/native modifiers, claims conflicting
+shortcuts and adapts posted Shift-selection timing to its owning panel.
+The window's clicked signals supply mouse notifications.
+`QtPanelList` paints marks through the shared model, so table
 and icon views show the same state. Source operated indices drive commands
 even when only one Qt focus row is selected.
 Refresh resets the original group anchor to row zero before restoring marks
@@ -1496,8 +1499,12 @@ Ctrl-click establishes its next anchor. Direct restoration and menu/timer
 publication share this source phase.
 `PanelSort.cpp` owns source typed-property, name/prefix and item-index sorting;
 `filetable.cpp` passes bound source indices and property IDs to the panel and
-adapts descending folder grouping and drag data to Qt. `PanelKey.cpp` dispatches
-list and address keys through the window event filter.
+adapts descending folder grouping and drag data to Qt. The window event filter
+routes list keys into source OnKeyDown and address keys into combo-edit services.
+Source PanelMenu::EditCopy enumerates selected source indices and copies raw
+names separated by CRLF, without focused-cell or operated-item fallback.
+EditCut/EditPaste retain upstream's active no-op. Presentation commands share
+CApp's command/capability owner; F9 and sort retain direct source owners.
 
 Nested archive navigation keeps the parent listing, folder, password and
 temporary directory on a stack. Returning to the parent or a listing failure

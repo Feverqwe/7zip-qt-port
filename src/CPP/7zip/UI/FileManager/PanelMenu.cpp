@@ -25,12 +25,36 @@
 #include "qtfilemenuservices.h"
 #include "qtlangcontrols.h"
 #include "qtpanelpluginservices.h"
+#include <QApplication>
+#include <QClipboard>
 #ifdef _WIN32
 #include "Windows/COM.h"
 #include "Windows/Menu.h"
 #include <QWidget>
 #include <shlobj.h>
 #endif
+
+void CPanel::EditCut() {
+    // InvokeSystemCommand("cut");
+}
+
+void CPanel::EditCopy() {
+    UString s;
+    CRecordVector<UInt32> indices;
+    Get_ItemIndices_Selected(indices);
+    FOR_VECTOR(i, indices) {
+        if (i != 0)
+            s += "\xD\n";
+        s += GetItemName(indices[i]);
+    }
+    // Qt's Unicode clipboard replaces ClipboardSetText(_mainWindow, s).
+    QApplication::clipboard()->setText(ToQString(s));
+}
+
+void CPanel::EditPaste() {
+    // The upstream file-transfer and InvokeSystemCommand("paste") bodies
+    // are commented out. Preserve its active no-op.
+}
 
 static const unsigned kSevenZipStartMenuID = kMenuCmdID_Plugin_Start;
 static const unsigned kSystemStartMenuID = kMenuCmdID_Plugin_Start + 400;

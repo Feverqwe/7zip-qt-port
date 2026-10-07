@@ -29,6 +29,17 @@
 | Properties/Comment/Link/Split/Combine/Benchmark | Соответствующие FileManager и GUI .rc/.cpp | Проверить параметры вызова, набор контролов, условные состояния, action semantics и Help. | Открыто |
 | Help/About и OS integration | FileManager/AboutDialog.rc/.cpp, HelpUtils.cpp, SystemPage.cpp, Explorer | Проверить самостоятельные экраны/команды и необходимые различия native платформ; не подменять исходный workflow новой формой. | Открыто |
 
+Source keyboard reconciliation restores the complete active PanelKey::OnKeyDown
+dispatcher and PanelMenu clipboard bodies. Ctrl+C/Ctrl+Insert copy actual
+selected raw names in source-index order with CRLF, Ctrl+Shift+A follows Select
+All and Ctrl+W posts Close. Modified shortcuts, bookmark precedence, guards,
+both panes/four views, EN/RU normal/compact and editor launches are covered;
+the inactive source Ctrl+PgDn branch remains a consumed no-op despite its menu
+caption. This closes the identified independent keyboard dispatcher gap,
+not the whole Navigation row or rendered Windows parity. Native Windows
+keyboard execution remains pending desktop login; see
+[source/evidence](upstream-port-audit.md#p3-05--source-keyboard-dispatcher-2026-10-07).
+
 Native changed-archive Parent for disk-extracted children now has bounded consumer verification against
 PanelItemOpen::OpenParentArchiveFolder and PanelFolderChange::CloseOneLevel/
 OpenParentFolder: No and Cancel discard/exit, failed or cancelled Yes preserves

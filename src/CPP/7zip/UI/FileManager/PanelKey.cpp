@@ -1,126 +1,293 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/PanelKey.cpp at 0766b73.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
+#include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
-#include "mainwindow.h"
-#include "qtpaneladdresscombo.h"
+#include "App.h"
+#include "Panel.h"
+#include "qtpanelkey.h"
+#include <QTimer>
 
-// Qt adapter for PanelKey.cpp::OnKeyDown and Panel.cpp::CMyComboBoxEdit.
-bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
-    const bool address = watched == path_ || watched == pathCombo_;
-    const bool list = watched == table_ || watched == table_->viewport() || watched == iconList_ ||
-                      (iconList_ && watched == iconList_->viewport());
-    if (!address && !list)
+struct CVKeyPropIDPair {
+    int VKey;
+    PROPID PropID;
+};
+
+static const CVKeyPropIDPair g_VKeyPropIDPairs[] = {{Qt::Key_F3, kpidName},
+                                                    {Qt::Key_F4, kpidExtension},
+                                                    {Qt::Key_F5, kpidMTime},
+                                                    {Qt::Key_F6, kpidSize},
+                                                    {Qt::Key_F7, kpidNoProperty}};
+
+static int FindVKeyPropIDPair(int vKey) {
+    for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_VKeyPropIDPairs); i++)
+        if (g_VKeyPropIDPairs[i].VKey == vKey)
+            return (int)i;
+    return -1;
+}
+
+bool CPanel::OnKeyDown(const QtPanelKeyDown &keyDownInfo, CApp &g_App) {
+    if (keyDownInfo.VKey == Qt::Key_Tab) {
+        _panelCallback->OnTab();
         return false;
-    if ((key->key() == Qt::Key_F1 || key->key() == Qt::Key_F2) &&
-        key->modifiers() == Qt::AltModifier) {
-        app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].SetFocusToPath(
-            key->key() == Qt::Key_F1 ? 0 : 1);
+    }
+    const bool alt = keyDownInfo.Alt;
+    const bool ctrl = keyDownInfo.Control;
+    // const bool leftCtrl = IsKeyDown(VK_LCONTROL);
+    const bool rightCtrl = keyDownInfo.RightControl;
+    const bool shift = keyDownInfo.Shift;
+
+    if (keyDownInfo.VKey >= '0' && keyDownInfo.VKey <= '9' && (rightCtrl || alt)) {
+        const unsigned index = (unsigned)(keyDownInfo.VKey - '0');
+        if (shift) {
+            g_App.ExecuteCommand(810 + index);
+            return true;
+        } else {
+            g_App.ExecuteCommand(830 + index);
+            return true;
+        }
+    }
+
+    if ((keyDownInfo.VKey == Qt::Key_F2 || keyDownInfo.VKey == Qt::Key_F1) && alt && !ctrl &&
+        !shift) {
+        _panelCallback->SetFocusToPath(keyDownInfo.VKey == Qt::Key_F1 ? 0 : 1);
         return true;
     }
-    if (address) {
-        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter ||
-            key->key() == Qt::Key_Escape) {
-            // PanelFolderChange's CBENF_RETURN is one navigation. Consuming the
-            // edit key prevents QComboBox from also activating its history row.
-            if (auto *header = dynamic_cast<IQtPanelAddressCombo *>(pathCombo_)) {
-                bool result;
-                app_.GetFocusedPanel().OnNotifyComboBoxEndEdit(key->key() == Qt::Key_Escape
-                                                                   ? QtAddressEditReason::Escape
-                                                                   : QtAddressEditReason::Return,
-                                                               *header, result);
+
+    if ((keyDownInfo.VKey == Qt::Key_F9) && !alt && !ctrl && !shift) {
+        g_App.SwitchOnOffOnePanel();
+    }
+
+    if (keyDownInfo.VKey >= Qt::Key_F3 && keyDownInfo.VKey <= Qt::Key_F12 && ctrl) {
+        const int index = FindVKeyPropIDPair(keyDownInfo.VKey);
+        if (index >= 0)
+            SortItemsWithPropID(g_VKeyPropIDPairs[index].PropID);
+    }
+
+    switch (keyDownInfo.VKey) {
+    case Qt::Key_Shift: {
+        _selectionIsDefined = false;
+        _prevFocusedItem = _selectionList.GetFocusedItem();
+        break;
+    }
+    /*
+    case Qt::Key_F1:
+    {
+      // ShowHelpWindow(NULL, kHelpTopic);
+      break;
+    }
+    */
+    case Qt::Key_F2: {
+        if (!alt && !ctrl && !shift) {
+            g_App.ExecuteCommand(IDM_RENAME);
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_F3: {
+        if (!alt && !ctrl && !shift) {
+            g_App.ExecuteCommand(IDM_FILE_VIEW);
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_F4: {
+        if (!alt && !ctrl && !shift) {
+            g_App.ExecuteCommand(IDM_FILE_EDIT);
+            return true;
+        }
+        if (!alt && !ctrl && shift) {
+            g_App.ExecuteCommand(IDM_CREATE_FILE);
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_F5: {
+        if (!alt && !ctrl) {
+            _panelCallback->OnCopy(false, shift);
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_F6: {
+        if (!alt && !ctrl) {
+            _panelCallback->OnCopy(true, shift);
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_F7: {
+        if (!alt && !ctrl && !shift) {
+            /* we can process F7 via menu ACCELERATOR.
+              But menu loading can be slow in case of UNC paths and system menu.
+              So we use don't use ACCELERATOR */
+            g_App.ExecuteCommand(IDM_CREATE_FOLDER);
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_Delete: {
+        g_App.ExecuteCommand(IDM_DELETE);
+        return true;
+    }
+    case Qt::Key_Insert: {
+        if (!alt) {
+            if (ctrl && !shift) {
+                EditCopy();
+                return true;
+            }
+            if (shift && !ctrl) {
+                EditPaste();
+                return true;
+            }
+            if (!shift && !ctrl && _mySelectMode) {
+                OnInsert();
                 return true;
             }
         }
-        if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
-            pathCombo_->hidePopup();
-            app_.GetFocusedPanel().SetFocusToList();
+        return false;
+    }
+    case Qt::Key_Down: {
+        if (shift)
+            OnArrowWithShift();
+        return false;
+    }
+    case Qt::Key_Up: {
+        if (alt)
+            _panelCallback->OnSetSameFolder();
+        else if (shift)
+            OnArrowWithShift();
+        return false;
+    }
+    case Qt::Key_Right: {
+        if (alt)
+            _panelCallback->OnSetSubFolder();
+        else if (shift)
+            OnArrowWithShift();
+        return false;
+    }
+    case Qt::Key_Left: {
+        if (alt)
+            _panelCallback->OnSetSubFolder();
+        else if (shift)
+            OnArrowWithShift();
+        return false;
+    }
+    case Qt::Key_PageDown: {
+        if (ctrl && !alt && !shift) {
+            // EnterToFocused();
+            return true;
+        }
+        break;
+    }
+    case Qt::Key_Plus: {
+        if (alt)
+            g_App.ExecuteCommand(IDM_SELECT_BY_TYPE);
+        else if (shift)
+            g_App.ExecuteCommand(IDM_SELECT_ALL);
+        else if (!ctrl)
+            g_App.ExecuteCommand(IDM_SELECT);
+        return true;
+    }
+    case Qt::Key_Minus: {
+        if (alt)
+            g_App.ExecuteCommand(IDM_DESELECT_BY_TYPE);
+        else if (shift)
+            g_App.ExecuteCommand(IDM_DESELECT_ALL);
+        else
+            g_App.ExecuteCommand(IDM_DESELECT);
+        return true;
+    }
+    /*
+    case Qt::Key_Delete:
+      CommandDelete();
+      return 0;
+    case Qt::Key_F1:
+      CommandHelp();
+      return 0;
+    */
+    case Qt::Key_Backspace:
+        g_App.ExecuteCommand(IDM_OPEN_PARENT_FOLDER);
+        return true;
+    /*
+    case VK_DIVIDE:
+    case '\\':
+    case '/':
+    case VK_OEM_5:
+    {
+      // OpenRootFolder();
+      OpenDrivesFolder();
+
+      return true;
+    }
+    */
+    case 'A':
+        if (ctrl) {
+            g_App.ExecuteCommand(IDM_SELECT_ALL);
             return true;
         }
         return false;
-    }
-    if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
-        app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnTab();
-        return true;
-    }
-    CPanel &panel = app_.GetFocusedPanel();
-    if (key->modifiers().testFlag(Qt::AltModifier) &&
-        (key->key() == Qt::Key_Up || key->key() == Qt::Key_Left || key->key() == Qt::Key_Right)) {
-        if (key->key() == Qt::Key_Up)
-            app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnSetSameFolder();
-        else if (key->key() == Qt::Key_Left || key->key() == Qt::Key_Right)
-            app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnSetSubFolder();
-        // Native OnKeyDown leaves these arrows to the list control afterward.
-        return false;
-    }
-    if (panel._mySelectMode) {
-        if (key->key() == Qt::Key_Shift) {
-            panel.BeginShiftSelection();
-            selectionShiftSequence_ = true;
-        } else if (key->key() == Qt::Key_Insert && key->modifiers() == Qt::NoModifier) {
-            panel.OnInsert();
-            refreshActions();
+    case 'X':
+        if (ctrl) {
+            EditCut();
             return true;
-        } else if (key->modifiers() == Qt::ShiftModifier &&
-                   (key->key() == Qt::Key_Up || key->key() == Qt::Key_Down ||
-                    key->key() == Qt::Key_Left || key->key() == Qt::Key_Right)) {
-            if (!selectionShiftSequence_) {
-                panel.BeginShiftSelection();
-                selectionShiftSequence_ = true;
-            }
-            panel.OnArrowWithShift();
-            QTimer::singleShot(0, this, [this] {
-                if (!app_.QtOperations().closed()) {
-                    app_.GetFocusedPanel().OnShiftSelectMessage();
-                    refreshActions();
-                }
-            });
-        } else if (!key->modifiers().testFlag(Qt::ShiftModifier))
-            selectionShiftSequence_ = false;
-    }
-    if (key->key() == Qt::Key_F4 && key->modifiers() == Qt::ShiftModifier) {
-        if (createFile_->isEnabled())
-            createFile_->trigger();
+        }
+        return false;
+    case 'C':
+        if (ctrl) {
+            EditCopy();
+            return true;
+        }
+        return false;
+    case 'V':
+        if (ctrl) {
+            EditPaste();
+            return true;
+        }
+        return false;
+    case 'N':
+        if (ctrl) {
+            g_App.ExecuteCommand(IDM_CREATE_FILE);
+            return true;
+        }
+        return false;
+    case 'R':
+        if (ctrl) {
+            g_App.ExecuteCommand(IDM_VIEW_REFRESH);
+            return true;
+        }
+        return false;
+    case 'W':
+        if (ctrl) {
+            // SendMessage();
+            QTimer::singleShot(0, this, [&g_App] { g_App.ExecuteCommand(8); });
+            return true;
+        }
+        return false;
+    case 'Z':
+        if (ctrl) {
+            g_App.ExecuteCommand(IDM_COMMENT);
+            return true;
+        }
+        return false;
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+        if (ctrl) {
+            const unsigned styleIndex = (unsigned)(keyDownInfo.VKey - '1');
+            g_App.ExecuteCommand(IDM_VIEW_LARGE_ICONS + styleIndex);
+            return true;
+        }
+        return false;
+    case Qt::Key_Asterisk: {
+        g_App.ExecuteCommand(IDM_INVERT_SELECTION);
         return true;
     }
-    if ((key->key() == Qt::Key_F5 || key->key() == Qt::Key_F6) &&
-        key->modifiers() == Qt::ShiftModifier) {
-        const bool move = key->key() == Qt::Key_F6;
-        if (state_ == State::Filesystem || state_ == State::Viewing)
-            app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].OnCopy(move, true);
-        return true;
-    }
-    // PanelKey.cpp handles VK_BACK without testing Alt, Ctrl or Shift.
-    if (key->key() == Qt::Key_Backspace) {
-        if (parent_->isEnabled())
-            parent_->trigger();
-        return true;
-    }
-    // CMyListView::OnMessage handles the slash/backslash WM_CHAR routes.
-    if ((key->key() == Qt::Key_Backslash || key->key() == Qt::Key_Slash) &&
-        !(key->modifiers() & (Qt::ControlModifier | Qt::AltModifier | Qt::MetaModifier))) {
-        app_.ExecuteCommand(IDM_OPEN_ROOT_FOLDER);
-        return true;
-    }
-    if (handleSelectionKey(key))
-        return true;
-    if (key->key() == Qt::Key_Delete && key->modifiers() == Qt::ShiftModifier) {
-        app_.ExecuteCommand(IDM_DELETE);
-        return true;
-    }
-    if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 && key->modifiers() == Qt::AltModifier) {
-        app_.ExecuteCommand(830 + key->key() - Qt::Key_0);
-        return true;
-    }
-    if (key->key() >= Qt::Key_0 && key->key() <= Qt::Key_9 &&
-        key->modifiers() == (Qt::AltModifier | Qt::ShiftModifier)) {
-        app_.ExecuteCommand(810 + key->key() - Qt::Key_0);
-        return true;
-    }
-    // Native list controls send LVN_ITEMACTIVATE for Enter, including modifiers.
-    if ((key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) &&
-        !key->modifiers().testFlag(Qt::MetaModifier)) {
-        activateItems(key->modifiers());
-        return true;
+    case Qt::Key_F12:
+        if (alt && !ctrl && !shift) {
+            g_App.ExecuteCommand(IDM_FOLDERS_HISTORY);
+            return true;
+        }
     }
     return false;
 }

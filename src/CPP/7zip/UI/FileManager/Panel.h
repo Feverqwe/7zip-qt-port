@@ -59,6 +59,8 @@ struct CAppState;
 class CFastFolders;
 class CListViewDialog;
 class CPanel;
+class CApp;
+struct QtPanelKeyDown;
 class IQtPanelDragServices;
 class QWidget;
 class CVirtFileSystem;
@@ -547,6 +549,10 @@ class CPanel : public QObject {
     void SetFocusToLastRememberedItem();
     // Qt's list activation adapter supplies the native notification modifiers.
     void OnNotifyActivateItems(Qt::KeyboardModifiers modifiers);
+    bool OnKeyDown(const QtPanelKeyDown &keyDownInfo, CApp &app);
+    void EditCut();
+    void EditCopy();
+    void EditPaste();
     void AttachSelectionView(QAbstractItemView *view,
                              QtPanelList::SortColumnResolver sortColumn = {});
     void DeleteListItems() {
