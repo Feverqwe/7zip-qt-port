@@ -1,5 +1,16 @@
 # Regression strategy
 
+`native_drop_publication` exercises eight actual bound-archive Drop cases using
+the existing private native writer fixture: successful updates and four later
+attribute publication results, Write failure, actual progress Cancel and both
+confirmation refusals.2/301 rows and representative pane/language/view/selection
+combinations check same-provider Ctrl+R, real Drop retry, marks/focused names,
+peer and exact payload bytes, terminal guards/focus and later filesystem OnTimer.
+It stays in the default gate with120s deadline. Separate timers drive Cancel and
+its nested question; current-index preparation uses NoUpdate. The source guard
+and focus REDs are retained separately from driver failures in the
+[dated audit](upstream-port-audit.md#p3-0515--native-bound-archive-drop-publication-2026-10-07).
+
 `AddressPopupSupport` drives the actual exposed popup window with mouse
 press/release, verifies the hit row, exactly one activation and popup closure.
 Address, archive-state and native UNC consumers share it; navigation, list focus,

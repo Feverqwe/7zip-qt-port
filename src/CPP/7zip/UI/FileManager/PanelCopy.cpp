@@ -299,7 +299,10 @@ HRESULT CPanel::CopyTo(CCopyToOptions &options, const CRecordVector<UInt32> &ind
     return res;
 }
 
-HRESULT CPanel::CopyFromNoAsk(bool moveMode, const UStringVector &filePaths) {
+HRESULT CPanel::CopyFromNoAsk(bool moveMode, const UStringVector &filePaths,
+                              std::optional<CSelectedState> *refreshSelection) {
+    if (refreshSelection)
+        refreshSelection->reset();
     CDisableTimerProcessing disableTimerProcessing(*this);
     CSelectedState srcSelState;
     SaveSelectedState(srcSelState);
@@ -312,7 +315,12 @@ HRESULT CPanel::CopyFromNoAsk(bool moveMode, const UStringVector &filePaths) {
             MessageBox_Error_HRESULT(result);
         return result;
     }
-    RefreshListCtrl(srcSelState);
+    // Qt publishes this reached source phase after the outer synchronous
+    // operation guards unwind, before retaining asynchronous scan guards.
+    if (refreshSelection)
+        *refreshSelection = srcSelState;
+    else
+        RefreshListCtrl(srcSelState);
     disableNotify.Restore();
     SetFocusToList();
     return S_OK;

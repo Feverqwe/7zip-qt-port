@@ -481,7 +481,10 @@ HRESULT CDropTarget::DragLeave() {
         return E_FAIL;
     }
 }
-HRESULT CDropTarget::Drop(CDataObject *dataObject, DWORD keyState, int x, int y, DWORD *effect) {
+HRESULT CDropTarget::Drop(CDataObject *dataObject, DWORD keyState, int x, int y, DWORD *effect,
+                          std::optional<CSelectedState> *refreshSelection) {
+    if (refreshSelection)
+        refreshSelection->reset();
     HRESULT hres = S_OK;
     bool needDrop_by_Source = false;
     DWORD opEffect = DROPEFFECT_NONE;
@@ -600,9 +603,9 @@ HRESULT CDropTarget::Drop(CDataObject *dataObject, DWORD keyState, int x, int y,
                         target.Flags |= k_TargetFlags_MenuWasShown;
                     target.Flags |= k_TargetFlags_WasProcessed;
                     RemoveSelection();
-                    hres = m_Panel->CompressDropFiles(m_SourcePaths, path,
-                                                      cmd == NDragMenu::k_AddToArc, moveMode,
-                                                      transferFlags, target.Flags);
+                    hres = m_Panel->CompressDropFiles(
+                        m_SourcePaths, path, cmd == NDragMenu::k_AddToArc, moveMode, transferFlags,
+                        target.Flags, refreshSelection);
                 }
             }
         }
@@ -652,7 +655,8 @@ static bool AreThereNamesFromTemp(const UStringVector &filePaths) {
 }
 HRESULT CPanel::CompressDropFiles(const UStringVector &filePaths, const UString &folderPath,
                                   bool createNewArchive, bool moveMode, UInt32 sourceFlags,
-                                  UInt32 &targetFlags) {
+                                  UInt32 &targetFlags,
+                                  std::optional<CSelectedState> *refreshSelection) {
     if (filePaths.Size() == 0)
         return S_OK;
     if (createNewArchive) {
@@ -690,7 +694,7 @@ HRESULT CPanel::CompressDropFiles(const UStringVector &filePaths, const UString 
             options.ZoneIdMode = NExtract::NZoneIdMode::kNone;
             return CopyFsItems(options, filePaths, NULL);
         } else
-            return CopyFromNoAsk(moveMode, filePaths);
+            return CopyFromNoAsk(moveMode, filePaths, refreshSelection);
     }
 }
 void CApp::CreateDragTarget() {

@@ -5,11 +5,13 @@
 #include "Common/MyVector.h"
 #include "Common/MyWindows.h"
 #include <memory>
+#include <optional>
 #ifdef _WIN32
 #include <oleidl.h>
 #endif
 class CApp;
 class CPanel;
+struct CSelectedState;
 class QtOwnedTempLease;
 constexpr UInt32 k_SourceFlags_DoNotProcessInTarget = 1 << 1,
                  k_SourceFlags_DoNotWaitFinish = 1 << 3, k_SourceFlags_WaitFinish = 1 << 4,
@@ -142,7 +144,8 @@ class CDropTarget {
     HRESULT DragEnter(CDataObject *dataObject, DWORD keyState, int x, int y, DWORD *effect);
     HRESULT DragOver(DWORD keyState, int x, int y, DWORD *effect);
     HRESULT DragLeave();
-    HRESULT Drop(CDataObject *dataObject, DWORD keyState, int x, int y, DWORD *effect);
+    HRESULT Drop(CDataObject *dataObject, DWORD keyState, int x, int y, DWORD *effect,
+                 std::optional<CSelectedState> *refreshSelection = nullptr);
     CPanel *TargetPanel() const { return m_Panel; }
     bool IsAppTarget() const { return m_IsAppTarget; }
 };

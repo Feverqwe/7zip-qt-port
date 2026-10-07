@@ -4,6 +4,7 @@
 #include "archiveprogressoperation.h"
 #include "filetable.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtfilelisthover.h"
 #include "qtlangcontrols.h"
 #include <QScopedValueRollback>
@@ -170,6 +171,24 @@ static DWORD DropKeys(const QDropEvent &drop) {
         keys |= MK_RBUTTON;
     return keys;
 }
+HRESULT QtFileManagerDrag::ExecuteDrop(CDataObject *data, DWORD keys, const QPoint &position,
+                                       DWORD &effect) {
+    auto &target = window_.app_.DropTarget();
+    CPanel *const owner = target.TargetPanel();
+    const unsigned index = unsigned(target.TargetPanelIndex);
+    std::optional<CSelectedState> refreshSelection;
+    HRESULT result;
+    {
+        QScopedValueRollback<bool> source(window_.sourceArchiveProgress_, true);
+        result = target.Drop(data, keys, position.x(), position.y(), &effect, &refreshSelection);
+    }
+    if (owner && refreshSelection && index < kNumPanelsMax) {
+        window_.withPanelProjection(index, [&] { owner->RefreshListCtrl(*refreshSelection); });
+        window_.appPresentation_->RequestListFocus(index);
+    }
+    return result;
+}
+
 bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
     if (event.type() == QEvent::DragLeave) {
         window_.app_.DropTarget().DragLeave();
@@ -211,10 +230,9 @@ bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
         // Qt can deliver a synthetic Drop without an accepted DragEnter, or
         // after the target became disabled. Revalidate before running a command.
         result = target.DragOver(keys, position.x(), position.y(), &effect);
-        if (result == S_OK && effect) {
-            QScopedValueRollback<bool> source(window_.sourceArchiveProgress_, true);
-            result = target.Drop(data, keys, position.x(), position.y(), &effect);
-        } else
+        if (result == S_OK && effect)
+            result = ExecuteDrop(data, keys, position, effect);
+        else
             target.ClearState();
     }
     if (result == S_OK && effect) {

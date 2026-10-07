@@ -1,5 +1,20 @@
 # Сверка с Windows 7zFM
 
+### Native bound archive Drop (P3-05.15, 2026-10-07)
+
+CopyFromNoAsk retains success-only Refresh and source list focus. Actual writer
+failure/Cancel and confirmation No/Cancel leave the list/provider and archive
+bytes intact. A later native attribute publication failure does not reverse a
+successful write: the list becomes empty/enabled and Ctrl+R reloads the same
+provider. Qt publishes the reached source phase after synchronous guards unwind
+and completes source list focus after asynchronous rows settle. Original native
+writer-failure diagnostics remain in source progress and CopyFromNoAsk; no extra
+Qt warning or physical reopen is added. Eight representative2/301-row cases
+cover both panes/languages/views/selection modes, actual retry and subsequent
+filesystem OnTimer. The bounded native component and current normal/compact
+geometry pass on macOS, Linux and Windows; evidence is in the dated audit.
+Rendered Windows and whole-plan acceptance remain separate.
+
 ### Changed nested archive Parent (P3-05.15, 2026-10-07)
 
 For disk-extracted native children, Parent retains the original Yes/No/Cancel

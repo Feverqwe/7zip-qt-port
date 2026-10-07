@@ -46,7 +46,7 @@ production access is added for this matrix.
 | P1-13 Edit/Menu policies | EditPage/MenuPage/RegistryContextMenu; OS registration service | `external_editors_ui`, `menu_page`, `context_menu_settings`, `shell_registry` |
 | P1-14 language/fallback/focus | CLang/LangUtils/*Dialog; Qt LanguageChange/bindings | `language`, `language_ui`, `language_dialog`, `language_standard_buttons`, `language_focus`, `language_source_update` |
 | P1-15 Help/About/temp cleanup | HelpUtils/AboutDialog/TempFiles; CHM viewer and owned leases | `help_source`, `help_ui`, `temp_cleanup`, `owned_temp`, `temp_detached_launch` |
-| P1-16 panel/archive drag | PanelDrag/CompressCall2; QDrag/MIME/leased materialization | `drag_drop`, `drag_archive`, `drag_drop_ui`, `drag_drop_add_ui`, `source_drop_add` |
+| P1-16 panel/archive drag | PanelDrag/CompressCall2; QDrag/MIME/leased materialization; native bound writer/publication/refusal/retry | `drag_drop`, `drag_archive`, `drag_drop_ui`, `drag_drop_add_ui`, `source_drop_add`, `native_drop_publication` |
 | P1-17 ZIP item comment | ArchiveFolder/Zip writer; retained native writer callback | `native_comment`, `native_comment_ui`, `native_zip_writer` |
 | P1-18 real decoder RAM request | RAR handler/OpenCallback/ExtractCallback; backend callback bridge | `native_rar_memory`, `native_rar_ui`, `open_callback` |
 | P2-01 formats/capabilities/KeepName | LoadCodecs/OpenArchive/Agent; immutable provider leases | `codec_catalog`, `codec_capabilities`, `codec_commands_ui`, `native_open_commands` |

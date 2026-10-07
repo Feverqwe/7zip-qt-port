@@ -1717,6 +1717,16 @@ if(BUILD_TESTING)
     add_dependencies(native_parent_publication_tests external_format_fixture)
     add_test(NAME native_parent_publication COMMAND native_parent_publication_tests -silent)
     set_tests_properties(native_parent_publication PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-parent.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(native_drop_publication_tests tests/native_drop_publication_tests.cpp tests/native_property_failure_runtime.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(native_drop_publication_tests PRIVATE src tests)
+    target_link_libraries(native_drop_publication_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(native_drop_publication_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    target_compile_definitions(native_drop_publication_tests PRIVATE
+        "SEVENZIP_EXTERNAL_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_EXTERNAL_FORMAT_FIXTURE=\"$<TARGET_FILE:external_format_fixture>\"")
+    add_dependencies(native_drop_publication_tests external_format_fixture)
+    add_test(NAME native_drop_publication COMMAND native_drop_publication_tests -silent)
+    set_tests_properties(native_drop_publication PROPERTIES TIMEOUT 120 ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-drop.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(native_rename_publication_tests tests/native_rename_publication_tests.cpp tests/native_property_failure_runtime.cpp tests/external_editor_fixture.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(native_rename_publication_tests PRIVATE src tests)
     target_link_libraries(native_rename_publication_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
@@ -2970,7 +2980,7 @@ include(cmake/SharedPortObjects.cmake)
 # consumer tests using the same platform/fonts/style as the Windows application.
 if(BUILD_TESTING AND WIN32)
     foreach(sevenzip_native_ui_test IN ITEMS
-            native_parent_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
+            native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
             native_renderer_failure native_renderer_copy
             source_compress_dialog shell_menu_window shell_update_window
             compression compression_advanced compression_path compression_preferences compression_resources language_ui

@@ -25,6 +25,7 @@ class QtAppPresentation final : public IQtAppPresentation {
     void CompleteCopyIfReady();
     void CopyDestinationRefreshed(unsigned index);
     void RequestInitialFocus(unsigned index);
+    void RequestListFocus(unsigned index);
     void CompleteInitialFocusIfReady();
     void CancelInitialFocus() { initialFocus_.reset(); }
 

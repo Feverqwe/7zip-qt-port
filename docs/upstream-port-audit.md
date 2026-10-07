@@ -1,5 +1,65 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — native bound archive Drop publication (2026-10-07)
+
+Source https://github.com/ip7z/7zip.git at full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete original
+PanelDrag.cpp::CDropTarget::Drop/CompressDropFiles and callers/flags/path types,
+PanelCopy.cpp::CopyFromNoAsk/CopyFrom and ArchiveFolderOut update/reopen owners
+were reviewed. Empty destination path selects the bound archive. Original
+CopyFromNoAsk saves selection, updates under timer/notify guards, returns before
+Refresh on failure/Cancel, otherwise refreshes and restores list focus. Its
+non-E_ABORT HRESULT diagnostic after source progress is retained, not removed
+as a supposed Qt duplicate. FS/new-archive branches and source transfer policy
+remain unchanged; the previously reviewed GetFsPath is not a new path bug.
+
+Actual native301-row Drop with later attribute S_FALSE/E_FAIL exposed a
+terminal guard failure: enabled1/redraw1/notify0/rows0. The original synchronous
+Refresh had started Qt's deferred scan while outer source guards were disabled;
+the operation owner later restored that captured false value. Panel.h,
+PanelCopy.cpp, PanelDrag.cpp and qtpaneldragmodel.h now thread an optional
+saved-selection output for exactly the reached successful Refresh phase.
+Default source callers retain immediate Refresh. QtFileManagerDrag::ExecuteDrop
+publishes that one captured owner after Drop and its outer guards return;
+ignored reload HRESULT and failure/Cancel/no-refresh policy remain. No second
+engine ReOpen or new archive operation is introduced. The next actual RED
+showed focus on a peer toolbar button after publication. QtAppPresentation's
+existing pending list-focus owner now also accepts the source Drop request,
+after scheduling publication; input cancellation and close guards still apply.
+Original source algorithms, module boundaries, C++ language, dependencies and
+licenses are unchanged. New code is the asynchronous Qt presentation boundary.
+
+Eight bounded actual native cases cover writer success/seekable Write failure/
+source progress Cancel, confirmation No/Cancel, four later native attribute
+HRESULTs,2/301 rows, both panes/languages/views/selection modes, same-provider
+Ctrl+R, real writer retry, exact official-engine payloads, peer preservation and
+subsequent filesystem OnTimer. Initial diagnostic/hang evidence is retained in
+build/review/native-drop-final. Separate test-driver corrections reactivate the
+window before later Ctrl+R/retry, set current index with NoUpdate instead of
+adding a mark, and use separate timers for Cancel and its nested question.
+The initial public guard RED and subsequent focus RED are distinct from those
+driver failures. Current macOS27.0.1 arm64/Qt6.12.0 native10QtPASS plus seven
+direct consumers pass8/8 in36.37s, including all194 Copy Qt cases with the
+localized startup fixture. The extracted ExecuteDrop helper keeps routing and
+source execution separate. Required unsandboxed macOS gate passes formatting,
+all builds and288/288 default CTest in240.89s (4432QtPASS/0FAIL/15 Windows-only
+skips; eleven slow suites excluded). Frozen inputs and full logs are in
+build/review/native-drop-final. Fresh Ubuntu24.04.5 x64/Qt6.12.0 run
+20261007T093015Z-349507b9 builds the eight Drop/drag/source/startup/address/archive/
+Parent consumers in the same snapshot and passes8/8 in40.82s,277Qt/0FAIL/0SKIP.
+All ten frozen input hashes match. Current Drop geometry on macOS and Linux
+checks40 reports/160 enabled exposed address/list controls per OS at980x620 and
+640x400. Fresh Windows11 x64/Qt6.12.0 interactive/elevated run
+20261007T093414Z-ec659202 also builds/tests those eight consumers and passes8/8
+in159.98s,277Qt/0FAIL/0SKIP; native Drop10QtPASS11.578s. All ten frozen input
+hashes match and40 current Drop reports check160 controls at both sizes.
+Linux/Windows snapshot SHA256 are respectively
+`290592368cc1ecd7e69b378ea1a425a8c45eebb72ff375c48cf3d795293f5d74` and
+`d0b596e4d50d75bd1993476bb451d33f05f16ba689719ecc73e9db927bab00d8`.
+This bounded native Drop component is verified on three OS; rendered Windows,
+complete source-body/UX closure, cold stability/packages, whole P3-05 and final
+acceptance remain separate. Excluded slow matrices are not validated by these runs.
+
 ## P3-03 — native address popup consumer verification (2026-10-07)
 
 Source https://github.com/ip7z/7zip.git at full baseline

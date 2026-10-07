@@ -30,6 +30,7 @@ class QtFileManagerDrag final : public QObject,
 
   private:
     bool HandleDropEvent(QWidget &, QEvent &);
+    HRESULT ExecuteDrop(CDataObject *, DWORD keys, const QPoint &position, DWORD &effect);
     CDataObject *ReadData(const QMimeData &);
     bool HandleRightDrag(QWidget &, QEvent &);
     void SuspendHover(bool suspended);

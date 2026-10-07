@@ -119,6 +119,13 @@ No/Cancel and update failure/cancellation retain the list and both providers.
 The peer archive is not reopened or published. Inspect EN/RU both panes,
 table/icon and standard/alternative selection at980×620/640×400; terminal views
 must be enabled, preserve marks/focused names and restore redraw.
+For actual native writers, a later attribute S_FALSE/E_FAIL/E_ABORT after success
+leaves an empty enabled list without changing the writer result; Ctrl+R recovers
+the same provider. Finish the source list-focus request after asynchronous
+publication, preserving the peer. Native Write failure and actual Cancel retain
+the original archive and permit a second real Drop. Inspect representative2/301
+rows in the default bounded native_drop_publication suite; geometry does not
+establish rendered Windows parity.
 
 After attempted external-file update, publish the owning archive list for success,
 failure and cancellation; retain source selection, peer focus/provider and edited

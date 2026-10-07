@@ -136,8 +136,13 @@ existing native-provider renderer instead of returning without loading rows.
 The Refresh command and Ctrl+R invoke original CApp::RefreshView/OnReload for
 every provider. Archive commands reload the bound CAgentFolder rather than
 reopening the physical archive. Drop uses the original CopyFromNoAsk success
-RefreshListCtrl; cancellation and failure return before that reload. The drag
-controller no longer reopens all visible archive panels after a gesture or Drop.
+RefreshListCtrl; cancellation and failure return before that reload. CopyFromNoAsk
+passes the reached success phase and saved state to ExecuteDrop, which
+publishes after the synchronous timer/notify guards unwind. This prevents a
+deferred scan from retaining disabled outer flags. The existing pending list-focus
+owner also completes Drop's source focus request after publication. Direct source
+callers without that output retain immediate Refresh; its HRESULT stays ignored.
+The drag controller no longer reopens all visible archive panels after a gesture or Drop.
 Filesystem changes remain observable through the source panel timer. Other
 operation transport refreshCurrent callers remain a separate review boundary.
 

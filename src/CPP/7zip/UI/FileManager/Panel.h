@@ -449,7 +449,8 @@ class CPanel : public QObject {
     void OnDrag(bool isRightButton);
     HRESULT CompressDropFiles(const UStringVector &filePaths, const UString &folderPath,
                               bool createNewArchive, bool moveMode, UInt32 sourceFlags,
-                              UInt32 &targetFlags);
+                              UInt32 &targetFlags,
+                              std::optional<CSelectedState> *refreshSelection = nullptr);
     HRESULT CopyFsItems(CCopyToOptions &options, const UStringVector &filePaths,
                         UStringVector *messages) {
         bool usePassword = false;
@@ -457,7 +458,8 @@ class CPanel : public QObject {
         CRecordVector<UInt32> indices;
         return CopyTo(options, indices, messages, usePassword, password, &filePaths);
     }
-    HRESULT CopyFromNoAsk(bool moveMode, const UStringVector &filePaths);
+    HRESULT CopyFromNoAsk(bool moveMode, const UStringVector &filePaths,
+                          std::optional<CSelectedState> *refreshSelection = nullptr);
     void RefreshTitle(bool always = false) {
         if (_panelCallback)
             _panelCallback->RefreshTitle(always);

@@ -81,7 +81,14 @@ void QtAppPresentation::RequestInitialFocus(unsigned index) {
     // Source Create has already focused synchronous lists. Defer only when
     // asynchronous startup publication kept its target disabled.
     if (index < kNumPanelsMax && (window_.scanningPanelMask() & (1u << index)))
-        initialFocus_ = index;
+        RequestListFocus(index);
+}
+
+void QtAppPresentation::RequestListFocus(unsigned index) {
+    if (index >= kNumPanelsMax || window_.app_.QtOperations().closed())
+        return;
+    initialFocus_ = index;
+    CompleteInitialFocusIfReady();
 }
 
 void QtAppPresentation::CompleteInitialFocusIfReady() {

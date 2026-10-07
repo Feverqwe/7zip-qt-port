@@ -306,6 +306,17 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15,2026-10-07: bounded native bound-archive Drop scenario is verified.
+Actual terminal notify/focus REDs require transporting the source success-only
+Refresh phase after synchronous guards, then completing list focus after rows.
+Eight native cases and seven direct consumers pass on macOS; required default
+full gate passes288/288 in240.89s. Fresh eight-consumer Linux/Windows runs pass
+8/8 in40.82/159.98s,277Qt/0FAIL/0SKIP per OS; ten inputs match. Each OS has40
+current native Drop reports checking160 enabled exposed controls at both sizes.
+Writer error/Cancel/No/refusal policy
+and ignored reload HRESULT stay source-owned; parent .15/P3-05 remain open.
+[Evidence](upstream-port-audit.md#p3-0515--native-bound-archive-drop-publication-2026-10-07).
+
 P3-03,2026-10-07: native address hierarchy/UNC consumers pass after correcting
 the popup mouse driver and filesystem icon fixture; product source unchanged.
 Fresh Mac/Linux3/3 and Windows interactive/elevated4/4 pass, zero focused skips,
