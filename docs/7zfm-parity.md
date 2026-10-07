@@ -7,6 +7,23 @@
 [UX audit](ux-port-audit.md). Нужный сценарий искать по команде, символу или ID,
 затем читать соответствующий раздел и ссылки.
 
+### Source GUI path/history consumers (P3-05, 2026-10-07)
+
+Create/Extract теперь сохраняют исходные правила UString::Trim: убирают
+краевые пробелы, LF и tab, сохраняя NBSP в имени архива, папки и истории.
+CompressDialog использует исходное разрешение полного пути и отказ при
+неразрешимом переходе выше корня; Extract добавляет системный разделитель.
+Общая история обоих диалогов использует исходное IsEqualTo_NoCase, включая
+его отличие от Qt case folding для K/Kelvin. Embedded NUL в Create по-прежнему
+отклоняется на границе Qt-текста. Новые controls или тексты не добавлены.
+
+Четыре EN/RU × SplitDest сценария проходят Create/list/Extract через официальный
+движок с Unicode/NBSP, точными бинарными байтами, сохранённой историей и Escape
+без записи настроек в обоих диалогах. JSON проверяет видимость и исходную
+группировку при normal/compact размерах; Windows использует native Qt fonts/style.
+Это не rendered reference оригинального Windows 7zFM и не приёмка физического
+desktop-ввода. [Source scope и проверки](upstream-port-audit.md#p3-05--source-gui-path-and-history-consumers-2026-10-07).
+
 ### Source Agent provider lifecycle (P3-05, 2026-10-07)
 
 Directory CRC now reaches the list and selected Properties through the original

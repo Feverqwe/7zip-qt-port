@@ -13920,9 +13920,10 @@ RenameExisting, циклы AddComboItems и AddUniqueString, предел 16,
 показа пароля, очистка/пересборка истории и сохранение в OnOK скопированы.
 Сохраняются CObjectVector, enum и CBoolPair upstream. Win32 controls,
 строки локализации и сообщения заменены Qt; UI constructor — presentation
-адаптация существующей формы по ExtractDialog.rc. Исходная нормализация
-пути перенесена локальным QString helper: пустой путь, проверка последнего
-разделителя, добавление разделителя. Qt принимает оба разделителя на Windows.
+адаптация существующей формы по ExtractDialog.rc. Первоначальный QString
+helper нормализации заменён исходными UString/FileName services при
+[финальном review путей и истории](#p3-05--source-gui-path-and-history-consumers-2026-10-07).
+Qt принимает оба разделителя на Windows.
 
 Qt editable combo может удерживать индекс при редактировании текста:
 узкий адаптер переводит этот случай в CB_ERR до исходной ветки OnOK.
@@ -15686,3 +15687,66 @@ Windows. The original manifest verifies 408 exact/196 adapted/3 local paths at
 the pinned revision. Temporary task wrapper is archived/removed before commit.
 Eleven slow suites were excluded. Native desktop/CLI/installed and rendered
 Windows acceptance, remaining GUI/common bodies and parent P3 remain open.
+
+## P3-05 — source GUI path and history consumers (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete original/current
+ExtractDialog.cpp/.h and HashGUI.cpp/.h, their resources/callers/dependencies;
+CompressDialog.cpp/.h review here covers GetFinalPath_Smart, SetArcPathFields,
+shared AddUniqueString and OnOK history consumers. Whole CompressDialog and
+BenchmarkDialog reconciliation remains required. The
+[module disposition](omitted-scope-audit.md#gui-extract-dialog-and-hash-worker-2026-10-07)
+records copied/adapted/omitted scope separately from runtime acceptance.
+
+Original CompressDialog uses UString::Trim, NName::GetFullPath and
+NDir::GetFullPathAndSplit. Its Qt replacements trimmed Unicode whitespace,
+silently clamped unresolvable parent traversal through QDir and independently
+case-folded history. Restored source bodies with conversions only at QString
+widget/storage boundaries. The existing embedded-NUL refusal remains because
+Qt strings can carry NUL beyond original native control text. Source empty-path
+resolution and always=false unchanged-fields/always=true fallback remain intact.
+Dependencies are the existing source FileDir/FileName, MyString/StringConvert
+and original filesystem/string types; no independent resolver was introduced.
+
+ExtractDialog::OnOK and the Qt destination preview now use the original Trim
+and NormalizeDirPathPrefix services. Source Trim removes space, LF and tab,
+preserving NBSP (and CR); normalization appends the native separator only when
+needed. The original AddUniqueString owner is shared again by CompressDialog,
+using UString::IsEqualTo_NoCase rather than Qt case folding. Original loops,
+limits, selected-item omission, split destination, Force flags, modes, password
+and confirmation/save ordering remain. QString is retained for controls/INI.
+Original notices, module paths and source language are unchanged.
+
+Actual old-product RED has six failures: direct NBSP path and K/Kelvin history,
+and all four EN/RU × split workflow rows at archive-name confirmation. That early
+failure masks their subsequent Extract stage; it is not a separate old-product
+Extract RED. Current real workflows create/list/extract with the official engine,
+retain NBSP in archive/base/leaf and persisted history, compare binary bytes and
+preserve inputs/archive. Both dialogs' Escape leaves settings unchanged. Existing
+path fixtures compare logical separators across OS and retain NUL rejection.
+The compact confirmation test scrolls to the complete field: QScrollArea's
+line-edit cursor rectangle can be visible while its border remains outside the
+viewport; its full-field assertion is retained. New Windows geometry uses the
+existing native Qt font/style adapter, avoiding offscreen fallback box metrics.
+
+Validation: actual old-product RED retained; initial local four consumers pass
+4/4, then unsandboxed macOS arm64 check.sh passes format/all-build and297/297
+in306.78s. After localized fixture/native-test registration changes, the nine
+direct consumers pass9/9 in2.31s on macOS,2.78s on Linux x64 and26.18s on
+Windows x64. Linux has104 Qt pass/0 fail/2 Windows-only metadata skips;
+Windows106 pass/0 fail/0 skip; new suite8 pass/0 skip on both guests.
+First Windows failures (native separator expectations and cursor-only scrolling)
+and the unsuccessful timing-only retry are retained; no production/UI workaround
+or reduced visibility assertion was added. Each OS's32 final geometry reports
+passes field/footer/static-label, source grouping/order and conditional visibility
+checks at the four requested sizes; compact confirmation is fully exposed.
+
+All907 frozen code/test/build inputs match local files, source.tar and actual
+Linux/Windows trees. Snapshot20261007T184638Z-61009713, parent989bd56, SHA-256
+`6fcf2c7783111fd4daf786da2e3eb1149a9dc78452fa61ce283fbdad08b6f6ec`.
+Baseline verification passes408 exact/196 adapted/3 local paths. Temporary task
+wrapper is archived in ignored evidence and removed before commit;906 remaining
+inputs are unchanged. Eleven slow suites were excluded. Native desktop input,
+rendered Windows reference, installed/CLI/package checks, remaining source bodies
+and final parent acceptance remain open.

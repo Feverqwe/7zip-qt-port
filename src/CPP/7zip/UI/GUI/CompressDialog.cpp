@@ -11,8 +11,10 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "7zip/UI/GUI/ExtractRes.h"
+#include "CPP/Windows/FileDir.h"
 #include "Common/MyString.h"
 #include "Common/StringConvert.h"
+#include "Windows/FileName.h"
 #include "Windows/System.h"
 #include "qtcompressoptionsdialog.h"
 #include <QComboBox>
@@ -482,18 +484,21 @@ void CCompressDialog::ArcPath_WasChanged(const QString &path) {
 
 bool CCompressDialog::GetFinalPath_Smart(QString &resPath) const {
     resPath.clear();
-    QString name = m_ArchivePath;
-    name = name.trimmed();
-    QString fullPath;
-    QString dirPrefx = DirPrefix;
-    if (dirPrefx.isEmpty())
-        dirPrefx = StartDirPrefix;
-    // QDir is the narrow NName::GetFullPath adapter for native paths.
-    const bool res = !name.isEmpty() && !name.contains(QChar::Null);
-    if (res) {
-        fullPath = QDir::cleanPath(QDir(dirPrefx).absoluteFilePath(name));
-        resPath = fullPath;
-    }
+    // Qt text can carry embedded NUL, unlike the original Win32 control text.
+    if (m_ArchivePath.contains(QChar::Null))
+        return false;
+    UString name(m_ArchivePath.toStdWString().c_str());
+    name.Trim();
+    FString fullPath;
+    UString dirPrefx(DirPrefix.toStdWString().c_str());
+    if (dirPrefx.IsEmpty())
+        dirPrefx = StartDirPrefix.toStdWString().c_str();
+    const bool res =
+        !dirPrefx.IsEmpty()
+            ? NWindows::NFile::NName::GetFullPath(us2fs(dirPrefx), us2fs(name), fullPath)
+            : NWindows::NFile::NName::GetFullPath(us2fs(name), fullPath);
+    if (res)
+        resPath = QString::fromWCharArray(fs2us(fullPath).Ptr());
     return res;
 }
 
@@ -503,17 +508,15 @@ bool CCompressDialog::SetArcPathFields(const QString &path) {
 }
 
 bool CCompressDialog::SetArcPathFields(const QString &path, QString &name, bool always) {
-    QString resDirPrefix;
-    QString resFileName;
-    const bool res = !path.isEmpty() && !path.contains(QChar::Null);
+    FString resDirPrefix;
+    FString resFileName;
+    const UString sourcePath(path.toStdWString().c_str());
+    const bool res =
+        !path.contains(QChar::Null) &&
+        NWindows::NFile::NDir::GetFullPathAndSplit(us2fs(sourcePath), resDirPrefix, resFileName);
     if (res) {
-        const QFileInfo info(QDir::cleanPath(QDir().absoluteFilePath(path)));
-        resDirPrefix = info.absolutePath();
-        if (!resDirPrefix.endsWith('/'))
-            resDirPrefix += '/';
-        resFileName = info.fileName();
-        DirPrefix = resDirPrefix;
-        name = resFileName;
+        DirPrefix = QString::fromWCharArray(fs2us(resDirPrefix).Ptr());
+        name = QString::fromWCharArray(fs2us(resFileName).Ptr());
     } else {
         if (!always)
             return false;
@@ -542,19 +545,14 @@ CCompressDialog::EVolumeResult CCompressDialog::OnOK(const QString &volumeText,
     return kVolumeOK;
 }
 
+// Original shared helper is owned by ExtractDialog.cpp.
+extern void AddUniqueString(CObjectVector<QString> &strings, const QString &srcString);
+
 void CCompressDialog::OnOK(NCompression::CInfo &registry) const {
     CObjectVector<QString> arcPaths;
     QString s;
     if (!GetFinalPath_Smart(s))
         return;
-    // AddUniqueString from ExtractDialog.cpp, with the same case-insensitive
-    // rule; the extraction widget is not a dependency of this rules module.
-    const auto AddUniqueString = [](CObjectVector<QString> &strings, const QString &value) {
-        FOR_VECTOR(i, strings)
-        if (value.compare(strings[i], Qt::CaseInsensitive) == 0)
-            return;
-        strings.Add(value);
-    };
     AddUniqueString(arcPaths, s);
     registry.EncryptHeaders = EncryptHeaders;
     registry.ArcType = Format;

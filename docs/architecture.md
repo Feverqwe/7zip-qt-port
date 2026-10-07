@@ -1692,6 +1692,12 @@ Compression and archive-path rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
 The partial `CCompressDialog` owns name/extension transitions, path resolution
 and archive history confirmation; `CreateArchiveDialog` supplies combo/directory
 snapshots. `NCompression::CInfo` persists ArcPaths and ArcType.
+Both dialog owners use the source UString::Trim and FileName/FileDir path
+services. CompressDialog's GetFinalPath_Smart/GetFullPathAndSplit preserve
+source resolution and refusal; ExtractDialog uses NormalizeDirPathPrefix.
+The single AddUniqueString implementation in ExtractDialog supplies the source
+UString::IsEqualTo_NoCase comparison to both histories. QString adapts widget
+and settings storage; compression's embedded-NUL guard remains at that boundary.
 `createarchivedialog_compression.cpp` binds them to Qt controls;
 `createarchivedialog_resources.cpp` supplies CPU/RAM information and display;
 `createarchivedialog_preferences.cpp` handles profile selection and persistence.

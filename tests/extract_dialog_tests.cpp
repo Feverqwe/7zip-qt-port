@@ -56,7 +56,7 @@ class ExtractDialogTests final : public QObject {
             QCOMPARE(dialog.PathMode, NExtract::NPathMode::kNoPaths);
             QCOMPARE(dialog.OverwriteMode, NExtract::NOverwriteMode::kRenameExisting);
             QCOMPARE(dialog.Password, QStringLiteral("секрет с пробелом"));
-            QVERIFY(dialog.destination().endsWith('/'));
+            QVERIFY(QDir::fromNativeSeparators(dialog.destination()).endsWith('/'));
         }
         CExtractDialog restarted(dir_.path(), {});
         QCOMPARE(pathMode(restarted)->currentIndex(), 1);
@@ -118,11 +118,13 @@ class ExtractDialogTests final : public QObject {
             path(dialog)->setCurrentIndex(2);
             path(dialog)->setEditText(QStringLiteral("  /новая папка/δ space  "));
             dialog.accept();
-            QCOMPARE(dialog.destination(), QStringLiteral("/новая папка/δ space/"));
+            QCOMPARE(QDir::fromNativeSeparators(dialog.destination()),
+                     QStringLiteral("/новая папка/δ space/"));
         }
         saved.Load(settings_);
         QCOMPARE(saved.Paths.Size(), 16u);
-        QCOMPARE(saved.Paths[0], QStringLiteral("/новая папка/δ space/"));
+        QCOMPARE(QDir::fromNativeSeparators(saved.Paths[0]),
+                 QStringLiteral("/новая папка/δ space/"));
         QVERIFY(saved.Paths[15] != history[15]);
         {
             CExtractDialog dialog("/initial", {" /DATA/ ", "/data/", " /different/ "});

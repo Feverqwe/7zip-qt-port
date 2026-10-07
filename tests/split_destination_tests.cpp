@@ -71,18 +71,21 @@ class SplitDestinationTests final : public QObject {
             name(dialog)->setText(QStringLiteral("  δ результат  "));
             QCOMPARE(dialog.destination(), QStringLiteral("/папка с пробелом/δ результат"));
             dialog.accept();
-            QCOMPARE(dialog.destination(), QStringLiteral("/папка с пробелом/δ результат/"));
+            QCOMPARE(QDir::fromNativeSeparators(dialog.destination()),
+                     QStringLiteral("/папка с пробелом/δ результат/"));
         }
         NExtract::CInfo saved;
         saved.Load(settings_);
-        QCOMPARE(saved.Paths[0], QStringLiteral("/папка с пробелом/δ результат/"));
+        QCOMPARE(QDir::fromNativeSeparators(saved.Paths[0]),
+                 QStringLiteral("/папка с пробелом/δ результат/"));
         {
             CExtractDialog dialog(initial, {});
             enabled(dialog)->setChecked(false);
             QVERIFY(name(dialog)->isHidden());
             path(dialog)->setEditText(QStringLiteral("/другое место"));
             dialog.accept();
-            QCOMPARE(dialog.destination(), QStringLiteral("/другое место/"));
+            QCOMPARE(QDir::fromNativeSeparators(dialog.destination()),
+                     QStringLiteral("/другое место/"));
         }
         {
             CExtractDialog restarted(initial, {});
@@ -102,7 +105,8 @@ class SplitDestinationTests final : public QObject {
             QCOMPARE(path(dialog)->currentText(), initial);
             QVERIFY(name(dialog)->text().isEmpty());
             dialog.accept();
-            QCOMPARE(dialog.destination(), initial.endsWith('/') ? initial : initial + "/");
+            QCOMPARE(QDir::fromNativeSeparators(dialog.destination()),
+                     initial.endsWith('/') ? initial : initial + "/");
         }
     }
     void renderedConditionalControls() {
@@ -146,7 +150,8 @@ class SplitDestinationTests final : public QObject {
         dialog.findChild<QCheckBox *>("extractElimDup")->setChecked(false);
         name(dialog)->setText(QStringLiteral("  δ результат  "));
         dialog.accept();
-        QCOMPARE(dialog.destination(), base + QStringLiteral("/δ результат/"));
+        QCOMPARE(QDir::fromNativeSeparators(dialog.destination()),
+                 base + QStringLiteral("/δ результат/"));
         backend.extract(archive, dialog.destination(), {}, {}, dialog.options());
         QTRY_COMPARE_WITH_TIMEOUT(done.size(), 1, 15000);
         QVERIFY2(done.first()[0].toBool(), qPrintable(done.first()[1].toString()));

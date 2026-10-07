@@ -2530,6 +2530,17 @@ A real Unicode-named archive is created through dialog/backend, tested with 7zz
 and extracted for byte comparison. Combo geometry at 760×720 and 640×480 writes
 `archive-path-*.json` in `build/dev/ui-reports/`.
 
+`dialog_path_rules` checks source ASCII Trim while preserving NBSP in Unicode
+archive/destination names, unresolvable parent traversal, unchanged/fallback
+path fields and shared UString history comparison (including K/Kelvin).
+Four EN/RU × split-destination workflows Cancel without changing settings,
+then create/list/extract through ArchiveBackend and the official engine, compare
+exact bytes and reopen persisted history. Six cases plus init/cleanup produce
+32 normal/compact Create/Extract JSON reports per OS; fields/footer must remain
+visible. Windows uses the existing native Qt font/style test adapter. The
+compression compact scrolling check brings the complete confirmation field
+into view; Qt's line-edit cursor visibility alone does not include its border.
+
 `folder_history` checks the upstream 100-path cap, case-insensitive duplicates,
 Unicode including supplementary characters, ignored MVP settings, empty persisted
 history, multiselection deletion/copy, permission to delete, OK/Cancel and

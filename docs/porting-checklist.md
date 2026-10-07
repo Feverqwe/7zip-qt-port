@@ -574,6 +574,17 @@ all906 frozen inputs match actual guests. Other dialogs/common/native/package
 and parent acceptance remain required;43/47 unchanged.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-gui-early-error-policy-2026-10-07).
 
+P3-05, 2026-10-07: full ExtractDialog/HashGUI body/header/resource disposition
+and CompressDialog path/history consumers reconciled. Original UString Trim,
+FileName/FileDir resolution and shared history comparison restored; real EN/RU
+Create/list/Extract with SplitDest, Escape, persisted NBSP paths and exact bytes
+passes. Old-product six-failure RED retained. Mac full297/297; final nine direct
+consumers9/9 on Mac/Linux/Windows,907 frozen inputs match actual guest trees.
+All96 new normal/compact JSON pass current geometry checks. Whole CompressDialog,
+BenchmarkDialog/common/native/rendered/package acceptance remains required;
+43/47 and P3-03/04/05/06 remain open.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-gui-path-and-history-consumers-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

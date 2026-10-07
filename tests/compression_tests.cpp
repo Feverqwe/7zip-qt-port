@@ -165,7 +165,11 @@ class CompressionTests : public QObject {
         auto *password = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
         QVERIFY(scroll && password);
         QVERIFY(scroll->verticalScrollBar()->maximum() > 0);
-        scroll->ensureWidgetVisible(password);
+        // ensureWidgetVisible(QLineEdit) follows its input cursor rectangle,
+        // which can already be visible while the field's border is clipped.
+        // Exercise scrolling to the complete field, including that border.
+        const QPoint bottom = password->mapTo(scroll->widget(), password->rect().bottomRight());
+        scroll->ensureVisible(bottom.x(), bottom.y());
         QCoreApplication::processEvents();
         QVERIFY(UiInspection::writeReport(dialog, "encryption-compact-confirmation"));
         const QRect passwordRect(password->mapTo(scroll->viewport(), QPoint()), password->size());

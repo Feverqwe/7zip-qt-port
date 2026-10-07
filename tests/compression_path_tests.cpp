@@ -249,18 +249,20 @@ class CompressionPathTests final : public QObject {
         path.m_ArchivePath = QStringLiteral("  вложенная/архив с точкой.7z  ");
         QString resolved;
         QVERIFY(path.GetFinalPath_Smart(resolved));
-        QCOMPARE(resolved, dir_.filePath(QStringLiteral("вложенная/архив с точкой.7z")));
+        QCOMPARE(QDir::fromNativeSeparators(resolved),
+                 dir_.filePath(QStringLiteral("вложенная/архив с точкой.7z")));
         path.DirPrefix = dir_.filePath("other");
         QVERIFY(path.GetFinalPath_Smart(resolved));
-        QCOMPARE(resolved, dir_.filePath(QStringLiteral("other/вложенная/архив с точкой.7z")));
+        QCOMPARE(QDir::fromNativeSeparators(resolved),
+                 dir_.filePath(QStringLiteral("other/вложенная/архив с точкой.7z")));
         path.m_ArchivePath = source_;
         QVERIFY(path.GetFinalPath_Smart(resolved));
-        QCOMPARE(resolved, source_);
+        QCOMPARE(QDir::fromNativeSeparators(resolved), source_);
         QVERIFY(path.SetArcPathFields(source_));
         QCOMPARE(path.DirPrefix, dir_.path() + '/');
         QCOMPARE(path.m_ArchivePath, QFileInfo(source_).fileName());
         QString name = "unchanged";
-        QVERIFY(!path.SetArcPathFields(QString(), name, false));
+        QVERIFY(!path.SetArcPathFields(QString("../").repeated(256) + "refused.7z", name, false));
         QCOMPARE(name, QString("unchanged"));
         path.m_ArchivePath = QString("bad") + QChar::Null + "name.7z";
         QVERIFY(!path.GetFinalPath_Smart(resolved));
@@ -317,7 +319,7 @@ class CompressionPathTests final : public QObject {
         QVERIFY(!dialog.findChild<QLineEdit *>("archiveDestination"));
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
-        QCOMPARE(dialog.target(), dir_.filePath("archive.7z"));
+        QCOMPARE(QDir::fromNativeSeparators(dialog.target()), dir_.filePath("archive.7z"));
     }
     void realArchiveAndValidation() {
         CreateArchiveDialog dialog(dir_.path(), {source_});
@@ -325,7 +327,8 @@ class CompressionPathTests final : public QObject {
         name->setText(QStringLiteral("готовый архив.7z"));
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
-        QCOMPARE(dialog.target(), dir_.filePath(QStringLiteral("готовый архив.7z")));
+        QCOMPARE(QDir::fromNativeSeparators(dialog.target()),
+                 dir_.filePath(QStringLiteral("готовый архив.7z")));
         ArchiveBackend backend;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.create(dialog.target(), dialog.sources(), {}, false, dialog.compressionOptions());

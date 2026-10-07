@@ -745,3 +745,24 @@ and typed Qt backend services. ArchiveCommandLine's previously audited argv
 fallback omission and shared ClassDefs GUID owner remain explicit boundaries;
 successful builds do not establish all common dependency bodies or the other
 GUI dialogs. No upstream resource, license, codec ABI or archive algorithm changes.
+
+### GUI Extract dialog and Hash worker, 2026-10-07
+
+Pinned source https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current bodies
+and headers were compared, with formatting separated from adaptations.
+
+| Module under `CPP/7zip/UI/GUI/` | Source disposition |
+| --- | --- |
+| `ExtractDialog.cpp/.h` | Source mode/language tables, AddComboItems/AddUniqueString, BOOL-pair precedence, split/init/history, force/default flags, password toggle, Browse, OnOK and Help ordering retained. UString Trim/FileName normalization and shared original history comparison replace the independent QString services. Qt constructs the desktop ExtractDialog.rc controls, adapts field/settings storage, typed-text restoration, caption at showEvent, language changes, destination preview and backend option projection. Original caller supplies modes/caption; safe Qt defaults do not replace that caller policy. Native icon/position/WM dispatch is QDialog presentation; Unix file-security control remains explicitly disabled. CE/NO_REG/SFX build branches are not newly claimed Qt products; selected official SFX bundles retain their separate source owners. Commented AltStreams/files-mode branches remain inactive. |
+| `HashGUI.cpp/.h` | All active worker/callback/hash option, digest/result, progress/cancellation and HRESULT bodies retain original control flow. The complete normalized difference is includes/notices and QWidget parent plus CListViewDialog::OnInit/exec instead of native Create. Original HashCalcGUI S_OK return, thread Result/E_ABORT handling and callback lifetime remain. Hash results use ListViewDialog.rc's existing result presentation owner; this review adds no hash algorithm or result policy. |
+
+Dependencies remain original CHashOptions/Hash/LoadCodecs, progress/thread,
+source language/resources, portable strings/variants and FileDir/FileName,
+NExtract::CInfo and typed backend/native-codec services. GUI and FM makefiles
+and Qt production consumers were inspected. Full common dependency disposition
+is still separate required scope. CompressDialog's reviewed path/history bodies
+are covered by the [consumer audit](upstream-port-audit.md#p3-05--source-gui-path-and-history-consumers-2026-10-07);
+its remaining methods and BenchmarkDialog are not accepted by this record.
+Hash runtime uses hash_results/native_hash_workflow; source review and current
+Qt geometry do not establish native desktop input or rendered Windows parity.

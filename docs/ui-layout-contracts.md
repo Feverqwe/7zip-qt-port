@@ -1632,6 +1632,14 @@ multiple archives use the plain Extract caption. Language changes preserve
 that path and pending input. Eliminate duplication remains enabled independently
 of the caller. The source resource has no destination hint.
 
+`dialog_path_rules` adds EN/RU × split on/off Create/Extract Cancel/confirm
+reports at 700×390/600×340 (Extract) and 760×720/640×480 (Create).
+It asserts complete destination, mode, password, duplication and visible
+folder-name fields, archive-name input and footer exposure. Source grouping and
+conditional folder-name visibility remain as above. Editable values are checked
+by the workflow, not inferred from redacted JSON; native separators and NBSP
+preservation change values without introducing controls or captions.
+
 Current 2026-10-07 toolbar, language and advanced Extract/Copy reports were
 reviewed on macOS, native Windows Qt and Linux. The mode/password columns,
 checkbox text and footer remain exposed at normal/compact sizes. Requested
