@@ -80,9 +80,10 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
         // selecting the level's default method and recalculating its controls.
         const UInt32 level = level_->currentData().toUInt();
         Get_FormatOptions().ResetForLevelChange();
-        // Qt FormatChanged also fills the level combo; preserve the user's level.
-        Get_FormatOptions().Level = level;
-        FormatChanged();
+        // OnCommand changes method-dependent controls, not the whole format:
+        // SetParams would discard text the user is still editing.
+        const QSignalBlocker methodBlock(method_);
+        archiveNameState_.SetMethod2(*method_, level, m_RegistryInfo, [this] { MethodChanged(); });
     });
     connect(method_, &QComboBox::currentTextChanged, this, [this] {
         MethodChanged();

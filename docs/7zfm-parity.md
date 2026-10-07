@@ -1990,6 +1990,17 @@ SaveOptionsInMem выполняется до проверки пути/томо�
 [audit](upstream-port-audit.md#p3-05--source-create-validation-error-policy-2026-10-07).
 Это не подтверждает rendered Windows parity или native desktop input.
 
+## P3-05 — Level and SFX control events (2026-10-08)
+
+Changing compression level retains text currently entered in Parameters while
+resetting method-dependent defaults. SFX on/off retains the current method and
+its dependent controls when supported, including an unavailable saved thread
+selection, and updates only source naming and memory display. It does not trim
+Parameters or initialize the whole format. EN/RU 7z/ZIP/XZ level and SFX state,
+Cancel/no-write and existing real SFX operation evidence belongs to the
+[control lifecycle audit](upstream-port-audit.md#p3-05--compress-control-specific-event-lifecycle-2026-10-08).
+Rendered original Windows/native desktop acceptance remains open.
+
 ## P3-05 — Format and Hash filename controls (2026-10-08)
 
 The archive-format combo follows source CBS_SORT ordering even if registration

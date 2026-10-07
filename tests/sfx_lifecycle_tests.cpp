@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
@@ -23,7 +25,99 @@ bool write(const QString &path, const QByteArray &bytes) {
 
 class SfxLifecycleTests final : public QObject {
     Q_OBJECT
+    static void saveProfile(const QString &settings, const QString &language, const QString &method,
+                            UInt32 threads) {
+        NCompression::CInfo registry;
+        registry.ArcType = "7z";
+        auto &profile = registry.Formats.AddNew();
+        profile.FormatID = "7z";
+        profile.Method = method;
+        profile.Level = 5;
+        profile.Dictionary = 1 << 20;
+        profile.Order = 64;
+        profile.NumThreads = threads;
+        profile.BlockLogSize = 24;
+        profile.MemUse = "256M";
+        registry.Save(settings);
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+    }
+
   private slots:
+    void toggleKeepsMethodControls_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("method");
+        QTest::addColumn<UInt32>("threads");
+        for (const QString &language : {QString("-"), QString("ru")})
+            for (const QString &method : {QString(), QString("LZMA"), QString("LZMA2")})
+                for (UInt32 threads : {1u, 999999u})
+                    QTest::newRow(
+                        qPrintable(language + '-' + method + '-' + QString::number(threads)))
+                        << language << method << threads;
+    }
+    void toggleKeepsMethodControls() {
+#if !defined(SEVENZIP_CODEC_MODULE)
+        QSKIP("Official native codec module required");
+#else
+        QFETCH(QString, language);
+        QFETCH(QString, method);
+        QFETCH(UInt32, threads);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString sfx = QString::fromUtf8(SEVENZIP_SFX_FIXTURE);
+        QVERIFY(QFileInfo::exists(sfx));
+        const QByteArray previousSfx = qgetenv("SEVENZIP_SFX_MODULE");
+        const QByteArray previousSettings = qgetenv("SEVENZIP_SETTINGS_PATH");
+        const auto restore = qScopeGuard([&] {
+            if (previousSfx.isNull())
+                qunsetenv("SEVENZIP_SFX_MODULE");
+            else
+                qputenv("SEVENZIP_SFX_MODULE", previousSfx);
+            if (previousSettings.isNull())
+                qunsetenv("SEVENZIP_SETTINGS_PATH");
+            else
+                qputenv("SEVENZIP_SETTINGS_PATH", previousSettings);
+        });
+        const QString settings = fixture.filePath("settings.ini");
+        qputenv("SEVENZIP_SFX_MODULE", sfx.toUtf8());
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
+        saveProfile(settings, language, method, threads);
+        const QByteArray before = read(settings);
+        const QString input = fixture.filePath(QStringLiteral("input 空 with spaces.txt"));
+        QVERIFY(write(input, "SFX controls"));
+        auto catalog =
+            std::make_shared<ArchiveCodecCatalog>(QString::fromUtf8(SEVENZIP_CODEC_MODULE), 0);
+        QCOMPARE(catalog->result(), S_OK);
+        CreateArchiveDialog dialog(fixture.path(), {input}, nullptr, catalog);
+        auto *sfxControl = dialog.findChild<QCheckBox *>("archiveSfx");
+        QVERIFY(sfxControl && sfxControl->isEnabled());
+        auto *thread = dialog.findChild<QComboBox *>("compressionThreads");
+        const int selectedThread = thread->currentIndex();
+        QCOMPARE(selectedThread < 0, threads == 999999);
+        auto *parameters = dialog.findChild<QLineEdit *>("archiveParameters");
+        parameters->setText("  mt=1  ");
+        const auto original = dialog.sourceInfo();
+        const auto options = dialog.compressionOptions();
+        for (bool checked : {true, false, true, false}) {
+            sfxControl->setChecked(checked);
+            QCOMPARE(thread->currentIndex(), selectedThread);
+            QCOMPARE(parameters->text(), QString("  mt=1  "));
+            const auto current = dialog.sourceInfo();
+            QCOMPARE(current.Method, original.Method);
+            QCOMPARE(current.Level, original.Level);
+            QCOMPARE(current.Dict64, original.Dict64);
+            QCOMPARE(current.Order, original.Order);
+            QCOMPARE(current.NumThreads, original.NumThreads);
+            QCOMPARE(current.SolidBlockSize, original.SolidBlockSize);
+            QCOMPARE(current.MemUsage.GetBytes(1 << 30), original.MemUsage.GetBytes(1 << 30));
+            QCOMPARE(dialog.compressionOptions().SFXMode, checked);
+        }
+        QCOMPARE(dialog.compressionOptions().format, options.format);
+        dialog.reject();
+        QCOMPARE(read(settings), before);
+        QCOMPARE(read(input), QByteArray("SFX controls"));
+#endif
+    }
     void acceptedFormCreatesAndDeletes_data() {
         QTest::addColumn<bool>("volumes");
         QTest::addColumn<QString>("outcome");

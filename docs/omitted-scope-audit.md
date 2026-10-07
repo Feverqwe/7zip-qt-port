@@ -942,3 +942,29 @@ Dependencies remain source ArcInfo/LoadCodecs, strings/vectors/numeric helpers,
 ZipRegistry, language and Browse services. Full source/runtime evidence belongs
 to the [format audit](upstream-port-audit.md#p3-05--format-selection-browse-and-hash-names-2026-10-08).
 Remaining Compress/Common/native/rendered/package scope stays mandatory.
+
+### CCompressDialog complete body/header disposition, 2026-10-08
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, GUI/CompressDialog.cpp/.h,
+CompressDialog.rc/CompressDialogRes.h and native ComboBox/Edit/Dialog services.
+Complete original active bodies, inline getters/defaults, callers and current
+source/Qt adapters were compared across the linked component receipts. The
+separate COptionsDialog disposition above covers that class in the same module.
+
+| Original scope | Source owner and narrow adaptation |
+| --- | --- |
+| OnInit, format/history/update/path/volume initialization | Native format selection lives in source OnInit; source PrepareFormatSelection supplies eligible handlers. Qt constructs controls and binds registry, CInfo, history and original enum values. RAM/CPU defaults use source GetSystemInfo; Qt supplies window placement, focus, scrolling and language binding. Native first-item and absent-selection semantics are explicit control services. |
+| FormatChanged, SetLevel/SetNearestSelectComboBox, SetParams | Original format/profile reset, nearest legal level and dependent-control phases remain in the Qt control binding. Source format tables and numeric calculators own admissibility/defaults. Full format initialization is used for actual format changes; Level/SFX events no longer invoke it and overwrite current input. |
+| SetMethods, SetMethod/SetMethod2, method IDs/spec/equality | Source bodies retain static/external method order, encoder/filter/stream eligibility, Auto ID, SFX filtering and keep-method branch. Native control insertion/item data is replaced by QComboBox; source method names/specs remain authoritative. |
+| Dictionary/order/solid/thread/memory helpers | Original tables, numeric loops, thresholds, chunk calculation, RAM limits and Auto estimates remain in source CompressDialog.cpp. Qt inserts returned entries and projects registry selection. Source cached Auto-thread phase supplies memory display and OK refusal; specification sentinels remain distinct from effective values. |
+| OnCommand, OnButtonClicked, CheckSFXNameChange | Qt signals dispatch original control-specific phases. Format saves the previous profile; Level resets method-dependent defaults; Method refreshes dependent controls and Hash naming; Dictionary and memory-limit regenerate threads; Solid/Threads refresh memory only. SFX uses SetMethod(GetMethodID()), naming and memory, retaining dependent state when the method survives. QSignalBlocker replaces absence of native selection notifications during programmatic insertion. |
+| SetArchiveName/2, ArcPath_WasChanged, path splitting/final path and Browse | Source bodies own extension/KeepName/SFX/Hash naming, native-index/filter correspondence and path validation. Qt supplies text, file-picker and platform path services. Qt activated runs after text publication, so the original deferred history-message effect is applied after the format callback without recreating a Win32 posted message. Embedded NUL is refused at the Qt text boundary. |
+| Encryption/password/update/volume and OnOK | Source password restrictions, memory refusal, profile saving, path/history and volume validation bodies remain. Qt owns error/confirmation presentation and reads original operation specs. Source UpdateGUI owns property generation and engine validation. Standalone CLI effective-level normalization stays at its transport boundary. Disabled POSIX sharing/NT metadata/preserve-atime and platform SFX extension are explicit adaptations. |
+| Metadata/Options, bool pairs and Help | Source Combine/Set_Final_BoolPairs, per-format time state, option-summary and Help topic remain. Qt holds the Options transaction until OK and publishes its source result; outer Add Cancel never saves disk. COptionsDialog has its own complete disposition above. |
+| Header/dependencies and inactive scope | Source CInfo fields, native strings/vectors/CBoolPair/ArcInfo/MethodProps and enum domains remain; Qt text/control DTOs and system-field bundles replace presentation handles. Dependencies include ZipRegistry, LoadCodecs, UpdateGUI, Wildcard, FileName/FileDir, System, language/property/help, Browse and SplitUtils. Commented ZSTD/SWFC/dictionary-chain/alternate timestamp/debug PRINT_PARAMS/PRINT_ITER_TIME and CheckVolumeEnable branches remain inactive at this pinned baseline. Desktop resources own structure; CE is not a separate Qt product. |
+
+This closes the body/header disposition of CCompressDialog; its platform/native/
+rendered acceptance is not inferred from offscreen controls. Common reconciliation
+and final P3 runtime/package acceptance remain required. Component evidence is
+indexed in the [control lifecycle audit](upstream-port-audit.md#p3-05--compress-control-specific-event-lifecycle-2026-10-08).

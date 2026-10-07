@@ -73,6 +73,36 @@ class CompressionEventTests final : public QObject {
         else
             qputenv("SEVENZIP_SETTINGS_PATH", previous_);
     }
+    void levelKeepsEditedParameters_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("format");
+        for (const QString &language : {QString("-"), QString("ru")})
+            for (const QString &format : {QString("7z"), QString("zip"), QString("xz")})
+                QTest::newRow(qPrintable(language + '-' + format)) << language << format;
+    }
+    void levelKeepsEditedParameters() {
+        QFETCH(QString, language);
+        QFETCH(QString, format);
+        this->language(language);
+        const QByteArray before = contents(settings_);
+        CreateArchiveDialog dialog(fixture_.path(), {input_}, nullptr, catalog_);
+        combo(dialog, "archiveFormat")->setCurrentText(format);
+        auto *parameters = dialog.findChild<QLineEdit *>("archiveParameters");
+        parameters->setText("  mt=1  ");
+        auto *level = combo(dialog, "compressionLevel");
+        for (UInt32 value : {9u, 1u, 5u}) {
+            const int index = level->findData(value);
+            QVERIFY(index >= 0);
+            level->setCurrentIndex(index);
+            QCOMPARE(parameters->text(), QString("  mt=1  "));
+            QCOMPARE(dialog.sourceInfo().Level, value);
+            QCOMPARE(dialog.sourceInfo().Options, UString(L"mt=1"));
+            QCOMPARE(dialog.sourceInfo().NumThreads, UInt32(-1));
+        }
+        dialog.reject();
+        QCOMPARE(contents(settings_), before);
+        QCOMPARE(contents(input_), bytes_);
+    }
     void solidKeepsThreadSelection_data() {
         QTest::addColumn<UInt32>("threads");
         QTest::addColumn<QString>("language");

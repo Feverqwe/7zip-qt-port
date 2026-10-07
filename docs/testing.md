@@ -3318,3 +3318,10 @@ and TAR profile/restart preserve Auto without a level key. The real source modal
 Hash writer produces a SHA1 manifest checked against exact input bytes and name.
 Including setup/cleanup:20 Qt results. Windows settings fixtures set their Unicode
 override through the wide CRT and assert its exact roundtrip before exercising UI.
+
+`compression_event` now has20 Qt results including six EN/RU 7z/ZIP/XZ level
+transitions: method-dependent defaults reset while Parameters retains its current
+text; source specs and Cancel/no-write are asserted. `sfx_lifecycle` has22 Qt
+results including12 EN/RU Auto/LZMA/LZMA2 valid/unavailable-thread cases. Repeated
+SFX on/off preserves method-dependent specs and current parameter text. Existing
+real SFX success/extraction/delete/pause/cancellation cases remain in that suite.

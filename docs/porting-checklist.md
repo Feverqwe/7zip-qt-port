@@ -295,6 +295,13 @@ real ZIP consumers и source modal SHA1 manifest —
 [format audit](upstream-port-audit.md#p3-05--format-selection-browse-and-hash-names-2026-10-08).
 Whole Compress/Common и финальная P3 приёмка остаются обязательными.
 
+P3-05,2026-10-08: завершена полная body/header disposition CCompressDialog;
+Level/SFX используют исходные event phases, сохраняя текущий Parameters и
+зависимые controls вместо полной инициализации формата. EN/RU regressions,
+source specs/Cancel и реальные SFX consumers —
+[control lifecycle audit](upstream-port-audit.md#p3-05--compress-control-specific-event-lifecycle-2026-10-08).
+Common, native/rendered/package и итоговая P3 приёмка остаются обязательными.
+
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |

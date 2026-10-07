@@ -15981,6 +15981,46 @@ memory text and footer; no rendered Windows/native desktop acceptance is claimed
 Eleven slow suites remain excluded. Fresh authenticated capacity/host-D checks
 passed; no cleanup, disk changes or upstream mutation occurred.
 
+## P3-05 — Compress control-specific event lifecycle (2026-10-08)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete GUI/CompressDialog.cpp/.h,
+desktop/CE resources, control helpers, original OnCommand/OnButtonClicked and
+current Create adapters were compared. The
+[complete body/header disposition](omitted-scope-audit.md#ccompressdialog-complete-bodyheader-disposition-2026-10-08)
+links copied algorithms, presentation services, dependencies and inactive scope;
+it does not establish rendered/native desktop or final P3 acceptance.
+
+The Qt Level and SFX events incorrectly called full FormatChanged. SFX thereby
+saved/reloaded options and normalized an unavailable thread selection to Auto;
+both events replaced text still being edited in Parameters. Original SFX calls
+SetMethod(GetMethodID()), OnButtonSFX and SetMemoryUsage. Original Level clears
+method-dependent defaults and changes those controls without SetParams. The
+adapters now retain these source-specific phases, with QSignalBlocker for Qt's
+programmatic combo notifications. Original source SetMethod2 keep-method branch
+owns SFX filtering; naming, numeric defaults and memory algorithms are unchanged.
+
+Actual RED retains12 SFX failures/10 passes and6 Level failures/14 passes.
+The expanded SFX suite has22 Qt results: EN/RU Auto/LZMA/LZMA2, valid/unavailable
+threads, four on/off transitions preserve method/level/dictionary/order/threads/
+solid/memory specs and untrimmed parameter text, with Cancel preserving disk and
+Unicode/space input bytes. Its existing real SFX create/extract/delete, pause and
+cancellation consumers remain intact. The20-result compression_event suite adds
+EN/RU 7z/ZIP/XZ level transitions with current text/specs and Cancel/no-write.
+Five local suites pass5/5 in2.73s. Evidence: build/review/compression-controls.
+Final unsandboxed macOS arm64/Qt6.12.0 formatting/all-target/default gate passes
+304/304 in250.18s,4736Qt pass/0fail/18 platform skips. Fresh Linux/Windows
+x64/Qt6.12.0 each build and pass9/9 in6.04s/59.44s,147Qt pass/0fail/0skip.
+Both expanded suites have no skips on any OS. All1407 frozen code/build/runtime/
+resource inputs match local files, source.tar and both actual guest trees,
+snapshot `20261007T215012Z-0439aaaf`, SHA256
+`aa9a2b455063f0286d731e4f64b8d4bcb12fda73bb534c805ba8b8ac3d3e9f43`.
+The disposable wrapper is archived/removed;1406 remaining inputs are unchanged.
+Fresh authenticated host-D/guest capacity checks pass, without cleanup or disk
+changes. Eleven slow suites remain excluded. No layout/text/visibility/resize
+structure changes were made; existing current-build geometry consumers pass in
+the gate. Common, native/rendered/package and final P3 acceptance remain mandatory.
+
 ## P3-05 — Format selection, Browse and Hash names (2026-10-08)
 
 Source https://github.com/ip7z/7zip.git, full revision
