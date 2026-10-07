@@ -7,6 +7,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtarchivefileresource.h"
 #include "qtlangcontrols.h"
 #include <QScopeGuard>
@@ -53,6 +54,15 @@ void MainWindow::openArchive(const QString &path) { openArchiveAs(path, {}); }
 HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
     if (app_.QtOperations().closed())
         return E_ABORT;
+    appPresentation_->CancelInitialFocus();
+    const QPointer<QWidget> focused = focusWidget();
+    const auto restoreFocus = qScopeGuard([this, focused] {
+        // Modal archive progress can clear Qt's remembered address focus.
+        // Restore the selected control after the operation call scope ends.
+        if (!app_.QtOperations().closed() && focused && focused->isVisible() &&
+            focused->isEnabled() && !QApplication::activeModalWidget())
+            focused->setFocus(Qt::OtherFocusReason);
+    });
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (state_ == State::Loading || state_ == State::Operating)
         return E_ABORT;

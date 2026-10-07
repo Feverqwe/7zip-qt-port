@@ -60,6 +60,12 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
             if (window)
                 window->showPanelStatus(index, status);
         });
+    // OnCreate refreshes immediately after this service returns, before the
+    // next panel is bound. Install its load/publication owner with its controls.
+    panel.AttachReloadPresentation(
+        [window = QPointer<MainWindow>(&window_), index](const CSelectedState &selection) {
+            return window ? window->reloadPanelPresentation(index, selection) : E_ABORT;
+        });
     window_.storePanelUi(index);
     if (window_.drag_)
         window_.drag_->AttachPanel(index);
@@ -69,6 +75,25 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
         window_.app_.SetFocusedPanel(previous);
     }
     return true;
+}
+
+void QtAppPresentation::RequestInitialFocus(unsigned index) {
+    // Source Create has already focused synchronous lists. Defer only when
+    // asynchronous startup publication kept its target disabled.
+    if (index < kNumPanelsMax && (window_.scanningPanelMask() & (1u << index)))
+        initialFocus_ = index;
+}
+
+void QtAppPresentation::CompleteInitialFocusIfReady() {
+    if (!initialFocus_ || !window_.isVisible() || window_.panelProjectionDepth_ ||
+        window_.app_.QtOperations().closed() || window_.app_.QtOperations().active())
+        return;
+    const unsigned index = *initialFocus_;
+    initialFocus_.reset();
+    window_.activatePanelUi(index);
+    window_.app_.SetFocusedPanel(index);
+    window_.app_.Panels[index].SetFocusToList();
+    window_.app_.RefreshTitle(true);
 }
 
 CPanelCallback *QtAppPresentation::PanelCallback(unsigned) {

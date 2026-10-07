@@ -93,7 +93,7 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     }
     panelUi_[index].container = central;
     central->setObjectName(QStringLiteral("filePanel%1").arg(index));
-    panelSplitter_->addWidget(central);
+    panelSplitter_->insertWidget(static_cast<int>(index), central);
     statusBar()->showMessage("Готово");
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)

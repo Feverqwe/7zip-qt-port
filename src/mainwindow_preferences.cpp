@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "mainwindow.h"
+#include "qtapppresentation.h"
 #include "qtdialogscreenservices.h"
 #include "qtfilemanagershellmenu.h"
 #include "qtfilemenuprojection.h"
@@ -248,6 +249,10 @@ void MainWindow::updateFilesystemIcons() {
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
+    if (appPresentation_ &&
+        (event->type() == QEvent::KeyPress || event->type() == QEvent::MouseButtonPress ||
+         event->type() == QEvent::MouseButtonDblClick))
+        appPresentation_->CancelInitialFocus();
     if (!panelProjectionDepth_ &&
         (event->type() == QEvent::FocusIn || event->type() == QEvent::MouseButtonPress ||
          event->type() == QEvent::MouseButtonDblClick || event->type() == QEvent::KeyPress)) {

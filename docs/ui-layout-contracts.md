@@ -1,5 +1,28 @@
 # Text specifications and geometry checks
 
+### Source panel creation (P3-05.15)
+
+OnCreate starts list publication after its controls are constructed and before
+the next panel opens. Initial and late second-panel creation must finish with
+both lists/addresses visible and enabled, correct source modes, restored guards
+and unchanged files/archive bytes. Check EN/RU table/icon and standard/alternative
+selection at980×620/640×400, filesystem/transport/native ZIP/7z and2/301 rows.
+Ctrl+R must actually publish and preserve marked/focused names; hide/show retains
+the created peer. Original initial creation order starts with panel0 unless an
+archive-only main-panel request chooses panel1; single-panel late creation covers
+either role. Native rendered Windows parity remains unverified here.
+Ordinary startup must use the requested main path rather than its saved path,
+including a right main panel created second. Initial focus waits for the scans
+to finish. Subsequent explicit address/list input or a public archive request
+must retain the peer's focus instead of being overwritten by startup completion.
+When a first scan completes during the second panel's binding, each source provider
+must match its own visible rows. Public archive modal progress must return focus
+to the selected address control, including its Qt combo focus proxy.
+Showing a saved peer immediately after window show must retain its path and
+source rows; pending initial focus cannot change projection during peer Create.
+Source FM.cpp::MoveSubWindows fixes panel0 on the left and panel1 on the right,
+including archive-first and late creation from an initially single right panel.
+
 ### Source Copy/Move destination (P3-05.15, required scope)
 
 Interarchive F5/F6 preserves the destination provider and pre-update marked/focused

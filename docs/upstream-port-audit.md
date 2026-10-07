@@ -1735,6 +1735,202 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Source panel creation publication, 2026-10-07
+
+Reviewed complete original Panel.cpp::Create75–116/OnCreate383–596,
+App.cpp::CreateOnePanel117–142/Create284–356/SwitchOnOffOnePanel359–380 and
+RefreshListCtrl load/publication owner at baseline
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17, retrievable
+https://github.com/ip7z/7zip.git. Source binding/callback/default-mode/order,
+WM_CREATE/CreateEx, list/header/rebar/parent/status/timer dependencies and current
+CPanel/QtAppPresentation/MainWindow reload/scan/toggle consumers were traced.
+OnCreate constructs controls, calls RefreshListCtrl and ignores its HRESULT,
+then Create sets PanelCreated. Main-panel archive-only requests can create panel1
+first; ordinary two-panel startup begins with panel0. Late creation uses the same
+CreateOnePanel owner after incrementing NumPanels.
+
+The Qt reload service was installed only after initial CApp::Create, so initial
+OnCreate ran the callback-free selection tail and a constructor loop published
+both lists later. Late creation already had a reload callback but togglePanels
+rendered the new list a second time. QtAppPresentation::CreatePanel now installs
+the existing reload service with its controls, before source OnCreate continues.
+The constructor loop/late attachment and toggle's extra render are removed.
+reloadPanelPresentation permits only an uncreated panel's initial refresh while
+another panel is scanning; existing-panel active-operation deferral is retained.
+This is narrow Qt asynchronous/control-lifetime adaptation of original source
+ordering, with no new archive, enumeration, selection or creation algorithm.
+Upstream binding/creation/Refresh algorithms, module paths and ignored initial Refresh HRESULT policy,
+baseline revision and source languages are unchanged. Win32 child/rebar/image-list
+presentation remains the existing Qt widget/system-icon service; no CE or rendered
+Windows parity is inferred. Callback-free fixture compatibility is not claimed
+as full headless loading. The changed custom adapters remain below400 lines;
+the focused test keeps creation/Refresh/retention/bytes/geometry in one workflow.
+
+panel_creation_publication has256 initial/late creation rows with the official
+codec module,128 without: FS/controlled listing/native ZIP/7z,2/301 rows, both
+roles where source creation order permits, EN/RU, both-panel table/icon and
+standard/alternative selection. An existing public backend open callback observes
+the first table before the next archive opens. Publication must have started or
+completed. Actual Ctrl+R is proved by model removal; selection/focus, provider,
+terminal guards/controls, created-peer hide/show and input bytes are checked.
+The large filesystem worker legitimately publishes another loaded provider;
+archive publication retains its provider. Three direct Create cases retain
+original ignored initial S_OK/E_FAIL/E_ABORT Refresh and exactly one callback.
+Sixteen saved-filesystem/second-main archive rows hold the archive request until
+the first list finishes, forcing a first-panel completion callback during the
+second binding. Source-provider counts must match both visible lists before
+manual Refresh. No product test seam or native reader failure injection is introduced.
+
+Further caller review found a related path-loss bug: original SetFocusedPanel
+(PanelDrag.cpp2990–2994) writes LastFocusedPanel and the drop target index. Qt
+child creation temporarily changes it, while the original Create loop reads it
+again to choose the main path. Ordinary startup with panel1 as main therefore
+bound its saved folder instead of the requested folder. CApp::Create captures
+the original main-panel index for its original loop/order/path/final-focus calls,
+separately from live LastFocusedPanel. Restoring LastFocusedPanel alone between
+child creations is incorrect: it disagrees with the Qt projection while a prior
+scan completes inside second-panel binding. The forced interleaving regression
+aborted with an uncaught native integer exception before this correction; the
+same case then passed. Original App.h
+SetFocusToLastItem and Panel.cpp::SetFocusToList804–807 were also traced.
+
+Original Create focuses only after synchronous list loading. With two large
+Qt filesystem scans, the original immediate focus attempt targets a disabled
+list. QtAppPresentation now retains one initial-focus request and completes it
+after the visible window's scans settle. Managed key/mouse input cancels it;
+openArchiveAs also cancels it for a subsequent explicit public archive request.
+This prevents startup completion from stealing that request's peer focus.
+Public openArchiveAs also retains the selected address widget weakly and restores
+it after its call scope and modal progress, using the existing external-update
+focus boundary. Source BindToPathAndRefresh and its address callers were reviewed;
+there is no reusable upstream Qt modal/focus service. Initial synthetic FocusIn
+API probes did not prove their target and are not product RED evidence. The
+corrected real-mouse fixture proves both logical title and physical peer focus
+before opening; the first corrected case still lost peer focus after progress
+(2QtPASS1FAIL0skip16.098s), while all address/provider assertions passed.
+These per-window presentation states replace unavailable Win32 synchronous
+completion services; no separate selection/navigation algorithm is introduced.
+No MainWindow header state or test-only product API is added.
+
+The focused panel_creation_path fixture has96 ordinary startups with separate
+requested/saved/peer folders, both main roles/EN-RU/table-icon/selection modes,
+2/301 rows, no new input, explicit peer input or public archive API. Large override
+rows require an observable pending startup publication before the new request.
+The public API follows real mouse peer selection with logical-title and physical
+focus preconditions, and uses controlled transport metadata; native error coverage
+is not claimed. Addresses/provider types/terminal counts/focus/guards and original bytes
+are checked with normal/compact JSON.
+Another32 immediate peer workflows start from a small main list and open the
+saved2/301-row peer immediately after show, before initial focus is delivered.
+Both roles/languages/views/selection modes retain paths/rows/guards/bytes and
+return focus to main after publication; total128 workflows.
+
+The earlier240-case identical fixture replay on old product b8f6481: CTest81276 terminal8,
+26.71s,133QtPASS112FAIL0skip; all112 initial creation rows fail the missing
+publication check, while128 late creation and three HRESULT-policy rows pass.
+All four old product bodies were byte-exact at HEAD; the adapted copies were
+saved separately and restored with all hashes checked. Final fixture and source
+hashes/copies are retained under build/review/panel-creation-red. Earlier corrected
+112-row RED38727 terminal8 had112 missing-publication failures7.11s. Initial27578
+also had native fixture setup failures because its empty peer was refused during
+native probe; the native peer now copies a real fixture archive. First green-side
+focused12570 failed eight overstrict large-FS provider expectations; the existing
+worker publishes its separately loaded folder. Expanded49190 then failed16 late
+FS Refresh identity checks because modal progress left the test window inactive.
+The fixture now activates it and requires actual model removal on Ctrl+R. These
+setup failures are retained and are not product regressions or changed deadlines.
+Corrected expanded14851 terminal0:4/4PASS34.40s before final identical RED replay.
+After restoring the adaptation, focused99143 terminal0:9/9PASS43.62s across
+creation/lifecycle/startup/focus/native columns/Main Shell and filesystem/archive
+Refresh consumers. All process handles were terminal before inputs were frozen
+for the earlier gate. Its unsandboxed286/286 full pass preceded the
+subsequent requested-path/focus/interleaving extensions and is not final proof
+for the expanded component. Their current evidence is recorded below.
+
+Final96-case main-path fixture counterfactual keeps all other adaptations fixed
+and uses byte-exact HEAD b8f6481 App.cpp. CTest77712 terminal8:50QtPASS48FAIL0skip
+5.609s, all48 right-main cases fail requested versus saved path before input.
+All20 task input hashes match again after restoring adapted App.cpp. The actual
+two-large-list delayed-focus regression remains separate: correct paths but peer
+focus after16.29s; the corrected completion service passes that case. The forced
+interleaving case passes3Qt0skip287ms after capturing the stable main index.
+Corrected public archive address-focus diagnostics pass5Qt0skip436ms on both
+main roles and small/large publication. Earlier combo-pointer precondition
+failures were fixture errors: Qt legitimately focuses the address combo proxy;
+the final precondition checks its owning peer panel. No deadline was increased.
+The256-creation/96-path matrices passed2/2 CTest43.99s:261 publication/98 path Qt
+PASS with0fail/skip. Historical replay fixtures, final96 fixture, adapted App
+snapshot, verified restoration hashes and diagnostics are retained under
+build/review/panel-creation-{red,final}.
+After byte-exact restoration and rebuilding all affected consumers, CTest83426
+terminal0 passes10/10 in53.35s across the two creation suites, App lifecycle/window,
+File Manager startup, panel focus, native columns, Main Shell and both filesystem/
+archive Refresh. This focused result precedes the expanded component's full gate.
+
+Expanded unsandboxed full20585 terminal8 passes formatting/all-target build and
+286/287 CTest355.62s; panel_key's existing hiddenLeftPanelPathSurvivesRestart fails
+with an empty saved-peer address. The focused ten suites had not covered an
+immediate late-panel toggle before startup focus delivery. The new identical
+immediate-peer case fails2QtPASS1FAIL0skip116ms on this adaptation. Source OnCreate
+calls the Qt reload service before PanelCreated; activatePanelUi calls
+refreshActions, which must not complete initial focus inside that creation.
+Deferring completion until PanelCreated fixed that path but exposed another
+existing panel_key consumer: viewSwitchRetainsPanelBindingAcrossFocusChange lost
+its explicitly focused peer (focused55205 terminal8,1/2 CTest30.03s; path130Qt
+PASS, key54QtPASS1FAIL0skip). The final adaptation instead requests deferred
+focus only when that initial target still has a scan in scanningPanelMask.
+Synchronous source Create already focuses its list; no redundant pending focus
+can interrupt late creation or a subsequent programmatic peer focus. The
+temporary PanelCreated gate is removed. Expanded-first full log,
+LastTest/frozen inputs and actual new RED fixture/source are retained separately;
+no test deadline or failure expectation is weakened.
+After rebuilding all eleven consumers, final focused26408 terminal0 passes11/11
+in59.49s. Publication261/path130/PanelKey55/AppLifecycle16/window10/startup16/
+focus8/native columns10/MainShell6/filesystem reload34/archive reload66 Qt PASS,
+all0fail/skip. These checks include both the original hidden-path and subsequent
+view-switch focus consumer; the corrected full gate follows this result.
+
+Full78843 terminal0 passes formatting/all-build/287 CTest361.26s with all20 frozen
+inputs unchanged. Subsequent required JSON inspection finds a real layout gap:
+256 of768 fresh reports place panel1 to the left of panel0 when it was created
+first; all3072 visible list/address controls are otherwise enabled/fully visible
+and address-above-list ordering holds. This passing gate is preserved separately
+as pre-order proof, not claimed for the final geometry correction.
+Complete original FM.cpp::CApp::MoveSubWindows1176–1224 at the same pin explicitly
+moves Panels[0] left and Panels[1] right. Qt createFilePanel now inserts its control
+at the source index instead of appending by creation order. No source module,
+algorithm, layout resource or language is copied/rewritten. Both creation suites
+assert this ordering at every normal/compact size. The actual corrected immediate
+right-main fixture fails2QtPASS1FAIL0skip123ms before the one-line correction;
+input/source/fixture snapshots and the256-report inspection are retained. The
+custom builder remains an existing presentation owner; unrelated extraction is
+deferred for this focused insertion correction.
+Rebuilt eleven direct consumers; order-focused35755 terminal0 passes11/11 in
+59.38s with the added normal/compact ordering assertions. All Qt cases pass
+without skips in these suites. The final full gate uses21 task files, adding
+the existing mainwindow_panel.cpp presentation builder to the earlier20.
+
+Final required UNSANDBOXED check.sh59340 terminal0: formatting/all-target build
+and287/287 CTest PASS358.65s, macOS27.0.1arm64/Qt6.12.0. All21 frozen task SHA
+match after completion. Full creation261/path130/PanelKey55 Qt PASS0fail/skip;
+the eleven focused direct consumers pass11/11 in59.38s. Baseline verification
+remains408 exact/196 adapted/3 local paths at the pinned source revision.
+All768 current-build reports are newer than this final gate's start:384 each at
+980×620 and640×400. Their3072 visible list/address controls are enabled and fully
+visible; both source-index horizontal ordering and address-above-list grouping
+are verified, including both roles/languages/views/selection modes. Copied reports,
+SHA manifest, geometry inspection, final/full-focused LastTest/logs and21 verified
+input hashes are retained under build/review/panel-creation-final; earlier failed
+and pre-order gates/actual RED snapshots are separate. Only audit/checklist proof
+changes after the passing gate; the13 code/test/build inputs remain unchanged.
+No current Windows/Linux, rendered Windows, whole-module or whole-goal acceptance
+is inferred. No new source copy/revision/language, push/publication or upstream
+edit is made by this component.
+
+Native renderer-failure/operation continuations, remaining full-body and native
+namespace/device/ADS/zone scope, current three-platform/rendered/cold-stable/package
+and P3-06 acceptance remain mandatory; this component does not close P3-05.15.
+
 ### Interarchive failed rollback and recovery, 2026-10-07
 
 This validation-only component retains the original source baseline

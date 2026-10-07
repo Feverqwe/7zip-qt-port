@@ -210,8 +210,10 @@ void MainWindow::refreshActions() {
         table_->setDragEnabled(dragAvailable);
         iconList_->setDragEnabled(dragAvailable);
     }
-    if (appPresentation_ && !panelProjectionDepth_)
+    if (appPresentation_ && !panelProjectionDepth_) {
+        appPresentation_->CompleteInitialFocusIfReady();
         appPresentation_->CompleteCopyIfReady();
+    }
 }
 
 void MainWindow::refreshPanelStatus() { app_.GetFocusedPanel().Refresh_StatusBar(); }

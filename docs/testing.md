@@ -1,5 +1,42 @@
 # Regression strategy
 
+`panel_creation_publication` covers256 initial/late second-panel creation
+scenarios with the official codec module, or128 without it: filesystem and
+controlled transport, native ZIP/7z,2/301 rows, both source roles where original
+creation order permits, EN/RU, table/icon on both panels and alternative selection.
+An existing public backend callback observes the first list when the next archive
+opens: publication must already have started or completed. Sixteen saved-filesystem/
+second-main archive cases hold the archive request until the first list finishes,
+forcing its completion callback to run during second-panel binding. Both lists
+finish enabled with correct provider counts and source guards restored.
+Actual Ctrl+R model publication preserves
+marks/focus and archive providers; the large filesystem worker may replace its
+provider while retaining the bound path. Hide/show retains the created peer.
+Input file/archive bytes and normal/compact JSON are checked. Three direct source
+Create cases retain original initial Refresh S_OK/E_FAIL/E_ABORT policy: creation
+still succeeds after its one refresh. Run unsandboxed for native archive access.
+This is creation-order coverage, not a native renderer-failure or rendered Windows
+acceptance claim.
+
+`panel_creation_path` covers128 startup/late-peer workflows:96 ordinary two-panel
+startups and32 immediate peer creations before the initial focus callback.
+Both main-panel roles,
+EN/RU, table/icon, standard/alternative selection and2/301-row filesystem folders.
+Requested, saved-main and peer paths differ. Requested path must win even when
+the main panel is created second. Terminal focus returns to that panel, unless
+explicit address input or a new public archive request selects the peer before
+initial publication finishes. The API route uses real peer mouse input with
+logical-title and physical-focus preconditions, then controlled transport metadata;
+it does not claim native format-failure coverage. Large override rows prove that
+startup publication was pending before the new request. Modal opening must restore
+the chosen address control. Addresses/providers,
+counts/modes/guards, input bytes and normal/compact JSON cover both panels.
+Immediate peer creation starts from a two-row main folder and opens its saved
+2/301-row peer immediately after show, before processing initial focus. It must
+retain the peer path and return focus to the main panel after publication.
+Both suites assert source panel0 left/panel1 right at each normal/compact size,
+including archive-first and late creation from an initially single right panel.
+
 `interarchive_recovery` covers failed Move rollback/reopen followed by a real F5
 retry: both source panes, EN/RU, table/icon on both panels and standard/alternative
 selection. Its80 cases with the official codec module include a replacement

@@ -85,37 +85,21 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
             if (index == app_.GetFocusedPanelIndex())
                 redrawSourceProperties();
         });
-    for (unsigned index = 0; index < kNumPanelsMax; ++index)
-        app_.Panels[index].AttachReloadPresentation([this, index](const CSelectedState &selection) {
-            return reloadPanelPresentation(index, selection);
-        });
     installEventFilter(this);
     const unsigned focusedPanel =
         panelsDefined && windowInfo.currentPanel < kNumPanelsMax ? windowInfo.currentPanel : 0;
-    for (unsigned index = 0; index < kNumPanelsMax; ++index) {
-        if (!app_.Panels[index].PanelCreated)
-            continue;
-        if (index != projectedPanel_)
-            activatePanelUi(index);
-        app_.SetFocusedPanel(index);
-        renderBoundFolder();
-    }
     if (focusedPanel != projectedPanel_)
         activatePanelUi(focusedPanel);
     app_.SetFocusedPanel(focusedPanel);
-    if (panelsDefined)
-        QTimer::singleShot(0, this, [this, focusedPanel] {
-            if (focusedPanel != projectedPanel_)
-                activatePanelUi(focusedPanel);
-            app_.SetFocusedPanel(focusedPanel);
-            app_.Panels[focusedPanel].SetFocusToList();
-            app_.RefreshTitle(true);
-            if (app_.NumPanels != 2 || !panelSplitter_)
-                return;
-            const int width = panelSplitter_->width();
-            const int left = qBound(1, splitterPos_, width - 1);
-            panelSplitter_->setSizes({left, width - left});
-        });
+    appPresentation_->RequestInitialFocus(focusedPanel);
+    QTimer::singleShot(0, this, [this, panelsDefined] {
+        appPresentation_->CompleteInitialFocusIfReady();
+        if (!panelsDefined || app_.NumPanels != 2 || !panelSplitter_)
+            return;
+        const int width = panelSplitter_->width();
+        const int left = qBound(1, splitterPos_, width - 1);
+        panelSplitter_->setSizes({left, width - left});
+    });
     autoRefreshTimer_ = new QTimer(this);
     autoRefreshTimer_->setInterval(1000);
     connect(autoRefreshTimer_, &QTimer::timeout, this, [this] { pollAutoRefresh(); });

@@ -990,8 +990,28 @@ per-panel keys are absent. CPanel owns source binding/creation defaults and
 processing state. MainWindow renders the bound filesystem provider without
 releasing/rebinding it, quiesces its current workers, then saves and releases
 the app owner. ReleaseApp disables all panels before any ReleasePanel call.
+QtAppPresentation attaches the reload service with each panel's controls, before
+source OnCreate calls RefreshListCtrl. Initial publication therefore starts
+before the next panel binds; the constructor and panel toggle do not add another
+render. An uncreated panel may start publication while its peer is scanning;
+existing panels still defer reload during active operations. OnCreate keeps the
+original ignored Refresh HRESULT policy. A large filesystem scan publishes its
+worker's separately loaded provider; archive row projection keeps its provider.
+CApp::Create captures its original main-panel index separately from the live
+focus/projection used by Qt construction and asynchronous callbacks. This keeps an ordinary startup's
+requested main path distinct from its saved path, including a right main panel.
+QtAppPresentation completes initial focus once the visible window's scans finish;
+explicit list/address input or a new public archive request cancels that pending
+focus so it cannot override subsequent navigation.
+Only a still-scanning initial target needs deferred focus. Synchronous Create
+has already focused its list, so later peer creation has no redundant startup
+focus that could change projection inside its OnCreate.
+Public archive opening also restores the selected address control after modal
+progress, using the existing weak-widget focus boundary of external updates.
 P0-08.1 projects each panel's Qt controls, location, view and sort through
 `mainwindow_twopanel.cpp`; QSplitter replaces Win32 `MoveSubWindows` geometry.
+Panel controls are inserted at their source index, preserving panel0 left/panel1
+right even when a main archive or initially single right panel is created first.
 The two CPanel instances remain authoritative for folder and selection.
 Per-panel asynchronous publication follows the lifetime described above and
 survives focus transfer. Disk auto-refresh polls both visible panels,

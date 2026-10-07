@@ -1,5 +1,6 @@
 #pragma once
 #include "CPP/7zip/UI/FileManager/App.h"
+#include <optional>
 
 class MainWindow;
 class QMenu;
@@ -23,10 +24,14 @@ class QtAppPresentation final : public IQtAppPresentation {
     void CopyFinished();
     void CompleteCopyIfReady();
     void CopyDestinationRefreshed(unsigned index);
+    void RequestInitialFocus(unsigned index);
+    void CompleteInitialFocusIfReady();
+    void CancelInitialFocus() { initialFocus_.reset(); }
 
   private:
     MainWindow &window_;
     QMenu *editMenu_ = nullptr;
+    std::optional<unsigned> initialFocus_;
     unsigned copySource_ = 0;
     bool copyPending_ = false;
     bool copyExecuting_ = false;

@@ -154,8 +154,6 @@ void MainWindow::togglePanels() {
         twoPanelsAction_->setChecked(app_.NumPanels == 2);
         return;
     }
-    const unsigned other = 1 - app_.GetFocusedPanelIndex();
-    const bool created = app_.Panels[other].PanelCreated;
     if (app_.NumPanels == 2 && panelSplitter_)
         splitterPos_ = panelSplitter_->sizes().value(0);
     if (app_.SwitchOnOffOnePanel() != S_OK) {
@@ -163,12 +161,6 @@ void MainWindow::togglePanels() {
         return;
     }
     twoPanelsAction_->setChecked(app_.NumPanels == 2);
-    if (app_.NumPanels == 2 && !created) {
-        const unsigned active = projectedPanel_;
-        activatePanelUi(other);
-        renderBoundFolder();
-        activatePanelUi(active);
-    }
     if (panelSplitter_ && app_.NumPanels == 2) {
         const int width = panelSplitter_->width();
         const int left = qBound(1, splitterPos_, width - 1);

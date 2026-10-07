@@ -306,6 +306,23 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: source OnCreate владеет initial/late panel publication;
+reload service устанавливается вместе с контролами, constructor/toggle render
+удалены.256 creation scenarios FS/transport/native ZIP/7z,2/301 rows,
+both roles/EN-RU/table-icon/standard-alternative и original initial HRESULT policy.
+128 startup/late-peer cases дополнительно проверяют requested main path,
+original main choice отдельно от live projection, delayed initial focus и приоритет
+peer input/public archive API с восстановлением address focus после modal progress.
+Немедленное раскрытие saved peer не допускает focus completion внутри его Create.
+Source panel0 left/panel1 right восстановлен при любом creation order и проверяется
+в обеих normal/compact матрицах.
+Final Mac arm64/Qt6.12: focused11/11PASS59.38s, unsandboxed full287/287PASS358.65s;
+21SHA stable,768fresh JSON/3072 visible controls inspected. Current native/final
+acceptance remains open.
+[Evidence](upstream-port-audit.md#source-panel-creation-publication-2026-10-07).
+Статус active; native renderer-failure/full-body и остальные native/final
+boundaries обязательны.
+
 P3-05.15, 2026-10-07: integrated failed rollback/reopen и восстановление проверяются
 отдельным interarchive_recovery:80 EN/RU both-pane/view/selection scenarios,
 native ZIP/transport restore failure,301-row filesystem fallback, reopen

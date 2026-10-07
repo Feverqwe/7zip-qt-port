@@ -2,6 +2,27 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+Начальная публикация панели теперь принадлежит source `Panel.cpp::OnCreate`,
+как при initial `App::Create`, так и при позднем `SwitchOnOffOnePanel`.
+Reload-сервис подключается вместе с Qt-контролами до исходного Refresh;
+отдельные render из конструктора/toggle удалены. Qt допускает параллельную
+публикацию больших списков обеих панелей, сохраняя исходную политику ignored
+initial Refresh HRESULT. Filesystem worker по-прежнему публикует свой provider.
+Creation/Refresh/hide-show и EN/RU normal/compact проверяются отдельной матрицей;
+current Windows/Linux и rendered Windows приёмка остаются открытыми.
+CApp::Create сохраняет исходный main-panel choice отдельно от текущей Qt-проекции: ordinary
+startup с правой main panel теперь получает requested path, а не её saved path.
+Initial focus завершается однократно после scans; последующий явный ввод в
+адрес/список или public archive request отменяет этот отложенный фокус.
+Это необходимая Qt async-адаптация исходного синхронного Create/focus workflow.
+Отложенный focus создаётся только для ещё читающего стартового списка;
+синхронный Create уже установил его и не требует повторного действия.
+Немедленное раскрытие сохранённой скрытой панели проверяется отдельно.
+QSplitter вставляет контролы по source index, как FM.cpp::MoveSubWindows:
+панель0 слева, панель1 справа независимо от порядка создания.
+Public archive opening восстанавливает выбранный address control после modal
+progress; слабая ссылка учитывает уничтожение и недоступность контрола.
+
 Успешный Copy/Move между архивами также публикует тот же bound destination через
 source RefreshListCtrl с pre-update selection. Принятая композиция Move через
 Copy/Delete/rollback сохранена: original CAgentFolder::CopyTo(moveMode) возвращает

@@ -504,6 +504,9 @@ HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &ar
     SetListSettings();
     if (LastFocusedPanel >= kNumPanelsMax)
         LastFocusedPanel = 0;
+    // Qt construction and asynchronous publication can project another panel.
+    // Keep the original main-panel choice without changing that live projection.
+    const unsigned mainPanelIndex = LastFocusedPanel;
     CListMode listMode;
     listMode.Read(_settingsPath);
     for (i = 0; i < kNumPanelsMax; i++) {
@@ -514,9 +517,9 @@ HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &ar
     }
     for (i = 0; i < kNumPanelsMax; i++) {
         unsigned panelIndex = i;
-        if (needOpenArc && LastFocusedPanel == 1)
+        if (needOpenArc && mainPanelIndex == 1)
             panelIndex = 1 - i;
-        bool isMainPanel = (panelIndex == LastFocusedPanel);
+        bool isMainPanel = (panelIndex == mainPanelIndex);
         if (NumPanels > 1 || isMainPanel) {
             if (NumPanels == 1)
                 Panels[panelIndex]._xSize = xSizes[0] + xSizes[1];
@@ -532,8 +535,8 @@ HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &ar
             }
         }
     }
-    SetFocusedPanel(LastFocusedPanel);
-    Panels[LastFocusedPanel].SetFocusToList();
+    SetFocusedPanel(mainPanelIndex);
+    Panels[mainPanelIndex].SetFocusToList();
     return S_OK;
 }
 

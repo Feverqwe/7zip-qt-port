@@ -45,6 +45,29 @@ pre-update selection при физическом rollback. Native ZIP/7z и tran
 панели EN/RU table/icon/standard-alternative в normal/compact состояниях.
 Native metadata/platform и полная UX-приёмка остаются открытыми.
 
+Source OnCreate теперь начинает публикацию до открытия следующей панели;
+позднее создание peer использует тот же owner без дополнительного Qt render.
+Reference — полное программное построение list/header/status в upstream
+Panel.cpp::OnCreate и App::Create/SwitchOnOffOnePanel. Initial/late creation,
+2/301-row FS/transport/native ZIP/7z, оба view/selection режима и EN/RU
+normal/compact проверяются в panel_creation_publication. Это не pixel/rendered
+Windows и не полная native renderer-failure приёмка.
+Saved FS0/main archive1 дополнительно завершает первое чтение внутри второго
+Bind; source-provider counts должны соответствовать видимым строкам обеих панелей.
+Отдельный panel_creation_path проверяет requested versus saved main path,
+включая ordinary startup справа, и terminal focus после двух301-row scans.
+Явный ввод в peer или новый public archive request имеет приоритет над ещё
+не завершённым initial focus. Оба режима/языка/selection и normal/compact
+проверяются без утверждения rendered Windows parity.
+После modal opening выбранный адресный контрол сохраняет фокус; API fixture
+доказывает выбор peer настоящим mouse input, title и physical focus до запроса.
+Немедленное раскрытие сохранённого peer до первого focus callback сохраняет
+его адрес/строки; отложенный initial focus нужен только ещё читающему стартовому
+списку. Синхронный source Create уже устанавливает фокус.
+Source FM.cpp::MoveSubWindows задаёт panel0 слева/panel1 справа. Вставка Qt по
+индексу сохраняет этот порядок при archive-first и late peer creation; обе
+normal/compact матрицы теперь проверяют положение панелей явно.
+
 Полная сверка App.cpp выделяет
 [P3-05.15](upstream-port-audit.md#p3-0515--source-copymove-destination-and-continuation-reconciliation-required-scope-2026-10-06):
 восстановить исходный выбор/классификацию destination и Copy/Move continuation,
