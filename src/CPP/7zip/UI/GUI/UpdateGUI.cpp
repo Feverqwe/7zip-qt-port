@@ -12,6 +12,7 @@
 #include "UpdateCallbackGUI.h"
 #include "Windows/DLL.h"
 #include "Windows/FileFind.h"
+#include "qtguimessages.h"
 #include "qtupdateguiservices.h"
 
 static const char *const kDefaultSfxModule = "7z.sfx";
@@ -381,7 +382,10 @@ HRESULT ShowDialog(CCodecs *codecs, const CObjectVector<NWildcard::CCensorPath> 
     if (options.MethodMode.Type_Defined)
         di.FormatIndex = options.MethodMode.Type.FormatIndex;
     // This is the already-portioned source oneFile/format/name block.
-    RINOK(NCompressDialog::PrepareFormatSelection(dialog, *codecs, censor))
+    if (NCompressDialog::PrepareFormatSelection(dialog, *codecs, censor) != S_OK) {
+        ShowErrorMessageQt(hwndParent, L"No Update Engines");
+        return E_FAIL;
+    }
     di.ArcPath = options.ArchivePath.GetPathWithoutExt();
     di.PathMode = options.PathMode;
     di.SFXMode = options.SfxMode;

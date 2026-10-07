@@ -1005,6 +1005,13 @@ sent as an empty line to the waiting engine. Start exceptions return to the
 source worker's original exception/result composition. The source callback's
 COM methods and native containers remain authoritative.
 
+GUI early errors retain Explorer/MyMessages' process question policy.
+ShowErrorMessageQt in that source owner adapts QWidget/QMessageBox Critical/OK
+presentation while reading the existing g_DisableUserQuestions flag. UpdateGUI's
+missing-writer branch and both ExtractGUI path failures use it; Qt wrappers do
+not independently bypass suppression. Original HRESULT/messageWasDisplayed and
+worker-entry ordering remain with the source GUI routines.
+
 ArchiveBackend owns CProcessPause and child priority/PID lifetime, including reset
 after exit. External engine pause uses native process control rather than blocking
 the bridge in cooperative CheckStop: completion is still observed while paused.

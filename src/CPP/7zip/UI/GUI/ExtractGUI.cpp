@@ -31,7 +31,7 @@
 #include "../FileManager/ViewSettings.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "CPP/7zip/UI/GUI/resource2.h"
-#include <QMessageBox>
+#include "qtguimessages.h"
 
 using namespace NWindows;
 using namespace NFile;
@@ -190,8 +190,7 @@ HRESULT ExtractGUI(
         if (showDialog) {
             FString outputDirFull;
             if (!MyGetFullPathName(outputDir, outputDirFull)) {
-                QMessageBox::warning(hwndParent, QStringLiteral("7-Zip"),
-                                     QString::fromWCharArray(kIncorrectOutDir));
+                ShowErrorMessageQt(hwndParent, kIncorrectOutDir);
                 messageWasDisplayed = true;
                 return E_FAIL;
             }
@@ -227,8 +226,7 @@ HRESULT ExtractGUI(
 #endif
         }
         if (!MyGetFullPathName(outputDir, options.OutputDir)) {
-            QMessageBox::warning(hwndParent, QStringLiteral("7-Zip"),
-                                 QString::fromWCharArray(kIncorrectOutDir));
+            ShowErrorMessageQt(hwndParent, kIncorrectOutDir);
             messageWasDisplayed = true;
             return E_FAIL;
         }

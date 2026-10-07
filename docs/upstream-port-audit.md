@@ -15634,3 +15634,55 @@ reports pass source geometry/contracts; five existing Qt adaptations remain
 recorded by the original contract. Temporary runner wrapper is retained only
 in ignored evidence and removed before commit. Eleven slow suites were excluded;
 native desktop/rendered reference/packages and whole P3 acceptance stay open.
+
+## P3-05 — source GUI early error policy (2026-10-07)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Inspected complete GUI.cpp,
+ExtractGUI.cpp, UpdateGUI.cpp, UpdateCallbackGUI.cpp/2.cpp and associated headers,
+original GUI/makefile/FM.mak and Qt production entry/service consumers. The
+[body/dependency disposition](omitted-scope-audit.md#gui-dispatcher-workers-and-update-callbacks-2026-10-07)
+distinguishes retained workers/callbacks from Qt presentation/entry services and
+remaining native/full-module acceptance.
+
+Original UpdateGUI::ShowDialog explicitly shows No Update Engines before E_FAIL;
+the extracted format helper retained failure but its caller lost the message.
+Original ExtractGUI's two early output-path failures call
+Explorer/MyMessages::ShowErrorMessage, which honors g_DisableUserQuestions.
+The Qt port instead unconditionally showed a warning, including under GUI -y.
+Both callers now retain those original branches through ShowErrorMessageQt in
+the existing MyMessages owner. Qt Critical/OK/7-Zip replaces MB_ICONSTOP/MB_OK
+with a QWidget parent; the original global flag remains the only question policy.
+No new format/path validator, update/extract algorithm, result mapping, callback
+lifetime or worker behavior is added. The original messageWasDisplayed values
+remain unchanged even when the question flag suppresses the presentation.
+
+New gui_error_policy checks EN/RU with questions allowed/suppressed: empty writer
+catalog refuses before modal/worker/input mutation, then an official catalog
+reaches the same modal and Cancel without starting an update. Both Extract
+showDialog paths reject an unresolvable relative parent path before opening its
+Unicode/spaced sentinel archive, retaining bytes and original HRESULT/message
+state. The actual old product lacks the writer message and shows Extract dialogs
+with suppression enabled; retained RED includes both mismatches. Current reports
+cover each visible standard message at requested 480×220/320×160, fitted label
+and reachable OK. Qt/macOS omits the window caption; the original hardcoded
+English error texts remain identical in EN/RU. These are standard message boxes,
+not a missing upstream dialog resource or rendered Windows pixel proof.
+
+Validation: current focused gui_error_policy passes 1/1 in 0.46s; 12 data rows
+plus init/cleanup pass with no skips. Unsandboxed macOS arm64 full check.sh
+passes format/all-build and 296/296 in 339.25s, 4543 Qt passed/0 failed/18 platform
+skips. Same-source Linux/Windows build seven direct consumers and pass 7/7
+in 1.67s/26.02s: gui_error_policy, shell_update_gui, source_shell_update,
+shell_archive_services, source_extract_backend/advanced/contract. Linux has
+69 Qt pass/0 fail/2 Windows-only metadata skips; Windows 71 Qt pass/0 fail/0 skip.
+The new suite has 14 Qt pass/0 skip on each guest. All 906 frozen source/test/build
+inputs match local files, source.tar and both actual guest trees at snapshot
+20261007T175938Z-7a94f545, parent fa59549, SHA-256
+`78cf9d8c73505e589889a8e52f486d6d6bd75bdeba98d04044046c7d17362833`.
+Each OS's 12 current geometry reports pass label/button/text checks; standard
+boxes auto-fit to 228/304×116 on macOS, 204/274×98 on Linux and 293/400×96 on
+Windows. The original manifest verifies 408 exact/196 adapted/3 local paths at
+the pinned revision. Temporary task wrapper is archived/removed before commit.
+Eleven slow suites were excluded. Native desktop/CLI/installed and rendered
+Windows acceptance, remaining GUI/common bodies and parent P3 remain open.

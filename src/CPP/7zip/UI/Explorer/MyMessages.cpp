@@ -2,7 +2,15 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // MyMessages.cpp
 
+#include "qtguimessages.h"
+#include <QMessageBox>
+
 bool g_DisableUserQuestions = false;
+
+void ShowErrorMessageQt(QWidget *parent, const wchar_t *message) {
+    if (!g_DisableUserQuestions)
+        QMessageBox::critical(parent, QStringLiteral("7-Zip"), QString::fromWCharArray(message));
+}
 
 #ifdef _WIN32
 #include "Common/MyWindows.h"

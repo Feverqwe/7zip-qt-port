@@ -1325,6 +1325,16 @@ never reach presentation. SetMethods keeps only assigned single-stream encoders
 which are not filters or built-in methods. These checks do not accept the
 remaining real fixed-selection Qt modal/native extension consumers.
 
+`gui_error_policy` covers original GUI early errors before any worker: missing
+writer refusal/message, subsequent official-catalog modal Cancel, and both
+Extract invalid-output paths. EN/RU and source question flag on/off retain
+HRESULT/messageWasDisplayed, callback/input bytes and zero unintended worker
+calls. The visible messages check Critical/OK, fitted labels and normal/compact
+JSON; suppression must produce no modal. The invalid relative parent path uses
+the original FileName resolver, with no filesystem or validator fault injection.
+The source hardcoded error texts stay English in both languages. Native desktop
+and installed GUI CLI acceptance remain separate from these offscreen consumers.
+
 P2-08 accepted: system_page checks source mixed selections, clear/other/7-Zip
 cycles, unsupported groups/types, per-row failure and external-state refresh,
 actual Options Apply/Cancel and EN/RU640×390/520×380 geometry. association_services

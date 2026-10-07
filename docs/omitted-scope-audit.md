@@ -710,3 +710,38 @@ archive→archive and rollback. Its
 owns actual RED, saved-state/rollback/byte/geometry and platform checks. Other
 module groups, native desktop input, rendered references and packaging remain
 separate required P3 scope.
+
+### GUI dispatcher, workers and update callbacks, 2026-10-07
+
+Compared complete original/current GUI.cpp, ExtractGUI.cpp, UpdateGUI.cpp,
+UpdateCallbackGUI.cpp/.h and UpdateCallbackGUI2.cpp/.h, including their original
+headers, GUI/makefile/FM.mak owners and Qt entry/service callers. Normalized
+read-only comparisons separate formatting from functional adaptations. This
+records these five GUI bodies; CompressDialog, ExtractDialog, HashGUI and
+BenchmarkDialog still have their own required body/resource reconciliation.
+
+| Module under `CPP/7zip/UI/GUI/` | Source disposition |
+| --- | --- |
+| `GUI.cpp` | Main2 retains Parse1/question flag/Parse2, format and excluded-format validation, archive enumeration, Benchmark/Extract/Update/Hash options/callbacks/censors and result policy. SevenzipGUI retains WinMain's exception-to-exit-code bodies and Windows DLL-security call. Qt owns QApplication/argv on Unix, language startup and delayed service factory at original codec construction. The retained backend catalog replaces duplicate Load/AddHash and process-global external providers. Original ComCtl32 version/InitCommonControls and old Windows NT/CE entry adaptation are distinct from archive behavior; Qt widget/platform startup replaces those presentation requirements. Native COM/taskbar/desktop and installed helper acceptance remain required, not inferred from the dispatcher or this review. Commented result/debug branches remain inactive. |
+| `ExtractGUI.cpp` | Source AddValuePair/AddSizePair, worker Extract dispatch, test/hash result construction, dialog option roundtrip, path validation, callback lifetime/init, progress creation/join and messageWasDisplayed/result ordering remain. Qt adapts dialog fields/exec, native separators, result parenting and presentation. Typed archive opener/progress transport retain backend ownership. Both original incorrect-output paths again call the source MyMessages question policy, through its Qt presentation. Source commented CreateComplexDirectory/hash-init/external-codec blocks stay inactive; selected official SFX bundles build their own unchanged source, not this Qt translation unit with Z7_SFX. |
+| `UpdateGUI.cpp` | Source worker/error info, ParseProp_Time_BoolPair/ParseProp/ParseProperties, AddProp helpers, SplitOptionsToStrings/IsThereMethodOverride/ParseAndAddPropertires/SetOutProperties, action-set mappings, ShowDialog and UpdateGUI phases remain. Extracted PrepareFormatSelection/working-dir/property/action-set accessors expose the same source decisions to Qt consumers, with one owner for the underlying routines. QString password/encryption fields, typed modal/codecs/update services and platform SFX path/extension are explicit adapters. The missing No Update Engines branch is restored at its original ShowDialog phase. Original commented legacy cwd, dict-chain, volume-refusal and parent-title blocks are inactive. |
+| `UpdateCallbackGUI.cpp` | Every active original method body is unchanged after formatting; only notices/include ownership differ. Scan/open/read error accumulation, cancellation, counts/ratios, operation labels, password flags, processed-file/Move/SFX callbacks retain source ordering/HRESULTs. Finalize/CloseProgress/extra password helpers remain commented. Interface declarations and defaults are retained. |
+| `UpdateCallbackGUI2.cpp` | Init, operation lookup, Move status/start/progress/finish bodies retain source language IDs, percentage overflow threshold, rounding and CheckStop behavior. Only ShowAskPasswordDialog uses the existing joined GUI-thread password adapter instead of Win32 Create; E_ABORT and password state updates remain source policy. Header differs only in notices/formatting. |
+
+Original `Explorer/MyMessages.cpp/.h` supplies the error suppression rule:
+ShowErrorMessage does nothing when g_DisableUserQuestions is true, otherwise
+shows 7-Zip/OK/stop icon. Its native HWND/resource/last-error functions remain
+Windows-only. ShowErrorMessageQt is a narrow QWidget/QMessageBox Critical
+presentation of that same rule in the same source owner; it adds no second
+question flag or operation state. Existing GUI.cpp's native error/exit policy
+and in-process CompressCall2's separate caller error behavior are retained.
+The [error-policy audit](upstream-port-audit.md#p3-05--source-gui-early-error-policy-2026-10-07)
+owns regression, geometry and platform evidence for the two reached omissions.
+
+Dependencies remain source Common strings/variants/CommandLineParser/ListFileUtils,
+ArchiveCommandLine, LoadCodecs/OpenArchive, Extract/Update/Hash/Bench workers,
+source callbacks/options/progress/language/resources, FileDir/FileName/WorkDir,
+and typed Qt backend services. ArchiveCommandLine's previously audited argv
+fallback omission and shared ClassDefs GUID owner remain explicit boundaries;
+successful builds do not establish all common dependency bodies or the other
+GUI dialogs. No upstream resource, license, codec ABI or archive algorithm changes.

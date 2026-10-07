@@ -307,7 +307,7 @@ qt_add_resources(sevenzip_panel upstream_shell_icons
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common sevenzip_system_icons)
-target_sources(sevenzip_panel PRIVATE src/CPP/7zip/UI/Explorer/MyMessages.cpp)
+target_sources(sevenzip_panel PRIVATE src/CPP/7zip/UI/Explorer/MyMessages.cpp src/qtguimessages.h)
 if(WIN32)
     target_sources(sevenzip_panel PRIVATE
         src/CPP/7zip/UI/FileManager/AltStreamsFolder.cpp
@@ -849,6 +849,17 @@ if(BUILD_TESTING)
     add_test(NAME shell_update_gui COMMAND shell_update_gui_tests -silent)
     set_tests_properties(shell_update_gui PROPERTIES TIMEOUT 60
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(gui_error_policy_tests tests/gui_error_policy_tests.cpp
+        tests/layout_inspection.cpp ${shell_archive_sources})
+    target_include_directories(gui_error_policy_tests PRIVATE src tests)
+    target_link_libraries(gui_error_policy_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(gui_error_policy_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME gui_error_policy COMMAND gui_error_policy_tests -silent)
+    set_tests_properties(gui_error_policy PROPERTIES TIMEOUT 30
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     target_link_libraries(shell_archive_services_tests PRIVATE sevenzip_location Qt6::Test)
     get_target_property(shell_archive_definitions source_extract_advanced_tests COMPILE_DEFINITIONS)
     if(shell_archive_definitions)

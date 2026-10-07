@@ -1488,6 +1488,22 @@ was unavailable.
 in all normal/flat/four-view combinations at 540×360 and 360×240. The same list,
 empty two-column header and separate visible OK/Cancel footer apply to each.
 
+## GUI early error messages
+
+The standard early GUI errors have no custom upstream dialog resource:
+UpdateGUI::ShowDialog and ExtractGUI call Explorer/MyMessages' MessageBox
+presentation. `gui_error_policy` checks the corresponding Qt Critical/OK boxes
+at requested 480×220/320×160 in EN/RU, including fitted message labels and visible
+OK controls; each of the six visible states emits two current-build JSON reports.
+Suppressed states emit no box. Qt owns any minimum size adjustment and native
+button placement; macOS omits the window caption. The original hardcoded English
+texts remain unchanged. This is a standard message adaptation, not rendered
+Windows pixel parity or a contract for custom Extract/Compress dialog geometry.
+Current macOS boxes auto-fit to 228/304×116, Linux to 204/274×98 and Windows to
+293/400×96 for writer/output errors respectively. Both requested sizes resolve
+to these platform sizes, with fitted labels and visible/enabled OK; the requested
+compact width does not override QMessageBox's standard fit policy.
+
 ## Shared name/mask dialog
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

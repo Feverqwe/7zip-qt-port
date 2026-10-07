@@ -564,6 +564,16 @@ dependencies now have explicit source disposition; native desktop/rendered/
 packages and parent P3 acceptance remain open.
 [Scope/evidence](upstream-port-audit.md#p3-05--source-copymove-publication-after-agent-updates-2026-10-07).
 
+P3-05, 2026-10-07: five complete GUI worker/dispatcher/callback bodies and their
+headers/callers/dependencies reconciled. Missing No Update Engines and bypassed
+source question suppression in both Extract early path errors restored through
+the original MyMessages owner's Qt presentation. Actual old-product RED retained;
+12 EN/RU error/suppression/recovery rows and36 current message JSON across three
+OS pass. Mac full296/296PASS339.25s; Linux/Windows seven direct consumers7/7,
+all906 frozen inputs match actual guests. Other dialogs/common/native/package
+and parent acceptance remain required;43/47 unchanged.
+[Scope/evidence](upstream-port-audit.md#p3-05--source-gui-early-error-policy-2026-10-07).
+
 ### P0-01 — инвентаризация исходного переноса
 
 **done** — документационный source audit, 2026-09-28.

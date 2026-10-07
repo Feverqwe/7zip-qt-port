@@ -1974,6 +1974,16 @@ the provider-level ADS evidence without claiming native desktop input or rendere
 Windows equivalence; see the
 [publication audit](upstream-port-audit.md#p3-05--source-copymove-publication-after-agent-updates-2026-10-07).
 
+## P3-05 — source GUI early errors (2026-10-07)
+
+The source GUI early-error policy is retained for missing update engines and
+incorrect Extract output paths. They return original results before work starts;
+g_DisableUserQuestions suppresses their messages as upstream, including GUI -y.
+Qt Critical/OK presentation uses the original hardcoded English strings in both
+EN/RU. Offscreen tests cover visible/suppressed states and later modal recovery;
+native CLI/desktop/rendered and installed helper acceptance remain separate.
+See the [error-policy audit](upstream-port-audit.md#p3-05--source-gui-early-error-policy-2026-10-07).
+
 ## P3-05 — toolbar Extract/Test source routing (2026-10-07)
 
 Extract внутри открытого архива использует исходный Copy To с destination
