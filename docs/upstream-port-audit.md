@@ -1735,6 +1735,71 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Interarchive Copy publication and rollback, 2026-10-07
+
+Reviewed complete original CApp::OnCopy565–856, PanelOperations::DeleteItems112–262
+and CThreadFolderOperations dispatch/DoOperation, CAgentFolder::CopyTo32–57,
+ArchiveFolderOut::CommonUpdateOperation93–374/CopyFrom/Delete and native update
+publication/ReOpen/proxy restoration at pin0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17,
+retrievable https://github.com/ip7z/7zip.git. CopyDialog.rc, PanelKey F5/F6 and
+current App::CopyArchiveToArchive, QtAppPresentation completion, native progress,
+backend update/mutation, backup and both-panel render/scan consumers were traced.
+
+Original OnCopy saves source/destination selections before staged CopyTo/CopyFrom
+and refreshes the bound provider afterwards. ArchiveFolderOut already reopens
+the published archive and restores its proxy. The interarchive Qt success path
+instead reopened a second provider through refreshCurrent. In
+src/mainwindow_archive_transfer.cpp::transferBetweenArchivePanels the adapter now
+saves destination state before native copying and calls original RefreshListCtrl
+on success. Existing operation guards, destination-refreshed marker and CApp's
+single-use saved-state/title/KillSelection/focus continuation remain unchanged.
+The accepted Move extension remains Copy/Delete/backup rollback: native Agent
+CopyTo(moveMode) returns E_NOTIMPL, so there is no usable original archive Move
+body to replace that composition. A source Delete No/Cancel/error/engine Cancel
+restores backup bytes, then retains the necessary physical reopen with the same
+pre-update snapshot. Unlike successful native publication, physical rollback
+changes file contents behind the current proxy and must reopen it. No new archive,
+selection or rollback algorithm, source copy/language change or revision is added;
+this is narrow C++17/Qt publication transport around existing source owners.
+
+The separate interarchive_refresh fixture has256 real F5/F6 scenarios with the
+native codec module: both source roles/EN-RU/table-icon on both panels/standard-
+alternative selection, Copy/Move, native ZIP/7z/301-row ZIP and official7zz update
+success/error/engine Cancel, plus source Delete No/confirmation Cancel/error/
+engine Cancel. Without the native module160 transport cases run. Backend dispatch
+must occur in the intended phase; cancellation is requested once. Delete confirms
+the destination already changed before attempting source removal. Success keeps
+the destination provider; physical rollback replaces it and restores exact bytes.
+Source provider/terminal marks/focus/notify/redraw/controls and independent7zz
+extraction of both payload/control sets are asserted, with normal/compact JSON.
+
+Actual old product b18afa6 with the corrected256-case fixture failed128 success
+provider checks;128 failure/Cancel/rollback cases passed. CTest60566 terminal8,
+88.77s,130QtPASS128FAIL0skip. Corrected fixture/source hashes and its complete
+fixture copy are retained. Initial CTest80803 authoritatively timed out120.04s:
+the fixture re-requested Delete cancellation on the required rollback reopen.
+Its one-shot fix preserves that product phase and its deadline; initial setup
+timeout is not claimed as a completed product RED. Independent old-product
+Delete-failure diagnostic passed3Qt0skip769ms. Focused CTest47931 terminal0:
+6/6PASS113.65s, including interarchive258Qt0skip88.62s, filesystem Copy194Qt,
+routing83Qt, CopyReload34Qt, UI operations34Qt and backup6Qt. Baseline98476
+terminal0:408exact196adapted3local. Required UNSANDBOXED full33722 terminal0:
+formatting/all-target build and284/284 CTest PASS292.34s on macOS27.0.1arm64,
+Qt6.12.0. All11 frozen task hashes matched at completion, including the identical
+corrected RED fixture. Current Qt totals: interarchive258, filesystem Copy194,
+routing83, CopyReload34, UI operations34 and backup6 PASS, all0skip.
+Reviewed512 current normal/compact JSON reports, newer than the full-gate start:
+2048 visible list/address controls fully visible and enabled, with table/icon on
+both panels. Artifacts under build/review/interarchive-refresh-red and -final
+retain initial/corrected RED, fixture/inputs, focused/final logs, verified hashes,
+copied reports and geometry inspection. Only documentation evidence changed
+after the passing full gate; no current Windows/Linux/rendered proof is claimed.
+
+Integrated failed rollback/reopen, native namespace/device routing and
+operation renderer/OnCreate/full-body scope, native ADS/device/zone, current
+three-platform/rendered/cold-stable/package/P3-06 acceptance remain mandatory.
+This component does not close P3-05.15 or the whole goal.
+
 ### Filesystem-to-archive Copy publication, 2026-10-07
 
 Reviewed complete original CApp::OnCopy565–869 in

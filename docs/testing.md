@@ -1,5 +1,21 @@
 # Regression strategy
 
+`interarchive_refresh` runs256 real F5/F6 transfer scenarios with the official
+native codec module: both source-pane roles, EN/RU, table/icon on both panels,
+standard/alternative selection, Copy/Move, native ZIP/7z and301-row ZIP, plus
+official7zz destination success/error/Cancel and Move Delete No/confirmation
+Cancel/error/engine Cancel. Without the native module it runs160 transport cases.
+Transport update/Delete dispatch must occur in the intended phase; engine Cancel
+is requested once so it cannot cancel the subsequent rollback reopen. The
+destination must already be committed before source Delete confirmation.
+Successful transfers retain the bound destination provider; physical rollback
+replaces it and restores exact pre-update archive bytes. Source provider, terminal
+selection/focus/notify/redraw/controls, independently extracted source/target
+payloads and normal/compact JSON are checked. Run unsandboxed for native updates.
+`archive_transfer_backup` separately covers public save/restore failure with a
+replacement directory; integrated failed-rollback/reopen and native OS acceptance
+remain required.
+
 `copy_archive_refresh` exercises filesystem-to-archive F5/F6 through the real
 Copy dialog in both panes, EN/RU, source table/icon and standard/alternative
 selection; destination uses its table view.

@@ -2,6 +2,15 @@
 
 ## P3-05.15 — исходный Copy/Move routing (обязательная сверка, 2026-10-06)
 
+Успешный Copy/Move между архивами также публикует тот же bound destination через
+source RefreshListCtrl с pre-update selection. Принятая композиция Move через
+Copy/Delete/rollback сохранена: original CAgentFolder::CopyTo(moveMode) возвращает
+E_NOTIMPL. Отказ/ошибка/Cancel удаления источника восстанавливают backup и требуют
+настоящего повторного открытия назначения, с выбором до записи. Эта ветка намеренно
+заменяет provider. Both-pane EN/RU/table-icon/standard-alternative consumers
+проверяют native ZIP/7z и transport phases; current Windows/Linux/rendered и
+integrated failed rollback/reopen приёмка остаются открытыми.
+
 Copy/Move из файловой панели в архив больше не открывает второй provider после
 успешного CopyFrom. Как original OnCopy, список обновляется с состоянием,
 сохранённым до операции; ArchiveFolderOut уже выполнил engine ReOpen и восстановил

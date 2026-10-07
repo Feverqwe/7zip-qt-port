@@ -306,6 +306,14 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: interarchive Copy/Move публикует тот же bound destination
+через source RefreshListCtrl с pre-update selection; physical rollback сохраняет
+необходимый ReOpen и получает тот же saved state.
+[Evidence](upstream-port-audit.md#interarchive-copy-publication-and-rollback-2026-10-07).
+Mac focused6PASS113.65s/full284PASS292.34s,256 transfer rows/512 reports;
+all11 frozen inputs stable, full evidence in audit.
+Статус active; failed rollback/reopen и остальные native/final boundaries обязательны.
+
 P3-05.15, 2026-10-07: filesystem-to-archive Copy/Move публикует bound destination
 через source RefreshListCtrl с pre-update selection вместо второго ReOpen.
 [Evidence](upstream-port-audit.md#filesystem-to-archive-copy-publication-2026-10-07).

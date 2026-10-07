@@ -30,6 +30,8 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     }
     if (indices.IsEmpty())
         return true;
+    CSelectedState destinationSelection;
+    target.SaveSelectedState(destinationSelection);
     UStringVector messages;
     HRESULT result;
     std::unique_ptr<QtArchiveTransferBackup> rollback;
@@ -58,7 +60,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             const bool restored = rollback->restore();
             app_.QtOperations().End();
             activatePanelUi(destinationIndex);
-            refreshCurrent();
+            refreshCurrent(&destinationSelection);
             appPresentation_->CopyDestinationRefreshed(destinationIndex);
             activatePanelUi(sourceIndex);
             if (!restored) {
@@ -77,7 +79,9 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
         app_.QtOperations().End();
     if (result == S_OK && messages.IsEmpty()) {
         activatePanelUi(destinationIndex);
-        refreshCurrent();
+        // CopyFrom already reopens the updated native archive and restores its
+        // proxy. Original OnCopy reloads that bound provider with saved state.
+        target.RefreshListCtrl(destinationSelection);
         appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         statusBar()->showMessage(

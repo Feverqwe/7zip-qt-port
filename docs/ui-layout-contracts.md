@@ -2,6 +2,14 @@
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Interarchive F5/F6 preserves the destination provider and pre-update marked/focused
+names after success. Move Delete No/Cancel/error/engine cancellation restores
+backup bytes and physically reopens the destination with that same saved state;
+source rows/bytes remain intact. Source marks clear and focus returns to its list.
+Inspect both-pane roles, EN/RU, table/icon on both panels, standard/alternative
+selection at980×620/640×400, including301-row asynchronous destination publication.
+Both views and addresses must be visible/enabled after terminal completion.
+
 Filesystem-to-archive F5/F6 keeps the bound destination provider and its pre-update
 marked/focused names after native update. Source marks clear and focus returns
 to the source list; failure/Cancel still publish the destination through the

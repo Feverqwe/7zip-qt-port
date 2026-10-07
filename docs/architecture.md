@@ -98,6 +98,12 @@ publishes that same bound provider through RefreshListCtrl after success.
 ArchiveFolderOut already owns engine reopening and proxy restoration; the Qt
 completion no longer opens another provider. Failure/Cancel retain the existing
 unconditional destination OnReload and single-use source continuation.
+Interarchive Copy/Move uses the same pre-update destination snapshot and source
+RefreshListCtrl after successful publication. Its accepted Copy/Delete/rollback
+composition remains: a source Delete refusal, error or cancellation restores the
+destination backup, then physically reopens the restored file using that saved
+selection. That rollback reopen replaces the provider deliberately. Neither
+successful CopyFrom nor its row publication needs a second engine reopen.
 For ordinary Copy/Move, the Qt continuation also publishes the captured
 destination panel when output is elsewhere. Consumers mark an already requested
 destination refresh, avoiding duplicate publication. OnReload uses the existing
