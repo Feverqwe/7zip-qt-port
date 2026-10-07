@@ -29,6 +29,15 @@
 | Properties/Comment/Link/Split/Combine/Benchmark | Соответствующие FileManager и GUI .rc/.cpp | Проверить параметры вызова, набор контролов, условные состояния, action semantics и Help. | Открыто |
 | Help/About и OS integration | FileManager/AboutDialog.rc/.cpp, HelpUtils.cpp, SystemPage.cpp, Explorer | Проверить самостоятельные экраны/команды и необходимые различия native платформ; не подменять исходный workflow новой формой. | Открыто |
 
+Native changed-archive Parent for disk-extracted children now has bounded consumer verification against
+PanelItemOpen::OpenParentArchiveFolder and PanelFolderChange::CloseOneLevel/
+OpenParentFolder: No and Cancel discard/exit, failed or cancelled Yes preserves
+the modified spool while still returning to the parent, and final Refresh
+errors remain ignored. Five native representative2/301-row cases check recovery, real writer
+retry, child focus, peer bytes/guards and normal/compact controls. This closes
+that consumer gap, not the full Navigation/Copy/Move or rendered UX rows above;
+see the [dated audit](upstream-port-audit.md#p3-0515--changed-native-nested-archive-parent-2026-10-07).
+
 Конкретный пропуск Root/drive-view command зафиксирован в
 [P3-05.13 source audit](upstream-port-audit.md#p3-0513--source-root-command-target-implementation-validation-active-2026-10-06)
 и text contract: проверка непустого списка и selection marks не доказывает

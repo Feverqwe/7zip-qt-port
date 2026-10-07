@@ -1,3 +1,5 @@
+#include "Common/MyTypes.h"
+
 #include "native_property_failure_runtime.h"
 #include "source_extract_fixture.h"
 #include <QCoreApplication>
@@ -13,6 +15,11 @@ constexpr const char *kEngine = "7z";
 constexpr const char *kModule = "7z.so";
 constexpr const char *kFacade = "Formats/native-property.so";
 #endif
+
+QByteArray readReceipt(const QString &path) {
+    // The facade uses text-mode std::ofstream, including CRLF on Windows.
+    return SourceExtractFixture::readFile(path).replace("\r\n", "\n");
+}
 } // namespace
 
 bool NativePropertyFailureRuntime::prepare(const QString &prepared, const QString &facade) {
@@ -91,19 +98,17 @@ bool NativePropertyFailureRuntime::forceDisk(bool enabled) {
 }
 
 QByteArray NativePropertyFailureRuntime::diskReceipts() const {
-    return SourceExtractFixture::readFile(diskControl_ + ".hit");
+    return readReceipt(diskControl_ + ".hit");
 }
 
 QByteArray NativePropertyFailureRuntime::extractionReceipts() const {
-    return SourceExtractFixture::readFile(control_ + ".extract");
+    return readReceipt(control_ + ".extract");
 }
 
-QByteArray NativePropertyFailureRuntime::receipts() const {
-    return SourceExtractFixture::readFile(control_ + ".hit");
-}
+QByteArray NativePropertyFailureRuntime::receipts() const { return readReceipt(control_ + ".hit"); }
 
 QByteArray NativePropertyFailureRuntime::openReceipts() const {
-    return SourceExtractFixture::readFile(control_ + ".open");
+    return readReceipt(control_ + ".open");
 }
 
 bool NativePropertyFailureRuntime::enableWriter() {
@@ -120,5 +125,5 @@ bool NativePropertyFailureRuntime::armWriter(HRESULT result, bool hold) {
 }
 
 QByteArray NativePropertyFailureRuntime::writerReceipts() const {
-    return SourceExtractFixture::readFile(writerControl_ + ".hit");
+    return readReceipt(writerControl_ + ".hit");
 }

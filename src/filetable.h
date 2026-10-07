@@ -19,7 +19,9 @@ class FileTable : public QTableWidget {
     bool fullRowHighlight() const { return fullRowHighlight_; }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
-    CMyComPtr<IFolderFolder> textFolder;
+    // Published callback identity only. CPanel owns the provider and must be
+    // able to close its archive streams before deleting nested temporary files.
+    IFolderFolder *textFolder = nullptr;
     std::function<void()> dragStarter;
     QVector<PROPID> propertyIds;
     QVector<bool> rawProperties;

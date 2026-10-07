@@ -50,6 +50,10 @@ icon to that mapped primary cell; no extra provider or icon query is introduced.
 Callback text uses the source index from successful row publication and the
 owning descriptor/provider. It does not re-enumerate the item count before
 GetItemText; the property/raw-property result owns its error/empty text.
+FileTable retains only the published provider's non-owning identity for these
+guards; callbacks query the current CPanel owner. A widget must not retain an
+extra COM owner that keeps native archive streams open after ReleaseFolder,
+because CloseOneLevel deletes the nested spool before publishing parent rows.
 Load-time count validation, notification/provider guards, row deletion and
 generation checks remain in their existing owners.
 SaveListViewInfo receives the owning header projection in source visible logical

@@ -1,5 +1,25 @@
 # Сверка с Windows 7zFM
 
+### Changed nested archive Parent (P3-05.15, 2026-10-07)
+
+For disk-extracted native children, Parent retains the original Yes/No/Cancel
+policy. No and Cancel both
+discard the changed child and leave the outer archive unchanged. Yes updates
+the outer item; writer failure/Cancel retains the modified spool and reports
+the source update error, then still returns to the parent. Its final Refresh
+result is ignored. Empty/enabled failed publication recovers on Ctrl+R using
+the same outer provider. Real native writer retry preserves the old recovery
+copy while deleting the new successful spool. Actual F2/native Rename creates
+the changed child and retry. Five representative2/301-row cases cover both
+panes, languages, views and selection modes, child focus, archive/peer bytes
+and later filesystem OnTimer. Geometry reports do not prove rendered parity.
+Qt callback publication now keeps a non-owning provider identity, so original
+ReleaseFolder closes native archive streams before Parent deletes its spool.
+The prior extra COM owner caused actual Windows cleanup failures. Source
+algorithms and cleanup order remain unchanged. The five Windows cleanup failures
+now pass, as do the affected native consumers on macOS and Linux; detailed
+revision, geometry and gate evidence is in the dated port audit.
+
 ### Native Rename error ownership (P3-05.15, 2026-10-07)
 
 Native F2 Rename now keeps the source progress dialog as the sole operation-error

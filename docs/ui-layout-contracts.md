@@ -1,5 +1,17 @@
 # Text specifications and geometry checks
 
+### Changed nested archive Parent (P3-05.15)
+
+Parent uses the source modified-archive Yes/No/Cancel question. No and Cancel
+both exit and delete the spool without changing the outer archive. Yes updates
+the original outer item; writer failure/Cancel retains the modified spool and
+reports the source update error, but still returns to the outer folder.
+Parent ignores its final Refresh HRESULT. Failed publication leaves an empty,
+enabled list; Ctrl+R recovers that same outer provider. Check native2/301-row
+outer archives with disk-extracted children, both panes, EN/RU, table/icon and selection modes using representative
+cases at980×620/640×400. Peer bytes/provider and subsequent filesystem OnTimer
+must survive. These checks do not establish rendered Windows parity.
+
 ### Native external update publication (P3-05.15)
 
 After the original modified-file Yes prompt, native CopyFromFile retains the

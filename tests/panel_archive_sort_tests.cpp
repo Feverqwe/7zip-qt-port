@@ -48,7 +48,8 @@ class PanelArchiveSortTests final : public QObject {
             const QString path = flat ? entry.path : entry.path.section('/', 0, 0);
             bool found = false;
             for (UInt32 i = 0; i < spec->GetNumberOfItems(); ++i)
-                if (ToQString(spec->GetFullPrefix(i) + spec->GetName(i)) == path) {
+                if (QDir::fromNativeSeparators(
+                        ToQString(spec->GetFullPrefix(i) + spec->GetName(i))) == path) {
                     indices.append(i);
                     found = true;
                     break;

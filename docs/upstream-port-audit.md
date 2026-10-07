@@ -1,5 +1,113 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05.15 — changed native nested archive Parent (2026-10-07)
+
+Source https://github.com/ip7z/7zip.git, full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: rechecked complete
+`CPP/7zip/UI/FileManager/PanelItemOpen.cpp::OpenParentArchiveFolder`,
+`CThreadCopyFrom::ProcessVirt/OnOpenItemChanged(UInt32,...)`,
+`PanelFolderChange.cpp::OpenParentFolder/CloseOneLevel`, their folder-link,
+timer/notify/selected-state types, and MainWindow::goParent/renderBoundFolder.
+The existing C++ Agent ArchiveFolderOut::CopyFromFile/CommonUpdateOperation and
+AgentOut::UpdateOneFile/CommonUpdate own the write, temporary publication and
+proxy restoration. No upstream source body, dependency, language, baseline or upstream
+checkout changed in this consumer-verification iteration.
+
+The first valid Windows Parent run established an actual ownership RED: all
+five cases left the disposable child spool (or successful retry spool) on disk.
+FileTable's independent CMyComPtr textFolder kept the child CAgent and native
+FILE_SHARE_READ stream alive after original ReleaseFolder/CloseOneLevel tried
+to delete it. The Qt callback binding now stores only a non-owning identity;
+all uses compare it against CPanel::GetFolder under existing guards and query
+the current panel, never dereferencing the saved identity. Qt teardown clears
+that identity. This restores original source lifetime without changing source
+algorithms, bodies or cleanup order. Windows actual2QtPASS/5FAIL/0SKIP16.69s
+and complete diagnostic are retained in build/review/native-parent-owner-red.
+The direct archive-sort fixture also normalizes native separators for its path
+lookup; original/current GetFullPrefix already produce platform-native paths.
+Current ownership-fix validation follows, including actual Windows RED→GREEN.
+
+Native Parent preserves the original modified-file question: No and Cancel
+both delete the spool and return without writing. Yes writes the original
+outer item. Write failure or actual progress Cancel leaves the modified spool
+recoverable and reports the original update error, but CloseOneLevel still
+pops the child. The caller ignores its final Refresh HRESULT. This differs from
+the external-editor completion's separate unconditional-refresh/result branch;
+the two consumers must not be conflated. The earlier duplicate-parent-render
+hypothesis was not established and no speculative call removal was made.
+
+New `native_parent_publication` verifies disk-extracted native children using
+the existing private official-runtime
+facade with GUI-PID-only writer opt-in. Five representative cases cover No/Cancel/Yes
+with official writer success/seekable Write failure/actual source Cancel,
+followed by S_OK/S_FALSE/E_FAIL/E_ABORT native property publication. Outer2/301
+rows exercise direct/deferred publication; child archives and peer sentinel
+use private Unicode/spaces fixtures. Writer receipts precede property injection;
+CLI reads the actual archived child bytes through the official engine.
+Both panes, EN/RU, table/icon and selection modes are represented by selected
+cases, not an exhaustive Cartesian matrix. The child is changed through actual
+F2/native Rename, including a writer receipt and changed spool bytes. Failed
+publication is empty/enabled; Ctrl+R recovers the same outer provider. Successful publication focuses the
+original child name. Failure/Cancel preserves outer bytes and modified spool;
+another actual nested-open/F2/Parent update succeeds with a newly changed child,
+deletes its new spool and preserves the earlier recovery copy. Peer provider/
+bytes, guards, redraw and subsequent filesystem OnTimer are checked.
+Normal/compact widget JSON covers published/recovered/retried states.
+
+Validation on2026-10-07 macOS27.0.1 arm64 / Qt6.12.0: focused Parent and
+direct callback/column/draw/rename/refresh/address consumers pass9/9 in14.20s
+(213QtPASS/0fail/0skip; Parent7QtPASS).
+Required unsandboxed full38070 terminal0: formatting/all-target build and
+287/287 default CTest pass245.00s. All270 Qt totals sum4419PASS/0FAIL/
+15 Windows-only skips; eleven suites labeled slow were excluded, not accepted
+by this run. Nine frozen code/build/runtime inputs match after the gate.
+All24 final JSON reports (12 each980×620/640×400) were inspected:96 enabled,
+fully exposed address/list controls, source0 left/source1 right and addresses
+above the visible list. The report validator keys panels by their source names;
+QObject traversal order is not splitter visual order. Evidence is retained in
+build/review/native-parent-owner (focused/full/full-ctest logs, input hashes,
+reports and geometry-review.json).
+
+Linux Ubuntu24.04.5 x64/Qt6.12.0 uses fresh snapshot20261007T073057Z-a1f38790,
+SHA256`9aaab2bb99777e462e217f0afbbe1b8fcf82cdece2c417caa04711cd8fa7cdd9`.
+Official runtime and affected targets built in that snapshot;9/9PASS19.40s,
+213QtPASS/0fail/0skip (Parent7QtPASS). All24 JSON/96 controls and nine input
+hashes verified against macOS. Evidence: build/review/native-parent-owner/linux.
+
+Two earlier Windows preparations failed before Parent: direct spool writes
+violate the native reader's FILE_SHARE_READ, and a later actual F2 writer receipt
+used Windows CRLF while assertions expected LF. The child now changes through
+native F2; the shared test runtime normalizes only textual receipt line endings.
+Actual archive/payload bytes remain exact. Preserved preparation diagnostics are
+under build/review/native-parent-final/windows and native-parent-revised/windows-crlf-red.
+Those preparation failures do not establish a product defect; the later valid
+ownership RED and its GREEN check are separate evidence.
+
+Windows11 x64/Qt6.12.0 interactive/elevated snapshot
+20261007T073444Z-40bdbc2b,
+SHA256`5d4304c444b265b9b6250f2e739e521bca94d8de23329ff0984da9a5622749ef`:
+official runtime and affected targets built in the same snapshot. Parent passes
+7Qt/0FAIL/0SKIP in16.008s (CTest17.34s), including all five former cleanup
+failures. All seven direct callback consumers pass187Qt assertions, including
+the portable archive-sort fixture. All24 Parent JSON/96 controls and nine input
+hashes match the reviewed scope. Evidence: build/review/native-parent-owner/windows.
+The expanded snapshot passes9/10 suites; its remaining address_combo failure
+compares a real filesystem icon with a generic folder icon and is handled
+separately under P3-03. This is bounded disk-child Parent acceptance, not a
+passing Windows default gate or stream/memory update acceptance.
+
+The earlier default snapshot20261007T061712Z-da2e7f7e passed Linux284/284;
+Windows interactive/elevated finished286/296 in2075.39s (exit8). Besides the
+superseded Parent setup, ui_operations, ui_archive_states, panel_creation_path,
+interarchive_recovery, copy_archive_refresh, panel_column_sort, panel_archive_sort,
+address_combo and native_network_navigation failed/timed out. Complete logs and
+snapshot SHA are retained in build/runners/hyperv/20261007T061712Z-da2e7f7e;
+these remain P3-03 investigation, not default/platform acceptance. Gates include
+then-current foreign tooling changes; later edits are not retroactively checked.
+Eleven slow suites were excluded. Native stream/memory update routes, native Drop,
+complete body/resource/UX closure,
+current packages/cold stability/rendered Windows and P3-06 remain open.
+
 ## P3-05.15 — native rename publication and error ownership (2026-10-07)
 
 Source https://github.com/ip7z/7zip.git at full baseline

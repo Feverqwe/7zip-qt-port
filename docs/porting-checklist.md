@@ -306,6 +306,26 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15,2026-10-07: changed native Parent reviewed against complete original
+OpenParentArchiveFolder/CloseOneLevel/OpenParentFolder. Actual Windows spool
+cleanup RED5 exposed FileTable's extra provider COM owner; Qt now retains only
+a callback identity so source ReleaseFolder closes streams before cleanup.
+Five representative2/301-row No/Cancel/Yes/writer error/actual progress Cancel
+cases cover ignored publication errors, same-parent recovery, real F2/Parent
+retry, byte preservation, child focus and filesystem OnTimer. Shared test
+receipts normalize CRLF; payload bytes stay exact. Mac focused9/9PASS14.20s,
+required unsandboxed full287/287PASS245.00s; Linux same-snapshot9/9PASS19.40s,
+213Qt0fail0skip;24JSON/96 controls per OS and nine matching SHA inspected.
+Windows same-snapshot Parent7QtPASS and all seven direct consumers187QtPASS;
+24JSON/96 controls and nine input hashes inspected. Expanded9/10 suites retain
+one address icon fixture failure, handled separately under P3-03. Eleven slow
+suites excluded. Earlier Windows default failures remain P3-03 investigation;
+this accepts only the bounded disk-child Parent consumer.
+Native stream/memory update routes, Drop, complete body/resource/UX closure,
+packages/cold stability/rendered
+reference and P3-06 remain open.
+[Scope/evidence](upstream-port-audit.md#p3-0515--changed-native-nested-archive-parent-2026-10-07).
+
 P3-05.15,2026-10-07: native F2 Rename сохраняет единственного владельца worker
 ошибок — исходный progress dialog. Лишнее Qt-сообщение поймано actual RED2;
 ранняя validation и unconditional ignored-result publication сохранены.

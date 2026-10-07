@@ -1,5 +1,20 @@
 # Regression strategy
 
+`native_parent_publication` checks the actual changed disk-extracted child Parent
+workflow using the existing private official-runtime facade. Five representative
+cases cover No/Cancel and Yes with writer success/seekable Write failure/actual
+source Cancel, plus four later native publication HRESULTs. Outer2/301 rows,
+both panes, EN/RU, table/icon and selection modes check ignored refresh errors,
+same-provider Ctrl+R, focused child, retained/discarded spool bytes and a second
+actual Parent write after failure/Cancel. The changed child and retry are
+produced through real F2/native Rename, respecting Windows reader sharing.
+The runtime normalizes textual receipt line endings; payload bytes stay exact.
+Official engine extraction proves the archived child bytes; peer preservation
+and subsequent filesystem OnTimer
+prove terminal guard release. Normal/compact reports cover publication/recovery/
+retry. This bounded suite runs in the default gate. Source review and
+current validation are in the [dated audit](upstream-port-audit.md#p3-0515--changed-native-nested-archive-parent-2026-10-07).
+
 `native_rename_2` and `native_rename_301` exercise384 real F2/native Rename
 publication workflows using the private official writer opt-in. Actual native
 Write failure/source Cancel and subsequent native property HRESULTs distinguish
