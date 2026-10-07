@@ -8,8 +8,11 @@ Copy/Delete/rollback сохранена: original CAgentFolder::CopyTo(moveMode)
 E_NOTIMPL. Отказ/ошибка/Cancel удаления источника восстанавливают backup и требуют
 настоящего повторного открытия назначения, с выбором до записи. Эта ветка намеренно
 заменяет provider. Both-pane EN/RU/table-icon/standard-alternative consumers
-проверяют native ZIP/7z и transport phases; current Windows/Linux/rendered и
-integrated failed rollback/reopen приёмка остаются открытыми.
+проверяют native ZIP/7z и transport phases. Отдельный interarchive_recovery
+проверяет failed backup restore/reopen/engine Cancel, filesystem fallback и F5
+после исправления временного назначения. Restore failure показывает отдельное
+предупреждение, reopen E_ABORT остаётся без сообщения. Source Move по-прежнему
+расширение адаптера; current Windows/Linux/rendered приёмка открыта.
 
 Copy/Move из файловой панели в архив больше не открывает второй provider после
 успешного CopyFrom. Как original OnCopy, список обновляется с состоянием,

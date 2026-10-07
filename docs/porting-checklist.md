@@ -306,13 +306,24 @@ dependencies, реальным Add/drop consumer и UX. Historical checks 96/96 
 
 ## Подшаги, блокировки и handoff
 
+P3-05.15, 2026-10-07: integrated failed rollback/reopen и восстановление проверяются
+отдельным interarchive_recovery:80 EN/RU both-pane/view/selection scenarios,
+native ZIP/transport restore failure,301-row filesystem fallback, reopen
+error/engine Cancel и реальный F5 после ремонта временного назначения.
+[Evidence](upstream-port-audit.md#interarchive-failed-rollback-and-recovery-2026-10-07).
+Mac focused1PASS19.09s/full285PASS313.75s;82Qt0skip,320 current reports,
+all10 frozen inputs stable. Validation-only scope; product implementation unchanged.
+Статус active; operation renderer/OnCreate/full-body и native/final boundaries
+остаются обязательными.
+
 P3-05.15, 2026-10-07: interarchive Copy/Move публикует тот же bound destination
 через source RefreshListCtrl с pre-update selection; physical rollback сохраняет
 необходимый ReOpen и получает тот же saved state.
 [Evidence](upstream-port-audit.md#interarchive-copy-publication-and-rollback-2026-10-07).
 Mac focused6PASS113.65s/full284PASS292.34s,256 transfer rows/512 reports;
 all11 frozen inputs stable, full evidence in audit.
-Статус active; failed rollback/reopen и остальные native/final boundaries обязательны.
+Статус active; failed rollback/reopen проверен отдельным компонентом выше,
+остальные native/final boundaries обязательны.
 
 P3-05.15, 2026-10-07: filesystem-to-archive Copy/Move публикует bound destination
 через source RefreshListCtrl с pre-update selection вместо второго ReOpen.

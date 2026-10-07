@@ -1,5 +1,18 @@
 # Regression strategy
 
+`interarchive_recovery` covers failed Move rollback/reopen followed by a real F5
+retry: both source panes, EN/RU, table/icon on both panels and standard/alternative
+selection. Its80 cases with the official codec module include a replacement
+directory refusing backup restore (transport/native ZIP),301-row filesystem
+fallback, controlled transport reopen failure and one-shot engine cancellation.
+Without the module64 transport cases run. The first destination write must commit
+before source Delete is refused. Failed reopen must publish the fallback folder,
+retain source bytes/provider and restore terminal focus/guards. Restore failure
+must preserve the replacement sentinel and warn; reopen cancellation stays silent.
+The fixture repairs only its private destination, reopens it and copies again,
+checking selected/focused destination names and independent7zz payload bytes.
+Normal/compact JSON covers both the failed and recovered states. Run unsandboxed.
+
 `interarchive_refresh` runs256 real F5/F6 transfer scenarios with the official
 native codec module: both source-pane roles, EN/RU, table/icon on both panels,
 standard/alternative selection, Copy/Move, native ZIP/7z and301-row ZIP, plus
@@ -13,8 +26,8 @@ replaces it and restores exact pre-update archive bytes. Source provider, termin
 selection/focus/notify/redraw/controls, independently extracted source/target
 payloads and normal/compact JSON are checked. Run unsandboxed for native updates.
 `archive_transfer_backup` separately covers public save/restore failure with a
-replacement directory; integrated failed-rollback/reopen and native OS acceptance
-remain required.
+replacement directory. Current Windows/Linux and rendered acceptance remain
+required for these integrated workflows.
 
 `copy_archive_refresh` exercises filesystem-to-archive F5/F6 through the real
 Copy dialog in both panes, EN/RU, source table/icon and standard/alternative

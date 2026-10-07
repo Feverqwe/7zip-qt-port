@@ -104,6 +104,12 @@ composition remains: a source Delete refusal, error or cancellation restores the
 destination backup, then physically reopens the restored file using that saved
 selection. That rollback reopen replaces the provider deliberately. Neither
 successful CopyFrom nor its row publication needs a second engine reopen.
+Failed physical reopen binds the destination's return filesystem folder, rather
+than publishing stale archive metadata. The existing refresh owner reports
+non-E_ABORT reopen errors; a failed backup restore additionally reports rollback
+failure. Source Copy completion still restores source focus and clears its marks.
+The recovery fixture covers this boundary and reopening/retrying a repaired
+private destination without changing the product's rollback implementation.
 For ordinary Copy/Move, the Qt continuation also publishes the captured
 destination panel when output is elsewhere. Consumers mark an already requested
 destination refresh, avoiding duplicate publication. OnReload uses the existing

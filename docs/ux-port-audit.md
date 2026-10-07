@@ -40,7 +40,10 @@ Interarchive Copy/Move теперь сохраняет provider при успе�
 pre-update selection при физическом rollback. Native ZIP/7z и transport
 ошибка/Cancel/Delete No/Cancel/error/engine cancellation проверяются отдельным
 [сценарием P3-05.15](upstream-port-audit.md#interarchive-copy-publication-and-rollback-2026-10-07).
-Это не закрывает failed rollback/reopen, native metadata/platform и полную UX-приёмку.
+Отдельный interarchive_recovery проверяет failed rollback/reopen, fallback folder,
+предупреждения и повторный F5 после восстановления временного назначения; обе
+панели EN/RU table/icon/standard-alternative в normal/compact состояниях.
+Native metadata/platform и полная UX-приёмка остаются открытыми.
 
 Полная сверка App.cpp выделяет
 [P3-05.15](upstream-port-audit.md#p3-0515--source-copymove-destination-and-continuation-reconciliation-required-scope-2026-10-06):

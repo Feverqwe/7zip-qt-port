@@ -1735,6 +1735,59 @@ input hashes remain unchanged. Current native
 Windows/Linux/rendered and raw/duplicate mapping, broader schema/error consumers,
 109-module/cold-stable and whole P3-05.15/P3-06 acceptance remain open.
 
+### Interarchive failed rollback and recovery, 2026-10-07
+
+This validation-only component retains the original source baseline
+0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 from https://github.com/ip7z/7zip.git.
+The preceding complete OnCopy/DeleteItems/Agent CopyTo/ArchiveFolderOut review
+owns source composition and the absence of native archive Move. Current callers
+transferBetweenArchivePanels, QtAppPresentation Copy completion, refreshCurrent,
+ReOpenArchiveFolder, QtArchiveFileResource reopen service and the backend backup
+were inspected. No functional source body, archive algorithm, source language,
+dependency revision or product failure policy changes in this component.
+
+tests/interarchive_recovery_tests.cpp adds one integrated failure/retry workflow
+using existing public backend virtuals and private filesystem fixtures; no product
+test seam is introduced. Its80 cases with the official native module cover both
+pane roles/EN-RU/table-icon on both panels/standard-alternative selection: backup
+restore refused by a replacement sentinel directory (transport/native ZIP),
+301-row return filesystem folder, transport reopen error and one-shot actual
+engine Cancel. Without the module64 transport cases run. The destination is
+already committed before Delete No; source archive bytes/provider survive.
+Failed reopen binds the return filesystem folder rather than stale archive rows;
+non-E_ABORT reopen error and separate failed-restore warning retain existing
+policy. The replacement directory/sentinel survives. Repairing only the private
+destination, reopening and actual F5 Copy then verifies destination marks/focus,
+same success provider, source continuation/guards and independent7zz payloads.
+Normal/compact JSON is generated after failure and after successful recovery.
+The focused fixture intentionally keeps both phases in one public workflow;
+splitting its assertions into another suite would lose that recovery continuity.
+
+Initial fixture-only run96767 terminal8 had80 failures before F6 dispatch because
+native progress left the window inactive. After activating the window, a direct
+diagnostic reached the fallback but compared macOS /var and /private/var as plain
+strings; it now compares canonical existing paths. The next run33962 timed out
+at120s because recovery also attempted address focus in an inactive window.
+Its independent diagnostic36097 terminal1 confirmed target rows stayed at1.
+Activating before address focus fixed the fixture without changing deadlines
+or product code; diagnostic3QtPASS0skip303ms, focused72518 terminal0:
+1/1PASS19.09s. These setup failures are retained as evidence and are not product
+RED. Artifacts: build/review/interarchive-recovery-final.
+
+Required UNSANDBOXED full38457 terminal0: formatting/all-target build and
+285/285 CTest PASS313.75s on macOS27.0.1arm64, Qt6.12.0. The new suite has
+82QtPASS0FAIL0skip19.228s. All10 frozen task hashes matched at completion.
+Reviewed320 current JSON reports, newer than gate start, after failure/recovery
+at980×620/640×400:1280 visible list/address controls fully visible and enabled.
+Artifacts retain initial fixture failures/timeout and independent retry
+diagnostic, focused/final logs, verified inputs, copied reports and their hashes.
+Only audit/checklist proof text changes after the passing full gate; no current
+Windows/Linux or rendered Windows result is inferred from this macOS evidence.
+
+Native namespace/device routing, operation renderer/OnCreate/full-body scope,
+native ADS/device/zone, current Windows/Linux/rendered/cold-stable/package and
+P3-06 acceptance remain mandatory. P3-05.15 and the whole goal stay active.
+
 ### Interarchive Copy publication and rollback, 2026-10-07
 
 Reviewed complete original CApp::OnCopy565–856, PanelOperations::DeleteItems112–262
@@ -1795,7 +1848,8 @@ retain initial/corrected RED, fixture/inputs, focused/final logs, verified hashe
 copied reports and geometry inspection. Only documentation evidence changed
 after the passing full gate; no current Windows/Linux/rendered proof is claimed.
 
-Integrated failed rollback/reopen, native namespace/device routing and
+Integrated failed rollback/reopen is validated in the subsequent component above;
+native namespace/device routing and
 operation renderer/OnCreate/full-body scope, native ADS/device/zone, current
 three-platform/rendered/cold-stable/package/P3-06 acceptance remain mandatory.
 This component does not close P3-05.15 or the whole goal.

@@ -10,6 +10,13 @@ Inspect both-pane roles, EN/RU, table/icon on both panels, standard/alternative
 selection at980×620/640×400, including301-row asynchronous destination publication.
 Both views and addresses must be visible/enabled after terminal completion.
 
+If physical rollback reopen fails, the destination displays its return filesystem
+folder instead of stale archive rows; source rows/bytes survive. Failed backup
+restore adds an explicit rollback warning; reopen E_ABORT stays silent. Check
+both failed and recovered states at the same sizes/modes, including301-row
+filesystem fallback. Reopening a repaired private destination and F5 retry must
+restore normal selection/focus/notify/redraw and enabled controls.
+
 Filesystem-to-archive F5/F6 keeps the bound destination provider and its pre-update
 marked/focused names after native update. Source marks clear and focus returns
 to the source list; failure/Cancel still publish the destination through the
