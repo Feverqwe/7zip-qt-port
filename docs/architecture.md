@@ -1771,6 +1771,12 @@ update prompts through the existing narrow process/backend services.
 ## Filesystem and volume workers
 
 `sevenzip_filesystem` owns `CFSFolder` mutations and the filesystem path snapshot.
+Its original IFolderCompare supplies filesystem sort semantics directly to
+CPanel, including raw comment-cache and metadata-request phases. The pure
+natural-name portion of the authoritative PanelSort.cpp compiles into
+`sevenzip_name_sort` with SEVENZIP_NAME_SORT_ONLY; the panel target compiles the
+remaining CPanel portion. This shared QtCore/common owner avoids a dependency
+cycle or duplicate comparator between filesystem and panel libraries.
 `FileDir.cpp` owns recursive removal without traversing symbolic links.
 The mirrored `CPanel::DeleteItems` owns confirmation and source progress-worker
 lifecycle for permanent deletion. `IQtTrashService` delegates ordinary Delete

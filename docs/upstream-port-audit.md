@@ -1,5 +1,71 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source filesystem comparator (2026-10-08)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed original/current
+`CPP/7zip/UI/FileManager/FSFolder.cpp::{CompareItems,GetExtensionPtr,
+LoadItems,LoadComments,GetProperty,ReadFileInfo}`, `FSFolder.h` interface/QI,
+`PanelItems.cpp` folder binding and `PanelSort.cpp` comparison consumers,
+portable FString/StringConvert/FileFind/TimeUtils and TextPairs dependencies.
+
+The filesystem owner omitted IFolderCompare, so the panel fell back to generic
+display properties. Restored the original interface, QI and complete comparator
+switch in their authoritative C++ source-relative modules, including the source
+FChar conversion helper and extension pointer helper. Attrib uses existing
+GetWinAttrib and the three timestamps use upstream Compare_FiTime for the
+portable CFiTime representation; Windows still calls CompareFileTime. Original
+name/size/directory/packed-size/identity/link/comment/prefix/extension branches,
+metadata request order, unsupported-property zero and inactive stream/CE scope
+remain. No alternate filesystem sorting algorithm or upstream edits.
+
+Source comments compare the raw cached value including the wchar4 suffix,
+although GetProperty truncates that suffix for display. CompareItems does not
+load comments or packed sizes. LoadItems invalidates the comments-loaded flag;
+the previous raw cache remains until GetProperty calls LoadComments, including
+the missing-descript.ion clear path. These source phases are preserved.
+
+The existing authoritative natural-name implementation stays in PanelSort.cpp.
+`sevenzip_name_sort` selectively compiles its pure comparison portion with
+SEVENZIP_NAME_SORT_ONLY; the panel target compiles its CPanel portion. This
+follows the existing ProgressDialog2 selective-build boundary and lets
+sevenzip_filesystem reuse the helper without a filesystem-to-panel dependency
+cycle, duplicate body or renamed upstream module. Dependencies are QtCore and
+sevenzip_common; Windows resources and UI construction are unaffected.
+
+New panel_filesystem_sort exercises the actual FileTable/ArchiveTableItem and
+CPanel consumer in normal/flat and ascending/descending modes, source indices
+and retained selection, equal visible comments with differently ordered raw
+suffixes, lazy cache/reload/missing description, immutable input bytes and
+Unicode/space paths. Its metadata case covers natural names/extensions, size,
+cold packed size, timestamps/attributes, directory order, identity/links,
+unsupported properties and failed metadata reads after removal. Actual pre-fix
+product fails all four comment-order cases. Required unsandboxed macOS arm64
+Qt6.12 formatting/all-target/default gate306/306 PASS251.83s, with4750Qt results,
+0fail/18 existing platform skips. After localized restoration of the source
+helper's inline declaration and fixture flush before setting timestamps, all
+six affected local consumers pass7.28s (115Qt/0fail/0skip); no repeated full gate.
+The normalized comparator matches upstream with only the four documented
+attribute/time substitutions. Baseline408 exact/196 adapted/3 local PASS.
+
+Final fresh Linux/Windows x64 Qt6.12 snapshot `20261007T224101Z-58400878`,
+source.tar SHA256 `75ce47c7c2bae66d27782b8906e8ba5b05f6efdd7c710044999aa1012626d4b7`:
+each6/6 PASS10.32s/36.70s, with115/112Qt results and0fail/0skip. The new suite
+has7Qt/0fail/0skip on all three OSes. All1409 frozen source/test/build/resource/
+script inputs match local files, source.tar and both actual guest trees after
+tests. The temporary task wrapper is retained only in evidence/snapshot;
+1408 retained inputs remain unchanged after its removal.
+
+Initial Linux metadata fixture failed because buffered writes could replace
+its setFileTime value on close; explicit flush fixes the fixture. All four
+comment consumer rows passed that initial run; Windows initial6/6 also passed.
+Both the initial failure and final logs/proofs remain under
+`build/review/filemanager-final/fs-sort-*`. No acceptance deadline changed.
+Fresh authenticated/capacity probes passed; no cleanup or disk changes. Eleven
+slow suites and Windows VHD fixtures were excluded. These are protocol/data
+consumers; native desktop/rendered acceptance, remaining FileManager disposition,
+current final packages and P3-06 remain open.
+
 ## P3-05 — source archive directory property projection (2026-10-07)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

@@ -11,6 +11,7 @@
 #include "Common/StringConvert.h"
 #include "Common/UTFConvert.h"
 #include "FSDrives.h"
+#include "PanelSort.h"
 #include "SysIconUtils.h"
 #include "Windows/FileIO.h"
 #include "Windows/FileName.h"
@@ -50,6 +51,13 @@ typedef struct {
     ULONG_PTR Information;
 } Z7_WIN_IO_STATUS_BLOCK;
 #endif
+#endif
+
+#ifndef USE_UNICODE_FSTRING
+int CompareFileNames_ForFolderList(const FChar *s1, const FChar *s2);
+int CompareFileNames_ForFolderList(const FChar *s1, const FChar *s2) {
+    return CompareFileNames_ForFolderList(fs2us(s1), fs2us(s2));
+}
 #endif
 
 namespace NFsFolder {
@@ -635,6 +643,109 @@ IMP_IFolderFolder_GetProp(CFSFolder::GetPropertyInfo, kProps)
     prop.Detach(value);
     return S_OK;
     COM_TRY_END
+}
+
+static inline CFSTR GetExtensionPtr(const FString &name) {
+    const int dotPos = name.ReverseFind_Dot();
+    return name.Ptr((dotPos < 0) ? name.Len() : (unsigned)dotPos);
+}
+
+Z7_COM7F_IMF2(Int32, CFSFolder::CompareItems(UInt32 index1, UInt32 index2, PROPID propID,
+                                             Int32 /* propIsRaw */)) {
+    /*
+    const CAltStream *ss1 = NULL;
+    const CAltStream *ss2 = NULL;
+    if (index1 >= Files.Size()) { ss1 = &Streams[index1 - Files.Size()]; index1 = ss1->Parent; }
+    if (index2 >= Files.Size()) { ss2 = &Streams[index2 - Files.Size()]; index2 = ss2->Parent; }
+    */
+    CDirItem &fi1 = Files[index1];
+    CDirItem &fi2 = Files[index2];
+
+    switch (propID) {
+    case kpidName: {
+        const int comp = CompareFileNames_ForFolderList(fi1.Name, fi2.Name);
+        /*
+        if (comp != 0)
+          return comp;
+        if (!ss1)
+          return ss2 ? -1 : 0;
+        if (!ss2)
+          return 1;
+        return MyStringCompareNoCase(ss1->Name, ss2->Name);
+        */
+        return comp;
+    }
+    case kpidSize:
+        return MyCompare(
+            /* ss1 ? ss1->Size : */ fi1.Size,
+            /* ss2 ? ss2->Size : */ fi2.Size);
+    case kpidAttrib:
+        return MyCompare(fi1.GetWinAttrib(), fi2.GetWinAttrib());
+    case kpidCTime:
+        return Compare_FiTime(&fi1.CTime, &fi2.CTime);
+    case kpidATime:
+        return Compare_FiTime(&fi1.ATime, &fi2.ATime);
+    case kpidMTime:
+        return Compare_FiTime(&fi1.MTime, &fi2.MTime);
+    case kpidIsDir: {
+        const bool isDir1 = /* ss1 ? false : */ fi1.IsDir();
+        const bool isDir2 = /* ss2 ? false : */ fi2.IsDir();
+        if (isDir1 == isDir2)
+            return 0;
+        return isDir1 ? -1 : 1;
+    }
+    case kpidPackSize: {
+#ifdef UNDER_CE
+        return MyCompare(fi1.Size, fi2.Size);
+#else
+        // PackSize can be undefined here
+        return MyCompare(
+            /* ss1 ? ss1->PackSize : */ fi1.PackSize,
+            /* ss2 ? ss2->PackSize : */ fi2.PackSize);
+#endif
+    }
+
+#ifdef FS_SHOW_LINKS_INFO
+    case kpidINode: {
+#ifndef UNDER_CE
+        if (!fi1.FileInfo_WasRequested)
+            ReadFileInfo(fi1);
+        if (!fi2.FileInfo_WasRequested)
+            ReadFileInfo(fi2);
+        return MyCompare(fi1.FileIndex, fi2.FileIndex);
+#endif
+    }
+    case kpidLinks: {
+#ifndef UNDER_CE
+        if (!fi1.FileInfo_WasRequested)
+            ReadFileInfo(fi1);
+        if (!fi2.FileInfo_WasRequested)
+            ReadFileInfo(fi2);
+        return MyCompare(fi1.NumLinks, fi2.NumLinks);
+#endif
+    }
+#endif
+
+    case kpidComment: {
+        // change it !
+        UString comment1, comment2;
+        _comments.GetValue(fs2us(GetRelPath(fi1)), comment1);
+        _comments.GetValue(fs2us(GetRelPath(fi2)), comment2);
+        return MyStringCompareNoCase(comment1, comment2);
+    }
+    case kpidPrefix:
+        if (fi1.Parent == fi2.Parent)
+            return 0;
+        if (fi1.Parent < 0)
+            return -1;
+        if (fi2.Parent < 0)
+            return 1;
+        return CompareFileNames_ForFolderList(Folders[fi1.Parent], Folders[fi2.Parent]);
+    case kpidExtension:
+        return CompareFileNames_ForFolderList(GetExtensionPtr(fi1.Name), GetExtensionPtr(fi2.Name));
+    }
+
+    return 0;
 }
 
 HRESULT CFSFolder::BindToFolderSpec(CFSTR name, IFolderFolder **resultFolder) {

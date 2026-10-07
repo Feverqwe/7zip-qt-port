@@ -14,6 +14,7 @@
 #include <functional>
 
 namespace NFsFolder {
+#define FS_SHOW_LINKS_INFO
 struct CDirItem : public NWindows::NFile::NFind::CFileInfo {
     CByteBuffer Reparse;
     UInt64 PackSize = 0;
@@ -46,6 +47,7 @@ struct CFsFolderStat {
 // Source folder owner. Runtime panel loading and destructive mutations use
 // narrow Qt/platform services; CopyTo retains the upstream callback contract.
 class CFSFolder final : public IFolderFolder,
+                        public IFolderCompare,
                         public IArchiveGetRawProps,
                         public IFolderCalcItemFullSize,
                         public IFolderClone,
@@ -60,6 +62,7 @@ class CFSFolder final : public IFolderFolder,
                         public CMyUnknownImp {
     Z7_COM_QI_BEGIN2(IFolderFolder)
     Z7_COM_QI_ENTRY(IArchiveGetRawProps)
+    Z7_COM_QI_ENTRY(IFolderCompare)
     Z7_COM_QI_ENTRY(IFolderCalcItemFullSize)
     Z7_COM_QI_ENTRY(IFolderClone)
     Z7_COM_QI_ENTRY(IFolderSetFlatMode)
@@ -77,6 +80,7 @@ class CFSFolder final : public IFolderFolder,
     bool CanComment() const override { return true; }
     Z7_IFACE_COM7_IMP(IFolderFolder)
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
+    Z7_IFACE_COM7_IMP(IFolderCompare)
     Z7_IFACE_COM7_IMP(IFolderCalcItemFullSize)
     Z7_IFACE_COM7_IMP(IFolderClone)
     Z7_IFACE_COM7_IMP(IFolderSetFlatMode)

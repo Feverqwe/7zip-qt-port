@@ -14,6 +14,7 @@ production access is added for this matrix.
 
 | Package / scenario | Functional owner and integration boundary | CTest consumers |
 | --- | --- | --- |
+| P3-05 filesystem comparator/cache | Source CFSFolder::CompareItems and IFolderCompare binding; actual FileTable/CPanel sorting, raw versus visible comments, metadata failure/cache/reload, selection and bytes | `panel_filesystem_sort`, `fs_folder`, `panel_sort`, `panel_archive_sort`, `panel_column_sort`, `filesystem_reload` |
 | P3-05 compression method/control states | Source method IDs, Copy/unknown dictionary, empty/Auto controls, TAR memory visibility; Store success/failure/Cancel and exact bytes | `compression_method_state`, `compression_profile_selection`, `source_compress_dialog`, `codec_creation_ui` |
 | P3-05 GUI path/history consumers | Source CompressDialog/ExtractDialog Trim, path resolution, shared UString uniqueness; EN/RU Create/list/Extract, SplitDest, Cancel, settings and exact bytes | `dialog_path_rules`, `compression_path`, `extract_dialog`, `split_destination` |
 | P3-05 archive directory property projection | Source GetProperty, CalculateSizes and CompareItems; list/Properties/error/retry, native ZIP/7z sort/Refresh/selection and byte preservation | `agent_property_projection`, `native_column_workflow`, `source_properties`, `panel_column_sort` |

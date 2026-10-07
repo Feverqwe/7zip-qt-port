@@ -11,6 +11,15 @@ Suite descriptions and dated local results do not establish acceptance of the
 current checkout or other platforms; check the [audit](upstream-port-audit.md)
 and [checklist](porting-checklist.md) for their scope.
 
+`panel_filesystem_sort` covers source CFSFolder comparison and its actual
+FileTable/CPanel consumer: raw comment suffixes versus equal visible text,
+normal/flat and both sort directions, source indices/selection, lazy cache and
+reload/missing-description phases, unchanged bytes and Unicode/space paths.
+Metadata checks include natural names/extensions, size/cold packed size,
+attributes/timestamps, directory order, identity/links and missing-file reads.
+Unsupported source properties return zero before the panel's name tie breaker.
+This bounded suite is in the default gate; no layout or rendered reference claim.
+
 `panel_list_key` covers the list-window dispatch before PanelKey notifications:
 Ctrl+PgDn opens the focused folder or real official ZIP, Ctrl+PgUp returns to
 its parent. Four bounded EN/RU, both-pane table/icon cases retain peer provider,

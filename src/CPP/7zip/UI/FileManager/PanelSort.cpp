@@ -4,6 +4,10 @@
 // QStringView conversion and Qt properties adapt the panel at its boundary.
 
 #include "PanelSort.h"
+#ifdef SEVENZIP_NAME_SORT_ONLY
+#include <QString>
+#include <string>
+#else
 #include "../C/CpuArch.h"
 #include "7zip/PropID.h"
 #include "Panel.h"
@@ -11,8 +15,9 @@
 #include "Windows/PropVariant.h"
 
 #include <optional>
-#include <string>
+#endif
 
+#ifdef SEVENZIP_NAME_SORT_ONLY
 namespace {
 // Preserve Windows 7zFM UTF-16 code units on platforms with 32-bit wchar_t.
 char16_t MyCharUpper(char16_t c) { return QChar(c).toUpper().unicode(); }
@@ -78,6 +83,7 @@ int CompareFileNames_ForFolderList(const wchar_t *s1, const wchar_t *s2) {
                                           QStringView(QString::fromWCharArray(s2)));
 }
 
+#else
 static int CompareFileNames_Le16(const Byte *s1, unsigned size1, const Byte *s2, unsigned size2) {
     size1 &= ~1u;
     size2 &= ~1u;
@@ -225,3 +231,4 @@ void CPanel::OnColumnClick(PROPID propID) {
     // Qt carries the clicked source-visible property instead of NMLISTVIEW.
     SortItemsWithPropID(propID);
 }
+#endif

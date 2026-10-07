@@ -10,6 +10,17 @@ full revision `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
 The maintained per-module [manifest](upstream-baseline.json) owns reproducible
 local provenance; this document does not replace its exact/adapted distinction.
 
+## Filesystem comparator restored on 2026-10-08
+
+Existing FSFolder.cpp/h names concealed an omitted IFolderCompare interface,
+QI and CompareItems body. They now retain the source switch and cache phases;
+the panel consumes that interface through its existing binding/comparison path.
+The authoritative PanelSort.cpp natural-name helper is shared by selective
+compilation, avoiding a filesystem/panel cycle. Portable attributes/time services
+replace only their Win32 representations. See the [body, dependency and check
+receipt](upstream-port-audit.md#p3-05--source-filesystem-comparator-2026-10-08).
+This closes that omission, without claiming whole FileManager disposition.
+
 ## Missing UI translation units reviewed on 2026-10-05
 
 The original FileManager/Agent/GUI/Common directories contain 67/7/10/25 `.cpp`

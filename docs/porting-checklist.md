@@ -317,6 +317,15 @@ Linux/Windows6/6 direct consumers; Windows16 прежних Properties-sheet ski
 зафиксированы отдельно. См. [list-window audit](upstream-port-audit.md#p3-05--list-window-keyboard-opening-and-parent-2026-10-08).
 Это не полная приёмка Panel/FileManager/P3.
 
+P3-05,2026-10-08: восстановлен пропущенный IFolderCompare/CFSFolder::CompareItems
+с исходным switch, raw comment cache, packed-size и metadata phases; общий
+natural-name helper остаётся в PanelSort.cpp. Новый FileTable/CPanel regression
+падает на прежнем продукте во всех четырёх normal/flat × direction случаях.
+Mac full306/306 PASS; финальные6/6 direct consumers на macOS/Linux/Windows,
+новый suite7Qt/0fail/0skip на каждой ОС, same-source1409SHA proof. См.
+[filesystem comparator audit](upstream-port-audit.md#p3-05--source-filesystem-comparator-2026-10-08).
+Полная FileManager disposition и parent P3-05 остаются открытыми.
+
 | Готов | ID | Результат | После | Статус / evidence |
 | --- | --- | --- | --- | --- |
 | [x] | P3-01 | Reproducible baseline и проверенная update procedure | P0-01; maintained throughout | done — audit § P3-01; 192 exact/135 adapted/3 local manifest, independent disposable Git snapshot, synthetic old→new review one adapted+one exact file, `upstream_baseline` and `upstream_inventory`, `check.sh` 142/142 macOS arm64 2026-09-30; maintain manifest/audit for each later port; public remote fetch unverified offline |
