@@ -2,18 +2,21 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/SystemPage.h"
 #include "Common/MyCom.h"
+#include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QLineEdit>
 #include <QListWidget>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSettings>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <QTreeWidget>
 #include <QtTest>
 
@@ -36,6 +39,7 @@ class COptionsAssociations final : public IQtAssociationServices {
   public:
     int writes = 0;
     int notifications = 0;
+    LONG failure = 0;
     bool CanApply(unsigned) const override { return true; }
     QString UnavailableReason(unsigned) const override { return {}; }
     UString OwnIconPath() const override { return UString(L"/fixture/sevenzip"); }
@@ -46,11 +50,11 @@ class COptionsAssociations final : public IQtAssociationServices {
     LONG Add(unsigned, const UString &, const NRegistryAssoc::CShellExtInfo &, const UString &,
              const UString &, const UString &, int) override {
         ++writes;
-        return 0;
+        return failure;
     }
     LONG Delete(unsigned, const UString &, const NRegistryAssoc::CShellExtInfo &) override {
         ++writes;
-        return 0;
+        return failure;
     }
     void NotifyChanged() override { ++notifications; }
 };
@@ -94,12 +98,20 @@ class OptionsIntegrationTests final : public QObject {
     }
     void allPagesApplyCancelAndRestart_data() {
         QTest::addColumn<int>("finish");
-        QTest::newRow("cancel") << 0;
-        QTest::newRow("apply-then-cancel") << 1;
-        QTest::newRow("ok") << 2;
+        QTest::addColumn<LONG>("failure");
+        QTest::newRow("cancel") << 0 << LONG(0);
+        QTest::newRow("apply-then-cancel") << 1 << LONG(0);
+        QTest::newRow("ok") << 2 << LONG(0);
+        QTest::newRow("cancel-denied") << 0 << LONG(5);
+        QTest::newRow("apply-denied") << 1 << LONG(5);
+        QTest::newRow("ok-denied") << 2 << LONG(5);
+        QTest::newRow("apply-external-change") << 1 << LONG(1237);
+        QTest::newRow("ok-external-change") << 2 << LONG(1237);
+        QTest::newRow("denied-then-invalid-memory") << 3 << LONG(5);
     }
     void allPagesApplyCancelAndRestart() {
         QFETCH(int, finish);
+        QFETCH(LONG, failure);
         QTemporaryDir fixture;
         const QString path = fixture.filePath("options 空.ini");
         SaveRegLang(UString("-"), path);
@@ -109,7 +121,9 @@ class OptionsIntegrationTests final : public QObject {
         }
         CMyComPtr<IFolderManager> manager = new COptionsManager;
         auto associations = std::make_shared<COptionsAssociations>();
+        associations->failure = failure;
         QtFmOptionsDialog dialog(path, nullptr, manager, associations);
+        dialog.resize(finish == 1 ? QSize(520, 380) : QSize(640, 390));
         dialog.show();
         auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
         QCOMPARE(pages->currentIndex(), 0);
@@ -139,9 +153,44 @@ class OptionsIntegrationTests final : public QObject {
         auto *language = dialog.findChild<QComboBox *>("languageChoice");
         QVERIFY(language->count() > 1);
         language->setCurrentIndex(1);
+        auto *memory = dialog.findChild<QLineEdit *>("extractMemoryEdit");
+        if (finish == 3) {
+            dialog.findChild<QCheckBox *>("extractMemorySet")->setChecked(true);
+            memory->setText("not-a-number");
+        }
         QVERIFY(apply->isEnabled());
-        if (finish == 2) {
+        int errors = 0;
+        QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
+        QTimer errorDriver;
+        connect(&errorDriver, &QTimer::timeout, &dialog, [&] {
+            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            if (!box)
+                return;
+            ++errors;
+            errorIcon = box->icon();
+            const bool visible = UiInspection::fullyVisible(*box, *box);
+            const bool report = UiInspection::writeReport(
+                *box, QString("options-apply-error-%1-%2-%3").arg(failure).arg(finish).arg(errors));
+            box->accept();
+            QVERIFY(visible);
+            QVERIFY(report);
+        });
+        errorDriver.start(10);
+        if (finish >= 2) {
             dialog.accept();
+            if (finish == 3) {
+                QVERIFY(dialog.isVisible());
+                QCOMPARE(dialog.result(), int(QDialog::Rejected));
+                QCOMPARE(pages->currentIndex(), 4);
+                QCOMPARE(memory->text(), QString("not-a-number"));
+                QCOMPARE(NExtract::Read_LimitGB(path), UInt32(-1));
+                UString committedEditor;
+                ReadRegEditor(true, committedEditor, path);
+                QCOMPARE(text(committedEditor), editor);
+                memory->setText("2");
+                dialog.accept();
+                QCOMPARE(NExtract::Read_LimitGB(path), UInt32(2));
+            }
             QCOMPARE(dialog.result(), int(QDialog::Accepted));
         } else {
             if (finish == 1) {
@@ -158,8 +207,15 @@ class OptionsIntegrationTests final : public QObject {
             QCOMPARE(dialog.result(), int(QDialog::Rejected));
         }
         QCOMPARE(applied, finish == 0 ? 0 : 1);
+        QCOMPARE(errors, (finish != 0 && failure != 0 ? 1 : 0) + (finish == 3 ? 1 : 0));
+        if (errors)
+            QCOMPARE(errorIcon, QMessageBox::Critical);
         QCOMPARE(associations->writes, finish == 0 ? 0 : 1);
         QCOMPARE(associations->notifications, finish == 0 ? 0 : 1);
+        QCOMPARE(types->topLevelItem(0)->text(1),
+                 finish != 0 && failure != 0 ? QString() : QString("7-Zip"));
+        // Only source memory validation selects a different page.
+        QCOMPARE(pages->currentIndex(), finish == 3 ? 4 : 5);
         UString savedEditor;
         ReadRegEditor(true, savedEditor, path);
         QCOMPARE(text(savedEditor), finish == 0 ? QString() : editor);

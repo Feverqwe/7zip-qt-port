@@ -10,11 +10,14 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScopeGuard>
+#include <QScopedValueRollback>
 #include <QSettings>
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
+
+extern bool g_DisableUserQuestions;
 
 namespace {
 QString qtPath(const FString &path) { return QString::fromWCharArray(fs2us(path)); }
@@ -101,20 +104,25 @@ class OptionsDialogTests : public QObject {
     void sourceMemoryValidation_data() {
         QTest::addColumn<QString>("text");
         QTest::addColumn<bool>("valid");
-        QTest::newRow("empty") << QString() << false;
-        QTest::newRow("trailing") << QString("3GB") << false;
-        QTest::newRow("negative") << QString("-1") << false;
-        QTest::newRow("over-source-limit") << QString::number((1u << 30) + 1) << false;
-        QTest::newRow("zero-source-accepted") << QString("0") << true;
-        QTest::newRow("source-maximum") << QString::number(1u << 30) << true;
-        QTest::newRow("above-arrow-range") << QString("16385") << true;
+        QTest::addColumn<bool>("disabled");
+        QTest::newRow("empty") << QString() << false << false;
+        QTest::newRow("trailing") << QString("3GB") << false << false;
+        QTest::newRow("negative") << QString("-1") << false << false;
+        QTest::newRow("over-source-limit") << QString::number((1u << 30) + 1) << false << false;
+        QTest::newRow("zero-source-accepted") << QString("0") << true << false;
+        QTest::newRow("source-maximum") << QString::number(1u << 30) << true << false;
+        QTest::newRow("above-arrow-range") << QString("16385") << true << false;
+        QTest::newRow("suppressed-empty") << QString() << false << true;
     }
     void sourceMemoryValidation() {
         QFETCH(QString, text);
         QFETCH(bool, valid);
+        QFETCH(bool, disabled);
+        QScopedValueRollback<bool> questions(g_DisableUserQuestions, disabled);
         QTemporaryDir fixture;
         const QString settings = fixture.filePath("memory.ini");
         QtFmOptionsDialog dialog(settings);
+        dialog.resize(text.isEmpty() ? QSize(520, 380) : QSize(640, 390));
         dialog.show();
         auto *enabled = dialog.findChild<QCheckBox *>("extractMemorySet");
         auto *edit = dialog.findChild<QLineEdit *>("extractMemoryEdit");
@@ -123,16 +131,29 @@ class OptionsDialogTests : public QObject {
         edit->setText(text);
         dialog.findChild<QCheckBox *>("showDotsOption")->setChecked(true);
         bool errorShown = false;
+        QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
+        QString errorTitle;
         if (!valid)
             QTimer::singleShot(0, &dialog, [&] {
                 auto *error = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
                 QVERIFY(error);
                 errorShown = true;
+                errorIcon = error->icon();
+                errorTitle = error->windowTitle();
+                const bool report = UiInspection::writeReport(
+                    *error, QString("options-memory-error-%1").arg(QTest::currentDataTag()));
                 error->accept();
+                QVERIFY(report);
             });
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.isVisible(), !valid);
-        QCOMPARE(errorShown, !valid);
+        QCOMPARE(errorShown, !valid && !disabled);
+        if (errorShown) {
+            QCOMPARE(errorIcon, QMessageBox::Critical);
+#ifndef Q_OS_MAC
+            QCOMPARE(errorTitle, QString("7-Zip"));
+#endif
+        }
         QCOMPARE(NExtract::Read_LimitGB(settings), valid ? text.toUInt() : UInt32(-1));
         CFmSettings general;
         general.Load(settings);

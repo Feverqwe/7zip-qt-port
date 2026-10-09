@@ -1576,8 +1576,12 @@ Native registration is enabled only when its adjacent Windows DLL exists;
 Unix keeps applicable in-app policies while disabling Windows-only controls.
 CEditPage retains source modified-state and Browse/OnApply,
 while CSettingsPage can be embedded or shown standalone. Apply/OK commit source
-FM INI values; Cancel discards only pending changes. Source CSettingsPage owns RAM
-limit validation and capability-gated large pages; QtMemoryLimitSpin adapts only
+FM INI values; Cancel discards only pending changes.
+System association errors are presented without vetoing later pages or OK, as
+source PSNRET_NOERROR requires. Settings invalid input still vetoes acceptance
+and selects Settings. Its error uses the retained MyMessages policy.
+Source CSettingsPage owns RAM limit validation and capability-gated large pages;
+QtMemoryLimitSpin adapts only
 edit/arrows. Backend transports `-slp` to the Windows engine process. CFoldersPage
 owns NWorkDir::CInfo; source WorkDir in sevenzip_filesystem serves both FM update
 temporary files and the UpdateGUI Create working-dir block, transported via `-w`.

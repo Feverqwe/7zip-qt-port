@@ -182,7 +182,7 @@ class SystemPageTests final : public QObject {
                      ->isEnabled());
         QCOMPARE(list->topLevelItem(1)->text(1), QString("7-Zip"));
     }
-    void optionsAssociationFailureKeepsDialogOpen() {
+    void sourceAssociationFailureDoesNotVetoOptionsOk() {
         QTemporaryDir fixture;
         CMyComPtr<IFolderManager> manager = new CFixtureManager;
         auto service = std::make_shared<CFakeAssociations>();
@@ -201,7 +201,8 @@ class SystemPageTests final : public QObject {
         });
         responder.start(10);
         dialog.accept();
-        QVERIFY(dialog.isVisible());
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QVERIFY(!dialog.isVisible());
         QCOMPARE(list->topLevelItem(1)->text(1), QString());
         QCOMPARE(service->added, 1);
     }

@@ -99,13 +99,9 @@ void QtFmOptionsDialog::apply() {
     QScopedValueRollback<bool> applying(_applying, true);
     setEnabled(false);
     const auto enable = qScopeGuard([this] { setEnabled(true); });
-    _systemApplyFailed = false;
     const LONG associationError = _systemPage->OnApply();
     setEnabled(true);
     if (associationError != 0) {
-        _systemApplyFailed = true;
-        findChild<QTabWidget *>("optionsPages")->setCurrentWidget(_systemPage);
-        updateApplyButton();
         const QString message =
             associationError == 1237
                 ? QtLocalText("An association changed outside the application. Review the "
@@ -115,12 +111,13 @@ void QtFmOptionsDialog::apply() {
                 : QtLocalText("Unable to change the association (error %1).",
                               "Не удалось изменить ассоциацию (ошибка %1).")
                       .arg(associationError);
-        QMessageBox::warning(this, QtLocalText("7-Zip", "7-Zip"), message);
-        return;
+        QMessageBox::critical(this, QtLocalText("7-Zip", "7-Zip"), message);
     }
-    _editPage->OnApply();
-    _foldersPage->OnApply();
+    // Source SystemPage reports an association error and returns
+    // PSNRET_NOERROR, so the property sheet still applies the other pages.
     _menuPage->OnApply();
+    _foldersPage->OnApply();
+    _editPage->OnApply();
     if (_settingsPage->OnApply() != 0) {
         findChild<QTabWidget *>("optionsPages")->setCurrentWidget(_settingsPage);
         _settingsPage->setFocus();
@@ -160,7 +157,7 @@ void QtFmOptionsDialog::accept() {
     if (_applying)
         return;
     apply();
-    if (!_settingsPage->IsModified() && !_systemApplyFailed)
+    if (!_settingsPage->IsModified())
         QDialog::accept();
 }
 void QtFmOptionsDialog::reject() {

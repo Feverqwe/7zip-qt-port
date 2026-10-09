@@ -11,13 +11,13 @@
 #include "Panel.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtguimessages.h"
 #include "qtlangcontrols.h"
 #include "qtmemorylimitspin.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QMessageBox>
 #include <QVBoxLayout>
 
 #define kSettingsTopic "FM/options.htm#settings"
@@ -209,8 +209,7 @@ long CSettingsPage::OnApply() {
             const wchar_t *end;
             val = ConvertStringToUInt32(s.Ptr(), &end);
             if (s.IsEmpty() || *end != 0 || val > (1u << 30)) {
-                QMessageBox::warning(this, "Sevenzip Desktop",
-                                     ToQString(NWindows::NError::MyFormatMessage(E_INVALIDARG)));
+                ShowErrorMessageQt(this, NWindows::NError::MyFormatMessage(E_INVALIDARG));
                 _memSpin->setFocus();
                 return 1; // PSNRET_INVALID: keep the property sheet open.
             }

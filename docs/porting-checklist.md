@@ -140,6 +140,19 @@ are reviewed; wrapper removal preserves1417 retained inputs. See the
 Eleven slow suites excluded. Whole FileManager/native/rendered/package acceptance
 remains mandatory;43/47 and P3-03/04/05/06 remain open.
 
+P3-05,2026-10-10: complete six Options page bodies/headers/resources/callers
+are reconciled. Source association errors report once without vetoing later-page
+Apply or OK; invalid RAM retains PSNRET_INVALID, raw input and source MyMessages
+Critical/suppression policy. Actual old-product RED retained; combined errors,
+correction, Cancel and restart verified. Mac required full308/308 PASS240.96s,
+4853Qt/0fail/18 existing skips; Linux/Windows x64 Qt6.12 each10/10 PASS2.00s/
+12.72s,80/81Qt/0fail/1Windows-registry-skip on Linux only. All1418 frozen inputs
+match local/archive/both guests;1417 remain unchanged after wrapper removal.
+Forty current page/error JSON per OS inspected. See the
+[source receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
+Eleven slow suites excluded. Whole FileManager/native/rendered/package acceptance
+remains mandatory;43/47 and P3-03/04/05/06 remain open.
+
 ## Рабочие итерации после укрупнения (2026-09-29)
 
 Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).

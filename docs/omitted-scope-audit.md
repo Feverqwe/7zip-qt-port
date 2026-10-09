@@ -116,6 +116,31 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+### Six Options pages and Apply error policy, 2026-10-10
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete SettingsPage, FoldersPage,
+EditPage, MenuPage, SystemPage and LangPage `.cpp/.h`, desktop `.rc` and shared
+`*Page2.rc` resources, OptionsDialog.cpp, Windows/Control/PropertyPage.cpp/.h and
+Explorer/MyMessages.cpp/.h. This review covers the six page owners, not the whole
+FileManager family or rendered/native OS acceptance.
+
+| Source body/dependency | Disposition |
+| --- | --- |
+| Settings initialization, seven flags, RAM rounding/range, raw UInt32 validation and changed flags | Retained source state and calculation; Qt controls project native notifications. Large-page privilege belongs to the external engine process via `-slp`; original Common/ArchiveCommandLine enables it there. Invalid RAM uses the retained MyMessages error/question policy and remains PSNRET_INVALID. |
+| Folders mode order, enable controls, Browse, GetWorkDir and Apply | Retained source NWorkDir::CInfo, validated mode, original path and modified state. Qt replaces Browse controls; source WorkDir owns actual temporary paths. Removable-drive detection remains the source Windows branch; POSIX preserves its disabled value. |
+| Edit control records, init/change/apply and Edit_BrowseForFile | Retained three source Viewer/Editor/Diff records and SplitCmdLineSmart/Trim; Browse replaces the program and discards parameters as upstream. Qt supplies file-picker filters on each OS. |
+| Menu shell discovery, reverse registration/requery, menu flags/BoolPairs, Zone, item text and events | Retained source order and algorithms behind typed module/registry services. Qt replaces list/combo notifications. Adjacent Windows DLL and bitness determine shell availability; applicable in-app policies remain usable on Unix. |
+| System SetState/GetString, icon choice, mixed-selection cycle, Apply rollback/first error, mouse/key dispatch | Source state algorithms remain authoritative. Native services own registration/revision/alias/consent boundaries; Qt owns list/icons. Association failure is reported once and does not veto the property sheet, matching source PSNRET_NOERROR; later pages still apply. |
+| Lang list ordering/locale marks, enumeration, missing/extra merge, metadata limits, selection and Apply | Retained source strings/vectors/parser and algorithms; POSIX enumeration uses the original portable NFind API. Qt replaces combo/static report with a read-only scrollable presentation and sends language-change notifications. |
+| Headers/resources/callers | All active fields/controls have source or narrow Qt owners. Options applies System/Menu/Folders/Edit/Settings/Language; Settings invalid alone blocks this sequence. MainWindow uses source SetListSettings/RefreshAllPanels. RegistryUtils/ZipRegistry, WorkDir, LangUtils/HelpUtils and native services retain their separate authoritative modules. |
+| Omitted branches | Commented underline/alternate memory UI, old language sort-order assignments and unused editor-parameter reconstruction remain inactive. WinCE compact pages, ANSI/legacy SDK dispatch and native property-sheet handles are outside the selected desktop Qt presentation; no active desktop page algorithm is omitted. |
+
+Qt message boxes retain native sizing/button order; macOS hides their supplied
+title. Source captions remain `7-Zip` on systems that display a title. Current
+checks and platform limits belong to the
+[receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
+
 ### Agent opening/factory body and caller review, 2026-10-07
 
 The original Agent::Open and ArchiveFolderOpen::OpenFolderFile active bodies are

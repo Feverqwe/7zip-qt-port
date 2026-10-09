@@ -1,5 +1,60 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — six Options pages and Apply errors (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete six page bodies, headers,
+desktop resources, OptionsDialog and PropertyPage dispatch, MyMessages, current
+Qt callers and native service/types were reviewed. Exact body/dependency/omission
+disposition is in the [page map](omitted-scope-audit.md#six-options-pages-and-apply-error-policy-2026-10-10).
+Existing portable source language, module paths and authoritative state owners
+are preserved; no upstream edits or new settings/association algorithm.
+Nine complete portable helper bodies have equal normalized tokens: System
+GetString/SetState/GetIconIndex, language Compare/NativeLangString/two metadata
+formatters and menu LoadLang_Spec/Clear_MenuChanged. Other page bodies have the
+explicit control/service adaptations in the map; this is not a whole-file
+token-equality claim. Baseline408exact/196adapted/3local verifies.
+
+The review found an independent Qt property-sheet veto: a System association
+error prevented Menu/Folders/Edit/Settings/Language from applying and prevented
+OK from closing. Source SystemPage reports its first error but returns
+PSNRET_NOERROR. The Qt error return remains a presentation transport, while the
+container now continues in original page order. Native per-row rollback, stale
+revision rejection, aliases, user consent and reentrant guards remain intact.
+Settings invalid RAM retains its source PSNRET_INVALID veto and raw input.
+Its former Warning/Sevenzip Desktop message now uses the already ported source
+MyMessages helper, retaining Critical/7-Zip and suppression of user questions.
+
+Actual old-product RED: four all-six Apply/OK cases fail, and four RAM validation
+cases display Warning rather than Critical. The suppression case also reproduced
+an unwanted dialog. Intermediate macOS title assertions were corrected because
+Qt hides QMessageBox titles there; this is an OS presentation adaptation, not a
+relaxed Windows/Linux caption contract.
+
+Existing all-six Apply/Cancel/OK/restart consumers now also inject errors5/1237,
+verify one source error, failed association rollback, later-page persistence,
+unrelated values and no forced tab switch. The combined association-error/invalid
+RAM case verifies partial earlier-page Apply, PSNRET_INVALID/focus and successful
+correction. Cancel has no registration/write side effect. Direct source
+Settings/Menu/System/Language, native service and two-panel consumers remain.
+Ten focused macOS suites pass2.19s,80Qt/0fail/1 existing Windows-only registry skip.
+Thirty current page reports and ten error reports have no clipped named visible
+controls or truncated labels. No rendered Windows pixel parity is claimed.
+
+Linux/Windows x64 Qt6.12 each pass10/10 direct consumers in2.00s/12.72s:
+80Qt/0fail/1 existing Windows-only registry skip on Linux and81Qt/0fail/0skip
+on Windows. Forty current page/error JSON reports on each guest have no clipped
+named visible controls or truncated labels. All1418 frozen code/test/build inputs
+match local, source.tar and both actual guest trees at snapshot
+`20261009T233012Z-88e089e3`, source.tar SHA256
+`d89aa390187900f709a224e21a85da08abb8ba37d20e341c6247b9c51a3107be`.
+Evidence: build/review/filemanager-final/options-*; no live OS registration.
+Required unsandboxed macOS arm64 Qt6.12 gate passes formatting/all-target build
+and308/308 CTest in240.96s,4853Qt/0fail/18 existing platform skips. Temporary
+runner wrapper is archived/removed; all1417 retained frozen inputs are unchanged.
+Eleven slow suites remain excluded. Whole FileManager/native/rendered/package
+acceptance and P3-03/04/05/06 remain mandatory.
+
 ## P3-05 — source Rename activation scenario (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

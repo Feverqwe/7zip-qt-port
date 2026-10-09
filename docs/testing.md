@@ -1,5 +1,13 @@
 # Regression strategy
 
+The all-six-page `options_integration` workflow includes denied/stale association
+Apply and OK, source rollback, later-page persistence, Cancel/restart and a
+combined association error followed by invalid RAM and successful correction.
+`options_dialog` checks source Critical error presentation and suppression through
+MyMessages while preserving PSNRET_INVALID/raw input. `system_page` retains the
+direct source-state/service regressions. Current source/page dispositions and
+checks are in the [receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
+
 `panel_rename_state` also covers source Rename activation with a focused item
 distinct from operated marks: eight bounded both-pane/table-icon/normal-alternative
 rows check editor text, Escape, reactivation, successful rename and exact peer

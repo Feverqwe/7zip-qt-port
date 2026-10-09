@@ -1,5 +1,16 @@
 # Сверка с Windows 7zFM
 
+## Options: ошибки Apply (P3-05, 2026-10-10)
+
+Ошибка ассоциации на странице System показывается один раз, затем остальные
+страницы сохраняются в исходном порядке. Она не блокирует OK и не переключает
+вкладку. Невалидный лимит RAM сохраняет исходный PSNRET_INVALID: Options остаётся
+открытым на Settings с введённым значением. Ошибка RAM использует исходный
+MyMessages, включая подавление вопросов, Critical и заголовок «7-Zip».
+Qt на macOS скрывает заголовок QMessageBox; размеры и порядок кнопок задаёт ОС.
+Source/disposition/checks — в
+[receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
+
 ## Source Rename activation (P3-05, 2026-10-10)
 
 F2/Rename редактирует строку с фокусом, независимо от количества выбранных

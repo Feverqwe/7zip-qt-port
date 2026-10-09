@@ -23,7 +23,6 @@ class QtFmOptionsDialog final : public QDialog {
     CLangPage *_langPage = nullptr;
     CSystemPage *_systemPage;
     bool _applying = false;
-    bool _systemApplyFailed = false;
     QDialogButtonBox *_buttons;
     void updateApplyButton();
     void changeEvent(QEvent *event) override;

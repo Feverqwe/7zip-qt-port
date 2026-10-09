@@ -1356,6 +1356,15 @@ Windows parity.
 
 ## File list settings
 
+Options applies pages in source System/Menu/Folders/Edit/Settings/Language order.
+An association error shows one Critical message without changing the current tab
+or vetoing OK/later pages. Invalid RAM selects Settings and keeps its raw input;
+earlier page values may already be committed, as in the source property sheet.
+MyMessages suppresses that error when user questions are disabled. Message-box
+titles are native-hidden on macOS and retain `7-Zip` on Windows/Linux.
+`options_integration` and `options_dialog` produce current normal/compact-owner
+error reports; inspect every visible message label/button for fit and clipping.
+
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/SettingsPage2.rc` and `SettingsPage.cpp`.
 The Qt page follows the resource order: Show `..`, real file icons, full-row
