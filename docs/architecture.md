@@ -1842,6 +1842,13 @@ MainWindow does not independently choose an operated item for Rename. The source
 begin-edit guard rejects parent/read-only targets. Existing OnEndLabelEdit and
 queued reload publication retain rename validation, operation and selection state.
 
+`PanelSelect.cpp` owns the complete mask-dialog lifecycle and original selection
+loops. MainWindow admits selection commands and synchronizes/projects Qt state;
+it does not construct a separate mask dialog. The explicit-mask integration
+entry and source SelectSpec(bool) share one wildcard loop. QtPanelList supplies
+focus, selected state, alternative mark roles and post-movement notification
+timing. See the [complete source disposition](omitted-scope-audit.md#panelselect-complete-bodycaller-disposition-2026-10-10).
+
 `PanelSplitFile.cpp` owns CApp::Split/Combine, source selection/default peer
 destination, confirmation, destination preparation, contiguous part discovery,
 naming/summary and native CThreadSplit/Combine transfer loops/preallocation.

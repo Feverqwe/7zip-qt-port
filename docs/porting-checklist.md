@@ -64,6 +64,19 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05,2026-10-10: complete PanelSelect body/caller disposition and source
+Select/Deselect dialog lifecycle are reconciled with one wildcard algorithm.
+Eight bounded both-pane EN/RU standard/alternative consumers cover Cancel,
+mask/type/All/Invert, inactive owning-panel dispatch, provider/peer/focus and
+protected bytes. Required isolated macOS gate309/309 PASS216.07s,
+4856Qt/0fail/18 existing skips; two earlier full-gate failures and unchanged
+focused retries are retained. Linux/Windows x64 Qt6.12 each8/8 PASS10.43s/49.96s,
+114Qt/0fail/0skip;1419 frozen archive/local/actual-guest input hashes exact,
+1418 retained after temporary wrapper removal;96 current Combo JSON reviewed.
+Scope, provenance and limitations: [source receipt](upstream-port-audit.md#p3-05--source-selection-command-lifecycle-2026-10-10).
+Eleven slow suites excluded. Whole FileManager/native/rendered/package/final
+acceptance remains open;43/47 and P3-03/04/05/06 are unchanged.
+
 `todo` — ещё не выполнен; `active` — текущая работа с owner/date;
 `partial` — завершён подшаг, осталась обязательная часть;
 `blocked` — указан конкретный prerequisite/ограничение;

@@ -11,6 +11,16 @@ Qt на macOS скрывает заголовок QMessageBox; размеры и
 Source/disposition/checks — в
 [receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
 
+## Source selection commands (P3-05, 2026-10-10)
+
+Select/Deselect по маске проходит полный CPanel::SelectSpec: исходные заголовки,
+prompt, начальная `*`, отмена и применение маски. Qt отображает общий Combo;
+MainWindow больше не содержит отдельного сценария диалога. Правила wildcard,
+выделения по типу, All/Invert и alternative marks остаются исходными.
+Проверены владельцы обеих панелей и неизменность файлов; source scope и проверки
+описаны в [receipt](upstream-port-audit.md#p3-05--source-selection-command-lifecycle-2026-10-10).
+Rendered Windows parity остаётся отдельной проверкой.
+
 ## Source Rename activation (P3-05, 2026-10-10)
 
 F2/Rename редактирует строку с фокусом, независимо от количества выбранных

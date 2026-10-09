@@ -55,6 +55,71 @@ runner wrapper is archived/removed; all1417 retained frozen inputs are unchanged
 Eleven slow suites remain excluded. Whole FileManager/native/rendered/package
 acceptance and P3-03/04/05/06 remain mandatory.
 
+## P3-05 — source selection command lifecycle (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete original/current
+PanelSelect.cpp bodies, Panel.h declarations, original App.h selection callers,
+MyLoadMenu command/status dispatch, source App::SetListSettings and Create's
+single-selection style, current command availability, Qt selection binding,
+MainWindow selection consumers and ComboDialog.cpp/h/rc.
+
+Restored complete CPanel::SelectSpec(bool) ownership of the source title/prompt,
+default `*`, Cancel return and mask application. CComboDialog construction/exec
+and text conversion are the Qt presentation boundary. The existing explicit-mask
+entry shares the original wildcard loop; there is one matching algorithm.
+MainWindow retains state admission, Qt selection synchronization and action
+projection, without constructing a separate mask dialog. Existing user-facing
+mask behavior is preserved; this is source-owner reconciliation.
+
+The complete remaining PanelSelect disposition is in
+[omitted scope](omitted-scope-audit.md#panelselect-complete-bodycaller-disposition-2026-10-10).
+Source shift-range, Insert, mouse range/control marks, type/extension, All,
+Invert and KillSelection bodies retain their original index/mark rules.
+Qt adapts notification timing, model-role mark painting and single-selection
+control state. Initial prepopulated models need bounded mark-vector sizing;
+ordinary source load still owns its vector initialization. The extra parent
+guard in SelectByType avoids querying a provider with the synthetic parent
+index; command availability also requires a real focused item. Commented
+legacy Up/Down and single-selected-item inversion branches remain inactive.
+
+New source_selection has eight bounded both-pane EN/RU standard/alternative
+consumers. Public commands cover mask Cancel/select/deselect, type selection,
+All/Invert, preserved focus and exact protected file bytes. A direct call on
+the inactive owning CPanel checks that its dialog applies only to that provider.
+Peer/provider identity and absence of archive backend requests are checked.
+Thirty-two current 360×150/260×150 Combo reports reuse the shared contract.
+Existing panel_selection, ui_state and flat_view retain wildcard, parent,
+mark transitions and archive/flat-name consumers. Focused five suites pass
+on macOS in3.05s. Fresh Linux/Windows x64 Qt6.12 each pass eight bounded direct
+consumers,10.43s/49.96s,114Qt/0fail/0skip each. Snapshot
+`20261009T231856Z-93b4a7db`, SHA256
+`75cf352dc2645e45000a03cac7098c30445225ea802459347acd6d72b25d1ba6`:
+all1419 frozen source/test/build/resource/script input hashes match the archive,
+isolated local tree and actual guests. Each guest supplies32 current Combo JSON
+reports without clipped visible controls. No rendered Windows comparison is
+claimed. The temporary task wrapper is archived and removed; all1418 retained
+inputs still match the frozen manifest.
+
+The first required macOS full gate passed308/309 in265.57s, with one existing
+large_list_window disk-normal heartbeat gap268ms at4096 rows (limit250ms).
+Its unchanged focused retry passes6.13s. The isolated full gate passed308/309
+in279.40s, with an existing temp_cleanup timeout30.02s; a verbose direct run
+passes all11Qt cases and the unchanged wrapper retry passes0.32s. These failures
+are retained; their intermittent causes are not established. Thresholds and
+suite membership are unchanged. The unchanged isolated required unsandboxed
+formatting/all-target/default gate passes309/309 in216.07s,4856Qt/0fail/18 existing
+skips. Its32 current macOS
+Combo reports likewise have no clipped visible controls or truncated labels;
+96 reports across the three operating systems satisfy the shared contract.
+After the concurrent Options change was separately committed as82fb9a,
+the combined primary tree builds both affected consumers and passes
+source_selection/options_integration2/2 in1.15s,22Qt/0fail/0skip. The frozen
+full/platform receipt above remains explicitly based on97ec89b plus this
+Selection change, excluding the independently accepted Options component.
+Pinned baseline verifies408exact/196adapted/3local. Whole FileManager/P3
+acceptance remains open. Eleven slow suites excluded.
+
 ## P3-05 — source Rename activation scenario (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

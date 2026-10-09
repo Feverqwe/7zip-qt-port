@@ -3,6 +3,9 @@
 // Copyright (C) 1999-2026 Igor Pavlov. GNU LGPL 2.1 or later.
 
 #include "../../../Common/Wildcard.h"
+#include "7zip/UI/FileManager/resource.h"
+#include "ComboDialog.h"
+#include "LangUtils.h"
 #include "Panel.h"
 
 static const UInt32 kParentIndex = (UInt32)-1;
@@ -183,7 +186,17 @@ void CPanel::OnLeftClick(int indexInList, Qt::KeyboardModifiers modifiers) {
     UpdateSelection();
 }
 
-// The Qt caller owns the CComboDialog; the source mask loop remains in CPanel.
+void CPanel::SelectSpec(bool selectMode) {
+    const UInt32 titleID = selectMode ? IDS_SELECT : IDS_DESELECT;
+    CComboDialog dlg(ToQString(LangString(titleID)), ToQString(LangString(IDS_SELECT_MASK)),
+                     QStringLiteral("*"), GetParent());
+    dlg.BindLanguage(titleID, IDS_SELECT_MASK);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    SelectSpec(ToUString(dlg.Value), selectMode);
+}
+
+// The explicit-mask integration entry shares the original source loop.
 void CPanel::SelectSpec(const UString &mask, bool selectMode) {
     FOR_VECTOR(i, _selectedStatusVector)
     if (DoesWildcardMatchName(mask, GetItemName(i)))

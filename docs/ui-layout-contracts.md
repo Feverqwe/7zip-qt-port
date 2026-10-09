@@ -1558,6 +1558,10 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
   Initial Value remains visible after populating ordered Strings.
 - Folder/file creation uses source title, prompt and default-name language IDs;
   selection masks use the same view with their own prompts.
+- CPanel::SelectSpec owns the Select/Deselect titles, mask prompt, initial `*`
+  and Cancel return. `source_selection` checks both languages/panes and standard/
+  alternative marks, with32 current360×150/260×150 Combo reports. The same
+  source owner handles an inactive-pane direct call without changing its peer.
 - OnOK preserves raw text, including spaces and an empty value. Validation
   belongs to the calling operation. Cancel leaves the public Value unchanged.
 - `combo_dialog` checks folder/file/mask views at 360×150 and 260×150:

@@ -8,6 +8,14 @@ MyMessages while preserving PSNRET_INVALID/raw input. `system_page` retains the
 direct source-state/service regressions. Current source/page dispositions and
 checks are in the [receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
 
+`source_selection` covers eight bounded both-pane EN/RU standard/alternative
+consumers of source mask dialogs, Cancel, type selection, All/Invert and an
+inactive owning-panel call. It verifies exact source titles/default mask,
+focus/marks, provider and peer identity, protected bytes and no archive requests.
+Thirty-two normal/compact Combo reports reuse the shared layout contract;
+panel_selection/ui_state/flat_view retain source wildcard and archive consumers.
+See the [source receipt](upstream-port-audit.md#p3-05--source-selection-command-lifecycle-2026-10-10).
+
 `panel_rename_state` also covers source Rename activation with a focused item
 distinct from operated marks: eight bounded both-pane/table-icon/normal-alternative
 rows check editor text, Escape, reactivation, successful rename and exact peer

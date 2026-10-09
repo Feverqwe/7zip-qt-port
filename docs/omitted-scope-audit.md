@@ -141,6 +141,26 @@ title. Source captions remain `7-Zip` on systems that display a title. Current
 checks and platform limits belong to the
 [receipt](upstream-port-audit.md#p3-05--six-options-pages-and-apply-errors-2026-10-10).
 
+### PanelSelect complete body/caller disposition, 2026-10-10
+
+Complete original/current PanelSelect.cpp and Panel.h command declarations were
+compared with source App.h, MyLoadMenu dispatch/status, App::SetListSettings,
+Create's LVS_SINGLESEL, QtPanelList and the MainWindow selection consumers.
+The [source receipt](upstream-port-audit.md#p3-05--source-selection-command-lifecycle-2026-10-10)
+owns current validation and provenance.
+
+| Body family | Authoritative implementation and adaptation |
+| --- | --- |
+| OnShiftSelectMessage, OnArrowWithShift | Original range/previous-focus/select-mark walk remains. Qt dispatches the post-movement phase after its view moves focus instead of posting the native custom message, and projects changed marks into model roles. |
+| OnInsert, OnLeftClick, UpdateSelection | Original index, parent exclusion, toggle, next focus and Shift/Control range rules remain. Qt uses selected/marked model state and invalidation rather than ListView state/custom drawing. It explicitly restores single focus in alternative mode. |
+| SelectSpec, SelectByType | Complete mask-dialog lifecycle now belongs to CPanel; the explicit-mask entry shares the original wildcard loop. Type/extension and no-extension loops remain source code. Qt refuses its synthetic parent index before querying provider properties. |
+| SelectAll, InvertSelection, KillSelection | Original mark-vector loops and final UpdateSelection remain. Commented legacy single-selected-item inversion and refocusing after KillSelection remain omitted inactive branches. |
+| EnsureSelectionVectorSize, SetAlternativeSelection, BeginShiftSelection, IsItemMarked | Narrow Qt integration for prepopulated models, live QAbstractItemView selection-mode changes, key-event phase capture and public mark roles. Source load/OnItemChanged remain authoritative mark initialization/update; native LVS_SINGLESEL/GetStyle/SetStyle are control services. No alternate wildcard or selection algorithm is added. |
+| Dependencies and inactive platform scope | Source UString/CRecordVector, Wildcard, language IDs, CComboDialog, source focus/index/mark state and QtPanelList remain shared. Old CE modifier suppression, Win32 notification structs/PostMsg/RedrawItem and commented Up/Down handlers are not separate desktop workflows. |
+
+This maps the complete PanelSelect source scope; whole FileManager/native/
+rendered/final acceptance remains separate.
+
 ### Agent opening/factory body and caller review, 2026-10-07
 
 The original Agent::Open and ArchiveFolderOpen::OpenFolderFile active bodies are

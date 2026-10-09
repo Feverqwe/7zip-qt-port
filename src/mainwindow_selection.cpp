@@ -1,6 +1,4 @@
-#include "7zip/UI/FileManager/resource.h"
 #include "mainwindow.h"
-#include "qtlangcontrols.h"
 
 void MainWindow::completeListSelection() {
     if (scanSelectedState_)
@@ -29,15 +27,10 @@ void MainWindow::handleSelectionClick(int row) {
 void MainWindow::SelectSpec(bool selectMode) {
     if (state_ != State::Filesystem && state_ != State::Viewing && state_ != State::Namespace)
         return;
-    const UInt32 titleID = selectMode ? IDS_SELECT : IDS_DESELECT;
-    ComboDialog dialog(QtLangText(titleID), QtLangText(IDS_SELECT_MASK), "*", this);
-    dialog.BindLanguage(titleID, IDS_SELECT_MASK);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
     CPanel &panel = app_.GetFocusedPanel();
     CSelectedState selected;
     panel.SaveSelectedState(selected);
-    panel.SelectSpec(ToUString(dialog.value()), selectMode);
+    panel.SelectSpec(selectMode);
     refreshActions();
 }
 
