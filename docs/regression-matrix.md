@@ -14,6 +14,7 @@ production access is added for this matrix.
 
 | Package / scenario | Functional owner and integration boundary | CTest consumers |
 | --- | --- | --- |
+| P3-05 source Create File/Folder | CPanel owns complete dialog/validation/operation/refresh and first-component focus; alternative marks, collision, Cancel and deferred-scan guards | `source_create`, `large_list_window`, `ui_operations`, `panel_key`, `alt_streams_command` |
 | P3-05 source Split/Combine | CApp selection/peer destination and native plans; UInt64/Trim, contiguous prefix/empty parts, NIO/preallocation, progress and joined transactional failure/cancel | `volume_dialog`, `volume_workflow`, `volume_operations`, `combine_names`, `worker_window_progress` |
 | P3-05 filesystem comparator/cache | Source CFSFolder::CompareItems and IFolderCompare binding; actual FileTable/CPanel sorting, raw versus visible comments, metadata failure/cache/reload, selection and bytes | `panel_filesystem_sort`, `fs_folder`, `panel_sort`, `panel_archive_sort`, `panel_column_sort`, `filesystem_reload` |
 | P3-05 compression method/control states | Source method IDs, Copy/unknown dictionary, empty/Auto controls, TAR memory visibility; Store success/failure/Cancel and exact bytes | `compression_method_state`, `compression_profile_selection`, `source_compress_dialog`, `codec_creation_ui` |

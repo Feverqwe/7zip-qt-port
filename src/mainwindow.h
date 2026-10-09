@@ -210,8 +210,6 @@ class MainWindow : public QMainWindow {
     void pollAutoRefresh();
     void restoreAutoRefreshViewport();
     FilesystemSignature filesystemSignature(const QString &path) const;
-    void createFolder();
-    void createFile();
     void SelectAll(bool select);
     void InvertSelection();
     void SelectSpec(bool select);

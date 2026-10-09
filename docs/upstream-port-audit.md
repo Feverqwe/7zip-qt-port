@@ -1,5 +1,63 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source Create File/Folder scenario (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete original/current
+PanelOperations.cpp CreateFile/CreateFolder and worker bodies, Panel.h,
+Panel.cpp error helpers, BrowseDialog::Dlg_CreateFolder, ComboDialog.cpp/h/rc,
+App/MyLoadMenu dispatch and current window consumers. Dependencies are source
+IFolderOperations, CSelectedState/RefreshListCtrl, CorrectFsPath, UString,
+language IDs and CThreadFolderOperations/CUpdateCallback100Imp.
+
+Restored original workflow bodies in PanelOperations.cpp: hash/update guards,
+timer/notify scopes, pre-dialog selection snapshot, source validation/error
+policy, first path component focus and alternative selection marks. CreateFolder
+still refreshes after operation failure; CreateFile returns before refresh on
+failure and directly calls IFolderOperations::CreateFile as upstream. Removed
+the extra CreateFile worker branch and independent MainWindow workflow/error/
+selection logic. Qt command services now call the source owners directly.
+Qt adapts Combo dialog construction/exec, strings at that presentation boundary,
+captioned error presentation and the existing source reload callback. No new
+filesystem creation algorithm, archive engine path or upstream edits.
+
+The first full gate exposed a related deferred-folder failure: native Create's
+synchronous notification guard spans RefreshListCtrl, while Qt starts a scan
+that outlives that call. Its retained guard captured the temporary disabled
+state and restored it after completion, leaving callback text blank. Original
+upstream refresh is synchronous, so it has no usable asynchronous handoff.
+QtAppOperationState now adopts the restored source state after the complete
+Create call and keeps callbacks disabled until scan completion. Only the owning
+panel's scan guard changes; source bodies remain equal. Two bounded deferred
+consumers assert processing state during/after scan, focused text and input bytes.
+
+Both complete workflow bodies have equal normalized tokens after explicit Qt
+dialog-boundary substitutions. Old-product evidence retains wrong English
+CreateFile title and lost nested-creation focus. Focused source_create exercises
+both commands/panes/languages, standard/alternative selection, normal/flat
+navigation, nested Unicode/spaces, Cancel, collision/no-overwrite bytes and
+different failure-refresh policy. The existing broad ui_state CreateFile test
+moves to this focused component; panel_key retains direct Shift+F4 consumers
+and ui_operations retains real archive CreateFolder consumers. All48 current
+normal/compact Combo JSON reports have no clipped visible named controls.
+Rendered Windows parity is not established by these reports.
+
+Initial full macOS gate306/307 PASS242.06s; the large_list_window failure is
+retained as regression evidence. Its fix passes8focused suites11.40s,
+159Qt/0fail/0skip, and the repeated required unsandboxed macOS Qt6.12
+formatting/all-target/default gate307/307 PASS248.66s,
+4804Qt/0fail/18 existing platform skips. Baseline408exact/196adapted/3local PASS.
+Final Linux/Windows x64 Qt6.12 snapshot `20261009T221232Z-0f4a78e6`, source.tar
+SHA256 `53be71b334674eda59cd45297745a50cfe7a6d5cd2e6ff7aa2460b44c9a7aeb7`:
+each8/8 PASS25.71s/112.83s,159/162Qt with0fail/0skip. source_create has32Qt
+results with0fail/0skip on all three OSes. All1417 frozen source/test/build/
+resource/script inputs match local files, archive and both actual guest trees;
+1416 retained inputs remain unchanged after removing the temporary wrapper.
+The earlier7-suite guest snapshot predates the deferred guard fix and is not
+final evidence. Eleven slow suites excluded; no agent cleanup or disk changes.
+This accepts the integrated Create scenario. Remaining FileManager disposition,
+native/rendered/package scope and whole P3 acceptance stay open.
+
 ## P3-05 — complete source Split/Combine scenario (2026-10-08)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

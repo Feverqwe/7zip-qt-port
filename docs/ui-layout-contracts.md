@@ -1525,13 +1525,19 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 
 - The prompt precedes one editable combo, with OK/Cancel at the bottom.
   Initial Value remains visible after populating ordered Strings.
-- Folder creation uses the shared dialog and default "Новая папка";
-  file creation and selection masks use the same view with their own prompts.
+- Folder/file creation uses source title, prompt and default-name language IDs;
+  selection masks use the same view with their own prompts.
 - OnOK preserves raw text, including spaces and an empty value. Validation
   belongs to the calling operation. Cancel leaves the public Value unchanged.
 - `combo_dialog` checks folder/file/mask views at 360×150 and 260×150:
   fitted prompt, reachable combo/footer, control order and separate buttons.
   JSON reports accompany the checks; screenshots remain optional.
+- `source_create` exercises actual CreateFolder/CreateFile callers in both
+  panes/languages and normal/flat views. Forty-eight current 360×150/260×150
+  reports reuse this contract; creation keeps the source first-component focus,
+  alternative marks and distinct failure-refresh policy. Cancel preserves the
+  pre-dialog state. Source provenance and checks are in the
+  [receipt](upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
 - ZIP comment uses source `PanelOperations.cpp::ChangeComment` with the focused
   item name and localized Comment in its title, localized IDS_COMMENT2 prompt
   and the existing raw property value. `native_comment_ui` checks EN/RU at the

@@ -69,58 +69,6 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(action(window, "sort4Action")->isChecked());
     }
 
-    void createFileDialogCreatesUnicodeFileAndCancelLeavesDirectoryUntouched() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        ControlledBackend backend;
-        MainWindow window(&backend);
-        auto *address = window.findChild<QLineEdit *>("archivePath");
-        address->setText(temp.path());
-        QTest::keyClick(address, Qt::Key_Return);
-        const QString name = QStringLiteral("новый файл.txt");
-        QTimer::singleShot(0, [&] {
-            auto *dialog = window.findChild<QDialog *>("comboDialog");
-            QVERIFY(dialog);
-            dialog->findChild<QComboBox *>("comboValue")->setEditText(name);
-            dialog->accept();
-        });
-        action(window, "createFileAction")->trigger();
-        QVERIFY(QFileInfo::exists(temp.filePath(name)));
-        QCOMPARE(filesystemRow(window, name) >= 0, true);
-        QCOMPARE(table(window)->selectionModel()->selectedRows().size(), 1);
-        {
-            QFile existing(temp.filePath(name));
-            QVERIFY(existing.open(QIODevice::WriteOnly));
-            QCOMPARE(existing.write("protected"), 9);
-        }
-        QTimer::singleShot(0, [&] {
-            auto *dialog = window.findChild<QDialog *>("comboDialog");
-            QVERIFY(dialog);
-            dialog->findChild<QComboBox *>("comboValue")->setEditText("cancelled.txt");
-            dialog->reject();
-        });
-        action(window, "createFileAction")->trigger();
-        QVERIFY(!QFileInfo::exists(temp.filePath("cancelled.txt")));
-        QTimer warningTimer;
-        connect(&warningTimer, &QTimer::timeout, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets())
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible())
-                    box->accept();
-        });
-        warningTimer.start(1);
-        QTimer::singleShot(0, [&] {
-            auto *dialog = window.findChild<QDialog *>("comboDialog");
-            QVERIFY(dialog);
-            dialog->findChild<QComboBox *>("comboValue")->setEditText(name);
-            dialog->accept();
-        });
-        action(window, "createFileAction")->trigger();
-        warningTimer.stop();
-        QFile existing(temp.filePath(name));
-        QVERIFY(existing.open(QIODevice::ReadOnly));
-        QCOMPARE(existing.readAll(), QByteArray("protected"));
-    }
-
     void maskAndTypeSelectionFollowFileManager() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

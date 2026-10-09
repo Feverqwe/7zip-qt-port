@@ -1,5 +1,15 @@
 # Regression strategy
 
+`source_create` owns the moved CreateFile regression from ui_state and the
+source CreateFile/CreateFolder workflow consumers. It covers both panes and
+languages, standard/alternative marks, normal/flat nested paths, Cancel,
+collision/no-overwrite bytes and the source's different failure-refresh policy.
+Its bounded30 rows run in the default gate, including two deferred scans;
+normal/compact Combo reports reuse
+the existing layout contract. panel_key retains Shift+F4 and ui_operations
+retains real archive folder creation. Platform evidence belongs to the
+[source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+
 Start with the scenario-to-suite [regression matrix](regression-matrix.md),
 then find the affected suite name in this catalog. General coverage guidance
 is under [What to test](#what-to-test); geometry/report guidance is under

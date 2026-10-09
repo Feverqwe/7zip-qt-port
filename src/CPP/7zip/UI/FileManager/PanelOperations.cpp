@@ -33,7 +33,6 @@ enum EFolderOpType {
     FOLDER_TYPE_CREATE_FOLDER = 0,
     FOLDER_TYPE_DELETE = 1,
     FOLDER_TYPE_RENAME = 2,
-    FOLDER_TYPE_CREATE_FILE = 3, // Source CreateFile calls IFolderOperations directly.
     FOLDER_TYPE_COMMENT = 4
 };
 
@@ -64,8 +63,6 @@ HRESULT CThreadFolderOperations::ProcessVirt() {
         return FolderOperations->Delete(Indices.ConstData(), Indices.Size(), UpdateCallback);
     case FOLDER_TYPE_RENAME:
         return FolderOperations->Rename(Index, Name, UpdateCallback);
-    case FOLDER_TYPE_CREATE_FILE:
-        return FolderOperations->CreateFile(Name, UpdateCallback);
     case FOLDER_TYPE_COMMENT: {
         NWindows::NCOM::CPropVariant value(Name);
         return FolderOperations->SetProperty(Index, kpidComment, &value, UpdateCallback);
@@ -185,46 +182,92 @@ bool CPanel::CorrectFsPath(const UString &path2, UString &result) {
     return ::CorrectFsPath(GetFsPath(), path2, result);
 }
 
-HRESULT CPanel::CreateFolder(const UString &enteredName, UString &createdName) {
+void CPanel::CreateFolder() {
+    if (IsHashFolder())
+        return;
     if (!CheckBeforeUpdate(IDS_CREATE_FOLDER_ERROR))
-        return E_ABORT;
-    if (!IsCorrectFsName(enteredName))
-        return E_INVALIDARG;
-    UString newName = enteredName;
+        return;
+    CDisableTimerProcessing disableTimerProcessing2(*this);
+    CSelectedState state;
+    SaveSelectedState(state);
+    QString enteredName;
+    if (!Dlg_CreateFolder(GetParent(), enteredName))
+        return;
+    UString newName = ToUString(enteredName);
+    if (!IsCorrectFsName(newName)) {
+        MessageBox_Error_HRESULT(E_INVALIDARG);
+        return;
+    }
     if (IsFSFolder()) {
         UString correctName;
-        if (!CorrectFsPath(newName, correctName))
-            return E_INVALIDARG;
+        if (!CorrectFsPath(newName, correctName)) {
+            MessageBox_Error_HRESULT(E_INVALIDARG);
+            return;
+        }
         newName = correctName;
     }
-    CThreadFolderOperations op(FOLDER_TYPE_CREATE_FOLDER);
-    op.FolderOperations = _folderOperations;
-    op.Name = newName;
-    const HRESULT res =
-        op.DoOperation(*this, LangString(IDS_CREATE_FOLDER), LangString(IDS_CREATE_FOLDER_ERROR));
-    if (res == S_OK)
-        createdName = newName;
-    return res;
+    HRESULT res;
+    CDisableNotify disableNotify(*this);
+    {
+        CThreadFolderOperations op(FOLDER_TYPE_CREATE_FOLDER);
+        op.FolderOperations = _folderOperations;
+        op.Name = newName;
+        res = op.DoOperation(*this, LangString(IDS_CREATE_FOLDER),
+                             LangString(IDS_CREATE_FOLDER_ERROR));
+        // fixed for 9.26: we must refresh always
+    }
+    if (res == S_OK) {
+        int pos = newName.Find(WCHAR_PATH_SEPARATOR);
+        if (pos >= 0)
+            newName.DeleteFrom((unsigned)(pos));
+        if (!_mySelectMode)
+            state.SelectedNames.Clear();
+        state.FocusedName = newName;
+        state.FocusedName_Defined = true;
+        state.SelectFocused = true;
+    }
+    RefreshTitleAlways();
+    RefreshListCtrl(state);
 }
 
-HRESULT CPanel::CreateFile(const UString &enteredName, UString &createdName) {
+void CPanel::CreateFile() {
+    if (IsHashFolder())
+        return;
     if (!CheckBeforeUpdate(IDS_CREATE_FILE_ERROR))
-        return E_ABORT;
-    UString newName = enteredName;
+        return;
+    CDisableTimerProcessing disableTimerProcessing2(*this);
+    CSelectedState state;
+    SaveSelectedState(state);
+    CComboDialog dlg(ToQString(LangString(IDS_CREATE_FILE)),
+                     ToQString(LangString(IDS_CREATE_FILE_NAME)),
+                     ToQString(LangString(IDS_CREATE_FILE_DEFAULT_NAME)), GetParent());
+    dlg.BindLanguage(IDS_CREATE_FILE, IDS_CREATE_FILE_NAME);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    CDisableNotify disableNotify(*this);
+    UString newName = ToUString(dlg.Value);
     if (IsFSFolder()) {
         UString correctName;
-        if (!CorrectFsPath(newName, correctName))
-            return E_INVALIDARG;
+        if (!CorrectFsPath(newName, correctName)) {
+            MessageBox_Error_HRESULT(E_INVALIDARG);
+            return;
+        }
         newName = correctName;
     }
-    CThreadFolderOperations op(FOLDER_TYPE_CREATE_FILE);
-    op.FolderOperations = _folderOperations;
-    op.Name = newName;
-    const HRESULT res =
-        op.DoOperation(*this, LangString(IDS_CREATE_FILE), LangString(IDS_CREATE_FILE_ERROR));
-    if (res == S_OK)
-        createdName = newName;
-    return res;
+    const HRESULT result = _folderOperations->CreateFile(newName, NULL);
+    if (result != S_OK) {
+        MessageBox_Error_HRESULT_Caption(result, LangString(IDS_CREATE_FILE_ERROR));
+        return;
+    }
+    const int pos = newName.Find(WCHAR_PATH_SEPARATOR);
+    if (pos >= 0)
+        newName.DeleteFrom((unsigned)pos);
+    if (!_mySelectMode)
+        state.SelectedNames.Clear();
+    state.FocusedName = newName;
+    state.FocusedName_Defined = true;
+    state.SelectFocused = true;
+    RefreshListCtrl(state);
 }
 
 HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {

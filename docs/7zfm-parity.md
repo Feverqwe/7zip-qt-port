@@ -1,5 +1,23 @@
 # Сверка с Windows 7zFM
 
+## Source Create File/Folder (P3-05, 2026-10-10)
+
+Обе команды проходят исходные CPanel::CreateFile/CreateFolder: guards, диалог,
+валидация, операция и восстановление состояния. CreateFile использует исходные
+language IDs вместо постоянных русских строк. После вложенного имени фокус
+переходит на первый компонент пути; alternative selection сохраняет прежние
+marks независимо от единственного Qt focus selection. После ошибки CreateFolder
+обновляет список, CreateFile возвращается до refresh, как upstream. Ошибки,
+отмена и существующие байты проверяются через реальные filesystem consumers.
+Для отложенного чтения большого каталога Qt scan принимает восстановленное
+состояние исходных guards после выхода из синхронного Create. До завершения
+scan callbacks отключены, затем текст и команды снова доступны.
+Qt dialog construction/exec и native message boxes остаются presentation
+адаптациями; macOS не показывает window caption у progress message boxes.
+Captioned CreateFile error сохраняет caption как heading на macOS.
+Normal/compact JSON не доказывает rendered Windows parity. Provenance и
+проверки — в [source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+
 Этот документ описывает сценарии и отличия от Windows 7zFM. Разделы по ID
 и датам сохраняют границы проверенного поведения; их порядок не определяет
 текущий статус. Для выбора работы использовать [чеклист](porting-checklist.md),

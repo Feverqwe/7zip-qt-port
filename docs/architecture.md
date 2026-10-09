@@ -1815,6 +1815,17 @@ then publishes the merged tree. For Move, only accepted source files are
 removed; skipped files remain. Cancellation before deletion restores the old
 tree, while deletion failure keeps published bytes and reports a partial move.
 
+`PanelOperations.cpp` owns complete source CreateFile/CreateFolder workflows,
+including dialog entry, validation, error/refresh policy and selection snapshots.
+Qt command services call those owners; the window's existing reload callback
+publishes the source CSelectedState. Filesystem creation stays in the original
+IFolderOperations provider; CreateFolder uses its original progress worker and
+CreateFile its original direct call. See the [source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+When a native synchronous Create starts a deferred Qt scan, command services
+hand its restored processing state to QtAppOperationState after source return.
+The retained scan guard blocks callbacks until completion and then restores
+that state; it does not retain the temporary native disabled snapshot.
+
 `PanelSplitFile.cpp` owns CApp::Split/Combine, source selection/default peer
 destination, confirmation, destination preparation, contiguous part discovery,
 naming/summary and native CThreadSplit/Combine transfer loops/preallocation.

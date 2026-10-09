@@ -320,14 +320,6 @@ QWidget *CPanel::GetParent() const {
     return _listView ? _listView->window() : _mainWindow.data();
 }
 
-void CPanel::MessageBox_Error(const UString &message) const {
-    QMessageBox box(QMessageBox::Critical, QStringLiteral("7-Zip"),
-                    QString::fromWCharArray(message.Ptr()), QMessageBox::Ok, GetParent());
-    box.setObjectName("panelArchiveError");
-    box.setTextFormat(Qt::PlainText);
-    box.exec();
-}
-
 void CPanel::MessageBox_Error_UnsupportOperation() const {
     MessageBox_Error(LangString(IDS_OPERATION_IS_NOT_SUPPORTED));
 }

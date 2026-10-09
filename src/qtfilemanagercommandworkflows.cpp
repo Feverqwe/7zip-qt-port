@@ -98,12 +98,14 @@ void QtFileManagerCommands::Split() { window_.startVolume(VolumeOperation::Mode:
 void QtFileManagerCommands::Combine() { window_.startVolume(VolumeOperation::Mode::Combine); }
 void QtFileManagerCommands::Properties() { window_.showSelectedProperties(); }
 void QtFileManagerCommands::CreateFolder() {
-    if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_CREATE_FOLDER_ERROR))
-        window_.createFolder();
+    const unsigned index = window_.app_.GetFocusedPanelIndex();
+    window_.app_.Panels[index].CreateFolder();
+    window_.app_.QtOperations().ContinueScanAfterSourceCall(index);
 }
 void QtFileManagerCommands::CreateFile() {
-    if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_CREATE_FILE_ERROR))
-        window_.createFile();
+    const unsigned index = window_.app_.GetFocusedPanelIndex();
+    window_.app_.Panels[index].CreateFile();
+    window_.app_.QtOperations().ContinueScanAfterSourceCall(index);
 }
 void QtFileManagerCommands::AddToArchive() { window_.createDialog(); }
 void QtFileManagerCommands::ExtractArchives() { window_.extractArchives(); }

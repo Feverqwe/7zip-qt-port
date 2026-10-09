@@ -12,6 +12,7 @@ class QtAppOperationState {
     explicit QtAppOperationState(CPanel (&panels)[2]) : panels_(panels) {}
     bool Begin(Kind kind, unsigned scanningPanels = 3);
     void End();
+    void ContinueScanAfterSourceCall(unsigned panel);
     void Close();
     void ResetForCreate();
     Kind kind() const { return kind_; }

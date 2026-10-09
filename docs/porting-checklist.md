@@ -101,6 +101,18 @@ sharing behavior are in the [source receipt](upstream-port-audit.md#p3-05--compl
 Eleven slow suites excluded. Remaining full-body FileManager/native/rendered/
 package acceptance remains mandatory;43/47 and P3-03/04/05/06 remain open.
 
+P3-05,2026-10-10: complete source Create File/Folder restores original CPanel
+workflow, pre-dialog snapshot, language IDs, validation/errors, native provider
+calls, first-component focus and alternative marks. Source failure-refresh
+policy and Qt deferred-scan guard handoff are verified; the initial full-gate
+large-list failure is retained with its fix. Two normalized source bodies match.
+Mac required full307/307 PASS248.66s,4804Qt/0fail/18 existing skips;
+Linux/Windows x64 Qt6.12 each8/8 PASS25.71s/112.83s,159/162Qt/0fail/0skip,
+1417 exact local/archive/guest hashes. Forty-eight current Combo JSON reviewed.
+See the [source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+Eleven slow suites excluded. Full FileManager/native/rendered/package acceptance
+remains mandatory;43/47 and P3-03/04/05/06 remain open.
+
 ## Рабочие итерации после укрупнения (2026-09-29)
 
 Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).

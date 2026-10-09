@@ -17,6 +17,7 @@
 #include "qtpanelkey.h"
 #include <QComboBox>
 #include <QEvent>
+#include <QMessageBox>
 #include <QWidget>
 
 HRESULT CPanel::Create(QWidget *mainWindow, QWidget *parentWindow, UINT id,
@@ -76,6 +77,26 @@ void CPanel::MessageBox_Error_LangID(UINT resourceID) const {
     MessageBox_Error(LangString(resourceID));
 }
 
+void CPanel::MessageBox_Error_Caption(LPCWSTR message, LPCWSTR caption) const {
+    QMessageBox box(QMessageBox::Critical, QString::fromWCharArray(caption),
+                    QString::fromWCharArray(message), QMessageBox::Ok, GetParent());
+    box.setObjectName("panelArchiveError");
+    box.setTextFormat(Qt::PlainText);
+#ifdef Q_OS_MACOS
+    // Native macOS message boxes omit captions. Retain an operation-specific
+    // source caption as the heading, as in the existing Comment error adapter.
+    if (QString::fromWCharArray(caption) != QStringLiteral("7-Zip")) {
+        box.setInformativeText(box.text());
+        box.setText(QString::fromWCharArray(caption));
+    }
+#endif
+    box.exec();
+}
+
+void CPanel::MessageBox_Error(const UString &message) const {
+    MessageBox_Error_Caption(message, L"7-Zip");
+}
+
 static UString ErrorHResult_To_Message(HRESULT errorCode) {
     if (errorCode == 0)
         errorCode = E_FAIL;
@@ -84,6 +105,10 @@ static UString ErrorHResult_To_Message(HRESULT errorCode) {
 
 void CPanel::MessageBox_Error_HRESULT(HRESULT errorCode) const {
     MessageBox_Error(ErrorHResult_To_Message(errorCode));
+}
+
+void CPanel::MessageBox_Error_HRESULT_Caption(HRESULT errorCode, LPCWSTR caption) const {
+    MessageBox_Error_Caption(ErrorHResult_To_Message(errorCode), caption);
 }
 
 void CPanel::MessageBox_Error_2Lines_Message_HRESULT(LPCWSTR message, HRESULT errorCode) const {

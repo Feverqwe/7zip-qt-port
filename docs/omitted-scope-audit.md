@@ -10,6 +10,19 @@ full revision `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
 The maintained per-module [manifest](upstream-baseline.json) owns reproducible
 local provenance; this document does not replace its exact/adapted distinction.
 
+## Source Create File/Folder workflows restored on 2026-10-10
+
+The previous PanelOperations helpers kept validation/operation fragments while
+MainWindow supplied independent dialogs/errors/selection. Complete source
+CreateFile/CreateFolder bodies now own those phases and refresh policy in their
+original module, using the existing Qt reload callback. CreateFile's original
+direct provider call replaces the extra worker branch. Both normalized bodies
+match after dialog boundary substitutions; see the [source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+The deferred Qt scan handoff is integration code because original refresh is
+synchronous. It transfers the restored native processing snapshot after Create
+returns; it does not replace the source guards or creation algorithms.
+Remaining PanelOperations bodies and FileManager family disposition stay open.
+
 ## Split/Combine owner and native workers restored on 2026-10-08
 
 Existing mirrored names concealed absent CApp::Split/Combine, substituted native

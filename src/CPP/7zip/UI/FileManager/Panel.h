@@ -624,8 +624,8 @@ class CPanel : public QObject {
     bool DoesItSupportOperations() const { return _folderOperations != NULL; }
     bool CheckBeforeUpdate(UINT resourceID);
     bool CorrectFsPath(const UString &path, UString &result);
-    HRESULT CreateFolder(const UString &enteredName, UString &createdName);
-    HRESULT CreateFile(const UString &enteredName, UString &createdName);
+    void CreateFolder();
+    void CreateFile();
     HRESULT OnEndLabelEdit(UInt32 realIndex, const UString &enteredName);
     HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection,
                         const CRecordVector<UInt32> *explicitIndices = nullptr);
@@ -743,6 +743,8 @@ class CPanel : public QObject {
   public:
     QWidget *GetParent() const;
     void MessageBox_Error(const UString &message) const;
+    void MessageBox_Error_Caption(LPCWSTR message, LPCWSTR caption) const;
+    void MessageBox_Error_HRESULT_Caption(HRESULT result, LPCWSTR caption) const;
     void MessageBox_Error_LangID(UINT resourceID) const;
     void MessageBox_Error_HRESULT(HRESULT result) const;
     void MessageBox_Error_2Lines_Message_HRESULT(LPCWSTR message, HRESULT errorCode) const;

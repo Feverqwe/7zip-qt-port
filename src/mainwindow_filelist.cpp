@@ -217,60 +217,6 @@ void MainWindow::selectPaths(const QStringList &paths) {
     }
 }
 
-void MainWindow::createFolder() {
-    if (state_ != State::Filesystem && state_ != State::Viewing)
-        return;
-    const bool archive = state_ == State::Viewing;
-    if (archive && !createFolder_->isEnabled())
-        return;
-    QString name;
-    if (!Dlg_CreateFolder(this, name))
-        return;
-    UString createdName;
-    const HRESULT result = app_.GetFocusedPanel().CreateFolder(ToUString(name), createdName);
-    if (result == E_ABORT)
-        return;
-    if (result != S_OK) {
-        QMessageBox::warning(this, "Sevenzip Desktop", "Не удалось создать папку.");
-        return;
-    }
-    if (archive) {
-        renderBoundFolder();
-        return;
-    }
-    showDirectory(directory_, false);
-    selectPaths({QDir(directory_).filePath(QDir::fromNativeSeparators(name).section('/', 0, 0))});
-}
-
-void MainWindow::createFile() {
-    const auto &panel = app_.GetFocusedPanel();
-    const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
-    if (state_ != State::Filesystem && !streams)
-        return;
-    ComboDialog dialog("Создать файл", "Имя файла:", "Новый файл", this);
-    if (dialog.exec() != QDialog::Accepted)
-        return;
-    const QString name = dialog.value();
-    UString createdName;
-    const HRESULT result = app_.GetFocusedPanel().CreateFile(ToUString(name), createdName);
-    if (result == E_ABORT)
-        return;
-    if (result != S_OK) {
-        QMessageBox::warning(this, "Создать файл", "Не удалось создать файл.");
-        return;
-    }
-    if (streams) {
-        const QString target =
-            ToQString(app_.GetFocusedPanel().GetCurrentFolderPrefix()) + ToQString(createdName);
-        renderBoundFolder();
-        selectPaths({target});
-        return;
-    }
-    const QString target = QDir(directory_).filePath(ToQString(createdName));
-    showDirectory(directory_, false);
-    selectPaths({target});
-}
-
 void MainWindow::openPath(const QString &path) { navigateTo(QFileInfo(path).absoluteFilePath()); }
 
 HRESULT MainWindow::navigateTo(const QString &path, bool sourceAddress) {
